@@ -79,7 +79,7 @@ def make_dense(targets, noclass):
     shape = tf.shape(targets)
     batch_size = shape[0]
     indices = targets + noclass * tf.range(0, batch_size)
-    length = batch_size * noclass
+    length = tf.expand_dims(batch_size * noclass, 0)
     dense = tf.sparse_to_dense(indices, length, 1.0, 0.0)
   return tf.reshape(dense, [-1, noclass])
 
@@ -91,7 +91,8 @@ def check_for_zero(sparse):
     batch_size = shape[0]
     sparse = tf.minimum(sparse, 1)
     indices = sparse + 2 * tf.range(0, batch_size)
-    dense = tf.sparse_to_dense(indices, 2 * batch_size, 1.0, 0.0)
+    dense = tf.sparse_to_dense(indices, tf.expand_dims(2 * batch_size, 0),
+                               1.0, 0.0)
     reshaped = tf.reshape(dense, [-1, 2])
   return tf.reshape(tf.slice(reshaped, [0, 0], [-1, 1]), [-1])
 

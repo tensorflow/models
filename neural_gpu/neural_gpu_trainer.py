@@ -22,11 +22,12 @@ tf.app.flags.DEFINE_float("max_grad_norm", 0.05, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("cutoff", 1.2, "Cutoff at the gates.")
 tf.app.flags.DEFINE_float("pull", 0.0005, "Starting pull of the relaxations.")
 tf.app.flags.DEFINE_float("pull_incr", 1.2, "Increase pull by that much.")
+tf.app.flags.DEFINE_float("curriculum_bound", 0.06, "Move curriculum < this.")
 tf.app.flags.DEFINE_float("dropout", 0.15, "Dropout that much.")
 tf.app.flags.DEFINE_float("grad_noise_scale", 1.0, "Gradient noise scale.")
 tf.app.flags.DEFINE_integer("batch_size", 64, "Batch size.")
 tf.app.flags.DEFINE_integer("low_batch_size", 16, "Low batch size.")
-tf.app.flags.DEFINE_integer("steps_per_checkpoint", 100, "Steps per epoch.")
+tf.app.flags.DEFINE_integer("steps_per_checkpoint", 200, "Steps per epoch.")
 tf.app.flags.DEFINE_integer("nmaps", 24, "Number of floats in each cell.")
 tf.app.flags.DEFINE_integer("niclass", 14, "Number of classes (0 is padding).")
 tf.app.flags.DEFINE_integer("noclass", 14, "Number of classes (0 is padding).")
@@ -84,7 +85,7 @@ def initialize(sess):
     data.init_data(t, data.forward_max, end_size, nclass)
 
   # Print out parameters.
-  curriculum = 0.12
+  curriculum = FLAGS.curriculum_bound
   msg1 = ("layers %d kw %d h %d kh %d relax %d batch %d noise %.2f task %s"
           % (FLAGS.nconvs, FLAGS.kw, FLAGS.height, FLAGS.kh, FLAGS.rx_step,
              FLAGS.batch_size, FLAGS.grad_noise_scale, FLAGS.task))
