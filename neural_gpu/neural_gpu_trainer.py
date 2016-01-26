@@ -31,16 +31,16 @@ from tensorflow.python.platform import gfile
 import data_utils as data
 import neural_gpu
 
-tf.app.flags.DEFINE_float("lr", 0.1, "Learning rate.")
+tf.app.flags.DEFINE_float("lr", 0.3, "Learning rate.")
 tf.app.flags.DEFINE_float("init_weight", 1.0, "Initial weights deviation.")
 tf.app.flags.DEFINE_float("max_grad_norm", 0.05, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("cutoff", 1.2, "Cutoff at the gates.")
 tf.app.flags.DEFINE_float("pull", 0.0005, "Starting pull of the relaxations.")
 tf.app.flags.DEFINE_float("pull_incr", 1.2, "Increase pull by that much.")
-tf.app.flags.DEFINE_float("curriculum_bound", 0.06, "Move curriculum < this.")
+tf.app.flags.DEFINE_float("curriculum_bound", 0.08, "Move curriculum < this.")
 tf.app.flags.DEFINE_float("dropout", 0.15, "Dropout that much.")
 tf.app.flags.DEFINE_float("grad_noise_scale", 1.0, "Gradient noise scale.")
-tf.app.flags.DEFINE_integer("batch_size", 64, "Batch size.")
+tf.app.flags.DEFINE_integer("batch_size", 32, "Batch size.")
 tf.app.flags.DEFINE_integer("low_batch_size", 16, "Low batch size.")
 tf.app.flags.DEFINE_integer("steps_per_checkpoint", 200, "Steps per epoch.")
 tf.app.flags.DEFINE_integer("nmaps", 24, "Number of floats in each cell.")
@@ -256,7 +256,7 @@ def train():
         if max_cur_length < max_length:
           prev_acc_perp.append(1000000)
         # Either increase pull or, if it's large, average parameters.
-        if pull < 1:
+        if pull < 0.1:
           sess.run(model.pull_incr_op)
         else:
           data.print_out("  Averaging parameters.")
@@ -283,7 +283,7 @@ def train():
           l += 1
           while l < bound + 1 and not data.test_set[t][l]:
             l += 1
-        if seq_err < 0.5:  # Run larger test if we're good enough.
+        if seq_err < 0.05:  # Run larger test if we're good enough.
           _, seq_err = multi_test(data.forward_max, model, sess, t,
                                   FLAGS.nprint, batch_size * 4)
       if seq_err < 0.01:  # Super-large test on 1-task large-forward models.
