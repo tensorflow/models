@@ -31,7 +31,7 @@ from tensorflow.python.platform import gfile
 import data_utils as data
 import neural_gpu
 
-tf.app.flags.DEFINE_float("lr", 0.3, "Learning rate.")
+tf.app.flags.DEFINE_float("lr", 0.003, "Learning rate.")
 tf.app.flags.DEFINE_float("init_weight", 1.0, "Initial weights deviation.")
 tf.app.flags.DEFINE_float("max_grad_norm", 0.05, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("cutoff", 1.2, "Cutoff at the gates.")
@@ -215,7 +215,7 @@ def train():
         start_time = time.time()
         inp, target = data.get_batch(l, batch_size, True, task)
         noise_param = math.sqrt(math.pow(global_step, -0.55) *
-                                (20 * prev_seq_err)) * FLAGS.grad_noise_scale
+                                prev_seq_err) * FLAGS.grad_noise_scale
         loss, res, gnorm, _ = model.step(sess, inp, target, True, noise_param)
         step_time += time.time() - start_time
         acc_grad_norm += float(gnorm)
@@ -234,7 +234,7 @@ def train():
       acc_loss /= step_count
       step_time /= FLAGS.steps_per_checkpoint
       acc_seq_err = float(acc_seq_err) / (step_count * batch_size)
-      prev_seq_err = acc_seq_err
+      prev_seq_err = max(0.0, acc_seq_err - 0.02)  # No noise at error < 2%.
       acc_errors = float(acc_errors) / acc_total if acc_total > 0 else 1.0
       msg1 = "step %d step-time %.2f" % (global_step, step_time)
       msg2 = "lr %.8f pull %.3f" % (learning_rate, pull)

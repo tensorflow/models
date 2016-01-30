@@ -151,7 +151,7 @@ class NeuralGPU(object):
                              tf.constant(0, dtype=tf.int32, shape=[1]),
                              tf.zeros([1, vec_size]))
 
-    adam = tf.train.AdamOptimizer(0.01*self.lr, epsilon=1e-4)
+    adam = tf.train.AdamOptimizer(self.lr, epsilon=1e-4)
 
     # Main graph creation loop, for every bin in data_utils.
     self.steps = []
