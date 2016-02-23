@@ -1,0 +1,245 @@
+text       : "\" Do n't sit at home and get depressed - come out and make friends ! \" In the short run , only fight and win ."
+token: {
+  word    : "\""
+  start   : 0
+  end     : 0
+  head    : 3
+  tag     : "``"
+  category: "."
+  label   : "p"
+  break_level       : SENTENCE_BREAK
+}
+token: {
+  word    : "Do"
+  start   : 2
+  end     : 3
+  head    : 3
+  tag     : "VBP"
+  category: "VERB"
+  label   : "aux"
+}
+token: {
+  word    : "n't"
+  start   : 5
+  end     : 7
+  head    : 3
+  tag     : "RB"
+  category: "ADV"
+  label   : "neg"
+}
+token: {
+  word    : "sit"
+  start   : 9
+  end     : 11
+  tag     : "VB"
+  category: "VERB"
+  label   : "ROOT"
+}
+token: {
+  word    : "at"
+  start   : 13
+  end     : 14
+  head    : 3
+  tag     : "IN"
+  category: "ADP"
+  label   : "prep"
+}
+token: {
+  word    : "home"
+  start   : 16
+  end     : 19
+  head    : 4
+  tag     : "NN"
+  category: "NOUN"
+  label   : "pobj"
+}
+token: {
+  word    : "and"
+  start   : 21
+  end     : 23
+  head    : 3
+  tag     : "CC"
+  category: "CONJ"
+  label   : "cc"
+}
+token: {
+  word    : "get"
+  start   : 25
+  end     : 27
+  head    : 3
+  tag     : "VB"
+  category: "VERB"
+  label   : "conj"
+}
+token: {
+  word    : "depressed"
+  start   : 29
+  end     : 37
+  head    : 7
+  tag     : "JJ"
+  category: "ADJ"
+  label   : "acomp"
+}
+token: {
+  word    : "-"
+  start   : 39
+  end     : 39
+  head    : 3
+  tag     : ","
+  category: "."
+  label   : "p"
+}
+token: {
+  word    : "come"
+  start   : 41
+  end     : 44
+  head    : 3
+  tag     : "VB"
+  category: "VERB"
+  label   : "dep"
+}
+token: {
+  word    : "out"
+  start   : 46
+  end     : 48
+  head    : 10
+  tag     : "RB"
+  category: "ADV"
+  label   : "advmod"
+}
+token: {
+  word    : "and"
+  start   : 50
+  end     : 52
+  head    : 10
+  tag     : "CC"
+  category: "CONJ"
+  label   : "cc"
+}
+token: {
+  word    : "make"
+  start   : 54
+  end     : 57
+  head    : 10
+  tag     : "VB"
+  category: "VERB"
+  label   : "conj"
+}
+token: {
+  word    : "friends"
+  start   : 59
+  end     : 65
+  head    : 13
+  tag     : "NNS"
+  category: "NOUN"
+  label   : "dobj"
+}
+token: {
+  word    : "!"
+  start   : 67
+  end     : 67
+  head    : 3
+  tag     : "."
+  category: "."
+  label   : "p"
+}
+token: {
+  word    : "\""
+  start   : 69
+  end     : 69
+  head    : 3
+  tag     : "''"
+  category: "."
+  label   : "p"
+}
+# Added 7 characters / 17 tokens.
+token: {
+  word    : "In"
+  start   : 70
+  end     : 1
+  head    : 22
+  tag     : "IN"
+  category: "ADP"
+  label   : "dep"
+  break_level       : SENTENCE_BREAK
+}
+token: {
+  word    : "the"
+  start   : 73
+  end     : 75
+  head    : 20
+  tag     : "DT"
+  category: "DET"
+  label   : "det"
+}
+token: {
+  word    : "short"
+  start   : 77
+  end     : 81
+  head    : 20
+  tag     : "JJ"
+  category: "ADJ"
+  label   : "amod"
+}
+token: {
+  word    : "run"
+  start   : 83
+  end     : 85
+  head    : 17
+  tag     : "NN"
+  category: "NOUN"
+  label   : "pobj"
+}
+token: {
+  word    : ","
+  start   : 87
+  end     : 87
+  head    : 22
+  tag     : ","
+  category: "."
+  label   : "p"
+}
+token: {
+  word    : "only"
+  start   : 89
+  end     : 92
+  tag     : "RB"
+  category: "ADV"
+  label   : "ROOT"
+}
+token: {
+  word    : "fight"
+  start   : 94
+  end     : 98
+  head    : 22
+  tag     : "VB"
+  category: "VERB"
+  label   : "dep"
+}
+token: {
+  word    : "and"
+  start   : 100
+  end     : 102
+  head    : 23
+  tag     : "CC"
+  category: "CONJ"
+  label   : "cc"
+}
+token: {
+  word    : "win"
+  start   : 104
+  end     : 106
+  head    : 24
+  tag     : "VB"
+  category: "VERB"
+  label   : "conj"
+}
+token: {
+  word    : "."
+  start   : 108
+  end     : 108
+  head    : 22
+  tag     : "."
+  category: "."
+  label   : "p"
+}
