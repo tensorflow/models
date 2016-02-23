@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "utils.h"
-#include "feature_extractor.h"
-#include "sentence.pb.h"
-#include "utils.h"
+#include "neurosis/utils.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/sentence.pb.h"
+#include "neurosis/utils.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"

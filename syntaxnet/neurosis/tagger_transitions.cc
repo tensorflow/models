@@ -10,10 +10,10 @@
 
 #include <string>
 
-#include "utils.h"
-#include "parser_state.h"
-#include "parser_transitions.h"
-#include "shared_store.h"
+#include "neurosis/utils.h"
+#include "neurosis/parser_state.h"
+#include "neurosis/parser_transitions.h"
+#include "neurosis/shared_store.h"
 #include "task_context.h"
 #include "term_frequency_map.h"
 #include "tensorflow/core/lib/strings/strcat.h"

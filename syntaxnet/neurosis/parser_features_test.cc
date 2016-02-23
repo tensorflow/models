@@ -1,16 +1,16 @@
-#include "parser_features.h"
+#include "neurosis/parser_features.h"
 
 #include <string>
 
-#include "utils.h"
-#include "feature_extractor.h"
-#include "parser_state.h"
-#include "populate_test_inputs.h"
-#include "sentence.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/parser_state.h"
+#include "neurosis/populate_test_inputs.h"
+#include "neurosis/sentence.pb.h"
 #include "task_context.h"
 #include "task_spec.pb.h"
 #include "term_frequency_map.h"
-#include "workspace.h"
+#include "neurosis/workspace.h"
 #include "testing/base/public/googletest.h"
 #include "testing/base/public/gunit.h"
 #include "tensorflow/core/lib/strings/strcat.h"

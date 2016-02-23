@@ -1,9 +1,9 @@
-#include "fml_parser.h"
+#include "neurosis/fml_parser.h"
 
 #include <ctype.h>
 #include <string>
 
-#include "utils.h"
+#include "neurosis/utils.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {

@@ -88,6 +88,19 @@ cc_library(
     ],
     deps = [
         "@tf//tensorflow/core:lib",
+        "@tf//third_party/eigen3",
+    ],
+)
+
+cc_library(
+    name = "test_utils",
+    #testonly = 1,
+    #srcs = ["test_main.cc"],
+    linkopts = ["-lm"],
+    deps = [
+        "@tf//tensorflow/core:testlib",
+        "@tf//third_party/eigen3",
+        #"//external:gtest",
     ],
 )
 

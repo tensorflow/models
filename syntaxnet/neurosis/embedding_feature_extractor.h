@@ -6,14 +6,14 @@
 #include <string>
 #include <vector>
 
-#include "utils.h"
-#include "feature_extractor.h"
-#include "feature_types.h"
-#include "parser_features.h"
-#include "sentence_features.h"
-#include "sparse.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/feature_types.h"
+#include "neurosis/parser_features.h"
+#include "neurosis/sentence_features.h"
+#include "neurosis/sparse.pb.h"
 #include "task_context.h"
-#include "workspace.h"
+#include "neurosis/workspace.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {

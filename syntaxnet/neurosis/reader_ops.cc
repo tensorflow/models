@@ -4,14 +4,14 @@
 #include <string>
 #include <vector>
 
-#include "utils.h"
-#include "feature_extractor.h"
-#include "parser_state.h"
-#include "parser_state_context.h"
-#include "parser_transitions.h"
-#include "sentence.pb.h"
-#include "shared_store.h"
-#include "sparse.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/parser_state.h"
+#include "neurosis/parser_state_context.h"
+#include "neurosis/parser_transitions.h"
+#include "neurosis/sentence.pb.h"
+#include "neurosis/shared_store.h"
+#include "neurosis/sparse.pb.h"
 #include "task_context.h"
 #include "task_spec.pb.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"

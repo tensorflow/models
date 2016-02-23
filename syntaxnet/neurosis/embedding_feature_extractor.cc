@@ -1,11 +1,11 @@
-#include "embedding_feature_extractor.h"
+#include "neurosis/embedding_feature_extractor.h"
 
 #include <vector>
 
-#include "feature_extractor.h"
-#include "parser_features.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/parser_features.h"
 #include "task_context.h"
-#include "utils.h"
+#include "neurosis/utils.h"
 
 namespace neurosis {
 

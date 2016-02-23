@@ -5,15 +5,15 @@
 #include <string>
 #include <vector>
 
-#include "embedding_feature_extractor.h"
-#include "feature_extractor.h"
-#include "parser_state.h"
-#include "parser_transitions.h"
-#include "sentence.pb.h"
-#include "sparse.pb.h"
-#include "task_context.h"
-#include "task_spec.pb.h"
-#include "term_frequency_map.h"
+#include "neurosis/embedding_feature_extractor.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/parser_state.h"
+#include "neurosis/parser_transitions.h"
+#include "neurosis/sentence.pb.h"
+#include "neurosis/sparse.pb.h"
+#include "neurosis/task_context.h"
+#include "neurosis/task_spec.pb.h"
+#include "neurosis/term_frequency_map.h"
 
 namespace neurosis {
 

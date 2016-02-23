@@ -15,9 +15,9 @@
 
 #include <string>
 
-#include "utils.h"
-#include "parser_state.h"
-#include "parser_transitions.h"
+#include "neurosis/utils.h"
+#include "neurosis/parser_state.h"
+#include "neurosis/parser_transitions.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {

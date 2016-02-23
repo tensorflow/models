@@ -1,11 +1,11 @@
 #include <memory>
 #include <string>
 
-#include "utils.h"
-#include "parser_state.h"
-#include "parser_transitions.h"
-#include "populate_test_inputs.h"
-#include "sentence.proto.h"
+#include "neurosis/utils.h"
+#include "neurosis/parser_state.h"
+#include "neurosis/parser_transitions.h"
+#include "neurosis/populate_test_inputs.h"
+#include "neurosis/sentence.proto.h"
 #include "task_context.h"
 #include "task_spec.proto.h"
 #include "term_frequency_map.h"

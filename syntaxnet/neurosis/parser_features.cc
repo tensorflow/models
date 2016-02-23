@@ -1,10 +1,10 @@
-#include "parser_features.h"
+#include "neurosis/parser_features.h"
 
 #include <string>
 
-#include "registry.h"
-#include "sentence_features.h"
-#include "workspace.h"
+#include "neurosis/registry.h"
+#include "neurosis/sentence_features.h"
+#include "neurosis/workspace.h"
 
 namespace neurosis {
 

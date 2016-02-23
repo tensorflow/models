@@ -5,11 +5,11 @@
 
 #include <string>
 
-#include "feature_extractor.h"
-#include "feature_types.h"
-#include "parser_state.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/feature_types.h"
+#include "neurosis/parser_state.h"
 #include "task_context.h"
-#include "workspace.h"
+#include "neurosis/workspace.h"
 
 namespace neurosis {
 

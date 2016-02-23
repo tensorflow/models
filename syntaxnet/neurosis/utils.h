@@ -8,7 +8,7 @@
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/default/integral_types.h"
 #include "tensorflow/core/platform/mutex.h"
-#include "unicodetext.h"
+#include "neurosis/unicodetext.h"
 
 using tensorflow::int32;
 using tensorflow::int64;
