@@ -4,7 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "nlp/saft/components/dependencies/opensource/task_spec.pb.h"
+#include "task_spec.pb.h"
+#include "utils.h"
 
 namespace neurosis {
 

@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include "base/logging.h"
+#include "utils.h"
 
 namespace neurosis {
 
@@ -138,7 +138,7 @@ class EnumFeatureType : public FeatureType {
   string GetFeatureValueName(FeatureValue value) const override {
     auto it = value_names_.find(value);
     if (it == value_names_.end()) {
-      LOG_EVERY_POW_2(ERROR)
+      LOG(ERROR)
           << "Invalid feature value " << value << " for " << name();
       return "<INVALID>";
     }

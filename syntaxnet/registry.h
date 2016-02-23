@@ -42,7 +42,7 @@
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
+#include "utils.h"
 
 namespace neurosis {
 

@@ -1,9 +1,9 @@
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
+#include "parser_state.h"
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/kbest_syntax.proto.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.pb.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
+#include "utils.h"
+#include "kbest_syntax.pb.h"
+#include "sentence.pb.h"
+#include "term_frequency_map.h"
 
 namespace neurosis {
 

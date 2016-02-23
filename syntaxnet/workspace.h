@@ -11,8 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
-#include "base/macros.h"
+#include "utils.h"
 
 namespace neurosis {
 
@@ -28,7 +27,7 @@ class Workspace {
   Workspace() {}
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(Workspace);
+  TF_DISALLOW_COPY_AND_ASSIGN(Workspace);
 };
 
 // A registry that keeps track of workspaces.
@@ -66,7 +65,7 @@ class WorkspaceRegistry {
   // Workspace names, indexed as workspace_names_[typeid][workspace].
   std::unordered_map<std::type_index, vector<string> > workspace_names_;
 
-  DISALLOW_COPY_AND_ASSIGN(WorkspaceRegistry);
+  TF_DISALLOW_COPY_AND_ASSIGN(WorkspaceRegistry);
 };
 
 // A typed collected of workspaces. The workspaces are indexed according to an
@@ -109,7 +108,7 @@ class WorkspaceSet {
   void Reset(const WorkspaceRegistry &registry) {
     // Deallocate current workspaces.
     for (auto &it : workspaces_) {
-      for (int index = 0; index < it.second.size(); ++index) {
+      for (size_t index = 0; index < it.second.size(); ++index) {
         delete it.second[index];
       }
     }

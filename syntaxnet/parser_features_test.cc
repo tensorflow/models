@@ -1,19 +1,19 @@
-#include "nlp/saft/components/dependencies/opensource/parser_features.h"
+#include "parser_features.h"
 
 #include <string>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
-#include "nlp/saft/components/dependencies/opensource/populate_test_inputs.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.pb.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/task_spec.pb.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
+#include "utils.h"
+#include "feature_extractor.h"
+#include "parser_state.h"
+#include "populate_test_inputs.h"
+#include "sentence.pb.h"
+#include "task_context.h"
+#include "task_spec.pb.h"
+#include "term_frequency_map.h"
+#include "workspace.h"
 #include "testing/base/public/googletest.h"
 #include "testing/base/public/gunit.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
 

@@ -1,22 +1,19 @@
-#include "nlp/saft/components/dependencies/opensource/populate_test_inputs.h"
+#include "populate_test_inputs.h"
 
 #include <map>
 #include <utility>
 
-#include "base/commandlineflags_declare.h"
-#include "base/logging.h"
-#include "net/proto2/public/text_format.h"
-#include "nlp/saft/components/dependencies/opensource/dictionary.proto.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/task_spec.proto.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/lib/io/record_writer.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
-#include "third_party/tensorflow/core/platform/env.h"
-
-DECLARE_string(test_tmpdir);
+#include "gtest/gtest.h"
+#include "utils.h"
+#include "dictionary.pb.h"
+#include "sentence.pb.h"
+#include "task_context.h"
+#include "task_spec.pb.h"
+#include "term_frequency_map.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/io/record_writer.h"
+#include "tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/platform/env.h"
 
 namespace neurosis {
 
@@ -134,7 +131,7 @@ vector<string> PopulateTestInputs::TokenWord(const Token &token) {
 string PopulateTestInputs::AddPart(TaskInput *input, const string &file_format,
                                    const string &record_format) {
   string file_name =
-      tensorflow::strings::StrCat(FLAGS_test_tmpdir, "/", input->name());
+      tensorflow::strings::StrCat(testing::TmpDir(), "/", input->name());
   auto *part = CHECK_NOTNULL(input)->add_part();
   part->set_file_pattern(file_name);
   part->set_file_format(file_format);

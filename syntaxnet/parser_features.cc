@@ -1,10 +1,10 @@
-#include "nlp/saft/components/dependencies/opensource/parser_features.h"
+#include "parser_features.h"
 
 #include <string>
 
-#include "nlp/saft/components/dependencies/opensource/registry.h"
-#include "nlp/saft/components/dependencies/opensource/sentence_features.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
+#include "registry.h"
+#include "sentence_features.h"
+#include "workspace.h"
 
 namespace neurosis {
 

@@ -15,10 +15,10 @@
 
 #include <string>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
-#include "nlp/saft/components/dependencies/opensource/parser_transitions.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
+#include "utils.h"
+#include "parser_state.h"
+#include "parser_transitions.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
 

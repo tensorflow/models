@@ -1,10 +1,7 @@
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
+#include "task_context.h"
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
-
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/platform/env.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/platform/env.h"
 
 namespace neurosis {
 namespace {

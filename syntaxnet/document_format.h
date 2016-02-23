@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
-#include "base/macros.h"
-#include "nlp/saft/components/dependencies/opensource/registry.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.pb.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
+#include "utils.h"
+#include "registry.h"
+#include "sentence.pb.h"
+#include "task_context.h"
 
 namespace neurosis {
 
@@ -34,7 +34,7 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
                                string *key, string *value) = 0;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(DocumentFormat);
+  TF_DISALLOW_COPY_AND_ASSIGN(DocumentFormat);
 };
 
 #define REGISTER_DOCUMENT_FORMAT(type, component) \

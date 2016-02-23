@@ -5,23 +5,21 @@
 #include <string>
 #include <vector>
 
-#include "base/casts.h"
-#include "base/logging.h"
-#include "base/macros.h"
-#include "nlp/saft/components/dependencies/opensource/document_format.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.pb.h"
-#include "nlp/saft/components/dependencies/opensource/feature_types.h"
-#include "nlp/saft/components/dependencies/opensource/registry.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/lib/core/stringpiece.h"
-#include "third_party/tensorflow/core/lib/io/inputbuffer.h"
-#include "third_party/tensorflow/core/lib/io/record_reader.h"
-#include "third_party/tensorflow/core/lib/io/record_writer.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
-#include "third_party/tensorflow/core/platform/env.h"
+#include "utils.h"
+#include "document_format.h"
+#include "feature_extractor.pb.h"
+#include "feature_types.h"
+#include "registry.h"
+#include "sentence.pb.h"
+#include "task_context.h"
+#include "workspace.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/core/stringpiece.h"
+#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/record_reader.h"
+#include "tensorflow/core/lib/io/record_writer.h"
+#include "tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/platform/env.h"
 
 namespace neurosis {
 

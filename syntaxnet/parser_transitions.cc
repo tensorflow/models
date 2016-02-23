@@ -1,6 +1,6 @@
-#include "nlp/saft/components/dependencies/opensource/parser_transitions.h"
+#include "parser_transitions.h"
 
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
+#include "parser_state.h"
 
 namespace neurosis {
 

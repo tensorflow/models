@@ -1,4 +1,4 @@
-#include "nlp/saft/components/dependencies/opensource/shared_store.h"
+#include "shared_store.h"
 
 #include <hash_set>
 #include <string>
@@ -7,7 +7,7 @@
 #include "testing/base/public/gmock.h"
 #include "testing/base/public/gunit.h"
 #include "testing/base/public/mock-log.h"
-#include "third_party/tensorflow/core/lib/core/threadpool.h"
+#include "tensorflow/core/lib/core/threadpool.h"
 
 using ::testing::_;
 using ::testing::ScopedMockLog;

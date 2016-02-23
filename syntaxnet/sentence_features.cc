@@ -1,7 +1,7 @@
-#include "nlp/saft/components/dependencies/opensource/sentence_features.h"
+#include "sentence_features.h"
 
-#include "nlp/saft/components/dependencies/opensource/registry.h"
-#include "util/utf8/public/unicodetext.h"
+#include "registry.h"
+#include "unicodetext.h"
 
 namespace neurosis {
 
@@ -71,7 +71,7 @@ FeatureValue Digit::ComputeValue(const Token &token) const {
   const string &word = token.word();
   bool has_digit = isdigit(word[0]);
   bool all_digit = has_digit;
-  for (int i = 1; i < word.length(); ++i) {
+  for (size_t i = 1; i < word.length(); ++i) {
     bool char_is_digit = isdigit(word[i]);
     all_digit = all_digit && char_is_digit;
     has_digit = has_digit || char_is_digit;

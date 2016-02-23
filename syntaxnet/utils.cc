@@ -1,5 +1,5 @@
-#include "nlp/saft/components/dependencies/opensource/utils.h"
-#include "third_party/tensorflow/core/platform/macros.h"
+#include "utils.h"
+#include "tensorflow/core/platform/macros.h"
 
 namespace neurosis {
 namespace utils {
@@ -70,7 +70,7 @@ std::vector<string> Split(const string &text, char delim) {
   std::vector<string> result;
   int token_start = 0;
   if (!text.empty()) {
-    for (int i = 0; i < text.size() + 1; i++) {
+    for (size_t i = 0; i < text.size() + 1; i++) {
       if ((i == text.size()) || (text[i] == delim)) {
         result.push_back(string(text.data() + token_start, i - token_start));
         token_start = i + 1;
@@ -199,7 +199,7 @@ PunctuationUtil::CharacterRange PunctuationUtil::kPunctuation[] = {
     {-1, -1}};
 
 void NormalizeDigits(string *form) {
-  for (int i = 0; i < form->size(); ++i) {
+  for (size_t i = 0; i < form->size(); ++i) {
     if ((*form)[i] >= '0' && (*form)[i] <= '9') (*form)[i] = '9';
   }
 }

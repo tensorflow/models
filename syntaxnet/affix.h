@@ -5,17 +5,15 @@
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
-#include "base/macros.h"
-#include "nlp/saft/components/dependencies/opensource/dictionary.pb.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/proto_io.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.pb.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
-#include "util/regexp/re2/re2.h"
+#include "utils.h"
+#include "dictionary.pb.h"
+#include "feature_extractor.h"
+#include "proto_io.h"
+#include "sentence.pb.h"
+#include "task_context.h"
+#include "term_frequency_map.h"
+#include "workspace.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
 
@@ -59,7 +57,7 @@ class Affix {
   // Next affix in bucket chain.
   Affix *next_;
 
-  DISALLOW_COPY_AND_ASSIGN(Affix);
+  TF_DISALLOW_COPY_AND_ASSIGN(Affix);
 };
 
 // An affix table holds all prefixes/suffixes of all the words added to the
@@ -134,7 +132,7 @@ class AffixTable {
   // Buckets for word-to-affix hash map.
   vector<Affix *> buckets_;
 
-  DISALLOW_COPY_AND_ASSIGN(AffixTable);
+  TF_DISALLOW_COPY_AND_ASSIGN(AffixTable);
 };
 
 }  // namespace neurosis

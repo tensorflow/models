@@ -5,11 +5,11 @@
 
 #include <string>
 
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/feature_types.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
+#include "feature_extractor.h"
+#include "feature_types.h"
+#include "parser_state.h"
+#include "task_context.h"
+#include "workspace.h"
 
 namespace neurosis {
 
