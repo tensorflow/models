@@ -1,0 +1,82 @@
+Parameter {
+  name: "brain_parser_embedding_dims"
+  value: "8;8;8"
+}
+Parameter {
+  name: "brain_parser_features"
+  value: "input.word input(1).word input(2).word stack.word stack(1).word stack(2).word;input.tag input(1).tag input(2).tag stack.tag stack(1).tag stack(2).tag;stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label"
+}
+Parameter {
+  name: "brain_parser_embedding_names"
+  value: "words;tags;labels"
+}
+input {
+  name: "training-corpus"
+  multi_file: true
+  Part {
+    file_pattern: "SRCDIR/google3/nlp/saft/components/dependencies/opensource/testdata/wsj-train-100"
+    file_format: "recordio"
+    record_format: "document"
+  }
+}
+input {
+  name: "tuning-corpus"
+  multi_file: true
+  Part {
+    file_pattern: "SRCDIR/google3/nlp/saft/components/dependencies/opensource/testdata/wsj-train-100"
+    file_format: "recordio"
+    record_format: "document"
+  }
+}
+input {
+  name: "label-map"
+  file_format: "text"
+  Part {
+    file_pattern: "OUTPATH/label-map"
+  }
+}
+input {
+  name: "word-map"
+  file_format: "text"
+  Part {
+    file_pattern: "OUTPATH/word-map"
+    file_format: "text"
+  }
+}
+input {
+  name: 'lcword-map'
+  Part {
+    file_pattern: 'OUTPATH/lcword-map'
+  }
+}
+input {
+  name: "tag-map"
+  file_format: "text"
+  Part {
+    file_pattern: "OUTPATH/tag-map"
+  }
+}
+input {
+  name: 'category-map'
+  Part {
+    file_pattern: 'OUTPATH/category-map'
+  }
+}
+input {
+  name: 'prefix-table'
+  Part {
+    file_pattern: 'OUTPATH/prefix-table'
+  }
+}
+input {
+  name: 'suffix-table'
+  Part {
+    file_pattern: 'OUTPATH/suffix-table'
+  }
+}
+input {
+  name: 'tag-to-category'
+  Part {
+    file_pattern: 'OUTPATH/tag-to-category'
+  }
+}
