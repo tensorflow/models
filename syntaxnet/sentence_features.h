@@ -5,12 +5,12 @@
 #ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_SENTENCE_FEATURES_H_
 #define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_SENTENCE_FEATURES_H_
 
-#include "nlp/saft/components/dependencies/opensource/affix.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/feature_types.h"
-#include "nlp/saft/components/dependencies/opensource/shared_store.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
+#include "affix.h"
+#include "feature_extractor.h"
+#include "feature_types.h"
+#include "shared_store.h"
+#include "task_context.h"
+#include "workspace.h"
 
 namespace neurosis {
 

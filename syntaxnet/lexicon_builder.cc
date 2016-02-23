@@ -1,16 +1,16 @@
 #include <stddef.h>
 #include <string>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/affix.h"
-#include "nlp/saft/components/dependencies/opensource/dictionary.proto.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state_context.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
-#include "third_party/tensorflow/core/framework/op_kernel.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/platform/env.h"
+#include "utils.h"
+#include "affix.h"
+#include "dictionary.proto.h"
+#include "feature_extractor.h"
+#include "parser_state_context.h"
+#include "sentence.proto.h"
+#include "term_frequency_map.h"
+#include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/platform/env.h"
 
 // A task that collects term statistics over a corpus and saves a set of
 // term maps; these saved mappings are used to map strings to ints in both the

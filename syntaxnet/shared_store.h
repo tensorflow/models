@@ -9,11 +9,9 @@
 #include <unordered_map>
 #include <utility>
 
-#include "base/logging.h"
-#include "base/macros.h"
-#include "base/mutex.h"
-#include "third_party/tensorflow/core/lib/core/stringpiece.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
+#include "utils.h"
+#include "tensorflow/core/lib/core/stringpiece.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
 
@@ -87,7 +85,7 @@ class SharedStore {
   static SharedObjectMap *shared_object_map_;
   static Mutex shared_object_map_mutex_;
 
-  DISALLOW_IMPLICIT_CONSTRUCTORS(SharedStore);
+  TF_DISALLOW_COPY_AND_ASSIGN(SharedStore);
 };
 
 template <typename T>
@@ -119,7 +117,7 @@ T *SharedStore::IncrementRefCountOfObject(SharedObjectMap::iterator it) {
 template <typename T, typename ...Args>
 const T *SharedStore::Get(const string &name,
                           Args &&...args) {  // NOLINT(build/c++11)
-  MutexLock l(&shared_object_map_mutex_);
+  MutexLock l(shared_object_map_mutex_);
   const string key = GetSharedKey<T>(name);
   SharedObjectMap::iterator it = shared_object_map()->find(key);
   return (it == shared_object_map()->end()) ?
@@ -130,19 +128,19 @@ const T *SharedStore::Get(const string &name,
 template <typename T>
 const T *SharedStore::ClosureGet(const string &name,
                                  std::function<T *()> *closure) {
-  MutexLock l(&shared_object_map_mutex_);
+  MutexLock l(shared_object_map_mutex_);
   const string key = GetSharedKey<T>(name);
   SharedObjectMap::iterator it = shared_object_map()->find(key);
   if (it == shared_object_map()->end()) {
     // Creates a new object by calling the closure.
     T *object = (*closure)();
     if (object == nullptr) {
-      LOG_EVERY_N_SEC(ERROR, 60) << "Closure returned a null pointer";
+      LOG(ERROR) << "Closure returned a null pointer";
     } else {
       for (SharedObjectMap::iterator it = shared_object_map()->begin();
            it != shared_object_map()->end(); ++it) {
         if (it->second.object == object) {
-          LOG_EVERY_N_SEC(ERROR, 60)
+          LOG(ERROR)
               << "Closure returned duplicate pointer: "
               << "keys " << it->first << " and " << key;
 
@@ -215,7 +213,7 @@ class SharedStoreUtils {
   static string ToString(float input);
   static string ToString(double input);
 
-  DISALLOW_IMPLICIT_CONSTRUCTORS(SharedStoreUtils);
+  TF_DISALLOW_COPY_AND_ASSIGN(SharedStoreUtils);
 };
 
 }  // namespace neurosis

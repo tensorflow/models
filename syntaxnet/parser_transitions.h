@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "base/macros.h"
-#include "nlp/saft/components/dependencies/opensource/registry.h"
+#include "utils.h"
+#include "registry.h"
 
 namespace tensorflow {
 namespace io {
@@ -182,7 +182,7 @@ class ParserTransitionSystem
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ParserTransitionSystem);
+  TF_DISALLOW_COPY_AND_ASSIGN(ParserTransitionSystem);
 };
 
 #define REGISTER_TRANSITION_SYSTEM(type, component) \

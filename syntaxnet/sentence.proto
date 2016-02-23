@@ -2,9 +2,6 @@
 
 syntax = "proto2";
 
-option cc_api_version = 2;
-option py_api_version = 2;
-
 package neurosis;
 
 // A Sentence contains the raw text contents of a sentence, as well as an

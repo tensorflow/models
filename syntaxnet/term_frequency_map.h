@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/macros.h"
+#include "utils.h"
 
 namespace neurosis {
 
@@ -72,7 +72,7 @@ class TermFrequencyMap {
   // Mapping from indices to term and frequency.
   vector<pair<string, int64>> term_data_;
 
-  DISALLOW_COPY_AND_ASSIGN(TermFrequencyMap);
+  TF_DISALLOW_COPY_AND_ASSIGN(TermFrequencyMap);
 };
 
 }  // namespace neurosis

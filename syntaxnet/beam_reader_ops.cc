@@ -6,25 +6,23 @@
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
-#include "base/macros.h"
-#include "base/mutex.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state_context.h"
-#include "nlp/saft/components/dependencies/opensource/parser_transitions.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/shared_store.h"
-#include "nlp/saft/components/dependencies/opensource/sparse.pb.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/task_spec.pb.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
+#include "utils.h"
+#include "parser_state.h"
+#include "parser_state_context.h"
+#include "parser_transitions.h"
+#include "sentence.pb.h"
+#include "shared_store.h"
+#include "sparse.pb.h"
+#include "task_context.h"
+#include "task_spec.pb.h"
+#include "utils.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
-#include "third_party/tensorflow/core/framework/op_kernel.h"
-#include "third_party/tensorflow/core/framework/tensor.h"
-#include "third_party/tensorflow/core/framework/tensor_shape.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/lib/io/inputbuffer.h"
-#include "third_party/tensorflow/core/platform/env.h"
+#include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/platform/env.h"
 #include "util/utf8/public/unicodetext.h"
 
 using tensorflow::DEVICE_CPU;
@@ -73,7 +71,7 @@ struct ParserStateWithHistory {
   std::vector<float> score_history;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ParserStateWithHistory);
+  TF_DISALLOW_COPY_AND_ASSIGN(ParserStateWithHistory);
 };
 
 struct BatchStateOptions {
@@ -351,7 +349,7 @@ class BeamState {
   int gold_action_ = -1;
   State state_ = ALIVE;
   bool all_final_ = false;
-  DISALLOW_COPY_AND_ASSIGN(BeamState);
+  TF_DISALLOW_COPY_AND_ASSIGN(BeamState);
 };
 
 // Encapsulates the state of a batch of beams. It is an object of this
@@ -541,7 +539,7 @@ class BatchState {
 
   // Keeps track of the slot offset of each step.
   std::vector<int> step_offsets_;
-  DISALLOW_COPY_AND_ASSIGN(BatchState);
+  TF_DISALLOW_COPY_AND_ASSIGN(BatchState);
 };
 
 // Creates a BeamState and hooks it up with a parser. This Op needs to
@@ -629,7 +627,7 @@ class BeamParseReader : public OpKernel {
   // The object whose handle will be passed among the Ops.
   std::unique_ptr<BatchState> batch_state_;
 
-  DISALLOW_COPY_AND_ASSIGN(BeamParseReader);
+  TF_DISALLOW_COPY_AND_ASSIGN(BeamParseReader);
 };
 
 REGISTER_KERNEL_BUILDER(Name("BeamParseReader").Device(DEVICE_CPU),
@@ -689,7 +687,7 @@ class BeamParser : public OpKernel {
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(BeamParser);
+  TF_DISALLOW_COPY_AND_ASSIGN(BeamParser);
 };
 
 REGISTER_KERNEL_BUILDER(Name("BeamParser").Device(DEVICE_CPU), BeamParser);
@@ -817,7 +815,7 @@ class BeamParserOutput : public OpKernel {
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(BeamParserOutput);
+  TF_DISALLOW_COPY_AND_ASSIGN(BeamParserOutput);
 };
 
 REGISTER_KERNEL_BUILDER(Name("BeamParserOutput").Device(DEVICE_CPU),
@@ -881,7 +879,7 @@ class BeamEvalOutput : public OpKernel {
     }
   }
 
-  DISALLOW_COPY_AND_ASSIGN(BeamEvalOutput);
+  TF_DISALLOW_COPY_AND_ASSIGN(BeamEvalOutput);
 };
 
 REGISTER_KERNEL_BUILDER(Name("BeamEvalOutput").Device(DEVICE_CPU),

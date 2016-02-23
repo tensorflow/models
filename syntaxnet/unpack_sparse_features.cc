@@ -5,12 +5,12 @@
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/sparse.pb.h"
+#include "utils.h"
+#include "sparse.pb.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
-#include "third_party/tensorflow/core/framework/op_kernel.h"
-#include "third_party/tensorflow/core/framework/tensor.h"
-#include "third_party/tensorflow/core/framework/types.h"
+#include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/framework/types.h"
 
 using tensorflow::DEVICE_CPU;
 using tensorflow::DT_FLOAT;

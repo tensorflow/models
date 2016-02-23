@@ -27,7 +27,8 @@
 
 #include <string>
 
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.proto.h"
+#include "utils.h"
+#include "feature_extractor.pb.h"
 
 namespace neurosis {
 

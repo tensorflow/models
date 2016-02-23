@@ -7,16 +7,15 @@
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
-#include "base/mutex.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
+#include "utils.h"
+#include "feature_extractor.h"
+#include "sentence.pb.h"
+#include "utils.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
-#include "third_party/tensorflow/core/framework/op_kernel.h"
-#include "third_party/tensorflow/core/framework/tensor.h"
-#include "third_party/tensorflow/core/framework/tensor_shape.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/lib/core/status.h"
 
 using tensorflow::DEVICE_CPU;
 using tensorflow::OpKernel;

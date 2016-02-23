@@ -51,6 +51,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "utils.h"
+
 namespace neurosis {
 
 class Sentence;

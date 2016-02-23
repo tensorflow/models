@@ -1,100 +1,93 @@
 # Description:
 # A syntactic parser and part-of-speech tagger in TensorFlow.
 
-package(
-    default_visibility = ["//visibility:private"],
-    features = ["-layering_check"],
+# package(
+#     default_visibility = ["//visibility:private"],
+#     features = ["-layering_check"],
+# )
+
+# licenses(["notice"])  # Apache 2.0
+
+# exports_files(["LICENSE"])
+
+# load("tf@//tensorflow:tensorflow.bzl", "tf_gen_op_libs")
+# load("tf@//tensorflow:tensorflow.bzl", "tf_gen_op_wrapper_py")
+
+load(
+    "neurosis",
+    "neurosis_proto_library",
+    "neurosis_proto_library_py",
 )
 
-licenses(["notice"])  # Apache 2.0
-
-exports_files(["LICENSE"])
-
-load("//third_party/tensorflow:tensorflow.bzl", "tf_gen_op_libs")
-load("//third_party/tensorflow:tensorflow.bzl", "tf_gen_op_wrapper_py")
-
-config_setting(
-    name = "use_google_runtime",
-    values = {"define": "tf_runtime=google"},
-)
+# config_setting(
+#     name = "use_google_runtime",
+#     values = {"define": "tf_runtime=google"},
+# )
 
 # proto libraries
 
-proto_library(
+neurosis_proto_library(
     name = "feature_extractor_proto",
     srcs = ["feature_extractor.proto"],
-    cc_api_version = 2,
-    py_api_version = 2,
 )
 
-proto_library(
+neurosis_proto_library(
     name = "sentence_proto",
     srcs = ["sentence.proto"],
-    cc_api_version = 2,
-    py_api_version = 2,
 )
 
-py_proto_library(
-    name = "sentence_proto_py_pb2",
-    api_version = 2,
-    deps = [":sentence_proto"],
-)
+# neurosis_proto_library_py(
+#     name = "sentence_proto_py_pb2",
+#     deps = [":sentence_proto"],
+# )
 
-proto_library(
+neurosis_proto_library(
     name = "dictionary_proto",
     srcs = ["dictionary.proto"],
-    cc_api_version = 2,
-    py_api_version = 2,
 )
 
-py_proto_library(
-    name = "dictionary_proto_py_pb2",
-    api_version = 2,
-    deps = [":dictionary_proto"],
-)
+# neurosis_proto_library_py(
+#     name = "dictionary_proto_py_pb2",
+#     deps = [":dictionary_proto"],
+# )
 
-proto_library(
+neurosis_proto_library(
     name = "kbest_syntax_proto",
     srcs = ["kbest_syntax.proto"],
-    cc_api_version = 2,
-    py_api_version = 2,
     deps = [":sentence_proto"],
 )
 
-proto_library(
+neurosis_proto_library(
     name = "task_spec_proto",
     srcs = ["task_spec.proto"],
-    cc_api_version = 2,
-    py_api_version = 2,
 )
 
-py_proto_library(
-    name = "task_spec_py_pb2",
-    api_version = 2,
-    deps = [":task_spec_proto"],
-)
+# neurosis_proto_library_py(
+#     name = "task_spec_py_pb2",
+#     deps = [":task_spec_proto"],
+# )
 
-proto_library(
+neurosis_proto_library(
     name = "sparse_proto",
     srcs = ["sparse.proto"],
-    cc_api_version = 2,
-    py_api_version = 2,
 )
 
-py_proto_library(
-    name = "sparse_py_pb2",
-    api_version = 2,
-    deps = [":sparse_proto"],
-)
+# neurosis_proto_library_py(
+#     name = "sparse_py_pb2",
+#     deps = [":sparse_proto"],
+# )
 
 # cc libraries for feature extraction and parsing
 
 cc_library(
     name = "utils",
     srcs = ["utils.cc"],
-    hdrs = ["utils.h"],
+    hdrs = [
+        "unicodetext.h",
+        "utils.h",
+    ],
     deps = [
-        "//third_party/tensorflow/core",
+        "@tf//tensorflow/core:lib",
     ],
 )
 
@@ -124,7 +117,7 @@ cc_library(
     hdrs = ["fml_parser.h"],
     deps = [
         ":feature_extractor_proto",
-        "//third_party/tensorflow/core",
+        ":utils",
     ],
 )
 
@@ -137,32 +130,25 @@ cc_library(
         ":kbest_syntax_proto",
         ":sentence_proto",
         ":task_context",
-        "//third_party/tensorflow/core",
     ],
 )
 
 cc_library(
     name = "feature_extractor",
     srcs = ["feature_extractor.cc"],
-    hdrs = ["feature_extractor.h"],
+    hdrs = [
+        "feature_extractor.h",
+        "feature_types.h",
+    ],
     deps = [
+        ":document_format",
         ":feature_extractor_proto",
-        ":fml_parser",
         ":kbest_syntax_proto",
         ":proto_io",
         ":sentence_proto",
         ":task_context",
         ":utils",
-        "//third_party/tensorflow/core",
-    ],
-)
-
-cc_library(
-    name = "feature_types",
-    hdrs = ["feature_types.h"],
-    deps = [
-        ":feature_extractor",
-        "//third_party/tensorflow/core",
+        ":workspace",
     ],
 )
 
@@ -187,9 +173,7 @@ cc_library(
     deps = [
         ":affix",
         ":feature_extractor",
-        ":feature_types",
         ":registry",
-        "//third_party/tensorflow/core",
     ],
 )
 
@@ -199,7 +183,6 @@ cc_library(
     hdrs = ["shared_store.h"],
     deps = [
         ":utils",
-        "//third_party/tensorflow/core",
     ],
 )
 
@@ -208,7 +191,7 @@ cc_library(
     srcs = ["registry.cc"],
     hdrs = ["registry.h"],
     deps = [
-        "//third_party/tensorflow/core",
+        ":utils",
     ],
 )
 
@@ -217,7 +200,7 @@ cc_library(
     srcs = ["workspace.cc"],
     hdrs = ["workspace.h"],
     deps = [
-        "//third_party/tensorflow/core",
+        ":utils",
     ],
 )
 
@@ -228,7 +211,6 @@ cc_library(
     deps = [
         ":task_spec_proto",
         ":utils",
-        "//third_party/tensorflow/core",
     ],
 )
 
@@ -239,7 +221,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":utils",
-        "//third_party/tensorflow/core",
     ],
     alwayslink = 1,
 )
@@ -262,24 +243,23 @@ cc_library(
         ":shared_store",
         ":task_context",
         ":term_frequency_map",
-        "//third_party/tensorflow/core",
     ],
     alwayslink = 1,
 )
 
-cc_library(
-    name = "populate_test_inputs",
-    testonly = 1,
-    srcs = ["populate_test_inputs.cc"],
-    hdrs = ["populate_test_inputs.h"],
-    deps = [
-        ":dictionary_proto",
-        ":sentence_proto",
-        ":task_context",
-        ":term_frequency_map",
-        "//third_party/tensorflow/core",
-    ],
-)
+# cc_library(
+#     name = "populate_test_inputs",
+#     testonly = 1,
+#     srcs = ["populate_test_inputs.cc"],
+#     hdrs = ["populate_test_inputs.h"],
+#     deps = [
+#         ":dictionary_proto",
+#         ":sentence_proto",
+#         ":task_context",
+#         ":term_frequency_map",
+#         ":test_utils",
+#     ],
+# )
 
 cc_library(
     name = "parser_features",
@@ -295,7 +275,6 @@ cc_library(
         ":task_context",
         ":term_frequency_map",
         ":workspace",
-        "//third_party/tensorflow/core",
     ],
     alwayslink = 1,
 )
@@ -331,283 +310,276 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "reader_ops",
-    srcs = [
-        "beam_reader_ops.cc",
-        "reader_ops.cc",
-    ],
-    deps = [
-        ":parser_features",
-        ":parser_state_context",
-        ":parser_transitions",
-        ":sentence_proto",
-        ":task_context",
-        ":task_spec_proto",
-        "//third_party/eigen3",
-        "//third_party/tensorflow/core",
-    ],
-    alwayslink = 1,
-)
+# cc_library(
+#     name = "reader_ops",
+#     srcs = [
+#         "beam_reader_ops.cc",
+#         "reader_ops.cc",
+#     ],
+#     deps = [
+#         ":parser_features",
+#         ":parser_state_context",
+#         ":parser_transitions",
+#         ":sentence_proto",
+#         ":task_context",
+#         ":task_spec_proto",
+#     ],
+#     alwayslink = 1,
+# )
 
-cc_library(
-    name = "document_filters",
-    srcs = ["document_filters.cc"],
-    deps = [
-        ":conll_syntax_format",
-        ":document_format",
-        ":parser_features",
-        ":parser_state_context",
-        ":parser_transitions",
-        ":sentence_proto",
-        ":task_context",
-        ":task_spec_proto",
-        "//third_party/eigen3",
-        "//third_party/tensorflow/core",
-    ],
-    alwayslink = 1,
-)
+# cc_library(
+#     name = "document_filters",
+#     srcs = ["document_filters.cc"],
+#     deps = [
+#         ":conll_syntax_format",
+#         ":document_format",
+#         ":parser_features",
+#         ":parser_state_context",
+#         ":parser_transitions",
+#         ":sentence_proto",
+#         ":task_context",
+#         ":task_spec_proto",
+#     ],
+#     alwayslink = 1,
+# )
 
-cc_library(
-    name = "lexicon_builder",
-    srcs = ["lexicon_builder.cc"],
-    deps = [
-        ":conll_syntax_format",
-        ":document_format",
-        ":parser_features",
-        ":parser_state_context",
-        ":parser_transitions",
-        ":sentence_proto",
-        ":task_context",
-        ":task_spec_proto",
-        "//third_party/eigen3",
-        "//third_party/tensorflow/core",
-    ],
-    alwayslink = 1,
-)
+# cc_library(
+#     name = "lexicon_builder",
+#     srcs = ["lexicon_builder.cc"],
+#     deps = [
+#         ":conll_syntax_format",
+#         ":document_format",
+#         ":parser_features",
+#         ":parser_state_context",
+#         ":parser_transitions",
+#         ":sentence_proto",
+#         ":task_context",
+#         ":task_spec_proto",
+#     ],
+#     alwayslink = 1,
+# )
 
-cc_library(
-    name = "unpack_sparse_features",
-    srcs = ["unpack_sparse_features.cc"],
-    deps = [
-        ":sparse_proto",
-        "//third_party/eigen3",
-        "//third_party/tensorflow/core",
-    ],
-)
+# cc_library(
+#     name = "unpack_sparse_features",
+#     srcs = ["unpack_sparse_features.cc"],
+#     deps = [
+#         ":sparse_proto",
+#         ":utils",
+#     ],
+# )
 
-cc_library(
-    name = "parser_ops_cc",
-    srcs = ["ops/parser_ops.cc"],
-    deps = [
-        "//third_party/tensorflow/core",
-    ],
-    alwayslink = 1,
-)
+# cc_library(
+#     name = "parser_ops_cc",
+#     srcs = ["ops/parser_ops.cc"],
+#     deps = [
+#         "//third_party/tensorflow/core",
+#     ],
+#     alwayslink = 1,
+# )
 
-# cc tests
+# # cc tests
 
-filegroup(
-    name = "testdata",
-    srcs = [
-        "testdata/context.pbtxt",
-        "testdata/document",
-        "testdata/document2",
-        "testdata/wsj-train-100",
-    ],
-)
+# filegroup(
+#     name = "testdata",
+#     srcs = [
+#         "testdata/context.pbtxt",
+#         "testdata/document",
+#         "testdata/document2",
+#         "testdata/wsj-train-100",
+#     ],
+# )
 
-cc_test(
-    name = "shared_store_test",
-    size = "small",
-    srcs = ["shared_store_test.cc"],
-    deps = [
-        ":shared_store",
-        "//testing/base/public:gunit_main",
-    ],
-)
+# cc_test(
+#     name = "shared_store_test",
+#     size = "small",
+#     srcs = ["shared_store_test.cc"],
+#     deps = [
+#         ":shared_store",
+#         "//testing/base/public:gunit_main",
+#     ],
+# )
 
-cc_test(
-    name = "sentence_features_test",
-    size = "medium",
-    srcs = ["sentence_features_test.cc"],
-    deps = [
-        ":feature_extractor",
-        ":populate_test_inputs",
-        ":sentence_features",
-        ":sentence_proto",
-        ":task_context",
-        ":task_spec_proto",
-        ":term_frequency_map",
-        ":workspace",
-        "//testing/base/public:gunit_main",
-    ],
-)
+# cc_test(
+#     name = "sentence_features_test",
+#     size = "medium",
+#     srcs = ["sentence_features_test.cc"],
+#     deps = [
+#         ":feature_extractor",
+#         ":populate_test_inputs",
+#         ":sentence_features",
+#         ":sentence_proto",
+#         ":task_context",
+#         ":task_spec_proto",
+#         ":term_frequency_map",
+#         ":workspace",
+#         "//testing/base/public:gunit_main",
+#     ],
+# )
 
-cc_test(
-    name = "arc_standard_transitions_test",
-    size = "small",
-    srcs = ["arc_standard_transitions_test.cc"],
-    data = [":testdata"],
-    deps = [
-        ":parser_transitions",
-        ":populate_test_inputs",
-        "//testing/base/public:gunit_main",
-    ],
-)
+# cc_test(
+#     name = "arc_standard_transitions_test",
+#     size = "small",
+#     srcs = ["arc_standard_transitions_test.cc"],
+#     data = [":testdata"],
+#     deps = [
+#         ":parser_transitions",
+#         ":populate_test_inputs",
+#         "//testing/base/public:gunit_main",
+#     ],
+# )
 
-cc_test(
-    name = "tagger_transitions_test",
-    size = "small",
-    srcs = ["tagger_transitions_test.cc"],
-    data = [":testdata"],
-    deps = [
-        ":parser_transitions",
-        ":populate_test_inputs",
-        "//testing/base/public:gunit_main",
-    ],
-)
+# cc_test(
+#     name = "tagger_transitions_test",
+#     size = "small",
+#     srcs = ["tagger_transitions_test.cc"],
+#     data = [":testdata"],
+#     deps = [
+#         ":parser_transitions",
+#         ":populate_test_inputs",
+#         "//testing/base/public:gunit_main",
+#     ],
+# )
 
-cc_test(
-    name = "parser_features_test",
-    size = "small",
-    srcs = ["parser_features_test.cc"],
-    deps = [
-        ":feature_extractor",
-        ":parser_features",
-        ":parser_transitions",
-        ":populate_test_inputs",
-        ":sentence_proto",
-        ":task_context",
-        ":task_spec_proto",
-        ":term_frequency_map",
-        ":workspace",
-        "//testing/base/public:gunit_main",
-    ],
-)
+# cc_test(
+#     name = "parser_features_test",
+#     size = "small",
+#     srcs = ["parser_features_test.cc"],
+#     deps = [
+#         ":feature_extractor",
+#         ":parser_features",
+#         ":parser_transitions",
+#         ":populate_test_inputs",
+#         ":sentence_proto",
+#         ":task_context",
+#         ":task_spec_proto",
+#         ":term_frequency_map",
+#         ":workspace",
+#         "//testing/base/public:gunit_main",
+#     ],
+# )
 
-# py graph builder and trainer
+# # py graph builder and trainer
 
-tf_gen_op_libs(
-    op_lib_names = ["parser_ops"],
-)
+# tf_gen_op_libs(
+#     op_lib_names = ["parser_ops"],
+# )
 
-tf_gen_op_wrapper_py(
-    name = "parser_ops",
-    deps = [":parser_ops_op_lib"],
-)
+# tf_gen_op_wrapper_py(
+#     name = "parser_ops",
+#     deps = [":parser_ops_op_lib"],
+# )
 
-py_library(
-    name = "graph_builder",
-    srcs = ["graph_builder.py"],
-    deps = [
-        ":parser_ops",
-    ] + select({
-        ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
-        "//conditions:default": ["//third_party/py/tensorflow"],
-    }),
-)
+# py_library(
+#     name = "graph_builder",
+#     srcs = ["graph_builder.py"],
+#     deps = [
+#         ":parser_ops",
+#     ] + select({
+#         ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
+#         "//conditions:default": ["//third_party/py/tensorflow"],
+#     }),
+# )
 
-py_library(
-    name = "structured_graph_builder",
-    srcs = ["structured_graph_builder.py"],
-    deps = [
-        ":graph_builder",
-        ":parser_ops",
-    ] + select({
-        ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
-        "//conditions:default": ["//third_party/py/tensorflow"],
-    }),
-)
+# py_library(
+#     name = "structured_graph_builder",
+#     srcs = ["structured_graph_builder.py"],
+#     deps = [
+#         ":graph_builder",
+#         ":parser_ops",
+#     ] + select({
+#         ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
+#         "//conditions:default": ["//third_party/py/tensorflow"],
+#     }),
+# )
 
-py_binary(
-    name = "parser_trainer",
-    srcs = ["parser_trainer.py"],
-    deps = [
-        ":document_filters",
-        ":graph_builder",
-        ":lexicon_builder",
-        ":parser_ops",
-        ":parser_ops_cc",
-        ":reader_ops",
-        ":structured_graph_builder",
-        ":task_spec_py_pb2",
-        ":unpack_sparse_features",
-        "//file/colossus/cns",
-    ] + select({
-        "//third_party/gpus/cuda:cuda_crosstool_condition": [
-            "//learning/brain/public:tensorflow_gpu_deps",
-        ],
-        "//conditions:default": [],
-    }),
-)
+# py_binary(
+#     name = "parser_trainer",
+#     srcs = ["parser_trainer.py"],
+#     deps = [
+#         ":document_filters",
+#         ":graph_builder",
+#         ":lexicon_builder",
+#         ":parser_ops",
+#         ":parser_ops_cc",
+#         ":reader_ops",
+#         ":structured_graph_builder",
+#         ":task_spec_py_pb2",
+#         ":unpack_sparse_features",
+#         "//file/colossus/cns",
+#     ] + select({
+#         "//third_party/gpus/cuda:cuda_crosstool_condition": [
+#             "//learning/brain/public:tensorflow_gpu_deps",
+#         ],
+#         "//conditions:default": [],
+#     }),
+# )
 
-py_binary(
-    name = "parser_eval",
-    srcs = ["parser_eval.py"],
-    deps = [
-        ":document_filters",
-        ":graph_builder",
-        ":lexicon_builder",
-        ":parser_ops",
-        ":parser_ops_cc",
-        ":reader_ops",
-        ":sentence_proto_py_pb2",
-        ":structured_graph_builder",
-        ":unpack_sparse_features",
-        "//file/colossus/cns",
-    ],
-)
+# py_binary(
+#     name = "parser_eval",
+#     srcs = ["parser_eval.py"],
+#     deps = [
+#         ":document_filters",
+#         ":graph_builder",
+#         ":lexicon_builder",
+#         ":parser_ops",
+#         ":parser_ops_cc",
+#         ":reader_ops",
+#         ":sentence_proto_py_pb2",
+#         ":structured_graph_builder",
+#         ":unpack_sparse_features",
+#         "//file/colossus/cns",
+#     ],
+# )
 
-# py tests
+# # py tests
 
-py_test(
-    name = "reader_ops_test",
-    size = "medium",
-    srcs = ["reader_ops_test.py"],
-    data = [":testdata"],
-    tags = ["notsan"],
-    deps = [
-        ":dictionary_proto_py_pb2",
-        ":graph_builder",
-        ":lexicon_builder",
-        ":parser_ops",
-        ":parser_ops_cc",
-        ":reader_ops",
-        ":sparse_py_pb2",
-        ":unpack_sparse_features",
-    ],
-)
+# py_test(
+#     name = "reader_ops_test",
+#     size = "medium",
+#     srcs = ["reader_ops_test.py"],
+#     data = [":testdata"],
+#     tags = ["notsan"],
+#     deps = [
+#         ":dictionary_proto_py_pb2",
+#         ":graph_builder",
+#         ":lexicon_builder",
+#         ":parser_ops",
+#         ":parser_ops_cc",
+#         ":reader_ops",
+#         ":sparse_py_pb2",
+#         ":unpack_sparse_features",
+#     ],
+# )
 
-py_test(
-    name = "beam_reader_ops_test",
-    size = "medium",
-    srcs = ["beam_reader_ops_test.py"],
-    data = [":testdata"],
-    tags = ["notsan"],
-    deps = [
-        ":lexicon_builder",
-        ":parser_ops",
-        ":parser_ops_cc",
-        ":reader_ops",
-        ":structured_graph_builder",
-        ":unpack_sparse_features",
-    ],
-)
+# py_test(
+#     name = "beam_reader_ops_test",
+#     size = "medium",
+#     srcs = ["beam_reader_ops_test.py"],
+#     data = [":testdata"],
+#     tags = ["notsan"],
+#     deps = [
+#         ":lexicon_builder",
+#         ":parser_ops",
+#         ":parser_ops_cc",
+#         ":reader_ops",
+#         ":structured_graph_builder",
+#         ":unpack_sparse_features",
+#     ],
+# )
 
-py_test(
-    name = "graph_builder_test",
-    size = "medium",
-    srcs = ["graph_builder_test.py"],
-    data = [":testdata"],
-    tags = ["notsan"],
-    deps = [
-        ":graph_builder",
-        ":lexicon_builder",
-        ":parser_ops",
-        ":parser_ops_cc",
-        ":reader_ops",
-        ":sparse_py_pb2",
-        ":unpack_sparse_features",
-    ],
-)
+# py_test(
+#     name = "graph_builder_test",
+#     size = "medium",
+#     srcs = ["graph_builder_test.py"],
+#     data = [":testdata"],
+#     tags = ["notsan"],
+#     deps = [
+#         ":graph_builder",
+#         ":lexicon_builder",
+#         ":parser_ops",
+#         ":parser_ops_cc",
+#         ":reader_ops",
+#         ":sparse_py_pb2",
+#         ":unpack_sparse_features",
+#     ],
+# )

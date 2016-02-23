@@ -6,15 +6,15 @@
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/feature_types.h"
-#include "nlp/saft/components/dependencies/opensource/parser_features.h"
-#include "nlp/saft/components/dependencies/opensource/sentence_features.h"
-#include "nlp/saft/components/dependencies/opensource/sparse.pb.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
+#include "utils.h"
+#include "feature_extractor.h"
+#include "feature_types.h"
+#include "parser_features.h"
+#include "sentence_features.h"
+#include "sparse.pb.h"
+#include "task_context.h"
+#include "workspace.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
 

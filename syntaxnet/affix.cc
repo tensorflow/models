@@ -1,19 +1,19 @@
-#include "nlp/saft/components/dependencies/opensource/affix.h"
+#include "affix.h"
 
 #include <ctype.h>
 #include <string.h>
 #include <functional>
 #include <string>
 
-#include "nlp/saft/components/dependencies/opensource/shared_store.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/platform/env.h"
-#include "third_party/tensorflow/core/platform/regexp.h"
-#include "util/utf8/public/unicodetext.h"
+#include "shared_store.h"
+#include "task_context.h"
+#include "term_frequency_map.h"
+#include "utils.h"
+#include "workspace.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/platform/regexp.h"
+#include "unicodetext.h"
 
 namespace neurosis {
 
@@ -48,7 +48,7 @@ void AffixTable::Reset(int max_length) {
   max_length_ = max_length;
 
   // Delete all data.
-  for (int i = 0; i < affixes_.size(); ++i) delete affixes_[i];
+  for (size_t i = 0; i < affixes_.size(); ++i) delete affixes_[i];
   affixes_.clear();
   buckets_.clear();
   Resize(0);
@@ -171,7 +171,7 @@ Affix *AffixTable::AddAffixesForWord(const char *word, size_t size) {
 }
 
 Affix *AffixTable::GetAffix(int id) const {
-  if (id < 0 || id >= affixes_.size()) {
+  if (id < 0 || id >= (int)affixes_.size()) {
     return NULL;
   } else {
     return affixes_[id];
@@ -199,7 +199,7 @@ int AffixTable::AffixId(const string &form) const {
 Affix *AffixTable::AddNewAffix(const string &form, int length) {
   int hash = TermHash(form);
   int id = affixes_.size();
-  if (id > buckets_.size() * kFillFactor) Resize(id);
+  if (id > (int)buckets_.size() * kFillFactor) Resize(id);
   int b = hash & (buckets_.size() - 1);
 
   // Create new affix object.
@@ -234,10 +234,10 @@ void AffixTable::Resize(int size_hint) {
 
   // Distribute affixes in new buckets.
   buckets_.resize(new_size);
-  for (int i = 0; i < buckets_.size(); ++i) {
+  for (size_t i = 0; i < buckets_.size(); ++i) {
     buckets_[i] = NULL;
   }
-  for (int i = 0; i < affixes_.size(); ++i) {
+  for (size_t i = 0; i < affixes_.size(); ++i) {
     Affix *affix = affixes_[i];
     int b = TermHash(affix->form_) & mask;
     affix->next_ = buckets_[b];

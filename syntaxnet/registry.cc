@@ -1,4 +1,4 @@
-#include "nlp/saft/components/dependencies/opensource/registry.h"
+#include "registry.h"
 
 namespace neurosis {
 

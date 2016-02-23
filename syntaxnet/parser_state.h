@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
-#include "base/macros.h"
-#include "nlp/saft/components/dependencies/opensource/kbest_syntax.proto.h"
-#include "nlp/saft/components/dependencies/opensource/parser_transitions.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.pb.h"
+#include "utils.h"
+#include "kbest_syntax.pb.h"
+#include "parser_transitions.h"
+#include "sentence.pb.h"
 
 namespace neurosis {
 
@@ -210,7 +210,7 @@ class ParserState {
   // True if this is the gold standard sequence (used for structured learning).
   bool is_gold_ = false;
 
-  DISALLOW_COPY_AND_ASSIGN(ParserState);
+  TF_DISALLOW_COPY_AND_ASSIGN(ParserState);
 };
 
 }  // namespace neurosis

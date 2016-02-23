@@ -4,28 +4,26 @@
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
-#include "base/macros.h"
-#include "base/mutex.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state_context.h"
-#include "nlp/saft/components/dependencies/opensource/parser_transitions.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/shared_store.h"
-#include "nlp/saft/components/dependencies/opensource/sparse.pb.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/task_spec.pb.h"
+#include "utils.h"
+#include "feature_extractor.h"
+#include "parser_state.h"
+#include "parser_state_context.h"
+#include "parser_transitions.h"
+#include "sentence.pb.h"
+#include "shared_store.h"
+#include "sparse.pb.h"
+#include "task_context.h"
+#include "task_spec.pb.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
-#include "third_party/tensorflow/core/framework/op_kernel.h"
-#include "third_party/tensorflow/core/framework/tensor.h"
-#include "third_party/tensorflow/core/framework/tensor_shape.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/lib/io/inputbuffer.h"
-#include "third_party/tensorflow/core/lib/io/table.h"
-#include "third_party/tensorflow/core/lib/io/table_options.h"
-#include "third_party/tensorflow/core/lib/strings/stringprintf.h"
-#include "third_party/tensorflow/core/platform/env.h"
+#include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/table.h"
+#include "tensorflow/core/lib/io/table_options.h"
+#include "tensorflow/core/lib/strings/stringprintf.h"
+#include "tensorflow/core/platform/env.h"
 
 using tensorflow::DEVICE_CPU;
 using tensorflow::DT_FLOAT;
@@ -239,7 +237,7 @@ class ParsingReader : public OpKernel {
   // Internal workspace registry for use in feature extraction.
   WorkspaceRegistry workspace_registry_;
 
-  DISALLOW_COPY_AND_ASSIGN(ParsingReader);
+  TF_DISALLOW_COPY_AND_ASSIGN(ParsingReader);
 };
 
 class GoldParseReader : public ParsingReader {
@@ -281,7 +279,7 @@ class GoldParseReader : public ParsingReader {
     }
   }
 
-  DISALLOW_COPY_AND_ASSIGN(GoldParseReader);
+  TF_DISALLOW_COPY_AND_ASSIGN(GoldParseReader);
 };
 
 REGISTER_KERNEL_BUILDER(Name("GoldParseReader").Device(DEVICE_CPU),
@@ -398,7 +396,7 @@ class DecodedParseReader : public ParsingReader {
 
   mutable vector<Sentence> documents_;
 
-  DISALLOW_COPY_AND_ASSIGN(DecodedParseReader);
+  TF_DISALLOW_COPY_AND_ASSIGN(DecodedParseReader);
 };
 
 REGISTER_KERNEL_BUILDER(Name("DecodedParseReader").Device(DEVICE_CPU),

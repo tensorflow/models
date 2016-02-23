@@ -1,8 +1,7 @@
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
+#include "feature_extractor.h"
 
-#include "nlp/saft/components/dependencies/opensource/feature_types.h"
-#include "nlp/saft/components/dependencies/opensource/fml_parser.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
+#include "feature_types.h"
+#include "fml_parser.h"
 
 namespace neurosis {
 
@@ -24,7 +23,7 @@ void GenericFeatureExtractor::Parse(const string &source) {
 void GenericFeatureExtractor::InitializeFeatureTypes() {
   // Register all feature types.
   GetFeatureTypes(&feature_types_);
-  for (int i = 0; i < feature_types_.size(); ++i) {
+  for (size_t i = 0; i < feature_types_.size(); ++i) {
     FeatureType *ft = feature_types_[i];
     ft->set_base(i);
 
@@ -43,7 +42,7 @@ void GenericFeatureExtractor::InitializeFeatureTypes() {
 
 void GenericFeatureExtractor::GetFeatureTypeNames(
     vector<string> *type_names) const {
-  for (int i = 0; i < feature_types_.size(); ++i) {
+  for (size_t i = 0; i < feature_types_.size(); ++i) {
     FeatureType *ft = feature_types_[i];
     type_names->push_back(ft->name());
   }
@@ -53,7 +52,7 @@ FeatureValue GenericFeatureExtractor::GetDomainSize() const {
   // Domain size of the set of features is equal to:
   //   [largest domain size of any feature types] * [number of feature types]
   FeatureValue max_feature_type_dsize = 0;
-  for (int i = 0; i < feature_types_.size(); ++i) {
+  for (size_t i = 0; i < feature_types_.size(); ++i) {
     FeatureType *ft = feature_types_[i];
     const FeatureValue feature_type_dsize = ft->GetDomainSize();
     if (feature_type_dsize > max_feature_type_dsize) {

@@ -25,25 +25,21 @@
 #include <string>
 #include <vector>
 
-#include "base/casts.h"
-#include "base/logging.h"
-#include "base/macros.h"
-#include "nlp/saft/components/dependencies/opensource/document_format.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.pb.h"
-#include "nlp/saft/components/dependencies/opensource/feature_types.h"
-#include "nlp/saft/components/dependencies/opensource/proto_io.h"
-#include "nlp/saft/components/dependencies/opensource/registry.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/lib/core/stringpiece.h"
-#include "third_party/tensorflow/core/lib/io/inputbuffer.h"
-#include "third_party/tensorflow/core/lib/io/record_reader.h"
-#include "third_party/tensorflow/core/lib/io/record_writer.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
-#include "third_party/tensorflow/core/platform/env.h"
+#include "feature_extractor.pb.h"
+#include "feature_types.h"
+#include "proto_io.h"
+#include "registry.h"
+#include "sentence.pb.h"
+#include "task_context.h"
+#include "utils.h"
+#include "workspace.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/core/stringpiece.h"
+#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/record_reader.h"
+#include "tensorflow/core/lib/io/record_writer.h"
+#include "tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/platform/env.h"
 
 namespace neurosis {
 
@@ -94,7 +90,7 @@ class FeatureVector {
   // Array for storing feature vector elements.
   vector<Element> features_;
 
-  DISALLOW_COPY_AND_ASSIGN(FeatureVector);
+  TF_DISALLOW_COPY_AND_ASSIGN(FeatureVector);
 };
 
 // The generic feature extractor is the type-independent part of a feature
@@ -465,7 +461,7 @@ class FeatureAddFocusLocator : public NestedFeatureFunction<
 
   void Evaluate(const WorkspaceSet &workspaces, const OBJ &object,
                 ARGS... args, FeatureVector *result) const override {
-    IDX focus = down_cast<const DER *>(this)->GetFocus(
+    IDX focus = static_cast<const DER *>(this)->GetFocus(
         workspaces, object, args...);
     for (auto *function : this->nested()) {
       function->Evaluate(workspaces, object, focus, args..., result);
@@ -477,7 +473,7 @@ class FeatureAddFocusLocator : public NestedFeatureFunction<
                        const OBJ &object,
                        ARGS... args,
                        const FeatureVector *result) const override {
-    IDX focus = down_cast<const DER *>(this)->GetFocus(
+    IDX focus = static_cast<const DER *>(this)->GetFocus(
         workspaces, object, args...);
     return this->nested()[0]->Compute(
         workspaces, object, focus, args..., result);
@@ -506,7 +502,7 @@ class FeatureLocator : public MetaFeatureFunction<OBJ, ARGS...> {
   // Evaluates the locator.
   void Evaluate(const WorkspaceSet &workspaces, const OBJ &object,
                 ARGS... args, FeatureVector *result) const override {
-    down_cast<const DER *>(this)->UpdateArgs(workspaces, object, &args...);
+    static_cast<const DER *>(this)->UpdateArgs(workspaces, object, &args...);
     for (auto *function : this->nested()) {
       function->Evaluate(workspaces, object, args..., result);
     }
@@ -516,7 +512,7 @@ class FeatureLocator : public MetaFeatureFunction<OBJ, ARGS...> {
   FeatureValue Compute(const WorkspaceSet &workspaces, const OBJ &object,
                        ARGS... args,
                        const FeatureVector *result) const override {
-    down_cast<const DER *>(this)->UpdateArgs(workspaces, object, &args...);
+    static_cast<const DER *>(this)->UpdateArgs(workspaces, object, &args...);
     return this->nested()[0]->Compute(workspaces, object, args..., result);
   }
 };

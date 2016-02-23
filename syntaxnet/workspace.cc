@@ -1,6 +1,6 @@
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
+#include "workspace.h"
 
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
 
@@ -8,7 +8,7 @@ string WorkspaceRegistry::DebugString() const {
   string str;
   for (auto &it : workspace_names_) {
     const string &type_name = workspace_types_.at(it.first);
-    for (int index = 0; index < it.second.size(); ++index) {
+    for (size_t index = 0; index < it.second.size(); ++index) {
       const string &workspace_name = it.second[index];
       tensorflow::strings::StrAppend(&str, "\n  ", type_name, " :: ",
                                      workspace_name);

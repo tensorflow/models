@@ -1,10 +1,10 @@
-#include "nlp/saft/components/dependencies/opensource/parser_state_context.h"
+#include "parser_state_context.h"
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
+#include "task_context.h"
 
 namespace neurosis {
 

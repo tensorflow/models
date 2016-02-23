@@ -4,10 +4,21 @@
 #include <functional>
 #include <string>
 #include <vector>
-#include "base/integral_types.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
-#include "util/utf8/public/unicodetext.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/platform/default/integral_types.h"
+#include "tensorflow/core/platform/mutex.h"
+#include "unicodetext.h"
+
+using tensorflow::int32;
+using tensorflow::int64;
+using tensorflow::uint64;
+using tensorflow::uint32;
+using std::map;
+using std::string;
+using std::vector;
+typedef tensorflow::mutex_lock MutexLock;
+typedef tensorflow::mutex Mutex;
 
 namespace neurosis {
 namespace utils {
@@ -93,7 +104,7 @@ class PunctuationUtil {
 
   // Determine if tag is a punctuation tag.
   static bool IsPunctuationTag(const string &tag) {
-    for (int i = 0; i < tag.length(); ++i) {
+    for (size_t i = 0; i < tag.length(); ++i) {
       int c = tag[i];
       if (c != ',' && c != ':' && c != '.' && c != '\'' && c != '`') {
         return false;
@@ -117,7 +128,7 @@ class PunctuationUtil {
   // symbols.
   static bool IsPunctuationTagOrParens(const string &tag) {
     if (tag.empty()) return false;
-    for (int i = 0; i < tag.length(); ++i) {
+    for (size_t i = 0; i < tag.length(); ++i) {
       int c = tag[i];
       if (c != '(' && c != ')' && c != ',' && c != ':' && c != '.' &&
           c != '\'' && c != '`') {

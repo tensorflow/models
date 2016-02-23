@@ -4,13 +4,12 @@
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/document_format.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.pb.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
-#include "third_party/tensorflow/core/lib/strings/stringprintf.h"
-#include "util/regexp/re2/re2.h"
+#include "document_format.h"
+#include "sentence.pb.h"
+#include "utils.h"
+#include "tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/lib/strings/stringprintf.h"
+#include "tensorflow/core/platform/regexp.h"
 
 namespace neurosis {
 
@@ -28,7 +27,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
 
     // Add each token to the document.
     vector<string> fields;
-    for (int i = 0; i < lines.size(); ++i) {
+    for (size_t i = 0; i < lines.size(); ++i) {
       // Split line into tab-separated fields.
       fields.clear();
       fields = utils::Split(lines[i], '\t');
@@ -43,7 +42,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       if (RE2::FullMatch(fields[0], "[0-9]+-[0-9]+")) continue;
 
       // Clear all optional fields equal to '_'.
-      for (int j = 2; j < fields.size(); ++j) {
+      for (size_t j = 2; j < fields.size(); ++j) {
         if (fields[j].length() == 1 && fields[j][0] == '_') fields[j].clear();
       }
 

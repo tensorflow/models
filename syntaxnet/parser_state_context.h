@@ -5,16 +5,15 @@
 #include <string>
 #include <vector>
 
-#include "base/mutex.h"
-#include "nlp/saft/components/dependencies/opensource/embedding_feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
-#include "nlp/saft/components/dependencies/opensource/parser_transitions.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.pb.h"
-#include "nlp/saft/components/dependencies/opensource/sparse.pb.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/task_spec.pb.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
+#include "embedding_feature_extractor.h"
+#include "feature_extractor.h"
+#include "parser_state.h"
+#include "parser_transitions.h"
+#include "sentence.pb.h"
+#include "sparse.pb.h"
+#include "task_context.h"
+#include "task_spec.pb.h"
+#include "term_frequency_map.h"
 
 namespace neurosis {
 

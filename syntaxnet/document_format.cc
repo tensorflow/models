@@ -1,4 +1,4 @@
-#include "nlp/saft/components/dependencies/opensource/document_format.h"
+#include "document_format.h"
 
 namespace neurosis {
 

@@ -1,15 +1,13 @@
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
+#include "term_frequency_map.h"
 
 #include <stddef.h>
 #include <algorithm>
 #include <limits>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/lib/io/inputbuffer.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
-#include "third_party/tensorflow/core/platform/env.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/platform/env.h"
 
 namespace neurosis {
 
@@ -25,7 +23,7 @@ int TermFrequencyMap::Increment(const string &term) {
   } else {
     // Add a new term.
     const int index = term_index_.size();
-    CHECK_LT(index, numeric_limits<int32>::max());  // overflow
+    CHECK_LT(index, std::numeric_limits<int32>::max());  // overflow
     term_index_[term] = index;
     term_data_.push_back(pair<string, int64>(term, 1));
     return index;
@@ -42,7 +40,7 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
   Clear();
 
   // If max_num_terms is non-positive, replace it with INT_MAX.
-  if (max_num_terms <= 0) max_num_terms = numeric_limits<int>::max();
+  if (max_num_terms <= 0) max_num_terms = std::numeric_limits<int>::max();
 
   // Read the first line (total # of terms in the mapping).
   tensorflow::RandomAccessFile *file;
@@ -108,7 +106,7 @@ void TermFrequencyMap::Save(const string &filename) const {
   // Write the number of terms.
   tensorflow::WritableFile *file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file));
-  CHECK_LE(term_index_.size(), numeric_limits<int32>::max());  // overflow
+  CHECK_LE(term_index_.size(), std::numeric_limits<int32>::max());  // overflow
   const int32 num_terms = term_index_.size();
   const string header = tensorflow::strings::StrCat(num_terms, "\n");
   TF_CHECK_OK(file->Append(header));

@@ -1,18 +1,18 @@
 #include <memory>
 #include <string>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
-#include "nlp/saft/components/dependencies/opensource/parser_transitions.h"
-#include "nlp/saft/components/dependencies/opensource/populate_test_inputs.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/task_spec.proto.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
+#include "utils.h"
+#include "parser_state.h"
+#include "parser_transitions.h"
+#include "populate_test_inputs.h"
+#include "sentence.proto.h"
+#include "task_context.h"
+#include "task_spec.proto.h"
+#include "term_frequency_map.h"
 #include "testing/base/public/googletest.h"
 #include "testing/base/public/gunit.h"
-#include "third_party/tensorflow/core/lib/core/status.h"
-#include "third_party/tensorflow/core/platform/env.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/platform/env.h"
 
 namespace neurosis {
 

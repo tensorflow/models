@@ -1,11 +1,11 @@
-#include "nlp/saft/components/dependencies/opensource/embedding_feature_extractor.h"
+#include "embedding_feature_extractor.h"
 
 #include <vector>
 
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/parser_features.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
+#include "feature_extractor.h"
+#include "parser_features.h"
+#include "task_context.h"
+#include "utils.h"
 
 namespace neurosis {
 
@@ -35,7 +35,7 @@ vector<vector<SparseFeatures>> GenericEmbeddingFeatureExtractor::ConvertExample(
     const vector<FeatureVector> &feature_vectors) const {
   // Extract the features.
   vector<vector<SparseFeatures>> sparse_features(feature_vectors.size());
-  for (int i = 0; i < feature_vectors.size(); ++i) {
+  for (size_t i = 0; i < feature_vectors.size(); ++i) {
     // Convert the nlp_parser::FeatureVector to dist belief format.
     sparse_features[i] =
         vector<SparseFeatures>(generic_feature_extractor(i).feature_types());

@@ -1,16 +1,16 @@
-#include "nlp/saft/components/dependencies/opensource/sentence_features.h"
+#include "sentence_features.h"
 
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
+#include "utils.h"
 #include "net/proto2/public/repeated_field.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.h"
-#include "nlp/saft/components/dependencies/opensource/populate_test_inputs.h"
-#include "nlp/saft/components/dependencies/opensource/sentence.proto.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/task_spec.pb.h"
-#include "nlp/saft/components/dependencies/opensource/workspace.h"
+#include "feature_extractor.h"
+#include "populate_test_inputs.h"
+#include "sentence.proto.h"
+#include "task_context.h"
+#include "task_spec.pb.h"
+#include "workspace.h"
 #include "testing/base/public/gmock.h"
 #include "testing/base/public/gunit.h"
 

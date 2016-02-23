@@ -1,12 +1,10 @@
-#include "nlp/saft/components/dependencies/opensource/fml_parser.h"
+#include "fml_parser.h"
 
 #include <ctype.h>
 #include <string>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/feature_extractor.proto.h"
-#include "nlp/saft/components/dependencies/opensource/utils.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
+#include "utils.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
 

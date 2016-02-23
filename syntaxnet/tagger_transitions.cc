@@ -10,13 +10,13 @@
 
 #include <string>
 
-#include "base/logging.h"
-#include "nlp/saft/components/dependencies/opensource/parser_state.h"
-#include "nlp/saft/components/dependencies/opensource/parser_transitions.h"
-#include "nlp/saft/components/dependencies/opensource/shared_store.h"
-#include "nlp/saft/components/dependencies/opensource/task_context.h"
-#include "nlp/saft/components/dependencies/opensource/term_frequency_map.h"
-#include "third_party/tensorflow/core/lib/strings/strcat.h"
+#include "utils.h"
+#include "parser_state.h"
+#include "parser_transitions.h"
+#include "shared_store.h"
+#include "task_context.h"
+#include "term_frequency_map.h"
+#include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
 
@@ -79,7 +79,7 @@ class TaggerTransitionState : public ParserTransitionState {
   // Adds transition state specific annotations to the document.
   void AddParseToDocument(const ParserState &state, bool rewrite_root_labels,
                           Sentence *sentence) const override {
-    for (int i = 0; i < tag_.size(); ++i) {
+    for (size_t i = 0; i < tag_.size(); ++i) {
       Token *token = sentence->mutable_token(i);
       token->set_tag(TagAsString(Tag(i)));
     }
@@ -116,7 +116,7 @@ class TaggerTransitionState : public ParserTransitionState {
   // part of speech tags. Not owned.
   const TermFrequencyMap *tag_map_ = nullptr;
 
-  DISALLOW_COPY_AND_ASSIGN(TaggerTransitionState);
+  TF_DISALLOW_COPY_AND_ASSIGN(TaggerTransitionState);
 };
 
 class TaggerTransitionSystem : public ParserTransitionSystem {
@@ -203,13 +203,13 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
   // TaggerTransitionState.
   static const TaggerTransitionState &TransitionState(
       const ParserState &state) {
-    return *down_cast<const TaggerTransitionState *>(state.transition_state());
+    return *static_cast<const TaggerTransitionState *>(state.transition_state());
   }
 
   // Downcasts the ParserTransitionState in ParserState to an
   // TaggerTransitionState.
   static TaggerTransitionState *MutableTransitionState(ParserState *state) {
-    return down_cast<TaggerTransitionState *>(
+    return static_cast<TaggerTransitionState *>(
         state->mutable_transition_state());
   }
 
