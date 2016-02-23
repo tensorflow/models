@@ -5,14 +5,14 @@
 #include <string>
 #include <vector>
 
-#include "utils.h"
-#include "document_format.h"
-#include "feature_extractor.pb.h"
-#include "feature_types.h"
-#include "registry.h"
-#include "sentence.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/document_format.h"
+#include "neurosis/feature_extractor.pb.h"
+#include "neurosis/feature_types.h"
+#include "neurosis/registry.h"
+#include "neurosis/sentence.pb.h"
 #include "task_context.h"
-#include "workspace.h"
+#include "neurosis/workspace.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
 #include "tensorflow/core/lib/io/inputbuffer.h"

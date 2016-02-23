@@ -5,14 +5,14 @@
 #include <string>
 #include <vector>
 
-#include "utils.h"
-#include "dictionary.pb.h"
-#include "feature_extractor.h"
-#include "proto_io.h"
-#include "sentence.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/dictionary.pb.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/proto_io.h"
+#include "neurosis/sentence.pb.h"
 #include "task_context.h"
 #include "term_frequency_map.h"
-#include "workspace.h"
+#include "neurosis/workspace.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {

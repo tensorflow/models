@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "utils.h"
-#include "registry.h"
+#include "neurosis/utils.h"
+#include "neurosis/registry.h"
 
 namespace tensorflow {
 namespace io {

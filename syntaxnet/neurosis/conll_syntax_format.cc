@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-#include "document_format.h"
-#include "sentence.pb.h"
-#include "utils.h"
+#include "neurosis/document_format.h"
+#include "neurosis/sentence.pb.h"
+#include "neurosis/utils.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/lib/strings/stringprintf.h"
 #include "tensorflow/core/platform/regexp.h"

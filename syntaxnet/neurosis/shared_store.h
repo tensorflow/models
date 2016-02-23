@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "utils.h"
+#include "neurosis/utils.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 

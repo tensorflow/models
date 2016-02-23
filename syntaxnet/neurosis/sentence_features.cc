@@ -1,7 +1,7 @@
-#include "sentence_features.h"
+#include "neurosis/sentence_features.h"
 
-#include "registry.h"
-#include "unicodetext.h"
+#include "neurosis/registry.h"
+#include "neurosis/unicodetext.h"
 
 namespace neurosis {
 

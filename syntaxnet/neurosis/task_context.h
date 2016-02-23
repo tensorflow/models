@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "task_spec.pb.h"
-#include "utils.h"
+#include "neurosis/task_spec.pb.h"
+#include "neurosis/utils.h"
 
 namespace neurosis {
 

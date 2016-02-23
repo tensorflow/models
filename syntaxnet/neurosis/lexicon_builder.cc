@@ -1,12 +1,12 @@
 #include <stddef.h>
 #include <string>
 
-#include "utils.h"
-#include "affix.h"
-#include "dictionary.proto.h"
-#include "feature_extractor.h"
-#include "parser_state_context.h"
-#include "sentence.proto.h"
+#include "neurosis/utils.h"
+#include "neurosis/affix.h"
+#include "neurosis/dictionary.proto.h"
+#include "neurosis/feature_extractor.h"
+#include "neurosis/parser_state_context.h"
+#include "neurosis/sentence.proto.h"
 #include "term_frequency_map.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/core/status.h"

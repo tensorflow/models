@@ -1,19 +1,19 @@
-#include "affix.h"
+#include "neurosis/affix.h"
 
 #include <ctype.h>
 #include <string.h>
 #include <functional>
 #include <string>
 
-#include "shared_store.h"
+#include "neurosis/shared_store.h"
 #include "task_context.h"
 #include "term_frequency_map.h"
-#include "utils.h"
-#include "workspace.h"
+#include "neurosis/utils.h"
+#include "neurosis/workspace.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/regexp.h"
-#include "unicodetext.h"
+#include "neurosis/unicodetext.h"
 
 namespace neurosis {
 

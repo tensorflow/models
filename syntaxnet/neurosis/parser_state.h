@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
-#include "utils.h"
-#include "kbest_syntax.pb.h"
-#include "parser_transitions.h"
-#include "sentence.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/kbest_syntax.pb.h"
+#include "neurosis/parser_transitions.h"
+#include "neurosis/sentence.pb.h"
 
 namespace neurosis {
 

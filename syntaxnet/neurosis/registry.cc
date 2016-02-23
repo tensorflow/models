@@ -1,4 +1,4 @@
-#include "registry.h"
+#include "neurosis/registry.h"
 
 namespace neurosis {
 

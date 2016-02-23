@@ -1,8 +1,8 @@
-#include "parser_state.h"
+#include "neurosis/parser_state.h"
 
-#include "utils.h"
-#include "kbest_syntax.pb.h"
-#include "sentence.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/kbest_syntax.pb.h"
+#include "neurosis/sentence.pb.h"
 #include "term_frequency_map.h"
 
 namespace neurosis {

@@ -25,14 +25,14 @@
 #include <string>
 #include <vector>
 
-#include "feature_extractor.pb.h"
-#include "feature_types.h"
-#include "proto_io.h"
-#include "registry.h"
-#include "sentence.pb.h"
+#include "neurosis/feature_extractor.pb.h"
+#include "neurosis/feature_types.h"
+#include "neurosis/proto_io.h"
+#include "neurosis/registry.h"
+#include "neurosis/sentence.pb.h"
 #include "task_context.h"
-#include "utils.h"
-#include "workspace.h"
+#include "neurosis/utils.h"
+#include "neurosis/workspace.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
 #include "tensorflow/core/lib/io/inputbuffer.h"

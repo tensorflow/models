@@ -1,4 +1,4 @@
-#include "workspace.h"
+#include "neurosis/workspace.h"
 
 #include "tensorflow/core/lib/strings/strcat.h"
 

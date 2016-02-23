@@ -1,9 +1,9 @@
-#include "shared_store.h"
+#include "neurosis/shared_store.h"
 
 #include <hash_set>
 #include <string>
 
-#include "base/log_severity.h"
+#include "neurosis/base/log_severity.h"
 #include "testing/base/public/gmock.h"
 #include "testing/base/public/gunit.h"
 #include "testing/base/public/mock-log.h"

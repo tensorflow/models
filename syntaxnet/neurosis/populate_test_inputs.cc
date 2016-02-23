@@ -1,19 +1,20 @@
-#include "populate_test_inputs.h"
+#include "neurosis/populate_test_inputs.h"
 
 #include <map>
 #include <utility>
 
 #include "gtest/gtest.h"
-#include "utils.h"
-#include "dictionary.pb.h"
-#include "sentence.pb.h"
-#include "task_context.h"
-#include "task_spec.pb.h"
-#include "term_frequency_map.h"
+#include "neurosis/utils.h"
+#include "neurosis/dictionary.pb.h"
+#include "neurosis/sentence.pb.h"
+#include "neurosis/task_context.h"
+#include "neurosis/task_spec.pb.h"
+#include "neurosis/term_frequency_map.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/io/record_writer.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/platform/test.h"
 
 namespace neurosis {
 

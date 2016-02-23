@@ -1,7 +1,7 @@
-#include "feature_extractor.h"
+#include "neurosis/feature_extractor.h"
 
-#include "feature_types.h"
-#include "fml_parser.h"
+#include "neurosis/feature_types.h"
+#include "neurosis/fml_parser.h"
 
 namespace neurosis {
 

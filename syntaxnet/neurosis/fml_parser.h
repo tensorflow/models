@@ -27,8 +27,8 @@
 
 #include <string>
 
-#include "utils.h"
-#include "feature_extractor.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/feature_extractor.pb.h"
 
 namespace neurosis {
 

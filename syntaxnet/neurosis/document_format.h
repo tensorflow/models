@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "utils.h"
-#include "registry.h"
-#include "sentence.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/registry.h"
+#include "neurosis/sentence.pb.h"
 #include "task_context.h"
 
 namespace neurosis {

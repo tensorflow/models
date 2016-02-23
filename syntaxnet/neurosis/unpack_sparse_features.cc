@@ -5,8 +5,8 @@
 #include <utility>
 #include <vector>
 
-#include "utils.h"
-#include "sparse.pb.h"
+#include "neurosis/utils.h"
+#include "neurosis/sparse.pb.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"

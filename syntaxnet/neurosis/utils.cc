@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "neurosis/utils.h"
 #include "tensorflow/core/platform/macros.h"
 
 namespace neurosis {
