@@ -2,7 +2,7 @@
 
 syntax = "proto2";
 
-import "sentence.proto";
+import "neurosis/sentence.proto";
 
 package neurosis;
 
