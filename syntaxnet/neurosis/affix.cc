@@ -13,7 +13,7 @@
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/platform/regexp.h"
-#include "neurosis/unicodetext.h"
+#include "util/utf8/unicodetext.h"
 
 namespace neurosis {
 

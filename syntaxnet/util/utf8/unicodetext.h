@@ -1,6 +1,13 @@
 // Copyright 2006 Google Inc. All Rights Reserved.
 // Author: jrm@google.com (Jim Meehan)
 
+// [google] This file is automatically exported to an open-source distribution.
+// [google] If you add sensitive comments to this file, you can strip them
+// [google] by starting the comment with // [google]. Note: This will strip
+// [google] the entire line, so do not use on the same line as code.
+// [google]
+// [google] For more information, contact mod-pagespeed-dev@google.com
+
 #ifndef UTIL_UTF8_PUBLIC_UNICODETEXT_H_
 #define UTIL_UTF8_PUBLIC_UNICODETEXT_H_
 
@@ -9,7 +16,7 @@
 #include <string>                       // for string
 #include <utility>                      // for pair
 
-#include "neurosis/utils.h"
+#include "neurosis/base.h"
 
 // ***************************** UnicodeText **************************
 //
@@ -99,10 +106,6 @@
 // creating UnicodeTexts (both owners and aliases) from UTF-8 buffers or
 // strings, creating strings from UnicodeTexts, normalizing text for
 // efficient matching or display, and others.
-
-using std::pair;
-using std::string;
-typedef signed int char32;
 
 class UnicodeText {
  public:

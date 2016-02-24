@@ -1,10 +1,10 @@
 #include <math.h>
-#include <hash_map>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "neurosis/utils.h"
+#include "neurosis/base.h"
 #include "neurosis/feature_extractor.h"
 #include "neurosis/parser_state.h"
 #include "neurosis/parser_state_context.h"
@@ -12,8 +12,8 @@
 #include "neurosis/sentence.pb.h"
 #include "neurosis/shared_store.h"
 #include "neurosis/sparse.pb.h"
-#include "task_context.h"
-#include "task_spec.pb.h"
+#include "neurosis/task_context.h"
+#include "neurosis/task_spec.pb.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -55,7 +55,8 @@ class ParsingReader : public OpKernel {
     string data;
     OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
                                              file_path, &data));
-    OP_REQUIRES(context, task_context_.mutable_spec()->ParseASCII(data),
+    OP_REQUIRES(context,
+                TextFormat::ParseFromString(data, task_context_.mutable_spec()),
                 InvalidArgument("Could not parse task context at ", file_path));
 
     // Set up the batch reader.
@@ -101,7 +102,7 @@ class ParsingReader : public OpKernel {
   }
 
   void Compute(OpKernelContext *context) override {
-    MutexLock lock(&mu_);
+    MutexLock lock(mu_);
 
     // Advances states to the next positions.
     PerformActions(context);
@@ -128,7 +129,7 @@ class ParsingReader : public OpKernel {
 
     // Create the outputs for each feature space.
     vector<Tensor *> feature_outputs(features_->NumEmbeddings());
-    for (int i = 0; i < feature_outputs.size(); ++i) {
+    for (size_t i = 0; i < feature_outputs.size(); ++i) {
       OP_REQUIRES_OK(context, context->allocate_output(
                                   i, TensorShape({sentence_batch_->size(),
                                                   features_->FeatureSize(i)}),
@@ -144,7 +145,7 @@ class ParsingReader : public OpKernel {
       std::vector<std::vector<SparseFeatures>> features =
           features_->ExtractSparseFeatures(workspaces_[i], *states_[i]);
 
-      for (int feature_space = 0; feature_space < features.size();
+      for (size_t feature_space = 0; feature_space < features.size();
            ++feature_space) {
         int feature_size = features[feature_space].size();
         CHECK(feature_size == features_->FeatureSize(feature_space));
@@ -381,7 +382,7 @@ class DecodedParseReader : public ParsingReader {
                        &annotated_output));
 
     auto document_output = annotated_output->vec<string>();
-    for (int i = 0; i < documents_.size(); ++i) {
+    for (size_t i = 0; i < documents_.size(); ++i) {
       document_output(i) = documents_[i].SerializeAsString();
     }
     documents_.clear();
@@ -410,7 +411,8 @@ class WordEmbeddingInitializer : public OpKernel {
     OP_REQUIRES_OK(context, context->GetAttr("task_context", &file_path));
     OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
                                              file_path, &data));
-    OP_REQUIRES(context, task_context_.mutable_spec()->ParseASCII(data),
+    OP_REQUIRES(context,
+                TextFormat::ParseFromString(data, task_context_.mutable_spec()),
                 InvalidArgument("Could not parse task context at ", file_path));
     OP_REQUIRES_OK(context, context->GetAttr("vectors", &vectors_path_));
     OP_REQUIRES_OK(context,
@@ -425,7 +427,7 @@ class WordEmbeddingInitializer : public OpKernel {
     string path = TaskContext::InputFile(*task_context_.GetInput("word-map"));
     const TermFrequencyMap *word_map =
         SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(path, 0, 0);
-    hash_map<string, int64> vocab;
+    unordered_map<string, int64> vocab;
     for (int i = 0; i < word_map->Size(); ++i) {
       vocab[word_map->GetTerm(i)] = i;
     }
@@ -447,9 +449,10 @@ class WordEmbeddingInitializer : public OpKernel {
                          &embedding_matrix));
         embedding_matrix->matrix<float>()
             .setRandom<Eigen::internal::NormalRandomGenerator<float>>();
-        embedding_matrix->matrix<float>() =
-            embedding_matrix->matrix<float>().scale<float>(
-                embedding_init_ / sqrt(embedding_size));
+        // TODO(chrisalberti): why won't this compile??
+        //embedding_matrix->matrix<float>() =
+        //    embedding_matrix->matrix<float>().scale<float>(
+        //        embedding_init_ / sqrt(embedding_size));
       }
       if (vocab.find(embedding.token()) != vocab.end()) {
         SetNormalizedRow(embedding.vector(), vocab[embedding.token()],

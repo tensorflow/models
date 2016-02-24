@@ -4,21 +4,15 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <unordered_set>
+#include "neurosis/base.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/default/integral_types.h"
 #include "tensorflow/core/platform/mutex.h"
-#include "neurosis/unicodetext.h"
+#include "util/utf8/unicodetext.h"
 
-using tensorflow::int32;
-using tensorflow::int64;
-using tensorflow::uint64;
-using tensorflow::uint32;
-using std::map;
-using std::string;
-using std::vector;
-typedef tensorflow::mutex_lock MutexLock;
-typedef tensorflow::mutex Mutex;
+using tensorflow::strings::StrAppend;
 
 namespace neurosis {
 namespace utils {
@@ -49,11 +43,13 @@ string Join(const std::vector<T> &s, const char *sep) {
   string result;
   bool first = true;
   for (const auto &x : s) {
-    tensorflow::strings::StrAppend(&result, (first ? "" : sep), x);
+    StrAppend(&result, (first ? "" : sep), x);
     first = false;
   }
   return result;
 }
+
+string JoinPath(std::initializer_list<StringPiece> paths);
 
 size_t RemoveLeadingWhitespace(tensorflow::StringPiece *text);
 

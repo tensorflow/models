@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "neurosis/utils.h"
+#include "neurosis/base.h"
 #include "neurosis/feature_extractor.h"
 #include "neurosis/sentence.pb.h"
 #include "neurosis/utils.h"
@@ -34,7 +34,8 @@ void GetTaskContext(OpKernelConstruction *context, TaskContext *task_context) {
   OP_REQUIRES_OK(context, context->GetAttr("task_context", &file_path));
   OP_REQUIRES_OK(
       context, ReadFileToString(tensorflow::Env::Default(), file_path, &data));
-  OP_REQUIRES(context, task_context->mutable_spec()->ParseASCII(data),
+  OP_REQUIRES(context,
+              TextFormat::ParseFromString(data, task_context->mutable_spec()),
               InvalidArgument("Could not parse task context at ", file_path));
 }
 
@@ -67,12 +68,12 @@ class DocumentSource : public OpKernel {
   }
 
   void Compute(OpKernelContext *context) override {
-    MutexLock lock(&mu_);
+    MutexLock lock(mu_);
     Sentence *document;
     vector<Sentence *> document_batch;
     while ((document = corpus_->Read()) != NULL) {
       document_batch.push_back(document);
-      if (document_batch.size() == batch_size_) {
+      if (static_cast<int>(document_batch.size()) == batch_size_) {
         OutputDocuments(context, &document_batch);
         OutputLast(context, false);
         return;
@@ -115,7 +116,7 @@ class DocumentSink : public OpKernel {
   }
 
   void Compute(OpKernelContext *context) override {
-    MutexLock lock(&mu_);
+    MutexLock lock(mu_);
     auto documents = context->input(0).vec<string>();
     for (int i = 0; i < documents.size(); ++i) {
       Sentence document;

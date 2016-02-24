@@ -1,11 +1,23 @@
 load("@tf//google/protobuf:protobuf.bzl", "cc_proto_library")
 load("@tf//google/protobuf:protobuf.bzl", "py_proto_library")
 
-def neurosis_proto_library(name, srcs=[], has_services=False,
-                           deps=[], visibility=None, testonly=0,
-                           cc_api_version=2, go_api_version=2,
-                           java_api_version=2,
-                           py_api_version=2):
+def if_cuda(a, b=[]):
+  return select({
+      "@tf//third_party/gpus/cuda:cuda_crosstool_condition": a,
+      "//conditions:default": b,
+  })
+
+def tf_copts():
+  return (["-fno-exceptions", "-DEIGEN_AVOID_STL_ARRAY",] +
+          if_cuda(["-DGOOGLE_CUDA=1"]) +
+          select({"@tf//tensorflow:darwin": [],
+                  "//conditions:default": ["-pthread"]}))
+
+def tf_proto_library(name, srcs=[], has_services=False,
+                     deps=[], visibility=None, testonly=0,
+                     cc_api_version=2, go_api_version=2,
+                     java_api_version=2,
+                     py_api_version=2):
   native.filegroup(name=name + "_proto_srcs",
                    srcs=srcs,
                    testonly=testonly,)
@@ -19,7 +31,7 @@ def neurosis_proto_library(name, srcs=[], has_services=False,
                    testonly=testonly,
                    visibility=visibility,)
 
-def neurosis_proto_library_py(name, srcs=[], deps=[], visibility=None, testonly=0):
+def tf_proto_library_py(name, srcs=[], deps=[], visibility=None, testonly=0):
   py_proto_library(name=name,
                    srcs=srcs,
                    srcs_version = "PY2AND3",
@@ -28,3 +40,53 @@ def neurosis_proto_library_py(name, srcs=[], deps=[], visibility=None, testonly=
                    protoc="@tf//google/protobuf:protoc",
                    visibility=visibility,
                    testonly=testonly,)
+
+# Given a list of "op_lib_names" (a list of files in the ops directory
+# without their .cc extensions), generate a library for that file.
+def tf_gen_op_libs(op_lib_names):
+  # Make library out of each op so it can also be used to generate wrappers
+  # for various languages.
+  for n in op_lib_names:
+    native.cc_library(name=n + "_op_lib",
+                      copts=tf_copts(),
+                      srcs=["ops/" + n + ".cc"],
+                      deps=(["@tf//tensorflow/core:framework"]),
+                      visibility=["//visibility:public"],
+                      alwayslink=1,
+                      linkstatic=1,)
+
+# Invoke this rule in .../tensorflow/python to build the wrapper library.
+def tf_gen_op_wrapper_py(name, out=None, hidden=[], visibility=None, deps=[],
+                         require_shape_functions=False):
+  # Construct a cc_binary containing the specified ops.
+  tool_name = "gen_" + name + "_py_wrappers_cc"
+  if not deps:
+    deps = ["//tensorflow/core:" + name + "_op_lib"]
+  native.cc_binary(
+      name = tool_name,
+      linkopts = ["-lm"],
+      copts = tf_copts(),
+      linkstatic = 1,   # Faster to link this one-time-use binary dynamically
+      deps = (["@tf//tensorflow/core:framework",
+               "@tf//tensorflow/python:python_op_gen_main"] + deps),
+  )
+
+  # Invoke the previous cc_binary to generate a python file.
+  if not out:
+    out = "ops/gen_" + name + ".py"
+
+  native.genrule(
+      name=name + "_pygenrule",
+      outs=[out],
+      tools=[tool_name],
+      cmd=("$(location " + tool_name + ") " + ",".join(hidden)
+           + " " + ("1" if require_shape_functions else "0") + " > $@"))
+
+  # Make a py_library out of the generated python file.
+  native.py_library(name=name,
+                    srcs=[out],
+                    srcs_version="PY2AND3",
+                    visibility=visibility,
+                    deps=[
+                        "@tf//tensorflow/python:framework_for_generated_wrappers",
+                    ],)

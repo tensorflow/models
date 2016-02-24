@@ -7,13 +7,12 @@
 #include "neurosis/parser_state.h"
 #include "neurosis/populate_test_inputs.h"
 #include "neurosis/sentence.pb.h"
-#include "task_context.h"
-#include "task_spec.pb.h"
-#include "term_frequency_map.h"
+#include "neurosis/task_context.h"
+#include "neurosis/task_spec.pb.h"
+#include "neurosis/term_frequency_map.h"
 #include "neurosis/workspace.h"
-#include "testing/base/public/googletest.h"
-#include "testing/base/public/gunit.h"
 #include "tensorflow/core/lib/strings/strcat.h"
+#include "tensorflow/core/platform/test.h"
 
 namespace neurosis {
 
@@ -44,7 +43,7 @@ class ParserFeatureFunctionTest : public ::testing::Test {
         " break_level: SPACE_BREAK } "
         "token { word: '.' start: 28 end: 28 tag: '.' category: '.'"
         " break_level: NO_BREAK }";
-    CHECK(sentence_.ParseASCII(kTaggedDocument));
+    CHECK(TextFormat::ParseFromString(kTaggedDocument, &sentence_));
     creators_ = PopulateTestInputs::Defaults(sentence_);
 
     // Prepare a label map. By adding labels in lexicographic order we make sure

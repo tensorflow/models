@@ -80,6 +80,42 @@ std::vector<string> Split(const string &text, char delim) {
   return result;
 }
 
+bool IsAbsolutePath(StringPiece path) {
+  return !path.empty() && path[0] == '/';
+}
+
+// For an array of paths of length count, append them all together,
+// ensuring that the proper path separators are inserted between them.
+string JoinPath(std::initializer_list<StringPiece> paths) {
+  string result;
+
+  for (StringPiece path : paths) {
+    if (path.empty())
+      continue;
+
+    if (result.empty()) {
+      result = path.ToString();
+      continue;
+    }
+
+    if (result[result.size() - 1] == '/') {
+      if (IsAbsolutePath(path)) {
+        StrAppend(&result, path.substr(1));
+      } else {
+        StrAppend(&result, path);
+      }
+    } else {
+      if (IsAbsolutePath(path)) {
+        StrAppend(&result, path);
+      } else {
+        StrAppend(&result, "/", path);
+      }
+    }
+  }
+
+  return result;
+}
+
 size_t RemoveLeadingWhitespace(tensorflow::StringPiece *text) {
   size_t count = 0;
   const char *ptr = text->data();

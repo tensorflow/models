@@ -1,18 +1,18 @@
 #include <memory>
 #include <string>
+#include <gmock/gmock.h>
 
 #include "neurosis/utils.h"
 #include "neurosis/parser_state.h"
 #include "neurosis/parser_transitions.h"
 #include "neurosis/populate_test_inputs.h"
-#include "neurosis/sentence.proto.h"
-#include "task_context.h"
-#include "task_spec.proto.h"
-#include "term_frequency_map.h"
-#include "testing/base/public/googletest.h"
-#include "testing/base/public/gunit.h"
+#include "neurosis/sentence.pb.h"
+#include "neurosis/task_context.h"
+#include "neurosis/task_spec.pb.h"
+#include "neurosis/term_frequency_map.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/platform/test.h"
 
 namespace neurosis {
 
@@ -89,12 +89,11 @@ TEST_F(ArcStandardTransitionTest, SingleSentenceDocumentTest) {
   string document_text;
   Sentence document;
   TF_CHECK_OK(ReadFileToString(tensorflow::Env::Default(),
-                               FLAGS_test_srcdir +
-                                   "/google3/nlp/saft/components/dependencies/"
-                                   "opensource/testdata/document",
+                               utils::JoinPath({tensorflow::testing::SrcDir(),
+                                       "neurosis/testdata/document"}),
                                &document_text));
   LOG(INFO) << "see doc\n:" << document_text;
-  CHECK(document.ParseASCII(document_text));
+  CHECK(TextFormat::ParseFromString(document_text, &document));
   SetUpForDocument(document);
   GoldParse(&document);
   DefaultParse(&document);

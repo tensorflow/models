@@ -132,7 +132,8 @@ vector<string> PopulateTestInputs::TokenWord(const Token &token) {
 string PopulateTestInputs::AddPart(TaskInput *input, const string &file_format,
                                    const string &record_format) {
   string file_name =
-      tensorflow::strings::StrCat(testing::TmpDir(), "/", input->name());
+      tensorflow::strings::StrCat(
+          tensorflow::testing::TmpDir(), input->name());
   auto *part = CHECK_NOTNULL(input)->add_part();
   part->set_file_pattern(file_name);
   part->set_file_format(file_format);
