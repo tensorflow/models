@@ -18,12 +18,12 @@ import time
 import google3
 import tensorflow as tf
 
-from google3.third_party.tensorflow.python.platform import gfile
-from google3.third_party.tensorflow.python.platform import logging
-from google3.nlp.saft.components.dependencies.opensource import sentence_pb2
-from google3.nlp.saft.components.dependencies.opensource import graph_builder
-from google3.nlp.saft.components.dependencies.opensource import structured_graph_builder
-from google3.nlp.saft.components.dependencies.opensource.ops import gen_parser_ops
+from tensorflow.python.platform import gfile
+from tensorflow.python.platform import logging
+from neurosis import sentence_pb2
+from neurosis import graph_builder
+from neurosis import structured_graph_builder
+from neurosis.ops import gen_parser_ops
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
