@@ -26,15 +26,15 @@ try:
 except ImportError:
   import tensorflow as tf
 
-from google3.third_party.tensorflow.python.platform import gfile
-from google3.third_party.tensorflow.python.platform import logging
+from tensorflow.python.platform import gfile
+from tensorflow.python.platform import logging
 
 from google3.net.proto2.python.public import text_format
 
-from google3.nlp.saft.components.dependencies.opensource import graph_builder
-from google3.nlp.saft.components.dependencies.opensource import structured_graph_builder
-from google3.nlp.saft.components.dependencies.opensource.ops import gen_parser_ops
-from google3.nlp.saft.components.dependencies.opensource import task_spec_pb2
+from neurosis import graph_builder
+from neurosis import structured_graph_builder
+from neurosis.ops import gen_parser_ops
+from neurosis import task_spec_pb2
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS

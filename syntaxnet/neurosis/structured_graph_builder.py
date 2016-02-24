@@ -2,11 +2,11 @@
 
 import tensorflow as tf
 
-from google3.third_party.tensorflow.python.ops import control_flow_ops as cf
-from google3.third_party.tensorflow.python.ops import state_ops
+from tensorflow.python.ops import control_flow_ops as cf
+from tensorflow.python.ops import state_ops
 
-from google3.nlp.saft.components.dependencies.opensource import graph_builder
-from google3.nlp.saft.components.dependencies.opensource.ops import gen_parser_ops
+from neurosis import graph_builder
+from neurosis.ops import gen_parser_ops
 
 tf.NoGradient('BeamParseReader')
 tf.NoGradient('BeamParser')

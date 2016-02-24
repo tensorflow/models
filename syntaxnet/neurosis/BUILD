@@ -1,5 +1,13 @@
 # Description:
 # A syntactic parser and part-of-speech tagger in TensorFlow.
+#
+# To build:
+#   git clone --recursive rpc://team/saft/neurosis
+#   cd neurosis
+#   tensorflow/configure
+#   bazel test neurosis/...
+#
+# Requires bazel and swig to be installed.
 
 package(
     default_visibility = ["//visibility:private"],
@@ -7,8 +15,6 @@ package(
 )
 
 licenses(["notice"])  # Apache 2.0
-
-# exports_files(["LICENSE"])
 
 load(
     "neurosis",
@@ -35,20 +41,20 @@ tf_proto_library(
     srcs = ["sentence.proto"],
 )
 
-# tf_proto_library_py(
-#     name = "sentence_proto_py_pb2",
-#     deps = [":sentence_proto"],
-# )
+tf_proto_library_py(
+    name = "sentence_proto_py_pb2",
+    srcs = ["sentence.proto"],
+)
 
 tf_proto_library(
     name = "dictionary_proto",
     srcs = ["dictionary.proto"],
 )
 
-# tf_proto_library_py(
-#     name = "dictionary_proto_py_pb2",
-#     deps = [":dictionary_proto"],
-# )
+tf_proto_library_py(
+    name = "dictionary_proto_py_pb2",
+    srcs = ["dictionary.proto"],
+)
 
 tf_proto_library(
     name = "kbest_syntax_proto",
@@ -61,20 +67,20 @@ tf_proto_library(
     srcs = ["task_spec.proto"],
 )
 
-# tf_proto_library_py(
-#     name = "task_spec_py_pb2",
-#     deps = [":task_spec_proto"],
-# )
+tf_proto_library_py(
+    name = "task_spec_py_pb2",
+    srcs = ["task_spec.proto"],
+)
 
 tf_proto_library(
     name = "sparse_proto",
     srcs = ["sparse.proto"],
 )
 
-# tf_proto_library_py(
-#     name = "sparse_py_pb2",
-#     deps = [":sparse_proto"],
-# )
+tf_proto_library_py(
+    name = "sparse_py_pb2",
+    srcs = ["sparse.proto"],
+)
 
 # cc libraries for feature extraction and parsing
 
@@ -103,9 +109,9 @@ cc_library(
 
 cc_library(
     name = "test_main",
-    #testonly = 1,
+    testonly = 1,
     srcs = ["test_main.cc"],
-    #linkopts = ["-lm"],
+    linkopts = ["-lm"],
     deps = [
         "@tf//tensorflow/core:lib",
         "@tf//tensorflow/core:testlib",
@@ -395,6 +401,11 @@ cc_library(
     srcs = ["ops/parser_ops.cc"],
     deps = [
         ":base",
+        ":document_filters",
+        ":lexicon_builder",
+        ":parser_ops_op_lib",
+        ":reader_ops",
+        ":unpack_sparse_features",
     ],
     alwayslink = 1,
 )
@@ -488,120 +499,110 @@ tf_gen_op_libs(
 
 tf_gen_op_wrapper_py(
     name = "parser_ops",
-    deps = [":parser_ops_op_lib"],
+    deps = [
+        ":document_filters",
+        ":lexicon_builder",
+        ":parser_ops_op_lib",
+        ":reader_ops",
+        ":unpack_sparse_features",
+    ],
 )
 
-# py_library(
-#     name = "graph_builder",
-#     srcs = ["graph_builder.py"],
-#     deps = [
-#         ":parser_ops",
-#     ] + select({
-#         ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
-#         "//conditions:default": ["//third_party/py/tensorflow"],
-#     }),
-# )
+py_library(
+    name = "graph_builder",
+    srcs = ["graph_builder.py"],
+    deps = [
+        ":parser_ops",
+    ],
+    # + select({
+    #     ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
+    #     "//conditions:default": ["//third_party/py/tensorflow"],
+    # }),
+)
 
-# py_library(
-#     name = "structured_graph_builder",
-#     srcs = ["structured_graph_builder.py"],
-#     deps = [
-#         ":graph_builder",
-#         ":parser_ops",
-#     ] + select({
-#         ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
-#         "//conditions:default": ["//third_party/py/tensorflow"],
-#     }),
-# )
+py_library(
+    name = "structured_graph_builder",
+    srcs = ["structured_graph_builder.py"],
+    deps = [
+        ":graph_builder",
+        ":parser_ops",
+    ],
+    # + select({
+    #     ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
+    #     "//conditions:default": ["//third_party/py/tensorflow"],
+    # }),
+)
 
-# py_binary(
-#     name = "parser_trainer",
-#     srcs = ["parser_trainer.py"],
-#     deps = [
-#         ":document_filters",
-#         ":graph_builder",
-#         ":lexicon_builder",
-#         ":parser_ops",
-#         ":parser_ops_cc",
-#         ":reader_ops",
-#         ":structured_graph_builder",
-#         ":task_spec_py_pb2",
-#         ":unpack_sparse_features",
-#         "//file/colossus/cns",
-#     ] + select({
-#         "//third_party/gpus/cuda:cuda_crosstool_condition": [
-#             "//learning/brain/public:tensorflow_gpu_deps",
-#         ],
-#         "//conditions:default": [],
-#     }),
-# )
+py_binary(
+    name = "parser_trainer",
+    srcs = ["parser_trainer.py"],
+    deps = [
+        ":graph_builder",
+        ":parser_ops",
+        ":structured_graph_builder",
+        ":task_spec_py_pb2",
+        #"//file/colossus/cns",
+    ],
+    # + select({
+    #     "//third_party/gpus/cuda:cuda_crosstool_condition": [
+    #         "//learning/brain/public:tensorflow_gpu_deps",
+    #     ],
+    #     "//conditions:default": [],
+    # }),
+)
 
-# py_binary(
-#     name = "parser_eval",
-#     srcs = ["parser_eval.py"],
-#     deps = [
-#         ":document_filters",
-#         ":graph_builder",
-#         ":lexicon_builder",
-#         ":parser_ops",
-#         ":parser_ops_cc",
-#         ":reader_ops",
-#         ":sentence_proto_py_pb2",
-#         ":structured_graph_builder",
-#         ":unpack_sparse_features",
-#         "//file/colossus/cns",
-#     ],
-# )
+py_binary(
+    name = "parser_eval",
+    srcs = ["parser_eval.py"],
+    deps = [
+        ":graph_builder",
+        ":parser_ops",
+        ":sentence_proto_py_pb2",
+        ":structured_graph_builder",
+        #"//file/colossus/cns",
+    ],
+)
 
-# # py tests
+# py tests
 
-# py_test(
-#     name = "reader_ops_test",
-#     size = "medium",
-#     srcs = ["reader_ops_test.py"],
-#     data = [":testdata"],
-#     tags = ["notsan"],
-#     deps = [
-#         ":dictionary_proto_py_pb2",
-#         ":graph_builder",
-#         ":lexicon_builder",
-#         ":parser_ops",
-#         ":parser_ops_cc",
-#         ":reader_ops",
-#         ":sparse_py_pb2",
-#         ":unpack_sparse_features",
-#     ],
-# )
+py_test(
+    name = "reader_ops_test",
+    size = "medium",
+    srcs = ["reader_ops_test.py"],
+    data = [":testdata"],
+    tags = ["notsan"],
+    deps = [
+        "@tf//tensorflow:tensorflow_py",
+        ":dictionary_proto_py_pb2",
+        ":graph_builder",
+        ":parser_ops",
+        ":sparse_py_pb2",
+    ],
+)
 
-# py_test(
-#     name = "beam_reader_ops_test",
-#     size = "medium",
-#     srcs = ["beam_reader_ops_test.py"],
-#     data = [":testdata"],
-#     tags = ["notsan"],
-#     deps = [
-#         ":lexicon_builder",
-#         ":parser_ops",
-#         ":parser_ops_cc",
-#         ":reader_ops",
-#         ":structured_graph_builder",
-#         ":unpack_sparse_features",
-#     ],
-# )
+py_test(
+    name = "beam_reader_ops_test",
+    size = "medium",
+    srcs = ["beam_reader_ops_test.py"],
+    data = [":testdata"],
+    tags = ["notsan"],
+    deps = [
+        "@tf//tensorflow:tensorflow_py",
+        ":parser_ops",
+        ":structured_graph_builder",
+    ],
+)
 
-# py_test(
-#     name = "graph_builder_test",
-#     size = "medium",
-#     srcs = ["graph_builder_test.py"],
-#     data = [":testdata"],
-#     tags = ["notsan"],
-#     deps = [
-#         ":graph_builder",
-#         ":lexicon_builder",
-#         ":parser_ops",
-#         ":parser_ops_cc",
-#         ":reader_ops",
-#         ":sparse_py_pb2",
-#         ":unpack_sparse_features",
-#     ],
-# )
+py_test(
+    name = "graph_builder_test",
+    size = "medium",
+    srcs = ["graph_builder_test.py"],
+    data = [":testdata"],
+    tags = ["notsan"],
+    deps = [
+        "@tf//tensorflow:tensorflow_py",
+        ":graph_builder",
+        ":parser_ops",
+        ":sparse_py_pb2",
+    ],
+)

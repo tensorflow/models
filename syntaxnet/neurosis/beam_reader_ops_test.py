@@ -3,27 +3,28 @@
 # pylint: disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member,g-importing-member
 import os.path
 import time
-import google3
 import numpy as np
 import tensorflow as tf
 
-from google3.third_party.tensorflow.python.framework import test_util
-from google3.third_party.tensorflow.python.platform import googletest
-from google3.third_party.tensorflow.python.platform import logging
+from tensorflow.python.framework import test_util
+from tensorflow.python.platform import googletest
+from tensorflow.python.platform import logging
 
-from google3.nlp.saft.components.dependencies.opensource import structured_graph_builder
-from google3.nlp.saft.components.dependencies.opensource.ops import gen_parser_ops
+from neurosis import structured_graph_builder
+from neurosis.ops import gen_parser_ops
 
 FLAGS = tf.app.flags.FLAGS
-
+if not hasattr(FLAGS, 'test_srcdir'):
+  FLAGS.test_srcdir = ''
+if not hasattr(FLAGS, 'test_tmpdir'):
+  FLAGS.test_tmpdir = tf.test.get_temp_dir()
 
 class ParsingReaderOpsTest(test_util.TensorFlowTestCase):
 
   def setUp(self):
     # Creates a task context with the correct testing paths.
     initial_task_context = os.path.join(
-        FLAGS.test_srcdir, 'google3/nlp/saft/components/dependencies'
-        '/opensource/testdata/context.pbtxt')
+        FLAGS.test_srcdir, 'neurosis/testdata/context.pbtxt')
     self._task_context = os.path.join(FLAGS.test_tmpdir, 'context.pbtxt')
     with open(initial_task_context, 'r') as fin:
       with open(self._task_context, 'w') as fout:
