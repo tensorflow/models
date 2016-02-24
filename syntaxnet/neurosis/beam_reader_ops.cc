@@ -6,16 +6,15 @@
 #include <utility>
 #include <vector>
 
-#include "neurosis/utils.h"
+#include "neurosis/base.h"
 #include "neurosis/parser_state.h"
 #include "neurosis/parser_state_context.h"
 #include "neurosis/parser_transitions.h"
 #include "neurosis/sentence.pb.h"
 #include "neurosis/shared_store.h"
 #include "neurosis/sparse.pb.h"
-#include "task_context.h"
-#include "task_spec.pb.h"
-#include "neurosis/utils.h"
+#include "neurosis/task_context.h"
+#include "neurosis/task_spec.pb.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"
@@ -23,7 +22,6 @@
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/io/inputbuffer.h"
 #include "tensorflow/core/platform/env.h"
-#include "neurosis/util/utf8/public/unicodetext.h"
 
 using tensorflow::DEVICE_CPU;
 using tensorflow::DT_BOOL;
@@ -76,7 +74,7 @@ struct ParserStateWithHistory {
 
 struct BatchStateOptions {
   // Maximum number of parser states in a beam.
-  int32 max_beam_size;
+  int max_beam_size;
 
   // Number of parallel sentences to decode.
   int batch_size;
@@ -224,7 +222,7 @@ class BeamState {
       VLOG(2) << "State: " << item.second->state->ToString();
       std::vector<std::vector<SparseFeatures>> f =
           features_->ExtractSparseFeatures(*workspace_, *item.second->state);
-      for (int i = 0; i < f.size(); ++i) (*features)[i].push_back(f[i]);
+      for (size_t i = 0; i < f.size(); ++i) (*features)[i].push_back(f[i]);
     }
   }
 
@@ -296,7 +294,7 @@ class BeamState {
   // the maximum beam size. If the gold element was at the bottom of the
   // beam, sets the beam state to DYING, otherwise leaves the state alone.
   void PruneBeam() {
-    if (slots_.size() > options_.max_beam_size) {
+    if (static_cast<int>(slots_.size()) > options_.max_beam_size) {
       auto bottom = slots_.begin();
       if (!options_.continue_until_all_final &&
           bottom->second->state->is_gold()) {
@@ -318,7 +316,7 @@ class BeamState {
     const double score = item.first.first + delta_score;
     const bool is_gold =
         item.second->state->is_gold() && action == gold_action_;
-    if (is_gold || slots_.size() < options_.max_beam_size ||
+    if (is_gold || static_cast<int>(slots_.size()) < options_.max_beam_size ||
         score > slots_.begin()->first.first) {
       const KeyType key{score, -static_cast<int>(is_gold)};
       slots_.emplace(key, std::unique_ptr<ParserStateWithHistory>(
@@ -337,7 +335,7 @@ class BeamState {
   void MaybeInsert(AgendaItem *item) {
     const bool is_gold = item->second->state->is_gold();
     const double score = item->first.first;
-    if (is_gold || slots_.size() < options_.max_beam_size ||
+    if (is_gold || static_cast<int>(slots_.size()) < options_.max_beam_size ||
         score > slots_.begin()->first.first) {
       slots_.emplace(item->first, std::move(item->second));
     }
@@ -574,7 +572,8 @@ class BeamParseReader : public OpKernel {
     OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
                                              file_path, &data));
     TaskContext task_context;
-    OP_REQUIRES(context, task_context.mutable_spec()->ParseASCII(data),
+    OP_REQUIRES(context,
+                TextFormat::ParseFromString(data, task_context.mutable_spec()),
                 InvalidArgument("Could not parse task context at ", file_path));
     OP_REQUIRES(
         context, options.batch_size > 0,
@@ -600,7 +599,7 @@ class BeamParseReader : public OpKernel {
   }
 
   void Compute(OpKernelContext *context) override {
-    MutexLock lock(&mu_);
+    MutexLock lock(mu_);
 
     // Write features.
     batch_state_->ResetBeams();
@@ -768,7 +767,7 @@ class BeamParserOutput : public OpKernel {
           gold_slot[beam_id] = slot;
         }
 
-        for (int step = 0; step < item.second->slot_history.size(); ++step) {
+        for (size_t step = 0; step < item.second->slot_history.size(); ++step) {
           const int step_beam_offset = batch_state->GetOffset(step, beam_id);
           const int slot_index = item.second->slot_history[step];
           const int action_index = item.second->action_history[step];
@@ -789,7 +788,7 @@ class BeamParserOutput : public OpKernel {
     OP_REQUIRES_OK(context, context->allocate_output(
                                 0, TensorShape({2, num_ix_elements}), &output));
     auto indices_and_path_ids = output->matrix<int32>();
-    for (int i = 0; i < indices.size(); ++i) {
+    for (size_t i = 0; i < indices.size(); ++i) {
       indices_and_path_ids(0, i) = indices[i];
       indices_and_path_ids(1, i) = path_ids[i];
     }
@@ -799,7 +798,7 @@ class BeamParserOutput : public OpKernel {
                    context->allocate_output(
                        1, TensorShape({2, num_path_elements}), &output));
     auto beam_and_slot_ids = output->matrix<int32>();
-    for (int i = 0; i < beam_ids.size(); ++i) {
+    for (size_t i = 0; i < beam_ids.size(); ++i) {
       beam_and_slot_ids(0, i) = beam_ids[i];
       beam_and_slot_ids(1, i) = slot_ids[i];
     }
@@ -860,7 +859,7 @@ class BeamEvalOutput : public OpKernel {
     OP_REQUIRES_OK(context, context->allocate_output(
                                 1, TensorShape({output_size}), &output));
     for (int i = 0; i < output_size; ++i) {
-      output->vec<string>()(i) = documents[i].OutputAsString();
+      output->vec<string>()(i) = documents[i].SerializeAsString();
     }
   }
 

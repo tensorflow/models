@@ -1,18 +1,16 @@
 #include "neurosis/sentence_features.h"
 
+#include <gmock/gmock.h>
 #include <string>
 #include <vector>
 
 #include "neurosis/utils.h"
-#include "neurosis/net/proto2/public/repeated_field.h"
 #include "neurosis/feature_extractor.h"
 #include "neurosis/populate_test_inputs.h"
-#include "neurosis/sentence.proto.h"
-#include "task_context.h"
-#include "task_spec.pb.h"
+#include "neurosis/sentence.pb.h"
+#include "neurosis/task_context.h"
+#include "neurosis/task_spec.pb.h"
 #include "neurosis/workspace.h"
-#include "testing/base/public/gmock.h"
-#include "testing/base/public/gunit.h"
 
 using testing::UnorderedElementsAreArray;
 
@@ -28,7 +26,7 @@ class SentenceFeaturesTest : public ::testing::Test {
 
   static Sentence ParseASCII(const string &prototxt) {
     Sentence document;
-    CHECK(document.ParseASCII(prototxt));
+    CHECK(TextFormat::ParseFromString(prototxt, &document));
     return document;
   }
 

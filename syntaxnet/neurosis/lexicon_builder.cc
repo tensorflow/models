@@ -3,11 +3,11 @@
 
 #include "neurosis/utils.h"
 #include "neurosis/affix.h"
-#include "neurosis/dictionary.proto.h"
+#include "neurosis/dictionary.pb.h"
 #include "neurosis/feature_extractor.h"
 #include "neurosis/parser_state_context.h"
-#include "neurosis/sentence.proto.h"
-#include "term_frequency_map.h"
+#include "neurosis/sentence.pb.h"
+#include "neurosis/term_frequency_map.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
@@ -47,7 +47,8 @@ class LexiconBuilder : public OpKernel {
     OP_REQUIRES_OK(context, context->GetAttr("task_context", &file_path));
     OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
                                              file_path, &data));
-    OP_REQUIRES(context, task_context_.mutable_spec()->ParseASCII(data),
+    OP_REQUIRES(context,
+                TextFormat::ParseFromString(data, task_context_.mutable_spec()),
                 InvalidArgument("Could not parse task context at ", file_path));
   }
 
@@ -188,7 +189,8 @@ class FeatureSize : public OpKernel {
     OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
                                              task_context_path, &data));
     OP_REQUIRES(
-        context, task_context_.mutable_spec()->ParseASCII(data),
+        context,
+        TextFormat::ParseFromString(data, task_context_.mutable_spec()),
         InvalidArgument("Could not parse task context at ", task_context_path));
     string label_map_path =
         TaskContext::InputFile(*task_context_.GetInput("label-map"));
