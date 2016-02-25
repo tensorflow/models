@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_UTILS_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_UTILS_H_
+#ifndef NEUROSIS_UTILS_H_
+#define NEUROSIS_UTILS_H_
 
 #include <functional>
 #include <string>
@@ -170,4 +170,4 @@ void NormalizeDigits(string *form);
 }  // namespace utils
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_UTILS_H_
+#endif  // NEUROSIS_UTILS_H_

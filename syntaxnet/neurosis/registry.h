@@ -50,8 +50,8 @@ limitations under the License.
 //   Function *f = Function::Lookup("cos");
 //   double result = f->Evaluate(arg);
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_REGISTRY_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_REGISTRY_H_
+#ifndef NEUROSIS_REGISTRY_H_
+#define NEUROSIS_REGISTRY_H_
 
 #include <string.h>
 #include <string>
@@ -240,4 +240,4 @@ class RegisterableInstance {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_REGISTRY_H_
+#endif  // NEUROSIS_REGISTRY_H_

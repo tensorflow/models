@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_EMBEDDING_FEATURE_EXTRACTOR_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_EMBEDDING_FEATURE_EXTRACTOR_H_
+#ifndef NEUROSIS_EMBEDDING_FEATURE_EXTRACTOR_H_
+#define NEUROSIS_EMBEDDING_FEATURE_EXTRACTOR_H_
 
 #include <functional>
 #include <memory>
@@ -206,4 +206,4 @@ class EmbeddingFeatureExtractor : public GenericEmbeddingFeatureExtractor {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_EMBEDDING_FEATURE_EXTRACTOR_H_
+#endif  // NEUROSIS_EMBEDDING_FEATURE_EXTRACTOR_H_

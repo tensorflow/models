@@ -15,8 +15,8 @@ limitations under the License.
 
 // An interface for document formats.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_DOCUMENT_FORMAT_H__
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_DOCUMENT_FORMAT_H__
+#ifndef NEUROSIS_DOCUMENT_FORMAT_H__
+#define NEUROSIS_DOCUMENT_FORMAT_H__
 
 #include <string>
 #include <vector>
@@ -57,4 +57,4 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_DOCUMENT_FORMAT_H__
+#endif  // NEUROSIS_DOCUMENT_FORMAT_H__

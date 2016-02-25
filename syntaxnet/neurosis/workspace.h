@@ -17,8 +17,8 @@ limitations under the License.
 // specifically, the registry machinery is thread-safe, as long as each thread
 // performs feature extraction on a different Sentence object.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_WORKSPACE_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_WORKSPACE_H_
+#ifndef NEUROSIS_WORKSPACE_H_
+#define NEUROSIS_WORKSPACE_H_
 
 #include <string>
 #include <typeindex>
@@ -212,4 +212,4 @@ class VectorVectorIntWorkspace : public Workspace {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_WORKSPACE_H_
+#endif  // NEUROSIS_WORKSPACE_H_

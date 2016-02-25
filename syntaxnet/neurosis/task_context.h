@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_TASK_CONTEXT_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_TASK_CONTEXT_H_
+#ifndef NEUROSIS_TASK_CONTEXT_H_
+#define NEUROSIS_TASK_CONTEXT_H_
 
 #include <string>
 #include <vector>
@@ -77,4 +77,4 @@ class TaskContext {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_TASK_CONTEXT_H_
+#endif  // NEUROSIS_TASK_CONTEXT_H_
