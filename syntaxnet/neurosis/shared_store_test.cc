@@ -202,8 +202,6 @@ TEST_F(SharedStoreTest, FailedClosureGet) {
   EXPECT_EQ(1, CountCalls::constructor_calls);
 }
 
-// Death test case names should end with 'DeathTest'.  See:
-//   http://wiki.corp.google.com/twiki/bin/view/Main/GUnitAdvanced#Death_Tests
 typedef SharedStoreTest SharedStoreDeathTest;
 
 TEST_F(SharedStoreDeathTest, ClosureGetOrDie) {

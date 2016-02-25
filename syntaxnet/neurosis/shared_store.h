@@ -203,8 +203,6 @@ class SharedStoreUtils {
   //
   // CreateDefaultName(1) == CreateDefaultName(1ULL)
   //
-  // TODO(terrykoo): Continue improving the stringification as required by
-  // actual usage.
   template <class First, class... Rest>
   static string CreateDefaultName(First &&first,
                                   Rest &&... rest) {  // NOLINT(build/c++11)
