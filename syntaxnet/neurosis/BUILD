@@ -84,8 +84,8 @@ cc_library(
     hdrs = ["base.h"],
     visibility = ["//visibility:public"],
     deps = [
+        "@tf//tensorflow/core:framework",
         "@tf//tensorflow/core:lib",
-        "@tf//tensorflow/core:tensorflow",
         "@tf//third_party/eigen3",
     ],
 )
