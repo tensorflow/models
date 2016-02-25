@@ -23,7 +23,7 @@
 
 #include <string>
 
-#include "util/utf8/public/unicodetext.h"
+#include "util/utf8/unicodetext.h"
 
 int main(int argc, char** argv) {
   if (argc > 1) {
