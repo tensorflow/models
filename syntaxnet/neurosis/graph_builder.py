@@ -1,6 +1,7 @@
 """Build parser models."""
 
 import tensorflow as tf
+import neurosis.load_parser_ops
 
 from tensorflow.python.ops import control_flow_ops as cf
 from tensorflow.python.ops import state_ops

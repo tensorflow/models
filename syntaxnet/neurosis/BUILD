@@ -24,11 +24,6 @@ load(
     "tf_gen_op_wrapper_py",
 )
 
-# config_setting(
-#     name = "use_google_runtime",
-#     values = {"define": "tf_runtime=google"},
-# )
-
 # proto libraries
 
 tf_proto_library(
@@ -401,13 +396,28 @@ cc_library(
     srcs = ["ops/parser_ops.cc"],
     deps = [
         ":base",
+    ],
+    alwayslink = 1,
+)
+
+cc_binary(
+    name = "parser_ops.so",
+    linkopts = select({
+        "//conditions:default": [
+            "-Wl,-Bsymbolic",
+            "-lm",
+        ],
+        "@tf//tensorflow:darwin": [],
+    }),
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [
         ":document_filters",
         ":lexicon_builder",
-        ":parser_ops_op_lib",
+        ":parser_ops_cc",
         ":reader_ops",
         ":unpack_sparse_features",
     ],
-    alwayslink = 1,
 )
 
 # cc tests
@@ -499,25 +509,22 @@ tf_gen_op_libs(
 
 tf_gen_op_wrapper_py(
     name = "parser_ops",
-    deps = [
-        ":document_filters",
-        ":lexicon_builder",
-        ":parser_ops_op_lib",
-        ":reader_ops",
-        ":unpack_sparse_features",
-    ],
+    deps = [":parser_ops_op_lib"],
+)
+
+py_library(
+    name = "load_parser_ops_py",
+    srcs = ["load_parser_ops.py"],
+    data = [":parser_ops.so"],
 )
 
 py_library(
     name = "graph_builder",
     srcs = ["graph_builder.py"],
     deps = [
+        ":load_parser_ops_py",
         ":parser_ops",
     ],
-    # + select({
-    #     ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
-    #     "//conditions:default": ["//third_party/py/tensorflow"],
-    # }),
 )
 
 py_library(
@@ -525,12 +532,7 @@ py_library(
     srcs = ["structured_graph_builder.py"],
     deps = [
         ":graph_builder",
-        ":parser_ops",
     ],
-    # + select({
-    #     ":use_google_runtime": ["//third_party/py/tensorflow:tensorflow_google"],
-    #     "//conditions:default": ["//third_party/py/tensorflow"],
-    # }),
 )
 
 py_binary(
@@ -538,17 +540,9 @@ py_binary(
     srcs = ["parser_trainer.py"],
     deps = [
         ":graph_builder",
-        ":parser_ops",
         ":structured_graph_builder",
         ":task_spec_py_pb2",
-        #"//file/colossus/cns",
     ],
-    # + select({
-    #     "//third_party/gpus/cuda:cuda_crosstool_condition": [
-    #         "//learning/brain/public:tensorflow_gpu_deps",
-    #     ],
-    #     "//conditions:default": [],
-    # }),
 )
 
 py_binary(
@@ -556,10 +550,8 @@ py_binary(
     srcs = ["parser_eval.py"],
     deps = [
         ":graph_builder",
-        ":parser_ops",
         ":sentence_proto_py_pb2",
         ":structured_graph_builder",
-        #"//file/colossus/cns",
     ],
 )
 
@@ -575,7 +567,6 @@ py_test(
         "@tf//tensorflow:tensorflow_py",
         ":dictionary_proto_py_pb2",
         ":graph_builder",
-        ":parser_ops",
         ":sparse_py_pb2",
     ],
 )
@@ -588,7 +579,6 @@ py_test(
     tags = ["notsan"],
     deps = [
         "@tf//tensorflow:tensorflow_py",
-        ":parser_ops",
         ":structured_graph_builder",
     ],
 )
@@ -597,12 +587,13 @@ py_test(
     name = "graph_builder_test",
     size = "medium",
     srcs = ["graph_builder_test.py"],
-    data = [":testdata"],
+    data = [
+        ":testdata",
+    ],
     tags = ["notsan"],
     deps = [
         "@tf//tensorflow:tensorflow_py",
         ":graph_builder",
-        ":parser_ops",
         ":sparse_py_pb2",
     ],
 )
