@@ -5,7 +5,7 @@
 #   git clone --recursive rpc://team/saft/neurosis
 #   cd neurosis
 #   tensorflow/configure
-#   bazel test neurosis/...
+#   bazel test --copt -funsigned-char neurosis/...
 #
 # Requires bazel and swig to be installed.
 
