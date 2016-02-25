@@ -58,8 +58,8 @@ limitations under the License.
 //
 // See also creators.Add() for more convenience functions.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_POPULATE_TEST_INPUTS_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_POPULATE_TEST_INPUTS_H_
+#ifndef NEUROSIS_POPULATE_TEST_INPUTS_H_
+#define NEUROSIS_POPULATE_TEST_INPUTS_H_
 
 #include <functional>
 #include <string>
@@ -150,4 +150,4 @@ class PopulateTestInputs {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_POPULATE_TEST_INPUTS_H_
+#endif  // NEUROSIS_POPULATE_TEST_INPUTS_H_

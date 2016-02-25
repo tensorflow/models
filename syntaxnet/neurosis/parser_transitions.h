@@ -15,8 +15,8 @@ limitations under the License.
 
 // Transition system for the transition-based dependency parser.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PARSER_TRANSITIONS_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PARSER_TRANSITIONS_H_
+#ifndef NEUROSIS_PARSER_TRANSITIONS_H_
+#define NEUROSIS_PARSER_TRANSITIONS_H_
 
 #include <string>
 #include <vector>
@@ -205,4 +205,4 @@ class ParserTransitionSystem
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PARSER_TRANSITIONS_H_
+#endif  // NEUROSIS_PARSER_TRANSITIONS_H_

@@ -15,8 +15,8 @@ limitations under the License.
 
 // Common feature types for parser components.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FEATURE_TYPES_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FEATURE_TYPES_H_
+#ifndef NEUROSIS_FEATURE_TYPES_H_
+#define NEUROSIS_FEATURE_TYPES_H_
 
 #include <algorithm>
 #include <map>
@@ -174,4 +174,4 @@ class EnumFeatureType : public FeatureType {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FEATURE_TYPES_H_
+#endif  // NEUROSIS_FEATURE_TYPES_H_

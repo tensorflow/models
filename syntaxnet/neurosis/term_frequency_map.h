@@ -15,8 +15,8 @@ limitations under the License.
 
 // A mapping from strings to frequencies with save and load functionality.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_TERM_FREQUENCY_MAP_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_TERM_FREQUENCY_MAP_H_
+#ifndef NEUROSIS_TERM_FREQUENCY_MAP_H_
+#define NEUROSIS_TERM_FREQUENCY_MAP_H_
 
 #include <stddef.h>
 #include <memory>
@@ -92,4 +92,4 @@ class TermFrequencyMap {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_TERM_FREQUENCY_MAP_H_
+#endif  // NEUROSIS_TERM_FREQUENCY_MAP_H_

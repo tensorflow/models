@@ -33,8 +33,8 @@ limitations under the License.
 // A feature function is invoked with a focus. Nested feature function can be
 // invoked with another focus determined by the parent feature function.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FEATURE_EXTRACTOR_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FEATURE_EXTRACTOR_H_
+#ifndef NEUROSIS_FEATURE_EXTRACTOR_H_
+#define NEUROSIS_FEATURE_EXTRACTOR_H_
 
 #include <memory>
 #include <string>
@@ -622,4 +622,4 @@ class FeatureExtractor : public GenericFeatureExtractor {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FEATURE_EXTRACTOR_H_
+#endif  // NEUROSIS_FEATURE_EXTRACTOR_H_

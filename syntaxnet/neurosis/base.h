@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_BASE_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_BASE_H_
+#ifndef NEUROSIS_BASE_H_
+#define NEUROSIS_BASE_H_
 
 #include <functional>
 #include <string>
@@ -45,4 +45,4 @@ typedef tensorflow::mutex_lock MutexLock;
 typedef tensorflow::mutex Mutex;
 typedef signed int char32;
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_BASE_H_
+#endif  // NEUROSIS_BASE_H_

@@ -37,8 +37,8 @@ limitations under the License.
 // <parameter name> ::= NAME
 // <parameter value> ::= NUMBER | STRING | NAME
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FML_PARSER_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FML_PARSER_H_
+#ifndef NEUROSIS_FML_PARSER_H_
+#define NEUROSIS_FML_PARSER_H_
 
 #include <string>
 
@@ -110,4 +110,4 @@ class FMLParser {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_FML_PARSER_H_
+#endif  // NEUROSIS_FML_PARSER_H_

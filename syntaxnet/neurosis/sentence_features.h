@@ -17,8 +17,8 @@ limitations under the License.
 // in this header so they may be re-used via composition into other more
 // advanced feature classes.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_SENTENCE_FEATURES_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_SENTENCE_FEATURES_H_
+#ifndef NEUROSIS_SENTENCE_FEATURES_H_
+#define NEUROSIS_SENTENCE_FEATURES_H_
 
 #include "neurosis/affix.h"
 #include "neurosis/feature_extractor.h"
@@ -317,4 +317,4 @@ typedef FeatureExtractor<Sentence, int> SentenceExtractor;
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_SENTENCE_FEATURES_H_
+#endif  // NEUROSIS_SENTENCE_FEATURES_H_

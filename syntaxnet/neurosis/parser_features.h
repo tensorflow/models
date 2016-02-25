@@ -15,8 +15,8 @@ limitations under the License.
 
 // Sentence-based features for the transition parser.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PARSER_FEATURES_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PARSER_FEATURES_H_
+#ifndef NEUROSIS_PARSER_FEATURES_H_
+#define NEUROSIS_PARSER_FEATURES_H_
 
 #include <string>
 
@@ -147,4 +147,4 @@ class BasicParserSentenceFeatureFunction :
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PARSER_FEATURES_H_
+#endif  // NEUROSIS_PARSER_FEATURES_H_

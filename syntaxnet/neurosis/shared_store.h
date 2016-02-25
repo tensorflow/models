@@ -15,8 +15,8 @@ limitations under the License.
 
 // Utility for creating read-only objects once and sharing them across threads.
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_SHARED_STORE_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_SHARED_STORE_H_
+#ifndef NEUROSIS_SHARED_STORE_H_
+#define NEUROSIS_SHARED_STORE_H_
 
 #include <functional>
 #include <string>
@@ -231,4 +231,4 @@ class SharedStoreUtils {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_SHARED_STORE_H_
+#endif  // NEUROSIS_SHARED_STORE_H_

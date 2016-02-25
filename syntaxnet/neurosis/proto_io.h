@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PROTO_IO_H_
-#define NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PROTO_IO_H_
+#ifndef NEUROSIS_PROTO_IO_H_
+#define NEUROSIS_PROTO_IO_H_
 
 #include <memory>
 #include <string>
@@ -171,4 +171,4 @@ class TextWriter {
 
 }  // namespace neurosis
 
-#endif  // NLP_SAFT_COMPONENTS_DEPENDENCIES_OPENSOURCE_PROTO_IO_H_
+#endif  // NEUROSIS_PROTO_IO_H_
