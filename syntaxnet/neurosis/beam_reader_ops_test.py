@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for beam-reader-ops."""
+"""Tests for beam_reader_ops."""
 
 # pylint: disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member,g-importing-member
 import os.path
