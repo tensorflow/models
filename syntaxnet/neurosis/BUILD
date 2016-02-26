@@ -317,9 +317,9 @@ cc_library(
 )
 
 cc_library(
-    name = "parser_state_context",
-    srcs = ["parser_state_context.cc"],
-    hdrs = ["parser_state_context.h"],
+    name = "sentence_batch",
+    srcs = ["sentence_batch.cc"],
+    hdrs = ["sentence_batch.h"],
     deps = [
         ":embedding_feature_extractor",
         ":feature_extractor",
@@ -341,8 +341,8 @@ cc_library(
     ],
     deps = [
         ":parser_features",
-        ":parser_state_context",
         ":parser_transitions",
+        ":sentence_batch",
         ":sentence_proto",
         ":task_context",
         ":task_spec_proto",
@@ -357,8 +357,8 @@ cc_library(
         ":conll_syntax_format",
         ":document_format",
         ":parser_features",
-        ":parser_state_context",
         ":parser_transitions",
+        ":sentence_batch",
         ":sentence_proto",
         ":task_context",
         ":task_spec_proto",
@@ -373,8 +373,8 @@ cc_library(
         ":conll_syntax_format",
         ":document_format",
         ":parser_features",
-        ":parser_state_context",
         ":parser_transitions",
+        ":sentence_batch",
         ":sentence_proto",
         ":task_context",
         ":task_spec_proto",

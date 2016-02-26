@@ -32,19 +32,6 @@ limitations under the License.
 
 namespace neurosis {
 
-class ParserEmbeddingFeatureExtractor
-    : public EmbeddingFeatureExtractor<ParserFeatureExtractor, ParserState> {
- public:
-  explicit ParserEmbeddingFeatureExtractor(const string &arg_prefix)
-      : arg_prefix_(arg_prefix) {}
-
- private:
-  const string ArgPrefix() const override { return arg_prefix_; }
-
-  // Prefix for context parameters.
-  string arg_prefix_;
-};
-
 // Helper class to manage generating batches of preprocessed ParserState objects
 // by reading in multiple sentences in parallel.
 class SentenceBatch {
