@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef NEUROSIS_PARSER_STATE_CONTEXT_H_
-#define NEUROSIS_PARSER_STATE_CONTEXT_H_
+#ifndef NEUROSIS_SENTENCE_BATCH_H_
+#define NEUROSIS_SENTENCE_BATCH_H_
 
 #include <memory>
 #include <string>
@@ -75,4 +75,4 @@ class SentenceBatch {
 
 }  // namespace neurosis
 
-#endif  // NEUROSIS_PARSER_STATE_CONTEXT_H_
+#endif  // NEUROSIS_SENTENCE_BATCH_H_
