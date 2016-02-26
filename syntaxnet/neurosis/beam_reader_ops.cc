@@ -23,8 +23,8 @@ limitations under the License.
 
 #include "neurosis/base.h"
 #include "neurosis/parser_state.h"
-#include "neurosis/parser_state_context.h"
 #include "neurosis/parser_transitions.h"
+#include "neurosis/sentence_batch.h"
 #include "neurosis/sentence.pb.h"
 #include "neurosis/shared_store.h"
 #include "neurosis/sparse.pb.h"

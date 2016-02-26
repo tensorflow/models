@@ -204,6 +204,19 @@ class EmbeddingFeatureExtractor : public GenericEmbeddingFeatureExtractor {
   vector<EXTRACTOR> feature_extractors_;
 };
 
+class ParserEmbeddingFeatureExtractor
+    : public EmbeddingFeatureExtractor<ParserFeatureExtractor, ParserState> {
+ public:
+  explicit ParserEmbeddingFeatureExtractor(const string &arg_prefix)
+      : arg_prefix_(arg_prefix) {}
+
+ private:
+  const string ArgPrefix() const override { return arg_prefix_; }
+
+  // Prefix for context parameters.
+  string arg_prefix_;
+};
+
 }  // namespace neurosis
 
 #endif  // NEUROSIS_EMBEDDING_FEATURE_EXTRACTOR_H_

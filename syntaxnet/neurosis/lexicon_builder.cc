@@ -20,7 +20,7 @@ limitations under the License.
 #include "neurosis/affix.h"
 #include "neurosis/dictionary.pb.h"
 #include "neurosis/feature_extractor.h"
-#include "neurosis/parser_state_context.h"
+#include "neurosis/sentence_batch.h"
 #include "neurosis/sentence.pb.h"
 #include "neurosis/term_frequency_map.h"
 #include "tensorflow/core/framework/op_kernel.h"
