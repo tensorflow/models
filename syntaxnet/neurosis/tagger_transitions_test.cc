@@ -100,8 +100,7 @@ TEST_F(TaggerTransitionTest, SingleSentenceDocumentTest) {
   string document_text;
   Sentence document;
   TF_CHECK_OK(ReadFileToString(tensorflow::Env::Default(),
-                               utils::JoinPath({tensorflow::testing::SrcDir(),
-                                       "neurosis/testdata/document"}),
+                               "neurosis/testdata/document",
                                &document_text));
   LOG(INFO) << "see doc\n:" << document_text;
   CHECK(TextFormat::ParseFromString(document_text, &document));
