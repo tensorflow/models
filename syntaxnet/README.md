@@ -9,10 +9,10 @@ source.  You'll need to install:
 
 * bazel, following the instructions [here](http://bazel.io/docs/install.html),
 * swig:
-  * `apt-get install swig'`on Ubuntu,
+    * `apt-get install swig'`on Ubuntu,
 * a version of protocol buffers supported by TensorFlow:
-  * check your protobuf version with `pip freeze | grep protobuf1`,
-  * upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
+    * check your protobuf version with `pip freeze | grep protobuf1`,
+    * upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
 
 Once you completed the above steps, you can build and test Neurosis with the
 following commands:
