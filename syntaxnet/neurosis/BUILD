@@ -1,17 +1,5 @@
 # Description:
 # A syntactic parser and part-of-speech tagger in TensorFlow.
-#
-# To build:
-#   git clone --recursive rpc://team/saft/neurosis
-#   cd neurosis/tensorflow
-#   ./configure
-#   cd ..
-#   bazel test neurosis/...
-#
-# Requires bazel and swig to be installed.
-# You should also have protobuf version 3.0.0b2 installed.
-# You can check your installed version with: pip freeze | grep protobuf
-# and install the right version with: pip install -U protobuf==3.0.0b2
 
 package(
     default_visibility = ["//visibility:private"],
