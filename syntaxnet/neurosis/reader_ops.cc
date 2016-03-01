@@ -464,10 +464,9 @@ class WordEmbeddingInitializer : public OpKernel {
                          &embedding_matrix));
         embedding_matrix->matrix<float>()
             .setRandom<Eigen::internal::NormalRandomGenerator<float>>();
-        // TODO(chrisalberti): why won't this compile??
-        //embedding_matrix->matrix<float>() =
-        //    embedding_matrix->matrix<float>().scale<float>(
-        //        embedding_init_ / sqrt(embedding_size));
+        embedding_matrix->matrix<float>() =
+            embedding_matrix->matrix<float>() * static_cast<float>(
+                embedding_init_ / sqrt(embedding_size));
       }
       if (vocab.find(embedding.token()) != vocab.end()) {
         SetNormalizedRow(embedding.vector(), vocab[embedding.token()],
