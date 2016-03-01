@@ -3,11 +3,15 @@
 #
 # To build:
 #   git clone --recursive rpc://team/saft/neurosis
-#   cd neurosis
-#   tensorflow/configure
-#   bazel test --copt -funsigned-char neurosis/...
+#   cd neurosis/tensorflow
+#   ./configure
+#   cd ..
+#   bazel test neurosis/...
 #
 # Requires bazel and swig to be installed.
+# You should also have protobuf version 3.0.0b2 installed.
+# You can check your installed version with: pip freeze | grep protobuf
+# and install the right version with: pip install -U protobuf==3.0.0b2
 
 package(
     default_visibility = ["//visibility:private"],
@@ -522,6 +526,8 @@ py_library(
     name = "graph_builder",
     srcs = ["graph_builder.py"],
     deps = [
+        "@tf//tensorflow:tensorflow_py",
+        "@tf//tensorflow/core:protos_all_py",
         ":load_parser_ops_py",
         ":parser_ops",
     ],
@@ -564,7 +570,6 @@ py_test(
     data = [":testdata"],
     tags = ["notsan"],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":dictionary_proto_py_pb2",
         ":graph_builder",
         ":sparse_py_pb2",
@@ -578,7 +583,6 @@ py_test(
     data = [":testdata"],
     tags = ["notsan"],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":structured_graph_builder",
     ],
 )
@@ -592,7 +596,6 @@ py_test(
     ],
     tags = ["notsan"],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":graph_builder",
         ":sparse_py_pb2",
     ],
