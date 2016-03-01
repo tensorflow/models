@@ -31,7 +31,7 @@ machine power) and the command should complete reporting all tests passed.
 ## Running a Neurosis model
 
 Once you successfully built Neurosis, you can start parsing text (in conll
-format) right away with one of our bundled models, located in the packed under
+format) right away with one of our bundled models, located under
 `neurosis/models`.
 
 Edit the text file `neurosis/models/512x512/context` so that the file pattern
