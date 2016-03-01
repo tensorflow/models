@@ -16,9 +16,8 @@
 """A program to annotate a conll file with a tensorflow neural net parser.
 
 Sample usage:
-blaze-bin/nlp/saft/components/dependencies/opensource/parser_eval \
-  --batch_size=32 \
-  --task_context=/cns/.../context \
+bazel-bin/nlp/saft/components/dependencies/opensource/parser_eval \
+  --task_context=context \
   --input=projectivized-training-corpus \
   --output=tagged-training-corpus \
   --arg_prefix=brain_pos \
@@ -30,7 +29,6 @@ blaze-bin/nlp/saft/components/dependencies/opensource/parser_eval \
 import os
 import os.path
 import time
-import google3
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
@@ -55,8 +53,8 @@ flags.DEFINE_string('input', None,
                     'Name of the context input to read data from.')
 flags.DEFINE_string('output', None,
                     'Name of the context input to write data to.')
-flags.DEFINE_list('hidden_layer_sizes', [200, 200],
-                  'Comma separated list of hidden layer sizes.')
+flags.DEFINE_string('hidden_layer_sizes', '200,200',
+                    'Comma separated list of hidden layer sizes.')
 flags.DEFINE_integer('batch_size', 32,
                      'Number of sentences to process in parallel.')
 flags.DEFINE_integer('beam_size', 10, 'Number of slots for beam parsing.')
@@ -81,7 +79,7 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
     embedding_dims: embedding dimension for each feature group
   """
   t = time.time()
-  hidden_layer_sizes = map(int, FLAGS.hidden_layer_sizes)
+  hidden_layer_sizes = map(int, FLAGS.hidden_layer_sizes.split(','))
   logging.info('Building training network with parameters: feature_sizes: %s '
                'domain_sizes: %s', feature_sizes, domain_sizes)
   if FLAGS.graph_builder == 'greedy':
