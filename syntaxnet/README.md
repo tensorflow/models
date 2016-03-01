@@ -1,8 +1,57 @@
-# A syntactic parser and part-of-speech tagger in TensorFlow.
+# Neurosis: Neural Models of Syntax.
 
 [TOC]
 
-## Internal Usage
+## Installation
+
+Running and training Neurosis models requires building this package from
+source.  You'll need to install:
+
+* bazel, following the instructions [here](http://bazel.io/docs/install.html),
+* swig:
+  * `apt-get install swig'`on Ubuntu,
+* a version of protocol buffers supported by TensorFlow:
+  * check your protobuf version with `pip freeze | grep protobuf1`,
+  * upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
+
+Once you completed the above steps, you can build and test Neurosis with the
+following commands:
+
+```shell
+  git clone --recursive rpc://team/saft/neurosis
+  cd neurosis/tensorflow
+  ./configure
+  cd ..
+  bazel test neurosis/... util/utf8/...
+```
+
+Bazel will work for approximately 5 to 10 minutes (depending on your
+machine power) and the command should complete reporting all tests passed.
+
+## Running a Neurosis model
+
+Once you successfully built Neurosis, you can start parsing text (in conll
+format) right away with one of our bundled models, located in the packed under
+`neurosis/models`.
+
+Edit the text file `neurosis/models/512x512/context` so that the file pattern
+for the input `dev-corpus` points to your input conll data, and the one for
+`parsed-dev-corpus` points to where you want the script to output parsed
+data. The model can then be used for parsing by running:
+
+```shell
+bazel-bin/neurosis/parser_eval \
+  --task_context neurosis/models/512x512/context \
+  --hidden_layer_sizes=512,512 \
+  --input=dev-corpus \
+  --output=parsed-dev-corpus \
+  --arg_prefix=brain_parser \
+  --graph_builder=structured \
+  --model_path neurosis/models/512x512/model \
+  --logtostderr
+```
+
+## Internal Google Usage
 
 This is a set of instructions to train a POS tagger and a parser at Google using
 blaze and borg. The necessary tools can be compiled with:
