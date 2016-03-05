@@ -214,8 +214,7 @@ done
 
 ## Contact
 
-To ask questions or report issues please contact:
-*  neurosis-oss@google.com
+To ask questions or report issues please contact neurosis-oss@google.com.
 
 ## Credits
 
