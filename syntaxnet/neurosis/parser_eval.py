@@ -138,6 +138,7 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
 
 
 def main(unused_argv):
+  logging.set_verbosity(logging.INFO)
   with tf.Session() as sess:
     feature_sizes, domain_sizes, embedding_dims, num_actions = sess.run(
         gen_parser_ops.feature_size(task_context=FLAGS.task_context,
