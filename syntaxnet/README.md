@@ -1,8 +1,8 @@
 # Neurosis: Neural Models of Syntax.
 
-[TOC]
-
 A TensorFlow implementation of the models described in [[http://arxiv.org/?]].
+
+[TOC]
 
 ## Installation
 
