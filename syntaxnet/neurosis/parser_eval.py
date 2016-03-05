@@ -13,17 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""A program to annotate a conll file with a tensorflow neural net parser.
-
-Sample usage:
-bazel-bin/nlp/saft/components/dependencies/opensource/parser_eval \
-  --task_context=context \
-  --input=projectivized-training-corpus \
-  --output=tagged-training-corpus \
-  --arg_prefix=brain_pos \
-  --nocfs_log_all_errors \
-  --logtostderr
-"""
+"""A program to annotate a conll file with a tensorflow neural net parser."""
 
 # pylint: disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member,g-importing-member
 import os
