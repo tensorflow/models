@@ -14,7 +14,7 @@ input {
   name: "training-corpus"
   multi_file: true
   Part {
-    file_pattern: "neurosis/testdata/wsj-train-100"
+    file_pattern: "neurosis/testdata/mini-training-set"
     file_format: "recordio"
     record_format: "document"
   }
@@ -23,7 +23,7 @@ input {
   name: "tuning-corpus"
   multi_file: true
   Part {
-    file_pattern: "neurosis/testdata/wsj-train-100"
+    file_pattern: "neurosis/testdata/mini-training-set"
     file_format: "recordio"
     record_format: "document"
   }

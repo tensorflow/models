@@ -419,8 +419,7 @@ filegroup(
     srcs = [
         "testdata/context.pbtxt",
         "testdata/document",
-        "testdata/document2",
-        "testdata/wsj-train-100",
+        "testdata/mini-training-set",
     ],
 )
 
