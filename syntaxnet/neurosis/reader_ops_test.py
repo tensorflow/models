@@ -174,9 +174,9 @@ class ParsingReaderOpsTest(test_util.TensorFlowTestCase):
     # Provide embeddings for the first three words in the word map.
     records_path = os.path.join(FLAGS.test_tmpdir, 'sstable-00000-of-00001')
     writer = tf.python_io.TFRecordWriter(records_path)
-    writer.write(_TokenEmbedding('the', [1, 2]))
+    writer.write(_TokenEmbedding('.', [1, 2]))
     writer.write(_TokenEmbedding(',', [3, 4]))
-    writer.write(_TokenEmbedding('.', [5, 6]))
+    writer.write(_TokenEmbedding('the', [5, 6]))
     del writer
 
     with self.test_session():
