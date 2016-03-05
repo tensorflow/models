@@ -34,16 +34,12 @@ blaze-bin/nlp/saft/components/dependencies/opensource/parser_trainer \
 import os
 import os.path
 import time
-import google3
-try:
-  import tensorflow.google as tf
-except ImportError:
-  import tensorflow as tf
+import tensorflow as tf
 
 from tensorflow.python.platform import gfile
 from tensorflow.python.platform import logging
 
-from google3.net.proto2.python.public import text_format
+from google.protobuf import text_format
 
 from neurosis import graph_builder
 from neurosis import structured_graph_builder
@@ -70,8 +66,8 @@ flags.DEFINE_string('word_embeddings', None,
                     'loaded as the first embedding matrix.')
 flags.DEFINE_bool('compute_lexicon', False, '')
 flags.DEFINE_bool('projectivize_training_set', False, '')
-flags.DEFINE_list('hidden_layer_sizes', [200, 200],
-                  'Comma separated list of hidden layer sizes.')
+flags.DEFINE_string('hidden_layer_sizes', '200,200',
+                    'Comma separated list of hidden layer sizes.')
 flags.DEFINE_string('optimizer', 'momentum',
                     'Either "sgd", "momentum", or "adagrad".')
 flags.DEFINE_string('graph_builder', 'greedy',
@@ -93,8 +89,8 @@ flags.DEFINE_float('momentum', 0.9,
 flags.DEFINE_string('seed', '0', 'Initialization seed for TF variables.')
 flags.DEFINE_string('pretrained_params', None,
                     'Path to model from which to load params.')
-flags.DEFINE_list('pretrained_params_names', None,
-                  'List of names of tensors to load from pretrained model.')
+flags.DEFINE_string('pretrained_params_names', None,
+                    'List of names of tensors to load from pretrained model.')
 flags.DEFINE_float('averaging_decay', 0.9999,
                    'Decay for exponential moving average when computing'
                    'averaged parameters, set to 1 to do vanilla averaging.')
@@ -186,7 +182,7 @@ def Train(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
     embedding_dims: embedding dimension to use for each feature group.
   """
   t = time.time()
-  hidden_layer_sizes = map(int, FLAGS.hidden_layer_sizes)
+  hidden_layer_sizes = map(int, FLAGS.hidden_layer_sizes.split(','))
   logging.info('Building training network with parameters: feature_sizes: %s '
                'domain_sizes: %s', feature_sizes, domain_sizes)
 
@@ -250,7 +246,7 @@ def Train(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
     targets = []
     for node in sess.graph_def.node:
       if (node.name.startswith('save/Assign') and
-          node.input[0] in FLAGS.pretrained_params_names):
+          node.input[0] in FLAGS.pretrained_params_names.split(',')):
         logging.info('Loading %s with op %s', node.input[0], node.name)
         targets.append(node.name)
     sess.run(targets, feed_dict=feed_dict)
@@ -272,6 +268,7 @@ def Train(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
 
 
 def main(unused_argv):
+  logging.set_verbosity(logging.INFO)
   if not gfile.IsDirectory(OutputPath('')):
     gfile.MakeDirs(OutputPath(''))
 

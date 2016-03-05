@@ -38,7 +38,7 @@ input {
   name: 'training-corpus'
   multi_file: true
   Part {
-    file_pattern: '/cns/lg-d/home/chrisalberti/saft_opensource/data/en-wsj-std-train-stanford-3.3.0.conll'
+    file_pattern: 'training-corpus.conll'
     file_format: 'recordio'
     record_format: 'document'
   }
@@ -47,13 +47,13 @@ input {
   name: 'tuning-corpus'
   multi_file: true
   Part {
-    file_pattern: '/cns/lg-d/home/chrisalberti/saft_opensource/data/en-wsj-std-future-stanford-3.3.0.conll'
+    file_pattern: 'tuning-corpus.conll'
   }
 }
 input {
   name: 'dev-corpus'
   Part {
-    file_pattern: '/cns/lg-d/home/chrisalberti/saft_opensource/data/en-wsj-std-dev-stanford-3.3.0.conll'
+    file_pattern: 'testing-corpus.conll'
   }
 }
 input {

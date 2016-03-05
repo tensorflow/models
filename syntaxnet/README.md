@@ -9,7 +9,8 @@ source.  You'll need to install:
 
 * bazel, following the instructions [here](http://bazel.io/docs/install.html),
 * swig:
-    * `apt-get install swig'`on Ubuntu,
+    * `apt-get install swig` on Ubuntu,
+    * 
 * a version of protocol buffers supported by TensorFlow:
     * check your protobuf version with `pip freeze | grep protobuf1`,
     * upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
@@ -25,12 +26,11 @@ following commands:
   bazel test neurosis/... util/utf8/...
 ```
 
-Bazel will work for approximately 5 to 10 minutes (depending on your
-machine power) and the command should complete reporting all tests passed.
+Bazel should complete reporting all tests passed.
 
 ## Running a Neurosis model
 
-Once you successfully built Neurosis, you can start parsing text (in conll
+Once have you successfully built Neurosis, you can start parsing text (in conll
 format) right away with one of our bundled models, located under
 `neurosis/models`.
 
@@ -51,35 +51,45 @@ bazel-bin/neurosis/parser_eval \
   --logtostderr
 ```
 
-## Internal Google Usage
+## Training a POS Tagger and a Dependency Parser with Neurosis
 
-This is a set of instructions to train a POS tagger and a parser at Google using
-blaze and borg. The necessary tools can be compiled with:
-
-```shell
-blaze build -c opt \
-  nlp/saft/components/dependencies/opensource:parser_trainer.par \
-  nlp/saft/components/dependencies/opensource:parser_eval
-```
+This is a set of instructions to train a POS tagger and a dependency parser
+with Neurosis.
 
 ### POS Tagger
 
-A POS tagger can then be trained running:
+First edit `neurosis/context.pbtxt` so that the inputs `training-corpus`,
+`tuning-corpus`, and `dev-corpus` point to the location of your data.
+You can then train a part-of-speech tagger with:
 
 ```shell
-OUTPATH=/cns/lg-d/home/$USER/20160114_opensource/
-borgcfg nlp/saft/components/dependencies/opensource/train.borg \
-  reload neurosis-greedy \
-  --vars=arg_prefix=brain_pos,compute_lexicon=true,output_path=$OUTPATH
+bazel-bin/neurosis/parser_trainer \
+  --arg_prefix=brain_pos \
+  --batch_size=32 \
+  --compute_lexicon \
+  --decay_steps=3600 \
+  --graph_builder=greedy \
+  --hidden_layer_sizes=128 \
+  --learning_rate=0.08 \
+  --momentum=0.9 \
+  --optimizer=momentum \
+  --output_path=models \
+  --noprojectivize_training_set \
+  --task_context=neurosis/context.pbtxt \
+  --seed=0 \
+  --training_corpus=training-corpus \
+  --tuning_corpus=tuning-corpus \
+  --params=128-0.08-3600-0.9-0
 ```
 
-This command will start a borg job with multiple tasks, each training a POS
-tagger with different hyperparameters or initialization seeds. Periodically each
-task will also evaluate the current performance on a tuning set. An evaluation
-metric of about 97.3% should be achieved in about 15 minutes. This metric is POS
-tagging accuracy on the tuning set.
+For best results, you should repeat this command with at least 3 different
+seeds, and possibly with a few different values for `--learning_rate` and
+`--decay_steps`. Good values for `--learning_rate` are usually close to 0.1, and
+you usually want `--decay_steps` to correspond to about one tenth of your
+corpus. The `--params` flag is only a human readable identifier for the model
+being trained, used to construct the full output path.
 
-The `arg_prefix` var controls which parameters should be read from the task
+The `--arg_prefix` flag controls which parameters should be read from the task
 context file `context.pbtxt`. In this case `arg_prefix` is set to `brain_pos`,
 so the paramters being used in this training run are
 `brain_pos_transition_system`, `brain_pos_embedding_dims`, `brain_pos_features`
@@ -87,41 +97,31 @@ and, `brain_pos_embedding_names`. To train the dependency parser later
 `arg_prefix` will be set to `brain_parser`.
 
 The model trained by a task can be used to process data with `parser_eval.py`.
-For example the model trained with hyperparamters `200x200-0.08-4400-0.9-4` can
+For example the model `128-0.08-3600-0.9-0` trained above can
 be run over training, tuning, and dev set with the following command:
 
 ```shell
-PARAMS=200x200-0.08-4000-0.9-2
+PARAMS=128-0.08-3600-0.9-0
 for SET in training tuning dev; do
-  blaze-bin/nlp/saft/components/dependencies/opensource/parser_eval \
-    --task_context=$OUTPATH/brain_pos/greedy/$PARAMS/context \
-    --hidden_layer_sizes=200,200 \
+  bazel-bin/neurosis/parser_eval \
+    --task_context=models/brain_pos/greedy/$PARAMS/context \
+    --hidden_layer_sizes=128 \
     --input=$SET-corpus \
     --output=tagged-$SET-corpus \
-    --arg_prefix=brain_pos \
-    --logtostderr \
+    --arg_prefix=brain_pos \ca
     --graph_builder=greedy \
-    --model_path=$OUTPATH/brain_pos/greedy/$PARAMS/model \
-    --nocfs_log_all_errors
+    --model_path=models/brain_pos/greedy/$PARAMS/model
 done
 ```
 
 The above will write tagged versions of the training, tuning, and dev set to the
-directory `$OUTPATH/brain_pos/greedy/$PARAMS/`. `parser_eval.py` also logs POS
+directory `models/brain_pos/greedy/$PARAMS/`. `parser_eval.py` also logs POS
 tagging accuracy after the output tagged datasets have been written.
 
-Tagging accuracy and speeds should be as follows:
-
-Dataset  | Scored tokens | POS Accuracy | Tokens per second
--------- | ------------- | ------------ | ------------------
-training | 973949        | 98.43%       | 9500
-tuning   | 33692         | 97.34%       | 2800
-dev      | 41219         | 97.22%       | 3000
-
-Once the tagged datasets are available the greedy dependency parser can be
-trained with the following command:
-
 ### Greedy Parser
+
+Once the tagged datasets are available a greedy dependency parser can be
+trained with the following command:
 
 ```shell
 borgcfg nlp/saft/components/dependencies/opensource/train.borg \
