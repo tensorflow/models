@@ -12,22 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A program to train a tensorflow neural net parser from a a conll file.
 
-Sample usage:
-blaze-bin/nlp/saft/components/dependencies/opensource/parser_trainer \
-  --batch_size=32 \
-  --data_path=/cns/lg-d/home/$USER/20151109_opensource/data \
-  --decay_steps=3600 \
-  --hidden_layer_sizes=200,200 \
-  --learning_rate=0.15 \
-  --momentum=0.85 \
-  --optimizer=momentum \
-  --output_path=/cns/lg-d/home/$USER/20151109_opensource/out2-seed-1 \
-  --task_context=/cns/lg-d/home/$USER/20151109_opensource/context.pbtxt \
-  --seed=1 \
-  --logtostderr
-"""
+"""A program to train a tensorflow neural net parser from a a conll file."""
 
 # pylint: disable=unused-import,g-bad-import-order,no-name-in-module,
 # pylint: disable=maybe-no-member,g-importing-member,g-import-not-at-top
