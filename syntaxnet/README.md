@@ -2,6 +2,8 @@
 
 [TOC]
 
+A TensorFlow implementation of the models described in [[http://arxiv.org/?]].
+
 ## Installation
 
 Running and training Neurosis models requires building this package from
@@ -10,7 +12,7 @@ source.  You'll need to install:
 * bazel, following the instructions [here](http://bazel.io/docs/install.html),
 * swig:
     * `apt-get install swig` on Ubuntu,
-    * 
+    * `brew install swig` on OSX,
 * a version of protocol buffers supported by TensorFlow:
     * check your protobuf version with `pip freeze | grep protobuf1`,
     * upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
@@ -28,7 +30,7 @@ following commands:
 
 Bazel should complete reporting all tests passed.
 
-## Running a Neurosis model
+## Tutorial: Parsing Text with a Neurosis model
 
 Once have you successfully built Neurosis, you can start parsing text (in conll
 format) right away with one of our bundled models, located under
@@ -51,7 +53,7 @@ bazel-bin/neurosis/parser_eval \
   --logtostderr
 ```
 
-## Training a POS Tagger and a Dependency Parser with Neurosis
+## Tutorial: Training a POS Tagger and a Dependency Parser with Neurosis
 
 This is a set of instructions to train a POS tagger and a dependency parser
 with Neurosis.
@@ -108,7 +110,7 @@ for SET in training tuning dev; do
     --hidden_layer_sizes=128 \
     --input=$SET-corpus \
     --output=tagged-$SET-corpus \
-    --arg_prefix=brain_pos \ca
+    --arg_prefix=brain_pos \
     --graph_builder=greedy \
     --model_path=models/brain_pos/greedy/$PARAMS/model
 done
@@ -124,11 +126,22 @@ Once the tagged datasets are available a greedy dependency parser can be
 trained with the following command:
 
 ```shell
-borgcfg nlp/saft/components/dependencies/opensource/train.borg \
-  reload neurosis-greedy \
-  --vars=arg_prefix=brain_parser,projectivize=true,\
-output_path=$OUTPATH,task_context=$OUTPATH/brain_pos/greedy/$PARAMS/context,\
-training_corpus=tagged-training-corpus,tuning_corpus=tagged-tuning-corpus
+bazel-bin/neurosis/parser_trainer \
+  --arg_prefix=brain_parser \
+  --batch_size=32 \
+  --projectivize_training_set \
+  --decay_steps=4400 \
+  --graph_builder=greedy \
+  --hidden_layer_sizes=200,200 \
+  --learning_rate=0.08 \
+  --momentum=0.85 \
+  --optimizer=momentum \
+  --output_path=models \
+  --task_context=models/brain_pos/greedy/$PARAMS/context \
+  --seed=4 \
+  --training_corpus=tagged-training-corpus \
+  --tuning_corpus=tagged-tuning-corpus \
+  --params=200x200-0.08-4400-0.85-4
 ```
 
 Note that we point the trainer to the context corresponding to the POS tagger
@@ -136,88 +149,90 @@ that we picked previously. This allows the parser to reuse the lexicons and the
 tagged datasets that were created in the previous steps.
 
 Processing data can be done similarly to how tagging was done above. For example
-if in this case we pick parameters `200x200-0.08-4000-0.85-4`, tuning and dev
+if in this case we picked parameters `200x200-0.08-4400-0.85-4`, tuning and dev
 set can be parsed with the following command:
 
 ```shell
 PARAMS=200x200-0.08-4400-0.85-4
-for SET in tuning dev; do
-  blaze-bin/nlp/saft/components/dependencies/opensource/parser_eval \
-    --task_context=$OUTPATH/brain_parser/greedy/$PARAMS/context \
+for SET in training tuning dev; do
+  bazel-bin/neurosis/parser_eval \
+    --task_context=models/brain_pos/greedy/$PARAMS/context \
     --hidden_layer_sizes=200,200 \
     --input=tagged-$SET-corpus \
     --output=parsed-$SET-corpus \
     --arg_prefix=brain_parser \
-    --logtostderr \
     --graph_builder=greedy \
-    --model_path=$OUTPATH/brain_parser/greedy/$PARAMS/model \
-    --nocfs_log_all_errors
+    --model_path=models/brain_parser/greedy/$PARAMS/model
 done
 ```
-
-The evaluation metrics reported by this tool are as follows:
-
-Dataset  | Scored tokens | UAS          | Tokens per second
--------- | ------------- | ------------ | ------------------
-tuning   | 29978         | 91.91%       | 1900
-dev      | 36613         | 92.23%       | 2000
 
 ### Beam Parser
 
 A beam version of this parser can now be trained with the following command:
 
 ```shell
-borgcfg nlp/saft/components/dependencies/opensource/train.borg \
-  reload neurosis-beam \
-  --vars=arg_prefix=brain_parser,output_path=$OUTPATH,\
-task_context=$OUTPATH/brain_parser/greedy/$PARAMS/context,\
-training_corpus=projectivized-training-corpus,tuning_corpus=tagged-tuning-corpus,\
-pretrained_parameters=$OUTPATH/brain_parser/greedy/$PARAMS/model
+bazel-bin/neurosis/parser_trainer \
+  --arg_prefix=brain_parser \
+  --batch_size=8 \
+  --decay_steps=100 \
+  --graph_builder=structured \
+  --hidden_layer_sizes=200,200 \
+  --learning_rate=0.02 \
+  --momentum=0.9 \
+  --optimizer=momentum \
+  --output_path=models \
+  --task_context=models/brain_parser/greedy/$PARAMS/context \
+  --seed=0 \
+  --training_corpus=projectivized-training-corpus \
+  --tuning_corpus=tagged-tuning-corpus \
+  --params=200x200-0.02-100-0.9-0 \
+  --pretrained_params=models/brain_parser/greedy/$PARAMS/model \
+  --pretrained_params_names=\
+embedding_matrix_0,embedding_matrix_1,embedding_matrix_2\
+bias_0,weights_0,bias_1,weights_1
 ```
 
-Training in this case takes between 3 and 4 hours. Evaluation can again be done
-with `parser_eval.py`. In this case we pick parameters `200x200-0.02-100-0.9-0`,
-and we evaluate on tuning and dev set can with the following command:
+Training a beam model with the structured builder will take a lot longer than
+the greedy training runs above, perhaps 3 or 4 times longer. Evaluation can
+again be done with `parser_eval.py`. In this case we use parameters
+`200x200-0.02-100-0.9-0`, and we evaluate on tuning and dev set can with the
+following command:
 
 ```shell
 PARAMS=200x200-0.02-100-0.9-0
-for SET in tuning dev; do
-  blaze-bin/nlp/saft/components/dependencies/opensource/parser_eval \
-    --task_context=$OUTPATH/brain_parser/structured/$PARAMS/context \
+for SET in training tuning dev; do
+  bazel-bin/neurosis/parser_eval \
+    --task_context=models/brain_pos/greedy/$PARAMS/context \
     --hidden_layer_sizes=200,200 \
     --input=tagged-$SET-corpus \
     --output=beam-parsed-$SET-corpus \
     --arg_prefix=brain_parser \
-    --logtostderr \
     --graph_builder=structured \
-    --model_path=$OUTPATH/brain_parser/structured/$PARAMS/model \
-    --nocfs_log_all_errors
+    --model_path=models/brain_parser/structured/$PARAMS/model
 done
 ```
 
-The evaluation metrics reported in this case are:
+## Contact
 
-Dataset  | Scored tokens | UAS          | Tokens per second
--------- | ------------- | ------------ | ------------------
-tuning   | 29978         | 92.74%       | 450
-dev      | 36613         | 93.04%       | 470
+To ask questions or report issues please contact:
+*  neurosis-oss@google.com
 
 ## Credits
 
 Original authors of the code in this package include:
 
-*  bohnetbd@google.com (Bernd Bohnet)
-*  chrisalberti@google.com (Chris Alberti)
-*  credo@google.com (Tim Credo)
-*  danielandor@google.com (Daniel Andor)
-*  djweiss@google.com (David Weiss)
-*  epitler@google.com (Emily Pitler)
-*  gcoppola@google.com (Greg Coppola)
-*  golding@google.com (Andy Golding)
-*  istefan@google.com (Stefan Istrate)
-*  kbhall@google.com (Keith Hall)
-*  kuzman@google.com (Kuzman Ganchev)
-*  ringgaard@google.com (Michael Ringgaard)
-*  ryanmcd@google.com (Ryan Mcdonald)
-*  slav@google.com (Slav Petrov)
-*  terrykoo@google.com (Terry Koo)
+*  bohnetbd (Bernd Bohnet)
+*  chrisalberti (Chris Alberti)
+*  credo (Tim Credo)
+*  danielandor (Daniel Andor)
+*  djweiss (David Weiss)
+*  epitler (Emily Pitler)
+*  gcoppola (Greg Coppola)
+*  golding (Andy Golding)
+*  istefan (Stefan Istrate)
+*  kbhall (Keith Hall)
+*  kuzman (Kuzman Ganchev)
+*  ringgaard (Michael Ringgaard)
+*  ryanmcd (Ryan Mcdonald)
+*  slav (Slav Petrov)
+*  terrykoo (Terry Koo)
