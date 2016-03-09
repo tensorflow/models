@@ -88,6 +88,7 @@ By default, `prep.py` will make one pass through the text file to compute a
 co-occurrence statistics.  The following options allow you to control this
 behavior:
 
+| Option | Description |
 |:--- |:--- |
 | `--min_count <n>` | Only include words in the generated vocabulary that appear at least *n* times. |
 | `--max_vocab <n>` | Admit at most *n* words into the vocabulary. |
@@ -115,6 +116,7 @@ that the Swivel trainer needs to run.  Train embeddings as follows:
 There are a variety of parameters that you can fiddle with to customize the
 embeddings; some that you may want to experiment with include:
 
+| Option | Description |
 |:--- |:--- |
 | `--embedding_size <dim>` | The dimensionality of the embeddings that are created.  By default, 300 dimensional embeddings are created. |
 | `--num_epochs <n>` | The number of iterations through the data that are performed.  By default, 40 epochs are trained. |
