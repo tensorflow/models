@@ -57,9 +57,10 @@ change over time depending on usage and subsequent research.
 
 ## Getting Started
 
-**NOTE** Before doing anything, we first need to build TensorFlow from source.
+**NOTE** Before doing anything, we first need to build TensorFlow from source,
+and installed as a PIP package.
 Please follow the instructions at
-[Installing From Source](https://www.tensorflow.org/versions/r0.7/get_started/os_setup.html#installing-from-sources).
+[Installing From Source](https://www.tensorflow.org/versions/r0.7/get_started/os_setup.html#create-the-pip-package-and-install).
 
 Before you run the training script for the first time, you will need to
 download and convert the ImageNet data to native TFRecord format. The TFRecord

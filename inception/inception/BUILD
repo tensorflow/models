@@ -17,9 +17,6 @@ py_library(
     srcs = [
         "dataset.py",
     ],
-    deps = [
-        "@tf//tensorflow:tensorflow_py",
-    ],
 )
 
 py_library(
@@ -55,7 +52,6 @@ py_library(
         "inception_model.py",
     ],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":dataset",
         "//inception/slim",
     ],
@@ -89,7 +85,6 @@ py_library(
         "inception_eval.py",
     ],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":image_processing",
         ":inception",
     ],
@@ -123,7 +118,6 @@ py_library(
         "inception_train.py",
     ],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":image_processing",
         ":inception",
     ],
@@ -132,9 +126,6 @@ py_library(
 py_binary(
     name = "build_image_data",
     srcs = ["data/build_image_data.py"],
-    deps = [
-        "@tf//tensorflow:tensorflow_py",
-    ],
 )
 
 sh_binary(
@@ -162,9 +153,6 @@ sh_binary(
 py_binary(
     name = "build_imagenet_data",
     srcs = ["data/build_imagenet_data.py"],
-    deps = [
-        "@tf//tensorflow:tensorflow_py",
-    ],
 )
 
 filegroup(
