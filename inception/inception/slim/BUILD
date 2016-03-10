@@ -10,9 +10,6 @@ exports_files(["LICENSE"])
 py_library(
     name = "scopes",
     srcs = ["scopes.py"],
-    deps = [
-        "@tf//tensorflow:tensorflow_py",
-    ],
 )
 
 py_test(
@@ -28,7 +25,6 @@ py_library(
     name = "variables",
     srcs = ["variables.py"],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":scopes",
     ],
 )
@@ -45,9 +41,6 @@ py_test(
 py_library(
     name = "losses",
     srcs = ["losses.py"],
-    deps = [
-        "@tf//tensorflow:tensorflow_py",
-    ],
 )
 
 py_test(
@@ -63,7 +56,6 @@ py_library(
     name = "ops",
     srcs = ["ops.py"],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":losses",
         ":scopes",
         ":variables",
@@ -84,7 +76,6 @@ py_library(
     name = "inception",
     srcs = ["inception_model.py"],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
         ":ops",
         ":scopes",
     ],
