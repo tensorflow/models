@@ -90,7 +90,7 @@ new tasks.
 
 ## What are the various components of TF-Slim?
 
-TF-Slim is composed of several parts which were design to exist independently.
+TF-Slim is composed of several parts which were designed to exist independently.
 These include:
 
 * [scopes.py](./scopes.py):
