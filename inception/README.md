@@ -35,7 +35,7 @@ validation data set.
 *  Retraining an Inception v3 network on a novel task and back-propagating the
 errors to fine tune the network weights.
 
-The training procedure employs synchronous stochastic gradient desent across
+The training procedure employs synchronous stochastic gradient descent across
 multiple GPUs. The user may specify the number of GPUs they wish harness.
 The synchronous training performs *batch-splitting* by dividing a given batch
 across multiple GPUs.
@@ -80,7 +80,7 @@ To begin, you will need to sign up for an account with
 sign up page, create an account and request an access key to download the data.
 
 After you have `USERNAME` and `PASSWORD`, you are ready to run our script.
-Make sure that your hard disk has at least 500 GB of free space for donwloading
+Make sure that your hard disk has at least 500 GB of free space for downloading
 and storing the data. Here we select `DATA_DIR=$HOME/imagenet-data` as such a
 location but feel free to edit accordingly.
 
@@ -131,7 +131,7 @@ across the GPUs.
 processing a batch of data.
 
 The training procedure is encapsulated by this diagram of how operations and
-variables are placed on CPU and GPUs respecitvely.
+variables are placed on CPU and GPUs respectively.
 
 <div style="width:40%; margin:auto; margin-bottom:10px; margin-top:20px;">
   <img style="width:100%" src="https://www.tensorflow.org/images/Parallelism.png">
@@ -590,7 +590,7 @@ NUM_EPOCHS_PER_DECAY = 30.0        # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.16  # Learning rate decay factor.
 ```
 
-There are many papers tha discuss the various tricks and trade-offs associated
+There are many papers that discuss the various tricks and trade-offs associated
 with training a model with stochastic gradient descent. For those new to the
 field, some great references are:
 
@@ -600,7 +600,7 @@ field, some great references are:
 What follows is a summary of some general advice for identifying appropriate
 model hyper-parameters in the context of this particular
 model training setup. Namely,
-this library provides *sycnhronous* updates to model parameters based on
+this library provides *synchronous* updates to model parameters based on
 batch-splitting the model across multiple GPUs.
 
 * Higher learning rates leads to faster training. Too high of learning rate
@@ -641,7 +641,7 @@ CPU memory would be ideal.
 
 If that is not possible, you can tune down the memory demands of the model
 via lowering `--input_queue_memory_factor`. Images are preprocessed
-asyncronously with respect to the main training across
+asynchronously with respect to the main training across
 `--num_preprocess_threads` threads. The preprocessed images are stored in
 shuffling queue in which each GPU performs a dequeue operation in order
 to receive a `batch_size` worth of images.
@@ -651,7 +651,7 @@ shuffling queue of 1024 x `input_queue_memory_factor` images. For the current
 model architecture, this corresponds to 16GB of CPU memory. You may lower
 `input_queue_memory_factor` in order to decrease the memory footprint. Keep
 in mind though that lowering this value drastically may result in a model
-with slighlty lower predictive accuracy when training from scratch. Please
+with slightly lower predictive accuracy when training from scratch. Please
 see comments in [`image_processing.py`](./image_processing.py) for more details.
 
 ## Troubleshooting
