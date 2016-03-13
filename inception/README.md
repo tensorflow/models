@@ -70,7 +70,7 @@ encoded) as well as metadata such as label and bounding box information. See
 [`parse_example_proto`](image_processing.py) for details.
 
 We provide a single
-[script](data/download_and_preprocess_imagenet.sh)
+[script](inception/data/download_and_preprocess_imagenet.sh)
 for downloading and converting ImageNet data to TFRecord format. Downloading
 and preprocessing the data may take several hours (up to half a day) depending
 on your network and computer speed. Please be patient.
