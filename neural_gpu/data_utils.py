@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Convolutional Gated Recurrent Networks for Algorithm Learning."""
 
 import math
@@ -27,9 +26,10 @@ from tensorflow.python.platform import gfile
 
 FLAGS = tf.app.flags.FLAGS
 
-bins = [8, 16, 32, 64, 128]
-all_tasks = ["sort", "id", "rev", "incr", "left", "right", "left-shift", "add",
-             "right-shift", "bmul", "dup", "badd", "qadd"]
+bins = [8, 12, 16, 20, 24, 28, 32, 36, 40, 48, 64, 128]
+all_tasks = ["sort", "kvsort", "id", "rev", "rev2", "incr", "add", "left",
+             "right", "left-shift", "right-shift", "bmul", "mul", "dup",
+             "badd", "qadd", "search"]
 forward_max = 128
 log_filename = ""
 
@@ -82,10 +82,13 @@ def init_data(task, length, nbr_cases, nclass):
     d2 = [np.random.randint(base) for _ in xrange(k)]
     if task in ["add", "badd", "qadd"]:
       res = add(d1, d2, base)
-    elif task in ["bmul"]:
+    elif task in ["mul", "bmul"]:
       d1n = sum([d * (base ** i) for i, d in enumerate(d1)])
       d2n = sum([d * (base ** i) for i, d in enumerate(d2)])
-      res = [int(x) for x in list(reversed(str(bin(d1n * d2n))))[:-2]]
+      if task == "bmul":
+        res = [int(x) for x in list(reversed(str(bin(d1n * d2n))))[:-2]]
+      else:
+        res = [int(x) for x in list(reversed(str(d1n * d2n)))]
     else:
       sys.exit()
     sep = [12]
@@ -100,6 +103,32 @@ def init_data(task, length, nbr_cases, nclass):
     inp = x + [0 for _ in xrange(l - k)]
     res = x + x + [0 for _ in xrange(l - 2*k)]
     return inp, res
+
+  def rand_rev2_pair(l):
+    """Random data pair for reverse2 task. Total length should be <= l."""
+    inp = [(np.random.randint(nclass - 1) + 1,
+            np.random.randint(nclass - 1) + 1) for _ in xrange(l/2)]
+    res = [i for i in reversed(inp)]
+    return [x for p in inp for x in p], [x for p in res for x in p]
+
+  def rand_search_pair(l):
+    """Random data pair for search task. Total length should be <= l."""
+    inp = [(np.random.randint(nclass - 1) + 1,
+            np.random.randint(nclass - 1) + 1) for _ in xrange(l-1/2)]
+    q = np.random.randint(nclass - 1) + 1
+    res = 0
+    for (k, v) in reversed(inp):
+      if k == q:
+        res = v
+    return [x for p in inp for x in p] + [q], [res]
+
+  def rand_kvsort_pair(l):
+    """Random data pair for key-value sort. Total length should be <= l."""
+    keys = [(np.random.randint(nclass - 1) + 1, i) for i in xrange(l/2)]
+    vals = [np.random.randint(nclass - 1) + 1 for _ in xrange(l/2)]
+    kv = [(k, vals[i]) for (k, i) in keys]
+    sorted_kv = [(k, vals[i]) for (k, i) in sorted(keys)]
+    return [x for p in kv for x in p], [x for p in sorted_kv for x in p]
 
   def spec(inp):
     """Return the target given the input for some tasks."""
@@ -140,7 +169,7 @@ def init_data(task, length, nbr_cases, nclass):
     cur_time = time.time()
     if l > 10000 and case % 100 == 1:
       print_out("  avg gen time %.4f s" % (total_time / float(case)))
-    if task in ["add", "badd", "qadd", "bmul"]:
+    if task in ["add", "badd", "qadd", "bmul", "mul"]:
       i, t = rand_pair(l, task)
       train_set[task][len(i)].append([i, t])
       i, t = rand_pair(l, task)
@@ -149,6 +178,21 @@ def init_data(task, length, nbr_cases, nclass):
       i, t = rand_dup_pair(l)
       train_set[task][len(i)].append([i, t])
       i, t = rand_dup_pair(l)
+      test_set[task][len(i)].append([i, t])
+    elif task == "rev2":
+      i, t = rand_rev2_pair(l)
+      train_set[task][len(i)].append([i, t])
+      i, t = rand_rev2_pair(l)
+      test_set[task][len(i)].append([i, t])
+    elif task == "search":
+      i, t = rand_search_pair(l)
+      train_set[task][len(i)].append([i, t])
+      i, t = rand_search_pair(l)
+      test_set[task][len(i)].append([i, t])
+    elif task == "kvsort":
+      i, t = rand_kvsort_pair(l)
+      train_set[task][len(i)].append([i, t])
+      i, t = rand_kvsort_pair(l)
       test_set[task][len(i)].append([i, t])
     else:
       inp = [np.random.randint(nclass - 1) + 1 for i in xrange(l)]

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """The Neural GPU Model."""
 
 import time
@@ -47,15 +46,44 @@ def sigmoid_cutoff(x, cutoff):
   return tf.minimum(1.0, tf.maximum(0.0, cutoff * y - d))
 
 
+def tanh_cutoff(x, cutoff):
+  """Tanh with cutoff, e.g., 1.1tanh(x) cut to [-1. 1]."""
+  y = tf.tanh(x)
+  if cutoff < 1.01: return y
+  d = (cutoff - 1.0) / 2.0
+  return tf.minimum(1.0, tf.maximum(-1.0, (1.0 + d) * y))
+
+
 def conv_gru(inpts, mem, kw, kh, nmaps, cutoff, prefix):
   """Convolutional GRU."""
   def conv_lin(args, suffix, bias_start):
     return conv_linear(args, kw, kh, len(args) * nmaps, nmaps, True, bias_start,
                        prefix + "/" + suffix)
   reset = sigmoid_cutoff(conv_lin(inpts + [mem], "r", 1.0), cutoff)
+  # candidate = tanh_cutoff(conv_lin(inpts + [reset * mem], "c", 0.0), cutoff)
   candidate = tf.tanh(conv_lin(inpts + [reset * mem], "c", 0.0))
   gate = sigmoid_cutoff(conv_lin(inpts + [mem], "g", 1.0), cutoff)
   return gate * mem + (1 - gate) * candidate
+
+
+@tf.RegisterGradient("CustomIdG")
+def _custom_id_grad(_, grads):
+  return grads
+
+
+def quantize(t, quant_scale, max_value=1.0):
+  """Quantize a tensor t with each element in [-max_value, max_value]."""
+  t = tf.minimum(max_value, tf.maximum(t, -max_value))
+  big = quant_scale * (t + max_value) + 0.5
+  with tf.get_default_graph().gradient_override_map({"Floor": "CustomIdG"}):
+    res = (tf.floor(big) / quant_scale) - max_value
+  return res
+
+
+def quantize_weights_op(quant_scale, max_value):
+  ops = [v.assign(quantize(v, quant_scale, float(max_value)))
+         for v in tf.trainable_variables()]
+  return tf.group(*ops)
 
 
 def relaxed_average(var_name_suffix, rx_step):
@@ -117,7 +145,7 @@ class NeuralGPU(object):
 
   def __init__(self, nmaps, vec_size, niclass, noclass, dropout, rx_step,
                max_grad_norm, cutoff, nconvs, kw, kh, height, mode,
-               learning_rate, pull, pull_incr, min_length):
+               learning_rate, pull, pull_incr, min_length, act_noise=0.0):
     # Feeds for parameters and ops to update them.
     self.global_step = tf.Variable(0, trainable=False)
     self.cur_length = tf.Variable(min_length, trainable=False)
@@ -195,7 +223,9 @@ class NeuralGPU(object):
       first = tf.concat(2, first)
 
       # Computation steps.
-      step = [tf.nn.dropout(first, 1.0 - self.do_training * dropout) * mask]
+      keep_prob = 1.0 - self.do_training * (dropout * 8.0 / float(length))
+      step = [tf.nn.dropout(first, keep_prob) * mask]
+      act_noise_scale = act_noise * self.do_training * self.pull
       outputs = []
       for it in xrange(length):
         with tf.variable_scope("RX%d" % (it % rx_step)) as vs:
@@ -205,9 +235,12 @@ class NeuralGPU(object):
           # Do nconvs-many CGRU steps.
           for layer in xrange(nconvs):
             cur = conv_gru([], cur, kw, kh, nmaps, cutoff, "cgru_%d" % layer)
-          cur = tf.nn.dropout(cur, 1.0 - self.do_training * dropout)
+            cur *= mask
+          outputs.append(tf.slice(cur, [0, 0, 0, 0], [-1, -1, 1, -1]))
+          cur = tf.nn.dropout(cur, keep_prob)
+          if act_noise > 0.00001:
+            cur += tf.truncated_normal(tf.shape(cur)) * act_noise_scale
           step.append(cur * mask)
-          outputs.append(tf.slice(step[-1], [0, 0, 0, 0], [-1, -1, 1, -1]))
 
       self.steps.append([tf.reshape(s, [-1, length, height * nmaps])
                          for s in step])
@@ -216,8 +249,10 @@ class NeuralGPU(object):
       # Final convolution to get logits, list outputs.
       output = conv_linear(output, 1, 1, nmaps, noclass, True, 0.0, "output")
       output = tf.reshape(output, [-1, length, noclass])
-      self.outputs.append([tf.reshape(o, [-1, noclass])
-                           for o in list(tf.split(1, length, output))])
+      external_output = [tf.reshape(o, [-1, noclass])
+                         for o in list(tf.split(1, length, output))]
+      external_output = [tf.nn.softmax(o) for o in external_output]
+      self.outputs.append(external_output)
 
       # Calculate cross-entropy loss and normalize it.
       targets = tf.concat(1, [make_dense(self.target[l], noclass)
@@ -252,7 +287,8 @@ class NeuralGPU(object):
                            " %.2f s." % (length, time.time() - start_time))
     self.saver = tf.train.Saver(tf.all_variables())
 
-  def step(self, sess, inp, target, do_backward, noise_param=None):
+  def step(self, sess, inp, target, do_backward, noise_param=None,
+           get_steps=False):
     """Run a step of the network."""
     assert len(inp) == len(target)
     length = len(target)
@@ -272,8 +308,9 @@ class NeuralGPU(object):
     for l in xrange(length):
       feed_in[self.target[l].name] = target[l]
       feed_out.append(self.outputs[index][l])
-    for l in xrange(length+1):
-      feed_out.append(self.steps[index][l])
+    if get_steps:
+      for l in xrange(length+1):
+        feed_out.append(self.steps[index][l])
     res = sess.run(feed_out, feed_in)
     offset = 0
     norm = None
@@ -281,5 +318,5 @@ class NeuralGPU(object):
       offset = 2
       norm = res[1]
     outputs = res[offset + 1:offset + 1 + length]
-    steps = res[offset + 1 + length:]
+    steps = res[offset + 1 + length:] if get_steps else None
     return res[offset], outputs, norm, steps

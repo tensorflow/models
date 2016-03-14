@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Neural GPU for Learning Algorithms."""
 
 import math
@@ -31,21 +30,21 @@ from tensorflow.python.platform import gfile
 import data_utils as data
 import neural_gpu
 
-tf.app.flags.DEFINE_float("lr", 0.003, "Learning rate.")
+tf.app.flags.DEFINE_float("lr", 0.001, "Learning rate.")
 tf.app.flags.DEFINE_float("init_weight", 1.0, "Initial weights deviation.")
-tf.app.flags.DEFINE_float("max_grad_norm", 0.05, "Clip gradients to this norm.")
+tf.app.flags.DEFINE_float("max_grad_norm", 1.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("cutoff", 1.2, "Cutoff at the gates.")
 tf.app.flags.DEFINE_float("pull", 0.0005, "Starting pull of the relaxations.")
 tf.app.flags.DEFINE_float("pull_incr", 1.2, "Increase pull by that much.")
-tf.app.flags.DEFINE_float("curriculum_bound", 0.08, "Move curriculum < this.")
+tf.app.flags.DEFINE_float("curriculum_bound", 0.15, "Move curriculum < this.")
 tf.app.flags.DEFINE_float("dropout", 0.15, "Dropout that much.")
-tf.app.flags.DEFINE_float("grad_noise_scale", 1.0, "Gradient noise scale.")
+tf.app.flags.DEFINE_float("grad_noise_scale", 0.0, "Gradient noise scale.")
 tf.app.flags.DEFINE_integer("batch_size", 32, "Batch size.")
 tf.app.flags.DEFINE_integer("low_batch_size", 16, "Low batch size.")
 tf.app.flags.DEFINE_integer("steps_per_checkpoint", 200, "Steps per epoch.")
-tf.app.flags.DEFINE_integer("nmaps", 24, "Number of floats in each cell.")
-tf.app.flags.DEFINE_integer("niclass", 14, "Number of classes (0 is padding).")
-tf.app.flags.DEFINE_integer("noclass", 14, "Number of classes (0 is padding).")
+tf.app.flags.DEFINE_integer("nmaps", 128, "Number of floats in each cell.")
+tf.app.flags.DEFINE_integer("niclass", 33, "Number of classes (0 is padding).")
+tf.app.flags.DEFINE_integer("noclass", 33, "Number of classes (0 is padding).")
 tf.app.flags.DEFINE_integer("train_data_size", 5000, "Training examples/len.")
 tf.app.flags.DEFINE_integer("max_length", 41, "Maximum length.")
 tf.app.flags.DEFINE_integer("rx_step", 6, "Relax that many recursive steps.")
@@ -58,8 +57,11 @@ tf.app.flags.DEFINE_integer("forward_max", 401, "Maximum forward length.")
 tf.app.flags.DEFINE_integer("jobid", -1, "Task id when running on borg.")
 tf.app.flags.DEFINE_integer("nprint", 0, "How many test examples to print out.")
 tf.app.flags.DEFINE_integer("mode", 0, "Mode: 0-train other-decode.")
+tf.app.flags.DEFINE_bool("animate", False, "Whether to produce an animation.")
+tf.app.flags.DEFINE_bool("quantize", False, "Whether to quantize variables.")
 tf.app.flags.DEFINE_string("task", "rev", "Which task are we learning?")
 tf.app.flags.DEFINE_string("train_dir", "/tmp/", "Directory to store models.")
+tf.app.flags.DEFINE_string("ensemble", "", "Model paths for ensemble.")
 
 FLAGS = tf.app.flags.FLAGS
 EXTRA_EVAL = 12
@@ -78,7 +80,6 @@ def initialize(sess):
   np.random.seed(seed)
 
   # Check data sizes.
-  data.forward_max = max(FLAGS.forward_max, data.bins[-1])
   assert data.bins
   min_length = 3
   max_length = min(FLAGS.max_length, data.bins[-1])
@@ -86,6 +87,7 @@ def initialize(sess):
   while len(data.bins) > 1 and data.bins[-2] > max_length + EXTRA_EVAL:
     data.bins = data.bins[:-1]
   assert data.bins[0] > FLAGS.rx_step
+  data.forward_max = max(FLAGS.forward_max, data.bins[-1])
   nclass = min(FLAGS.niclass, FLAGS.noclass)
   data_size = FLAGS.train_data_size if FLAGS.mode == 0 else 1000
 
@@ -136,15 +138,24 @@ def initialize(sess):
                    % ckpt.model_checkpoint_path)
     model.saver.restore(sess, ckpt.model_checkpoint_path)
 
+  # Check if there are ensemble models and get their checkpoints.
+  ensemble = []
+  ensemble_dir_list = [d for d in FLAGS.ensemble.split(",") if d]
+  for ensemble_dir in ensemble_dir_list:
+    ckpt = tf.train.get_checkpoint_state(ensemble_dir)
+    if ckpt and gfile.Exists(ckpt.model_checkpoint_path):
+      data.print_out("Found ensemble model %s" % ckpt.model_checkpoint_path)
+      ensemble.append(ckpt.model_checkpoint_path)
+
   # Return the model and needed variables.
-  return (model, min_length, max_length, checkpoint_dir, curriculum)
+  return (model, min_length, max_length, checkpoint_dir, curriculum, ensemble)
 
 
 def single_test(l, model, sess, task, nprint, batch_size, print_out=True,
-                offset=None):
+                offset=None, ensemble=None, get_steps=False):
   """Test model on test data of length l using the given session."""
   inpt, target = data.get_batch(l, batch_size, False, task, offset)
-  _, res, _, steps = model.step(sess, inpt, target, False)
+  _, res, _, steps = model.step(sess, inpt, target, False, get_steps=get_steps)
   errors, total, seq_err = data.accuracy(inpt, res, target, batch_size, nprint)
   seq_err = float(seq_err) / batch_size
   if total > 0:
@@ -152,10 +163,34 @@ def single_test(l, model, sess, task, nprint, batch_size, print_out=True,
   if print_out:
     data.print_out("  %s len %d errors %.2f sequence-errors %.2f"
                    % (task, l, 100*errors, 100*seq_err))
+  # Ensemble eval.
+  if ensemble:
+    results = []
+    for m in ensemble:
+      model.saver.restore(sess, m)
+      _, result, _, _ = model.step(sess, inpt, target, False)
+      m_errors, m_total, m_seq_err = data.accuracy(inpt, result, target,
+                                                   batch_size, nprint)
+      m_seq_err = float(m_seq_err) / batch_size
+      if total > 0:
+        m_errors = float(m_errors) / m_total
+      data.print_out("     %s len %d m-errors %.2f m-sequence-errors %.2f"
+                     % (task, l, 100*m_errors, 100*m_seq_err))
+      results.append(result)
+    ens = [sum(o) for o in zip(*results)]
+    errors, total, seq_err = data.accuracy(inpt, ens, target,
+                                           batch_size, nprint)
+    seq_err = float(seq_err) / batch_size
+    if total > 0:
+      errors = float(errors) / total
+    if print_out:
+      data.print_out("  %s len %d ens-errors %.2f ens-sequence-errors %.2f"
+                     % (task, l, 100*errors, 100*seq_err))
   return errors, seq_err, (steps, inpt, [np.argmax(o, axis=1) for o in res])
 
 
-def multi_test(l, model, sess, task, nprint, batch_size, offset=None):
+def multi_test(l, model, sess, task, nprint, batch_size, offset=None,
+               ensemble=None):
   """Run multiple tests at lower batch size to save memory."""
   errors, seq_err = 0.0, 0.0
   to_print = nprint
@@ -164,7 +199,7 @@ def multi_test(l, model, sess, task, nprint, batch_size, offset=None):
   for mstep in xrange(batch_size / low_batch):
     cur_offset = None if offset is None else offset + mstep * low_batch
     err, sq_err, _ = single_test(l, model, sess, task, to_print, low_batch,
-                                 False, cur_offset)
+                                 False, cur_offset, ensemble=ensemble)
     to_print = max(0, to_print - low_batch)
     errors += err
     seq_err += sq_err
@@ -185,7 +220,9 @@ def train():
   batch_size = FLAGS.batch_size
   tasks = FLAGS.task.split("-")
   with tf.Session() as sess:
-    model, min_length, max_length, checkpoint_dir, curriculum = initialize(sess)
+    (model, min_length, max_length, checkpoint_dir,
+     curriculum, _) = initialize(sess)
+    quant_op = neural_gpu.quantize_weights_op(512, 8)
     max_cur_length = min(min_length + 3, max_length)
     prev_acc_perp = [1000000 for _ in xrange(3)]
     prev_seq_err = 1.0
@@ -246,6 +283,10 @@ def train():
 
       # If errors are below the curriculum threshold, move curriculum forward.
       if curriculum > acc_seq_err:
+        if FLAGS.quantize:
+          # Quantize weights.
+          data.print_out("  Quantizing parameters.")
+          sess.run([quant_op])
         # Increase current length (until the next with training data).
         do_incr = True
         while do_incr and max_cur_length < max_length:
@@ -260,7 +301,9 @@ def train():
           sess.run(model.pull_incr_op)
         else:
           data.print_out("  Averaging parameters.")
-          sess.run([model.avg_op, model.lr_decay_op])
+          sess.run(model.avg_op)
+          if acc_seq_err < (curriculum / 3.0):
+            sess.run(model.lr_decay_op)
 
       # Lower learning rate if we're worse than the last 3 checkpoints.
       acc_perp = data.safe_exp(acc_loss)
@@ -358,32 +401,35 @@ def evaluate():
   batch_size = FLAGS.batch_size
   tasks = FLAGS.task.split("-")
   with tf.Session() as sess:
-    model, min_length, max_length, _, _ = initialize(sess)
+    model, min_length, max_length, _, _, ensemble = initialize(sess)
     bound = data.bins[-1] + 1
     for t in tasks:
       l = min_length
       while l < max_length + EXTRA_EVAL and l < bound:
-        _, seq_err, _ = single_test(l, model, sess, t, FLAGS.nprint, batch_size)
+        _, seq_err, _ = single_test(l, model, sess, t, FLAGS.nprint,
+                                    batch_size, ensemble=ensemble)
         l += 1
         while l < bound + 1 and not data.test_set[t][l]:
           l += 1
       # Animate.
-      anim_size = 2
-      _, _, test_data = single_test(l, model, sess, t, 0, anim_size)
-      animate(l, test_data, anim_size)
+      if FLAGS.animate:
+        anim_size = 2
+        _, _, test_data = single_test(l, model, sess, t, 0, anim_size,
+                                      get_steps=True)
+        animate(l, test_data, anim_size)
       # More tests.
       _, seq_err = multi_test(data.forward_max, model, sess, t, FLAGS.nprint,
-                              batch_size * 4)
+                              batch_size * 4, ensemble=ensemble)
     if seq_err < 0.01:  # Super-test if we're very good and in large-test mode.
       if data.forward_max > 4000 and len(tasks) == 1:
         multi_test(data.forward_max, model, sess, tasks[0], FLAGS.nprint,
-                   batch_size * 64, 0)
+                   batch_size * 64, 0, ensemble=ensemble)
 
 
 def interactive():
   """Interactively probe an existing model."""
   with tf.Session() as sess:
-    model, _, _, _, _ = initialize(sess)
+    model, _, _, _, _, _ = initialize(sess)
     sys.stdout.write("Input to Neural GPU, e.g., 0 1. Use -1 for PAD.\n")
     sys.stdout.write("> ")
     sys.stdout.flush()
