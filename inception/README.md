@@ -51,7 +51,7 @@ may be substituted in during evaluation.
 level language called TensorFlow-Slim.
 
 For more details about TensorFlow-Slim, please see the
-[Slim README](slim/README.md). Please
+[Slim README](inception/slim/README.md). Please
 note that this higher-level language is still *experimental* and the API may
 change over time depending on usage and subsequent research.
 
