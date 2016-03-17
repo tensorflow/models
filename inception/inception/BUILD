@@ -51,6 +51,7 @@ py_library(
     srcs = [
         "inception_model.py",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         ":dataset",
         "//inception/slim",
@@ -163,4 +164,13 @@ filegroup(
             "BUILD",
         ],
     ),
+)
+
+filegroup(
+    name = "imagenet_metadata",
+    srcs = [
+        "data/imagenet_lsvrc_2015_synsets.txt",
+        "data/imagenet_metadata.txt",
+    ],
+    visibility = ["//visibility:public"],
 )
