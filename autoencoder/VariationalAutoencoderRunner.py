@@ -9,6 +9,7 @@ from autoencoder.autoencoder_models.VariationalAutoencoder import VariationalAut
 mnist = input_data.read_data_sets('MNIST_data', one_hot = True)
 
 
+
 def min_max_scale(X_train, X_test):
     preprocessor = prep.MinMaxScaler().fit(X_train)
     X_train = preprocessor.transform(X_train)
@@ -30,8 +31,7 @@ display_step = 1
 
 autoencoder = VariationalAutoencoder(n_input = 784,
                                      n_hidden = 200,
-                                     optimizer = tf.train.AdamOptimizer(learning_rate = 0.001),
-                                     gaussian_sample_size = 128)
+                                     optimizer = tf.train.AdamOptimizer(learning_rate = 0.001))
 
 for epoch in range(training_epochs):
     avg_cost = 0.

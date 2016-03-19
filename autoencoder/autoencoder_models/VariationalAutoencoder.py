@@ -4,11 +4,9 @@ import autoencoder.Utils
 
 class VariationalAutoencoder(object):
 
-    def __init__(self, n_input, n_hidden, optimizer = tf.train.AdamOptimizer(),
-                 gaussian_sample_size = 128):
+    def __init__(self, n_input, n_hidden, optimizer = tf.train.AdamOptimizer()):
         self.n_input = n_input
         self.n_hidden = n_hidden
-        self.gaussian_sample_size = gaussian_sample_size
 
         network_weights = self._initialize_weights()
         self.weights = network_weights
@@ -18,13 +16,11 @@ class VariationalAutoencoder(object):
         self.z_mean = tf.add(tf.matmul(self.x, self.weights['w1']), self.weights['b1'])
         self.z_log_sigma_sq = tf.add(tf.matmul(self.x, self.weights['log_sigma_w1']), self.weights['log_sigma_b1'])
 
-
         # sample from gaussian distribution
-        eps = tf.random_normal((self.gaussian_sample_size, n_hidden), 0, 1, dtype = tf.float32)
+        eps = tf.random_normal(tf.pack([tf.shape(self.x)[0], self.n_hidden]), 0, 1, dtype = tf.float32)
         self.z = tf.add(self.z_mean, tf.mul(tf.sqrt(tf.exp(self.z_log_sigma_sq)), eps))
 
         self.reconstruction = tf.add(tf.matmul(self.z, self.weights['w2']), self.weights['b2'])
-
 
         # cost
         reconstr_loss = 0.5 * tf.reduce_sum(tf.pow(tf.sub(self.reconstruction, self.x), 2.0))
@@ -37,7 +33,6 @@ class VariationalAutoencoder(object):
         init = tf.initialize_all_variables()
         self.sess = tf.Session()
         self.sess.run(init)
-
 
     def _initialize_weights(self):
         all_weights = dict()
