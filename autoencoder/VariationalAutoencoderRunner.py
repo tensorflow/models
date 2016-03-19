@@ -9,8 +9,9 @@ from autoencoder.autoencoder_models.VariationalAutoencoder import VariationalAut
 mnist = input_data.read_data_sets('MNIST_data', one_hot = True)
 
 
-def minmax_scale(X_train, X_test):
-    preprocessor = prep.MinMaxScaler(feature_range=(0, 1)).fit(X_train)
+
+def min_max_scale(X_train, X_test):
+    preprocessor = prep.MinMaxScaler().fit(X_train)
     X_train = preprocessor.transform(X_train)
     X_test = preprocessor.transform(X_test)
     return X_train, X_test
@@ -21,7 +22,7 @@ def get_random_block_from_data(data, batch_size):
     return data[start_index:(start_index + batch_size)]
 
 
-X_train, X_test = minmax_scale(mnist.train.images, mnist.test.images)
+X_train, X_test = min_max_scale(mnist.train.images, mnist.test.images)
 
 n_samples = int(mnist.train.num_examples)
 training_epochs = 20
