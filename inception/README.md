@@ -318,7 +318,7 @@ FLOWERS_DATA_DIR=$HOME/flowers-data
 bazel build -c opt inception/download_and_preprocess_flowers
 
 # run it
-bazel-bin/inception/download_and_preprocess_flowers "${FLOWERS_DATA_DIR}$"
+bazel-bin/inception/download_and_preprocess_flowers "${FLOWERS_DATA_DIR}"
 ```
 
 If the script runs successfully, the final line of the terminal output should
