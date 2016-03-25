@@ -67,7 +67,7 @@ download and convert the ImageNet data to native TFRecord format. The TFRecord
 format consists of a set of sharded files where each entry is a serialized
 `tf.Example` proto. Each `tf.Example` proto contains the ImageNet image (JPEG
 encoded) as well as metadata such as label and bounding box information. See
-[`parse_example_proto`](image_processing.py) for details.
+[`parse_example_proto`](inception/image_processing.py) for details.
 
 We provide a single
 [script](inception/data/download_and_preprocess_imagenet.sh)
@@ -155,7 +155,7 @@ We have tested several hardware setups for training this model from scratch but
 we emphasize that depending your hardware set up, you may need to adapt the
 batch size and learning rate schedule.
 
-Please see the comments in `inception_train.py` for a few selected learning rate
+Please see the comments in [`inception_train.py`](inception/inception_train.py) for a few selected learning rate
 plans based on some selected hardware setups.
 
 To train this model, you simply need to specify the following:
@@ -281,7 +281,7 @@ prediction from the model matched the ImageNet label -- in this case, 73.5%.
 If you wish to run the eval just once and not periodically, append the
 `--run_once` option.
 
-Much like the training script, `imagenet_eval.py` also
+Much like the training script, [`imagenet_eval.py`](inception/imagenet_eval.py) also
 exports summaries that may be visualized in TensorBoard. These summaries
 calculate additional statistics on the predictions (e.g. recall @ 5) as well
 as monitor the statistics of the model activations and weights during
@@ -303,7 +303,7 @@ There is a single automated script that downloads the data set and converts
 it to the TFRecord format. Much like the ImageNet data set, each record in the
 TFRecord format is a serialized `tf.Example` proto whose entries include
 a JPEG-encoded string and an integer label. Please see
-[`parse_example_proto`](image_processing.py) for details.
+[`parse_example_proto`](inception/image_processing.py) for details.
 
 The script just takes a few minutes to run depending your network connection
 speed for downloading and processing the images. Your hard disk requires 200MB
@@ -333,10 +333,10 @@ files in the `DATA_DIR`. The files will match the patterns
 `train-????-of-00001` and `validation-?????-of-00001`, respectively.
 
 **NOTE** If you wish to prepare a custom image data set for transfer learning,
-you will need to invoke [`build_image_data.py`](data/build_image_data.py)
+you will need to invoke [`build_image_data.py`](inception/data/build_image_data.py)
 on your custom data set.
 Please see the associated options and assumptions behind this script by reading
-the comments section of  [`build_image_data.py`](data/build_image_data.py).
+the comments section of  [`build_image_data.py`](inception/data/build_image_data.py).
 
 The second piece you will need is a trained Inception v3 image model. You have
 the option of either training one yourself (See
@@ -390,7 +390,7 @@ if you wish to continue training a pre-trained model from a checkpoint. If you
 set this flag to true, you can train a new classification layer from scratch.
 
 In order to understand how `--fine_tune` works, please see the discussion
-on `Variables` in the TensorFlow-Slim [`README.md`](slim/README.md).
+on `Variables` in the TensorFlow-Slim [`README.md`](inception/slim/README.md).
 
 Putting this all together you can retrain a pre-trained Inception-v3 model
 on the flowers data set with the following command.
@@ -472,7 +472,7 @@ Succesfully loaded model from /tmp/flowers/model.ckpt-1999 at step=1999.
 
 One can use the existing scripts supplied with this model to build a new
 dataset for training or fine-tuning. The main script to employ is
-[`build_image_data.py`](./build_image_data.py). Briefly,
+[`build_image_data.py`](inception/data/build_image_data.py). Briefly,
 this script takes a structured
 directory of images and converts it to a sharded `TFRecord` that can be read
 by the Inception model.
@@ -503,12 +503,12 @@ unique label for the images that reside within that sub-directory. The images
 may be JPEG or PNG images. We do not support other images types currently.
 
 Once the data is arranged in this directory structure, we can run
-`build_image_data.py` on the data to generate the sharded `TFRecord` dataset.
+[`build_image_data.py`](inception/data/build_image_data.py) on the data to generate the sharded `TFRecord` dataset.
 Each entry of the `TFRecord` is a serialized `tf.Example` protocol buffer.
 A complete list of information contained in the `tf.Example` is described
-in the comments of `build_image_data.py`.
+in the comments of [`build_image_data.py`](inception/data/build_image_data.py).
 
-To run `build_image_data.py`, you can run the following command line:
+To run [`build_image_data.py`](inception/data/build_image_data.py), you can run the following command line:
 
 ```shell
 # location to where to save the TFRecord data.
@@ -578,7 +578,7 @@ some general considerations for novices.
 
 Roughly 5-10 hyper-parameters govern the speed at which a network is trained.
 In addition to `--batch_size` and `--num_gpus`, there are several constants
-defined in [inception_train.py](./inception_train.py) which dictate the
+defined in [inception_train.py](inception/inception_train.py) which dictate the
 learning schedule.
 
 ```shell
@@ -652,7 +652,7 @@ model architecture, this corresponds to 16GB of CPU memory. You may lower
 `input_queue_memory_factor` in order to decrease the memory footprint. Keep
 in mind though that lowering this value drastically may result in a model
 with slightly lower predictive accuracy when training from scratch. Please
-see comments in [`image_processing.py`](./image_processing.py) for more details.
+see comments in [`image_processing.py`](inception/image_processing.py) for more details.
 
 ## Troubleshooting
 
@@ -693,7 +693,7 @@ the entire model architecture.
 We targeted a desktop with 128GB of CPU ram connected to 8 NVIDIA Tesla K40
 GPU cards but we have run this on desktops with 32GB of CPU ram and 1 NVIDIA
 Tesla K40. You can get a sense of the various training configurations we
-tested by reading the comments in [`inception_train.py`](./inception_train.py).
+tested by reading the comments in [`inception_train.py`](inception/inception_train.py).
 
 
 
