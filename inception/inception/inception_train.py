@@ -266,7 +266,7 @@ def train(dataset):
 
     # Add histograms for gradients.
     for grad, var in grads:
-      if grad:
+      if grad is not None:
         summaries.append(
             tf.histogram_summary(var.op.name + '/gradients', grad))
 
