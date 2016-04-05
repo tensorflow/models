@@ -21,8 +21,8 @@ limitations under the License.
 #include <string>
 
 #include "neurosis/shared_store.h"
-#include "task_context.h"
-#include "term_frequency_map.h"
+#include "neurosis/task_context.h"
+#include "neurosis/term_frequency_map.h"
 #include "neurosis/utils.h"
 #include "neurosis/workspace.h"
 #include "tensorflow/core/lib/core/status.h"
@@ -186,7 +186,7 @@ Affix *AffixTable::AddAffixesForWord(const char *word, size_t size) {
 }
 
 Affix *AffixTable::GetAffix(int id) const {
-  if (id < 0 || id >= (int)affixes_.size()) {
+  if (id < 0 || id >= static_cast<int>(affixes_.size())) {
     return NULL;
   } else {
     return affixes_[id];
@@ -214,7 +214,7 @@ int AffixTable::AffixId(const string &form) const {
 Affix *AffixTable::AddNewAffix(const string &form, int length) {
   int hash = TermHash(form);
   int id = affixes_.size();
-  if (id > (int)buckets_.size() * kFillFactor) Resize(id);
+  if (id > static_cast<int>(buckets_.size()) * kFillFactor) Resize(id);
   int b = hash & (buckets_.size() - 1);
 
   // Create new affix object.

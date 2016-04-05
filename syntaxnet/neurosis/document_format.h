@@ -24,7 +24,8 @@ limitations under the License.
 #include "neurosis/utils.h"
 #include "neurosis/registry.h"
 #include "neurosis/sentence.pb.h"
-#include "task_context.h"
+#include "neurosis/task_context.h"
+#include "tensorflow/core/lib/io/inputbuffer.h"
 
 namespace neurosis {
 
@@ -37,8 +38,10 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
   DocumentFormat() {}
   virtual ~DocumentFormat() {}
 
-  // Initializes formatter from task parameters.
-  virtual void Init(TaskContext *context) {}
+  // Reads a record from the given input buffer with format specific logic.
+  // Returns false if no record could be read because we reached end of file.
+  virtual bool ReadRecord(tensorflow::io::InputBuffer *buffer,
+                          string *record) = 0;
 
   // Converts a key/value pair to one or more documents.
   virtual void ConvertFromString(const string &key, const string &value,

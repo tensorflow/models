@@ -162,7 +162,7 @@ documents: parsed documents.
 
 REGISTER_OP("LexiconBuilder")
     .Attr("task_context: string")
-    .Attr("corpus_name: string")
+    .Attr("corpus_name: string='documents'")
     .Attr("lexicon_max_prefix_length: int = 3")
     .Attr("lexicon_max_suffix_length: int = 3")
     .Doc(R"doc(

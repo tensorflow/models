@@ -95,18 +95,19 @@ std::vector<string> Split(const string &text, char delim) {
   return result;
 }
 
-bool IsAbsolutePath(StringPiece path) {
+bool IsAbsolutePath(tensorflow::StringPiece path) {
   return !path.empty() && path[0] == '/';
 }
 
 // For an array of paths of length count, append them all together,
 // ensuring that the proper path separators are inserted between them.
-string JoinPath(std::initializer_list<StringPiece> paths) {
+string JoinPath(std::initializer_list<tensorflow::StringPiece> paths) {
   string result;
 
-  for (StringPiece path : paths) {
-    if (path.empty())
+  for (tensorflow::StringPiece path : paths) {
+    if (path.empty()) {
       continue;
+    }
 
     if (result.empty()) {
       result = path.ToString();
@@ -115,15 +116,15 @@ string JoinPath(std::initializer_list<StringPiece> paths) {
 
     if (result[result.size() - 1] == '/') {
       if (IsAbsolutePath(path)) {
-        StrAppend(&result, path.substr(1));
+        tensorflow::strings::StrAppend(&result, path.substr(1));
       } else {
-        StrAppend(&result, path);
+        tensorflow::strings::StrAppend(&result, path);
       }
     } else {
       if (IsAbsolutePath(path)) {
-        StrAppend(&result, path);
+        tensorflow::strings::StrAppend(&result, path);
       } else {
-        StrAppend(&result, "/", path);
+        tensorflow::strings::StrAppend(&result, "/", path);
       }
     }
   }

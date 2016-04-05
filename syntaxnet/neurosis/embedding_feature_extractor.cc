@@ -19,7 +19,7 @@ limitations under the License.
 
 #include "neurosis/feature_extractor.h"
 #include "neurosis/parser_features.h"
-#include "task_context.h"
+#include "neurosis/task_context.h"
 #include "neurosis/utils.h"
 
 namespace neurosis {

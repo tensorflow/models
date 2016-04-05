@@ -15,10 +15,10 @@ limitations under the License.
 
 #include "neurosis/sentence_features.h"
 
-#include <gmock/gmock.h>
 #include <string>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include "neurosis/utils.h"
 #include "neurosis/feature_extractor.h"
 #include "neurosis/populate_test_inputs.h"

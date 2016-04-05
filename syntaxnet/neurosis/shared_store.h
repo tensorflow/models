@@ -98,7 +98,7 @@ class SharedStore {
 
   // Map from keys to shared objects.
   static SharedObjectMap *shared_object_map_;
-  static Mutex shared_object_map_mutex_;
+  static mutex shared_object_map_mutex_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(SharedStore);
 };
@@ -132,7 +132,7 @@ T *SharedStore::IncrementRefCountOfObject(SharedObjectMap::iterator it) {
 template <typename T, typename ...Args>
 const T *SharedStore::Get(const string &name,
                           Args &&...args) {  // NOLINT(build/c++11)
-  MutexLock l(shared_object_map_mutex_);
+  mutex_lock l(shared_object_map_mutex_);
   const string key = GetSharedKey<T>(name);
   SharedObjectMap::iterator it = shared_object_map()->find(key);
   return (it == shared_object_map()->end()) ?
@@ -143,7 +143,7 @@ const T *SharedStore::Get(const string &name,
 template <typename T>
 const T *SharedStore::ClosureGet(const string &name,
                                  std::function<T *()> *closure) {
-  MutexLock l(shared_object_map_mutex_);
+  mutex_lock l(shared_object_map_mutex_);
   const string key = GetSharedKey<T>(name);
   SharedObjectMap::iterator it = shared_object_map()->find(key);
   if (it == shared_object_map()->end()) {

@@ -19,6 +19,7 @@
 import os
 import os.path
 import time
+
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
@@ -39,23 +40,16 @@ flags.DEFINE_string('model_path', '', 'Path to model parameters.')
 flags.DEFINE_string('arg_prefix', None, 'Prefix for context parameters.')
 flags.DEFINE_string('graph_builder', 'greedy',
                     'Which graph builder to use, either greedy or structured.')
-flags.DEFINE_string('input', None,
+flags.DEFINE_string('input', 'stdin',
                     'Name of the context input to read data from.')
-flags.DEFINE_string('output', None,
+flags.DEFINE_string('output', 'stdout',
                     'Name of the context input to write data to.')
 flags.DEFINE_string('hidden_layer_sizes', '200,200',
                     'Comma separated list of hidden layer sizes.')
 flags.DEFINE_integer('batch_size', 32,
                      'Number of sentences to process in parallel.')
-flags.DEFINE_integer('beam_size', 10, 'Number of slots for beam parsing.')
-flags.DEFINE_integer('max_steps', 50, 'Max number of steps to unroll loops.')
-
-
-def SentenceKey(document):
-  pb = sentence_pb2.Sentence()
-  pb.ParseFromString(document)
-  filename, line = pb.docid.split(':')
-  return filename, int(line)
+flags.DEFINE_integer('beam_size', 8, 'Number of slots for beam parsing.')
+flags.DEFINE_integer('max_steps', 300, 'Max number of steps to unroll loops.')
 
 
 def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
@@ -94,37 +88,39 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
   task_context = FLAGS.task_context
   parser.AddEvaluation(task_context, FLAGS.batch_size, corpus_name=FLAGS.input)
   parser.AddSaver()
+  sess.run(parser.inits.values())
   parser.saver.restore(sess, FLAGS.model_path)
+
   t = time.time()
   num_epochs = None
   num_tokens = 0
   num_correct = 0
-  documents = []
   while True:
     tf_eval_epochs, tf_eval_metrics, tf_documents = sess.run([
         parser.evaluation['epochs'],
         parser.evaluation['eval_metrics'],
         parser.evaluation['documents'],
     ])
-    for d in tf_documents:
-      if d:
-        documents.append(d)
+    # pylint: disable=g-explicit-length-test
+    if len(tf_documents):
+      logging.info('Processed %d documents', len(tf_documents))
+      gen_parser_ops.document_sink(documents=tf_documents,
+                                   task_context=FLAGS.task_context,
+                                   corpus_name=FLAGS.output).run()
+
     num_tokens += tf_eval_metrics[0]
     num_correct += tf_eval_metrics[1]
     if num_epochs is None:
       num_epochs = tf_eval_epochs
     elif num_epochs < tf_eval_epochs:
       break
-  eval_metric = 100.0 * num_correct / num_tokens
 
-  logging.info('num correct tokens: %d', num_correct)
-  logging.info('total tokens: %d', num_tokens)
-  logging.info('Seconds elapsed in evaluation: %.2f, '
-               'eval metric: %.2f%%', time.time() - t, eval_metric)
-  gen_parser_ops.document_sink(documents=sorted(documents,
-                                                key=SentenceKey),
-                               task_context=FLAGS.task_context,
-                               corpus_name=FLAGS.output).run()
+  if num_tokens > 0:
+    eval_metric = 100.0 * num_correct / num_tokens
+    logging.info('num correct tokens: %d', num_correct)
+    logging.info('total tokens: %d', num_tokens)
+    logging.info('Seconds elapsed in evaluation: %.2f, '
+                 'eval metric: %.2f%%', time.time() - t, eval_metric)
 
 
 def main(unused_argv):

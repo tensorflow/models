@@ -25,8 +25,8 @@ limitations under the License.
 #include "neurosis/feature_extractor.h"
 #include "neurosis/proto_io.h"
 #include "neurosis/sentence.pb.h"
-#include "task_context.h"
-#include "term_frequency_map.h"
+#include "neurosis/task_context.h"
+#include "neurosis/term_frequency_map.h"
 #include "neurosis/workspace.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 

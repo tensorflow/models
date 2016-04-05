@@ -413,7 +413,6 @@ class BatchState {
       beams_[beam_id].features_ = &features_;
       beams_[beam_id].workspace_ = &workspaces_[beam_id];
       beams_[beam_id].workspace_registry_ = &workspace_registry_;
-      beams_[beam_id].Reset();
     }
   }
 
@@ -614,7 +613,7 @@ class BeamParseReader : public OpKernel {
   }
 
   void Compute(OpKernelContext *context) override {
-    MutexLock lock(mu_);
+    mutex_lock lock(mu_);
 
     // Write features.
     batch_state_->ResetBeams();
@@ -635,8 +634,8 @@ class BeamParseReader : public OpKernel {
   }
 
  private:
-  // Mutex to synchronize access to Compute.
-  Mutex mu_;
+  // mutex to synchronize access to Compute.
+  mutex mu_;
 
   // The object whose handle will be passed among the Ops.
   std::unique_ptr<BatchState> batch_state_;

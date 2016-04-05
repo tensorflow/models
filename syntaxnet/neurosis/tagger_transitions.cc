@@ -29,8 +29,8 @@ limitations under the License.
 #include "neurosis/parser_state.h"
 #include "neurosis/parser_transitions.h"
 #include "neurosis/shared_store.h"
-#include "task_context.h"
-#include "term_frequency_map.h"
+#include "neurosis/task_context.h"
+#include "neurosis/term_frequency_map.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 
 namespace neurosis {
@@ -218,7 +218,8 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
   // TaggerTransitionState.
   static const TaggerTransitionState &TransitionState(
       const ParserState &state) {
-    return *static_cast<const TaggerTransitionState *>(state.transition_state());
+    return *static_cast<const TaggerTransitionState *>(
+        state.transition_state());
   }
 
   // Downcasts the ParserTransitionState in ParserState to an

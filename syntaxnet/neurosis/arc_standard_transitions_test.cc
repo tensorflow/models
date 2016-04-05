@@ -103,9 +103,10 @@ class ArcStandardTransitionTest : public ::testing::Test {
 TEST_F(ArcStandardTransitionTest, SingleSentenceDocumentTest) {
   string document_text;
   Sentence document;
-  TF_CHECK_OK(ReadFileToString(tensorflow::Env::Default(),
-                               "neurosis/testdata/document",
-                               &document_text));
+  TF_CHECK_OK(ReadFileToString(
+      tensorflow::Env::Default(),
+      "neurosis/testdata/document",
+      &document_text));
   LOG(INFO) << "see doc\n:" << document_text;
   CHECK(TextFormat::ParseFromString(document_text, &document));
   SetUpForDocument(document);

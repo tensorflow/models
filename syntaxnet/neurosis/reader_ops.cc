@@ -117,7 +117,7 @@ class ParsingReader : public OpKernel {
   }
 
   void Compute(OpKernelContext *context) override {
-    MutexLock lock(mu_);
+    mutex_lock lock(mu_);
 
     // Advances states to the next positions.
     PerformActions(context);
@@ -220,8 +220,8 @@ class ParsingReader : public OpKernel {
   // Prefix for context parameters.
   string arg_prefix_;
 
-  // Mutex to synchronize access to Compute.
-  Mutex mu_;
+  // mutex to synchronize access to Compute.
+  mutex mu_;
 
   // How many times the document source has been rewinded.
   int num_epochs_ = 0;
@@ -389,6 +389,7 @@ class DecodedParseReader : public ParsingReader {
     eval_metrics(1) = num_correct_;
 
     // Output annotated documents for each state.
+    // TODO(chrisalberti): maintain order of input sentences here.
     Tensor *annotated_output;
     OP_REQUIRES_OK(context,
                    context->allocate_output(

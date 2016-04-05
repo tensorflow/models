@@ -27,7 +27,7 @@ limitations under the License.
 #include "neurosis/parser_features.h"
 #include "neurosis/sentence_features.h"
 #include "neurosis/sparse.pb.h"
-#include "task_context.h"
+#include "neurosis/task_context.h"
 #include "neurosis/workspace.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 

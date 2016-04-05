@@ -1,46 +1,45 @@
 Parameter {
-  name: "brain_parser_embedding_dims"
-  value: "8;8;8"
+  name: 'brain_parser_embedding_dims'
+  value: '8;8;8'
 }
 Parameter {
-  name: "brain_parser_features"
-  value: "input.word input(1).word input(2).word stack.word stack(1).word stack(2).word;input.tag input(1).tag input(2).tag stack.tag stack(1).tag stack(2).tag;stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label"
+  name: 'brain_parser_features'
+  value: 'input.word input(1).word input(2).word stack.word stack(1).word stack(2).word;input.tag input(1).tag input(2).tag stack.tag stack(1).tag stack(2).tag;stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label'
 }
 Parameter {
-  name: "brain_parser_embedding_names"
-  value: "words;tags;labels"
+  name: 'brain_parser_embedding_names'
+  value: 'words;tags;labels'
 }
 input {
-  name: "training-corpus"
-  multi_file: true
+  name: 'training-corpus'
+  record_format: 'conll-sentence'
   Part {
-    file_pattern: "neurosis/testdata/mini-training-set"
-    file_format: "recordio"
-    record_format: "document"
+    file_pattern: 'neurosis/testdata/mini-training-set'
   }
 }
 input {
-  name: "tuning-corpus"
-  multi_file: true
+  name: 'tuning-corpus'
+  record_format: 'conll-sentence'
   Part {
-    file_pattern: "neurosis/testdata/mini-training-set"
-    file_format: "recordio"
-    record_format: "document"
+    file_pattern: 'neurosis/testdata/mini-training-set'
   }
 }
 input {
-  name: "label-map"
-  file_format: "text"
+  name: 'parsed-tuning-corpus'
+  creator: 'brain_parser/greedy'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'label-map'
+  file_format: 'text'
   Part {
-    file_pattern: "OUTPATH/label-map"
+    file_pattern: 'OUTPATH/label-map'
   }
 }
 input {
-  name: "word-map"
-  file_format: "text"
+  name: 'word-map'
   Part {
-    file_pattern: "OUTPATH/word-map"
-    file_format: "text"
+    file_pattern: 'OUTPATH/word-map'
   }
 }
 input {
@@ -50,10 +49,9 @@ input {
   }
 }
 input {
-  name: "tag-map"
-  file_format: "text"
+  name: 'tag-map'
   Part {
-    file_pattern: "OUTPATH/tag-map"
+    file_pattern: 'OUTPATH/tag-map'
   }
 }
 input {

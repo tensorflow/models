@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "term_frequency_map.h"
+#include "neurosis/term_frequency_map.h"
 
 #include <stddef.h>
 #include <algorithm>
