@@ -26,6 +26,8 @@ following commands:
   ./configure
   cd ..
   bazel test neurosis/... util/utf8/...
+  # On Mac: bazel test --linkopt=-headerpad_max_install_names \
+  #             neurosis/... util/utf8/...
 ```
 
 Bazel should complete reporting all tests passed.
