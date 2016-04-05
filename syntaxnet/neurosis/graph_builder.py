@@ -16,7 +16,8 @@
 """Builds parser models."""
 
 import tensorflow as tf
-import neurosis.load_parser_ops
+
+import neurosis.load_parser_ops  # opensource-only
 
 from tensorflow.python.ops import control_flow_ops as cf
 from tensorflow.python.ops import state_ops
@@ -122,7 +123,6 @@ class GreedyParser(object):
                bias_init=0.2,
                softmax_init=1e-4,
                averaging_decay=0.9999,
-               training_reader='gold',
                use_averaging=True,
                check_parameters=True,
                check_every=1,
@@ -154,8 +154,6 @@ class GreedyParser(object):
         to softmax_init
       averaging_decay: decay for exponential moving average when computing
         averaged parameters, set to 1 to do vanilla averaging
-      training_reader: format of the training input, either 'gold' for gold
-        parses from sentences or 'examples' dist belief input examples
       use_averaging: whether to use moving averages of parameters during evals
       check_parameters: whether to check for NaN/Inf parameters during
         training
@@ -182,7 +180,6 @@ class GreedyParser(object):
     self._embedding_init = embedding_init
     self._relu_init = relu_init
     self._softmax_init = softmax_init
-    self._training_reader = training_reader
     self._arg_prefix = arg_prefix
     # Parameters of the network with respect to which training is done.
     self.params = {}
@@ -434,6 +431,11 @@ class GreedyParser(object):
     Returns:
       Dictionary of named eval nodes.
     """
+    def _AssignTransitionScores():
+      return tf.assign(nodes['transition_scores'],
+                       nodes['logits'], validate_shape=False)
+    def _Pass():
+      return tf.constant(-1.0)
     unused_evaluation_max_steps = evaluation_max_steps
     with tf.name_scope('evaluation'):
       nodes = self.evaluation
@@ -445,11 +447,9 @@ class GreedyParser(object):
       nodes.update(self._BuildNetwork(nodes['feature_endpoints'],
                                       return_average=self._use_averaging))
       nodes['eval_metrics'] = cf.with_dependencies(
-          [tf.assign(nodes['transition_scores'],
-                     nodes['logits'],
-                     validate_shape=False)],
-          nodes['eval_metrics'],
-          name='eval_metrics')
+          [tf.cond(tf.greater(tf.size(nodes['logits']), 0),
+                   _AssignTransitionScores, _Pass)],
+          nodes['eval_metrics'], name='eval_metrics')
     return nodes
 
   def _IncrementCounter(self, counter):
@@ -492,7 +492,6 @@ class GreedyParser(object):
   def AddTraining(self,
                   task_context,
                   batch_size,
-                  optimizer='momentum',
                   learning_rate=0.1,
                   decay_steps=4000,
                   momentum=0.9,
@@ -502,7 +501,6 @@ class GreedyParser(object):
     Args:
       task_context: file path from which to read the task context
       batch_size: batch size to request from reader op
-      optimizer: 'momentum' is supported
       learning_rate: initial value of the learning rate
       decay_steps: decay learning rate by 0.96 every this many steps
       momentum: momentum parameter used when training with momentum
@@ -511,7 +509,6 @@ class GreedyParser(object):
     Returns:
       Dictionary of named training nodes.
     """
-    assert optimizer in ('momentum',)
     with tf.name_scope('training'):
       nodes = self.training
       nodes.update(self._AddGoldReader(task_context, batch_size, corpus_name))
@@ -553,11 +550,16 @@ class GreedyParser(object):
     return nodes
 
   def AddSaver(self):
-    # Returns an op that saves all model parameters to disk.
+    """Returns an op that saves all model parameters to disk."""
     # NOTE(danielandor): We have to put the save op in the root scope otherwise
     # running "save/restore_all" won't find the "save/Const" node it expects.
     with tf.name_scope(None):
       variables_to_save = self.params.copy()
       variables_to_save.update(self.variables)
+      # Transition scores changes shape depending on the batch_size, so we need
+      # to avoid saving and restoring it to be able to use different batch sizes
+      # at training and inference time.
+      if 'transition_scores' in variables_to_save:
+        del variables_to_save['transition_scores']
       self.saver = tf.train.Saver(variables_to_save)
     return self.saver

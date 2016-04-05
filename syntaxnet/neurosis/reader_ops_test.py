@@ -17,6 +17,7 @@
 
 # pylint: disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member,no-member,g-importing-member
 import os.path
+
 import numpy as np
 import tensorflow as tf
 
@@ -37,12 +38,15 @@ if not hasattr(FLAGS, 'test_srcdir'):
 if not hasattr(FLAGS, 'test_tmpdir'):
   FLAGS.test_tmpdir = tf.test.get_temp_dir()
 
+
 class ParsingReaderOpsTest(test_util.TensorFlowTestCase):
 
   def setUp(self):
     # Creates a task context with the correct testing paths.
     initial_task_context = os.path.join(
-        FLAGS.test_srcdir, 'neurosis/testdata/context.pbtxt')
+        FLAGS.test_srcdir,
+        'neurosis/'
+        'testdata/context.pbtxt')
     self._task_context = os.path.join(FLAGS.test_tmpdir, 'context.pbtxt')
     with open(initial_task_context, 'r') as fin:
       with open(self._task_context, 'w') as fout:

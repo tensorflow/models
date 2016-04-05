@@ -24,7 +24,7 @@ namespace neurosis {
 SharedStore::SharedObjectMap *SharedStore::shared_object_map_ =
     new SharedObjectMap;
 
-Mutex SharedStore::shared_object_map_mutex_(tensorflow::LINKER_INITIALIZED);
+mutex SharedStore::shared_object_map_mutex_(tensorflow::LINKER_INITIALIZED);
 
 SharedStore::SharedObjectMap *SharedStore::shared_object_map() {
   return shared_object_map_;
@@ -34,7 +34,7 @@ bool SharedStore::Release(const void *object) {
   if (object == nullptr) {
     return true;
   }
-  MutexLock l(shared_object_map_mutex_);
+  mutex_lock l(shared_object_map_mutex_);
   for (SharedObjectMap::iterator it = shared_object_map()->begin();
        it != shared_object_map()->end(); ++it) {
     if (it->second.object == object) {
@@ -53,7 +53,7 @@ bool SharedStore::Release(const void *object) {
 }
 
 void SharedStore::Clear() {
-  MutexLock l(shared_object_map_mutex_);
+  mutex_lock l(shared_object_map_mutex_);
   for (SharedObjectMap::iterator it = shared_object_map()->begin();
        it != shared_object_map()->end(); ++it) {
     it->second.delete_callback();

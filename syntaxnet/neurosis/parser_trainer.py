@@ -20,6 +20,7 @@
 import os
 import os.path
 import time
+
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
@@ -54,8 +55,6 @@ flags.DEFINE_bool('compute_lexicon', False, '')
 flags.DEFINE_bool('projectivize_training_set', False, '')
 flags.DEFINE_string('hidden_layer_sizes', '200,200',
                     'Comma separated list of hidden layer sizes.')
-flags.DEFINE_string('optimizer', 'momentum',
-                    'Either "sgd", "momentum", or "adagrad".')
 flags.DEFINE_string('graph_builder', 'greedy',
                     'Graph builder to use, either "greedy" or "structured".')
 flags.DEFINE_integer('batch_size', 32,
@@ -71,7 +70,7 @@ flags.DEFINE_float('learning_rate', 0.1, 'Initial learning rate parameter.')
 flags.DEFINE_integer('decay_steps', 4000,
                      'Decay learning rate by 0.96 every this many steps.')
 flags.DEFINE_float('momentum', 0.9,
-                   'Momentum parameter when using momentum optimizer.')
+                   'Momentum parameter for momentum optimizer.')
 flags.DEFINE_string('seed', '0', 'Initialization seed for TF variables.')
 flags.DEFINE_string('pretrained_params', None,
                     'Path to model from which to load params.')
@@ -204,7 +203,6 @@ def Train(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
                  FLAGS.projectivize_training_set else FLAGS.training_corpus)
   parser.AddTraining(task_context,
                      FLAGS.batch_size,
-                     optimizer=FLAGS.optimizer,
                      learning_rate=FLAGS.learning_rate,
                      momentum=FLAGS.momentum,
                      decay_steps=FLAGS.decay_steps,

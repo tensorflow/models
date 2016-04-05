@@ -16,6 +16,7 @@ limitations under the License.
 #ifndef NEUROSIS_PROTO_IO_H_
 #define NEUROSIS_PROTO_IO_H_
 
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -26,8 +27,9 @@ limitations under the License.
 #include "neurosis/feature_types.h"
 #include "neurosis/registry.h"
 #include "neurosis/sentence.pb.h"
-#include "task_context.h"
+#include "neurosis/task_context.h"
 #include "neurosis/workspace.h"
+#include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
 #include "tensorflow/core/lib/io/inputbuffer.h"
@@ -96,50 +98,102 @@ class ProtoRecordWriter {
   std::unique_ptr<tensorflow::io::RecordWriter> writer_;
 };
 
-// Reads sentence protos from a text conll file.
+// A file implementation to read from stdin.
+class StdIn : public tensorflow::RandomAccessFile {
+ public:
+  StdIn() {}
+  ~StdIn() override {}
+
+  // Reads up to n bytes from standard input.  Returns `OUT_OF_RANGE` if fewer
+  // than n bytes were stored in `*result` because of EOF.
+  tensorflow::Status Read(uint64 offset, size_t n,
+                          tensorflow::StringPiece *result,
+                          char *scratch) const override {
+    CHECK_EQ(expected_offset_, offset);
+    if (!eof_) {
+      string line;
+      eof_ = !std::getline(std::cin, line);
+      buffer_.append(line);
+      buffer_.append("\n");
+    }
+    CopyFromBuffer(std::min(buffer_.size(), n), result, scratch);
+    if (eof_) {
+      return tensorflow::errors::OutOfRange("End of file reached");
+    } else {
+      return tensorflow::Status::OK();
+    }
+  }
+
+ private:
+  void CopyFromBuffer(size_t n, tensorflow::StringPiece *result,
+                      char *scratch) const {
+    memcpy(scratch, buffer_.data(), buffer_.size());
+    buffer_ = buffer_.substr(n);
+    result->set(scratch, n);
+    expected_offset_ += n;
+  }
+
+  mutable bool eof_ = false;
+  mutable int64 expected_offset_ = 0;
+  mutable string buffer_;
+
+  TF_DISALLOW_COPY_AND_ASSIGN(StdIn);
+};
+
+// Reads sentence protos from a text file.
 class TextReader {
  public:
-  explicit TextReader(const string &filename)
-      : filename_(filename), format_(DocumentFormat::Create("conll-sentence")) {
+  explicit TextReader(const TaskInput &input) {
+    CHECK_EQ(input.record_format_size(), 1)
+        << "TextReader only supports inputs with one record format: "
+        << input.DebugString();
+    CHECK_EQ(input.part_size(), 1)
+        << "TextReader only supports inputs with one part: "
+        << input.DebugString();
+    filename_ = TaskContext::InputFile(input);
+    format_.reset(DocumentFormat::Create(input.record_format(0)));
     Reset();
   }
 
   Sentence *Read() {
-    vector<Sentence *> documents;
+    // Skips emtpy sentences, e.g., blank lines at the beginning of a file or
+    // commented out blocks.
+    vector<Sentence *> sentences;
     string key, value;
-    ReadLines(&key, &value);
-    format_->ConvertFromString(key, value, &documents);
-    CHECK_LE(documents.size(), 1);
-    if (documents.size() == 0) {
+    while (sentences.empty() && format_->ReadRecord(buffer_.get(), &value)) {
+      key = tensorflow::strings::StrCat(filename_, ":", sentence_count_);
+      format_->ConvertFromString(key, value, &sentences);
+      CHECK_LE(sentences.size(), 1);
+    }
+    if (sentences.empty()) {
+      // End of file reached.
       return nullptr;
     } else {
-      return documents[0];
+      ++sentence_count_;
+      return sentences[0];
     }
   }
 
   void Reset() {
-    line_count_ = 0;
-    static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
+    sentence_count_ = 0;
     tensorflow::RandomAccessFile *file;
-    TF_CHECK_OK(
-        tensorflow::Env::Default()->NewRandomAccessFile(filename_, &file));
-    buffer_.reset(new tensorflow::io::InputBuffer(file, kInputBufferSize));
-  }
-
- private:
-  void ReadLines(string *key, string *value) {
-    string line;
-    *key = tensorflow::strings::StrCat(filename_, ":", line_count_);
-    value->clear();
-    while (buffer_->ReadLine(&line) == tensorflow::Status::OK() &&
-           !line.empty()) {
-      ++line_count_;
-      tensorflow::strings::StrAppend(value, line, "\n");
+    if (filename_ == "-") {
+      // TODO(chrisalberti): can this buffer be made a line at a time so that we
+      // can run it in REPL mode?
+      static const int kInputBufferSize = 8 * 1024; /* bytes */
+      file = new StdIn();
+      buffer_.reset(new tensorflow::io::InputBuffer(file, kInputBufferSize));
+    } else {
+      static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
+      TF_CHECK_OK(
+          tensorflow::Env::Default()->NewRandomAccessFile(filename_, &file));
+      buffer_.reset(new tensorflow::io::InputBuffer(file, kInputBufferSize));
     }
   }
 
+ private:
   string filename_;
-  int line_count_ = 0;
+  int sentence_count_ = 0;
   std::unique_ptr<tensorflow::io::InputBuffer> buffer_;
   std::unique_ptr<DocumentFormat> format_;
 };
@@ -149,24 +203,33 @@ class TextWriter {
  public:
   explicit TextWriter(const string &filename)
       : filename_(filename), format_(DocumentFormat::Create("conll-sentence")) {
-    TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file_));
+    if (filename_ != "-") {
+      TF_CHECK_OK(
+          tensorflow::Env::Default()->NewWritableFile(filename, &file_));
+    }
   }
 
   ~TextWriter() {
-    file_->Close();
-    delete file_;
+    if (file_) {
+      file_->Close();
+      delete file_;
+    }
   }
 
-  void Write(const Sentence &document) {
+  void Write(const Sentence &sentence) {
     string key, value;
-    format_->ConvertToString(document, &key, &value);
-    TF_CHECK_OK(file_->Append(value));
+    format_->ConvertToString(sentence, &key, &value);
+    if (file_) {
+      TF_CHECK_OK(file_->Append(value));
+    } else {
+      std::cout << value;
+    }
   }
 
  private:
   string filename_;
   std::unique_ptr<DocumentFormat> format_;
-  tensorflow::WritableFile *file_;
+  tensorflow::WritableFile *file_ = nullptr;
 };
 
 }  // namespace neurosis

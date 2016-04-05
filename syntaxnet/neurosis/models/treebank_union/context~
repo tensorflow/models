@@ -1,0 +1,201 @@
+Parameter {
+  name: "brain_parser_embedding_dims"
+  value: "64;32;32"
+}
+Parameter {
+  name: "brain_parser_features"
+  value: "input.word input(1).word input(2).word input(3).word stack.word stack(1).word stack(2).word stack(3).word stack.child(1).word stack.child(1).sibling(-1).word stack.child(-1).word stack.child(-1).sibling(1).word stack(1).child(1).word stack(1).child(1).sibling(-1).word stack(1).child(-1).word stack(1).child(-1).sibling(1).word stack.child(2).word stack.child(-2).word stack(1).child(2).word stack(1).child(-2).word;input.tag input(1).tag input(2).tag input(3).tag stack.tag stack(1).tag stack(2).tag stack(3).tag stack.child(1).tag stack.child(1).sibling(-1).tag stack.child(-1).tag stack.child(-1).sibling(1).tag stack(1).child(1).tag stack(1).child(1).sibling(-1).tag stack(1).child(-1).tag stack(1).child(-1).sibling(1).tag stack.child(2).tag stack.child(-2).tag stack(1).child(2).tag stack(1).child(-2).tag;stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label stack(1).child(1).label stack(1).child(1).sibling(-1).label stack(1).child(-1).label stack(1).child(-1).sibling(1).label stack.child(2).label stack.child(-2).label stack(1).child(2).label stack(1).child(-2).label"
+}
+Parameter {
+  name: "brain_parser_embedding_names"
+  value: "words;tags;labels"
+}
+Parameter {
+  name: "brain_parser_scoring"
+  value: "default"
+}
+Parameter {
+  name: "brain_pos_transition_system"
+  value: "tagger"
+}
+Parameter {
+  name: "brain_pos_embedding_dims"
+  value: "64;4;8;8"
+}
+Parameter {
+  name: "brain_pos_features"
+  value: "stack(3).word stack(2).word stack(1).word stack.word input.word input(1).word input(2).word input(3).word;input.digit input.hyphen;stack.suffix(length=2) input.suffix(length=2) input(1).suffix(length=2);stack.prefix(length=2) input.prefix(length=2) input(1).prefix(length=2)"
+}
+Parameter {
+  name: "brain_pos_embedding_names"
+  value: "words;other;suffix;prefix"
+}
+input {
+  name: "training-corpus"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/saft_opensource/data/treebank-train.trees.conll"
+  }
+}
+input {
+  name: "tuning-corpus"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/saft_opensource/data/dev.conll"
+  }
+}
+input {
+  name: "dev-corpus"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/saft_opensource/data/test.conll"
+  }
+}
+input {
+  name: "tagged-training-corpus"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/tagged-training-corpus"
+  }
+}
+input {
+  name: "tagged-tuning-corpus"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/tagged-tuning-corpus"
+  }
+}
+input {
+  name: "tagged-dev-corpus"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/tagged-dev-corpus"
+  }
+}
+input {
+  name: "label-map"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/label-map"
+  }
+}
+input {
+  name: "word-map"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/word-map"
+  }
+}
+input {
+  name: "lcword-map"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/lcword-map"
+  }
+}
+input {
+  name: "tag-map"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/tag-map"
+  }
+}
+input {
+  name: "category-map"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/category-map"
+  }
+}
+input {
+  name: "prefix-table"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/prefix-table"
+  }
+}
+input {
+  name: "suffix-table"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/suffix-table"
+  }
+}
+input {
+  name: "tag-to-category"
+  creator: "brain_pos/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_pos/greedy/256-0.08-3600-0.85-0-0.9999/tag-to-category"
+  }
+}
+input {
+  name: "projectivized-training-corpus"
+  creator: "brain_parser/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_parser/greedy/512x512-0.08-4000-0.9-1-0.9999/projectivized-training-corpus"
+  }
+}
+input {
+  name: "parsed-tuning-corpus"
+  creator: "brain_parser/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_parser/greedy/512x512-0.08-4000-0.9-1-0.9999/parsed-tuning-corpus"
+  }
+}
+input {
+  name: "parsed-dev-corpus"
+  creator: "brain_parser/greedy"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_parser/greedy/512x512-0.08-4000-0.9-1-0.9999/parsed-dev-corpus"
+  }
+}
+input {
+  name: "beam-parsed-tuning-corpus"
+  creator: "brain_parser/structured"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_parser/structured/512x512-0.02-1000-0.8-0-0.9999/beam-parsed-tuning-corpus"
+  }
+}
+input {
+  name: "beam-parsed-dev-corpus"
+  creator: "brain_parser/structured"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "/cns/lg-d/home/chrisalberti/20160328_opensource/brain_parser/structured/512x512-0.02-1000-0.8-0-0.9999/beam-parsed-dev-corpus"
+  }
+}
+input {
+  name: "stdin"
+  record_format: "english-text"
+  Part {
+    file_pattern: "-"
+  }
+}
+input {
+  name: "stdin-conll"
+  record_format: "conll-sentence"
+  Part {
+    file_pattern: "-"
+  }
+}
+input {
+  name: "stdout"
+  Part {
+    file_pattern: "-"
+  }
+}

@@ -87,8 +87,7 @@ class LexiconBuilder : public OpKernel {
     int64 num_tokens = 0;
     int64 num_documents = 0;
     Sentence *document;
-    TextReader corpus(
-        TaskContext::InputFile(*task_context_.GetInput(corpus_name_)));
+    TextReader corpus(*task_context_.GetInput(corpus_name_));
     while ((document = corpus.Read()) != NULL) {
       // Gather token information.
       for (int t = 0; t < document->token_size(); ++t) {
@@ -124,7 +123,10 @@ class LexiconBuilder : public OpKernel {
         } else {
           int index = tags.LookupIndex(token.tag(), -1);
           if (index != -1) {  // index == -1 can happen if token.tag().empty()
-            CHECK_EQ(token.category(), tag_to_category.pair(index).value());
+            CHECK_EQ(token.category(), tag_to_category.pair(index).value())
+                << "POS tag cannot be mapped to multiple coarse POS tags. "
+                << "'" << token.tag() << "' is mapped to: '" << token.category()
+                << "', '" << tag_to_category.pair(index).value() << "'";
           }
         }
 

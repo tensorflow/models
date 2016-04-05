@@ -78,12 +78,11 @@ class DocumentSource : public OpKernel {
     OP_REQUIRES_OK(context, context->GetAttr("batch_size", &batch_size_));
     OP_REQUIRES(context, batch_size_ > 0,
                 InvalidArgument("invalid batch_size provided"));
-    corpus_.reset(new TextReader(
-        TaskContext::InputFile(*task_context_.GetInput(corpus_name))));
+    corpus_.reset(new TextReader(*task_context_.GetInput(corpus_name)));
   }
 
   void Compute(OpKernelContext *context) override {
-    MutexLock lock(mu_);
+    mutex_lock lock(mu_);
     Sentence *document;
     vector<Sentence *> document_batch;
     while ((document = corpus_->Read()) != NULL) {
@@ -109,8 +108,8 @@ class DocumentSource : public OpKernel {
   // Task context used to configure this op.
   TaskContext task_context_;
 
-  // Mutex to synchronize access to Compute.
-  Mutex mu_;
+  // mutex to synchronize access to Compute.
+  mutex mu_;
 
   std::unique_ptr<TextReader> corpus_;
   string documents_path_;
@@ -131,7 +130,7 @@ class DocumentSink : public OpKernel {
   }
 
   void Compute(OpKernelContext *context) override {
-    MutexLock lock(mu_);
+    mutex_lock lock(mu_);
     auto documents = context->input(0).vec<string>();
     for (int i = 0; i < documents.size(); ++i) {
       Sentence document;
@@ -145,8 +144,8 @@ class DocumentSink : public OpKernel {
   // Task context used to configure this op.
   TaskContext task_context_;
 
-  // Mutex to synchronize access to Compute.
-  Mutex mu_;
+  // mutex to synchronize access to Compute.
+  mutex mu_;
 
   string documents_path_;
   std::unique_ptr<TextWriter> writer_;

@@ -19,13 +19,12 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "task_context.h"
+#include "neurosis/task_context.h"
 
 namespace neurosis {
 
 void SentenceBatch::Init(TaskContext *context) {
-  reader_.reset(
-      new TextReader(TaskContext::InputFile(*context->GetInput(input_name_))));
+  reader_.reset(new TextReader(*context->GetInput(input_name_)));
   size_ = 0;
 }
 

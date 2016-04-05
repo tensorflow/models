@@ -18,7 +18,7 @@ limitations under the License.
 #include "neurosis/utils.h"
 #include "neurosis/kbest_syntax.pb.h"
 #include "neurosis/sentence.pb.h"
-#include "term_frequency_map.h"
+#include "neurosis/term_frequency_map.h"
 
 namespace neurosis {
 

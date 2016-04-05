@@ -32,17 +32,18 @@ using tensorflow::int32;
 using tensorflow::int64;
 using tensorflow::uint64;
 using tensorflow::uint32;
-using tensorflow::uint32;
-using tensorflow::StringPiece;
 using tensorflow::protobuf::TextFormat;
+using tensorflow::mutex_lock;
+using tensorflow::mutex;
 using std::map;
 using std::pair;
-using std::string;
 using std::vector;
 using std::unordered_map;
 using std::unordered_set;
-typedef tensorflow::mutex_lock MutexLock;
-typedef tensorflow::mutex Mutex;
+
+using tensorflow::StringPiece;  // opensource only
+using std::string;  // opensource only
+
 typedef signed int char32;
 
 #endif  // NEUROSIS_BASE_H_

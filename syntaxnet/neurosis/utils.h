@@ -27,8 +27,6 @@ limitations under the License.
 #include "tensorflow/core/platform/mutex.h"
 #include "util/utf8/unicodetext.h"
 
-using tensorflow::strings::StrAppend;
-
 namespace neurosis {
 namespace utils {
 
@@ -58,7 +56,7 @@ string Join(const std::vector<T> &s, const char *sep) {
   string result;
   bool first = true;
   for (const auto &x : s) {
-    StrAppend(&result, (first ? "" : sep), x);
+    tensorflow::strings::StrAppend(&result, (first ? "" : sep), x);
     first = false;
   }
   return result;

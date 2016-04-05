@@ -29,7 +29,7 @@ tf_proto_library(
 )
 
 tf_proto_library_py(
-    name = "sentence_proto_py_pb2",
+    name = "sentence_py_pb2",
     srcs = ["sentence.proto"],
 )
 
@@ -39,7 +39,7 @@ tf_proto_library(
 )
 
 tf_proto_library_py(
-    name = "dictionary_proto_py_pb2",
+    name = "dictionary_py_pb2",
     srcs = ["dictionary.proto"],
 )
 
@@ -118,8 +118,8 @@ cc_library(
 )
 
 cc_library(
-    name = "conll_syntax_format",
-    srcs = ["conll_syntax_format.cc"],
+    name = "text_formats",
+    srcs = ["text_formats.cc"],
     deps = [
         ":document_format",
     ],
@@ -346,7 +346,6 @@ cc_library(
     name = "document_filters",
     srcs = ["document_filters.cc"],
     deps = [
-        ":conll_syntax_format",
         ":document_format",
         ":parser_features",
         ":parser_transitions",
@@ -354,6 +353,7 @@ cc_library(
         ":sentence_proto",
         ":task_context",
         ":task_spec_proto",
+        ":text_formats",
     ],
     alwayslink = 1,
 )
@@ -362,7 +362,6 @@ cc_library(
     name = "lexicon_builder",
     srcs = ["lexicon_builder.cc"],
     deps = [
-        ":conll_syntax_format",
         ":document_format",
         ":parser_features",
         ":parser_transitions",
@@ -370,6 +369,7 @@ cc_library(
         ":sentence_proto",
         ":task_context",
         ":task_spec_proto",
+        ":text_formats",
     ],
     alwayslink = 1,
 )
@@ -388,6 +388,10 @@ cc_library(
     srcs = ["ops/parser_ops.cc"],
     deps = [
         ":base",
+        ":document_filters",
+        ":lexicon_builder",
+        ":reader_ops",
+        ":unpack_sparse_features",
     ],
     alwayslink = 1,
 )
@@ -404,11 +408,7 @@ cc_binary(
     linkshared = 1,
     linkstatic = 1,
     deps = [
-        ":document_filters",
-        ":lexicon_builder",
         ":parser_ops_cc",
-        ":reader_ops",
-        ":unpack_sparse_features",
     ],
 )
 
@@ -543,12 +543,34 @@ py_binary(
     srcs = ["parser_eval.py"],
     deps = [
         ":graph_builder",
-        ":sentence_proto_py_pb2",
+        ":sentence_py_pb2",
         ":structured_graph_builder",
     ],
 )
 
 # py tests
+
+py_test(
+    name = "lexicon_builder_test",
+    size = "small",
+    srcs = ["lexicon_builder_test.py"],
+    deps = [
+        ":graph_builder",
+        ":sentence_py_pb2",
+        ":task_spec_py_pb2",
+    ],
+)
+
+py_test(
+    name = "text_formats_test",
+    size = "small",
+    srcs = ["text_formats_test.py"],
+    deps = [
+        ":graph_builder",
+        ":sentence_py_pb2",
+        ":task_spec_py_pb2",
+    ],
+)
 
 py_test(
     name = "reader_ops_test",
@@ -557,7 +579,7 @@ py_test(
     data = [":testdata"],
     tags = ["notsan"],
     deps = [
-        ":dictionary_proto_py_pb2",
+        ":dictionary_py_pb2",
         ":graph_builder",
         ":sparse_py_pb2",
     ],
@@ -586,4 +608,16 @@ py_test(
         ":graph_builder",
         ":sparse_py_pb2",
     ],
+)
+
+sh_test(
+    name = "parser_trainer_test",
+    size = "medium",
+    srcs = ["parser_trainer_test.sh"],
+    data = [
+        ":parser_eval",
+        ":parser_trainer",
+        ":testdata",
+    ],
+    tags = ["notsan"],
 )

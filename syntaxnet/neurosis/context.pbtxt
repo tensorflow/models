@@ -7,20 +7,16 @@ Parameter {
   value: 'input.word input(1).word input(2).word input(3).word stack.word stack(1).word stack(2).word stack(3).word stack.child(1).word stack.child(1).sibling(-1).word stack.child(-1).word stack.child(-1).sibling(1).word stack(1).child(1).word stack(1).child(1).sibling(-1).word stack(1).child(-1).word stack(1).child(-1).sibling(1).word stack.child(2).word stack.child(-2).word stack(1).child(2).word stack(1).child(-2).word;input.tag input(1).tag input(2).tag input(3).tag stack.tag stack(1).tag stack(2).tag stack(3).tag stack.child(1).tag stack.child(1).sibling(-1).tag stack.child(-1).tag stack.child(-1).sibling(1).tag stack(1).child(1).tag stack(1).child(1).sibling(-1).tag stack(1).child(-1).tag stack(1).child(-1).sibling(1).tag stack.child(2).tag stack.child(-2).tag stack(1).child(2).tag stack(1).child(-2).tag;stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label stack(1).child(1).label stack(1).child(1).sibling(-1).label stack(1).child(-1).label stack(1).child(-1).sibling(1).label stack.child(2).label stack.child(-2).label stack(1).child(2).label stack(1).child(-2).label'
 }
 Parameter {
-  name: 'embedding_names'
-  value: 'words;tags;labels'
-}
-Parameter {
   name: 'brain_parser_embedding_names'
   value: 'words;tags;labels'
 }
 Parameter {
-  name: 'brain_pos_transition_system'
-  value: 'tagger'
-}
-Parameter {
   name: 'brain_parser_scoring'
   value: 'default'
+}
+Parameter {
+  name: 'brain_pos_transition_system'
+  value: 'tagger'
 }
 Parameter {
   name: 'brain_pos_embedding_dims'
@@ -36,22 +32,21 @@ Parameter {
 }
 input {
   name: 'training-corpus'
-  multi_file: true
+  record_format: 'conll-sentence'
   Part {
     file_pattern: 'training-corpus.conll'
-    file_format: 'recordio'
-    record_format: 'document'
   }
 }
 input {
   name: 'tuning-corpus'
-  multi_file: true
+  record_format: 'conll-sentence'
   Part {
     file_pattern: 'tuning-corpus.conll'
   }
 }
 input {
   name: 'dev-corpus'
+  record_format: 'conll-sentence'
   Part {
     file_pattern: 'testing-corpus.conll'
   }
@@ -59,10 +54,12 @@ input {
 input {
   name: 'tagged-training-corpus'
   creator: 'brain_pos/greedy'
+  record_format: 'conll-sentence'
 }
 input {
   name: 'tagged-tuning-corpus'
   creator: 'brain_pos/greedy'
+  record_format: 'conll-sentence'
 }
 input {
   name: 'tagged-dev-corpus'
@@ -103,21 +100,45 @@ input {
 input {
   name: 'projectivized-training-corpus'
   creator: 'brain_parser/greedy'
+  record_format: 'conll-sentence'
 }
 input {
   name: 'parsed-tuning-corpus'
   creator: 'brain_parser/greedy'
+  record_format: 'conll-sentence'
 }
 input {
   name: 'parsed-dev-corpus'
   creator: 'brain_parser/greedy'
+  record_format: 'conll-sentence'
 }
 input {
-  name: "beam-parsed-tuning-corpus"
-  creator: "brain_parser/structured"
+  name: 'beam-parsed-tuning-corpus'
+  creator: 'brain_parser/structured'
+  record_format: 'conll-sentence'
 }
 input {
-  name: "beam-parsed-dev-corpus"
-  creator: "brain_parser/structured"
+  name: 'beam-parsed-dev-corpus'
+  creator: 'brain_parser/structured'
+  record_format: 'conll-sentence'
 }
-
+input {
+  name: 'stdin'
+  record_format: 'english-text'
+  Part {
+    file_pattern: '-'
+  }
+}
+input {
+  name: 'stdin-conll'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: '-'
+  }
+}
+input {
+  name: 'stdout'
+  Part {
+    file_pattern: '-'
+  }
+}

@@ -45,7 +45,7 @@ limitations under the License.
 #include "neurosis/proto_io.h"
 #include "neurosis/registry.h"
 #include "neurosis/sentence.pb.h"
-#include "task_context.h"
+#include "neurosis/task_context.h"
 #include "neurosis/utils.h"
 #include "neurosis/workspace.h"
 #include "tensorflow/core/lib/core/status.h"

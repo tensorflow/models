@@ -140,12 +140,10 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
   def AddTraining(self,
                   task_context,
                   batch_size,
-                  optimizer='momentum',
                   learning_rate=0.1,
                   decay_steps=4000,
                   momentum=None,
                   corpus_name='documents'):
-    assert optimizer in ('momentum',)
     with tf.name_scope('training'):
       n = self.training
       n['accumulated_alive_steps'] = self._AddVariable(
