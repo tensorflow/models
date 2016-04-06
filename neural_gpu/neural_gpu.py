@@ -23,7 +23,7 @@ import data_utils
 
 def conv_linear(args, kw, kh, nin, nout, do_bias, bias_start, prefix):
   """Convolutional linear map."""
-  assert args
+  assert args is not None
   if not isinstance(args, (list, tuple)):
     args = [args]
   with tf.variable_scope(prefix):
