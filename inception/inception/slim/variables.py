@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Contains convenience wrappers for creating Variables in TensorFlow.
+"""Contains convenience wrappers for creating variables in TF-Slim.
+
+The variables module is typically used for defining model variables from the
+ops routines (see slim.ops). Such variables are used for training, evaluation
+and inference of models.
+
+All the variables created through this module would be added to the
+MODEL_VARIABLES collection, if you create a model variable outside slim, it can
+be added with slim.variables.add_variable(external_variable, reuse).
 
 Usage:
   weights_initializer = tf.truncated_normal_initializer(stddev=0.01)
@@ -24,15 +32,15 @@ Usage:
                                device='/cpu:0')
 
   biases = variables.variable('biases',
-                               shape=[100],
-                               initializer=tf.zeros_initializer,
-                               device='/cpu:0')
+                              shape=[100],
+                              initializer=tf.zeros_initializer,
+                              device='/cpu:0')
 
   # More complex example.
 
   net = slim.ops.conv2d(input, 32, [3, 3], scope='conv1')
   net = slim.ops.conv2d(net, 64, [3, 3], scope='conv2')
-  with slim.arg_scope(variables.Variables, restore=False):
+  with slim.arg_scope([variables.variable], restore=False):
     net = slim.ops.conv2d(net, 64, [3, 3], scope='conv3')
 
   # Get all model variables from all the layers.
@@ -47,9 +55,9 @@ Usage:
   # Get all bias from all the layers.
   biases = slim.variables.get_variables_by_name('biases')
 
-  # Get all variables in the VARIABLES_TO_RESTORE collection
+  # Get all variables to restore.
   # (i.e. only those created by 'conv1' and 'conv2')
-  variables_to_restore = tf.get_collection(slim.variables.VARIABLES_TO_RESTORE)
+  variables_to_restore = slim.variables.get_variables_to_restore()
 
 ************************************************
 * Initializing model variables from a checkpoint
@@ -60,7 +68,7 @@ v1 = slim.variables.variable(name="v1", ..., restore=False)
 v2 = slim.variables.variable(name="v2", ...) # By default restore=True
 ...
 # The list of variables to restore should only contain 'v2'.
-variables_to_restore = tf.get_collection(slim.variables.VARIABLES_TO_RESTORE)
+variables_to_restore = slim.variables.get_variables_to_restore()
 restorer = tf.train.Saver(variables_to_restore)
 with tf.Session() as sess:
   # Restore variables from disk.
@@ -74,92 +82,71 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import tensorflow as tf
 
 from inception.slim import scopes
 
 # Collection containing all the variables created using slim.variables
-VARIABLES_COLLECTION = '_variables_'
+MODEL_VARIABLES = '_model_variables_'
 
-# Collection containing all the slim.variables that are marked to_restore
+# Collection containing the slim.variables that are created with restore=True.
 VARIABLES_TO_RESTORE = '_variables_to_restore_'
 
 
-def get_variable_given_name(var):
-  """Gets the variable given name without the scope.
-
-  Args:
-    var: a variable.
-
-  Returns:
-    the given name of the variable without the scope.
-  """
-  name = var.op.name
-  if '/' in name:
-    name = name.split('/')[-1]
-  return name
-
-
-def default_collections(given_name, restore):
-  """Define the set of default collections that variables should be added.
-
-  Args:
-    given_name: the given name of the variable.
-    restore: whether the variable should be added to the VARIABLES_TO_RESTORE
-      collection.
-
-  Returns:
-    a list of default collections.
-  """
-  defaults = [tf.GraphKeys.VARIABLES, VARIABLES_COLLECTION]
-  defaults += [VARIABLES_COLLECTION + given_name]
-  if restore:
-    defaults += [VARIABLES_TO_RESTORE]
-  return defaults
-
-
 def add_variable(var, restore=True):
-  """Adds a variable to the default set of collections.
+  """Adds a variable to the MODEL_VARIABLES collection.
 
+    Optionally it will add the variable to  the VARIABLES_TO_RESTORE collection.
   Args:
     var: a variable.
     restore: whether the variable should be added to the
       VARIABLES_TO_RESTORE collection.
+
   """
-  given_name = get_variable_given_name(var)
-  for collection in default_collections(given_name, restore):
+  collections = [MODEL_VARIABLES]
+  if restore:
+    collections.append(VARIABLES_TO_RESTORE)
+  for collection in collections:
     if var not in tf.get_collection(collection):
       tf.add_to_collection(collection, var)
 
 
-def get_variables(prefix=None, suffix=None):
-  """Gets the list of variables, filtered by prefix and/or suffix.
+def get_variables(scope=None, suffix=None):
+  """Gets the list of variables, filtered by scope and/or suffix.
 
   Args:
-    prefix: an optional prefix for filtering the variables to return.
+    scope: an optional scope for filtering the variables to return.
     suffix: an optional suffix for filtering the variables to return.
 
   Returns:
-    a list of variables with prefix and suffix.
+    a copied list of variables with scope and suffix.
   """
-  candidates = tf.get_collection(VARIABLES_COLLECTION, prefix)
+  candidates = tf.get_collection(MODEL_VARIABLES, scope)[:]
   if suffix is not None:
     candidates = [var for var in candidates if var.op.name.endswith(suffix)]
   return candidates
 
 
-def get_variables_by_name(given_name, prefix=None):
-  """Gets the list of variables were given that name.
+def get_variables_to_restore():
+  """Gets the list of variables to restore.
+
+  Returns:
+    a copied list of variables.
+  """
+  return tf.get_collection(VARIABLES_TO_RESTORE)[:]
+
+
+def get_variables_by_name(given_name, scope=None):
+  """Gets the list of variables that were given that name.
 
   Args:
     given_name: name given to the variable without scope.
-    prefix: an optional prefix for filtering the variables to return.
+    scope: an optional scope for filtering the variables to return.
 
   Returns:
-    a list of variables with prefix and suffix.
+    a copied list of variables with the given name and prefix.
   """
-  return tf.get_collection(VARIABLES_COLLECTION + given_name, prefix)
+  return get_variables(scope=scope, suffix=given_name)
 
 
 def get_unique_variable(name):
@@ -204,7 +191,7 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
       `GraphKeys.TRAINABLE_VARIABLES` (see tf.Variable).
     collections: A list of collection names to which the Variable will be added.
       Note that the variable is always also added to the tf.GraphKeys.VARIABLES
-      collection.
+      and MODEL_VARIABLES collections.
     device: Optional device to place the variable. It can be an string or a
       function that is called to get the device for the variable.
     restore: whether the variable should be added to the
@@ -216,8 +203,15 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
   # Instantiate the device for this variable if it is passed as a function.
   if device and callable(device):
     device = device()
-  collections = set(list(collections or []) + default_collections(name,
-                                                                  restore))
+  collections = list(collections or [])
+
+  # Make sure variables are added to tf.GraphKeys.VARIABLES and MODEL_VARIABLES
+  collections += [tf.GraphKeys.VARIABLES, MODEL_VARIABLES]
+  # Add to VARIABLES_TO_RESTORE if necessary
+  if restore:
+    collections.append(VARIABLES_TO_RESTORE)
+  # Remove duplicates
+  collections = set(collections)
   with tf.device(device):
     return tf.get_variable(name, shape=shape, dtype=dtype,
                            initializer=initializer, regularizer=regularizer,

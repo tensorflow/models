@@ -43,7 +43,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import tensorflow as tf
 
 from inception.slim import ops
@@ -98,10 +97,10 @@ def inception_v3(inputs,
         # 73 x 73 x 64
         end_points['conv3'] = ops.conv2d(end_points['pool1'], 80, [1, 1],
                                          scope='conv3')
-        # 71 x 71 x 80.
+        # 73 x 73 x 80.
         end_points['conv4'] = ops.conv2d(end_points['conv3'], 192, [3, 3],
                                          scope='conv4')
-        # 69 x 69 x 192.
+        # 71 x 71 x 192.
         end_points['pool2'] = ops.max_pool(end_points['conv4'], [3, 3],
                                            stride=2, scope='pool2')
         # 35 x 35 x 192.
@@ -260,7 +259,10 @@ def inception_v3(inputs,
           aux_logits = ops.fc(aux_logits, num_classes, activation=None,
                               stddev=0.001, restore=restore_logits)
           end_points['aux_logits'] = aux_logits
-        # mixed_8: 17 x 17 x 1280.
+        # mixed_8: 8 x 8 x 1280.
+        # Note that the scope below is not changed to not void previous
+        # checkpoints.
+        # (TODO) Fix the scope when appropriate.
         with tf.variable_scope('mixed_17x17x1280a'):
           with tf.variable_scope('branch3x3'):
             branch3x3 = ops.conv2d(net, 192, [1, 1])
@@ -327,3 +329,28 @@ def inception_v3(inputs,
           end_points['predictions'] = tf.nn.softmax(logits, name='predictions')
       return logits, end_points
 
+
+def inception_v3_parameters(weight_decay=0.00004, stddev=0.1,
+                            batch_norm_decay=0.9997, batch_norm_epsilon=0.001):
+  """Yields the scope with the default parameters for inception_v3.
+
+  Args:
+    weight_decay: the weight decay for weights variables.
+    stddev: standard deviation of the truncated guassian weight distribution.
+    batch_norm_decay: decay for the moving average of batch_norm momentums.
+    batch_norm_epsilon: small float added to variance to avoid dividing by zero.
+
+  Yields:
+    a arg_scope with the parameters needed for inception_v3.
+  """
+  # Set weight_decay for weights in Conv and FC layers.
+  with scopes.arg_scope([ops.conv2d, ops.fc],
+                        weight_decay=weight_decay):
+    # Set stddev, activation and parameters for batch_norm.
+    with scopes.arg_scope([ops.conv2d],
+                          stddev=stddev,
+                          activation=tf.nn.relu,
+                          batch_norm_params={
+                              'decay': batch_norm_decay,
+                              'epsilon': batch_norm_epsilon}) as arg_scope:
+      yield arg_scope

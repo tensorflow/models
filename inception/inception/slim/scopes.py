@@ -19,7 +19,7 @@
 
   Example of how to use scopes.arg_scope:
 
-  with slim.arg_scope(ops.conv2d, padding='SAME',
+  with scopes.arg_scope(ops.conv2d, padding='SAME',
                       stddev=0.01, weight_decay=0.0005):
     net = ops.conv2d(inputs, 64, [11, 11], 4, padding='VALID', scope='conv1')
     net = ops.conv2d(net, 256, [5, 5], scope='conv2')
@@ -32,6 +32,15 @@
     ops.conv2d(inputs, 256, [5, 5], padding='SAME',
                stddev=0.01, weight_decay=0.0005, scope='conv2')
 
+  Example of how to reuse an arg_scope:
+  with scopes.arg_scope(ops.conv2d, padding='SAME',
+                      stddev=0.01, weight_decay=0.0005) as conv2d_arg_scope:
+    net = ops.conv2d(net, 256, [5, 5], scope='conv1')
+    ....
+
+  with scopes.arg_scope(conv2d_arg_scope):
+    net = ops.conv2d(net, 256, [5, 5], scope='conv2')
+
   Example of how to use scopes.add_arg_scope:
 
   @scopes.add_arg_scope
@@ -43,7 +52,6 @@ from __future__ import print_function
 
 import contextlib
 import functools
-
 
 from tensorflow.python.framework import ops
 
@@ -74,12 +82,16 @@ def _add_op(op):
 
 
 @contextlib.contextmanager
-def arg_scope(list_ops, **kwargs):
+def arg_scope(list_ops_or_scope, **kwargs):
   """Stores the default arguments for the given set of list_ops.
 
+  For usage, please see examples at top of the file.
+
   Args:
-    list_ops: List or tuple of operations to set argument scope for. Every op in
-              list_ops need to be decorated with @add_arg_scope to work.
+    list_ops_or_scope: List or tuple of operations to set argument scope for or
+      a dictionary containg the current scope. When list_ops_or_scope is a dict,
+      kwargs must be empty. When list_ops_or_scope is a list or tuple, then
+      every op in it need to be decorated with @add_arg_scope to work.
     **kwargs: keyword=value that will define the defaults for each op in
               list_ops. All the ops need to accept the given set of arguments.
 
@@ -89,24 +101,38 @@ def arg_scope(list_ops, **kwargs):
     TypeError: if list_ops is not a list or a tuple.
     ValueError: if any op in list_ops has not be decorated with @add_arg_scope.
   """
-  if not isinstance(list_ops, (list, tuple)):
-    raise TypeError("list_ops is not a list or a tuple")
-  try:
-    current_scope = _current_arg_scope().copy()
-    for op in list_ops:
-      key_op = (op.__module__, op.__name__)
-      if not has_arg_scope(op):
-        raise ValueError("%s is not decorated with @add_arg_scope", key_op)
-      if key_op in current_scope:
-        current_kwargs = current_scope[key_op].copy()
-        current_kwargs.update(kwargs)
-        current_scope[key_op] = current_kwargs
-      else:
-        current_scope[key_op] = kwargs.copy()
-    _get_arg_stack().append(current_scope)
-    yield current_scope
-  finally:
-    _get_arg_stack().pop()
+  if isinstance(list_ops_or_scope, dict):
+    # Assumes that list_ops_or_scope is a scope that is being reused.
+    if kwargs:
+      raise ValueError("When attempting to re-use a scope by suppling a"
+                       "dictionary, kwargs must be empty.")
+    current_scope = list_ops_or_scope.copy()
+    try:
+      _get_arg_stack().append(current_scope)
+      yield current_scope
+    finally:
+      _get_arg_stack().pop()
+  else:
+    # Assumes that list_ops_or_scope is a list/tuple of ops with kwargs.
+    if not isinstance(list_ops_or_scope, (list, tuple)):
+      raise TypeError("list_ops_or_scope must either be a list/tuple or reused"
+                      "scope (i.e. dict)")
+    try:
+      current_scope = _current_arg_scope().copy()
+      for op in list_ops_or_scope:
+        key_op = (op.__module__, op.__name__)
+        if not has_arg_scope(op):
+          raise ValueError("%s is not decorated with @add_arg_scope", key_op)
+        if key_op in current_scope:
+          current_kwargs = current_scope[key_op].copy()
+          current_kwargs.update(kwargs)
+          current_scope[key_op] = current_kwargs
+        else:
+          current_scope[key_op] = kwargs.copy()
+      _get_arg_stack().append(current_scope)
+      yield current_scope
+    finally:
+      _get_arg_stack().pop()
 
 
 def add_arg_scope(func):

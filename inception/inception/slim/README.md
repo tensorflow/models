@@ -1,21 +1,20 @@
 # TensorFlow-Slim
 
-TF-Slim is a lightweight library for defining, training and evaluating models
-in TensorFlow. It enables defining complex networks quickly and concisely while
+TF-Slim is a lightweight library for defining, training and evaluating models in
+TensorFlow. It enables defining complex networks quickly and concisely while
 keeping a model's architecture transparent and its hyperparameters explicit.
-
 
 [TOC]
 
 ## Teaser
 
-As a demonstration of the simplicity of using TF-Slim, compare the simplicity
-of the code necessary for defining the entire
-[VGG](http://www.robots.ox.ac.uk/~vgg/research/very_deep/) network using TF-Slim
-to the lengthy and verbose nature of defining just the first three layers (out
-of 16) using native tensorflow:
+As a demonstration of the simplicity of using TF-Slim, compare the simplicity of
+the code necessary for defining the entire [VGG]
+(http://www.robots.ox.ac.uk/~vgg/research/very_deep/) network using TF-Slim to
+the lengthy and verbose nature of defining just the first three layers (out of
+16) using native tensorflow:
 
-```python{.good}
+```python {.good}
 # VGG16 in TF-Slim.
 def vgg16(inputs):
   with slim.arg_scope([slim.ops.conv2d, slim.ops.fc], stddev=0.01, weight_decay=0.0005):
@@ -38,7 +37,7 @@ def vgg16(inputs):
   return net
 ```
 
-```python{.bad}
+```python {.bad}
 # Layers 1-3 (out of 16) of VGG16 in native tensorflow.
 def vgg16(inputs):
   with tf.name_scope('conv1_1') as scope:
@@ -61,47 +60,42 @@ def vgg16(inputs):
 
 TF-Slim offers several advantages over just the built-in tensorflow libraries:
 
-* Allows one to define models much more compactly by eliminating
-boilerplate code. This is accomplished through the use of
-[argument scoping](scopes.py)
-and numerous high level
-[operations](ops.py).
-These tools increase readability and maintainability, reduce the likelihood
-of an error from copy-and-pasting hyperparameter values and simplifies
-hyperparameter tuning.
-* Makes developing models simple by providing commonly used
-[loss functions](losses.py)
-* Provides a concise
-[definition](inception.py)
-of [Inception v3](http://arxiv.org/abs/1512.00567) network architecture
-ready to be used out-of-the-box or subsumed into new models.
+*   Allows one to define models much more compactly by eliminating boilerplate
+    code. This is accomplished through the use of [argument scoping](scopes.py)
+    and numerous high level [operations](ops.py). These tools increase
+    readability and maintainability, reduce the likelihood of an error from
+    copy-and-pasting hyperparameter values and simplifies hyperparameter tuning.
+*   Makes developing models simple by providing commonly used [loss functions]
+    (losses.py)
+*   Provides a concise [definition](inception.py) of [Inception v3]
+    (http://arxiv.org/abs/1512.00567) network architecture ready to be used
+    out-of-the-box or subsumed into new models.
 
 Additionally TF-Slim was designed with several principles in mind:
 
-* The various modules of TF-Slim (scopes, variables, ops, losses) are
-independent. This flexibility allows users to pick and choose
-components of TF-Slim completely à la carte.
-* TF-Slim is written using a Functional Programming style. That means it's
-super-lightweight and can be used right alongside any of TensorFlow's native
-operations.
-* Makes re-using network architectures easy. This allows users to build new
-networks on top of existing ones as well as fine-tuning pre-trained models on
-new tasks.
+*   The various modules of TF-Slim (scopes, variables, ops, losses) are
+    independent. This flexibility allows users to pick and choose components of
+    TF-Slim completely à la carte.
+*   TF-Slim is written using a Functional Programming style. That means it's
+    super-lightweight and can be used right alongside any of TensorFlow's native
+    operations.
+*   Makes re-using network architectures easy. This allows users to build new
+    networks on top of existing ones as well as fine-tuning pre-trained models
+    on new tasks.
 
 ## What are the various components of TF-Slim?
 
 TF-Slim is composed of several parts which were designed to exist independently.
 These include:
 
-* [scopes.py](./scopes.py):
-provides a new scope named `arg_scope` that allows a user to define default
-arguments for specific operations within that scope.
-* [variables.py](./variables.py):
-provides convenience wrappers for variable creation and manipulation.
-* [ops.py](./ops.py):
-provides high level operations for building models using tensorflow.
-* [losses.py](./losses.py):
-contains commonly used loss functions.
+*   [scopes.py](./scopes.py): provides a new scope named `arg_scope` that allows
+    a user to define default arguments for specific operations within that
+    scope.
+*   [variables.py](./variables.py): provides convenience wrappers for variable
+    creation and manipulation.
+*   [ops.py](./ops.py): provides high level operations for building models using
+    tensorflow.
+*   [losses.py](./losses.py): contains commonly used loss functions.
 
 ## Defining Models
 
@@ -110,16 +104,14 @@ operations and scopes. Each of these elements are defined below.
 
 ### Variables
 
-Creating
-[`Variables`](https://www.tensorflow.org/how_tos/variables/index.html)
+Creating [`Variables`](https://www.tensorflow.org/how_tos/variables/index.html)
 in native tensorflow requires either a predefined value or an initialization
-mechanism
-(random, normally distributed). Furthermore, if a variable needs to be created
-on a specific device, such as a GPU, the specification must be
-[made explicit](https://www.tensorflow.org/how_tos/using_gpu/index.html).
-To alleviate the code required for variable creation, TF-Slim provides a set
-of thin wrapper functions in [variables.py](./variables.py)
-which allow callers to easily define variables.
+mechanism (random, normally distributed). Furthermore, if a variable needs to be
+created on a specific device, such as a GPU, the specification must be [made
+explicit](https://www.tensorflow.org/how_tos/using_gpu/index.html). To alleviate
+the code required for variable creation, TF-Slim provides a set of thin wrapper
+functions in [variables.py](./variables.py) which allow callers to easily define
+variables.
 
 For example, to create a `weight` variable, initialize it using a truncated
 normal distribution, regularize it with an `l2_loss` and place it on the `CPU`,
@@ -159,20 +151,19 @@ weights = variables.variable('weights',
 
 ### Operations (Layers)
 
-While the set of TensorFlow operations is quite extensive, builders of
-neural networks typically think of models in terms of "layers". A layer,
-such as a Convolutional Layer, a Fully Connected Layer or a BatchNorm Layer
-are more abstract than a single TensorFlow operation and typically involve
-many such operations. For example, a Convolutional Layer in a neural network
-is built using several steps:
+While the set of TensorFlow operations is quite extensive, builders of neural
+networks typically think of models in terms of "layers". A layer, such as a
+Convolutional Layer, a Fully Connected Layer or a BatchNorm Layer are more
+abstract than a single TensorFlow operation and typically involve many such
+operations. For example, a Convolutional Layer in a neural network is built
+using several steps:
 
-1. Creating the weight variables
-2. Creating the bias variables
-3. Convolving the weights with the input from the previous layer
-4. Adding the biases to the result of the convolution.
+1.  Creating the weight variables
+2.  Creating the bias variables
+3.  Convolving the weights with the input from the previous layer
+4.  Adding the biases to the result of the convolution.
 
 In python code this can be rather laborious:
-
 
 ```python
 input = ...
@@ -187,9 +178,9 @@ with tf.name_scope('conv1_1') as scope:
 ```
 
 To alleviate the need to duplicate this code repeatedly, TF-Slim provides a
-number of convenient operations defined at the (more abstract) level of
-neural network layers. For example, compare the code above to an invocation
-of the TF-Slim code:
+number of convenient operations defined at the (more abstract) level of neural
+network layers. For example, compare the code above to an invocation of the
+TF-Slim code:
 
 ```python
 input = ...
@@ -199,22 +190,21 @@ net = slim.ops.conv2d(input, [3, 3], 128, scope='conv1_1')
 TF-Slim provides numerous operations used in building neural networks which
 roughly correspond to such layers. These include:
 
-Layer | TF-Slim Op
-------- | --------
-Convolutional Layer | [ops.conv2d](ops.py)
+Layer                 | TF-Slim Op
+--------------------- | ------------------------
+Convolutional Layer   | [ops.conv2d](ops.py)
 Fully Connected Layer | [ops.fc](ops.py)
-BatchNorm layer | [ops.batch_norm](ops.py)
-Max Pooling Layer | [ops.max_pool](ops.py)
-Avg Pooling Layer | [ops.avg_pool](ops.py)
-Dropout Layer | [ops.dropout](ops.py)
+BatchNorm layer       | [ops.batch_norm](ops.py)
+Max Pooling Layer     | [ops.max_pool](ops.py)
+Avg Pooling Layer     | [ops.avg_pool](ops.py)
+Dropout Layer         | [ops.dropout](ops.py)
 
-[ops.py](./ops.py)
-also includes operations that are not really "layers" per se, but are
-often used to manipulate hidden unit representations during inference:
+[ops.py](./ops.py) also includes operations that are not really "layers" per se,
+but are often used to manipulate hidden unit representations during inference:
 
 Operation | TF-Slim Op
-------- | --------
-Flatten | [ops.flatten](ops.py)
+--------- | ---------------------
+Flatten   | [ops.flatten](ops.py)
 
 TF-Slim also provides a meta-operation called `repeat_op` that allows one to
 repeatedly perform the same operation. Consider the following snippet from the
@@ -238,35 +228,34 @@ for i in range(3):
 net = slim.ops.max_pool(net, [2, 2], scope='pool3')
 ```
 
-While this does reduce the amount of duplication, it can be made even cleaner
-by using the `RepeatOp`:
+While this does reduce the amount of duplication, it can be made even cleaner by
+using the `RepeatOp`:
 
 ```python
 net = slim.ops.repeat_op(3, net, slim.ops.conv2d, 256, [3, 3], scope='conv3')
 net = slim.ops.max_pool(net, [2, 2], scope='pool2')
 ```
 
-Notice that the RepeatOp not only applies the same argument in-line, it also
-is smart enough to unroll the scopes such that the scopes assigned to each
+Notice that the RepeatOp not only applies the same argument in-line, it also is
+smart enough to unroll the scopes such that the scopes assigned to each
 subsequent call of `ops.conv2d` is appended with an underscore and iteration
 number. More concretely, the scopes in the example above would be 'conv3_1',
 'conv3_2' and 'conv3_3'.
 
-
 ### Scopes
 
-In addition to the types of scope mechanisms in TensorFlow
-([name_scope](https://www.tensorflow.org/api_docs/python/framework.html#name_scope),
+In addition to the types of scope mechanisms in TensorFlow ([name_scope]
+(https://www.tensorflow.org/api_docs/python/framework.html#name_scope),
 [op_scope](https://www.tensorflow.org/api_docs/python/framework.html#op_scope),
-[variable_scope](https://www.tensorflow.org/api_docs/python/state_ops.html#variable_scope),
-[variable_op_scope](https://www.tensorflow.org/api_docs/python/state_ops.html#variable_op_scope)),
-TF-Slim adds a new scoping mechanism called "argument scope" or
-[arg_scope](scopes.py).
-This new scope allows a user to specify one or more operations and a set of
-arguments which will be passed to each of the operations defined in the
+[variable_scope]
+(https://www.tensorflow.org/api_docs/python/state_ops.html#variable_scope),
+[variable_op_scope]
+(https://www.tensorflow.org/api_docs/python/state_ops.html#variable_op_scope)),
+TF-Slim adds a new scoping mechanism called "argument scope" or [arg_scope]
+(scopes.py). This new scope allows a user to specify one or more operations and
+a set of arguments which will be passed to each of the operations defined in the
 `arg_scope`. This functionality is best illustrated by example. Consider the
 following code snippet:
-
 
 ```python
 net = slim.ops.conv2d(inputs, 64, [11, 11], 4, padding='SAME', stddev=0.01, weight_decay=0.0005, scope='conv1')
@@ -278,8 +267,8 @@ It should be clear that these three Convolution layers share many of the same
 hyperparameters. Two have the same padding, all three have the same weight_decay
 and standard deviation of its weights. Not only do the duplicated values make
 the code more difficult to read, it also adds the addition burder to the writer
-of needing to doublecheck that all of the values are identical in each step.
-One solution would be to specify default values using variables:
+of needing to doublecheck that all of the values are identical in each step. One
+solution would be to specify default values using variables:
 
 ```python
 padding='SAME'
@@ -302,11 +291,11 @@ ensure that each layer uses the same values and simplify the code:
     net = slim.ops.conv2d(net, 256, [11, 11], scope='conv3')
 ```
 
-As the example illustrates, the use of arg_scope makes the code cleaner,
-simpler and easier to maintain. Notice that while argument values are specifed
-in the arg_scope, they can be overwritten locally. In particular, while
-the padding argument has been set to 'SAME', the second convolution overrides
-it with the value of 'VALID'.
+As the example illustrates, the use of arg_scope makes the code cleaner, simpler
+and easier to maintain. Notice that while argument values are specifed in the
+arg_scope, they can be overwritten locally. In particular, while the padding
+argument has been set to 'SAME', the second convolution overrides it with the
+value of 'VALID'.
 
 One can also nest `arg_scope`s and use multiple operations in the same scope.
 For example:
@@ -320,9 +309,9 @@ with arg_scope([slim.ops.conv2d, slim.ops.fc], stddev=0.01, weight_decay=0.0005)
     net = slim.ops.fc(net, 1000, activation=None, scope='fc')
 ```
 
-In this example, the first `arg_scope` applies the same `stddev` and `weight_decay`
-arguments to the `conv2d` and `fc` ops in its scope. In the second `arg_scope`,
-additional default arguments to `conv2d` only are specified.
+In this example, the first `arg_scope` applies the same `stddev` and
+`weight_decay` arguments to the `conv2d` and `fc` ops in its scope. In the
+second `arg_scope`, additional default arguments to `conv2d` only are specified.
 
 In addition to `arg_scope`, TF-Slim provides several decorators that wrap the
 use of tensorflow arg scopes. These include `@AddArgScope`, `@AddNameScope`,
@@ -349,8 +338,8 @@ with tf.variable_scope('layer1'):
   outputs = MyNewOp(inputs)
 ```
 
-As an alternative, one can use TF-Slim's decorators to decorate the function
-and simplify the call:
+As an alternative, one can use TF-Slim's decorators to decorate the function and
+simplify the call:
 
 ```python
 @AddVariableScope
@@ -364,8 +353,8 @@ outputs = MyNewOp('layer1')
 ```
 
 The `@AddVariableScope` decorater simply applies the `tf.variable_scope` scoping
-to the called function taking "layer1" as its argument. This allows the code
-to be written more concisely.
+to the called function taking "layer1" as its argument. This allows the code to
+be written more concisely.
 
 ### Losses
 
@@ -375,19 +364,16 @@ classification problems, this is typically the cross entropy between the true
 classes. For regression problems, this is often the sum-of-squares differences
 between the predicted and true values.
 
-Certain models, such as multi-task
-learning models, require the use of multiple loss functions simultaneously. In
-other words, the loss function ultimatey being minimized is the sum of various
-other loss functions. For example, consider a model that predicts both
-the type of scene in an image as well as the depth from the
-camera of each pixel. This model's loss function would be the sum of the
+Certain models, such as multi-task learning models, require the use of multiple
+loss functions simultaneously. In other words, the loss function ultimatey being
+minimized is the sum of various other loss functions. For example, consider a
+model that predicts both the type of scene in an image as well as the depth from
+the camera of each pixel. This model's loss function would be the sum of the
 classification loss and depth prediction loss.
 
-TF-Slim provides an easy-to-use mechanism for defining and keeping track of
-loss functions via the
-[losses.py](./losses.py)
-module. Consider the simple case where we want to train the VGG network:
-
+TF-Slim provides an easy-to-use mechanism for defining and keeping track of loss
+functions via the [losses.py](./losses.py) module. Consider the simple case
+where we want to train the VGG network:
 
 ```python
 # Load the images and labels.
@@ -401,9 +387,8 @@ loss = losses.ClassificationLoss(predictions, labels)
 ```
 
 In this example, we start by creating the model (using TF-Slim's VGG
-implementation), and add the standard classification loss. Now, lets turn
-to the case where we have a multi-task model that produces multiple outputs:
-
+implementation), and add the standard classification loss. Now, lets turn to the
+case where we have a multi-task model that produces multiple outputs:
 
 ```python
 # Load the images and labels.
@@ -424,16 +409,14 @@ total_loss2 = tf.get_collection(slim.losses.LOSSES_COLLECTION)
 In this example, we have two losses which we add by calling
 `losses.ClassificationLoss` and `losses.SumOfSquaresLoss`. We can obtain the
 total loss by adding them together (`total_loss1`) or by calling
-`losses.GetTotalLoss()`. How did this work?
-When you create a loss function via TF-Slim, TF-Slim adds the loss to a
-special TensorFlow collection of loss functions. This enables you to either
-manage the total loss manually, or allow TF-Slim to manage them for you.
+`losses.GetTotalLoss()`. How did this work? When you create a loss function via
+TF-Slim, TF-Slim adds the loss to a special TensorFlow collection of loss
+functions. This enables you to either manage the total loss manually, or allow
+TF-Slim to manage them for you.
 
 What if you want to let TF-Slim manage the losses for you but have a custom loss
-function?
-[losses.py](./losses.py)
-also has a function that adds this loss to TF-Slims collection. For example:
-
+function? [losses.py](./losses.py) also has a function that adds this loss to
+TF-Slims collection. For example:
 
 ```python
 # Load the images and labels.
@@ -452,15 +435,15 @@ tf.add_to_collection(slim.losses.LOSSES_COLLECTION, pose_loss) # Letting TF-Slim
 total_loss1 = classification_loss + sum_of_squares_loss + pose_loss
 total_loss2 = losses.GetTotalLoss()
 ```
-In this example, we can again either produce the total loss function manually
-or let TF-Slim know about the additional loss and let TF-Slim handle the losses.
 
+In this example, we can again either produce the total loss function manually or
+let TF-Slim know about the additional loss and let TF-Slim handle the losses.
 
 ## Putting the Pieces Together
 
 By combining TF-Slim Variables, Operations and scopes, we can write a normally
-very complex network with very few lines of code. For example, the entire
-[VGG](https://www.robots.ox.ac.uk/~vgg/research/very_deep/) architecture can be
+very complex network with very few lines of code. For example, the entire [VGG]
+(https://www.robots.ox.ac.uk/~vgg/research/very_deep/) architecture can be
 defined with just the following snippet:
 
 ```python
@@ -490,8 +473,8 @@ return net
 
 After a model has been trained, it can be restored using `tf.train.Saver()`
 which restores `Variables` from a given checkpoint. For many cases,
-`tf.train.Saver()` provides a simple mechanism to restore all or just a
-few variables.
+`tf.train.Saver()` provides a simple mechanism to restore all or just a few
+variables.
 
 ```python
 # Create some variables.
@@ -514,19 +497,21 @@ with tf.Session() as sess:
   ...
 ```
 
-See [Restoring Variables](https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html#restoring-variables)
-and
-[Choosing which Variables to Save and Restore](https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html#choosing-which-variables-to-save-and-restore)
-sections of the [Variables](https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html)
-page for more details.
+See [Restoring Variables]
+(https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html#restoring-variables)
+and [Choosing which Variables to Save and Restore]
+(https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html#choosing-which-variables-to-save-and-restore)
+sections of the [Variables]
+(https://www.tensorflow.org/versions/r0.7/how_tos/variables/index.html) page for
+more details.
 
 ### Using slim.variables to Track which Variables need to be Restored
 
 It is often desirable to fine-tune a pre-trained model on an entirely new
 dataset or even a new task. In these situations, one must specify which layers
-of the model should be reused (and consequently loaded from a checkpoint)
-and which layers are new. Indicating which variables or layers should be
-restored is a process that quickly becomes cumbersome when done manually.
+of the model should be reused (and consequently loaded from a checkpoint) and
+which layers are new. Indicating which variables or layers should be restored is
+a process that quickly becomes cumbersome when done manually.
 
 To help keep track of which variables to restore, `slim.variables` provides a
 `restore` argument when creating each Variable. By default, all variables are
@@ -553,7 +538,6 @@ Additionally, every layer in `slim.ops` that creates slim.variables (such as
 `slim.ops.conv2d`, `slim.ops.fc`, `slim.ops.batch_norm`) also has a `restore`
 argument which controls whether the variables created by that layer should be
 restored or not.
-
 
 ```python
 # Create a small network.

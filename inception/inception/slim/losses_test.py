@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 
-
 import tensorflow as tf
 
 from inception.slim import losses
@@ -45,6 +44,95 @@ class LossesTest(tf.test.TestCase):
       loss = losses.l2_loss(weights, wd)
       self.assertEquals(loss.op.name, 'L2Loss/value')
       self.assertAlmostEqual(loss.eval(), num_elem * wd / 2, 5)
+
+
+class RegularizersTest(tf.test.TestCase):
+
+  def testL1Regularizer(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      loss = losses.l1_regularizer()(tensor)
+      self.assertEquals(loss.op.name, 'L1Regularizer/value')
+      self.assertAlmostEqual(loss.eval(), num_elem, 5)
+
+  def testL1RegularizerWithScope(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      loss = losses.l1_regularizer(scope='L1')(tensor)
+      self.assertEquals(loss.op.name, 'L1/value')
+      self.assertAlmostEqual(loss.eval(), num_elem, 5)
+
+  def testL1RegularizerWithWeight(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      weight = 0.01
+      loss = losses.l1_regularizer(weight)(tensor)
+      self.assertEquals(loss.op.name, 'L1Regularizer/value')
+      self.assertAlmostEqual(loss.eval(), num_elem * weight, 5)
+
+  def testL2Regularizer(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      loss = losses.l2_regularizer()(tensor)
+      self.assertEquals(loss.op.name, 'L2Regularizer/value')
+      self.assertAlmostEqual(loss.eval(), num_elem / 2, 5)
+
+  def testL2RegularizerWithScope(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      loss = losses.l2_regularizer(scope='L2')(tensor)
+      self.assertEquals(loss.op.name, 'L2/value')
+      self.assertAlmostEqual(loss.eval(), num_elem / 2, 5)
+
+  def testL2RegularizerWithWeight(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      weight = 0.01
+      loss = losses.l2_regularizer(weight)(tensor)
+      self.assertEquals(loss.op.name, 'L2Regularizer/value')
+      self.assertAlmostEqual(loss.eval(), num_elem * weight / 2, 5)
+
+  def testL1L2Regularizer(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      loss = losses.l1_l2_regularizer()(tensor)
+      self.assertEquals(loss.op.name, 'L1L2Regularizer/value')
+      self.assertAlmostEqual(loss.eval(), num_elem + num_elem / 2, 5)
+
+  def testL1L2RegularizerWithScope(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      loss = losses.l1_l2_regularizer(scope='L1L2')(tensor)
+      self.assertEquals(loss.op.name, 'L1L2/value')
+      self.assertAlmostEqual(loss.eval(), num_elem + num_elem / 2, 5)
+
+  def testL1L2RegularizerWithWeights(self):
+    with self.test_session():
+      shape = [5, 5, 5]
+      num_elem = 5 * 5 * 5
+      tensor = tf.constant(1.0, shape=shape)
+      weight_l1 = 0.01
+      weight_l2 = 0.05
+      loss = losses.l1_l2_regularizer(weight_l1, weight_l2)(tensor)
+      self.assertEquals(loss.op.name, 'L1L2Regularizer/value')
+      self.assertAlmostEqual(loss.eval(),
+                             num_elem * weight_l1 + num_elem * weight_l2 / 2, 5)
 
 
 class CrossEntropyLossTest(tf.test.TestCase):

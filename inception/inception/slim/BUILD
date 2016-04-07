@@ -101,3 +101,12 @@ py_library(
         ":variables",
     ],
 )
+
+py_test(
+    name = "collections_test",
+    size = "small",
+    srcs = ["collections_test.py"],
+    deps = [
+        ":slim",
+    ],
+)

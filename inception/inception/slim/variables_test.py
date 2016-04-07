@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import tensorflow as tf
 
 from inception.slim import scopes
@@ -33,29 +32,13 @@ class VariablesTest(tf.test.TestCase):
         self.assertEquals(a.op.name, 'A/a')
         self.assertListEqual(a.get_shape().as_list(), [5])
 
-  def testGetVariableGivenName(self):
-    with self.test_session():
-      with tf.variable_scope('A'):
-        a = variables.variable('a', [5])
-      with tf.variable_scope('B'):
-        b = variables.variable('a', [5])
-      self.assertEquals('a', variables.get_variable_given_name(a))
-      self.assertEquals('a', variables.get_variable_given_name(b))
-
-  def testGetVariableGivenNameScoped(self):
-    with self.test_session():
-      with tf.variable_scope('A'):
-        a = variables.variable('a', [5])
-        b = variables.variable('b', [5])
-        self.assertEquals([a], variables.get_variables_by_name('a'))
-        self.assertEquals([b], variables.get_variables_by_name('b'))
-
   def testGetVariables(self):
     with self.test_session():
       with tf.variable_scope('A'):
         a = variables.variable('a', [5])
       with tf.variable_scope('B'):
         b = variables.variable('a', [5])
+      self.assertEquals([a, b], variables.get_variables())
       self.assertEquals([a], variables.get_variables('A'))
       self.assertEquals([b], variables.get_variables('B'))
 
@@ -103,19 +86,28 @@ class VariablesTest(tf.test.TestCase):
       with tf.variable_scope('A'):
         a = variables.variable('a', [5])
       with tf.variable_scope('B'):
-        b = variables.variable('b', [5])
-      self.assertListEqual([a, b],
-                           tf.get_collection(variables.VARIABLES_TO_RESTORE))
+        b = variables.variable('a', [5])
+      self.assertEquals([a, b], variables.get_variables_to_restore())
 
-  def testGetVariablesToRestorePartial(self):
+  def testNoneGetVariablesToRestore(self):
+    with self.test_session():
+      with tf.variable_scope('A'):
+        a = variables.variable('a', [5], restore=False)
+      with tf.variable_scope('B'):
+        b = variables.variable('a', [5], restore=False)
+      self.assertEquals([], variables.get_variables_to_restore())
+      self.assertEquals([a, b], variables.get_variables())
+
+  def testGetMixedVariablesToRestore(self):
     with self.test_session():
       with tf.variable_scope('A'):
         a = variables.variable('a', [5])
-      with tf.variable_scope('B'):
         b = variables.variable('b', [5], restore=False)
-      self.assertListEqual([a, b], variables.get_variables())
-      self.assertListEqual([a],
-                           tf.get_collection(variables.VARIABLES_TO_RESTORE))
+      with tf.variable_scope('B'):
+        c = variables.variable('c', [5])
+        d = variables.variable('d', [5], restore=False)
+      self.assertEquals([a, b, c, d], variables.get_variables())
+      self.assertEquals([a, c], variables.get_variables_to_restore())
 
   def testReuseVariable(self):
     with self.test_session():
@@ -190,11 +182,49 @@ class VariablesTest(tf.test.TestCase):
                               collections=['A', 'B']):
           b = variables.variable('b', [])
         c = variables.variable('c', [])
-      self.assertListEqual([a, b, c],
-                           tf.get_collection(variables.VARIABLES_TO_RESTORE))
+      self.assertListEqual([a, b, c], variables.get_variables_to_restore())
       self.assertListEqual([a, c], tf.trainable_variables())
       self.assertListEqual([b], tf.get_collection('A'))
       self.assertListEqual([b], tf.get_collection('B'))
+
+
+class GetVariablesByNameTest(tf.test.TestCase):
+
+  def testGetVariableGivenNameScoped(self):
+    with self.test_session():
+      with tf.variable_scope('A'):
+        a = variables.variable('a', [5])
+        b = variables.variable('b', [5])
+        self.assertEquals([a], variables.get_variables_by_name('a'))
+        self.assertEquals([b], variables.get_variables_by_name('b'))
+
+  def testGetVariablesByNameReturnsByValueWithScope(self):
+    with self.test_session():
+      with tf.variable_scope('A'):
+        a = variables.variable('a', [5])
+        matched_variables = variables.get_variables_by_name('a')
+
+        # If variables.get_variables_by_name returns the list by reference, the
+        # following append should persist, and be returned, in subsequent calls
+        # to variables.get_variables_by_name('a').
+        matched_variables.append(4)
+
+        matched_variables = variables.get_variables_by_name('a')
+        self.assertEquals([a], matched_variables)
+
+  def testGetVariablesByNameReturnsByValueWithoutScope(self):
+    with self.test_session():
+      a = variables.variable('a', [5])
+      matched_variables = variables.get_variables_by_name('a')
+
+      # If variables.get_variables_by_name returns the list by reference, the
+      # following append should persist, and be returned, in subsequent calls
+      # to variables.get_variables_by_name('a').
+      matched_variables.append(4)
+
+      matched_variables = variables.get_variables_by_name('a')
+      self.assertEquals([a], matched_variables)
+
 
 if __name__ == '__main__':
   tf.test.main()
