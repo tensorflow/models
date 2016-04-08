@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 
-
 import tensorflow as tf
 from inception.slim import scopes
 
@@ -38,6 +37,51 @@ class ArgScopeTest(tf.test.TestCase):
   def testEmptyArgScope(self):
     with self.test_session():
       self.assertEqual(scopes._current_arg_scope(), {})
+
+  def testCurrentArgScope(self):
+    func1_kwargs = {'a': 1, 'b': None, 'c': [1]}
+    key_op = (func1.__module__, func1.__name__)
+    current_scope = {key_op: func1_kwargs.copy()}
+    with self.test_session():
+      with scopes.arg_scope([func1], a=1, b=None, c=[1]) as scope:
+        self.assertDictEqual(scope, current_scope)
+
+  def testCurrentArgScopeNested(self):
+    func1_kwargs = {'a': 1, 'b': None, 'c': [1]}
+    func2_kwargs = {'b': 2, 'd': [2]}
+    key = lambda f: (f.__module__, f.__name__)
+    current_scope = {key(func1): func1_kwargs.copy(),
+                     key(func2): func2_kwargs.copy()}
+    with self.test_session():
+      with scopes.arg_scope([func1], a=1, b=None, c=[1]):
+        with scopes.arg_scope([func2], b=2, d=[2]) as scope:
+          self.assertDictEqual(scope, current_scope)
+
+  def testReuseArgScope(self):
+    func1_kwargs = {'a': 1, 'b': None, 'c': [1]}
+    key_op = (func1.__module__, func1.__name__)
+    current_scope = {key_op: func1_kwargs.copy()}
+    with self.test_session():
+      with scopes.arg_scope([func1], a=1, b=None, c=[1]) as scope1:
+        pass
+      with scopes.arg_scope(scope1) as scope:
+        self.assertDictEqual(scope, current_scope)
+
+  def testReuseArgScopeNested(self):
+    func1_kwargs = {'a': 1, 'b': None, 'c': [1]}
+    func2_kwargs = {'b': 2, 'd': [2]}
+    key = lambda f: (f.__module__, f.__name__)
+    current_scope1 = {key(func1): func1_kwargs.copy()}
+    current_scope2 = {key(func1): func1_kwargs.copy(),
+                      key(func2): func2_kwargs.copy()}
+    with self.test_session():
+      with scopes.arg_scope([func1], a=1, b=None, c=[1]) as scope1:
+        with scopes.arg_scope([func2], b=2, d=[2]) as scope2:
+          pass
+      with scopes.arg_scope(scope1):
+        self.assertDictEqual(scopes._current_arg_scope(), current_scope1)
+      with scopes.arg_scope(scope2):
+        self.assertDictEqual(scopes._current_arg_scope(), current_scope2)
 
   def testSimpleArgScope(self):
     func1_args = (0,)

@@ -27,7 +27,6 @@ from __future__ import division
 from __future__ import print_function
 
 
-
 import tensorflow as tf
 
 from tensorflow.python.training import moving_averages
@@ -50,7 +49,8 @@ def batch_norm(inputs,
                is_training=True,
                trainable=True,
                restore=True,
-               scope=None):
+               scope=None,
+               reuse=None):
   """Adds a Batch Normalization layer.
 
   Args:
@@ -67,13 +67,15 @@ def batch_norm(inputs,
     trainable: whether or not the variables should be trainable or not.
     restore: whether or not the variables should be marked for restore.
     scope: Optional scope for variable_op_scope.
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
 
   Returns:
     a tensor representing the output of the operation.
 
   """
   inputs_shape = inputs.get_shape()
-  with tf.variable_op_scope([inputs], scope, 'BatchNorm'):
+  with tf.variable_op_scope([inputs], scope, 'BatchNorm', reuse=reuse):
     axis = range(len(inputs_shape) - 1)
     params_shape = inputs_shape[-1:]
     with scopes.arg_scope([variables.variable], restore=restore):
@@ -124,6 +126,37 @@ def batch_norm(inputs,
     return outputs
 
 
+def _two_element_tuple(int_or_tuple):
+  """Converts `int_or_tuple` to height, width.
+
+  Several of the functions that follow accept arguments as either
+  a tuple of 2 integers or a single integer.  A single integer
+  indicates that the 2 values of the tuple are the same.
+
+  This functions normalizes the input value by always returning a tuple.
+
+  Args:
+    int_or_tuple: A list of 2 ints, a single int or a tf.TensorShape.
+
+  Returns:
+    A tuple with 2 values.
+
+  Raises:
+    ValueError: If `int_or_tuple` it not well formed.
+  """
+  if isinstance(int_or_tuple, (list, tuple)):
+    if len(int_or_tuple) != 2:
+      raise ValueError('Must be a list with 2 elements: %s' % int_or_tuple)
+    return int(int_or_tuple[0]), int(int_or_tuple[1])
+  if isinstance(int_or_tuple, int):
+    return int(int_or_tuple), int(int_or_tuple)
+  if isinstance(int_or_tuple, tf.TensorShape):
+    if len(int_or_tuple) == 2:
+      return int_or_tuple[0], int_or_tuple[1]
+  raise ValueError('Must be an int, a list with 2 elements or a TensorShape of '
+                   'length 2')
+
+
 @scopes.add_arg_scope
 def conv2d(inputs,
            num_filters_out,
@@ -138,7 +171,8 @@ def conv2d(inputs,
            is_training=True,
            trainable=True,
            restore=True,
-           scope=None):
+           scope=None,
+           reuse=None):
   """Adds a 2D convolution followed by an optional batch_norm layer.
 
   conv2d creates a variable called 'weights', representing the convolutional
@@ -149,8 +183,11 @@ def conv2d(inputs,
   Args:
     inputs: a tensor of size [batch_size, height, width, channels].
     num_filters_out: the number of output filters.
-    kernel_size: a 2-D list comprising of the height and width of the filters.
-    stride: the stride in height and width of the convolution.
+    kernel_size: a list of length 2: [kernel_height, kernel_width] of
+      of the filters. Can be an int if both values are the same.
+    stride: a list of length 2: [stride_height, stride_width].
+      Can be an int if both strides are the same.  Note that presently
+      both strides must have the same value.
     padding: one of 'VALID' or 'SAME'.
     activation: activation function.
     stddev: standard deviation of the truncated guassian weight distribution.
@@ -161,28 +198,29 @@ def conv2d(inputs,
     trainable: whether or not the variables should be trainable or not.
     restore: whether or not the variables should be marked for restore.
     scope: Optional scope for variable_op_scope.
-
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
   Returns:
     a tensor representing the output of the operation.
 
-  Raises:
-    ValueError: if 'kernel_size' is not a 2-D list.
   """
-  if len(kernel_size) != 2:
-    raise ValueError('kernel_size must be a 2-D list.')
-  with tf.variable_op_scope([inputs], scope, 'Conv'):
+  with tf.variable_op_scope([inputs], scope, 'Conv', reuse=reuse):
+    kernel_h, kernel_w = _two_element_tuple(kernel_size)
+    stride_h, stride_w = _two_element_tuple(stride)
     num_filters_in = inputs.get_shape()[-1]
-    weights_shape = [kernel_size[0], kernel_size[1],
+    weights_shape = [kernel_h, kernel_w,
                      num_filters_in, num_filters_out]
     weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
-    l2_regularizer = lambda t: losses.l2_loss(t, weight_decay)
+    l2_regularizer = None
+    if weight_decay and weight_decay > 0:
+      l2_regularizer = losses.l2_regularizer(weight_decay)
     weights = variables.variable('weights',
                                  shape=weights_shape,
                                  initializer=weights_initializer,
                                  regularizer=l2_regularizer,
                                  trainable=trainable,
                                  restore=restore)
-    conv = tf.nn.conv2d(inputs, weights, [1, stride, stride, 1],
+    conv = tf.nn.conv2d(inputs, weights, [1, stride_h, stride_w, 1],
                         padding=padding)
     if batch_norm_params is not None:
       with scopes.arg_scope([batch_norm], is_training=is_training,
@@ -213,7 +251,8 @@ def fc(inputs,
        is_training=True,
        trainable=True,
        restore=True,
-       scope=None):
+       scope=None,
+       reuse=None):
   """Adds a fully connected layer followed by an optional batch_norm layer.
 
   FC creates a variable called 'weights', representing the fully connected
@@ -234,15 +273,19 @@ def fc(inputs,
     trainable: whether or not the variables should be trainable or not.
     restore: whether or not the variables should be marked for restore.
     scope: Optional scope for variable_op_scope.
+    reuse: whether or not the layer and its variables should be reused. To be
+      able to reuse the layer scope must be given.
 
   Returns:
      the tensor variable representing the result of the series of operations.
   """
-  with tf.variable_op_scope([inputs], scope, 'FC'):
+  with tf.variable_op_scope([inputs], scope, 'FC', reuse=reuse):
     num_units_in = inputs.get_shape()[1]
     weights_shape = [num_units_in, num_units_out]
     weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
-    l2_regularizer = lambda t: losses.l2_loss(t, weight_decay)
+    l2_regularizer = None
+    if weight_decay and weight_decay > 0:
+      l2_regularizer = losses.l2_regularizer(weight_decay)
     weights = variables.variable('weights',
                                  shape=weights_shape,
                                  initializer=weights_initializer,
@@ -298,8 +341,12 @@ def max_pool(inputs, kernel_size, stride=2, padding='VALID', scope=None):
 
   Args:
     inputs: a tensor of size [batch_size, height, width, depth].
-    kernel_size: the size of the pooling kernel over which the op is computed.
-    stride: the stride in height and width of the convolution.
+    kernel_size: a list of length 2: [kernel_height, kernel_width] of the
+      pooling kernel over which the op is computed. Can be an int if both
+      values are the same.
+    stride: a list of length 2: [stride_height, stride_width].
+      Can be an int if both strides are the same.  Note that presently
+      both strides must have the same value.
     padding: the padding method, either 'VALID' or 'SAME'.
     scope: Optional scope for op_scope.
 
@@ -308,12 +355,12 @@ def max_pool(inputs, kernel_size, stride=2, padding='VALID', scope=None):
   Raises:
     ValueError: if 'kernel_size' is not a 2-D list
   """
-  if len(kernel_size) != 2:
-    raise ValueError('kernel_size must be a 2-D list.')
   with tf.op_scope([inputs], scope, 'MaxPool'):
+    kernel_h, kernel_w = _two_element_tuple(kernel_size)
+    stride_h, stride_w = _two_element_tuple(stride)
     return tf.nn.max_pool(inputs,
-                          ksize=[1, kernel_size[0], kernel_size[1], 1],
-                          strides=[1, stride, stride, 1],
+                          ksize=[1, kernel_h, kernel_w, 1],
+                          strides=[1, stride_h, stride_w, 1],
                           padding=padding)
 
 
@@ -326,22 +373,24 @@ def avg_pool(inputs, kernel_size, stride=2, padding='VALID', scope=None):
 
   Args:
     inputs: a tensor of size [batch_size, height, width, depth].
-    kernel_size: the size of the pooling kernel over which the op is computed.
-    stride: the stride in height and width of the convolution.
+    kernel_size: a list of length 2: [kernel_height, kernel_width] of the
+      pooling kernel over which the op is computed. Can be an int if both
+      values are the same.
+    stride: a list of length 2: [stride_height, stride_width].
+      Can be an int if both strides are the same.  Note that presently
+      both strides must have the same value.
     padding: the padding method, either 'VALID' or 'SAME'.
     scope: Optional scope for op_scope.
 
   Returns:
     a tensor representing the results of the pooling operation.
-  Raises:
-    ValueError: if 'kernel_size' is not a 2-D list
   """
-  if len(kernel_size) != 2:
-    raise ValueError('kernel_size must be a 2-D list.')
   with tf.op_scope([inputs], scope, 'AvgPool'):
+    kernel_h, kernel_w = _two_element_tuple(kernel_size)
+    stride_h, stride_w = _two_element_tuple(stride)
     return tf.nn.avg_pool(inputs,
-                          ksize=[1, kernel_size[0], kernel_size[1], 1],
-                          strides=[1, stride, stride, 1],
+                          ksize=[1, kernel_h, kernel_w, 1],
+                          strides=[1, stride_h, stride_w, 1],
                           padding=padding)
 
 

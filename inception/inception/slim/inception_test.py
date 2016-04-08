@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import tensorflow as tf
 
 from inception.slim import inception_model as inception
@@ -54,6 +53,22 @@ class InceptionTest(tf.test.TestCase):
       pre_pool = end_points['mixed_8x8x2048b']
       self.assertListEqual(pre_pool.get_shape().as_list(),
                            [batch_size, 8, 8, 2048])
+
+  def testVariablesSetDevice(self):
+    batch_size = 5
+    height, width = 299, 299
+    num_classes = 1000
+    with self.test_session():
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      # Force all Variables to reside on the device.
+      with tf.variable_scope('on_cpu'), tf.device('/cpu:0'):
+        inception.inception_v3(inputs, num_classes)
+      with tf.variable_scope('on_gpu'), tf.device('/gpu:0'):
+        inception.inception_v3(inputs, num_classes)
+      for v in tf.get_collection(tf.GraphKeys.VARIABLES, scope='on_cpu'):
+        self.assertDeviceEqual(v.device, '/cpu:0')
+      for v in tf.get_collection(tf.GraphKeys.VARIABLES, scope='on_gpu'):
+        self.assertDeviceEqual(v.device, '/gpu:0')
 
   def testHalfSizeImages(self):
     batch_size = 5

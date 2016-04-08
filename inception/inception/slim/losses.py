@@ -26,13 +26,77 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import tensorflow as tf
 
 # In order to gather all losses in a network, the user should use this
 # key for get_collection, i.e:
 #   losses = tf.get_collection(slim.losses.LOSSES_COLLECTION)
 LOSSES_COLLECTION = '_losses'
+
+
+def l1_regularizer(weight=1.0, scope=None):
+  """Define a L1 regularizer.
+
+  Args:
+    weight: scale the loss by this factor.
+    scope: Optional scope for op_scope.
+
+  Returns:
+    a regularizer function.
+  """
+  def regularizer(tensor):
+    with tf.op_scope([tensor], scope, 'L1Regularizer'):
+      l1_weight = tf.convert_to_tensor(weight,
+                                       dtype=tensor.dtype.base_dtype,
+                                       name='weight')
+      return tf.mul(l1_weight, tf.reduce_sum(tf.abs(tensor)), name='value')
+  return regularizer
+
+
+def l2_regularizer(weight=1.0, scope=None):
+  """Define a L2 regularizer.
+
+  Args:
+    weight: scale the loss by this factor.
+    scope: Optional scope for op_scope.
+
+  Returns:
+    a regularizer function.
+  """
+  def regularizer(tensor):
+    with tf.op_scope([tensor], scope, 'L2Regularizer'):
+      l2_weight = tf.convert_to_tensor(weight,
+                                       dtype=tensor.dtype.base_dtype,
+                                       name='weight')
+      return tf.mul(l2_weight, tf.nn.l2_loss(tensor), name='value')
+  return regularizer
+
+
+def l1_l2_regularizer(weight_l1=1.0, weight_l2=1.0, scope=None):
+  """Define a L1L2 regularizer.
+
+  Args:
+    weight_l1: scale the L1 loss by this factor.
+    weight_l2: scale the L2 loss by this factor.
+    scope: Optional scope for op_scope.
+
+  Returns:
+    a regularizer function.
+  """
+  def regularizer(tensor):
+    with tf.op_scope([tensor], scope, 'L1L2Regularizer'):
+      weight_l1_t = tf.convert_to_tensor(weight_l1,
+                                         dtype=tensor.dtype.base_dtype,
+                                         name='weight_l1')
+      weight_l2_t = tf.convert_to_tensor(weight_l2,
+                                         dtype=tensor.dtype.base_dtype,
+                                         name='weight_l2')
+      reg_l1 = tf.mul(weight_l1_t, tf.reduce_sum(tf.abs(tensor)),
+                      name='value_l1')
+      reg_l2 = tf.mul(weight_l2_t, tf.nn.l2_loss(tensor),
+                      name='value_l2')
+      return tf.add(reg_l1, reg_l2, name='value')
+  return regularizer
 
 
 def l1_loss(tensor, weight=1.0, scope=None):
