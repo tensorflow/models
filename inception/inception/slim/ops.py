@@ -76,7 +76,7 @@ def batch_norm(inputs,
   """
   inputs_shape = inputs.get_shape()
   with tf.variable_op_scope([inputs], scope, 'BatchNorm', reuse=reuse):
-    axis = range(len(inputs_shape) - 1)
+    axis = list(range(len(inputs_shape) - 1))
     params_shape = inputs_shape[-1:]
     with scopes.arg_scope([variables.variable], restore=restore):
       # Allocate parameters for the beta and gamma of the normalization.
