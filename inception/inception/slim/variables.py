@@ -84,6 +84,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow.core.framework import graph_pb2
 from inception.slim import scopes
 
 # Collection containing all the variables created using slim.variables
@@ -171,6 +172,79 @@ def get_unique_variable(name):
   raise ValueError('Variable %s does not uniquely identify a variable', name)
 
 
+class VariableDeviceChooser(object):
+  """Slim device chooser for variables.
+
+  When using a parameter server it will assign them in a round-robin fashion.
+  When not using a parameter server it allows GPU:0 placement otherwise CPU:0.
+  """
+
+  def __init__(self,
+               num_parameter_servers=0,
+               ps_device='/job:ps',
+               placement='CPU:0'):
+    """Initialize VariableDeviceChooser.
+
+    Args:
+      num_parameter_servers: number of parameter servers.
+      ps_device: string representing the parameter server device.
+      placement: string representing the placement of the variable either CPU:0
+        or GPU:0. When using parameter servers forced to CPU:0.
+    """
+    self._num_ps = num_parameter_servers
+    self._ps_device = ps_device
+    self._placement = placement if num_parameter_servers == 0 else 'CPU:0'
+    self._next_task_id = 0
+
+  def __call__(self, op):
+    device_string = ''
+    if self._num_ps > 0:
+      task_id = self._next_task_id
+      self._next_task_id = (self._next_task_id + 1) % self._num_ps
+      device_string = '%s/task:%d' % (self._ps_device, task_id)
+    device_string += '/%s' % self._placement
+    return device_string
+
+
+# TODO(sguada) Remove once get_variable is able to colocate op.devices.
+def variable_device(device, name):
+  """Fix the variable device to colocate its ops."""
+  if callable(device):
+    var_name = tf.get_variable_scope().name + '/' + name
+    var_def = graph_pb2.NodeDef(name=var_name, op='Variable')
+    device = device(var_def)
+  if device is None:
+    device = ''
+  return device
+
+
+@scopes.add_arg_scope
+def global_step(device=''):
+  """Returns the global step variable.
+
+  Args:
+    device: Optional device to place the variable. It can be an string or a
+      function that is called to get the device for the variable.
+
+  Returns:
+    the tensor representing the global step variable.
+  """
+  global_step_ref = tf.get_collection(tf.GraphKeys.GLOBAL_STEP)
+  if global_step_ref:
+    return global_step_ref[0]
+  else:
+    collections = [
+        VARIABLES_TO_RESTORE,
+        tf.GraphKeys.VARIABLES,
+        tf.GraphKeys.GLOBAL_STEP,
+    ]
+    # Get the device for the variable.
+    with tf.device(variable_device(device, 'global_step')):
+      return tf.get_variable('global_step', shape=[], dtype=tf.int64,
+                             initializer=tf.zeros_initializer,
+                             trainable=False, collections=collections)
+
+
 @scopes.add_arg_scope
 def variable(name, shape=None, dtype=tf.float32, initializer=None,
              regularizer=None, trainable=True, collections=None, device='',
@@ -200,9 +274,6 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
   Returns:
     The created or existing variable.
   """
-  # Instantiate the device for this variable if it is passed as a function.
-  if device and callable(device):
-    device = device()
   collections = list(collections or [])
 
   # Make sure variables are added to tf.GraphKeys.VARIABLES and MODEL_VARIABLES
@@ -212,7 +283,8 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
     collections.append(VARIABLES_TO_RESTORE)
   # Remove duplicates
   collections = set(collections)
-  with tf.device(device):
+  # Get the device for the variable.
+  with tf.device(variable_device(device, name)):
     return tf.get_variable(name, shape=shape, dtype=dtype,
                            initializer=initializer, regularizer=regularizer,
                            trainable=trainable, collections=collections)

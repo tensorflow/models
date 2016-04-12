@@ -479,11 +479,53 @@ class BatchNormTest(tf.test.TestCase):
     height, width = 3, 3
     with self.test_session():
       images = tf.random_uniform((5, height, width, 3), seed=1)
+      ops.batch_norm(images)
+      beta = variables.get_variables_by_name('beta')[0]
+      self.assertEquals(beta.op.name, 'BatchNorm/beta')
+      gamma = variables.get_variables_by_name('gamma')
+      self.assertEquals(gamma, [])
+      moving_mean = tf.moving_average_variables()[0]
+      moving_variance = tf.moving_average_variables()[1]
+      self.assertEquals(moving_mean.op.name, 'BatchNorm/moving_mean')
+      self.assertEquals(moving_variance.op.name, 'BatchNorm/moving_variance')
+
+  def testCreateVariablesWithScale(self):
+    height, width = 3, 3
+    with self.test_session():
+      images = tf.random_uniform((5, height, width, 3), seed=1)
       ops.batch_norm(images, scale=True)
       beta = variables.get_variables_by_name('beta')[0]
       gamma = variables.get_variables_by_name('gamma')[0]
       self.assertEquals(beta.op.name, 'BatchNorm/beta')
       self.assertEquals(gamma.op.name, 'BatchNorm/gamma')
+      moving_mean = tf.moving_average_variables()[0]
+      moving_variance = tf.moving_average_variables()[1]
+      self.assertEquals(moving_mean.op.name, 'BatchNorm/moving_mean')
+      self.assertEquals(moving_variance.op.name, 'BatchNorm/moving_variance')
+
+  def testCreateVariablesWithoutCenterWithScale(self):
+    height, width = 3, 3
+    with self.test_session():
+      images = tf.random_uniform((5, height, width, 3), seed=1)
+      ops.batch_norm(images, center=False, scale=True)
+      beta = variables.get_variables_by_name('beta')
+      self.assertEquals(beta, [])
+      gamma = variables.get_variables_by_name('gamma')[0]
+      self.assertEquals(gamma.op.name, 'BatchNorm/gamma')
+      moving_mean = tf.moving_average_variables()[0]
+      moving_variance = tf.moving_average_variables()[1]
+      self.assertEquals(moving_mean.op.name, 'BatchNorm/moving_mean')
+      self.assertEquals(moving_variance.op.name, 'BatchNorm/moving_variance')
+
+  def testCreateVariablesWithoutCenterWithoutScale(self):
+    height, width = 3, 3
+    with self.test_session():
+      images = tf.random_uniform((5, height, width, 3), seed=1)
+      ops.batch_norm(images, center=False, scale=False)
+      beta = variables.get_variables_by_name('beta')
+      self.assertEquals(beta, [])
+      gamma = variables.get_variables_by_name('gamma')
+      self.assertEquals(gamma, [])
       moving_mean = tf.moving_average_variables()[0]
       moving_variance = tf.moving_average_variables()[1]
       self.assertEquals(moving_mean.op.name, 'BatchNorm/moving_mean')
