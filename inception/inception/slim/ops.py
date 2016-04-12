@@ -27,6 +27,7 @@ from __future__ import division
 from __future__ import print_function
 
 
+
 import tensorflow as tf
 
 from tensorflow.python.training import moving_averages
@@ -42,6 +43,7 @@ UPDATE_OPS_COLLECTION = '_update_ops_'
 @scopes.add_arg_scope
 def batch_norm(inputs,
                decay=0.999,
+               center=True,
                scale=False,
                epsilon=0.001,
                moving_vars='moving_vars',
@@ -57,6 +59,7 @@ def batch_norm(inputs,
     inputs: a tensor of size [batch_size, height, width, channels]
             or [batch_size, channels].
     decay: decay for the moving average.
+    center: If True, subtract beta. If False, beta is not created and ignored.
     scale: If True, multiply by gamma. If False, gamma is
       not used. When the next layer is linear (also e.g. ReLU), this can be
       disabled since the scaling can be done by the next layer.
@@ -78,31 +81,35 @@ def batch_norm(inputs,
   with tf.variable_op_scope([inputs], scope, 'BatchNorm', reuse=reuse):
     axis = list(range(len(inputs_shape) - 1))
     params_shape = inputs_shape[-1:]
-    with scopes.arg_scope([variables.variable], restore=restore):
-      # Allocate parameters for the beta and gamma of the normalization.
+    # Allocate parameters for the beta and gamma of the normalization.
+    beta, gamma = None, None
+    if center:
       beta = variables.variable('beta',
                                 params_shape,
                                 initializer=tf.zeros_initializer,
-                                trainable=trainable)
-      if scale:
-        gamma = variables.variable('gamma',
-                                   params_shape,
-                                   initializer=tf.ones,
-                                   trainable=trainable)
-      else:
-        gamma = None
-      # Create moving_mean and moving_variance add them to moving_vars and
-      # GraphKeys.MOVING_AVERAGE_VARIABLES collections.
-      with scopes.arg_scope([variables.variable], trainable=False,
-                            collections=[
-                                moving_vars,
-                                tf.GraphKeys.MOVING_AVERAGE_VARIABLES]):
-        moving_mean = variables.variable('moving_mean',
+                                trainable=trainable,
+                                restore=restore)
+    if scale:
+      gamma = variables.variable('gamma',
+                                 params_shape,
+                                 initializer=tf.ones_initializer,
+                                 trainable=trainable,
+                                 restore=restore)
+    # Create moving_mean and moving_variance add them to
+    # GraphKeys.MOVING_AVERAGE_VARIABLES collections.
+    moving_collections = [moving_vars, tf.GraphKeys.MOVING_AVERAGE_VARIABLES]
+    moving_mean = variables.variable('moving_mean',
+                                     params_shape,
+                                     initializer=tf.zeros_initializer,
+                                     trainable=False,
+                                     restore=restore,
+                                     collections=moving_collections)
+    moving_variance = variables.variable('moving_variance',
                                          params_shape,
-                                         initializer=tf.zeros_initializer)
-        moving_variance = variables.variable('moving_variance',
-                                             params_shape,
-                                             initializer=tf.ones)
+                                         initializer=tf.ones_initializer,
+                                         trainable=False,
+                                         restore=restore,
+                                         collections=moving_collections)
     if is_training:
       # Calculate the moments based on the individual batch.
       mean, variance = tf.nn.moments(inputs, axis)
@@ -400,7 +407,7 @@ def dropout(inputs, keep_prob=0.5, is_training=True, scope=None):
 
   Args:
     inputs: the tensor to pass to the Dropout layer.
-    keep_prob: the probability of dropping each input unit.
+    keep_prob: the probability of keeping each input unit.
     is_training: whether or not the model is in training mode. If so, dropout is
     applied and values scaled. Otherwise, inputs is returned.
     scope: Optional scope for op_scope.

@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
 import tensorflow as tf
 
 from inception.slim import scopes
@@ -134,6 +135,109 @@ class VariablesTest(tf.test.TestCase):
       self.assertDeviceEqual(a.device, 'cpu:0')
       self.assertDeviceEqual(b.device, 'cpu:1')
 
+  def testVariableWithDeviceFunction(self):
+    class DevFn(object):
+
+      def __init__(self):
+        self.counter = -1
+
+      def __call__(self, op):
+        self.counter += 1
+        return 'cpu:%d' % self.counter
+
+    with self.test_session():
+      with scopes.arg_scope([variables.variable], device=DevFn()):
+        a = variables.variable('a', [])
+        b = variables.variable('b', [])
+        c = variables.variable('c', [], device='cpu:12')
+        d = variables.variable('d', [])
+        with tf.device('cpu:99'):
+          e_init = tf.constant(12)
+        e = variables.variable('e', initializer=e_init)
+      self.assertDeviceEqual(a.device, 'cpu:0')
+      self.assertDeviceEqual(a.initial_value.device, 'cpu:0')
+      self.assertDeviceEqual(b.device, 'cpu:1')
+      self.assertDeviceEqual(b.initial_value.device, 'cpu:1')
+      self.assertDeviceEqual(c.device, 'cpu:12')
+      self.assertDeviceEqual(c.initial_value.device, 'cpu:12')
+      self.assertDeviceEqual(d.device, 'cpu:2')
+      self.assertDeviceEqual(d.initial_value.device, 'cpu:2')
+      self.assertDeviceEqual(e.device, 'cpu:3')
+      self.assertDeviceEqual(e.initial_value.device, 'cpu:99')
+
+  def testVariableWithReplicaDeviceSetter(self):
+    with self.test_session():
+      with tf.device(tf.train.replica_device_setter(ps_tasks=2)):
+        a = variables.variable('a', [])
+        b = variables.variable('b', [])
+        c = variables.variable('c', [], device='cpu:12')
+        d = variables.variable('d', [])
+        with tf.device('cpu:99'):
+          e_init = tf.constant(12)
+        e = variables.variable('e', initializer=e_init)
+      # The values below highlight how the replica_device_setter puts initial
+      # values on the worker job, and how it merges explicit devices.
+      self.assertDeviceEqual(a.device, '/job:ps/task:0/cpu:0')
+      self.assertDeviceEqual(a.initial_value.device, '/job:worker/cpu:0')
+      self.assertDeviceEqual(b.device, '/job:ps/task:1/cpu:0')
+      self.assertDeviceEqual(b.initial_value.device, '/job:worker/cpu:0')
+      self.assertDeviceEqual(c.device, '/job:ps/task:0/cpu:12')
+      self.assertDeviceEqual(c.initial_value.device, '/job:worker/cpu:12')
+      self.assertDeviceEqual(d.device, '/job:ps/task:1/cpu:0')
+      self.assertDeviceEqual(d.initial_value.device, '/job:worker/cpu:0')
+      self.assertDeviceEqual(e.device, '/job:ps/task:0/cpu:0')
+      self.assertDeviceEqual(e.initial_value.device, '/job:worker/cpu:99')
+
+  def testVariableWithVariableDeviceChooser(self):
+
+    with tf.Graph().as_default():
+      device_fn = variables.VariableDeviceChooser(num_parameter_servers=2)
+      with scopes.arg_scope([variables.variable], device=device_fn):
+        a = variables.variable('a', [])
+        b = variables.variable('b', [])
+        c = variables.variable('c', [], device='cpu:12')
+        d = variables.variable('d', [])
+        with tf.device('cpu:99'):
+          e_init = tf.constant(12)
+        e = variables.variable('e', initializer=e_init)
+      # The values below highlight how the VariableDeviceChooser puts initial
+      # values on the same device as the variable job.
+      self.assertDeviceEqual(a.device, '/job:ps/task:0/cpu:0')
+      self.assertDeviceEqual(a.initial_value.device, a.device)
+      self.assertDeviceEqual(b.device, '/job:ps/task:1/cpu:0')
+      self.assertDeviceEqual(b.initial_value.device, b.device)
+      self.assertDeviceEqual(c.device, '/cpu:12')
+      self.assertDeviceEqual(c.initial_value.device, c.device)
+      self.assertDeviceEqual(d.device, '/job:ps/task:0/cpu:0')
+      self.assertDeviceEqual(d.initial_value.device, d.device)
+      self.assertDeviceEqual(e.device, '/job:ps/task:1/cpu:0')
+      self.assertDeviceEqual(e.initial_value.device, '/cpu:99')
+
+  def testVariableGPUPlacement(self):
+
+    with tf.Graph().as_default():
+      device_fn = variables.VariableDeviceChooser(placement='gpu:0')
+      with scopes.arg_scope([variables.variable], device=device_fn):
+        a = variables.variable('a', [])
+        b = variables.variable('b', [])
+        c = variables.variable('c', [], device='cpu:12')
+        d = variables.variable('d', [])
+        with tf.device('cpu:99'):
+          e_init = tf.constant(12)
+        e = variables.variable('e', initializer=e_init)
+      # The values below highlight how the VariableDeviceChooser puts initial
+      # values on the same device as the variable job.
+      self.assertDeviceEqual(a.device, '/gpu:0')
+      self.assertDeviceEqual(a.initial_value.device, a.device)
+      self.assertDeviceEqual(b.device, '/gpu:0')
+      self.assertDeviceEqual(b.initial_value.device, b.device)
+      self.assertDeviceEqual(c.device, '/cpu:12')
+      self.assertDeviceEqual(c.initial_value.device, c.device)
+      self.assertDeviceEqual(d.device, '/gpu:0')
+      self.assertDeviceEqual(d.initial_value.device, d.device)
+      self.assertDeviceEqual(e.device, '/gpu:0')
+      self.assertDeviceEqual(e.initial_value.device, '/cpu:99')
+
   def testVariableCollection(self):
     with self.test_session():
       a = variables.variable('a', [], collections='A')
@@ -178,7 +282,8 @@ class VariablesTest(tf.test.TestCase):
     with self.test_session():
       with scopes.arg_scope([variables.variable], restore=True):
         a = variables.variable('a', [])
-        with scopes.arg_scope([variables.variable], trainable=False,
+        with scopes.arg_scope([variables.variable],
+                              trainable=False,
                               collections=['A', 'B']):
           b = variables.variable('b', [])
         c = variables.variable('c', [])
@@ -224,6 +329,64 @@ class GetVariablesByNameTest(tf.test.TestCase):
 
       matched_variables = variables.get_variables_by_name('a')
       self.assertEquals([a], matched_variables)
+
+
+class GlobalStepTest(tf.test.TestCase):
+
+  def testStable(self):
+    with tf.Graph().as_default():
+      gs = variables.global_step()
+      gs2 = variables.global_step()
+      self.assertTrue(gs is gs2)
+
+  def testDevice(self):
+    with tf.Graph().as_default():
+      with scopes.arg_scope([variables.global_step], device='/gpu:0'):
+        gs = variables.global_step()
+      self.assertDeviceEqual(gs.device, '/gpu:0')
+
+  def testDeviceFn(self):
+    class DevFn(object):
+
+      def __init__(self):
+        self.counter = -1
+
+      def __call__(self, op):
+        self.counter += 1
+        return '/cpu:%d' % self.counter
+
+    with tf.Graph().as_default():
+      with scopes.arg_scope([variables.global_step], device=DevFn()):
+        gs = variables.global_step()
+        gs2 = variables.global_step()
+      self.assertDeviceEqual(gs.device, '/cpu:0')
+      self.assertEquals(gs, gs2)
+      self.assertDeviceEqual(gs2.device, '/cpu:0')
+
+  def testReplicaDeviceSetter(self):
+    device_fn = tf.train.replica_device_setter(2)
+    with tf.Graph().as_default():
+      with scopes.arg_scope([variables.global_step], device=device_fn):
+        gs = variables.global_step()
+        gs2 = variables.global_step()
+        self.assertEquals(gs, gs2)
+        self.assertDeviceEqual(gs.device, '/job:ps/task:0')
+        self.assertDeviceEqual(gs.initial_value.device, '/job:ps/task:0')
+        self.assertDeviceEqual(gs2.device, '/job:ps/task:0')
+        self.assertDeviceEqual(gs2.initial_value.device, '/job:ps/task:0')
+
+  def testVariableWithVariableDeviceChooser(self):
+
+    with tf.Graph().as_default():
+      device_fn = variables.VariableDeviceChooser()
+      with scopes.arg_scope([variables.global_step], device=device_fn):
+        gs = variables.global_step()
+        gs2 = variables.global_step()
+        self.assertEquals(gs, gs2)
+        self.assertDeviceEqual(gs.device, 'cpu:0')
+        self.assertDeviceEqual(gs.initial_value.device, gs.device)
+        self.assertDeviceEqual(gs2.device, 'cpu:0')
+        self.assertDeviceEqual(gs2.initial_value.device, gs2.device)
 
 
 if __name__ == '__main__':

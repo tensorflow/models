@@ -53,6 +53,7 @@ from __future__ import print_function
 import contextlib
 import functools
 
+
 from tensorflow.python.framework import ops
 
 _ARGSTACK_KEY = ("__arg_stack",)
