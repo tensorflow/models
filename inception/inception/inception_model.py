@@ -26,7 +26,6 @@ from __future__ import print_function
 
 import re
 
-
 import tensorflow as tf
 
 from inception.slim import slim
@@ -79,15 +78,13 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
                         stddev=0.1,
                         activation=tf.nn.relu,
                         batch_norm_params=batch_norm_params):
-      # Force all Variables to reside on the CPU.
-      with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
-        logits, endpoints = slim.inception.inception_v3(
-            images,
-            dropout_keep_prob=0.8,
-            num_classes=num_classes,
-            is_training=for_training,
-            restore_logits=restore_logits,
-            scope=scope)
+      logits, endpoints = slim.inception.inception_v3(
+          images,
+          dropout_keep_prob=0.8,
+          num_classes=num_classes,
+          is_training=for_training,
+          restore_logits=restore_logits,
+          scope=scope)
 
   # Add summaries for viewing model statistics on TensorBoard.
   _activation_summaries(endpoints)
