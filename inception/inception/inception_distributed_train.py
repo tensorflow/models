@@ -24,14 +24,12 @@ from datetime import datetime
 import os.path
 import time
 
-import google3
-
 import numpy as np
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.inception import image_processing
-from google3.third_party.tensorflow_models.inception import inception_model as inception
-from google3.third_party.tensorflow_models.inception.slim import slim
+from inception import image_processing
+from inception import inception_model as inception
+from inception.slim import slim
 
 FLAGS = tf.app.flags.FLAGS
 

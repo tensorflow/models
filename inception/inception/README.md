@@ -91,7 +91,7 @@ you will not need to interact with the script again.
 DATA_DIR=$HOME/imagenet-data
 
 # build the preprocessing script.
-bazel build -c opt download_and_preprocess_imagenet
+bazel build -c opt inception/download_and_preprocess_imagenet
 
 # run it
 bazel-bin/inception/download_and_preprocess_imagenet "${DATA_DIR}$"
@@ -161,7 +161,7 @@ To train this model, you simply need to specify the following:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build imagenet_train
+bazel build inception/imagenet_train
 
 # run it
 bazel-bin/inception/imagenet_train.py --num_gpus=1 --batch_size=32 --train_dir=/tmp/imagenet_train --data_dir=/tmp/imagenet_data
@@ -197,7 +197,7 @@ GPU cards.
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build imagenet_train
+bazel build inception/imagenet_train
 
 # run it
 bazel-bin/inception/imagenet_train --num_gpus=2 --batch_size=64 --train_dir=/tmp/imagenet_train
@@ -296,7 +296,7 @@ running. Several things to note here:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build imagenet_distributed_train
+bazel build inception/imagenet_distributed_train
 
 # To start worker 0, go to the worker0 host and run the following (Note that
 # task_id should be in the range [0, num_worker_tasks):
@@ -341,6 +341,45 @@ CUDA_VISIBLE_DEVICES='' bazel-bin/inception/imagenet_distributed_train \
 --worker_hosts='worker0.example.com:2222,worker1.example.com:2222'
 ```
 
+If you have run everything correctly, you should see a log in each `worker` job
+that looks like the following (Note the training speed varies depending on your
+hardware and the first several steps could take much longer):
+
+```shell
+INFO:tensorflow:PS hosts are: ['inception-group-ggr7:2222', 'inception-group-d8zv:2222']
+INFO:tensorflow:Worker hosts are: ['inception-group-zuo1:2222', 'inception-group-k7im:2222']
+I0413 01:55:57.915811364   10497 socket_utils_common_posix.c:148] Disabling AF_INET6 sockets because ::1 is not available.
+I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job ps -> {inception-group-ggr7:2222, inception-group-d8zv:2222}
+I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job worker -> {localhost:2222, inception-group-k7im:2222}
+I tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc:202] Started server with target: grpc://localhost:2222
+INFO:tensorflow:Created variable global_step:0 with shape () and init <function zeros_initializer at 0x7f6aa014b140>
+
+...
+
+INFO:tensorflow:Created variable logits/logits/biases:0 with shape (1001,) and init <function _initializer at 0x7f6a77f3cf50>
+INFO:tensorflow:SyncReplicas enabled: replicas_to_aggregate=2; total_num_replicas=2
+INFO:tensorflow:2016-04-13 01:56:26.405639 Supervisor
+INFO:tensorflow:Started 2 queues for processing input data.
+INFO:tensorflow:global_step/sec: 0
+INFO:tensorflow:Worker 0: 2016-04-13 01:58:40.342404: step 0, loss = 12.97(0.0 examples/sec; 65.428  sec/batch)
+INFO:tensorflow:global_step/sec: 0.0172907
+...
+```
+
+and a log in each `ps` job that looks like the following:
+
+```shell
+INFO:tensorflow:PS hosts are: ['inception-group-ggr7:2222', 'inception-group-d8zv:2222']
+INFO:tensorflow:Worker hosts are: ['inception-group-zuo1:2222', 'inception-group-k7im:2222']
+I0413 01:55:55.415466585   24382 socket_utils_common_posix.c:148] Disabling AF_INET6 sockets because ::1 is not available.
+I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job ps -> {localhost:2222, inception-group-d8zv:2222}
+I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job worker -> {inception-group-zuo1:2222, inception-group-k7im:2222}
+I tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc:202] Started server with target: grpc://localhost:2222
+```
+
+[Congratulations!](https://www.youtube.com/watch?v=9bZkp7q19f0) You are now
+training Inception in a distributed manner.
+
 ## How to Evaluate
 
 Evaluating an Inception v3 model on the ImageNet 2012 validation data set
@@ -361,7 +400,7 @@ Briefly, one can evaluate the model by running:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build imagenet_eval
+bazel build inception/imagenet_eval
 
 # run it
 bazel-bin/inception/imagenet_eval --checkpoint_dir=/tmp/imagenet_train --eval_dir=/tmp/imagenet_eval
@@ -417,7 +456,7 @@ but feel free to edit accordingly.
 FLOWERS_DATA_DIR=$HOME/flowers-data
 
 # build the preprocessing script.
-bazel build -c opt download_and_preprocess_flowers
+bazel build -c opt inception/download_and_preprocess_flowers
 
 # run it
 bazel-bin/inception/download_and_preprocess_flowers "${FLOWERS_DATA_DIR}"
@@ -496,7 +535,7 @@ the flowers data set with the following command.
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build flowers_train
+bazel build inception/flowers_train
 
 # Path to the downloaded Inception-v3 model.
 MODEL_PATH="${INCEPTION_MODEL_DIR}/model.ckpt-157585"
@@ -532,7 +571,7 @@ fine-tuned model, you will need to run `flowers_eval`:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build flowers_eval
+bazel build inception/flowers_eval
 
 # Directory where we saved the fine-tuned checkpoint and events files.
 TRAIN_DIR=/tmp/flowers_train/
@@ -611,7 +650,7 @@ To run `build_image_data.py`, you can run the following command line:
 OUTPUT_DIRECTORY=$HOME/my-custom-data/
 
 # build the preprocessing script.
-bazel build -c opt build_image_data
+bazel build -c opt inception/build_image_data
 
 # convert the data.
 bazel-bin/inception/build_image_data \
