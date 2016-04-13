@@ -103,6 +103,17 @@ py_binary(
 )
 
 py_binary(
+    name = "imagenet_distributed_train",
+    srcs = [
+        "imagenet_distributed_train.py",
+    ],
+    deps = [
+        ":imagenet_data",
+        ":inception_distributed_train",
+    ],
+)
+
+py_binary(
     name = "flowers_train",
     srcs = [
         "flowers_train.py",
@@ -117,6 +128,17 @@ py_library(
     name = "inception_train",
     srcs = [
         "inception_train.py",
+    ],
+    deps = [
+        ":image_processing",
+        ":inception",
+    ],
+)
+
+py_library(
+    name = "inception_distributed_train",
+    srcs = [
+        "inception_distributed_train.py",
     ],
     deps = [
         ":image_processing",

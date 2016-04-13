@@ -24,8 +24,6 @@ import os.path
 import re
 import time
 
-
-
 import numpy as np
 import tensorflow as tf
 
@@ -215,7 +213,6 @@ def train(dataset):
     num_preprocess_threads = FLAGS.num_preprocess_threads * FLAGS.num_gpus
     images, labels = image_processing.distorted_inputs(
         dataset,
-        batch_size=split_batch_size,
         num_preprocess_threads=num_preprocess_threads)
 
     input_summaries = copy.copy(tf.get_collection(tf.GraphKeys.SUMMARIES))
@@ -229,10 +226,22 @@ def train(dataset):
     for i in xrange(FLAGS.num_gpus):
       with tf.device('/gpu:%d' % i):
         with tf.name_scope('%s_%d' % (inception.TOWER_NAME, i)) as scope:
-          # Calculate the loss for one tower of the ImageNet model. This
-          # function constructs the entire ImageNet model but shares the
-          # variables across all towers.
-          loss = _tower_loss(images, labels, num_classes, scope)
+          # Split the batch of images and labels.
+          batch_start = split_batch_size * i
+          images_batch = tf.slice(images,
+                                  begin=[batch_start, 0, 0, 0],
+                                  size=[split_batch_size, -1, -1, -1])
+          labels_batch = tf.slice(labels,
+                                  begin=[batch_start],
+                                  size=[split_batch_size])
+
+
+          # Force all Variables to reside on the CPU.
+          with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
+            # Calculate the loss for one tower of the ImageNet model. This
+            # function constructs the entire ImageNet model but shares the
+            # variables across all towers.
+            loss = _tower_loss(images_batch, labels_batch, num_classes, scope)
 
           # Reuse variables for the next tower.
           tf.get_variable_scope().reuse_variables()
