@@ -21,11 +21,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import google3
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.inception import inception_distributed_train
-from google3.third_party.tensorflow_models.inception.imagenet_data import ImagenetData
+from inception import inception_distributed_train
+from inception.imagenet_data import ImagenetData
 
 FLAGS = tf.app.flags.FLAGS
 
