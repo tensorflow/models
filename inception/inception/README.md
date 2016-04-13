@@ -91,7 +91,7 @@ you will not need to interact with the script again.
 DATA_DIR=$HOME/imagenet-data
 
 # build the preprocessing script.
-bazel build -c opt inception/download_and_preprocess_imagenet
+bazel build inception/download_and_preprocess_imagenet
 
 # run it
 bazel-bin/inception/download_and_preprocess_imagenet "${DATA_DIR}$"
@@ -233,6 +233,8 @@ learns by monitoring the smoothed version of the loss.
 
 ## How to Train from Scratch in a Distributed Setting
 
+**NOTE** Distributed TensorFlow requires version 0.8 or later.
+
 Distributed TensorFlow lets us use multiple machines to train a model faster.
 This is quite different from the training with multiple GPU towers on a single
 machine where all parameters and gradients computation are in the same place. We
@@ -342,15 +344,14 @@ CUDA_VISIBLE_DEVICES='' bazel-bin/inception/imagenet_distributed_train \
 ```
 
 If you have run everything correctly, you should see a log in each `worker` job
-that looks like the following (Note the training speed varies depending on your
-hardware and the first several steps could take much longer):
+that looks like the following. Note the training speed varies depending on your
+hardware and the first several steps could take much longer.
 
 ```shell
-INFO:tensorflow:PS hosts are: ['inception-group-ggr7:2222', 'inception-group-d8zv:2222']
-INFO:tensorflow:Worker hosts are: ['inception-group-zuo1:2222', 'inception-group-k7im:2222']
-I0413 01:55:57.915811364   10497 socket_utils_common_posix.c:148] Disabling AF_INET6 sockets because ::1 is not available.
-I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job ps -> {inception-group-ggr7:2222, inception-group-d8zv:2222}
-I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job worker -> {localhost:2222, inception-group-k7im:2222}
+INFO:tensorflow:PS hosts are: ['ps0.example.com:2222', 'ps1.example.com:2222']
+INFO:tensorflow:Worker hosts are: ['worker0.example.com:2222', 'worker1.example.com:2222']
+I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job ps -> {ps0.example.com:2222, ps1.example.com:2222}
+I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job worker -> {localhost:2222, worker1.example.com:2222}
 I tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc:202] Started server with target: grpc://localhost:2222
 INFO:tensorflow:Created variable global_step:0 with shape () and init <function zeros_initializer at 0x7f6aa014b140>
 
@@ -369,11 +370,10 @@ INFO:tensorflow:global_step/sec: 0.0172907
 and a log in each `ps` job that looks like the following:
 
 ```shell
-INFO:tensorflow:PS hosts are: ['inception-group-ggr7:2222', 'inception-group-d8zv:2222']
-INFO:tensorflow:Worker hosts are: ['inception-group-zuo1:2222', 'inception-group-k7im:2222']
-I0413 01:55:55.415466585   24382 socket_utils_common_posix.c:148] Disabling AF_INET6 sockets because ::1 is not available.
-I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job ps -> {localhost:2222, inception-group-d8zv:2222}
-I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job worker -> {inception-group-zuo1:2222, inception-group-k7im:2222}
+INFO:tensorflow:PS hosts are: ['ps0.example.com:2222', 'ps1.example.com:2222']
+INFO:tensorflow:Worker hosts are: ['worker0.example.com:2222', 'worker1.example.com:2222']
+I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job ps -> {localhost:2222, ps1.example.com:2222}
+I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPortsGrpcChannelCache for job worker -> {worker0.example.com:2222, worker1.example.com:2222}
 I tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc:202] Started server with target: grpc://localhost:2222
 ```
 
@@ -456,7 +456,7 @@ but feel free to edit accordingly.
 FLOWERS_DATA_DIR=$HOME/flowers-data
 
 # build the preprocessing script.
-bazel build -c opt inception/download_and_preprocess_flowers
+bazel build inception/download_and_preprocess_flowers
 
 # run it
 bazel-bin/inception/download_and_preprocess_flowers "${FLOWERS_DATA_DIR}"
@@ -650,7 +650,7 @@ To run `build_image_data.py`, you can run the following command line:
 OUTPUT_DIRECTORY=$HOME/my-custom-data/
 
 # build the preprocessing script.
-bazel build -c opt inception/build_image_data
+bazel build inception/build_image_data
 
 # convert the data.
 bazel-bin/inception/build_image_data \
