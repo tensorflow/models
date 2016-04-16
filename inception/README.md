@@ -164,7 +164,7 @@ To train this model, you simply need to specify the following:
 bazel build inception/imagenet_train
 
 # run it
-bazel-bin/inception/imagenet_train.py --num_gpus=1 --batch_size=32 --train_dir=/tmp/imagenet_train --data_dir=/tmp/imagenet_data
+bazel-bin/inception/imagenet_train --num_gpus=1 --batch_size=32 --train_dir=/tmp/imagenet_train --data_dir=/tmp/imagenet_data
 ```
 
 The model reads in the ImageNet training data from `--data_dir`. If you followed
