@@ -19,7 +19,7 @@
 import os
 import os.path
 import time
-
+  # google3 only
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
@@ -86,7 +86,11 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
         beam_size=FLAGS.beam_size,
         max_steps=FLAGS.max_steps)
   task_context = FLAGS.task_context
-  parser.AddEvaluation(task_context, FLAGS.batch_size, corpus_name=FLAGS.input)
+  parser.AddEvaluation(task_context,
+                       FLAGS.batch_size,
+                       corpus_name=FLAGS.input,
+                       evaluation_max_steps=FLAGS.max_steps)
+
   parser.AddSaver()
   sess.run(parser.inits.values())
   parser.saver.restore(sess, FLAGS.model_path)

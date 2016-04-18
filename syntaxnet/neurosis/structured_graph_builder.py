@@ -116,8 +116,6 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
                                 shape=[0, self._num_actions])
 
     for step in range(max_steps):
-      tf.logging.info('Adding step %d of %d', step, max_steps)
-
       def AdvanceFunc():
         return Advance(features, state, concat_scores, alive_steps)
 
@@ -241,7 +239,7 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
           list(n['features']),
           return_average=self._use_averaging)
       n.update(self._BuildSequence(batch_size, evaluation_max_steps, n[
-          'features'], n['state']))
+          'features'], n['state'], use_average=self._use_averaging))
       n['eval_metrics'], n['documents'] = (
           gen_parser_ops.beam_eval_output(n['state']))
     return n

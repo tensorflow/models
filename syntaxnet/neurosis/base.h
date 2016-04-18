@@ -28,6 +28,7 @@ limitations under the License.
 #include "tensorflow/core/platform/mutex.h"
 #include "tensorflow/core/platform/protobuf.h"
 
+
 using tensorflow::int32;
 using tensorflow::int64;
 using tensorflow::uint64;
@@ -40,10 +41,9 @@ using std::pair;
 using std::vector;
 using std::unordered_map;
 using std::unordered_set;
+typedef signed int char32;
 
 using tensorflow::StringPiece;  // opensource only
 using std::string;  // opensource only
-
-typedef signed int char32;
 
 #endif  // NEUROSIS_BASE_H_

@@ -130,7 +130,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       token->set_start(start);
       token->set_end(end);
       if (head > 0) token->set_head(head - 1);
-      if (!tag.empty())  token->set_tag(tag);
+      if (!tag.empty()) token->set_tag(tag);
       if (!cpostag.empty()) token->set_category(cpostag);
       if (!label.empty()) token->set_label(label);
     }
@@ -147,8 +147,8 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   }
 
   // Converts a sentence to a key/value pair.
-  void ConvertToString(const Sentence &sentence,
-                       string *key, string *value) override {
+  void ConvertToString(const Sentence &sentence, string *key,
+                       string *value) override {
     *key = sentence.docid();
     vector<string> lines;
     for (int i = 0; i < sentence.token_size(); ++i) {
@@ -215,14 +215,23 @@ class TokenizedTextFormat : public DocumentFormat {
     }
   }
 
-  void ConvertToString(const Sentence &sentence,
-                       string *key, string *value) override {
+  void ConvertToString(const Sentence &sentence, string *key,
+                       string *value) override {
     *key = sentence.docid();
     value->clear();
     for (const Token &token : sentence.token()) {
       if (!value->empty()) value->append(" ");
       value->append(token.word());
+      if (token.has_tag()) {
+        value->append("_");
+        value->append(token.tag());
+      }
+      if (token.has_head()) {
+        value->append("_");
+        value->append(tensorflow::strings::StrCat(token.head()));
+      }
     }
+    value->append("\n");
   }
 
  private:
@@ -243,125 +252,126 @@ class EnglishTextFormat : public TokenizedTextFormat {
   void ConvertFromString(const string &key, const string &value,
                          vector<Sentence *> *sentences) override {
     vector<pair<string, string>> preproc_rules = {
-      // Punctuation.
-      {"’", "'"},
-      {"…", "..."},
-      {"---", "--"},
-      {"—", "--"},
-      {"–", "--"},
-      {"，", ","},
-      {"。", "."},
-      {"！", "!"},
-      {"？", "?"},
-      {"：", ":"},
-      {"；", ";"},
-      {"＆", "&"},
+        // Punctuation.
+        {"’", "'"},
+        {"…", "..."},
+        {"---", "--"},
+        {"—", "--"},
+        {"–", "--"},
+        {"，", ","},
+        {"。", "."},
+        {"！", "!"},
+        {"？", "?"},
+        {"：", ":"},
+        {"；", ";"},
+        {"＆", "&"},
 
-      // Brackets.
-      {"\\[", "("},
-      {"]", ")"},
-      {"{", "("},
-      {"}", ")"},
-      {"【", "("},
-      {"】", ")"},
-      {"（", "("},
-      {"）", ")"},
+        // Brackets.
+        {"\\[", "("},
+        {"]", ")"},
+        {"{", "("},
+        {"}", ")"},
+        {"【", "("},
+        {"】", ")"},
+        {"（", "("},
+        {"）", ")"},
 
-      // Quotation marks.
-      {"\"", "\""},
-      {"″", "\""},
-      {"“", "\""},
-      {"„", "\""},
-      {"‵‵", "\""},
-      {"”", "\""},
-      {"’", "\""},
-      {"‘", "\""},
-      {"′′", "\""},
-      {"‹", "\""},
-      {"›", "\""},
-      {"«", "\""},
-      {"»", "\""},
+        // Quotation marks.
+        {"\"", "\""},
+        {"″", "\""},
+        {"“", "\""},
+        {"„", "\""},
+        {"‵‵", "\""},
+        {"”", "\""},
+        {"’", "\""},
+        {"‘", "\""},
+        {"′′", "\""},
+        {"‹", "\""},
+        {"›", "\""},
+        {"«", "\""},
+        {"»", "\""},
 
-      // Discarded punctuation that breaks sentences.
-      {"|", ""},
-      {"·", ""},
-      {"•", ""},
-      {"●", ""},
-      {"▪", ""},
-      {"■", ""},
-      {"□", ""},
-      {"❑", ""},
-      {"◆", ""},
-      {"★", ""},
-      {"＊", ""},
-      {"♦", ""},
+        // Discarded punctuation that breaks sentences.
+        {"|", ""},
+        {"·", ""},
+        {"•", ""},
+        {"●", ""},
+        {"▪", ""},
+        {"■", ""},
+        {"□", ""},
+        {"❑", ""},
+        {"◆", ""},
+        {"★", ""},
+        {"＊", ""},
+        {"♦", ""},
     };
 
     vector<pair<string, string>> rules = {
-      // attempt to get correct directional quotes
-      { R"re(^")re", "`` " },
-      { R"re(([ \([{<])")re", "\\1 `` " },
-      // close quotes handled at end
+        // attempt to get correct directional quotes
+        {R"re(^")re", "`` "},
+        {R"re(([ \([{<])")re", "\\1 `` "},
+        // close quotes handled at end
 
-      { R"re(\.\.\.)re", " ... " },
-      { "[,;:@#$%&]", " \\0 " },
+        {R"re(\.\.\.)re", " ... "},
+        {"[,;:@#$%&]", " \\0 "},
 
-      // Assume sentence tokenization has been done first, so split FINAL
-      // periods only.
-      { R"re(([^.])(\.)([\]\)}>"']*)[ ]*$)re", "\\1 \\2\\3 " },
-      // however, we may as well split ALL question marks and exclamation
-      // points, since they shouldn't have the abbrev.-marker ambiguity problem
-      { "[?!]", " \\0 " },
+        // Assume sentence tokenization has been done first, so split FINAL
+        // periods only.
+        {R"re(([^.])(\.)([\]\)}>"']*)[ ]*$)re", "\\1 \\2\\3 "},
+        // however, we may as well split ALL question marks and exclamation
+        // points, since they shouldn't have the abbrev.-marker ambiguity
+        // problem
+        {"[?!]", " \\0 "},
 
-      // parentheses, brackets, etc.
-      { R"re([\]\[\(\){}<>])re", " \\0 " },
+        // parentheses, brackets, etc.
+        {R"re([\]\[\(\){}<>])re", " \\0 "},
 
-      // Like Adwait Ratnaparkhi's MXPOST, we use the parsed-file version of
-      // these symbols.
-      { "\\(", "-LRB-"},
-      { "\\)", "-RRB-"},
-      { "\\]", "-LSB-"},
-      { "\\]", "-RSB-"},
-      { "{", "-LCB-"},
-      { "}", "-RCB-"},
+        // Like Adwait Ratnaparkhi's MXPOST, we use the parsed-file version of
+        // these symbols.
+        {"\\(", "-LRB-"},
+        {"\\)", "-RRB-"},
+        {"\\]", "-LSB-"},
+        {"\\]", "-RSB-"},
+        {"{", "-LCB-"},
+        {"}", "-RCB-"},
 
-      { "--", " -- " },
+        {"--", " -- "},
 
-      // First off, add a space to the beginning and end of each line, to reduce
-      // necessary number of regexps.
-      {"$", " "},
-      {"^", " "},
+        // First off, add a space to the beginning and end of each line, to
+        // reduce necessary number of regexps.
+        {"$", " "},
+        {"^", " "},
 
-      { "\"", " '' " },
-      // possessive or close-single-quote
-      { "([^'])' ", "\\1 ' " },
-      // as in it's, I'm, we'd
-      { "'([sSmMdD]) ", " '\\1 " },
-      { "'ll ", " 'll " },
-      { "'re ", " 're " },
-      { "'ve ", " 've " },
-      { "n't ", " n't " },
-      { "'LL ", " 'LL " },
-      { "'RE ", " 'RE " },
-      { "'VE ", " 'VE " },
-      { "N'T ", " N'T " },
+        {"\"", " '' "},
+        // possessive or close-single-quote
+        {"([^'])' ", "\\1 ' "},
+        // as in it's, I'm, we'd
+        {"'([sSmMdD]) ", " '\\1 "},
+        {"'ll ", " 'll "},
+        {"'re ", " 're "},
+        {"'ve ", " 've "},
+        {"n't ", " n't "},
+        {"'LL ", " 'LL "},
+        {"'RE ", " 'RE "},
+        {"'VE ", " 'VE "},
+        {"N'T ", " N'T "},
 
-      { " ([Cc])annot ", " \\1an not " },
-      { " ([Dd])'ye ", " \\1' ye " },
-      { " ([Gg])imme ", " \\1im me " },
-      { " ([Gg])onna ", " \\1on na " },
-      { " ([Gg])otta ", " \\1ot ta " },
-      { " ([Ll])emme ", " \\1em me " },
-      { " ([Mm])ore'n ", " \\1ore 'n " },
-      { " '([Tt])is ", " '\\1 is " },
-      { " '([Tt])was ", " '\\1 was " },
-      { " ([Ww])anna ", " \\1an na " },
-      { " ([Ww])haddya ", " \\1ha dd ya " },
-      { " ([Ww])hatcha ", " \\1ha t cha " },
+        {" ([Cc])annot ", " \\1an not "},
+        {" ([Dd])'ye ", " \\1' ye "},
+        {" ([Gg])imme ", " \\1im me "},
+        {" ([Gg])onna ", " \\1on na "},
+        {" ([Gg])otta ", " \\1ot ta "},
+        {" ([Ll])emme ", " \\1em me "},
+        {" ([Mm])ore'n ", " \\1ore 'n "},
+        {" '([Tt])is ", " '\\1 is "},
+        {" '([Tt])was ", " '\\1 was "},
+        {" ([Ww])anna ", " \\1an na "},
+        {" ([Ww])haddya ", " \\1ha dd ya "},
+        {" ([Ww])hatcha ", " \\1ha t cha "},
 
-      // clean out extra spaces
-      { "  *", " " },
-      { "^ *", "" },
+        // clean out extra spaces
+        {"  *", " "},
+        {"^ *", ""},
     };
 
     string rewritten = value;

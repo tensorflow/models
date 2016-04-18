@@ -21,13 +21,13 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "neurosis/utils.h"
 #include "neurosis/document_format.h"
 #include "neurosis/feature_extractor.pb.h"
 #include "neurosis/feature_types.h"
 #include "neurosis/registry.h"
 #include "neurosis/sentence.pb.h"
 #include "neurosis/task_context.h"
+#include "neurosis/utils.h"
 #include "neurosis/workspace.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
@@ -201,11 +201,18 @@ class TextReader {
 // Writes sentence protos to a text conll file.
 class TextWriter {
  public:
-  explicit TextWriter(const string &filename)
-      : filename_(filename), format_(DocumentFormat::Create("conll-sentence")) {
+  explicit TextWriter(const TaskInput &input) {
+    CHECK_EQ(input.record_format_size(), 1)
+        << "TextWriter only supports files with one record format: "
+        << input.DebugString();
+    CHECK_EQ(input.part_size(), 1)
+        << "TextWriter only supports files with one part: "
+        << input.DebugString();
+    filename_ = TaskContext::InputFile(input);
+    format_.reset(DocumentFormat::Create(input.record_format(0)));
     if (filename_ != "-") {
       TF_CHECK_OK(
-          tensorflow::Env::Default()->NewWritableFile(filename, &file_));
+          tensorflow::Env::Default()->NewWritableFile(filename_, &file_));
     }
   }
 

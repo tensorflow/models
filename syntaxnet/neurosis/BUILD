@@ -548,6 +548,15 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "conll2tree",
+    srcs = ["conll2tree.py"],
+    deps = [
+        ":parser_ops",
+        ":sentence_py_pb2",
+    ],
+)
+
 # py tests
 
 py_test(
