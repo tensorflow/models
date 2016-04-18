@@ -20,7 +20,7 @@
 import os
 import os.path
 import time
-
+  # google3 only
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile

@@ -157,7 +157,7 @@ class LabelFeatureFunction : public BasicParserSentenceFeatureFunction<Label> {
       return feature_.NumValues();
     }
     const int label = state.Label(focus);
-    return label;
+    return label == -1 ? RootValue() : label;
   }
 };
 
@@ -180,5 +180,34 @@ REGISTER_PARSER_IDX_FEATURE_FUNCTION("prefix", PrefixFeatureFunction);
 
 typedef BasicParserSentenceFeatureFunction<SuffixFeature> SuffixFeatureFunction;
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("suffix", SuffixFeatureFunction);
+
+// Parser feature function that can use nested sentence feature functions for
+// feature extraction.
+class ParserTokenFeatureFunction : public NestedFeatureFunction<
+  FeatureFunction<Sentence, int>, ParserState, int> {
+ public:
+  void Preprocess(WorkspaceSet *workspaces, ParserState *state) const override {
+    for (auto *function : nested_) {
+      function->Preprocess(workspaces, state->mutable_sentence());
+    }
+  }
+
+  void Evaluate(const WorkspaceSet &workspaces, const ParserState &state,
+                int focus, FeatureVector *result) const override {
+    for (auto *function : nested_) {
+      function->Evaluate(workspaces, state.sentence(), focus, result);
+    }
+  }
+
+  // Returns the first nested feature's computed value.
+  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
+                       int focus, const FeatureVector *result) const override {
+    if (nested_.empty()) return -1;
+    return nested_[0]->Compute(workspaces, state.sentence(), focus, result);
+  }
+};
+
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("token",
+                                     ParserTokenFeatureFunction);
 
 }  // namespace neurosis

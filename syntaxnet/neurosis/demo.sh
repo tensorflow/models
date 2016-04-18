@@ -18,24 +18,36 @@
 # parser on an English text file, with a sentence per line.
 #
 # Example usage:
-#  bazel build -c opt neurosis:parser_eval
-#  cat en-sentences.txt | neurosis/demo.sh > output.conll
+#  blaze build -c opt nlp/saft/components/dependencies/opensource:parser_eval
+#  cat en-sentences.txt |
+#    nlp/saft/components/dependencies/opensource/demo.sh > output.conll
+#
+# To run on a conll file, change --input=stdin below to --input=stdin-conll.
+#
 
 PARSER_EVAL=bazel-bin/neurosis/parser_eval
+MODEL_DIR=neurosis/models/treebank_union
 
 $PARSER_EVAL \
-  --task_context=neurosis/models/treebank_union/context \
-  --hidden_layer_sizes=256 \
-  --arg_prefix=brain_pos \
-  --graph_builder=greedy \
-  --model_path=neurosis/models/treebank_union/tagger_model \
+  --input=stdin-conll \
+  --output=stdout-conll \
+  --hidden_layer_sizes=64 \
+  --arg_prefix=brain_tagger \
+  --graph_builder=structured \
+  --task_context=$MODEL_DIR/context.pbtxt \
+  --model_path=$MODEL_DIR/tagger-params \
   --batch_size=1024 \
-  | \
+  --max_steps=300 \
+  --alsologtostderr \
+   | \
   $PARSER_EVAL \
   --input=stdin-conll \
-  --task_context=neurosis/models/treebank_union/context \
+  --output=stdout-conll \
   --hidden_layer_sizes=512,512 \
   --arg_prefix=brain_parser \
   --graph_builder=structured \
-  --model_path=neurosis/models/treebank_union/parser_model \
-  --batch_size=1024
+  --task_context=$MODEL_DIR/context.pbtxt \
+  --model_path=$MODEL_DIR/parser-params \
+  --batch_size=1024 \
+  --max_steps=300 \
+  --alsologtostderr

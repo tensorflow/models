@@ -14,6 +14,9 @@
 # limitations under the License.
 # ==============================================================================
 
+# This test trains a parser on a small dataset, then runs it in greedy mode and
+# in structured mode with beam 1, and checks that the result is identical.
+
 set -eux
 
 BINDIR=$TEST_SRCDIR/neurosis
@@ -49,10 +52,25 @@ PARAMS=128-0.08-3600-0.9-0
   --task_context=$TMP_DIR/brain_parser/greedy/$PARAMS/context \
   --hidden_layer_sizes=128 \
   --input=tuning-corpus \
-  --output=parsed-tuning-corpus \
+  --output=stdout \
   --arg_prefix=brain_parser \
   --graph_builder=greedy \
   --model_path=$TMP_DIR/brain_parser/greedy/$PARAMS/model \
-  --logtostderr
+  --logtostderr \
+  > $TMP_DIR/greedy-out
+
+"$BINDIR/parser_eval" \
+  --task_context=$TMP_DIR/context \
+  --hidden_layer_sizes=128 \
+  --beam_size=1 \
+  --input=tuning-corpus \
+  --output=stdout \
+  --arg_prefix=brain_parser \
+  --graph_builder=structured \
+  --model_path=$TMP_DIR/brain_parser/greedy/$PARAMS/model \
+  --logtostderr \
+  > $TMP_DIR/struct-out
+
+diff $TMP_DIR/greedy-out $TMP_DIR/struct-out
 
 echo "PASS"

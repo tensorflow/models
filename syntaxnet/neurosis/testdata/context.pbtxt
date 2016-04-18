@@ -4,7 +4,7 @@ Parameter {
 }
 Parameter {
   name: 'brain_parser_features'
-  value: 'input.word input(1).word input(2).word stack.word stack(1).word stack(2).word;input.tag input(1).tag input(2).tag stack.tag stack(1).tag stack(2).tag;stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label'
+  value: 'input.token.word input(1).token.word input(2).token.word stack.token.word stack(1).token.word stack(2).token.word;input.tag input(1).tag input(2).tag stack.tag stack(1).tag stack(2).tag;stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label'
 }
 Parameter {
   name: 'brain_parser_embedding_names'
@@ -76,5 +76,12 @@ input {
   name: 'tag-to-category'
   Part {
     file_pattern: 'OUTPATH/tag-to-category'
+  }
+}
+input {
+  name: 'stdout'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: '-'
   }
 }

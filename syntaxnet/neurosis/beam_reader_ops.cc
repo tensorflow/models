@@ -426,9 +426,6 @@ class BatchState {
       ++epoch_;
       VLOG(2) << "Starting epoch " << epoch_;
       sentence_batch_->Rewind();
-      for (BeamState &beam : beams_) {
-        beam.Reset();
-      }
     }
   }
 

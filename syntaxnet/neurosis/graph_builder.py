@@ -551,15 +551,14 @@ class GreedyParser(object):
 
   def AddSaver(self):
     """Returns an op that saves all model parameters to disk."""
-    # NOTE(danielandor): We have to put the save op in the root scope otherwise
-    # running "save/restore_all" won't find the "save/Const" node it expects.
+    # We have to put the save op in the root scope otherwise running
+    # "save/restore_all" won't find the "save/Const" node it expects.
     with tf.name_scope(None):
       variables_to_save = self.params.copy()
       variables_to_save.update(self.variables)
-      # Transition scores changes shape depending on the batch_size, so we need
-      # to avoid saving and restoring it to be able to use different batch sizes
-      # at training and inference time.
-      if 'transition_scores' in variables_to_save:
-        del variables_to_save['transition_scores']
+      # Only save averaged variables for compactness.
+      for key, _ in variables_to_save.items():
+        if not key.endswith('avg_var'):
+          del variables_to_save[key]
       self.saver = tf.train.Saver(variables_to_save)
     return self.saver

@@ -142,7 +142,6 @@ class Word : public TermFrequencyMapFeature {
 
   FeatureValue ComputeValue(const Token &token) const override {
     string form = token.word();
-    utils::NormalizeDigits(&form);
     return term_map().LookupIndex(form, UnknownValue());
   }
 };

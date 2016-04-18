@@ -31,8 +31,7 @@ ParserState::ParserState(Sentence *sentence,
       num_tokens_(sentence->token_size()),
       transition_state_(transition_state),
       label_map_(label_map),
-      root_label_(
-          label_map->LookupIndex(kRootLabel, kDefaultRootLabel /* unknown */)),
+      root_label_(kDefaultRootLabel),
       next_(0) {
   // Initialize the stack. Some transition systems could also push the
   // artificial root on the stack, so we make room for that as well.

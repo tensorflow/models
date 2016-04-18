@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// Various document filters and processors. These can be used in document
-// pipelines to filter and transform documents before processing.
+// Various utilities for handling documents.
 
 #include <stddef.h>
 #include <algorithm>
@@ -125,8 +124,7 @@ class DocumentSink : public OpKernel {
     GetTaskContext(context, &task_context_);
     string corpus_name;
     OP_REQUIRES_OK(context, context->GetAttr("corpus_name", &corpus_name));
-    writer_.reset(new TextWriter(
-        TaskContext::InputFile(*task_context_.GetInput(corpus_name))));
+    writer_.reset(new TextWriter(*task_context_.GetInput(corpus_name)));
   }
 
   void Compute(OpKernelContext *context) override {

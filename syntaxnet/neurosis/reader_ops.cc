@@ -14,6 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include <math.h>
+#include <deque>
 #include <unordered_map>
 #include <memory>
 #include <string>
@@ -105,7 +106,7 @@ class ParsingReader : public OpKernel {
   ~ParsingReader() override { SharedStore::Release(label_map_); }
 
   // Creates a new ParserState if there's another sentence to be read.
-  void AdvanceSentence(int index) {
+  virtual void AdvanceSentence(int index) {
     states_[index].reset();
     if (sentence_batch_->AdvanceSentence(index)) {
       states_[index].reset(new ParserState(
@@ -332,6 +333,13 @@ class DecodedParseReader : public ParsingReader {
   }
 
  private:
+  void AdvanceSentence(int index) override {
+    ParsingReader::AdvanceSentence(index);
+    if (state(index)) {
+      docids_.push_front(state(index)->sentence().docid());
+    }
+  }
+
   // Tallies the # of correct and incorrect tokens for a given ParserState.
   void ComputeTokenAccuracy(const ParserState &state) {
     for (int i = 0; i < state.sentence().token_size(); ++i) {
@@ -369,8 +377,8 @@ class DecodedParseReader : public ParsingReader {
         // in the sentence and save the annotated document.
         if (transition_system().IsFinalState(*state)) {
           ComputeTokenAccuracy(*state);
-          documents_.emplace_back(state->sentence());
-          state->AddParseToDocument(&documents_.back());
+          sentence_map_[state->sentence().docid()] = state->sentence();
+          state->AddParseToDocument(&sentence_map_[state->sentence().docid()]);
         }
         ++batch_index;
       }
@@ -388,20 +396,28 @@ class DecodedParseReader : public ParsingReader {
     eval_metrics(0) = num_tokens_;
     eval_metrics(1) = num_correct_;
 
-    // Output annotated documents for each state.
-    // TODO(chrisalberti): maintain order of input sentences here.
+    // Output annotated documents for each state. To preserve order, repeatedly
+    // pull from the back of the docids queue as long as the sentences have been
+    // completely processed. If the next document has not been completely
+    // processed yet, then the docid will not be found in 'sentence_map_'.
+    vector<Sentence> sentences;
+    while (!docids_.empty() &&
+           sentence_map_.find(docids_.back()) != sentence_map_.end()) {
+      sentences.emplace_back(sentence_map_[docids_.back()]);
+      sentence_map_.erase(docids_.back());
+      docids_.pop_back();
+    }
     Tensor *annotated_output;
     OP_REQUIRES_OK(context,
                    context->allocate_output(
                        additional_output_index() + 1,
-                       TensorShape({static_cast<int64>(documents_.size())}),
+                       TensorShape({static_cast<int64>(sentences.size())}),
                        &annotated_output));
 
     auto document_output = annotated_output->vec<string>();
-    for (size_t i = 0; i < documents_.size(); ++i) {
-      document_output(i) = documents_[i].SerializeAsString();
+    for (size_t i = 0; i < sentences.size(); ++i) {
+      document_output(i) = sentences[i].SerializeAsString();
     }
-    documents_.clear();
   }
 
   // State for eval metric computation.
@@ -411,7 +427,8 @@ class DecodedParseReader : public ParsingReader {
   // Parameter for deciding which tokens to score.
   string scoring_type_;
 
-  mutable vector<Sentence> documents_;
+  mutable std::deque<string> docids_;
+  mutable map<string, Sentence> sentence_map_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(DecodedParseReader);
 };
