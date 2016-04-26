@@ -14,7 +14,7 @@ the code necessary for defining the entire [VGG]
 the lengthy and verbose nature of defining just the first three layers (out of
 16) using native tensorflow:
 
-```python {.good}
+```python{.good}
 # VGG16 in TF-Slim.
 def vgg16(inputs):
   with slim.arg_scope([slim.ops.conv2d, slim.ops.fc], stddev=0.01, weight_decay=0.0005):
@@ -37,7 +37,7 @@ def vgg16(inputs):
   return net
 ```
 
-```python {.bad}
+```python{.bad}
 # Layers 1-3 (out of 16) of VGG16 in native tensorflow.
 def vgg16(inputs):
   with tf.name_scope('conv1_1') as scope:
