@@ -66,7 +66,7 @@ and convert the ImageNet data to native TFRecord format. The TFRecord format
 consists of a set of sharded files where each entry is a serialized `tf.Example`
 proto. Each `tf.Example` proto contains the ImageNet image (JPEG encoded) as
 well as metadata such as label and bounding box information. See
-[`parse_example_proto`](image_processing.py) for details.
+[`parse_example_proto`](inception/inception/image_processing.py) for details.
 
 We provide a single [script](inception/data/download_and_preprocess_imagenet.sh) for
 downloading and converting ImageNet data to TFRecord format. Downloading and
