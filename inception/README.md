@@ -714,7 +714,7 @@ considerations for novices.
 
 Roughly 5-10 hyper-parameters govern the speed at which a network is trained. In
 addition to `--batch_size` and `--num_gpus`, there are several constants defined
-in [inception_train.py](./inception_train.py) which dictate the learning
+in [inception_train.py](inception/inception_train.py) which dictate the learning
 schedule.
 
 ```shell
