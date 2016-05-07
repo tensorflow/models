@@ -474,10 +474,10 @@ files in the `DATA_DIR`. The files will match the patterns `train-????-of-00001`
 and `validation-?????-of-00001`, respectively.
 
 **NOTE** If you wish to prepare a custom image data set for transfer learning,
-you will need to invoke [`build_image_data.py`](data/build_image_data.py) on
+you will need to invoke [`build_image_data.py`](inception/data/build_image_data.py) on
 your custom data set. Please see the associated options and assumptions behind
 this script by reading the comments section of [`build_image_data.py`]
-(data/build_image_data.py).
+(inception/data/build_image_data.py).
 
 The second piece you will need is a trained Inception v3 image model. You have
 the option of either training one yourself (See [How to Train from Scratch]
