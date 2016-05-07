@@ -444,7 +444,7 @@ There is a single automated script that downloads the data set and converts it
 to the TFRecord format. Much like the ImageNet data set, each record in the
 TFRecord format is a serialized `tf.Example` proto whose entries include a
 JPEG-encoded string and an integer label. Please see [`parse_example_proto`]
-(image_processing.py) for details.
+(inception/inception/image_processing.py) for details.
 
 The script just takes a few minutes to run depending your network connection
 speed for downloading and processing the images. Your hard disk requires 200MB
