@@ -788,7 +788,7 @@ model architecture, this corresponds to about 4GB of CPU memory. You may lower
 `input_queue_memory_factor` in order to decrease the memory footprint. Keep in
 mind though that lowering this value drastically may result in a model with
 slightly lower predictive accuracy when training from scratch. Please see
-comments in [`image_processing.py`](./image_processing.py) for more details.
+comments in [`image_processing.py`](inception/image_processing.py) for more details.
 
 ## Troubleshooting
 
@@ -824,7 +824,7 @@ input image size, then you may need to redesign the entire model architecture.
 We targeted a desktop with 128GB of CPU ram connected to 8 NVIDIA Tesla K40 GPU
 cards but we have run this on desktops with 32GB of CPU ram and 1 NVIDIA Tesla
 K40. You can get a sense of the various training configurations we tested by
-reading the comments in [`inception_train.py`](./inception_train.py).
+reading the comments in [`inception_train.py`](inception/inception_train.py).
 
 #### How do I continue training from a checkpoint in distributed setting?
 
