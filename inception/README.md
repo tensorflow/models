@@ -607,7 +607,7 @@ Succesfully loaded model from /tmp/flowers/model.ckpt-1999 at step=1999.
 
 One can use the existing scripts supplied with this model to build a new dataset
 for training or fine-tuning. The main script to employ is
-[`build_image_data.py`](./build_image_data.py). Briefly, this script takes a
+[`build_image_data.py`](inception/data/build_image_data.py). Briefly, this script takes a
 structured directory of images and converts it to a sharded `TFRecord` that can
 be read by the Inception model.
 
