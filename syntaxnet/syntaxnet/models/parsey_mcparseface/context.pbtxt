@@ -133,37 +133,37 @@ Parameter {
 input {
   name: "tag-map"
   Part {
-    file_pattern: "syntaxnet/models/treebank_union/tag-map"
+    file_pattern: "syntaxnet/models/parsey_mcparseface/tag-map"
   }
 }
 input {
   name: "tag-to-category"
   Part {
-    file_pattern: "syntaxnet/models/treebank_union/fine-to-universal.map"
+    file_pattern: "syntaxnet/models/parsey_mcparseface/fine-to-universal.map"
   }
 }
 input {
   name: "word-map"
   Part {
-    file_pattern: "syntaxnet/models/treebank_union/word-map"
+    file_pattern: "syntaxnet/models/parsey_mcparseface/word-map"
   }
 }
 input {
   name: "label-map"
   Part {
-    file_pattern: "syntaxnet/models/treebank_union/label-map"
+    file_pattern: "syntaxnet/models/parsey_mcparseface/label-map"
   }
 }
 input {
   name: "prefix-table"
   Part {
-    file_pattern: "syntaxnet/models/treebank_union/prefix-table"
+    file_pattern: "syntaxnet/models/parsey_mcparseface/prefix-table"
   }
 }
 input {
   name: "suffix-table"
   Part {
-    file_pattern: "syntaxnet/models/treebank_union/suffix-table"
+    file_pattern: "syntaxnet/models/parsey_mcparseface/suffix-table"
   }
 }
 input {

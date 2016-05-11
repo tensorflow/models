@@ -26,7 +26,7 @@
 #
 
 PARSER_EVAL=bazel-bin/syntaxnet/parser_eval
-MODEL_DIR=syntaxnet/models/treebank_union
+MODEL_DIR=syntaxnet/models/parsey_mcparseface
 [[ "$1" == "--conll" ]] && INPUT_FORMAT=stdin-conll || INPUT_FORMAT=stdin
 
 $PARSER_EVAL \
