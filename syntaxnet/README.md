@@ -466,7 +466,7 @@ with the following command:
 PARAMS=200x200-0.08-4400-0.85-4
 for SET in training tuning dev; do
   bazel-bin/syntaxnet/parser_eval \
-    --task_context=models/brain_pos/greedy/$PARAMS/context \
+    --task_context=models/brain_parser/greedy/$PARAMS/context \
     --hidden_layer_sizes=200,200 \
     --input=tagged-$SET-corpus \
     --output=parsed-$SET-corpus \
@@ -515,7 +515,7 @@ bazel-bin/syntaxnet/parser_trainer \
   --params=200x200-0.02-100-0.9-0 \
   --pretrained_params=models/brain_parser/greedy/$PARAMS/model \
   --pretrained_params_names=\
-embedding_matrix_0,embedding_matrix_1,embedding_matrix_2\
+embedding_matrix_0,embedding_matrix_1,embedding_matrix_2,\
 bias_0,weights_0,bias_1,weights_1
 ```
 
@@ -530,7 +530,7 @@ with the following command:
 PARAMS=200x200-0.02-100-0.9-0
 for SET in training tuning dev; do
   bazel-bin/syntaxnet/parser_eval \
-    --task_context=models/brain_pos/greedy/$PARAMS/context \
+    --task_context=models/brain_parser/structured/$PARAMS/context \
     --hidden_layer_sizes=200,200 \
     --input=tagged-$SET-corpus \
     --output=beam-parsed-$SET-corpus \

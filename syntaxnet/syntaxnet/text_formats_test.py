@@ -100,7 +100,6 @@ class TextFormatsTest(test_util.TensorFlowTestCase):
     self.CheckTokenization('50-year-old', '50-year-old')
 
   def testUrl(self):
-    # TODO(chrisalberti): URLs shouldn't be split as is happening below.
     self.CheckTokenization('http://www.google.com/news is down',
                            'http : //www.google.com/news is down')
 

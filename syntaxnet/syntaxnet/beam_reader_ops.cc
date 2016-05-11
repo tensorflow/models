@@ -250,10 +250,6 @@ class BeamState {
   bool AllFinal() const { return all_final_; }
 
   // The current contents of the beam.
-  //
-  // TODO(danielandor): Make slots_, context_, and gold_ private
-  // members. For this to happen, the initialization code will have to
-  // be revamped.
   AgendaType slots_;
 
   // Which batch this refers to.
@@ -669,8 +665,7 @@ class BeamParser : public OpKernel {
 
     // In AdvanceBeam we use beam_offsets_[beam_id] to determine the slice of
     // scores that should be used for advancing, but beam_offsets_[beam_id] only
-    // exists for beams that have a sentence loaded. TODO(danielandor): This
-    // loop is a good candidate for parallelization using the Op's thread pool.
+    // exists for beams that have a sentence loaded.
     const int batch_size = batch_state->BatchSize();
     for (int beam_id = 0; beam_id < batch_size; ++beam_id) {
       batch_state->AdvanceBeam(beam_id, scores);

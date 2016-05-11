@@ -95,9 +95,6 @@ class LexiconBuilder : public OpKernel {
         const Token &token = document->token(t);
         string word = token.word();
         utils::NormalizeDigits(&word);
-
-        // TODO(chrisalberti): this should be
-        // NormalizeUTF8::NormalizeForMatchSlowlyButSafely(token.word()));
         string lcword = tensorflow::str_util::Lowercase(word);
 
         // Make sure the token does not contain a newline.

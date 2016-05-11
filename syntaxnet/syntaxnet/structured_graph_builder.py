@@ -56,8 +56,6 @@ def AddCrossEntropy(batch_size, n):
         beam_gold_slot[0] >= 0, _ComputeCrossEntropy, _Pass))
   return {'cross_entropy': tf.div(tf.add_n(cross_entropies), batch_size)}
 
-# TODO(chrisalberti): add option to use perceptron loss instead.
-
 
 class StructuredGraphBuilder(graph_builder.GreedyParser):
   """Extends the standard GreedyParser with a CRF objective using a beam.

@@ -65,8 +65,6 @@ class TokenLookupFeature : public SentenceFeature {
     VectorIntWorkspace *workspace = new VectorIntWorkspace(
         sentence->token_size());
     for (int i = 0; i < sentence->token_size(); ++i) {
-      // TODO(djweiss): Remove all FeatureValue, etc. casts since we only
-      // store ints here anyways.
       const int value = ComputeValue(sentence->token(i));
       workspace->set_element(i, value);
     }
