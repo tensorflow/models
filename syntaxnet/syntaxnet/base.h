@@ -28,6 +28,8 @@ limitations under the License.
 #include "tensorflow/core/platform/mutex.h"
 #include "tensorflow/core/platform/protobuf.h"
 
+
+
 using tensorflow::int32;
 using tensorflow::int64;
 using tensorflow::uint64;
@@ -45,5 +47,7 @@ typedef signed int char32;
 
 using tensorflow::StringPiece;
 using std::string;
+
+  // namespace syntaxnet
 
 #endif  // $TARGETDIR_BASE_H_

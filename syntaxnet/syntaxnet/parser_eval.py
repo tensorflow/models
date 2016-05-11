@@ -97,10 +97,15 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
   sess.run(parser.inits.values())
   parser.saver.restore(sess, FLAGS.model_path)
 
+  sink_documents = tf.placeholder(tf.string)
+  sink = gen_parser_ops.document_sink(sink_documents,
+                                      task_context=FLAGS.task_context,
+                                      corpus_name=FLAGS.output)
   t = time.time()
   num_epochs = None
   num_tokens = 0
   num_correct = 0
+  num_documents = 0
   while True:
     tf_eval_epochs, tf_eval_metrics, tf_documents = sess.run([
         parser.evaluation['epochs'],
@@ -110,9 +115,8 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
     # pylint: disable=g-explicit-length-test
     if len(tf_documents):
       logging.info('Processed %d documents', len(tf_documents))
-      gen_parser_ops.document_sink(documents=tf_documents,
-                                   task_context=FLAGS.task_context,
-                                   corpus_name=FLAGS.output).run()
+      num_documents += len(tf_documents)
+      sess.run(sink, feed_dict={sink_documents: tf_documents})
 
     num_tokens += tf_eval_metrics[0]
     num_correct += tf_eval_metrics[1]
@@ -121,6 +125,7 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
     elif num_epochs < tf_eval_epochs:
       break
 
+  logging.info('Total processed documents: %d', num_documents)
   if num_tokens > 0:
     eval_metric = 100.0 * num_correct / num_tokens
     logging.info('num correct tokens: %d', num_correct)
