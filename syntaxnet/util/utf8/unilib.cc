@@ -18,7 +18,7 @@
 
 #include "util/utf8/unilib.h"
 
-#include "neurosis/base.h"
+#include "syntaxnet/base.h"
 #include "third_party/utf/utf.h"
 
 namespace UniLib {

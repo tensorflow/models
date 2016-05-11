@@ -15,7 +15,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//neurosis:base",
+        "//syntaxnet:base",
         "//third_party/utf",
     ],
 )

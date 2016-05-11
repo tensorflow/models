@@ -22,7 +22,7 @@
 #include <string>                       // for string
 #include <utility>                      // for pair
 
-#include "neurosis/base.h"
+#include "syntaxnet/base.h"
 
 // ***************************** UnicodeText **************************
 //

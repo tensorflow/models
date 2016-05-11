@@ -20,7 +20,7 @@
 // These definitions are self-contained and have no dependencies.
 // They are also exported from unilib.h for legacy reasons.
 
-#include "neurosis/base.h"
+#include "syntaxnet/base.h"
 
 namespace UniLib {
 
