@@ -1,0 +1,61 @@
+// Protocol buffer specification for document analysis.
+
+syntax = "proto2";
+
+package syntaxnet;
+
+// A Sentence contains the raw text contents of a sentence, as well as an
+// analysis.
+message Sentence {
+  // Identifier for document.
+  optional string docid = 1;
+
+  // Raw text contents of the sentence.
+  optional string text = 2;
+
+  // Tokenization of the sentence.
+  repeated Token token = 3;
+
+  extensions 1000 to max;
+}
+
+// A document token marks a span of bytes in the document text as a token
+// or word.
+message Token {
+  // Token word form.
+  required string word = 1;
+
+  // Start position of token in text.
+  required int32 start = 2;
+
+  // End position of token in text. Gives index of last byte, not one past
+  // the last byte. If token came from lexer, excludes any trailing HTML tags.
+  required int32 end = 3;
+
+  // Head of this token in the dependency tree: the id of the token which has an
+  // arc going to this one. If it is the root token of a sentence, then it is
+  // set to -1.
+  optional int32 head = 4 [default = -1];
+
+  // Part-of-speech tag for token.
+  optional string tag = 5;
+
+  // Coarse-grained word category for token.
+  optional string category = 6;
+
+  // Label for dependency relation between this token and its head.
+  optional string label = 7;
+
+  // Break level for tokens that indicates how it was separated from the
+  // previous token in the text.
+  enum BreakLevel {
+    NO_BREAK = 0;         // No separation between tokens.
+    SPACE_BREAK = 1;      // Tokens separated by space.
+    LINE_BREAK = 2;       // Tokens separated by line break.
+    SENTENCE_BREAK = 3;   // Tokens separated by sentence break.
+  }
+
+  optional BreakLevel break_level = 8 [default = SPACE_BREAK];
+
+  extensions 1000 to max;
+}

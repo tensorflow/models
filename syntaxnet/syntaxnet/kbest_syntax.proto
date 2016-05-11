@@ -1,0 +1,82 @@
+// K-best part-of-speech and dependency annotations for tokens.
+
+syntax = "proto2";
+
+import "syntaxnet/sentence.proto";
+
+package syntaxnet;
+
+// A list of alternative (k-best) syntax analyses, grouped by sentences.
+message KBestSyntaxAnalyses {
+  extend Sentence {
+    optional KBestSyntaxAnalyses extension = 60366242;
+  }
+
+  // Alternative analyses for each sentence. Sentences are listed in the
+  // order visited by a SentenceIterator.
+  repeated KBestSyntaxAnalysesForSentence sentence = 1;
+
+  // Alternative analyses for each token.
+  repeated KBestSyntaxAnalysesForToken token = 2;
+}
+
+// A list of alternative (k-best) analyses for a sentence spanning from a start
+// token index to an end token index. The alternative analyses are ordered by
+// decreasing model score from best to worst. The first analysis is the 1-best
+// analysis, which is typically also stored in the document tokens.
+message KBestSyntaxAnalysesForSentence {
+  // First token of sentence.
+  optional int32 start = 1 [default = -1];
+
+  // Last token of sentence.
+  optional int32 end = 2 [default = -1];
+
+  // K-best analyses for the tokens in this sentence. All of the analyses in
+  // the list have the same "type"; e.g., k-best taggings,
+  // k-best {tagging+parse}s, etc.
+  // Note also that the type of analysis stored in this list can change
+  // depending on where we are in the document processing pipeline; e.g.,
+  // may initially be taggings, and then switch to parses.  The first
+  // token_analysis would be the 1-best analysis, which is typically also stored
+  // in the document.  Note: some post-processors will update the document's
+  // syntax trees, but will leave these unchanged.
+  repeated AlternativeTokenAnalysis token_analysis = 3;
+}
+
+// A list of scored alternative (k-best) analyses for a particular token. These
+// are all distinct from each other and ordered by decreasing model score. The
+// first is the 1-best analysis, which may or may not match the document tokens
+// depending on how the k-best analyses are selected.
+message KBestSyntaxAnalysesForToken {
+  // All token analyses in this repeated field refer to the same token.
+  // Each alternative analysis will contain a single entry for repeated fields
+  // such as head, tag, category and label.
+  repeated AlternativeTokenAnalysis token_analysis = 3;
+}
+
+// An alternative analysis of tokens in the document. The repeated fields
+// are indexed relative to the beginning of a sentence. Fields not
+// represented in the alternative analysis are assumed to be unchanged.
+// Currently only alternatives for tags, categories and (labeled) dependency
+// heads are supported.
+// Each repeated field should either have length=0 or length=number of tokens.
+message AlternativeTokenAnalysis {
+  // Head of this token in the dependency tree: the id of the token which has
+  // an arc going to this one. If it is the root token of a sentence, then it
+  // is set to -1.
+  repeated int32 head = 1;
+
+  // Part-of-speech tag for token.
+  repeated string tag = 2;
+
+  // Coarse-grained word category for token.
+  repeated string category = 3;
+
+  // Label for dependency relation between this token and its head.
+  repeated string label = 4;
+
+  // The score of this analysis, where bigger values typically indicate better
+  // quality, but there are no guarantees and there is also no pre-defined
+  // range.
+  optional double score = 5;
+}
