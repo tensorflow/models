@@ -15,13 +15,11 @@
 # ==============================================================================
 
 # A script that runs a tokenizer, a part-of-speech tagger and a dependency
-# parser on an English text file, with a sentence per line.
+# parser on an English text file, with one sentence per line.
 #
 # Example usage:
-#  blaze build -c opt syntaxnet:parser_eval
-#  cat en-sentences.txt |
-#    syntaxnet/demo.sh > output.conll
-#
+#  echo "Parsey McParseface is my favorite parser!" | syntaxnet/demo.sh
+
 # To run on a conll formatted file, add the --conll command line argument.
 #
 
@@ -51,4 +49,8 @@ $PARSER_EVAL \
   --model_path=$MODEL_DIR/parser-params \
   --slim_model \
   --batch_size=1024 \
+  --alsologtostderr \
+  | \
+  bazel-bin/syntaxnet/conll2tree \
+  --task_context=$MODEL_DIR/context.pbtxt \
   --alsologtostderr
