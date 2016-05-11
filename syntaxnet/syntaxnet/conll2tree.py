@@ -26,7 +26,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('task_context',
-                    'syntaxnet/models/treebank_union/context.pbtxt',
+                    'syntaxnet/models/parsey_mcparseface/context.pbtxt',
                     'Path to a task context with inputs and parameters for '
                     'feature extractors.')
 flags.DEFINE_string('corpus_name', 'stdin-conll',
