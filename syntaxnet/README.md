@@ -13,14 +13,12 @@ new SyntaxNet models on your own data, as well as *Parsey McParseface*, an
 English parser that we have trained for you and that you can use to analyze
 English text.
 
-TODO(chrisalberti): Fill in approximate runtime from a workstation or a laptop.
-
 So, how accurate is Parsey McParseface? For this release, we tried to balance a
-model that runs fast enough to be useful on any given machine (e.g. XXX
-words/second) that is also the most accurate parser available. Here's how Parsey
-McParseface compares to the academic literature on several different English
-domains: (all numbers are % correct head assignments in the tree, or unlabelled
-attachment score)
+model that runs fast enough to be useful on a single machine (e.g. ~600
+words/second on a modern desktop) that is also the most accurate parser
+available. Here's how Parsey McParseface compares to the academic literature on
+several different English domains: (all numbers are % correct head assignments
+in the tree, or unlabelled attachment score)
 
 Model                                                                                                           | News  | Web   | Questions
 --------------------------------------------------------------------------------------------------------------- | :---: | :---: | :-------:
@@ -30,12 +28,21 @@ Model                                                                           
 [Andor et al. (2016)](http://arxiv.org/pdf/1603.06042v1.pdf)*                                                   | 94.44 | 90.17 | 95.40
 Parsey McParseface                                                                                              | 94.15 | 89.08 | 94.77
 
-TODO(chrisalberti) Add POS tagging numbers.
-
 We see that Parsey McParseface is state-of-the-art; more importantly, with
 SyntaxNet you can train larger networks with more hidden units and bigger beam
 sizes if you want to push the accuracy even further. (Note: * is a SyntaxNet
-model with a larger beam and network.)
+model with a larger beam and network.) For futher information on the datasets,
+see [Andor et al. (2016)](http://arxiv.org/pdf/1603.06042v1.pdf) under the
+section "Treebank Union".
+
+Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging:
+(numbers below are per-token accuracy):
+
+Model                                                                      | News  | Web   | Questions
+-------------------------------------------------------------------------- | :---: | :---: | :-------:
+[Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.78 | 94.03 | 96.18
+[Andor et al. (2016)](http://arxiv.org/pdf/1603.06042v1.pdf)*              | 97.77 | 94.80 | 96.86
+Parsey McParseface                                                         | 97.52 | 94.24 | 96.45
 
 The first part of this tutorial describes how to install the necessary tools and
 use the already trained models provided in this release. In the second part of
@@ -50,19 +57,23 @@ Running and training SyntaxNet models requires building this package from
 source. You'll need to install:
 
 *   bazel, following the instructions [here](http://bazel.io/docs/install.html),
+    *   **Note: You must use bazel version 0.2.2, NOT 0.2.2b, due to a WORKSPACE
+        issue.**
 *   swig:
     *   `apt-get install swig` on Ubuntu,
     *   `brew install swig` on OSX,
 *   a version of protocol buffers supported by TensorFlow:
     *   check your protobuf version with `pip freeze | grep protobuf1`,
     *   upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
+*   (For the demo): asciitree, to draw parse trees on the console:
+    *   Simply run `pip install asciitree`.
 
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
 
 ```shell
-  git clone --recursive rpc://team/saft/syntaxnet
-  cd syntaxnet/tensorflow
+  git clone --recursive sso://team/saft/neurosis
+  cd neurosis/tensorflow
   ./configure
   cd ..
   bazel test syntaxnet/... util/utf8/...
@@ -82,9 +93,9 @@ simple setup to parse English taking plain text as input.
 
 ### Parsing from Standard Input
 
-Simply pass one sentence per line of text into the script at `syntaxnet/demo.sh`.
-The script will break the text into words, run the POS tagger, run the parser,
-and then generate an ASCII version of the parse tree.
+Simply pass one sentence per line of text into the script at
+`syntaxnet/demo.sh`. The script will break the text into words, run the POS
+tagger, run the parser, and then generate an ASCII version of the parse tree.
 
 The file `syntaxnet/demo.txt` has a few simple examples:
 
@@ -260,12 +271,15 @@ stack.prefix(length=2) input.prefix(length=2) input(1).prefix(length=2)
 Note that `stack` here means "words we have already tagged." Thus, this simple
 feature spec uses three types of features: words, suffixes, and prefixes. The
 features are grouped into blocks that share an embedding matrix, concatenated
-together, and fed into a chain of hidden layers. We show this layout in the
-schematic below: the state of the system (a stack and a buffer, visualized below
-for both POS and the dependency parsing task, for which we will go into more
-detail in the next section) is used to extract sparse features, which are fed
-into the network in groups. Note that we show only a small subset of the
-features to simplify the presentation in the schematic:
+together, and fed into a chain of hidden layers. This structure is based upon
+the model proposed by [Chen and Manning (2014)]
+(http://cs.stanford.edu/people/danqi/papers/emnlp2014.pdf).
+
+We show this layout in the schematic below: the state of the system (a stack and
+a buffer, visualized below for both POS and the dependency parsing task, for
+which we will go into more detail in the next section) is used to extract sparse
+features, which are fed into the network in groups. Note that we show only a
+small subset of the features to simplify the presentation in the schematic:
 
 ![Schematic](ff_nn_schematic.png "Feed-forward Network Structure")
 
@@ -394,8 +408,8 @@ is *I*, another where the head is *saw* and the modifier is *man*, and so on.
 
 The grammatical relationships encoded in dependency structures are directly
 related to the underlying meaning of the sentence in question. They allow us to
-easily recover the answers to various questions, for example *who did I
-see?*, *who saw the man with glasses?*, and so on.
+easily recover the answers to various questions, for example *whom did I see?*,
+*who saw the man with glasses?*, and so on.
 
 SyntaxNet is a **transition-based** dependency parser [Nivre, 2007]
 (http://www.mitpressjournals.org/doi/pdfplus/10.1162/coli.07-056-R1-07-027) that
