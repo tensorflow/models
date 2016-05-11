@@ -103,12 +103,10 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
       self.assertTrue(self.NodeFound('save/restore_all'))
 
       # Also check that the parameters have the scope we expect.
-      # TODO(chrisalberti): why do these variables get wrong names?
-      # self.assertTrue(self.NodeFound('params/embedding_matrix_0'))
-      # self.assertTrue(self.NodeFound('params/embedding_matrix_1'))
-      # self.assertTrue(self.NodeFound('params/embedding_matrix_2'))
-      # self.assertFalse(self.NodeFound('params/embedding_matrix_3'))
-      # self.assertFalse(self.NodeFound('params_1/embedding_matrix_0'))
+      self.assertTrue(self.NodeFound('embedding_matrix_0'))
+      self.assertTrue(self.NodeFound('embedding_matrix_1'))
+      self.assertTrue(self.NodeFound('embedding_matrix_2'))
+      self.assertFalse(self.NodeFound('embedding_matrix_3'))
 
   def testNestedScope(self):
     # It's OK to put the whole graph in a scope of its own.
@@ -159,7 +157,6 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
       sess.run(['evaluation/logits:0'])
 
   def testTrainingAndEvalAreIndependent(self):
-    # TODO(danielandor): Ensure these tests work for arbitrary batch_size.
     batch_size = 10
     graph = tf.Graph()
     with graph.as_default():

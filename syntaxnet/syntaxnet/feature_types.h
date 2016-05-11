@@ -27,7 +27,6 @@ limitations under the License.
 
 namespace syntaxnet {
 
-// TODO(djweiss) Clean this up as well.
 // Use the same type for feature values as is used for predicated.
 typedef int64 Predicate;
 typedef Predicate FeatureValue;

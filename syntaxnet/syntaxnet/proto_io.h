@@ -178,8 +178,6 @@ class TextReader {
     sentence_count_ = 0;
     tensorflow::RandomAccessFile *file;
     if (filename_ == "-") {
-      // TODO(chrisalberti): can this buffer be made a line at a time so that we
-      // can run it in REPL mode?
       static const int kInputBufferSize = 8 * 1024; /* bytes */
       file = new StdIn();
       buffer_.reset(new tensorflow::io::InputBuffer(file, kInputBufferSize));

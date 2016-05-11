@@ -242,8 +242,6 @@ class GreedyParser(object):
         if initializer is not None:
           self.inits[name] = state_ops.init_variable(param, initializer)
         if self._averaging_decay == 1:
-          # TODO(chrisalberti): verify that this is equivalent to vanilla
-          # averaging as performed in the internal graph builder.
           logging.info('Using vanilla averaging of parameters.')
           ema = tf.train.ExponentialMovingAverage(decay=(step / (step + 1.0)),
                                                   num_updates=None)
