@@ -6,16 +6,16 @@
 At Google, we spend a lot of time thinking about how computer systems can read
 and understand human language in order to process it in intelligent ways. We are
 excited to share the fruits of our research with the broader community by
-releasing SyntaxNet, an open-source neural network model for [TensorFlow]
+releasing SyntaxNet, an open-source neural network framework for [TensorFlow]
 (http://www.tensorflow.org) that provides a foundation for Natural Language
 Understanding (NLU) systems. Our release includes all the code needed to train
 new SyntaxNet models on your own data, as well as *Parsey McParseface*, an
-English parser that we have trained for you and that you can use to analyze
+English parser that we have trained for you, and that you can use to analyze
 English text.
 
 So, how accurate is Parsey McParseface? For this release, we tried to balance a
 model that runs fast enough to be useful on a single machine (e.g. ~600
-words/second on a modern desktop) that is also the most accurate parser
+words/second on a modern desktop) and that is also the most accurate parser
 available. Here's how Parsey McParseface compares to the academic literature on
 several different English domains: (all numbers are % correct head assignments
 in the tree, or unlabelled attachment score)
@@ -30,12 +30,12 @@ Parsey McParseface                                                              
 
 We see that Parsey McParseface is state-of-the-art; more importantly, with
 SyntaxNet you can train larger networks with more hidden units and bigger beam
-sizes if you want to push the accuracy even further. (Note: * is a SyntaxNet
-model with a larger beam and network.) For futher information on the datasets,
-see [Andor et al. (2016)](http://arxiv.org/pdf/1603.06042v1.pdf) under the
-section "Treebank Union".
+sizes if you want to push the accuracy even further: [Andor et al. (2016)]
+(http://arxiv.org/pdf/1603.06042v1.pdf)* is simply a SyntaxNet model with a
+larger beam and network. For futher information on the datasets, see that paper
+under the section "Treebank Union".
 
-Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging:
+Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging
 (numbers below are per-token accuracy):
 
 Model                                                                      | News  | Web   | Questions
@@ -49,24 +49,41 @@ use the already trained models provided in this release. In the second part of
 the tutorial we provide more background about the models, as well as
 instructions for training models on other datasets.
 
-[TOC]
+## Contents
+* [Installation](#installation)
+* [Getting Started](#getting-started)
+    * [Parsing from Standard Input](#parsing-from-standard-input)
+    * [Annotating a Corpus](#annotating-a-corpus)
+    * [Configuring the Python Scripts](#configuring-the-python-scripts)
+    * [Next Steps](#next-steps)
+* [Detailed Tutorial: Building an NLP Pipeline with SyntaxNet](#detailed-tutorial-building-an-nlp-pipeline-with-syntaxnet)
+    * [Obtaining Data](#obtaining-data)
+    * [Part-of-Speech Tagging](#part-of-speech-tagging)
+    * [Training the SyntaxNet POS Tagger](#training-the-syntaxnet-pos-tagger)
+    * [Preprocessing with the Tagger](#preprocessing-with-the-tagger)
+    * [Dependency Parsing: Transition-Based Parsing](#dependency-parsing-transition-based-parsing)
+    * [Training a Parser Step 1: Local Pretraining](#training-a-parser-step-1-local-pretraining)
+    * [Training a Parser Step 2: Global Training](#training-a-parser-step-2-global-training)
+* [Contact](#contact)
+* [Credits](#credits)
 
 ## Installation
 
 Running and training SyntaxNet models requires building this package from
 source. You'll need to install:
 
-*   bazel, following the instructions [here](http://bazel.io/docs/install.html),
+*   bazel:
+    *   follow the instructions [here](http://bazel.io/docs/install.html)
     *   **Note: You must use bazel version 0.2.2, NOT 0.2.2b, due to a WORKSPACE
-        issue.**
+        issue**
 *   swig:
-    *   `apt-get install swig` on Ubuntu,
-    *   `brew install swig` on OSX,
-*   a version of protocol buffers supported by TensorFlow:
-    *   check your protobuf version with `pip freeze | grep protobuf1`,
+    *   `apt-get install swig` on Ubuntu
+    *   `brew install swig` on OSX
+*   protocol buffers, with a version supported by TensorFlow:
+    *   check your protobuf version with `pip freeze | grep protobuf1`
     *   upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
-*   (For the demo): asciitree, to draw parse trees on the console:
-    *   Simply run `pip install asciitree`.
+*   asciitree, to draw parse trees on the console for the demo:
+    *   `pip install asciitree`
 
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
@@ -86,21 +103,19 @@ Bazel should complete reporting all tests passed.
 
 ## Getting Started
 
-Once have you successfully built SyntaxNet, you can start parsing text right
-away with Parsey McParseface, located under `syntaxnet/models`. The simplest
+Once you have successfully built SyntaxNet, you can start parsing text right
+away with Parsey McParseface, located under `syntaxnet/models`. The easiest
 thing is to use or modify the included script `syntaxnet/demo.sh`, which shows a
-simple setup to parse English taking plain text as input.
+basic setup to parse English taking plain text as input.
 
 ### Parsing from Standard Input
 
 Simply pass one sentence per line of text into the script at
 `syntaxnet/demo.sh`. The script will break the text into words, run the POS
-tagger, run the parser, and then generate an ASCII version of the parse tree.
-
-The file `syntaxnet/demo.txt` has a few simple examples:
+tagger, run the parser, and then generate an ASCII version of the parse tree:
 
 ```shell
-cat syntaxnet/demo.txt | syntaxnet/demo.sh
+echo 'Bob brought the pizza to Alice.' | syntaxnet/demo.sh
 
 Input: Bob brought the pizza to Alice .
 Parse:
@@ -113,13 +128,13 @@ brought VBD ROOT
  +-- . . punct
 ```
 
-Note that the ASCII tree shows the text organized as in the parse, not
-left-to-right as visualized in our tutorial graphs. In this example, we see that
-the verb "brought" is the root of the sentence, with the subject "Bob", the
-object "pizza", and the prepositional phrase "to Alice".
+The ASCII tree shows the text organized as in the parse, not left-to-right as
+visualized in our tutorial graphs. In this example, we see that the verb
+"brought" is the root of the sentence, with the subject "Bob", the object
+"pizza", and the prepositional phrase "to Alice".
 
-Note that if you want to feed in tokenized, CONLL-formatted text, you can change
-the `--input=stdin` flag to `--input=stdin-conll` inside `demo.sh`.
+If you want to feed in tokenized, CONLL-formatted text, you can run `demo.sh
+--conll`.
 
 ### Annotating a Corpus
 
@@ -166,8 +181,8 @@ As mentioned above, the python scripts are configured in two ways:
 
 1.  **Run-time flags** are used to point to the `TaskSpec` file, switch between
     inputs for reading and writing, and set various run-time model parameters.
-    At training time, these flags are used to set learning rate, hidden layer
-    sizes, and other key parameters.
+    At training time, these flags are used to set the learning rate, hidden
+    layer sizes, and other key parameters.
 1.  The **`TaskSpec` proto** stores configuration about the transition system,
     the features, and a set of named static resources required by the parser. It
     is specified via the `--task_context` flag. A few key notes to remember:
@@ -178,10 +193,9 @@ As mentioned above, the python scripts are configured in two ways:
         the two configurations.
     -   The resources will be created and/or modified during multiple stages of
         training. As described above, the resources can also be used at
-        evaluation time to read or write to specific files. Note that these
-        resources are also separate from the model parameters, which are saved
-        separately via calls to TensorFlow ops, and loaded via the
-        `--model_path` flag.
+        evaluation time to read or write to specific files. These resources are
+        also separate from the model parameters, which are saved separately via
+        calls to TensorFlow ops, and loaded via the `--model_path` flag.
     -   Because the `TaskSpec` contains file path, remember that copying around
         this file is not enough to relocate a trained model: you need up move
         and update all the paths as well.
@@ -230,9 +244,9 @@ a saw to cut something).
 
 A logical first step in understanding language is figuring out these roles for
 each word in the sentence. This process is called *Part-of-Speech (POS)
-Tagging*. The roles are called POS tags. Note that although a given word might
-have multiple possible tags depending on the context, given any one
-interpretation of a sentence each word will generally only have one tag.
+Tagging*. The roles are called POS tags. Although a given word might have
+multiple possible tags depending on the context, given any one interpretation of
+a sentence each word will generally only have one tag.
 
 One interesting challenge of POS tagging is that the problem of defining a
 vocabulary of POS tags for a given language is quite involved. While the concept
@@ -268,18 +282,18 @@ stack.suffix(length=2) input.suffix(length=2) input(1).suffix(length=2);
 stack.prefix(length=2) input.prefix(length=2) input(1).prefix(length=2)
 ```
 
-Note that `stack` here means "words we have already tagged." Thus, this simple
-feature spec uses three types of features: words, suffixes, and prefixes. The
-features are grouped into blocks that share an embedding matrix, concatenated
-together, and fed into a chain of hidden layers. This structure is based upon
-the model proposed by [Chen and Manning (2014)]
+Note that `stack` here means "words we have already tagged." Thus, this feature
+spec uses three types of features: words, suffixes, and prefixes. The features
+are grouped into blocks that share an embedding matrix, concatenated together,
+and fed into a chain of hidden layers. This structure is based upon the model
+proposed by [Chen and Manning (2014)]
 (http://cs.stanford.edu/people/danqi/papers/emnlp2014.pdf).
 
 We show this layout in the schematic below: the state of the system (a stack and
-a buffer, visualized below for both POS and the dependency parsing task, for
-which we will go into more detail in the next section) is used to extract sparse
-features, which are fed into the network in groups. Note that we show only a
-small subset of the features to simplify the presentation in the schematic:
+a buffer, visualized below for both the POS and the dependency parsing task) is
+used to extract sparse features, which are fed into the network in groups. We
+show only a small subset of the features to simplify the presentation in the
+schematic:
 
 ![Schematic](ff_nn_schematic.png "Feed-forward Network Structure")
 
@@ -334,7 +348,7 @@ The `--arg_prefix` flag controls which parameters should be read from the task
 context file `context.pbtxt`. In this case `arg_prefix` is set to `brain_pos`,
 so the paramters being used in this training run are
 `brain_pos_transition_system`, `brain_pos_embedding_dims`, `brain_pos_features`
-and, `brain_pos_embedding_names`. Note that to train the dependency parser later
+and, `brain_pos_embedding_names`. To train the dependency parser later
 `arg_prefix` will be set to `brain_parser`.
 
 ### Preprocessing with the Tagger
@@ -411,7 +425,7 @@ related to the underlying meaning of the sentence in question. They allow us to
 easily recover the answers to various questions, for example *whom did I see?*,
 *who saw the man with glasses?*, and so on.
 
-SyntaxNet is a **transition-based** dependency parser [Nivre, 2007]
+SyntaxNet is a **transition-based** dependency parser [Nivre (2007)]
 (http://www.mitpressjournals.org/doi/pdfplus/10.1162/coli.07-056-R1-07-027) that
 constructs a parse incrementally. Like the tagger, it processes words
 left-to-right. The words all start as unprocessed input, called the *buffer*. As
@@ -428,9 +442,9 @@ do one of three things:
     back on the stack.
 
 At each step, we call the combination of the stack and the buffer the
-*configuration* of the parser. Note that for the left and right actions, we also
-assign a dependency relation label to that arc. This processed is visualized in
-the following animation for a simple sentence:
+*configuration* of the parser. For the left and right actions, we also assign a
+dependency relation label to that arc. This process is visualized in the
+following animation for a short sentence:
 
 ![Animation](looping-parser.gif "Parsing in Action")
 
@@ -516,10 +530,9 @@ prefer the second (correct) parse.
 
 Parsey McParseface correctly parses this sentence. Even though the correct parse
 is initially ranked 4th out of multiple hypotheses, when the end of the garden
-path is reached, Parsey McParseface can recover due to the beam.
-
-Note that using a larger beam will get a more accurate model, but it will be
-slower (we used beam 32 for the models in the paper.)
+path is reached, Parsey McParseface can recover due to the beam; using a larger
+beam will get a more accurate model, but it will be slower (we used beam 32 for
+the models in the paper).
 
 Once you have the pre-trained locally normalized model, a globally normalized
 parsing model can now be trained with the following command:
@@ -571,7 +584,7 @@ and parse text in the wild.
 
 ## Contact
 
-To ask questions or report issues please contact syntaxnet-oss@google.com.
+To ask questions or report issues please contact syntaxnet-users@google.com.
 
 ## Credits
 
