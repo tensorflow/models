@@ -345,7 +345,7 @@ over our training, tuning, and dev (evaluation) sets. We can use the
 parser_eval.py` script for this.
 
 For example, the model `128-0.08-3600-0.9-0` trained above can be run over the
-training, tuning, and dev set with the following command:
+training, tuning, and dev sets with the following command:
 
 ```shell
 PARAMS=128-0.08-3600-0.9-0
@@ -442,13 +442,13 @@ predicts the next action to take.
 ### Training a Parser Step 1: Local Pretraining
 
 As described in our [paper](http://arxiv.org/pdf/1603.06042v1.pdf), the first
-step training the model is to *pre-train* using *local* decisions. In this
+step in training the model is to *pre-train* using *local* decisions. In this
 phase, we use the gold dependency to guide the parser, and train a softmax layer
 to predict the correct action given these gold dependencies. This can be
 performed very efficiently, since the parser's decisions are all independent in
 this setting.
 
-Once the tagged datasets are available a locally normalized dependency parsing
+Once the tagged datasets are available, a locally normalized dependency parsing
 model can be trained with the following command:
 
 ```shell
@@ -473,8 +473,8 @@ Note that we point the trainer to the context corresponding to the POS tagger
 that we picked previously. This allows the parser to reuse the lexicons and the
 tagged datasets that were created in the previous steps. Processing data can be
 done similarly to how tagging was done above. For example if in this case we
-picked parameters `200x200-0.08-4400-0.85-4`, tuning and dev set can be parsed
-with the following command:
+picked parameters `200x200-0.08-4400-0.85-4`, the training, tuning and dev sets
+can be parsed with the following command:
 
 ```shell
 PARAMS=200x200-0.08-4400-0.85-4
@@ -492,7 +492,7 @@ done
 
 ### Training a Parser Step 2: Global Training
 
-As we describe in the paper, there's several problems with the locally
+As we describe in the paper, there are several problems with the locally
 normalized models we just trained. The most important is the *label-bias*
 problem: the model doesn't learn what a good parse looks like, only what action
 to take given a history of gold decisions. This is because the scores are
@@ -509,14 +509,14 @@ beam (a strategy known as early-updates).
 We give a simplified view of how this training works for a [garden path
 sentence](https://en.wikipedia.org/wiki/Garden_path_sentence), where it is
 important to maintain multiple hypotheses. A single mistake early on in parsing
-leads to a completely incorrect parse; after training, the model will learn to
+leads to a completely incorrect parse; after training, the model learns to
 prefer the second (correct) parse.
 
 ![Beam search training](beam_search_training.png)
 
 Parsey McParseface correctly parses this sentence. Even though the correct parse
-is initially ranked 4th out of multiple hypothesis, when the end of garden path
-is reached, Parsey McParseface can recover due to the beam.
+is initially ranked 4th out of multiple hypotheses, when the end of the garden
+path is reached, Parsey McParseface can recover due to the beam.
 
 Note that using a larger beam will get a more accurate model, but it will be
 slower (we used beam 32 for the models in the paper.)
@@ -549,8 +549,8 @@ Training a beam model with the structured builder will take a lot longer than
 the greedy training runs above, perhaps 3 or 4 times longer. Note once again
 that multiple restarts of training will yield the most reliable results.
 Evaluation can again be done with `parser_eval.py`. In this case we use
-parameters `200x200-0.02-100-0.9-0`, and we evaluate on tuning and dev set can
-with the following command:
+parameters `200x200-0.02-100-0.9-0` to evaluate on the training, tuning and dev
+sets with the following command:
 
 ```shell
 PARAMS=200x200-0.02-100-0.9-0
