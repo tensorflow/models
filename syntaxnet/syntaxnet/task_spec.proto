@@ -1,0 +1,82 @@
+// LINT: ALLOW_GROUPS
+// Protocol buffer specifications for task configuration.
+
+syntax = "proto2";
+
+package syntaxnet;
+
+// Task input descriptor.
+message TaskInput {
+  // Name of input resource.
+  required string name = 1;
+
+  // Name of stage responsible of creating this resource.
+  optional string creator = 2;
+
+  // File format for resource.
+  repeated string file_format = 3;
+
+  // Record format for resource.
+  repeated string record_format = 4;
+
+  // Is this resource multi-file?
+  optional bool multi_file = 5 [default = false];
+
+  // An input can consist of multiple file sets.
+  repeated group Part = 6 {
+    // File pattern for file set.
+    optional string file_pattern = 7;
+
+    // File format for file set.
+    optional string file_format = 8;
+
+    // Record format for file set.
+    optional string record_format = 9;
+  }
+}
+
+// Task output descriptor.
+message TaskOutput {
+  // Name of output resource.
+  required string name = 1;
+
+  // File format for output resource.
+  optional string file_format = 2;
+
+  // Record format for output resource.
+  optional string record_format = 3;
+
+  // Number of shards in output. If it is different from zero this output is
+  // sharded. If the number of shards is set to -1 this means that the output is
+  // sharded, but the number of shard is unknown. The files are then named
+  // 'base-*-of-*'.
+  optional int32 shards = 4 [default = 0];
+
+  // Base file name for output resource. If this is not set by the task
+  // component it is set to a default value by the workflow engine.
+  optional string file_base = 5;
+
+  // Optional extension added to the file name.
+  optional string file_extension = 6;
+}
+
+// A task specification is used for describing executing parameters.
+message TaskSpec {
+  // Name of task.
+  optional string task_name = 1;
+
+  // Workflow task type.
+  optional string task_type = 2;
+
+  // Task parameters.
+  repeated group Parameter = 3 {
+    required string name = 4;
+    optional string value = 5;
+  }
+
+  // Task inputs.
+  repeated TaskInput input = 6;
+
+  // Task outputs.
+  repeated TaskOutput output = 7;
+}

@@ -1,0 +1,156 @@
+Parameter {
+  name: 'brain_parser_embedding_dims'
+  value: '64;32;32'
+}
+Parameter {
+  name: 'brain_parser_features'
+  value: 'input.word input(1).word input(2).word input(3).word stack.word stack(1).word stack(2).word stack(3).word stack.child(1).word stack.child(1).sibling(-1).word stack.child(-1).word stack.child(-1).sibling(1).word stack(1).child(1).word stack(1).child(1).sibling(-1).word stack(1).child(-1).word stack(1).child(-1).sibling(1).word stack.child(2).word stack.child(-2).word stack(1).child(2).word stack(1).child(-2).word;input.tag input(1).tag input(2).tag input(3).tag stack.tag stack(1).tag stack(2).tag stack(3).tag stack.child(1).tag stack.child(1).sibling(-1).tag stack.child(-1).tag stack.child(-1).sibling(1).tag stack(1).child(1).tag stack(1).child(1).sibling(-1).tag stack(1).child(-1).tag stack(1).child(-1).sibling(1).tag stack.child(2).tag stack.child(-2).tag stack(1).child(2).tag stack(1).child(-2).tag;stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label stack(1).child(1).label stack(1).child(1).sibling(-1).label stack(1).child(-1).label stack(1).child(-1).sibling(1).label stack.child(2).label stack.child(-2).label stack(1).child(2).label stack(1).child(-2).label'
+}
+Parameter {
+  name: 'brain_parser_embedding_names'
+  value: 'words;tags;labels'
+}
+Parameter {
+  name: 'brain_parser_scoring'
+  value: 'default'
+}
+Parameter {
+  name: 'brain_pos_transition_system'
+  value: 'tagger'
+}
+Parameter {
+  name: 'brain_pos_embedding_dims'
+  value: '64;4;8;8'
+}
+Parameter {
+  name: 'brain_pos_features'
+  value: 'stack(3).word stack(2).word stack(1).word stack.word input.word input(1).word input(2).word input(3).word;input.digit input.hyphen;stack.suffix(length=2) input.suffix(length=2) input(1).suffix(length=2);stack.prefix(length=2) input.prefix(length=2) input(1).prefix(length=2)'
+}
+Parameter {
+  name: 'brain_pos_embedding_names'
+  value: 'words;other;suffix;prefix'
+}
+input {
+  name: 'training-corpus'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: '<your-dataset>/treebank-train.trees.conll'
+  }
+}
+input {
+  name: 'tuning-corpus'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: '<your-dataset>/dev.conll'
+  }
+}
+input {
+  name: 'dev-corpus'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: '<your-dataset>/test.conll'
+  }
+}
+input {
+  name: 'tagged-training-corpus'
+  creator: 'brain_pos/greedy'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'tagged-tuning-corpus'
+  creator: 'brain_pos/greedy'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'tagged-dev-corpus'
+  creator: 'brain_pos/greedy'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'label-map'
+  creator: 'brain_pos/greedy'
+}
+input {
+  name: 'word-map'
+  creator: 'brain_pos/greedy'
+}
+input {
+  name: 'lcword-map'
+  creator: 'brain_pos/greedy'
+}
+input {
+  name: 'tag-map'
+  creator: 'brain_pos/greedy'
+}
+input {
+  name: 'category-map'
+  creator: 'brain_pos/greedy'
+}
+input {
+  name: 'prefix-table'
+  creator: 'brain_pos/greedy'
+}
+input {
+  name: 'suffix-table'
+  creator: 'brain_pos/greedy'
+}
+input {
+  name: 'tag-to-category'
+  creator: 'brain_pos/greedy'
+}
+input {
+  name: 'projectivized-training-corpus'
+  creator: 'brain_parser/greedy'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'parsed-training-corpus'
+  creator: 'brain_parser/greedy'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'parsed-tuning-corpus'
+  creator: 'brain_parser/greedy'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'parsed-dev-corpus'
+  creator: 'brain_parser/greedy'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'beam-parsed-training-corpus'
+  creator: 'brain_parser/structured'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'beam-parsed-tuning-corpus'
+  creator: 'brain_parser/structured'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'beam-parsed-dev-corpus'
+  creator: 'brain_parser/structured'
+  record_format: 'conll-sentence'
+}
+input {
+  name: 'stdin'
+  record_format: 'english-text'
+  Part {
+    file_pattern: '-'
+  }
+}
+input {
+  name: 'stdin-conll'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: '-'
+  }
+}
+input {
+  name: 'stdout-conll'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: '-'
+  }
+}
