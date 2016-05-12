@@ -1,0 +1,19 @@
+// Protocol for passing around sparse sets of features.
+
+syntax = "proto2";
+
+package syntaxnet;
+
+// A sparse set of features.
+//
+// If using SparseStringToIdTransformer, description is required and id should
+// be omitted; otherwise, id is required and description optional.
+//
+// id, weight, and description fields are all aligned if present (ie, any of
+// these that are non-empty should have the same # items). If weight is omitted,
+// 1.0 is used.
+message SparseFeatures {
+  repeated uint64 id = 1;
+  repeated float weight = 2;
+  repeated string description = 3;
+};
