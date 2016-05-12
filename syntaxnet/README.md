@@ -50,22 +50,22 @@ the tutorial we provide more background about the models, as well as
 instructions for training models on other datasets.
 
 ## Contents
-* [Installation](#installation)
-* [Getting Started](#getting-started)
-    * [Parsing from Standard Input](#parsing-from-standard-input)
-    * [Annotating a Corpus](#annotating-a-corpus)
-    * [Configuring the Python Scripts](#configuring-the-python-scripts)
-    * [Next Steps](#next-steps)
-* [Detailed Tutorial: Building an NLP Pipeline with SyntaxNet](#detailed-tutorial-building-an-nlp-pipeline-with-syntaxnet)
-    * [Obtaining Data](#obtaining-data)
-    * [Part-of-Speech Tagging](#part-of-speech-tagging)
-    * [Training the SyntaxNet POS Tagger](#training-the-syntaxnet-pos-tagger)
-    * [Preprocessing with the Tagger](#preprocessing-with-the-tagger)
-    * [Dependency Parsing: Transition-Based Parsing](#dependency-parsing-transition-based-parsing)
-    * [Training a Parser Step 1: Local Pretraining](#training-a-parser-step-1-local-pretraining)
-    * [Training a Parser Step 2: Global Training](#training-a-parser-step-2-global-training)
-* [Contact](#contact)
-* [Credits](#credits)
+* [Installation](#Installation)
+* [Getting Started](#Getting-Started)
+    * [Parsing from Standard Input](#Parsing-from-Standard-Input)
+    * [Annotating a Corpus](#Annotating-a-Corpus)
+    * [Configuring the Python Scripts](#Configuring-the-Python-Scripts)
+    * [Next Steps](#Next-Steps)
+* [Detailed Tutorial: Building an NLP Pipeline with SyntaxNet](#Detailed-Tutorial-Building-an-NLP-Pipeline-with-SyntaxNet)
+    * [Obtaining Data](#Obtaining-Data)
+    * [Part-of-Speech Tagging](#Part-of-Speech-Tagging)
+    * [Training the SyntaxNet POS Tagger](#Training-the-SyntaxNet-POS-Tagger)
+    * [Preprocessing with the Tagger](#Preprocessing-with-the-Tagger)
+    * [Dependency Parsing: Transition-Based Parsing](#Dependency-Parsing-Transition-Based-Parsing)
+    * [Training a Parser Step 1: Local Pretraining](#Training-a-Parser-Step-1-Local-Pretraining)
+    * [Training a Parser Step 2: Global Training](#Training-a-Parser-Step-2-Global-Training)
+* [Contact](#Contact)
+* [Credits](#Credits)
 
 ## Installation
 
