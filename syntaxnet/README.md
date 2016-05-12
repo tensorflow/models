@@ -89,8 +89,8 @@ Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
 
 ```shell
-  git clone --recursive sso://team/saft/neurosis
-  cd neurosis/tensorflow
+  git clone --recursive https://github.com/tensorflow/models.git
+  cd models/syntaxnet/tensorflow
   ./configure
   cd ..
   bazel test syntaxnet/... util/utf8/...
