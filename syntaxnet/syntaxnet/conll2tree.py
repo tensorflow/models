@@ -15,15 +15,15 @@
 """A program to generate ASCII trees from conll files."""
 
 import collections
-import asciitree
 
+import asciitree
 import tensorflow as tf
 
 import syntaxnet.load_parser_ops
 
+from tensorflow.python.platform import logging
 from syntaxnet import sentence_pb2
 from syntaxnet.ops import gen_parser_ops
-from tensorflow.python.platform import logging
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
