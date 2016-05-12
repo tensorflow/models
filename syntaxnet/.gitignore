@@ -1,8 +1,7 @@
 /bazel-bin
 /bazel-genfiles
 /bazel-out
-/bazel-serving
 /bazel-tensorflow
 /bazel-testlogs
 /bazel-tf
-/bazel-neurosis
+/bazel-syntaxnet
