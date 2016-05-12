@@ -15,7 +15,7 @@
 
 """Tests for reader_ops."""
 
-# pylint: disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member,no-member,g-importing-member
+
 import os.path
 
 import numpy as np

@@ -16,7 +16,7 @@
 
 """Tests for lexicon_builder."""
 
-# pylint:
+
 # disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member
 import os.path
 

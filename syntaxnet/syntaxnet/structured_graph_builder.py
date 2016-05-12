@@ -34,7 +34,7 @@ def AddCrossEntropy(batch_size, n):
   cross_entropies = []
   def _Pass():
     return tf.constant(0, dtype=tf.float32, shape=[1])
-  # pylint: disable=cell-var-from-loop
+
   for beam_id in range(batch_size):
     beam_gold_slot = tf.reshape(tf.slice(n['gold_slot'], [beam_id], [1]), [1])
     def _ComputeCrossEntropy():
@@ -118,7 +118,7 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
                                                 dynamic_size=True)
     alive = tf.constant(True, tf.bool, [batch_size])
     alive_steps = tf.constant(0, tf.int32, [batch_size])
-    t = cf.While(
+    t = tf.while_loop(
         KeepGoing,
         Advance,
         [state, step, scores_array, alive, alive_steps] + list(features),

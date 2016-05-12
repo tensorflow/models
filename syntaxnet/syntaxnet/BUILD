@@ -76,10 +76,18 @@ cc_library(
     hdrs = ["base.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "@tf//tensorflow/core:framework",
-        "@tf//tensorflow/core:lib",
+        "@re2//:re2",
+        "@tf//google/protobuf",
         "@tf//third_party/eigen3",
-    ],
+    ] + select({
+        "//conditions:default": [
+            "@tf//tensorflow/core:framework",
+            "@tf//tensorflow/core:lib",
+        ],
+        "@tf//tensorflow:darwin": [
+            "@tf//tensorflow/core:framework_headers_lib",
+        ],
+    }),
 )
 
 cc_library(

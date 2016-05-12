@@ -481,7 +481,7 @@ class GreedyParser(object):
           vectors=embeddings_path,
           task_context=task_context,
           embedding_init=self._embedding_init)
-      # pylint: disable=maybe-no-member
+
       t.set_shape(shape)
       return t
 
