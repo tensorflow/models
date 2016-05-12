@@ -50,7 +50,7 @@ primary differences with that setup are:
     language called TensorFlow-Slim.
 
 For more details about TensorFlow-Slim, please see the [Slim README]
-(slim/README.md). Please note that this higher-level language is still
+(inception/slim/README.md). Please note that this higher-level language is still
 *experimental* and the API may change over time depending on usage and
 subsequent research.
 
@@ -66,9 +66,9 @@ and convert the ImageNet data to native TFRecord format. The TFRecord format
 consists of a set of sharded files where each entry is a serialized `tf.Example`
 proto. Each `tf.Example` proto contains the ImageNet image (JPEG encoded) as
 well as metadata such as label and bounding box information. See
-[`parse_example_proto`](image_processing.py) for details.
+[`parse_example_proto`](inception/image_processing.py) for details.
 
-We provide a single [script](data/download_and_preprocess_imagenet.sh) for
+We provide a single [script](inception/data/download_and_preprocess_imagenet.sh) for
 downloading and converting ImageNet data to TFRecord format. Downloading and
 preprocessing the data may take several hours (up to half a day) depending on
 your network and computer speed. Please be patient.
@@ -444,7 +444,7 @@ There is a single automated script that downloads the data set and converts it
 to the TFRecord format. Much like the ImageNet data set, each record in the
 TFRecord format is a serialized `tf.Example` proto whose entries include a
 JPEG-encoded string and an integer label. Please see [`parse_example_proto`]
-(image_processing.py) for details.
+(inception/image_processing.py) for details.
 
 The script just takes a few minutes to run depending your network connection
 speed for downloading and processing the images. Your hard disk requires 200MB
@@ -474,10 +474,10 @@ files in the `DATA_DIR`. The files will match the patterns `train-????-of-00001`
 and `validation-?????-of-00001`, respectively.
 
 **NOTE** If you wish to prepare a custom image data set for transfer learning,
-you will need to invoke [`build_image_data.py`](data/build_image_data.py) on
+you will need to invoke [`build_image_data.py`](inception/data/build_image_data.py) on
 your custom data set. Please see the associated options and assumptions behind
 this script by reading the comments section of [`build_image_data.py`]
-(data/build_image_data.py).
+(inception/data/build_image_data.py).
 
 The second piece you will need is a trained Inception v3 image model. You have
 the option of either training one yourself (See [How to Train from Scratch]
@@ -607,7 +607,7 @@ Succesfully loaded model from /tmp/flowers/model.ckpt-1999 at step=1999.
 
 One can use the existing scripts supplied with this model to build a new dataset
 for training or fine-tuning. The main script to employ is
-[`build_image_data.py`](./build_image_data.py). Briefly, this script takes a
+[`build_image_data.py`](inception/data/build_image_data.py). Briefly, this script takes a
 structured directory of images and converts it to a sharded `TFRecord` that can
 be read by the Inception model.
 
@@ -714,7 +714,7 @@ considerations for novices.
 
 Roughly 5-10 hyper-parameters govern the speed at which a network is trained. In
 addition to `--batch_size` and `--num_gpus`, there are several constants defined
-in [inception_train.py](./inception_train.py) which dictate the learning
+in [inception_train.py](inception/inception_train.py) which dictate the learning
 schedule.
 
 ```shell
@@ -788,7 +788,7 @@ model architecture, this corresponds to about 4GB of CPU memory. You may lower
 `input_queue_memory_factor` in order to decrease the memory footprint. Keep in
 mind though that lowering this value drastically may result in a model with
 slightly lower predictive accuracy when training from scratch. Please see
-comments in [`image_processing.py`](./image_processing.py) for more details.
+comments in [`image_processing.py`](inception/image_processing.py) for more details.
 
 ## Troubleshooting
 
@@ -824,7 +824,7 @@ input image size, then you may need to redesign the entire model architecture.
 We targeted a desktop with 128GB of CPU ram connected to 8 NVIDIA Tesla K40 GPU
 cards but we have run this on desktops with 32GB of CPU ram and 1 NVIDIA Tesla
 K40. You can get a sense of the various training configurations we tested by
-reading the comments in [`inception_train.py`](./inception_train.py).
+reading the comments in [`inception_train.py`](inception/inception_train.py).
 
 #### How do I continue training from a checkpoint in distributed setting?
 
