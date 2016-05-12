@@ -24,7 +24,7 @@ following directory structure.
   data_dir/label_1/my-image.jpeg
   ...
 
-where the sub-sirectory is the unique label associated with these images.
+where the sub-directory is the unique label associated with these images.
 
 This TensorFlow script converts the training and evaluation data into
 a sharded data set consisting of TFRecord files
