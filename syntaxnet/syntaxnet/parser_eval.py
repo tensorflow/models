@@ -15,11 +15,11 @@
 
 """A program to annotate a conll file with a tensorflow neural net parser."""
 
-# pylint: disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member,g-importing-member
+
 import os
 import os.path
 import time
-  # google3 only
+
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
@@ -112,7 +112,7 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
         parser.evaluation['eval_metrics'],
         parser.evaluation['documents'],
     ])
-    # pylint: disable=g-explicit-length-test
+
     if len(tf_documents):
       logging.info('Processed %d documents', len(tf_documents))
       num_documents += len(tf_documents)

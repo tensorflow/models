@@ -15,12 +15,12 @@
 
 """A program to train a tensorflow neural net parser from a a conll file."""
 
-# pylint: disable=unused-import,g-bad-import-order,no-name-in-module,
-# pylint: disable=maybe-no-member,g-importing-member,g-import-not-at-top
+
+
 import os
 import os.path
 import time
-  # google3 only
+
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
