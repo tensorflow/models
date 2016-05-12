@@ -506,6 +506,18 @@ possible parses (in the case of this model, a beam size of 8). When training, we
 force the parser to stop during parsing when the gold derivation falls off the
 beam (a strategy known as early-updates).
 
+We give a simplified view of how this training works for a [garden path
+sentence](https://en.wikipedia.org/wiki/Garden_path_sentence), where it is
+important to maintain multiple hypotheses. A single mistake early on in parsing
+leads to a completely incorrect parse; after training, the model will learn to
+prefer the second (correct) parse.
+
+![Beam search training](beam_search_training.png)
+
+Parsey McParseface correctly parses this sentence. Even though the correct parse
+is initially ranked 4th out of multiple hypothesis, when the end of garden path
+is reached, Parsey McParseface can recover due to the beam.
+
 Note that using a larger beam will get a more accurate model, but it will be
 slower (we used beam 32 for the models in the paper.)
 
