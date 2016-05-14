@@ -263,7 +263,7 @@ well just by considering a small window of words around the word of interest.
 For example, words that follow the word ‘the’ tend to be adjectives or nouns,
 rather than verbs.
 
-To predict POS tags, we use a simple setup. We processes the sentences
+To predict POS tags, we use a simple setup. We process the sentences
 left-to-right. For any given word, we extract features of that word and a window
 around it, and use these as inputs to a feed-forward neural network classifier,
 which predicts a probability distribution over POS tags. Because we make
