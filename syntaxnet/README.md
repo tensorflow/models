@@ -163,7 +163,7 @@ input {
     file_pattern: './wsj.conll'
   }
 }
-input {
+output {
   name: 'wsj-data-tagged'
   record_format: 'conll-sentence'
   Part {
