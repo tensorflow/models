@@ -80,7 +80,7 @@ source. You'll need to install:
     *   `apt-get install swig` on Ubuntu
     *   `brew install swig` on OSX
 *   protocol buffers, with a version supported by TensorFlow:
-    *   check your protobuf version with `pip freeze | grep protobuf1`
+    *   check your protobuf version with `pip freeze | grep protobuf`
     *   upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
 *   asciitree, to draw parse trees on the console for the demo:
     *   `pip install asciitree`
