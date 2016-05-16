@@ -84,7 +84,9 @@ source. You'll need to install:
     *   upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
 *   asciitree, to draw parse trees on the console for the demo:
     *   `pip install asciitree`
-
+*   numpy, package for scientific computing:
+    *   `pip install numpy`
+    
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
 
