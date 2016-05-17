@@ -146,7 +146,8 @@ To change the pipeline to read and write to specific files (as opposed to piping
 through stdin and stdout), we have to modify the `demo.sh` to point to the files
 we want. The SyntaxNet models are configured via a combination of run-time flags
 (which are easy to change) and a text format `TaskSpec` protocol buffer. The
-spec file used in the demo is in `syntaxnet/models/treebank_union/context`.
+spec file used in the demo is in
+`syntaxnet/models/parsey_mcparseface/context.pbtxt`.
 
 To use corpora instead of stdin/stdout, we have to:
 
