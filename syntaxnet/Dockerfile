@@ -15,7 +15,7 @@ RUN mkdir -p $SYNTAXNETDIR \
     && ./bazel-0.2.2-installer-linux-x86_64.sh --user \
     && git clone --recursive https://github.com/tensorflow/models.git \
     && cd $SYNTAXNETDIR/models/syntaxnet/tensorflow \
-    && echo "\n\n" | ./configure
+    && echo "\n\n\n" | ./configure
 
 RUN cd $SYNTAXNETDIR/models/syntaxnet \
     && bazel test --genrule_strategy=standalone syntaxnet/... util/utf8/... \
