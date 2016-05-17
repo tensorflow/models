@@ -73,6 +73,7 @@ Running and training SyntaxNet models requires building this package from
 source. You'll need to install:
 
 *   bazel:
+    *   **versions 0.2.0 - 0.2.2b, NOT 0.2.3**
     *   follow the instructions [here](http://bazel.io/docs/install.html)
 *   swig:
     *   `apt-get install swig` on Ubuntu
@@ -101,8 +102,8 @@ following commands:
 
 Bazel should complete reporting all tests passed.
 
-You can also compile SyntaxNet in a Docker container using this
-[Dockerfile](Dockerfile).
+You can also compile SyntaxNet in a [Docker](https://www.docker.com/what-docker)
+container using this [Dockerfile](Dockerfile).
 
 ## Getting Started
 
