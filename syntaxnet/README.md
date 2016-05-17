@@ -328,6 +328,7 @@ bazel-bin/syntaxnet/parser_trainer \
   --learning_rate=0.08 \
   --momentum=0.9 \
   --seed=0 \
+  --checkpoint_every=1000 \
   --params=128-0.08-3600-0.9-0  # name for these parameters
 ```
 
@@ -482,6 +483,7 @@ bazel-bin/syntaxnet/parser_trainer \
   --seed=4 \
   --training_corpus=tagged-training-corpus \
   --tuning_corpus=tagged-tuning-corpus \
+  --checkpoint_every=1000 \
   --params=200x200-0.08-4400-0.85-4
 ```
 
@@ -555,6 +557,7 @@ bazel-bin/syntaxnet/parser_trainer \
   --tuning_corpus=tagged-tuning-corpus \
   --params=200x200-0.02-100-0.9-0 \
   --pretrained_params=models/brain_parser/greedy/$PARAMS/model \
+  --checkpoint_every=1000 \
   --pretrained_params_names=\
 embedding_matrix_0,embedding_matrix_1,embedding_matrix_2,\
 bias_0,weights_0,bias_1,weights_1
