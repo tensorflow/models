@@ -626,7 +626,7 @@ py_test(
 
 sh_test(
     name = "parser_trainer_test",
-    size = "medium",
+    size = "large",
     srcs = ["parser_trainer_test.sh"],
     data = [
         ":parser_eval",

@@ -24,7 +24,7 @@ import tensorflow as tf
 from tensorflow.python.framework import test_util
 from tensorflow.python.ops import control_flow_ops as cf
 from tensorflow.python.platform import googletest
-from tensorflow.python.platform import logging
+from tensorflow.python.platform import tf_logging as logging
 
 from syntaxnet import dictionary_pb2
 from syntaxnet import graph_builder

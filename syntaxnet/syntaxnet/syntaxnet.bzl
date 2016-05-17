@@ -16,11 +16,18 @@
 load("@tf//google/protobuf:protobuf.bzl", "cc_proto_library")
 load("@tf//google/protobuf:protobuf.bzl", "py_proto_library")
 
-def if_cuda(a, b=[]):
-  return select({
-      "@tf//third_party/gpus/cuda:cuda_crosstool_condition": a,
-      "//conditions:default": b,
-  })
+def if_cuda(if_true, if_false = []):
+    """Shorthand for select()'ing on whether we're building with CUDA.
+
+    Returns a select statement which evaluates to if_true if we're building
+    with CUDA enabled.  Otherwise, the select statement evaluates to if_false.
+
+    """
+    return select({
+        "@tf//third_party/gpus/cuda:using_nvcc": if_true,
+        "@tf//third_party/gpus/cuda:using_gcudacc": if_true,
+        "//conditions:default": if_false
+    })
 
 def tf_copts():
   return (["-fno-exceptions", "-DEIGEN_AVOID_STL_ARRAY",] +
