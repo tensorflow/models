@@ -73,9 +73,8 @@ Running and training SyntaxNet models requires building this package from
 source. You'll need to install:
 
 *   bazel:
+    *   **versions 0.2.0 - 0.2.2b, NOT 0.2.3**
     *   follow the instructions [here](http://bazel.io/docs/install.html)
-    *   **Note: You must use bazel version 0.2.2, NOT 0.2.2b, due to a WORKSPACE
-        issue**
 *   swig:
     *   `apt-get install swig` on Ubuntu
     *   `brew install swig` on OSX
@@ -86,7 +85,7 @@ source. You'll need to install:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
-    
+
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
 
@@ -102,6 +101,9 @@ following commands:
 ```
 
 Bazel should complete reporting all tests passed.
+
+You can also compile SyntaxNet in a [Docker](https://www.docker.com/what-docker)
+container using this [Dockerfile](Dockerfile).
 
 ## Getting Started
 
@@ -144,7 +146,8 @@ To change the pipeline to read and write to specific files (as opposed to piping
 through stdin and stdout), we have to modify the `demo.sh` to point to the files
 we want. The SyntaxNet models are configured via a combination of run-time flags
 (which are easy to change) and a text format `TaskSpec` protocol buffer. The
-spec file used in the demo is in `syntaxnet/models/treebank_union/context`.
+spec file used in the demo is in
+`syntaxnet/models/parsey_mcparseface/context.pbtxt`.
 
 To use corpora instead of stdin/stdout, we have to:
 

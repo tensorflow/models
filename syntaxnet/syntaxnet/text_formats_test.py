@@ -26,7 +26,7 @@ import syntaxnet.load_parser_ops
 
 from tensorflow.python.framework import test_util
 from tensorflow.python.platform import googletest
-from tensorflow.python.platform import logging
+from tensorflow.python.platform import tf_logging as logging
 
 from syntaxnet import sentence_pb2
 from syntaxnet import task_spec_pb2
