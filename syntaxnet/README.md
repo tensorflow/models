@@ -103,6 +103,10 @@ following commands:
 
 Bazel should complete reporting all tests passed.
 
+The build process requires about 22 GB free memory and 2 GB free disk space.
+
+An example [install script for Ubuntu 14.04 x64](build/ubuntu-14.04_x64.sh) is provided.
+
 ## Getting Started
 
 Once you have successfully built SyntaxNet, you can start parsing text right
