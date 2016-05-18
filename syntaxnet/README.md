@@ -72,6 +72,8 @@ instructions for training models on other datasets.
 Running and training SyntaxNet models requires building this package from
 source. You'll need to install:
 
+*   python 2.7:
+    * python 3 support is not available yet
 *   bazel:
     *   **versions 0.2.0 - 0.2.2b, NOT 0.2.3**
     *   follow the instructions [here](http://bazel.io/docs/install.html)
@@ -595,21 +597,21 @@ To ask questions or report issues please contact syntaxnet-users@google.com.
 
 Original authors of the code in this package include (in alphabetical order):
 
-*   apresta@google.com (Alessandro Presta)
-*   bohnetbd@google.com (Bernd Bohnet)
-*   chrisalberti@google.com (Chris Alberti)
-*   credo@google.com (Tim Credo)
-*   danielandor@google.com (Daniel Andor)
-*   djweiss@google.com (David Weiss)
-*   epitler@google.com (Emily Pitler)
-*   gcoppola@google.com (Greg Coppola)
-*   golding@google.com (Andy Golding)
-*   istefan@google.com (Stefan Istrate)
-*   kbhall@google.com (Keith Hall)
-*   kuzman@google.com (Kuzman Ganchev)
-*   mjcollins@google.com (Michael Collins)
-*   ringgaard@google.com (Michael Ringgaard)
-*   ryanmcd@google.com (Ryan McDonald)
-*   severyn@google.com (Aliaksei Severyn)
-*   slav@google.com (Slav Petrov)
-*   terrykoo@google.com (Terry Koo)
+*   Alessandro Presta
+*   Aliaksei Severyn
+*   Andy Golding
+*   Bernd Bohnet
+*   Chris Alberti
+*   Daniel Andor
+*   David Weiss
+*   Emily Pitler
+*   Greg Coppola
+*   Keith Hall
+*   Kuzman Ganchev
+*   Michael Collins
+*   Michael Ringgaard
+*   Ryan McDonald
+*   Slav Petrov
+*   Stefan Istrate
+*   Terry Koo
+*   Tim Credo
