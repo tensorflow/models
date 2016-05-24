@@ -1,0 +1,6 @@
+# Remove the pyc files
+*.pyc
+
+# Ignore the model and the data
+model/
+data/
