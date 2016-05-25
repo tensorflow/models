@@ -107,6 +107,9 @@ Bazel should complete reporting all tests passed.
 You can also compile SyntaxNet in a [Docker](https://www.docker.com/what-docker)
 container using this [Dockerfile](Dockerfile).
 
+**Note:** If you are running Docker on OSX, make sure that you have enough memory allocated
+for your Docker VM.
+
 ## Getting Started
 
 Once you have successfully built SyntaxNet, you can start parsing text right
@@ -153,7 +156,7 @@ spec file used in the demo is in
 
 To use corpora instead of stdin/stdout, we have to:
 
-1.  Create or modify a `input` field inside the `TaskSpec`, with the
+1.  Create or modify an `input` field inside the `TaskSpec`, with the
     `file_pattern` specifying the location we want. If the input corpus is in
     CONLL format, make sure to put `record_format: 'conll-sentence'`.
 1.  Change the `--input` and/or `--output` flag to use the name of the resource
