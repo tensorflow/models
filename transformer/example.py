@@ -17,7 +17,6 @@ from spatial_transformer import transformer
 from scipy import ndimage
 import numpy as np
 import matplotlib.pyplot as plt
-from tf_utils import conv2d, linear, weight_variable, bias_variable
 
 # %% Create a batch of three images (1600 x 1200)
 # %% Image retrieved from:
