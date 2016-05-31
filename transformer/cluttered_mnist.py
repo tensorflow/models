@@ -11,13 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+# =============================================================================
 import tensorflow as tf
 from spatial_transformer import transformer
-from scipy import ndimage
 import numpy as np
-import matplotlib.pyplot as plt
-from tf_utils import conv2d, linear, weight_variable, bias_variable, dense_to_one_hot
+from tf_utils import weight_variable, bias_variable, dense_to_one_hot
 
 # %% Load data
 mnist_cluttered = np.load('./data/mnist_sequence1_sample_5distortions5x5.npz')
@@ -37,7 +35,7 @@ Y_test = dense_to_one_hot(y_test, n_classes=10)
 # %% Graph representation of our network
 
 # %% Placeholders for 40x40 resolution
-x = tf.placeholder(tf.float32, [None, 1600]) 
+x = tf.placeholder(tf.float32, [None, 1600])
 y = tf.placeholder(tf.float32, [None, 10])
 
 # %% Since x is currently [batch, height*width], we need to reshape to a
@@ -48,13 +46,15 @@ y = tf.placeholder(tf.float32, [None, 10])
 # dimension should not change size.
 x_tensor = tf.reshape(x, [-1, 40, 40, 1])
 
-# %% We'll setup the two-layer localisation network to figure out the parameters for an affine transformation of the input
+# %% We'll setup the two-layer localisation network to figure out the
+# %% parameters for an affine transformation of the input
 # %% Create variables for fully connected layer
 W_fc_loc1 = weight_variable([1600, 20])
 b_fc_loc1 = bias_variable([20])
 
 W_fc_loc2 = weight_variable([20, 6])
-initial = np.array([[1.,0, 0],[0,1.,0]]) # Use identity transformation as starting point
+# Use identity transformation as starting point
+initial = np.array([[1., 0, 0], [0, 1., 0]])
 initial = initial.astype('float32')
 initial = initial.flatten()
 b_fc_loc2 = tf.Variable(initial_value=initial, name='b_fc_loc2')
@@ -67,8 +67,10 @@ h_fc_loc1_drop = tf.nn.dropout(h_fc_loc1, keep_prob)
 # %% Second layer
 h_fc_loc2 = tf.nn.tanh(tf.matmul(h_fc_loc1_drop, W_fc_loc2) + b_fc_loc2)
 
-# %% We'll create a spatial transformer module to identify discriminative patches
-h_trans = transformer(x_tensor, h_fc_loc2, downsample_factor=1)
+# %% We'll create a spatial transformer module to identify discriminative
+# %% patches
+out_size = (40, 40)
+h_trans = transformer(x_tensor, h_fc_loc2, out_size)
 
 # %% We'll setup the first convolutional layer
 # Weight matrix is [height x width x input_channels x output_channels]
@@ -140,33 +142,32 @@ iter_per_epoch = 100
 n_epochs = 500
 train_size = 10000
 
-indices = np.linspace(0,10000 - 1,iter_per_epoch)
+indices = np.linspace(0, 10000 - 1, iter_per_epoch)
 indices = indices.astype('int')
 
 for epoch_i in range(n_epochs):
     for iter_i in range(iter_per_epoch - 1):
-    	batch_xs = X_train[indices[iter_i]:indices[iter_i+1]]
+        batch_xs = X_train[indices[iter_i]:indices[iter_i+1]]
         batch_ys = Y_train[indices[iter_i]:indices[iter_i+1]]
 
         if iter_i % 10 == 0:
             loss = sess.run(cross_entropy,
-                   feed_dict={
-                       x: batch_xs,
-                       y: batch_ys,
-                       keep_prob: 1.0
-                   })
+                            feed_dict={
+                                x: batch_xs,
+                                y: batch_ys,
+                                keep_prob: 1.0
+                            })
             print('Iteration: ' + str(iter_i) + ' Loss: ' + str(loss))
 
         sess.run(optimizer, feed_dict={
             x: batch_xs, y: batch_ys, keep_prob: 0.8})
-        
-        
-    print('Accuracy: ' + str(sess.run(accuracy,
-                   feed_dict={
-                       x: X_valid,
-                       y: Y_valid,
-                       keep_prob: 1.0
-                   })))
-    #theta = sess.run(h_fc_loc2, feed_dict={
+
+    print('Accuracy (%d): ' % epoch_i + str(sess.run(accuracy,
+                                                     feed_dict={
+                                                         x: X_valid,
+                                                         y: Y_valid,
+                                                         keep_prob: 1.0
+                                                     })))
+    # theta = sess.run(h_fc_loc2, feed_dict={
     #        x: batch_xs, keep_prob: 1.0})
-    #print(theta[0])
+    # print(theta[0])
