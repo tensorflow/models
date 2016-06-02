@@ -254,7 +254,7 @@ may construct a an [`Optimizer`]
 (https://www.tensorflow.org/api_docs/python/train.html#optimizers) in TensorFlow
 that constructs the necessary graph for either case diagrammed below from
 TensorFlow [Whitepaper]
-(http://download.tensorflow.org/paper/whitepaper2015.pdf)):
+(http://download.tensorflow.org/paper/whitepaper2015.pdf):
 
 <div style="width:40%; margin:auto; margin-bottom:10px; margin-top:20px;">
   <img style="width:100%"
