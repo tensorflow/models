@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+from scipy import ndimage
 import tensorflow as tf
 from spatial_transformer import transformer
-from scipy import ndimage
 import numpy as np
 import matplotlib.pyplot as plt
 
