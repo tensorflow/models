@@ -583,7 +583,7 @@ FLOWERS_DATA_DIR=/tmp/flowers-data/
 EVAL_DIR=/tmp/flowers_eval/
 
 # Evaluate the fine-tuned model on a hold-out of the flower data set.
-blaze-bin/inception/flowers_eval \
+bazel-bin/inception/flowers_eval \
   --eval_dir="${EVAL_DIR}" \
   --data_dir="${FLOWERS_DATA_DIR}" \
   --subset=validation \
