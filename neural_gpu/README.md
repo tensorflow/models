@@ -8,23 +8,30 @@ Requirements:
 
 The model can be trained on the following algorithmic tasks:
 
-* `sort` - Sort a decimal list
-* `kvsort` - Sort decimal keys in dictionary
-* `id` - Return the same decimal list
-* `rev` - Reverse a decimal list
-* `rev2` - Reverse a decimal dictionary by key
-* `incr` - Add one to a decimal
+* `sort` - Sort a symbol list
+* `kvsort` - Sort symbol keys in dictionary
+* `id` - Return the same symbol list
+* `rev` - Reverse a symbol list
+* `rev2` - Reverse a symbol dictionary by key
+* `incr` - Add one to a symbol value
 * `add` - Long decimal addition
-* `left` - First decimal in list
-* `right` - Last decimal in list
-* `left-shift` - Left shift a decimal list
-* `right-shift` - Right shift a decimal list
+* `left` - First symbol in list
+* `right` - Last symbol in list
+* `left-shift` - Left shift a symbol list
+* `right-shift` - Right shift a symbol list
 * `bmul` - Long binary multiplication
 * `mul` - Long decimal multiplication
-* `dup` - Duplicate a decimal list with padding
+* `dup` - Duplicate a symbol list with padding
 * `badd` - Long binary addition
 * `qadd` - Long quaternary addition
-* `search` - Search for decimal key in dictionary
+* `search` - Search for symbol key in dictionary
+
+The value range for symbols are defined by the `niclass` and `noclass` flags.
+In particular, the values are in the range `min(--niclass, noclass) - 1`.
+So if you set `--niclass=33` and `--noclass=33` (the default) then `--task=rev`
+will be reversing lists of 32 symbols, and `--task=id` will be identity on a
+list of up to 32 symbols.
+
 
 To train the model on the reverse task run:
 
