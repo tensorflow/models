@@ -27,7 +27,7 @@ cc_test(
         "unicodetext_unittest.cc",
     ],
     deps = [
-        "@tf//tensorflow/core:testlib",
+        "@org_tensorflow//tensorflow/core:testlib",
         ":unicodetext",
     ],
 )

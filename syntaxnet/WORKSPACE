@@ -1,13 +1,13 @@
 local_repository(
-  name = "tf",
+  name = "org_tensorflow",
   path = __workspace_dir__ + "/tensorflow",
 )
 
 load('//tensorflow/tensorflow:workspace.bzl', 'tf_workspace')
-tf_workspace("tensorflow/", "@tf")
+tf_workspace("tensorflow/", "@org_tensorflow")
 
 # Specify the minimum required Bazel version.
-load("@tf//tensorflow:tensorflow.bzl", "check_version")
+load("@org_tensorflow//tensorflow:tensorflow.bzl", "check_version")
 check_version("0.2.0")
 
 # ===== gRPC dependencies =====
