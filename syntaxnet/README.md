@@ -76,7 +76,11 @@ source. You'll need to install:
     * python 3 support is not available yet
 *   bazel:
     *   **versions 0.2.0 - 0.2.2b, NOT 0.2.3**
-    *   follow the instructions [here](http://bazel.io/docs/install.html)
+    *   ~~follow the instructions [here](http://bazel.io/docs/install.html)~~
+    *   downlaod 0.2.2b by Bazel installer from [here](https://github.com/bazelbuild/bazel/releases/tag/0.2.2b)
+    *  [install instructions]( http://www.bazel.io/docs/install.html)
+        *   `chmod +x bazel-version-installer-os.sh`
+        *   `./bazel-version-installer-os.sh --user`
 *   swig:
     *   `apt-get install swig` on Ubuntu
     *   `brew install swig` on OSX
