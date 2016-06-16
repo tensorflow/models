@@ -77,7 +77,7 @@ source. You'll need to install:
 *   bazel:
     *   **versions 0.2.0 - 0.2.2b, NOT 0.2.3**
     *   ~~follow the instructions [here](http://bazel.io/docs/install.html)~~
-    *   downlaod 0.2.2b by Bazel installer from [here](https://github.com/bazelbuild/bazel/releases/tag/0.2.2b)
+    *   downlaod 0.2.2b Bazel installer from [here](https://github.com/bazelbuild/bazel/releases/tag/0.2.2b)
     *  [install instructions]( http://www.bazel.io/docs/install.html)
         *   `chmod +x bazel-version-installer-os.sh`
         *   `./bazel-version-installer-os.sh --user`
