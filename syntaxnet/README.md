@@ -77,7 +77,7 @@ source. You'll need to install:
 *   bazel:
     *   **versions 0.2.0 - 0.2.2b, NOT 0.2.3**
     *   follow the instructions [here](http://bazel.io/docs/install.html)
-    *   Alternately, Download bazel (0.2.2-0.2.2b) <.deb> from [here](https://github.com/prakhar21/models/tree/master/syntaxnet) for your system configuration.
+    *   Alternately, Download bazel (0.2.2-0.2.2b) <.deb> from [here](https://github.com/bazelbuild/bazel/releases) for your system configuration.
     *   Install it using the command: sudo dpkg -i <.deb file>
     *   Check for the bazel version by typing: bazel version
 *   swig:
