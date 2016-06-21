@@ -527,7 +527,7 @@ checkpoint. If you set this flag to true, you can train a new classification
 layer from scratch.
 
 In order to understand how `--fine_tune` works, please see the discussion on
-`Variables` in the TensorFlow-Slim [`README.md`](slim/README.md).
+`Variables` in the TensorFlow-Slim [`README.md`](inception/slim/README.md).
 
 Putting this all together you can retrain a pre-trained Inception-v3 model on
 the flowers data set with the following command.
