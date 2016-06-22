@@ -399,6 +399,7 @@ cc_library(
 cc_library(
     name = "parser_ops_cc",
     srcs = ["ops/parser_ops.cc"],
+    visibility = ["//visibility:public"],
     deps = [
         ":base",
         ":document_filters",
