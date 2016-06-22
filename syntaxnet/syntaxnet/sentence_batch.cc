@@ -24,14 +24,34 @@ limitations under the License.
 namespace syntaxnet {
 
 void SentenceBatch::Init(TaskContext *context) {
-  reader_.reset(new TextReader(*context->GetInput(input_name_)));
+  if (!use_sentence_feed_) {
+    reader_.reset(new TextReader(*context->GetInput(input_name_)));
+  }
   size_ = 0;
 }
 
+void SentenceBatch::FeedSentences(std::vector<std::unique_ptr<Sentence>> &sentences) {
+  for (size_t i = 0; i < sentences.size(); i++) {
+    feed_sentences_.push_back(std::move(sentences[i]));
+  }
+  sentences.clear();
+}
+
 bool SentenceBatch::AdvanceSentence(int index) {
+  //LOG(INFO) << "SentenceBatch advancing to " << index;
   if (sentences_[index] == nullptr) ++size_;
   sentences_[index].reset();
-  std::unique_ptr<Sentence> sentence(reader_->Read());
+  Sentence *sentenceptr = nullptr;
+  //LOG(INFO) << "use_sentence_feed:" <<index<<": "<< use_sentence_feed_
+  //  << " sentence_feed_index:" << sentence_feed_index_ << " size:"
+  //  << (use_sentence_feed_ ? feed_sentences_.size() : -1);
+  if (!use_sentence_feed_) {
+    sentenceptr = reader_->Read();
+  } else if (sentence_feed_index_ < feed_sentences_.size()) {
+    sentenceptr = new Sentence();
+    sentenceptr->CopyFrom(*feed_sentences_[sentence_feed_index_++]);
+  }
+  std::unique_ptr<Sentence> sentence(sentenceptr);
   if (sentence == nullptr) {
     --size_;
     return false;

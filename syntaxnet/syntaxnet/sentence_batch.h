@@ -36,10 +36,15 @@ namespace syntaxnet {
 // by reading in multiple sentences in parallel.
 class SentenceBatch {
  public:
-  SentenceBatch(int batch_size, string input_name)
+   SentenceBatch(int batch_size, string input_name)
+       : SentenceBatch(batch_size, input_name, false) {}
+
+   SentenceBatch(int batch_size, string input_name, bool use_sentence_feed)
       : batch_size_(batch_size),
         input_name_(input_name),
-        sentences_(batch_size) {}
+        sentences_(batch_size),
+        use_sentence_feed_(use_sentence_feed),
+        sentence_feed_index_(0) {}
 
   // Initializes all resources and opens the corpus file.
   void Init(TaskContext *context);
@@ -50,11 +55,16 @@ class SentenceBatch {
   bool AdvanceSentence(int index);
 
   // Rewinds the corpus reader.
-  void Rewind() { reader_->Reset(); }
+  void Rewind() {
+    if (reader_ != nullptr) reader_->Reset();
+    sentence_feed_index_ = 0;
+  }
 
   int size() const { return size_; }
 
   Sentence *sentence(int index) { return sentences_[index].get(); }
+
+  void FeedSentences(std::vector<std::unique_ptr<Sentence>> &sentences);
 
  private:
   // Running tally of non-nullptr states in the batch.
@@ -71,6 +81,14 @@ class SentenceBatch {
 
   // Batch: Sentence objects.
   std::vector<std::unique_ptr<Sentence>> sentences_;
+
+  // Sentence objects fed in, superceding the reader_ while non-empty
+  std::vector<std::unique_ptr<Sentence>> feed_sentences_;
+
+  bool use_sentence_feed_;
+
+  int sentence_feed_index_;
+
 };
 
 }  // namespace syntaxnet
