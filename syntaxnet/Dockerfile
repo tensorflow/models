@@ -15,12 +15,12 @@ RUN mkdir -p $SYNTAXNETDIR \
     && ./bazel-0.2.2b-installer-linux-x86_64.sh --user \
     && git clone --recursive https://github.com/tensorflow/models.git \
     && cd $SYNTAXNETDIR/models/syntaxnet/tensorflow \
-    && echo "\n\n\n" | ./configure
-
-RUN cd $SYNTAXNETDIR/models/syntaxnet \
-    && bazel test --genrule_strategy=standalone syntaxnet/... util/utf8/... \
+    && echo "\n\n\n" | ./configure \
     && apt-get autoremove -y \
     && apt-get clean
+
+RUN cd $SYNTAXNETDIR/models/syntaxnet \
+    && bazel test --genrule_strategy=standalone syntaxnet/... util/utf8/...
 
 WORKDIR $SYNTAXNETDIR/models/syntaxnet
 
