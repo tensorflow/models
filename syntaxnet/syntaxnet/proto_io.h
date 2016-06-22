@@ -141,10 +141,70 @@ class StdIn : public tensorflow::RandomAccessFile {
   TF_DISALLOW_COPY_AND_ASSIGN(StdIn);
 };
 
+// A file implementation to read from string vector
+class VectorIn : public tensorflow::RandomAccessFile {
+ public:
+  VectorIn(std::unique_ptr<std::vector<std::string>> vec)
+    : vec_(std::move(vec)), index_(0) {  }
+  ~VectorIn() override {}
+
+  // Reads up to n bytes from standard input.  Returns `OUT_OF_RANGE` if fewer
+  // than n bytes were stored in `*result` because of EOF.
+  tensorflow::Status Read(uint64 offset, size_t n,
+                          tensorflow::StringPiece *result,
+                          char *scratch) const override {
+    CHECK_EQ(expected_offset_, offset);
+    if (!eof_) {
+      string line;
+      eof_ = !getline(line);
+      LOG(INFO) << "VectorIn: " << line;
+      buffer_.append(line);
+      buffer_.append("\n");
+    }
+    CopyFromBuffer(std::min(buffer_.size(), n), result, scratch);
+    if (eof_) {
+      return tensorflow::errors::OutOfRange("End of file reached");
+    } else {
+      return tensorflow::Status::OK();
+    }
+  }
+
+ private:
+  void CopyFromBuffer(size_t n, tensorflow::StringPiece *result,
+                      char *scratch) const {
+    memcpy(scratch, buffer_.data(), buffer_.size());
+    buffer_ = buffer_.substr(n);
+    result->set(scratch, n);
+    expected_offset_ += n;
+  }
+
+  bool getline(string &line) const {
+    if (index_ < vec_->size()) {
+      LOG(INFO) << "VectorIn::getline index=" << index_ << " value=" << (*vec_)[index_];
+      line = (*vec_)[index_++];
+      return true;
+    }
+    return false;
+  }
+
+  mutable bool eof_ = false;
+  mutable int64 expected_offset_ = 0;
+  mutable string buffer_;
+  mutable std::unique_ptr<std::vector<std::string>> vec_;
+  mutable int index_;
+
+  TF_DISALLOW_COPY_AND_ASSIGN(VectorIn);
+};
+
 // Reads sentence protos from a text file.
 class TextReader {
  public:
-  explicit TextReader(const TaskInput &input) {
+
+  explicit TextReader(const TaskInput &input) : TextReader(input, nullptr) { }
+
+  explicit TextReader(const TaskInput &input,
+		      std::unique_ptr<std::vector<std::string>> feed_text)
+    : feed_text_(std::move(feed_text)) {
     CHECK_EQ(input.record_format_size(), 1)
         << "TextReader only supports inputs with one record format: "
         << input.DebugString();
@@ -177,7 +237,11 @@ class TextReader {
 
   void Reset() {
     sentence_count_ = 0;
-    if (filename_ == "-") {
+    if (feed_text_ != nullptr) {
+      static const int kInputBufferSize = 8 * 1024; /* bytes */
+      file_.reset(new VectorIn(std::move(feed_text_)));
+      buffer_.reset(new tensorflow::io::InputBuffer(file_.get(), kInputBufferSize));
+    } else if (filename_ == "-") {
       static const int kInputBufferSize = 8 * 1024; /* bytes */
       file_.reset(new StdIn());
       buffer_.reset(
@@ -197,6 +261,7 @@ class TextReader {
   std::unique_ptr<tensorflow::RandomAccessFile> file_;  // must outlive buffer_
   std::unique_ptr<tensorflow::io::InputBuffer> buffer_;
   std::unique_ptr<DocumentFormat> format_;
+  std::unique_ptr<std::vector<std::string>> feed_text_;
 };
 
 // Writes sentence protos to a text conll file.
