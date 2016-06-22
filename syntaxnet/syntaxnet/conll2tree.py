@@ -70,7 +70,10 @@ def to_dict(sentence):
 def main(unused_argv):
   logging.set_verbosity(logging.INFO)
   with tf.Session() as sess:
-    src = gen_parser_ops.document_source(batch_size=32,
+    # DocumentSource can take input from tensor or corpus...
+    unused_text_input = tf.constant([], tf.string)
+    src = gen_parser_ops.document_source(text=unused_text_input,
+                                         batch_size=32,
                                          corpus_name=FLAGS.corpus_name,
                                          task_context=FLAGS.task_context)
     sentence = sentence_pb2.Sentence()
