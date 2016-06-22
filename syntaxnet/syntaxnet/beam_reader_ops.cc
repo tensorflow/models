@@ -110,6 +110,9 @@ struct BatchStateOptions {
   // Whether to skip to a new sentence after each training step.
   bool always_start_new_sentences;
 
+  // Whether to use the sentences fed through the input Tensor
+  bool use_document_feed;
+
   // Parameter for deciding which tokens to score.
   string scoring_type;
 };
@@ -374,7 +377,7 @@ class BatchState {
   void Init(TaskContext *task_context) {
     // Create sentence batch.
     sentence_batch_.reset(
-        new SentenceBatch(BatchSize(), options_.corpus_name));
+	new SentenceBatch(BatchSize(), options_.corpus_name, options_.use_document_feed));
     sentence_batch_->Init(task_context);
 
     // Create transition system.
@@ -423,6 +426,23 @@ class BatchState {
       VLOG(2) << "Starting epoch " << epoch_;
       sentence_batch_->Rewind();
     }
+
+  }
+
+  // The strings are serialized sentence protos, such as those output by DocumentSource
+  void FeedDocuments(TTypes< string >::ConstFlat sentences) {
+    std::vector<std::unique_ptr<Sentence>> sentence_vec;
+    //LOG(INFO) << "Going to feed " << sentences.size() << "parsed documents";
+    for (int i = 0; i < sentences.size(); i++) {
+      std::unique_ptr<Sentence> sentence(new Sentence());
+      if (!sentence->ParseFromString(sentences(i))) {
+        LOG(ERROR) << "FeedDocuments unable to parse serialized sentence protobuf [" << sentences(i) << "] at index " << i;
+        continue;
+      }
+      //LOG(INFO) << "Got parsed sentence from tensor: " << sentence->DebugString();
+      sentence_vec.push_back(std::move(sentence));
+    }
+    sentence_batch_->FeedSentences(sentence_vec);
   }
 
   // Resets the offset vectors required for a single run because we're
@@ -573,6 +593,9 @@ class BeamParseReader : public OpKernel {
     OP_REQUIRES_OK(context,
                    context->GetAttr("always_start_new_sentences",
                                     &options.always_start_new_sentences));
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("documents_from_input",
+				    &options.use_document_feed));
 
     // Reads task context from file.
     string data;
@@ -602,13 +625,19 @@ class BeamParseReader : public OpKernel {
     std::vector<DataType> output_types(feature_size, DT_STRING);
     output_types.push_back(DT_INT64);
     output_types.push_back(DT_INT32);
-    OP_REQUIRES_OK(context, context->MatchSignature({}, output_types));
+    OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, output_types));
   }
 
   void Compute(OpKernelContext *context) override {
     mutex_lock lock(mu_);
 
+    const Tensor &input = context->input(0);
+    OP_REQUIRES(context, IsLegacyVector(input.shape()),
+                InvalidArgument("input should be a vector."));
+
     // Write features.
+    TTypes< string >::ConstFlat input_vec = input.flat<string>();
+    batch_state_->FeedDocuments(input_vec);
     batch_state_->ResetBeams();
     batch_state_->ResetOffsets();
     batch_state_->PopulateFeatureOutputs(context);

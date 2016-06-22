@@ -80,7 +80,10 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
                      until_all_final=False,
                      always_start_new_sentences=False):
     """Adds an op capable of reading sentences and parsing them with a beam."""
+    empty_documents_list = tf.constant([], tf.string)
+    documents_in = tf.placeholder_with_default(empty_documents_list, [None])
     features, state, epochs = gen_parser_ops.beam_parse_reader(
+        documents=documents_in,
         task_context=task_context,
         feature_size=self._feature_size,
         beam_size=self._beam_size,
@@ -90,7 +93,7 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
         arg_prefix=self._arg_prefix,
         continue_until_all_final=until_all_final,
         always_start_new_sentences=always_start_new_sentences)
-    return {'state': state, 'features': features, 'epochs': epochs}
+    return {'state': state, 'features': features, 'epochs': epochs, 'documents_in': documents_in}
 
   def _BuildSequence(self,
                      batch_size,
