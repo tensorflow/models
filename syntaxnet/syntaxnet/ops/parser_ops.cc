@@ -235,18 +235,23 @@ task_context: file path at which to read the task context.
 )doc");
 
 REGISTER_OP("DocumentSource")
+    .Input("text: string")
     .Output("documents: string")
     .Output("last: bool")
     .Attr("task_context: string")
     .Attr("corpus_name: string='documents'")
     .Attr("batch_size: int")
+    .Attr("documents_from_input: bool=false")
     .SetIsStateful()
     .Doc(R"doc(
 Reads documents from documents_path and outputs them.
 
+text: a vector of strings (matching the DocumentFormat as per corpus definition)
 documents: a vector of documents as serialized protos.
 last: whether this is the last batch of documents from this document path.
 batch_size: how many documents to read at once.
+documents_from_input: whether to read text from the next input Tensor (true)
+                      or from the corpus defined by task_context and corpus_name (false)
 )doc");
 
 REGISTER_OP("DocumentSink")

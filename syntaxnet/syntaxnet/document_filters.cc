@@ -38,6 +38,7 @@ using tensorflow::OpKernelContext;
 using tensorflow::Tensor;
 using tensorflow::TensorShape;
 using tensorflow::errors::InvalidArgument;
+using tensorflow::TTypes;
 
 namespace syntaxnet {
 
@@ -72,19 +73,52 @@ class DocumentSource : public OpKernel {
  public:
   explicit DocumentSource(OpKernelConstruction *context) : OpKernel(context) {
     GetTaskContext(context, &task_context_);
-    string corpus_name;
-    OP_REQUIRES_OK(context, context->GetAttr("corpus_name", &corpus_name));
+    OP_REQUIRES_OK(context, context->GetAttr("corpus_name", &corpus_name_));
     OP_REQUIRES_OK(context, context->GetAttr("batch_size", &batch_size_));
+    OP_REQUIRES_OK(context,
+		   context->GetAttr("documents_from_input",
+				    &documents_from_input_));
     OP_REQUIRES(context, batch_size_ > 0,
                 InvalidArgument("invalid batch_size provided"));
-    corpus_.reset(new TextReader(*task_context_.GetInput(corpus_name)));
+    corpus_.reset(documents_from_input_ ? nullptr
+	: new TextReader(*task_context_.GetInput(corpus_name_)));
   }
 
   void Compute(OpKernelContext *context) override {
     mutex_lock lock(mu_);
     Sentence *document;
     vector<Sentence *> document_batch;
-    while ((document = corpus_->Read()) != nullptr) {
+
+    const Tensor &input = context->input(0);
+
+    std::unique_ptr<TextReader> vec_reader;
+
+    if (documents_from_input_) {
+      OP_REQUIRES(context, IsLegacyVector(input.shape()),
+		  InvalidArgument("input should be a vector."));
+
+      std::unique_ptr<std::vector<std::string>>
+	strings(new std::vector<std::string>);
+
+      TTypes< string >::ConstFlat input_vec = input.flat<string>();
+      const int64 n = input.NumElements();
+
+      for (int64 i = 0; i < n; i++) {
+	strings->push_back(input_vec(i));
+        LOG(INFO) << "text: " << input_vec(i);
+      }
+
+      vec_reader.reset(new TextReader(*task_context_.GetInput(corpus_name_),
+				      std::move(strings)));
+    }
+
+    TextReader *reader = (documents_from_input_) ?
+      vec_reader.get() :
+      corpus_.get();
+
+    LOG(INFO) << "DocumentSource: from input? " << documents_from_input_;
+    while ((document = reader->Read()) != nullptr) {
+      LOG(INFO) << "DocumentSource read document: " << document->DebugString();
       document_batch.push_back(document);
       if (static_cast<int>(document_batch.size()) == batch_size_) {
         OutputDocuments(context, &document_batch);
@@ -110,9 +144,11 @@ class DocumentSource : public OpKernel {
   // mutex to synchronize access to Compute.
   mutex mu_;
 
+  string corpus_name_;
   std::unique_ptr<TextReader> corpus_;
   string documents_path_;
   int batch_size_;
+  bool documents_from_input_;
 };
 
 REGISTER_KERNEL_BUILDER(Name("DocumentSource").Device(DEVICE_CPU),
