@@ -9,6 +9,11 @@ from syntaxnet.ops import gen_parser_ops
 from syntaxnet import structured_graph_builder
 from tensorflow_serving.session_bundle import exporter
 
+flags = tf.app.flags
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string('export_path', None, 'Path to export to intstead of running the model.')
+
 def Build(sess, document_source, FLAGS):
   """Builds a sub-network, which will be either the tagger or the parser
 
@@ -81,6 +86,28 @@ def GetFeatureSize(task_context, arg_prefix):
       return sess.run(gen_parser_ops.feature_size(task_context=task_context,
                       arg_prefix=arg_prefix))
 
+# export the model in various ways. this erases any previously saved model
+def ExportModel(sess, model_dir, input, output):
+  if os.path.isdir(model_dir):
+    shutil.rmtree(model_dir);
+
+  ## using TF Serving exporter to load into a TF Serving session bundle
+  logging.info('Exporting trained model to %s', model_dir)
+  saver = tf.train.Saver()
+  model_exporter = exporter.Exporter(saver)
+  signature = exporter.regression_signature(input_tensor=input,output_tensor=output)
+  model_exporter.init(sess.graph.as_graph_def(),
+                      default_graph_signature=signature)
+  model_exporter.export(model_dir, tf.constant(1), sess)
+
+  ## using a SummaryWriter so graph can be loaded in TensorBoard
+  writer = tf.train.SummaryWriter(model_dir, sess.graph)
+  writer.flush()
+
+  ## exporting the graph as a text protobuf, to view graph manualy
+  f1 = open(model_dir + '/graph.pbtxt', 'w+');
+  print >>f1, str(tf.get_default_graph().as_graph_def())
+
 def main(unused_argv):
   logging.set_verbosity(logging.INFO)
 
@@ -122,8 +149,12 @@ def main(unused_argv):
                                'num_actions': num_actions })
 
   with tf.Session() as sess:
-      unused_text_input = tf.constant(["parsey is the greatest"], tf.string)
-      document_source = gen_parser_ops.document_source(text=unused_text_input,
+      if FLAGS.export_path is not None:
+          text_input = tf.placeholder(tf.string, [None])
+      else:
+          text_input = tf.constant(["parsey is the greatest"], tf.string)
+
+      document_source = gen_parser_ops.document_source(text=text_input,
                                                        task_context=task_context,
                                                        corpus_name="stdin",
                                                        batch_size=common_params['batch_size'],
@@ -135,36 +166,13 @@ def main(unused_argv):
                   source = document_source.documents if prefix == "brain_tagger" else model["brain_tagger"]["documents"]
                   model[prefix]["documents"] = Build(sess, source, model[prefix])
 
-
-      sink = gen_parser_ops.document_sink(model["brain_parser"]["documents"],
+      if FLAGS.export_path is None:
+          sink = gen_parser_ops.document_sink(model["brain_parser"]["documents"],
                                       task_context=task_context,
                                       corpus_name="stdout-conll")
-      ExportModel(sess)
-      sess.run(sink)
-
-def ExportModel(sess):
-  # save the model in various ways. this erases any previously saved model
-  model_dir = '/tmp/model/parsey_mcparseface'
-  if os.path.isdir(model_dir):
-    shutil.rmtree(model_dir);
-
-  ## using TF Serving exporter to load into a TF Serving session bundle
-  logging.info('Exporting trained model to %s', model_dir)
-  saver = tf.train.Saver()
-  model_exporter = exporter.Exporter(saver)
-  signature = exporter.generic_signature({})
-  model_exporter.init(sess.graph.as_graph_def(),
-                      default_graph_signature=signature)
-  model_exporter.export(model_dir, tf.constant(1), sess)
-
-  ## using a SummaryWriter so graph can be loaded in TensorBoard
-  writer = tf.train.SummaryWriter(model_dir, sess.graph)
-  writer.flush()
-
-  ## exporting the graph as a text protobuf, to view graph manualy
-  f1 = open(model_dir + '/graph.pbtxt', 'w+');
-  print >>f1, str(tf.get_default_graph().as_graph_def())
-
+          sess.run(sink)
+      else:
+	  ExportModel(sess, FLAGS.export_path, text_input, model["brain_parser"]["documents"])
 
 if __name__ == '__main__':
   tf.app.run()
