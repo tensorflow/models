@@ -569,6 +569,17 @@ py_binary(
 )
 
 py_binary(
+    name = "parsey_mcparseface",
+    srcs = ["parsey_mcparseface.py"],
+    deps = [
+        ":graph_builder",
+        ":sentence_py_pb2",
+        ":structured_graph_builder",
+	":parser_eval",
+    ],
+)
+
+py_binary(
     name = "conll2tree",
     srcs = ["conll2tree.py"],
     deps = [
