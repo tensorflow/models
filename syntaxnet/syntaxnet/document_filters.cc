@@ -116,9 +116,8 @@ class DocumentSource : public OpKernel {
       vec_reader.get() :
       corpus_.get();
 
-    LOG(INFO) << "DocumentSource: from input? " << documents_from_input_;
     while ((document = reader->Read()) != nullptr) {
-      LOG(INFO) << "DocumentSource read document: " << document->DebugString();
+      //LOG(INFO) << "DocumentSource read document: " << document->DebugString();
       document_batch.push_back(document);
       if (static_cast<int>(document_batch.size()) == batch_size_) {
         OutputDocuments(context, &document_batch);
