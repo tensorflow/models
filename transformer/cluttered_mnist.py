@@ -119,16 +119,17 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 # %% And finally our softmax layer:
 W_fc2 = weight_variable([n_fc, 10])
 b_fc2 = bias_variable([10])
-y_pred = tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+y_logits = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
 # %% Define loss/eval/training functions
-cross_entropy = -tf.reduce_sum(y * tf.log(y_pred))
+cross_entropy = tf.reduce_mean(
+    tf.nn.softmax_cross_entropy_with_logits(y_logits, y))
 opt = tf.train.AdamOptimizer()
 optimizer = opt.minimize(cross_entropy)
 grads = opt.compute_gradients(cross_entropy, [b_fc_loc2])
 
 # %% Monitor accuracy
-correct_prediction = tf.equal(tf.argmax(y_pred, 1), tf.argmax(y, 1))
+correct_prediction = tf.equal(tf.argmax(y_logits, 1), tf.argmax(y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, 'float'))
 
 # %% We now create a new session to actually perform the initialization the
