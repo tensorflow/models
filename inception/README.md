@@ -589,7 +589,7 @@ bazel-bin/inception/flowers_eval \
   --subset=validation \
   --num_examples=500 \
   --checkpoint_dir="${TRAIN_DIR}" \
-  --input_queue_memory_factfor=1 \
+  --input_queue_memory_factor=1 \
   --run_once
 ```
 
