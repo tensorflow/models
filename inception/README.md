@@ -699,7 +699,7 @@ and
 
 where 24 and 8 are the number of shards specified for each dataset,
 respectively. Generally speaking, we aim for selecting the number of shards such
-that roughly 1024 images reside in each shard. One this data set is built you
+that roughly 1024 images reside in each shard. Once this data set is built, you
 are ready to train or fine-tune an Inception model on this data set.
 
 ## Practical Considerations for Training a Model
