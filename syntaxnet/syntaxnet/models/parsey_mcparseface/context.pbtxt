@@ -174,6 +174,27 @@ input {
   }
 }
 input {
+  name: 'stdout'
+  record_format: 'english-text'
+  Part {
+    file_pattern: '-'
+  }
+}
+input {
+  name: 'filein'
+  record_format: 'english-text'
+  Part {
+    file_pattern: './in.txt'
+  }
+}
+input {
+  name: 'fileout'
+  record_format: 'english-text'
+  Part {
+    file_pattern: './out.txt'
+  }
+}
+input {
   name: 'stdin-conll'
   record_format: 'conll-sentence'
   Part {
@@ -185,5 +206,33 @@ input {
   record_format: 'conll-sentence'
   Part {
     file_pattern: '-'
+  }
+}
+input {
+  name: 'filein-conll'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: './in.conll'
+  }
+}
+input {
+  name: 'fileout-conll'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: './out.conll'
+  }
+}
+input {
+  name: 'voicefilein'
+  record_format: 'english-text'
+  Part {
+    file_pattern: '/Users/jhren/Documents/workspace/rjhbranch/TnGuidanceTextGenerator/training/unknown_unseen.txt'
+  }
+}
+input {
+  name: 'voicefileout'
+  record_format: 'english-text'
+  Part {
+    file_pattern: '/Users/jhren/Documents/workspace/rjhbranch/TnGuidanceTextGenerator/training/tagged_data_for_2016-04.txt'
   }
 }

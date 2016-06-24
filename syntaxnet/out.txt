@@ -1,0 +1,1 @@
+Bob_NNP brought_VBD the_DT pizza_NN to_IN Alice_NNP ._.
