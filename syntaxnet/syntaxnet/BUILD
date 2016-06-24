@@ -389,6 +389,7 @@ cc_library(
         ":sparse_proto",
         ":utils",
     ],
+    alwayslink = 1,
 )
 
 cc_library(

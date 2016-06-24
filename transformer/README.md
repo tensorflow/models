@@ -17,7 +17,7 @@ A Spatial Transformer Network implemented in Tensorflow 0.7 and based on [2].
 </div>
 
 ```python
-transformer(U, theta, downsample_factor=1)
+transformer(U, theta, out_size)
 ```
     
 #### Parameters
