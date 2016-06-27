@@ -26,14 +26,13 @@ def Build(sess, document_source, FLAGS):
     feature_sizes: size of each feature vector
     domain_sizes: number of possible feature ids in each feature vector
     embedding_dims: embedding dimension for each feature group
-    
+
     hidden_layer_sizes: Comma separated list of hidden layer sizes.
     arg_prefix: Prefix for context parameters.
     beam_size: Number of slots for beam parsing.
     max_steps: Max number of steps to take.
     task_context: Path to a task context with inputs and parameters for feature extractors.
     input: Name of the context input to read data from.
-    output: Name of the context input to write data to.
     graph_builder: 'greedy' or 'structured'
     batch_size: Number of sentences to process in parallel.
     slim_model: Whether to expect only averaged variables.
@@ -56,7 +55,7 @@ def Build(sess, document_source, FLAGS):
   corpus_name = FLAGS["input"]
   slim_model = FLAGS["slim_model"]
   model_path = FLAGS["model_path"]
-  
+
   parser = structured_graph_builder.StructuredGraphBuilder(
         num_actions,
         feature_sizes,
@@ -67,7 +66,7 @@ def Build(sess, document_source, FLAGS):
         arg_prefix=arg_prefix,
         beam_size=beam_size,
         max_steps=max_steps)
-  
+
   parser.AddEvaluation(task_context,
                        batch_size,
                        corpus_name=corpus_name,
@@ -77,7 +76,7 @@ def Build(sess, document_source, FLAGS):
   parser.AddSaver(slim_model)
   sess.run(parser.inits.values())
   parser.saver.restore(sess, model_path)
-  
+
   return parser.evaluation['documents']
 
 def GetFeatureSize(task_context, arg_prefix):
@@ -91,7 +90,7 @@ def ExportModel(sess, model_dir, input, output):
   if os.path.isdir(model_dir):
     shutil.rmtree(model_dir);
 
-  ## using TF Serving exporter to load into a TF Serving session bundle
+  # using TF Serving exporter to load into a TF Serving session bundle
   logging.info('Exporting trained model to %s', model_dir)
   saver = tf.train.Saver()
   model_exporter = exporter.Exporter(saver)
@@ -100,11 +99,11 @@ def ExportModel(sess, model_dir, input, output):
                       default_graph_signature=signature)
   model_exporter.export(model_dir, tf.constant(1), sess)
 
-  ## using a SummaryWriter so graph can be loaded in TensorBoard
+  # using a SummaryWriter so graph can be loaded in TensorBoard
   writer = tf.train.SummaryWriter(model_dir, sess.graph)
   writer.flush()
 
-  ## exporting the graph as a text protobuf, to view graph manualy
+  # exporting the graph as a text protobuf, to view graph manualy
   f1 = open(model_dir + '/graph.pbtxt', 'w+');
   print >>f1, str(tf.get_default_graph().as_graph_def())
 
@@ -118,28 +117,29 @@ def main(unused_argv):
       "task_context":  task_context,
       "beam_size":     8,
       "max_steps":     1000,
-      "output":        "stdout-conll",
       "graph_builder": "structured",
       "batch_size":    1024,
       "slim_model":    True,
       }
-        
+
   model = {
       	"brain_tagger": {
             "arg_prefix":         "brain_tagger",
             "hidden_layer_sizes": "64",
-            "input":              "stdin",
+            # input is taken from input tensor, not from corpus
+            "input":              None,
             "model_path":         "%s/tagger-params" % model_dir,
 
             },
         "brain_parser": {
             "arg_prefix":         "brain_parser",
             "hidden_layer_sizes": "512,512",
-            "input":              "stdin-conll",
+            # input is taken from input tensor, not from corpus
+            "input":              None,
             "model_path":         "%s/parser-params" % model_dir,
             },
       }
-  
+
   for prefix in ["brain_tagger","brain_parser"]:
       model[prefix].update(common_params)
       feature_sizes, domain_sizes, embedding_dims, num_actions = GetFeatureSize(task_context, prefix)
