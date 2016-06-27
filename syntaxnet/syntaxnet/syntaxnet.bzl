@@ -15,7 +15,14 @@
 
 load("@protobuf//:protobuf.bzl", "cc_proto_library")
 load("@protobuf//:protobuf.bzl", "py_proto_library")
-load("@org_tensorflow//third_party/gpus/cuda:build_defs.bzl", "if_cuda")
+
+def if_cuda(if_true, if_false = []):
+    """Shorthand for select()'ing on whether we're building with CUDA."""
+    return select({
+        "@org_tensorflow//third_party/gpus/cuda:using_nvcc": if_true,
+        "@org_tensorflow//third_party/gpus/cuda:using_gcudacc": if_true,
+        "//conditions:default": if_false
+    })
 
 def tf_copts():
   return (["-fno-exceptions", "-DEIGEN_AVOID_STL_ARRAY",] +

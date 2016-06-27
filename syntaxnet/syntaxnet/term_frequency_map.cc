@@ -58,10 +58,10 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
   if (max_num_terms <= 0) max_num_terms = std::numeric_limits<int>::max();
 
   // Read the first line (total # of terms in the mapping).
-  tensorflow::RandomAccessFile *file;
+  std::unique_ptr<tensorflow::RandomAccessFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewRandomAccessFile(filename, &file));
   static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
-  tensorflow::io::InputBuffer input(file, kInputBufferSize);
+  tensorflow::io::InputBuffer input(file.get(), kInputBufferSize);
   string line;
   TF_CHECK_OK(input.ReadLine(&line));
   int32 total = -1;
@@ -119,7 +119,7 @@ void TermFrequencyMap::Save(const string &filename) const {
   std::sort(sorted_data.begin(), sorted_data.end(), SortByFrequencyThenTerm());
 
   // Write the number of terms.
-  tensorflow::WritableFile *file;
+  std::unique_ptr<tensorflow::WritableFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file));
   CHECK_LE(term_index_.size(), std::numeric_limits<int32>::max());  // overflow
   const int32 num_terms = term_index_.size();
@@ -136,15 +136,14 @@ void TermFrequencyMap::Save(const string &filename) const {
   TF_CHECK_OK(file->Close()) << "for file " << filename;
   LOG(INFO) << "Saved " << term_index_.size() << " terms to " << filename
             << ".";
-  delete file;
 }
 
 TagToCategoryMap::TagToCategoryMap(const string &filename) {
   // Load the mapping.
-  tensorflow::RandomAccessFile *file;
+  std::unique_ptr<tensorflow::RandomAccessFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewRandomAccessFile(filename, &file));
   static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
-  tensorflow::io::InputBuffer input(file, kInputBufferSize);
+  tensorflow::io::InputBuffer input(file.get(), kInputBufferSize);
   string line;
   while (input.ReadLine(&line) == tensorflow::Status::OK()) {
     vector<string> pair = utils::Split(line, '\t');
@@ -174,7 +173,7 @@ void TagToCategoryMap::SetCategory(const string &tag, const string &category) {
 
 void TagToCategoryMap::Save(const string &filename) const {
   // Write tag and category on each line.
-  tensorflow::WritableFile *file;
+  std::unique_ptr<tensorflow::WritableFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file));
   for (const auto &pair : tag_to_category_) {
     const string line =
@@ -182,7 +181,6 @@ void TagToCategoryMap::Save(const string &filename) const {
     TF_CHECK_OK(file->Append(line));
   }
   TF_CHECK_OK(file->Close()) << "for file " << filename;
-  delete file;
 }
 
 }  // namespace syntaxnet

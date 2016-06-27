@@ -120,9 +120,9 @@ string AffixTableFeature::WorkspaceName() const {
 static AffixTable *CreateAffixTable(const string &filename,
                                     AffixTable::Type type) {
   AffixTable *affix_table = new AffixTable(type, 1);
-  tensorflow::RandomAccessFile *file;
+  std::unique_ptr<tensorflow::RandomAccessFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewRandomAccessFile(filename, &file));
-  ProtoRecordReader reader(file);
+  ProtoRecordReader reader(file.release());
   affix_table->Read(&reader);
   return affix_table;
 }

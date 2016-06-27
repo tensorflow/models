@@ -514,19 +514,16 @@ class WordEmbeddingInitializer : public OpKernel {
   static tensorflow::Status CopyToTmpPath(const string &source_path,
                                           string *tmp_path) {
     // Opens source file.
-    tensorflow::RandomAccessFile *source_file;
+    std::unique_ptr<tensorflow::RandomAccessFile> source_file;
     TF_RETURN_IF_ERROR(tensorflow::Env::Default()->NewRandomAccessFile(
         source_path, &source_file));
-    std::unique_ptr<tensorflow::RandomAccessFile> source_file_deleter(
-        source_file);
 
     // Creates destination file.
-    tensorflow::WritableFile *target_file;
+    std::unique_ptr<tensorflow::WritableFile> target_file;
     *tmp_path = tensorflow::strings::Printf(
         "/tmp/%d.%lld", getpid(), tensorflow::Env::Default()->NowMicros());
     TF_RETURN_IF_ERROR(
         tensorflow::Env::Default()->NewWritableFile(*tmp_path, &target_file));
-    std::unique_ptr<tensorflow::WritableFile> target_file_deleter(target_file);
 
     // Performs copy.
     tensorflow::Status s;

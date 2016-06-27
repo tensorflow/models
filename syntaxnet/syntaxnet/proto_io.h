@@ -43,18 +43,19 @@ namespace syntaxnet {
 // A convenience wrapper to read protos with a RecordReader.
 class ProtoRecordReader {
  public:
-  explicit ProtoRecordReader(tensorflow::RandomAccessFile *file)
-      : file_(file), reader_(new tensorflow::io::RecordReader(file_)) {}
+  explicit ProtoRecordReader(tensorflow::RandomAccessFile *file) {
+    file_.reset(file);
+    reader_.reset(new tensorflow::io::RecordReader(file_.get()));
+  }
 
   explicit ProtoRecordReader(const string &filename) {
     TF_CHECK_OK(
         tensorflow::Env::Default()->NewRandomAccessFile(filename, &file_));
-    reader_.reset(new tensorflow::io::RecordReader(file_));
+    reader_.reset(new tensorflow::io::RecordReader(file_.get()));
   }
 
   ~ProtoRecordReader() {
     reader_.reset();
-    delete file_;
   }
 
   template <typename T>
@@ -70,9 +71,9 @@ class ProtoRecordReader {
   }
 
  private:
-  tensorflow::RandomAccessFile *file_ = nullptr;
   uint64 offset_ = 0;
   std::unique_ptr<tensorflow::io::RecordReader> reader_;
+  std::unique_ptr<tensorflow::RandomAccessFile> file_;
 };
 
 // A convenience wrapper to write protos with a RecordReader.
@@ -80,12 +81,12 @@ class ProtoRecordWriter {
  public:
   explicit ProtoRecordWriter(const string &filename) {
     TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file_));
-    writer_.reset(new tensorflow::io::RecordWriter(file_));
+    writer_.reset(new tensorflow::io::RecordWriter(file_.get()));
   }
 
   ~ProtoRecordWriter() {
     writer_.reset();
-    delete file_;
+    file_.reset();
   }
 
   template <typename T>
@@ -94,8 +95,8 @@ class ProtoRecordWriter {
   }
 
  private:
-  tensorflow::WritableFile *file_ = nullptr;
   std::unique_ptr<tensorflow::io::RecordWriter> writer_;
+  std::unique_ptr<tensorflow::WritableFile> file_;
 };
 
 // A file implementation to read from stdin.
@@ -176,22 +177,24 @@ class TextReader {
 
   void Reset() {
     sentence_count_ = 0;
-    tensorflow::RandomAccessFile *file;
     if (filename_ == "-") {
       static const int kInputBufferSize = 8 * 1024; /* bytes */
-      file = new StdIn();
-      buffer_.reset(new tensorflow::io::InputBuffer(file, kInputBufferSize));
+      file_.reset(new StdIn());
+      buffer_.reset(
+          new tensorflow::io::InputBuffer(file_.get(), kInputBufferSize));
     } else {
       static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
       TF_CHECK_OK(
-          tensorflow::Env::Default()->NewRandomAccessFile(filename_, &file));
-      buffer_.reset(new tensorflow::io::InputBuffer(file, kInputBufferSize));
+          tensorflow::Env::Default()->NewRandomAccessFile(filename_, &file_));
+      buffer_.reset(
+          new tensorflow::io::InputBuffer(file_.get(), kInputBufferSize));
     }
   }
 
  private:
   string filename_;
   int sentence_count_ = 0;
+  std::unique_ptr<tensorflow::RandomAccessFile> file_;
   std::unique_ptr<tensorflow::io::InputBuffer> buffer_;
   std::unique_ptr<DocumentFormat> format_;
 };
@@ -217,7 +220,6 @@ class TextWriter {
   ~TextWriter() {
     if (file_) {
       file_->Close();
-      delete file_;
     }
   }
 
@@ -234,7 +236,7 @@ class TextWriter {
  private:
   string filename_;
   std::unique_ptr<DocumentFormat> format_;
-  tensorflow::WritableFile *file_ = nullptr;
+  std::unique_ptr<tensorflow::WritableFile> file_;
 };
 
 }  // namespace syntaxnet
