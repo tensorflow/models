@@ -77,15 +77,15 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@re2//:re2",
-        "@tf//google/protobuf",
-        "@tf//third_party/eigen3",
+        "@protobuf//:protobuf",
+        "@org_tensorflow//third_party/eigen3",
     ] + select({
         "//conditions:default": [
-            "@tf//tensorflow/core:framework",
-            "@tf//tensorflow/core:lib",
+            "@org_tensorflow//tensorflow/core:framework",
+            "@org_tensorflow//tensorflow/core:lib",
         ],
-        "@tf//tensorflow:darwin": [
-            "@tf//tensorflow/core:framework_headers_lib",
+        "@org_tensorflow//tensorflow:darwin": [
+            "@org_tensorflow//tensorflow/core:framework_headers_lib",
         ],
     }),
 )
@@ -108,8 +108,8 @@ cc_library(
     srcs = ["test_main.cc"],
     linkopts = ["-lm"],
     deps = [
-        "@tf//tensorflow/core:lib",
-        "@tf//tensorflow/core:testlib",
+        "@org_tensorflow//tensorflow/core:lib",
+        "@org_tensorflow//tensorflow/core:testlib",
         "//external:gtest",
     ],
 )
@@ -409,7 +409,7 @@ cc_binary(
     name = "parser_ops.so",
     linkopts = select({
         "//conditions:default": ["-lm"],
-        "@tf//tensorflow:darwin": [],
+        "@org_tensorflow//tensorflow:darwin": [],
     }),
     linkshared = 1,
     linkstatic = 1,
@@ -519,8 +519,8 @@ py_library(
     name = "graph_builder",
     srcs = ["graph_builder.py"],
     deps = [
-        "@tf//tensorflow:tensorflow_py",
-        "@tf//tensorflow/core:protos_all_py",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/core:protos_all_py",
         ":load_parser_ops_py",
         ":parser_ops",
     ],
