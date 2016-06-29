@@ -154,11 +154,14 @@ def main(unused_argv):
       else:
           text_input = tf.constant(["parsey is the greatest"], tf.string)
 
+      # corpus_name must be specified and valid because it indirectly informs
+      # the document format ("english-text" vs "conll-sentence") used to parse
+      # the input text
       document_source = gen_parser_ops.document_source(text=text_input,
                                                        task_context=task_context,
                                                        corpus_name="stdin",
                                                        batch_size=common_params['batch_size'],
-					               documents_from_input=True)
+					                                             documents_from_input=True)
 
       for prefix in ["brain_tagger","brain_parser"]:
           with tf.variable_scope(prefix):
