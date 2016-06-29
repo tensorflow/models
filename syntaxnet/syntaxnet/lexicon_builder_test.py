@@ -109,7 +109,10 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
     return doc, last
 
   def ValidateDocuments(self):
-    doc_source = gen_parser_ops.document_source(self.context_file, batch_size=1)
+    unused_text_input = tf.constant([], tf.string)
+    doc_source = gen_parser_ops.document_source(text=unused_text_input,
+                                                task_context=self.context_file,
+                                                batch_size=1)
     with self.test_session() as sess:
       logging.info('Reading document1')
       doc, last = self.ReadNextDocument(sess, doc_source)
