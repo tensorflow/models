@@ -569,6 +569,7 @@ def _find_image_bounding_boxes(filenames, image_to_bboxes):
   bboxes = []
   for f in filenames:
     basename = os.path.basename(f)
+    basename = basename[:-5] #delete last five charater i.e ".jpeg'
     if basename in image_to_bboxes:
       bboxes.append(image_to_bboxes[basename])
       num_image_bbox += 1

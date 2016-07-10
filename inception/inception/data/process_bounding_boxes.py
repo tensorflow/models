@@ -187,6 +187,11 @@ if __name__ == '__main__':
   skipped_files = 0
   saved_boxes = 0
   saved_files = 0
+  # open file to write bbox cordinates
+  outF = open("imagenet_2012_bounding_boxes.csv", "w")
+    
+      
+  
   for file_index, one_file in enumerate(xml_files):
     # Example: <...>/n06470073/n00141669_6790.xml
     label = os.path.basename(os.path.dirname(one_file))
@@ -222,6 +227,11 @@ if __name__ == '__main__':
       # Note bbox.filename occasionally contains '%s' in the name. This is
       # data set noise that is fixed by just using the basename of the XML file.
       image_filename = os.path.splitext(os.path.basename(one_file))[0]
+	  
+	  # create line and write it to the file
+      line = image_filename+','+str(bbox.xmin_scaled)+','+str(bbox.ymin_scaled)+','+str(bbox.xmax_scaled)+','+str(bbox.ymax_scaled)
+      outF.write(line)
+      outF.write("\n")
       print('%s.JPEG,%.4f,%.4f,%.4f,%.4f' %
             (image_filename,
              bbox.xmin_scaled, bbox.ymin_scaled,
@@ -240,7 +250,8 @@ if __name__ == '__main__':
             file=sys.stderr)
       print('--> skipped %d boxes and %d XML files.' %
             (skipped_boxes, skipped_files), file=sys.stderr)
-
+  #close file			
+  outF.close()
   print('Finished processing %d XML files.' % len(xml_files), file=sys.stderr)
   print('Skipped %d XML files not in ImageNet Challenge.' % skipped_files,
         file=sys.stderr)
