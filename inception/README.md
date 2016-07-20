@@ -664,7 +664,7 @@ bazel-bin/inception/build_image_data \
 ```
 
 where the `$OUTPUT_DIRECTORY` is the location of the sharded `TFRecords`. The
-`$LABELS_FILE` will be a text file that is outputted by the script that provides
+`$LABELS_FILE` will be a text file that is read by the script that provides
 a list of all of the labels. For instance, in the case flowers data set, the
 `$LABELS_FILE` contained the following data:
 
