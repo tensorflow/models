@@ -594,7 +594,10 @@ and parse text in the wild.
 
 ## Contact
 
-To ask questions or report issues please contact syntaxnet-users@google.com.
+To ask questions or report issues please post on Stack Overflow with the tag
+[syntaxnet](http://stackoverflow.com/questions/tagged/syntaxnet)
+or open an issue on the tensorflow/models
+[issues tracker](https://github.com/tensorflow/models/issues).
 
 ## Credits
 
