@@ -17,7 +17,6 @@ limitations under the License.
 
 #include <string>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/populate_test_inputs.h"
@@ -25,6 +24,7 @@ limitations under the License.
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/task_spec.pb.h"
 #include "syntaxnet/term_frequency_map.h"
+#include "syntaxnet/utils.h"
 #include "syntaxnet/workspace.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/test.h"

@@ -15,10 +15,10 @@ limitations under the License.
 
 #include "syntaxnet/parser_state.h"
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/kbest_syntax.pb.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/term_frequency_map.h"
+#include "syntaxnet/utils.h"
 
 namespace syntaxnet {
 

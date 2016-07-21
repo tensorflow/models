@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef $TARGETDIR_TASK_CONTEXT_H_
-#define $TARGETDIR_TASK_CONTEXT_H_
+#ifndef SYNTAXNET_TASK_CONTEXT_H_
+#define SYNTAXNET_TASK_CONTEXT_H_
 
 #include <string>
 #include <vector>
@@ -77,4 +77,4 @@ class TaskContext {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_TASK_CONTEXT_H_
+#endif  // SYNTAXNET_TASK_CONTEXT_H_

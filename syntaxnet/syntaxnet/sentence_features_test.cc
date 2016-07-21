@@ -18,14 +18,14 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include <gmock/gmock.h>
-#include "syntaxnet/utils.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/populate_test_inputs.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/task_spec.pb.h"
+#include "syntaxnet/utils.h"
 #include "syntaxnet/workspace.h"
+#include <gmock/gmock.h>
 
 using testing::UnorderedElementsAreArray;
 

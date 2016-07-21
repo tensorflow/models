@@ -2,7 +2,9 @@
 # A syntactic parser and part-of-speech tagger in TensorFlow.
 
 package(
-    default_visibility = ["//visibility:private"],
+    default_visibility = [
+        "//visibility:private",
+    ],
     features = ["-layering_check"],
 )
 
@@ -108,9 +110,9 @@ cc_library(
     srcs = ["test_main.cc"],
     linkopts = ["-lm"],
     deps = [
+        "//external:gtest",
         "@org_tensorflow//tensorflow/core:lib",
         "@org_tensorflow//tensorflow/core:testlib",
-        "//external:gtest",
     ],
 )
 
@@ -130,6 +132,7 @@ cc_library(
     srcs = ["text_formats.cc"],
     deps = [
         ":document_format",
+        ":sentence_proto",
     ],
     alwayslink = 1,
 )
@@ -150,7 +153,6 @@ cc_library(
     deps = [
         ":feature_extractor_proto",
         ":fml_parser",
-        ":kbest_syntax_proto",
         ":sentence_proto",
         ":task_context",
     ],
@@ -166,7 +168,6 @@ cc_library(
     deps = [
         ":document_format",
         ":feature_extractor_proto",
-        ":kbest_syntax_proto",
         ":proto_io",
         ":sentence_proto",
         ":task_context",
@@ -182,6 +183,7 @@ cc_library(
     deps = [
         ":dictionary_proto",
         ":feature_extractor",
+        ":sentence_proto",
         ":shared_store",
         ":term_frequency_map",
         ":utils",
@@ -263,6 +265,7 @@ cc_library(
     deps = [
         ":kbest_syntax_proto",
         ":registry",
+        ":sentence_proto",
         ":shared_store",
         ":task_context",
         ":term_frequency_map",
@@ -279,6 +282,7 @@ cc_library(
         ":dictionary_proto",
         ":sentence_proto",
         ":task_context",
+        ":task_spec_proto",
         ":term_frequency_map",
         ":test_main",
     ],
@@ -294,7 +298,6 @@ cc_library(
         ":parser_transitions",
         ":registry",
         ":sentence_features",
-        ":sentence_proto",
         ":task_context",
         ":term_frequency_map",
         ":workspace",
@@ -325,6 +328,7 @@ cc_library(
         ":feature_extractor",
         ":parser_features",
         ":parser_transitions",
+        ":sentence_proto",
         ":sparse_proto",
         ":task_context",
         ":task_spec_proto",
@@ -344,6 +348,7 @@ cc_library(
         ":parser_transitions",
         ":sentence_batch",
         ":sentence_proto",
+        ":sparse_proto",
         ":task_context",
         ":task_spec_proto",
     ],
@@ -360,7 +365,6 @@ cc_library(
         ":sentence_batch",
         ":sentence_proto",
         ":task_context",
-        ":task_spec_proto",
         ":text_formats",
     ],
     alwayslink = 1,
@@ -370,13 +374,13 @@ cc_library(
     name = "lexicon_builder",
     srcs = ["lexicon_builder.cc"],
     deps = [
+        ":dictionary_proto",
         ":document_format",
         ":parser_features",
         ":parser_transitions",
         ":sentence_batch",
         ":sentence_proto",
         ":task_context",
-        ":task_spec_proto",
         ":text_formats",
     ],
     alwayslink = 1,
@@ -429,6 +433,11 @@ filegroup(
     ],
 )
 
+filegroup(
+    name = "parsey_data",
+    srcs = glob(["models/parsey_mcparseface/*"]),
+)
+
 cc_test(
     name = "shared_store_test",
     size = "small",
@@ -464,6 +473,8 @@ cc_test(
     deps = [
         ":parser_transitions",
         ":populate_test_inputs",
+        ":sentence_proto",
+        ":task_spec_proto",
         ":test_main",
     ],
 )
@@ -476,6 +487,8 @@ cc_test(
     deps = [
         ":parser_transitions",
         ":populate_test_inputs",
+        ":sentence_proto",
+        ":task_spec_proto",
         ":test_main",
     ],
 )
@@ -519,10 +532,10 @@ py_library(
     name = "graph_builder",
     srcs = ["graph_builder.py"],
     deps = [
-        "@org_tensorflow//tensorflow:tensorflow_py",
-        "@org_tensorflow//tensorflow/core:protos_all_py",
         ":load_parser_ops_py",
         ":parser_ops",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/core:protos_all_py",
     ],
 )
 

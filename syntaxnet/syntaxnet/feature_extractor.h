@@ -33,8 +33,8 @@ limitations under the License.
 // A feature function is invoked with a focus. Nested feature function can be
 // invoked with another focus determined by the parent feature function.
 
-#ifndef $TARGETDIR_FEATURE_EXTRACTOR_H_
-#define $TARGETDIR_FEATURE_EXTRACTOR_H_
+#ifndef SYNTAXNET_FEATURE_EXTRACTOR_H_
+#define SYNTAXNET_FEATURE_EXTRACTOR_H_
 
 #include <memory>
 #include <string>
@@ -94,7 +94,7 @@ class FeatureVector {
  private:
   // Structure for holding feature type and value pairs.
   struct Element {
-    Element() : type(NULL), value(-1) {}
+    Element() : type(nullptr), value(-1) {}
     Element(FeatureType *t, FeatureValue v) : type(t), value(v) {}
 
     FeatureType *type;
@@ -621,4 +621,4 @@ class FeatureExtractor : public GenericFeatureExtractor {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_FEATURE_EXTRACTOR_H_
+#endif  // SYNTAXNET_FEATURE_EXTRACTOR_H_

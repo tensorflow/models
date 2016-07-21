@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef $TARGETDIR_EMBEDDING_FEATURE_EXTRACTOR_H_
-#define $TARGETDIR_EMBEDDING_FEATURE_EXTRACTOR_H_
+#ifndef SYNTAXNET_EMBEDDING_FEATURE_EXTRACTOR_H_
+#define SYNTAXNET_EMBEDDING_FEATURE_EXTRACTOR_H_
 
 #include <functional>
 #include <memory>
@@ -219,4 +219,4 @@ class ParserEmbeddingFeatureExtractor
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_EMBEDDING_FEATURE_EXTRACTOR_H_
+#endif  // SYNTAXNET_EMBEDDING_FEATURE_EXTRACTOR_H_

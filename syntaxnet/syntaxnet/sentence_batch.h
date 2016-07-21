@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef $TARGETDIR_SENTENCE_BATCH_H_
-#define $TARGETDIR_SENTENCE_BATCH_H_
+#ifndef SYNTAXNET_SENTENCE_BATCH_H_
+#define SYNTAXNET_SENTENCE_BATCH_H_
 
 #include <memory>
 #include <string>
@@ -75,4 +75,4 @@ class SentenceBatch {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_SENTENCE_BATCH_H_
+#endif  // SYNTAXNET_SENTENCE_BATCH_H_

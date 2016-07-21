@@ -84,7 +84,7 @@ class DocumentSource : public OpKernel {
     mutex_lock lock(mu_);
     Sentence *document;
     vector<Sentence *> document_batch;
-    while ((document = corpus_->Read()) != NULL) {
+    while ((document = corpus_->Read()) != nullptr) {
       document_batch.push_back(document);
       if (static_cast<int>(document_batch.size()) == batch_size_) {
         OutputDocuments(context, &document_batch);

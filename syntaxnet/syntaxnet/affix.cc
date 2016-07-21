@@ -39,13 +39,14 @@ static const int kInitialBuckets = 1024;
 // Fill factor for term and affix hash maps.
 static const int kFillFactor = 2;
 
-int TermHash(string term) {
+int TermHash(const string &term) {
   return utils::Hash32(term.data(), term.size(), 0xDECAF);
 }
 
 // Copies a substring of a Unicode text to a string.
-static void UnicodeSubstring(UnicodeText::const_iterator start,
-                             UnicodeText::const_iterator end, string *result) {
+static void UnicodeSubstring(const UnicodeText::const_iterator &start,
+                             const UnicodeText::const_iterator &end,
+                             string *result) {
   result->clear();
   result->append(start.utf8_data(), end.utf8_data() - start.utf8_data());
 }
@@ -79,7 +80,7 @@ void AffixTable::Read(const AffixTableEntry &table_entry) {
     const auto &affix_entry = table_entry.affix(affix_id);
     CHECK_GE(affix_entry.length(), 0);
     CHECK_LE(affix_entry.length(), max_length_);
-    CHECK(FindAffix(affix_entry.form()) == NULL);  // forbid duplicates
+    CHECK(FindAffix(affix_entry.form()) == nullptr);  // forbid duplicates
     Affix *affix = AddNewAffix(affix_entry.form(), affix_entry.length());
     CHECK_EQ(affix->id(), affix_id);
   }
@@ -117,7 +118,7 @@ void AffixTable::Write(AffixTableEntry *table_entry) const {
     affix_entry->set_form(affix->form());
     affix_entry->set_length(affix->length());
     affix_entry->set_shorter_id(
-        affix->shorter() == NULL ? -1 : affix->shorter()->id());
+        affix->shorter() == nullptr ? -1 : affix->shorter()->id());
   }
 }
 
@@ -137,7 +138,7 @@ Affix *AffixTable::AddAffixesForWord(const char *word, size_t size) {
   // Determine longest affix.
   int affix_len = length;
   if (affix_len > max_length_) affix_len = max_length_;
-  if (affix_len == 0) return NULL;
+  if (affix_len == 0) return nullptr;
 
   // Find start and end of longest affix.
   UnicodeText::const_iterator start, end;
@@ -150,25 +151,25 @@ Affix *AffixTable::AddAffixesForWord(const char *word, size_t size) {
   }
 
   // Try to find successively shorter affixes.
-  Affix *top = NULL;
-  Affix *ancestor = NULL;
+  Affix *top = nullptr;
+  Affix *ancestor = nullptr;
   string s;
   while (affix_len > 0) {
     // Try to find affix in table.
     UnicodeSubstring(start, end, &s);
     Affix *affix = FindAffix(s);
-    if (affix == NULL) {
+    if (affix == nullptr) {
       // Affix not found, add new one to table.
       affix = AddNewAffix(s, affix_len);
 
       // Update ancestor chain.
-      if (ancestor != NULL) ancestor->set_shorter(affix);
+      if (ancestor != nullptr) ancestor->set_shorter(affix);
       ancestor = affix;
-      if (top == NULL) top = affix;
+      if (top == nullptr) top = affix;
     } else {
       // Affix found. Update ancestor if needed and return match.
-      if (ancestor != NULL) ancestor->set_shorter(affix);
-      if (top == NULL) top = affix;
+      if (ancestor != nullptr) ancestor->set_shorter(affix);
+      if (top == nullptr) top = affix;
       break;
     }
 
@@ -187,7 +188,7 @@ Affix *AffixTable::AddAffixesForWord(const char *word, size_t size) {
 
 Affix *AffixTable::GetAffix(int id) const {
   if (id < 0 || id >= static_cast<int>(affixes_.size())) {
-    return NULL;
+    return nullptr;
   } else {
     return affixes_[id];
   }
@@ -195,7 +196,7 @@ Affix *AffixTable::GetAffix(int id) const {
 
 string AffixTable::AffixForm(int id) const {
   Affix *affix = GetAffix(id);
-  if (affix == NULL) {
+  if (affix == nullptr) {
     return "";
   } else {
     return affix->form();
@@ -204,7 +205,7 @@ string AffixTable::AffixForm(int id) const {
 
 int AffixTable::AffixId(const string &form) const {
   Affix *affix = FindAffix(form);
-  if (affix == NULL) {
+  if (affix == nullptr) {
     return -1;
   } else {
     return affix->id();
@@ -234,11 +235,11 @@ Affix *AffixTable::FindAffix(const string &form) const {
 
   // Try to find affix in hash table.
   Affix *affix = buckets_[hash & (buckets_.size() - 1)];
-  while (affix != NULL) {
+  while (affix != nullptr) {
     if (strcmp(affix->form_.c_str(), form.c_str()) == 0) return affix;
     affix = affix->next_;
   }
-  return NULL;
+  return nullptr;
 }
 
 void AffixTable::Resize(int size_hint) {
@@ -250,7 +251,7 @@ void AffixTable::Resize(int size_hint) {
   // Distribute affixes in new buckets.
   buckets_.resize(new_size);
   for (size_t i = 0; i < buckets_.size(); ++i) {
-    buckets_[i] = NULL;
+    buckets_[i] = nullptr;
   }
   for (size_t i = 0; i < affixes_.size(); ++i) {
     Affix *affix = affixes_[i];

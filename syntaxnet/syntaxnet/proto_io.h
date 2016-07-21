@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef $TARGETDIR_PROTO_IO_H_
-#define $TARGETDIR_PROTO_IO_H_
+#ifndef SYNTAXNET_PROTO_IO_H_
+#define SYNTAXNET_PROTO_IO_H_
 
 #include <iostream>
 #include <memory>
@@ -194,7 +194,7 @@ class TextReader {
  private:
   string filename_;
   int sentence_count_ = 0;
-  std::unique_ptr<tensorflow::RandomAccessFile> file_;
+  std::unique_ptr<tensorflow::RandomAccessFile> file_;  // must outlive buffer_
   std::unique_ptr<tensorflow::io::InputBuffer> buffer_;
   std::unique_ptr<DocumentFormat> format_;
 };
@@ -241,4 +241,4 @@ class TextWriter {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_PROTO_IO_H_
+#endif  // SYNTAXNET_PROTO_IO_H_

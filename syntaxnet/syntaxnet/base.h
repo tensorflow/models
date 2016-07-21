@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef $TARGETDIR_BASE_H_
-#define $TARGETDIR_BASE_H_
+#ifndef SYNTAXNET_BASE_H_
+#define SYNTAXNET_BASE_H_
 
 #include <functional>
 #include <string>
@@ -50,4 +50,4 @@ using std::string;
 
   // namespace syntaxnet
 
-#endif  // $TARGETDIR_BASE_H_
+#endif  // SYNTAXNET_BASE_H_

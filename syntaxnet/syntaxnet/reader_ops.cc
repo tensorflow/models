@@ -15,17 +15,17 @@ limitations under the License.
 
 #include <math.h>
 #include <deque>
-#include <unordered_map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "syntaxnet/base.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/parser_transitions.h"
-#include "syntaxnet/sentence_batch.h"
 #include "syntaxnet/sentence.pb.h"
+#include "syntaxnet/sentence_batch.h"
 #include "syntaxnet/shared_store.h"
 #include "syntaxnet/sparse.pb.h"
 #include "syntaxnet/task_context.h"
@@ -206,7 +206,7 @@ class ParsingReader : public OpKernel {
   int additional_output_index() const { return feature_size_ + 1; }
   ParserState *state(int i) const { return states_[i].get(); }
   const ParserTransitionSystem &transition_system() const {
-    return *transition_system_.get();
+    return *transition_system_;
   }
 
   // Parser task context.

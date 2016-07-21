@@ -53,7 +53,7 @@ class TaggerTransitionState : public ParserTransitionState {
   }
 
   // Reads gold tags for each token.
-  void Init(ParserState *state) {
+  void Init(ParserState *state) override {
     tag_.resize(state->sentence().token_size(), -1);
     gold_tag_.resize(state->sentence().token_size(), -1);
     for (int pos = 0; pos < state->sentence().token_size(); ++pos) {
@@ -150,7 +150,7 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
   }
 
   // Reads tag map and tag to category map.
-  void Init(TaskContext *context) {
+  void Init(TaskContext *context) override {
     const string tag_map_path = TaskContext::InputFile(*input_tag_map_);
     tag_map_ = SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(
         tag_map_path, 0, 0);
