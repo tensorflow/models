@@ -298,7 +298,6 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
   # Break all images into batches with a [ranges[i][0], ranges[i][1]].
   spacing = np.linspace(0, len(filenames), FLAGS.num_threads + 1).astype(np.int)
   ranges = []
-  threads = []
   for i in xrange(len(spacing) - 1):
     ranges.append([spacing[i], spacing[i+1]])
 
