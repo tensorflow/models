@@ -58,8 +58,8 @@ limitations under the License.
 //
 // See also creators.Add() for more convenience functions.
 
-#ifndef $TARGETDIR_POPULATE_TEST_INPUTS_H_
-#define $TARGETDIR_POPULATE_TEST_INPUTS_H_
+#ifndef SYNTAXNET_POPULATE_TEST_INPUTS_H_
+#define SYNTAXNET_POPULATE_TEST_INPUTS_H_
 
 #include <functional>
 #include <string>
@@ -150,4 +150,4 @@ class PopulateTestInputs {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_POPULATE_TEST_INPUTS_H_
+#endif  // SYNTAXNET_POPULATE_TEST_INPUTS_H_

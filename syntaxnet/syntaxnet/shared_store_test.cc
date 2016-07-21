@@ -17,8 +17,8 @@ limitations under the License.
 
 #include <string>
 
-#include <gmock/gmock.h>
 #include "syntaxnet/utils.h"
+#include <gmock/gmock.h>
 #include "tensorflow/core/lib/core/threadpool.h"
 
 using ::testing::_;
@@ -98,7 +98,7 @@ class PointerSet {
 
 class SharedStoreTest : public testing::Test {
  protected:
-  ~SharedStoreTest() {
+  ~SharedStoreTest() override {
     // Clear the shared store after each test, otherwise objects created
     // in one test may interfere with other tests.
     SharedStore::Clear();

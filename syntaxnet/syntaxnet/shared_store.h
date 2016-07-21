@@ -15,8 +15,8 @@ limitations under the License.
 
 // Utility for creating read-only objects once and sharing them across threads.
 
-#ifndef $TARGETDIR_SHARED_STORE_H_
-#define $TARGETDIR_SHARED_STORE_H_
+#ifndef SYNTAXNET_SHARED_STORE_H_
+#define SYNTAXNET_SHARED_STORE_H_
 
 #include <functional>
 #include <string>
@@ -231,4 +231,4 @@ class SharedStoreUtils {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_SHARED_STORE_H_
+#endif  // SYNTAXNET_SHARED_STORE_H_

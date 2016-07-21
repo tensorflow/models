@@ -17,8 +17,8 @@ limitations under the License.
 // specifically, the registry machinery is thread-safe, as long as each thread
 // performs feature extraction on a different Sentence object.
 
-#ifndef $TARGETDIR_WORKSPACE_H_
-#define $TARGETDIR_WORKSPACE_H_
+#ifndef SYNTAXNET_WORKSPACE_H_
+#define SYNTAXNET_WORKSPACE_H_
 
 #include <string>
 #include <typeindex>
@@ -212,4 +212,4 @@ class VectorVectorIntWorkspace : public Workspace {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_WORKSPACE_H_
+#endif  // SYNTAXNET_WORKSPACE_H_

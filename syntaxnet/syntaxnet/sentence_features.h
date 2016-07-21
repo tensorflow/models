@@ -17,8 +17,8 @@ limitations under the License.
 // in this header so they may be re-used via composition into other more
 // advanced feature classes.
 
-#ifndef $TARGETDIR_SENTENCE_FEATURES_H_
-#define $TARGETDIR_SENTENCE_FEATURES_H_
+#ifndef SYNTAXNET_SENTENCE_FEATURES_H_
+#define SYNTAXNET_SENTENCE_FEATURES_H_
 
 #include "syntaxnet/affix.h"
 #include "syntaxnet/feature_extractor.h"
@@ -103,7 +103,7 @@ class TermFrequencyMapFeature : public TokenLookupFeature {
   void Init(TaskContext *context) override;
 
   // Number of unique values.
-  virtual int64 NumValues() const { return term_map_->Size() + 1; }
+  int64 NumValues() const override { return term_map_->Size() + 1; }
 
   // Special value for strings not in the map.
   FeatureValue UnknownValue() const { return term_map_->Size(); }
@@ -314,4 +314,4 @@ typedef FeatureExtractor<Sentence, int> SentenceExtractor;
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_SENTENCE_FEATURES_H_
+#endif  // SYNTAXNET_SENTENCE_FEATURES_H_

@@ -15,8 +15,8 @@ limitations under the License.
 
 // Parser state for the transition-based dependency parser.
 
-#ifndef $TARGETDIR_PARSER_STATE_H_
-#define $TARGETDIR_PARSER_STATE_H_
+#ifndef SYNTAXNET_PARSER_STATE_H_
+#define SYNTAXNET_PARSER_STATE_H_
 
 #include <string>
 #include <vector>
@@ -230,4 +230,4 @@ class ParserState {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_PARSER_STATE_H_
+#endif  // SYNTAXNET_PARSER_STATE_H_

@@ -18,13 +18,13 @@ limitations under the License.
 #include <map>
 #include <utility>
 
-#include "gtest/gtest.h"
-#include "syntaxnet/utils.h"
 #include "syntaxnet/dictionary.pb.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/task_spec.pb.h"
 #include "syntaxnet/term_frequency_map.h"
+#include "syntaxnet/utils.h"
+#include "gtest/gtest.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/io/record_writer.h"
 #include "tensorflow/core/lib/strings/strcat.h"

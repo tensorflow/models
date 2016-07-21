@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef $TARGETDIR_TERM_FREQUENCY_MAP_H_
-#define $TARGETDIR_TERM_FREQUENCY_MAP_H_
+#ifndef SYNTAXNET_TERM_FREQUENCY_MAP_H_
+#define SYNTAXNET_TERM_FREQUENCY_MAP_H_
 
 #include <stddef.h>
 #include <memory>
@@ -114,4 +114,4 @@ class TagToCategoryMap {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_TERM_FREQUENCY_MAP_H_
+#endif  // SYNTAXNET_TERM_FREQUENCY_MAP_H_

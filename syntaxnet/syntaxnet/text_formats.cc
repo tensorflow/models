@@ -92,7 +92,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       // Split line into tab-separated fields.
       fields.clear();
       fields = utils::Split(lines[i], '\t');
-      if (fields.size() == 0) continue;
+      if (fields.empty()) continue;
 
       // Skip comment lines.
       if (fields[0][0] == '#') continue;

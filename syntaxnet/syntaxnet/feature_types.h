@@ -15,8 +15,8 @@ limitations under the License.
 
 // Common feature types for parser components.
 
-#ifndef $TARGETDIR_FEATURE_TYPES_H_
-#define $TARGETDIR_FEATURE_TYPES_H_
+#ifndef SYNTAXNET_FEATURE_TYPES_H_
+#define SYNTAXNET_FEATURE_TYPES_H_
 
 #include <algorithm>
 #include <map>
@@ -173,4 +173,4 @@ class EnumFeatureType : public FeatureType {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_FEATURE_TYPES_H_
+#endif  // SYNTAXNET_FEATURE_TYPES_H_

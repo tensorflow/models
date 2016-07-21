@@ -16,13 +16,13 @@ limitations under the License.
 #include <stddef.h>
 #include <string>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/affix.h"
 #include "syntaxnet/dictionary.pb.h"
 #include "syntaxnet/feature_extractor.h"
-#include "syntaxnet/sentence_batch.h"
 #include "syntaxnet/sentence.pb.h"
+#include "syntaxnet/sentence_batch.h"
 #include "syntaxnet/term_frequency_map.h"
+#include "syntaxnet/utils.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
@@ -88,7 +88,7 @@ class LexiconBuilder : public OpKernel {
     int64 num_documents = 0;
     Sentence *document;
     TextReader corpus(*task_context_.GetInput(corpus_name_));
-    while ((document = corpus.Read()) != NULL) {
+    while ((document = corpus.Read()) != nullptr) {
       // Gather token information.
       for (int t = 0; t < document->token_size(); ++t) {
         // Get token and lowercased word.

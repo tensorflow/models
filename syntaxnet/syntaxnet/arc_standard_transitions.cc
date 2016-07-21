@@ -30,9 +30,9 @@ limitations under the License.
 
 #include <string>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/parser_transitions.h"
+#include "syntaxnet/utils.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 
 namespace syntaxnet {

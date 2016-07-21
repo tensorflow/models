@@ -50,8 +50,8 @@ limitations under the License.
 //   Function *f = Function::Lookup("cos");
 //   double result = f->Evaluate(arg);
 
-#ifndef $TARGETDIR_REGISTRY_H_
-#define $TARGETDIR_REGISTRY_H_
+#ifndef SYNTAXNET_REGISTRY_H_
+#define SYNTAXNET_REGISTRY_H_
 
 #include <string.h>
 #include <string>
@@ -70,7 +70,7 @@ class ComponentMetadata {
         class_name_(class_name),
         file_(file),
         line_(line),
-        link_(NULL) {}
+        link_(nullptr) {}
 
   // Returns component name.
   const char *name() const { return name_; }
@@ -131,7 +131,7 @@ struct ComponentRegistry {
         : ComponentMetadata(type, class_name, file, line), object_(object) {
       // Register registry in master registry if this is the first registered
       // component of this type.
-      if (registry->components == NULL) {
+      if (registry->components == nullptr) {
         RegistryMetadata::Register(new RegistryMetadata(
             registry->name, registry->class_name, registry->file,
             registry->line,
@@ -160,8 +160,8 @@ struct ComponentRegistry {
   // Finds registrar for named component in registry.
   const Registrar *GetComponent(const char *type) const {
     Registrar *r = components;
-    while (r != NULL && strcmp(type, r->type()) != 0) r = r->next();
-    if (r == NULL) {
+    while (r != nullptr && strcmp(type, r->type()) != 0) r = r->next();
+    if (r == nullptr) {
       LOG(FATAL) << "Unknown " << name << " component: '" << type << "'.";
     }
     return r;
@@ -240,4 +240,4 @@ class RegisterableInstance {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_REGISTRY_H_
+#endif  // SYNTAXNET_REGISTRY_H_

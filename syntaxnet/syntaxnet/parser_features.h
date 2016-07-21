@@ -15,8 +15,8 @@ limitations under the License.
 
 // Sentence-based features for the transition parser.
 
-#ifndef $TARGETDIR_PARSER_FEATURES_H_
-#define $TARGETDIR_PARSER_FEATURES_H_
+#ifndef SYNTAXNET_PARSER_FEATURES_H_
+#define SYNTAXNET_PARSER_FEATURES_H_
 
 #include <string>
 
@@ -147,4 +147,4 @@ class BasicParserSentenceFeatureFunction :
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_PARSER_FEATURES_H_
+#endif  // SYNTAXNET_PARSER_FEATURES_H_

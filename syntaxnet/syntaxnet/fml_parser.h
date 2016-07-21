@@ -37,8 +37,8 @@ limitations under the License.
 // <parameter name> ::= NAME
 // <parameter value> ::= NUMBER | STRING | NAME
 
-#ifndef $TARGETDIR_FML_PARSER_H_
-#define $TARGETDIR_FML_PARSER_H_
+#ifndef SYNTAXNET_FML_PARSER_H_
+#define SYNTAXNET_FML_PARSER_H_
 
 #include <string>
 
@@ -110,4 +110,4 @@ class FMLParser {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_FML_PARSER_H_
+#endif  // SYNTAXNET_FML_PARSER_H_

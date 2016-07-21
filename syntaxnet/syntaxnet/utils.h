@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef $TARGETDIR_UTILS_H_
-#define $TARGETDIR_UTILS_H_
+#ifndef SYNTAXNET_UTILS_H_
+#define SYNTAXNET_UTILS_H_
 
 #include <functional>
 #include <string>
@@ -168,4 +168,4 @@ void NormalizeDigits(string *form);
 }  // namespace utils
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_UTILS_H_
+#endif  // SYNTAXNET_UTILS_H_
