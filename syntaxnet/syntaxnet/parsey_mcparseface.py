@@ -86,7 +86,7 @@ def GetFeatureSize(task_context, arg_prefix):
                       arg_prefix=arg_prefix))
 
 # export the model in various ways. this erases any previously saved model
-def ExportModel(sess, model_dir, input, output):
+def ExportModel(sess, model_dir, input, output, assets):
   if os.path.isdir(model_dir):
     shutil.rmtree(model_dir);
 
@@ -96,7 +96,8 @@ def ExportModel(sess, model_dir, input, output):
   model_exporter = exporter.Exporter(saver)
   signature = exporter.regression_signature(input_tensor=input,output_tensor=output)
   model_exporter.init(sess.graph.as_graph_def(),
-                      default_graph_signature=signature)
+                      default_graph_signature=signature,
+                      assets_collection=assets)
   model_exporter.export(model_dir, tf.constant(1), sess)
 
   # using a SummaryWriter so graph can be loaded in TensorBoard
@@ -175,7 +176,12 @@ def main(unused_argv):
                                       corpus_name="stdout-conll")
           sess.run(sink)
       else:
-	  ExportModel(sess, FLAGS.export_path, text_input, model["brain_parser"]["documents"])
+          assets = []
+          for model_file in os.listdir(model_dir):
+              path = os.path.join(model_dir, model_file)
+              if not os.path.isdir(path):
+                assets.append(tf.constant(path))
+          ExportModel(sess, FLAGS.export_path, text_input, model["brain_parser"]["documents"], assets)
 
 if __name__ == '__main__':
   tf.app.run()
