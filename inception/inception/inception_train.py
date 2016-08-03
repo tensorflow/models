@@ -220,7 +220,7 @@ def train(dataset):
     # Number of classes in the Dataset label set plus 1.
     # Label 0 is reserved for an (unused) background class.
     num_classes = dataset.num_classes() + 1
-    
+
      # Split the batch of images and labels for towers.
     images_splits = tf.split(0, FLAGS.num_gpus, images)
     labels_splits = tf.split(0, FLAGS.num_gpus, labels)
@@ -305,7 +305,8 @@ def train(dataset):
     summary_op = tf.merge_summary(summaries)
 
     # Build an initialization operation to run below.
-    init = tf.initialize_all_variables()
+    init = tf.group(tf.initialize_all_variables(),
+                    tf.initialize_local_variables())
 
     # Start running operations on the Graph. allow_soft_placement must be set to
     # True to build towers on GPU, as some of the ops do not have GPU
