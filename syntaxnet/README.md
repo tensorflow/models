@@ -107,8 +107,8 @@ Bazel should complete reporting all tests passed.
 You can also compile SyntaxNet in a [Docker](https://www.docker.com/what-docker)
 container using this [Dockerfile](Dockerfile).
 
-**Note:** If you are running Docker on OSX, make sure that you have enough memory allocated
-for your Docker VM.
+**Note:** If you are running Docker on OSX, make sure that you have enough
+memory allocated for your Docker VM.
 
 ## Getting Started
 
@@ -612,6 +612,7 @@ Original authors of the code in this package include (in alphabetical order):
 *   David Weiss
 *   Emily Pitler
 *   Greg Coppola
+*   Ji Ma
 *   Keith Hall
 *   Kuzman Ganchev
 *   Michael Collins

@@ -159,6 +159,31 @@ cc_library(
 )
 
 cc_library(
+    name = "char_properties",
+    srcs = ["char_properties.cc"],
+    hdrs = ["char_properties.h"],
+    deps = [
+        ":registry",
+        ":utils",
+        "//util/utf8:unicodetext",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "segmenter_utils",
+    srcs = ["segmenter_utils.cc"],
+    hdrs = ["segmenter_utils.h"],
+    deps = [
+        ":base",
+        ":char_properties",
+        ":sentence_proto",
+        "//util/utf8:unicodetext",
+    ],
+    alwayslink = 1,
+)
+
+cc_library(
     name = "feature_extractor",
     srcs = ["feature_extractor.cc"],
     hdrs = [
@@ -199,6 +224,7 @@ cc_library(
         ":affix",
         ":feature_extractor",
         ":registry",
+        ":segmenter_utils",
     ],
 )
 
@@ -251,24 +277,50 @@ cc_library(
 )
 
 cc_library(
+    name = "morphology_label_set",
+    srcs = ["morphology_label_set.cc"],
+    hdrs = ["morphology_label_set.h"],
+    deps = [
+        ":document_format",
+        ":feature_extractor",
+        ":proto_io",
+        ":registry",
+        ":sentence_proto",
+        ":utils",
+    ],
+)
+
+cc_library(
     name = "parser_transitions",
     srcs = [
         "arc_standard_transitions.cc",
+        "binary_segment_state.cc",
+        "binary_segment_transitions.cc",
+        "morpher_transitions.cc",
+        "parser_features.cc",
         "parser_state.cc",
         "parser_transitions.cc",
         "tagger_transitions.cc",
     ],
     hdrs = [
+        "binary_segment_state.h",
+        "parser_features.h",
         "parser_state.h",
         "parser_transitions.h",
     ],
     deps = [
+        ":affix",
+        ":feature_extractor",
         ":kbest_syntax_proto",
+        ":morphology_label_set",
         ":registry",
+        ":segmenter_utils",
+        ":sentence_features",
         ":sentence_proto",
         ":shared_store",
         ":task_context",
         ":term_frequency_map",
+        ":workspace",
     ],
     alwayslink = 1,
 )
@@ -289,29 +341,11 @@ cc_library(
 )
 
 cc_library(
-    name = "parser_features",
-    srcs = ["parser_features.cc"],
-    hdrs = ["parser_features.h"],
-    deps = [
-        ":affix",
-        ":feature_extractor",
-        ":parser_transitions",
-        ":registry",
-        ":sentence_features",
-        ":task_context",
-        ":term_frequency_map",
-        ":workspace",
-    ],
-    alwayslink = 1,
-)
-
-cc_library(
     name = "embedding_feature_extractor",
     srcs = ["embedding_feature_extractor.cc"],
     hdrs = ["embedding_feature_extractor.h"],
     deps = [
         ":feature_extractor",
-        ":parser_features",
         ":parser_transitions",
         ":sparse_proto",
         ":task_context",
@@ -326,7 +360,6 @@ cc_library(
     deps = [
         ":embedding_feature_extractor",
         ":feature_extractor",
-        ":parser_features",
         ":parser_transitions",
         ":sentence_proto",
         ":sparse_proto",
@@ -344,7 +377,6 @@ cc_library(
         "reader_ops.cc",
     ],
     deps = [
-        ":parser_features",
         ":parser_transitions",
         ":sentence_batch",
         ":sentence_proto",
@@ -360,7 +392,6 @@ cc_library(
     srcs = ["document_filters.cc"],
     deps = [
         ":document_format",
-        ":parser_features",
         ":parser_transitions",
         ":sentence_batch",
         ":sentence_proto",
@@ -376,8 +407,8 @@ cc_library(
     deps = [
         ":dictionary_proto",
         ":document_format",
-        ":parser_features",
         ":parser_transitions",
+        ":segmenter_utils",
         ":sentence_batch",
         ":sentence_proto",
         ":task_context",
@@ -439,11 +470,43 @@ filegroup(
 )
 
 cc_test(
+    name = "binary_segment_state_test",
+    size = "small",
+    srcs = ["binary_segment_state_test.cc"],
+    deps = [
+        ":base",
+        ":parser_transitions",
+        ":term_frequency_map",
+        ":test_main",
+    ],
+)
+
+cc_test(
     name = "shared_store_test",
     size = "small",
     srcs = ["shared_store_test.cc"],
     deps = [
         ":shared_store",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "char_properties_test",
+    srcs = ["char_properties_test.cc"],
+    deps = [
+        ":char_properties",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "segmenter_utils_test",
+    srcs = ["segmenter_utils_test.cc"],
+    deps = [
+        ":base",
+        ":segmenter_utils",
+        ":sentence_proto",
         ":test_main",
     ],
 )
@@ -466,6 +529,15 @@ cc_test(
 )
 
 cc_test(
+    name = "morphology_label_set_test",
+    srcs = ["morphology_label_set_test.cc"],
+    deps = [
+        ":morphology_label_set",
+        ":test_main",
+    ],
+)
+
+cc_test(
     name = "arc_standard_transitions_test",
     size = "small",
     srcs = ["arc_standard_transitions_test.cc"],
@@ -475,6 +547,17 @@ cc_test(
         ":populate_test_inputs",
         ":sentence_proto",
         ":task_spec_proto",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "binary_segment_transitions_test",
+    size = "small",
+    srcs = ["binary_segment_transitions_test.cc"],
+    deps = [
+        ":parser_transitions",
+        ":sentence_proto",
         ":test_main",
     ],
 )
@@ -499,7 +582,6 @@ cc_test(
     srcs = ["parser_features_test.cc"],
     deps = [
         ":feature_extractor",
-        ":parser_features",
         ":parser_transitions",
         ":populate_test_inputs",
         ":sentence_proto",

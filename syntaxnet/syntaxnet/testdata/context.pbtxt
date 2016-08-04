@@ -61,6 +61,12 @@ input {
   }
 }
 input {
+  name: 'char-map'
+  Part {
+    file_pattern: 'OUTPATH/char-map'
+  }
+}
+input {
   name: 'prefix-table'
   Part {
     file_pattern: 'OUTPATH/prefix-table'

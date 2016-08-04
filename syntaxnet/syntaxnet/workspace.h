@@ -185,6 +185,8 @@ class VectorIntWorkspace : public Workspace {
   // Sets the i'th element.
   void set_element(int i, int value) { elements_[i] = value; }
 
+  int size() const { return elements_.size(); }
+
  private:
   // The enclosed vector.
   vector<int> elements_;

@@ -63,6 +63,11 @@ class CoNLLSyntaxFormat : public DocumentFormat {
  public:
   CoNLLSyntaxFormat() {}
 
+  void Setup(TaskContext *context) override {
+    join_category_to_pos_ = context->GetBoolParameter("join_category_to_pos");
+    add_pos_as_attribute_ = context->GetBoolParameter("add_pos_as_attribute");
+  }
+
   // Reads up to the first empty line and returns false end of file is reached.
   bool ReadRecord(tensorflow::io::InputBuffer *buffer,
                   string *record) override {
@@ -121,6 +126,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       const string &word = fields[1];
       const string &cpostag = fields[3];
       const string &tag = fields[4];
+      const string &attributes = fields[5];
       const int head = utils::ParseUsing<int>(fields[6], 0, utils::ParseInt32);
       const string &label = fields[7];
 
@@ -139,6 +145,9 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       if (!tag.empty()) token->set_tag(tag);
       if (!cpostag.empty()) token->set_category(cpostag);
       if (!label.empty()) token->set_label(label);
+      if (!attributes.empty()) AddMorphAttributes(attributes, token);
+      if (join_category_to_pos_) JoinCategoryToPos(token);
+      if (add_pos_as_attribute_) AddPosAsAttribute(token);
     }
 
     if (sentence->token_size() > 0) {
@@ -158,16 +167,18 @@ class CoNLLSyntaxFormat : public DocumentFormat {
     *key = sentence.docid();
     vector<string> lines;
     for (int i = 0; i < sentence.token_size(); ++i) {
+      Token token = sentence.token(i);
+      if (join_category_to_pos_) SplitCategoryFromPos(&token);
+      if (add_pos_as_attribute_) RemovePosFromAttributes(&token);
       vector<string> fields(10);
       fields[0] = tensorflow::strings::Printf("%d", i + 1);
-      fields[1] = sentence.token(i).word();
+      fields[1] = token.word();
       fields[2] = "_";
-      fields[3] = sentence.token(i).category();
-      fields[4] = sentence.token(i).tag();
-      fields[5] = "_";
-      fields[6] =
-          tensorflow::strings::Printf("%d", sentence.token(i).head() + 1);
-      fields[7] = sentence.token(i).label();
+      fields[3] = token.category();
+      fields[4] = token.tag();
+      fields[5] = GetMorphAttributes(token);
+      fields[6] = tensorflow::strings::Printf("%d", token.head() + 1);
+      fields[7] = token.label();
       fields[8] = "_";
       fields[9] = "_";
       lines.push_back(utils::Join(fields, "\t"));
@@ -176,6 +187,95 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   }
 
  private:
+  // Creates a TokenMorphology object out of a list of attribute values of the
+  // form: a1=v1|a2=v2|... or v1|v2|...
+  void AddMorphAttributes(const string &attributes, Token *token) {
+    TokenMorphology *morph =
+        token->MutableExtension(TokenMorphology::morphology);
+    vector<string> att_vals = utils::Split(attributes, '|');
+    for (int i = 0; i < att_vals.size(); ++i) {
+      vector<string> att_val = utils::Split(att_vals[i], '=');
+      CHECK_LE(att_val.size(), 2)
+          << "Error parsing morphology features "
+          << "column, must be of format "
+          << "a1=v1|a2=v2|... or v1|v2|... <field>: " << attributes;
+
+      // Format is either:
+      //   1) a1=v1|a2=v2..., e.g., Czech CoNLL data, or,
+      //   2) v1|v2|..., e.g., German CoNLL data.
+      const pair<string, string> name_value =
+          att_val.size() == 2 ? std::make_pair(att_val[0], att_val[1])
+                              : std::make_pair(att_val[0], "on");
+
+      // We currently don't expect an empty attribute value, but might have an
+      // empty attribute name due to data input errors.
+      if (name_value.second.empty()) {
+        LOG(WARNING) << "Invalid attributes string: " << attributes
+                     << " for token: " << token->ShortDebugString();
+        continue;
+      }
+      if (!name_value.first.empty()) {
+        TokenMorphology::Attribute *attribute = morph->add_attribute();
+        attribute->set_name(name_value.first);
+        attribute->set_value(name_value.second);
+      }
+    }
+  }
+
+  // Creates a list of attribute values of the form a1=v1|a2=v2|... or v1|v2|...
+  // from a TokenMorphology object.
+  string GetMorphAttributes(const Token &token) {
+    const TokenMorphology &morph =
+        token.GetExtension(TokenMorphology::morphology);
+    if (morph.attribute_size() == 0) return "_";
+    string attributes;
+    for (const TokenMorphology::Attribute &attribute : morph.attribute()) {
+      if (!attributes.empty()) tensorflow::strings::StrAppend(&attributes, "|");
+      tensorflow::strings::StrAppend(&attributes, attribute.name());
+      if (attribute.value() != "on") {
+        tensorflow::strings::StrAppend(&attributes, "=", attribute.value());
+      }
+    }
+    return attributes;
+  }
+
+  void JoinCategoryToPos(Token *token) {
+    token->set_tag(
+        tensorflow::strings::StrCat(token->category(), "++", token->tag()));
+    token->clear_category();
+  }
+
+  void SplitCategoryFromPos(Token *token) {
+    const string &tag = token->tag();
+    const size_t pos = tag.find("++");
+    if (pos != string::npos) {
+      token->set_category(tag.substr(0, pos));
+      token->set_tag(tag.substr(pos + 2));
+    }
+  }
+
+  void AddPosAsAttribute(Token *token) {
+    if (!token->tag().empty()) {
+      TokenMorphology *morph =
+          token->MutableExtension(TokenMorphology::morphology);
+      TokenMorphology::Attribute *attribute = morph->add_attribute();
+      attribute->set_name("fPOS");
+      attribute->set_value(token->tag());
+    }
+  }
+
+  void RemovePosFromAttributes(Token *token) {
+    // Assumes the "fPOS" attribute, if present, is the last one.
+    TokenMorphology *morph =
+        token->MutableExtension(TokenMorphology::morphology);
+    if (morph->attribute().rbegin()->name() == "fPOS") {
+      morph->mutable_attribute()->RemoveLast();
+    }
+  }
+
+  bool join_category_to_pos_ = false;
+  bool add_pos_as_attribute_ = false;
+
   TF_DISALLOW_COPY_AND_ASSIGN(CoNLLSyntaxFormat);
 };
 
