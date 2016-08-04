@@ -22,7 +22,6 @@ import time
 
 import tensorflow as tf
 
-from tensorflow.python.platform import gfile
 from tensorflow.python.platform import tf_logging as logging
 from syntaxnet import sentence_pb2
 from syntaxnet import graph_builder

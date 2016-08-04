@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// Tagger transition system.
+// Morpher transition system.
 //
 // This transition system has one type of actions:
 //  - The SHIFT action pushes the next input token to the stack and
@@ -25,6 +25,7 @@ limitations under the License.
 
 #include <string>
 
+#include "syntaxnet/morphology_label_set.h"
 #include "syntaxnet/parser_features.h"
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/parser_transitions.h"
@@ -37,21 +38,20 @@ limitations under the License.
 
 namespace syntaxnet {
 
-class TaggerTransitionState : public ParserTransitionState {
+class MorphologyTransitionState : public ParserTransitionState {
  public:
-  explicit TaggerTransitionState(const TermFrequencyMap *tag_map,
-                                 const TagToCategoryMap *tag_to_category)
-      : tag_map_(tag_map), tag_to_category_(tag_to_category) {}
+  explicit MorphologyTransitionState(const MorphologyLabelSet *label_set)
+      : label_set_(label_set) {}
 
-  explicit TaggerTransitionState(const TaggerTransitionState *state)
-      : TaggerTransitionState(state->tag_map_, state->tag_to_category_) {
+  explicit MorphologyTransitionState(const MorphologyTransitionState *state)
+      : MorphologyTransitionState(state->label_set_) {
     tag_ = state->tag_;
     gold_tag_ = state->gold_tag_;
   }
 
   // Clones the transition state by returning a new object.
   ParserTransitionState *Clone() const override {
-    return new TaggerTransitionState(this);
+    return new MorphologyTransitionState(this);
   }
 
   // Reads gold tags for each token.
@@ -59,8 +59,13 @@ class TaggerTransitionState : public ParserTransitionState {
     tag_.resize(state->sentence().token_size(), -1);
     gold_tag_.resize(state->sentence().token_size(), -1);
     for (int pos = 0; pos < state->sentence().token_size(); ++pos) {
-      int tag = tag_map_->LookupIndex(state->GetToken(pos).tag(), -1);
-      gold_tag_[pos] = tag;
+      const Token &token = state->GetToken(pos);
+
+      // NOTE: we allow token to not have a TokenMorphology extension or for the
+      // TokenMorphology to be absent from the label_set_ because this can
+      // happen at test time.
+      gold_tag_[pos] = label_set_->LookupExisting(
+          token.GetExtension(TokenMorphology::morphology));
     }
   }
 
@@ -85,24 +90,22 @@ class TaggerTransitionState : public ParserTransitionState {
     return index == -1 ? -1 : gold_tag_[index];
   }
 
-  // Returns the string representation of a POS tag, or an empty string
-  // if the tag is invalid.
-  string TagAsString(int tag) const {
-    if (tag >= 0 && tag < tag_map_->Size()) {
-      return tag_map_->GetTerm(tag);
+  // Returns the proto corresponding to the tag, or an empty proto if the tag is
+  // not found.
+  const TokenMorphology &TagAsProto(int tag) const {
+    if (tag >= 0 && tag < label_set_->Size()) {
+      return label_set_->Lookup(tag);
     }
-    return "";
+    return TokenMorphology::default_instance();
   }
 
   // Adds transition state specific annotations to the document.
   void AddParseToDocument(const ParserState &state, bool rewrite_root_labels,
                           Sentence *sentence) const override {
-    for (size_t i = 0; i < tag_.size(); ++i) {
+    for (int i = 0; i < tag_.size(); ++i) {
       Token *token = sentence->mutable_token(i);
-      token->set_tag(TagAsString(Tag(i)));
-      if (tag_to_category_) {
-        token->set_category(tag_to_category_->GetCategory(token->tag()));
-      }
+      *token->MutableExtension(TokenMorphology::morphology) =
+          TagAsProto(Tag(i));
     }
   }
 
@@ -118,7 +121,8 @@ class TaggerTransitionState : public ParserTransitionState {
       const string &word = state.GetToken(state.Stack(i - 1)).word();
       if (i != state.StackSize() - 1) str.append(" ");
       tensorflow::strings::StrAppend(
-          &str, word, "[", TagAsString(Tag(state.StackSize() - i)), "]");
+          &str, word, "[",
+          TagAsProto(Tag(state.StackSize() - i)).ShortDebugString(), "]");
     }
     for (int i = state.Next(); i < state.NumTokens(); ++i) {
       tensorflow::strings::StrAppend(&str, " ", state.GetToken(i).word());
@@ -127,50 +131,40 @@ class TaggerTransitionState : public ParserTransitionState {
   }
 
  private:
-  // Currently assigned POS tags for each token in this sentence.
+  // Currently assigned morphological analysis for each token in this sentence.
   vector<int> tag_;
 
-  // Gold POS tags from the input document.
+  // Gold morphological analysis from the input document.
   vector<int> gold_tag_;
 
   // Tag map used for conversions between integer and string representations
   // part of speech tags. Not owned.
-  const TermFrequencyMap *tag_map_ = nullptr;
+  const MorphologyLabelSet *label_set_ = nullptr;
 
-  // Tag to category map. Not owned.
-  const TagToCategoryMap *tag_to_category_ = nullptr;
-
-  TF_DISALLOW_COPY_AND_ASSIGN(TaggerTransitionState);
+  TF_DISALLOW_COPY_AND_ASSIGN(MorphologyTransitionState);
 };
 
-class TaggerTransitionSystem : public ParserTransitionSystem {
+class MorphologyTransitionSystem : public ParserTransitionSystem {
  public:
-  ~TaggerTransitionSystem() override { SharedStore::Release(tag_map_); }
+  ~MorphologyTransitionSystem() override { SharedStore::Release(label_set_); }
 
   // Determines tag map location.
   void Setup(TaskContext *context) override {
-    input_tag_map_ = context->GetInput("tag-map", "text", "");
-    join_category_to_pos_ = context->GetBoolParameter("join_category_to_pos");
-    input_tag_to_category_ = context->GetInput("tag-to-category", "text", "");
+    context->GetInput("morph-label-set");
   }
 
   // Reads tag map and tag to category map.
   void Init(TaskContext *context) override {
-    const string tag_map_path = TaskContext::InputFile(*input_tag_map_);
-    tag_map_ = SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(
-        tag_map_path, 0, 0);
-    if (!join_category_to_pos_) {
-      const string tag_to_category_path =
-          TaskContext::InputFile(*input_tag_to_category_);
-      tag_to_category_ = SharedStoreUtils::GetWithDefaultName<TagToCategoryMap>(
-          tag_to_category_path);
-    }
+    const string fname =
+        TaskContext::InputFile(*context->GetInput("morph-label-set"));
+    label_set_ =
+        SharedStoreUtils::GetWithDefaultName<MorphologyLabelSet>(fname);
   }
 
   // The SHIFT action uses the same value as the corresponding action type.
   static ParserAction ShiftAction(int tag) { return tag; }
 
-  // The tagger transition system doesn't look at the dependency tree, so it
+  // The morpher transition system doesn't look at the dependency tree, so it
   // allows non-projective trees.
   bool AllowsNonProjective() const override { return true; }
 
@@ -178,7 +172,7 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
   int NumActionTypes() const override { return 1; }
 
   // Returns the number of possible actions.
-  int NumActions(int num_labels) const override { return tag_map_->Size(); }
+  int NumActions(int num_labels) const override { return label_set_->Size(); }
 
   // The default action for a given state is assigning the most frequent tag.
   ParserAction GetDefaultAction(const ParserState &state) const override {
@@ -221,8 +215,8 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
   // Returns a string representation of a parser action.
   string ActionAsString(ParserAction action,
                         const ParserState &state) const override {
-    return tensorflow::strings::StrCat("SHIFT(", tag_map_->GetTerm(action),
-                                       ")");
+    return tensorflow::strings::StrCat(
+        "SHIFT(", label_set_->Lookup(action).ShortDebugString(), ")");
   }
 
   // No state is deterministic in this transition system.
@@ -232,62 +226,73 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
 
   // Returns a new transition state to be used to enhance the parser state.
   ParserTransitionState *NewTransitionState(bool training_mode) const override {
-    return new TaggerTransitionState(tag_map_, tag_to_category_);
+    return new MorphologyTransitionState(label_set_);
   }
 
   // Downcasts the const ParserTransitionState in ParserState to a const
-  // TaggerTransitionState.
-  static const TaggerTransitionState &TransitionState(
+  // MorphologyTransitionState.
+  static const MorphologyTransitionState &TransitionState(
       const ParserState &state) {
-    return *static_cast<const TaggerTransitionState *>(
+    return *static_cast<const MorphologyTransitionState *>(
         state.transition_state());
   }
 
   // Downcasts the ParserTransitionState in ParserState to an
-  // TaggerTransitionState.
-  static TaggerTransitionState *MutableTransitionState(ParserState *state) {
-    return static_cast<TaggerTransitionState *>(
+  // MorphologyTransitionState.
+  static MorphologyTransitionState *MutableTransitionState(ParserState *state) {
+    return static_cast<MorphologyTransitionState *>(
         state->mutable_transition_state());
   }
 
   // Input for the tag map. Not owned.
-  TaskInput *input_tag_map_ = nullptr;
+  TaskInput *input_label_set_ = nullptr;
 
   // Tag map used for conversions between integer and string representations
-  // part of speech tags. Owned through SharedStore.
-  const TermFrequencyMap *tag_map_ = nullptr;
-
-  // Input for the tag to category map. Not owned.
-  TaskInput *input_tag_to_category_ = nullptr;
-
-  // Tag to category map. Owned through SharedStore.
-  const TagToCategoryMap *tag_to_category_ = nullptr;
-
-  bool join_category_to_pos_ = false;
+  // morphology labels. Owned through SharedStore.
+  const MorphologyLabelSet *label_set_;
 };
 
-REGISTER_TRANSITION_SYSTEM("tagger", TaggerTransitionSystem);
+REGISTER_TRANSITION_SYSTEM("morpher", MorphologyTransitionSystem);
 
 // Feature function for retrieving the tag assigned to a token by the tagger
 // transition system.
-class PredictedTagFeatureFunction
-    : public BasicParserSentenceFeatureFunction<Tag> {
+class PredictedMorphTagFeatureFunction : public ParserIndexFeatureFunction {
  public:
-  PredictedTagFeatureFunction() {}
+  PredictedMorphTagFeatureFunction() {}
 
-  // Gets the TaggerTransitionState from the parser state and reads the assigned
+  // Determines tag map location.
+  void Setup(TaskContext *context) override {
+    context->GetInput("morph-label-set", "recordio", "token-morphology");
+  }
+
+  // Reads tag map.
+  void Init(TaskContext *context) override {
+    const string fname =
+        TaskContext::InputFile(*context->GetInput("morph-label-set"));
+    label_set_ = SharedStore::Get<MorphologyLabelSet>(fname, fname);
+    set_feature_type(new FullLabelFeatureType(name(), label_set_));
+  }
+
+  // Gets the MorphologyTransitionState from the parser state and reads the
+  // assigned
   // tag at the focus index. Returns -1 if the focus is not within the sentence.
   FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
                        int focus, const FeatureVector *result) const override {
     if (focus < 0 || focus >= state.sentence().token_size()) return -1;
-    return static_cast<const TaggerTransitionState *>(state.transition_state())
+    return static_cast<const MorphologyTransitionState *>(
+               state.transition_state())
         ->Tag(focus);
   }
 
  private:
-  TF_DISALLOW_COPY_AND_ASSIGN(PredictedTagFeatureFunction);
+  // Tag map used for conversions between integer and string representations
+  // part of speech tags. Owned through SharedStore.
+  const MorphologyLabelSet *label_set_;
+
+  TF_DISALLOW_COPY_AND_ASSIGN(PredictedMorphTagFeatureFunction);
 };
 
-REGISTER_PARSER_IDX_FEATURE_FUNCTION("pred-tag", PredictedTagFeatureFunction);
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("pred-morph-tag",
+                                     PredictedMorphTagFeatureFunction);
 
 }  // namespace syntaxnet

@@ -62,7 +62,7 @@ string Join(const std::vector<T> &s, const char *sep) {
   return result;
 }
 
-string JoinPath(std::initializer_list<StringPiece> paths);
+string JoinPath(std::initializer_list<tensorflow::StringPiece> paths);
 
 size_t RemoveLeadingWhitespace(tensorflow::StringPiece *text);
 
@@ -164,6 +164,64 @@ class PunctuationUtil {
 };
 
 void NormalizeDigits(string *form);
+
+// Helper type to mark missing c-tor argument types
+// for Type's c-tor in LazyStaticPtr<Type, ...>.
+struct NoArg {};
+
+template <typename Type, typename Arg1 = NoArg, typename Arg2 = NoArg,
+          typename Arg3 = NoArg>
+class LazyStaticPtr {
+ public:
+  typedef Type element_type;  // per smart pointer convention
+
+  // Pretend to be a pointer to Type (never NULL due to on-demand creation):
+  Type &operator*() const { return *get(); }
+  Type *operator->() const { return get(); }
+
+  // Named accessor/initializer:
+  Type *get() const {
+    if (!ptr_) Initialize(this);
+    return ptr_;
+  }
+
+ public:
+  // All the data is public and LazyStaticPtr has no constructors so that we can
+  // initialize LazyStaticPtr objects with the "= { arg_value, ... }" syntax.
+  // Clients of LazyStaticPtr must not access the data members directly.
+
+  // Arguments for Type's c-tor
+  // (unused NoArg-typed arguments consume either no space, or 1 byte to
+  //  ensure address uniqueness):
+  Arg1 arg1_;
+  Arg2 arg2_;
+  Arg3 arg3_;
+
+  // The object we create and show.
+  mutable Type *ptr_;
+
+ private:
+  template <typename A1, typename A2, typename A3>
+  static Type *Factory(const A1 &a1, const A2 &a2, const A3 &a3) {
+    return new Type(a1, a2, a3);
+  }
+
+  template <typename A1, typename A2>
+  static Type *Factory(const A1 &a1, const A2 &a2, NoArg a3) {
+    return new Type(a1, a2);
+  }
+
+  template <typename A1>
+  static Type *Factory(const A1 &a1, NoArg a2, NoArg a3) {
+    return new Type(a1);
+  }
+
+  static Type *Factory(NoArg a1, NoArg a2, NoArg a3) { return new Type(); }
+
+  static void Initialize(const LazyStaticPtr *lsp) {
+    lsp->ptr_ = Factory(lsp->arg1_, lsp->arg2_, lsp->arg3_);
+  }
+};
 
 }  // namespace utils
 }  // namespace syntaxnet

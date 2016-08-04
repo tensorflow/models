@@ -144,7 +144,7 @@ class StdIn : public tensorflow::RandomAccessFile {
 // Reads sentence protos from a text file.
 class TextReader {
  public:
-  explicit TextReader(const TaskInput &input) {
+  explicit TextReader(const TaskInput &input, TaskContext *context) {
     CHECK_EQ(input.record_format_size(), 1)
         << "TextReader only supports inputs with one record format: "
         << input.DebugString();
@@ -153,6 +153,7 @@ class TextReader {
         << input.DebugString();
     filename_ = TaskContext::InputFile(input);
     format_.reset(DocumentFormat::Create(input.record_format(0)));
+    format_->Setup(context);
     Reset();
   }
 
@@ -202,7 +203,7 @@ class TextReader {
 // Writes sentence protos to a text conll file.
 class TextWriter {
  public:
-  explicit TextWriter(const TaskInput &input) {
+  explicit TextWriter(const TaskInput &input, TaskContext *context) {
     CHECK_EQ(input.record_format_size(), 1)
         << "TextWriter only supports files with one record format: "
         << input.DebugString();
@@ -211,6 +212,7 @@ class TextWriter {
         << input.DebugString();
     filename_ = TaskContext::InputFile(input);
     format_.reset(DocumentFormat::Create(input.record_format(0)));
+    format_->Setup(context);
     if (filename_ != "-") {
       TF_CHECK_OK(
           tensorflow::Env::Default()->NewWritableFile(filename_, &file_));

@@ -38,6 +38,8 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
   DocumentFormat() {}
   virtual ~DocumentFormat() {}
 
+  virtual void Setup(TaskContext *context) {}
+
   // Reads a record from the given input buffer with format specific logic.
   // Returns false if no record could be read because we reached end of file.
   virtual bool ReadRecord(tensorflow::io::InputBuffer *buffer,

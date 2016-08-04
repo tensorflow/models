@@ -166,6 +166,9 @@ REGISTER_PARSER_IDX_FEATURE_FUNCTION("label", LabelFeatureFunction);
 typedef BasicParserSentenceFeatureFunction<Word> WordFeatureFunction;
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("word", WordFeatureFunction);
 
+typedef BasicParserSentenceFeatureFunction<Char> CharFeatureFunction;
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("char", CharFeatureFunction);
+
 typedef BasicParserSentenceFeatureFunction<Tag> TagFeatureFunction;
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("tag", TagFeatureFunction);
 
@@ -174,6 +177,21 @@ REGISTER_PARSER_IDX_FEATURE_FUNCTION("digit", DigitFeatureFunction);
 
 typedef BasicParserSentenceFeatureFunction<Hyphen> HyphenFeatureFunction;
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("hyphen", HyphenFeatureFunction);
+
+typedef BasicParserSentenceFeatureFunction<Capitalization>
+    CapitalizationFeatureFunction;
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("capitalization",
+                                     CapitalizationFeatureFunction);
+
+typedef BasicParserSentenceFeatureFunction<PunctuationAmount>
+    PunctuationAmountFeatureFunction;
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("punctuation-amount",
+                                     PunctuationAmountFeatureFunction);
+
+typedef BasicParserSentenceFeatureFunction<Quote>
+    QuoteFeatureFunction;
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("quote",
+                                     QuoteFeatureFunction);
 
 typedef BasicParserSentenceFeatureFunction<PrefixFeature> PrefixFeatureFunction;
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("prefix", PrefixFeatureFunction);
