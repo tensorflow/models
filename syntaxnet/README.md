@@ -598,6 +598,7 @@ To ask questions or report issues please post on Stack Overflow with the tag
 [syntaxnet](http://stackoverflow.com/questions/tagged/syntaxnet)
 or open an issue on the tensorflow/models
 [issues tracker](https://github.com/tensorflow/models/issues).
+Please assign SyntaxNet issues to @calberti or @andorardo.
 
 ## Credits
 
