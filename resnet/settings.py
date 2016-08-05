@@ -36,13 +36,12 @@ tf.app.flags.DEFINE_bool('eval_once', False,
                          'Whether evaluate the model only once.')
 
 # Path Settings
-tf.app.flags.DEFINE_string('summary_dir', '/home/wangguanshuo/resnet/resnet_summary/google_stoc', 
 	                       'Directory to keep event log')
 
-tf.app.flags.DEFINE_string('delimeter', '\t', "Delimeter of the list")
-tf.app.flags.DEFINE_string('train_dir', '/home/wangguanshuo/resnet/resnet_model/google_stoc',
+tf.app.flags.DEFINE_string('delimeter', ' ', "Delimeter of the list")
+tf.app.flags.DEFINE_string('train_dir', 'google_stoc',
                            'Directory to keep trained model.')
-tf.app.flags.DEFINE_string('train_list_path', '/home/wangguanshuo/lists/msra/training.npy', 
+tf.app.flags.DEFINE_string('train_list_path', '', 
 	                       'Filename for training data list.')
 
 tf.app.flags.DEFINE_string('eval_dir', '',
