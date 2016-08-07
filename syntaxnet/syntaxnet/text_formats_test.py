@@ -83,6 +83,29 @@ class TextFormatsTest(test_util.TensorFlowTestCase):
       self.assertEqual(' '.join([t.word for t in sentence_doc.token]),
                        tokenization)
 
+  def CheckUntokenizedDoc(self, sentence, words, starts, ends):
+    self.WriteContext('untokenized-text')
+    logging.info('Writing text file to: %s', self.corpus_file)
+    with open(self.corpus_file, 'w') as f:
+      f.write(sentence)
+    sentence, _ = gen_parser_ops.document_source(
+        self.context_file, batch_size=1)
+    with self.test_session() as sess:
+      sentence_doc = self.ReadNextDocument(sess, sentence)
+      self.assertEqual(len(sentence_doc.token), len(words))
+      self.assertEqual(len(sentence_doc.token), len(starts))
+      self.assertEqual(len(sentence_doc.token), len(ends))
+      for i, token in enumerate(sentence_doc.token):
+        self.assertEqual(token.word.encode('utf-8'), words[i])
+        self.assertEqual(token.start, starts[i])
+        self.assertEqual(token.end, ends[i])
+
+  def testUntokenized(self):
+    self.CheckUntokenizedDoc('一个测试', ['一', '个', '测', '试'],
+                             [0, 3, 6, 9], [2, 5, 8, 11])
+    self.CheckUntokenizedDoc('Hello ', ['H', 'e', 'l', 'l', 'o', ' '],
+                             [0, 1, 2, 3, 4, 5], [0, 1, 2, 3, 4, 5])
+
   def testSimple(self):
     self.CheckTokenization('Hello, world!', 'Hello , world !')
     self.CheckTokenization('"Hello"', "`` Hello ''")

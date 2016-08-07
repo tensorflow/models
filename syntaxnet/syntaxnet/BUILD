@@ -132,6 +132,7 @@ cc_library(
     srcs = ["text_formats.cc"],
     deps = [
         ":document_format",
+        ":segmenter_utils",
         ":sentence_proto",
     ],
     alwayslink = 1,
@@ -558,7 +559,9 @@ cc_test(
     deps = [
         ":parser_transitions",
         ":sentence_proto",
+        ":task_context",
         ":test_main",
+        ":workspace",
     ],
 )
 
@@ -646,6 +649,7 @@ py_binary(
         ":graph_builder",
         ":sentence_py_pb2",
         ":structured_graph_builder",
+        ":task_spec_py_pb2",
     ],
 )
 
