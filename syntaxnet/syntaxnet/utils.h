@@ -49,7 +49,12 @@ T ParseUsing(const string &str, T defval,
 
 string CEscape(const string &src);
 
+// Splits the given string on every occurrence of the given delimiter char.
 std::vector<string> Split(const string &text, char delim);
+
+// Splits the given string on the first occurrence of the given delimiter char,
+// or returns the given string if the given delimiter is not found.
+std::vector<string> SplitOne(const string &text, char delim);
 
 template <typename T>
 string Join(const std::vector<T> &s, const char *sep) {
