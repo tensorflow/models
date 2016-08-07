@@ -795,7 +795,7 @@ DEFINE_CHAR_PROPERTY(separator, prop) {
 DEFINE_CHAR_PROPERTY_AS_SET(digit,
   RANGE('0', '9'),
   RANGE(0x0660, 0x0669),  // Arabic-Indic digits
-  // TODO(syntaxnet): Add all other forms of digits  // google-only
+
   RANGE(0x06F0, 0x06F9),  // Eastern Arabic-Indic digits
 )
 

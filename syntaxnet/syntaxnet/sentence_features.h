@@ -243,7 +243,7 @@ class TermFrequencyMapSetFeature : public TokenLookupSetFeature {
   void Init(TaskContext *context) override;
 
   // Number of unique values.
-  // TODO(syntaxnet): should be term_map_->Size() + 1  // google only
+
   int64 NumValues() const override { return term_map_->Size(); }
 
   // Special value for strings not in the map.
