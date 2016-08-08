@@ -2,17 +2,17 @@
 # sentence per line.
 #
 # Example usage:
-#  blaze build -c opt nlp/saft/components/dependencies/opensource:parser_eval
+#  bazel build syntaxnet:parser_eval
 #  cat untokenized-sentences.txt |
-#    nlp/saft/components/dependencies/opensource/models/parsey_universal/tokenize_zh.sh \
+#    syntaxnet/models/parsey_universal/tokenize_zh.sh \
 #    $MODEL_DIRECTORY > output.conll
 #
 # The traditional Chinese model can be downloaded from
 #  http://download.tensorflow.org/models/parsey_universal/Chinese.zip
 #
 
-PARSER_EVAL=blaze-bin/nlp/saft/components/dependencies/opensource/parser_eval
-CONTEXT=nlp/saft/components/dependencies/opensource/models/parsey_universal/context-tokenize-zh.pbtxt
+PARSER_EVAL=bazel-bin/syntaxnet/parser_eval
+CONTEXT=syntaxnet/models/parsey_universal/context-tokenize-zh.pbtxt
 INPUT_FORMAT=stdin-untoken
 MODEL_DIR=$1
 

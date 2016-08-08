@@ -2,14 +2,14 @@
 # dependency parser on a text file, with one sentence per line.
 #
 # Example usage:
-#  blaze build -c opt nlp/saft/components/dependencies/opensource:parser_eval
+#  bazel build syntaxnet:parser_eval
 #  cat sentences.txt |
-#    nlp/saft/components/dependencies/opensource/models/parsey_universal/parse.sh \
+#    syntaxnet/models/parsey_universal/parse.sh \
 #    $MODEL_DIRECTORY > output.conll
 #
 # To run on a conll formatted file, add the --conll command line argument:
 #  cat sentences.conll |
-#    nlp/saft/components/dependencies/opensource/models/parsey_universal/parse.sh \
+#    syntaxnet/models/parsey_universal/parse.sh \
 #    --conll $MODEL_DIRECTORY > output.conll
 #
 # Models can be downloaded from
@@ -18,8 +18,8 @@
 #  https://github.com/tensorflow/models/blob/master/syntaxnet/universal.md
 #
 
-PARSER_EVAL=blaze-bin/nlp/saft/components/dependencies/opensource/parser_eval
-CONTEXT=nlp/saft/components/dependencies/opensource/models/parsey_universal/context.pbtxt
+PARSER_EVAL=bazel-bin/syntaxnet/parser_eval
+CONTEXT=syntaxnet/models/parsey_universal/context.pbtxt
 if [[ "$1" == "--conll" ]]; then
   INPUT_FORMAT=stdin-conll
   shift

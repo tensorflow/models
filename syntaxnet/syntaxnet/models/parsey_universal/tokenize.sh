@@ -1,9 +1,9 @@
 # A script that runs a tokenizer on a text file with one sentence per line.
 #
 # Example usage:
-#  blaze build -c opt nlp/saft/components/dependencies/opensource:parser_eval
+#  bazel build syntaxnet:parser_eval
 #  cat untokenized-sentences.txt |
-#    nlp/saft/components/dependencies/opensource/models/parsey_universal/tokenize.sh \
+#    syntaxnet/models/parsey_universal/tokenize.sh \
 #    $MODEL_DIRECTORY > output.conll
 #
 # Models can be downloaded from
@@ -12,8 +12,8 @@
 #  https://github.com/tensorflow/models/blob/master/syntaxnet/universal.md
 #
 
-PARSER_EVAL=blaze-bin/nlp/saft/components/dependencies/opensource/parser_eval
-CONTEXT=nlp/saft/components/dependencies/opensource/models/parsey_universal/context.pbtxt
+PARSER_EVAL=bazel-bin/syntaxnet/parser_eval
+CONTEXT=syntaxnet/models/parsey_universal/context.pbtxt
 INPUT_FORMAT=stdin-untoken
 MODEL_DIR=$1
 
