@@ -1,4 +1,4 @@
-# Parsey Universal.
+# Parsey's Cousins.
 
 A collection of pretrained syntactic models is now available for download at
 `http://download.tensorflow.org/models/<language>.zip`
