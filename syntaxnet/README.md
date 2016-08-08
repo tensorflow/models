@@ -3,6 +3,10 @@
 *A TensorFlow implementation of the models described in [Andor et al. (2016)]
 (http://arxiv.org/pdf/1603.06042v1.pdf).*
 
+**Update**: Parsey models are now [available](universal.md) for 40 languages
+trained on Universal Dependencies datasets, with support for text segmentation
+and morphological analysis.
+
 At Google, we spend a lot of time thinking about how computer systems can read
 and understand human language in order to process it in intelligent ways. We are
 excited to share the fruits of our research with the broader community by
