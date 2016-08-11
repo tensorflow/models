@@ -67,7 +67,7 @@ TF-Slim offers several advantages over just the built-in tensorflow libraries:
     copy-and-pasting hyperparameter values and simplifies hyperparameter tuning.
 *   Makes developing models simple by providing commonly used [loss functions]
     (losses.py)
-*   Provides a concise [definition](inception.py) of [Inception v3]
+*   Provides a concise [definition](inception_model.py) of [Inception v3]
     (http://arxiv.org/abs/1512.00567) network architecture ready to be used
     out-of-the-box or subsumed into new models.
 
