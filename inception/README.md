@@ -94,7 +94,7 @@ DATA_DIR=$HOME/imagenet-data
 bazel build inception/download_and_preprocess_imagenet
 
 # run it
-bazel-bin/inception/download_and_preprocess_imagenet "${DATA_DIR}$"
+bazel-bin/inception/download_and_preprocess_imagenet "${DATA_DIR}"
 ```
 
 The final line of the output script should read:
