@@ -477,7 +477,9 @@ and `validation-?????-of-00001`, respectively.
 you will need to invoke [`build_image_data.py`](inception/data/build_image_data.py) on
 your custom data set. Please see the associated options and assumptions behind
 this script by reading the comments section of [`build_image_data.py`]
-(inception/data/build_image_data.py).
+(inception/data/build_image_data.py). Also, if your custom data has a different 
+number of examples or classes, you need to change the appropriate values in
+[`imagenet_data.py`](imagenet_data.py).
 
 The second piece you will need is a trained Inception v3 image model. You have
 the option of either training one yourself (See [How to Train from Scratch]
