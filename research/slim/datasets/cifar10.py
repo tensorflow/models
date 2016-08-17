@@ -15,7 +15,7 @@
 """Provides data for the Cifar10 dataset.
 
 The dataset scripts used to create the dataset can be found at:
-tensorflow/models/research/slim/datasets/download_and_convert_cifar10.py
+tensorflow_models/research/slim/data/create_cifar10_dataset.py
 """
 
 from __future__ import absolute_import
@@ -23,9 +23,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
 
-from datasets import dataset_utils
+import google3
+
+import tensorflow as tf
 
 slim = tf.contrib.slim
 
@@ -41,7 +42,7 @@ _ITEMS_TO_DESCRIPTIONS = {
 }
 
 
-def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
+def get_split(split_name, dataset_dir, file_pattern=None):
   """Gets a dataset tuple with instructions for reading cifar10.
 
   Args:
@@ -50,7 +51,6 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
     file_pattern: The file pattern to use when matching the dataset sources.
       It is assumed that the pattern contains a '%s' string so that the split
       name can be inserted.
-    reader: The TensorFlow reader type.
 
   Returns:
     A `Dataset` namedtuple.
@@ -64,10 +64,6 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   if not file_pattern:
     file_pattern = _FILE_PATTERN
   file_pattern = os.path.join(dataset_dir, file_pattern % split_name)
-
-  # Allowing None in the signature so that dataset_factory can use the default.
-  if not reader:
-    reader = tf.TFRecordReader
 
   keys_to_features = {
       'image/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
@@ -84,15 +80,10 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   decoder = slim.tfexample_decoder.TFExampleDecoder(
       keys_to_features, items_to_handlers)
 
-  labels_to_names = None
-  if dataset_utils.has_labels(dataset_dir):
-    labels_to_names = dataset_utils.read_label_file(dataset_dir)
-
   return slim.dataset.Dataset(
       data_sources=file_pattern,
-      reader=reader,
+      reader=tf.TFRecordReader,
       decoder=decoder,
       num_samples=SPLITS_TO_SIZES[split_name],
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
-      num_classes=_NUM_CLASSES,
-      labels_to_names=labels_to_names)
+      num_classes=_NUM_CLASSES)
