@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A library to train Inception using multiple replicas and GPU's with synchronous updates.
+"""A library to train Inception using multiple replicas with synchronous update.
 
 Please see accompanying README.md for details and instructions.
 """
@@ -22,8 +22,6 @@ from __future__ import print_function
 
 from datetime import datetime
 import os.path
-
-import re
 import time
 
 import numpy as np
@@ -34,9 +32,6 @@ from inception import inception_model as inception
 from inception.slim import slim
 
 FLAGS = tf.app.flags.FLAGS
-
-tf.app.flags.DEFINE_integer('num_gpus', 1,
-                            """How many GPUs to use.""")
 
 tf.app.flags.DEFINE_string('job_name', '', 'One of "ps", "worker"')
 tf.app.flags.DEFINE_string('ps_hosts', '',
@@ -91,42 +86,6 @@ RMSPROP_DECAY = 0.9                # Decay term for RMSProp.
 RMSPROP_MOMENTUM = 0.9             # Momentum in RMSProp.
 RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
-def _average_gradients(tower_grads):
-  """Calculate the average gradient for each shared variable across all towers.
-
-  Note that this function provides a synchronization point across all towers.
-
-  Args:
-    tower_grads: List of lists of (gradient, variable) tuples. The outer list
-      is over individual gradients. The inner list is over the gradient
-      calculation for each tower.
-  Returns:
-     List of pairs of (gradient, variable) where the gradient has been averaged
-     across all towers.
-  """
-  average_grads = []
-  for grad_and_vars in zip(*tower_grads):
-    # Note that each grad_and_vars looks like the following:
-    #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
-    grads = []
-    for g, _ in grad_and_vars:
-      # Add 0 dimension to the gradients to represent the tower.
-      expanded_g = tf.expand_dims(g, 0)
-
-      # Append on a 'tower' dimension which we will average over below.
-      grads.append(expanded_g)
-
-    # Average over the 'tower' dimension.
-    grad = tf.concat(0, grads)
-    grad = tf.reduce_mean(grad, 0)
-
-    # Keep in mind that the Variables are redundant because they are shared
-    # across towers. So .. we will just return the first tower's pointer to
-    # the Variable.
-    v = grad_and_vars[0][1]
-    grad_and_var = (grad, v)
-    average_grads.append(grad_and_var)
-  return average_grads
 
 def train(target, dataset, cluster_spec):
   """Train Inception on a dataset for a number of steps."""
@@ -151,7 +110,7 @@ def train(target, dataset, cluster_spec):
   is_chief = (FLAGS.task_id == 0)
 
   # Ops are assigned to worker by default.
-  with tf.device('/job:worker/task:%d/cpu:0' % FLAGS.task_id):
+  with tf.device('/job:worker/task:%d' % FLAGS.task_id):
     # Variables and its related init/assign ops are assigned to ps.
     with slim.scopes.arg_scope(
         [slim.variables.variable, slim.variables.global_step],
@@ -181,92 +140,43 @@ def train(target, dataset, cluster_spec):
                                       RMSPROP_DECAY,
                                       momentum=RMSPROP_MOMENTUM,
                                       epsilon=RMSPROP_EPSILON)
-      # Get images and labels for ImageNet and split the batch across GPUs.
-      assert FLAGS.batch_size % FLAGS.num_gpus == 0, (
-          'Batch size must be divisible by number of GPUs')
-      split_batch_size = int(FLAGS.batch_size / FLAGS.num_gpus)
 
-      # Override the number of preprocessing threads to account for the increased
-      # number of GPU towers.
-      num_preprocess_threads = FLAGS.num_preprocess_threads * FLAGS.num_gpus
       images, labels = image_processing.distorted_inputs(
           dataset,
-          num_preprocess_threads=num_preprocess_threads)
+          batch_size=FLAGS.batch_size,
+          num_preprocess_threads=FLAGS.num_preprocess_threads)
 
       # Number of classes in the Dataset label set plus 1.
       # Label 0 is reserved for an (unused) background class.
       num_classes = dataset.num_classes() + 1
+      logits = inception.inference(images, num_classes, for_training=True)
+      # Add classification loss.
+      inception.loss(logits, labels)
 
-      # Split the batch of images and labels for towers.
-      images_splits = tf.split(0, FLAGS.num_gpus, images)
-      labels_splits = tf.split(0, FLAGS.num_gpus, labels)
+      # Gather all of the losses including regularization losses.
+      losses = tf.get_collection(slim.losses.LOSSES_COLLECTION)
+      losses += tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
 
-      # Calculate the gradients for each model tower.
-      tower_grads = []
-      for i in xrange(FLAGS.num_gpus):
-        with tf.device('/gpu:%d' % i):
-          with tf.name_scope('%s_%d' % (inception.TOWER_NAME, i)) as scope:
-            
-            # Build inference Graph.
-            logits = inception.inference(images_splits[i], num_classes, for_training=True,scope=scope)
-            
-            # Add classification loss.
-            inception.loss(logits, labels_splits[i],batch_size=split_batch_size)
+      total_loss = tf.add_n(losses, name='total_loss')
 
-            # Assemble all of the losses for the current tower only.
-            losses = tf.get_collection(slim.losses.LOSSES_COLLECTION, scope)
+      if is_chief:
+        # Compute the moving average of all individual losses and the
+        # total loss.
+        loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
+        loss_averages_op = loss_averages.apply(losses + [total_loss])
 
-            # Calculate the total loss for the current tower.
-            regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-            total_loss = tf.add_n(losses + regularization_losses, name='total_loss')
+        # Attach a scalar summmary to all individual losses and the total loss;
+        # do the same for the averaged version of the losses.
+        for l in losses + [total_loss]:
+          loss_name = l.op.name
+          # Name each loss as '(raw)' and name the moving average version of the
+          # loss as the original loss name.
+          tf.scalar_summary(loss_name + ' (raw)', l)
+          tf.scalar_summary(loss_name, loss_averages.average(l))
 
-            if is_chief :
-              # Compute the moving average of all individual losses and the
-              # total loss.
-              loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
-              loss_averages_op = loss_averages.apply(losses + [total_loss])
-
-              # Attach a scalar summmary to all individual losses and the total loss; do the
-              # same for the averaged version of the losses.
-              for l in losses + [total_loss]:
-                # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
-                # session. This helps the clarity of presentation on TensorBoard.
-                loss_name = re.sub('%s_[0-9]*/' % inception.TOWER_NAME, '', l.op.name)
-                # Name each loss as '(raw)' and name the moving average version of the loss
-                # as the original loss name.
-                tf.scalar_summary(loss_name +' (raw)', l)
-                tf.scalar_summary(loss_name, loss_averages.average(l))
-
-              with tf.control_dependencies([loss_averages_op]):
-                total_loss = tf.identity(total_loss)
-
-            tf.get_variable_scope().reuse_variables()
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
-
-            batchnorm_updates = tf.get_collection(slim.ops.UPDATE_OPS_COLLECTION,scope)
-            assert batchnorm_updates, 'Batchnorm updates are missing'
-            batchnorm_updates_op = tf.group(*batchnorm_updates)
-            # Add dependency to compute batchnorm_updates.
-            with tf.control_dependencies([batchnorm_updates_op]):
-              total_loss = tf.identity(total_loss)
-
-            # Compute gradients with respect to the loss.
-            grads = opt.compute_gradients(total_loss)
-
-            # Keep track of the gradients across all towers.
-            tower_grads.append(grads)
-
-      # We must calculate the mean of each gradient. Note that this is the
-      # synchronization point across all towers.      
-      grads = _average_gradients(tower_grads)
-
-      # Add a summary to track the learning rate.
-      summaries.append(tf.scalar_summary('learning_rate', lr))
-
-      # Add histograms for gradients.
-      for grad, var in grads:
-        if grad is not None:
-          summaries.append(tf.histogram_summary(var.op.name + '/gradients', grad))
+        # Add dependency to compute loss_averages.
+        with tf.control_dependencies([loss_averages_op]):
+          total_loss = tf.identity(total_loss)
 
       # Track the moving averages of all trainable variables.
       # Note that we maintain a 'double-average' of the BatchNormalization
@@ -281,7 +191,7 @@ def train(target, dataset, cluster_spec):
 
       # Add histograms for model variables.
       for var in variables_to_average:
-        summaries.append(tf.histogram_summary(var.op.name, var))
+        tf.histogram_summary(var.op.name, var)
 
       # Create synchronous replica optimizer.
       opt = tf.train.SyncReplicasOptimizer(
@@ -291,6 +201,21 @@ def train(target, dataset, cluster_spec):
           total_num_replicas=num_workers,
           variable_averages=exp_moving_averager,
           variables_to_average=variables_to_average)
+
+      batchnorm_updates = tf.get_collection(slim.ops.UPDATE_OPS_COLLECTION)
+      assert batchnorm_updates, 'Batchnorm updates are missing'
+      batchnorm_updates_op = tf.group(*batchnorm_updates)
+      # Add dependency to compute batchnorm_updates.
+      with tf.control_dependencies([batchnorm_updates_op]):
+        total_loss = tf.identity(total_loss)
+
+      # Compute gradients with respect to the loss.
+      grads = opt.compute_gradients(total_loss)
+
+      # Add histograms for gradients.
+      for grad, var in grads:
+        if grad is not None:
+          tf.histogram_summary(var.op.name + '/gradients', grad)
 
       apply_gradients_op = opt.apply_gradients(grads, global_step=global_step)
 
@@ -307,8 +232,8 @@ def train(target, dataset, cluster_spec):
       # Create a saver.
       saver = tf.train.Saver()
 
-      # Build the summary operation from the last tower summaries.
-      summary_op = tf.merge_summary(summaries)
+      # Build the summary operation based on the TF collection of Summaries.
+      summary_op = tf.merge_all_summaries()
 
       # Build an initialization operation to run below.
       init_op = tf.initialize_all_variables()
