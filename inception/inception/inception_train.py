@@ -56,6 +56,8 @@ tf.app.flags.DEFINE_string('pretrained_model_checkpoint_path', '',
                            """If specified, restore this pretrained model """
                            """before beginning any training.""")
 
+tf.app.flags.DEFINE_integer('gpu_memory_fraction', 100,
+                            """Percent of gpu memory""")
 # **IMPORTANT**
 # Please note that this learning rate schedule is heavily dependent on the
 # hardware architecture, batch size and any changes to the model architecture
@@ -221,7 +223,7 @@ def train(dataset):
     # Label 0 is reserved for an (unused) background class.
     num_classes = dataset.num_classes() + 1
     
-     # Split the batch of images and labels for towers.
+    # Split the batch of images and labels for towers.
     images_splits = tf.split(0, FLAGS.num_gpus, images)
     labels_splits = tf.split(0, FLAGS.num_gpus, labels)
 
@@ -310,9 +312,11 @@ def train(dataset):
     # Start running operations on the Graph. allow_soft_placement must be set to
     # True to build towers on GPU, as some of the ops do not have GPU
     # implementations.
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=FLAGS.gpu_memory_fraction/100.0)
     sess = tf.Session(config=tf.ConfigProto(
         allow_soft_placement=True,
-        log_device_placement=FLAGS.log_device_placement))
+        log_device_placement=FLAGS.log_device_placement,
+        gpu_options=gpu_options))
     sess.run(init)
 
     if FLAGS.pretrained_model_checkpoint_path:
