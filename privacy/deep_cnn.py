@@ -176,7 +176,7 @@ def inference(images, dropout=False):
     if dropout:
       local4 = tf.nn.dropout(local4, 0.5, seed=FLAGS.dropout_seed)
 
-  # softmax, i.e. softmax(WX + b)
+  # compute logits
   with tf.variable_scope('softmax_linear') as scope:
     weights = _variable_with_weight_decay('weights', 
                                           [192, FLAGS.nb_labels],
@@ -309,7 +309,7 @@ def inference_deeper(images, dropout=False):
     if dropout:
       local2 = tf.nn.dropout(local2, 0.5, seed=FLAGS.dropout_seed)
 
-  # softmax, i.e. softmax(WX + b)
+  # compute logits
   with tf.variable_scope('softmax_linear') as scope:
     weights = _variable_with_weight_decay('weights',
                                           [192, FLAGS.nb_labels],

@@ -13,7 +13,7 @@ README when available.
 
 ## Dependencies
 
-This model uses `tensorflow` to perform numerical computations associated with 
+This model uses `TensorFlow` to perform numerical computations associated with 
 machine learning models, as well as common Python libraries like: `numpy`, 
 `scipy`, and `six`. Instructions to install these can be found in their 
 respective documentations. 
@@ -41,7 +41,7 @@ python train_teachers.py --nb_teachers=100 --teacher_id=10 --dataset=mnist
 
 Other flags like `train_dir` and `data_dir` should optionally be set to
 respectively point to the directory where model checkpoints and temporary data
-(like the dataset) should be save. The flag `max_steps` (default at 3000) 
+(like the dataset) should be saved. The flag `max_steps` (default at 3000) 
 controls the length of training. See `train_teachers.py` and `deep_cnn.py` 
 to find available flags and their descriptions.
 
