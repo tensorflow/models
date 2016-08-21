@@ -14,8 +14,7 @@
 # ==============================================================================
 """Converts cifar10 data to TFRecords file format with TF-Example protos.
 
-This script assumes that the python cifar10 dataset has been downloaded and
-unzipped from the URL below. Once downloaded, this script reads the files
+This script downloads the cifar10 data, uncompresses it, reads the files
 that make up the cifar10 data and creates two TFRecord datasets: one for train
 and one for test. Each TFRecord dataset is comprised of a set of TF-Example
 protocol buffers, each of which contain a single image and label.
@@ -24,29 +23,35 @@ The script should take several minutes to run.
 
 Usage:
 
-$ wget https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
-$ tar -xvf cifar-10-python.tar.gz
-$ bazel run tensorflow_models/research/slim/data:create_cifar10_dataset
-
+$ bazel run tensorflow_models/research/slim/data:create_cifar10_dataset \
+    -- --dataset_dir=[DIRECTORY WHERE THE DATA SHOULD BE SAVED]
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import cPickle
+import os
+import sys
+import tarfile
+
 import google3
 import numpy as np
+from six.moves import urllib
 import tensorflow as tf
 
-
 tf.app.flags.DEFINE_string(
-    'input_dir', None, 'The directory where the Cifar10 files are stored.')
-
-tf.app.flags.DEFINE_string(
-    'output_dir', None, 'The output directory where the TFRecords are saved.')
+    'dataset_dir',
+    None,
+    'The directory where the output TFRecords and temporary files are saved.')
+tf.app.flags.MarkFlagAsRequired('dataset_dir')
 
 FLAGS = tf.app.flags.FLAGS
 
+# The URL where the CIFAR data can be downloaded.
+_DATA_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+
+# The number of training files.
 _NUM_TRAIN_FILES = 5
 
 
@@ -111,8 +116,9 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
   labels = data['labels']
 
   for j in range(num_images):
-    tf.logging.info('Reading image %d/%d', offset + j + 1, offset + num_images)
-
+    if j % 100 == 0:
+      print('Reading file [%s], image %d/%d' % (
+          filename, offset + j + 1, offset + num_images))
     image = np.squeeze(images[j]).transpose((1, 2, 0))
     label = labels[j]
 
@@ -140,23 +146,69 @@ def _get_output_filename(split_name):
   Returns:
     An absolute file path.
   """
-  return '%s/cifar10_%s.tfrecord' % (FLAGS.output_dir, split_name)
+  return '%s/cifar10_%s.tfrecord' % (FLAGS.dataset_dir, split_name)
+
+
+def _download_and_uncompress_dataset(dataset_dir):
+  """Downloads cifar10 and uncompresses it locally.
+
+  Args:
+    dataset_dir: The directory where the temporary files are stored.
+  """
+  filename = _DATA_URL.split('/')[-1]
+  filepath = os.path.join(dataset_dir, filename)
+
+  if not os.path.exists(filepath):
+    def _progress(count, block_size, total_size):
+      sys.stdout.write('\r>> Downloading %s %.1f%%' % (
+          filename, float(count * block_size) / float(total_size) * 100.0))
+      sys.stdout.flush()
+    filepath, _ = urllib.request.urlretrieve(_DATA_URL, filepath, _progress)
+    print()
+    statinfo = os.stat(filepath)
+    print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
+    tarfile.open(filepath, 'r:gz').extractall(dataset_dir)
+
+
+def _clean_up_temporary_files(dataset_dir):
+  """Removes temporary files used to create the dataset.
+
+  Args:
+    dataset_dir: The directory where the temporary files are stored.
+  """
+  filename = _DATA_URL.split('/')[-1]
+  filepath = os.path.join(dataset_dir, filename)
+  tf.gfile.Remove(filepath)
+
+  tmp_dir = os.path.join(dataset_dir, 'cifar-10-batches-py')
+  tf.gfile.DeleteRecursively(tmp_dir)
 
 
 def main(_):
+  if not tf.gfile.Exists(FLAGS.dataset_dir):
+    tf.gfile.MakeDirs(FLAGS.dataset_dir)
+
+  _download_and_uncompress_dataset(FLAGS.dataset_dir)
+
   # First, process the training data:
   output_file = _get_output_filename('train')
   with tf.python_io.TFRecordWriter(output_file) as tfrecord_writer:
     offset = 0
     for i in range(_NUM_TRAIN_FILES):
-      filename = '%s/data_batch_%d' % (FLAGS.input_dir, i + 1)  # 1-indexed.
+      filename = os.path.join(FLAGS.dataset_dir,
+                              'cifar-10-batches-py',
+                              'data_batch_%d' % (i + 1))  # 1-indexed.
       offset = _add_to_tfrecord(filename, tfrecord_writer, offset)
 
   # Next, process the testing data:
   output_file = _get_output_filename('test')
   with tf.python_io.TFRecordWriter(output_file) as tfrecord_writer:
-    filename = '%s/test_batch' % FLAGS.input_dir
+    filename = os.path.join(FLAGS.dataset_dir,
+                            'cifar-10-batches-py',
+                            'test_batch')
     _add_to_tfrecord(filename, tfrecord_writer)
+
+  _clean_up_temporary_files(FLAGS.dataset_dir)
 
 if __name__ == '__main__':
   tf.app.run()
