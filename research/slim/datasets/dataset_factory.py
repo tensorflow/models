@@ -20,13 +20,15 @@ from __future__ import print_function
 
 import google3
 from datasets import cifar10
+from datasets import mnist
 
 datasets_map = {
     'cifar10': cifar10,
+    'mnist': mnist,
 }
 
 
-def get_dataset(name, split_name, dataset_dir, file_pattern=None):
+def get_dataset(name, split_name, dataset_dir, file_pattern=None, reader=None):
   """Given a dataset name and a split_name returns a Dataset.
 
   Args:
@@ -34,6 +36,8 @@ def get_dataset(name, split_name, dataset_dir, file_pattern=None):
     split_name: A train/test split name.
     dataset_dir: The directory where the dataset files are stored.
     file_pattern: The file pattern to use for matching the dataset source files.
+    reader: The subclass of tf.ReaderBase. If left as `None`, then the default
+      reader defined by each dataset is used.
 
   Returns:
     A `Dataset` class.

@@ -24,8 +24,24 @@ py_binary(
 )
 
 py_binary(
+    name = "create_mnist_dataset",
+    srcs = ["data/create_mnist_dataset.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_binary(
     name = "cifar10",
     srcs = ["datasets/cifar10.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "mnist",
+    srcs = ["datasets/mnist.py"],
     deps = [
         "//tensorflow",
     ],
@@ -36,6 +52,7 @@ py_library(
     srcs = ["datasets/dataset_factory.py"],
     deps = [
         ":cifar10",
+        ":mnist",
     ],
 )
 
