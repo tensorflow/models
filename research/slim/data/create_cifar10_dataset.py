@@ -23,8 +23,8 @@ The script should take several minutes to run.
 
 Usage:
 
-$ bazel run tensorflow_models/research/slim/data:create_cifar10_dataset \
-    -- --dataset_dir=[DIRECTORY WHERE THE DATA SHOULD BE SAVED]
+$ bazel build slim:create_cifar10_dataset
+$ .bazel-bin/slim/create_cifar10_dataset --dataset_dir=[DIRECTORY]
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -209,6 +209,7 @@ def main(_):
     _add_to_tfrecord(filename, tfrecord_writer)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
+  print('Finished extracting the Cifar10 dataset!')
 
 if __name__ == '__main__':
   tf.app.run()

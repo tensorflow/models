@@ -23,8 +23,8 @@ The script should take about a minute to run.
 
 Usage:
 
-$ bazel run tensorflow_models/research/slim/data:create_mnist_dataset \
-    -- --dataset_dir=[DIRECTORY WHERE THE DATA SHOULD BE SAVED]
+$ bazel build slim:create_mnist_dataset
+$ .bazel-bin/slim/create_mnist_dataset --dataset_dir=[DIRECTORY]
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -234,6 +234,7 @@ def main(_):
     _add_to_tfrecord(data_filename, labels_filename, 10000, tfrecord_writer)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
+  print('\nFinished extracting the MNIST dataset!')
 
 if __name__ == '__main__':
   tf.app.run()
