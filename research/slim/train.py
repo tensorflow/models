@@ -33,7 +33,8 @@ tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
 
 tf.app.flags.DEFINE_string(
-    'train_log_dir', '/tmp/tfmodel/', 'Directory where to write event logs.')
+    'train_dir', '/tmp/tfmodel/',
+    'Directory where checkpoints and event logs are written to.')
 
 tf.app.flags.DEFINE_integer('worker_replicas', 1, 'Number of worker replicas.')
 
@@ -145,7 +146,7 @@ tf.app.flags.DEFINE_float(
     'If left as None, then moving averages are not used.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_name', 'cifar10', 'The name of the dataset to load.')
+    'dataset_name', 'imagenet', 'The name of the dataset to load.')
 
 tf.app.flags.DEFINE_string(
     'dataset_split_name', 'train', 'The name of the train/test split.')
@@ -162,6 +163,19 @@ tf.app.flags.DEFINE_integer(
 
 tf.app.flags.DEFINE_float(
     'weight_decay', 0.0001, 'The weight decay on the model weights.')
+
+#####################
+# Fine-Tuning Flags #
+#####################
+
+tf.app.flags.DEFINE_string(
+    'checkpoint_path', None,
+    'The path to a checkpoint from which to fine-tune.')
+
+tf.app.flags.DEFINE_string(
+    'checkpoint_exclude_scopes', None,
+    'Comma-separated list of scopes to include when fine-tuning '
+    'from a checkpoint.')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -268,6 +282,47 @@ def _configure_summaries(total_loss, learning_rate):
   tf.scalar_summary('training/Learning Rate', learning_rate)
 
 
+def _get_init_fn():
+  """Returns a function run by the chief worker to warm-start the training.
+
+  Note that the init_fn is only run when initializing the model during the very
+  first global step.
+
+  Returns:
+    An init function run by the supervisor.
+  """
+  if FLAGS.checkpoint_path is None:
+    return None
+
+  # Warn the user if a checkpoint exists in the train_dir. Then we'll be
+  # ignoring the checkpoint anyway.
+  if tf.train.latest_checkpoint(FLAGS.train_dir):
+    tf.logging.info(
+        'Ignoring --checkpoint_path because a checkpoint already exists in %s'
+        % FLAGS.train_dir)
+    return None
+
+  exclusions = None
+  if FLAGS.checkpoint_exclude_scopes:
+    exclusions = [scope.strip()
+                  for scope in FLAGS.checkpoint_exclude_scopes.split(',')]
+
+  # TODO(sguada) variables.filter_variables()
+  variables_to_restore = []
+  for var in slim.get_model_variables():
+    excluded = False
+    for exclusion in exclusions:
+      if var.op.name.startswith(exclusion):
+        excluded = True
+        break
+    if not excluded:
+      variables_to_restore.append(var)
+
+  return slim.assign_from_checkpoint_fn(
+      FLAGS.checkpoint_path,
+      variables_to_restore)
+
+
 def main(_):
   with tf.Graph().as_default():
     ######################
@@ -360,9 +415,10 @@ def main(_):
     ###########################
     slim.learning.train(
         train_tensor,
-        logdir=FLAGS.train_log_dir,
+        logdir=FLAGS.train_dir,
         master=FLAGS.master,
         is_chief=(FLAGS.task == 0),
+        init_fn=_get_init_fn(),
         save_summaries_secs=FLAGS.save_summaries_secs,
         save_interval_secs=FLAGS.save_interval_secs,
         sync_optimizer=optimizer if FLAGS.sync_replicas else None)
