@@ -70,8 +70,27 @@ py_binary(
     srcs = ["eval.py"],
     deps = [
         ":dataset_factory",
+        ":model_deploy",
         ":model_factory",
         ":preprocessing",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "model_deploy",
+    srcs = ["models/model_deploy.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "model_deploy_test",
+    srcs = ["models/model_deploy_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":model_deploy",
         "//tensorflow",
     ],
 )
@@ -98,6 +117,7 @@ py_binary(
     srcs = ["train.py"],
     deps = [
         ":dataset_factory",
+        ":model_deploy",
         ":model_factory",
         ":preprocessing",
         "//tensorflow",
