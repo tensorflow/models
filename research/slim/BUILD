@@ -16,16 +16,16 @@ package_group(
 )
 
 py_binary(
-    name = "create_cifar10_dataset",
-    srcs = ["data/create_cifar10_dataset.py"],
+    name = "download_and_convert_cifar10",
+    srcs = ["datasets/download_and_convert_cifar10.py"],
     deps = [
         "//tensorflow",
     ],
 )
 
 py_binary(
-    name = "create_mnist_dataset",
-    srcs = ["data/create_mnist_dataset.py"],
+    name = "download_and_convert_mnist",
+    srcs = ["datasets/download_and_convert_mnist.py"],
     deps = [
         "//tensorflow",
     ],

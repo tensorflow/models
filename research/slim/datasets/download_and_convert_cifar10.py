@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Converts cifar10 data to TFRecords file format with TF-Example protos.
+r"""Downloads and converts cifar10 data to TFRecords of TF-Example protos.
 
 This script downloads the cifar10 data, uncompresses it, reads the files
 that make up the cifar10 data and creates two TFRecord datasets: one for train
@@ -22,9 +22,8 @@ protocol buffers, each of which contain a single image and label.
 The script should take several minutes to run.
 
 Usage:
-
-$ bazel build slim:create_cifar10_dataset
-$ .bazel-bin/slim/create_cifar10_dataset --dataset_dir=[DIRECTORY]
+$ bazel build slim:download_and_convert_cifar10
+$ .bazel-bin/slim/download_and_convert_cifar10 --dataset_dir=[DIRECTORY]
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -81,7 +80,7 @@ def _bytes_feature(values):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
 
 
-def _encode_image(image):
+def _encode_png_image(image):
   """Encodes the given image using PNG encoding.
 
   Args:
@@ -122,7 +121,7 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
     image = np.squeeze(images[j]).transpose((1, 2, 0))
     label = labels[j]
 
-    png_string = _encode_image(image)
+    png_string = _encode_png_image(image)
 
     example = tf.train.Example(features=tf.train.Features(feature={
         'image/encoded': _bytes_feature(png_string),
@@ -209,8 +208,7 @@ def main(_):
     _add_to_tfrecord(filename, tfrecord_writer)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
-  print('Finished extracting the Cifar10 dataset!')
+  print('Finished converting the Cifar10 dataset!')
 
 if __name__ == '__main__':
   tf.app.run()
-

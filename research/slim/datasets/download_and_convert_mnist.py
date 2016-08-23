@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-r"""Converts MNIST data to TFRecords file format with TF-Example protos.
+r"""Downloads and converts MNIST data to TFRecords of TF-Example protos.
 
 This script downloads the MNIST data, uncompresses it, reads the files
 that make up the MNIST data and creates two TFRecord datasets: one for train
@@ -23,8 +23,8 @@ The script should take about a minute to run.
 
 Usage:
 
-$ bazel build slim:create_mnist_dataset
-$ .bazel-bin/slim/create_mnist_dataset --dataset_dir=[DIRECTORY]
+$ bazel build slim:download_and_convert_mnist
+$ .bazel-bin/slim/download_and_convert_mnist --dataset_dir=[DIRECTORY]
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -39,7 +39,6 @@ import numpy as np
 from six.moves import urllib
 import tensorflow as tf
 
-Example = tf.train.Example
 
 tf.app.flags.DEFINE_string(
     'dataset_dir',
@@ -149,7 +148,7 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
           sys.stdout.flush()
 
         png_string = sess.run(encoded_png, feed_dict={image: images[j]})
-        example = Example(features=tf.train.Features(feature={
+        example = tf.train.Example(features=tf.train.Features(feature={
             'image/encoded': _bytes_feature(png_string),
             'image/format': _bytes_feature('png'),
             'image/class/label': _int64_feature(labels[j]),
@@ -234,8 +233,7 @@ def main(_):
     _add_to_tfrecord(data_filename, labels_filename, 10000, tfrecord_writer)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
-  print('\nFinished extracting the MNIST dataset!')
+  print('\nFinished converting the MNIST dataset!')
 
 if __name__ == '__main__':
   tf.app.run()
-
