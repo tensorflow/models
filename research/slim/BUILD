@@ -40,6 +40,14 @@ py_binary(
 )
 
 py_binary(
+    name = "imagenet",
+    srcs = ["datasets/imagenet.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_binary(
     name = "mnist",
     srcs = ["datasets/mnist.py"],
     deps = [
@@ -52,6 +60,7 @@ py_library(
     srcs = ["datasets/dataset_factory.py"],
     deps = [
         ":cifar10",
+        ":imagenet",
         ":mnist",
     ],
 )
