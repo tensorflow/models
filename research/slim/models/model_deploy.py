@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Deploy Slim models on multiple towers and replicas.
+"""Deploy Slim models across multiple clones and replicas.
 
 # TODO(sguada) docstring paragraph by (a) motivating the need for the file and
 # (b) defining clones.
@@ -22,15 +22,15 @@
 # which captures A, B and C, an input_fn which loads data.. etc
 
 To easily train a model on multiple GPUs or across multiple machines this
-module provides a set of helper functions: `create_towers`,
-`optimize_towers` and `deploy`.
+module provides a set of helper functions: `create_clones`,
+`optimize_clones` and `deploy`.
 
 Usage:
 
   g = tf.Graph()
 
   # Set up DeploymentConfig
-  config = slim.DeploymentConfig(num_towers=2, use_gpu=True)
+  config = slim.DeploymentConfig(num_clones=2, use_gpu=True)
 
   # Create the global step on the device storing the variables.
   with tf.device(config.variables_device()):
@@ -46,37 +46,37 @@ Usage:
     optimizer = tf.train.MomentumOptimizer(FLAGS.learning_rate, FLAGS.momentum)
 
   # Define the model including the loss.
-  def tower_fn(inputs_queue):
+  def model_fn(inputs_queue):
     images, labels = inputs_queue.dequeue()
     predictions = CreateNetwork(images)
     slim.losses.log_loss(predictions, labels)
 
-  tower_dp = slim.deploy(config, tower_fn, [inputs_queue], optimizer=optimizer)
+  model_dp = slim.deploy(config, model_fn, [inputs_queue], optimizer=optimizer)
 
   # Run training.
-  slim.learning.train(tower_dp.train_op, my_log_dir,
-                      summary_op=tower_dp.summary_op)
+  slim.learning.train(model_dp.train_op, my_log_dir,
+                      summary_op=model_dp.summary_op)
 
-Tower namedtuple, holds together the values associated with each call to
-tower_fn:
-  * outputs: The return values of the calls to `tower_fn()`.
-  * scope: The scope used to create the tower.
-  * device: The device used to create the tower.
+The Clone namedtuple holds together the values associated with each call to
+model_fn:
+  * outputs: The return values of the calls to `model_fn()`.
+  * scope: The scope used to create the clone.
+  * device: The device used to create the clone.
 
-DeployedTower namedtuple, holds together the values needed to train multiple
-towers:
+DeployedModel namedtuple, holds together the values needed to train multiple
+clones:
   * train_op: An operation that run the optimizer training op and include
-    all the update ops created by `tower_fn`. Present only if an optimizer
+    all the update ops created by `model_fn`. Present only if an optimizer
     was specified.
-  * summary_op: An operation that run the summaries created by `tower_fn`
+  * summary_op: An operation that run the summaries created by `model_fn`
     and process_gradients.
   * total_loss: A `Tensor` that contains the sum of all losses created by
-    `tower_fn` plus the regularization losses.
-  * towers: List of `Tower` tuples returned by `create_towers()`.
+    `model_fn` plus the regularization losses.
+  * clones: List of `Clone` tuples returned by `create_clones()`.
 
 DeploymentConfig parameters:
-  * num_towers: Number of model towers to deploy in each replica.
-  * use_gpu: True if towers should be deployed on GPUS.
+  * num_clones: Number of model clones to deploy in each replica.
+  * use_gpu: True if clones should be deployed on GPUS.
   * replica_id: Integer.  Index of the replica for which the model is
       deployed.  Usually 0 for the chief replica.
   * num_replicas: Number of replicas to use.
@@ -108,32 +108,32 @@ from tensorflow.python.ops import control_flow_ops
 slim = tf.contrib.slim
 
 
-__all__ = ['create_towers',
+__all__ = ['create_clones',
            'deploy',
-           'optimize_towers',
-           'DeployedTower',
+           'optimize_clones',
+           'DeployedModel',
            'DeploymentConfig',
-           'Tower',
+           'Clone',
           ]
 
 
-# Namedtuple used to represent a tower during deployment.
-Tower = collections.namedtuple('Tower',
-                               ['outputs',  # Whatever tower_fn() returned.
+# Namedtuple used to represent a clone during deployment.
+Clone = collections.namedtuple('Clone',
+                               ['outputs',  # Whatever model_fn() returned.
                                 'scope',  # The scope used to create it.
                                 'device',  # The device used to create.
                                ])
 
-# Namedtuple used to represent a Deployed Tower, returned by deploy().
-DeployedTower = collections.namedtuple('DeployedTower',
+# Namedtuple used to represent a DeployedModel, returned by deploy().
+DeployedModel = collections.namedtuple('DeployedModel',
                                        ['train_op',  # The `train_op`
                                         'summary_op',  # The `summary_op`
                                         'total_loss',  # The loss `Tensor`
-                                        'towers',  # A list of `Towers` tuples.
+                                        'clones',  # A list of `Clones` tuples.
                                        ])
 
 # Default parameters for DeploymentConfig
-_deployment_params = {'num_towers': 1,
+_deployment_params = {'num_clones': 1,
                       'use_gpu': True,
                       'replica_id': 0,
                       'num_replicas': 1,
@@ -142,139 +142,139 @@ _deployment_params = {'num_towers': 1,
                       'ps_job_name': 'ps'}
 
 
-def create_towers(config, tower_fn, args=None, kwargs=None):
-  """Creates multiple towers according to config using a `tower_fn`.
+def create_clones(config, model_fn, args=None, kwargs=None):
+  """Creates multiple clones according to config using a `model_fn`.
 
-  The returned values of `tower_fn(*args, **kwargs)` are collected along with
+  The returned values of `model_fn(*args, **kwargs)` are collected along with
   the scope and device used to created it in a namedtuple
-  `Tower(outputs, scope, device)`
+  `Clone(outputs, scope, device)`
 
-  Note: it is assumed that any loss created by `tower_fn` is collected at
+  Note: it is assumed that any loss created by `model_fn` is collected at
   the tf.GraphKeys.LOSSES collection.
 
-  To recover the losses, summaries or update_ops created by the tower use:
+  To recover the losses, summaries or update_ops created by the clone use:
   ```python
-    losses = tf.get_collection(tf.GraphKeys.LOSSES, tower.scope)
-    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, tower.scope)
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, tower.scope)
+    losses = tf.get_collection(tf.GraphKeys.LOSSES, clone.scope)
+    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, clone.scope)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, clone.scope)
   ```
 
   The deployment options are specified by the config object and support
-  deploying one or several towers on different GPUs and one or several replicas
-  of such towers.
+  deploying one or several clones on different GPUs and one or several replicas
+  of such clones.
 
-  The argument `tower_fn` is called `config.num_towers` times to create the
-  model towers as `tower_fn(*args, **kwargs)`.
+  The argument `model_fn` is called `config.num_clones` times to create the
+  model clones as `model_fn(*args, **kwargs)`.
 
   If `config` specifies deployment on multiple replicas then the default
-  tensorflow device is set appropriatly for each call to `tower_fn` and for the
+  tensorflow device is set appropriatly for each call to `model_fn` and for the
   slim variable creation functions: model and global variables will be created
-  on the `ps` device, the tower operations will be on the `worker` device.
+  on the `ps` device, the clone operations will be on the `worker` device.
 
   Args:
     config: A DeploymentConfig object.
-    tower_fn: A callable. Called as `tower_fn(*args, **kwargs)`
-    args: Optional list of arguments to pass to `tower_fn`.
-    kwargs: Optional list of keyword arguments to pass to `tower_fn`.
+    model_fn: A callable. Called as `model_fn(*args, **kwargs)`
+    args: Optional list of arguments to pass to `model_fn`.
+    kwargs: Optional list of keyword arguments to pass to `model_fn`.
 
   Returns:
-    A list of namedtuples `Tower`.
+    A list of namedtuples `Clone`.
   """
-  towers = []
+  clones = []
   args = args or []
   kwargs = kwargs or {}
   with slim.arg_scope([slim.model_variable, slim.variable],
                       device=config.variables_device()):
-    # Create towers.
-    for i in range(0, config.num_towers):
-      with tf.name_scope(config.tower_scope(i)) as tower_scope:
-        tower_device = config.tower_device(i)
-        with tf.device(tower_device):
+    # Create clones.
+    for i in range(0, config.num_clones):
+      with tf.name_scope(config.clone_scope(i)) as clone_scope:
+        clone_device = config.clone_device(i)
+        with tf.device(clone_device):
           with tf.variable_scope(tf.get_variable_scope(),
                                  reuse=True if i > 0 else None):
-            outputs = tower_fn(*args, **kwargs)
-          towers.append(Tower(outputs, tower_scope, tower_device))
-  return towers
+            outputs = model_fn(*args, **kwargs)
+          clones.append(Clone(outputs, clone_scope, clone_device))
+  return clones
 
 
-def _gather_tower_loss(tower, num_towers, regularization_losses):
-  """Gather the loss for a single tower.
+def _gather_clone_loss(clone, num_clones, regularization_losses):
+  """Gather the loss for a single clone.
 
   Args:
-    tower: A Tower namedtuple.
-    num_towers: The number of towers being deployed.
+    clone: A Clone namedtuple.
+    num_clones: The number of clones being deployed.
     regularization_losses: Possibly empty list of regularization_losses
-      to add to the tower losses.
+      to add to the clone losses.
 
   Returns:
-    A tensor for the total loss for the tower.  Can be None.
+    A tensor for the total loss for the clone.  Can be None.
   """
   # The return value.
   sum_loss = None
   # Individual components of the loss that will need summaries.
-  tower_loss = None
+  clone_loss = None
   regularization_loss = None
-  # Compute and aggregate losses on the tower device.
-  with tf.device(tower.device):
+  # Compute and aggregate losses on the clone device.
+  with tf.device(clone.device):
     all_losses = []
-    tower_losses = tf.get_collection(tf.GraphKeys.LOSSES, tower.scope)
-    if tower_losses:
-      tower_loss = tf.add_n(tower_losses, name='tower_loss')
-      if num_towers > 1:
-        tower_loss = tf.div(tower_loss, 1.0 * num_towers,
-                            name='scaled_tower_loss')
-      all_losses.append(tower_loss)
+    clone_losses = tf.get_collection(tf.GraphKeys.LOSSES, clone.scope)
+    if clone_losses:
+      clone_loss = tf.add_n(clone_losses, name='clone_loss')
+      if num_clones > 1:
+        clone_loss = tf.div(clone_loss, 1.0 * num_clones,
+                            name='scaled_clone_loss')
+      all_losses.append(clone_loss)
     if regularization_losses:
       regularization_loss = tf.add_n(regularization_losses,
                                      name='regularization_loss')
       all_losses.append(regularization_loss)
     if all_losses:
       sum_loss = tf.add_n(all_losses)
-  # Add the summaries out of the tower device block.
-  if tower_loss is not None:
-    tf.scalar_summary(tower.scope + '/tower_loss', tower_loss,
-                      name='tower_loss')
+  # Add the summaries out of the clone device block.
+  if clone_loss is not None:
+    tf.scalar_summary(clone.scope + '/clone_loss', clone_loss,
+                      name='clone_loss')
   if regularization_loss is not None:
     tf.scalar_summary('regularization_loss', regularization_loss,
                       name='regularization_loss')
   return sum_loss
 
 
-def _optimize_tower(optimizer, tower, num_towers, regularization_losses,
+def _optimize_clone(optimizer, clone, num_clones, regularization_losses,
                     kwargs=None):
-  """Compute losses and gradients for a single tower.
+  """Compute losses and gradients for a single clone.
 
   Args:
     optimizer: A tf.Optimizer  object.
-    tower: A Tower namedtuple.
-    num_towers: The number of towers being deployed.
+    clone: A Clone namedtuple.
+    num_clones: The number of clones being deployed.
     regularization_losses: Possibly empty list of regularization_losses
-      to add to the tower losses.
+      to add to the clone losses.
     kwargs: Dict of kwarg to pass to compute_gradients().
 
   Returns:
-    A tuple (tower_loss, tower_grads_and_vars).
-      - tower_loss: A tensor for the total loss for the tower.  Can be None.
-      - tower_grads_and_vars: List of (gradient, variable) for the tower.
+    A tuple (clone_loss, clone_grads_and_vars).
+      - clone_loss: A tensor for the total loss for the clone.  Can be None.
+      - clone_grads_and_vars: List of (gradient, variable) for the clone.
         Can be empty.
   """
-  sum_loss = _gather_tower_loss(tower, num_towers, regularization_losses)
-  tower_grad = None
+  sum_loss = _gather_clone_loss(clone, num_clones, regularization_losses)
+  clone_grad = None
   if sum_loss is not None:
-    with tf.device(tower.device):
-      tower_grad = optimizer.compute_gradients(sum_loss, **kwargs)
-  return sum_loss, tower_grad
+    with tf.device(clone.device):
+      clone_grad = optimizer.compute_gradients(sum_loss, **kwargs)
+  return sum_loss, clone_grad
 
 
-def optimize_towers(towers, optimizer,
+def optimize_clones(clones, optimizer,
                     regularization_losses=None,
                     kwargs=None):
-  """Compute tower losses and gradients for the given list of `Towers`.
+  """Compute clone losses and gradients for the given list of `Clones`.
 
-  Note: The regularization_losses are added to the first tower losses.
+  Note: The regularization_losses are added to the first clone losses.
 
   Args:
-   towers: List of `Towers` created by `create_towers()`.
+   clones: List of `Clones` created by `create_clones()`.
    optimizer: An `Optimizer` object.
    regularization_losses: Optional list of regularization losses. If None it
      will gather them from tf.GraphKeys.REGULARIZATION_LOSSES. Pass `[]` to
@@ -283,81 +283,81 @@ def optimize_towers(towers, optimizer,
 
   Returns:
    A tuple (total_loss, grads_and_vars).
-     - total_loss: A Tensor containing the average of the tower losses including
+     - total_loss: A Tensor containing the average of the clone losses including
        the regularization loss.
      - grads_and_vars: A List of tuples (gradient, variable) containing the sum
        of the gradients for each variable.
 
   """
   grads_and_vars = []
-  towers_losses = []
+  clones_losses = []
   kwargs = kwargs or {}
-  num_towers = len(towers)
+  num_clones = len(clones)
   if regularization_losses is None:
     regularization_losses = tf.get_collection(
         tf.GraphKeys.REGULARIZATION_LOSSES)
-  for tower in towers:
-    with tf.name_scope(tower.scope):
-      tower_loss, tower_grad = _optimize_tower(
-          optimizer, tower, num_towers, regularization_losses, kwargs)
-      if tower_loss is not None:
-        towers_losses.append(tower_loss)
-        grads_and_vars.append(tower_grad)
-      # Only use regularization_losses for the first tower
+  for clone in clones:
+    with tf.name_scope(clone.scope):
+      clone_loss, clone_grad = _optimize_clone(
+          optimizer, clone, num_clones, regularization_losses, kwargs)
+      if clone_loss is not None:
+        clones_losses.append(clone_loss)
+        grads_and_vars.append(clone_grad)
+      # Only use regularization_losses for the first clone
       regularization_losses = None
-  # Compute the total_loss summing all the towers_losses.
-  total_loss = tf.add_n(towers_losses, name='total_loss')
-  # Sum the gradients accross towers.
-  grads_and_vars = _sum_towers_gradients(grads_and_vars)
+  # Compute the total_loss summing all the clones_losses.
+  total_loss = tf.add_n(clones_losses, name='total_loss')
+  # Sum the gradients accross clones.
+  grads_and_vars = _sum_clones_gradients(grads_and_vars)
   return total_loss, grads_and_vars
 
 
 def deploy(config,
-           tower_fn,
+           model_fn,
            args=None,
            kwargs=None,
            optimizer=None,
            summarize_gradients=False):
-  """Deploys a Slim-constructed model on multiple towers and replicas.
+  """Deploys a Slim-constructed model across multiple clones.
 
   The deployment options are specified by the config object and support
-  deploying one or several towers on different GPUs and one or several replicas
-  of such towers.
+  deploying one or several clones on different GPUs and one or several replicas
+  of such clones.
 
-  The argument `tower_fn` is called `config.num_towers` times to create the
-  model towers as `tower_fn(*args, **kwargs)`.
+  The argument `model_fn` is called `config.num_clones` times to create the
+  model clones as `model_fn(*args, **kwargs)`.
 
   The optional argument `optimizer` is an `Optimizer` object.  If not `None`,
   the deployed model is configured for training with that optimizer.
 
   If `config` specifies deployment on multiple replicas then the default
-  tensorflow device is set appropriatly for each call to `tower_fn` and for the
+  tensorflow device is set appropriatly for each call to `model_fn` and for the
   slim variable creation functions: model and global variables will be created
-  on the `ps` device, the tower operations will be on the `worker` device.
+  on the `ps` device, the clone operations will be on the `worker` device.
 
   Args:
     config: A `DeploymentConfig` object.
-    tower_fn: A callable. Called as `tower_fn(*args, **kwargs)`
-    args: Optional list of arguments to pass to `tower_fn`.
-    kwargs: Optional list of keyword arguments to pass to `tower_fn`.
+    model_fn: A callable. Called as `model_fn(*args, **kwargs)`
+    args: Optional list of arguments to pass to `model_fn`.
+    kwargs: Optional list of keyword arguments to pass to `model_fn`.
     optimizer: Optional `Optimizer` object.  If passed the model is deployed
       for training with that optimizer.
     summarize_gradients: Whether or not add summaries to the gradients.
 
   Returns:
-    A `DeployedTower` namedtuple.
+    A `DeployedModel` namedtuple.
 
   """
   # Gather initial summaries.
   summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
-  # Create Towers.
-  towers = create_towers(config, tower_fn, args, kwargs)
-  first_tower = towers[0]
+  # Create Clones.
+  clones = create_clones(config, model_fn, args, kwargs)
+  first_clone = clones[0]
 
-  # Gather update_ops from the first tower. These contain, for example,
-  # the updates for the batch_norm variables created by tower_fn.
-  update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_tower.scope)
+  # Gather update_ops from the first clone. These contain, for example,
+  # the updates for the batch_norm variables created by model_fn.
+  update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone.scope)
 
   train_op = None
   total_loss = None
@@ -367,16 +367,16 @@ def deploy(config,
       with tf.device(config.variables_device()):
         global_step = slim.get_or_create_global_step()
 
-      # Compute the gradients for the towers.
-      total_loss, towers_gradients = optimize_towers(towers, optimizer)
+      # Compute the gradients for the clones.
+      total_loss, clones_gradients = optimize_clones(clones, optimizer)
 
-      if towers_gradients:
+      if clones_gradients:
         if summarize_gradients:
           # Add summaries to the gradients.
-          summaries |= set(_add_gradients_summaries(towers_gradients))
+          summaries |= set(_add_gradients_summaries(clones_gradients))
 
         # Create gradient updates.
-        grad_updates = optimizer.apply_gradients(towers_gradients,
+        grad_updates = optimizer.apply_gradients(clones_gradients,
                                                  global_step=global_step)
         update_ops.append(grad_updates)
 
@@ -384,24 +384,24 @@ def deploy(config,
         train_op = control_flow_ops.with_dependencies([update_op], total_loss,
                                                       name='train_op')
     else:
-      towers_losses = []
+      clones_losses = []
       regularization_losses = tf.get_collection(
           tf.GraphKeys.REGULARIZATION_LOSSES)
-      for tower in towers:
-        with tf.name_scope(tower.scope):
-          tower_loss = _gather_tower_loss(tower, len(towers),
+      for clone in clones:
+        with tf.name_scope(clone.scope):
+          clone_loss = _gather_clone_loss(clone, len(clones),
                                           regularization_losses)
-          if tower_loss is not None:
-            towers_losses.append(tower_loss)
-          # Only use regularization_losses for the first tower
+          if clone_loss is not None:
+            clones_losses.append(clone_loss)
+          # Only use regularization_losses for the first clone
           regularization_losses = None
-      if towers_losses:
-        total_loss = tf.add_n(towers_losses, name='total_loss')
+      if clones_losses:
+        total_loss = tf.add_n(clones_losses, name='total_loss')
 
-    # Add the summaries from the first tower. These contain the summaries
-    # created by tower_fn and either optimize_towers() or _gather_tower_loss().
+    # Add the summaries from the first clone. These contain the summaries
+    # created by model_fn and either optimize_clones() or _gather_clone_loss().
     summaries |= set(tf.get_collection(tf.GraphKeys.SUMMARIES,
-                                       first_tower.scope))
+                                       first_clone.scope))
 
     if total_loss is not None:
       # Add total_loss to summary.
@@ -414,27 +414,27 @@ def deploy(config,
     else:
       summary_op = None
 
-  return DeployedTower(train_op, summary_op, total_loss, towers)
+  return DeployedModel(train_op, summary_op, total_loss, clones)
 
 
-def _sum_towers_gradients(tower_grads):
-  """Calculate the sum gradient for each shared variable across all towers.
+def _sum_clones_gradients(clone_grads):
+  """Calculate the sum gradient for each shared variable across all clones.
 
-  This function assumes that the tower_grads has been scaled appropriately by
-  1 / num_towers.
+  This function assumes that the clone_grads has been scaled appropriately by
+  1 / num_clones.
 
   Args:
-    tower_grads: A List of List of tuples (gradient, variable), one list per
-    `Tower`.
+    clone_grads: A List of List of tuples (gradient, variable), one list per
+    `Clone`.
 
   Returns:
      List of tuples of (gradient, variable) where the gradient has been summed
-     across all towers.
+     across all clones.
   """
   sum_grads = []
-  for grad_and_vars in zip(*tower_grads):
+  for grad_and_vars in zip(*clone_grads):
     # Note that each grad_and_vars looks like the following:
-    #   ((grad_var0_tower0, var0), ... (grad_varN_towerN, varN))
+    #   ((grad_var0_clone0, var0), ... (grad_varN_cloneN, varN))
     grads = []
     var = grad_and_vars[0][1]
     for g, v in grad_and_vars:
@@ -486,7 +486,7 @@ class DeploymentConfig(object):
   """
 
   def __init__(self,
-               num_towers=1,
+               num_clones=1,
                use_gpu=True,
                replica_id=0,
                num_replicas=1,
@@ -495,9 +495,9 @@ class DeploymentConfig(object):
                ps_job_name='ps'):
     """Create a DeploymentConfig.
 
-    The config describes how to deploy a model across multiple towers and
-    replicas.  The model will be replicated `num_towers` times in each replica.
-    If `use_gpu` is True, each tower will use a different GPU.
+    The config describes how to deploy a model across multiple clones and
+    replicas.  The model will be replicated `num_clones` times in each replica.
+    If `use_gpu` is True, each clone will use a different GPU.
 
     If `num_replicas` is 1, the model is deployed via a single process.  In that
     case `worker_device`, `num_ps_tasks`, and `ps_device` are ignored.
@@ -507,8 +507,8 @@ class DeploymentConfig(object):
     `num_ps_tasks` must be positive.
 
     Args:
-      num_towers: Number of model towers to deploy in each replica.
-      use_gpu: True if towers should be deployed on GPUS.
+      num_clones: Number of model clones to deploy in each replica.
+      use_gpu: True if clones should be deployed on GPUS.
       replica_id: Integer.  Index of the replica for which the model is
         deployed.  Usually 0 for the chief replica.
       num_replicas: Number of replicas to use.
@@ -529,7 +529,7 @@ class DeploymentConfig(object):
         raise ValueError('Must specify ps_job_name when using parameter server')
     if replica_id >= num_replicas:
       raise ValueError('replica_id must be less than num_replicas')
-    self._num_towers = num_towers
+    self._num_clones = num_clones
     self._use_gpu = use_gpu
     self._replica_id = replica_id
     self._num_replicas = num_replicas
@@ -538,8 +538,8 @@ class DeploymentConfig(object):
     self._worker_device = '/job:' + worker_job_name if num_ps_tasks > 0 else ''
 
   @property
-  def num_towers(self):
-    return self._num_towers
+  def num_clones(self):
+    return self._num_clones
 
   @property
   def use_gpu(self):
@@ -578,46 +578,46 @@ class DeploymentConfig(object):
     else:
       return None
 
-  def tower_device(self, tower_index):
-    """Device used to create the tower and all the ops inside the tower.
+  def clone_device(self, clone_index):
+    """Device used to create the clone and all the ops inside the clone.
 
     Args:
-      tower_index: Int, representing the tower_index.
+      clone_index: Int, representing the clone_index.
 
     Returns:
       A value suitable for `tf.device()`.
 
     Raises:
-      ValueError: if `tower_index` is greater or equal to the number of towers".
+      ValueError: if `clone_index` is greater or equal to the number of clones".
     """
-    if tower_index >= self._num_towers:
-      raise ValueError('tower_index must be less than num_towers')
+    if clone_index >= self._num_clones:
+      raise ValueError('clone_index must be less than num_clones')
     device = ''
     if self._num_ps_tasks > 0:
       device += self._worker_device
     if self._use_gpu:
-      device += '/device:GPU:%d' % tower_index
+      device += '/device:GPU:%d' % clone_index
     else:
       device += '/device:CPU:0'
     return device
 
-  def tower_scope(self, tower_index):
-    """Name scope to create the tower.
+  def clone_scope(self, clone_index):
+    """Name scope to create the clone.
 
     Args:
-      tower_index: Int, representing the tower_index.
+      clone_index: Int, representing the clone_index.
 
     Returns:
       A name_scope suitable for `tf.name_scope()`.
 
     Raises:
-      ValueError: if `tower_index` is greater or equal to the number of towers".
+      ValueError: if `clone_index` is greater or equal to the number of clones".
     """
-    if tower_index >= self._num_towers:
-      raise ValueError('tower_index must be less than num_towers')
+    if clone_index >= self._num_clones:
+      raise ValueError('clone_index must be less than num_clones')
     scope = ''
-    if self._num_towers > 1:
-      scope = 'tower_%d' % tower_index
+    if self._num_clones > 1:
+      scope = 'clone_%d' % clone_index
     return scope
 
   def optimizer_device(self):
@@ -626,7 +626,7 @@ class DeploymentConfig(object):
     Returns:
       A value suitable for `tf.device()`.
     """
-    if self._num_ps_tasks > 0 or self._num_towers > 0:
+    if self._num_ps_tasks > 0 or self._num_clones > 0:
       return self._worker_device + '/device:CPU:0'
     else:
       return ''
@@ -644,7 +644,7 @@ class DeploymentConfig(object):
     return device
 
   def variables_device(self):
-    """Returns the device to use for variables created inside the tower.
+    """Returns the device to use for variables created inside the clone.
 
     Returns:
       A value suitable for `tf.device()`.

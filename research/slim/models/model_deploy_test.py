@@ -34,8 +34,8 @@ class DeploymentConfigTest(tf.test.TestCase):
 
     self.assertEqual(slim.get_variables(), [])
     self.assertEqual(deploy_config.caching_device(), None)
-    self.assertDeviceEqual(deploy_config.tower_device(0), 'GPU:0')
-    self.assertEqual(deploy_config.tower_scope(0), '')
+    self.assertDeviceEqual(deploy_config.clone_device(0), 'GPU:0')
+    self.assertEqual(deploy_config.clone_scope(0), '')
     self.assertDeviceEqual(deploy_config.optimizer_device(), 'CPU:0')
     self.assertDeviceEqual(deploy_config.inputs_device(), 'CPU:0')
     self.assertDeviceEqual(deploy_config.variables_device(), 'CPU:0')
@@ -44,30 +44,30 @@ class DeploymentConfigTest(tf.test.TestCase):
     deploy_config = model_deploy.DeploymentConfig(use_gpu=False)
 
     self.assertEqual(deploy_config.caching_device(), None)
-    self.assertDeviceEqual(deploy_config.tower_device(0), 'CPU:0')
-    self.assertEqual(deploy_config.tower_scope(0), '')
+    self.assertDeviceEqual(deploy_config.clone_device(0), 'CPU:0')
+    self.assertEqual(deploy_config.clone_scope(0), '')
     self.assertDeviceEqual(deploy_config.optimizer_device(), 'CPU:0')
     self.assertDeviceEqual(deploy_config.inputs_device(), 'CPU:0')
     self.assertDeviceEqual(deploy_config.variables_device(), 'CPU:0')
 
   def testMultiGPU(self):
-    deploy_config = model_deploy.DeploymentConfig(num_towers=2, use_gpu=True)
+    deploy_config = model_deploy.DeploymentConfig(num_clones=2, use_gpu=True)
 
     self.assertEqual(deploy_config.caching_device(), None)
-    self.assertDeviceEqual(deploy_config.tower_device(0), 'GPU:0')
-    self.assertDeviceEqual(deploy_config.tower_device(1), 'GPU:1')
-    self.assertEqual(deploy_config.tower_scope(0), 'tower_0')
-    self.assertEqual(deploy_config.tower_scope(1), 'tower_1')
+    self.assertDeviceEqual(deploy_config.clone_device(0), 'GPU:0')
+    self.assertDeviceEqual(deploy_config.clone_device(1), 'GPU:1')
+    self.assertEqual(deploy_config.clone_scope(0), 'clone_0')
+    self.assertEqual(deploy_config.clone_scope(1), 'clone_1')
     self.assertDeviceEqual(deploy_config.optimizer_device(), 'CPU:0')
     self.assertDeviceEqual(deploy_config.inputs_device(), 'CPU:0')
     self.assertDeviceEqual(deploy_config.variables_device(), 'CPU:0')
 
   def testPS(self):
-    deploy_config = model_deploy.DeploymentConfig(num_towers=1, num_ps_tasks=1)
+    deploy_config = model_deploy.DeploymentConfig(num_clones=1, num_ps_tasks=1)
 
-    self.assertDeviceEqual(deploy_config.tower_device(0),
+    self.assertDeviceEqual(deploy_config.clone_device(0),
                            '/job:worker/device:GPU:0')
-    self.assertEqual(deploy_config.tower_scope(0), '')
+    self.assertEqual(deploy_config.clone_scope(0), '')
     self.assertDeviceEqual(deploy_config.optimizer_device(),
                            '/job:worker/device:CPU:0')
     self.assertDeviceEqual(deploy_config.inputs_device(),
@@ -87,15 +87,15 @@ class DeploymentConfigTest(tf.test.TestCase):
     self.assertDeviceEqual(d.value().device, '')
 
   def testMultiGPUPS(self):
-    deploy_config = model_deploy.DeploymentConfig(num_towers=2, num_ps_tasks=1)
+    deploy_config = model_deploy.DeploymentConfig(num_clones=2, num_ps_tasks=1)
 
     self.assertEqual(deploy_config.caching_device()(tf.no_op()), '')
-    self.assertDeviceEqual(deploy_config.tower_device(0),
+    self.assertDeviceEqual(deploy_config.clone_device(0),
                            '/job:worker/device:GPU:0')
-    self.assertDeviceEqual(deploy_config.tower_device(1),
+    self.assertDeviceEqual(deploy_config.clone_device(1),
                            '/job:worker/device:GPU:1')
-    self.assertEqual(deploy_config.tower_scope(0), 'tower_0')
-    self.assertEqual(deploy_config.tower_scope(1), 'tower_1')
+    self.assertEqual(deploy_config.clone_scope(0), 'clone_0')
+    self.assertEqual(deploy_config.clone_scope(1), 'clone_1')
     self.assertDeviceEqual(deploy_config.optimizer_device(),
                            '/job:worker/device:CPU:0')
     self.assertDeviceEqual(deploy_config.inputs_device(),
@@ -105,9 +105,9 @@ class DeploymentConfigTest(tf.test.TestCase):
     deploy_config = model_deploy.DeploymentConfig(num_replicas=2,
                                                   num_ps_tasks=2)
 
-    self.assertDeviceEqual(deploy_config.tower_device(0),
+    self.assertDeviceEqual(deploy_config.clone_device(0),
                            '/job:worker/device:GPU:0')
-    self.assertEqual(deploy_config.tower_scope(0), '')
+    self.assertEqual(deploy_config.clone_scope(0), '')
     self.assertDeviceEqual(deploy_config.optimizer_device(),
                            '/job:worker/device:CPU:0')
     self.assertDeviceEqual(deploy_config.inputs_device(),
@@ -115,14 +115,14 @@ class DeploymentConfigTest(tf.test.TestCase):
 
   def testReplicasMultiGPUPS(self):
     deploy_config = model_deploy.DeploymentConfig(num_replicas=2,
-                                                  num_towers=2,
+                                                  num_clones=2,
                                                   num_ps_tasks=2)
-    self.assertDeviceEqual(deploy_config.tower_device(0),
+    self.assertDeviceEqual(deploy_config.clone_device(0),
                            '/job:worker/device:GPU:0')
-    self.assertDeviceEqual(deploy_config.tower_device(1),
+    self.assertDeviceEqual(deploy_config.clone_device(1),
                            '/job:worker/device:GPU:1')
-    self.assertEqual(deploy_config.tower_scope(0), 'tower_0')
-    self.assertEqual(deploy_config.tower_scope(1), 'tower_1')
+    self.assertEqual(deploy_config.clone_scope(0), 'clone_0')
+    self.assertEqual(deploy_config.clone_scope(1), 'clone_1')
     self.assertDeviceEqual(deploy_config.optimizer_device(),
                            '/job:worker/device:CPU:0')
     self.assertDeviceEqual(deploy_config.inputs_device(),
@@ -167,7 +167,7 @@ def BatchNormClassifier(inputs, labels, scope=None, reuse=None):
     return predictions
 
 
-class CreateTowerTest(tf.test.TestCase):
+class CreatecloneTest(tf.test.TestCase):
 
   def setUp(self):
     # Create an easy training set:
@@ -188,133 +188,133 @@ class CreateTowerTest(tf.test.TestCase):
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = LogisticClassifier
-      tower_args = (tf_inputs, tf_labels)
-      deploy_config = model_deploy.DeploymentConfig(num_towers=1)
+      model_fn = LogisticClassifier
+      clone_args = (tf_inputs, tf_labels)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=1)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
-      tower = towers[0]
+      clones = model_deploy.create_clones(deploy_config, model_fn, clone_args)
+      clone = clones[0]
       self.assertEqual(len(slim.get_variables()), 2)
       for v in slim.get_variables():
         self.assertDeviceEqual(v.device, 'CPU:0')
         self.assertDeviceEqual(v.value().device, 'CPU:0')
-      self.assertEqual(tower.outputs.op.name,
+      self.assertEqual(clone.outputs.op.name,
                        'LogisticClassifier/fully_connected/Sigmoid')
-      self.assertEqual(tower.scope, '')
-      self.assertDeviceEqual(tower.device, 'GPU:0')
+      self.assertEqual(clone.scope, '')
+      self.assertDeviceEqual(clone.device, 'GPU:0')
       self.assertEqual(len(slim.losses.get_losses()), 1)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       self.assertEqual(update_ops, [])
 
-  def testCreateSingleTower(self):
+  def testCreateSingleclone(self):
     g = tf.Graph()
     with g.as_default():
       tf.set_random_seed(0)
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      deploy_config = model_deploy.DeploymentConfig(num_towers=1)
+      model_fn = BatchNormClassifier
+      clone_args = (tf_inputs, tf_labels)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=1)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
-      tower = towers[0]
+      clones = model_deploy.create_clones(deploy_config, model_fn, clone_args)
+      clone = clones[0]
       self.assertEqual(len(slim.get_variables()), 5)
       for v in slim.get_variables():
         self.assertDeviceEqual(v.device, 'CPU:0')
         self.assertDeviceEqual(v.value().device, 'CPU:0')
-      self.assertEqual(tower.outputs.op.name,
+      self.assertEqual(clone.outputs.op.name,
                        'BatchNormClassifier/fully_connected/Sigmoid')
-      self.assertEqual(tower.scope, '')
-      self.assertDeviceEqual(tower.device, 'GPU:0')
+      self.assertEqual(clone.scope, '')
+      self.assertDeviceEqual(clone.device, 'GPU:0')
       self.assertEqual(len(slim.losses.get_losses()), 1)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       self.assertEqual(len(update_ops), 2)
 
-  def testCreateMultiTower(self):
+  def testCreateMulticlone(self):
     g = tf.Graph()
     with g.as_default():
       tf.set_random_seed(0)
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      num_towers = 4
-      deploy_config = model_deploy.DeploymentConfig(num_towers=num_towers)
+      model_fn = BatchNormClassifier
+      clone_args = (tf_inputs, tf_labels)
+      num_clones = 4
+      deploy_config = model_deploy.DeploymentConfig(num_clones=num_clones)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
+      clones = model_deploy.create_clones(deploy_config, model_fn, clone_args)
       self.assertEqual(len(slim.get_variables()), 5)
       for v in slim.get_variables():
         self.assertDeviceEqual(v.device, 'CPU:0')
         self.assertDeviceEqual(v.value().device, 'CPU:0')
-      self.assertEqual(len(towers), num_towers)
-      for i, tower in enumerate(towers):
+      self.assertEqual(len(clones), num_clones)
+      for i, clone in enumerate(clones):
         self.assertEqual(
-            tower.outputs.op.name,
-            'tower_%d/BatchNormClassifier/fully_connected/Sigmoid' % i)
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, tower.scope)
+            clone.outputs.op.name,
+            'clone_%d/BatchNormClassifier/fully_connected/Sigmoid' % i)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, clone.scope)
         self.assertEqual(len(update_ops), 2)
-        self.assertEqual(tower.scope, 'tower_%d/' % i)
-        self.assertDeviceEqual(tower.device, 'GPU:%d' % i)
+        self.assertEqual(clone.scope, 'clone_%d/' % i)
+        self.assertDeviceEqual(clone.device, 'GPU:%d' % i)
 
-  def testCreateOneTowerWithPS(self):
+  def testCreateOnecloneWithPS(self):
     g = tf.Graph()
     with g.as_default():
       tf.set_random_seed(0)
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      deploy_config = model_deploy.DeploymentConfig(num_towers=1,
+      model_fn = BatchNormClassifier
+      clone_args = (tf_inputs, tf_labels)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=1,
                                                     num_ps_tasks=1)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
-      self.assertEqual(len(towers), 1)
-      tower = towers[0]
-      self.assertEqual(tower.outputs.op.name,
+      clones = model_deploy.create_clones(deploy_config, model_fn, clone_args)
+      self.assertEqual(len(clones), 1)
+      clone = clones[0]
+      self.assertEqual(clone.outputs.op.name,
                        'BatchNormClassifier/fully_connected/Sigmoid')
-      self.assertDeviceEqual(tower.device, '/job:worker/device:GPU:0')
-      self.assertEqual(tower.scope, '')
+      self.assertDeviceEqual(clone.device, '/job:worker/device:GPU:0')
+      self.assertEqual(clone.scope, '')
       self.assertEqual(len(slim.get_variables()), 5)
       for v in slim.get_variables():
         self.assertDeviceEqual(v.device, '/job:ps/task:0/CPU:0')
         self.assertDeviceEqual(v.device, v.value().device)
 
-  def testCreateMultiTowerWithPS(self):
+  def testCreateMulticloneWithPS(self):
     g = tf.Graph()
     with g.as_default():
       tf.set_random_seed(0)
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      deploy_config = model_deploy.DeploymentConfig(num_towers=2,
+      model_fn = BatchNormClassifier
+      clone_args = (tf_inputs, tf_labels)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=2,
                                                     num_ps_tasks=2)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
+      clones = model_deploy.create_clones(deploy_config, model_fn, clone_args)
       self.assertEqual(len(slim.get_variables()), 5)
       for i, v in enumerate(slim.get_variables()):
         t = i % 2
         self.assertDeviceEqual(v.device, '/job:ps/task:%d/device:CPU:0' % t)
         self.assertDeviceEqual(v.device, v.value().device)
-      self.assertEqual(len(towers), 2)
-      for i, tower in enumerate(towers):
+      self.assertEqual(len(clones), 2)
+      for i, clone in enumerate(clones):
         self.assertEqual(
-            tower.outputs.op.name,
-            'tower_%d/BatchNormClassifier/fully_connected/Sigmoid' % i)
-        self.assertEqual(tower.scope, 'tower_%d/' % i)
-        self.assertDeviceEqual(tower.device, '/job:worker/device:GPU:%d' % i)
+            clone.outputs.op.name,
+            'clone_%d/BatchNormClassifier/fully_connected/Sigmoid' % i)
+        self.assertEqual(clone.scope, 'clone_%d/' % i)
+        self.assertDeviceEqual(clone.device, '/job:worker/device:GPU:%d' % i)
 
 
-class OptimizeTowersTest(tf.test.TestCase):
+class OptimizeclonesTest(tf.test.TestCase):
 
   def setUp(self):
     # Create an easy training set:
@@ -335,18 +335,18 @@ class OptimizeTowersTest(tf.test.TestCase):
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = LogisticClassifier
-      tower_args = (tf_inputs, tf_labels)
-      deploy_config = model_deploy.DeploymentConfig(num_towers=1)
+      model_fn = LogisticClassifier
+      clone_args = (tf_inputs, tf_labels)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=1)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
+      clones = model_deploy.create_clones(deploy_config, model_fn, clone_args)
       self.assertEqual(len(slim.get_variables()), 2)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       self.assertEqual(update_ops, [])
 
       optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0)
-      total_loss, grads_and_vars = model_deploy.optimize_towers(towers,
+      total_loss, grads_and_vars = model_deploy.optimize_clones(clones,
                                                                 optimizer)
       self.assertEqual(len(grads_and_vars), len(tf.trainable_variables()))
       self.assertEqual(total_loss.op.name, 'total_loss')
@@ -354,25 +354,25 @@ class OptimizeTowersTest(tf.test.TestCase):
         self.assertDeviceEqual(g.device, 'GPU:0')
         self.assertDeviceEqual(v.device, 'CPU:0')
 
-  def testCreateSingleTower(self):
+  def testCreateSingleclone(self):
     g = tf.Graph()
     with g.as_default():
       tf.set_random_seed(0)
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      deploy_config = model_deploy.DeploymentConfig(num_towers=1)
+      model_fn = BatchNormClassifier
+      clone_args = (tf_inputs, tf_labels)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=1)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
+      clones = model_deploy.create_clones(deploy_config, model_fn, clone_args)
       self.assertEqual(len(slim.get_variables()), 5)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       self.assertEqual(len(update_ops), 2)
 
       optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0)
-      total_loss, grads_and_vars = model_deploy.optimize_towers(towers,
+      total_loss, grads_and_vars = model_deploy.optimize_clones(clones,
                                                                 optimizer)
       self.assertEqual(len(grads_and_vars), len(tf.trainable_variables()))
       self.assertEqual(total_loss.op.name, 'total_loss')
@@ -380,26 +380,26 @@ class OptimizeTowersTest(tf.test.TestCase):
         self.assertDeviceEqual(g.device, 'GPU:0')
         self.assertDeviceEqual(v.device, 'CPU:0')
 
-  def testCreateMultiTower(self):
+  def testCreateMulticlone(self):
     g = tf.Graph()
     with g.as_default():
       tf.set_random_seed(0)
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      num_towers = 4
-      deploy_config = model_deploy.DeploymentConfig(num_towers=num_towers)
+      model_fn = BatchNormClassifier
+      clone_args = (tf_inputs, tf_labels)
+      num_clones = 4
+      deploy_config = model_deploy.DeploymentConfig(num_clones=num_clones)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
+      clones = model_deploy.create_clones(deploy_config, model_fn, clone_args)
       self.assertEqual(len(slim.get_variables()), 5)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-      self.assertEqual(len(update_ops), num_towers * 2)
+      self.assertEqual(len(update_ops), num_clones * 2)
 
       optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0)
-      total_loss, grads_and_vars = model_deploy.optimize_towers(towers,
+      total_loss, grads_and_vars = model_deploy.optimize_clones(clones,
                                                                 optimizer)
       self.assertEqual(len(grads_and_vars), len(tf.trainable_variables()))
       self.assertEqual(total_loss.op.name, 'total_loss')
@@ -407,27 +407,27 @@ class OptimizeTowersTest(tf.test.TestCase):
         self.assertDeviceEqual(g.device, '')
         self.assertDeviceEqual(v.device, 'CPU:0')
 
-  def testCreateMultiTowerCPU(self):
+  def testCreateMulticloneCPU(self):
     g = tf.Graph()
     with g.as_default():
       tf.set_random_seed(0)
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      num_towers = 4
-      deploy_config = model_deploy.DeploymentConfig(num_towers=num_towers,
+      model_fn = BatchNormClassifier
+      model_args = (tf_inputs, tf_labels)
+      num_clones = 4
+      deploy_config = model_deploy.DeploymentConfig(num_clones=num_clones,
                                                     use_gpu=False)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
+      clones = model_deploy.create_clones(deploy_config, model_fn, model_args)
       self.assertEqual(len(slim.get_variables()), 5)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-      self.assertEqual(len(update_ops), num_towers * 2)
+      self.assertEqual(len(update_ops), num_clones * 2)
 
       optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0)
-      total_loss, grads_and_vars = model_deploy.optimize_towers(towers,
+      total_loss, grads_and_vars = model_deploy.optimize_clones(clones,
                                                                 optimizer)
       self.assertEqual(len(grads_and_vars), len(tf.trainable_variables()))
       self.assertEqual(total_loss.op.name, 'total_loss')
@@ -435,26 +435,26 @@ class OptimizeTowersTest(tf.test.TestCase):
         self.assertDeviceEqual(g.device, '')
         self.assertDeviceEqual(v.device, 'CPU:0')
 
-  def testCreateOneTowerWithPS(self):
+  def testCreateOnecloneWithPS(self):
     g = tf.Graph()
     with g.as_default():
       tf.set_random_seed(0)
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      deploy_config = model_deploy.DeploymentConfig(num_towers=1,
+      model_fn = BatchNormClassifier
+      model_args = (tf_inputs, tf_labels)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=1,
                                                     num_ps_tasks=1)
 
       self.assertEqual(slim.get_variables(), [])
-      towers = model_deploy.create_towers(deploy_config, tower_fn, tower_args)
+      clones = model_deploy.create_clones(deploy_config, model_fn, model_args)
       self.assertEqual(len(slim.get_variables()), 5)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       self.assertEqual(len(update_ops), 2)
 
       optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0)
-      total_loss, grads_and_vars = model_deploy.optimize_towers(towers,
+      total_loss, grads_and_vars = model_deploy.optimize_clones(clones,
                                                                 optimizer)
       self.assertEqual(len(grads_and_vars), len(tf.trainable_variables()))
       self.assertEqual(total_loss.op.name, 'total_loss')
@@ -484,19 +484,19 @@ class DeployTest(tf.test.TestCase):
       tf_inputs = tf.constant(self._inputs, dtype=tf.float32)
       tf_labels = tf.constant(self._labels, dtype=tf.float32)
 
-      tower_fn = BatchNormClassifier
-      tower_args = (tf_inputs, tf_labels)
-      deploy_config = model_deploy.DeploymentConfig(num_towers=2, use_gpu=False)
+      model_fn = BatchNormClassifier
+      model_args = (tf_inputs, tf_labels)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=2, use_gpu=False)
 
       optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0)
 
       self.assertEqual(slim.get_variables(), [])
-      model = model_deploy.deploy(deploy_config, tower_fn, tower_args,
+      model = model_deploy.deploy(deploy_config, model_fn, model_args,
                                   optimizer=optimizer)
 
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       self.assertEqual(len(update_ops), 4)
-      self.assertEqual(len(model.towers), 2)
+      self.assertEqual(len(model.clones), 2)
       self.assertEqual(model.total_loss.op.name, 'total_loss')
       self.assertEqual(model.summary_op.op.name, 'summary_op/summary_op')
       self.assertEqual(model.train_op.op.name, 'train_op')
@@ -525,16 +525,16 @@ class DeployTest(tf.test.TestCase):
 
   def testNoSummariesOnGPU(self):
     with tf.Graph().as_default():
-      deploy_config = model_deploy.DeploymentConfig(num_towers=2, use_gpu=True)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=2, use_gpu=True)
 
-      # Tower function creates a fully_connected layer with a regularizer loss.
-      def TowerFn():
+      # clone function creates a fully_connected layer with a regularizer loss.
+      def ModelFn():
         inputs = tf.constant(1.0, shape=(10, 20), dtype=tf.float32)
         reg = tf.contrib.layers.l2_regularizer(0.001)
         tf.contrib.layers.fully_connected(inputs, 30, weights_regularizer=reg)
 
       model = model_deploy.deploy(
-          deploy_config, TowerFn,
+          deploy_config, ModelFn,
           optimizer=tf.train.GradientDescentOptimizer(1.0))
       # The model summary op should have a few summary inputs and all of them
       # should be on the CPU.
@@ -544,16 +544,16 @@ class DeployTest(tf.test.TestCase):
 
   def testNoSummariesOnGPUForEvals(self):
     with tf.Graph().as_default():
-      deploy_config = model_deploy.DeploymentConfig(num_towers=2, use_gpu=True)
+      deploy_config = model_deploy.DeploymentConfig(num_clones=2, use_gpu=True)
 
-      # Tower function creates a fully_connected layer with a regularizer loss.
-      def TowerFn():
+      # clone function creates a fully_connected layer with a regularizer loss.
+      def ModelFn():
         inputs = tf.constant(1.0, shape=(10, 20), dtype=tf.float32)
         reg = tf.contrib.layers.l2_regularizer(0.001)
         tf.contrib.layers.fully_connected(inputs, 30, weights_regularizer=reg)
 
       # No optimizer here, it's an eval.
-      model = model_deploy.deploy(deploy_config, TowerFn)
+      model = model_deploy.deploy(deploy_config, ModelFn)
       # The model summary op should have a few summary inputs and all of them
       # should be on the CPU.
       self.assertTrue(model.summary_op.op.inputs)
