@@ -91,7 +91,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       'image/format': tf.FixedLenFeature(
           (), tf.string, default_value='jpeg'),
       'image/class/label': tf.FixedLenFeature(
-          [1], dtype=tf.int64, default_value=-1),
+          [], dtype=tf.int64, default_value=-1),
       'image/class/text': tf.FixedLenFeature(
           [], dtype=tf.string, default_value=''),
       'image/object/bbox/xmin': tf.VarLenFeature(
