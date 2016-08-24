@@ -44,7 +44,6 @@ tf.app.flags.DEFINE_string(
     'dataset_dir',
     None,
     'The directory where the output TFRecords and temporary files are saved.')
-tf.app.flags.MarkFlagAsRequired('dataset_dir')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -143,9 +142,8 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
 
     with tf.Session('') as sess:
       for j in range(num_images):
-        if j % 100 == 0:
-          sys.stdout.write('\r>> Converting image %d/%d' % (j + 1, num_images))
-          sys.stdout.flush()
+        sys.stdout.write('\r>> Converting image %d/%d' % (j + 1, num_images))
+        sys.stdout.flush()
 
         png_string = sess.run(encoded_png, feed_dict={image: images[j]})
         example = tf.train.Example(features=tf.train.Features(feature={
@@ -213,6 +211,9 @@ def _clean_up_temporary_files(dataset_dir):
 
 
 def main(_):
+  if not FLAGS.dataset_dir:
+    raise ValueError('You must supply the dataset directory with --dataset_dir')
+
   if not tf.gfile.Exists(FLAGS.dataset_dir):
     tf.gfile.MakeDirs(FLAGS.dataset_dir)
 

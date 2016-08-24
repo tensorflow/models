@@ -43,7 +43,6 @@ tf.app.flags.DEFINE_string(
     'dataset_dir',
     None,
     'The directory where the output TFRecords and temporary files are saved.')
-tf.app.flags.MarkFlagAsRequired('dataset_dir')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -115,9 +114,10 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
   labels = data['labels']
 
   for j in range(num_images):
-    if j % 100 == 0:
-      print('Reading file [%s], image %d/%d' % (
-          filename, offset + j + 1, offset + num_images))
+    sys.stdout.write('\r>> Reading file [%s] image %d/%d' % (
+        filename, offset + j + 1, offset + num_images))
+    sys.stdout.flush()
+
     image = np.squeeze(images[j]).transpose((1, 2, 0))
     label = labels[j]
 
@@ -184,6 +184,9 @@ def _clean_up_temporary_files(dataset_dir):
 
 
 def main(_):
+  if not FLAGS.dataset_dir:
+    raise ValueError('You must supply the dataset directory with --dataset_dir')
+
   if not tf.gfile.Exists(FLAGS.dataset_dir):
     tf.gfile.MakeDirs(FLAGS.dataset_dir)
 
@@ -208,7 +211,7 @@ def main(_):
     _add_to_tfrecord(filename, tfrecord_writer)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
-  print('Finished converting the Cifar10 dataset!')
+  print('\nFinished converting the Cifar10 dataset!')
 
 if __name__ == '__main__':
   tf.app.run()

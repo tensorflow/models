@@ -153,7 +153,6 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     'dataset_dir', None, 'The directory where the dataset files are stored.')
-tf.app.flags.MarkFlagAsRequired('dataset_dir')
 
 tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to train.')
@@ -324,6 +323,9 @@ def _get_init_fn():
 
 
 def main(_):
+  if not FLAGS.dataset_dir:
+    raise ValueError('You must supply the dataset directory with --dataset_dir')
+
   with tf.Graph().as_default():
     ######################
     # Select the dataset #
