@@ -19,11 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import google3
-
 import tensorflow as tf
 
 from tensorflow.contrib.slim import nets
-from google3.third_party.tensorflow_models.slim import preprocessing
+from google3.third_party.tensorflow_models.slim.models import inception_preprocessing
+from google3.third_party.tensorflow_models.slim.models import resnet_preprocessing
 
 slim = tf.contrib.slim
 
@@ -49,6 +49,19 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
   Raises:
     ValueError: If model `name` is not recognized.
   """
+  # TODO(nsilberman): Add VGG preprocessing.
+  preprocessing_fn_map = {
+      'inception_v1': inception_preprocessing,
+      'inception_v2': inception_preprocessing,
+      'inception_v3': inception_preprocessing,
+      'resnet_v1_50': resnet_preprocessing,
+      'resnet_v1_101': resnet_preprocessing,
+      'resnet_v1_152': resnet_preprocessing,
+      'vgg_a': resnet_preprocessing,
+      'vgg_16': resnet_preprocessing,
+      'vgg_19': resnet_preprocessing,
+  }
+
   if name == 'inception_v1':
     image_size = nets.inception.inception_v1.default_image_size
     def func(images):
@@ -76,6 +89,36 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
                                            num_classes=num_classes,
                                            is_training=is_training)
     model_fn = func
+  elif name == 'resnet_v1_50':
+    image_size = nets.resnet_v1.resnet_v1.default_image_size
+    def func(images):
+      with slim.arg_scope(nets.resnet_v1.resnet_arg_scope(
+          is_training, weight_decay=weight_decay)):
+        net, end_points = nets.resnet_v1.resnet_v1_50(
+            images, num_classes=num_classes)
+        net = tf.squeeze(net, squeeze_dims=[1, 2])
+        return net, end_points
+    model_fn = func
+  elif name == 'resnet_v1_101':
+    image_size = nets.resnet_v1.resnet_v1.default_image_size
+    def func(images):
+      with slim.arg_scope(nets.resnet_v1.resnet_arg_scope(
+          is_training, weight_decay=weight_decay)):
+        net, end_points = nets.resnet_v1.resnet_v1_101(
+            images, num_classes=num_classes)
+        net = tf.squeeze(net, squeeze_dims=[1, 2])
+        return net, end_points
+    model_fn = func
+  elif name == 'resnet_v1_152':
+    image_size = nets.resnet_v1.resnet_v1.default_image_size
+    def func(images):
+      with slim.arg_scope(nets.resnet_v1.resnet_arg_scope(
+          is_training, weight_decay=weight_decay)):
+        net, end_points = nets.resnet_v1.resnet_v1_152(
+            images, num_classes=num_classes)
+        net = tf.squeeze(net, squeeze_dims=[1, 2])
+        return net, end_points
+    model_fn = func
   elif name == 'vgg_a':
     image_size = nets.vgg.vgg_a.default_image_size
     def func(images):
@@ -92,10 +135,19 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
                                num_classes=num_classes,
                                is_training=is_training)
     model_fn = func
+  elif name == 'vgg_19':
+    image_size = nets.vgg.vgg_19.default_image_size
+    def func(images):
+      with slim.arg_scope(nets.vgg.vgg_arg_scope(weight_decay)):
+        return nets.vgg.vgg_19(images,
+                               num_classes=num_classes,
+                               is_training=is_training)
+    model_fn = func
   else:
     raise ValueError('Model name [%s] was not recognized' % name)
 
   def preprocessing_fn(image):
-    return preprocessing.preprocess_image(
-        image, image_size, image_size, is_training=is_training, fast_mode=True)
+    return preprocessing_fn_map[name].preprocess_image(
+        image, image_size, image_size, is_training=is_training)
+
   return model_fn, preprocessing_fn

@@ -72,7 +72,6 @@ py_binary(
         ":dataset_factory",
         ":model_deploy",
         ":model_factory",
-        ":preprocessing",
         "//tensorflow",
     ],
 )
@@ -96,18 +95,19 @@ py_test(
 )
 
 py_library(
-    name = "model_factory",
-    srcs = ["models/model_factory.py"],
+    name = "resnet_preprocessing",
+    srcs = ["models/resnet_preprocessing.py"],
     deps = [
-        ":preprocessing",
         "//tensorflow",
     ],
 )
 
-py_binary(
-    name = "preprocessing",
-    srcs = ["preprocessing.py"],
+py_library(
+    name = "model_factory",
+    srcs = ["models/model_factory.py"],
     deps = [
+        ":inception_preprocessing",
+        ":resnet_preprocessing",
         "//tensorflow",
     ],
 )
@@ -119,7 +119,6 @@ py_binary(
         ":dataset_factory",
         ":model_deploy",
         ":model_factory",
-        ":preprocessing",
         "//tensorflow",
     ],
 )

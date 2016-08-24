@@ -12,19 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Provides utils to preprocess image data 3-D Tensors for image classification.
+"""Provides utilities to preprocess images for the Inception networks."""
 
-Image processing occurs on a single image at a time. Typically Image are read
-and preprocessed in parallel across mulitple threads. The resulting images
-are concatenated together to form a single batch for training or evaluation.
-
-image_preprocessing: Preprocess one image for evaluation or training
-train_image: Distort one image for training.
-eval_image: Prepare one image for evaluation.
-
-distort_color: Distort the color in one image.
-distorted_bounding_box_crop: Crop an image using a distorted bounding box.
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
