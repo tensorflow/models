@@ -12,7 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Converts image data to TFRecords file format with Example protos."""
+r"""Downloads and converts Flowers data to TFRecords of TF-Example protos.
+
+This script downloads the Flowers data, uncompresses it, reads the files
+that make up the Flowers data and creates two TFRecord datasets: one for train
+and one for test. Each TFRecord dataset is comprised of a set of TF-Example
+protocol buffers, each of which contain a single image and label.
+
+The script should take about a minute to run.
+
+Usage:
+
+$ bazel build slim:download_and_convert_flowers
+$ .bazel-bin/slim/download_and_convert_flowers --dataset_dir=[DIRECTORY]
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -197,11 +211,15 @@ def main(_):
   training_filenames = photo_filenames[_NUM_VALIDATION:]
   validation_filenames = photo_filenames[:_NUM_VALIDATION]
 
-  # First, process the training data:
+  # First, convert the training and validation sets.
   _convert_dataset('train', training_filenames, class_names_to_ids,
                    FLAGS.dataset_dir)
   _convert_dataset('validation', validation_filenames, class_names_to_ids,
                    FLAGS.dataset_dir)
+
+  # Finally, write the labels file:
+  labels_to_class_names = dict(zip(range(len(class_names)), class_names))
+  dataset_utils.write_label_file(labels_to_class_names, FLAGS.dataset_dir)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
   print('\nFinished converting the Flowers dataset!')

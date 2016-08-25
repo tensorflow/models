@@ -26,6 +26,8 @@ import os
 import google3
 import tensorflow as tf
 
+from datasets import dataset_utils
+
 slim = tf.contrib.slim
 
 _FILE_PATTERN = 'cifar10_%s.tfrecord'
@@ -37,19 +39,6 @@ _NUM_CLASSES = 10
 _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A [32 x 32 x 3] color image.',
     'label': 'A single integer between 0 and 9',
-}
-
-_LABELS_TO_NAMES = {
-    0: 'airplane',
-    1: 'automobile',
-    2: 'bird',
-    3: 'cat',
-    4: 'deer',
-    5: 'dog',
-    6: 'frog',
-    7: 'horse',
-    8: 'ship',
-    9: 'truck',
 }
 
 
@@ -103,4 +92,4 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       num_samples=SPLITS_TO_SIZES[split_name],
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
       num_classes=_NUM_CLASSES,
-      labels_to_names=_LABELS_TO_NAMES)
+      labels_to_names=dataset_utils.read_label_file(dataset_dir))

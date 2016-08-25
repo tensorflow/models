@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import google3
 import tensorflow as tf
 
@@ -56,3 +57,40 @@ def image_to_tfexample(image_data, image_format, height, width, class_id):
       'image/width': int64_feature(width),
   }))
 
+
+def write_label_file(labels_to_class_names, dataset_dir, filename='labels.txt'):
+  """Writes a file with the list of class names.
+
+  Args:
+    labels_to_class_names: A map of (integer) labels to class names.
+    dataset_dir: The directory in which the labels file should be written.
+    filename: The filename where the class names are written.
+  """
+  labels_filename = os.path.join(dataset_dir, filename)
+  with tf.gfile.Open(labels_filename, 'w') as f:
+    for label in labels_to_class_names:
+      class_name = labels_to_class_names[label]
+      f.write('%d:%s\n' % (label, class_name))
+
+
+def read_label_file(dataset_dir, filename='labels.txt'):
+  """Reads the labels file and returns a mapping from ID to class name.
+
+  Args:
+    dataset_dir: The directory in which the labels file is found.
+    filename: The filename where the class names are written.
+
+  Returns:
+    A map from a label (integer) to class name.
+  """
+  labels_filename = os.path.join(dataset_dir, filename)
+  with tf.gfile.Open(labels_filename, 'r') as f:
+    lines = f.read()
+  lines = lines.split('\n')
+  lines = filter(None, lines)
+
+  labels_to_class_names = {}
+  for line in lines:
+    index = line.index(":")
+    labels_to_class_names[int(line[:index])] = line[index+1:]
+  return labels_to_class_names

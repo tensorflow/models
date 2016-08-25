@@ -54,6 +54,7 @@ py_binary(
     name = "cifar10",
     srcs = ["datasets/cifar10.py"],
     deps = [
+        ":dataset_utils",
         "//tensorflow",
     ],
 )
@@ -62,6 +63,7 @@ py_binary(
     name = "flowers",
     srcs = ["datasets/flowers.py"],
     deps = [
+        ":dataset_utils",
         "//tensorflow",
     ],
 )
@@ -70,6 +72,7 @@ py_binary(
     name = "imagenet",
     srcs = ["datasets/imagenet.py"],
     deps = [
+        ":dataset_utils",
         "//tensorflow",
     ],
 )
@@ -78,6 +81,7 @@ py_binary(
     name = "mnist",
     srcs = ["datasets/mnist.py"],
     deps = [
+        ":dataset_utils",
         "//tensorflow",
     ],
 )

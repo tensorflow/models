@@ -26,6 +26,8 @@ import os
 import google3
 import tensorflow as tf
 
+from datasets import dataset_utils
+
 slim = tf.contrib.slim
 
 _FILE_PATTERN = 'flowers_%s_*.tfrecord'
@@ -37,14 +39,6 @@ _NUM_CLASSES = 5
 _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying size.',
     'label': 'A single integer between 0 and 4',
-}
-
-_LABELS_TO_NAMES = {
-    0: 'daisy',
-    1: 'dandelion',
-    2: 'roses',
-    3: 'sunflowers',
-    4: 'tulips',
 }
 
 
@@ -98,4 +92,4 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       num_samples=SPLITS_TO_SIZES[split_name],
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
       num_classes=_NUM_CLASSES,
-      labels_to_names=_LABELS_TO_NAMES)
+      labels_to_names=dataset_utils.read_label_file(dataset_dir))

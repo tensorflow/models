@@ -58,6 +58,20 @@ _TEST_LABELS_FILENAME = 't10k-labels-idx1-ubyte.gz'
 _IMAGE_SIZE = 28
 _NUM_CHANNELS = 1
 
+# The names of the classes.
+_CLASS_NAMES = [
+    'zero',
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'size',
+    'seven',
+    'eight',
+    'nine',
+]
+
 
 def _extract_images(filename, num_images):
   """Extract the images into a numpy array.
@@ -202,6 +216,10 @@ def main(_):
     data_filename = os.path.join(FLAGS.dataset_dir, _TEST_DATA_FILENAME)
     labels_filename = os.path.join(FLAGS.dataset_dir, _TEST_LABELS_FILENAME)
     _add_to_tfrecord(data_filename, labels_filename, 10000, tfrecord_writer)
+
+  # Finally, write the labels file:
+  labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
+  dataset_utils.write_label_file(labels_to_class_names, FLAGS.dataset_dir)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
   print('\nFinished converting the MNIST dataset!')

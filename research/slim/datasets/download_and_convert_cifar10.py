@@ -57,6 +57,20 @@ _NUM_TRAIN_FILES = 5
 # The height and width of each image.
 _IMAGE_SIZE = 32
 
+# The names of the classes.
+_CLASS_NAMES = [
+    'airplane',
+    'automobile',
+    'bird',
+    'cat',
+    'deer',
+    'dog',
+    'frog',
+    'horse',
+    'ship',
+    'truck',
+]
+
 
 def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
   """Loads data from the cifar10 pickle files and writes files to a TFRecord.
@@ -175,6 +189,10 @@ def main(_):
                             'cifar-10-batches-py',
                             'test_batch')
     _add_to_tfrecord(filename, tfrecord_writer)
+
+  # Finally, write the labels file:
+  labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
+  dataset_utils.write_label_file(labels_to_class_names, FLAGS.dataset_dir)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
   print('\nFinished converting the Cifar10 dataset!')

@@ -26,6 +26,8 @@ import os
 import google3
 import tensorflow as tf
 
+from datasets import dataset_utils
+
 slim = tf.contrib.slim
 
 _FILE_PATTERN = 'mnist_%s.tfrecord'
@@ -37,19 +39,6 @@ _NUM_CLASSES = 10
 _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A [28 x 28 x 1] grayscale image.',
     'label': 'A single integer between 0 and 9',
-}
-
-_LABELS_TO_NAMES = {
-    0: 'zero',
-    1: 'one',
-    2: 'two',
-    3: 'three',
-    4: 'four',
-    5: 'five',
-    6: 'six',
-    7: 'seven',
-    8: 'eight',
-    9: 'nine',
 }
 
 
@@ -103,4 +92,4 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       num_samples=_SPLITS_TO_SIZES[split_name],
       num_classes=_NUM_CLASSES,
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
-      labels_to_names=_LABELS_TO_NAMES)
+      labels_to_names=dataset_utils.read_label_file(dataset_dir))
