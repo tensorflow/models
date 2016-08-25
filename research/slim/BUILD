@@ -109,14 +109,6 @@ py_binary(
 )
 
 py_library(
-    name = "inception_preprocessing",
-    srcs = ["models/inception_preprocessing.py"],
-    deps = [
-        "//tensorflow",
-    ],
-)
-
-py_library(
     name = "model_deploy",
     srcs = ["models/model_deploy.py"],
     deps = [
@@ -135,8 +127,16 @@ py_test(
 )
 
 py_library(
-    name = "resnet_preprocessing",
-    srcs = ["models/resnet_preprocessing.py"],
+    name = "inception_preprocessing",
+    srcs = ["models/inception_preprocessing.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "vgg_preprocessing",
+    srcs = ["models/vgg_preprocessing.py"],
     deps = [
         "//tensorflow",
     ],
@@ -147,7 +147,7 @@ py_library(
     srcs = ["models/model_factory.py"],
     deps = [
         ":inception_preprocessing",
-        ":resnet_preprocessing",
+        ":vgg_preprocessing",
         "//tensorflow",
     ],
 )

@@ -23,7 +23,7 @@ import tensorflow as tf
 
 from tensorflow.contrib.slim import nets
 from google3.third_party.tensorflow_models.slim.models import inception_preprocessing
-from google3.third_party.tensorflow_models.slim.models import resnet_preprocessing
+from google3.third_party.tensorflow_models.slim.models import vgg_preprocessing
 
 slim = tf.contrib.slim
 
@@ -49,17 +49,16 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
   Raises:
     ValueError: If model `name` is not recognized.
   """
-  # TODO(nsilberman): Add VGG preprocessing.
   preprocessing_fn_map = {
       'inception_v1': inception_preprocessing,
       'inception_v2': inception_preprocessing,
       'inception_v3': inception_preprocessing,
-      'resnet_v1_50': resnet_preprocessing,
-      'resnet_v1_101': resnet_preprocessing,
-      'resnet_v1_152': resnet_preprocessing,
-      'vgg_a': resnet_preprocessing,
-      'vgg_16': resnet_preprocessing,
-      'vgg_19': resnet_preprocessing,
+      'resnet_v1_50': vgg_preprocessing,
+      'resnet_v1_101': vgg_preprocessing,
+      'resnet_v1_152': vgg_preprocessing,
+      'vgg_a': vgg_preprocessing,
+      'vgg_16': vgg_preprocessing,
+      'vgg_19': vgg_preprocessing,
   }
 
   if name == 'inception_v1':

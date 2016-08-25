@@ -192,6 +192,12 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_string(
     'dataset_dir', None, 'The directory where the dataset files are stored.')
 
+tf.app.flags.DEFINE_integer(
+    'labels_offset', 0,
+    'An offset for the labels in the dataset. This flag is primarily used to '
+    'evaluate the VGG and ResNet architectures which do not use a background '
+    'class for the ImageNet dataset.')
+
 tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to train.')
 
@@ -337,7 +343,7 @@ def _get_init_fn():
         % FLAGS.train_dir)
     return None
 
-  exclusions = None
+  exclusions = []
   if FLAGS.checkpoint_exclude_scopes:
     exclusions = [scope.strip()
                   for scope in FLAGS.checkpoint_exclude_scopes.split(',')]
@@ -387,7 +393,7 @@ def main(_):
     ####################
     model_fn, image_preprocessing_fn = model_factory.get_model(
         FLAGS.model_name,
-        num_classes=dataset.num_classes,
+        num_classes=(dataset.num_classes - FLAGS.labels_offset),
         weight_decay=FLAGS.weight_decay,
         is_training=True)
 
@@ -401,6 +407,7 @@ def main(_):
           common_queue_capacity=20 * FLAGS.batch_size,
           common_queue_min=10 * FLAGS.batch_size)
       [image, label] = provider.get(['image', 'label'])
+      label -= FLAGS.labels_offset
       image = image_preprocessing_fn(image)
 
       images, labels = tf.train.batch(
@@ -408,7 +415,8 @@ def main(_):
           batch_size=FLAGS.batch_size,
           num_threads=FLAGS.num_preprocessing_threads,
           capacity=5 * FLAGS.batch_size)
-      labels = slim.one_hot_encoding(labels, dataset.num_classes)
+      labels = slim.one_hot_encoding(
+          labels, dataset.num_classes - FLAGS.labels_offset)
       batch_queue = slim.prefetch_queue.prefetch_queue(
           [images, labels], capacity=2 * deploy_config.num_clones)
 
