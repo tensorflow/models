@@ -65,8 +65,8 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
   if name == 'inception_v1':
     image_size = nets.inception.inception_v1.default_image_size
     def func(images):
-      with slim.arg_scope(nets.inception.inception_v3_arg_scope(
-          is_training=is_training, weight_decay=weight_decay)):
+      with slim.arg_scope(nets.inception.inception_v1_arg_scope(
+          weight_decay=weight_decay)):
         return nets.inception.inception_v1(images,
                                            num_classes,
                                            is_training=is_training)
@@ -74,8 +74,8 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
   elif name == 'inception_v2':
     image_size = nets.inception.inception_v2.default_image_size
     def func(images):
-      with slim.arg_scope(nets.inception.inception_v3_arg_scope(
-          is_training=is_training, weight_decay=weight_decay)):
+      with slim.arg_scope(nets.inception.inception_v2_arg_scope(
+          weight_decay=weight_decay)):
         return nets.inception.inception_v2(images,
                                            num_classes=num_classes,
                                            is_training=is_training)
@@ -84,7 +84,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
     image_size = nets.inception.inception_v3.default_image_size
     def func(images):
       with slim.arg_scope(nets.inception.inception_v3_arg_scope(
-          is_training=is_training, weight_decay=weight_decay)):
+          weight_decay=weight_decay)):
         return nets.inception.inception_v3(images,
                                            num_classes=num_classes,
                                            is_training=is_training)

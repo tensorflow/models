@@ -12,7 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Generic evaluation script that trains a given model a specified dataset.
+r"""Generic evaluation script that trains a given model a specified dataset.
+
+# TODO(sguada) Update command line.
+blaze build -c opt --copt=-mavx --config=gcudacc \
+  third_party/tensorflow_models/research/slim/eval
+
+CHECKPOINT_DIR=`~/data/inception-v2`
+DATASET_DIR=/tmp/imagenet-data
+./blaze-bin/third_party/tensorflow_models/research/slim/eval \
+   --alsologtostderr \
+   --checkpoint_path=${CHECKPOINT_DIR}/inception_v2.ckpt \
+   --dataset_dir=${DATASET_DIR} \
+   --dataset_name=imagenet \
+   --dataset_split_name=validation \
+   --model_name=inception_v2 \
+   --restore_global_step=False
 """
 
 from __future__ import absolute_import
@@ -29,7 +44,7 @@ from google3.third_party.tensorflow_models.slim.models import model_factory
 slim = tf.contrib.slim
 
 tf.app.flags.DEFINE_integer(
-    'batch_size', 32, 'The number of samples in each batch.')
+    'batch_size', 100, 'The number of samples in each batch.')
 
 tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')

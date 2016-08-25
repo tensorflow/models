@@ -105,6 +105,14 @@ py_binary(
 )
 
 py_library(
+    name = "inception_preprocessing",
+    srcs = ["models/inception_preprocessing.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
     name = "model_deploy",
     srcs = ["models/model_deploy.py"],
     deps = [
