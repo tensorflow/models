@@ -6,7 +6,7 @@ Xin Pan (xpan@google.com, github:panyx0718), Peter Liu (peterjliu@google.com)
 
 <b>Introduction</b>
 
-The core model is the traditional seqeuence-to-sequence model with attention.
+The core model is the traditional sequence-to-sequence model with attention.
 It is customized (mostly inputs/outputs) for the text summarization task. The
 model has been trained on Gigaword dataset and achieved state-of-the-art
 results (as of June 2016).
