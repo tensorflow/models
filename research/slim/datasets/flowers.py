@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Provides data for the MNIST dataset.
+"""Provides data for the Cifar10 dataset.
 
 The dataset scripts used to create the dataset can be found at:
-tensorflow/models/slim/data/create_mnist_dataset.py
+tensorflow/models/slim/data/create_cifar10_dataset.py
 """
 
 from __future__ import absolute_import
@@ -28,33 +28,28 @@ import tensorflow as tf
 
 slim = tf.contrib.slim
 
-_FILE_PATTERN = 'mnist_%s.tfrecord'
+_FILE_PATTERN = 'flowers_%s_*.tfrecord'
 
-_SPLITS_TO_SIZES = {'train': 60000, 'test': 10000}
+SPLITS_TO_SIZES = {'train': 3320, 'test': 350}
 
-_NUM_CLASSES = 10
+_NUM_CLASSES = 5
 
 _ITEMS_TO_DESCRIPTIONS = {
-    'image': 'A [28 x 28 x 1] grayscale image.',
-    'label': 'A single integer between 0 and 9',
+    'image': 'A color image of varying size.',
+    'label': 'A single integer between 0 and 4',
 }
 
 _LABELS_TO_NAMES = {
-    0: 'zero',
-    1: 'one',
-    2: 'two',
-    3: 'three',
-    4: 'four',
-    5: 'five',
-    6: 'six',
-    7: 'seven',
-    8: 'eight',
-    9: 'nine',
+    0: 'daisy',
+    1: 'dandelion',
+    2: 'roses',
+    3: 'sunflowers',
+    4: 'tulips',
 }
 
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
-  """Gets a dataset tuple with instructions for reading MNIST.
+  """Gets a dataset tuple with instructions for reading cifar10.
 
   Args:
     split_name: A train/test split name.
@@ -70,7 +65,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   Raises:
     ValueError: if `split_name` is not a valid train/test split.
   """
-  if split_name not in _SPLITS_TO_SIZES:
+  if split_name not in SPLITS_TO_SIZES:
     raise ValueError('split name %s was not recognized.' % split_name)
 
   if not file_pattern:
@@ -83,14 +78,14 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
 
   keys_to_features = {
       'image/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
-      'image/format': tf.FixedLenFeature((), tf.string, default_value='raw'),
+      'image/format': tf.FixedLenFeature((), tf.string, default_value='png'),
       'image/class/label': tf.FixedLenFeature(
-          [1], tf.int64, default_value=tf.zeros([1], dtype=tf.int64)),
+          [], tf.int64, default_value=tf.zeros([], dtype=tf.int64)),
   }
 
   items_to_handlers = {
-      'image': slim.tfexample_decoder.Image(shape=[28, 28, 1], channels=1),
-      'label': slim.tfexample_decoder.Tensor('image/class/label', shape=[]),
+      'image': slim.tfexample_decoder.Image(),
+      'label': slim.tfexample_decoder.Tensor('image/class/label'),
   }
 
   decoder = slim.tfexample_decoder.TFExampleDecoder(
@@ -100,7 +95,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       data_sources=file_pattern,
       reader=reader,
       decoder=decoder,
-      num_samples=_SPLITS_TO_SIZES[split_name],
-      num_classes=_NUM_CLASSES,
+      num_samples=SPLITS_TO_SIZES[split_name],
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
+      num_classes=_NUM_CLASSES,
       labels_to_names=_LABELS_TO_NAMES)

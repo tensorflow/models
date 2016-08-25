@@ -15,10 +15,28 @@ package_group(
     ],
 )
 
+py_library(
+    name = "dataset_utils",
+    srcs = ["datasets/dataset_utils.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
 py_binary(
     name = "download_and_convert_cifar10",
     srcs = ["datasets/download_and_convert_cifar10.py"],
     deps = [
+        ":dataset_utils",
+        "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "download_and_convert_flowers",
+    srcs = ["datasets/download_and_convert_flowers.py"],
+    deps = [
+        ":dataset_utils",
         "//tensorflow",
     ],
 )
@@ -27,6 +45,7 @@ py_binary(
     name = "download_and_convert_mnist",
     srcs = ["datasets/download_and_convert_mnist.py"],
     deps = [
+        ":dataset_utils",
         "//tensorflow",
     ],
 )
@@ -34,6 +53,14 @@ py_binary(
 py_binary(
     name = "cifar10",
     srcs = ["datasets/cifar10.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "flowers",
+    srcs = ["datasets/flowers.py"],
     deps = [
         "//tensorflow",
     ],
@@ -60,6 +87,7 @@ py_library(
     srcs = ["datasets/dataset_factory.py"],
     deps = [
         ":cifar10",
+        ":flowers",
         ":imagenet",
         ":mnist",
     ],

@@ -39,6 +39,19 @@ _ITEMS_TO_DESCRIPTIONS = {
     'label': 'A single integer between 0 and 9',
 }
 
+_LABELS_TO_NAMES = {
+    0: 'airplane',
+    1: 'automobile',
+    2: 'bird',
+    3: 'cat',
+    4: 'deer',
+    5: 'dog',
+    6: 'frog',
+    7: 'horse',
+    8: 'ship',
+    9: 'truck',
+}
+
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   """Gets a dataset tuple with instructions for reading cifar10.
@@ -89,4 +102,5 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       decoder=decoder,
       num_samples=SPLITS_TO_SIZES[split_name],
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
-      num_classes=_NUM_CLASSES)
+      num_classes=_NUM_CLASSES,
+      labels_to_names=_LABELS_TO_NAMES)

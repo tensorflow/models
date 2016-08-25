@@ -56,6 +56,8 @@ _ITEMS_TO_DESCRIPTIONS = {
 
 _NUM_CLASSES = 1001
 
+# TODO(nsilberman): Add _LABELS_TO_NAMES
+
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   """Gets a dataset tuple with instructions for reading ImageNet.
