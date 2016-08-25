@@ -174,9 +174,9 @@ def main(_):
       checkpoint_path = FLAGS.checkpoint_path
 
     slim.evaluation.evaluate_once(
+        FLAGS.master,
         checkpoint_path,
         logdir=FLAGS.eval_dir,
-        master=FLAGS.master,
         num_evals=num_batches,
         eval_op=names_to_updates.values(),
         variables_to_restore=variables_to_restore)
