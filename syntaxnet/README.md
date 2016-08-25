@@ -111,6 +111,9 @@ Bazel should complete reporting all tests passed.
 You can also compile SyntaxNet in a [Docker](https://www.docker.com/what-docker)
 container using this [Dockerfile](Dockerfile).
 
+To build SyntaxNet with GPU support please refer to the instructions in
+[issues/248](https://github.com/tensorflow/models/issues/248).
+
 **Note:** If you are running Docker on OSX, make sure that you have enough
 memory allocated for your Docker VM.
 
