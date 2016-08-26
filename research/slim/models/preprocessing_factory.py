@@ -21,6 +21,7 @@ from __future__ import print_function
 import google3
 import tensorflow as tf
 
+from google3.third_party.tensorflow_models.slim.models import cifar10_preprocessing
 from google3.third_party.tensorflow_models.slim.models import inception_preprocessing
 from google3.third_party.tensorflow_models.slim.models import vgg_preprocessing
 
@@ -38,12 +39,13 @@ def get_preprocessing(name, is_training=False):
   Returns:
     preprocessing_fn: A function that preprocessing a single image (pre-batch).
       It has the following signature:
-        image = preprocessing_fn(image, height, width, ...).
+        image = preprocessing_fn(image, output_height, output_width, ...).
 
   Raises:
     ValueError: If Preprocessing `name` is not recognized.
   """
   preprocessing_fn_map = {
+      'cifar10': cifar10_preprocessing,
       'inception': inception_preprocessing,
       'vgg': vgg_preprocessing,
   }
@@ -51,8 +53,8 @@ def get_preprocessing(name, is_training=False):
   if name not in preprocessing_fn_map:
     raise ValueError('Preprocessing name [%s] was not recognized' % name)
 
-  def preprocessing_fn(image, height, width, **kwargs):
+  def preprocessing_fn(image, output_height, output_width, **kwargs):
     return preprocessing_fn_map[name].preprocess_image(
-        image, height, width, is_training=is_training, **kwargs)
+        image, output_height, output_width, is_training=is_training, **kwargs)
 
   return preprocessing_fn
