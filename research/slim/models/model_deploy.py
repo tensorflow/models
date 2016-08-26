@@ -30,7 +30,7 @@ Usage:
   g = tf.Graph()
 
   # Set up DeploymentConfig
-  config = slim.DeploymentConfig(num_clones=2, use_gpu=True)
+  config = slim.DeploymentConfig(num_clones=2, clone_on_cpu=True)
 
   # Create the global step on the device storing the variables.
   with tf.device(config.variables_device()):
@@ -76,7 +76,7 @@ clones:
 
 DeploymentConfig parameters:
   * num_clones: Number of model clones to deploy in each replica.
-  * use_gpu: True if clones should be deployed on GPUS.
+  * clone_on_cpu: True if clones should be placed on CPU.
   * replica_id: Integer.  Index of the replica for which the model is
       deployed.  Usually 0 for the chief replica.
   * num_replicas: Number of replicas to use.
@@ -134,7 +134,7 @@ DeployedModel = collections.namedtuple('DeployedModel',
 
 # Default parameters for DeploymentConfig
 _deployment_params = {'num_clones': 1,
-                      'use_gpu': True,
+                      'clone_on_cpu': False,
                       'replica_id': 0,
                       'num_replicas': 1,
                       'num_ps_tasks': 0,
@@ -487,7 +487,7 @@ class DeploymentConfig(object):
 
   def __init__(self,
                num_clones=1,
-               use_gpu=True,
+               clone_on_cpu=False,
                replica_id=0,
                num_replicas=1,
                num_ps_tasks=0,
@@ -497,7 +497,7 @@ class DeploymentConfig(object):
 
     The config describes how to deploy a model across multiple clones and
     replicas.  The model will be replicated `num_clones` times in each replica.
-    If `use_gpu` is True, each clone will use a different GPU.
+    If `clone_on_cpu` is True, each clone will placed on CPU.
 
     If `num_replicas` is 1, the model is deployed via a single process.  In that
     case `worker_device`, `num_ps_tasks`, and `ps_device` are ignored.
@@ -508,7 +508,7 @@ class DeploymentConfig(object):
 
     Args:
       num_clones: Number of model clones to deploy in each replica.
-      use_gpu: True if clones should be deployed on GPUS.
+      clone_on_cpu: If True clones would be placed on CPU.
       replica_id: Integer.  Index of the replica for which the model is
         deployed.  Usually 0 for the chief replica.
       num_replicas: Number of replicas to use.
@@ -530,7 +530,7 @@ class DeploymentConfig(object):
     if replica_id >= num_replicas:
       raise ValueError('replica_id must be less than num_replicas')
     self._num_clones = num_clones
-    self._use_gpu = use_gpu
+    self._clone_on_cpu = clone_on_cpu
     self._replica_id = replica_id
     self._num_replicas = num_replicas
     self._num_ps_tasks = num_ps_tasks
@@ -542,8 +542,8 @@ class DeploymentConfig(object):
     return self._num_clones
 
   @property
-  def use_gpu(self):
-    return self._use_gpu
+  def clone_on_cpu(self):
+    return self._clone_on_cpu
 
   @property
   def replica_id(self):
@@ -595,10 +595,11 @@ class DeploymentConfig(object):
     device = ''
     if self._num_ps_tasks > 0:
       device += self._worker_device
-    if self._use_gpu:
-      device += '/device:GPU:%d' % clone_index
-    else:
+    if self._clone_on_cpu:
       device += '/device:CPU:0'
+    else:
+      if self._num_clones > 1:
+        device += '/device:GPU:%d' % clone_index
     return device
 
   def clone_scope(self, clone_index):
