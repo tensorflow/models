@@ -12,7 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Generic evaluation script that trains a given model a specified dataset.
+r"""Generic evaluation script that trains a given model a specified dataset.
+
+# TODO(sguada) Update command line.
+blaze build -c opt --copt=-mavx \
+  third_party/tensorflow_models/slim:eval.par
+
+./blaze-bin/third_party/tensorflow_models/slim/eval.par \
+   --alsologtostderr \
+   --dataset_name=imagenet \
+   --dataset_dir=/tmp/imagenet-data/ \
+   --dataset_split_name=validation \
+   --model_name=inception_v1 \
+   --max_num_batches=10
+
+
+CHECKPOINT_DIR=`~/data/inception-v2`
+DATASET_DIR=/tmp/imagenet-data
+./blaze-bin/third_party/tensorflow_models/slim/eval \
+   --alsologtostderr \
+   --checkpoint_path=${CHECKPOINT_DIR}/inception_v2.ckpt \
+   --dataset_dir=${DATASET_DIR} \
+   --dataset_name=imagenet \
+   --dataset_split_name=validation \
+   --model_name=inception_v2 \
+   --restore_global_step=False
 """
 
 from __future__ import absolute_import
@@ -24,11 +48,16 @@ import tensorflow as tf
 
 from slim.datasets import dataset_factory
 from slim.models import model_factory
+from slim.models import preprocessing_factory
 
 slim = tf.contrib.slim
 
 tf.app.flags.DEFINE_integer(
-    'batch_size', 32, 'The number of samples in each batch.')
+    'batch_size', 100, 'The number of samples in each batch.')
+
+tf.app.flags.DEFINE_integer(
+    'max_num_batches', None,
+    'Max number of batches to evaluate by default use all.')
 
 tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
@@ -69,6 +98,9 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to evaluate.')
 
+tf.app.flags.DEFINE_string(
+    'preprocessing_name', 'inception', 'The name of the preprocessing to use.')
+
 tf.app.flags.DEFINE_float(
     'moving_average_decay', None,
     'The decay to use for the moving average.'
@@ -90,7 +122,7 @@ def main(_):
     ####################
     # Select the model #
     ####################
-    model_fn, image_preprocessing_fn = model_factory.get_model(
+    model_fn = model_factory.get_model(
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         is_training=False)
@@ -106,7 +138,16 @@ def main(_):
     [image, label] = provider.get(['image', 'label'])
     label -= FLAGS.labels_offset
 
-    image = image_preprocessing_fn(image)
+    #####################################
+    # Select the preprocessing function #
+    #####################################
+    image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+        FLAGS.preprocessing_name,
+        is_training=False)
+
+    image = image_preprocessing_fn(image,
+                                   height=model_fn.default_image_size,
+                                   width=model_fn.default_image_size)
 
     images, labels = tf.train.batch(
         [image, label],
@@ -149,18 +190,23 @@ def main(_):
       tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
 
     # TODO(sguada) use num_epochs=1
-    # This ensures that we make a single pass over all of the data.
-    num_batches = math.ceil(dataset.num_samples / float(FLAGS.batch_size))
+    if FLAGS.max_num_batches:
+      num_batches = FLAGS.max_num_batches
+    else:
+      # This ensures that we make a single pass over all of the data.
+      num_batches = math.ceil(dataset.num_samples / float(FLAGS.batch_size))
 
     if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
-      checkpoint_path = tf.latest_checkpoint(FLAGS.checkpoint_path)
+      checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
     else:
       checkpoint_path = FLAGS.checkpoint_path
 
+    tf.logging.info('Evaluating %s' % checkpoint_path)
+
     slim.evaluation.evaluate_once(
+        FLAGS.master,
         checkpoint_path,
         logdir=FLAGS.eval_dir,
-        master=FLAGS.master,
         num_evals=num_batches,
         eval_op=names_to_updates.values(),
         variables_to_restore=variables_to_restore)

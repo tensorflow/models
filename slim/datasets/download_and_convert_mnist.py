@@ -38,12 +38,12 @@ import numpy as np
 from six.moves import urllib
 import tensorflow as tf
 
+from slim.datasets import dataset_utils
 
 tf.app.flags.DEFINE_string(
     'dataset_dir',
     None,
     'The directory where the output TFRecords and temporary files are saved.')
-tf.app.flags.MarkFlagAsRequired('dataset_dir')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -57,31 +57,19 @@ _TEST_LABELS_FILENAME = 't10k-labels-idx1-ubyte.gz'
 _IMAGE_SIZE = 28
 _NUM_CHANNELS = 1
 
-
-def _int64_feature(values):
-  """Returns a TF-Feature of int64s.
-
-  Args:
-    values: A scalar or list of values.
-
-  Returns:
-    a TF-Feature.
-  """
-  if not isinstance(values, (tuple, list)):
-    values = [values]
-  return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
-
-
-def _bytes_feature(values):
-  """Returns a TF-Feature of bytes.
-
-  Args:
-    values: A string.
-
-  Returns:
-    a TF-Feature.
-  """
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
+# The names of the classes.
+_CLASS_NAMES = [
+    'zero',
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'size',
+    'seven',
+    'eight',
+    'nine',
+]
 
 
 def _extract_images(filename, num_images):
@@ -142,19 +130,13 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
 
     with tf.Session('') as sess:
       for j in range(num_images):
-        if j % 100 == 0:
-          sys.stdout.write('\r>> Converting image %d/%d' % (j + 1, num_images))
-          sys.stdout.flush()
+        sys.stdout.write('\r>> Converting image %d/%d' % (j + 1, num_images))
+        sys.stdout.flush()
 
         png_string = sess.run(encoded_png, feed_dict={image: images[j]})
-        example = tf.train.Example(features=tf.train.Features(feature={
-            'image/encoded': _bytes_feature(png_string),
-            'image/format': _bytes_feature('png'),
-            'image/class/label': _int64_feature(labels[j]),
-            'image/height': _int64_feature(_IMAGE_SIZE),
-            'image/width': _int64_feature(_IMAGE_SIZE),
-        }))
 
+        example = dataset_utils.image_to_tfexample(
+            png_string, 'png', _IMAGE_SIZE, _IMAGE_SIZE, labels[j])
         tfrecord_writer.write(example.SerializeToString())
 
 
@@ -212,6 +194,9 @@ def _clean_up_temporary_files(dataset_dir):
 
 
 def main(_):
+  if not FLAGS.dataset_dir:
+    raise ValueError('You must supply the dataset directory with --dataset_dir')
+
   if not tf.gfile.Exists(FLAGS.dataset_dir):
     tf.gfile.MakeDirs(FLAGS.dataset_dir)
 
@@ -230,6 +215,10 @@ def main(_):
     data_filename = os.path.join(FLAGS.dataset_dir, _TEST_DATA_FILENAME)
     labels_filename = os.path.join(FLAGS.dataset_dir, _TEST_LABELS_FILENAME)
     _add_to_tfrecord(data_filename, labels_filename, 10000, tfrecord_writer)
+
+  # Finally, write the labels file:
+  labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
+  dataset_utils.write_label_file(labels_to_class_names, FLAGS.dataset_dir)
 
   _clean_up_temporary_files(FLAGS.dataset_dir)
   print('\nFinished converting the MNIST dataset!')

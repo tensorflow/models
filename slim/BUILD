@@ -15,29 +15,51 @@ package_group(
     ],
 )
 
+py_library(
+    name = "dataset_utils",
+    srcs = ["datasets/dataset_utils.py"],
+)
+
 py_binary(
     name = "download_and_convert_cifar10",
     srcs = ["datasets/download_and_convert_cifar10.py"],
+    deps = [":dataset_utils"],
+)
+
+py_binary(
+    name = "download_and_convert_flowers",
+    srcs = ["datasets/download_and_convert_flowers.py"],
+    deps = [":dataset_utils"],
 )
 
 py_binary(
     name = "download_and_convert_mnist",
     srcs = ["datasets/download_and_convert_mnist.py"],
+    deps = [":dataset_utils"],
 )
 
 py_binary(
     name = "cifar10",
     srcs = ["datasets/cifar10.py"],
+    deps = [":dataset_utils"],
+)
+
+py_binary(
+    name = "flowers",
+    srcs = ["datasets/flowers.py"],
+    deps = [":dataset_utils"],
 )
 
 py_binary(
     name = "imagenet",
     srcs = ["datasets/imagenet.py"],
+    deps = [":dataset_utils"],
 )
 
 py_binary(
     name = "mnist",
     srcs = ["datasets/mnist.py"],
+    deps = [":dataset_utils"],
 )
 
 py_library(
@@ -45,6 +67,7 @@ py_library(
     srcs = ["datasets/dataset_factory.py"],
     deps = [
         ":cifar10",
+        ":flowers",
         ":imagenet",
         ":mnist",
     ],
@@ -57,6 +80,7 @@ py_binary(
         ":dataset_factory",
         ":model_deploy",
         ":model_factory",
+        ":preprocessing_factory",
     ],
 )
 
@@ -78,16 +102,21 @@ py_library(
 )
 
 py_library(
-    name = "resnet_preprocessing",
-    srcs = ["models/resnet_preprocessing.py"],
+    name = "vgg_preprocessing",
+    srcs = ["models/vgg_preprocessing.py"],
 )
 
 py_library(
     name = "model_factory",
     srcs = ["models/model_factory.py"],
+)
+
+py_library(
+    name = "preprocessing_factory",
+    srcs = ["models/preprocessing_factory.py"],
     deps = [
         ":inception_preprocessing",
-        ":resnet_preprocessing",
+        ":vgg_preprocessing",
     ],
 )
 
@@ -98,5 +127,6 @@ py_binary(
         ":dataset_factory",
         ":model_deploy",
         ":model_factory",
+        ":preprocessing_factory",
     ],
 )

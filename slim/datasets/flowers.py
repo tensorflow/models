@@ -29,15 +29,15 @@ from slim.datasets import dataset_utils
 
 slim = tf.contrib.slim
 
-_FILE_PATTERN = 'cifar10_%s.tfrecord'
+_FILE_PATTERN = 'flowers_%s_*.tfrecord'
 
-SPLITS_TO_SIZES = {'train': 50000, 'test': 10000}
+SPLITS_TO_SIZES = {'train': 3320, 'validation': 350}
 
-_NUM_CLASSES = 10
+_NUM_CLASSES = 5
 
 _ITEMS_TO_DESCRIPTIONS = {
-    'image': 'A [32 x 32 x 3] color image.',
-    'label': 'A single integer between 0 and 9',
+    'image': 'A color image of varying size.',
+    'label': 'A single integer between 0 and 4',
 }
 
 
@@ -45,7 +45,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   """Gets a dataset tuple with instructions for reading cifar10.
 
   Args:
-    split_name: A train/test split name.
+    split_name: A train/validation split name.
     dataset_dir: The base directory of the dataset sources.
     file_pattern: The file pattern to use when matching the dataset sources.
       It is assumed that the pattern contains a '%s' string so that the split
@@ -56,7 +56,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
     A `Dataset` namedtuple.
 
   Raises:
-    ValueError: if `split_name` is not a valid train/test split.
+    ValueError: if `split_name` is not a valid train/validation split.
   """
   if split_name not in SPLITS_TO_SIZES:
     raise ValueError('split name %s was not recognized.' % split_name)
@@ -66,7 +66,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   file_pattern = os.path.join(dataset_dir, file_pattern % split_name)
 
   # Allowing None in the signature so that dataset_factory can use the default.
-  if not reader:
+  if reader is None:
     reader = tf.TFRecordReader
 
   keys_to_features = {
@@ -77,7 +77,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   }
 
   items_to_handlers = {
-      'image': slim.tfexample_decoder.Image(shape=[32, 32, 3]),
+      'image': slim.tfexample_decoder.Image(),
       'label': slim.tfexample_decoder.Tensor('image/class/label'),
   }
 

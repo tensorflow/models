@@ -38,11 +38,12 @@ import numpy as np
 from six.moves import urllib
 import tensorflow as tf
 
+from slim.datasets import dataset_utils
+
 tf.app.flags.DEFINE_string(
     'dataset_dir',
     None,
     'The directory where the output TFRecords and temporary files are saved.')
-tf.app.flags.MarkFlagAsRequired('dataset_dir')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -52,45 +53,22 @@ _DATA_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 # The number of training files.
 _NUM_TRAIN_FILES = 5
 
+# The height and width of each image.
+_IMAGE_SIZE = 32
 
-def _int64_feature(values):
-  """Returns a TF-Feature of int64s.
-
-  Args:
-    values: A scalar or list of values.
-
-  Returns:
-    a TF-Feature.
-  """
-  if not isinstance(values, (tuple, list)):
-    values = [values]
-  return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
-
-
-def _bytes_feature(values):
-  """Returns a TF-Feature of bytes.
-
-  Args:
-    values: A string.
-
-  Returns:
-    a TF-Feature.
-  """
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
-
-
-def _encode_png_image(image):
-  """Encodes the given image using PNG encoding.
-
-  Args:
-    image: A numpy image of size [height, width, 3].
-
-  Returns:
-    An encoding image string.
-  """
-  with tf.Graph().as_default():
-    with tf.Session(''):
-      return tf.image.encode_png(tf.constant(image)).eval()
+# The names of the classes.
+_CLASS_NAMES = [
+    'airplane',
+    'automobile',
+    'bird',
+    'cat',
+    'deer',
+    'dog',
+    'frog',
+    'horse',
+    'ship',
+    'truck',
+]
 
 
 def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
@@ -113,24 +91,26 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
   images = images.reshape((num_images, 3, 32, 32))
   labels = data['labels']
 
-  for j in range(num_images):
-    if j % 100 == 0:
-      print('Reading file [%s], image %d/%d' % (
-          filename, offset + j + 1, offset + num_images))
-    image = np.squeeze(images[j]).transpose((1, 2, 0))
-    label = labels[j]
+  with tf.Graph().as_default():
+    image_placeholder = tf.placeholder(dtype=tf.uint8)
+    encoded_image = tf.image.encode_png(image_placeholder)
 
-    png_string = _encode_png_image(image)
+    with tf.Session('') as sess:
 
-    example = tf.train.Example(features=tf.train.Features(feature={
-        'image/encoded': _bytes_feature(png_string),
-        'image/format': _bytes_feature('png'),
-        'image/class/label': _int64_feature(label),
-        'image/height': _int64_feature(32),
-        'image/width': _int64_feature(32),
-    }))
+      for j in range(num_images):
+        sys.stdout.write('\r>> Reading file [%s] image %d/%d' % (
+            filename, offset + j + 1, offset + num_images))
+        sys.stdout.flush()
 
-    tfrecord_writer.write(example.SerializeToString())
+        image = np.squeeze(images[j]).transpose((1, 2, 0))
+        label = labels[j]
+
+        png_string = sess.run(encoded_image,
+                              feed_dict={image_placeholder: image})
+
+        example = dataset_utils.image_to_tfexample(
+            png_string, 'png', _IMAGE_SIZE, _IMAGE_SIZE, label)
+        tfrecord_writer.write(example.SerializeToString())
 
   return offset + num_images
 
@@ -183,6 +163,9 @@ def _clean_up_temporary_files(dataset_dir):
 
 
 def main(_):
+  if not FLAGS.dataset_dir:
+    raise ValueError('You must supply the dataset directory with --dataset_dir')
+
   if not tf.gfile.Exists(FLAGS.dataset_dir):
     tf.gfile.MakeDirs(FLAGS.dataset_dir)
 
@@ -206,8 +189,12 @@ def main(_):
                             'test_batch')
     _add_to_tfrecord(filename, tfrecord_writer)
 
+  # Finally, write the labels file:
+  labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
+  dataset_utils.write_label_file(labels_to_class_names, FLAGS.dataset_dir)
+
   _clean_up_temporary_files(FLAGS.dataset_dir)
-  print('Finished converting the Cifar10 dataset!')
+  print('\nFinished converting the Cifar10 dataset!')
 
 if __name__ == '__main__':
   tf.app.run()

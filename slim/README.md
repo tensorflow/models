@@ -11,8 +11,8 @@ TF-Slim. In particular the code base provides two core binaries for:
 All scripts are highly configurable via command-line flags. They support
 training and evaluation using the following architectures:
 
-* [AlexNet](http://arxiv.org/abs/1404.5997v2.pdf)
-* [Inception V1](http://arxiv.org/abs/1409.4842v1.pdf)
+* [AlexNet](http://arxiv.org/abs/1404.5997v2)
+* [Inception V1](http://arxiv.org/abs/1409.4842v1)
 * [Inception V2](http://arxiv.org/abs/1502.03167)
 * [Inception V3](http://arxiv.org/abs/1512.00567)
 * [OverFeat](http://arxiv.org/abs/1312.6229)
@@ -26,14 +26,12 @@ Furthermore, each of these models can be trained or fine-tuned on the following
 datasets:
 
 * [Cifar10](https://www.cs.toronto.edu/~kriz/cifar.html)
-* [Flowers](https://github.com/tensorflow/models/blob/master/inception/README.md)
+* [Flowers](https://github.com/tensorflow/models/blob/master/inception/README.md) (A small dataset released with TensorFlow of flower images across 5 classes. Great for testing and debugging.)
 * [ImageNet](http://www.image-net.org/)
 * [MNIST](http://yann.lecun.com/exdb/mnist/)
 
 Finally, the model training is deployable via any of the following
 configurations:
-
-TODO(nsilberman): Add a TODO describing how to run each of these configs.
 
 * [Single machine, single CPU/GPU](#running-training-on-a-single-machine-single-cpugpu)
 * [Multiple machines, single CPU/GPU per machine](#running-training-on-multiple-machines-single-cpugpu-per-machine)
@@ -58,6 +56,10 @@ export TF_BINARY_URL=https://ci.tensorflow.org/view/Nightly/job/nightly-matrix-c
 sudo pip install --upgrade $TF_BINARY_URL
 ```
 
+To compile the training and evaluation scripts, we also need to install bazel.
+You can find step-by-step instructions
+[here](http://bazel.io/docs/install.html).
+
 
 Additionally, we'll need to install
 [tensorflow/models/inception](https://github.com/tensorflow/models/tree/master/inception)
@@ -65,32 +67,21 @@ as well as
 [tensorflow/models/slim](https://github.com/tensorflow/models/tree/master/slim).
 The former is necessary for using the ImageNet and Flowers datsets.
 
-## Using the MNIST Dataset
+# Datasets
 
-In order to use the MNIST dataset, the data must first be downloaded and
-converted to the native TFRecord format.
+As part of this library, we've included scripts to download several popular
+datasets and convert them to TensorFlow's native TFRecord format. Each labeled
+image is represented as a
+[TF-Example](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/core/example/example.proto)
+protocol buffer.
 
-```shell
-# Specify the directory of the MNIST data:
-$ DATA_DIR=$HOME/mnist
+Dataset | Download Script | Dataset Specification | Description
+:------:|:---------------:|:---------------------:|:-----------
+[Cifar10](https://www.cs.toronto.edu/~kriz/cifar.html)|[Script](https://github.com/tensorflow/models/blob/master/slim/datasets/download_and_convert_cifar10.py)|[Code](https://github.com/tensorflow/models/blob/master/slim/datasets/cifar10.py)|The cifar10 dataset contains 60,000 training and 10,000 testing images of 10 different object classes.
+[Flowers](https://github.com/tensorflow/models/blob/master/inception/README.md)|[Script](https://github.com/tensorflow/models/blob/master/inception/inception/data/download_and_preprocess_flowers.sh)|[Code](https://github.com/tensorflow/models/blob/master/slim/datasets/flowers.py)|The Flowers dataset contains 2500 images of flowers with 5 different labels.
+[ImageNet](http://www.image-net.org/)|[Script](https://github.com/tensorflow/models/blob/master/inception/inception/data/download_and_preprocess_imagenet.sh)|[Code](https://github.com/tensorflow/models/blob/master/slim/datasets/imagenet.py)|The ImageNet dataset contains about 1.2 million training and 50,000 validation images with 1000 different labels.
+[MNIST](http://yann.lecun.com/exdb/mnist/)|[Script](https://github.com/tensorflow/models/blob/master/slim/datasets/download_and_convert_mnist.py)|[Code](https://github.com/tensorflow/models/blob/master/slim/datasets/mnist.py)|The MNIST dataset contains 60,000 training 10,000 testing grayscale images of digits.
 
-# Build the dataset creation script.
-$ bazel build slim:download_and_convert_mnist
-
-# Run the dataset creation.
-$ ./bazel-bin/slim/download_and_convert_mnist --dataset_dir="${DATA_DIR}"
-```
-
-The final line of the output script should read:
-
-```shell
->> Converting image 10000/10000
-Finished extracting the MNIST dataset!
-```
-
-When the script finishes you will find two TFRecord files created:
-`$DATA_DIR/mnist_train.tfrecord` and `$DATA_DIR/mnist_test.tfrecord`
-which represent the training and testing sets respectively.
 
 ## Using the Cifar10 Dataset
 
@@ -115,18 +106,57 @@ Reading file [cifar-10-batches-py/test_batch], image 10000/10000
 Finished extracting the Cifar10 dataset!
 ```
 
-When the script finishes you will find two TFRecord files created:
-`$DATA_DIR/cifar10_train.tfrecord` and `$DATA_DIR/cifar10_test.tfrecord`
-which represent the training and testing sets respectively.
+When the script finishes you will find two TFRecord files created,
+`$DATA_DIR/cifar10_train.tfrecord` and `$DATA_DIR/cifar10_test.tfrecord`,
+which represent the training and testing sets respectively. You will also find
+a `$DATA_DIR/labels.txt` file which contains the mapping from integer labels
+to class names.
 
 ## Using the Flowers Dataset
 
-To use the flowers dataset, follow the instructions in the
-[tensorflow/models/inception](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started-1)
-repository. In particular see file
-[download_and_preprocess_flowers.sh](https://github.com/tensorflow/models/blob/master/inception/inception/data/download_and_preprocess_flowers.sh)
-or
-[download_and_preprocess_flowers_mac.sh](https://github.com/tensorflow/models/blob/master/inception/inception/data/download_and_preprocess_flowers_mac.sh).
+In order to use the Flowers dataset, the data must first be downloaded and
+converted to the native TFRecord format.
+
+```shell
+# Specify the directory of the Flowers data:
+$ DATA_DIR=$HOME/flowers
+
+# Build the dataset creation script.
+$ bazel build slim:download_and_convert_flowers
+
+# Run the dataset creation.
+$ ./bazel-bin/slim/download_and_convert_flowers --dataset_dir="${DATA_DIR}"
+```
+
+The final lines of the output script should read:
+
+```shell
+>> Converting image 3320/3320 shard 4
+>> Converting image 350/350 shard 4
+
+Finished converting the Flowers dataset!
+```
+
+When the script finishes you will find several TFRecord files created:
+
+```shell
+$ ls ${DATA_DIR}
+flowers_train-00000-of-00005.tfrecord
+flowers_train-00001-of-00005.tfrecord
+flowers_train-00002-of-00005.tfrecord
+flowers_train-00003-of-00005.tfrecord
+flowers_train-00004-of-00005.tfrecord
+flowers_validation-00000-of-00005.tfrecord
+flowers_validation-00001-of-00005.tfrecord
+flowers_validation-00002-of-00005.tfrecord
+flowers_validation-00003-of-00005.tfrecord
+flowers_validation-00004-of-00005.tfrecord
+labels.txt
+```
+
+These represent the training and validation data, sharded over 5 files each.
+You will also find the `$DATA_DIR/labels.txt` file which contains the mapping
+from integer labels to class names.
 
 ## Using the ImageNet Dataset
 
@@ -135,32 +165,76 @@ To use the ImageNet dataset, follow the instructions in the
 repository. In particular see file
 [download_and_preprocess_imagenet.sh](https://github.com/tensorflow/models/blob/master/inception/inception/data/download_and_preprocess_imagenet.sh)
 
-## Downloading the pre-trained checkpoints
+## Using the MNIST Dataset
 
-We have made available pre-trained checkpoints from several popular model
-architectures. These checkpoints can be used directly to perform inference
-on images using the ImageNet classes. Alternatively, they can be used for
-fine-tuning on new datasets. These checkpoints include:
+In order to use the MNIST dataset, the data must first be downloaded and
+converted to the native TFRecord format.
 
-* [InceptionV1](http://download.tensorflow.org/models/inception_v1.tar.gz)
-* [InceptionV2](http://download.tensorflow.org/models/inception_v2.tar.gz)
-* [InceptionV3](http://download.tensorflow.org/models/inception_v3.tar.gz)
-* [ResNet-50](http://download.tensorflow.org/models/resnet_v1_50.tar.gz)
-* [ResNet-101](http://download.tensorflow.org/models/resnet_v1_101.tar.gz)
-* [ResNet-152](http://download.tensorflow.org/models/resnet_v1_152.tar.gz)
-* [VGG-16](http://download.tensorflow.org/models/vgg_16.tar.gz)
-* [VGG-19](http://download.tensorflow.org/models/vgg_19.tar.gz)
+```shell
+# Specify the directory of the MNIST data:
+$ DATA_DIR=$HOME/mnist
+
+# Build the dataset creation script.
+$ bazel build slim:download_and_convert_mnist
+
+# Run the dataset creation.
+$ ./bazel-bin/slim/download_and_convert_mnist --dataset_dir="${DATA_DIR}"
+```
+
+The final line of the output script should read:
+
+```shell
+>> Converting image 10000/10000
+Finished extracting the MNIST dataset!
+```
+
+When the script finishes you will find two TFRecord files created,
+`$DATA_DIR/mnist_train.tfrecord` and `$DATA_DIR/mnist_test.tfrecord`,
+which represent the training and testing sets respectively.  You will also find
+a `$DATA_DIR/labels.txt` file which contains the mapping from integer labels
+to class names.
+
+## Pre-trained Models
+
+For convenience, we have provided a number of pre-trained image classification
+models which are listed below. These neural networks been trained on the
+ILSVRC-2012-CLS dataset which is comprised of ~1.2 million images and annotated
+with 1000 mutually exclusive class labels.
+
+In the table below, we present each of these models, the corresponding
+TensorFlow model file, the link to the model checkpoint and the top %1 accuracy.
+Note that the VGG and ResNet parameters have been converted from their original
+caffe format, whereas the Inception parameters have been trained internally at
+Google. Also be aware that these accuracies were computed by evaluating using a
+single image crop. Some academic papers report higher accuracy by using multiple
+crops at multiple scales.
+
+Model | TF-Slim File | Checkpoint | Top-1 Accuracy| Top-5 Accuracy |
+:----:|:------------:|:----------:|:-------:|:--------:|
+[Inception V1](http://arxiv.org/abs/1409.4842v1)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v1.py)|[inception_v1.tar.gz](http://download.tensorflow.org/models/inception_v1_2016_08_23.tar.gz)|69.8|89.6|
+[Inception V2](http://arxiv.org/abs/1502.03167)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v2.py)|[inception_v2.tar.gz](http://download.tensorflow.org/models/inception_v2_2016_08_23.tar.gz)|73.9|91.8|
+[Inception V3](http://arxiv.org/abs/1512.00567)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v3.py)|[inception_v3.tar.gz](http://download.tensorflow.org/models/inception_v3_2016_08_23.tar.gz)|78.0|93.9|
+[ResNet 50](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_50.tar.gz](http://download.tensorflow.org/models/resnet_v1_50_2016_08_23.tar.gz)|75.2|92.2|
+[ResNet 101](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_101.tar.gz](http://download.tensorflow.org/models/resnet_v1_101_2016_08_23.tar.gz)|76.4|92.9|
+[ResNet 152](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_152.tar.gz](http://download.tensorflow.org/models/resnet_v1_152_2016_08_23.tar.gz)|76.8|93.2|
+[VGG 16](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_16.tar.gz](http://download.tensorflow.org/models/vgg_16_2016_08_23.tar.gz)|71.5|89.8|
+[VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_19.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_23.tar.gz)|71.1|89.8|
+
 
 # Training a model from scratch.
 
-**WARNING** Training an Inception network from scratch is a computationally
-intensive task and depending on your compute setup may take several days or even
-weeks.
+**WARNING** Training a neural network network from scratch is a computationally
+intensive task and depending on your compute setup may take days, weeks or even
+months.
 
 The training script provided allows users to train one of several architecures
-using one of a variety of optimizers on one of several datasets. The following
-example demonstrates how to train Inception-V3 using SGD with Momentum on the
-ImageNet dataset.
+using one of a variety of optimizers on one of several datasets. Each of these
+choices is configurable and datasets can be added by creating a
+[slim.Dataset](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/data/dataset.py)
+specification and using it in the place of one of those provided.
+
+The following example demonstrates how to train Inception-V3 using SGD with
+Momentum on the ImageNet dataset.
 
 ```shell
 # Specify the directory where the dataset is stored.
@@ -210,7 +284,6 @@ which weights are restored and not the `${checkpoint_path}$`. Consequently,
 the flags `--checkpoint_path` and `--checkpoint_exclude_scopes` are only used
 during the `0-`th global step (model initialization).
 
-
 ```shell
 # Specify the directory where the dataset is stored.
 $ DATASET_DIR=$HOME/imagenet
@@ -229,7 +302,7 @@ $ bazel build slim/train
 $ bazel-bin/slim/train \
     --train_dir=${TRAIN_DIR} \
     --dataset_dir=${DATASET_DIR} \
-    --dataset_name=mnist \
+    --dataset_name=cifar10 \
     --dataset_split_name=train \
     --model_name=inception_v3 \
     --checkpoint_path=${CHECKPOINT_PATH} \
@@ -255,10 +328,10 @@ $ CHECKPOINT_DIR=/tmp/checkpoints
 $ mkdir ${CHECKPOINT_DIR}
 
 # Download, extract and copy the checkpoint file over:
-$ wget http://download.tensorflow.org/models/inception_v1.tar.gz
-$ tar -xvf inception_v1.tar.gz
+$ wget http://download.tensorflow.org/models/inception_v1_2016_08_23.tar.gz
+$ tar -xvf inception_v1_2016_08_23.tar.gz
 $ mv inception_v1.ckpt ${CHECKPOINT_DIR}
-$ rm inception_v1.tar.gz
+$ rm inception_v1_2016_08_23.tar.gz
 
 # Specify the directory where the dataset is stored.
 $ DATASET_DIR=$HOME/imagenet
@@ -289,7 +362,79 @@ TODO
 
 ## Running Training on multiple machines / single CPU/GPU per machine
 
-TODO
+In this setting, we'll be configuring two sets of machines: workers and
+parameter servers. Each workers will independently load samples of data and
+compute gradients. The parameter servers will server the gradients to the
+workers.
+
+How do they communicate? Each step, each worker requests the latest values of
+the model weights from the parameter servers and computes the weight gradients.
+Once computed, the gradients are sent to the parameter servers which aggregates
+the gradients with its values of the values.
+
+The parameter servers can aggregate the gradients in one of two ways:
+asynchronously or synchronously. If aggregating synchronously, each worker
+gets the latest weight values from the parameter servers, computes gradients
+locally and sends the updates to the parameter servers. The parameter servers
+wait until all (or most depending on your configuration) of the gradients are
+computed before the workers are allowed to get the updated weights and each
+attempts to compute new gradients.
+
+If aggregating asynchronously, each worker
+gets the latest weight values from the parameter servers, and sends updates to
+the parameter servers when each one is ready. The workers do not wait for each
+other to continue. Instead, each worker operates independently of the others
+and affect each other indirectly through the parameter servers
+
+In the following example, we'll assume a single parameter server and two
+workers:
+
+TODO(nsilberman, sguada): update this once the PS target is ready.
+
+```bash
+# Specify the directory where the dataset is stored.
+$ DATASET_DIR=$HOME/imagenet
+
+# Specify the directory where the training logs are stored:
+$ TRAIN_DIR=$HOME/train_logs
+
+# Build the model.
+$ bazel build slim/train
+
+# To start worker 0, go to the worker0 host and run the following (Note that
+# task_id should be in the range [0, num_worker_tasks):
+$ ./bazel-bin/slim/train \
+--batch_size=32 \
+--train_dir=${TRAIN_DIR}
+--task_id=0 \
+--dataset_dir=${DATASET_DIR} \
+--dataset_name=imagenet \
+--dataset_split_name=train \
+--model_name=inception_v3
+--ps_hosts='ps0.example.com:2222' \
+--worker_hosts='worker0.example.com:2222,worker1.example.com:2222'
+
+# To start worker 1, go to the worker1 host and run the following (Note that
+# task_id should be in the range [0, num_worker_tasks):
+bazel-bin/slim/train \
+--batch_size=32 \
+--train_dir=${TRAIN_DIR}
+--task_id=1 \
+--dataset_dir=${DATASET_DIR} \
+--dataset_name=imagenet \
+--dataset_split_name=train \
+--model_name=inception_v3
+--ps_hosts='ps0.example.com:2222' \
+--worker_hosts='worker0.example.com:2222,worker1.example.com:2222'
+
+# To start the parameter server (ps), go to the ps host and run the following (Note
+# that task_id should be in the range [0, num_ps_tasks):
+bazel-bin/slim/parameter_server \
+--job_name='ps' \
+--task_id=0 \
+--ps_hosts='ps0.example.com:2222' \
+--worker_hosts='worker0.example.com:2222,worker1.example.com:2222'
+```
 
 ## Running Training on multiple machines / multiple CPU/GPU per machine
 
@@ -311,6 +456,32 @@ See
 
 See
 [Model Resulting in NaNs](https://github.com/tensorflow/models/tree/master/inception#the-model-training-results-in-nans).
+
+#### The ResNet and VGG Models have 1000 classes but the ImageNet dataset has 1001
+
+The ImageNet dataset provied has an additional background class which was used
+to help train Inception. If you try training or fine-tuning the VGG or ResNet
+models using the ImageNet dataset, you might encounter the following error:
+
+```bash
+InvalidArgumentError: Assign requires shapes of both tensors to match. lhs shape= [1001] rhs shape= [1000]
+```
+This is due to the fact that the VGG and ResNet final layers have only 1000
+outputs rather than 1001.
+
+To fix this issue, you can set the `--labels_offsets=1` flag. This results in
+the ImageNet labels being shifted down by one:
+
+```bash
+./bazel-bin/slim/train \
+  --train_dir=${TRAIN_DIR} \
+  --dataset_dir=${DATASET_DIR} \
+  --dataset_name=imagenet \
+  --dataset_split_name=train \
+  --model_name=resnet_v1_50 \
+  --checkpoint_path=${CHECKPOINT_PATH}
+  --labels_offset=1
+```
 
 #### I wish to train a model with a different image size.
 

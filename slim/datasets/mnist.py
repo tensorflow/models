@@ -25,6 +25,8 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 
+from slim.datasets import dataset_utils
+
 slim = tf.contrib.slim
 
 _FILE_PATTERN = 'mnist_%s.tfrecord'
@@ -88,4 +90,5 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       decoder=decoder,
       num_samples=_SPLITS_TO_SIZES[split_name],
       num_classes=_NUM_CLASSES,
-      items_to_descriptions=_ITEMS_TO_DESCRIPTIONS)
+      items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
+      labels_to_names=dataset_utils.read_label_file(dataset_dir))

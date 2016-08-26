@@ -12,9 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Generic training script that trains a given model a specified dataset.
+r"""Generic training script that trains a given model a specified dataset.
 
-TODO(sguada): Add model_deploy code for multi-gpu training.
+# TODO(sguada) Update command line.
+blaze build -c opt --copt=-mavx --config=nvcc \
+  third_party/tensorflow_models/slim/train.par
+
+# Run the training binary.
+blaze-bin/third_party/tensorflow_models/slim/train.par \
+--model_name=inception_v1 \
+--num_clones=1 \
+--dataset_name=imagenet \
+--dataset_split_name=train \
+--dataset_dir=/tmp/imagenet-data/ \
+--batch_size=128 \
+--alsologtostderr
+
+# Run the fine_tuning binary.
+blaze-bin/third_party/tensorflow_models/slim/train \
+--model_name=inception_v2 \
+--num_clones=1 \
+--dataset_name=flowers \
+--dataset_split_name=train \
+--dataset_dir=/tmp/flowers-data/ \
+--checkpoint_path=${HOME}/data/inception-v2/inception_v2.ckpt \
+--checkpoint_exclude_scopes='InceptionV2/Logits' \
+--learning_rate=0.001 \
+--alsologtostderr
+
+
 """
 
 from __future__ import absolute_import
@@ -23,8 +49,11 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow.python.ops import control_flow_ops
 from slim.datasets import dataset_factory
+from slim.models import model_deploy
 from slim.models import model_factory
+from slim.models import preprocessing_factory
 
 slim = tf.contrib.slim
 
@@ -35,16 +64,29 @@ tf.app.flags.DEFINE_string(
     'train_dir', '/tmp/tfmodel/',
     'Directory where checkpoints and event logs are written to.')
 
+tf.app.flags.DEFINE_integer('num_clones', 1,
+                            'Number of model clones to deploy.')
+
+tf.app.flags.DEFINE_boolean('use_gpu', True, 'Use GPUs for deploy clones.')
+
 tf.app.flags.DEFINE_integer('worker_replicas', 1, 'Number of worker replicas.')
 
 tf.app.flags.DEFINE_integer(
-    'ps_tasks', 0,
+    'num_ps_tasks', 0,
     'The number of parameter servers. If the value is 0, then the parameters '
     'are handled locally by the worker.')
 
 tf.app.flags.DEFINE_integer(
+    'num_readers', 4,
+    'The number of parallel readers that read data from the dataset.')
+
+tf.app.flags.DEFINE_integer(
     'num_preprocessing_threads', 4,
     'The number of threads used to create the batches.')
+
+tf.app.flags.DEFINE_integer(
+    'log_every_n_steps', 5,
+    'The frequency with which logs are print.')
 
 tf.app.flags.DEFINE_integer(
     'save_summaries_secs', 600,
@@ -140,7 +182,7 @@ tf.app.flags.DEFINE_integer(
     'The Number of gradients to collect before updating params.')
 
 tf.app.flags.DEFINE_float(
-    'moving_average_decay', 0.9999,
+    'moving_average_decay', None,
     'The decay to use for the moving average.'
     'If left as None, then moving averages are not used.')
 
@@ -153,14 +195,23 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_string(
     'dataset_dir', None, 'The directory where the dataset files are stored.')
 
+tf.app.flags.DEFINE_integer(
+    'labels_offset', 0,
+    'An offset for the labels in the dataset. This flag is primarily used to '
+    'evaluate the VGG and ResNet architectures which do not use a background '
+    'class for the ImageNet dataset.')
+
 tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to train.')
+
+tf.app.flags.DEFINE_string(
+    'preprocessing_name', 'inception', 'The name of the preprocessing to use.')
 
 tf.app.flags.DEFINE_integer(
     'batch_size', 32, 'The number of samples in each batch.')
 
 tf.app.flags.DEFINE_float(
-    'weight_decay', 0.0001, 'The weight decay on the model weights.')
+    'weight_decay', 0.00004, 'The weight decay on the model weights.')
 
 #####################
 # Fine-Tuning Flags #
@@ -178,11 +229,12 @@ tf.app.flags.DEFINE_string(
 FLAGS = tf.app.flags.FLAGS
 
 
-def _configure_learning_rate(num_samples_per_epoch):
+def _configure_learning_rate(num_samples_per_epoch, global_step):
   """Configures the learning rate.
 
   Args:
     num_samples_per_epoch: The number of samples in each epoch of training.
+    global_step: The global_step tensor.
 
   Returns:
     A `Tensor` representing the learning rate.
@@ -190,8 +242,6 @@ def _configure_learning_rate(num_samples_per_epoch):
   Raises:
     ValueError: if
   """
-  global_step = slim.get_or_create_global_step()
-
   decay_steps = int(num_samples_per_epoch / FLAGS.batch_size *
                     FLAGS.num_epochs_per_decay)
   if FLAGS.sync_replicas:
@@ -271,13 +321,12 @@ def _configure_optimizer(learning_rate):
   return optimizer
 
 
-def _configure_summaries(total_loss, learning_rate):
+def _add_variables_summaries(learning_rate):
+  summaries = []
   for variable in slim.get_model_variables():
-    tf.histogram_summary(variable.op.name, variable)
-  for loss in slim.losses.get_losses():
-    tf.scalar_summary('losses/%s' % loss.op.name, loss)
-  tf.scalar_summary('losses/Total Loss', total_loss)
-  tf.scalar_summary('training/Learning Rate', learning_rate)
+    summaries.append(tf.histogram_summary(variable.op.name, variable))
+  summaries.append(tf.scalar_summary('training/Learning Rate', learning_rate))
+  return summaries
 
 
 def _get_init_fn():
@@ -300,7 +349,7 @@ def _get_init_fn():
         % FLAGS.train_dir)
     return None
 
-  exclusions = None
+  exclusions = []
   if FLAGS.checkpoint_exclude_scopes:
     exclusions = [scope.strip()
                   for scope in FLAGS.checkpoint_exclude_scopes.split(',')]
@@ -327,6 +376,19 @@ def main(_):
 
   with tf.Graph().as_default():
     ######################
+    # Config model_deploy#
+    ######################
+    deploy_config = model_deploy.DeploymentConfig(
+        num_clones=FLAGS.num_clones,
+        use_gpu=FLAGS.use_gpu,
+        replica_id=FLAGS.task,
+        num_replicas=FLAGS.worker_replicas,
+        num_ps_tasks=FLAGS.num_ps_tasks)
+
+    # Create global_step
+    with tf.device(deploy_config.variables_device()):
+      global_step = slim.create_global_step()
+    ######################
     # Select the dataset #
     ######################
     dataset = dataset_factory.get_dataset(
@@ -335,43 +397,79 @@ def main(_):
     ####################
     # Select the model #
     ####################
-    model_fn, image_preprocessing_fn = model_factory.get_model(
+    model_fn = model_factory.get_model(
         FLAGS.model_name,
-        num_classes=dataset.num_classes,
+        num_classes=(dataset.num_classes - FLAGS.labels_offset),
         weight_decay=FLAGS.weight_decay,
+        is_training=True)
+
+    #####################################
+    # Select the preprocessing function #
+    #####################################
+    image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+        FLAGS.preprocessing_name,
         is_training=True)
 
     ##############################################################
     # Create a dataset provider that loads data from the dataset #
     ##############################################################
-    provider = slim.dataset_data_provider.DatasetDataProvider(
-        dataset, common_queue_capacity=2 * FLAGS.batch_size,
-        common_queue_min=FLAGS.batch_size)
-    [image, label] = provider.get(['image', 'label'])
-    image = image_preprocessing_fn(image)
+    with tf.device(deploy_config.inputs_device()):
+      provider = slim.dataset_data_provider.DatasetDataProvider(
+          dataset,
+          num_readers=FLAGS.num_readers,
+          common_queue_capacity=20 * FLAGS.batch_size,
+          common_queue_min=10 * FLAGS.batch_size)
+      [image, label] = provider.get(['image', 'label'])
+      label -= FLAGS.labels_offset
 
-    images, labels = tf.train.batch(
-        [image, label],
-        batch_size=FLAGS.batch_size,
-        num_threads=FLAGS.num_preprocessing_threads,
-        capacity=5 * FLAGS.batch_size)
-    labels = slim.one_hot_encoding(labels, dataset.num_classes)
+      image = image_preprocessing_fn(image,
+                                     height=model_fn.default_image_size,
+                                     width=model_fn.default_image_size)
+
+      images, labels = tf.train.batch(
+          [image, label],
+          batch_size=FLAGS.batch_size,
+          num_threads=FLAGS.num_preprocessing_threads,
+          capacity=5 * FLAGS.batch_size)
+      labels = slim.one_hot_encoding(
+          labels, dataset.num_classes - FLAGS.labels_offset)
+      batch_queue = slim.prefetch_queue.prefetch_queue(
+          [images, labels], capacity=2 * deploy_config.num_clones)
 
     ####################
     # Define the model #
     ####################
-    logits, end_points = model_fn(images)
+    def clone_fn(batch_queue):
+      """Allows data parallelism by creating multiple clones of the model_fn."""
+      images, labels = batch_queue.dequeue()
+      logits, end_points = model_fn(images)
 
-    #############################
-    # Specify the loss function #
-    #############################
-    if 'AuxLogits' in end_points:
+      #############################
+      # Specify the loss function #
+      #############################
+      if 'AuxLogits' in end_points:
+        slim.losses.softmax_cross_entropy(
+            end_points['AuxLogits'], labels,
+            label_smoothing=FLAGS.label_smoothing, weight=0.4, scope='aux_loss')
       slim.losses.softmax_cross_entropy(
-          end_points['AuxLogits'], labels,
-          label_smoothing=FLAGS.label_smoothing, weight=0.4, scope='aux_loss')
-    slim.losses.softmax_cross_entropy(
-        logits, labels, label_smoothing=FLAGS.label_smoothing, weight=1.0)
-    total_loss = slim.losses.get_total_loss()
+          logits, labels, label_smoothing=FLAGS.label_smoothing, weight=1.0)
+
+    # Gather initial summaries.
+    summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
+
+    clones = model_deploy.create_clones(deploy_config, clone_fn, [batch_queue])
+    first_clone_scope = deploy_config.clone_scope(0)
+    # Gather update_ops from the first clone. These contain, for example,
+    # the updates for the batch_norm variables created by model_fn.
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
+
+    # Add summaries for losses.
+    for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
+      tf.scalar_summary('losses/%s' % loss.op.name, loss)
+
+    # Add summaries for variables.
+    for variable in slim.get_model_variables():
+      summaries.add(tf.histogram_summary(variable.op.name, variable))
 
     #################################
     # Configure the moving averages #
@@ -379,15 +477,18 @@ def main(_):
     if FLAGS.moving_average_decay:
       moving_average_variables = slim.get_model_variables()
       variable_averages = tf.train.ExponentialMovingAverage(
-          FLAGS.moving_average_decay, slim.get_or_create_global_step())
+          FLAGS.moving_average_decay, global_step)
     else:
       moving_average_variables, variable_averages = None, None
 
     #########################################
     # Configure the optimization procedure. #
     #########################################
-    learning_rate = _configure_learning_rate(dataset.num_samples)
-    optimizer = _configure_optimizer(learning_rate)
+    with tf.device(deploy_config.optimizer_device()):
+      learning_rate = _configure_learning_rate(dataset.num_samples, global_step)
+      optimizer = _configure_optimizer(learning_rate)
+      summaries.add(tf.scalar_summary('learning_rate', learning_rate,
+                                      name='learning_rate'))
 
     if FLAGS.sync_replicas:
       # If sync_replicas is enabled, the averaging will be done in the chief
@@ -401,15 +502,32 @@ def main(_):
           total_num_replicas=FLAGS.worker_replicas)
     elif FLAGS.moving_average_decay:
       # Update ops executed locally by trainer.
-      tf.add_to_collection(tf.GraphKeys.UPDATE_OPS,
-                           variable_averages.apply(moving_average_variables))
+      update_ops.append(variable_averages.apply(moving_average_variables))
 
-    _configure_summaries(total_loss, learning_rate)
+    # TODO(sguada) Refactor into function that takes the clones and optimizer
+    #  and returns a train_tensor and summary_op
+    total_loss, clones_gradients = model_deploy.optimize_clones(clones,
+                                                                optimizer)
+    # Add total_loss to summary.
+    summaries.add(tf.scalar_summary('total_loss', total_loss,
+                                    name='total_loss'))
 
-    train_tensor = slim.learning.create_train_op(
-        total_loss,
-        optimizer=optimizer,
-        update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+    # Create gradient updates.
+    grad_updates = optimizer.apply_gradients(clones_gradients,
+                                             global_step=global_step)
+    update_ops.append(grad_updates)
+
+    update_op = tf.group(*update_ops)
+    train_tensor = control_flow_ops.with_dependencies([update_op], total_loss,
+                                                      name='train_op')
+
+    # Add the summaries from the first clone. These contain the summaries
+    # created by model_fn and either optimize_clones() or _gather_clone_loss().
+    summaries |= set(tf.get_collection(tf.GraphKeys.SUMMARIES,
+                                       first_clone_scope))
+
+    # Merge all summaries together.
+    summary_op = tf.merge_summary(list(summaries), name='summary_op')
 
     ###########################
     # Kicks off the training. #
@@ -420,6 +538,8 @@ def main(_):
         master=FLAGS.master,
         is_chief=(FLAGS.task == 0),
         init_fn=_get_init_fn(),
+        summary_op=summary_op,
+        log_every_n_steps=FLAGS.log_every_n_steps,
         save_summaries_secs=FLAGS.save_summaries_secs,
         save_interval_secs=FLAGS.save_interval_secs,
         sync_optimizer=optimizer if FLAGS.sync_replicas else None)
