@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from google3.third_party.tensorflow_models.slim.models import cifar10_preprocessing
 from google3.third_party.tensorflow_models.slim.models import inception_preprocessing
+from google3.third_party.tensorflow_models.slim.models import lenet_preprocessing
 from google3.third_party.tensorflow_models.slim.models import vgg_preprocessing
 
 slim = tf.contrib.slim
@@ -47,7 +48,17 @@ def get_preprocessing(name, is_training=False):
   preprocessing_fn_map = {
       'cifar10': cifar10_preprocessing,
       'inception': inception_preprocessing,
+      'inception_v1': inception_preprocessing,
+      'inception_v2': inception_preprocessing,
+      'inception_v3': inception_preprocessing,
+      'lenet': lenet_preprocessing,
+      'resnet_v1_50': vgg_preprocessing,
+      'resnet_v1_101': vgg_preprocessing,
+      'resnet_v1_152': vgg_preprocessing,
       'vgg': vgg_preprocessing,
+      'vgg_a': vgg_preprocessing,
+      'vgg_16': vgg_preprocessing,
+      'vgg_19': vgg_preprocessing,
   }
 
   if name not in preprocessing_fn_map:

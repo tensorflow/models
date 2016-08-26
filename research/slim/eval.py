@@ -12,32 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-r"""Generic evaluation script that trains a given model a specified dataset.
-
-# TODO(sguada) Update command line.
-blaze build -c opt --copt=-mavx \
-  third_party/tensorflow_models/research/slim:eval.par
-
-./blaze-bin/third_party/tensorflow_models/research/slim/eval.par \
-   --alsologtostderr \
-   --dataset_name=imagenet \
-   --dataset_dir=/tmp/imagenet-data/ \
-   --dataset_split_name=validation \
-   --model_name=inception_v1 \
-   --max_num_batches=10
-
-
-CHECKPOINT_DIR=`~/data/inception-v2`
-DATASET_DIR=/tmp/imagenet-data
-./blaze-bin/third_party/tensorflow_models/research/slim/eval \
-   --alsologtostderr \
-   --checkpoint_path=${CHECKPOINT_DIR}/inception_v2.ckpt \
-   --dataset_dir=${DATASET_DIR} \
-   --dataset_name=imagenet \
-   --dataset_split_name=validation \
-   --model_name=inception_v2 \
-   --restore_global_step=False
-"""
+"""Generic evaluation script that trains a given model a specified dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -100,7 +75,8 @@ tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to evaluate.')
 
 tf.app.flags.DEFINE_string(
-    'preprocessing_name', 'inception', 'The name of the preprocessing to use.')
+    'preprocessing_name', None, 'The name of the preprocessing to use. If left '
+    'as `None`, then the model_name flag is used.')
 
 tf.app.flags.DEFINE_float(
     'moving_average_decay', None,
@@ -142,8 +118,9 @@ def main(_):
     #####################################
     # Select the preprocessing function #
     #####################################
+    preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
-        FLAGS.preprocessing_name,
+        preprocessing_name,
         is_training=False)
 
     image = image_preprocessing_fn(image,

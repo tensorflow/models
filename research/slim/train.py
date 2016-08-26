@@ -12,49 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-r"""Generic training script that trains a given model a specified dataset.
-
-# TODO(sguada) Update command line.
-blaze build -c opt --copt=-mavx --config=nvcc \
-  third_party/tensorflow_models/research/slim/train
-
-# Run the training binary on imagenet
-blaze-bin/third_party/tensorflow_models/research/slim/train \
---model_name=inception_v1 \
---num_clones=1 \
---dataset_name=imagenet \
---dataset_split_name=train \
---dataset_dir=/tmp/imagenet-data/ \
---batch_size=128 \
---alsologtostderr
-
-# Run the training binary on cifar10
-blaze-bin/third_party/tensorflow_models/research/slim/train \
---train_dir=/tmp/cifar10-train/ \
---model_name=inception_v1 \
---preprocessing_name=cifar10 \
---train_image_size=32 \
---num_clones=1 \
---dataset_name=cifar10 \
---dataset_split_name=train \
---dataset_dir=/tmp/cifar10-data/ \
---batch_size=128 \
---alsologtostderr
-
-# Run the fine_tuning binary.
-blaze-bin/third_party/tensorflow_models/research/slim/train \
---model_name=inception_v2 \
---num_clones=1 \
---dataset_name=flowers \
---dataset_split_name=train \
---dataset_dir=/tmp/flowers-data/ \
---checkpoint_path=${HOME}/data/inception-v2/inception_v2.ckpt \
---checkpoint_exclude_scopes='InceptionV2/Logits' \
---learning_rate=0.001 \
---alsologtostderr
-
-
-"""
+"""Generic training script that trains a given model a specified dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -175,14 +133,14 @@ tf.app.flags.DEFINE_string(
     'Specifies how the learning rate is decayed. One of "fixed", "exponential",'
     ' or "polynomial"')
 
-tf.app.flags.DEFINE_float('learning_rate', 0.045, 'Initial learning rate.')
+tf.app.flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
 
 tf.app.flags.DEFINE_float(
     'end_learning_rate', 0.0001,
     'The minimal end learning rate used by a polynomial decay learning rate.')
 
 tf.app.flags.DEFINE_float(
-    'label_smoothing', 0.1, 'The amount of label smoothing.')
+    'label_smoothing', 0.0, 'The amount of label smoothing.')
 
 tf.app.flags.DEFINE_float(
     'learning_rate_decay_factor', 0.94, 'Learning rate decay factor.')
@@ -229,7 +187,8 @@ tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to train.')
 
 tf.app.flags.DEFINE_string(
-    'preprocessing_name', 'inception', 'The name of the preprocessing to use.')
+    'preprocessing_name', None, 'The name of the preprocessing to use. If left '
+    'as `None`, then the model_name flag is used.')
 
 tf.app.flags.DEFINE_integer(
     'batch_size', 32, 'The number of samples in each batch.')
@@ -237,6 +196,8 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_integer(
     'train_image_size', None, 'Train image size')
 
+tf.app.flags.DEFINE_integer('max_number_of_steps', None,
+                            'The maximum number of training steps.')
 
 #####################
 # Fine-Tuning Flags #
@@ -413,6 +374,7 @@ def main(_):
     # Create global_step
     with tf.device(deploy_config.variables_device()):
       global_step = slim.create_global_step()
+
     ######################
     # Select the dataset #
     ######################
@@ -431,8 +393,9 @@ def main(_):
     #####################################
     # Select the preprocessing function #
     #####################################
+    preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
-        FLAGS.preprocessing_name,
+        preprocessing_name,
         is_training=True)
 
     ##############################################################
@@ -567,6 +530,7 @@ def main(_):
         is_chief=(FLAGS.task == 0),
         init_fn=_get_init_fn(),
         summary_op=summary_op,
+        number_of_steps=FLAGS.max_number_of_steps,
         log_every_n_steps=FLAGS.log_every_n_steps,
         save_summaries_secs=FLAGS.save_summaries_secs,
         save_interval_secs=FLAGS.save_interval_secs,

@@ -22,6 +22,7 @@ import google3
 import tensorflow as tf
 
 from tensorflow.contrib.slim import nets
+from nets import lenet
 
 slim = tf.contrib.slim
 
@@ -69,6 +70,14 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
         return nets.inception.inception_v3(images,
                                            num_classes=num_classes,
                                            is_training=is_training)
+    model_fn = func
+  elif name == 'lenet':
+    default_image_size = lenet.lenet.default_image_size
+    def func(images):
+      with slim.arg_scope(lenet.lenet_arg_scope(weight_decay=weight_decay)):
+        return lenet.lenet(images,
+                           num_classes=num_classes,
+                           is_training=is_training)
     model_fn = func
   elif name == 'resnet_v1_50':
     default_image_size = nets.resnet_v1.resnet_v1.default_image_size

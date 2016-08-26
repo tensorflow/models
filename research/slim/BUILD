@@ -144,16 +144,16 @@ py_library(
 )
 
 py_library(
-    name = "vgg_preprocessing",
-    srcs = ["models/vgg_preprocessing.py"],
+    name = "lenet_preprocessing",
+    srcs = ["models/lenet_preprocessing.py"],
     deps = [
         "//tensorflow",
     ],
 )
 
 py_library(
-    name = "model_factory",
-    srcs = ["models/model_factory.py"],
+    name = "vgg_preprocessing",
+    srcs = ["models/vgg_preprocessing.py"],
     deps = [
         "//tensorflow",
     ],
@@ -165,7 +165,25 @@ py_library(
     deps = [
         ":cifar10_preprocessing",
         ":inception_preprocessing",
+        ":lenet_preprocessing",
         ":vgg_preprocessing",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "lenet",
+    srcs = ["nets/lenet.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "model_factory",
+    srcs = ["models/model_factory.py"],
+    deps = [
+        ":lenet",
         "//tensorflow",
     ],
 )
