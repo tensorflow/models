@@ -55,13 +55,13 @@ def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
     image: 3-D Tensor containing single image in [0, 1].
     color_ordering: Python int, a type of distortion (valid values: 0-3).
     fast_mode: Avoids slower ops (random_hue and random_contrast)
-    scope: Optional scope for name_scope.
+    scope: Optional scope for op_scope.
   Returns:
     3-D Tensor color-distorted image on range [0, 1]
   Raises:
     ValueError: if color_ordering not in [0, 3]
   """
-  with tf.name_scope(scope, 'distort_color', [image]):
+  with tf.op_scope([image], scope, 'distort_color'):
     if fast_mode:
       if color_ordering == 0:
         image = tf.image.random_brightness(image, max_delta=32. / 255.)
@@ -124,11 +124,11 @@ def distorted_bounding_box_crop(image,
     max_attempts: An optional `int`. Number of attempts at generating a cropped
       region of the image of the specified constraints. After `max_attempts`
       failures, return the entire image.
-    scope: Optional scope for name_scope.
+    scope: Optional scope for op_scope.
   Returns:
     A tuple, a 3-D Tensor cropped_image and the distorted bbox
   """
-  with tf.name_scope(scope, 'distorted_bounding_box_crop', [image, bbox]):
+  with tf.op_scope([image, bbox], scope, 'distorted_bounding_box_crop'):
     # Each bounding box has shape [1, num_boxes, box coords] and
     # the coordinates are ordered [ymin, xmin, ymax, xmax].
 
@@ -178,11 +178,11 @@ def preprocess_for_train(image, height, width, bbox,
       as [ymin, xmin, ymax, xmax].
     fast_mode: Optional boolean, if True avoids slower transformations (i.e.
       bi-cubic resizing, random_hue or random_contrast).
-    scope: Optional scope for name_scope.
+    scope: Optional scope for op_scope.
   Returns:
     3-D float Tensor of distorted image used for training with range [-1, 1].
   """
-  with tf.name_scope(scope, 'distort_image', [image, height, width, bbox]):
+  with tf.op_scope([image, height, width, bbox], scope, 'distort_image'):
     if bbox is None:
       bbox = tf.constant([0.0, 0.0, 1.0, 1.0],
                          dtype=tf.float32,
@@ -253,11 +253,11 @@ def preprocess_for_eval(image, height, width,
     height: integer
     width: integer
     central_fraction: Optional Float, fraction of the image to crop.
-    scope: Optional scope for name_scope.
+    scope: Optional scope for op_scope.
   Returns:
     3-D float Tensor of prepared image.
   """
-  with tf.name_scope(scope, 'eval_image', [image, height, width]):
+  with tf.op_scope([image, height, width], scope, 'eval_image'):
     if image.dtype != tf.float32:
       image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     # Crop the central region of the image with an area containing 87.5% of

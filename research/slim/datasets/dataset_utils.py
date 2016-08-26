@@ -21,8 +21,6 @@ import os
 import google3
 import tensorflow as tf
 
-LABELS_FILENAME = 'labels.txt'
-
 
 def int64_feature(values):
   """Returns a TF-Feature of int64s.
@@ -60,8 +58,7 @@ def image_to_tfexample(image_data, image_format, height, width, class_id):
   }))
 
 
-def write_label_file(labels_to_class_names, dataset_dir,
-                     filename=LABELS_FILENAME):
+def write_label_file(labels_to_class_names, dataset_dir, filename='labels.txt'):
   """Writes a file with the list of class names.
 
   Args:
@@ -76,20 +73,7 @@ def write_label_file(labels_to_class_names, dataset_dir,
       f.write('%d:%s\n' % (label, class_name))
 
 
-def has_labels(dataset_dir, filename=LABELS_FILENAME):
-  """Specifies whether or not the dataset directory contains a label map file.
-
-  Args:
-    dataset_dir: The directory in which the labels file is found.
-    filename: The filename where the class names are written.
-
-  Returns:
-    `True` if the labels file exists and `False` otherwise.
-  """
-  return tf.gfile.Exists(os.path.join(dataset_dir, filename))
-
-
-def read_label_file(dataset_dir, filename=LABELS_FILENAME):
+def read_label_file(dataset_dir, filename='labels.txt'):
   """Reads the labels file and returns a mapping from ID to class name.
 
   Args:
@@ -107,6 +91,6 @@ def read_label_file(dataset_dir, filename=LABELS_FILENAME):
 
   labels_to_class_names = {}
   for line in lines:
-    index = line.index(':')
+    index = line.index(":")
     labels_to_class_names[int(line[:index])] = line[index+1:]
   return labels_to_class_names

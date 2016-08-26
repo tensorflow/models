@@ -128,14 +128,6 @@ py_test(
 )
 
 py_library(
-    name = "cifar10_preprocessing",
-    srcs = ["models/cifar10_preprocessing.py"],
-    deps = [
-        "//tensorflow",
-    ],
-)
-
-py_library(
     name = "inception_preprocessing",
     srcs = ["models/inception_preprocessing.py"],
     deps = [
@@ -163,7 +155,6 @@ py_library(
     name = "preprocessing_factory",
     srcs = ["models/preprocessing_factory.py"],
     deps = [
-        ":cifar10_preprocessing",
         ":inception_preprocessing",
         ":vgg_preprocessing",
         "//tensorflow",
