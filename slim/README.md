@@ -3,8 +3,7 @@
 This directory contains scripts for training and evaluating models using
 TF-Slim. In particular the code base provides two core binaries for:
 
-* Training a model from scratch across multiple GPUs and/or multiple machines
-  using one of several datasets.
+* Training a model from scratch on a given dataset.
 * Fine-tuning a model from a particular checkpoint on a given dataset.
 * Evaluating a trained model on a given dataset.
 
@@ -30,13 +29,6 @@ datasets:
 * [ImageNet](http://www.image-net.org/)
 * [MNIST](http://yann.lecun.com/exdb/mnist/)
 
-Finally, the model training is deployable via any of the following
-configurations:
-
-* [Single machine, single CPU/GPU](#running-training-on-a-single-machine-single-cpugpu)
-* [Multiple machines, single CPU/GPU per machine](#running-training-on-multiple-machines-single-cpugpu-per-machine)
-* [Single machine, multiple CPU/GPU](#running-training-on-a-single-machine-multiple-cpugpu)
-* [Multiple machines, multiple CPU/GPU per machine](#running-training-on-multiple-machines-multiple-cpugpu-per-machine)
 
 # Getting Started
 
@@ -352,94 +344,6 @@ $ ./bazel-bin/slim/eval \
     --restore_global_step=False
 ```
 
-## Running Training on a single machine / single CPU/GPU
-
-TODO
-
-## Running Training on a single machine / multiple CPU/GPU
-
-TODO
-
-## Running Training on multiple machines / single CPU/GPU per machine
-
-In this setting, we'll be configuring two sets of machines: workers and
-parameter servers. Each workers will independently load samples of data and
-compute gradients. The parameter servers will server the gradients to the
-workers.
-
-How do they communicate? Each step, each worker requests the latest values of
-the model weights from the parameter servers and computes the weight gradients.
-Once computed, the gradients are sent to the parameter servers which aggregates
-the gradients with its values of the values.
-
-The parameter servers can aggregate the gradients in one of two ways:
-asynchronously or synchronously. If aggregating synchronously, each worker
-gets the latest weight values from the parameter servers, computes gradients
-locally and sends the updates to the parameter servers. The parameter servers
-wait until all (or most depending on your configuration) of the gradients are
-computed before the workers are allowed to get the updated weights and each
-attempts to compute new gradients.
-
-If aggregating asynchronously, each worker
-gets the latest weight values from the parameter servers, and sends updates to
-the parameter servers when each one is ready. The workers do not wait for each
-other to continue. Instead, each worker operates independently of the others
-and affect each other indirectly through the parameter servers
-
-In the following example, we'll assume a single parameter server and two
-workers:
-
-TODO(nsilberman, sguada): update this once the PS target is ready.
-
-```bash
-# Specify the directory where the dataset is stored.
-$ DATASET_DIR=$HOME/imagenet
-
-# Specify the directory where the training logs are stored:
-$ TRAIN_DIR=$HOME/train_logs
-
-# Build the model.
-$ bazel build slim/train
-
-# To start worker 0, go to the worker0 host and run the following (Note that
-# task_id should be in the range [0, num_worker_tasks):
-$ ./bazel-bin/slim/train \
---batch_size=32 \
---train_dir=${TRAIN_DIR}
---task_id=0 \
---dataset_dir=${DATASET_DIR} \
---dataset_name=imagenet \
---dataset_split_name=train \
---model_name=inception_v3
---ps_hosts='ps0.example.com:2222' \
---worker_hosts='worker0.example.com:2222,worker1.example.com:2222'
-
-# To start worker 1, go to the worker1 host and run the following (Note that
-# task_id should be in the range [0, num_worker_tasks):
-bazel-bin/slim/train \
---batch_size=32 \
---train_dir=${TRAIN_DIR}
---task_id=1 \
---dataset_dir=${DATASET_DIR} \
---dataset_name=imagenet \
---dataset_split_name=train \
---model_name=inception_v3
---ps_hosts='ps0.example.com:2222' \
---worker_hosts='worker0.example.com:2222,worker1.example.com:2222'
-
-# To start the parameter server (ps), go to the ps host and run the following (Note
-# that task_id should be in the range [0, num_ps_tasks):
-bazel-bin/slim/parameter_server \
---job_name='ps' \
---task_id=0 \
---ps_hosts='ps0.example.com:2222' \
---worker_hosts='worker0.example.com:2222,worker1.example.com:2222'
-```
-
-## Running Training on multiple machines / multiple CPU/GPU per machine
-
-TODO
-
 # Troubleshooting
 
 #### The model runs out of CPU memory.
@@ -493,7 +397,3 @@ be different to the inception release.
 See
 [Hardware Specifications](https://github.com/tensorflow/models/tree/master/inception#what-hardware-specification-are-these-hyper-parameters-targeted-for).
 
-#### How do I continue training from a checkpoint in distributed setting?
-
-See
-[Resuming From a Checkpoint in Distributed Training](https://github.com/tensorflow/models/tree/master/inception#how-do-i-continue-training-from-a-checkpoint-in-distributed-setting).
