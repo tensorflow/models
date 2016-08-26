@@ -2,7 +2,8 @@ Sequence-to-Sequence with Attention Model for Text Summarization.
 
 Authors:
 
-Xin Pan (xpan@google.com, github:panyx0718), Peter Liu (peterjliu@google.com)
+Xin Pan (xpan@google.com, github:panyx0718),
+Peter Liu (peterjliu@google.com, github:peterjliu)
 
 <b>Introduction</b>
 
@@ -17,8 +18,8 @@ for open source purpose.
 
 <b>DataSet</b>
 
-We used the Gigaword dataset described in
-https://arxiv.org/pdf/1602.06023.pdf
+We used the Gigaword dataset described in [Rush et al. A Neural Attention Model
+for Sentence Summarization](https://arxiv.org/abs/1509.00685).
 
 We cannot provide the dataset due to the license. See ExampleGen in data.py
 about the data format. data/data contains a toy example. Also see data/vocab
