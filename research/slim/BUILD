@@ -104,6 +104,7 @@ py_binary(
         ":dataset_factory",
         ":model_deploy",
         ":model_factory",
+        ":preprocessing_factory",
         "//tensorflow",
     ],
 )
@@ -146,6 +147,14 @@ py_library(
     name = "model_factory",
     srcs = ["models/model_factory.py"],
     deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "preprocessing_factory",
+    srcs = ["models/preprocessing_factory.py"],
+    deps = [
         ":inception_preprocessing",
         ":vgg_preprocessing",
         "//tensorflow",
@@ -159,6 +168,7 @@ py_binary(
         ":dataset_factory",
         ":model_deploy",
         ":model_factory",
+        ":preprocessing_factory",
         "//tensorflow",
     ],
 )

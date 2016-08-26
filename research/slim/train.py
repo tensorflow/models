@@ -15,27 +15,31 @@
 r"""Generic training script that trains a given model a specified dataset.
 
 # TODO(sguada) Update command line.
-blaze build -c opt --copt=-mavx --config=gcudacc \
-  third_party/tensorflow_models/research/slim/train
+blaze build -c opt --copt=-mavx --config=nvcc \
+  third_party/tensorflow_models/research/slim/train.par
 
 # Run the training binary.
-blaze-bin/third_party/tensorflow_models/research/slim/train \
---model_name=inception_v3 \
+blaze-bin/third_party/tensorflow_models/research/slim/train.par \
+--model_name=inception_v1 \
 --num_clones=1 \
 --dataset_name=imagenet \
 --dataset_split_name=train \
 --dataset_dir=/tmp/imagenet-data/ \
+--batch_size=128 \
 --alsologtostderr
 
 # Run the fine_tuning binary.
 blaze-bin/third_party/tensorflow_models/research/slim/train \
 --model_name=inception_v2 \
 --num_clones=1 \
---dataset_name=imagenet \
+--dataset_name=flowers \
 --dataset_split_name=train \
---dataset_dir=/tmp/imagenet-data/ \
---checkpoint_path=~/data/inception_v2/inception_v2.ckpt
+--dataset_dir=/tmp/flowers-data/ \
+--checkpoint_path=${HOME}/data/inception-v2/inception_v2.ckpt \
+--checkpoint_exclude_scopes='InceptionV2/Logits' \
+--learning_rate=0.001 \
 --alsologtostderr
+
 
 """
 
@@ -50,7 +54,7 @@ from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
 from google3.third_party.tensorflow_models.slim.models import model_deploy
 from google3.third_party.tensorflow_models.slim.models import model_factory
-
+from google3.third_party.tensorflow_models.slim.models import preprocessing_factory
 
 slim = tf.contrib.slim
 
@@ -200,6 +204,9 @@ tf.app.flags.DEFINE_integer(
 
 tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to train.')
+
+tf.app.flags.DEFINE_string(
+    'preprocessing_name', 'inception', 'The name of the preprocessing to use.')
 
 tf.app.flags.DEFINE_integer(
     'batch_size', 32, 'The number of samples in each batch.')
@@ -391,10 +398,17 @@ def main(_):
     ####################
     # Select the model #
     ####################
-    model_fn, image_preprocessing_fn = model_factory.get_model(
+    model_fn = model_factory.get_model(
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         weight_decay=FLAGS.weight_decay,
+        is_training=True)
+
+    #####################################
+    # Select the preprocessing function #
+    #####################################
+    image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+        FLAGS.preprocessing_name,
         is_training=True)
 
     ##############################################################
@@ -408,7 +422,10 @@ def main(_):
           common_queue_min=10 * FLAGS.batch_size)
       [image, label] = provider.get(['image', 'label'])
       label -= FLAGS.labels_offset
-      image = image_preprocessing_fn(image)
+
+      image = image_preprocessing_fn(image,
+                                     height=model_fn.default_image_size,
+                                     width=model_fn.default_image_size)
 
       images, labels = tf.train.batch(
           [image, label],
@@ -512,7 +529,6 @@ def main(_):
 
     # Merge all summaries together.
     summary_op = tf.merge_summary(list(summaries), name='summary_op')
-
 
     ###########################
     # Kicks off the training. #

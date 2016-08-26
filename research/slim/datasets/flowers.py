@@ -32,7 +32,7 @@ slim = tf.contrib.slim
 
 _FILE_PATTERN = 'flowers_%s_*.tfrecord'
 
-SPLITS_TO_SIZES = {'train': 3320, 'test': 350}
+SPLITS_TO_SIZES = {'train': 3320, 'validation': 350}
 
 _NUM_CLASSES = 5
 
@@ -46,7 +46,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   """Gets a dataset tuple with instructions for reading cifar10.
 
   Args:
-    split_name: A train/test split name.
+    split_name: A train/validation split name.
     dataset_dir: The base directory of the dataset sources.
     file_pattern: The file pattern to use when matching the dataset sources.
       It is assumed that the pattern contains a '%s' string so that the split
@@ -57,7 +57,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
     A `Dataset` namedtuple.
 
   Raises:
-    ValueError: if `split_name` is not a valid train/test split.
+    ValueError: if `split_name` is not a valid train/validation split.
   """
   if split_name not in SPLITS_TO_SIZES:
     raise ValueError('split name %s was not recognized.' % split_name)

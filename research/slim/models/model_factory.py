@@ -22,14 +22,12 @@ import google3
 import tensorflow as tf
 
 from tensorflow.contrib.slim import nets
-from google3.third_party.tensorflow_models.slim.models import inception_preprocessing
-from google3.third_party.tensorflow_models.slim.models import vgg_preprocessing
 
 slim = tf.contrib.slim
 
 
 def get_model(name, num_classes, weight_decay=0.0, is_training=False):
-  """Returns the logits and model endpoints.
+  """Returns a model_fn such as `logits, end_points = model_fn(images)`.
 
   Args:
     name: The name of the model.
@@ -42,27 +40,11 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
     model_fn: A function that applies the model to a batch of images. It has
       the following signature:
         logits, end_points = model_fn(images)
-    preprocessing_fn: A function that preprocessing a single image (pre-batch).
-      It has the following signature:
-        image = preprocessing_fn(image).
-
   Raises:
     ValueError: If model `name` is not recognized.
   """
-  preprocessing_fn_map = {
-      'inception_v1': inception_preprocessing,
-      'inception_v2': inception_preprocessing,
-      'inception_v3': inception_preprocessing,
-      'resnet_v1_50': vgg_preprocessing,
-      'resnet_v1_101': vgg_preprocessing,
-      'resnet_v1_152': vgg_preprocessing,
-      'vgg_a': vgg_preprocessing,
-      'vgg_16': vgg_preprocessing,
-      'vgg_19': vgg_preprocessing,
-  }
-
   if name == 'inception_v1':
-    image_size = nets.inception.inception_v1.default_image_size
+    default_image_size = nets.inception.inception_v1.default_image_size
     def func(images):
       with slim.arg_scope(nets.inception.inception_v1_arg_scope(
           weight_decay=weight_decay)):
@@ -71,7 +53,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
                                            is_training=is_training)
     model_fn = func
   elif name == 'inception_v2':
-    image_size = nets.inception.inception_v2.default_image_size
+    default_image_size = nets.inception.inception_v2.default_image_size
     def func(images):
       with slim.arg_scope(nets.inception.inception_v2_arg_scope(
           weight_decay=weight_decay)):
@@ -80,7 +62,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
                                            is_training=is_training)
     model_fn = func
   elif name == 'inception_v3':
-    image_size = nets.inception.inception_v3.default_image_size
+    default_image_size = nets.inception.inception_v3.default_image_size
     def func(images):
       with slim.arg_scope(nets.inception.inception_v3_arg_scope(
           weight_decay=weight_decay)):
@@ -89,7 +71,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
                                            is_training=is_training)
     model_fn = func
   elif name == 'resnet_v1_50':
-    image_size = nets.resnet_v1.resnet_v1.default_image_size
+    default_image_size = nets.resnet_v1.resnet_v1.default_image_size
     def func(images):
       with slim.arg_scope(nets.resnet_v1.resnet_arg_scope(
           is_training, weight_decay=weight_decay)):
@@ -99,7 +81,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
         return net, end_points
     model_fn = func
   elif name == 'resnet_v1_101':
-    image_size = nets.resnet_v1.resnet_v1.default_image_size
+    default_image_size = nets.resnet_v1.resnet_v1.default_image_size
     def func(images):
       with slim.arg_scope(nets.resnet_v1.resnet_arg_scope(
           is_training, weight_decay=weight_decay)):
@@ -109,7 +91,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
         return net, end_points
     model_fn = func
   elif name == 'resnet_v1_152':
-    image_size = nets.resnet_v1.resnet_v1.default_image_size
+    default_image_size = nets.resnet_v1.resnet_v1.default_image_size
     def func(images):
       with slim.arg_scope(nets.resnet_v1.resnet_arg_scope(
           is_training, weight_decay=weight_decay)):
@@ -119,7 +101,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
         return net, end_points
     model_fn = func
   elif name == 'vgg_a':
-    image_size = nets.vgg.vgg_a.default_image_size
+    default_image_size = nets.vgg.vgg_a.default_image_size
     def func(images):
       with slim.arg_scope(nets.vgg.vgg_arg_scope(weight_decay)):
         return nets.vgg.vgg_a(images,
@@ -127,7 +109,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
                               is_training=is_training)
     model_fn = func
   elif name == 'vgg_16':
-    image_size = nets.vgg.vgg_16.default_image_size
+    default_image_size = nets.vgg.vgg_16.default_image_size
     def func(images):
       with slim.arg_scope(nets.vgg.vgg_arg_scope(weight_decay)):
         return nets.vgg.vgg_16(images,
@@ -135,7 +117,7 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
                                is_training=is_training)
     model_fn = func
   elif name == 'vgg_19':
-    image_size = nets.vgg.vgg_19.default_image_size
+    default_image_size = nets.vgg.vgg_19.default_image_size
     def func(images):
       with slim.arg_scope(nets.vgg.vgg_arg_scope(weight_decay)):
         return nets.vgg.vgg_19(images,
@@ -145,8 +127,6 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
   else:
     raise ValueError('Model name [%s] was not recognized' % name)
 
-  def preprocessing_fn(image):
-    return preprocessing_fn_map[name].preprocess_image(
-        image, image_size, image_size, is_training=is_training)
+  model_fn.default_image_size = default_image_size
 
-  return model_fn, preprocessing_fn
+  return model_fn
