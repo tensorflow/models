@@ -16,15 +16,28 @@ r"""Generic training script that trains a given model a specified dataset.
 
 # TODO(sguada) Update command line.
 blaze build -c opt --copt=-mavx --config=nvcc \
-  third_party/tensorflow_models/research/slim/train.par
+  third_party/tensorflow_models/research/slim/train
 
-# Run the training binary.
-blaze-bin/third_party/tensorflow_models/research/slim/train.par \
+# Run the training binary on imagenet
+blaze-bin/third_party/tensorflow_models/research/slim/train \
 --model_name=inception_v1 \
 --num_clones=1 \
 --dataset_name=imagenet \
 --dataset_split_name=train \
 --dataset_dir=/tmp/imagenet-data/ \
+--batch_size=128 \
+--alsologtostderr
+
+# Run the training binary on cifar10
+blaze-bin/third_party/tensorflow_models/research/slim/train \
+--train_dir=/tmp/cifar10-train/ \
+--model_name=inception_v1 \
+--preprocessing_name=cifar10 \
+--train_image_size=32 \
+--num_clones=1 \
+--dataset_name=cifar10 \
+--dataset_split_name=train \
+--dataset_dir=/tmp/cifar10-data/ \
 --batch_size=128 \
 --alsologtostderr
 
@@ -68,7 +81,8 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_integer('num_clones', 1,
                             'Number of model clones to deploy.')
 
-tf.app.flags.DEFINE_boolean('use_gpu', True, 'Use GPUs for deploy clones.')
+tf.app.flags.DEFINE_boolean('clone_on_cpu', False,
+                            'Use CPUs to deploy clones.')
 
 tf.app.flags.DEFINE_integer('worker_replicas', 1, 'Number of worker replicas.')
 
@@ -103,6 +117,9 @@ tf.app.flags.DEFINE_integer(
 ######################
 # Optimization Flags #
 ######################
+
+tf.app.flags.DEFINE_float(
+    'weight_decay', 0.00004, 'The weight decay on the model weights.')
 
 tf.app.flags.DEFINE_string(
     'optimizer', 'rmsprop',
@@ -187,6 +204,12 @@ tf.app.flags.DEFINE_float(
     'The decay to use for the moving average.'
     'If left as None, then moving averages are not used.')
 
+
+
+#######################
+# Dataset Flags #
+#######################
+
 tf.app.flags.DEFINE_string(
     'dataset_name', 'imagenet', 'The name of the dataset to load.')
 
@@ -211,8 +234,9 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_integer(
     'batch_size', 32, 'The number of samples in each batch.')
 
-tf.app.flags.DEFINE_float(
-    'weight_decay', 0.00004, 'The weight decay on the model weights.')
+tf.app.flags.DEFINE_integer(
+    'train_image_size', None, 'Train image size')
+
 
 #####################
 # Fine-Tuning Flags #
@@ -381,7 +405,7 @@ def main(_):
     ######################
     deploy_config = model_deploy.DeploymentConfig(
         num_clones=FLAGS.num_clones,
-        use_gpu=FLAGS.use_gpu,
+        clone_on_cpu=FLAGS.clone_on_cpu,
         replica_id=FLAGS.task,
         num_replicas=FLAGS.worker_replicas,
         num_ps_tasks=FLAGS.num_ps_tasks)
@@ -423,9 +447,12 @@ def main(_):
       [image, label] = provider.get(['image', 'label'])
       label -= FLAGS.labels_offset
 
-      image = image_preprocessing_fn(image,
-                                     height=model_fn.default_image_size,
-                                     width=model_fn.default_image_size)
+      if FLAGS.train_image_size is None:
+        train_image_size = model_fn.default_image_size
+      else:
+        train_image_size = FLAGS.train_image_size
+
+      image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
       images, labels = tf.train.batch(
           [image, label],
