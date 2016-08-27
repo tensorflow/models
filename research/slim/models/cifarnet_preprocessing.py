@@ -23,7 +23,7 @@ from __future__ import print_function
 import google3
 import tensorflow as tf
 
-_PADDING = 2
+_PADDING = 4
 
 slim = tf.contrib.slim
 
