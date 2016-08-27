@@ -34,7 +34,7 @@ DATASET_DIR=/tmp/mnist
   --weight_decay=0
 
 # Run evaluation.
-./blaze-bin/slim/eval \
+./bazel-bin/slim/eval \
   --checkpoint_path=${TRAIN_DIR} \
   --eval_dir=${TRAIN_DIR} \
   --dataset_name=mnist \

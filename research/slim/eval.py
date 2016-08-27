@@ -63,7 +63,6 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     'dataset_dir', None, 'The directory where the dataset files are stored.')
-tf.app.flags.MarkFlagAsRequired('dataset_dir')
 
 tf.app.flags.DEFINE_integer(
     'labels_offset', 0,
@@ -90,6 +89,9 @@ FLAGS = tf.app.flags.FLAGS
 
 
 def main(_):
+  if not FLAGS.dataset_dir:
+    raise ValueError('You must supply the dataset directory with --dataset_dir')
+
   with tf.Graph().as_default():
     tf_global_step = slim.get_or_create_global_step()
 
