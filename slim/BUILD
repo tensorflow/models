@@ -9,7 +9,7 @@ exports_files(["LICENSE"])
 
 package_group(
     name = "internal",
-    packages = ["//slim/"],
+    packages = ["//slim"],
 )
 
 py_library(
@@ -94,8 +94,8 @@ py_test(
 )
 
 py_library(
-    name = "cifar10_preprocessing",
-    srcs = ["models/cifar10_preprocessing.py"],
+    name = "cifarnet_preprocessing",
+    srcs = ["models/cifarnet_preprocessing.py"],
 )
 
 py_library(
@@ -117,11 +117,16 @@ py_library(
     name = "preprocessing_factory",
     srcs = ["models/preprocessing_factory.py"],
     deps = [
-        ":cifar10_preprocessing",
+        ":cifarnet_preprocessing",
         ":inception_preprocessing",
         ":lenet_preprocessing",
         ":vgg_preprocessing",
     ],
+)
+
+py_library(
+    name = "cifarnet",
+    srcs = ["nets/cifarnet.py"],
 )
 
 py_library(
@@ -132,7 +137,10 @@ py_library(
 py_library(
     name = "model_factory",
     srcs = ["models/model_factory.py"],
-    deps = [":lenet"],
+    deps = [
+        ":cifarnet",
+        ":lenet",
+    ],
 )
 
 py_binary(

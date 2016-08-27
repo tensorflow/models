@@ -62,7 +62,6 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     'dataset_dir', None, 'The directory where the dataset files are stored.')
-tf.app.flags.MarkFlagAsRequired('dataset_dir')
 
 tf.app.flags.DEFINE_integer(
     'labels_offset', 0,
@@ -82,10 +81,17 @@ tf.app.flags.DEFINE_float(
     'The decay to use for the moving average.'
     'If left as None, then moving averages are not used.')
 
+tf.app.flags.DEFINE_integer(
+    'eval_image_size', None, 'Eval image size')
+
 FLAGS = tf.app.flags.FLAGS
 
 
 def main(_):
+  if not FLAGS.dataset_dir:
+    raise ValueError('You must supply the dataset directory with --dataset_dir')
+
+  tf.logging.set_verbosity(tf.logging.INFO)
   with tf.Graph().as_default():
     tf_global_step = slim.get_or_create_global_step()
 
@@ -122,9 +128,9 @@ def main(_):
         preprocessing_name,
         is_training=False)
 
-    image = image_preprocessing_fn(image,
-                                   height=model_fn.default_image_size,
-                                   width=model_fn.default_image_size)
+    eval_image_size = FLAGS.eval_image_size or model_fn.default_image_size
+
+    image = image_preprocessing_fn(image, eval_image_size, eval_image_size)
 
     images, labels = tf.train.batch(
         [image, label],
@@ -181,8 +187,8 @@ def main(_):
     tf.logging.info('Evaluating %s' % checkpoint_path)
 
     slim.evaluation.evaluate_once(
-        FLAGS.master,
-        checkpoint_path,
+        master=FLAGS.master,
+        checkpoint_path=checkpoint_path,
         logdir=FLAGS.eval_dir,
         num_evals=num_batches,
         eval_op=names_to_updates.values(),

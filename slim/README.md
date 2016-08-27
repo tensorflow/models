@@ -32,12 +32,19 @@ To compile the training and evaluation scripts, we also need to install bazel.
 You can find step-by-step instructions
 [here](http://bazel.io/docs/install.html).
 
-Next, you'll need to install
-[tensorflow/models/slim](https://github.com/tensorflow/models/tree/master/slim).
-If you want to use the ImageNet dataset, you'll also need to install
-[tensorflow/models/inception](https://github.com/tensorflow/models/tree/master/inception).
-Note that this directory contains an older version of slim which has been
-deprecated and can be safely ignored.
+Next, you'll need to check out the
+[tensorflow/models](https://github.com/tensorflow/models/) repository:
+
+```bash
+cd $HOME/workspace
+git clone https://github.com/tensorflow/models/
+```
+
+The new TF-Slim library can now be found in: `$HOME/workspace/slim`.
+
+If you want to use the ImageNet dataset, you'll also need to access the
+scripts in `$HOME/workspace/inception/data`. Note that this directory contains
+an older version of slim which has been deprecated and can be safely ignored.
 
 # Datasets
 
@@ -216,8 +223,8 @@ choices is configurable and datasets can be added by creating a
 [slim.Dataset](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/data/dataset.py)
 specification and using it in the place of one of those provided.
 
-The following example demonstrates how to train Inception-V3 using SGD with
-Momentum on the ImageNet dataset.
+The following example demonstrates how to train Inception-V3 using the defaults
+parameters on the ImageNet dataset.
 
 ```shell
 # Specify the directory where the dataset is stored.
@@ -354,9 +361,10 @@ See
 
 #### The ResNet and VGG Models have 1000 classes but the ImageNet dataset has 1001
 
-The ImageNet dataset provied has an additional background class which was used
-to help train Inception. If you try training or fine-tuning the VGG or ResNet
-models using the ImageNet dataset, you might encounter the following error:
+The ImageNet dataset provied has an empty background class which was can be used
+to fine-tune the model to other tasks. If you try training or fine-tuning the
+VGG or ResNet models using the ImageNet dataset, you might encounter the
+following error:
 
 ```bash
 InvalidArgumentError: Assign requires shapes of both tensors to match. lhs shape= [1001] rhs shape= [1000]

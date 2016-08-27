@@ -1,13 +1,15 @@
 #!/bin/bash
 #
-# Before running this script, make sure you've followed the instructions for
-# downloading and converting the MNIST dataset.
-# See slim/datasets/download_and_convert_mnist.py.
+# This script performs the following operations:
+# 1. Downloads the MNIST dataset
+# 2. Trains a LeNet model on the MNIST training set.
+# 3. Evaluate the model on the MNIST testing set.
 #
 # Usage:
 # ./slim/scripts/train_lenet_on_mnist.sh
 
-# Compile the training and evaluation binaries
+# Compile the binaries
+bazel build slim:download_and_convert_mnist
 bazel build slim:train
 bazel build slim:eval
 
@@ -16,6 +18,10 @@ TRAIN_DIR=/tmp/lenet-model
 
 # Where the dataset was saved to.
 DATASET_DIR=/tmp/mnist
+
+# Download the dataset
+./bazel-bin/slim/download_and_convert_mnist \
+  --dataset_dir=${DATASET_DIR}
 
 # Run training.
 ./bazel-bin/slim/train \
@@ -30,11 +36,11 @@ DATASET_DIR=/tmp/mnist
   --save_interval_secs=60 \
   --save_summaries_secs=60 \
   --optimizer=sgd \
-  --learning_rate_decay_factor=1.0
+  --learning_rate_decay_factor=1.0 \
   --weight_decay=0
 
 # Run evaluation.
-./blaze-bin/slim/eval \
+./bazel-bin/slim/eval \
   --checkpoint_path=${TRAIN_DIR} \
   --eval_dir=${TRAIN_DIR} \
   --dataset_name=mnist \
