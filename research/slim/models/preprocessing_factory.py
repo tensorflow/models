@@ -21,7 +21,7 @@ from __future__ import print_function
 import google3
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.slim.models import cifar10_preprocessing
+from google3.third_party.tensorflow_models.slim.models import cifarnet_preprocessing
 from google3.third_party.tensorflow_models.slim.models import inception_preprocessing
 from google3.third_party.tensorflow_models.slim.models import lenet_preprocessing
 from google3.third_party.tensorflow_models.slim.models import vgg_preprocessing
@@ -46,7 +46,7 @@ def get_preprocessing(name, is_training=False):
     ValueError: If Preprocessing `name` is not recognized.
   """
   preprocessing_fn_map = {
-      'cifar10': cifar10_preprocessing,
+      'cifarnet': cifarnet_preprocessing,
       'inception': inception_preprocessing,
       'inception_v1': inception_preprocessing,
       'inception_v2': inception_preprocessing,

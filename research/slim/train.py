@@ -162,8 +162,6 @@ tf.app.flags.DEFINE_float(
     'The decay to use for the moving average.'
     'If left as None, then moving averages are not used.')
 
-
-
 #######################
 # Dataset Flags #
 #######################
@@ -410,10 +408,7 @@ def main(_):
       [image, label] = provider.get(['image', 'label'])
       label -= FLAGS.labels_offset
 
-      if FLAGS.train_image_size is None:
-        train_image_size = model_fn.default_image_size
-      else:
-        train_image_size = FLAGS.train_image_size
+      train_image_size = FLAGS.train_image_size or model_fn.default_image_size
 
       image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
@@ -444,6 +439,7 @@ def main(_):
             label_smoothing=FLAGS.label_smoothing, weight=0.4, scope='aux_loss')
       slim.losses.softmax_cross_entropy(
           logits, labels, label_smoothing=FLAGS.label_smoothing, weight=1.0)
+      return end_points
 
     # Gather initial summaries.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
@@ -454,9 +450,17 @@ def main(_):
     # the updates for the batch_norm variables created by model_fn.
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
 
+    # Add summaries for end_points.
+    end_points = clones[0].outputs
+    for end_point in end_points:
+      x = end_points[end_point]
+      summaries.add(tf.histogram_summary('activations/' + end_point, x))
+      summaries.add(tf.scalar_summary('sparsity/' + end_point,
+                                      tf.nn.zero_fraction(x)))
+
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
-      tf.scalar_summary('losses/%s' % loss.op.name, loss)
+      summaries.add(tf.scalar_summary('losses/%s' % loss.op.name, loss))
 
     # Add summaries for variables.
     for variable in slim.get_model_variables():

@@ -83,6 +83,9 @@ tf.app.flags.DEFINE_float(
     'The decay to use for the moving average.'
     'If left as None, then moving averages are not used.')
 
+tf.app.flags.DEFINE_integer(
+    'eval_image_size', None, 'Eval image size')
+
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -123,9 +126,9 @@ def main(_):
         preprocessing_name,
         is_training=False)
 
-    image = image_preprocessing_fn(image,
-                                   height=model_fn.default_image_size,
-                                   width=model_fn.default_image_size)
+    eval_image_size = FLAGS.eval_image_size or model_fn.default_image_size
+
+    image = image_preprocessing_fn(image, eval_image_size, eval_image_size)
 
     images, labels = tf.train.batch(
         [image, label],

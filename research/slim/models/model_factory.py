@@ -22,7 +22,9 @@ import google3
 import tensorflow as tf
 
 from tensorflow.contrib.slim import nets
+from nets import cifarnet
 from nets import lenet
+
 
 slim = tf.contrib.slim
 
@@ -44,7 +46,14 @@ def get_model(name, num_classes, weight_decay=0.0, is_training=False):
   Raises:
     ValueError: If model `name` is not recognized.
   """
-  if name == 'inception_v1':
+  if name == 'cifarnet':
+    default_image_size = cifarnet.cifarnet.default_image_size
+    def func(images):
+      with slim.arg_scope(cifarnet.cifarnet_arg_scope(
+          weight_decay=weight_decay)):
+        return cifarnet.cifarnet(images, num_classes, is_training=is_training)
+    model_fn = func
+  elif name == 'inception_v1':
     default_image_size = nets.inception.inception_v1.default_image_size
     def func(images):
       with slim.arg_scope(nets.inception.inception_v1_arg_scope(
