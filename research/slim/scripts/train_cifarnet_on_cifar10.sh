@@ -1,13 +1,15 @@
 #!/bin/bash
 #
-# Before running this script, make sure you've followed the instructions for
-# downloading and converting the MNIST dataset.
-# See slim/datasets/download_and_convert_mnist.py.
+# This script performs the following operations:
+# 1. Downloads the Cifar10 dataset
+# 2. Trains a CifarNet model on the Cifar10 training set.
+# 3. Evaluate the model on the Cifar10 testing set.
 #
 # Usage:
-# ./slim/scripts/train_lenet_on_mnist.sh
+# ./slim/scripts/train_cifar_net_on_mnist.sh
 
-# Compile the training and evaluation binaries
+# Compile the binaries
+bazel build slim:download_and_convert_cifar10
 bazel build slim:train
 bazel build slim:eval
 

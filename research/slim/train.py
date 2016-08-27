@@ -358,6 +358,7 @@ def main(_):
   if not FLAGS.dataset_dir:
     raise ValueError('You must supply the dataset directory with --dataset_dir')
 
+  tf.logging.set_verbosity(tf.logging.INFO)
   with tf.Graph().as_default():
     ######################
     # Config model_deploy#
