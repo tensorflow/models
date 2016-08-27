@@ -3,6 +3,10 @@
 *A TensorFlow implementation of the models described in [Andor et al. (2016)]
 (http://arxiv.org/pdf/1603.06042v1.pdf).*
 
+**Update**: Parsey models are now [available](universal.md) for 40 languages
+trained on Universal Dependencies datasets, with support for text segmentation
+and morphological analysis.
+
 At Google, we spend a lot of time thinking about how computer systems can read
 and understand human language in order to process it in intelligent ways. We are
 excited to share the fruits of our research with the broader community by
@@ -106,6 +110,9 @@ Bazel should complete reporting all tests passed.
 
 You can also compile SyntaxNet in a [Docker](https://www.docker.com/what-docker)
 container using this [Dockerfile](Dockerfile).
+
+To build SyntaxNet with GPU support please refer to the instructions in
+[issues/248](https://github.com/tensorflow/models/issues/248).
 
 **Note:** If you are running Docker on OSX, make sure that you have enough
 memory allocated for your Docker VM.

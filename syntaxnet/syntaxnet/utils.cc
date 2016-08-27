@@ -95,6 +95,16 @@ std::vector<string> Split(const string &text, char delim) {
   return result;
 }
 
+std::vector<string> SplitOne(const string &text, char delim) {
+  std::vector<string> result;
+  size_t split = text.find_first_of(delim);
+  result.push_back(text.substr(0, split));
+  if (split != string::npos) {
+    result.push_back(text.substr(split + 1));
+  }
+  return result;
+}
+
 bool IsAbsolutePath(tensorflow::StringPiece path) {
   return !path.empty() && path[0] == '/';
 }

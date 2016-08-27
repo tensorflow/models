@@ -14,8 +14,10 @@ limitations under the License.
 ==============================================================================*/
 
 #include "syntaxnet/binary_segment_state.h"
+#include "syntaxnet/parser_features.h"
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/parser_transitions.h"
+#include "syntaxnet/term_frequency_map.h"
 
 namespace syntaxnet {
 
@@ -117,5 +119,103 @@ class BinarySegmentTransitionSystem : public ParserTransitionSystem {
 
 REGISTER_TRANSITION_SYSTEM("binary-segment-transitions",
                            BinarySegmentTransitionSystem);
+
+// Parser feature locator that returns the token in the sentence that is
+// argument() positions from the provided focus token.
+class OffsetFeatureLocator : public ParserIndexLocator<OffsetFeatureLocator> {
+ public:
+  // Update the current focus to a new location.  If the initial focus or new
+  // focus is outside the range of the sentence, returns -2.
+  void UpdateArgs(const WorkspaceSet &workspaces, const ParserState &state,
+                  int *focus) const {
+    if (*focus < -1 || *focus >= state.sentence().token_size()) {
+      *focus = -2;
+      return;
+    }
+    int new_focus = *focus + argument();
+    if (new_focus < -1 || new_focus >= state.sentence().token_size()) {
+      *focus = -2;
+      return;
+    }
+    *focus = new_focus;
+  }
+};
+
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("offset", OffsetFeatureLocator);
+
+// Feature function that returns the id of the n-th most recently constructed
+// word. Note that the argument, n, should be larger than 0. When equals to 0,
+// it points to the word which is not yet completed.
+class LastWordFeatureFunction : public ParserFeatureFunction {
+ public:
+  void Setup(TaskContext *context) override {
+    input_word_map_ = context->GetInput("word-map", "text", "");
+  }
+
+  void Init(TaskContext *context) override {
+    min_freq_ = GetIntParameter("min-freq", 0);
+    max_num_terms_ = GetIntParameter("max-num-terms", 0);
+    word_map_.Load(
+        TaskContext::InputFile(*input_word_map_), min_freq_, max_num_terms_);
+    unk_id_ = word_map_.Size();
+    outside_id_ = unk_id_ + 1;
+    set_feature_type(
+        new ResourceBasedFeatureType<LastWordFeatureFunction>(
+        name(), this, {}));
+  }
+
+  int64 NumValues() const {
+    return outside_id_ + 1;
+  }
+
+  // Returns the string representation of the given feature value.
+  string GetFeatureValueName(FeatureValue value) const {
+    if (value == outside_id_) return "<OUTSIDE>";
+    if (value == unk_id_) return "<UNKNOWN>";
+    DCHECK_GE(value, 0);
+    DCHECK_LT(value, word_map_.Size());
+    return word_map_.GetTerm(value);
+  }
+
+  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
+                       const FeatureVector *result) const override {
+    // n should be larger than 0, since the current word is still under
+    // construction.
+    const int n = argument();
+    CHECK_GT(n, 0);
+    const auto *segment_state = static_cast<const BinarySegmentState *>(
+        state.transition_state());
+    if (n >= segment_state->NumStarts(state)) {
+      return outside_id_;
+    }
+
+    const auto &sentence = state.sentence();
+    const int start = segment_state->LastStart(n, state);
+    const int end = segment_state->LastStart(n - 1, state) - 1;
+    CHECK_GE(end, start);
+
+    const int start_offset = state.GetToken(start).start();
+    const int length = state.GetToken(end).end() - start_offset + 1;
+    const auto *data = sentence.text().data() + start_offset;
+    return word_map_.LookupIndex(string(data, length), unk_id_);
+  }
+
+ private:
+  // Task input for the word to id map. Not owned.
+  TaskInput *input_word_map_ = nullptr;
+  TermFrequencyMap word_map_;
+
+  // Special ids of unknown words and out-of-range.
+  int unk_id_ = 0;
+  int outside_id_ = 0;
+
+  // Minimum frequency for term map.
+  int min_freq_;
+
+  // Maximum number of terms for term map.
+  int max_num_terms_;
+};
+
+REGISTER_PARSER_FEATURE_FUNCTION("last-word", LastWordFeatureFunction);
 
 }  // namespace syntaxnet

@@ -19,6 +19,7 @@ limitations under the License.
 
 #include "syntaxnet/document_format.h"
 #include "syntaxnet/sentence.pb.h"
+#include "syntaxnet/segmenter_utils.h"
 #include "syntaxnet/utils.h"
 #include "tensorflow/core/lib/io/inputbuffer.h"
 #include "tensorflow/core/lib/strings/strcat.h"
@@ -172,13 +173,13 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       if (add_pos_as_attribute_) RemovePosFromAttributes(&token);
       vector<string> fields(10);
       fields[0] = tensorflow::strings::Printf("%d", i + 1);
-      fields[1] = token.word();
+      fields[1] = UnderscoreIfEmpty(token.word());
       fields[2] = "_";
-      fields[3] = token.category();
-      fields[4] = token.tag();
+      fields[3] = UnderscoreIfEmpty(token.category());
+      fields[4] = UnderscoreIfEmpty(token.tag());
       fields[5] = GetMorphAttributes(token);
       fields[6] = tensorflow::strings::Printf("%d", token.head() + 1);
-      fields[7] = token.label();
+      fields[7] = UnderscoreIfEmpty(token.label());
       fields[8] = "_";
       fields[9] = "_";
       lines.push_back(utils::Join(fields, "\t"));
@@ -187,6 +188,11 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   }
 
  private:
+  // Replaces empty fields with an undescore.
+  string UnderscoreIfEmpty(const string &field) {
+    return field.empty() ? "_" : field;
+  }
+
   // Creates a TokenMorphology object out of a list of attribute values of the
   // form: a1=v1|a2=v2|... or v1|v2|...
   void AddMorphAttributes(const string &attributes, Token *token) {
@@ -194,11 +200,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
         token->MutableExtension(TokenMorphology::morphology);
     vector<string> att_vals = utils::Split(attributes, '|');
     for (int i = 0; i < att_vals.size(); ++i) {
-      vector<string> att_val = utils::Split(att_vals[i], '=');
-      CHECK_LE(att_val.size(), 2)
-          << "Error parsing morphology features "
-          << "column, must be of format "
-          << "a1=v1|a2=v2|... or v1|v2|... <field>: " << attributes;
+      vector<string> att_val = utils::SplitOne(att_vals[i], '=');
 
       // Format is either:
       //   1) a1=v1|a2=v2..., e.g., Czech CoNLL data, or,
@@ -268,7 +270,8 @@ class CoNLLSyntaxFormat : public DocumentFormat {
     // Assumes the "fPOS" attribute, if present, is the last one.
     TokenMorphology *morph =
         token->MutableExtension(TokenMorphology::morphology);
-    if (morph->attribute().rbegin()->name() == "fPOS") {
+    if (morph->attribute_size() > 0 &&
+        morph->attribute().rbegin()->name() == "fPOS") {
       morph->mutable_attribute()->RemoveLast();
     }
   }
@@ -345,6 +348,45 @@ class TokenizedTextFormat : public DocumentFormat {
 };
 
 REGISTER_DOCUMENT_FORMAT("tokenized-text", TokenizedTextFormat);
+
+// Reader for un-tokenized text. This reader expects every sentence to be on a
+// single line. For each line in the input, a sentence proto will be created,
+// where tokens are utf8 characters of that line.
+//
+class UntokenizedTextFormat : public TokenizedTextFormat {
+ public:
+  UntokenizedTextFormat() {}
+
+  void ConvertFromString(const string &key, const string &value,
+                         vector<Sentence *> *sentences) override {
+    Sentence *sentence = new Sentence();
+    vector<tensorflow::StringPiece> chars;
+    SegmenterUtils::GetUTF8Chars(value, &chars);
+    int start = 0;
+    for (auto utf8char : chars) {
+      Token *token = sentence->add_token();
+      token->set_word(utf8char.ToString());
+      token->set_start(start);
+      start += utf8char.size();
+      token->set_end(start - 1);
+    }
+
+    if (sentence->token_size() > 0) {
+      sentence->set_docid(key);
+      sentence->set_text(value);
+      sentences->push_back(sentence);
+    } else {
+      // If the sentence was empty (e.g., blank lines at the beginning of a
+      // file), then don't save it.
+      delete sentence;
+    }
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(UntokenizedTextFormat);
+};
+
+REGISTER_DOCUMENT_FORMAT("untokenized-text", UntokenizedTextFormat);
 
 // Text reader that attmpts to perform Penn Treebank tokenization on arbitrary
 // raw text. Adapted from https://www.cis.upenn.edu/~treebank/tokenizer.sed
