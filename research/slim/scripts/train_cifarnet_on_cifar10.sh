@@ -19,6 +19,10 @@ TRAIN_DIR=/tmp/cifarnet-model
 # Where the dataset was saved to.
 DATASET_DIR=/tmp/cifar10
 
+# Download the dataset
+./bazel-bin/slim/download_and_convert_cifar10 \
+  --dataset_dir=${DATASET_DIR}
+
 # Run training.
 ./bazel-bin/slim/train \
   --train_dir=${TRAIN_DIR} \
