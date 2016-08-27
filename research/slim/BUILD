@@ -1,5 +1,5 @@
 # Description:
-#   Contains files for loading, training and evaluating TF-Slim 2.0-based models.
+#   Contains files for loading, training and evaluating TF-Slim-based models.
 
 package(default_visibility = [":internal"])
 
