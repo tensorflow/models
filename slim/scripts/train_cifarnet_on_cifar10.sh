@@ -6,12 +6,8 @@
 # 3. Evaluate the model on the Cifar10 testing set.
 #
 # Usage:
-# ./slim/scripts/train_cifar_net_on_mnist.sh
-
-# Compile the binaries
-bazel build slim:download_and_convert_cifar10
-bazel build slim:train
-bazel build slim:eval
+# cd slim
+# ./scripts/train_cifar_net_on_mnist.sh
 
 # Where the checkpoint and logs will be saved to.
 TRAIN_DIR=/tmp/cifarnet-model
@@ -20,11 +16,11 @@ TRAIN_DIR=/tmp/cifarnet-model
 DATASET_DIR=/tmp/cifar10
 
 # Download the dataset
-./bazel-bin/slim/download_and_convert_cifar10 \
+python datasets/download_and_convert_cifar10.py \
   --dataset_dir=${DATASET_DIR}
 
 # Run training.
-./bazel-bin/slim/train \
+python train.py \
   --train_dir=${TRAIN_DIR} \
   --dataset_name=cifar10 \
   --dataset_split_name=train \
@@ -41,7 +37,7 @@ DATASET_DIR=/tmp/cifar10
   --weight_decay=0.004
 
 # Run evaluation.
-./blaze-bin/slim/eval \
+python eval.py \
   --checkpoint_path=${TRAIN_DIR} \
   --eval_dir=${TRAIN_DIR} \
   --dataset_name=cifar10 \

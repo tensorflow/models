@@ -20,10 +20,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from slim.models import cifarnet_preprocessing
-from slim.models import inception_preprocessing
-from slim.models import lenet_preprocessing
-from slim.models import vgg_preprocessing
+from models import cifarnet_preprocessing
+from models import inception_preprocessing
+from models import lenet_preprocessing
+from models import vgg_preprocessing
 
 slim = tf.contrib.slim
 

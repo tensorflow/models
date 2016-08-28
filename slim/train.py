@@ -21,10 +21,10 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
-from slim.datasets import dataset_factory
-from slim.models import model_deploy
-from slim.models import model_factory
-from slim.models import preprocessing_factory
+from datasets import dataset_factory
+from models import model_deploy
+from models import model_factory
+from models import preprocessing_factory
 
 slim = tf.contrib.slim
 

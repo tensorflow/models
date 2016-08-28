@@ -21,8 +21,8 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow.contrib.slim import nets
-from slim.nets import cifarnet
-from slim.nets import lenet
+from nets import cifarnet
+from nets import lenet
 
 
 slim = tf.contrib.slim
