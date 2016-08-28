@@ -6,12 +6,8 @@
 # 3. Evaluate the model on the MNIST testing set.
 #
 # Usage:
+# cd slim
 # ./slim/scripts/train_lenet_on_mnist.sh
-
-# Compile the binaries
-bazel build slim:download_and_convert_mnist
-bazel build slim:train
-bazel build slim:eval
 
 # Where the checkpoint and logs will be saved to.
 TRAIN_DIR=/tmp/lenet-model
@@ -20,11 +16,11 @@ TRAIN_DIR=/tmp/lenet-model
 DATASET_DIR=/tmp/mnist
 
 # Download the dataset
-# ./bazel-bin/slim/download_and_convert_mnist \
-#   --dataset_dir=${DATASET_DIR}
+python datasets/download_and_convert_mnist.py \
+  --dataset_dir=${DATASET_DIR}
 
 # Run training.
-./bazel-bin/slim/train \
+python train.py \
   --train_dir=${TRAIN_DIR} \
   --dataset_name=mnist \
   --dataset_split_name=train \
@@ -40,7 +36,7 @@ DATASET_DIR=/tmp/mnist
   --weight_decay=0
 
 # Run evaluation.
-./bazel-bin/slim/eval \
+python eval.py \
   --checkpoint_path=${TRAIN_DIR} \
   --eval_dir=${TRAIN_DIR} \
   --dataset_name=mnist \
