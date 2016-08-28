@@ -23,7 +23,7 @@ py_library(
     ],
 )
 
-py_binary(
+py_library(
     name = "download_and_convert_cifar10",
     srcs = ["datasets/download_and_convert_cifar10.py"],
     deps = [
@@ -32,7 +32,7 @@ py_binary(
     ],
 )
 
-py_binary(
+py_library(
     name = "download_and_convert_flowers",
     srcs = ["datasets/download_and_convert_flowers.py"],
     deps = [
@@ -41,12 +41,22 @@ py_binary(
     ],
 )
 
-py_binary(
+py_library(
     name = "download_and_convert_mnist",
     srcs = ["datasets/download_and_convert_mnist.py"],
     deps = [
         ":dataset_utils",
         "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "download_and_convert_data",
+    srcs = ["download_and_convert_data.py"],
+    deps = [
+        ":download_and_convert_cifar10",
+        ":download_and_convert_flowers",
+        ":download_and_convert_mnist",
     ],
 )
 

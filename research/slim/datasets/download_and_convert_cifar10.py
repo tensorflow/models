@@ -39,13 +39,7 @@ import numpy as np
 from six.moves import urllib
 import tensorflow as tf
 
-
-tf.app.flags.DEFINE_string(
-    'dataset_dir',
-    None,
-    'The directory where the output TFRecords and temporary files are saved.')
-
-FLAGS = tf.app.flags.FLAGS
+from datasets import dataset_utils
 
 # The URL where the CIFAR data can be downloaded.
 _DATA_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
@@ -69,58 +63,6 @@ _CLASS_NAMES = [
     'ship',
     'truck',
 ]
-
-
-def _int64_feature(values):
-  """Returns a TF-Feature of int64s.
-
-  Args:
-    values: A scalar or list of values.
-
-  Returns:
-    a TF-Feature.
-  """
-  if not isinstance(values, (tuple, list)):
-    values = [values]
-  return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
-
-
-def _bytes_feature(values):
-  """Returns a TF-Feature of bytes.
-
-  Args:
-    values: A string.
-
-  Returns:
-    a TF-Feature.
-  """
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
-
-
-def _image_to_tfexample(image_data, image_format, height, width, class_id):
-  return tf.train.Example(features=tf.train.Features(feature={
-      'image/encoded': _bytes_feature(image_data),
-      'image/format': _bytes_feature(image_format),
-      'image/class/label': _int64_feature(class_id),
-      'image/height': _int64_feature(height),
-      'image/width': _int64_feature(width),
-  }))
-
-
-def _write_label_file(labels_to_class_names, dataset_dir,
-                      filename='labels.txt'):
-  """Writes a file with the list of class names.
-
-  Args:
-    labels_to_class_names: A map of (integer) labels to class names.
-    dataset_dir: The directory in which the labels file should be written.
-    filename: The filename where the class names are written.
-  """
-  labels_filename = os.path.join(dataset_dir, filename)
-  with tf.gfile.Open(labels_filename, 'w') as f:
-    for label in labels_to_class_names:
-      class_name = labels_to_class_names[label]
-      f.write('%d:%s\n' % (label, class_name))
 
 
 def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
@@ -160,23 +102,24 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
         png_string = sess.run(encoded_image,
                               feed_dict={image_placeholder: image})
 
-        example = _image_to_tfexample(
+        example = dataset_utils.image_to_tfexample(
             png_string, 'png', _IMAGE_SIZE, _IMAGE_SIZE, label)
         tfrecord_writer.write(example.SerializeToString())
 
   return offset + num_images
 
 
-def _get_output_filename(split_name):
+def _get_output_filename(dataset_dir, split_name):
   """Creates the output filename.
 
   Args:
+    dataset_dir: The dataset directory where the dataset is stored.
     split_name: The name of the train/test split.
 
   Returns:
     An absolute file path.
   """
-  return '%s/cifar10_%s.tfrecord' % (FLAGS.dataset_dir, split_name)
+  return '%s/cifar10_%s.tfrecord' % (dataset_dir, split_name)
 
 
 def _download_and_uncompress_dataset(dataset_dir):
@@ -214,44 +157,43 @@ def _clean_up_temporary_files(dataset_dir):
   tf.gfile.DeleteRecursively(tmp_dir)
 
 
-def main(_):
-  if not FLAGS.dataset_dir:
-    raise ValueError('You must supply the dataset directory with --dataset_dir')
+def run(dataset_dir):
+  """Runs the download and conversion operation.
 
-  if not tf.gfile.Exists(FLAGS.dataset_dir):
-    tf.gfile.MakeDirs(FLAGS.dataset_dir)
+  Args:
+    dataset_dir: The dataset directory where the dataset is stored.
+  """
+  if not tf.gfile.Exists(dataset_dir):
+    tf.gfile.MakeDirs(dataset_dir)
 
-  training_filename = _get_output_filename('train')
-  testing_filename = _get_output_filename('test')
+  training_filename = _get_output_filename(dataset_dir, 'train')
+  testing_filename = _get_output_filename(dataset_dir, 'test')
 
   if tf.gfile.Exists(training_filename) and tf.gfile.Exists(testing_filename):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
 
-  _download_and_uncompress_dataset(FLAGS.dataset_dir)
+  dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
 
   # First, process the training data:
   with tf.python_io.TFRecordWriter(training_filename) as tfrecord_writer:
     offset = 0
     for i in range(_NUM_TRAIN_FILES):
-      filename = os.path.join(FLAGS.dataset_dir,
+      filename = os.path.join(dataset_dir,
                               'cifar-10-batches-py',
                               'data_batch_%d' % (i + 1))  # 1-indexed.
       offset = _add_to_tfrecord(filename, tfrecord_writer, offset)
 
   # Next, process the testing data:
   with tf.python_io.TFRecordWriter(testing_filename) as tfrecord_writer:
-    filename = os.path.join(FLAGS.dataset_dir,
+    filename = os.path.join(dataset_dir,
                             'cifar-10-batches-py',
                             'test_batch')
     _add_to_tfrecord(filename, tfrecord_writer)
 
   # Finally, write the labels file:
   labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
-  _write_label_file(labels_to_class_names, FLAGS.dataset_dir)
+  dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(FLAGS.dataset_dir)
+  _clean_up_temporary_files(dataset_dir)
   print('\nFinished converting the Cifar10 dataset!')
-
-if __name__ == '__main__':
-  tf.app.run()

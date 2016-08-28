@@ -28,11 +28,15 @@ export TF_BINARY_URL=https://ci.tensorflow.org/view/Nightly/job/nightly-matrix-c
 sudo pip install --upgrade $TF_BINARY_URL
 ```
 
-To compile the training and evaluation scripts, we also need to install bazel.
-You can find step-by-step instructions
-[here](http://bazel.io/docs/install.html).
+To verify that you have a version of TensorFlow compatible with these image
+models, you can run the following command:
 
-Next, you'll need to check out the
+```bash
+python -c "import tensorflow.contrib.slim.nets as nets; mynet = nets.resnet_v1"
+```
+
+If the command finishes without raising an error, you've installed a valid
+version. Next, you'll need to check out the
 [tensorflow/models](https://github.com/tensorflow/models/) repository:
 
 ```bash
@@ -40,7 +44,16 @@ cd $HOME/workspace
 git clone https://github.com/tensorflow/models/
 ```
 
-The new TF-Slim library can now be found in: `$HOME/workspace/slim`.
+The resulting slim image models library can now be found in
+`$HOME/workspace/slim`. To verify the code, you can run the following command,
+which checks that you can create a CifarNet model:
+
+```bash
+cd $HOME/workspace/slim
+python -c "import nets; mynet = nets.cifarnet.cifarnet"
+```
+
+TODO: move inception/data
 
 If you want to use the ImageNet dataset, you'll also need to access the
 scripts in `$HOME/workspace/inception/data`. Note that this directory contains
@@ -76,13 +89,12 @@ converted to the native TFRecord format.
 
 ```shell
 # Specify the directory of the Cifar10 data:
-$ DATA_DIR=$HOME/cifar10
-
-# Build the dataset creation script.
-$ bazel build slim:download_and_convert_cifar10
+$ DATA_DIR=/tmp/cifar10
 
 # Run the dataset creation.
-$ ./bazel-bin/slim/download_and_convert_cifar10 --dataset_dir="${DATA_DIR}"
+$ python download_and_convert_data.py \
+    --dataset_name=cifar10 \
+    --dataset_dir="${DATA_DIR}"
 ```
 
 The final line of the output script should read:
@@ -105,13 +117,12 @@ converted to the native TFRecord format.
 
 ```shell
 # Specify the directory of the Flowers data:
-$ DATA_DIR=$HOME/flowers
-
-# Build the dataset creation script.
-$ bazel build slim:download_and_convert_flowers
+$ DATA_DIR=/tmp/flowers
 
 # Run the dataset creation.
-$ ./bazel-bin/slim/download_and_convert_flowers --dataset_dir="${DATA_DIR}"
+$ python download_and_convert_data.py \
+    --dataset_name=flowers \
+    --dataset_dir="${DATA_DIR}"
 ```
 
 The final lines of the output script should read:
@@ -151,13 +162,12 @@ converted to the native TFRecord format.
 
 ```shell
 # Specify the directory of the MNIST data:
-$ DATA_DIR=$HOME/mnist
+$ DATA_DIR=/tmp/mnist
 
 # Build the dataset creation script.
-$ bazel build slim:download_and_convert_mnist
-
-# Run the dataset creation.
-$ ./bazel-bin/slim/download_and_convert_mnist --dataset_dir="${DATA_DIR}"
+$ python download_and_convert_data.py \
+    --dataset_name=mnist \
+    --dataset_dir="${DATA_DIR}"
 ```
 
 The final line of the output script should read:
@@ -228,16 +238,13 @@ parameters on the ImageNet dataset.
 
 ```shell
 # Specify the directory where the dataset is stored.
-DATASET_DIR=$HOME/imagenet
+DATASET_DIR=/tmp/imagenet
 
 # Specify the directory where the training logs are stored:
-TRAIN_DIR=$HOME/train_logs
-
-# Build the training script.
-$ bazel build slim/train
+TRAIN_DIR=/tmp/train_logs
 
 # run it
-$ bazel-bin/slim/train \
+$ python train.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_name=imagenet \
     --dataset_split_name=train \
@@ -276,20 +283,17 @@ during the `0-`th global step (model initialization).
 
 ```shell
 # Specify the directory where the dataset is stored.
-$ DATASET_DIR=$HOME/imagenet
+$ DATASET_DIR=/tmp/imagenet
 
 # Specify the directory where the training logs are stored:
-$ TRAIN_DIR=$HOME/train_logs
+$ TRAIN_DIR=/tmp/train_logs
 
 # Specify the directory where the pre-trained model checkpoint was saved to:
-$ CHECKPOINT_PATH=$HOME/my_checkpoints/inception_v3.ckpt
-
-# Build the training script.
-$ bazel build slim/train
+$ CHECKPOINT_PATH=/tmp/my_checkpoints/inception_v3.ckpt
 
 # Run training. Use --checkpoint_exclude_scopes to avoid loading the weights
 # associated with the logits and auxiliary logits fully connected layers.
-$ bazel-bin/slim/train \
+$ python train.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_dir=${DATASET_DIR} \
     --dataset_name=cifar10 \
@@ -318,27 +322,24 @@ $ CHECKPOINT_DIR=/tmp/checkpoints
 $ mkdir ${CHECKPOINT_DIR}
 
 # Download, extract and copy the checkpoint file over:
-$ wget http://download.tensorflow.org/models/inception_v1_2016_08_23.tar.gz
-$ tar -xvf inception_v1_2016_08_23.tar.gz
-$ mv inception_v1.ckpt ${CHECKPOINT_DIR}
-$ rm inception_v1_2016_08_23.tar.gz
+$ wget http://download.tensorflow.org/models/inception_v3_2016_08_23.tar.gz
+$ tar -xvf inception_v3_2016_08_23.tar.gz
+$ mv inception_v3.ckpt ${CHECKPOINT_DIR}
+$ rm inception_v3_2016_08_23.tar.gz
 
 # Specify the directory where the dataset is stored.
-$ DATASET_DIR=$HOME/imagenet
-
-# Compile the evaluation script:
-$ bazel build slim/eval
+$ DATASET_DIR=/tmp/imagenet
 
 # Run the evaluation script. Note that since the pre-trained checkpoints
 # provided do not contain a global step, we need to instruct the evaluation
 # routine not to attempt to load the global step.
-$ ./bazel-bin/slim/eval \
+$ python eval.py \
     --alsologtostderr \
-    --checkpoint_path=${CHECKPOINT_DIR}/inception_v1.ckpt \
+    --checkpoint_path=${CHECKPOINT_DIR}/inception_v3.ckpt \
     --dataset_dir=${DATASET_DIR} \
     --dataset_name=imagenet \
     --dataset_split_name=validation \
-    --model_name=inception_v1 \
+    --model_name=inception_v3 \
     --restore_global_step=False
 ```
 
@@ -376,7 +377,7 @@ To fix this issue, you can set the `--labels_offsets=1` flag. This results in
 the ImageNet labels being shifted down by one:
 
 ```bash
-./bazel-bin/slim/train \
+python train.py \
   --train_dir=${TRAIN_DIR} \
   --dataset_dir=${DATASET_DIR} \
   --dataset_name=imagenet \

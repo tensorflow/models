@@ -41,13 +41,7 @@ import google3
 from six.moves import urllib
 import tensorflow as tf
 
-
-tf.app.flags.DEFINE_string(
-    'dataset_dir',
-    None,
-    'The directory where the output TFRecords and temporary files are saved.')
-
-FLAGS = tf.app.flags.FLAGS
+from datasets import dataset_utils
 
 # The URL where the Flowers data can be downloaded.
 _DATA_URL = 'http://download.tensorflow.org/example_images/flower_photos.tgz'
@@ -80,79 +74,6 @@ class ImageReader(object):
     assert len(image.shape) == 3
     assert image.shape[2] == 3
     return image
-
-
-def _int64_feature(values):
-  """Returns a TF-Feature of int64s.
-
-  Args:
-    values: A scalar or list of values.
-
-  Returns:
-    a TF-Feature.
-  """
-  if not isinstance(values, (tuple, list)):
-    values = [values]
-  return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
-
-
-def _bytes_feature(values):
-  """Returns a TF-Feature of bytes.
-
-  Args:
-    values: A string.
-
-  Returns:
-    a TF-Feature.
-  """
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
-
-
-def _image_to_tfexample(image_data, image_format, height, width, class_id):
-  return tf.train.Example(features=tf.train.Features(feature={
-      'image/encoded': _bytes_feature(image_data),
-      'image/format': _bytes_feature(image_format),
-      'image/class/label': _int64_feature(class_id),
-      'image/height': _int64_feature(height),
-      'image/width': _int64_feature(width),
-  }))
-
-
-def _write_label_file(labels_to_class_names, dataset_dir,
-                      filename='labels.txt'):
-  """Writes a file with the list of class names.
-
-  Args:
-    labels_to_class_names: A map of (integer) labels to class names.
-    dataset_dir: The directory in which the labels file should be written.
-    filename: The filename where the class names are written.
-  """
-  labels_filename = os.path.join(dataset_dir, filename)
-  with tf.gfile.Open(labels_filename, 'w') as f:
-    for label in labels_to_class_names:
-      class_name = labels_to_class_names[label]
-      f.write('%d:%s\n' % (label, class_name))
-
-
-def _download_dataset(dataset_dir):
-  """Downloads the flowers data and uncompresses it locally.
-
-  Args:
-    dataset_dir: The directory where the temporary files are stored.
-  """
-  filename = _DATA_URL.split('/')[-1]
-  filepath = os.path.join(dataset_dir, filename)
-
-  if not os.path.exists(filepath):
-    def _progress(count, block_size, total_size):
-      sys.stdout.write('\r>> Downloading %s %.1f%%' % (
-          filename, float(count * block_size) / float(total_size) * 100.0))
-      sys.stdout.flush()
-    filepath, _ = urllib.request.urlretrieve(_DATA_URL, filepath, _progress)
-    print()
-    statinfo = os.stat(filepath)
-    print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
-    tarfile.open(filepath, 'r:gz').extractall(dataset_dir)
 
 
 def _get_filenames_and_classes(dataset_dir):
@@ -228,7 +149,7 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
             class_name = os.path.basename(os.path.dirname(filenames[i]))
             class_id = class_names_to_ids[class_name]
 
-            example = _image_to_tfexample(
+            example = dataset_utils.image_to_tfexample(
                 image_data, 'jpg', height, width, class_id)
             tfrecord_writer.write(example.SerializeToString())
 
@@ -260,19 +181,21 @@ def _dataset_exists(dataset_dir):
   return True
 
 
-def main(_):
-  if not FLAGS.dataset_dir:
-    raise ValueError('You must supply the dataset directory with --dataset_dir')
+def run(dataset_dir):
+  """Runs the download and conversion operation.
 
-  if not tf.gfile.Exists(FLAGS.dataset_dir):
-    tf.gfile.MakeDirs(FLAGS.dataset_dir)
+  Args:
+    dataset_dir: The dataset directory where the dataset is stored.
+  """
+  if not tf.gfile.Exists(dataset_dir):
+    tf.gfile.MakeDirs(dataset_dir)
 
-  if _dataset_exists(FLAGS.dataset_dir):
+  if _dataset_exists(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
 
-  _download_dataset(FLAGS.dataset_dir)
-  photo_filenames, class_names = _get_filenames_and_classes(FLAGS.dataset_dir)
+  dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
+  photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
   class_names_to_ids = dict(zip(class_names, range(len(class_names))))
 
   # Divide into train and test:
@@ -283,16 +206,14 @@ def main(_):
 
   # First, convert the training and validation sets.
   _convert_dataset('train', training_filenames, class_names_to_ids,
-                   FLAGS.dataset_dir)
+                   dataset_dir)
   _convert_dataset('validation', validation_filenames, class_names_to_ids,
-                   FLAGS.dataset_dir)
+                   dataset_dir)
 
   # Finally, write the labels file:
   labels_to_class_names = dict(zip(range(len(class_names)), class_names))
-  _write_label_file(labels_to_class_names, FLAGS.dataset_dir)
+  dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(FLAGS.dataset_dir)
+  _clean_up_temporary_files(dataset_dir)
   print('\nFinished converting the Flowers dataset!')
 
-if __name__ == '__main__':
-  tf.app.run()
