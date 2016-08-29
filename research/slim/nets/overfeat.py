@@ -116,3 +116,4 @@ def overfeat(inputs,
         net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
         end_points[sc.name + '/fc8'] = net
       return net, end_points
+overfeat.default_image_size = 231

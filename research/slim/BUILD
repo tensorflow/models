@@ -371,6 +371,17 @@ py_library(
     ],
 )
 
+py_test(
+    name = "nets_factory_test",
+    size = "medium",
+    srcs = ["nets/nets_factory_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nets_factory",
+        "//tensorflow",
+    ],
+)
+
 py_binary(
     name = "train_image_classifier",
     srcs = ["train_image_classifier.py"],
