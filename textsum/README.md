@@ -103,7 +103,7 @@ bazel-bin/textsum/seq2seq_attention \
   --log_root=textsum/log_root \
   --train_dir=textsum/log_root/train
 
-# Run the eval. Try to avoid running on the same matchine as training.
+# Run the eval. Try to avoid running on the same machine as training.
 bazel-bin/textsum/seq2seq_attention \
   --mode=eval \
   --article_key=article \
