@@ -1,143 +1,118 @@
-# Image Classification Models in TF-Slim
 
-This directory contains scripts for training and evaluating models using
-TF-Slim. In particular the code base provides core binaries for:
+# Guide to using TF-slim for image classification
 
-* Training a model from scratch on a given dataset.
-* Fine-tuning a model from a particular checkpoint on a given dataset.
-* Evaluating a trained model on a given dataset.
+This directory contains [TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
+code for training and evaluating
+image classification models, based on several widely used CNN architectures.
+You can either train from scratch, or fine-tune a pre-trained model.
+It also contains code for converting standard image datasets to TF-slim format.
+You can easily train any model on any of these datasets, as we show below.
+See also this
+[jupyter notebook](https://github.com/tensorflow/models/tree/master/slim/slim_walkthrough.ipynb),
+which gives some worked examples of how to use slim for image classification.
 
-All scripts are highly configurable via command-line flags. They support
-training and evaluation using a variety of architectures and datasets.
 
-# Getting Started
+## Table of contents
 
-**NOTE** Before doing anything, we first need to build TensorFlow from the
-latest nightly build. You can find the latest nightly binaries at
+<a href="#Install">Installation and setup</a><br>
+<a href='#Data'>Preparing the datasets</a><br>
+<a href='#Pretained'>Using pre-trained models</a><br>
+<a href='#Training'>Training from scratch</a><br>
+<a href='#Tuning'>Fine tuning to a new task</a><br>
+<a href='#Eval'>Evaluating performance</a><br>
+
+# Installation
+<a id='Install'></a>
+
+In this section, we describe the steps you need to install the appropriate
+packages.
+
+## Installing latest version of TF-slim
+
+As of 8/28/16, the latest [stable release of TF](https://www.tensorflow.org/versions/r0.10/get_started/os_setup.html#pip-installation)
+is r0.10, which does not contain
+the latest version of slim. To obtain the latest version of slim, please install
+the most recent nightly build of TF
+You can find the latest nightly binaries at
 [TensorFlow Installation](https://github.com/tensorflow/tensorflow#installation)
-under the header that reads "People who are a little more adventurous can
-also try our nightly binaries". Next, copy the link address that corresponds to
-the appropriate machine architecture and python version. Finally, pip install
-(upgrade) using the appropriate file.
-
-For example:
+in the section that reads "People who are a little more adventurous can
+also try our nightly binaries". Copy the link address that corresponds to
+the appropriate machine architecture and python version, and pip install
+it. For example:
 
 ```shell
-# For CPU
 export TF_BINARY_URL=https://ci.tensorflow.org/view/Nightly/job/nightly-matrix-cpu/TF_BUILD_CONTAINER_TYPE=CPU,TF_BUILD_IS_OPT=OPT,TF_BUILD_IS_PIP=PIP,TF_BUILD_PYTHON_VERSION=PYTHON2,label=cpu-slave/lastSuccessfulBuild/artifact/pip_test/whl/tensorflow-0.10.0rc0-cp27-none-linux_x86_64.whl
-
-sudo pip install --upgrade $TF_BINARY_URL
-
-# For GPU
-export TF_BINARY_URL=https://ci.tensorflow.org/view/Nightly/job/nightly-matrix-linux-gpu/TF_BUILD_CONTAINER_TYPE=GPU,TF_BUILD_IS_OPT=OPT,TF_BUILD_IS_PIP=PIP,TF_BUILD_PYTHON_VERSION=PYTHON2,label=gpu-linux/lastSuccessfulBuild/artifact/pip_test/whl/tensorflow-0.10.0rc0-cp27-none-linux_x86_64.whl
-
 sudo pip install --upgrade $TF_BINARY_URL
 ```
 
-To verify that you have a version of TensorFlow compatible with these image
-models, you can run the following command:
+To test this has worked, execute the following command; it should run
+without raising any errors.
 
-```bash
-python -c "import tensorflow.contrib.slim.nets as nets; mynet = nets.resnet_v1"
+```
+python -c "import tensorflow.contrib.slim as slim; eval = slim.evaluation.evaluate_once"
 ```
 
-If the command finishes without raising an error, you've installed a valid
-version. Next, you'll need to check out the
-[tensorflow/models](https://github.com/tensorflow/models/) repository:
+## Installing TF-slim image models library
+
+To use slim for image classification (as we do here), you also have to install
+the [slim image models library](https://github.com/tensorflow/models/tree/master/slim),
+which is not part of the core TF library.
+To do this, check out the
+[tensorflow/models](https://github.com/tensorflow/models/) repository as follows:
 
 ```bash
 cd $HOME/workspace
 git clone https://github.com/tensorflow/models/
 ```
 
-The resulting slim image models library can now be found in
-`$HOME/workspace/slim`. To verify the code, you can run the following command,
-which checks that you can create a CifarNet model:
+This will put the slim image models library in  $HOME/workspace/models/slim.
+(It will also create a directory called [models/inception](https://github.com/tensorflow/models/tree/master/inception),
+which contains an older version of slim; you can safely ignore this.)
 
-```bash
+To check this has worked,  execute the following commands; it should run
+without raising any errors.
+
+```
 cd $HOME/workspace/slim
-python -c "import nets; mynet = nets.cifarnet.cifarnet"
+python -c "from nets import cifarnet; mynet = cifarnet.cifarnet"
 ```
 
-TODO: move inception/data
+## Optional: installing bazel
 
-If you want to use the ImageNet dataset, you'll also need to access the
-scripts in `$HOME/workspace/inception/data`. Note that this directory contains
-an older version of slim which has been deprecated and can be safely ignored.
+You can optionally compile and run the scripts in the slim models library
+using bazel. This can be installed following these
+ step-by-step instructions
+[here](http://bazel.io/docs/install.html).
 
-# Datasets
+
+
+# Preparing the datasets
+
 
 As part of this library, we've included scripts to download several popular
-datasets and convert them to TensorFlow's native TFRecord format. Each labeled
-image is represented as a
+image datasets (listed below) and convert them to slim format.
+
+
+Dataset |  #Train | #Test | #Classes | Comments
+:------:|:---------------:|:---------------------:|:-----------:|:-----------
+Flowers|2500 | 2500 | 5 | Various sizes (source: Flickr)
+[Cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) | 60k| 10k | 10 |32x32 color
+[MNIST](http://yann.lecun.com/exdb/mnist/)| 60k | 10k | 10 | 28x28 gray
+[ImageNet](http://www.image-net.org/challenges/LSVRC/2012/)|1.2M| 50k | 1000 | Various sizes
+
+## Downloading and converting to TFRecord format
+First we have to download the data and convert to a TFRecord file,
+where each record contains a
 [TF-Example](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/core/example/example.proto)
 protocol buffer.
+Below we show how to do this for the flowers data.
 
-Dataset | Download Script | Dataset Specification | Description
-:------:|:---------------:|:---------------------:|:-----------
-[Cifar10](https://www.cs.toronto.edu/~kriz/cifar.html)|[Script](https://github.com/tensorflow/models/blob/master/slim/datasets/download_and_convert_cifar10.py)|[Code](https://github.com/tensorflow/models/blob/master/slim/datasets/cifar10.py)|The cifar10 dataset contains 60,000 training and 10,000 testing images of 10 different object classes.
-[Flowers](https://github.com/tensorflow/models/blob/master/inception/README.md)|[Script](https://github.com/tensorflow/models/blob/master/inception/inception/data/download_and_preprocess_flowers.sh)|[Code](https://github.com/tensorflow/models/blob/master/slim/datasets/flowers.py)|The Flowers dataset contains 2500 images of flowers with 5 different labels.
-[MNIST](http://yann.lecun.com/exdb/mnist/)|[Script](https://github.com/tensorflow/models/blob/master/slim/datasets/download_and_convert_mnist.py)|[Code](https://github.com/tensorflow/models/blob/master/slim/datasets/mnist.py)|The MNIST dataset contains 60,000 training 10,000 testing grayscale images of digits.
-[ImageNet](http://www.image-net.org/)|[Script](https://github.com/tensorflow/models/blob/master/inception/inception/data/download_and_preprocess_imagenet.sh)|[Code](https://github.com/tensorflow/models/blob/master/slim/datasets/imagenet.py)|The ImageNet dataset contains about 1.2 million training and 50,000 validation images with 1000 different labels.
-
-Below we describe the python scripts which download these datasets and convert
-to TF Record format. Once in this format, the data can easily be read by
-TensorFlow by providing a TF-Slim
-[Dataset](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/contrib/slim/python/slim/data/dataset.py)
-specification. We have included, as a part of the release, the
-[Dataset](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/contrib/slim/python/slim/data/dataset.py)
-specifications for each of these datasets as well.
-
-## Preparing the Cifar10 Dataset
-
-In order to use the Cifar10 dataset, the data must first be downloaded and
-converted to the native TFRecord format.
 
 ```shell
-# Specify the directory of the Cifar10 data:
-$ DATA_DIR=/tmp/cifar10
-
-# Run the dataset creation.
-$ python download_and_convert_data.py \
-    --dataset_name=cifar10 \
-    --dataset_dir="${DATA_DIR}"
-```
-
-The final line of the output script should read:
-
-```shell
-Reading file [cifar-10-batches-py/test_batch], image 10000/10000
-Finished extracting the Cifar10 dataset!
-```
-
-When the script finishes you will find two TFRecord files created,
-`$DATA_DIR/cifar10_train.tfrecord` and `$DATA_DIR/cifar10_test.tfrecord`,
-which represent the training and testing sets respectively. You will also find
-a `$DATA_DIR/labels.txt` file which contains the mapping from integer labels
-to class names.
-
-## Preparing the Flowers Dataset
-
-In order to use the Flowers dataset, the data must first be downloaded and
-converted to the native TFRecord format.
-
-```shell
-# Specify the directory of the Flowers data:
-$ DATA_DIR=/tmp/flowers
-
-# Run the dataset creation.
+$ DATA_DIR=/tmp/data/flowers
 $ python download_and_convert_data.py \
     --dataset_name=flowers \
     --dataset_dir="${DATA_DIR}"
-```
-
-The final lines of the output script should read:
-
-```shell
->> Converting image 3320/3320 shard 4
->> Converting image 350/350 shard 4
-
-Finished converting the Flowers dataset!
 ```
 
 When the script finishes you will find several TFRecord files created:
@@ -145,14 +120,10 @@ When the script finishes you will find several TFRecord files created:
 ```shell
 $ ls ${DATA_DIR}
 flowers_train-00000-of-00005.tfrecord
-flowers_train-00001-of-00005.tfrecord
-flowers_train-00002-of-00005.tfrecord
-flowers_train-00003-of-00005.tfrecord
+...
 flowers_train-00004-of-00005.tfrecord
 flowers_validation-00000-of-00005.tfrecord
-flowers_validation-00001-of-00005.tfrecord
-flowers_validation-00002-of-00005.tfrecord
-flowers_validation-00003-of-00005.tfrecord
+...
 flowers_validation-00004-of-00005.tfrecord
 labels.txt
 ```
@@ -161,56 +132,49 @@ These represent the training and validation data, sharded over 5 files each.
 You will also find the `$DATA_DIR/labels.txt` file which contains the mapping
 from integer labels to class names.
 
-## Preparing the MNIST Dataset
+You can use the same script to create the mnist and cifar10 datasets.
+However, for ImageNet, you have to follow the instructions
+[here](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started).
+Note that you first have to sign up for an account at image-net.org.
+Also, the download can take several hours, and uses about 500MB.
 
-In order to use the MNIST dataset, the data must first be downloaded and
-converted to the native TFRecord format.
 
-```shell
-# Specify the directory of the MNIST data:
-$ DATA_DIR=/tmp/mnist
+## Creating a Slim Dataset wrapper.
 
-# Build the dataset creation script.
-$ python download_and_convert_data.py \
-    --dataset_name=mnist \
-    --dataset_dir="${DATA_DIR}"
+Once the TFRecord files have been created, you can easily create a TF-Slim
+[Dataset](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/contrib/slim/python/slim/data/dataset.py),
+which stores pointers to the data file, as well as various other pieces of
+metadata, such as the class labels and the train/test split.
+Below we give an example of this for the flowers data.
+
+```
+import datasets.flowers as flowers
+dataset = flowers.get_split('validation', DATA_DIR)
+print ("Label set {}".format(dataset.labels_to_names.values()))
 ```
 
-The final line of the output script should read:
 
-```shell
->> Converting image 10000/10000
-Finished extracting the MNIST dataset!
-```
+# Pre-trained Models
+<a id='Pretrained'></a>
 
-When the script finishes you will find two TFRecord files created,
-`$DATA_DIR/mnist_train.tfrecord` and `$DATA_DIR/mnist_test.tfrecord`,
-which represent the training and testing sets respectively.  You will also find
-a `$DATA_DIR/labels.txt` file which contains the mapping from integer labels
-to class names.
+Neural nets work best when they have many parameters, making them very flexible
+function approximators.
+However, this  means they must be trained on big datasets. Since this process
+is slow, we provide various pre-trained models, as listed below.
+These CNNs have been trained on the
+[ILSVRC-2012-CLS](http://www.image-net.org/challenges/LSVRC/2012/)
+image classification dataset.
 
-## Preparing the ImageNet Dataset
 
-To use the ImageNet dataset, follow the instructions in the
-[tensorflow/models/inception](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started)
-repository. In particular see file
-[download_and_preprocess_imagenet.sh](https://github.com/tensorflow/models/blob/master/inception/inception/data/download_and_preprocess_imagenet.sh)
-
-## Pre-trained Models
-
-For convenience, we have provided a number of pre-trained image classification
-models which are listed below. These neural networks been trained on the
-ILSVRC-2012-CLS dataset which is comprised of ~1.2 million images and annotated
-with 1000 mutually exclusive class labels.
-
-In the table below, we present each of these models, the corresponding
-TensorFlow model file, the link to the model checkpoint and the top 1 and top 5
-accuracy.
+In the table below, we list each model, the corresponding
+TensorFlow model file, the link to the model checkpoint, and the top 1 and top 5
+accuracy (on the imagenet test set).
 Note that the VGG and ResNet parameters have been converted from their original
 caffe formats
 ([here](https://github.com/BVLC/caffe/wiki/Model-Zoo#models-used-by-the-vgg-team-in-ilsvrc-2014)
 and
-[here](https://github.com/KaimingHe/deep-residual-networks)), whereas the Inception parameters have been trained internally at
+[here](https://github.com/KaimingHe/deep-residual-networks)),
+whereas the Inception parameters have been trained internally at
 Google. Also be aware that these accuracies were computed by evaluating using a
 single image crop. Some academic papers report higher accuracy by using multiple
 crops at multiple scales.
@@ -227,92 +191,32 @@ Model | TF-Slim File | Checkpoint | Top-1 Accuracy| Top-5 Accuracy |
 [VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_19.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_23.tar.gz)|71.1|89.8|
 
 
+Here is an example of how to download inception-v3 to your checkpoint
+directory.
+
+
+```shell
+$ CHECKPOINT_DIR=/tmp/checkpoints
+$ mkdir ${CHECKPOINT_DIR}
+$ wget http://download.tensorflow.org/models/inception_v3_2016_08_23.tar.gz
+$ tar -xvf inception_v3_2016_08_23.tar.gz
+$ mv inception_v3.ckpt ${CHECKPOINT_DIR}
+$ rm inception_v3_2016_08_23.tar.gz
+```
+
+
+
 # Training a model from scratch.
+<a id='Training'></a>
 
-**WARNING** Training a neural network network from scratch is a computationally
-intensive task and depending on your compute setup may take days, weeks or even
-months.
-
-The training script provided allows users to train one of several architecures
-using one of a variety of optimizers on one of several datasets. Each of these
-choices is configurable and datasets can be added by creating a
-[slim.Dataset](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/data/dataset.py)
-specification and using it in the place of one of those provided.
-
-## Training Lenet on MNIST
-
-The following example demonstrates how to train lenet on the mnist dataset.
-
-```shell
-# Specify the directory where the dataset is stored.
-DATASET_DIR=/tmp/mnist
-
-# Specify the directory where the training logs are stored:
-TRAIN_DIR=/tmp/mnist-train
-
-# run it
-$ python train.py \
-    --train_dir=${TRAIN_DIR} \
-    --dataset_dir=${DATASET_DIR} \
-    --dataset_name=mnist \
-    --dataset_split_name=train \
-    --model_name=lenet \
-    --preprocessing_name=lenet \
-    --max_number_of_steps=20000 \
-    --batch_size=50 \
-    --learning_rate=0.01 \
-    --save_interval_secs=60 \
-    --save_summaries_secs=60 \
-    --optimizer=sgd \
-    --learning_rate_decay_type=fixed \
-    --weight_decay=0
-```
-
-## Training CifarNet on CIFAR-10
-
-The following example demonstrates how to train cifarnet on the cifar10 dataset.
-
-```shell
-# Specify the directory where the dataset is stored.
-DATASET_DIR=/tmp/cifar10
-
-# Specify the directory where the training logs are stored:
-TRAIN_DIR=/tmp/cifar10-train
-
-# run it
-$ python train.py \
-    --train_dir=${TRAIN_DIR} \
-    --dataset_dir=${DATASET_DIR} \
-    --dataset_name=cifar10 \
-    --dataset_split_name=train \
-    --model_name=cifarnet \
-    --preprocessing_name=cifarnet \
-    --max_number_of_steps=100000 \
-    --batch_size=128 \
-    --save_interval_secs=120 \
-    --save_summaries_secs=120 \
-    --log_every_n_steps=100 \
-    --optimizer=sgd \
-    --learning_rate=0.1 \
-    --learning_rate_decay_factor=0.1 \
-    --num_epochs_per_decay=200 \
-    --weight_decay=0.004
-```
-
-## Training Inception-V3 on Imagenet
-
-The following example demonstrates how to train Inception-V3 using the defaults
+We provide an easy way to train a model from scratch using any slim dataset.
+The following example demonstrates how to train Inception-V3 using the default
 parameters on the ImageNet dataset.
 
 ```shell
-# Specify the directory where the dataset is stored.
 DATASET_DIR=/tmp/imagenet
-
-# Specify the directory where the training logs are stored:
 TRAIN_DIR=/tmp/train_logs
-
-# run it
-$ python train.py \
+python train.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_name=imagenet \
     --dataset_split_name=train \
@@ -320,11 +224,18 @@ $ python train.py \
     --model_name=inception_v3
 ```
 
+This process may take several days, depending on your hardware setup.
+For convenience, we provide a way to train a model on multiple GPUs,
+and/or multiple CPUs, either synchrononously or asynchronously.
+See [model_deploy](https://github.com/tensorflow/models/blob/master/slim/models/model_deploy.py)
+for details.
+
+
 # Fine-tuning a model from an existing checkpoint
+<a id='Tuning'></a>
 
 Rather than training from scratch, we'll often want to start from a pre-trained
 model and fine-tune it.
-
 To indicate a checkpoint from which to fine-tune, we'll call training with
 the `--checkpoint_path` flag and assign it an absolute path to a checkpoint
 file.
@@ -337,8 +248,8 @@ hinders certain variables from being loaded. When fine-tuning on a
 classification task using a different number of classes than the trained model,
 the new model will have a final 'logits' layer whose dimensions differ from the
 pre-trained model. For example, if fine-tuning an ImageNet-trained model on
-Flowers, the pre-trained logits layer will have dimensions `[2048 x 1001]` but
-our new logits layer will have dimensions `[2048 x 5]`. Consequently, this
+Cifar10, the pre-trained logits layer will have dimensions `[2048 x 1001]` but
+our new logits layer will have dimensions `[2048 x 10]`. Consequently, this
 flag indicates to TF-Slim to avoid loading these weights from the checkpoint.
 
 Keep in mind that warm-starting from a checkpoint affects the model's weights
@@ -349,22 +260,18 @@ which weights are restored and not the `${checkpoint_path}$`. Consequently,
 the flags `--checkpoint_path` and `--checkpoint_exclude_scopes` are only used
 during the `0-`th global step (model initialization).
 
+Below we give an example of fine-tuning inception-v3, which was trained
+on ImageNet with 1000 class labels, to cifar-10 with 10 class labels.
+
+
 ```shell
-# Specify the directory where the dataset is stored.
-$ DATASET_DIR=/tmp/imagenet
-
-# Specify the directory where the training logs are stored:
+$ DATASET_DIR=/tmp/cifar10
 $ TRAIN_DIR=/tmp/train_logs
-
-# Specify the directory where the pre-trained model checkpoint was saved to:
 $ CHECKPOINT_PATH=/tmp/my_checkpoints/inception_v3.ckpt
-
-# Run training. Use --checkpoint_exclude_scopes to avoid loading the weights
-# associated with the logits and auxiliary logits fully connected layers.
 $ python train.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_dir=${DATASET_DIR} \
-    --dataset_name=flowers \
+    --dataset_name=cifar10 \
     --dataset_split_name=train \
     --model_name=inception_v3 \
     --checkpoint_path=${CHECKPOINT_PATH} \
@@ -372,10 +279,12 @@ $ python train.py \
 ```
 
 
-## Evaluating the provided Checkpoints:
 
-To evaluate the checkpoints provided with this release, one need only download
-the checkpoints and run the evaluation script.
+# Evaluating performance of a model
+<a id='Eval'></a>
+
+To evaluate the performance of a model (whether pretrained or your own),
+you can use the eval.py script, as shown below.
 
 Note that the provided checkpoints contain the model's weights only. They do
 not contain variables associated with training, such as weight's moving averages
@@ -384,32 +293,22 @@ checkpoint files, one must specify the flag `--restore_global_step=False` to
 indicate to the evaluation routine to avoid attempting to load a global step
 from the checkpoint file that doesn't contain one.
 
+Below we give an example of downloading the pretrained inception model and
+evaluating it on the imagenet dataset.
+
 ```shell
-# Specify and create the directory containing the checkpoints:
-$ CHECKPOINT_DIR=/tmp/checkpoints
-$ mkdir ${CHECKPOINT_DIR}
-
-# Download, extract and copy the checkpoint file over:
-$ wget http://download.tensorflow.org/models/inception_v3_2016_08_23.tar.gz
-$ tar -xvf inception_v3_2016_08_23.tar.gz
-$ mv inception_v3.ckpt ${CHECKPOINT_DIR}
-$ rm inception_v3_2016_08_23.tar.gz
-
-# Specify the directory where the dataset is stored.
-$ DATASET_DIR=/tmp/imagenet
-
-# Run the evaluation script. Note that since the pre-trained checkpoints
-# provided do not contain a global step, we need to instruct the evaluation
-# routine not to attempt to load the global step.
+CHECKPOINT_FILE = ${CHECKPOINT_DIR}/inception_v3.ckpt  # Example
 $ python eval.py \
     --alsologtostderr \
-    --checkpoint_path=${CHECKPOINT_DIR}/inception_v3.ckpt \
+    --checkpoint_path=${CHECKPOINT_FILE} \
     --dataset_dir=${DATASET_DIR} \
     --dataset_name=imagenet \
     --dataset_split_name=validation \
     --model_name=inception_v3 \
     --restore_global_step=False
 ```
+
+
 
 # Troubleshooting
 
@@ -444,16 +343,6 @@ outputs rather than 1001.
 To fix this issue, you can set the `--labels_offsets=1` flag. This results in
 the ImageNet labels being shifted down by one:
 
-```bash
-python train.py \
-  --train_dir=${TRAIN_DIR} \
-  --dataset_dir=${DATASET_DIR} \
-  --dataset_name=imagenet \
-  --dataset_split_name=train \
-  --model_name=resnet_v1_50 \
-  --checkpoint_path=${CHECKPOINT_PATH}
-  --labels_offset=1
-```
 
 #### I wish to train a model with a different image size.
 
