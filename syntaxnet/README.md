@@ -99,7 +99,7 @@ Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
 
 ```shell
-  git clone --recursive https://github.com/tensorflow/models.git
+  git clone --recursive --recurse-submodules https://github.com/tensorflow/models.git
   cd models/syntaxnet/tensorflow
   ./configure
   cd ..
