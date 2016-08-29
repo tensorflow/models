@@ -23,7 +23,7 @@ import google3
 import tensorflow as tf
 
 from datasets import dataset_factory
-from google3.third_party.tensorflow_models.slim.training import model_factory
+from nets import nets_factory
 from google3.third_party.tensorflow_models.slim.training import preprocessing_factory
 
 slim = tf.contrib.slim
@@ -100,7 +100,7 @@ def main(_):
     ####################
     # Select the model #
     ####################
-    model_fn = model_factory.get_model(
+    network_fn = nets_factory.get_network_fn(
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         is_training=False)
@@ -124,7 +124,7 @@ def main(_):
         preprocessing_name,
         is_training=False)
 
-    eval_image_size = FLAGS.eval_image_size or model_fn.default_image_size
+    eval_image_size = FLAGS.eval_image_size or network_fn.default_image_size
 
     image = image_preprocessing_fn(image, eval_image_size, eval_image_size)
 
@@ -137,7 +137,7 @@ def main(_):
     ####################
     # Define the model #
     ####################
-    logits, _ = model_fn(images)
+    logits, _ = network_fn(images)
 
     if FLAGS.moving_average_decay:
       variable_averages = tf.train.ExponentialMovingAverage(

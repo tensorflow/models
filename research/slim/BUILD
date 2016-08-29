@@ -363,8 +363,8 @@ py_test(
 )
 
 py_library(
-    name = "model_factory",
-    srcs = ["training/model_factory.py"],
+    name = "nets_factory",
+    srcs = ["nets/nets_factory.py"],
     deps = [
         ":nets",
         "//tensorflow",
@@ -377,7 +377,7 @@ py_binary(
     deps = [
         ":dataset_factory",
         ":model_deploy",
-        ":model_factory",
+        ":nets_factory",
         ":preprocessing_factory",
         "//tensorflow",
     ],
@@ -389,7 +389,7 @@ py_binary(
     deps = [
         ":dataset_factory",
         ":model_deploy",
-        ":model_factory",
+        ":nets_factory",
         ":preprocessing_factory",
         "//tensorflow",
     ],

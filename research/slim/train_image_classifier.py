@@ -23,8 +23,8 @@ import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
+from nets import nets_factory
 from google3.third_party.tensorflow_models.slim.training import model_deploy
-from google3.third_party.tensorflow_models.slim.training import model_factory
 from google3.third_party.tensorflow_models.slim.training import preprocessing_factory
 
 slim = tf.contrib.slim
@@ -381,9 +381,9 @@ def main(_):
         FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.dataset_dir)
 
     ####################
-    # Select the model #
+    # Select the network #
     ####################
-    model_fn = model_factory.get_model(
+    network_fn = nets_factory.get_network_fn(
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         weight_decay=FLAGS.weight_decay,
@@ -409,7 +409,7 @@ def main(_):
       [image, label] = provider.get(['image', 'label'])
       label -= FLAGS.labels_offset
 
-      train_image_size = FLAGS.train_image_size or model_fn.default_image_size
+      train_image_size = FLAGS.train_image_size or network_fn.default_image_size
 
       image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
@@ -427,9 +427,9 @@ def main(_):
     # Define the model #
     ####################
     def clone_fn(batch_queue):
-      """Allows data parallelism by creating multiple clones of the model_fn."""
+      """Allows data parallelism by creating multiple clones of network_fn."""
       images, labels = batch_queue.dequeue()
-      logits, end_points = model_fn(images)
+      logits, end_points = network_fn(images)
 
       #############################
       # Specify the loss function #
@@ -448,7 +448,7 @@ def main(_):
     clones = model_deploy.create_clones(deploy_config, clone_fn, [batch_queue])
     first_clone_scope = deploy_config.clone_scope(0)
     # Gather update_ops from the first clone. These contain, for example,
-    # the updates for the batch_norm variables created by model_fn.
+    # the updates for the batch_norm variables created by network_fn.
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
 
     # Add summaries for end_points.
