@@ -22,7 +22,7 @@ import google3
 import numpy as np
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.slim.training import model_deploy
+from google3.third_party.tensorflow_models.slim.models import model_deploy
 
 slim = tf.contrib.slim
 
