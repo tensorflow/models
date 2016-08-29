@@ -11,7 +11,6 @@ package_group(
     name = "internal",
     packages = [
         "//learning/brain/contrib/slim...",
-        "//research/vale/tensorflow/slim/...",
     ],
 )
 
@@ -181,10 +180,108 @@ py_library(
     ],
 )
 
+# Typical networks definitions.
+
+py_library(
+    name = "nets",
+    deps = [
+        ":alexnet",
+        ":cifarnet",
+        ":inception",
+        ":lenet",
+        ":overfeat",
+        ":resnet_v1",
+        ":resnet_v2",
+        ":vgg",
+    ],
+)
+
+py_library(
+    name = "alexnet",
+    srcs = ["nets/alexnet.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_test(
+    name = "alexnet_test",
+    size = "medium",
+    srcs = ["nets/alexnet_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":alexnet",
+        "//tensorflow",
+    ],
+)
+
 py_library(
     name = "cifarnet",
     srcs = ["nets/cifarnet.py"],
     deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "inception",
+    srcs = ["nets/inception.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":inception_v1",
+        ":inception_v2",
+        ":inception_v3",
+    ],
+)
+
+py_library(
+    name = "inception_v1",
+    srcs = ["nets/inception_v1.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_library(
+    name = "inception_v2",
+    srcs = ["nets/inception_v2.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_library(
+    name = "inception_v3",
+    srcs = ["nets/inception_v3.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_test(
+    name = "inception_v1_test",
+    size = "large",
+    srcs = ["nets/inception_v1_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":inception",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "inception_v2_test",
+    size = "large",
+    srcs = ["nets/inception_v2_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":inception",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "inception_v3_test",
+    size = "large",
+    srcs = ["nets/inception_v3_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":inception",
         "//tensorflow",
     ],
 )
@@ -198,11 +295,90 @@ py_library(
 )
 
 py_library(
+    name = "overfeat",
+    srcs = ["nets/overfeat.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_test(
+    name = "overfeat_test",
+    size = "medium",
+    srcs = ["nets/overfeat_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":overfeat",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "resnet_utils",
+    srcs = ["nets/resnet_utils.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_library(
+    name = "resnet_v1",
+    srcs = ["nets/resnet_v1.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":resnet_utils",
+    ],
+)
+
+py_test(
+    name = "resnet_v1_test",
+    size = "medium",
+    srcs = ["nets/resnet_v1_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":resnet_v1",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "resnet_v2",
+    srcs = ["nets/resnet_v2.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":resnet_utils",
+    ],
+)
+
+py_test(
+    name = "resnet_v2_test",
+    size = "medium",
+    srcs = ["nets/resnet_v2_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":resnet_v2",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "vgg",
+    srcs = ["nets/vgg.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_test(
+    name = "vgg_test",
+    size = "medium",
+    srcs = ["nets/vgg_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":vgg",
+        "//tensorflow",
+    ],
+)
+
+py_library(
     name = "model_factory",
     srcs = ["training/model_factory.py"],
     deps = [
-        ":cifarnet",
-        ":lenet",
+        ":nets",
         "//tensorflow",
     ],
 )

@@ -58,7 +58,7 @@ tf.app.flags.DEFINE_integer(
     'The number of threads used to create the batches.')
 
 tf.app.flags.DEFINE_integer(
-    'log_every_n_steps', 5,
+    'log_every_n_steps', 10,
     'The frequency with which logs are print.')
 
 tf.app.flags.DEFINE_integer(
