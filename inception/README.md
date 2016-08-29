@@ -704,6 +704,10 @@ respectively. Generally speaking, we aim for selecting the number of shards such
 that roughly 1024 images reside in each shard. One this data set is built you
 are ready to train or fine-tune an Inception model on this data set.
 
+Note, if you are piggy backing on the flowers retraining scripts, be sure to 
+update `num_classes()` and `num_examples_per_epoch()` in `flowers_data.py` 
+to correspond with your data.
+
 ## Practical Considerations for Training a Model
 
 The model architecture and training procedure is heavily dependent on the
