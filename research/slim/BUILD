@@ -214,6 +214,7 @@ py_library(
     srcs = ["nets/inception.py"],
     srcs_version = "PY2AND3",
     deps = [
+        ":inception_resnet_v2",
         ":inception_v1",
         ":inception_v2",
         ":inception_v3",
@@ -235,6 +236,12 @@ py_library(
 py_library(
     name = "inception_v3",
     srcs = ["nets/inception_v3.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_library(
+    name = "inception_resnet_v2",
+    srcs = ["nets/inception_resnet_v2.py"],
     srcs_version = "PY2AND3",
 )
 
@@ -270,6 +277,18 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":inception",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "inception_resnet_v2_test",
+    size = "large",
+    srcs = ["nets/inception_resnet_v2_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":inception_resnet_v2",
         "//tensorflow",
     ],
 )
