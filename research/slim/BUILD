@@ -108,7 +108,7 @@ py_library(
 
 py_library(
     name = "model_deploy",
-    srcs = ["training/model_deploy.py"],
+    srcs = ["deployment/model_deploy.py"],
     deps = [
         "//tensorflow",
     ],
@@ -116,7 +116,7 @@ py_library(
 
 py_test(
     name = "model_deploy_test",
-    srcs = ["training/model_deploy_test.py"],
+    srcs = ["deployment/model_deploy_test.py"],
     srcs_version = "PY2AND3",
     deps = [
         ":model_deploy",
