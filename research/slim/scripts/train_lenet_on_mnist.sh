@@ -3,7 +3,7 @@
 # This script performs the following operations:
 # 1. Downloads the MNIST dataset
 # 2. Trains a LeNet model on the MNIST training set.
-# 3. Evaluate the model on the MNIST testing set.
+# 3. Evaluates the model on the MNIST testing set.
 #
 # Usage:
 # cd slim
@@ -12,7 +12,7 @@
 # Where the checkpoint and logs will be saved to.
 TRAIN_DIR=/tmp/lenet-model
 
-# Where the dataset was saved to.
+# Where the dataset is saved to.
 DATASET_DIR=/tmp/mnist
 
 # Download the dataset
@@ -21,7 +21,7 @@ python download_and_convert_data.py \
   --dataset_dir=${DATASET_DIR}
 
 # Run training.
-python train.py \
+python train_image_classifier.py \
   --train_dir=${TRAIN_DIR} \
   --dataset_name=mnist \
   --dataset_split_name=train \
@@ -39,7 +39,7 @@ python train.py \
   --weight_decay=0
 
 # Run evaluation.
-python eval.py \
+python eval_image_classifier.py \
   --checkpoint_path=${TRAIN_DIR} \
   --eval_dir=${TRAIN_DIR} \
   --dataset_name=mnist \

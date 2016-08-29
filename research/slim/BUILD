@@ -106,18 +106,6 @@ py_library(
     ],
 )
 
-py_binary(
-    name = "eval",
-    srcs = ["eval.py"],
-    deps = [
-        ":dataset_factory",
-        ":model_deploy",
-        ":model_factory",
-        ":preprocessing_factory",
-        "//tensorflow",
-    ],
-)
-
 py_library(
     name = "model_deploy",
     srcs = ["training/model_deploy.py"],
@@ -384,8 +372,20 @@ py_library(
 )
 
 py_binary(
-    name = "train",
-    srcs = ["train.py"],
+    name = "train_image_classifier",
+    srcs = ["train_image_classifier.py"],
+    deps = [
+        ":dataset_factory",
+        ":model_deploy",
+        ":model_factory",
+        ":preprocessing_factory",
+        "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "eval_image_classifier",
+    srcs = ["eval_image_classifier.py"],
     deps = [
         ":dataset_factory",
         ":model_deploy",

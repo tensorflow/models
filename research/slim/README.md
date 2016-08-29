@@ -1,4 +1,3 @@
-
 # Guide to using TF-slim for image classification
 
 This directory contains [TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
@@ -181,14 +180,14 @@ crops at multiple scales.
 
 Model | TF-Slim File | Checkpoint | Top-1 Accuracy| Top-5 Accuracy |
 :----:|:------------:|:----------:|:-------:|:--------:|
-[Inception V1](http://arxiv.org/abs/1409.4842v1)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v1.py)|[inception_v1.tar.gz](http://download.tensorflow.org/models/inception_v1_2016_08_23.tar.gz)|69.8|89.6|
-[Inception V2](http://arxiv.org/abs/1502.03167)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v2.py)|[inception_v2.tar.gz](http://download.tensorflow.org/models/inception_v2_2016_08_23.tar.gz)|73.9|91.8|
-[Inception V3](http://arxiv.org/abs/1512.00567)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v3.py)|[inception_v3.tar.gz](http://download.tensorflow.org/models/inception_v3_2016_08_23.tar.gz)|78.0|93.9|
-[ResNet 50](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_50.tar.gz](http://download.tensorflow.org/models/resnet_v1_50_2016_08_23.tar.gz)|75.2|92.2|
-[ResNet 101](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_101.tar.gz](http://download.tensorflow.org/models/resnet_v1_101_2016_08_23.tar.gz)|76.4|92.9|
-[ResNet 152](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_152.tar.gz](http://download.tensorflow.org/models/resnet_v1_152_2016_08_23.tar.gz)|76.8|93.2|
-[VGG 16](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_16.tar.gz](http://download.tensorflow.org/models/vgg_16_2016_08_23.tar.gz)|71.5|89.8|
-[VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_19.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_23.tar.gz)|71.1|89.8|
+[Inception V1](http://arxiv.org/abs/1409.4842v1)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v1.py)|[inception_v1.tar.gz](http://download.tensorflow.org/models/inception_v1_2016_08_28.tar.gz)|69.8|89.6|
+[Inception V2](http://arxiv.org/abs/1502.03167)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v2.py)|[inception_v2.tar.gz](http://download.tensorflow.org/models/inception_v2_2016_08_28.tar.gz)|73.9|91.8|
+[Inception V3](http://arxiv.org/abs/1512.00567)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v3.py)|[inception_v3.tar.gz](http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz)|78.0|93.9|
+[ResNet 50](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_50.tar.gz](http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz)|75.2|92.2|
+[ResNet 101](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_101.tar.gz](http://download.tensorflow.org/models/resnet_v1_101_2016_08_28.tar.gz)|76.4|92.9|
+[ResNet 152](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_152.tar.gz](http://download.tensorflow.org/models/resnet_v1_152_2016_08_28.tar.gz)|76.8|93.2|
+[VGG 16](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_16.tar.gz](http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz)|71.5|89.8|
+[VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_19.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz)|71.1|89.8|
 
 
 Here is an example of how to download inception-v3 to your checkpoint
@@ -198,10 +197,10 @@ directory.
 ```shell
 $ CHECKPOINT_DIR=/tmp/checkpoints
 $ mkdir ${CHECKPOINT_DIR}
-$ wget http://download.tensorflow.org/models/inception_v3_2016_08_23.tar.gz
-$ tar -xvf inception_v3_2016_08_23.tar.gz
+$ wget http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz
+$ tar -xvf inception_v3_2016_08_28.tar.gz
 $ mv inception_v3.ckpt ${CHECKPOINT_DIR}
-$ rm inception_v3_2016_08_23.tar.gz
+$ rm inception_v3_2016_08_28.tar.gz
 ```
 
 
@@ -216,7 +215,7 @@ parameters on the ImageNet dataset.
 ```shell
 DATASET_DIR=/tmp/imagenet
 TRAIN_DIR=/tmp/train_logs
-python train.py \
+python train_image_classifier.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_name=imagenet \
     --dataset_split_name=train \
@@ -268,7 +267,7 @@ on ImageNet with 1000 class labels, to cifar-10 with 10 class labels.
 $ DATASET_DIR=/tmp/cifar10
 $ TRAIN_DIR=/tmp/train_logs
 $ CHECKPOINT_PATH=/tmp/my_checkpoints/inception_v3.ckpt
-$ python train.py \
+$ python train_image_classifier.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_dir=${DATASET_DIR} \
     --dataset_name=cifar10 \
@@ -284,28 +283,20 @@ $ python train.py \
 <a id='Eval'></a>
 
 To evaluate the performance of a model (whether pretrained or your own),
-you can use the eval.py script, as shown below.
-
-Note that the provided checkpoints contain the model's weights only. They do
-not contain variables associated with training, such as weight's moving averages
-or the global step. Consequently, when evaluating one of the pre-trained
-checkpoint files, one must specify the flag `--restore_global_step=False` to
-indicate to the evaluation routine to avoid attempting to load a global step
-from the checkpoint file that doesn't contain one.
+you can use the eval_image_classifier.py script, as shown below.
 
 Below we give an example of downloading the pretrained inception model and
 evaluating it on the imagenet dataset.
 
 ```shell
 CHECKPOINT_FILE = ${CHECKPOINT_DIR}/inception_v3.ckpt  # Example
-$ python eval.py \
+$ python eval_image_classifier.py \
     --alsologtostderr \
     --checkpoint_path=${CHECKPOINT_FILE} \
     --dataset_dir=${DATASET_DIR} \
     --dataset_name=imagenet \
     --dataset_split_name=validation \
-    --model_name=inception_v3 \
-    --restore_global_step=False
+    --model_name=inception_v3
 ```
 
 

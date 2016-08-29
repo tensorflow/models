@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Generic training script that trains a given model a specified dataset."""
+"""Generic training script that trains a model using a given dataset."""
 
 from __future__ import absolute_import
 from __future__ import division

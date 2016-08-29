@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Generic evaluation script that evaluates a model a specified dataset."""
+"""Generic evaluation script that evaluates a model using a given dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -42,11 +42,6 @@ tf.app.flags.DEFINE_string(
     'checkpoint_path', '/tmp/tfmodel/',
     'The directory where the model was written to or an absolute path to a '
     'checkpoint file.')
-
-tf.app.flags.DEFINE_bool(
-    'restore_global_step', True,
-    'Whether or not to restore the global step. When evaluating a model '
-    'checkpoint containing ONLY weights, set this flag to `False`.')
 
 tf.app.flags.DEFINE_string(
     'eval_dir', '/tmp/tfmodel/', 'Directory where the results are saved to.')
@@ -149,12 +144,9 @@ def main(_):
           FLAGS.moving_average_decay, tf_global_step)
       variables_to_restore = variable_averages.variables_to_restore(
           slim.get_model_variables())
-
-      if FLAGS.restore_global_step:
-        variables_to_restore[tf_global_step.op.name] = tf_global_step
+      variables_to_restore[tf_global_step.op.name] = tf_global_step
     else:
-      exclude = None if FLAGS.restore_global_step else ['global_step']
-      variables_to_restore = slim.get_variables_to_restore(exclude=exclude)
+      variables_to_restore = slim.get_variables_to_restore()
 
     predictions = tf.argmax(logits, 1)
     labels = tf.squeeze(labels)
