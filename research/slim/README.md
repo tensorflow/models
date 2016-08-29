@@ -1,14 +1,17 @@
 # Guide to using TF-slim for image classification
 
-This directory contains [TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
-code for training and evaluating
-image classification models, based on several widely used CNN architectures.
-You can either train from scratch, or fine-tune a pre-trained model.
-It also contains code for converting standard image datasets to TF-slim format.
-You can easily train any model on any of these datasets, as we show below.
-See also this
+This directory contains
+[TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
+code for training and evaluating several widely used Convolutional Neural
+Network (CNN) image classification models. It contains scripts that will allow
+you to train models from scratch or fine-tune them from pre-trained network
+weights. It also contains code for downloading standard image datasets,
+converting them
+to TensorFlow's native TFRecord format and reading them in using TF-Slim's
+data reading and queueing utilities. You can easily train any model on any of
+these datasets, as we demonstrate below. We've also included a
 [jupyter notebook](https://github.com/tensorflow/models/tree/master/slim/slim_walkthrough.ipynb),
-which gives some worked examples of how to use slim for image classification.
+which provides working examples of how to use TF-Slim for image classification.
 
 
 ## Table of contents
@@ -23,16 +26,15 @@ which gives some worked examples of how to use slim for image classification.
 # Installation
 <a id='Install'></a>
 
-In this section, we describe the steps you need to install the appropriate
-packages.
+In this section, we describe the steps required to install the appropriate
+prerequisite packages.
 
 ## Installing latest version of TF-slim
 
 As of 8/28/16, the latest [stable release of TF](https://www.tensorflow.org/versions/r0.10/get_started/os_setup.html#pip-installation)
-is r0.10, which does not contain
-the latest version of slim. To obtain the latest version of slim, please install
-the most recent nightly build of TF
-You can find the latest nightly binaries at
+is r0.10, which does not contain the latest version of TF-Slim. To obtain the
+latest version, you must install the most recent nightly build of
+TensorFlow. You can find the latest nightly binaries at
 [TensorFlow Installation](https://github.com/tensorflow/tensorflow#installation)
 in the section that reads "People who are a little more adventurous can
 also try our nightly binaries". Copy the link address that corresponds to
@@ -51,10 +53,10 @@ without raising any errors.
 python -c "import tensorflow.contrib.slim as slim; eval = slim.evaluation.evaluate_once"
 ```
 
-## Installing TF-slim image models library
+## Installing the TF-slim image models library
 
-To use slim for image classification (as we do here), you also have to install
-the [slim image models library](https://github.com/tensorflow/models/tree/master/slim),
+To use TF-Slim for image classification, you also have to install
+the [TF-Slim image models library](https://github.com/tensorflow/models/tree/master/slim),
 which is not part of the core TF library.
 To do this, check out the
 [tensorflow/models](https://github.com/tensorflow/models/) repository as follows:
@@ -64,11 +66,12 @@ cd $HOME/workspace
 git clone https://github.com/tensorflow/models/
 ```
 
-This will put the slim image models library in  $HOME/workspace/models/slim.
-(It will also create a directory called [models/inception](https://github.com/tensorflow/models/tree/master/inception),
+This will put the TF-Slim image models library in `$HOME/workspace/models/slim`.
+(It will also create a directory called
+[models/inception](https://github.com/tensorflow/models/tree/master/inception),
 which contains an older version of slim; you can safely ignore this.)
 
-To check this has worked,  execute the following commands; it should run
+To verify that this has worked, execute the following commands; it should run
 without raising any errors.
 
 ```
@@ -79,33 +82,29 @@ python -c "from nets import cifarnet; mynet = cifarnet.cifarnet"
 ## Optional: installing bazel
 
 You can optionally compile and run the scripts in the slim models library
-using bazel. This can be installed following these
- step-by-step instructions
-[here](http://bazel.io/docs/install.html).
-
-
+using bazel. This can be installed following these step-by-step
+[instructions](http://bazel.io/docs/install.html).
 
 # Preparing the datasets
-
 
 As part of this library, we've included scripts to download several popular
 image datasets (listed below) and convert them to slim format.
 
-
-Dataset |  #Train | #Test | #Classes | Comments
-:------:|:---------------:|:---------------------:|:-----------:|:-----------
+Dataset | Training Set Size | Testing Set Size | Number of Classes | Comments
+:------:|:---------------:|:---------------------:|:-----------:|:-----------:
 Flowers|2500 | 2500 | 5 | Various sizes (source: Flickr)
 [Cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) | 60k| 10k | 10 |32x32 color
 [MNIST](http://yann.lecun.com/exdb/mnist/)| 60k | 10k | 10 | 28x28 gray
 [ImageNet](http://www.image-net.org/challenges/LSVRC/2012/)|1.2M| 50k | 1000 | Various sizes
 
 ## Downloading and converting to TFRecord format
-First we have to download the data and convert to a TFRecord file,
-where each record contains a
-[TF-Example](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/core/example/example.proto)
-protocol buffer.
-Below we show how to do this for the flowers data.
 
+For each dataset, we'll need to download the raw data and convert it to
+TensorFlow's native
+[TFRecord](https://www.tensorflow.org/versions/r0.10/api_docs/python/python_io.html#tfrecords-format-details)
+format. Each TFRecord contains a
+[TF-Example](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/core/example/example.proto)
+protocol buffer. Below we demonstrate how to do this for the Flowers dataset.
 
 ```shell
 $ DATA_DIR=/tmp/data/flowers
