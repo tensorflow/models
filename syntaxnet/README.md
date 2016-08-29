@@ -1,7 +1,7 @@
 # SyntaxNet: Neural Models of Syntax.
 
 *A TensorFlow implementation of the models described in [Andor et al. (2016)]
-(http://arxiv.org/pdf/1603.06042v1.pdf).*
+(http://arxiv.org/abs/1603.06042).*
 
 **Update**: Parsey models are now [available](universal.md) for 40 languages
 trained on Universal Dependencies datasets, with support for text segmentation
@@ -29,13 +29,13 @@ Model                                                                           
 [Martins et al. (2013)](http://www.cs.cmu.edu/~ark/TurboParser/)                                                | 93.10 | 88.23 | 94.21
 [Zhang and McDonald (2014)](http://research.google.com/pubs/archive/38148.pdf)                                  | 93.32 | 88.65 | 93.37
 [Weiss et al. (2015)](http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43800.pdf) | 93.91 | 89.29 | 94.17
-[Andor et al. (2016)](http://arxiv.org/pdf/1603.06042v1.pdf)*                                                   | 94.44 | 90.17 | 95.40
+[Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*                                                   | 94.44 | 90.17 | 95.40
 Parsey McParseface                                                                                              | 94.15 | 89.08 | 94.77
 
 We see that Parsey McParseface is state-of-the-art; more importantly, with
 SyntaxNet you can train larger networks with more hidden units and bigger beam
 sizes if you want to push the accuracy even further: [Andor et al. (2016)]
-(http://arxiv.org/pdf/1603.06042v1.pdf)* is simply a SyntaxNet model with a
+(http://arxiv.org/abs/1603.06042)* is simply a SyntaxNet model with a
 larger beam and network. For futher information on the datasets, see that paper
 under the section "Treebank Union".
 
@@ -45,7 +45,7 @@ Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging
 Model                                                                      | News  | Web   | Questions
 -------------------------------------------------------------------------- | :---: | :---: | :-------:
 [Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.78 | 94.03 | 96.18
-[Andor et al. (2016)](http://arxiv.org/pdf/1603.06042v1.pdf)*              | 97.77 | 94.80 | 96.86
+[Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*              | 97.77 | 94.80 | 96.86
 Parsey McParseface                                                         | 97.52 | 94.24 | 96.45
 
 The first part of this tutorial describes how to install the necessary tools and
@@ -475,7 +475,7 @@ predicts the next action to take.
 
 ### Training a Parser Step 1: Local Pretraining
 
-As described in our [paper](http://arxiv.org/pdf/1603.06042v1.pdf), the first
+As described in our [paper](http://arxiv.org/abs/1603.06042), the first
 step in training the model is to *pre-train* using *local* decisions. In this
 phase, we use the gold dependency to guide the parser, and train a softmax layer
 to predict the correct action given these gold dependencies. This can be
