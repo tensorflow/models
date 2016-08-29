@@ -25,7 +25,7 @@ from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
-from google3.third_party.tensorflow_models.slim.training import preprocessing_factory
+from preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 

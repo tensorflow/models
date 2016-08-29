@@ -126,7 +126,7 @@ py_test(
 
 py_library(
     name = "cifarnet_preprocessing",
-    srcs = ["training/cifarnet_preprocessing.py"],
+    srcs = ["preprocessing/cifarnet_preprocessing.py"],
     deps = [
         "//tensorflow",
     ],
@@ -134,7 +134,7 @@ py_library(
 
 py_library(
     name = "inception_preprocessing",
-    srcs = ["training/inception_preprocessing.py"],
+    srcs = ["preprocessing/inception_preprocessing.py"],
     deps = [
         "//tensorflow",
     ],
@@ -142,7 +142,7 @@ py_library(
 
 py_library(
     name = "lenet_preprocessing",
-    srcs = ["training/lenet_preprocessing.py"],
+    srcs = ["preprocessing/lenet_preprocessing.py"],
     deps = [
         "//tensorflow",
     ],
@@ -150,7 +150,7 @@ py_library(
 
 py_library(
     name = "vgg_preprocessing",
-    srcs = ["training/vgg_preprocessing.py"],
+    srcs = ["preprocessing/vgg_preprocessing.py"],
     deps = [
         "//tensorflow",
     ],
@@ -158,7 +158,7 @@ py_library(
 
 py_library(
     name = "preprocessing_factory",
-    srcs = ["training/preprocessing_factory.py"],
+    srcs = ["preprocessing/preprocessing_factory.py"],
     deps = [
         ":cifarnet_preprocessing",
         ":inception_preprocessing",

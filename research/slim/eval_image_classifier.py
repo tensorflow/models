@@ -24,7 +24,7 @@ import tensorflow as tf
 
 from datasets import dataset_factory
 from nets import nets_factory
-from google3.third_party.tensorflow_models.slim.training import preprocessing_factory
+from preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 
