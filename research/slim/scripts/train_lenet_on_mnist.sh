@@ -16,7 +16,8 @@ TRAIN_DIR=/tmp/lenet-model
 DATASET_DIR=/tmp/mnist
 
 # Download the dataset
-python datasets/download_and_convert_mnist.py \
+python download_and_convert_data.py \
+  --dataset_name=mnist \
   --dataset_dir=${DATASET_DIR}
 
 # Run training.

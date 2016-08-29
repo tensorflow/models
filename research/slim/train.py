@@ -23,9 +23,9 @@ import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
-from google3.third_party.tensorflow_models.slim.models import model_deploy
-from google3.third_party.tensorflow_models.slim.models import model_factory
-from google3.third_party.tensorflow_models.slim.models import preprocessing_factory
+from google3.third_party.tensorflow_models.slim.training import model_deploy
+from google3.third_party.tensorflow_models.slim.training import model_factory
+from google3.third_party.tensorflow_models.slim.training import preprocessing_factory
 
 slim = tf.contrib.slim
 

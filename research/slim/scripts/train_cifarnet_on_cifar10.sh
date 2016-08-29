@@ -16,7 +16,8 @@ TRAIN_DIR=/tmp/cifarnet-model
 DATASET_DIR=/tmp/cifar10
 
 # Download the dataset
-python datasets/download_and_convert_cifar10.py \
+python download_and_convert_data.py \
+  --dataset_name=cifar10 \
   --dataset_dir=${DATASET_DIR}
 
 # Run training.

@@ -21,10 +21,10 @@ from __future__ import print_function
 import google3
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.slim.models import cifarnet_preprocessing
-from google3.third_party.tensorflow_models.slim.models import inception_preprocessing
-from google3.third_party.tensorflow_models.slim.models import lenet_preprocessing
-from google3.third_party.tensorflow_models.slim.models import vgg_preprocessing
+from google3.third_party.tensorflow_models.slim.training import cifarnet_preprocessing
+from google3.third_party.tensorflow_models.slim.training import inception_preprocessing
+from google3.third_party.tensorflow_models.slim.training import lenet_preprocessing
+from google3.third_party.tensorflow_models.slim.training import vgg_preprocessing
 
 slim = tf.contrib.slim
 
