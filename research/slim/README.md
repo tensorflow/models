@@ -1,9 +1,12 @@
 # Guide to using TF-slim for image classification
 
-This directory contains
 [TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
+is a lightweight API inside TensorFlow (`tensorflow.contrib.slim`)
+for defining, training and evaluating complex
+models. This directory contains
 code for training and evaluating several widely used Convolutional Neural
-Network (CNN) image classification models. It contains scripts that will allow
+Network (CNN) image classification models using TF-slim.
+It contains scripts that will allow
 you to train models from scratch or fine-tune them from pre-trained network
 weights. It also contains code for downloading standard image datasets,
 converting them
@@ -137,32 +140,51 @@ Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and uses about 500MB.
 
 
-## Creating a Slim Dataset wrapper.
+## Creating a TF-Slim Dataset Descriptor.
 
-Once the TFRecord files have been created, you can easily create a TF-Slim
+Once the TFRecord files have been created, you can easily define a Slim
 [Dataset](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/contrib/slim/python/slim/data/dataset.py),
 which stores pointers to the data file, as well as various other pieces of
-metadata, such as the class labels and the train/test split.
-Below we give an example of this for the flowers data.
+metadata, such as the class labels, the train/test split, and how to parse the
+TFExample protos. We have included the TF-Slim Dataset descriptors
+for
+[Cifar10](https://github.com/tensorflow/models/blob/master/slim/datasets/cifar10.py),
+[ImageNet](https://github.com/tensorflow/models/blob/master/slim/datasets/imagenet.py),
+[Flowers](https://github.com/tensorflow/models/blob/master/slim/datasets/flowers.py),
+and
+[MNIST](https://github.com/tensorflow/models/blob/master/slim/datasets/mnist.py).
+An example of how to load data using a TF-Slim dataset descriptor using a
+TF-Slim
+[DatasetDataProvider](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/data/dataset_data_provider.py)
+is found below:
 
-```
-import datasets.flowers as flowers
+```python
+import tensorflow as tf
+from datasets import flowers
+
+slim = tf.contrib.slim
+
+# Selects the 'validation' dataset.
 dataset = flowers.get_split('validation', DATA_DIR)
-print ("Label set {}".format(dataset.labels_to_names.values()))
+
+# Creates a TF-Slim DataProvider which reads the dataset in the background
+# during both training and testing.
+provider = slim.dataset_data_provider.DatasetDataProvider(dataset)
+[image, label] = provider.get(['image', 'label'])
 ```
 
 
 # Pre-trained Models
 <a id='Pretrained'></a>
 
-Neural nets work best when they have many parameters, making them very flexible
+Neural nets work best when they have many parameters, making them powerful
 function approximators.
-However, this  means they must be trained on big datasets. Since this process
-is slow, we provide various pre-trained models, as listed below.
-These CNNs have been trained on the
+However, this  means they must be trained on very large datasets. Because
+training models from scratch can be a very computationally intensive process
+requiring days or even weeks, we provide various pre-trained models,
+as listed below. These CNNs have been trained on the
 [ILSVRC-2012-CLS](http://www.image-net.org/challenges/LSVRC/2012/)
 image classification dataset.
-
 
 In the table below, we list each model, the corresponding
 TensorFlow model file, the link to the model checkpoint, and the top 1 and top 5
@@ -189,9 +211,7 @@ Model | TF-Slim File | Checkpoint | Top-1 Accuracy| Top-5 Accuracy |
 [VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_19.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz)|71.1|89.8|
 
 
-Here is an example of how to download inception-v3 to your checkpoint
-directory.
-
+Here is an example of how to download the Inception V3 checkpoint:
 
 ```shell
 $ CHECKPOINT_DIR=/tmp/checkpoints
@@ -207,8 +227,8 @@ $ rm inception_v3_2016_08_28.tar.gz
 # Training a model from scratch.
 <a id='Training'></a>
 
-We provide an easy way to train a model from scratch using any slim dataset.
-The following example demonstrates how to train Inception-V3 using the default
+We provide an easy way to train a model from scratch using any TF-Slim dataset.
+The following example demonstrates how to train Inception V3 using the default
 parameters on the ImageNet dataset.
 
 ```shell
