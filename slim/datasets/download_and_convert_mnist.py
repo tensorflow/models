@@ -34,16 +34,7 @@ import numpy as np
 from six.moves import urllib
 import tensorflow as tf
 
-<<<<<<< HEAD
 from datasets import dataset_utils
-=======
-tf.app.flags.DEFINE_string(
-    'dataset_dir',
-    None,
-    'The directory where the output TFRecords and temporary files are saved.')
-
-FLAGS = tf.app.flags.FLAGS
->>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939
 
 # The URLs where the MNIST data can be downloaded.
 _DATA_URL = 'http://yann.lecun.com/exdb/mnist/'
@@ -70,42 +61,6 @@ _CLASS_NAMES = [
 ]
 
 
-def _int64_feature(values):
-  """Returns a TF-Feature of int64s.
-
-  Args:
-    values: A scalar or list of values.
-
-  Returns:
-    a TF-Feature.
-  """
-  if not isinstance(values, (tuple, list)):
-    values = [values]
-  return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
-
-
-def _bytes_feature(values):
-  """Returns a TF-Feature of bytes.
-
-  Args:
-    values: A string.
-
-  Returns:
-    a TF-Feature.
-  """
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
-
-
-def _image_to_tfexample(image_data, image_format, height, width, class_id):
-  return tf.train.Example(features=tf.train.Features(feature={
-      'image/encoded': _bytes_feature(image_data),
-      'image/format': _bytes_feature(image_format),
-      'image/class/label': _int64_feature(class_id),
-      'image/height': _int64_feature(height),
-      'image/width': _int64_feature(width),
-  }))
-
-
 def _extract_images(filename, num_images):
   """Extract the images into a numpy array.
 
@@ -124,22 +79,6 @@ def _extract_images(filename, num_images):
     data = np.frombuffer(buf, dtype=np.uint8)
     data = data.reshape(num_images, _IMAGE_SIZE, _IMAGE_SIZE, _NUM_CHANNELS)
   return data
-
-
-def _write_label_file(labels_to_class_names, dataset_dir,
-                      filename='labels.txt'):
-  """Writes a file with the list of class names.
-
-  Args:
-    labels_to_class_names: A map of (integer) labels to class names.
-    dataset_dir: The directory in which the labels file should be written.
-    filename: The filename where the class names are written.
-  """
-  labels_filename = os.path.join(dataset_dir, filename)
-  with tf.gfile.Open(labels_filename, 'w') as f:
-    for label in labels_to_class_names:
-      class_name = labels_to_class_names[label]
-      f.write('%d:%s\n' % (label, class_name))
 
 
 def _extract_labels(filename, num_labels):
@@ -185,7 +124,7 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
 
         png_string = sess.run(encoded_png, feed_dict={image: images[j]})
 
-        example = _image_to_tfexample(
+        example = dataset_utils.image_to_tfexample(
             png_string, 'png', _IMAGE_SIZE, _IMAGE_SIZE, labels[j])
         tfrecord_writer.write(example.SerializeToString())
 
@@ -256,51 +195,27 @@ def run(dataset_dir):
   training_filename = _get_output_filename(dataset_dir, 'train')
   testing_filename = _get_output_filename(dataset_dir, 'test')
 
-<<<<<<< HEAD
-=======
-  training_filename = _get_output_filename('train')
-  testing_filename = _get_output_filename('test')
-
->>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939
   if tf.gfile.Exists(training_filename) and tf.gfile.Exists(testing_filename):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
 
-<<<<<<< HEAD
   _download_dataset(dataset_dir)
 
   # First, process the training data:
   with tf.python_io.TFRecordWriter(training_filename) as tfrecord_writer:
     data_filename = os.path.join(dataset_dir, _TRAIN_DATA_FILENAME)
     labels_filename = os.path.join(dataset_dir, _TRAIN_LABELS_FILENAME)
-=======
-  _download_dataset(FLAGS.dataset_dir)
-
-  # First, process the training data:
-  with tf.python_io.TFRecordWriter(training_filename) as tfrecord_writer:
-    data_filename = os.path.join(FLAGS.dataset_dir, _TRAIN_DATA_FILENAME)
-    labels_filename = os.path.join(FLAGS.dataset_dir, _TRAIN_LABELS_FILENAME)
->>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939
     _add_to_tfrecord(data_filename, labels_filename, 60000, tfrecord_writer)
 
   # Next, process the testing data:
   with tf.python_io.TFRecordWriter(testing_filename) as tfrecord_writer:
-<<<<<<< HEAD
     data_filename = os.path.join(dataset_dir, _TEST_DATA_FILENAME)
     labels_filename = os.path.join(dataset_dir, _TEST_LABELS_FILENAME)
-=======
-    data_filename = os.path.join(FLAGS.dataset_dir, _TEST_DATA_FILENAME)
-    labels_filename = os.path.join(FLAGS.dataset_dir, _TEST_LABELS_FILENAME)
->>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939
     _add_to_tfrecord(data_filename, labels_filename, 10000, tfrecord_writer)
 
   # Finally, write the labels file:
   labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
-<<<<<<< HEAD
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
-=======
-  _write_label_file(labels_to_class_names, FLAGS.dataset_dir)
->>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939
 
   _clean_up_temporary_files(dataset_dir)
   print('\nFinished converting the MNIST dataset!')

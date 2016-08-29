@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-<<<<<<< HEAD:slim/eval_image_classifier.py
 """Generic evaluation script that evaluates a model using a given dataset."""
-=======
-"""Generic evaluation script that evaluates a model a specified dataset."""
->>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939:slim/eval.py
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,13 +22,8 @@ import math
 import tensorflow as tf
 
 from datasets import dataset_factory
-<<<<<<< HEAD:slim/eval_image_classifier.py
 from nets import nets_factory
 from preprocessing import preprocessing_factory
-=======
-from models import model_factory
-from models import preprocessing_factory
->>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939:slim/eval.py
 
 slim = tf.contrib.slim
 
