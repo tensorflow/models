@@ -23,7 +23,13 @@ the appropriate machine architecture and python version. Finally, pip install
 For example:
 
 ```shell
+# For CPU
 export TF_BINARY_URL=https://ci.tensorflow.org/view/Nightly/job/nightly-matrix-cpu/TF_BUILD_CONTAINER_TYPE=CPU,TF_BUILD_IS_OPT=OPT,TF_BUILD_IS_PIP=PIP,TF_BUILD_PYTHON_VERSION=PYTHON2,label=cpu-slave/lastSuccessfulBuild/artifact/pip_test/whl/tensorflow-0.10.0rc0-cp27-none-linux_x86_64.whl
+
+sudo pip install --upgrade $TF_BINARY_URL
+
+# For GPU
+export TF_BINARY_URL=https://ci.tensorflow.org/view/Nightly/job/nightly-matrix-linux-gpu/TF_BUILD_CONTAINER_TYPE=GPU,TF_BUILD_IS_OPT=OPT,TF_BUILD_IS_PIP=PIP,TF_BUILD_PYTHON_VERSION=PYTHON2,label=gpu-linux/lastSuccessfulBuild/artifact/pip_test/whl/tensorflow-0.10.0rc0-cp27-none-linux_x86_64.whl
 
 sudo pip install --upgrade $TF_BINARY_URL
 ```
@@ -233,6 +239,68 @@ choices is configurable and datasets can be added by creating a
 [slim.Dataset](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/data/dataset.py)
 specification and using it in the place of one of those provided.
 
+## Training Lenet on MNIST
+
+The following example demonstrates how to train lenet on the mnist dataset.
+
+```shell
+# Specify the directory where the dataset is stored.
+DATASET_DIR=/tmp/mnist
+
+# Specify the directory where the training logs are stored:
+TRAIN_DIR=/tmp/mnist-train
+
+# run it
+$ python train.py \
+    --train_dir=${TRAIN_DIR} \
+    --dataset_dir=${DATASET_DIR} \
+    --dataset_name=mnist \
+    --dataset_split_name=train \
+    --model_name=lenet \
+    --preprocessing_name=lenet \
+    --max_number_of_steps=20000 \
+    --batch_size=50 \
+    --learning_rate=0.01 \
+    --save_interval_secs=60 \
+    --save_summaries_secs=60 \
+    --optimizer=sgd \
+    --learning_rate_decay_type=fixed \
+    --weight_decay=0
+```
+
+## Training CifarNet on CIFAR-10
+
+The following example demonstrates how to train cifarnet on the cifar10 dataset.
+
+```shell
+# Specify the directory where the dataset is stored.
+DATASET_DIR=/tmp/cifar10
+
+# Specify the directory where the training logs are stored:
+TRAIN_DIR=/tmp/cifar10-train
+
+# run it
+$ python train.py \
+    --train_dir=${TRAIN_DIR} \
+    --dataset_dir=${DATASET_DIR} \
+    --dataset_name=cifar10 \
+    --dataset_split_name=train \
+    --model_name=cifarnet \
+    --preprocessing_name=cifarnet \
+    --max_number_of_steps=100000 \
+    --batch_size=128 \
+    --save_interval_secs=120 \
+    --save_summaries_secs=120 \
+    --log_every_n_steps=100 \
+    --optimizer=sgd \
+    --learning_rate=0.1 \
+    --learning_rate_decay_factor=0.1 \
+    --num_epochs_per_decay=200 \
+    --weight_decay=0.004
+```
+
+## Training Inception-V3 on Imagenet
+
 The following example demonstrates how to train Inception-V3 using the defaults
 parameters on the ImageNet dataset.
 
@@ -269,8 +337,8 @@ hinders certain variables from being loaded. When fine-tuning on a
 classification task using a different number of classes than the trained model,
 the new model will have a final 'logits' layer whose dimensions differ from the
 pre-trained model. For example, if fine-tuning an ImageNet-trained model on
-Cifar10, the pre-trained logits layer will have dimensions `[2048 x 1001]` but
-our new logits layer will have dimensions `[2048 x 10]`. Consequently, this
+Flowers, the pre-trained logits layer will have dimensions `[2048 x 1001]` but
+our new logits layer will have dimensions `[2048 x 5]`. Consequently, this
 flag indicates to TF-Slim to avoid loading these weights from the checkpoint.
 
 Keep in mind that warm-starting from a checkpoint affects the model's weights
@@ -296,7 +364,7 @@ $ CHECKPOINT_PATH=/tmp/my_checkpoints/inception_v3.ckpt
 $ python train.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_dir=${DATASET_DIR} \
-    --dataset_name=cifar10 \
+    --dataset_name=flowers \
     --dataset_split_name=train \
     --model_name=inception_v3 \
     --checkpoint_path=${CHECKPOINT_PATH} \

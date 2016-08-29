@@ -29,11 +29,13 @@ python train.py \
   --model_name=lenet \
   --preprocessing_name=lenet \
   --max_number_of_steps=20000 \
+  --batch_size=50 \
   --learning_rate=0.01 \
   --save_interval_secs=60 \
   --save_summaries_secs=60 \
+  --log_every_n_steps=100 \
   --optimizer=sgd \
-  --learning_rate_decay_factor=1.0 \
+  --learning_rate_decay_type=fixed \
   --weight_decay=0
 
 # Run evaluation.

@@ -14,17 +14,13 @@
 # ==============================================================================
 r"""Downloads and converts Flowers data to TFRecords of TF-Example protos.
 
-This script downloads the Flowers data, uncompresses it, reads the files
+This module downloads the Flowers data, uncompresses it, reads the files
 that make up the Flowers data and creates two TFRecord datasets: one for train
 and one for test. Each TFRecord dataset is comprised of a set of TF-Example
 protocol buffers, each of which contain a single image and label.
 
 The script should take about a minute to run.
 
-Usage:
-
-$ bazel build slim:download_and_convert_flowers
-$ .bazel-bin/slim/download_and_convert_flowers --dataset_dir=[DIRECTORY]
 """
 
 from __future__ import absolute_import
@@ -35,10 +31,8 @@ import math
 import os
 import random
 import sys
-import tarfile
 
 import google3
-from six.moves import urllib
 import tensorflow as tf
 
 from datasets import dataset_utils

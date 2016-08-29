@@ -14,17 +14,13 @@
 # ==============================================================================
 r"""Downloads and converts MNIST data to TFRecords of TF-Example protos.
 
-This script downloads the MNIST data, uncompresses it, reads the files
+This module downloads the MNIST data, uncompresses it, reads the files
 that make up the MNIST data and creates two TFRecord datasets: one for train
 and one for test. Each TFRecord dataset is comprised of a set of TF-Example
 protocol buffers, each of which contain a single image and label.
 
 The script should take about a minute to run.
 
-Usage:
-
-$ bazel build slim:download_and_convert_mnist
-$ .bazel-bin/slim/download_and_convert_mnist --dataset_dir=[DIRECTORY]
 """
 from __future__ import absolute_import
 from __future__ import division

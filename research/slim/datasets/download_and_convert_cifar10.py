@@ -14,16 +14,13 @@
 # ==============================================================================
 r"""Downloads and converts cifar10 data to TFRecords of TF-Example protos.
 
-This script downloads the cifar10 data, uncompresses it, reads the files
+This module downloads the cifar10 data, uncompresses it, reads the files
 that make up the cifar10 data and creates two TFRecord datasets: one for train
 and one for test. Each TFRecord dataset is comprised of a set of TF-Example
 protocol buffers, each of which contain a single image and label.
 
 The script should take several minutes to run.
 
-Usage:
-$ bazel build slim:download_and_convert_cifar10
-$ .bazel-bin/slim/download_and_convert_cifar10 --dataset_dir=[DIRECTORY]
 """
 from __future__ import absolute_import
 from __future__ import division

@@ -29,8 +29,10 @@ python train.py \
   --model_name=cifarnet \
   --preprocessing_name=cifarnet \
   --max_number_of_steps=100000 \
+  --batch_size=128 \
   --save_interval_secs=120 \
   --save_summaries_secs=120 \
+  --log_every_n_steps=100 \
   --optimizer=sgd \
   --learning_rate=0.1 \
   --learning_rate_decay_factor=0.1 \

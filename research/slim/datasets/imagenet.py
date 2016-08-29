@@ -37,6 +37,8 @@ import google3
 from six.moves import urllib
 import tensorflow as tf
 
+from datasets import dataset_utils
+
 slim = tf.contrib.slim
 
 # TODO(nsilberman): Add tfrecord file type once the script is updated.
@@ -175,7 +177,12 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   decoder = slim.tfexample_decoder.TFExampleDecoder(
       keys_to_features, items_to_handlers)
 
-  labels_to_names = create_readable_names_for_imagenet_labels()
+  labels_to_names = None
+  if dataset_utils.has_labels(dataset_dir):
+    labels_to_names = dataset_utils.read_label_file(dataset_dir)
+  else:
+    labels_to_names = create_readable_names_for_imagenet_labels()
+    dataset_utils.write_label_file(labels_to_names, dataset_dir)
 
   return slim.dataset.Dataset(
       data_sources=file_pattern,
