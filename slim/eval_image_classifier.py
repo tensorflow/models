@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Generic evaluation script that trains a given model a specified dataset."""
+"""Generic evaluation script that evaluates a model using a given dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,9 +21,9 @@ from __future__ import print_function
 import math
 import tensorflow as tf
 
-from slim.datasets import dataset_factory
-from slim.models import model_factory
-from slim.models import preprocessing_factory
+from datasets import dataset_factory
+from nets import nets_factory
+from preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 
@@ -42,11 +42,6 @@ tf.app.flags.DEFINE_string(
     'The directory where the model was written to or an absolute path to a '
     'checkpoint file.')
 
-tf.app.flags.DEFINE_bool(
-    'restore_global_step', True,
-    'Whether or not to restore the global step. When evaluating a model '
-    'checkpoint containing ONLY weights, set this flag to `False`.')
-
 tf.app.flags.DEFINE_string(
     'eval_dir', '/tmp/tfmodel/', 'Directory where the results are saved to.')
 
@@ -58,7 +53,7 @@ tf.app.flags.DEFINE_string(
     'dataset_name', 'imagenet', 'The name of the dataset to load.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_split_name', 'train', 'The name of the train/test split.')
+    'dataset_split_name', 'test', 'The name of the train/test split.')
 
 tf.app.flags.DEFINE_string(
     'dataset_dir', None, 'The directory where the dataset files are stored.')
@@ -104,7 +99,7 @@ def main(_):
     ####################
     # Select the model #
     ####################
-    model_fn = model_factory.get_model(
+    network_fn = nets_factory.get_network_fn(
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         is_training=False)
@@ -128,7 +123,7 @@ def main(_):
         preprocessing_name,
         is_training=False)
 
-    eval_image_size = FLAGS.eval_image_size or model_fn.default_image_size
+    eval_image_size = FLAGS.eval_image_size or network_fn.default_image_size
 
     image = image_preprocessing_fn(image, eval_image_size, eval_image_size)
 
@@ -141,19 +136,16 @@ def main(_):
     ####################
     # Define the model #
     ####################
-    logits, _ = model_fn(images)
+    logits, _ = network_fn(images)
 
     if FLAGS.moving_average_decay:
       variable_averages = tf.train.ExponentialMovingAverage(
           FLAGS.moving_average_decay, tf_global_step)
       variables_to_restore = variable_averages.variables_to_restore(
           slim.get_model_variables())
-
-      if FLAGS.restore_global_step:
-        variables_to_restore[tf_global_step.op.name] = tf_global_step
+      variables_to_restore[tf_global_step.op.name] = tf_global_step
     else:
-      exclude = None if FLAGS.restore_global_step else ['global_step']
-      variables_to_restore = slim.get_variables_to_restore(exclude=exclude)
+      variables_to_restore = slim.get_variables_to_restore()
 
     predictions = tf.argmax(logits, 1)
     labels = tf.squeeze(labels)

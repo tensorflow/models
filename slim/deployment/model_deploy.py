@@ -30,7 +30,7 @@ Usage:
   g = tf.Graph()
 
   # Set up DeploymentConfig
-  config = slim.DeploymentConfig(num_clones=2, clone_on_cpu=True)
+  config = model_deploy.DeploymentConfig(num_clones=2, clone_on_cpu=True)
 
   # Create the global step on the device storing the variables.
   with tf.device(config.variables_device()):
@@ -51,7 +51,8 @@ Usage:
     predictions = CreateNetwork(images)
     slim.losses.log_loss(predictions, labels)
 
-  model_dp = slim.deploy(config, model_fn, [inputs_queue], optimizer=optimizer)
+  model_dp = model_deploy.deploy(config, model_fn, [inputs_queue],
+                                 optimizer=optimizer)
 
   # Run training.
   slim.learning.train(model_dp.train_op, my_log_dir,
