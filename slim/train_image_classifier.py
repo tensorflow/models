@@ -22,9 +22,15 @@ import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
+<<<<<<< HEAD:slim/train_image_classifier.py
 from deployment import model_deploy
 from nets import nets_factory
 from preprocessing import preprocessing_factory
+=======
+from models import model_deploy
+from models import model_factory
+from models import preprocessing_factory
+>>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939:slim/train.py
 
 slim = tf.contrib.slim
 

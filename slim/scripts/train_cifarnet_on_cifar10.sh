@@ -16,12 +16,20 @@ TRAIN_DIR=/tmp/cifarnet-model
 DATASET_DIR=/tmp/cifar10
 
 # Download the dataset
+<<<<<<< HEAD
 python download_and_convert_data.py \
   --dataset_name=cifar10 \
   --dataset_dir=${DATASET_DIR}
 
 # Run training.
 python train_image_classifier.py \
+=======
+python datasets/download_and_convert_cifar10.py \
+  --dataset_dir=${DATASET_DIR}
+
+# Run training.
+python train.py \
+>>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939
   --train_dir=${TRAIN_DIR} \
   --dataset_name=cifar10 \
   --dataset_split_name=train \
@@ -40,7 +48,11 @@ python train_image_classifier.py \
   --weight_decay=0.004
 
 # Run evaluation.
+<<<<<<< HEAD
 python eval_image_classifier.py \
+=======
+python eval.py \
+>>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939
   --checkpoint_path=${TRAIN_DIR} \
   --eval_dir=${TRAIN_DIR} \
   --dataset_name=cifar10 \

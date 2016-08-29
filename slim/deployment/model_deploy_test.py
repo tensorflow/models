@@ -21,7 +21,11 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
+<<<<<<< HEAD:slim/deployment/model_deploy_test.py
 from deployment import model_deploy
+=======
+from models import model_deploy
+>>>>>>> 0af5999e5e6e3147cea5a5d136ff7546a9957939:slim/models/model_deploy_test.py
 
 slim = tf.contrib.slim
 
