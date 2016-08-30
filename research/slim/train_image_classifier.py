@@ -207,8 +207,17 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     'checkpoint_exclude_scopes', None,
-    'Comma-separated list of scopes to include when fine-tuning '
+    'Comma-separated list of scopes of variables to exclude when restoring '
     'from a checkpoint.')
+
+tf.app.flags.DEFINE_string(
+    'trainable_scopes', None,
+    'Comma-separated list of scopes to filter the set of variables to train.'
+    'By default, None would train all the variables.')
+
+tf.app.flags.DEFINE_boolean(
+    'ignore_missing_vars', False,
+    'When restoring a checkpoint would ignore missing variables.')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -349,9 +358,35 @@ def _get_init_fn():
     if not excluded:
       variables_to_restore.append(var)
 
+  if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
+    checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+  else:
+    checkpoint_path = FLAGS.checkpoint_path
+
+  tf.logging.info('Fine-tuning from %s' % checkpoint_path)
+
   return slim.assign_from_checkpoint_fn(
-      FLAGS.checkpoint_path,
-      variables_to_restore)
+      checkpoint_path,
+      variables_to_restore,
+      ignore_missing_vars=FLAGS.ignore_missing_vars)
+
+
+def _get_variables_to_train():
+  """Returns a list of variables to train.
+
+  Returns:
+    A list of variables to train by the optimizer.
+  """
+  if FLAGS.trainable_scopes is None:
+    return tf.trainable_variables()
+  else:
+    scopes = [scope.strip() for scope in FLAGS.trainable_scopes.split(',')]
+
+  variables_to_train = []
+  for scope in scopes:
+    variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
+    variables_to_train.extend(variables)
+  return variables_to_train
 
 
 def main(_):
@@ -500,10 +535,14 @@ def main(_):
       # Update ops executed locally by trainer.
       update_ops.append(variable_averages.apply(moving_average_variables))
 
-    # TODO(sguada) Refactor into function that takes the clones and optimizer
+    # Variables to train.
+    variables_to_train = _get_variables_to_train()
+
     #  and returns a train_tensor and summary_op
-    total_loss, clones_gradients = model_deploy.optimize_clones(clones,
-                                                                optimizer)
+    total_loss, clones_gradients = model_deploy.optimize_clones(
+        clones,
+        optimizer,
+        var_list=variables_to_train)
     # Add total_loss to summary.
     summaries.add(tf.scalar_summary('total_loss', total_loss,
                                     name='total_loss'))
@@ -524,6 +563,7 @@ def main(_):
 
     # Merge all summaries together.
     summary_op = tf.merge_summary(list(summaries), name='summary_op')
+
 
     ###########################
     # Kicks off the training. #
