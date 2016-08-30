@@ -14,17 +14,13 @@
 # ==============================================================================
 r"""Downloads and converts Flowers data to TFRecords of TF-Example protos.
 
-This script downloads the Flowers data, uncompresses it, reads the files
+This module downloads the Flowers data, uncompresses it, reads the files
 that make up the Flowers data and creates two TFRecord datasets: one for train
 and one for test. Each TFRecord dataset is comprised of a set of TF-Example
 protocol buffers, each of which contain a single image and label.
 
 The script should take about a minute to run.
 
-Usage:
-
-$ bazel build slim:download_and_convert_flowers
-$ .bazel-bin/slim/download_and_convert_flowers --dataset_dir=[DIRECTORY]
 """
 
 from __future__ import absolute_import
@@ -35,19 +31,10 @@ import math
 import os
 import random
 import sys
-import tarfile
 
-from six.moves import urllib
 import tensorflow as tf
 
-from slim.datasets import dataset_utils
-
-tf.app.flags.DEFINE_string(
-    'dataset_dir',
-    None,
-    'The directory where the output TFRecords and temporary files are saved.')
-
-FLAGS = tf.app.flags.FLAGS
+from datasets import dataset_utils
 
 # The URL where the Flowers data can be downloaded.
 _DATA_URL = 'http://download.tensorflow.org/example_images/flower_photos.tgz'
@@ -82,27 +69,6 @@ class ImageReader(object):
     return image
 
 
-def _download_dataset(dataset_dir):
-  """Downloads the flowers data and uncompresses it locally.
-
-  Args:
-    dataset_dir: The directory where the temporary files are stored.
-  """
-  filename = _DATA_URL.split('/')[-1]
-  filepath = os.path.join(dataset_dir, filename)
-
-  if not os.path.exists(filepath):
-    def _progress(count, block_size, total_size):
-      sys.stdout.write('\r>> Downloading %s %.1f%%' % (
-          filename, float(count * block_size) / float(total_size) * 100.0))
-      sys.stdout.flush()
-    filepath, _ = urllib.request.urlretrieve(_DATA_URL, filepath, _progress)
-    print()
-    statinfo = os.stat(filepath)
-    print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
-    tarfile.open(filepath, 'r:gz').extractall(dataset_dir)
-
-
 def _get_filenames_and_classes(dataset_dir):
   """Returns a list of filenames and inferred class names.
 
@@ -132,6 +98,12 @@ def _get_filenames_and_classes(dataset_dir):
   return photo_filenames, sorted(class_names)
 
 
+def _get_dataset_filename(dataset_dir, split_name, shard_id):
+  output_filename = 'flowers_%s_%05d-of-%05d.tfrecord' % (
+      split_name, shard_id, _NUM_SHARDS)
+  return os.path.join(dataset_dir, output_filename)
+
+
 def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
   """Converts the given filenames to a TFRecord dataset.
 
@@ -152,9 +124,8 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
     with tf.Session('') as sess:
 
       for shard_id in range(_NUM_SHARDS):
-        output_filename = 'flowers_%s_%05d-of-%05d.tfrecord' % (
-            split_name, shard_id, _NUM_SHARDS)
-        output_filename = os.path.join(dataset_dir, output_filename)
+        output_filename = _get_dataset_filename(
+            dataset_dir, split_name, shard_id)
 
         with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
           start_ndx = shard_id * num_per_shard
@@ -193,15 +164,31 @@ def _clean_up_temporary_files(dataset_dir):
   tf.gfile.DeleteRecursively(tmp_dir)
 
 
-def main(_):
-  if not FLAGS.dataset_dir:
-    raise ValueError('You must supply the dataset directory with --dataset_dir')
+def _dataset_exists(dataset_dir):
+  for split_name in ['train', 'validation']:
+    for shard_id in range(_NUM_SHARDS):
+      output_filename = _get_dataset_filename(
+          dataset_dir, split_name, shard_id)
+      if not tf.gfile.Exists(output_filename):
+        return False
+  return True
 
-  if not tf.gfile.Exists(FLAGS.dataset_dir):
-    tf.gfile.MakeDirs(FLAGS.dataset_dir)
 
-  _download_dataset(FLAGS.dataset_dir)
-  photo_filenames, class_names = _get_filenames_and_classes(FLAGS.dataset_dir)
+def run(dataset_dir):
+  """Runs the download and conversion operation.
+
+  Args:
+    dataset_dir: The dataset directory where the dataset is stored.
+  """
+  if not tf.gfile.Exists(dataset_dir):
+    tf.gfile.MakeDirs(dataset_dir)
+
+  if _dataset_exists(dataset_dir):
+    print('Dataset files already exist. Exiting without re-creating them.')
+    return
+
+  dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
+  photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
   class_names_to_ids = dict(zip(class_names, range(len(class_names))))
 
   # Divide into train and test:
@@ -212,16 +199,14 @@ def main(_):
 
   # First, convert the training and validation sets.
   _convert_dataset('train', training_filenames, class_names_to_ids,
-                   FLAGS.dataset_dir)
+                   dataset_dir)
   _convert_dataset('validation', validation_filenames, class_names_to_ids,
-                   FLAGS.dataset_dir)
+                   dataset_dir)
 
   # Finally, write the labels file:
   labels_to_class_names = dict(zip(range(len(class_names)), class_names))
-  dataset_utils.write_label_file(labels_to_class_names, FLAGS.dataset_dir)
+  dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(FLAGS.dataset_dir)
+  _clean_up_temporary_files(dataset_dir)
   print('\nFinished converting the Flowers dataset!')
 
-if __name__ == '__main__':
-  tf.app.run()
