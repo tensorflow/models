@@ -21,7 +21,7 @@ which provides working examples of how to use TF-Slim for image classification.
 
 <a href="#Install">Installation and setup</a><br>
 <a href='#Data'>Preparing the datasets</a><br>
-<a href='#Pretained'>Using pre-trained models</a><br>
+<a href='#Pretrained'>Using pre-trained models</a><br>
 <a href='#Training'>Training from scratch</a><br>
 <a href='#Tuning'>Fine tuning to a new task</a><br>
 <a href='#Eval'>Evaluating performance</a><br>
@@ -84,6 +84,7 @@ python -c "from nets import cifarnet; mynet = cifarnet.cifarnet"
 
 
 # Preparing the datasets
+<a id='Data'></a>
 
 As part of this library, we've included scripts to download several popular
 image datasets (listed below) and convert them to slim format.
