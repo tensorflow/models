@@ -288,7 +288,7 @@ py_test(
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
-        ":inception_resnet_v2",
+        ":inception",
         "//tensorflow",
     ],
 )

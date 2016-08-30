@@ -20,6 +20,10 @@ As described in http://arxiv.org/abs/1602.07261.
     on Learning
   Christian Szegedy, Sergey Ioffe, Vincent Vanhoucke, Alex Alemi
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 
 import google3
 import tensorflow as tf
@@ -118,23 +122,30 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
         # 149 x 149 x 32
         net = slim.conv2d(inputs, 32, 3, stride=2, padding='VALID',
                           scope='Conv2d_1a_3x3')
+        end_points['Conv2d_1a_3x3'] = net
         # 147 x 147 x 32
         net = slim.conv2d(net, 32, 3, padding='VALID',
                           scope='Conv2d_2a_3x3')
+        end_points['Conv2d_2a_3x3'] = net
         # 147 x 147 x 64
         net = slim.conv2d(net, 64, 3, scope='Conv2d_2b_3x3')
+        end_points['Conv2d_2b_3x3'] = net
         # 73 x 73 x 64
         net = slim.max_pool2d(net, 3, stride=2, padding='VALID',
                               scope='MaxPool_3a_3x3')
+        end_points['MaxPool_3a_3x3'] = net
         # 73 x 73 x 80
         net = slim.conv2d(net, 80, 1, padding='VALID',
                           scope='Conv2d_3b_1x1')
+        end_points['Conv2d_3b_1x1'] = net
         # 71 x 71 x 192
         net = slim.conv2d(net, 192, 3, padding='VALID',
                           scope='Conv2d_4a_3x3')
+        end_points['Conv2d_4a_3x3'] = net
         # 35 x 35 x 192
         net = slim.max_pool2d(net, 3, stride=2, padding='VALID',
                               scope='MaxPool_5a_3x3')
+        end_points['MaxPool_5a_3x3'] = net
 
         # 35 x 35 x 320
         with tf.variable_scope('Mixed_5b'):
@@ -158,6 +169,7 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
           net = tf.concat(3, [tower_conv, tower_conv1_1,
                               tower_conv2_2, tower_pool_1])
 
+        end_points['Mixed_5b'] = net
         net = slim.repeat(net, 10, block35, scale=0.17)
 
         # 17 x 17 x 1024
@@ -177,6 +189,7 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
                                          scope='MaxPool_1a_3x3')
           net = tf.concat(3, [tower_conv, tower_conv1_2, tower_pool])
 
+        end_points['Mixed_6a'] = net
         net = slim.repeat(net, 20, block17, scale=0.10)
 
         # Auxillary tower
@@ -212,10 +225,13 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
           net = tf.concat(3, [tower_conv_1, tower_conv1_1,
                               tower_conv2_2, tower_pool])
 
+        end_points['Mixed_7a'] = net
+
         net = slim.repeat(net, 9, block8, scale=0.20)
         net = block8(net, activation_fn=None)
 
         net = slim.conv2d(net, 1536, 1, scope='Conv2d_7b_1x1')
+        end_points['Conv2d_7b_1x1'] = net
 
         with tf.variable_scope('Logits'):
           end_points['PrePool'] = net
