@@ -1,7 +1,7 @@
-# Guide to using TF-slim for image classification
+# TensorFlow-Slim image classification library
 
 [TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
-is a lightweight API inside TensorFlow (`tensorflow.contrib.slim`)
+is a new lightweight high-level API of TensorFlow (`tensorflow.contrib.slim`)
 for defining, training and evaluating complex
 models. This directory contains
 code for training and evaluating several widely used Convolutional Neural
@@ -35,7 +35,7 @@ prerequisite packages.
 ## Installing latest version of TF-slim
 
 As of 8/28/16, the latest [stable release of TF](https://www.tensorflow.org/versions/r0.10/get_started/os_setup.html#pip-installation)
-is r0.10, which does not contain the latest version of TF-Slim. To obtain the
+is r0.10, which contains most of TF-Slim but not some later additions. To obtain the
 latest version, you must install the most recent nightly build of
 TensorFlow. You can find the latest nightly binaries at
 [TensorFlow Installation](https://github.com/tensorflow/tensorflow#installation)
@@ -82,11 +82,6 @@ cd $HOME/workspace/slim
 python -c "from nets import cifarnet; mynet = cifarnet.cifarnet"
 ```
 
-## Optional: installing bazel
-
-You can optionally compile and run the scripts in the slim models library
-using bazel. This can be installed following these step-by-step
-[instructions](http://bazel.io/docs/install.html).
 
 # Preparing the datasets
 
@@ -245,7 +240,7 @@ python train_image_classifier.py \
 This process may take several days, depending on your hardware setup.
 For convenience, we provide a way to train a model on multiple GPUs,
 and/or multiple CPUs, either synchrononously or asynchronously.
-See [model_deploy](https://github.com/tensorflow/models/blob/master/slim/models/model_deploy.py)
+See [model_deploy](https://github.com/tensorflow/models/blob/master/slim/deployment/model_deploy.py)
 for details.
 
 
@@ -266,8 +261,8 @@ hinders certain variables from being loaded. When fine-tuning on a
 classification task using a different number of classes than the trained model,
 the new model will have a final 'logits' layer whose dimensions differ from the
 pre-trained model. For example, if fine-tuning an ImageNet-trained model on
-Cifar10, the pre-trained logits layer will have dimensions `[2048 x 1001]` but
-our new logits layer will have dimensions `[2048 x 10]`. Consequently, this
+Flowers, the pre-trained logits layer will have dimensions `[2048 x 1001]` but
+our new logits layer will have dimensions `[2048 x 5]`. Consequently, this
 flag indicates to TF-Slim to avoid loading these weights from the checkpoint.
 
 Keep in mind that warm-starting from a checkpoint affects the model's weights
@@ -276,24 +271,30 @@ a new checkpoint will be created in `${TRAIN_DIR}`. If the fine-tuning
 training is stopped and restarted, this new checkpoint will be the one from
 which weights are restored and not the `${checkpoint_path}$`. Consequently,
 the flags `--checkpoint_path` and `--checkpoint_exclude_scopes` are only used
-during the `0-`th global step (model initialization).
+during the `0-`th global step (model initialization). Typically for fine-tuning
+one only want train a sub-set of layers, so the flag `--trainable_scopes` allows
+to specify which subsets of layers should trained, the rest would remain frozen.
 
-Below we give an example of fine-tuning inception-v3, which was trained
-on ImageNet with 1000 class labels, to cifar-10 with 10 class labels.
+Below we give an example of
+[fine-tuning inception-v3 on flowers](https://github.com/tensorflow/models/blob/master/slim/scripts/finetune_inception_v3_on_flowers.sh),
+inception_v3  was trained on ImageNet with 1000 class labels, but the flowers
+dataset only have 5 classes. Since the dataset is quite small we will only train
+the new layers.
 
 
 ```shell
-$ DATASET_DIR=/tmp/cifar10
-$ TRAIN_DIR=/tmp/train_logs
+$ DATASET_DIR=/tmp/flowers
+$ TRAIN_DIR=/tmp/flowers-models/inception_v3
 $ CHECKPOINT_PATH=/tmp/my_checkpoints/inception_v3.ckpt
 $ python train_image_classifier.py \
     --train_dir=${TRAIN_DIR} \
     --dataset_dir=${DATASET_DIR} \
-    --dataset_name=cifar10 \
+    --dataset_name=flowers \
     --dataset_split_name=train \
     --model_name=inception_v3 \
     --checkpoint_path=${CHECKPOINT_PATH} \
-    --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/AuxLogits
+    --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits \
+    --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits
 ```
 
 
