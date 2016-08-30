@@ -87,3 +87,14 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Blaze / Bazel extras
+WORKSPACE
+bazel-bin
+bazel-genfiles
+bazel-out
+bazel-tensorflow_models
+bazel-testlogs
+im2txt/
+lm_1b/
+
