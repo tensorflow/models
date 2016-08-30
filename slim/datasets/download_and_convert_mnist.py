@@ -14,17 +14,13 @@
 # ==============================================================================
 r"""Downloads and converts MNIST data to TFRecords of TF-Example protos.
 
-This script downloads the MNIST data, uncompresses it, reads the files
+This module downloads the MNIST data, uncompresses it, reads the files
 that make up the MNIST data and creates two TFRecord datasets: one for train
 and one for test. Each TFRecord dataset is comprised of a set of TF-Example
 protocol buffers, each of which contain a single image and label.
 
 The script should take about a minute to run.
 
-Usage:
-
-$ bazel build slim:download_and_convert_mnist
-$ .bazel-bin/slim/download_and_convert_mnist --dataset_dir=[DIRECTORY]
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -38,14 +34,7 @@ import numpy as np
 from six.moves import urllib
 import tensorflow as tf
 
-from slim.datasets import dataset_utils
-
-tf.app.flags.DEFINE_string(
-    'dataset_dir',
-    None,
-    'The directory where the output TFRecords and temporary files are saved.')
-
-FLAGS = tf.app.flags.FLAGS
+from datasets import dataset_utils
 
 # The URLs where the MNIST data can be downloaded.
 _DATA_URL = 'http://yann.lecun.com/exdb/mnist/'
@@ -140,16 +129,17 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
         tfrecord_writer.write(example.SerializeToString())
 
 
-def _get_output_filename(split_name):
+def _get_output_filename(dataset_dir, split_name):
   """Creates the output filename.
 
   Args:
+    dataset_dir: The directory where the temporary files are stored.
     split_name: The name of the train/test split.
 
   Returns:
     An absolute file path.
   """
-  return '%s/mnist_%s.tfrecord' % (FLAGS.dataset_dir, split_name)
+  return '%s/mnist_%s.tfrecord' % (dataset_dir, split_name)
 
 
 def _download_dataset(dataset_dir):
@@ -193,35 +183,39 @@ def _clean_up_temporary_files(dataset_dir):
     tf.gfile.Remove(filepath)
 
 
-def main(_):
-  if not FLAGS.dataset_dir:
-    raise ValueError('You must supply the dataset directory with --dataset_dir')
+def run(dataset_dir):
+  """Runs the download and conversion operation.
 
-  if not tf.gfile.Exists(FLAGS.dataset_dir):
-    tf.gfile.MakeDirs(FLAGS.dataset_dir)
+  Args:
+    dataset_dir: The dataset directory where the dataset is stored.
+  """
+  if not tf.gfile.Exists(dataset_dir):
+    tf.gfile.MakeDirs(dataset_dir)
 
-  _download_dataset(FLAGS.dataset_dir)
+  training_filename = _get_output_filename(dataset_dir, 'train')
+  testing_filename = _get_output_filename(dataset_dir, 'test')
+
+  if tf.gfile.Exists(training_filename) and tf.gfile.Exists(testing_filename):
+    print('Dataset files already exist. Exiting without re-creating them.')
+    return
+
+  _download_dataset(dataset_dir)
 
   # First, process the training data:
-  output_file = _get_output_filename('train')
-  with tf.python_io.TFRecordWriter(output_file) as tfrecord_writer:
-    data_filename = os.path.join(FLAGS.dataset_dir, _TRAIN_DATA_FILENAME)
-    labels_filename = os.path.join(FLAGS.dataset_dir, _TRAIN_LABELS_FILENAME)
+  with tf.python_io.TFRecordWriter(training_filename) as tfrecord_writer:
+    data_filename = os.path.join(dataset_dir, _TRAIN_DATA_FILENAME)
+    labels_filename = os.path.join(dataset_dir, _TRAIN_LABELS_FILENAME)
     _add_to_tfrecord(data_filename, labels_filename, 60000, tfrecord_writer)
 
   # Next, process the testing data:
-  output_file = _get_output_filename('test')
-  with tf.python_io.TFRecordWriter(output_file) as tfrecord_writer:
-    data_filename = os.path.join(FLAGS.dataset_dir, _TEST_DATA_FILENAME)
-    labels_filename = os.path.join(FLAGS.dataset_dir, _TEST_LABELS_FILENAME)
+  with tf.python_io.TFRecordWriter(testing_filename) as tfrecord_writer:
+    data_filename = os.path.join(dataset_dir, _TEST_DATA_FILENAME)
+    labels_filename = os.path.join(dataset_dir, _TEST_LABELS_FILENAME)
     _add_to_tfrecord(data_filename, labels_filename, 10000, tfrecord_writer)
 
   # Finally, write the labels file:
   labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
-  dataset_utils.write_label_file(labels_to_class_names, FLAGS.dataset_dir)
+  dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(FLAGS.dataset_dir)
+  _clean_up_temporary_files(dataset_dir)
   print('\nFinished converting the MNIST dataset!')
-
-if __name__ == '__main__':
-  tf.app.run()
