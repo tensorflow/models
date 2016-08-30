@@ -34,7 +34,7 @@ python download_and_convert_data.py \
   --dataset_name=flowers \
   --dataset_dir=${DATASET_DIR}
 
-# Fine-tune only the new layers for 2000 steps.
+# Fine-tune only the new layers for 1000 steps.
 python train_image_classifier.py \
   --train_dir=${TRAIN_DIR} \
   --dataset_name=flowers \
@@ -46,7 +46,7 @@ python train_image_classifier.py \
   --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits \
   --max_number_of_steps=1000 \
   --batch_size=32 \
-  --learning_rate=0.001 \
+  --learning_rate=0.01 \
   --learning_rate_decay_type=fixed \
   --save_interval_secs=60 \
   --save_summaries_secs=60 \
@@ -63,7 +63,7 @@ python eval_image_classifier.py \
   --dataset_dir=${DATASET_DIR} \
   --model_name=inception_v3
 
-# Fine-tune all the new layers for 1000 steps.
+# Fine-tune all the new layers for 500 steps.
 python train_image_classifier.py \
   --train_dir=${TRAIN_DIR}/all \
   --dataset_name=flowers \
@@ -71,7 +71,7 @@ python train_image_classifier.py \
   --dataset_dir=${DATASET_DIR} \
   --model_name=inception_v3 \
   --checkpoint_path=${TRAIN_DIR} \
-  --max_number_of_steps=1000 \
+  --max_number_of_steps=500 \
   --batch_size=32 \
   --learning_rate=0.0001 \
   --learning_rate_decay_type=fixed \
