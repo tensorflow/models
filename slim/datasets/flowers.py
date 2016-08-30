@@ -25,7 +25,7 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 
-from slim.datasets import dataset_utils
+from datasets import dataset_utils
 
 slim = tf.contrib.slim
 

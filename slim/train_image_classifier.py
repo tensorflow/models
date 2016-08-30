@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Generic training script that trains a given model a specified dataset."""
+"""Generic training script that trains a model using a given dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,10 +21,10 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
-from slim.datasets import dataset_factory
-from slim.models import model_deploy
-from slim.models import model_factory
-from slim.models import preprocessing_factory
+from datasets import dataset_factory
+from deployment import model_deploy
+from nets import nets_factory
+from preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 
@@ -57,7 +57,7 @@ tf.app.flags.DEFINE_integer(
     'The number of threads used to create the batches.')
 
 tf.app.flags.DEFINE_integer(
-    'log_every_n_steps', 5,
+    'log_every_n_steps', 10,
     'The frequency with which logs are print.')
 
 tf.app.flags.DEFINE_integer(
@@ -206,8 +206,17 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     'checkpoint_exclude_scopes', None,
-    'Comma-separated list of scopes to include when fine-tuning '
+    'Comma-separated list of scopes of variables to exclude when restoring '
     'from a checkpoint.')
+
+tf.app.flags.DEFINE_string(
+    'trainable_scopes', None,
+    'Comma-separated list of scopes to filter the set of variables to train.'
+    'By default, None would train all the variables.')
+
+tf.app.flags.DEFINE_boolean(
+    'ignore_missing_vars', False,
+    'When restoring a checkpoint would ignore missing variables.')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -348,9 +357,35 @@ def _get_init_fn():
     if not excluded:
       variables_to_restore.append(var)
 
+  if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
+    checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+  else:
+    checkpoint_path = FLAGS.checkpoint_path
+
+  tf.logging.info('Fine-tuning from %s' % checkpoint_path)
+
   return slim.assign_from_checkpoint_fn(
-      FLAGS.checkpoint_path,
-      variables_to_restore)
+      checkpoint_path,
+      variables_to_restore,
+      ignore_missing_vars=FLAGS.ignore_missing_vars)
+
+
+def _get_variables_to_train():
+  """Returns a list of variables to train.
+
+  Returns:
+    A list of variables to train by the optimizer.
+  """
+  if FLAGS.trainable_scopes is None:
+    return tf.trainable_variables()
+  else:
+    scopes = [scope.strip() for scope in FLAGS.trainable_scopes.split(',')]
+
+  variables_to_train = []
+  for scope in scopes:
+    variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
+    variables_to_train.extend(variables)
+  return variables_to_train
 
 
 def main(_):
@@ -380,9 +415,9 @@ def main(_):
         FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.dataset_dir)
 
     ####################
-    # Select the model #
+    # Select the network #
     ####################
-    model_fn = model_factory.get_model(
+    network_fn = nets_factory.get_network_fn(
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         weight_decay=FLAGS.weight_decay,
@@ -408,7 +443,7 @@ def main(_):
       [image, label] = provider.get(['image', 'label'])
       label -= FLAGS.labels_offset
 
-      train_image_size = FLAGS.train_image_size or model_fn.default_image_size
+      train_image_size = FLAGS.train_image_size or network_fn.default_image_size
 
       image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
@@ -426,9 +461,9 @@ def main(_):
     # Define the model #
     ####################
     def clone_fn(batch_queue):
-      """Allows data parallelism by creating multiple clones of the model_fn."""
+      """Allows data parallelism by creating multiple clones of network_fn."""
       images, labels = batch_queue.dequeue()
-      logits, end_points = model_fn(images)
+      logits, end_points = network_fn(images)
 
       #############################
       # Specify the loss function #
@@ -447,7 +482,7 @@ def main(_):
     clones = model_deploy.create_clones(deploy_config, clone_fn, [batch_queue])
     first_clone_scope = deploy_config.clone_scope(0)
     # Gather update_ops from the first clone. These contain, for example,
-    # the updates for the batch_norm variables created by model_fn.
+    # the updates for the batch_norm variables created by network_fn.
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
 
     # Add summaries for end_points.
@@ -499,10 +534,14 @@ def main(_):
       # Update ops executed locally by trainer.
       update_ops.append(variable_averages.apply(moving_average_variables))
 
-    # TODO(sguada) Refactor into function that takes the clones and optimizer
+    # Variables to train.
+    variables_to_train = _get_variables_to_train()
+
     #  and returns a train_tensor and summary_op
-    total_loss, clones_gradients = model_deploy.optimize_clones(clones,
-                                                                optimizer)
+    total_loss, clones_gradients = model_deploy.optimize_clones(
+        clones,
+        optimizer,
+        var_list=variables_to_train)
     # Add total_loss to summary.
     summaries.add(tf.scalar_summary('total_loss', total_loss,
                                     name='total_loss'))
@@ -523,6 +562,7 @@ def main(_):
 
     # Merge all summaries together.
     summary_op = tf.merge_summary(list(summaries), name='summary_op')
+
 
     ###########################
     # Kicks off the training. #

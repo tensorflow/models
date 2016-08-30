@@ -30,7 +30,7 @@ Usage:
   g = tf.Graph()
 
   # Set up DeploymentConfig
-  config = slim.DeploymentConfig(num_clones=2, clone_on_cpu=True)
+  config = model_deploy.DeploymentConfig(num_clones=2, clone_on_cpu=True)
 
   # Create the global step on the device storing the variables.
   with tf.device(config.variables_device()):
@@ -51,7 +51,8 @@ Usage:
     predictions = CreateNetwork(images)
     slim.losses.log_loss(predictions, labels)
 
-  model_dp = slim.deploy(config, model_fn, [inputs_queue], optimizer=optimizer)
+  model_dp = model_deploy.deploy(config, model_fn, [inputs_queue],
+                                 optimizer=optimizer)
 
   # Run training.
   slim.learning.train(model_dp.train_op, my_log_dir,
@@ -240,7 +241,7 @@ def _gather_clone_loss(clone, num_clones, regularization_losses):
 
 
 def _optimize_clone(optimizer, clone, num_clones, regularization_losses,
-                    kwargs=None):
+                    **kwargs):
   """Compute losses and gradients for a single clone.
 
   Args:
@@ -249,7 +250,7 @@ def _optimize_clone(optimizer, clone, num_clones, regularization_losses,
     num_clones: The number of clones being deployed.
     regularization_losses: Possibly empty list of regularization_losses
       to add to the clone losses.
-    kwargs: Dict of kwarg to pass to compute_gradients().
+    **kwargs: Dict of kwarg to pass to compute_gradients().
 
   Returns:
     A tuple (clone_loss, clone_grads_and_vars).
@@ -267,7 +268,7 @@ def _optimize_clone(optimizer, clone, num_clones, regularization_losses,
 
 def optimize_clones(clones, optimizer,
                     regularization_losses=None,
-                    kwargs=None):
+                    **kwargs):
   """Compute clone losses and gradients for the given list of `Clones`.
 
   Note: The regularization_losses are added to the first clone losses.
@@ -278,7 +279,7 @@ def optimize_clones(clones, optimizer,
    regularization_losses: Optional list of regularization losses. If None it
      will gather them from tf.GraphKeys.REGULARIZATION_LOSSES. Pass `[]` to
      exclude them.
-   kwargs: Optional list of keyword arguments to pass to `compute_gradients`.
+   **kwargs: Optional list of keyword arguments to pass to `compute_gradients`.
 
   Returns:
    A tuple (total_loss, grads_and_vars).
@@ -290,7 +291,6 @@ def optimize_clones(clones, optimizer,
   """
   grads_and_vars = []
   clones_losses = []
-  kwargs = kwargs or {}
   num_clones = len(clones)
   if regularization_losses is None:
     regularization_losses = tf.get_collection(
@@ -298,7 +298,7 @@ def optimize_clones(clones, optimizer,
   for clone in clones:
     with tf.name_scope(clone.scope):
       clone_loss, clone_grad = _optimize_clone(
-          optimizer, clone, num_clones, regularization_losses, kwargs)
+          optimizer, clone, num_clones, regularization_losses, **kwargs)
       if clone_loss is not None:
         clones_losses.append(clone_loss)
         grads_and_vars.append(clone_grad)

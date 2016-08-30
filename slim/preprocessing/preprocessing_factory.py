@@ -20,10 +20,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from slim.models import cifarnet_preprocessing
-from slim.models import inception_preprocessing
-from slim.models import lenet_preprocessing
-from slim.models import vgg_preprocessing
+from preprocessing import cifarnet_preprocessing
+from preprocessing import inception_preprocessing
+from preprocessing import lenet_preprocessing
+from preprocessing import vgg_preprocessing
 
 slim = tf.contrib.slim
 
@@ -50,6 +50,7 @@ def get_preprocessing(name, is_training=False):
       'inception_v1': inception_preprocessing,
       'inception_v2': inception_preprocessing,
       'inception_v3': inception_preprocessing,
+      'inception_resnet_v2': inception_preprocessing,
       'lenet': lenet_preprocessing,
       'resnet_v1_50': vgg_preprocessing,
       'resnet_v1_101': vgg_preprocessing,
