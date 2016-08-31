@@ -122,10 +122,7 @@ class ResNet(object):
       self.cost = tf.reduce_mean(xent, name='xent')
       self.cost += self._decay()
 
-      moving_avg = tf.train.ExponentialMovingAverage(
-          0.99, num_updates=self.global_step, name='moving_avg')
-      self._extra_train_ops.append(moving_avg.apply([self.cost]))
-      tf.scalar_summary('cost', moving_avg.average(self.cost))
+      tf.scalar_summary('cost', self.cost)
 
   def _build_train_op(self):
     """Build training specific ops for the graph."""
