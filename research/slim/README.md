@@ -19,15 +19,15 @@ which provides working examples of how to use TF-Slim for image classification.
 
 ## Table of contents
 
-<a href="#Install">Installation and setup</a><br>
-<a href='#Data'>Preparing the datasets</a><br>
-<a href='#Pretrained'>Using pre-trained models</a><br>
-<a href='#Training'>Training from scratch</a><br>
-<a href='#Tuning'>Fine tuning to a new task</a><br>
-<a href='#Eval'>Evaluating performance</a><br>
+<a href="#installation">Installation and setup</a><br>
+<a href='#preparing-the-datasets'>Preparing the datasets</a><br>
+<a href='#pre-trained-models'>Using pre-trained models</a><br>
+<a href='#training-a-model-from-scratch'>Training from scratch</a><br>
+<a href='#fine-tuning-a-model-from-an-existing-checkpoint'>Fine tuning to a new task</a><br>
+<a href='#evaluating-performance-of-a-model'>Evaluating performance</a><br>
+<a href='#troubleshooting'>Troubleshooting</a><br>
 
 # Installation
-<a id='Install'></a>
 
 In this section, we describe the steps required to install the appropriate
 prerequisite packages.
@@ -84,7 +84,6 @@ python -c "from nets import cifarnet; mynet = cifarnet.cifarnet"
 
 
 # Preparing the datasets
-<a id='Data'></a>
 
 As part of this library, we've included scripts to download several popular
 image datasets (listed below) and convert them to slim format.
@@ -171,7 +170,6 @@ provider = slim.dataset_data_provider.DatasetDataProvider(dataset)
 
 
 # Pre-trained Models
-<a id='Pretrained'></a>
 
 Neural nets work best when they have many parameters, making them powerful
 function approximators.
@@ -197,15 +195,18 @@ crops at multiple scales.
 
 Model | TF-Slim File | Checkpoint | Top-1 Accuracy| Top-5 Accuracy |
 :----:|:------------:|:----------:|:-------:|:--------:|
-[Inception V1](http://arxiv.org/abs/1409.4842v1)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v1.py)|[inception_v1.tar.gz](http://download.tensorflow.org/models/inception_v1_2016_08_28.tar.gz)|69.8|89.6|
-[Inception V2](http://arxiv.org/abs/1502.03167)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v2.py)|[inception_v2.tar.gz](http://download.tensorflow.org/models/inception_v2_2016_08_28.tar.gz)|73.9|91.8|
-[Inception V3](http://arxiv.org/abs/1512.00567)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v3.py)|[inception_v3.tar.gz](http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz)|78.0|93.9|
-[ResNet 50](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_50.tar.gz](http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz)|75.2|92.2|
-[ResNet 101](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_101.tar.gz](http://download.tensorflow.org/models/resnet_v1_101_2016_08_28.tar.gz)|76.4|92.9|
-[ResNet 152](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_152.tar.gz](http://download.tensorflow.org/models/resnet_v1_152_2016_08_28.tar.gz)|76.8|93.2|
-[VGG 16](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_16.tar.gz](http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz)|71.5|89.8|
-[VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_19.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz)|71.1|89.8|
+[Inception-ResNet-v2](http://arxiv.org/abs/1602.07261)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_resnet_v2.py)|[inception_resnet_v2_2016_08_30.tar.gz](http://download.tensorflow.org/models/inception_resnet_v2_2016_08_30.tar.gz)|80.4|95.3|
+[Inception V1](http://arxiv.org/abs/1409.4842v1)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_v1.py)|[inception_v1_2016_08_28.tar.gz](http://download.tensorflow.org/models/inception_v1_2016_08_28.tar.gz)|69.8|89.6|
+[Inception V2](http://arxiv.org/abs/1502.03167)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_v2.py)|[inception_v2_2016_08_28.tar.gz](http://download.tensorflow.org/models/inception_v2_2016_08_28.tar.gz)|73.9|91.8|
+[Inception V3](http://arxiv.org/abs/1512.00567)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_v3.py)|[inception_v3_2016_08_28.tar.gz](http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz)|78.0|93.9|
+[ResNet 50](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/resnet_v1.py)|[resnet_v1_50_2016_08_28.tar.gz](http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz)|75.2|92.2|
+[ResNet 101](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/resnet_v1.py)|[resnet_v1_101_2016_08_28.tar.gz](http://download.tensorflow.org/models/resnet_v1_101_2016_08_28.tar.gz)|76.4|92.9|
+[ResNet 152](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/resnet_v1.py)|[resnet_v1_152_2016_08_28.tar.gz](http://download.tensorflow.org/models/resnet_v1_152_2016_08_28.tar.gz)|76.8|93.2|
+[ResNet V2 200](https://arxiv.org/abs/1603.05027)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/resnet_v2.py)|[TBA]()|79.9\*|95.2\*|
+[VGG 16](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/vgg.py)|[vgg_16_2016_08_28.tar.gz](http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz)|71.5|89.8|
+[VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/vgg.py)|[vgg_19_2016_08_28.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz)|71.1|89.8|
 
+(\*): Results quoted from the [paper](https://arxiv.org/abs/1603.05027).
 
 Here is an example of how to download the Inception V3 checkpoint:
 
@@ -219,9 +220,7 @@ $ rm inception_v3_2016_08_28.tar.gz
 ```
 
 
-
 # Training a model from scratch.
-<a id='Training'></a>
 
 We provide an easy way to train a model from scratch using any TF-Slim dataset.
 The following example demonstrates how to train Inception V3 using the default
@@ -246,7 +245,7 @@ for details.
 
 
 # Fine-tuning a model from an existing checkpoint
-<a id='Tuning'></a>
+
 
 Rather than training from scratch, we'll often want to start from a pre-trained
 model and fine-tune it.
@@ -272,15 +271,16 @@ a new checkpoint will be created in `${TRAIN_DIR}`. If the fine-tuning
 training is stopped and restarted, this new checkpoint will be the one from
 which weights are restored and not the `${checkpoint_path}$`. Consequently,
 the flags `--checkpoint_path` and `--checkpoint_exclude_scopes` are only used
-during the `0-`th global step (model initialization). Typically for fine-tuning
-one only want train a sub-set of layers, so the flag `--trainable_scopes` allows
-to specify which subsets of layers should trained, the rest would remain frozen.
+during the `0-`th global step (model initialization).
 
-Below we give an example of
-[fine-tuning inception-v3 on flowers](https://github.com/tensorflow/models/blob/master/slim/scripts/finetune_inception_v3_on_flowers.sh),
-inception_v3  was trained on ImageNet with 1000 class labels, but the flowers
-dataset only have 5 classes. Since the dataset is quite small we will only train
-the new layers.
+Typically for fine-tuning we only want to train a subset of the layers. The flag
+`--trainable_scopes` allows you to specify which layers should trained, the rest
+will remain frozen to their checkpoint values. Below we give an example of
+[fine-tuning inception-v3 on flowers](https://github.com/tensorflow/models/blob/master/slim/scripts/finetune_inception_v3_on_flowers.sh).
+Since the dataset is quite small we will only train the logit layers, which
+depend on the new label set.
+(Note that inception has two sets of logits - the "auxiliary logits" are used
+during training to provide intermediate feedback to earlier layers.)
 
 
 ```shell
@@ -298,15 +298,14 @@ $ python train_image_classifier.py \
     --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits
 ```
 
-
+For an example of how to fine-tune Inception-ResNet-V2 on flowers see
+[finetune_inception_resnet_v2_on_flowers](https://github.com/tensorflow/models/blob/master/slim/scripts/finetune_inception_resnet_v2_on_flowers.sh).
 
 # Evaluating performance of a model
-<a id='Eval'></a>
 
 To evaluate the performance of a model (whether pretrained or your own),
-you can use the eval_image_classifier.py script, as shown below.
-
-Below we give an example of downloading the pretrained inception model and
+you can use the [eval_image_classifier.py](https://github.com/tensorflow/models/blob/master/slim/eval_image_classifier.py)
+script. Below we give an example of downloading the pretrained inception model and
 evaluating it on the imagenet dataset.
 
 ```shell
