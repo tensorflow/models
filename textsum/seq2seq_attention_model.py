@@ -105,7 +105,8 @@ class Seq2SeqAttentionModel(object):
     if self._num_gpus == 0:
       return ''
     dev = '/gpu:%d' % self._cur_gpu
-    self._cur_gpu = (self._cur_gpu + 1) % (self._num_gpus-1)
+    if self._num_gpus > 1:
+      self._cur_gpu = (self._cur_gpu + 1) % (self._num_gpus-1)
     return dev
 
   def _get_gpu(self, gpu_id):
