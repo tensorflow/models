@@ -8,7 +8,7 @@ To propose a model for inclusion please submit a pull request.
 
 
 ## Models
-- [autoencoder](autoencoders) -- various autoencoders
+- [autoencoder](autoencoder) -- various autoencoders
 - [inception](inception) -- deep convolutional networks for computer vision
 - [namignizer](namignizer) -- recognize and generate names
 - [neural_gpu](neural_gpu) -- highly parallel neural computer
@@ -19,4 +19,4 @@ To propose a model for inclusion please submit a pull request.
 - [syntaxnet](syntaxnet) -- neural models of natural language syntax
 - [textsum](textsum) -- sequence-to-sequence with attention model for text summarization.
 - [transformer](transformer) -- spatial transformer network, which allows the spatial manipulation of data within the network
-- [magenta](magenta) -- music and art generation and machine learning tools for artists
+- [magenta](https://magenta.tensorflow.org/) -- music and art generation and machine learning tools for artists
