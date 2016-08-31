@@ -70,11 +70,15 @@ class Vocab(object):
     return self._count
 
 
-def ExampleGen(recordio_path, num_epochs=None):
-  """Generates tf.Examples from path of recordio files.
+def ExampleGen(data_path, num_epochs=None):
+  """Generates tf.Examples from path of data files.
+
+    Binary data format: <length><blob>. <length> represents the byte size
+    of <blob>. <blob> is serialized tf.Example proto. The tf.Example contains
+    the tokenized article text and summary.
 
   Args:
-    recordio_path: CNS path to tf.Example recordio
+    data_path: path to tf.Example data files.
     num_epochs: Number of times to go through the data. None means infinite.
 
   Yields:
@@ -86,7 +90,7 @@ def ExampleGen(recordio_path, num_epochs=None):
   while True:
     if num_epochs is not None and epoch >= num_epochs:
       break
-    filelist = glob.glob(recordio_path)
+    filelist = glob.glob(data_path)
     assert filelist, 'Empty filelist.'
     random.shuffle(filelist)
     for f in filelist:
