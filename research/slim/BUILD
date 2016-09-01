@@ -11,6 +11,7 @@ package_group(
     name = "internal",
     packages = [
         "//learning/brain/contrib/slim...",
+        "//learning/brain/models/image/imagenet_multigpu/...",
     ],
 )
 
