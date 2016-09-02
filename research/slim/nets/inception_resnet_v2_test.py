@@ -51,7 +51,7 @@ class InceptionTest(tf.test.TestCase):
       aux_logits = end_points['AuxLogits']
       self.assertListEqual(aux_logits.get_shape().as_list(),
                            [batch_size, num_classes])
-      pre_pool = end_points['PrePool']
+      pre_pool = end_points['Conv2d_7b_1x1']
       self.assertListEqual(pre_pool.get_shape().as_list(),
                            [batch_size, 8, 8, 1536])
 
@@ -81,7 +81,7 @@ class InceptionTest(tf.test.TestCase):
       self.assertTrue(logits.op.name.startswith('InceptionResnetV2/Logits'))
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, num_classes])
-      pre_pool = end_points['PrePool']
+      pre_pool = end_points['Conv2d_7b_1x1']
       self.assertListEqual(pre_pool.get_shape().as_list(),
                            [batch_size, 3, 3, 1536])
 
