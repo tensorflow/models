@@ -61,7 +61,7 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.models.rnn.ptb import reader
+import reader
 
 flags = tf.flags
 logging = tf.logging
