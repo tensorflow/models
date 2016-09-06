@@ -27,6 +27,8 @@ for example vocabulary format. In <b>How To Run</b> below, users can use toy
 data and vocab provided in the data/ directory to run the training by replacing
 the data directory flag.
 
+data_convert_example.py contains example of convert between binary and text.
+
 
 <b>Experiment Result</b>
 
