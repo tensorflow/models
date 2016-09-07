@@ -224,21 +224,36 @@ py_library(
 )
 
 py_library(
+    name = "inception_utils",
+    srcs = ["nets/inception_utils.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_library(
     name = "inception_v1",
     srcs = ["nets/inception_v1.py"],
     srcs_version = "PY2AND3",
+    deps = [
+        ":inception_utils",
+    ],
 )
 
 py_library(
     name = "inception_v2",
     srcs = ["nets/inception_v2.py"],
     srcs_version = "PY2AND3",
+    deps = [
+        ":inception_utils",
+    ],
 )
 
 py_library(
     name = "inception_v3",
     srcs = ["nets/inception_v3.py"],
     srcs_version = "PY2AND3",
+    deps = [
+        ":inception_utils",
+    ],
 )
 
 py_library(
