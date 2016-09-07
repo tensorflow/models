@@ -12,6 +12,7 @@ package_group(
     packages = [
         "//learning/brain/contrib/slim...",
         "//learning/brain/models/image/imagenet_multigpu/...",
+        "//research/vale/pose_estimation/...",
     ],
 )
 
