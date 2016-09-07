@@ -295,7 +295,7 @@ $ python train_image_classifier.py \
     --model_name=inception_v3 \
     --checkpoint_path=${CHECKPOINT_PATH} \
     --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/AuxLogits \
-    --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits
+    --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits
 ```
 
 
