@@ -19,3 +19,4 @@ To propose a model for inclusion please submit a pull request.
 - [syntaxnet](syntaxnet) -- neural models of natural language syntax
 - [textsum](textsum) -- sequence-to-sequence with attention model for text summarization.
 - [transformer](transformer) -- spatial transformer network, which allows the spatial manipulation of data within the network
+- [magenta](https://magenta.tensorflow.org/) -- Google Brain's music and art generation model and machine learning tools for artists
