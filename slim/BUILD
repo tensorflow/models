@@ -15,8 +15,8 @@ py_library(
 )
 
 py_library(
-    name = "download_and_convert_cifar10",
-    srcs = ["datasets/download_and_convert_cifar10.py"],
+    name = "download_and_convert_cifar",
+    srcs = ["datasets/download_and_convert_cifar.py"],
     deps = [":dataset_utils"],
 )
 
@@ -36,7 +36,7 @@ py_binary(
     name = "download_and_convert_data",
     srcs = ["download_and_convert_data.py"],
     deps = [
-        ":download_and_convert_cifar10",
+        ":download_and_convert_cifar",
         ":download_and_convert_flowers",
         ":download_and_convert_mnist",
     ],
@@ -45,6 +45,12 @@ py_binary(
 py_binary(
     name = "cifar10",
     srcs = ["datasets/cifar10.py"],
+    deps = [":dataset_utils"],
+)
+
+py_binary(
+    name = "cifar100",
+    srcs = ["datasets/cifar100.py"],
     deps = [":dataset_utils"],
 )
 
@@ -71,6 +77,7 @@ py_library(
     srcs = ["datasets/dataset_factory.py"],
     deps = [
         ":cifar10",
+        ":cifar100",
         ":flowers",
         ":imagenet",
         ":mnist",
