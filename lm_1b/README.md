@@ -79,25 +79,25 @@ Pre-requesite:
 * Install Bazel.
 * Download the data files:
   * Model GraphDef file:
-  [link](download.tensorflow.org/models/LM_LSTM_CNN/graph-2016-09-10.pbtxt)
+  [link](http://download.tensorflow.org/models/LM_LSTM_CNN/graph-2016-09-10.pbtxt)
   * Model Checkpoint sharded file:
-  [1](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-base)
-  [2](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-char-embedding)
-  [3](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-lstm)
-  [4](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax0)
-  [5](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax1)
-  [6](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax2)
-  [7](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax3)
-  [8](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax4)
-  [9](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax5)
-  [10](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax6)
-  [11](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax7)
-  [12](download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax8)
+  [1](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-base)
+  [2](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-char-embedding)
+  [3](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-lstm)
+  [4](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax0)
+  [5](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax1)
+  [6](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax2)
+  [7](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax3)
+  [8](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax4)
+  [9](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax5)
+  [10](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax6)
+  [11](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax7)
+  [12](http://download.tensorflow.org/models/LM_LSTM_CNN/all_shards-2016-09-10/ckpt-softmax8)
   * Vocabulary file:
-  [link](download.tensorflow.org/models/LM_LSTM_CNN/vocab-2016-09-10.txt)
+  [link](http://download.tensorflow.org/models/LM_LSTM_CNN/vocab-2016-09-10.txt)
   * test dataset: link
-  [link](download.tensorflow.org/models/LM_LSTM_CNN/test/news.en.heldout-00000-of-00050)
-* It is recommended to run on modern desktop PC instead of laptop.
+  [link](http://download.tensorflow.org/models/LM_LSTM_CNN/test/news.en.heldout-00000-of-00050)
+* It is recommended to run on modern desktop instead of laptop.
 
 ```shell
 # 1. Clone the code to your workspace.
@@ -110,10 +110,13 @@ ls -R
 data  lm_1b  output  WORKSPACE
 
 ./data:
-ckpt  eval_2_8k_1k_1_1_char.pbtxt  news.en.heldout-00000-of-00050  vocab.txt
+ckpt-base            ckpt-lstm      ckpt-softmax1  ckpt-softmax3  ckpt-softmax5
+ckpt-softmax7  graph-2016-09-10.pbtxt          vocab-2016-09-10.txt
+ckpt-char-embedding  ckpt-softmax0  ckpt-softmax2  ckpt-softmax4  ckpt-softmax6
+ckpt-softmax8  news.en.heldout-00000-of-00050
 
 ./lm_1b:
-BUILD  data_utils.py  data_utils.pyc  lm_1b_eval.py  README.md
+BUILD  data_utils.py  lm_1b_eval.py  README.md
 
 ./output:
 
@@ -122,9 +125,9 @@ bazel build -c opt lm_1b/...
 # Run sample mode:
 bazel-bin/lm_1b/lm_1b_eval --mode sample \
                            --prefix "I love that I" \
-                           --pbtxt data/eval_2_8k_1k_1_1_char.pbtxt \
-                           --vocab_file data/vocab.txt  \
-                           --ckpt data/ckpt
+                           --pbtxt data/graph-2016-09-10.pbtxt \
+                           --vocab_file data/vocab-2016-09-10.txt  \
+                           --ckpt 'data/ckpt-*'
 ...(omitted some TensorFlow output)
 I love
 I love that
@@ -136,10 +139,10 @@ I love that I find that amazing
 
 # Run eval mode:
 bazel-bin/lm_1b/lm_1b_eval --mode eval \
-                           --pbtxt data/eval_2_8k_1k_1_1_char.pbtxt \
-                           --vocab_file data/vocab.txt  \
+                           --pbtxt data/graph-2016-09-10.pbtxt \
+                           --vocab_file data/vocab-2016-09-10.txt  \
                            --input_data data/news.en.heldout-00000-of-00050 \
-                           --ckpt data/ckpt
+                           --ckpt 'data/ckpt-*'
 ...(omitted some TensorFlow output)
 Loaded step 14108582.
 # perplexity is high initially because words without context are harder to
@@ -164,9 +167,9 @@ Eval Step: 4531, Average Perplexity: 29.285674.
 
 # Run dump_emb mode:
 bazel-bin/lm_1b/lm_1b_eval --mode dump_emb \
-                           --pbtxt data/eval_2_8k_1k_1_1_char.pbtxt \
-                           --vocab_file data/vocab.txt  \
-                           --ckpt data/ckpt \
+                           --pbtxt data/graph-2016-09-10.pbtxt \
+                           --vocab_file data/vocab-2016-09-10.txt  \
+                           --ckpt 'data/ckpt-*' \
                            --save_dir output
 ...(omitted some TensorFlow output)
 Finished softmax weights
@@ -179,9 +182,9 @@ embeddings_softmax.npy ...
 
 # Run dump_lstm_emb mode:
 bazel-bin/lm_1b/lm_1b_eval --mode dump_lstm_emb \
-                           --pbtxt data/eval_2_8k_1k_1_1_char.pbtxt \
-                           --vocab_file data/vocab.txt \
-                           --ckpt data/ckpt \
+                           --pbtxt data/graph-2016-09-10.pbtxt \
+                           --vocab_file data/vocab-2016-09-10.txt \
+                           --ckpt 'data/ckpt-*' \
                            --sentence "I love who I am ." \
                            --save_dir output
 ls output/
