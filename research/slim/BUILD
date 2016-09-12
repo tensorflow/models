@@ -221,6 +221,7 @@ py_library(
         ":inception_v1",
         ":inception_v2",
         ":inception_v3",
+        ":inception_v4",
     ],
 )
 
@@ -251,6 +252,15 @@ py_library(
 py_library(
     name = "inception_v3",
     srcs = ["nets/inception_v3.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":inception_utils",
+    ],
+)
+
+py_library(
+    name = "inception_v4",
+    srcs = ["nets/inception_v4.py"],
     srcs_version = "PY2AND3",
     deps = [
         ":inception_utils",
@@ -291,6 +301,18 @@ py_test(
     name = "inception_v3_test",
     size = "large",
     srcs = ["nets/inception_v3_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":inception",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "inception_v4_test",
+    size = "large",
+    srcs = ["nets/inception_v4_test.py"],
     shard_count = 3,
     srcs_version = "PY2AND3",
     deps = [
