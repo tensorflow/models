@@ -12,6 +12,7 @@ package_group(
     packages = [
         "//image/understanding/object_detection/...",
         "//learning/brain/contrib/slim/...",
+        "//learning/brain/google/tla/benchmarks/...",
         "//learning/brain/models/image/imagenet_multigpu/...",
         "//research/vale/pose_estimation/...",
     ],
