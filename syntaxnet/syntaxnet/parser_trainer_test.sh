@@ -22,7 +22,7 @@
 
 set -eux
 
-BINDIR=$TEST_SRCDIR/syntaxnet
+BINDIR=$TEST_SRCDIR/$TEST_WORKSPACE/syntaxnet
 CONTEXT=$BINDIR/testdata/context.pbtxt
 TMP_DIR=/tmp/syntaxnet-output
 
