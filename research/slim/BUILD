@@ -14,6 +14,7 @@ package_group(
         "//learning/brain/contrib/slim/...",
         "//learning/brain/google/tla/benchmarks/...",
         "//learning/brain/models/image/imagenet_multigpu/...",
+        "//research/drishti/app/vesper/...",
         "//research/vale/pose_estimation/...",
     ],
 )
