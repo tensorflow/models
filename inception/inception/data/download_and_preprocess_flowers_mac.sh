@@ -44,7 +44,7 @@ DATA_DIR="${1%/}"
 SCRATCH_DIR="${DATA_DIR}/raw-data/"
 mkdir -p "${DATA_DIR}"
 mkdir -p "${SCRATCH_DIR}"
-WORK_DIR="$0.runfiles/inception"
+WORK_DIR="$0.runfiles/inception/inception"
 
 # Download the flowers data.
 DATA_URL="http://download.tensorflow.org/example_images/flower_photos.tgz"
