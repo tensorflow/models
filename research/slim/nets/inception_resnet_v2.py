@@ -94,6 +94,7 @@ def block8(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
 
 def inception_resnet_v2_base(inputs,
                              final_endpoint='Conv2d_7b_1x1',
+                             output_stride=16,
                              scope=None):
   """Inception model from  http://arxiv.org/abs/1602.07261.
 
@@ -107,6 +108,8 @@ def inception_resnet_v2_base(inputs,
       can be one of ['Conv2d_1a_3x3', 'Conv2d_2a_3x3', 'Conv2d_2b_3x3',
       'MaxPool_3a_3x3', 'Conv2d_3b_1x1', 'Conv2d_4a_3x3', 'MaxPool_5a_3x3',
       'Mixed_5b', 'Mixed_6a', 'PreAuxLogits', 'Mixed_7a', 'Conv2d_7b_1x1']
+    output_stride: A scalar that specifies the requested ratio of input to
+      output spatial resolution. Only supports 8 and 16.
     scope: Optional variable_scope.
 
   Returns:
@@ -116,7 +119,12 @@ def inception_resnet_v2_base(inputs,
 
   Raises:
     ValueError: if final_endpoint is not set to one of the predefined values,
+      or if the output_stride is not 8 or 16, or if the output_stride is 8 and
+      we request an end point after 'PreAuxLogits'.
   """
+  if output_stride != 8 and output_stride != 16:
+    raise ValueError('output_stride must be 8 or 16.')
+
   end_points = {}
 
   def add_and_check_final(name, net):
@@ -181,27 +189,37 @@ def inception_resnet_v2_base(inputs,
       # TODO(alemi): Register intermediate endpoints
       net = slim.repeat(net, 10, block35, scale=0.17)
 
-      # 17 x 17 x 1088
+      # 17 x 17 x 1088 if output_stride == 8,
+      # 33 x 33 x 1088 if output_stride == 16
+      use_atrous = output_stride == 8
+
       with tf.variable_scope('Mixed_6a'):
         with tf.variable_scope('Branch_0'):
-          tower_conv = slim.conv2d(net, 384, 3, stride=2, padding='VALID',
-                                   scope='Conv2d_1a_3x3')
+          tower_conv = slim.conv2d(net, 384, 3, stride=1 if use_atrous else 2,
+                                   padding='VALID', scope='Conv2d_1a_3x3')
         with tf.variable_scope('Branch_1'):
           tower_conv1_0 = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
           tower_conv1_1 = slim.conv2d(tower_conv1_0, 256, 3,
                                       scope='Conv2d_0b_3x3')
           tower_conv1_2 = slim.conv2d(tower_conv1_1, 384, 3,
-                                      stride=2, padding='VALID',
-                                      scope='Conv2d_1a_3x3')
+                                      stride=1 if use_atrous else 2,
+                                      padding='VALID', scope='Conv2d_1a_3x3')
         with tf.variable_scope('Branch_2'):
-          tower_pool = slim.max_pool2d(net, 3, stride=2, padding='VALID',
-                                       scope='MaxPool_1a_3x3')
+          tower_pool = slim.max_pool2d(net, 3, stride=1 if use_atrous else 2,
+                                       padding='VALID', scope='MaxPool_1a_3x3')
         net = tf.concat(3, [tower_conv, tower_conv1_2, tower_pool])
 
       if add_and_check_final('Mixed_6a', net): return net, end_points
+
       # TODO(alemi): register intermediate endpoints
-      net = slim.repeat(net, 20, block17, scale=0.10)
+      with slim.arg_scope([slim.conv2d], rate=2 if use_atrous else 1):
+        net = slim.repeat(net, 20, block17, scale=0.10)
       if add_and_check_final('PreAuxLogits', net): return net, end_points
+
+      if output_stride == 8:
+        # TODO(gpapan): Properly support output_stride for the rest of the net.
+        raise ValueError('output_stride==8 is only supported up to the '
+                         'PreAuxlogits end_point for now.')
 
       # 8 x 8 x 2080
       with tf.variable_scope('Mixed_7a'):

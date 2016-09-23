@@ -132,6 +132,32 @@ class InceptionTest(tf.test.TestCase):
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
 
+  def testBuildAndCheckAllEndPointsUptoPreAuxLogitsWithOutputStrideEight(self):
+    batch_size = 5
+    height, width = 299, 299
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    _, end_points = inception.inception_resnet_v2_base(
+        inputs, final_endpoint='PreAuxLogits', output_stride=8)
+    endpoints_shapes = {'Conv2d_1a_3x3': [5, 149, 149, 32],
+                        'Conv2d_2a_3x3': [5, 147, 147, 32],
+                        'Conv2d_2b_3x3': [5, 147, 147, 64],
+                        'MaxPool_3a_3x3': [5, 73, 73, 64],
+                        'Conv2d_3b_1x1': [5, 73, 73, 80],
+                        'Conv2d_4a_3x3': [5, 71, 71, 192],
+                        'MaxPool_5a_3x3': [5, 35, 35, 192],
+                        'Mixed_5b': [5, 35, 35, 320],
+                        'Mixed_6a': [5, 33, 33, 1088],
+                        'PreAuxLogits': [5, 33, 33, 1088]
+                       }
+
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    for endpoint_name in endpoints_shapes:
+      expected_shape = endpoints_shapes[endpoint_name]
+      self.assertTrue(endpoint_name in end_points)
+      self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
+                           expected_shape)
+
   def testVariablesSetDevice(self):
     batch_size = 5
     height, width = 299, 299

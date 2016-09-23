@@ -16,6 +16,7 @@ package_group(
         "//learning/brain/models/image/imagenet_multigpu/...",
         "//photos/vision/human_sensing/...",
         "//research/drishti/app/vesper/...",
+        "//research/vale/instance_segmentation/...",
         "//research/vale/pose_estimation/...",
     ],
 )
