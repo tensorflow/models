@@ -104,11 +104,12 @@ def evaluate_model(sess, model, global_step, summary_writer, summary_op):
                   global_step)
 
 
-def run_once(model, summary_writer, summary_op):
+def run_once(model, saver, summary_writer, summary_op):
   """Evaluates the latest model checkpoint.
 
   Args:
     model: Instance of ShowAndTellModel; the model to evaluate.
+    saver: Instance of tf.train.Saver for restoring model Variables.
     summary_writer: Instance of SummaryWriter.
     summary_op: Op for generating model summaries.
   """
@@ -121,7 +122,7 @@ def run_once(model, summary_writer, summary_op):
   with tf.Session() as sess:
     # Load model from checkpoint.
     tf.logging.info("Loading model from checkpoint: %s", model_path)
-    model.saver.restore(sess, model_path)
+    saver.restore(sess, model_path)
     global_step = tf.train.global_step(sess, model.global_step.name)
     tf.logging.info("Successfully loaded %s at global step = %d.",
                     os.path.basename(model_path), global_step)
@@ -166,6 +167,9 @@ def run():
     model = show_and_tell_model.ShowAndTellModel(model_config, mode="eval")
     model.build()
 
+    # Create the Saver to restore model Variables.
+    saver = tf.train.Saver()
+
     # Create the summary operation and the summary writer.
     summary_op = tf.merge_all_summaries()
     summary_writer = tf.train.SummaryWriter(eval_dir)
@@ -177,7 +181,7 @@ def run():
       start = time.time()
       tf.logging.info("Starting evaluation at " + time.strftime(
           "%Y-%m-%d-%H:%M:%S", time.localtime()))
-      run_once(model, summary_writer, summary_op)
+      run_once(model, saver, summary_writer, summary_op)
       time_to_next_eval = start + FLAGS.eval_interval_secs - time.time()
       if time_to_next_eval > 0:
         time.sleep(time_to_next_eval)

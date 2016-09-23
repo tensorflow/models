@@ -347,12 +347,6 @@ class ShowAndTellModel(object):
 
     self.global_step = global_step
 
-  def setup_saver(self):
-    """Sets up the Saver for loading and saving model checkpoints."""
-    self.saver = tf.train.Saver(
-        max_to_keep=self.config.max_checkpoints_to_keep,
-        keep_checkpoint_every_n_hours=self.config.keep_checkpoint_every_n_hours)
-
   def build(self):
     """Creates all ops for training and evaluation."""
     self.build_inputs()
@@ -361,4 +355,3 @@ class ShowAndTellModel(object):
     self.build_model()
     self.setup_inception_initializer()
     self.setup_global_step()
-    self.setup_saver()

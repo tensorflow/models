@@ -112,10 +112,8 @@ class InferenceWrapperBase(object):
         from the checkpoint file.
     """
     tf.logging.info("Building model.")
-    model = self.build_model(model_config)
-    saver = model.saver
-    if not saver:
-      saver = tf.Saver()
+    self.build_model(model_config)
+    saver = tf.train.Saver()
 
     return self._create_restore_fn(checkpoint_path, saver)
 
