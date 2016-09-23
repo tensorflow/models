@@ -130,7 +130,7 @@ First ensure that you have installed the following required packages:
 ### Prepare the Training Data
 
 To train the model you will need to provide training data in native TFRecord
-format. The TFRecord format consists of a set of sharded files containing
+format. The TFRecord format consists of a set of shared files containing
 serialized `tf.SequenceExample` protocol buffers. Each `tf.SequenceExample`
 proto contains an image (JPEG format), a caption and metadata such as the image
 id.
@@ -325,9 +325,9 @@ Example output:
 
 ```shell
 Captions for image COCO_val2014_000000224477.jpg:
-  0) a man riding a wave on top of a surfboard . (p=0.040413)
+  0) a man riding a wave on top of a surfboard  (p=0.040413)
   1) a person riding a surf board on a wave (p=0.017452)
-  2) a man riding a wave on a surfboard in the ocean . (p=0.005743)
+  2) a man riding a wave on a surfboard in the ocean  (p=0.005743)
 ```
 
 Note: you may get different results. Some variation between different models is
