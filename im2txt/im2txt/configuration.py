@@ -77,10 +77,6 @@ class ModelConfig(object):
     # If < 1.0, the dropout keep probability applied to LSTM variables.
     self.lstm_dropout_keep_prob = 0.7
 
-    # How many model checkpoints to keep.
-    self.max_checkpoints_to_keep = 5
-    self.keep_checkpoint_every_n_hours = 10000
-
 
 class TrainingConfig(object):
   """Wrapper class for training hyperparameters."""
@@ -103,3 +99,6 @@ class TrainingConfig(object):
 
     # If not None, clip gradients to this value.
     self.clip_gradients = 5.0
+
+    # How many model checkpoints to keep.
+    self.max_checkpoints_to_keep = 5
