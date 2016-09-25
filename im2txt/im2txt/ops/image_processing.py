@@ -109,8 +109,7 @@ def process_image(encoded_image,
   assert (resize_height > 0) == (resize_width > 0)
   if resize_height:
     image = tf.image.resize_images(image,
-                                   new_height=resize_height,
-                                   new_width=resize_width,
+                                   size=[resize_height, resize_width],
                                    method=tf.image.ResizeMethod.BILINEAR)
 
   # Crop to final dimensions.
