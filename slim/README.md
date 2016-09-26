@@ -78,7 +78,7 @@ To verify that this has worked, execute the following commands; it should run
 without raising any errors.
 
 ```
-cd $HOME/workspace/slim
+cd $HOME/workspace/models/slim
 python -c "from nets import cifarnet; mynet = cifarnet.cifarnet"
 ```
 
@@ -373,4 +373,3 @@ image_preprocessing_fn = preprocessing_factory.get_preprocessing(
 
 See
 [Hardware Specifications](https://github.com/tensorflow/models/tree/master/inception#what-hardware-specification-are-these-hyper-parameters-targeted-for).
-
