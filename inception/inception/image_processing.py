@@ -253,8 +253,8 @@ def distort_image(image, height, width, bbox, thread_id=0, scope=None):
     # fashion based on the thread number.
     # Note that ResizeMethod contains 4 enumerated resizing methods.
     resize_method = thread_id % 4
-    distorted_image = tf.image.resize_images(distorted_image, height, width,
-                                             resize_method)
+    distorted_image = tf.image.resize_images(distorted_image, [height, width],
+                                             method=resize_method)
     # Restore the shape since the dynamic slice based upon the bbox_size loses
     # the third dimension.
     distorted_image.set_shape([height, width, 3])
