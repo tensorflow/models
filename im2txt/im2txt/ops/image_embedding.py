@@ -84,7 +84,7 @@ def inception_v3(images,
   else:
     weights_regularizer = None
 
-  with tf.variable_scope(scope, "InceptionV3", [images]) as scope:
+  with tf.variable_scope("InceptionV3") as scope:
     with slim.arg_scope(
         [slim.conv2d, slim.fully_connected],
         weights_regularizer=weights_regularizer,
