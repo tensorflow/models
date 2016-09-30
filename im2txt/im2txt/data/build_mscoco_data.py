@@ -286,6 +286,7 @@ def _process_image_files(thread_index, ranges, name, images, decoder, vocab,
               (datetime.now(), thread_index, counter, num_images_in_thread))
         sys.stdout.flush()
 
+    writer.close()
     print("%s [thread %d]: Wrote %d image-caption pairs to %s" %
           (datetime.now(), thread_index, shard_counter, output_file))
     sys.stdout.flush()
