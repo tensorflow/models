@@ -27,6 +27,9 @@ for example vocabulary format. In <b>How To Run</b> below, users can use toy
 data and vocab provided in the data/ directory to run the training by replacing
 the data directory flag.
 
+data_convert_example.py contains example of convert between binary and text.
+
+
 <b>Experiment Result</b>
 
 8000 examples from testset are sampled to generate summaries and rouge score is
@@ -73,10 +76,13 @@ Install TensorFlow and Bazel.
 
 ```shell
 # cd to your workspace
-# clone the code to your workspace and create empty WORKSPACE file.
-# move the data to your workspace. If don't have full dataset yet, copy
-# the toy data from the data/ directory from code directory and rename
-# the files.
+# 1. Clone the textsum code to your workspace 'textsum' directory.
+# 2. Create an empty 'WORKSPACE' file in your workspace.
+# 3. Move the train/eval/test data to your workspace 'data' directory.
+#    In the following example, I named the data training-*, test-*, etc.
+#    If your data files have different names, update the --data_path.
+#    If you don't have data but want to try out the model, copy the toy
+#    data from the textsum/data/data to the data/ directory in the workspace.
 ls -R
 .:
 data  textsum  WORKSPACE
