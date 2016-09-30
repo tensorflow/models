@@ -19,7 +19,6 @@
 
 # disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member
 import os.path
-
 import tensorflow as tf
 
 import syntaxnet.load_parser_ops

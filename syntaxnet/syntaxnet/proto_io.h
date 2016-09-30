@@ -32,7 +32,8 @@ limitations under the License.
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/buffered_inputstream.h"
+#include "tensorflow/core/lib/io/random_inputstream.h"
 #include "tensorflow/core/lib/io/record_reader.h"
 #include "tensorflow/core/lib/io/record_writer.h"
 #include "tensorflow/core/lib/strings/strcat.h"
@@ -181,22 +182,27 @@ class TextReader {
     if (filename_ == "-") {
       static const int kInputBufferSize = 8 * 1024; /* bytes */
       file_.reset(new StdIn());
-      buffer_.reset(
-          new tensorflow::io::InputBuffer(file_.get(), kInputBufferSize));
+      stream_.reset(new tensorflow::io::RandomAccessInputStream(file_.get()));
+      buffer_.reset(new tensorflow::io::BufferedInputStream(file_.get(),
+                                                            kInputBufferSize));
     } else {
       static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
       TF_CHECK_OK(
           tensorflow::Env::Default()->NewRandomAccessFile(filename_, &file_));
-      buffer_.reset(
-          new tensorflow::io::InputBuffer(file_.get(), kInputBufferSize));
+      stream_.reset(new tensorflow::io::RandomAccessInputStream(file_.get()));
+      buffer_.reset(new tensorflow::io::BufferedInputStream(file_.get(),
+                                                            kInputBufferSize));
     }
   }
 
  private:
   string filename_;
   int sentence_count_ = 0;
-  std::unique_ptr<tensorflow::RandomAccessFile> file_;  // must outlive buffer_
-  std::unique_ptr<tensorflow::io::InputBuffer> buffer_;
+  std::unique_ptr<tensorflow::RandomAccessFile>
+      file_;  // must outlive buffer_, stream_
+  std::unique_ptr<tensorflow::io::RandomAccessInputStream>
+      stream_;  // Must outlive buffer_
+  std::unique_ptr<tensorflow::io::BufferedInputStream> buffer_;
   std::unique_ptr<DocumentFormat> format_;
 };
 

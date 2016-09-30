@@ -78,7 +78,7 @@ cc_library(
     hdrs = ["base.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "@re2//:re2",
+        "@com_googlesource_code_re2//:re2",
         "@protobuf//:protobuf",
         "@org_tensorflow//third_party/eigen3",
     ] + select({

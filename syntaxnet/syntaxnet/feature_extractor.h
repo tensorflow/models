@@ -50,7 +50,6 @@ limitations under the License.
 #include "syntaxnet/workspace.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
 #include "tensorflow/core/lib/io/record_reader.h"
 #include "tensorflow/core/lib/io/record_writer.h"
 #include "tensorflow/core/lib/strings/strcat.h"
