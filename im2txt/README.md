@@ -218,7 +218,7 @@ INCEPTION_CHECKPOINT="${HOME}/im2txt/data/inception_v3.ckpt"
 MODEL_DIR="${HOME}/im2txt/model"
 
 # Build the model.
-bazel build -c opt --config=cuda im2txt/...
+bazel build -c opt im2txt/...
 
 # Run the training script.
 bazel-bin/im2txt/train \
