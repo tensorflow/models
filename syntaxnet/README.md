@@ -78,6 +78,9 @@ source. You'll need to install:
 
 *   python 2.7:
     * python 3 support is not available yet
+*   pip (python package manager)
+    * `apt-get install python-pip` on Ubuntu
+    * `brew` installs pip along with python on OSX
 *   bazel:
     *   **versions 0.3.0 - 0.3.1*
     *   follow the instructions [here](http://bazel.io/docs/install.html)
@@ -97,6 +100,8 @@ source. You'll need to install:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
+*   mock, package for unit testing:
+    *   `pip install mock`
 
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
