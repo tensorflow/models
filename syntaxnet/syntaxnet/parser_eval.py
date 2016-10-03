@@ -19,7 +19,6 @@
 import os
 import os.path
 import time
-
 import tempfile
 import tensorflow as tf
 

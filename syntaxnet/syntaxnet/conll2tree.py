@@ -40,9 +40,11 @@ flags.DEFINE_string('corpus_name', 'stdin-conll',
 
 def to_dict(sentence):
   """Builds a dictionary representing the parse tree of a sentence.
-     Note that the suffix "@id" (where 'id' is a number) is appended to each element
-     to handle the sentence that has multiple elements with identical representation.
-     Those suffix needs to be removed after the asciitree is rendered.
+
+     Note that the suffix "@id" (where 'id' is a number) is appended to each
+     element to handle the sentence that has multiple elements with identical
+     representation. Those suffix needs to be removed after the asciitree is
+     rendered.
 
   Args:
     sentence: Sentence protocol buffer to represent.
@@ -54,7 +56,8 @@ def to_dict(sentence):
   root = -1
   for i in range(0, len(sentence.token)):
     token = sentence.token[i]
-    token_str.append('%s %s %s @%d' % (token.word, token.tag, token.label, (i+1)))
+    token_str.append('%s %s %s @%d' %
+                     (token.word, token.tag, token.label, (i+1)))
     if token.head == -1:
       root = i
     else:
@@ -88,7 +91,7 @@ def main(unused_argv):
         print 'Input: %s' % sentence.text
         print 'Parse:'
         tr_str = tr(d)
-        pat = re.compile('\s*@\d+$')
+        pat = re.compile(r'\s*@\d+$')
         for tr_ln in tr_str.splitlines():
           print pat.sub('', tr_ln)
 

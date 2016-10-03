@@ -18,6 +18,7 @@ limitations under the License.
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "syntaxnet/embedding_feature_extractor.h"
@@ -38,7 +39,7 @@ class SentenceBatch {
  public:
   SentenceBatch(int batch_size, string input_name)
       : batch_size_(batch_size),
-        input_name_(input_name),
+        input_name_(std::move(input_name)),
         sentences_(batch_size) {}
 
   // Initializes all resources and opens the corpus file.

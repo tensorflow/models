@@ -71,7 +71,7 @@ class SharedStore {
     int refcount;
 
     SharedObject(void *o, std::function<void()> d)
-        : object(o), delete_callback(d), refcount(1) {}
+        : object(o), delete_callback(std::move(d)), refcount(1) {}
   };
 
   // A map from keys to shared objects.

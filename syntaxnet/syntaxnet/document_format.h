@@ -25,7 +25,7 @@ limitations under the License.
 #include "syntaxnet/registry.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/buffered_inputstream.h"
 
 namespace syntaxnet {
 
@@ -42,7 +42,7 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
 
   // Reads a record from the given input buffer with format specific logic.
   // Returns false if no record could be read because we reached end of file.
-  virtual bool ReadRecord(tensorflow::io::InputBuffer *buffer,
+  virtual bool ReadRecord(tensorflow::io::BufferedInputStream *buffer,
                           string *record) = 0;
 
   // Converts a key/value pair to one or more documents.

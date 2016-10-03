@@ -300,7 +300,7 @@ class Word : public TermFrequencyMapFeature {
   Word() : TermFrequencyMapFeature("word-map") {}
 
   FeatureValue ComputeValue(const Token &token) const override {
-    string form = token.word();
+    const string &form = token.word();
     return term_map().LookupIndex(form, UnknownValue());
   }
 };

@@ -18,7 +18,6 @@
 
 import os.path
 import time
-
 import tensorflow as tf
 
 from tensorflow.python.framework import test_util
