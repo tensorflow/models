@@ -125,7 +125,7 @@ def read_label_file(dataset_dir, filename=LABELS_FILENAME):
   """
   labels_filename = os.path.join(dataset_dir, filename)
   with tf.gfile.Open(labels_filename, 'r') as f:
-    lines = f.read()
+    lines = f.read().decode()
   lines = lines.split('\n')
   lines = filter(None, lines)
 
