@@ -29,7 +29,7 @@ Model                                                                           
 [Martins et al. (2013)](http://www.cs.cmu.edu/~ark/TurboParser/)                                                | 93.10 | 88.23 | 94.21
 [Zhang and McDonald (2014)](http://research.google.com/pubs/archive/38148.pdf)                                  | 93.32 | 88.65 | 93.37
 [Weiss et al. (2015)](http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43800.pdf) | 93.91 | 89.29 | 94.17
-[Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*                                                   | 94.44 | 90.17 | 95.40
+[Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*                                                         | 94.44 | 90.17 | 95.40
 Parsey McParseface                                                                                              | 94.15 | 89.08 | 94.77
 
 We see that Parsey McParseface is state-of-the-art; more importantly, with
@@ -45,7 +45,7 @@ Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging
 Model                                                                      | News  | Web   | Questions
 -------------------------------------------------------------------------- | :---: | :---: | :-------:
 [Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.78 | 94.03 | 96.18
-[Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*              | 97.77 | 94.80 | 96.86
+[Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*                    | 97.77 | 94.80 | 96.86
 Parsey McParseface                                                         | 97.52 | 94.24 | 96.45
 
 The first part of this tutorial describes how to install the necessary tools and
@@ -78,10 +78,16 @@ source. You'll need to install:
 
 *   python 2.7:
     * python 3 support is not available yet
+*   pip (python package manager)
+    * `apt-get install python-pip` on Ubuntu
+    * `brew` installs pip along with python on OSX
 *   bazel:
-    *   **versions 0.2.0 - 0.2.2b, NOT 0.2.3**
+    *   **versions 0.3.0 - 0.3.1*
     *   follow the instructions [here](http://bazel.io/docs/install.html)
-    *   Alternately, Download bazel (0.2.2-0.2.2b) <.deb> from [here](https://github.com/bazelbuild/bazel/releases) for your system configuration.
+    *   Alternately, Download bazel <.deb> from
+        [https://github.com/bazelbuild/bazel/releases]
+        (https://github.com/bazelbuild/bazel/releases) for your system
+        configuration.
     *   Install it using the command: sudo dpkg -i <.deb file>
     *   Check for the bazel version by typing: bazel version
 *   swig:
@@ -94,12 +100,14 @@ source. You'll need to install:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
+*   mock, package for unit testing:
+    *   `pip install mock`
 
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
 
 ```shell
-  git clone --recursive --recurse-submodules https://github.com/tensorflow/models.git
+  git clone --recursive https://github.com/tensorflow/models.git
   cd models/syntaxnet/tensorflow
   ./configure
   cd ..

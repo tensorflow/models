@@ -17,12 +17,10 @@
 
 
 import os.path
-
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.framework import test_util
-from tensorflow.python.ops import control_flow_ops as cf
 from tensorflow.python.platform import googletest
 from tensorflow.python.platform import tf_logging as logging
 
@@ -164,7 +162,9 @@ class ParsingReaderOpsTest(test_util.TensorFlowTestCase):
       loop_vars = [epoch, num_actions]
 
       res = sess.run(
-          cf.While(Condition, Body, loop_vars, parallel_iterations=1))
+          tf.while_loop(Condition, Body, loop_vars,
+                        shape_invariants=[tf.TensorShape(None)] * 2,
+                        parallel_iterations=1))
       logging.info('Result: %s', res)
       self.assertEqual(res[0], 2)
 

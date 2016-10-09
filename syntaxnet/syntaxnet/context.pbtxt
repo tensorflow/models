@@ -87,6 +87,10 @@ input {
   creator: 'brain_pos/greedy'
 }
 input {
+  name: 'char-map'
+  creator: 'brain_pos/greedy'
+}
+input {
   name: 'prefix-table'
   creator: 'brain_pos/greedy'
 }

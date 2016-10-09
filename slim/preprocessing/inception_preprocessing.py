@@ -212,7 +212,7 @@ def preprocess_for_train(image, height, width, bbox,
     num_resize_cases = 1 if fast_mode else 4
     distorted_image = apply_with_random_selector(
         distorted_image,
-        lambda x, method: tf.image.resize_images(x, height, width, method),
+        lambda x, method: tf.image.resize_images(x, [height, width], method=method),
         num_cases=num_resize_cases)
 
     tf.image_summary('cropped_resized_image',

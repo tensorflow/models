@@ -18,10 +18,10 @@ limitations under the License.
 #include <vector>
 
 #include "syntaxnet/document_format.h"
-#include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/segmenter_utils.h"
+#include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/utils.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/buffered_inputstream.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/lib/strings/stringprintf.h"
 #include "tensorflow/core/platform/regexp.h"
@@ -70,7 +70,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   }
 
   // Reads up to the first empty line and returns false end of file is reached.
-  bool ReadRecord(tensorflow::io::InputBuffer *buffer,
+  bool ReadRecord(tensorflow::io::BufferedInputStream *buffer,
                   string *record) override {
     string line;
     record->clear();
@@ -284,6 +284,122 @@ class CoNLLSyntaxFormat : public DocumentFormat {
 
 REGISTER_DOCUMENT_FORMAT("conll-sentence", CoNLLSyntaxFormat);
 
+// Reader for segmentation training data format. This reader assumes the input
+// format is similar to CoNLL format but with only two fileds:
+//
+// Fields:
+// 1  FORM:        Word form or punctuation symbol.
+// 2  SPACE FLAG:  Can be either 'SPACE' or 'NO_SPACE' indicates that whether
+//                 there should be a space between this word and the next one in
+//                 the raw text.
+//
+// Examples:
+// To create a training example for sentence with raw text:
+//   That's a good point.
+// and the corresponding gold segmentation:
+//   That 's a good point .
+// Then the correct input is:
+// That	NO_SPACE
+// 's	SPACE
+// a	SPACE
+// good	SPACE
+// point	NO_SPACE
+// .	NO_SPACE
+//
+// Yet another example:
+// To create a training example for sentence with raw text:
+//   这是一个测试
+// and the corresponding gold segmentation:
+//   这 是 一 个 测试
+// Then the correct input is:
+// 这	NO_SPACE
+// 是	NO_SPACE
+// 一	NO_SPACE
+// 个	NO_SPACE
+// 测试	NO_SPACE
+class SegmentationTrainingDataFormat : public CoNLLSyntaxFormat {
+ public:
+  // Converts to segmentation training data by breaking those word in the input
+  // tokens to utf8 character based tokens. Moreover, if a character is the
+  // first char of the word in the original token, then its break level is set
+  // to SPACE_BREAK to indicate that the corresponding gold transition for that
+  // character token is START. Otherwise NO_BREAK to indicate MERGE.
+  void ConvertFromString(const string &key, const string &value,
+                         vector<Sentence *> *sentences) override {
+    // Create new sentence.
+    Sentence *sentence = new Sentence();
+
+    // Each line corresponds to one token.
+    string text;
+    vector<string> lines = utils::Split(value, '\n');
+
+    // Add each token to the sentence.
+    vector<string> fields;
+    for (size_t i = 0; i < lines.size(); ++i) {
+      // Split line into tab-separated fields.
+      fields.clear();
+      fields = utils::Split(lines[i], '\t');
+      if (fields.empty()) continue;
+
+      // Skip comment lines.
+      if (fields[0][0] == '#') continue;
+
+      // Check that the line is valid.
+      CHECK_GE(fields.size(), 2)
+          << "Every line has to have at least 8 tab separated fields.";
+
+      // Get relevant fields.
+      const string &word = fields[0];
+      CHECK(fields[1] == "SPACE" || fields[1] == "NO_SPACE")
+          << "The space field can only be either 'SPACE' or 'NO_SPACE'";
+      const bool space_after = fields[1] == "SPACE";
+
+      // Add token to sentence text.
+      int start = text.size();
+      text.append(word);
+      if (space_after && i != lines.size() - 1) {
+        text.append(" ");
+      }
+
+      // Add character-based token to sentence.
+      vector<tensorflow::StringPiece> chars;
+      SegmenterUtils::GetUTF8Chars(word, &chars);
+      bool is_first_char = true;
+      for (auto utf8char : chars) {
+        Token *char_token = sentence->add_token();
+        char_token->set_word(utf8char.ToString());
+        char_token->set_start(start);
+        start += char_token->word().size();
+        char_token->set_end(start - 1);
+        char_token->set_break_level(
+            is_first_char ? Token::SPACE_BREAK : Token::NO_BREAK);
+        is_first_char = false;
+      }
+
+      // Add another space token.
+      if (space_after) {
+        Token *char_token = sentence->add_token();
+        char_token->set_word(" ");
+        char_token->set_start(start);
+        char_token->set_end(start);
+        char_token->set_break_level(Token::SPACE_BREAK);
+      }
+    }
+
+    if (sentence->token_size() > 0) {
+      sentence->set_docid(key);
+      sentence->set_text(text);
+      sentences->push_back(sentence);
+    } else {
+      // If the sentence was empty (e.g., blank lines at the beginning of a
+      // file), then don't save it.
+      delete sentence;
+    }
+  }
+};
+
+REGISTER_DOCUMENT_FORMAT("segment-train-data", SegmentationTrainingDataFormat);
+
 // Reader for tokenized text. This reader expects every sentence to be on a
 // single line and tokens on that line to be separated by single spaces.
 //
@@ -292,7 +408,7 @@ class TokenizedTextFormat : public DocumentFormat {
   TokenizedTextFormat() {}
 
   // Reads a line and returns false if end of file is reached.
-  bool ReadRecord(tensorflow::io::InputBuffer *buffer,
+  bool ReadRecord(tensorflow::io::BufferedInputStream *buffer,
                   string *record) override {
     return buffer->ReadLine(record).ok();
   }

@@ -29,13 +29,19 @@ if [ -z "$1" ]; then
   exit
 fi
 
+if [ "$(uname)" == "Darwin" ]; then
+  UNZIP="tar -xf"
+else
+  UNZIP="unzip -nq"
+fi
+
 # Create the output directories.
 OUTPUT_DIR="${1%/}"
 SCRATCH_DIR="${OUTPUT_DIR}/raw-data"
 mkdir -p "${OUTPUT_DIR}"
 mkdir -p "${SCRATCH_DIR}"
 CURRENT_DIR=$(pwd)
-WORK_DIR="$0.runfiles/__main__/im2txt"
+WORK_DIR="$0.runfiles/im2txt/im2txt"
 
 # Helper function to download and unpack a .zip file.
 function download_and_unzip() {
@@ -49,7 +55,7 @@ function download_and_unzip() {
     echo "Skipping download of ${FILENAME}"
   fi
   echo "Unzipping ${FILENAME}"
-  unzip -nq ${FILENAME}
+  ${UNZIP} ${FILENAME}
 }
 
 cd ${SCRATCH_DIR}

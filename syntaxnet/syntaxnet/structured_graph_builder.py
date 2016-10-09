@@ -24,9 +24,9 @@ from tensorflow.python.ops import tensor_array_ops
 from syntaxnet import graph_builder
 from syntaxnet.ops import gen_parser_ops
 
-tf.NoGradient('BeamParseReader')
-tf.NoGradient('BeamParser')
-tf.NoGradient('BeamParserOutput')
+tf.NotDifferentiable('BeamParseReader')
+tf.NotDifferentiable('BeamParser')
+tf.NotDifferentiable('BeamParserOutput')
 
 
 def AddCrossEntropy(batch_size, n):
@@ -122,6 +122,7 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
         KeepGoing,
         Advance,
         [state, step, scores_array, alive, alive_steps] + list(features),
+        shape_invariants=[tf.TensorShape(None)] * (len(features) + 5),
         parallel_iterations=100)
 
     # Link to the final nodes/values of ops that have passed through While:

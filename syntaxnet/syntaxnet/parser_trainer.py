@@ -20,7 +20,6 @@
 import os
 import os.path
 import time
-
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile

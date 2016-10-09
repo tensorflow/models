@@ -199,7 +199,8 @@ def _process_image(filename, coder):
     width: integer, image width in pixels.
   """
   # Read the image file.
-  image_data = tf.gfile.FastGFile(filename, 'r').read()
+  with open(filename, 'r') as f:
+    image_data = f.read()
 
   # Convert any PNG to JPEG's for consistency.
   if _is_png(filename):
@@ -273,6 +274,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
               (datetime.now(), thread_index, counter, num_files_in_thread))
         sys.stdout.flush()
 
+    writer.close()
     print('%s [thread %d]: Wrote %d images to %s' %
           (datetime.now(), thread_index, shard_counter, output_file))
     sys.stdout.flush()
