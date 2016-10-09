@@ -212,7 +212,7 @@ def _add_to_tfrecord(filename, tfrecord_writer, dataset, offset=0):
   Returns:
     The new offset.
   """
-  with tf.gfile.Open(filename, 'rb') as f:
+  with open(filename, 'rb') as f:
     if six.PY3:
         data = cPickle.load(f, encoding='bytes')
     else:
