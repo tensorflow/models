@@ -210,7 +210,7 @@ def _to_sequence_example(image, decoder, vocab):
   Returns:
     A SequenceExample proto.
   """
-  with open(image.filename, "r") as f:
+  with tf.gfile.FastGFile(image.filename, "r") as f:
     encoded_image = f.read()
 
   try:

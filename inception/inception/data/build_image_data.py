@@ -199,7 +199,7 @@ def _process_image(filename, coder):
     width: integer, image width in pixels.
   """
   # Read the image file.
-  with open(filename, 'r') as f:
+  with tf.gfile.FastGFile(filename, 'r') as f:
     image_data = f.read()
 
   # Convert any PNG to JPEG's for consistency.
