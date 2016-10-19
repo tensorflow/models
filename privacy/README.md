@@ -19,9 +19,9 @@ respective documentations.
 
 ## How to run
 
-This repository supports the MNIST, CIFAR10, and SVHN datasets. The following
+This repository supports the MNIST and SVHN datasets. The following
 instructions are given for MNIST but can easily be adapted by replacing the 
-flag `--dataset=mnist` by `--dataset=cifar10` or `--dataset=svhn`.
+flag `--dataset=mnist` by `--dataset=svhn`.
 There are 2 steps: teacher training and student training. Data will be 
 automatically downloaded when you start the teacher training. 
 
