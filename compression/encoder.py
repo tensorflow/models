@@ -33,8 +33,7 @@ tf.flags.DEFINE_string('input_image', None, 'Location of input image. We rely '
                        'formats are currently supported.')
 tf.flags.DEFINE_integer('iteration', 15, 'Quality level for encoding image. '
                         'Must be between 0 and 15 inclusive.')
-tf.flags.DEFINE_string('output_codes', None, 'Directory to save decoded '
-                       'images.')
+tf.flags.DEFINE_string('output_codes', None, 'File to save output encoding.')
 tf.flags.DEFINE_string('model', None, 'Location of compression model.')
 
 FLAGS = tf.flags.FLAGS
