@@ -117,7 +117,7 @@ def alexnet_v2(inputs,
                           scope='fc8')
 
       # Convert end_points_collection into a end_point dict.
-      end_points = dict(tf.get_collection(end_points_collection))
+      end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if spatial_squeeze:
         net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
         end_points[sc.name + '/fc8'] = net
