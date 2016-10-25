@@ -23,6 +23,7 @@ Example usage:
 python encoder.py --input_image=/your/image/here.png \
 --output_codes=output_codes.pkl --iteration=15 --model=residual_gru.pb
 """
+import io
 import os
 
 import numpy as np
@@ -94,8 +95,10 @@ def main(_):
   int_codes = (int_codes + 1)/2
   export = np.packbits(int_codes.reshape(-1))
 
-  with tf.gfile.FastGFile(FLAGS.output_codes, 'wb') as code_file:
-    np.savez_compressed(code_file, shape=int_codes.shape, codes=export)
+  output = io.BytesIO()
+  np.savez_compressed(output, shape=int_codes.shape, codes=export)
+  with tf.gfile.FastGFile(FLAGS.output_codes, 'w') as code_file:
+    code_file.write(output.getvalue())
 
 
 if __name__ == '__main__':

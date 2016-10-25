@@ -21,6 +21,7 @@ Example usage:
 python decoder.py --input_codes=output_codes.pkl --iteration=15 \
 --output_directory=/tmp/compression_output/ --model=residual_gru.pb
 """
+import io
 import os
 
 import numpy as np
@@ -69,8 +70,10 @@ def main(_):
     print '\nInput codes not found.\n'
     return
 
-  with tf.gfile.FastGFile(FLAGS.input_codes, 'rb') as code_file:
-    loaded_codes = np.load(code_file)
+  contents = ''
+  with tf.gfile.FastGFile(FLAGS.input_codes, 'r') as code_file:
+    contents = code_file.read()
+    loaded_codes = np.load(io.BytesIO(contents))
     assert ['codes', 'shape'] not in loaded_codes.files
     loaded_shape = loaded_codes['shape']
     loaded_array = loaded_codes['codes']
