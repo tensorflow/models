@@ -71,12 +71,14 @@ curl -o cifar-100-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-100-binar
 ```shell
 # cd to the your workspace.
 # It contains an empty WORKSPACE file, resnet codes and cifar10 dataset.
+# Note: User can split 5k from train set for eval set.
 ls -R
   .:
   cifar10  resnet  WORKSPACE
 
   ./cifar10:
-  test.bin  train.bin  validation.bin
+  data_batch_1.bin  data_batch_2.bin  data_batch_3.bin  data_batch_4.bin
+  data_batch_5.bin  test_batch.bin
 
   ./resnet:
   BUILD  cifar_input.py  g3doc  README.md  resnet_main.py  resnet_model.py
@@ -85,7 +87,7 @@ ls -R
 bazel build -c opt --config=cuda resnet/...
 
 # Train the model.
-bazel-bin/resnet/resnet_main --train_data_path=cifar10/train.bin \
+bazel-bin/resnet/resnet_main --train_data_path=cifar10/data_batch* \
                              --log_root=/tmp/resnet_model \
                              --train_dir=/tmp/resnet_model/train \
                              --dataset='cifar10' \
@@ -94,7 +96,7 @@ bazel-bin/resnet/resnet_main --train_data_path=cifar10/train.bin \
 # Evaluate the model.
 # Avoid running on the same GPU as the training job at the same time,
 # otherwise, you might run out of memory.
-bazel-bin/resnet/resnet_main --eval_data_path=cifar10/test.bin \
+bazel-bin/resnet/resnet_main --eval_data_path=cifar10/test_batch.bin \
                              --log_root=/tmp/resnet_model \
                              --eval_dir=/tmp/resnet_model/test \
                              --mode=eval \
