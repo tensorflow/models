@@ -49,7 +49,8 @@ def build_input(dataset, data_path, batch_size, mode):
   image_bytes = image_size * image_size * depth
   record_bytes = label_bytes + label_offset + image_bytes
 
-  file_queue = tf.train.string_input_producer([data_path], shuffle=True)
+  data_files = tf.gfile.Glob(data_path)
+  file_queue = tf.train.string_input_producer(data_files, shuffle=True)
   # Read examples from files in the filename queue.
   reader = tf.FixedLengthRecordReader(record_bytes=record_bytes)
   _, value = reader.read(file_queue)
