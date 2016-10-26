@@ -160,10 +160,12 @@ class Seq2SeqAttentionModel(object):
             self._next_device()):
           cell_fw = tf.nn.rnn_cell.LSTMCell(
               hps.num_hidden,
-              initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=123))
+              initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=123),
+              state_is_tuple=True)
           cell_bw = tf.nn.rnn_cell.LSTMCell(
               hps.num_hidden,
-              initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=113))
+              initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=113),
+              state_is_tuple=True)
           (emb_encoder_inputs, fw_state, _) = tf.nn.bidirectional_rnn(
               cell_fw, cell_bw, emb_encoder_inputs, dtype=tf.float32,
               sequence_length=article_lens)
@@ -188,7 +190,8 @@ class Seq2SeqAttentionModel(object):
 
         cell = tf.nn.rnn_cell.LSTMCell(
             hps.num_hidden,
-            initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=113))
+            initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=113),
+            state_is_tuple=True)
 
         encoder_outputs = [tf.reshape(x, [hps.batch_size, 1, 2*hps.num_hidden])
                            for x in encoder_outputs]
@@ -262,19 +265,21 @@ class Seq2SeqAttentionModel(object):
       enc_len: encoder input length of shape [batch_size]
     Returns:
       enc_top_states: The top level encoder states.
-      dec_in_state: The decoder layer initial state.
+      dec_in_state: The decoder layer initial state of first sample in batch
     """
     results = sess.run([self._enc_top_states, self._dec_in_state],
                        feed_dict={self._articles: enc_inputs,
                                   self._article_lens: enc_len})
-    return results[0], results[1][0]
+    return results[0], (results[1][0][0], results[1][1][0])
 
   def decode_topk(self, sess, latest_tokens, enc_top_states, dec_init_states):
     """Return the topK results and new decoder states."""
     feed = {
         self._enc_top_states: enc_top_states,
-        self._dec_in_state:
-            np.squeeze(np.array(dec_init_states)),
+        self._dec_in_state.c:
+            np.squeeze(np.array([x[0] for x in dec_init_states])),
+        self._dec_in_state.h:
+            np.squeeze(np.array([x[1] for x in dec_init_states])),
         self._abstracts:
             np.transpose(np.array([latest_tokens])),
         self._abstract_lens: np.ones([len(dec_init_states)], np.int32)}
@@ -285,6 +290,7 @@ class Seq2SeqAttentionModel(object):
 
     ids, probs, states = results[0], results[1], results[2]
     new_states = [s for s in states]
+    new_states = zip(*new_states)
     return ids, probs, new_states
 
   def build_graph(self):
