@@ -58,7 +58,8 @@ def train(hps):
                            save_summaries_secs=60,
                            save_model_secs=300,
                            global_step=model.global_step)
-  sess = sv.prepare_or_wait_for_session()
+  sess = sv.prepare_or_wait_for_session(
+      config=tf.ConfigProto(allow_soft_placement=True))
 
   step = 0
   lrn_rate = 0.1
