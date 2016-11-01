@@ -106,4 +106,4 @@ proposing new student training approaches.
 
 To ask questions, please email `nicolas@papernot.fr` or open an issue on 
 the `tensorflow/models` issues tracker. Please assign issues to 
-[(@npapernot)](https://github.com/npapernot).
+[@npapernot](https://github.com/npapernot).
