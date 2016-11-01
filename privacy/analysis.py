@@ -23,9 +23,12 @@ python analysis.py
   --max_examples=1000
   --delta=1e-6
 """
+import os
 import math
 import numpy as np
 import tensorflow as tf
+
+from input import maybe_download
 
 # These parameters can be changed to compute bounds for different failure rates
 # or different model predictions.
@@ -194,6 +197,24 @@ def smoothed_sens(counts, noise_eps, l, beta):
 
 
 def main(unused_argv):
+  ##################################################################
+  # If we are reproducing results from paper https://arxiv.org/abs/1610.05755,
+  # download the required binaries with label information.
+  ##################################################################
+  
+  # Binaries for MNIST results
+  paper_binaries_mnist = \
+    ["https://github.com/npapernot/multiple-teachers-for-privacy/blob/master/mnist_250_teachers_labels.npy?raw=true", 
+    "https://github.com/npapernot/multiple-teachers-for-privacy/blob/master/mnist_250_teachers_100_indices_used_by_student.npy?raw=true"]
+  if FLAGS.counts_file == "mnist_250_teachers_labels.npy" \
+    or FLAGS.indices_file == "mnist_250_teachers_100_indices_used_by_student.npy":
+    maybe_download(paper_binaries_mnist, os.getcwd())
+
+  # Binaries for SVHN results
+  paper_binaries_svhn = ["https://github.com/npapernot/multiple-teachers-for-privacy/blob/master/svhn_250_teachers_labels.npy?raw=true"]
+  if FLAGS.counts_file == "svhn_250_teachers_labels.npy":
+    maybe_download(paper_binaries_svhn, os.getcwd())
+
   input_mat = np.load(FLAGS.counts_file)
   if FLAGS.input_is_counts:
     counts_mat = input_mat
