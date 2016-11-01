@@ -94,8 +94,7 @@ def inception_v3_base(inputs,
     raise ValueError('depth_multiplier is not greater than zero.')
   depth = lambda d: max(int(d * depth_multiplier), min_depth)
 
-  with tf.variable_scope(scope, 'InceptionV3', [inputs]):
-    with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],
+  with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],  
                         stride=1, padding='VALID'):
       # 299 x 299 x 3
       end_point = 'Conv2d_1a_3x3'
@@ -134,8 +133,8 @@ def inception_v3_base(inputs,
       if end_point == final_endpoint: return net, end_points
       # 35 x 35 x 192.
 
-    # Inception blocks
-    with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],
+  # Inception blocks
+  with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],   
                         stride=1, padding='SAME'):
       # mixed: 35 x 35 x 256.
       end_point = 'Mixed_5b'
@@ -411,8 +410,7 @@ def inception_v3_base(inputs,
         net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
       end_points[end_point] = net
       if end_point == final_endpoint: return net, end_points
-    raise ValueError('Unknown final endpoint %s' % final_endpoint)
-
+  raise ValueError('Unknown final endpoint %s' % final_endpoint)    
 
 def inception_v3(inputs,
                  num_classes=1000,
@@ -470,11 +468,10 @@ def inception_v3(inputs,
     raise ValueError('depth_multiplier is not greater than zero.')
   depth = lambda d: max(int(d * depth_multiplier), min_depth)
 
-  with tf.variable_scope(scope, 'InceptionV3', [inputs, num_classes],
-                         reuse=reuse) as scope:
+  with tf.variable_scope('InceptionV3', reuse=reuse) as scope:                 
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
-      net, end_points = inception_v3_base(
+      net, end_points = inception_v3_base(              ## KEY
           inputs, scope=scope, min_depth=min_depth,
           depth_multiplier=depth_multiplier)
 
@@ -556,12 +553,15 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
 
 
 def inception_v3_arg_scope(weight_decay=0.00004,
-                           stddev=0.1):
+                           stddev=0.1,
+                           batch_norm_var_collection='moving_vars'):
   """Defines the default InceptionV3 arg scope.
 
   Args:
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
+    batch_norm_var_collection: The name of the collection for the batch norm
+      variables.
 
   Returns:
     An `arg_scope` to use for the inception v3 model.
@@ -573,6 +573,13 @@ def inception_v3_arg_scope(weight_decay=0.00004,
       'epsilon': 0.001,
       # collection containing update_ops.
       'updates_collections': tf.GraphKeys.UPDATE_OPS,
+      # collection containing the moving mean and moving variance.
+      'variables_collections': {
+          'beta': None,
+          'gamma': None,
+          'moving_mean': [batch_norm_var_collection],
+          'moving_variance': [batch_norm_var_collection],
+      }
   }
 
   # Set weight_decay for weights in Conv and FC layers.
