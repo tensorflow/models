@@ -85,6 +85,23 @@ python analysis.py --counts_file=mnist_250_teachers_labels.npy --indices_file=mn
 python analysis.py --counts_file=svhn_250_teachers_labels.npy --max_examples=1000 --delta=1e-6
 ```
 
+To expedite experimentation with the privacy analysis of student training, 
+the `analysis.py` file is configured to download the labels produced by 250 
+teacher models, for MNIST and SVHN when running the two commands included 
+above. Those 250 teacher models were trained using the following command lines,
+where `XXX` takes values between `0` and `249`:
+
+```
+python train_teachers.py --nb_teachers=250 --teacher_id=XXX --dataset=mnist
+python train_teachers.py --nb_teachers=250 --teacher_id=XXX --dataset=svhn
+```
+
+Note that these labels may also be used in lieu of function `ensemble_preds`
+in `train_student.py`, to compare the performance of alternative student model
+architectures and learning techniques. This facilitates future work, by 
+removing the need for training the MNIST and SVHN teacher ensembles when 
+proposing new student training approaches. 
+
 ## Contact
 
 To ask questions, please email `nicolas@papernot.fr` or open an issue on 
