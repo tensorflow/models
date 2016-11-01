@@ -88,7 +88,7 @@ python analysis.py --counts_file=svhn_250_teachers_labels.npy --max_examples=100
 To expedite experimentation with the privacy analysis of student training, 
 the `analysis.py` file is configured to download the labels produced by 250 
 teacher models, for MNIST and SVHN when running the two commands included 
-above. Those 250 teacher models were trained using the following command lines,
+above. These 250 teacher models were trained using the following command lines,
 where `XXX` takes values between `0` and `249`:
 
 ```
