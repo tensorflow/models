@@ -62,6 +62,10 @@ def maybe_download(file_urls, directory):
     # Extract filename
     filename = file_url.split('/')[-1]
 
+    # If downloading from GitHub, remove suffix ?raw=True from local filename
+    if filename.endswith("?raw=true"):
+      filename = filename[:-9]
+
     # Deduce local file url
     #filepath = os.path.join(directory, filename)
     filepath = directory + '/' + filename

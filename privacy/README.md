@@ -8,8 +8,7 @@ Knowledge acquired by teachers is transferred to the student in a differentially
 private manner by noisily aggregating the teacher decisions before feeding them
 to the student during training.
 
-A paper describing the approach is in preparation. A link will be added to this 
-README when available.
+The paper describing the approach is [arXiv:1610.05755](https://arxiv.org/abs/1610.05755)
 
 ## Dependencies
 
@@ -20,9 +19,9 @@ respective documentations.
 
 ## How to run
 
-This repository supports the MNIST, CIFAR10, and SVHN datasets. The following
+This repository supports the MNIST and SVHN datasets. The following
 instructions are given for MNIST but can easily be adapted by replacing the 
-flag `--dataset=mnist` by `--dataset=cifar10` or `--dataset=svhn`.
+flag `--dataset=mnist` by `--dataset=svhn`.
 There are 2 steps: teacher training and student training. Data will be 
 automatically downloaded when you start the teacher training. 
 
@@ -71,6 +70,20 @@ deeper models graphs are defined in `deep_cnn.py`, respectively by
 functions `inference` and `inference_deeper`. Use the flag `--deeper=true` 
 to switch to that model when launching `train_teachers.py` and 
 `train_student.py`. 
+
+## Privacy analysis
+
+In the paper, we detail how data-dependent differential privacy bounds can be
+computed to estimate the cost of training the student. In order to reproduce 
+the bounds given in the paper, we include the label predicted by our two
+teacher ensembles: MNIST and SVHN. You can run the privacy analysis for each
+dataset with the following commands:
+
+```
+python analysis.py --counts_file=mnist_250_teachers_labels.npy --indices_file=mnist_250_teachers_100_indices_used_by_student.npy
+
+python analysis.py --counts_file=svhn_250_teachers_labels.npy --max_examples=1000 --delta=1e-6
+```
 
 ## Contact
 
