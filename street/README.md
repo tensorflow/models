@@ -69,14 +69,37 @@ python vgsl_model_test.py
 
 ## Downloading the datasets
 
-The French Street Name Signs (FSNS) datasets can be downloaded from:
-`https://download.tensorflow.org/data/fsns-20160927`
+The French Street Name Signs (FSNS) dataset is split into subsets, each
+of which is composed of multiple files.
 Note that these datasets are very large. The approximate sizes are:
 
 *   Train: 512 files of 300MB each.
 *   Validation: 64 files of 40MB each.
-*   Test: 64 file of 50MB each.
+*   Test: 64 files of 50MB each.
 *   Testdata: some smaller data files of a few MB for testing.
+
+Here is a list of the download paths:
+
+```
+https://download.tensorflow.org/data/fsns-20160927/charset_size=134.txt
+https://download.tensorflow.org/data/fsns-20160927/test/test-00000-of-00064
+...
+https://download.tensorflow.org/data/fsns-20160927/test/test-00063-of-00064
+https://download.tensorflow.org/data/fsns-20160927/testdata/arial-32-00000-of-00001
+https://download.tensorflow.org/data/fsns-20160927/testdata/fsns-00000-of-00001
+https://download.tensorflow.org/data/fsns-20160927/testdata/mnist-sample-00000-of-00001
+https://download.tensorflow.org/data/fsns-20160927/testdata/numbers-16-00000-of-00001
+https://download.tensorflow.org/data/fsns-20160927/train/train-00000-of-00512
+...
+https://download.tensorflow.org/data/fsns-20160927/train/train-00511-of-00512
+https://download.tensorflow.org/data/fsns-20160927/validation/validation-00000-of-00064
+...
+https://download.tensorflow.org/data/fsns-20160927/validation/validation-00063-of-00064
+```
+
+The above files need to be downloaded individually, as they are large and
+downloads are more likely to succeed with the individual files than with a
+single archive containing them all.
 
 ## Confidence Tests
 
