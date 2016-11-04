@@ -17,8 +17,8 @@ py_binary(
         "dp_mnist.py",
     ],
     deps = [
-        "//differential_privacy/dp_optimizer",
-        "//differential_privacy/dp_optimizer:dp_pca",
-        "//differential_privacy/dp_optimizer:utils",
+        "//differential_privacy/dp_sgd/dp_optimizer",
+        "//differential_privacy/dp_sgd/dp_optimizer:dp_pca",
+        "//differential_privacy/dp_sgd/dp_optimizer:utils",
     ],
 )

@@ -32,7 +32,7 @@ import sys
 import numpy
 import tensorflow as tf
 
-from differential_privacy.dp_optimizer import utils
+from differential_privacy.dp_sgd.dp_optimizer import utils
 
 EpsDelta = collections.namedtuple("EpsDelta", ["spent_eps", "spent_delta"])
 
@@ -312,9 +312,17 @@ class GaussianMomentsAccountant(MomentsAccountant):
   k steps. Since we use direct estimate, the obtained privacy bound has tight
   constant.
 
-  For GaussianMomentAccountant, it suffices to compute I1, as I1 >= I2
-  (TODO(liqzhang): make sure this is true.), which reduce to computing
-  E(P(x+s)/P(x+s-1) - 1)^i for s = 0 and 1.
+  For GaussianMomentAccountant, it suffices to compute I1, as I1 >= I2,
+  which reduce to computing E(P(x+s)/P(x+s-1) - 1)^i for s = 0 and 1. In the
+  companion gaussian_moments.py file, we supply procedure for computing both
+  I1 and I2 (the computation of I2 is through multi-precision integration
+  package). It can be verified that indeed I1 >= I2 for wide range of parameters
+  we have tried, though at the moment we are unable to prove this claim.
+
+  We recommend that when using this accountant, users independently verify
+  using gaussian_moments.py that for their parameters, I1 is indeed larger
+  than I2. This can be done by following the instructions in
+  gaussian_moments.py.
   """
 
   def __init__(self, total_examples, moment_orders=32):

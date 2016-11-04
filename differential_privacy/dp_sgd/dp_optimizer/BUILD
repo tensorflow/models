@@ -30,25 +30,15 @@ py_library(
 )
 
 py_library(
-    name = "accountant",
-    srcs = [
-        "accountant.py",
-    ],
-    deps = [
-        ":utils",
-    ],
-)
-
-py_library(
     name = "dp_optimizer",
     srcs = [
         "dp_optimizer.py",
         "sanitizer.py",
     ],
     deps = [
-        ":accountant",
         ":utils",
-        "//differential_privacy/per_example_gradients",
+        "//differential_privacy/dp_sgd/per_example_gradients",
+        "//differential_privacy/privacy_accountant/tf:accountant",
     ],
 )
 
