@@ -21,11 +21,3 @@ py_library(
     ],
 )
 
-py_test(
-    name = "accountant_test",
-    srcs = ["accountant_test.py"],
-    deps = [
-        ":accountant",
-        "//differential_privacy/dp_sgd/dp_optimizer:utils",
-    ],
-)
