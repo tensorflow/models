@@ -19,8 +19,8 @@ from __future__ import division
 
 import tensorflow as tf
 
-from differential_privacy.dp_optimizer import utils
-from differential_privacy.per_example_gradients import per_example_gradients
+from differential_privacy.dp_sgd.dp_optimizer import utils
+from differential_privacy.dp_sgd.per_example_gradients import per_example_gradients
 
 
 class DPGradientDescentOptimizer(tf.train.GradientDescentOptimizer):

@@ -58,9 +58,10 @@ def _ListUnion(list_1, list_2):
 
 
 def Interface(ys, xs):
-  """
-  Returns a dict mapping each element of xs to any of its consumers that are
-  indirectly consumed by ys.
+  """Maps xs to consumers.
+
+    Returns a dict mapping each element of xs to any of its consumers that are
+    indirectly consumed by ys.
 
   Args:
     ys: The outputs
@@ -181,10 +182,10 @@ class MatMulPXG(object):
     idx = list(self.op.inputs).index(x)
     assert idx != -1
     assert len(z_grads) == len(self.op.outputs)
-    assert idx == 1 # We expect weights to be arg 1
+    assert idx == 1  # We expect weights to be arg 1
     # We don't expect anyone to per-example differentiate with repsect
     # to anything other than the weights.
-    x, w = self.op.inputs
+    x, _ = self.op.inputs
     z_grads, = z_grads
     x_expanded = tf.expand_dims(x, 2)
     z_grads_expanded = tf.expand_dims(z_grads, 1)
@@ -305,7 +306,7 @@ class AddPXG(object):
     assert idx == 1 # We expect biases to be arg 1
     # We don't expect anyone to per-example differentiate with respect
     # to anything other than the biases.
-    x, b = self.op.inputs
+    x, _ = self.op.inputs
     z_grads, = z_grads
     return z_grads
 
@@ -336,10 +337,10 @@ def PerExampleGradients(ys, xs, grad_ys=None, name="gradients",
     merged_interface = _ListUnion(merged_interface, interface[x])
   # Differentiate with respect to the interface
   interface_gradients = tf.gradients(ys, merged_interface, grad_ys=grad_ys,
-                                    name=name,
-                                    colocate_gradients_with_ops=
-                                    colocate_gradients_with_ops,
-                                    gate_gradients=gate_gradients)
+                                     name=name,
+                                     colocate_gradients_with_ops=
+                                     colocate_gradients_with_ops,
+                                     gate_gradients=gate_gradients)
   grad_dict = OrderedDict(zip(merged_interface, interface_gradients))
   # Build the per-example gradients with respect to the xs
   if colocate_gradients_with_ops:

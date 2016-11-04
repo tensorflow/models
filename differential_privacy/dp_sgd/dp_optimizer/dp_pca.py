@@ -15,10 +15,9 @@
 
 """Differentially private optimizers.
 """
-
 import tensorflow as tf
 
-from differential_privacy.dp_optimizer import sanitizer as san
+from differential_privacy.dp_sgd.dp_optimizer import sanitizer as san
 
 
 def ComputeDPPrincipalProjection(data, projection_dims,

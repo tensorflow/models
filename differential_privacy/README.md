@@ -1,12 +1,9 @@
 <font size=4><b>Deep Learning with Differential Privacy</b></font>
 
-Authors:
-Martín Abadi, Andy Chu, Ian Goodfellow, H. Brendan McMahan, Ilya Mironov, Kunal Talwar, Li Zhang
-
 Open Sourced By: Xin Pan (xpan@google.com, github: panyx0718)
 
 
-<Introduction>
+###Introduction for dp_sgd/README.md
 
 Machine learning techniques based on neural networks are achieving remarkable 
 results in a wide variety of domains. Often, the training of models requires 
@@ -21,73 +18,14 @@ manageable cost in software complexity, training efficiency, and model quality.
 paper: https://arxiv.org/abs/1607.00133
 
 
-<b>Requirements:</b>
+###Introduction for multiple_teachers/README.md
 
-1. Tensorflow 0.10.0 (master branch)
+This repository contains code to create a setup for learning privacy-preserving 
+student models by transferring knowledge from an ensemble of teachers trained 
+on disjoint subsets of the data for which privacy guarantees are to be provided.
 
-Note: r0.11 might experience some problems
+Knowledge acquired by teachers is transferred to the student in a differentially
+private manner by noisily aggregating the teacher decisions before feeding them
+to the student during training.
 
-2. Bazel 0.3.1
-
-3. Download MNIST data
-
-TODO(xpan): Complete the link:
-[train](http://download.tensorflow.org/models/)
-[test](http://download.tensorflow.org/models/)
-
-Alternatively, download the tfrecord format MNIST from:
-https://github.com/panyx0718/models/tree/master/slim
-
-<b>How to run:</b>
-
-```shell
-# Clone the codes under differential_privacy.
-# Create an empty WORKSPACE file.
-# Download the data to the data/ directory.
-ls -R
-.:
-data  differential_privacy  WORKSPACE
-
-./data:
-mnist_test.tfrecord  mnist_train.tfrecord
-
-./differential_privacy:
-dp_mnist  dp_optimizer  __init__.py  per_example_gradients  README.md
-
-./differential_privacy/dp_mnist:
-BUILD  dp_mnist.py
-
-./differential_privacy/dp_optimizer:
-accountant.py  BUILD  dp_optimizer.py  dp_pca.py  sanitizer.py  utils.py
-
-./differential_privacy/per_example_gradients:
-BUILD  __init__.py  per_example_gradients.py
-
-# Build the codes.
-bazel build -c opt differential_privacy/...
-
-# Run the mnist differntial privacy training codes.
-bazel-bin/differential_privacy/dp_mnist/dp_mnist \
-    --training_data_path=data/mnist_train.tfrecord \
-    --eval_data_path=data/mnist_test.tfrecord \
-    --save_path=/tmp/mnist_dir
-
-...
-step: 1
-step: 2
-...
-step: 9
-spent privacy: eps 0.1250 delta 0.72709
-spent privacy: eps 0.2500 delta 0.24708
-spent privacy: eps 0.5000 delta 0.0029139
-spent privacy: eps 1.0000 delta 6.494e-10
-spent privacy: eps 2.0000 delta 8.2242e-24
-spent privacy: eps 4.0000 delta 1.319e-51
-spent privacy: eps 8.0000 delta 3.3927e-107
-train_accuracy: 0.53
-eval_accuracy: 0.53
-...
-
-ls /tmp/mnist_dir/
-checkpoint  ckpt  ckpt.meta  results-0.json
-```
+paper: https://arxiv.org/abs/1610.05755

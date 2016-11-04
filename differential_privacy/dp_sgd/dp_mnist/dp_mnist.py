@@ -24,11 +24,11 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from differential_privacy.dp_optimizer import accountant
-from differential_privacy.dp_optimizer import dp_optimizer
-from differential_privacy.dp_optimizer import dp_pca
-from differential_privacy.dp_optimizer import sanitizer
-from differential_privacy.dp_optimizer import utils
+from differential_privacy.dp_sgd.dp_optimizer import dp_optimizer
+from differential_privacy.dp_sgd.dp_optimizer import dp_pca
+from differential_privacy.dp_sgd.dp_optimizer import sanitizer
+from differential_privacy.dp_sgd.dp_optimizer import utils
+from differential_privacy.privacy_accountant.tf import accountant
 
 # parameters for the training
 tf.flags.DEFINE_integer("batch_size", 600,
