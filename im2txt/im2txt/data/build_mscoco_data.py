@@ -106,7 +106,7 @@ tf.flags.DEFINE_string("val_image_dir", "/tmp/val2014",
 
 tf.flags.DEFINE_string("train_captions_file", "/tmp/captions_train2014.json",
                        "Training captions JSON file.")
-tf.flags.DEFINE_string("val_captions_file", "/tmp/captions_train2014.json",
+tf.flags.DEFINE_string("val_captions_file", "/tmp/captions_val2014.json",
                        "Validation captions JSON file.")
 
 tf.flags.DEFINE_string("output_dir", "/tmp/", "Output data directory.")
