@@ -119,9 +119,7 @@ approximately 10 times slower.
 First ensure that you have installed the following required packages:
 
 * **Bazel** ([instructions](http://bazel.io/docs/install.html)).
-* **TensorFlow** ([instructions](https://www.tensorflow.org/versions/master/get_started/os_setup.html#installing-from-sources)).
-    * Note: the model currently requires TensorFlow built from source because it
-      uses features added after release r0.10.
+* **TensorFlow** ([instructions](https://www.tensorflow.org/versions/master/get_started/os_setup.html)).
 * **NumPy** ([instructions](http://www.scipy.org/install.html)).
 * **Natural Language Toolkit (NLTK)**:
     * First install NLTK ([instructions](http://www.nltk.org/install.html)).
