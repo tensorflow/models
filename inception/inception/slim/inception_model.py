@@ -69,7 +69,7 @@ def inception_v3(inputs,
     is_training: whether is training or not.
     restore_logits: whether or not the logits layers should be restored.
       Useful for fine-tuning a model with different num_classes.
-    scope: Optional scope for op_scope.
+    scope: Optional scope for name_scope.
 
   Returns:
     a list containing 'logits', 'aux_logits' Tensors.
@@ -77,7 +77,7 @@ def inception_v3(inputs,
   # end_points will collect relevant activations for external use, for example
   # summaries or losses.
   end_points = {}
-  with tf.op_scope([inputs], scope, 'inception_v3'):
+  with tf.name_scope(scope, 'inception_v3', [inputs]):
     with scopes.arg_scope([ops.conv2d, ops.fc, ops.batch_norm, ops.dropout],
                           is_training=is_training):
       with scopes.arg_scope([ops.conv2d, ops.max_pool, ops.avg_pool],
