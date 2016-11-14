@@ -171,7 +171,7 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
         end_points['Mixed_5b'] = net
         net = slim.repeat(net, 10, block35, scale=0.17)
 
-        # 17 x 17 x 1024
+        # 17 x 17 x 1088
         with tf.variable_scope('Mixed_6a'):
           with tf.variable_scope('Branch_0'):
             tower_conv = slim.conv2d(net, 384, 3, stride=2, padding='VALID',
