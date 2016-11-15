@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from nets import inception_utils
+
 slim = tf.contrib.slim
 trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
 
@@ -515,31 +517,4 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
   return kernel_size_out
 
 
-def inception_v2_arg_scope(weight_decay=0.00004):
-  """Defines the default InceptionV2 arg scope.
-
-  Args:
-    weight_decay: The weight decay to use for regularizing the model.
-
-  Returns:
-    An `arg_scope` to use for the inception v3 model.
-  """
-  batch_norm_params = {
-      # Decay for the moving averages.
-      'decay': 0.9997,
-      # epsilon to prevent 0s in variance.
-      'epsilon': 0.001,
-      # collection containing update_ops.
-      'updates_collections': tf.GraphKeys.UPDATE_OPS,
-  }
-
-  # Set weight_decay for weights in Conv and FC layers.
-  with slim.arg_scope([slim.conv2d, slim.fully_connected],
-                      weights_regularizer=slim.l2_regularizer(weight_decay)):
-    with slim.arg_scope(
-        [slim.conv2d],
-        weights_initializer=slim.variance_scaling_initializer(),
-        activation_fn=tf.nn.relu,
-        normalizer_fn=slim.batch_norm,
-        normalizer_params=batch_norm_params) as sc:
-      return sc
+inception_v2_arg_scope = inception_utils.inception_arg_scope
