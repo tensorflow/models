@@ -146,6 +146,22 @@ def _convert_to_example(filename, image_buffer, label, text, height, width):
       'image/encoded': _bytes_feature(image_buffer)}))
   return example
 
+def _convert_to_metadata(label_count, sample_count_in_train, sample_count_in_validation):
+  """Build Example proto with dataset metainformation.
+
+  Args:
+    label_count: number of labels
+    sample_count_in_train: number of samples in training set
+    sample_count_in_validation: number of samples in validation set
+  Returns:
+    Metadata proto
+  """
+  metadata = tf.train.Example(features=tf.train.Features(feature={
+      'label_count': _int64_feature(label_count),
+      'sample_count/train': _int64_feature(sample_count_in_train),
+      'sample_count/validation': _int64_feature(sample_count_in_validation)}))
+  return metadata
+
 
 class ImageCoder(object):
   """Helper class that provides TensorFlow image coding utilities."""
@@ -284,6 +300,13 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
   sys.stdout.flush()
 
 
+def _process_metadata(label_count, sample_count_in_train, sample_count_in_validation):
+    metadata_file = os.path.join(FLAGS.output_directory, 'metadata')
+    writer = tf.python_io.TFRecordWriter(metadata_file)
+    metadata = _convert_to_metadata(label_count, sample_count_in_train, sample_count_in_validation)
+    writer.write(metadata.SerializeToString())
+    writer.close()
+
 def _process_image_files(name, filenames, texts, labels, num_shards):
   """Process and save list of images as TFRecord of Example protos.
 
@@ -326,6 +349,7 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
   print('%s: Finished writing all %d images in data set.' %
         (datetime.now(), len(filenames)))
   sys.stdout.flush()
+  return (len(set(labels)), len(labels))
 
 
 def _find_image_files(data_dir, labels_file):
@@ -409,7 +433,7 @@ def _process_dataset(name, directory, num_shards, labels_file):
     labels_file: string, path to the labels file.
   """
   filenames, texts, labels = _find_image_files(directory, labels_file)
-  _process_image_files(name, filenames, texts, labels, num_shards)
+  return _process_image_files(name, filenames, texts, labels, num_shards)
 
 
 def main(unused_argv):
@@ -421,11 +445,16 @@ def main(unused_argv):
   print('Saving results to %s' % FLAGS.output_directory)
 
   # Run it!
-  _process_dataset('validation', FLAGS.validation_directory,
+  (validation_label_count, validation_dataset_count) = _process_dataset(
+                   'validation', FLAGS.validation_directory,
                    FLAGS.validation_shards, FLAGS.labels_file)
-  _process_dataset('train', FLAGS.train_directory,
+
+  (train_label_count, train_dataset_count) = _process_dataset(
+                   'train', FLAGS.train_directory,
                    FLAGS.train_shards, FLAGS.labels_file)
 
+  _process_metadata( max(validation_label_count, train_label_count),
+                    train_dataset_count, validation_dataset_count)
 
 if __name__ == '__main__':
   tf.app.run()
