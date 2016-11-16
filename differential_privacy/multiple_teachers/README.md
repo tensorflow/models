@@ -63,6 +63,20 @@ training points (they will be labeled using the teacher predictions). The
 remaining samples are used for evaluation of the student's accuracy, which
 is displayed upon completion of training.
 
+## Using semi-supervised GANs to train the student
+
+In the paper, we describe how to train the student in a semi-supervised 
+fashion using Generative Adversarial Networks. This can be reproduced for MNIST 
+by cloning the [improved-gan](https://github.com/openai/improved-gan)
+repository and adding to your `PATH` variable before running the shell
+script `train_student_mnist_250_lap_20_count_50_epochs_600.sh`.
+
+```
+export PATH="/path/to/improved-gan/mnist_svhn_cifar10":$PATH
+sh train_student_mnist_250_lap_20_count_50_epochs_600.sh
+```
+
+
 ## Alternative deeper convolutional architecture
 
 Note that a deeper convolutional model is available. Both the default and
