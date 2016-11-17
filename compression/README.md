@@ -80,6 +80,17 @@ To generate these metrics on your images you can run:
 --compared_image=/tmp/decoded/image_15.png`
 
 
+## Results
+CSV results containing the post-entropy bitrates and MS-SSIM over Kodak can 
+are available for reference. Each row of the CSV represents each of the Kodak
+images in their dataset number (1-24). Each column of the CSV represents each
+iteration of the model (1-16).
+
+[Post Entropy Bitrates](https://storage.googleapis.com/compression-ml/residual_gru_results/bitrate.csv)
+
+[MS-SSIM](https://storage.googleapis.com/compression-ml/residual_gru_results/msssim.csv)
+
+
 ## FAQ
 
 #### How do I train my own compression network?
