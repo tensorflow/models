@@ -72,24 +72,25 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
             width_f = tf.cast(width, 'float32')
             out_height = out_size[0]
             out_width = out_size[1]
-            zero = tf.zeros([], dtype='int32')
-            max_y = tf.cast(tf.shape(im)[1] - 1, 'int32')
-            max_x = tf.cast(tf.shape(im)[2] - 1, 'int32')
 
-            # scale indices from [-1, 1] to [0, width/height]
-            x = (x + 1.0)*(width_f) / 2.0
-            y = (y + 1.0)*(height_f) / 2.0
+            # clip coordinates to [-1, 1]
+            x = tf.clip_by_value(x, -1, 1)
+            y = tf.clip_by_value(y, -1, 1)
+
+            # scale coordinates from [-1, 1] to [0, width/height-1]
+            x = (x + 1) / 2 * (width_f - 1)
+            y = (y + 1) / 2 * (height_f - 1)
 
             # do sampling
-            x0 = tf.cast(tf.floor(x), 'int32')
-            x1 = x0 + 1
-            y0 = tf.cast(tf.floor(y), 'int32')
-            y1 = y0 + 1
+            x0_f = tf.floor(x)
+            y0_f = tf.floor(y)
+            x1_f = x0_f + 1
+            y1_f = y0_f + 1
+            x0 = tf.cast(x0_f, 'int32')
+            y0 = tf.cast(y0_f, 'int32')
+            x1 = tf.cast(tf.minimum(x1_f, width_f - 1), 'int32')
+            y1 = tf.cast(tf.minimum(y1_f, height_f - 1), 'int32')
 
-            x0 = tf.clip_by_value(x0, zero, max_x)
-            x1 = tf.clip_by_value(x1, zero, max_x)
-            y0 = tf.clip_by_value(y0, zero, max_y)
-            y1 = tf.clip_by_value(y1, zero, max_y)
             dim2 = width
             dim1 = width*height
             base = _repeat(tf.range(num_batch)*dim1, out_height*out_width)
@@ -103,17 +104,12 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
             # use indices to lookup pixels in the flat image and restore
             # channels dim
             im_flat = tf.reshape(im, tf.pack([-1, channels]))
-            im_flat = tf.cast(im_flat, 'float32')
             Ia = tf.gather(im_flat, idx_a)
             Ib = tf.gather(im_flat, idx_b)
             Ic = tf.gather(im_flat, idx_c)
             Id = tf.gather(im_flat, idx_d)
 
             # and finally calculate interpolated values
-            x0_f = tf.cast(x0, 'float32')
-            x1_f = tf.cast(x1, 'float32')
-            y0_f = tf.cast(y0, 'float32')
-            y1_f = tf.cast(y1, 'float32')
             wa = tf.expand_dims(((x1_f-x) * (y1_f-y)), 1)
             wb = tf.expand_dims(((x1_f-x) * (y-y0_f)), 1)
             wc = tf.expand_dims(((x-x0_f) * (y1_f-y)), 1)
