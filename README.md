@@ -20,3 +20,4 @@ To propose a model for inclusion please submit a pull request.
 - [textsum](textsum) -- sequence-to-sequence with attention model for text summarization.
 - [transformer](transformer) -- spatial transformer network, which allows the spatial manipulation of data within the network
 - [im2txt](im2txt) -- image-to-text neural network for image captioning.
+- [video_prediction](video_prediction) -- video prediction model using neural pixel advection
