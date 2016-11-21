@@ -20,8 +20,8 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/sparse.pb.h"
+#include "syntaxnet/utils.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"

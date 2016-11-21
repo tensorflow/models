@@ -77,14 +77,15 @@ class DocumentSource : public OpKernel {
     OP_REQUIRES_OK(context, context->GetAttr("batch_size", &batch_size_));
     OP_REQUIRES(context, batch_size_ > 0,
                 InvalidArgument("invalid batch_size provided"));
-    corpus_.reset(new TextReader(*task_context_.GetInput(corpus_name)));
+    corpus_.reset(
+        new TextReader(*task_context_.GetInput(corpus_name), &task_context_));
   }
 
   void Compute(OpKernelContext *context) override {
     mutex_lock lock(mu_);
     Sentence *document;
     vector<Sentence *> document_batch;
-    while ((document = corpus_->Read()) != NULL) {
+    while ((document = corpus_->Read()) != nullptr) {
       document_batch.push_back(document);
       if (static_cast<int>(document_batch.size()) == batch_size_) {
         OutputDocuments(context, &document_batch);
@@ -124,7 +125,8 @@ class DocumentSink : public OpKernel {
     GetTaskContext(context, &task_context_);
     string corpus_name;
     OP_REQUIRES_OK(context, context->GetAttr("corpus_name", &corpus_name));
-    writer_.reset(new TextWriter(*task_context_.GetInput(corpus_name)));
+    writer_.reset(
+        new TextWriter(*task_context_.GetInput(corpus_name), &task_context_));
   }
 
   void Compute(OpKernelContext *context) override {

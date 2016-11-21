@@ -24,11 +24,11 @@
     net = ops.conv2d(inputs, 64, [11, 11], 4, padding='VALID', scope='conv1')
     net = ops.conv2d(net, 256, [5, 5], scope='conv2')
 
-  The first call to conv2d will use predefined args:
+  The first call to conv2d will overwrite padding:
     ops.conv2d(inputs, 64, [11, 11], 4, padding='VALID',
               stddev=0.01, weight_decay=0.0005, scope='conv1')
 
-  The second call to Conv will overwrite padding:
+  The second call to Conv will use predefined args:
     ops.conv2d(inputs, 256, [5, 5], padding='SAME',
                stddev=0.01, weight_decay=0.0005, scope='conv2')
 

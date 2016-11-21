@@ -18,9 +18,10 @@ limitations under the License.
 #include <vector>
 
 #include "syntaxnet/document_format.h"
+#include "syntaxnet/segmenter_utils.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/utils.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/buffered_inputstream.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/lib/strings/stringprintf.h"
 #include "tensorflow/core/platform/regexp.h"
@@ -63,8 +64,13 @@ class CoNLLSyntaxFormat : public DocumentFormat {
  public:
   CoNLLSyntaxFormat() {}
 
+  void Setup(TaskContext *context) override {
+    join_category_to_pos_ = context->GetBoolParameter("join_category_to_pos");
+    add_pos_as_attribute_ = context->GetBoolParameter("add_pos_as_attribute");
+  }
+
   // Reads up to the first empty line and returns false end of file is reached.
-  bool ReadRecord(tensorflow::io::InputBuffer *buffer,
+  bool ReadRecord(tensorflow::io::BufferedInputStream *buffer,
                   string *record) override {
     string line;
     record->clear();
@@ -92,7 +98,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       // Split line into tab-separated fields.
       fields.clear();
       fields = utils::Split(lines[i], '\t');
-      if (fields.size() == 0) continue;
+      if (fields.empty()) continue;
 
       // Skip comment lines.
       if (fields[0][0] == '#') continue;
@@ -121,6 +127,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       const string &word = fields[1];
       const string &cpostag = fields[3];
       const string &tag = fields[4];
+      const string &attributes = fields[5];
       const int head = utils::ParseUsing<int>(fields[6], 0, utils::ParseInt32);
       const string &label = fields[7];
 
@@ -139,6 +146,9 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       if (!tag.empty()) token->set_tag(tag);
       if (!cpostag.empty()) token->set_category(cpostag);
       if (!label.empty()) token->set_label(label);
+      if (!attributes.empty()) AddMorphAttributes(attributes, token);
+      if (join_category_to_pos_) JoinCategoryToPos(token);
+      if (add_pos_as_attribute_) AddPosAsAttribute(token);
     }
 
     if (sentence->token_size() > 0) {
@@ -158,16 +168,18 @@ class CoNLLSyntaxFormat : public DocumentFormat {
     *key = sentence.docid();
     vector<string> lines;
     for (int i = 0; i < sentence.token_size(); ++i) {
+      Token token = sentence.token(i);
+      if (join_category_to_pos_) SplitCategoryFromPos(&token);
+      if (add_pos_as_attribute_) RemovePosFromAttributes(&token);
       vector<string> fields(10);
       fields[0] = tensorflow::strings::Printf("%d", i + 1);
-      fields[1] = sentence.token(i).word();
+      fields[1] = UnderscoreIfEmpty(token.word());
       fields[2] = "_";
-      fields[3] = sentence.token(i).category();
-      fields[4] = sentence.token(i).tag();
-      fields[5] = "_";
-      fields[6] =
-          tensorflow::strings::Printf("%d", sentence.token(i).head() + 1);
-      fields[7] = sentence.token(i).label();
+      fields[3] = UnderscoreIfEmpty(token.category());
+      fields[4] = UnderscoreIfEmpty(token.tag());
+      fields[5] = GetMorphAttributes(token);
+      fields[6] = tensorflow::strings::Printf("%d", token.head() + 1);
+      fields[7] = UnderscoreIfEmpty(token.label());
       fields[8] = "_";
       fields[9] = "_";
       lines.push_back(utils::Join(fields, "\t"));
@@ -176,10 +188,217 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   }
 
  private:
+  // Replaces empty fields with an undescore.
+  string UnderscoreIfEmpty(const string &field) {
+    return field.empty() ? "_" : field;
+  }
+
+  // Creates a TokenMorphology object out of a list of attribute values of the
+  // form: a1=v1|a2=v2|... or v1|v2|...
+  void AddMorphAttributes(const string &attributes, Token *token) {
+    TokenMorphology *morph =
+        token->MutableExtension(TokenMorphology::morphology);
+    vector<string> att_vals = utils::Split(attributes, '|');
+    for (int i = 0; i < att_vals.size(); ++i) {
+      vector<string> att_val = utils::SplitOne(att_vals[i], '=');
+
+      // Format is either:
+      //   1) a1=v1|a2=v2..., e.g., Czech CoNLL data, or,
+      //   2) v1|v2|..., e.g., German CoNLL data.
+      const pair<string, string> name_value =
+          att_val.size() == 2 ? std::make_pair(att_val[0], att_val[1])
+                              : std::make_pair(att_val[0], "on");
+
+      // We currently don't expect an empty attribute value, but might have an
+      // empty attribute name due to data input errors.
+      if (name_value.second.empty()) {
+        LOG(WARNING) << "Invalid attributes string: " << attributes
+                     << " for token: " << token->ShortDebugString();
+        continue;
+      }
+      if (!name_value.first.empty()) {
+        TokenMorphology::Attribute *attribute = morph->add_attribute();
+        attribute->set_name(name_value.first);
+        attribute->set_value(name_value.second);
+      }
+    }
+  }
+
+  // Creates a list of attribute values of the form a1=v1|a2=v2|... or v1|v2|...
+  // from a TokenMorphology object.
+  string GetMorphAttributes(const Token &token) {
+    const TokenMorphology &morph =
+        token.GetExtension(TokenMorphology::morphology);
+    if (morph.attribute_size() == 0) return "_";
+    string attributes;
+    for (const TokenMorphology::Attribute &attribute : morph.attribute()) {
+      if (!attributes.empty()) tensorflow::strings::StrAppend(&attributes, "|");
+      tensorflow::strings::StrAppend(&attributes, attribute.name());
+      if (attribute.value() != "on") {
+        tensorflow::strings::StrAppend(&attributes, "=", attribute.value());
+      }
+    }
+    return attributes;
+  }
+
+  void JoinCategoryToPos(Token *token) {
+    token->set_tag(
+        tensorflow::strings::StrCat(token->category(), "++", token->tag()));
+    token->clear_category();
+  }
+
+  void SplitCategoryFromPos(Token *token) {
+    const string &tag = token->tag();
+    const size_t pos = tag.find("++");
+    if (pos != string::npos) {
+      token->set_category(tag.substr(0, pos));
+      token->set_tag(tag.substr(pos + 2));
+    }
+  }
+
+  void AddPosAsAttribute(Token *token) {
+    if (!token->tag().empty()) {
+      TokenMorphology *morph =
+          token->MutableExtension(TokenMorphology::morphology);
+      TokenMorphology::Attribute *attribute = morph->add_attribute();
+      attribute->set_name("fPOS");
+      attribute->set_value(token->tag());
+    }
+  }
+
+  void RemovePosFromAttributes(Token *token) {
+    // Assumes the "fPOS" attribute, if present, is the last one.
+    TokenMorphology *morph =
+        token->MutableExtension(TokenMorphology::morphology);
+    if (morph->attribute_size() > 0 &&
+        morph->attribute().rbegin()->name() == "fPOS") {
+      morph->mutable_attribute()->RemoveLast();
+    }
+  }
+
+  bool join_category_to_pos_ = false;
+  bool add_pos_as_attribute_ = false;
+
   TF_DISALLOW_COPY_AND_ASSIGN(CoNLLSyntaxFormat);
 };
 
 REGISTER_DOCUMENT_FORMAT("conll-sentence", CoNLLSyntaxFormat);
+
+// Reader for segmentation training data format. This reader assumes the input
+// format is similar to CoNLL format but with only two fileds:
+//
+// Fields:
+// 1  FORM:        Word form or punctuation symbol.
+// 2  SPACE FLAG:  Can be either 'SPACE' or 'NO_SPACE' indicates that whether
+//                 there should be a space between this word and the next one in
+//                 the raw text.
+//
+// Examples:
+// To create a training example for sentence with raw text:
+//   That's a good point.
+// and the corresponding gold segmentation:
+//   That 's a good point .
+// Then the correct input is:
+// That	NO_SPACE
+// 's	SPACE
+// a	SPACE
+// good	SPACE
+// point	NO_SPACE
+// .	NO_SPACE
+//
+// Yet another example:
+// To create a training example for sentence with raw text:
+//   这是一个测试
+// and the corresponding gold segmentation:
+//   这 是 一 个 测试
+// Then the correct input is:
+// 这	NO_SPACE
+// 是	NO_SPACE
+// 一	NO_SPACE
+// 个	NO_SPACE
+// 测试	NO_SPACE
+class SegmentationTrainingDataFormat : public CoNLLSyntaxFormat {
+ public:
+  // Converts to segmentation training data by breaking those word in the input
+  // tokens to utf8 character based tokens. Moreover, if a character is the
+  // first char of the word in the original token, then its break level is set
+  // to SPACE_BREAK to indicate that the corresponding gold transition for that
+  // character token is START. Otherwise NO_BREAK to indicate MERGE.
+  void ConvertFromString(const string &key, const string &value,
+                         vector<Sentence *> *sentences) override {
+    // Create new sentence.
+    Sentence *sentence = new Sentence();
+
+    // Each line corresponds to one token.
+    string text;
+    vector<string> lines = utils::Split(value, '\n');
+
+    // Add each token to the sentence.
+    vector<string> fields;
+    for (size_t i = 0; i < lines.size(); ++i) {
+      // Split line into tab-separated fields.
+      fields.clear();
+      fields = utils::Split(lines[i], '\t');
+      if (fields.empty()) continue;
+
+      // Skip comment lines.
+      if (fields[0][0] == '#') continue;
+
+      // Check that the line is valid.
+      CHECK_GE(fields.size(), 2)
+          << "Every line has to have at least 8 tab separated fields.";
+
+      // Get relevant fields.
+      const string &word = fields[0];
+      CHECK(fields[1] == "SPACE" || fields[1] == "NO_SPACE")
+          << "The space field can only be either 'SPACE' or 'NO_SPACE'";
+      const bool space_after = fields[1] == "SPACE";
+
+      // Add token to sentence text.
+      int start = text.size();
+      text.append(word);
+      if (space_after && i != lines.size() - 1) {
+        text.append(" ");
+      }
+
+      // Add character-based token to sentence.
+      vector<tensorflow::StringPiece> chars;
+      SegmenterUtils::GetUTF8Chars(word, &chars);
+      bool is_first_char = true;
+      for (auto utf8char : chars) {
+        Token *char_token = sentence->add_token();
+        char_token->set_word(utf8char.ToString());
+        char_token->set_start(start);
+        start += char_token->word().size();
+        char_token->set_end(start - 1);
+        char_token->set_break_level(
+            is_first_char ? Token::SPACE_BREAK : Token::NO_BREAK);
+        is_first_char = false;
+      }
+
+      // Add another space token.
+      if (space_after) {
+        Token *char_token = sentence->add_token();
+        char_token->set_word(" ");
+        char_token->set_start(start);
+        char_token->set_end(start);
+        char_token->set_break_level(Token::SPACE_BREAK);
+      }
+    }
+
+    if (sentence->token_size() > 0) {
+      sentence->set_docid(key);
+      sentence->set_text(text);
+      sentences->push_back(sentence);
+    } else {
+      // If the sentence was empty (e.g., blank lines at the beginning of a
+      // file), then don't save it.
+      delete sentence;
+    }
+  }
+};
+
+REGISTER_DOCUMENT_FORMAT("segment-train-data", SegmentationTrainingDataFormat);
 
 // Reader for tokenized text. This reader expects every sentence to be on a
 // single line and tokens on that line to be separated by single spaces.
@@ -189,7 +408,7 @@ class TokenizedTextFormat : public DocumentFormat {
   TokenizedTextFormat() {}
 
   // Reads a line and returns false if end of file is reached.
-  bool ReadRecord(tensorflow::io::InputBuffer *buffer,
+  bool ReadRecord(tensorflow::io::BufferedInputStream *buffer,
                   string *record) override {
     return buffer->ReadLine(record).ok();
   }
@@ -245,6 +464,45 @@ class TokenizedTextFormat : public DocumentFormat {
 };
 
 REGISTER_DOCUMENT_FORMAT("tokenized-text", TokenizedTextFormat);
+
+// Reader for un-tokenized text. This reader expects every sentence to be on a
+// single line. For each line in the input, a sentence proto will be created,
+// where tokens are utf8 characters of that line.
+//
+class UntokenizedTextFormat : public TokenizedTextFormat {
+ public:
+  UntokenizedTextFormat() {}
+
+  void ConvertFromString(const string &key, const string &value,
+                         vector<Sentence *> *sentences) override {
+    Sentence *sentence = new Sentence();
+    vector<tensorflow::StringPiece> chars;
+    SegmenterUtils::GetUTF8Chars(value, &chars);
+    int start = 0;
+    for (auto utf8char : chars) {
+      Token *token = sentence->add_token();
+      token->set_word(utf8char.ToString());
+      token->set_start(start);
+      start += utf8char.size();
+      token->set_end(start - 1);
+    }
+
+    if (sentence->token_size() > 0) {
+      sentence->set_docid(key);
+      sentence->set_text(value);
+      sentences->push_back(sentence);
+    } else {
+      // If the sentence was empty (e.g., blank lines at the beginning of a
+      // file), then don't save it.
+      delete sentence;
+    }
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(UntokenizedTextFormat);
+};
+
+REGISTER_DOCUMENT_FORMAT("untokenized-text", UntokenizedTextFormat);
 
 // Text reader that attmpts to perform Penn Treebank tokenization on arbitrary
 // raw text. Adapted from https://www.cis.upenn.edu/~treebank/tokenizer.sed

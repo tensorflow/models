@@ -15,8 +15,8 @@ limitations under the License.
 
 // Transition system for the transition-based dependency parser.
 
-#ifndef $TARGETDIR_PARSER_TRANSITIONS_H_
-#define $TARGETDIR_PARSER_TRANSITIONS_H_
+#ifndef SYNTAXNET_PARSER_TRANSITIONS_H_
+#define SYNTAXNET_PARSER_TRANSITIONS_H_
 
 #include <string>
 #include <vector>
@@ -205,4 +205,4 @@ class ParserTransitionSystem
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_PARSER_TRANSITIONS_H_
+#endif  // SYNTAXNET_PARSER_TRANSITIONS_H_

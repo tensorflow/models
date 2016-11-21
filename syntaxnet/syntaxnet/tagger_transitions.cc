@@ -25,8 +25,10 @@ limitations under the License.
 
 #include <string>
 
+#include "syntaxnet/parser_features.h"
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/parser_transitions.h"
+#include "syntaxnet/sentence_features.h"
 #include "syntaxnet/shared_store.h"
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/term_frequency_map.h"
@@ -53,7 +55,7 @@ class TaggerTransitionState : public ParserTransitionState {
   }
 
   // Reads gold tags for each token.
-  void Init(ParserState *state) {
+  void Init(ParserState *state) override {
     tag_.resize(state->sentence().token_size(), -1);
     gold_tag_.resize(state->sentence().token_size(), -1);
     for (int pos = 0; pos < state->sentence().token_size(); ++pos) {
@@ -98,7 +100,9 @@ class TaggerTransitionState : public ParserTransitionState {
     for (size_t i = 0; i < tag_.size(); ++i) {
       Token *token = sentence->mutable_token(i);
       token->set_tag(TagAsString(Tag(i)));
-      token->set_category(tag_to_category_->GetCategory(token->tag()));
+      if (tag_to_category_) {
+        token->set_category(tag_to_category_->GetCategory(token->tag()));
+      }
     }
   }
 
@@ -146,22 +150,29 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
   // Determines tag map location.
   void Setup(TaskContext *context) override {
     input_tag_map_ = context->GetInput("tag-map", "text", "");
+    join_category_to_pos_ = context->GetBoolParameter("join_category_to_pos");
     input_tag_to_category_ = context->GetInput("tag-to-category", "text", "");
   }
 
   // Reads tag map and tag to category map.
-  void Init(TaskContext *context) {
+  void Init(TaskContext *context) override {
     const string tag_map_path = TaskContext::InputFile(*input_tag_map_);
     tag_map_ = SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(
         tag_map_path, 0, 0);
-    const string tag_to_category_path =
-        TaskContext::InputFile(*input_tag_to_category_);
-    tag_to_category_ = SharedStoreUtils::GetWithDefaultName<TagToCategoryMap>(
-        tag_to_category_path);
+    if (!join_category_to_pos_) {
+      const string tag_to_category_path =
+          TaskContext::InputFile(*input_tag_to_category_);
+      tag_to_category_ = SharedStoreUtils::GetWithDefaultName<TagToCategoryMap>(
+          tag_to_category_path);
+    }
   }
 
   // The SHIFT action uses the same value as the corresponding action type.
   static ParserAction ShiftAction(int tag) { return tag; }
+
+  // The tagger transition system doesn't look at the dependency tree, so it
+  // allows non-projective trees.
+  bool AllowsNonProjective() const override { return true; }
 
   // Returns the number of action types.
   int NumActionTypes() const override { return 1; }
@@ -251,8 +262,32 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
 
   // Tag to category map. Owned through SharedStore.
   const TagToCategoryMap *tag_to_category_ = nullptr;
+
+  bool join_category_to_pos_ = false;
 };
 
 REGISTER_TRANSITION_SYSTEM("tagger", TaggerTransitionSystem);
+
+// Feature function for retrieving the tag assigned to a token by the tagger
+// transition system.
+class PredictedTagFeatureFunction
+    : public BasicParserSentenceFeatureFunction<Tag> {
+ public:
+  PredictedTagFeatureFunction() {}
+
+  // Gets the TaggerTransitionState from the parser state and reads the assigned
+  // tag at the focus index. Returns -1 if the focus is not within the sentence.
+  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
+                       int focus, const FeatureVector *result) const override {
+    if (focus < 0 || focus >= state.sentence().token_size()) return -1;
+    return static_cast<const TaggerTransitionState *>(state.transition_state())
+        ->Tag(focus);
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(PredictedTagFeatureFunction);
+};
+
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("pred-tag", PredictedTagFeatureFunction);
 
 }  // namespace syntaxnet

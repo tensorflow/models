@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef $TARGETDIR_PROTO_IO_H_
-#define $TARGETDIR_PROTO_IO_H_
+#ifndef SYNTAXNET_PROTO_IO_H_
+#define SYNTAXNET_PROTO_IO_H_
 
 #include <iostream>
 #include <memory>
@@ -32,7 +32,8 @@ limitations under the License.
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/stringpiece.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/buffered_inputstream.h"
+#include "tensorflow/core/lib/io/random_inputstream.h"
 #include "tensorflow/core/lib/io/record_reader.h"
 #include "tensorflow/core/lib/io/record_writer.h"
 #include "tensorflow/core/lib/strings/strcat.h"
@@ -43,18 +44,19 @@ namespace syntaxnet {
 // A convenience wrapper to read protos with a RecordReader.
 class ProtoRecordReader {
  public:
-  explicit ProtoRecordReader(tensorflow::RandomAccessFile *file)
-      : file_(file), reader_(new tensorflow::io::RecordReader(file_)) {}
+  explicit ProtoRecordReader(tensorflow::RandomAccessFile *file) {
+    file_.reset(file);
+    reader_.reset(new tensorflow::io::RecordReader(file_.get()));
+  }
 
   explicit ProtoRecordReader(const string &filename) {
     TF_CHECK_OK(
         tensorflow::Env::Default()->NewRandomAccessFile(filename, &file_));
-    reader_.reset(new tensorflow::io::RecordReader(file_));
+    reader_.reset(new tensorflow::io::RecordReader(file_.get()));
   }
 
   ~ProtoRecordReader() {
     reader_.reset();
-    delete file_;
   }
 
   template <typename T>
@@ -70,9 +72,9 @@ class ProtoRecordReader {
   }
 
  private:
-  tensorflow::RandomAccessFile *file_ = nullptr;
   uint64 offset_ = 0;
   std::unique_ptr<tensorflow::io::RecordReader> reader_;
+  std::unique_ptr<tensorflow::RandomAccessFile> file_;
 };
 
 // A convenience wrapper to write protos with a RecordReader.
@@ -80,12 +82,12 @@ class ProtoRecordWriter {
  public:
   explicit ProtoRecordWriter(const string &filename) {
     TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file_));
-    writer_.reset(new tensorflow::io::RecordWriter(file_));
+    writer_.reset(new tensorflow::io::RecordWriter(file_.get()));
   }
 
   ~ProtoRecordWriter() {
     writer_.reset();
-    delete file_;
+    file_.reset();
   }
 
   template <typename T>
@@ -94,8 +96,8 @@ class ProtoRecordWriter {
   }
 
  private:
-  tensorflow::WritableFile *file_ = nullptr;
   std::unique_ptr<tensorflow::io::RecordWriter> writer_;
+  std::unique_ptr<tensorflow::WritableFile> file_;
 };
 
 // A file implementation to read from stdin.
@@ -143,7 +145,7 @@ class StdIn : public tensorflow::RandomAccessFile {
 // Reads sentence protos from a text file.
 class TextReader {
  public:
-  explicit TextReader(const TaskInput &input) {
+  explicit TextReader(const TaskInput &input, TaskContext *context) {
     CHECK_EQ(input.record_format_size(), 1)
         << "TextReader only supports inputs with one record format: "
         << input.DebugString();
@@ -152,6 +154,7 @@ class TextReader {
         << input.DebugString();
     filename_ = TaskContext::InputFile(input);
     format_.reset(DocumentFormat::Create(input.record_format(0)));
+    format_->Setup(context);
     Reset();
   }
 
@@ -176,30 +179,37 @@ class TextReader {
 
   void Reset() {
     sentence_count_ = 0;
-    tensorflow::RandomAccessFile *file;
     if (filename_ == "-") {
       static const int kInputBufferSize = 8 * 1024; /* bytes */
-      file = new StdIn();
-      buffer_.reset(new tensorflow::io::InputBuffer(file, kInputBufferSize));
+      file_.reset(new StdIn());
+      stream_.reset(new tensorflow::io::RandomAccessInputStream(file_.get()));
+      buffer_.reset(new tensorflow::io::BufferedInputStream(file_.get(),
+                                                            kInputBufferSize));
     } else {
       static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
       TF_CHECK_OK(
-          tensorflow::Env::Default()->NewRandomAccessFile(filename_, &file));
-      buffer_.reset(new tensorflow::io::InputBuffer(file, kInputBufferSize));
+          tensorflow::Env::Default()->NewRandomAccessFile(filename_, &file_));
+      stream_.reset(new tensorflow::io::RandomAccessInputStream(file_.get()));
+      buffer_.reset(new tensorflow::io::BufferedInputStream(file_.get(),
+                                                            kInputBufferSize));
     }
   }
 
  private:
   string filename_;
   int sentence_count_ = 0;
-  std::unique_ptr<tensorflow::io::InputBuffer> buffer_;
+  std::unique_ptr<tensorflow::RandomAccessFile>
+      file_;  // must outlive buffer_, stream_
+  std::unique_ptr<tensorflow::io::RandomAccessInputStream>
+      stream_;  // Must outlive buffer_
+  std::unique_ptr<tensorflow::io::BufferedInputStream> buffer_;
   std::unique_ptr<DocumentFormat> format_;
 };
 
 // Writes sentence protos to a text conll file.
 class TextWriter {
  public:
-  explicit TextWriter(const TaskInput &input) {
+  explicit TextWriter(const TaskInput &input, TaskContext *context) {
     CHECK_EQ(input.record_format_size(), 1)
         << "TextWriter only supports files with one record format: "
         << input.DebugString();
@@ -208,6 +218,7 @@ class TextWriter {
         << input.DebugString();
     filename_ = TaskContext::InputFile(input);
     format_.reset(DocumentFormat::Create(input.record_format(0)));
+    format_->Setup(context);
     if (filename_ != "-") {
       TF_CHECK_OK(
           tensorflow::Env::Default()->NewWritableFile(filename_, &file_));
@@ -217,7 +228,6 @@ class TextWriter {
   ~TextWriter() {
     if (file_) {
       file_->Close();
-      delete file_;
     }
   }
 
@@ -234,9 +244,9 @@ class TextWriter {
  private:
   string filename_;
   std::unique_ptr<DocumentFormat> format_;
-  tensorflow::WritableFile *file_ = nullptr;
+  std::unique_ptr<tensorflow::WritableFile> file_;
 };
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_PROTO_IO_H_
+#endif  // SYNTAXNET_PROTO_IO_H_

@@ -17,7 +17,7 @@ A Spatial Transformer Network implemented in Tensorflow 0.7 and based on [2].
 </div>
 
 ```python
-transformer(U, theta, downsample_factor=1)
+transformer(U, theta, out_size)
 ```
     
 #### Parameters
@@ -28,13 +28,8 @@ transformer(U, theta, downsample_factor=1)
     theta: float   
         The output of the
         localisation network should be [num_batch, 6].
-    downsample_factor : float
-        A value of 1 will keep the original size of the image
-        Values larger than 1 will downsample the image. 
-        Values below 1 will upsample the image
-        example image: height = 100, width = 200
-        downsample_factor = 2
-        output image will then be 50, 100
+    out_size: tuple of two ints
+        The size of the output of the network
         
     
 #### Notes

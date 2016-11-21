@@ -20,7 +20,8 @@ limitations under the License.
 #include <limits>
 
 #include "tensorflow/core/lib/core/status.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/buffered_inputstream.h"
+#include "tensorflow/core/lib/io/random_inputstream.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/env.h"
 
@@ -58,12 +59,13 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
   if (max_num_terms <= 0) max_num_terms = std::numeric_limits<int>::max();
 
   // Read the first line (total # of terms in the mapping).
-  tensorflow::RandomAccessFile *file;
+  std::unique_ptr<tensorflow::RandomAccessFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewRandomAccessFile(filename, &file));
   static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
-  tensorflow::io::InputBuffer input(file, kInputBufferSize);
+  tensorflow::io::RandomAccessInputStream stream(file.get());
+  tensorflow::io::BufferedInputStream buffer(&stream, kInputBufferSize);
   string line;
-  TF_CHECK_OK(input.ReadLine(&line));
+  TF_CHECK_OK(buffer.ReadLine(&line));
   int32 total = -1;
   CHECK(utils::ParseInt32(line.c_str(), &total));
   CHECK_GE(total, 0);
@@ -71,7 +73,7 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
   // Read the mapping.
   int64 last_frequency = -1;
   for (int i = 0; i < total && i < max_num_terms; ++i) {
-    TF_CHECK_OK(input.ReadLine(&line));
+    TF_CHECK_OK(buffer.ReadLine(&line));
     vector<string> elements = utils::Split(line, ' ');
     CHECK_EQ(2, elements.size());
     CHECK(!elements[0].empty());
@@ -119,7 +121,7 @@ void TermFrequencyMap::Save(const string &filename) const {
   std::sort(sorted_data.begin(), sorted_data.end(), SortByFrequencyThenTerm());
 
   // Write the number of terms.
-  tensorflow::WritableFile *file;
+  std::unique_ptr<tensorflow::WritableFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file));
   CHECK_LE(term_index_.size(), std::numeric_limits<int32>::max());  // overflow
   const int32 num_terms = term_index_.size();
@@ -136,17 +138,17 @@ void TermFrequencyMap::Save(const string &filename) const {
   TF_CHECK_OK(file->Close()) << "for file " << filename;
   LOG(INFO) << "Saved " << term_index_.size() << " terms to " << filename
             << ".";
-  delete file;
 }
 
 TagToCategoryMap::TagToCategoryMap(const string &filename) {
   // Load the mapping.
-  tensorflow::RandomAccessFile *file;
+  std::unique_ptr<tensorflow::RandomAccessFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewRandomAccessFile(filename, &file));
   static const int kInputBufferSize = 1 * 1024 * 1024; /* bytes */
-  tensorflow::io::InputBuffer input(file, kInputBufferSize);
+  tensorflow::io::RandomAccessInputStream stream(file.get());
+  tensorflow::io::BufferedInputStream buffer(&stream, kInputBufferSize);
   string line;
-  while (input.ReadLine(&line) == tensorflow::Status::OK()) {
+  while (buffer.ReadLine(&line) == tensorflow::Status::OK()) {
     vector<string> pair = utils::Split(line, '\t');
     CHECK(line.empty() || pair.size() == 2) << line;
     tag_to_category_[pair[0]] = pair[1];
@@ -174,7 +176,7 @@ void TagToCategoryMap::SetCategory(const string &tag, const string &category) {
 
 void TagToCategoryMap::Save(const string &filename) const {
   // Write tag and category on each line.
-  tensorflow::WritableFile *file;
+  std::unique_ptr<tensorflow::WritableFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file));
   for (const auto &pair : tag_to_category_) {
     const string line =
@@ -182,7 +184,6 @@ void TagToCategoryMap::Save(const string &filename) const {
     TF_CHECK_OK(file->Append(line));
   }
   TF_CHECK_OK(file->Close()) << "for file " << filename;
-  delete file;
 }
 
 }  // namespace syntaxnet

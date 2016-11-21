@@ -15,8 +15,8 @@ limitations under the License.
 
 // An interface for document formats.
 
-#ifndef $TARGETDIR_DOCUMENT_FORMAT_H__
-#define $TARGETDIR_DOCUMENT_FORMAT_H__
+#ifndef SYNTAXNET_DOCUMENT_FORMAT_H__
+#define SYNTAXNET_DOCUMENT_FORMAT_H__
 
 #include <string>
 #include <vector>
@@ -25,7 +25,7 @@ limitations under the License.
 #include "syntaxnet/registry.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
+#include "tensorflow/core/lib/io/buffered_inputstream.h"
 
 namespace syntaxnet {
 
@@ -38,9 +38,11 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
   DocumentFormat() {}
   virtual ~DocumentFormat() {}
 
+  virtual void Setup(TaskContext *context) {}
+
   // Reads a record from the given input buffer with format specific logic.
   // Returns false if no record could be read because we reached end of file.
-  virtual bool ReadRecord(tensorflow::io::InputBuffer *buffer,
+  virtual bool ReadRecord(tensorflow::io::BufferedInputStream *buffer,
                           string *record) = 0;
 
   // Converts a key/value pair to one or more documents.
@@ -60,4 +62,4 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_DOCUMENT_FORMAT_H__
+#endif  // SYNTAXNET_DOCUMENT_FORMAT_H__

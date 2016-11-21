@@ -21,6 +21,7 @@
 // They are also exported from unilib.h for legacy reasons.
 
 #include "syntaxnet/base.h"
+#include "third_party/utf/utf.h"
 
 namespace UniLib {
 
@@ -30,6 +31,19 @@ namespace UniLib {
 inline bool IsValidCodepoint(char32 c) {
   return (static_cast<uint32>(c) < 0xD800)
     || (c >= 0xE000 && c <= 0x10FFFF);
+}
+
+// Returns true if 'str' is the start of a structurally valid UTF-8
+// sequence and is not a surrogate codepoint. Returns false if str.empty()
+// or if str.length() < UniLib::OneCharLen(str[0]). Otherwise, this function
+// will access 1-4 bytes of src, where n is UniLib::OneCharLen(src[0]).
+inline bool IsUTF8ValidCodepoint(StringPiece str) {
+  char32 c;
+  int consumed;
+  // It's OK if str.length() > consumed.
+  return !str.empty()
+      && isvalidcharntorune(str.data(), str.size(), &c, &consumed)
+      && IsValidCodepoint(c);
 }
 
 // Returns the length (number of bytes) of the Unicode code point

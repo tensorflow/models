@@ -15,6 +15,7 @@
 """A program to generate ASCII trees from conll files."""
 
 import collections
+import re
 
 import asciitree
 import tensorflow as tf
@@ -40,17 +41,23 @@ flags.DEFINE_string('corpus_name', 'stdin-conll',
 def to_dict(sentence):
   """Builds a dictionary representing the parse tree of a sentence.
 
+     Note that the suffix "@id" (where 'id' is a number) is appended to each
+     element to handle the sentence that has multiple elements with identical
+     representation. Those suffix needs to be removed after the asciitree is
+     rendered.
+
   Args:
     sentence: Sentence protocol buffer to represent.
   Returns:
     Dictionary mapping tokens to children.
   """
-  token_str = ['%s %s %s' % (token.word, token.tag, token.label)
-               for token in sentence.token]
+  token_str = list()
   children = [[] for token in sentence.token]
   root = -1
   for i in range(0, len(sentence.token)):
     token = sentence.token[i]
+    token_str.append('%s %s %s @%d' %
+                     (token.word, token.tag, token.label, (i+1)))
     if token.head == -1:
       root = i
     else:
@@ -83,7 +90,10 @@ def main(unused_argv):
         d = to_dict(sentence)
         print 'Input: %s' % sentence.text
         print 'Parse:'
-        print tr(d)
+        tr_str = tr(d)
+        pat = re.compile(r'\s*@\d+$')
+        for tr_ln in tr_str.splitlines():
+          print pat.sub('', tr_ln)
 
       if finished:
         break

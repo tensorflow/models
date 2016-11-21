@@ -18,7 +18,7 @@ limitations under the License.
 namespace syntaxnet {
 
 // Global list of all component registries.
-RegistryMetadata *global_registry_list = NULL;
+RegistryMetadata *global_registry_list = nullptr;
 
 void RegistryMetadata::Register(RegistryMetadata *registry) {
   registry->set_link(global_registry_list);

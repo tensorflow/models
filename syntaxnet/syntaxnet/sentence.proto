@@ -59,3 +59,18 @@ message Token {
 
   extensions 1000 to max;
 }
+
+// Stores information about the morphology of a token.
+message TokenMorphology {
+  extend Token {
+    optional TokenMorphology morphology = 63949837;
+  }
+
+  // Morphology is represented by a set of attribute values.
+  message Attribute {
+    required string name = 1;
+    required string value = 2;
+  }
+  // This attribute field is designated to hold a single disambiguated analysis.
+  repeated Attribute attribute = 3;
+};

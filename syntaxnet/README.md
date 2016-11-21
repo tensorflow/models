@@ -1,7 +1,11 @@
 # SyntaxNet: Neural Models of Syntax.
 
 *A TensorFlow implementation of the models described in [Andor et al. (2016)]
-(http://arxiv.org/pdf/1603.06042v1.pdf).*
+(http://arxiv.org/abs/1603.06042).*
+
+**Update**: Parsey models are now [available](universal.md) for 40 languages
+trained on Universal Dependencies datasets, with support for text segmentation
+and morphological analysis.
 
 At Google, we spend a lot of time thinking about how computer systems can read
 and understand human language in order to process it in intelligent ways. We are
@@ -25,13 +29,13 @@ Model                                                                           
 [Martins et al. (2013)](http://www.cs.cmu.edu/~ark/TurboParser/)                                                | 93.10 | 88.23 | 94.21
 [Zhang and McDonald (2014)](http://research.google.com/pubs/archive/38148.pdf)                                  | 93.32 | 88.65 | 93.37
 [Weiss et al. (2015)](http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43800.pdf) | 93.91 | 89.29 | 94.17
-[Andor et al. (2016)](http://arxiv.org/pdf/1603.06042v1.pdf)*                                                   | 94.44 | 90.17 | 95.40
+[Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*                                                         | 94.44 | 90.17 | 95.40
 Parsey McParseface                                                                                              | 94.15 | 89.08 | 94.77
 
 We see that Parsey McParseface is state-of-the-art; more importantly, with
 SyntaxNet you can train larger networks with more hidden units and bigger beam
 sizes if you want to push the accuracy even further: [Andor et al. (2016)]
-(http://arxiv.org/pdf/1603.06042v1.pdf)* is simply a SyntaxNet model with a
+(http://arxiv.org/abs/1603.06042)* is simply a SyntaxNet model with a
 larger beam and network. For futher information on the datasets, see that paper
 under the section "Treebank Union".
 
@@ -40,8 +44,8 @@ Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging
 
 Model                                                                      | News  | Web   | Questions
 -------------------------------------------------------------------------- | :---: | :---: | :-------:
-[Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.78 | 94.03 | 96.18
-[Andor et al. (2016)](http://arxiv.org/pdf/1603.06042v1.pdf)*              | 97.77 | 94.80 | 96.86
+[Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.44 | 94.03 | 96.18
+[Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*                    | 97.77 | 94.80 | 96.86
 Parsey McParseface                                                         | 97.52 | 94.24 | 96.45
 
 The first part of this tutorial describes how to install the necessary tools and
@@ -74,9 +78,18 @@ source. You'll need to install:
 
 *   python 2.7:
     * python 3 support is not available yet
+*   pip (python package manager)
+    * `apt-get install python-pip` on Ubuntu
+    * `brew` installs pip along with python on OSX
 *   bazel:
-    *   **versions 0.2.0 - 0.2.2b, NOT 0.2.3**
+    *   **versions 0.3.0 - 0.3.1*
     *   follow the instructions [here](http://bazel.io/docs/install.html)
+    *   Alternately, Download bazel <.deb> from
+        [https://github.com/bazelbuild/bazel/releases]
+        (https://github.com/bazelbuild/bazel/releases) for your system
+        configuration.
+    *   Install it using the command: sudo dpkg -i <.deb file>
+    *   Check for the bazel version by typing: bazel version
 *   swig:
     *   `apt-get install swig` on Ubuntu
     *   `brew install swig` on OSX
@@ -87,6 +100,8 @@ source. You'll need to install:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
+*   mock, package for unit testing:
+    *   `pip install mock`
 
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
@@ -106,6 +121,12 @@ Bazel should complete reporting all tests passed.
 
 You can also compile SyntaxNet in a [Docker](https://www.docker.com/what-docker)
 container using this [Dockerfile](Dockerfile).
+
+To build SyntaxNet with GPU support please refer to the instructions in
+[issues/248](https://github.com/tensorflow/models/issues/248).
+
+**Note:** If you are running Docker on OSX, make sure that you have enough
+memory allocated for your Docker VM.
 
 ## Getting Started
 
@@ -153,7 +174,7 @@ spec file used in the demo is in
 
 To use corpora instead of stdin/stdout, we have to:
 
-1.  Create or modify a `input` field inside the `TaskSpec`, with the
+1.  Create or modify an `input` field inside the `TaskSpec`, with the
     `file_pattern` specifying the location we want. If the input corpus is in
     CONLL format, make sure to put `record_format: 'conll-sentence'`.
 1.  Change the `--input` and/or `--output` flag to use the name of the resource
@@ -462,7 +483,7 @@ predicts the next action to take.
 
 ### Training a Parser Step 1: Local Pretraining
 
-As described in our [paper](http://arxiv.org/pdf/1603.06042v1.pdf), the first
+As described in our [paper](http://arxiv.org/abs/1603.06042), the first
 step in training the model is to *pre-train* using *local* decisions. In this
 phase, we use the gold dependency to guide the parser, and train a softmax layer
 to predict the correct action given these gold dependencies. This can be
@@ -591,7 +612,11 @@ and parse text in the wild.
 
 ## Contact
 
-To ask questions or report issues please contact syntaxnet-users@google.com.
+To ask questions or report issues please post on Stack Overflow with the tag
+[syntaxnet](http://stackoverflow.com/questions/tagged/syntaxnet)
+or open an issue on the tensorflow/models
+[issues tracker](https://github.com/tensorflow/models/issues).
+Please assign SyntaxNet issues to @calberti or @andorardo.
 
 ## Credits
 
@@ -606,6 +631,7 @@ Original authors of the code in this package include (in alphabetical order):
 *   David Weiss
 *   Emily Pitler
 *   Greg Coppola
+*   Ji Ma
 *   Keith Hall
 *   Kuzman Ganchev
 *   Michael Collins

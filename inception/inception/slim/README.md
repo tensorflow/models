@@ -67,7 +67,7 @@ TF-Slim offers several advantages over just the built-in tensorflow libraries:
     copy-and-pasting hyperparameter values and simplifies hyperparameter tuning.
 *   Makes developing models simple by providing commonly used [loss functions]
     (losses.py)
-*   Provides a concise [definition](inception.py) of [Inception v3]
+*   Provides a concise [definition](inception_model.py) of [Inception v3]
     (http://arxiv.org/abs/1512.00567) network architecture ready to be used
     out-of-the-box or subsumed into new models.
 
@@ -383,7 +383,7 @@ images, labels = ...
 predictions =  ...
 
 # Define the loss functions and get the total loss.
-loss = losses.ClassificationLoss(predictions, labels)
+loss = losses.cross_entropy_loss(predictions, labels)
 ```
 
 In this example, we start by creating the model (using TF-Slim's VGG
@@ -398,8 +398,8 @@ images, scene_labels, depth_labels = ...
 scene_predictions, depth_predictions = CreateMultiTaskModel(images)
 
 # Define the loss functions and get the total loss.
-classification_loss = slim.losses.ClassificationLoss(scene_predictions, scene_labels)
-sum_of_squares_loss = slim.losses.SumOfSquaresLoss(depth_predictions, depth_labels)
+classification_loss = slim.losses.cross_entropy_loss(scene_predictions, scene_labels)
+sum_of_squares_loss = slim.losses.l2loss(depth_predictions - depth_labels)
 
 # The following two lines have the same effect:
 total_loss1 = classification_loss + sum_of_squares_loss
@@ -407,7 +407,7 @@ total_loss2 = tf.get_collection(slim.losses.LOSSES_COLLECTION)
 ```
 
 In this example, we have two losses which we add by calling
-`losses.ClassificationLoss` and `losses.SumOfSquaresLoss`. We can obtain the
+`losses.cross_entropy_loss` and `losses.l2loss`. We can obtain the
 total loss by adding them together (`total_loss1`) or by calling
 `losses.GetTotalLoss()`. How did this work? When you create a loss function via
 TF-Slim, TF-Slim adds the loss to a special TensorFlow collection of loss
@@ -426,8 +426,8 @@ images, scene_labels, depth_labels, pose_labels = ...
 scene_predictions, depth_predictions, pose_predictions = CreateMultiTaskModel(images)
 
 # Define the loss functions and get the total loss.
-classification_loss = slim.losses.ClassificationLoss(scene_predictions, scene_labels)
-sum_of_squares_loss = slim.losses.SumOfSquaresLoss(depth_predictions, depth_labels)
+classification_loss = slim.losses.cross_entropy_loss(scene_predictions, scene_labels)
+sum_of_squares_loss = slim.losses.l2loss(depth_predictions - depth_labels)
 pose_loss = MyCustomLossFunction(pose_predictions, pose_labels)
 tf.add_to_collection(slim.losses.LOSSES_COLLECTION, pose_loss) # Letting TF-Slim know about the additional loss.
 
@@ -582,11 +582,11 @@ name to each graph variable. Consider the following example where the checkpoint
 variables names are obtained via a simple function:
 
 ```python
-# Assuming than 'conv1/weights' should be restored from 'vgg16/conv1/weights'
+# Assuming that 'conv1/weights' should be restored from 'vgg16/conv1/weights'
 def name_in_checkpoint(var):
   return 'vgg16/' + var.op.name
 
-# Assuming than 'conv1/weights' and 'conv1/bias' should be restored from 'conv1/params1' and 'conv1/params2'
+# Assuming that 'conv1/weights' and 'conv1/bias' should be restored from 'conv1/params1' and 'conv1/params2'
 def name_in_checkpoint(var):
   if "weights" in var.op.name:
     return var.op.name.replace("weights", "params1")

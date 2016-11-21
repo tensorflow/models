@@ -84,7 +84,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.core.framework import graph_pb2
 from inception.slim import scopes
 
 # Collection containing all the variables created using slim.variables
@@ -211,7 +210,7 @@ def variable_device(device, name):
   """Fix the variable device to colocate its ops."""
   if callable(device):
     var_name = tf.get_variable_scope().name + '/' + name
-    var_def = graph_pb2.NodeDef(name=var_name, op='Variable')
+    var_def = tf.NodeDef(name=var_name, op='Variable')
     device = device(var_def)
   if device is None:
     device = ''

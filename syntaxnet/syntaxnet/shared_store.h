@@ -15,8 +15,8 @@ limitations under the License.
 
 // Utility for creating read-only objects once and sharing them across threads.
 
-#ifndef $TARGETDIR_SHARED_STORE_H_
-#define $TARGETDIR_SHARED_STORE_H_
+#ifndef SYNTAXNET_SHARED_STORE_H_
+#define SYNTAXNET_SHARED_STORE_H_
 
 #include <functional>
 #include <string>
@@ -71,7 +71,7 @@ class SharedStore {
     int refcount;
 
     SharedObject(void *o, std::function<void()> d)
-        : object(o), delete_callback(d), refcount(1) {}
+        : object(o), delete_callback(std::move(d)), refcount(1) {}
   };
 
   // A map from keys to shared objects.
@@ -231,4 +231,4 @@ class SharedStoreUtils {
 
 }  // namespace syntaxnet
 
-#endif  // $TARGETDIR_SHARED_STORE_H_
+#endif  // SYNTAXNET_SHARED_STORE_H_

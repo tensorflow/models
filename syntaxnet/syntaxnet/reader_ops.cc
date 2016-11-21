@@ -15,17 +15,17 @@ limitations under the License.
 
 #include <math.h>
 #include <deque>
-#include <unordered_map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "syntaxnet/base.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/parser_transitions.h"
-#include "syntaxnet/sentence_batch.h"
 #include "syntaxnet/sentence.pb.h"
+#include "syntaxnet/sentence_batch.h"
 #include "syntaxnet/shared_store.h"
 #include "syntaxnet/sparse.pb.h"
 #include "syntaxnet/task_context.h"
@@ -35,7 +35,6 @@ limitations under the License.
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/lib/core/status.h"
-#include "tensorflow/core/lib/io/inputbuffer.h"
 #include "tensorflow/core/lib/io/table.h"
 #include "tensorflow/core/lib/io/table_options.h"
 #include "tensorflow/core/lib/strings/stringprintf.h"
@@ -206,7 +205,7 @@ class ParsingReader : public OpKernel {
   int additional_output_index() const { return feature_size_ + 1; }
   ParserState *state(int i) const { return states_[i].get(); }
   const ParserTransitionSystem &transition_system() const {
-    return *transition_system_.get();
+    return *transition_system_;
   }
 
   // Parser task context.
@@ -514,19 +513,16 @@ class WordEmbeddingInitializer : public OpKernel {
   static tensorflow::Status CopyToTmpPath(const string &source_path,
                                           string *tmp_path) {
     // Opens source file.
-    tensorflow::RandomAccessFile *source_file;
+    std::unique_ptr<tensorflow::RandomAccessFile> source_file;
     TF_RETURN_IF_ERROR(tensorflow::Env::Default()->NewRandomAccessFile(
         source_path, &source_file));
-    std::unique_ptr<tensorflow::RandomAccessFile> source_file_deleter(
-        source_file);
 
     // Creates destination file.
-    tensorflow::WritableFile *target_file;
+    std::unique_ptr<tensorflow::WritableFile> target_file;
     *tmp_path = tensorflow::strings::Printf(
         "/tmp/%d.%lld", getpid(), tensorflow::Env::Default()->NowMicros());
     TF_RETURN_IF_ERROR(
         tensorflow::Env::Default()->NewWritableFile(*tmp_path, &target_file));
-    std::unique_ptr<tensorflow::WritableFile> target_file_deleter(target_file);
 
     // Performs copy.
     tensorflow::Status s;

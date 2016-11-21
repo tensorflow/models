@@ -19,7 +19,6 @@
 
 # disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member
 import os.path
-
 import tensorflow as tf
 
 import syntaxnet.load_parser_ops
@@ -69,6 +68,8 @@ TOKENIZED_DOCS = u'''बात गलत हो तो गुस्सा से
 लेकिन अभिनेत्री के इस कदम से वहां रंग में भंग पड़ गया ।
 '''
 
+CHARS = u'''अ इ आ क ग ज ट त द न प भ ब य म र ल व ह स ि ा ु ी े ै ो ् ड़ । ं'''
+
 COMMENTS = u'# Line with fake comments.'
 
 
@@ -93,7 +94,7 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
     self.AddInput('documents', self.corpus_file, corpus_format, context)
     for name in ('word-map', 'lcword-map', 'tag-map',
                  'category-map', 'label-map', 'prefix-table',
-                 'suffix-table', 'tag-to-category'):
+                 'suffix-table', 'tag-to-category', 'char-map'):
       self.AddInput(name, os.path.join(FLAGS.test_tmpdir, name), '', context)
     logging.info('Writing context to: %s', self.context_file)
     with open(self.context_file, 'w') as f:
@@ -133,6 +134,26 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
       self.assertIn(tag, TAGS)
       self.assertIn(category, CATEGORIES)
 
+  def LoadMap(self, map_name):
+    loaded_map = {}
+    with file(os.path.join(FLAGS.test_tmpdir, map_name), 'r') as f:
+      for line in f:
+        entries = line.strip().split(' ')
+        if len(entries) == 2:
+          loaded_map[entries[0]] = entries[1]
+    return loaded_map
+
+  def ValidateCharMap(self):
+    char_map = self.LoadMap('char-map')
+    self.assertEqual(len(char_map), len(CHARS.split(' ')))
+    for char in CHARS.split(' '):
+      self.assertIn(char.encode('utf-8'), char_map)
+
+  def ValidateWordMap(self):
+    word_map = self.LoadMap('word-map')
+    for word in filter(None, TOKENIZED_DOCS.replace('\n', ' ').split(' ')):
+      self.assertIn(word.encode('utf-8'), word_map)
+
   def BuildLexicon(self):
     with self.test_session():
       gen_parser_ops.lexicon_builder(task_context=self.context_file).run()
@@ -146,6 +167,8 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
     self.ValidateDocuments()
     self.BuildLexicon()
     self.ValidateTagToCategoryMap()
+    self.ValidateCharMap()
+    self.ValidateWordMap()
 
   def testCoNLLFormatExtraNewlinesAndComments(self):
     self.WriteContext('conll-sentence')

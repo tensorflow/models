@@ -256,7 +256,7 @@ class GreedyParser(object):
             self.params[name])
 
   def GetStep(self):
-    def OnesInitializer(shape, dtype=tf.float32):
+    def OnesInitializer(shape, dtype=tf.float32, partition_info=None):
       return tf.ones(shape, dtype)
     return self._AddVariable([], tf.int32, 'step', OnesInitializer)
 
@@ -475,7 +475,7 @@ class GreedyParser(object):
   def AddPretrainedEmbeddings(self, index, embeddings_path, task_context):
     """Embeddings at the given index will be set to pretrained values."""
 
-    def _Initializer(shape, dtype=tf.float32):
+    def _Initializer(shape, dtype=tf.float32, partition_info=None):
       unused_dtype = dtype
       t = gen_parser_ops.word_embedding_initializer(
           vectors=embeddings_path,

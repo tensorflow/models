@@ -25,10 +25,6 @@
 
 namespace {
 
-template <typename T, size_t N>
-char (&ArraySizeHelper(T (&array)[N]))[N];
-#define arraysize(array) (sizeof(ArraySizeHelper(array)))
-
 class UnicodeTextTest : public testing::Test {
  protected:
   UnicodeTextTest() : empty_text_() {

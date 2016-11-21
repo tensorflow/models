@@ -16,13 +16,14 @@ limitations under the License.
 #include <stddef.h>
 #include <string>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/affix.h"
 #include "syntaxnet/dictionary.pb.h"
 #include "syntaxnet/feature_extractor.h"
-#include "syntaxnet/sentence_batch.h"
+#include "syntaxnet/segmenter_utils.h"
 #include "syntaxnet/sentence.pb.h"
+#include "syntaxnet/sentence_batch.h"
 #include "syntaxnet/term_frequency_map.h"
+#include "syntaxnet/utils.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/platform/env.h"
@@ -75,6 +76,7 @@ class LexiconBuilder : public OpKernel {
     TermFrequencyMap tags;
     TermFrequencyMap categories;
     TermFrequencyMap labels;
+    TermFrequencyMap chars;
 
     // Affix tables to be populated by the corpus.
     AffixTable prefixes(AffixTable::PREFIX, max_prefix_length_);
@@ -87,8 +89,8 @@ class LexiconBuilder : public OpKernel {
     int64 num_tokens = 0;
     int64 num_documents = 0;
     Sentence *document;
-    TextReader corpus(*task_context_.GetInput(corpus_name_));
-    while ((document = corpus.Read()) != NULL) {
+    TextReader corpus(*task_context_.GetInput(corpus_name_), &task_context_);
+    while ((document = corpus.Read()) != nullptr) {
       // Gather token information.
       for (int t = 0; t < document->token_size(); ++t) {
         // Get token and lowercased word.
@@ -114,6 +116,14 @@ class LexiconBuilder : public OpKernel {
         // Add mapping from tag to category.
         tag_to_category.SetCategory(token.tag(), token.category());
 
+        // Add characters.
+        vector<tensorflow::StringPiece> char_sp;
+        SegmenterUtils::GetUTF8Chars(word, &char_sp);
+        for (const auto &c : char_sp) {
+          const string c_str = c.ToString();
+          if (!c_str.empty() && !HasSpaces(c_str)) chars.Increment(c_str);
+        }
+
         // Update the number of processed tokens.
         ++num_tokens;
       }
@@ -131,6 +141,7 @@ class LexiconBuilder : public OpKernel {
     categories.Save(
         TaskContext::InputFile(*task_context_.GetInput("category-map")));
     labels.Save(TaskContext::InputFile(*task_context_.GetInput("label-map")));
+    chars.Save(TaskContext::InputFile(*task_context_.GetInput("char-map")));
 
     // Write affixes to disk.
     WriteAffixTable(prefixes, TaskContext::InputFile(

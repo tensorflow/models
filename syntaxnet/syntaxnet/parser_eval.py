@@ -19,15 +19,19 @@
 import os
 import os.path
 import time
-
+import tempfile
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
 from tensorflow.python.platform import tf_logging as logging
+
+from google.protobuf import text_format
+
 from syntaxnet import sentence_pb2
 from syntaxnet import graph_builder
 from syntaxnet import structured_graph_builder
 from syntaxnet.ops import gen_parser_ops
+from syntaxnet import task_spec_pb2
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -36,6 +40,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('task_context', '',
                     'Path to a task context with inputs and parameters for '
                     'feature extractors.')
+flags.DEFINE_string('resource_dir', '',
+                    'Optional base directory for task context resources.')
 flags.DEFINE_string('model_path', '', 'Path to model parameters.')
 flags.DEFINE_string('arg_prefix', None, 'Prefix for context parameters.')
 flags.DEFINE_string('graph_builder', 'greedy',
@@ -54,16 +60,28 @@ flags.DEFINE_bool('slim_model', False,
                   'Whether to expect only averaged variables.')
 
 
-def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
-  """Builds and evaluates a network.
+def RewriteContext(task_context):
+  context = task_spec_pb2.TaskSpec()
+  with gfile.FastGFile(task_context) as fin:
+    text_format.Merge(fin.read(), context)
+  for resource in context.input:
+    for part in resource.part:
+      if part.file_pattern != '-':
+        part.file_pattern = os.path.join(FLAGS.resource_dir, part.file_pattern)
+  with tempfile.NamedTemporaryFile(delete=False) as fout:
+    fout.write(str(context))
+    return fout.name
 
-  Args:
-    sess: tensorflow session to use
-    num_actions: number of possible golden actions
-    feature_sizes: size of each feature vector
-    domain_sizes: number of possible feature ids in each feature vector
-    embedding_dims: embedding dimension for each feature group
-  """
+
+def Eval(sess):
+  """Builds and evaluates a network."""
+  task_context = FLAGS.task_context
+  if FLAGS.resource_dir:
+    task_context = RewriteContext(task_context)
+  feature_sizes, domain_sizes, embedding_dims, num_actions = sess.run(
+      gen_parser_ops.feature_size(task_context=task_context,
+                                  arg_prefix=FLAGS.arg_prefix))
+
   t = time.time()
   hidden_layer_sizes = map(int, FLAGS.hidden_layer_sizes.split(','))
   logging.info('Building training network with parameters: feature_sizes: %s '
@@ -87,7 +105,6 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
         arg_prefix=FLAGS.arg_prefix,
         beam_size=FLAGS.beam_size,
         max_steps=FLAGS.max_steps)
-  task_context = FLAGS.task_context
   parser.AddEvaluation(task_context,
                        FLAGS.batch_size,
                        corpus_name=FLAGS.input,
@@ -99,7 +116,7 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
 
   sink_documents = tf.placeholder(tf.string)
   sink = gen_parser_ops.document_sink(sink_documents,
-                                      task_context=FLAGS.task_context,
+                                      task_context=task_context,
                                       corpus_name=FLAGS.output)
   t = time.time()
   num_epochs = None
@@ -137,12 +154,7 @@ def Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims):
 def main(unused_argv):
   logging.set_verbosity(logging.INFO)
   with tf.Session() as sess:
-    feature_sizes, domain_sizes, embedding_dims, num_actions = sess.run(
-        gen_parser_ops.feature_size(task_context=FLAGS.task_context,
-                                    arg_prefix=FLAGS.arg_prefix))
-
-  with tf.Session() as sess:
-    Eval(sess, num_actions, feature_sizes, domain_sizes, embedding_dims)
+    Eval(sess)
 
 
 if __name__ == '__main__':

@@ -111,7 +111,6 @@ def create_vocabulary(lines):
   vocab = [(tok, n) for tok, n in vocab.iteritems() if n >= FLAGS.min_count]
   vocab.sort(key=lambda kv: (-kv[1], kv[0]))
 
-  num_words = max(len(vocab), FLAGS.shard_size)
   num_words = min(len(vocab), FLAGS.max_vocab)
   if num_words % FLAGS.shard_size != 0:
     num_words -= num_words % FLAGS.shard_size

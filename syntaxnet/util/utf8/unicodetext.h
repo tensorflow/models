@@ -462,6 +462,12 @@ inline string UnicodeTextToUTF8(const UnicodeText& t) {
   return string(t.utf8_data(), t.utf8_length());
 }
 
+// This template function declaration is used in defining arraysize.
+// Note that the function doesn't need an implementation, as we only
+// use its type.
+template <typename T, size_t N>
+char (&ArraySizeHelper(T (&array)[N]))[N];
+#define arraysize(array) (sizeof(ArraySizeHelper(array)))
 
 // For debugging.  Return a string of integers, written in uppercase
 // hex (%X), corresponding to the codepoints within the text. Each
