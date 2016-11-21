@@ -14,6 +14,7 @@ To propose a model for inclusion please submit a pull request.
 - [neural_gpu](neural_gpu) -- highly parallel neural computer
 - [privacy](privacy) -- privacy-preserving student models from multiple teachers
 - [resnet](resnet) -- deep and wide residual networks
+- [skipthought](skipthought) -- a sequence-to-sequence model to create sentence embeddings
 - [slim](slim) -- image classification models in TF-Slim
 - [swivel](swivel) -- the Swivel algorithm for generating word embeddings
 - [syntaxnet](syntaxnet) -- neural models of natural language syntax
