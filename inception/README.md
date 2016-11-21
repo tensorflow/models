@@ -470,8 +470,8 @@ look like:
 ```
 
 When the script finishes you will find 2 shards for the training and validation
-files in the `DATA_DIR`. The files will match the patterns `train-????-of-00001`
-and `validation-?????-of-00001`, respectively.
+files in the `DATA_DIR`. The files will match the patterns `train-?????-of-00002`
+and `validation-?????-of-00002`, respectively.
 
 **NOTE** If you wish to prepare a custom image data set for transfer learning,
 you will need to invoke [`build_image_data.py`](inception/data/build_image_data.py) on
