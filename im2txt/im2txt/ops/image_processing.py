@@ -108,10 +108,17 @@ def process_image(encoded_image,
   # Resize image.
   assert (resize_height > 0) == (resize_width > 0)
   if resize_height:
-    image = tf.image.resize_images(image,
-                                   size=[resize_height, resize_width],
-                                   method=tf.image.ResizeMethod.BILINEAR)
-
+    try:
+      image = tf.image.resize_images(image,
+             size=[resize_height, resize_width],
+             method=tf.image.ResizeMethod.BILINEAR)
+    except:
+      image = tf.image.resize_images(image,     
+             new_height=resize_height,
+             new_width=resize_width,
+             method=tf.image.ResizeMethod.BILINEAR)
+    
+    
   # Crop to final dimensions.
   if is_training:
     image = tf.random_crop(image, [height, width, 3])
