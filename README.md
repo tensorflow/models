@@ -20,7 +20,7 @@ To propose a model for inclusion please submit a pull request.
 - [textsum](textsum) -- sequence-to-sequence with attention model for text summarization.
 - [transformer](transformer) -- spatial transformer network, which allows the spatial manipulation of data within the network
 - [im2txt](im2txt) -- image-to-text neural network for image captioning.
-=======
+
 Implementation of the Neural Programmer model described in https://openreview.net/pdf?id=ry2YOrcge
 
 Download the data from http://www-nlp.stanford.edu/software/sempre/wikitable/
