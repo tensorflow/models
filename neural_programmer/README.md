@@ -6,6 +6,6 @@ Training: python neural_programmer.py. The models are written to FLAGS.output_di
 
 Testing: python neural_programmer.py --evaluator_job=True. The models are loaded from FLAGS.output_dir. The evaluation is done on development data.
 
-In case of errors because of encoding, add # -*- coding: utf-8 -*- as the first line in wiki_data.py
+In case of errors because of encoding, add "# -*- coding: utf-8 -*-" as the first line in wiki_data.py
 
 Maintained by Arvind Neelakantan (arvind2505)
