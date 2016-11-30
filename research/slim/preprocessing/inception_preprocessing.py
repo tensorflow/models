@@ -193,7 +193,8 @@ def preprocess_for_train(image, height, width, bbox,
     # the coordinates are ordered [ymin, xmin, ymax, xmax].
     image_with_box = tf.image.draw_bounding_boxes(tf.expand_dims(image, 0),
                                                   bbox)
-    tf.image_summary('image_with_bounding_boxes', image_with_box)
+    tf.contrib.deprecated.image_summary('image_with_bounding_boxes',
+                                        image_with_box)
 
     distorted_image, distorted_bbox = distorted_bounding_box_crop(image, bbox)
     # Restore the shape since the dynamic slice based upon the bbox_size loses
@@ -201,8 +202,8 @@ def preprocess_for_train(image, height, width, bbox,
     distorted_image.set_shape([None, None, 3])
     image_with_distorted_box = tf.image.draw_bounding_boxes(
         tf.expand_dims(image, 0), distorted_bbox)
-    tf.image_summary('images_with_distorted_bounding_box',
-                     image_with_distorted_box)
+    tf.contrib.deprecated.image_summary('images_with_distorted_bounding_box',
+                                        image_with_distorted_box)
 
     # This resizing operation may distort the images because the aspect
     # ratio is not respected. We select a resize method in a round robin
@@ -216,8 +217,8 @@ def preprocess_for_train(image, height, width, bbox,
         lambda x, method: tf.image.resize_images(x, [height, width], method),
         num_cases=num_resize_cases)
 
-    tf.image_summary('cropped_resized_image',
-                     tf.expand_dims(distorted_image, 0))
+    tf.contrib.deprecated.image_summary('cropped_resized_image',
+                                        tf.expand_dims(distorted_image, 0))
 
     # Randomly flip the image horizontally.
     distorted_image = tf.image.random_flip_left_right(distorted_image)
@@ -228,8 +229,8 @@ def preprocess_for_train(image, height, width, bbox,
         lambda x, ordering: distort_color(x, ordering, fast_mode),
         num_cases=4)
 
-    tf.image_summary('final_distorted_image',
-                     tf.expand_dims(distorted_image, 0))
+    tf.contrib.deprecated.image_summary('final_distorted_image',
+                                        tf.expand_dims(distorted_image, 0))
     distorted_image = tf.sub(distorted_image, 0.5)
     distorted_image = tf.mul(distorted_image, 2.0)
     return distorted_image
