@@ -439,6 +439,7 @@ py_test(
     name = "nets_factory_test",
     size = "medium",
     srcs = ["nets/nets_factory_test.py"],
+    shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
         ":nets_factory",
