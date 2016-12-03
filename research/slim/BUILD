@@ -15,6 +15,7 @@ package_group(
         "//learning/brain/google/xla/benchmarks/...",
         "//learning/brain/models/image/imagenet_multigpu/...",
         "//learning/brain/research/image_stylization/...",
+        "//nlp/neon/projects/visual_qa/...",
         "//photos/vision/human_sensing/...",
         "//research/drishti/app/vesper/...",
         "//research/vale/instance_segmentation/...",
