@@ -383,6 +383,7 @@ py_test(
     name = "resnet_v1_test",
     size = "medium",
     srcs = ["nets/resnet_v1_test.py"],
+    shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
         ":resnet_v1",
@@ -403,6 +404,7 @@ py_test(
     name = "resnet_v2_test",
     size = "medium",
     srcs = ["nets/resnet_v2_test.py"],
+    shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
         ":resnet_v2",
