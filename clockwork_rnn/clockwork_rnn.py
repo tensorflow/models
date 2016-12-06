@@ -1,12 +1,12 @@
 import tensorflow as tf
 import collections
-from tensorflow.models.rnn.rnn_cell import RNNCell
+import six
 
 def _is_sequence(seq):
   return (isinstance(seq, collections.Sequence)
           and not isinstance(seq, six.string_types))
 
-class CWRNNCell(RNNCell):
+class CWRNNCell(tf.nn.rnn_cell.RNNCell):
   """Multiple RNNCells called at distinct intervals."""
 
   def __init__(self, cells, intervals, state_is_tuple=False):
