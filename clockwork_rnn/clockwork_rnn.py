@@ -31,6 +31,7 @@ class CWRNNCell(tf.nn.rnn_cell.RNNCell):
                          "state_is_tuple is not set.  State sizes are: %s"
                          % str([c.state_size for c in self._cells]))
     self._t = 0
+    self._last_output = None
 
   @property
   def state_size(self):
@@ -48,8 +49,13 @@ class CWRNNCell(tf.nn.rnn_cell.RNNCell):
     with tf.variable_scope(scope or type(self).__name__):  # "CWRNNCell"
       batch_size = inputs.get_shape().as_list()[0]
       cur_state_pos = 0
+      cur_outp_pos = 0
       outputs = []
       new_states = []
+
+      if last_outp is None:
+        self._last_output = tf.zeros([batch_size, self.output_size])
+
       for i, cell in enumerate(self._cells):
         with tf.variable_scope("Cell%d" % i):
           if self._state_is_tuple:
@@ -67,11 +73,16 @@ class CWRNNCell(tf.nn.rnn_cell.RNNCell):
             new_states.append(new_state)
             outputs.append(cur_outp)
           else:
-            zero_outp = tf.zeros([batch_size, cell.output_size])
+            last_outp = tf.slice(self._last_output, [0, cur_outp_pos],
+                                    [-1, cell.output_size])
             new_states.append(cur_state)
-            outputs.append(zero_outp)
+            outputs.append(last_outp)
+
+          cur_state_pos += cell.state_size
+
     new_states = (tuple(new_states) if self._state_is_tuple
                   else tf.concat(1, new_states))
     outputs = tf.concat(1, outputs)
+    self._last_output = outputs
     self._t += 1
     return outputs, new_states
