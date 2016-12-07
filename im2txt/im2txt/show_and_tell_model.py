@@ -343,7 +343,7 @@ class ShowAndTellModel(object):
         initial_value=0,
         name="global_step",
         trainable=False,
-        collections=[tf.GraphKeys.GLOBAL_STEP, tf.GraphKeys.VARIABLES])
+        collections=[tf.GraphKeys.GLOBAL_STEP, tf.GraphKeys.GLOBAL_VARIABLES])
 
     self.global_step = global_step
 
