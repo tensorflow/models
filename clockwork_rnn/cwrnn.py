@@ -1,6 +1,7 @@
-import tensorflow as tf
 import collections
 import six
+import tensorflow as tf
+
 
 def _is_sequence(seq):
   return (isinstance(seq, collections.Sequence)
@@ -53,11 +54,11 @@ class CWRNNCell(tf.nn.rnn_cell.RNNCell):
       outputs = []
       new_states = []
 
-      if last_outp is None:
+      if self._last_output is None:
         self._last_output = tf.zeros([batch_size, self.output_size])
 
       for i, cell in enumerate(self._cells):
-        with tf.variable_scope("Cell%d" % i):
+        with tf.variable_scope("SubCell%d" % i):
           if self._state_is_tuple:
             if not _is_sequence(state):
               raise ValueError(
@@ -78,7 +79,7 @@ class CWRNNCell(tf.nn.rnn_cell.RNNCell):
             new_states.append(cur_state)
             outputs.append(last_outp)
 
-          cur_state_pos += cell.state_size
+          cur_outp_pos += cell.output_size
 
     new_states = (tuple(new_states) if self._state_is_tuple
                   else tf.concat(1, new_states))
