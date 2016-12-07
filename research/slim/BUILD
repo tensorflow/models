@@ -20,6 +20,7 @@ package_group(
         "//research/drishti/app/vesper/...",
         "//research/vale/instance_segmentation/...",
         "//research/vale/pose_estimation/...",
+        "//research/vision/loco/...",
     ],
 )
 
