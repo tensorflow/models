@@ -227,7 +227,7 @@ def _mean_image_subtraction(image, means):
   if len(means) != num_channels:
     raise ValueError('len(means) must match the number of channels')
 
-  channels = tf.split(2, num_channels, image)
+  channels = tf.split(value=image, num_or_size_splits=num_channels, axis=2)
   for i in range(num_channels):
     channels[i] -= means[i]
   return tf.concat(2, channels)
