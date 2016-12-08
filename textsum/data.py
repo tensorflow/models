@@ -60,7 +60,6 @@ class Vocab(object):
     if word not in self._word_to_id:
       return None
     return self._word_to_id[word]
-
   
   def WordToId(self, word):
     if word not in self._word_to_id:
