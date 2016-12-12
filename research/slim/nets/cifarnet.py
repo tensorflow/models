@@ -77,12 +77,14 @@ def cifarnet(images, num_classes=10, is_training=False,
                        scope='dropout3')
     net = slim.fully_connected(net, 192, scope='fc4')
     end_points['fc4'] = net
-    logits = slim.fully_connected(net, num_classes,
-                                  biases_initializer=tf.zeros_initializer,
-                                  weights_initializer=trunc_normal(1/192.0),
-                                  weights_regularizer=None,
-                                  activation_fn=None,
-                                  scope='logits')
+    logits = slim.fully_connected(
+        net,
+        num_classes,
+        biases_initializer=tf.zeros_initializer(),
+        weights_initializer=trunc_normal(1 / 192.0),
+        weights_regularizer=None,
+        activation_fn=None,
+        scope='logits')
 
     end_points['Logits'] = logits
     end_points['Predictions'] = prediction_fn(logits, scope='Predictions')
