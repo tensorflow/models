@@ -535,13 +535,12 @@ def main(_):
     if FLAGS.sync_replicas:
       # If sync_replicas is enabled, the averaging will be done in the chief
       # queue runner.
-      optimizer = tf.train.SyncReplicasOptimizer(
+      optimizer = tf.train.SyncReplicasOptimizerV2(
           opt=optimizer,
           replicas_to_aggregate=FLAGS.replicas_to_aggregate,
+          total_num_replicas=FLAGS.worker_replicas,
           variable_averages=variable_averages,
-          variables_to_average=moving_average_variables,
-          replica_id=tf.constant(FLAGS.task, tf.int32, shape=()),
-          total_num_replicas=FLAGS.worker_replicas)
+          variables_to_average=moving_average_variables)
     elif FLAGS.moving_average_decay:
       # Update ops executed locally by trainer.
       update_ops.append(variable_averages.apply(moving_average_variables))
