@@ -95,6 +95,7 @@ def block8(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
 def inception_resnet_v2_base(inputs,
                              final_endpoint='Conv2d_7b_1x1',
                              output_stride=16,
+                             align_feature_maps=False,
                              scope=None):
   """Inception model from  http://arxiv.org/abs/1602.07261.
 
@@ -110,6 +111,8 @@ def inception_resnet_v2_base(inputs,
       'Mixed_5b', 'Mixed_6a', 'PreAuxLogits', 'Mixed_7a', 'Conv2d_7b_1x1']
     output_stride: A scalar that specifies the requested ratio of input to
       output spatial resolution. Only supports 8 and 16.
+    align_feature_maps: When true, changes all the VALID paddings in the network
+      to SAME padding so that the feature maps are aligned.
     scope: Optional variable_scope.
 
   Returns:
@@ -125,6 +128,10 @@ def inception_resnet_v2_base(inputs,
   if output_stride != 8 and output_stride != 16:
     raise ValueError('output_stride must be 8 or 16.')
 
+  padding = 'VALID'
+  if align_feature_maps:
+    padding = 'SAME'
+
   end_points = {}
 
   def add_and_check_final(name, net):
@@ -135,31 +142,31 @@ def inception_resnet_v2_base(inputs,
     with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],
                         stride=1, padding='SAME'):
       # 149 x 149 x 32
-      net = slim.conv2d(inputs, 32, 3, stride=2, padding='VALID',
+      net = slim.conv2d(inputs, 32, 3, stride=2, padding=padding,
                         scope='Conv2d_1a_3x3')
       if add_and_check_final('Conv2d_1a_3x3', net): return net, end_points
 
       # 147 x 147 x 32
-      net = slim.conv2d(net, 32, 3, padding='VALID',
+      net = slim.conv2d(net, 32, 3, padding=padding,
                         scope='Conv2d_2a_3x3')
       if add_and_check_final('Conv2d_2a_3x3', net): return net, end_points
       # 147 x 147 x 64
       net = slim.conv2d(net, 64, 3, scope='Conv2d_2b_3x3')
       if add_and_check_final('Conv2d_2b_3x3', net): return net, end_points
       # 73 x 73 x 64
-      net = slim.max_pool2d(net, 3, stride=2, padding='VALID',
+      net = slim.max_pool2d(net, 3, stride=2, padding=padding,
                             scope='MaxPool_3a_3x3')
       if add_and_check_final('MaxPool_3a_3x3', net): return net, end_points
       # 73 x 73 x 80
-      net = slim.conv2d(net, 80, 1, padding='VALID',
+      net = slim.conv2d(net, 80, 1, padding=padding,
                         scope='Conv2d_3b_1x1')
       if add_and_check_final('Conv2d_3b_1x1', net): return net, end_points
       # 71 x 71 x 192
-      net = slim.conv2d(net, 192, 3, padding='VALID',
+      net = slim.conv2d(net, 192, 3, padding=padding,
                         scope='Conv2d_4a_3x3')
       if add_and_check_final('Conv2d_4a_3x3', net): return net, end_points
       # 35 x 35 x 192
-      net = slim.max_pool2d(net, 3, stride=2, padding='VALID',
+      net = slim.max_pool2d(net, 3, stride=2, padding=padding,
                             scope='MaxPool_5a_3x3')
       if add_and_check_final('MaxPool_5a_3x3', net): return net, end_points
 
@@ -196,17 +203,20 @@ def inception_resnet_v2_base(inputs,
       with tf.variable_scope('Mixed_6a'):
         with tf.variable_scope('Branch_0'):
           tower_conv = slim.conv2d(net, 384, 3, stride=1 if use_atrous else 2,
-                                   padding='VALID', scope='Conv2d_1a_3x3')
+                                   padding=padding,
+                                   scope='Conv2d_1a_3x3')
         with tf.variable_scope('Branch_1'):
           tower_conv1_0 = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
           tower_conv1_1 = slim.conv2d(tower_conv1_0, 256, 3,
                                       scope='Conv2d_0b_3x3')
           tower_conv1_2 = slim.conv2d(tower_conv1_1, 384, 3,
                                       stride=1 if use_atrous else 2,
-                                      padding='VALID', scope='Conv2d_1a_3x3')
+                                      padding=padding,
+                                      scope='Conv2d_1a_3x3')
         with tf.variable_scope('Branch_2'):
           tower_pool = slim.max_pool2d(net, 3, stride=1 if use_atrous else 2,
-                                       padding='VALID', scope='MaxPool_1a_3x3')
+                                       padding=padding,
+                                       scope='MaxPool_1a_3x3')
         net = tf.concat(3, [tower_conv, tower_conv1_2, tower_pool])
 
       if add_and_check_final('Mixed_6a', net): return net, end_points
@@ -226,19 +236,23 @@ def inception_resnet_v2_base(inputs,
         with tf.variable_scope('Branch_0'):
           tower_conv = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
           tower_conv_1 = slim.conv2d(tower_conv, 384, 3, stride=2,
-                                     padding='VALID', scope='Conv2d_1a_3x3')
+                                     padding=padding,
+                                     scope='Conv2d_1a_3x3')
         with tf.variable_scope('Branch_1'):
           tower_conv1 = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
           tower_conv1_1 = slim.conv2d(tower_conv1, 288, 3, stride=2,
-                                      padding='VALID', scope='Conv2d_1a_3x3')
+                                      padding=padding,
+                                      scope='Conv2d_1a_3x3')
         with tf.variable_scope('Branch_2'):
           tower_conv2 = slim.conv2d(net, 256, 1, scope='Conv2d_0a_1x1')
           tower_conv2_1 = slim.conv2d(tower_conv2, 288, 3,
                                       scope='Conv2d_0b_3x3')
           tower_conv2_2 = slim.conv2d(tower_conv2_1, 320, 3, stride=2,
-                                      padding='VALID', scope='Conv2d_1a_3x3')
+                                      padding=padding,
+                                      scope='Conv2d_1a_3x3')
         with tf.variable_scope('Branch_3'):
-          tower_pool = slim.max_pool2d(net, 3, stride=2, padding='VALID',
+          tower_pool = slim.max_pool2d(net, 3, stride=2,
+                                       padding=padding,
                                        scope='MaxPool_1a_3x3')
         net = tf.concat(3, [tower_conv_1, tower_conv1_1,
                             tower_conv2_2, tower_pool])
