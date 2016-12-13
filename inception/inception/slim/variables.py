@@ -275,8 +275,8 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
   """
   collections = list(collections or [])
 
-  # Make sure variables are added to tf.GraphKeys.VARIABLES and MODEL_VARIABLES
-  collections += [tf.GraphKeys.VARIABLES, MODEL_VARIABLES]
+  # Make sure variables are added to tf.GraphKeys.GLOBAL_VARIABLES and MODEL_VARIABLES
+  collections += [tf.GraphKeys.GLOBAL_VARIABLES, MODEL_VARIABLES]
   # Add to VARIABLES_TO_RESTORE if necessary
   if restore:
     collections.append(VARIABLES_TO_RESTORE)

@@ -299,13 +299,13 @@ def train(dataset):
                         batchnorm_updates_op)
 
     # Create a saver.
-    saver = tf.train.Saver(tf.all_variables())
+    saver = tf.train.Saver(tf.global_variables())
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.merge_summary(summaries)
 
     # Build an initialization operation to run below.
-    init = tf.initialize_all_variables()
+    init = tf.global_variables_initializer()
 
     # Start running operations on the Graph. allow_soft_placement must be set to
     # True to build towers on GPU, as some of the ops do not have GPU
@@ -316,13 +316,18 @@ def train(dataset):
     sess.run(init)
 
     if FLAGS.pretrained_model_checkpoint_path:
-      assert tf.gfile.Exists(FLAGS.pretrained_model_checkpoint_path)
       variables_to_restore = tf.get_collection(
           slim.variables.VARIABLES_TO_RESTORE)
       restorer = tf.train.Saver(variables_to_restore)
-      restorer.restore(sess, FLAGS.pretrained_model_checkpoint_path)
-      print('%s: Pre-trained model restored from %s' %
-            (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
+      ckpt = tf.train.get_checkpoint_state(FLAGS.pretrained_model_checkpoint_path)
+      if ckpt and ckpt.model_checkpoint_path:
+        restorer.restore(sess, ckpt.model_checkpoint_path)
+        print('%s: Pre-trained model restored from %s' %
+                (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
+      else:
+        print('%s: Pre-trained model is not found from %s' %
+                (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
+        return
 
     # Start the queue runners.
     tf.train.start_queue_runners(sess=sess)

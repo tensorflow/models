@@ -540,7 +540,7 @@ the flowers data set with the following command.
 bazel build inception/flowers_train
 
 # Path to the downloaded Inception-v3 model.
-MODEL_PATH="${INCEPTION_MODEL_DIR}/model.ckpt-157585"
+MODEL_PATH="${INCEPTION_MODEL_DIR}/"
 
 # Directory where the flowers data resides.
 FLOWERS_DATA_DIR=/tmp/flowers-data/
