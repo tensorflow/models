@@ -535,7 +535,7 @@ def main(_):
     if FLAGS.sync_replicas:
       # If sync_replicas is enabled, the averaging will be done in the chief
       # queue runner.
-      optimizer = tf.train.SyncReplicasOptimizerV2(
+      optimizer = tf.train.SyncReplicasOptimizer(
           opt=optimizer,
           replicas_to_aggregate=FLAGS.replicas_to_aggregate,
           total_num_replicas=FLAGS.worker_replicas,
