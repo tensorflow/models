@@ -59,7 +59,7 @@ class ResNet(object):
     self._build_model()
     if self.mode == 'train':
       self._build_train_op()
-    self.summaries = tf.merge_all_summaries()
+    self.summaries = tf.summary.merge_all()
 
   def _stride_arr(self, stride):
     """Map a stride scalar to the stride array for tf.nn.conv2d."""
@@ -122,12 +122,12 @@ class ResNet(object):
       self.cost = tf.reduce_mean(xent, name='xent')
       self.cost += self._decay()
 
-      tf.scalar_summary('cost', self.cost)
+      tf.summary.scalar('cost', self.cost)
 
   def _build_train_op(self):
     """Build training specific ops for the graph."""
     self.lrn_rate = tf.constant(self.hps.lrn_rate, tf.float32)
-    tf.scalar_summary('learning rate', self.lrn_rate)
+    tf.summary.scalar('learning rate', self.lrn_rate)
 
     trainable_variables = tf.trainable_variables()
     grads = tf.gradients(self.cost, trainable_variables)
@@ -182,8 +182,8 @@ class ResNet(object):
             'moving_variance', params_shape, tf.float32,
             initializer=tf.constant_initializer(1.0, tf.float32),
             trainable=False)
-        tf.histogram_summary(mean.op.name, mean)
-        tf.histogram_summary(variance.op.name, variance)
+        tf.summary.histogram(mean.op.name, mean)
+        tf.summary.histogram(variance.op.name, variance)
       # elipson used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
       y = tf.nn.batch_normalization(
           x, mean, variance, beta, gamma, 0.001)
@@ -264,7 +264,7 @@ class ResNet(object):
     for var in tf.trainable_variables():
       if var.op.name.find(r'DW') > 0:
         costs.append(tf.nn.l2_loss(var))
-        # tf.histogram_summary(var.op.name, var)
+        # tf.summary.histogram(var.op.name, var)
 
     return tf.mul(self.hps.weight_decay_rate, tf.add_n(costs))
 
