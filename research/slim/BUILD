@@ -21,6 +21,7 @@ package_group(
         "//research/vale/instance_segmentation/...",
         "//research/vale/pose_estimation/...",
         "//research/vision/loco/...",
+        "//vision/face/pittpatt/research/tensorflow/...",
     ],
 )
 
