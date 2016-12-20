@@ -7,7 +7,7 @@ ICLR 2013.
 Detailed instructions on how to get started and use them are available in the
 tutorials. Brief instructions are below.
 
-* [Word2Vec Tutorial](http://tensorflow.org/tutorials/word2vec/index.md)
+* [Word2Vec Tutorial](http://tensorflow.org/tutorials/word2vec)
 
 To download the example text and evaluation data:
 
@@ -19,11 +19,11 @@ unzip -p source-archive.zip  word2vec/trunk/questions-words.txt > questions-word
 rm source-archive.zip
 ```
 
-Assuming you are using the pip package install and have cloned the git
-repository, navigate into this directory and run using:
+Assuming you have cloned the git repository, navigate into this directory and
+run using:
 
 ```shell
-cd tensorflow/models/embedding
+cd models/tutorials/embedding
 python word2vec_optimized.py \
   --train_data=text8 \
   --eval_data=questions-words.txt \
@@ -33,7 +33,7 @@ python word2vec_optimized.py \
 To run the code from sources using bazel:
 
 ```shell
-bazel run -c opt tensorflow/models/embedding/word2vec_optimized -- \
+bazel run -c opt models/tutorials/embedding/word2vec_optimized -- \
   --train_data=text8 \
   --eval_data=questions-words.txt \
   --save_path=/tmp/
