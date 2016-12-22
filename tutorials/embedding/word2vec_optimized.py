@@ -41,7 +41,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.models.embedding import gen_word2vec as word2vec
+import gen_word2vec as word2vec
 
 flags = tf.app.flags
 
