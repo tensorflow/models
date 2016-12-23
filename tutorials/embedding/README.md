@@ -9,7 +9,7 @@ tutorials. Brief instructions are below.
 
 * [Word2Vec Tutorial](http://tensorflow.org/tutorials/word2vec)
 
-To download the example text and evaluation data:
+Assuming you have cloned the git repository, navigate into this directory. To download the example text and evaluation data:
 
 ```shell
 wget http://mattmahoney.net/dc/text8.zip -O text8.zip
@@ -19,21 +19,17 @@ unzip -p source-archive.zip  word2vec/trunk/questions-words.txt > questions-word
 rm source-archive.zip
 ```
 
-Assuming you have cloned the git repository, navigate into this directory and
-run using:
+You will need to compile the ops as follows:
 
-```shell
-cd models/tutorials/embedding
-python word2vec_optimized.py \
-  --train_data=text8 \
-  --eval_data=questions-words.txt \
-  --save_path=/tmp/
+``` shell
+TF_INC=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
+g++ -std=c++11 -shared word2vec_ops.cc word2vec_kernels.cc -o word2vec_ops.so -fPIC -I $TF_INC -O2
 ```
 
-To run the code from sources using bazel:
+Then run using:
 
 ```shell
-bazel run -c opt models/tutorials/embedding/word2vec_optimized -- \
+python word2vec_optimized.py \
   --train_data=text8 \
   --eval_data=questions-words.txt \
   --save_path=/tmp/
