@@ -41,7 +41,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import numpy as np
 import tensorflow as tf
 
-word2vec = tf.load_op_library(os.path.dirname(os.path.realpath(__file__)) + '/word2vec_ops.so')
+word2vec = tf.load_op_library(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'word2vec_ops.so'))
 
 flags = tf.app.flags
 
