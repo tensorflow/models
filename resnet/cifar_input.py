@@ -84,7 +84,7 @@ def build_input(dataset, data_path, batch_size, mode):
   else:
     image = tf.image.resize_image_with_crop_or_pad(
         image, image_size, image_size)
-    image = tf.image.per_image_whitening(image)
+    image = tf.image.per_image_standardization(image)
 
     example_queue = tf.FIFOQueue(
         3 * batch_size,
@@ -112,5 +112,5 @@ def build_input(dataset, data_path, batch_size, mode):
   assert labels.get_shape()[1] == num_classes
 
   # Display the training images in the visualizer.
-  tf.image_summary('images', images)
+  tf.summary.image('images', images)
   return images, labels

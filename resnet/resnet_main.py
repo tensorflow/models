@@ -70,8 +70,8 @@ def train(hps):
   summary_hook = tf.train.SummarySaverHook(
       save_steps=100,
       output_dir=FLAGS.train_dir,
-      summary_op=[model.summaries,
-                  tf.summary.scalar('Precision', precision)])
+      summary_op=tf.summary.merge([model.summaries,
+                                   tf.summary.scalar('Precision', precision)]))
 
   logging_hook = tf.train.LoggingTensorHook(
       tensors={'step': model.global_step,
@@ -188,6 +188,7 @@ def main(_):
   elif FLAGS.dataset == 'cifar100':
     num_classes = 100
 
+  tf.logging.set_verbosity(tf.logging.INFO)
   hps = resnet_model.HParams(batch_size=batch_size,
                              num_classes=num_classes,
                              min_lrn_rate=0.0001,
