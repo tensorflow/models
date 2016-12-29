@@ -188,7 +188,6 @@ def main(_):
   elif FLAGS.dataset == 'cifar100':
     num_classes = 100
 
-  tf.logging.set_verbosity(tf.logging.INFO)
   hps = resnet_model.HParams(batch_size=batch_size,
                              num_classes=num_classes,
                              min_lrn_rate=0.0001,
