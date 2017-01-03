@@ -150,7 +150,8 @@ def distorted_bounding_box_crop(image,
     bbox_begin, bbox_size, distort_bbox = sample_distorted_bounding_box
 
     # Crop the image to the specified bounding box.
-    cropped_image = tf.slice(image, bbox_begin, bbox_size)
+    bbox_end = tf.add(bbox_begin, bbox_size)
+    cropped_image = tf.strided_slice(image, bbox_begin, bbox_end)
     return cropped_image, distort_bbox
 
 
