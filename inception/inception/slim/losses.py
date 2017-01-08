@@ -163,8 +163,8 @@ def cross_entropy_loss(logits, one_hot_labels, label_smoothing=0,
       smooth_positives = 1.0 - label_smoothing
       smooth_negatives = label_smoothing / num_classes
       one_hot_labels = one_hot_labels * smooth_positives + smooth_negatives
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits,
-                                                            one_hot_labels,
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits,
+                                                            labels=one_hot_labels,
                                                             name='xentropy')
     weight = tf.convert_to_tensor(weight,
                                   dtype=logits.dtype.base_dtype,
