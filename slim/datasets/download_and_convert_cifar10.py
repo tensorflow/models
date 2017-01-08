@@ -26,9 +26,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import cPickle
 import os
 import sys
+if sys.version_info.major == 3:
+    import _pickle as cPickle
+else:
+    import cPickle
 import tarfile
 
 import numpy as np
