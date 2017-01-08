@@ -123,7 +123,7 @@ y_logits = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
 # %% Define loss/eval/training functions
 cross_entropy = tf.reduce_mean(
-    tf.nn.softmax_cross_entropy_with_logits(y_logits, y))
+    tf.nn.softmax_cross_entropy_with_logits(logits=y_logits, targets=y))
 opt = tf.train.AdamOptimizer()
 optimizer = opt.minimize(cross_entropy)
 grads = opt.compute_gradients(cross_entropy, [b_fc_loc2])

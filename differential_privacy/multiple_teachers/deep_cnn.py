@@ -341,7 +341,7 @@ def loss_fun(logits, labels):
   # Calculate the cross entropy between labels and predictions
   labels = tf.cast(labels, tf.int64)
   cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      logits, labels, name='cross_entropy_per_example')
+      logits=logits, labels=labels, name='cross_entropy_per_example')
 
   # Calculate the average cross entropy loss across the batch.
   cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
