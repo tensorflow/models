@@ -454,7 +454,7 @@ class VGSLImageModel(object):
         self.labels = tf.slice(self.labels, [0, 0], [-1, 1])
         self.labels = tf.reshape(self.labels, [-1])
       cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-          logits, self.labels, name='xent')
+          logits=logits, labels=self.labels, name='xent')
     else:
       # TODO(rays) Labels need an extra dimension for logistic, so different
       # padding functions are needed, as well as a different loss function.
