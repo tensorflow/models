@@ -83,12 +83,11 @@ def _crop(image, offset_height, offset_width, crop_height, crop_width):
 
   offsets = tf.to_int32(tf.stack([offset_height, offset_width, 0]))
 
-  # Use tf.strided_slice instead of crop_to_bounding box as it accepts tensors
-  # to define the crop size.
-  end = tf.add(offsets, cropped_shape)
+  # Use tf.slice instead of crop_to_bounding box as it accepts tensors to
+  # define the crop size.
   image = control_flow_ops.with_dependencies(
       [size_assertion],
-      tf.strided_slice(image, offsets, end))
+      tf.slice(image, offsets, cropped_shape))
   return tf.reshape(image, cropped_shape)
 
 
