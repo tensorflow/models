@@ -139,7 +139,7 @@ You can use the same script to create the mnist and cifar10 datasets.
 However, for ImageNet, you have to follow the instructions
 [here](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started).
 Note that you first have to sign up for an account at image-net.org.
-Also, the download can take several hours, and uses about 500MB.
+Also, the download can take several hours, and uses about 500GB.
 
 
 ## Creating a TF-Slim Dataset Descriptor.
