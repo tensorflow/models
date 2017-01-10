@@ -311,14 +311,14 @@ class ShowAndTellModel(object):
       batch_loss = tf.div(tf.reduce_sum(tf.mul(losses, weights)),
                           tf.reduce_sum(weights),
                           name="batch_loss")
-      tf.contrib.losses.add_loss(batch_loss)
-      total_loss = tf.contrib.losses.get_total_loss()
+      tf.losses.add_loss(batch_loss)
+      total_loss = tf.losses.get_total_loss()
 
       # Add summaries.
-      tf.scalar_summary("batch_loss", batch_loss)
-      tf.scalar_summary("total_loss", total_loss)
+      tf.summary.scalar("losses/batch_loss", batch_loss)
+      tf.summary.scalar("losses/total_loss", total_loss)
       for var in tf.trainable_variables():
-        tf.histogram_summary(var.op.name, var)
+        tf.summary.histogram("parameters/" + var.op.name, var)
 
       self.total_loss = total_loss
       self.target_cross_entropy_losses = losses  # Used in evaluation.
