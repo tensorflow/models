@@ -79,7 +79,7 @@ RMSPROP_MOMENTUM = 0.9             # Momentum in RMSProp.
 RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
 
-def _tower_loss(images, labels, num_classes, scope, reuse_variables=False):
+def _tower_loss(images, labels, num_classes, scope, reuse_variables=None):
   """Calculate the total loss on a single tower running the ImageNet model.
 
   We perform 'batch splitting'. This means that we cut up a batch across
@@ -228,7 +228,7 @@ def train(dataset):
 
     # Calculate the gradients for each model tower.
     tower_grads = []
-    reuse_variables = False
+    reuse_variables = None
     for i in xrange(FLAGS.num_gpus):
       with tf.device('/gpu:%d' % i):
         with tf.name_scope('%s_%d' % (inception.TOWER_NAME, i)) as scope:
