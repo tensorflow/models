@@ -28,6 +28,8 @@ from inception.imagenet_data import ImagenetData
 
 FLAGS = tf.app.flags.FLAGS
 
+tf.app.flags.DEFINE_integer('gpu_memory_fraction', 90,
+                            """Percent of gpu memory""")
 
 def main(unused_args):
   assert FLAGS.job_name in ['ps', 'worker'], 'job_name must be ps or worker'
@@ -41,11 +43,15 @@ def main(unused_args):
 
   cluster_spec = tf.train.ClusterSpec({'ps': ps_hosts,
                                        'worker': worker_hosts})
+  
+  gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=FLAGS.gpu_memory_fraction/100.0)
+  config = tf.ConfigProto(gpu_options=gpu_options)
   server = tf.train.Server(
       {'ps': ps_hosts,
        'worker': worker_hosts},
       job_name=FLAGS.job_name,
-      task_index=FLAGS.task_id)
+      task_index=FLAGS.task_id,
+      config=config)
 
   if FLAGS.job_name == 'ps':
     # `ps` jobs wait for incoming connections from the workers.
