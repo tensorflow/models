@@ -17,7 +17,7 @@
 
 To run, use:
   bazel run -c opt --config=cuda \
-      third_party/tensorflow/models/image/alexnet:alexnet_benchmark
+      models/tutorials/image/alexnet:alexnet_benchmark
 
 Across 100 steps on batch size = 128.
 

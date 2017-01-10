@@ -225,7 +225,7 @@ class ResNet(object):
 
   def _bottleneck_residual(self, x, in_filter, out_filter, stride,
                            activate_before_residual=False):
-    """Bottleneck resisual unit with 3 sub layers."""
+    """Bottleneck residual unit with 3 sub layers."""
     if activate_before_residual:
       with tf.variable_scope('common_bn_relu'):
         x = self._batch_norm('init_bn', x)

@@ -91,7 +91,7 @@ def batch_norm(inputs,
     if scale:
       gamma = variables.variable('gamma',
                                  params_shape,
-                                 initializer=tf.ones_initializer,
+                                 initializer=tf.ones_initializer(),
                                  trainable=trainable,
                                  restore=restore)
     # Create moving_mean and moving_variance add them to
@@ -105,7 +105,7 @@ def batch_norm(inputs,
                                      collections=moving_collections)
     moving_variance = variables.variable('moving_variance',
                                          params_shape,
-                                         initializer=tf.ones_initializer,
+                                         initializer=tf.ones_initializer(),
                                          trainable=False,
                                          restore=restore,
                                          collections=moving_collections)
