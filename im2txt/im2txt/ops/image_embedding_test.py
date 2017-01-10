@@ -41,7 +41,7 @@ class InceptionV3Test(tf.test.TestCase):
   def _countInceptionParameters(self):
     """Counts the number of parameters in the inception model at top scope."""
     counter = {}
-    for v in tf.all_variables():
+    for v in tf.global_variables():
       name_tokens = v.op.name.split("/")
       if name_tokens[0] == "InceptionV3":
         name = "InceptionV3/" + name_tokens[1]
