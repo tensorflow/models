@@ -516,7 +516,7 @@ class DeployTest(tf.test.TestCase):
         for _ in range(10):
           sess.run(model.train_op)
         final_loss = sess.run(model.total_loss)
-        self.assertLess(final_loss, initial_loss / 10.0)
+        self.assertLess(final_loss, initial_loss / 5.0)
 
         final_mean, final_variance = sess.run([moving_mean,
                                                moving_variance])
