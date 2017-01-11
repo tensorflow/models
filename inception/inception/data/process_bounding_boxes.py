@@ -128,7 +128,7 @@ def ProcessXMLAnnotation(xml_file):
   num_boxes = FindNumberBoundingBoxes(root)
   boxes = []
 
-  for index in xrange(num_boxes):
+  for index in range(num_boxes):
     box = BoundingBox()
     # Grab the 'index' annotation.
     box.xmin = GetInt('xmin', root, index)
