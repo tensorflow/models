@@ -342,11 +342,11 @@ def train(dataset):
 
       if step % 10 == 0:
         examples_per_sec = FLAGS.batch_size / float(duration) * FLAGS.num_gpus
-        sec_per_batch = float(duration) / FLAGS.num_gpus
+        secs_per_batch = float(duration) / FLAGS.num_gpus
         format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                       'sec/batch)')
         print(format_str % (datetime.now(), step, loss_value,
-                            examples_per_sec, sec_per_batch))
+                            examples_per_sec, secs_per_batch))
 
       if step % 100 == 0:
         summary_str = sess.run(summary_op)
