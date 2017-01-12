@@ -54,6 +54,14 @@ class Caption(object):
       return -1
     else:
       return 1
+    
+  def __lt__(self, other):
+    assert isinstance(other, Caption)
+    return self.score < other.score
+      
+  def __eq__(self, other):
+    assert isinstance(other, Caption)
+    return self.score == other.score
 
 
 class TopN(object):
