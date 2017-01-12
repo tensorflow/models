@@ -14,6 +14,7 @@ package_group(
         "//learning/brain/contrib/slim/...",
         "//learning/brain/google/xla/benchmarks/...",
         "//learning/brain/models/image/imagenet_multigpu/...",
+        "//learning/brain/models/image/imagenet_opensource/...",
         "//learning/brain/research/image_stylization/...",
         "//nlp/neon/projects/visual_qa/...",
         "//photos/vision/human_sensing/...",
