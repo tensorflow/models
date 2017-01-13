@@ -55,12 +55,12 @@ class Caption(object):
     else:
       return 1
   
-  # for version 3 compatibility (__cmp__ is deprecated)
+  # For Python 3 compatibility (__cmp__ is deprecated).
   def __lt__(self, other):
     assert isinstance(other, Caption)
     return self.score < other.score
   
-  # also for version 3 compatibility
+  # Also for Python 3 compatibility.
   def __eq__(self, other):
     assert isinstance(other, Caption)
     return self.score == other.score
