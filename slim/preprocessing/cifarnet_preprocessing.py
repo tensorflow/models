@@ -67,7 +67,7 @@ def preprocess_for_train(image,
   distorted_image = tf.image.random_contrast(distorted_image,
                                              lower=0.2, upper=1.8)
   # Subtract off the mean and divide by the variance of the pixels.
-  return tf.image.per_image_standardization(distorted_image)
+  return tf.image.per_image_whitening(distorted_image)
 
 
 def preprocess_for_eval(image, output_height, output_width):
@@ -92,7 +92,7 @@ def preprocess_for_eval(image, output_height, output_width):
   tf.image_summary('resized_image', tf.expand_dims(resized_image, 0))
 
   # Subtract off the mean and divide by the variance of the pixels.
-  return tf.image.per_image_standardization(resized_image)
+  return tf.image.per_image_whitening(resized_image)
 
 
 def preprocess_image(image, output_height, output_width, is_training=False):
