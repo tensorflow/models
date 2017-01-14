@@ -137,13 +137,13 @@ def _convert_to_example(filename, image_buffer, label, text, height, width):
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': _int64_feature(height),
       'image/width': _int64_feature(width),
-      'image/colorspace': _bytes_feature(colorspace),
+      'image/colorspace': _bytes_feature(tf.compat.as_bytes(colorspace)),
       'image/channels': _int64_feature(channels),
       'image/class/label': _int64_feature(label),
-      'image/class/text': _bytes_feature(text),
-      'image/format': _bytes_feature(image_format),
-      'image/filename': _bytes_feature(os.path.basename(filename)),
-      'image/encoded': _bytes_feature(image_buffer)}))
+      'image/class/text': _bytes_feature(tf.compat.as_bytes(text)),
+      'image/format': _bytes_feature(tf.compat.as_bytes(image_format)),
+      'image/filename': _bytes_feature(tf.compat.as_bytes(os.path.basename(filename))),
+      'image/encoded': _bytes_feature(tf.compat.as_bytes(image_buffer))}))
   return example
 
 

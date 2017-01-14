@@ -42,7 +42,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.models.embedding import gen_word2vec as word2vec
+word2vec = tf.load_op_library(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'word2vec_ops.so'))
 
 flags = tf.app.flags
 
@@ -263,9 +263,9 @@ class Word2Vec(object):
     # cross-entropy(logits, labels)
     opts = self._options
     true_xent = tf.nn.sigmoid_cross_entropy_with_logits(
-        true_logits, tf.ones_like(true_logits))
+        labels=tf.ones_like(true_logits), logits=true_logits)
     sampled_xent = tf.nn.sigmoid_cross_entropy_with_logits(
-        sampled_logits, tf.zeros_like(sampled_logits))
+        labels=tf.zeros_like(sampled_logits), logits=sampled_logits)
 
     # NCE-loss is the sum of the true and noise (sampled words)
     # contributions, averaged over the batch.
