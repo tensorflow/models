@@ -350,7 +350,7 @@ See
 
 #### The ResNet and VGG Models have 1000 classes but the ImageNet dataset has 1001
 
-The ImageNet dataset provied has an empty background class which was can be used
+The ImageNet dataset provided has an empty background class which can be used
 to fine-tune the model to other tasks. If you try training or fine-tuning the
 VGG or ResNet models using the ImageNet dataset, you might encounter the
 following error:
