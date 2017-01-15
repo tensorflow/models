@@ -10,9 +10,9 @@ RUN mkdir -p $SYNTAXNETDIR \
     && pip install -U protobuf==3.0.0 \
     && pip install asciitree \
     && pip install numpy \
-    && wget https://github.com/bazelbuild/bazel/releases/download/0.3.1/bazel-0.3.1-installer-linux-x86_64.sh \
-    && chmod +x bazel-0.3.1-installer-linux-x86_64.sh \
-    && ./bazel-0.3.1-installer-linux-x86_64.sh --user \
+    && wget https://github.com/bazelbuild/bazel/releases/download/0.4.3/bazel-0.4.3-installer-linux-x86_64.sh \
+    && chmod +x bazel-0.4.3-installer-linux-x86_64.sh \
+    && ./bazel-0.4.3-installer-linux-x86_64.sh --user \
     && git clone --recursive https://github.com/tensorflow/models.git \
     && cd $SYNTAXNETDIR/models/syntaxnet/tensorflow \
     && echo "\n\n\n\n" | ./configure \
