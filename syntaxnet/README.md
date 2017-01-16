@@ -81,21 +81,6 @@ source. You'll need to install:
 *   pip (python package manager)
     * `apt-get install python-pip` on Ubuntu
     * `brew` installs pip along with python on OSX
-*   bazel:
-    *   **versions 0.3.0 - 0.3.1*
-    *   follow the instructions [here](http://bazel.io/docs/install.html)
-    *   Alternately, Download bazel <.deb> from
-        [https://github.com/bazelbuild/bazel/releases]
-        (https://github.com/bazelbuild/bazel/releases) for your system
-        configuration.
-    *   Install it using the command: sudo dpkg -i <.deb file>
-    *   Check for the bazel version by typing: bazel version
-*   swig:
-    *   `apt-get install swig` on Ubuntu
-    *   `brew install swig` on OSX
-*   protocol buffers, with a version supported by TensorFlow:
-    *   check your protobuf version with `pip freeze | grep protobuf`
-    *   upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
 *   asciitree, to draw parse trees on the console for the demo:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
