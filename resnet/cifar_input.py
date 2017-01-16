@@ -84,7 +84,7 @@ def build_input(dataset, data_path, batch_size, mode):
   else:
     image = tf.image.resize_image_with_crop_or_pad(
         image, image_size, image_size)
-    image = tf.image.per_image_whitening(image)
+    image = tf.image.per_image_standardization(image)
 
     example_queue = tf.FIFOQueue(
         3 * batch_size,
@@ -98,12 +98,7 @@ def build_input(dataset, data_path, batch_size, mode):
 
   # Read 'batch' labels + images from the example queue.
   images, labels = example_queue.dequeue_many(batch_size)
-  labels = tf.reshape(labels, [batch_size, 1])
-  indices = tf.reshape(tf.range(0, batch_size, 1), [batch_size, 1])
-  labels = tf.sparse_to_dense(
-      tf.concat(1, [indices, labels]),
-      [batch_size, num_classes], 1.0, 0.0)
-
+  labels = tf.one_hot(tf.reshape(labels, [-1]), num_classes)
   assert len(images.get_shape()) == 4
   assert images.get_shape()[0] == batch_size
   assert images.get_shape()[-1] == 3
@@ -112,5 +107,5 @@ def build_input(dataset, data_path, batch_size, mode):
   assert labels.get_shape()[1] == num_classes
 
   # Display the training images in the visualizer.
-  tf.image_summary('images', images)
+  tf.summary.image('images', images)
   return images, labels
