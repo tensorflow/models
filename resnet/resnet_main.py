@@ -70,8 +70,8 @@ def train(hps):
   summary_hook = tf.train.SummarySaverHook(
       save_steps=100,
       output_dir=FLAGS.train_dir,
-      summary_op=[model.summaries,
-                  tf.summary.scalar('Precision', precision)])
+      summary_op=tf.summary.merge([model.summaries,
+                                   tf.summary.scalar('Precision', precision)]))
 
   logging_hook = tf.train.LoggingTensorHook(
       tensors={'step': model.global_step,
