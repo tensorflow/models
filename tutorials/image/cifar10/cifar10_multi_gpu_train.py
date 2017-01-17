@@ -162,25 +162,26 @@ def train():
 
     # Calculate the gradients for each model tower.
     tower_grads = []
-    for i in xrange(FLAGS.num_gpus):
-      with tf.device('/gpu:%d' % i):
-        with tf.name_scope('%s_%d' % (cifar10.TOWER_NAME, i)) as scope:
-          # Calculate the loss for one tower of the CIFAR model. This function
-          # constructs the entire CIFAR model but shares the variables across
-          # all towers.
-          loss = tower_loss(scope)
+    with tf.variable_scope(tf.get_variable_scope()):
+      for i in xrange(FLAGS.num_gpus):
+        with tf.device('/gpu:%d' % i):
+          with tf.name_scope('%s_%d' % (cifar10.TOWER_NAME, i)) as scope:
+            # Calculate the loss for one tower of the CIFAR model. This function
+            # constructs the entire CIFAR model but shares the variables across
+            # all towers.
+            loss = tower_loss(scope)
 
-          # Reuse variables for the next tower.
-          tf.get_variable_scope().reuse_variables()
+            # Reuse variables for the next tower.
+            tf.get_variable_scope().reuse_variables()
 
-          # Retain the summaries from the final tower.
-          summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+            # Retain the summaries from the final tower.
+            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-          # Calculate the gradients for the batch of data on this CIFAR tower.
-          grads = opt.compute_gradients(loss)
+            # Calculate the gradients for the batch of data on this CIFAR tower.
+            grads = opt.compute_gradients(loss)
 
-          # Keep track of the gradients across all towers.
-          tower_grads.append(grads)
+            # Keep track of the gradients across all towers.
+            tower_grads.append(grads)
 
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
