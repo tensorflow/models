@@ -1,0 +1,17 @@
+article=<d> 
+    <p>
+        <s> the sri lankan government on wednesday announced the closure of government schools with immediate effect as a military campaign against tamil separatists escalated in the north of the country . </s> 
+        <s> the cabinet wednesday decided to advance the december holidays by one month because of a threat from the liberation tigers of tamil eelam -lrb- ltte -rrb- against school children , a government official said . </s> 
+        <s> `` there are intelligence reports that the tigers may try to kill a lot of children to provoke a backlash against tamils in colombo . </s> 
+        <s> `` if that happens , troops will have to be withdrawn from the north to maintain law and order here , '' a police official said . </s> 
+        <s> he said education minister richard pathirana visited several government schools wednesday before the closure decision was taken . </s> 
+        <s> the government will make alternate arrangements to hold end of term examinations , officials said . </s> 
+        <s> earlier wednesday , president chandrika kumaratunga said the ltte may step up their attacks in the capital to seek revenge for the ongoing military offensive which she described as the biggest ever drive to take the tiger town of jaffna . </s> 
+    </p> 
+</d>
+
+abstract=<d> 
+    <p> 
+        <s> sri lanka closes schools as war escalates . </s> 
+    </p> 
+</d>
