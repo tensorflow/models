@@ -80,17 +80,14 @@ def read_cifar10(filename_queue):
   result.key, value = reader.read(filename_queue)
 
   # Convert from a string to a vector of uint8 that is record_bytes long.
-  record_bytes = tf.decode_raw(value, tf.uint8)
-
+  value_bytes = tf.decode_raw(value, tf.uint8)
   # The first bytes represent the label, which we convert from uint8->int32.
-  result.label = tf.cast(
-      tf.strided_slice(record_bytes, [0], [label_bytes]), tf.int32)
+  result.label = tf.cast(tf.slice(value_bytes, [0], [label_bytes]), tf.int32)
+  result.label.set_shape([1])
 
   # The remaining bytes after the label represent the image, which we reshape
   # from [depth * height * width] to [depth, height, width].
-  depth_major = tf.reshape(
-      tf.strided_slice(record_bytes, [label_bytes],
-                       [label_bytes + image_bytes]),
+  depth_major = tf.reshape(tf.slice(value_bytes, [label_bytes], [image_bytes]),
       [result.depth, result.height, result.width])
   # Convert from [depth, height, width] to [height, width, depth].
   result.uint8image = tf.transpose(depth_major, [1, 2, 0])
@@ -132,7 +129,7 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
         capacity=min_queue_examples + 3 * batch_size)
 
   # Display the training images in the visualizer.
-  tf.contrib.deprecated.image_summary('images', images)
+  tf.summary.image('images', images)
 
   return images, tf.reshape(label_batch, [batch_size])
 
@@ -183,9 +180,8 @@ def distorted_inputs(data_dir, batch_size):
   # Subtract off the mean and divide by the variance of the pixels.
   float_image = tf.image.per_image_standardization(distorted_image)
 
-  # Set the shapes of tensors.
+  # Set the shape of the tensor.
   float_image.set_shape([height, width, 3])
-  read_input.label.set_shape([1])
 
   # Ensure that the random shuffling has good mixing properties.
   min_fraction_of_examples_in_queue = 0.4
