@@ -87,3 +87,10 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+/textsum/log_root
+/textsum/solrDataTest
+/textsum/solrDataTestBinary
+/textsum/solrDataTrain
+/textsum/solrDataTrainBinary
+/exports/textsum/
