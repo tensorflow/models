@@ -1,4 +1,4 @@
-[submodule "tensorflow"]
+[submodule "tf_models"]
 	path = tensorflow
 	url = https://github.com/xtr33me/models.git
     branch = master
