@@ -33,7 +33,7 @@ Usage:
 
   biases = variables.variable('biases',
                               shape=[100],
-                              initializer=tf.zeros_initializer,
+                              initializer=tf.zeros_initializer(),
                               device='/cpu:0')
 
   # More complex example.
