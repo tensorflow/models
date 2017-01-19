@@ -85,7 +85,7 @@ def batch_norm(inputs,
     if center:
       beta = variables.variable('beta',
                                 params_shape,
-                                initializer=tf.zeros_initializer,
+                                initializer=tf.zeros_initializer(),
                                 trainable=trainable,
                                 restore=restore)
     if scale:
@@ -99,7 +99,7 @@ def batch_norm(inputs,
     moving_collections = [moving_vars, tf.GraphKeys.MOVING_AVERAGE_VARIABLES]
     moving_mean = variables.variable('moving_mean',
                                      params_shape,
-                                     initializer=tf.zeros_initializer,
+                                     initializer=tf.zeros_initializer(),
                                      trainable=False,
                                      restore=restore,
                                      collections=moving_collections)
