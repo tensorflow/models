@@ -287,7 +287,7 @@ def main(unused_argv):
   if min(eps_list_nm) == eps_list_nm[-1]:
     print "Warning: May not have used enough values of l"
 
-  # Data indpendent bound, as mechanism is
+  # Data independent bound, as mechanism is
   # 2*noise_eps DP.
   data_ind_log_mgf = np.array([0.0 for _ in l_list])
   data_ind_log_mgf += num_examples * np.array(

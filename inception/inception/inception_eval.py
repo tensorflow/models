@@ -77,7 +77,7 @@ def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
       #   /my-favorite-path/imagenet_train/model.ckpt-0,
       # extract global_step from it.
       global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-      print('Succesfully loaded model from %s at step=%s.' %
+      print('Successfully loaded model from %s at step=%s.' %
             (ckpt.model_checkpoint_path, global_step))
     else:
       print('No checkpoint file found')

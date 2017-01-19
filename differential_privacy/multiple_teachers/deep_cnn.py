@@ -84,7 +84,7 @@ def inference(images, dropout=False):
   """Build the CNN model.
   Args:
     images: Images returned from distorted_inputs() or inputs().
-    dropout: Boolean controling whether to use dropout or not
+    dropout: Boolean controlling whether to use dropout or not
   Returns:
     Logits
   """
@@ -194,7 +194,7 @@ def inference_deeper(images, dropout=False):
   """Build a deeper CNN model.
   Args:
     images: Images returned from distorted_inputs() or inputs().
-    dropout: Boolean controling whether to use dropout or not
+    dropout: Boolean controlling whether to use dropout or not
   Returns:
     Logits
   """

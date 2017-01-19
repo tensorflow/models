@@ -269,7 +269,7 @@ def inception_v4(inputs, num_classes=1001, is_training=True,
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
-    create_aux_logits: Whether to include the auxilliary logits.
+    create_aux_logits: Whether to include the auxiliary logits.
 
   Returns:
     logits: the logits outputs of the model.

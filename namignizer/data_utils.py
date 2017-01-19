@@ -58,7 +58,7 @@ def _letter_to_number(letter):
 def namignizer_iterator(names, counts, batch_size, num_steps, epoch_size):
     """Takes a list of names and counts like those output from read_names, and
     makes an iterator yielding a batch_size by num_steps array of random names
-    separated by an end of name token. The names are choosen randomly according
+    separated by an end of name token. The names are chosen randomly according
     to their counts. The batch may end mid-name
 
     Args:
