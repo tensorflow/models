@@ -476,3 +476,28 @@ py_binary(
         "//tensorflow",
     ],
 )
+
+py_binary(
+    name = "export_inference_graph",
+    srcs = ["export_inference_graph.py"],
+    deps = [
+        ":dataset_factory",
+        ":nets_factory",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "export_inference_graph_test",
+    size = "medium",
+    srcs = ["export_inference_graph_test.py"],
+    srcs_version = "PY2AND3",
+    tags = [
+        "manual",
+    ],
+    deps = [
+        ":export_inference_graph",
+        ":nets_factory",
+        "//tensorflow",
+    ],
+)
