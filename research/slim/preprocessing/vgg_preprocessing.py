@@ -230,7 +230,7 @@ def _mean_image_subtraction(image, means):
   channels = tf.split(value=image, num_or_size_splits=num_channels, axis=2)
   for i in range(num_channels):
     channels[i] -= means[i]
-  return tf.concat_v2(channels, 2)
+  return tf.concat(channels, 2)
 
 
 def _smallest_size_at_least(height, width, smallest_side):

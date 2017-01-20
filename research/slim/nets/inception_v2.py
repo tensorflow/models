@@ -146,7 +146,7 @@ def inception_v2_base(inputs,
               branch_3, depth(32), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat_v2([branch_0, branch_1, branch_2, branch_3], 3)
+        net = tf.concat([branch_0, branch_1, branch_2, branch_3], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 28 x 28 x 256
@@ -176,7 +176,7 @@ def inception_v2_base(inputs,
               branch_3, depth(64), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat_v2([branch_0, branch_1, branch_2, branch_3], 3)
+        net = tf.concat([branch_0, branch_1, branch_2, branch_3], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 28 x 28 x 320
@@ -201,7 +201,7 @@ def inception_v2_base(inputs,
         with tf.variable_scope('Branch_2'):
           branch_2 = slim.max_pool2d(
               net, [3, 3], stride=2, scope='MaxPool_1a_3x3')
-        net = tf.concat_v2([branch_0, branch_1, branch_2], 3)
+        net = tf.concat([branch_0, branch_1, branch_2], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 14 x 14 x 576
@@ -231,7 +231,7 @@ def inception_v2_base(inputs,
               branch_3, depth(128), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat_v2([branch_0, branch_1, branch_2, branch_3], 3)
+        net = tf.concat([branch_0, branch_1, branch_2, branch_3], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 14 x 14 x 576
@@ -261,7 +261,7 @@ def inception_v2_base(inputs,
               branch_3, depth(128), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat_v2([branch_0, branch_1, branch_2, branch_3], 3)
+        net = tf.concat([branch_0, branch_1, branch_2, branch_3], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 14 x 14 x 576
@@ -291,7 +291,7 @@ def inception_v2_base(inputs,
               branch_3, depth(96), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat_v2([branch_0, branch_1, branch_2, branch_3], 3)
+        net = tf.concat([branch_0, branch_1, branch_2, branch_3], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
 
@@ -322,7 +322,7 @@ def inception_v2_base(inputs,
               branch_3, depth(96), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat_v2([branch_0, branch_1, branch_2, branch_3], 3)
+        net = tf.concat([branch_0, branch_1, branch_2, branch_3], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 14 x 14 x 576
@@ -347,7 +347,7 @@ def inception_v2_base(inputs,
         with tf.variable_scope('Branch_2'):
           branch_2 = slim.max_pool2d(net, [3, 3], stride=2,
                                      scope='MaxPool_1a_3x3')
-        net = tf.concat_v2([branch_0, branch_1, branch_2], 3)
+        net = tf.concat([branch_0, branch_1, branch_2], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 7 x 7 x 1024
@@ -377,7 +377,7 @@ def inception_v2_base(inputs,
               branch_3, depth(128), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat_v2([branch_0, branch_1, branch_2, branch_3], 3)
+        net = tf.concat([branch_0, branch_1, branch_2, branch_3], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
 
@@ -408,7 +408,7 @@ def inception_v2_base(inputs,
               branch_3, depth(128), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat_v2([branch_0, branch_1, branch_2, branch_3], 3)
+        net = tf.concat([branch_0, branch_1, branch_2, branch_3], 3)
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
     raise ValueError('Unknown final endpoint %s' % final_endpoint)
