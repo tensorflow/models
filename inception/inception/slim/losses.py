@@ -39,13 +39,13 @@ def l1_regularizer(weight=1.0, scope=None):
 
   Args:
     weight: scale the loss by this factor.
-    scope: Optional scope for op_scope.
+    scope: Optional scope for name_scope.
 
   Returns:
     a regularizer function.
   """
   def regularizer(tensor):
-    with tf.op_scope([tensor], scope, 'L1Regularizer'):
+    with tf.name_scope(scope, 'L1Regularizer', [tensor]):
       l1_weight = tf.convert_to_tensor(weight,
                                        dtype=tensor.dtype.base_dtype,
                                        name='weight')
@@ -58,13 +58,13 @@ def l2_regularizer(weight=1.0, scope=None):
 
   Args:
     weight: scale the loss by this factor.
-    scope: Optional scope for op_scope.
+    scope: Optional scope for name_scope.
 
   Returns:
     a regularizer function.
   """
   def regularizer(tensor):
-    with tf.op_scope([tensor], scope, 'L2Regularizer'):
+    with tf.name_scope(scope, 'L2Regularizer', [tensor]):
       l2_weight = tf.convert_to_tensor(weight,
                                        dtype=tensor.dtype.base_dtype,
                                        name='weight')
@@ -78,13 +78,13 @@ def l1_l2_regularizer(weight_l1=1.0, weight_l2=1.0, scope=None):
   Args:
     weight_l1: scale the L1 loss by this factor.
     weight_l2: scale the L2 loss by this factor.
-    scope: Optional scope for op_scope.
+    scope: Optional scope for name_scope.
 
   Returns:
     a regularizer function.
   """
   def regularizer(tensor):
-    with tf.op_scope([tensor], scope, 'L1L2Regularizer'):
+    with tf.name_scope(scope, 'L1L2Regularizer', [tensor]):
       weight_l1_t = tf.convert_to_tensor(weight_l1,
                                          dtype=tensor.dtype.base_dtype,
                                          name='weight_l1')
@@ -105,12 +105,12 @@ def l1_loss(tensor, weight=1.0, scope=None):
   Args:
     tensor: tensor to regularize.
     weight: scale the loss by this factor.
-    scope: Optional scope for op_scope.
+    scope: Optional scope for name_scope.
 
   Returns:
     the L1 loss op.
   """
-  with tf.op_scope([tensor], scope, 'L1Loss'):
+  with tf.name_scope(scope, 'L1Loss', [tensor]):
     weight = tf.convert_to_tensor(weight,
                                   dtype=tensor.dtype.base_dtype,
                                   name='loss_weight')
@@ -125,12 +125,12 @@ def l2_loss(tensor, weight=1.0, scope=None):
   Args:
     tensor: tensor to regularize.
     weight: an optional weight to modulate the loss.
-    scope: Optional scope for op_scope.
+    scope: Optional scope for name_scope.
 
   Returns:
     the L2 loss op.
   """
-  with tf.op_scope([tensor], scope, 'L2Loss'):
+  with tf.name_scope(scope, 'L2Loss', [tensor]):
     weight = tf.convert_to_tensor(weight,
                                   dtype=tensor.dtype.base_dtype,
                                   name='loss_weight')
@@ -150,13 +150,13 @@ def cross_entropy_loss(logits, one_hot_labels, label_smoothing=0,
     one_hot_labels: [batch_size, num_classes] target one_hot_encoded labels.
     label_smoothing: if greater than 0 then smooth the labels.
     weight: scale the loss by this factor.
-    scope: Optional scope for op_scope.
+    scope: Optional scope for name_scope.
 
   Returns:
     A tensor with the softmax_cross_entropy loss.
   """
   logits.get_shape().assert_is_compatible_with(one_hot_labels.get_shape())
-  with tf.op_scope([logits, one_hot_labels], scope, 'CrossEntropyLoss'):
+  with tf.name_scope(scope, 'CrossEntropyLoss', [logits, one_hot_labels]):
     num_classes = one_hot_labels.get_shape()[-1].value
     one_hot_labels = tf.cast(one_hot_labels, logits.dtype)
     if label_smoothing > 0:
