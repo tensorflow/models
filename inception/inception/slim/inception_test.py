@@ -65,9 +65,9 @@ class InceptionTest(tf.test.TestCase):
         inception.inception_v3(inputs, num_classes)
       with tf.variable_scope('on_gpu'), tf.device('/gpu:0'):
         inception.inception_v3(inputs, num_classes)
-      for v in tf.get_collection(tf.GraphKeys.VARIABLES, scope='on_cpu'):
+      for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='on_cpu'):
         self.assertDeviceEqual(v.device, '/cpu:0')
-      for v in tf.get_collection(tf.GraphKeys.VARIABLES, scope='on_gpu'):
+      for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='on_gpu'):
         self.assertDeviceEqual(v.device, '/gpu:0')
 
   def testHalfSizeImages(self):

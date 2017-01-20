@@ -161,7 +161,7 @@ def get_unique_variable(name):
   Raises:
     ValueError: if no variable uniquely identified by the name exists.
   """
-  candidates = tf.get_collection(tf.GraphKeys.VARIABLES, name)
+  candidates = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, name)
   if not candidates:
     raise ValueError('Couldnt find variable %s' % name)
 
@@ -234,7 +234,7 @@ def global_step(device=''):
   else:
     collections = [
         VARIABLES_TO_RESTORE,
-        tf.GraphKeys.VARIABLES,
+        tf.GraphKeys.GLOBAL_VARIABLES,
         tf.GraphKeys.GLOBAL_STEP,
     ]
     # Get the device for the variable.
@@ -263,7 +263,7 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
     trainable: If `True` also add the variable to the graph collection
       `GraphKeys.TRAINABLE_VARIABLES` (see tf.Variable).
     collections: A list of collection names to which the Variable will be added.
-      Note that the variable is always also added to the tf.GraphKeys.VARIABLES
+      Note that the variable is always also added to the tf.GraphKeys.GLOBAL_VARIABLES
       and MODEL_VARIABLES collections.
     device: Optional device to place the variable. It can be an string or a
       function that is called to get the device for the variable.
@@ -275,8 +275,8 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
   """
   collections = list(collections or [])
 
-  # Make sure variables are added to tf.GraphKeys.VARIABLES and MODEL_VARIABLES
-  collections += [tf.GraphKeys.VARIABLES, MODEL_VARIABLES]
+  # Make sure variables are added to tf.GraphKeys.GLOBAL_VARIABLES and MODEL_VARIABLES
+  collections += [tf.GraphKeys.GLOBAL_VARIABLES, MODEL_VARIABLES]
   # Add to VARIABLES_TO_RESTORE if necessary
   if restore:
     collections.append(VARIABLES_TO_RESTORE)
