@@ -15,7 +15,7 @@ RUN mkdir -p $SYNTAXNETDIR \
     && ./bazel-0.4.3-installer-linux-x86_64.sh --user \
     && git clone --recursive https://github.com/tensorflow/models.git \
     && cd $SYNTAXNETDIR/models/syntaxnet/tensorflow \
-    && echo "\n\n\n\n" | ./configure \
+    && echo "\n\n\n\n\n" | ./configure \
     && apt-get autoremove -y \
     && apt-get clean
 
