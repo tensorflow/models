@@ -44,7 +44,7 @@ Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging
 
 Model                                                                      | News  | Web   | Questions
 -------------------------------------------------------------------------- | :---: | :---: | :-------:
-[Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.78 | 94.03 | 96.18
+[Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.44 | 94.03 | 96.18
 [Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*                    | 97.77 | 94.80 | 96.86
 Parsey McParseface                                                         | 97.52 | 94.24 | 96.45
 
