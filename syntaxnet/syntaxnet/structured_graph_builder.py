@@ -36,7 +36,8 @@ def AddCrossEntropy(batch_size, n):
     return tf.constant(0, dtype=tf.float32, shape=[1])
 
   for beam_id in range(batch_size):
-    beam_gold_slot = tf.reshape(tf.slice(n['gold_slot'], [beam_id], [1]), [1])
+    beam_gold_slot = tf.reshape(
+        tf.strided_slice(n['gold_slot'], [beam_id], [beam_id + 1], [1]), [1])
     def _ComputeCrossEntropy():
       """Adds ops to compute cross entropy of the gold path in a beam."""
       # Requires a cast so that UnsortedSegmentSum, in the gradient,
@@ -48,8 +49,9 @@ def AddCrossEntropy(batch_size, n):
       beam_scores = tf.reshape(tf.gather(n['all_path_scores'], idx), [1, -1])
       num = tf.shape(idx)
       return tf.nn.softmax_cross_entropy_with_logits(
-          beam_scores, tf.expand_dims(
-              tf.sparse_to_dense(beam_gold_slot, num, [1.], 0.), 0))
+          labels=tf.expand_dims(
+              tf.sparse_to_dense(beam_gold_slot, num, [1.], 0.), 0),
+          logits=beam_scores)
     # The conditional here is needed to deal with the last few batches of the
     # corpus which can contain -1 in beam_gold_slot for empty batch slots.
     cross_entropies.append(cf.cond(

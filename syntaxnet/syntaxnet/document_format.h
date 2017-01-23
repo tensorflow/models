@@ -47,7 +47,7 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
 
   // Converts a key/value pair to one or more documents.
   virtual void ConvertFromString(const string &key, const string &value,
-                                 vector<Sentence *> *documents) = 0;
+                                 std::vector<Sentence *> *documents) = 0;
 
   // Converts a document to a key/value pair.
   virtual void ConvertToString(const Sentence &document,

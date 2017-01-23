@@ -44,7 +44,7 @@ Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging
 
 Model                                                                      | News  | Web   | Questions
 -------------------------------------------------------------------------- | :---: | :---: | :-------:
-[Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.44 | 94.03 | 96.18
+[Ling et al. (2015)](http://www.cs.cmu.edu/~lingwang/papers/emnlp2015.pdf) | 97.78 | 94.03 | 96.18
 [Andor et al. (2016)](http://arxiv.org/abs/1603.06042)*                    | 97.77 | 94.80 | 96.86
 Parsey McParseface                                                         | 97.52 | 94.24 | 96.45
 
@@ -78,15 +78,25 @@ source. You'll need to install:
 
 *   python 2.7:
     * python 3 support is not available yet
-*   pip (python package manager)
-    * `apt-get install python-pip` on Ubuntu
-    * `brew` installs pip along with python on OSX
+*   bazel:
+    *   **version 0.4.3**
+    *   follow the instructions [here](http://bazel.build/docs/install.html)
+    *   Alternately, Download bazel (0.4.3) <.deb> from
+        [https://github.com/bazelbuild/bazel/releases]
+        (https://github.com/bazelbuild/bazel/releases) for your system
+        configuration.
+    *   Install it using the command: sudo dpkg -i <.deb file>
+    *   Check for the bazel version by typing: bazel version
+*   swig:
+    *   `apt-get install swig` on Ubuntu
+    *   `brew install swig` on OSX
+*   protocol buffers, with a version supported by TensorFlow:
+    *   check your protobuf version with `pip freeze | grep protobuf`
+    *   upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
 *   asciitree, to draw parse trees on the console for the demo:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
-*   mock, package for unit testing:
-    *   `pip install mock`
 
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:

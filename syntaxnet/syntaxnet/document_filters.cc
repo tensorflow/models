@@ -55,7 +55,7 @@ void GetTaskContext(OpKernelConstruction *context, TaskContext *task_context) {
 
 // Outputs the given batch of sentences as a tensor and deletes them.
 void OutputDocuments(OpKernelContext *context,
-                     vector<Sentence *> *document_batch) {
+                     std::vector<Sentence *> *document_batch) {
   const int64 size = document_batch->size();
   Tensor *output;
   OP_REQUIRES_OK(context,
@@ -84,7 +84,7 @@ class DocumentSource : public OpKernel {
   void Compute(OpKernelContext *context) override {
     mutex_lock lock(mu_);
     Sentence *document;
-    vector<Sentence *> document_batch;
+    std::vector<Sentence *> document_batch;
     while ((document = corpus_->Read()) != nullptr) {
       document_batch.push_back(document);
       if (static_cast<int>(document_batch.size()) == batch_size_) {
@@ -166,7 +166,7 @@ class WellFormedFilter : public OpKernel {
 
   void Compute(OpKernelContext *context) override {
     auto documents = context->input(0).vec<string>();
-    vector<Sentence *> output_documents;
+    std::vector<Sentence *> output_documents;
     for (int i = 0; i < documents.size(); ++i) {
       Sentence *document = new Sentence;
       OP_REQUIRES(context, document->ParseFromString(documents(i)),
@@ -182,7 +182,7 @@ class WellFormedFilter : public OpKernel {
 
  private:
   bool ShouldKeep(const Sentence &doc)  {
-    vector<int> visited(doc.token_size(), -1);
+    std::vector<int> visited(doc.token_size(), -1);
     for (int i = 0; i < doc.token_size(); ++i) {
       // Already visited node.
       if (visited[i] != -1) continue;
@@ -235,7 +235,7 @@ class ProjectivizeFilter : public OpKernel {
 
   void Compute(OpKernelContext *context) override {
     auto documents = context->input(0).vec<string>();
-    vector<Sentence *> output_documents;
+    std::vector<Sentence *> output_documents;
     for (int i = 0; i < documents.size(); ++i) {
       Sentence *document = new Sentence;
       OP_REQUIRES(context, document->ParseFromString(documents(i)),
@@ -255,8 +255,8 @@ class ProjectivizeFilter : public OpKernel {
     // Left and right boundaries for arcs. The left and right ends of an arc are
     // bounded by the arcs that pass over it. If an arc exceeds these bounds it
     // will cross an arc passing over it, making it a non-projective arc.
-    vector<int> left(num_tokens);
-    vector<int> right(num_tokens);
+    std::vector<int> left(num_tokens);
+    std::vector<int> right(num_tokens);
 
     // Lift the shortest non-projective arc until the document is projective.
     while (true) {

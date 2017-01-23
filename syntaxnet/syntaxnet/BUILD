@@ -78,7 +78,7 @@ cc_library(
     hdrs = ["base.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "@com_googlesource_code_re2//:re2",
+        #"@re2//:re2",
         "@protobuf//:protobuf",
         "@org_tensorflow//third_party/eigen3",
     ] + select({
@@ -733,5 +733,5 @@ sh_test(
         ":parser_trainer",
         ":testdata",
     ],
-    tags = ["notsan"],
+    tags = ["slow"],
 )
