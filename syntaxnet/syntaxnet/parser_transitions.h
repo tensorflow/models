@@ -118,7 +118,7 @@ class ParserTransitionSystem
   // Returns all next gold actions for the parser during training using the
   // dependency relations found in the underlying annotated sentence.
   virtual void GetAllNextGoldActions(const ParserState &state,
-                                     vector<ParserAction> *actions) const {
+                                     std::vector<ParserAction> *actions) const {
     ParserAction action = GetNextGoldAction(state);
     *actions = {action};
   }

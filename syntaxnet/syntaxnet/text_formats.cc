@@ -83,16 +83,16 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   }
 
   void ConvertFromString(const string &key, const string &value,
-                         vector<Sentence *> *sentences) override {
+                         std::vector<Sentence *> *sentences) override {
     // Create new sentence.
     Sentence *sentence = new Sentence();
 
     // Each line corresponds to one token.
     string text;
-    vector<string> lines = utils::Split(value, '\n');
+    std::vector<string> lines = utils::Split(value, '\n');
 
     // Add each token to the sentence.
-    vector<string> fields;
+    std::vector<string> fields;
     int expected_id = 1;
     for (size_t i = 0; i < lines.size(); ++i) {
       // Split line into tab-separated fields.
@@ -166,12 +166,12 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   void ConvertToString(const Sentence &sentence, string *key,
                        string *value) override {
     *key = sentence.docid();
-    vector<string> lines;
+    std::vector<string> lines;
     for (int i = 0; i < sentence.token_size(); ++i) {
       Token token = sentence.token(i);
       if (join_category_to_pos_) SplitCategoryFromPos(&token);
       if (add_pos_as_attribute_) RemovePosFromAttributes(&token);
-      vector<string> fields(10);
+      std::vector<string> fields(10);
       fields[0] = tensorflow::strings::Printf("%d", i + 1);
       fields[1] = UnderscoreIfEmpty(token.word());
       fields[2] = "_";
@@ -198,14 +198,14 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   void AddMorphAttributes(const string &attributes, Token *token) {
     TokenMorphology *morph =
         token->MutableExtension(TokenMorphology::morphology);
-    vector<string> att_vals = utils::Split(attributes, '|');
+    std::vector<string> att_vals = utils::Split(attributes, '|');
     for (int i = 0; i < att_vals.size(); ++i) {
-      vector<string> att_val = utils::SplitOne(att_vals[i], '=');
+      std::vector<string> att_val = utils::SplitOne(att_vals[i], '=');
 
       // Format is either:
       //   1) a1=v1|a2=v2..., e.g., Czech CoNLL data, or,
       //   2) v1|v2|..., e.g., German CoNLL data.
-      const pair<string, string> name_value =
+      const std::pair<string, string> name_value =
           att_val.size() == 2 ? std::make_pair(att_val[0], att_val[1])
                               : std::make_pair(att_val[0], "on");
 
@@ -325,16 +325,16 @@ class SegmentationTrainingDataFormat : public CoNLLSyntaxFormat {
   // to SPACE_BREAK to indicate that the corresponding gold transition for that
   // character token is START. Otherwise NO_BREAK to indicate MERGE.
   void ConvertFromString(const string &key, const string &value,
-                         vector<Sentence *> *sentences) override {
+                         std::vector<Sentence *> *sentences) override {
     // Create new sentence.
     Sentence *sentence = new Sentence();
 
     // Each line corresponds to one token.
     string text;
-    vector<string> lines = utils::Split(value, '\n');
+    std::vector<string> lines = utils::Split(value, '\n');
 
     // Add each token to the sentence.
-    vector<string> fields;
+    std::vector<string> fields;
     for (size_t i = 0; i < lines.size(); ++i) {
       // Split line into tab-separated fields.
       fields.clear();
@@ -362,7 +362,7 @@ class SegmentationTrainingDataFormat : public CoNLLSyntaxFormat {
       }
 
       // Add character-based token to sentence.
-      vector<tensorflow::StringPiece> chars;
+      std::vector<tensorflow::StringPiece> chars;
       SegmenterUtils::GetUTF8Chars(word, &chars);
       bool is_first_char = true;
       for (auto utf8char : chars) {
@@ -414,7 +414,7 @@ class TokenizedTextFormat : public DocumentFormat {
   }
 
   void ConvertFromString(const string &key, const string &value,
-                         vector<Sentence *> *sentences) override {
+                         std::vector<Sentence *> *sentences) override {
     Sentence *sentence = new Sentence();
     string text;
     for (const string &word : utils::Split(value, ' ')) {
@@ -474,9 +474,9 @@ class UntokenizedTextFormat : public TokenizedTextFormat {
   UntokenizedTextFormat() {}
 
   void ConvertFromString(const string &key, const string &value,
-                         vector<Sentence *> *sentences) override {
+                         std::vector<Sentence *> *sentences) override {
     Sentence *sentence = new Sentence();
-    vector<tensorflow::StringPiece> chars;
+    std::vector<tensorflow::StringPiece> chars;
     SegmenterUtils::GetUTF8Chars(value, &chars);
     int start = 0;
     for (auto utf8char : chars) {
@@ -514,8 +514,8 @@ class EnglishTextFormat : public TokenizedTextFormat {
   EnglishTextFormat() {}
 
   void ConvertFromString(const string &key, const string &value,
-                         vector<Sentence *> *sentences) override {
-    vector<pair<string, string>> preproc_rules = {
+                         std::vector<Sentence *> *sentences) override {
+    std::vector<std::pair<string, string>> preproc_rules = {
         // Punctuation.
         {"’", "'"},
         {"…", "..."},
@@ -570,7 +570,7 @@ class EnglishTextFormat : public TokenizedTextFormat {
         {"♦", ""},
     };
 
-    vector<pair<string, string>> rules = {
+    std::vector<std::pair<string, string>> rules = {
         // attempt to get correct directional quotes
         {R"re(^")re", "`` "},
         {R"re(([ \([{<])")re", "\\1 `` "},
@@ -639,10 +639,10 @@ class EnglishTextFormat : public TokenizedTextFormat {
     };
 
     string rewritten = value;
-    for (const pair<string, string> &rule : preproc_rules) {
+    for (const std::pair<string, string> &rule : preproc_rules) {
       RE2::GlobalReplace(&rewritten, rule.first, rule.second);
     }
-    for (const pair<string, string> &rule : rules) {
+    for (const std::pair<string, string> &rule : rules) {
       RE2::GlobalReplace(&rewritten, rule.first, rule.second);
     }
     TokenizedTextFormat::ConvertFromString(key, rewritten, sentences);

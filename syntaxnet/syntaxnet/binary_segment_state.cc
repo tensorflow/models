@@ -54,7 +54,7 @@ void BinarySegmentState::AddParseToDocument(const ParserState &state,
                                             bool rewrite_root_labels,
                                             Sentence *sentence) const {
   if (sentence->token_size() == 0) return;
-  vector<bool> is_starts(sentence->token_size(), false);
+  std::vector<bool> is_starts(sentence->token_size(), false);
   for (int i = 0; i < NumStarts(state); ++i) {
     is_starts[LastStart(i, state)] = true;
   }

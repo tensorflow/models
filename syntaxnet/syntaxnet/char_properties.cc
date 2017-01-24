@@ -88,7 +88,7 @@ namespace syntaxnet {
 
 struct CharPropertyImplementation {
   unordered_set<char32> chars;
-  vector<vector<int> > rows;
+  std::vector<std::vector<int> > rows;
   CharPropertyImplementation() {
     rows.reserve(10);
     rows.resize(1);

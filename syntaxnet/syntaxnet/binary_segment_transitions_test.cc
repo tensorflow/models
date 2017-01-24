@@ -95,9 +95,9 @@ class SegmentationTransitionTest : public ::testing::Test {
     return result.size() > 0 ? result.value(0) : -1;
   }
 
-  void CheckStarts(const ParserState &state, const vector<int> &target) {
+  void CheckStarts(const ParserState &state, const std::vector<int> &target) {
     ASSERT_EQ(state.StackSize(), target.size());
-    vector<int> starts;
+    std::vector<int> starts;
     for (int i = 0; i < state.StackSize(); ++i) {
       EXPECT_EQ(state.Stack(i), target[i]);
     }
