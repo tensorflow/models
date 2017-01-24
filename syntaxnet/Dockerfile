@@ -5,7 +5,7 @@ ENV SYNTAXNETDIR=/opt/tensorflow PATH=$PATH:/root/bin
 RUN mkdir -p $SYNTAXNETDIR \
     && cd $SYNTAXNETDIR \
     && apt-get update \
-    && apt-get install git zlib1g-dev file swig python2.7 python-dev python-pip -y \
+    && apt-get install git zlib1g-dev file swig python2.7 python-dev python-pip python-mock -y \
     && pip install --upgrade pip \
     && pip install -U protobuf==3.0.0b2 \
     && pip install asciitree \
