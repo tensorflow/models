@@ -93,6 +93,8 @@ source. You'll need to install:
 *   protocol buffers, with a version supported by TensorFlow:
     *   check your protobuf version with `pip freeze | grep protobuf`
     *   upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
+*   mock, the testing package:
+    *   `pip install mock`
 *   asciitree, to draw parse trees on the console for the demo:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
