@@ -70,7 +70,7 @@ class MorphologyLabelSet {
   // defined as follows:
   //
   //   a == b iff the set of attribute pairs (attribute, value) is identical.
-  vector<TokenMorphology> label_set_;
+  std::vector<TokenMorphology> label_set_;
 
   // Because protocol buffer equality is complicated, we implement our own
   // equality operator based on strings. This unordered_map allows us to do the

@@ -72,7 +72,7 @@ class TaskContext {
 
   // Vector of parameters required by this task.  These must be specified in the
   // task rather than relying on default values.
-  vector<string> required_parameters_;
+  std::vector<string> required_parameters_;
 };
 
 }  // namespace syntaxnet

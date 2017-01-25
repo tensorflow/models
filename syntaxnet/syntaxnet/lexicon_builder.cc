@@ -117,7 +117,7 @@ class LexiconBuilder : public OpKernel {
         tag_to_category.SetCategory(token.tag(), token.category());
 
         // Add characters.
-        vector<tensorflow::StringPiece> char_sp;
+        std::vector<tensorflow::StringPiece> char_sp;
         SegmenterUtils::GetUTF8Chars(word, &char_sp);
         for (const auto &c : char_sp) {
           const string c_str = c.ToString();

@@ -88,13 +88,13 @@ bool PopulateTestInputs::Populate(
 
 PopulateTestInputs::Create PopulateTestInputs::CreateTFMapFromDocumentTokens(
     const Sentence &document,
-    std::function<vector<string>(const Token &)> token2str) {
+    std::function<std::vector<string>(const Token &)> token2str) {
   return [document, token2str](TaskInput *input) {
     TermFrequencyMap map;
 
     // Build and write the dummy term frequency map.
     for (const Token &token : document.token()) {
-      vector<string> strings_for_token = token2str(token);
+      std::vector<string> strings_for_token = token2str(token);
       for (const string &s : strings_for_token) map.Increment(s);
     }
     string file_name = AddPart(input, "text", "");
@@ -116,22 +116,22 @@ PopulateTestInputs::Create PopulateTestInputs::CreateTagToCategoryFromTokens(
   };
 }
 
-vector<string> PopulateTestInputs::TokenCategory(const Token &token) {
+std::vector<string> PopulateTestInputs::TokenCategory(const Token &token) {
   if (token.has_category()) return {token.category()};
   return {};
 }
 
-vector<string> PopulateTestInputs::TokenLabel(const Token &token) {
+std::vector<string> PopulateTestInputs::TokenLabel(const Token &token) {
   if (token.has_label()) return {token.label()};
   return {};
 }
 
-vector<string> PopulateTestInputs::TokenTag(const Token &token) {
+std::vector<string> PopulateTestInputs::TokenTag(const Token &token) {
   if (token.has_tag()) return {token.tag()};
   return {};
 }
 
-vector<string> PopulateTestInputs::TokenWord(const Token &token) {
+std::vector<string> PopulateTestInputs::TokenWord(const Token &token) {
   if (token.has_word()) return {token.word()};
   return {};
 }

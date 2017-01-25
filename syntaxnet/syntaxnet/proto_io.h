@@ -131,7 +131,7 @@ class StdIn : public tensorflow::RandomAccessFile {
                       char *scratch) const {
     memcpy(scratch, buffer_.data(), buffer_.size());
     buffer_ = buffer_.substr(n);
-    result->set(scratch, n);
+    *result = tensorflow::StringPiece(scratch, n);
     expected_offset_ += n;
   }
 
@@ -161,7 +161,7 @@ class TextReader {
   Sentence *Read() {
     // Skips emtpy sentences, e.g., blank lines at the beginning of a file or
     // commented out blocks.
-    vector<Sentence *> sentences;
+    std::vector<Sentence *> sentences;
     string key, value;
     while (sentences.empty() && format_->ReadRecord(buffer_.get(), &value)) {
       key = tensorflow::strings::StrCat(filename_, ":", sentence_count_);

@@ -69,7 +69,7 @@ def EmbeddingLookupFeatures(params, sparse_features, allow_weights):
 
   if allow_weights:
     # Multiply by weights, reshaping to allow broadcast.
-    broadcast_weights_shape = tf.concat(0, [tf.shape(weights), [1]])
+    broadcast_weights_shape = tf.concat_v2([tf.shape(weights), [1]], 0)
     embeddings *= tf.reshape(weights, broadcast_weights_shape)
 
   # Sum embeddings by index.
@@ -330,7 +330,7 @@ class GreedyParser(object):
                                            i,
                                            return_average=return_average))
 
-    last_layer = tf.concat(1, embeddings)
+    last_layer = tf.concat_v2(embeddings, 1)
     last_layer_size = self.embedding_size
 
     # Create ReLU layers.
@@ -404,8 +404,9 @@ class GreedyParser(object):
     """Cross entropy plus L2 loss on weights and biases of the hidden layers."""
     dense_golden = BatchedSparseToDense(gold_actions, self._num_actions)
     cross_entropy = tf.div(
-        tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(
-            logits, dense_golden)), batch_size)
+        tf.reduce_sum(
+            tf.nn.softmax_cross_entropy_with_logits(
+                labels=dense_golden, logits=logits)), batch_size)
     regularized_params = [tf.nn.l2_loss(p)
                           for k, p in self.params.items()
                           if k.startswith('weights') or k.startswith('bias')]

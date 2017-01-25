@@ -38,7 +38,7 @@ const std::unordered_set<int> SegmenterUtils::kBreakChars({
 });
 
 void SegmenterUtils::GetUTF8Chars(const string &text,
-                                  vector<tensorflow::StringPiece> *chars) {
+                                  std::vector<tensorflow::StringPiece> *chars) {
   const char *start = text.c_str();
   const char *end = text.c_str() + text.size();
   while (start < end) {
@@ -50,7 +50,7 @@ void SegmenterUtils::GetUTF8Chars(const string &text,
 
 void SegmenterUtils::SetCharsAsTokens(
     const string &text,
-    const vector<tensorflow::StringPiece> &chars,
+    const std::vector<tensorflow::StringPiece> &chars,
     Sentence *sentence) {
   sentence->clear_token();
   sentence->set_text(text);

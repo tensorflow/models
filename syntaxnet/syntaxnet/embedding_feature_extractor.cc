@@ -46,14 +46,16 @@ void GenericEmbeddingFeatureExtractor::Setup(TaskContext *context) {
 void GenericEmbeddingFeatureExtractor::Init(TaskContext *context) {
 }
 
-vector<vector<SparseFeatures>> GenericEmbeddingFeatureExtractor::ConvertExample(
-    const vector<FeatureVector> &feature_vectors) const {
+std::vector<std::vector<SparseFeatures>>
+GenericEmbeddingFeatureExtractor::ConvertExample(
+    const std::vector<FeatureVector> &feature_vectors) const {
   // Extract the features.
-  vector<vector<SparseFeatures>> sparse_features(feature_vectors.size());
+  std::vector<std::vector<SparseFeatures>> sparse_features(
+      feature_vectors.size());
   for (size_t i = 0; i < feature_vectors.size(); ++i) {
     // Convert the nlp_parser::FeatureVector to dist belief format.
-    sparse_features[i] =
-        vector<SparseFeatures>(generic_feature_extractor(i).feature_types());
+    sparse_features[i] = std::vector<SparseFeatures>(
+        generic_feature_extractor(i).feature_types());
 
     for (int j = 0; j < feature_vectors[i].size(); ++j) {
       const FeatureType &feature_type = *feature_vectors[i].type(j);

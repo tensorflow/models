@@ -83,7 +83,8 @@ string TermFrequencyMapSetFeature::WorkspaceName() const {
 }
 
 namespace {
-void GetUTF8Chars(const string &word, vector<tensorflow::StringPiece> *chars) {
+void GetUTF8Chars(const string &word,
+                  std::vector<tensorflow::StringPiece> *chars) {
   UnicodeText text;
   text.PointToUTF8(word.c_str(), word.size());
   for (UnicodeText::const_iterator it = text.begin(); it != text.end(); ++it) {
@@ -98,9 +99,10 @@ int UTF8FirstLetterNumBytes(const char *utf8_str) {
 
 }  // namespace
 
-void CharNgram::GetTokenIndices(const Token &token, vector<int> *values) const {
+void CharNgram::GetTokenIndices(const Token &token,
+                                std::vector<int> *values) const {
   values->clear();
-  vector<tensorflow::StringPiece> char_sp;
+  std::vector<tensorflow::StringPiece> char_sp;
   if (use_terminators_) char_sp.push_back("^");
   GetUTF8Chars(token.word(), &char_sp);
   if (use_terminators_) char_sp.push_back("$");
@@ -121,7 +123,7 @@ void CharNgram::GetTokenIndices(const Token &token, vector<int> *values) const {
 }
 
 void MorphologySet::GetTokenIndices(const Token &token,
-                                    vector<int> *values) const {
+                                    std::vector<int> *values) const {
   values->clear();
   const TokenMorphology &token_morphology =
       token.GetExtension(TokenMorphology::morphology);
@@ -401,7 +403,8 @@ string AffixTableFeature::GetFeatureValueName(FeatureValue value) const {
 }
 
 // Registry for the Sentence + token index feature functions.
-REGISTER_CLASS_REGISTRY("sentence+index feature function", SentenceFeature);
+REGISTER_SYNTAXNET_CLASS_REGISTRY("sentence+index feature function",
+                                  SentenceFeature);
 
 // Register the features defined in the header.
 REGISTER_SENTENCE_IDX_FEATURE("word", Word);

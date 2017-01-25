@@ -28,11 +28,11 @@ limitations under the License.
 //   };
 //
 //   #define REGISTER_FUNCTION(type, component)
-//     REGISTER_INSTANCE_COMPONENT(Function, type, component);
+//     REGISTER_SYNTAXNET_INSTANCE_COMPONENT(Function, type, component);
 //
 //  function.cc:
 //
-//   REGISTER_INSTANCE_REGISTRY("function", Function);
+//   REGISTER_SYNTAXNET_INSTANCE_REGISTRY("function", Function);
 //
 //   class Cos : public Function {
 //    public:
@@ -218,22 +218,22 @@ class RegisterableInstance {
   static Registry registry_;
 };
 
-#define REGISTER_CLASS_COMPONENT(base, type, component)             \
+#define REGISTER_SYNTAXNET_CLASS_COMPONENT(base, type, component)   \
   static base *__##component##__factory() { return new component; } \
   static base::Registry::Registrar __##component##__##registrar(    \
       base::registry(), type, #component, __FILE__, __LINE__,       \
       __##component##__factory)
 
-#define REGISTER_CLASS_REGISTRY(type, classname)                  \
+#define REGISTER_SYNTAXNET_CLASS_REGISTRY(type, classname)        \
   template <>                                                     \
   classname::Registry RegisterableClass<classname>::registry_ = { \
       type, #classname, __FILE__, __LINE__, NULL}
 
-#define REGISTER_INSTANCE_COMPONENT(base, type, component)       \
-  static base::Registry::Registrar __##component##__##registrar( \
+#define REGISTER_SYNTAXNET_INSTANCE_COMPONENT(base, type, component) \
+  static base::Registry::Registrar __##component##__##registrar(     \
       base::registry(), type, #component, __FILE__, __LINE__, new component)
 
-#define REGISTER_INSTANCE_REGISTRY(type, classname)                  \
+#define REGISTER_SYNTAXNET_INSTANCE_REGISTRY(type, classname)        \
   template <>                                                        \
   classname::Registry RegisterableInstance<classname>::registry_ = { \
       type, #classname, __FILE__, __LINE__, NULL}
