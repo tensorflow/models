@@ -733,5 +733,5 @@ sh_test(
         ":parser_trainer",
         ":testdata",
     ],
-    tags = ["notsan"],
+    tags = ["slow"],
 )

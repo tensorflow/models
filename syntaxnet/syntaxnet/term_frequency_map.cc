@@ -32,7 +32,7 @@ int TermFrequencyMap::Increment(const string &term) {
   const TermIndex::const_iterator it = term_index_.find(term);
   if (term_index_.find(term) != term_index_.end()) {
     // Increment the existing term.
-    pair<string, int64> &data = term_data_[it->second];
+    std::pair<string, int64> &data = term_data_[it->second];
     CHECK_EQ(term, data.first);
     ++(data.second);
     return it->second;
@@ -41,7 +41,7 @@ int TermFrequencyMap::Increment(const string &term) {
     const int index = term_index_.size();
     CHECK_LT(index, std::numeric_limits<int32>::max());  // overflow
     term_index_[term] = index;
-    term_data_.push_back(pair<string, int64>(term, 1));
+    term_data_.push_back(std::pair<string, int64>(term, 1));
     return index;
   }
 }
@@ -74,7 +74,7 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
   int64 last_frequency = -1;
   for (int i = 0; i < total && i < max_num_terms; ++i) {
     TF_CHECK_OK(buffer.ReadLine(&line));
-    vector<string> elements = utils::Split(line, ' ');
+    std::vector<string> elements = utils::Split(line, ' ');
     CHECK_EQ(2, elements.size());
     CHECK(!elements[0].empty());
     CHECK(!elements[1].empty());
@@ -97,7 +97,7 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
     // Assign the next available index.
     const int index = term_index_.size();
     term_index_[term] = index;
-    term_data_.push_back(pair<string, int64>(term, frequency));
+    term_data_.push_back(std::pair<string, int64>(term, frequency));
   }
   CHECK_EQ(term_index_.size(), term_data_.size());
   LOG(INFO) << "Loaded " << term_index_.size() << " terms from " << filename
@@ -107,8 +107,8 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
 struct TermFrequencyMap::SortByFrequencyThenTerm {
   // Return a > b to sort in descending order of frequency; otherwise,
   // lexicographic sort on term.
-  bool operator()(const pair<string, int64> &a,
-                  const pair<string, int64> &b) const {
+  bool operator()(const std::pair<string, int64> &a,
+                  const std::pair<string, int64> &b) const {
     return (a.second > b.second || (a.second == b.second && a.first < b.first));
   }
 };
@@ -117,7 +117,7 @@ void TermFrequencyMap::Save(const string &filename) const {
   CHECK_EQ(term_index_.size(), term_data_.size());
 
   // Copy and sort the term data.
-  vector<pair<string, int64>> sorted_data(term_data_);
+  std::vector<std::pair<string, int64>> sorted_data(term_data_);
   std::sort(sorted_data.begin(), sorted_data.end(), SortByFrequencyThenTerm());
 
   // Write the number of terms.
@@ -149,7 +149,7 @@ TagToCategoryMap::TagToCategoryMap(const string &filename) {
   tensorflow::io::BufferedInputStream buffer(&stream, kInputBufferSize);
   string line;
   while (buffer.ReadLine(&line) == tensorflow::Status::OK()) {
-    vector<string> pair = utils::Split(line, '\t');
+    std::vector<string> pair = utils::Split(line, '\t');
     CHECK(line.empty() || pair.size() == 2) << line;
     tag_to_category_[pair[0]] = pair[1];
   }

@@ -17,6 +17,9 @@
 # This test trains a parser on a small dataset, then runs it in greedy mode and
 # in structured mode with beam 1, and checks that the result is identical.
 
+
+
+
 set -eux
 
 BINDIR=$TEST_SRCDIR/$TEST_WORKSPACE/syntaxnet

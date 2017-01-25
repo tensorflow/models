@@ -20,7 +20,7 @@ limitations under the License.
 namespace syntaxnet {
 
 // Transition system registry.
-REGISTER_CLASS_REGISTRY("transition system", ParserTransitionSystem);
+REGISTER_SYNTAXNET_CLASS_REGISTRY("transition system", ParserTransitionSystem);
 
 void ParserTransitionSystem::PerformAction(ParserAction action,
                                            ParserState *state) const {

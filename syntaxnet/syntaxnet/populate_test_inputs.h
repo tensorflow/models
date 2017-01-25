@@ -130,17 +130,17 @@ class PopulateTestInputs {
   // then saved to FLAGS_test_tmpdir/name.
   static Create CreateTFMapFromDocumentTokens(
       const Sentence &document,
-      std::function<vector<string>(const Token &)> token2str);
+      std::function<std::vector<string>(const Token &)> token2str);
 
   // Creates a StringToStringMap protocol buffer input that maps tags to
   // categories. Uses whatever mapping is present in the document.
   static Create CreateTagToCategoryFromTokens(const Sentence &document);
 
   // Default implementations for "token2str" above.
-  static vector<string> TokenCategory(const Token &token);
-  static vector<string> TokenLabel(const Token &token);
-  static vector<string> TokenTag(const Token &token);
-  static vector<string> TokenWord(const Token &token);
+  static std::vector<string> TokenCategory(const Token &token);
+  static std::vector<string> TokenLabel(const Token &token);
+  static std::vector<string> TokenTag(const Token &token);
+  static std::vector<string> TokenWord(const Token &token);
 
   // Utility function. Sets the TaskInput->part() fields for a new input part.
   // Returns the file name.

@@ -78,13 +78,18 @@ class GenericEmbeddingFeatureExtractor {
   int EmbeddingDims(int index) const { return embedding_dims_[index]; }
 
   // Accessor for embedding dims (dimensions of the embedding spaces).
-  const vector<int> &embedding_dims() const { return embedding_dims_; }
+  const std::vector<int> &embedding_dims() const { return embedding_dims_; }
 
-  const vector<string> &embedding_fml() const { return embedding_fml_; }
+  const std::vector<string> &embedding_fml() const { return embedding_fml_; }
 
   // Get parameter name by concatenating the prefix and the original name.
   string GetParamName(const string &param_name) const {
     return tensorflow::strings::StrCat(ArgPrefix(), "_", param_name);
+  }
+
+  // Returns the name of the embedding space.
+  const string &embedding_name(int index) const {
+    return embedding_names_[index];
   }
 
  protected:
@@ -99,21 +104,21 @@ class GenericEmbeddingFeatureExtractor {
   // single SparseFeatures. The predicates are mapped through map_fn which
   // should point to either mutable_map_fn or const_map_fn depending on whether
   // or not the predicate maps should be updated.
-  vector<vector<SparseFeatures>> ConvertExample(
-      const vector<FeatureVector> &feature_vectors) const;
+  std::vector<std::vector<SparseFeatures>> ConvertExample(
+      const std::vector<FeatureVector> &feature_vectors) const;
 
  private:
   // Embedding space names for parameter sharing.
-  vector<string> embedding_names_;
+  std::vector<string> embedding_names_;
 
   // FML strings for each feature extractor.
-  vector<string> embedding_fml_;
+  std::vector<string> embedding_fml_;
 
   // Size of each of the embedding spaces (maximum predicate id).
-  vector<int> embedding_sizes_;
+  std::vector<int> embedding_sizes_;
 
   // Embedding dimensions of the embedding spaces (i.e. 32, 64 etc.)
-  vector<int> embedding_dims_;
+  std::vector<int> embedding_dims_;
 
   // Whether or not to add string descriptions to converted examples.
   bool add_strings_;
@@ -168,9 +173,9 @@ class EmbeddingFeatureExtractor : public GenericEmbeddingFeatureExtractor {
   // will not be updated and so unrecognized predicates may occur. In such a
   // case the SparseFeatures object associated with a given extractor class and
   // feature will be empty.
-  vector<vector<SparseFeatures>> ExtractSparseFeatures(
+  std::vector<std::vector<SparseFeatures>> ExtractSparseFeatures(
       const WorkspaceSet &workspaces, const OBJ &obj, ARGS... args) const {
-    vector<FeatureVector> features(feature_extractors_.size());
+    std::vector<FeatureVector> features(feature_extractors_.size());
     ExtractFeatures(workspaces, obj, args..., &features);
     return ConvertExample(features);
   }
@@ -180,7 +185,7 @@ class EmbeddingFeatureExtractor : public GenericEmbeddingFeatureExtractor {
   // mapping is applied.
   void ExtractFeatures(const WorkspaceSet &workspaces, const OBJ &obj,
                        ARGS... args,
-                       vector<FeatureVector> *features) const {
+                       std::vector<FeatureVector> *features) const {
     DCHECK(features != nullptr);
     DCHECK_EQ(features->size(), feature_extractors_.size());
     for (int i = 0; i < feature_extractors_.size(); ++i) {
@@ -201,7 +206,7 @@ class EmbeddingFeatureExtractor : public GenericEmbeddingFeatureExtractor {
 
  private:
   // Templated feature extractor class.
-  vector<EXTRACTOR> feature_extractors_;
+  std::vector<EXTRACTOR> feature_extractors_;
 };
 
 class ParserEmbeddingFeatureExtractor
