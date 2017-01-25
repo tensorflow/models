@@ -1,3 +1,4 @@
-[submodule "tensorflow"]
-	path = syntaxnet/tensorflow
-	url = https://github.com/tensorflow/tensorflow.git
+[submodule "tf_models"]
+	path = tensorflow
+	url = https://github.com/xtr33me/models.git
+    branch = master
