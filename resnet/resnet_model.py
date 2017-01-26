@@ -24,6 +24,7 @@ from collections import namedtuple
 
 import numpy as np
 import tensorflow as tf
+import six
 
 from tensorflow.python.training import moving_averages
 
@@ -89,21 +90,21 @@ class ResNet(object):
     with tf.variable_scope('unit_1_0'):
       x = res_func(x, filters[0], filters[1], self._stride_arr(strides[0]),
                    activate_before_residual[0])
-    for i in xrange(1, self.hps.num_residual_units):
+    for i in six.moves.range(1, self.hps.num_residual_units):
       with tf.variable_scope('unit_1_%d' % i):
         x = res_func(x, filters[1], filters[1], self._stride_arr(1), False)
 
     with tf.variable_scope('unit_2_0'):
       x = res_func(x, filters[1], filters[2], self._stride_arr(strides[1]),
                    activate_before_residual[1])
-    for i in xrange(1, self.hps.num_residual_units):
+    for i in six.moves.range(1, self.hps.num_residual_units):
       with tf.variable_scope('unit_2_%d' % i):
         x = res_func(x, filters[2], filters[2], self._stride_arr(1), False)
 
     with tf.variable_scope('unit_3_0'):
       x = res_func(x, filters[2], filters[3], self._stride_arr(strides[2]),
                    activate_before_residual[2])
-    for i in xrange(1, self.hps.num_residual_units):
+    for i in six.moves.range(1, self.hps.num_residual_units):
       with tf.variable_scope('unit_3_%d' % i):
         x = res_func(x, filters[3], filters[3], self._stride_arr(1), False)
 
@@ -118,7 +119,7 @@ class ResNet(object):
 
     with tf.variable_scope('costs'):
       xent = tf.nn.softmax_cross_entropy_with_logits(
-          logits, self.labels)
+          logits=logits, labels=self.labels)
       self.cost = tf.reduce_mean(xent, name='xent')
       self.cost += self._decay()
 
@@ -266,7 +267,7 @@ class ResNet(object):
         costs.append(tf.nn.l2_loss(var))
         # tf.histogram_summary(var.op.name, var)
 
-    return tf.mul(self.hps.weight_decay_rate, tf.add_n(costs))
+    return tf.multiply(self.hps.weight_decay_rate, tf.add_n(costs))
 
   def _conv(self, name, x, filter_size, in_filters, out_filters, strides):
     """Convolution."""
@@ -280,7 +281,7 @@ class ResNet(object):
 
   def _relu(self, x, leakiness=0.0):
     """Relu, with optional leaky support."""
-    return tf.select(tf.less(x, 0.0), leakiness * x, x, name='leaky_relu')
+    return tf.where(tf.less(x, 0.0), leakiness * x, x, name='leaky_relu')
 
   def _fully_connected(self, x, out_dim):
     """FullyConnected layer for final output."""
