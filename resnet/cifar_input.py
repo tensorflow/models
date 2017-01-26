@@ -18,7 +18,6 @@
 
 import tensorflow as tf
 
-
 def build_input(dataset, data_path, batch_size, mode):
   """Build CIFAR image and labels.
 
@@ -101,7 +100,7 @@ def build_input(dataset, data_path, batch_size, mode):
   labels = tf.reshape(labels, [batch_size, 1])
   indices = tf.reshape(tf.range(0, batch_size, 1), [batch_size, 1])
   labels = tf.sparse_to_dense(
-      tf.concat(1, [indices, labels]),
+      tf.concat_v2(values=[indices, labels], axis=1),
       [batch_size, num_classes], 1.0, 0.0)
 
   assert len(images.get_shape()) == 4
