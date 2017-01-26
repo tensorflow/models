@@ -48,10 +48,11 @@ typedef FeatureFunction<ParserState, int> ParserIndexFeatureFunction;
 
 // Utilities to register the two types of parser features.
 #define REGISTER_PARSER_FEATURE_FUNCTION(name, component) \
-  REGISTER_FEATURE_FUNCTION(ParserFeatureFunction, name, component)
+  REGISTER_SYNTAXNET_FEATURE_FUNCTION(ParserFeatureFunction, name, component)
 
-#define REGISTER_PARSER_IDX_FEATURE_FUNCTION(name, component) \
-  REGISTER_FEATURE_FUNCTION(ParserIndexFeatureFunction, name, component)
+#define REGISTER_PARSER_IDX_FEATURE_FUNCTION(name, component)           \
+  REGISTER_SYNTAXNET_FEATURE_FUNCTION(ParserIndexFeatureFunction, name, \
+                                      component)
 
 // Alias for locator type that takes a parser state, and produces a focus
 // integer that can be used on nested ParserIndexFeature objects.

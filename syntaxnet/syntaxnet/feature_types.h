@@ -81,7 +81,7 @@ class ResourceBasedFeatureType : public FeatureType {
   // resource->NumValues() so as to avoid collisions; this is verified with
   // CHECK at creation.
   ResourceBasedFeatureType(const string &name, const Resource *resource,
-                           const map<FeatureValue, string> &values)
+                           const std::map<FeatureValue, string> &values)
       : FeatureType(name), resource_(resource), values_(values) {
     max_value_ = resource->NumValues() - 1;
     for (const auto &pair : values) {
@@ -121,7 +121,7 @@ class ResourceBasedFeatureType : public FeatureType {
   FeatureValue max_value_;
 
   // Mapping for extra feature values not in the resource.
-  map<FeatureValue, string> values_;
+  std::map<FeatureValue, string> values_;
 };
 
 // Feature type that is defined using an explicit map from FeatureValue to
@@ -139,7 +139,7 @@ class ResourceBasedFeatureType : public FeatureType {
 class EnumFeatureType : public FeatureType {
  public:
   EnumFeatureType(const string &name,
-                  const map<FeatureValue, string> &value_names)
+                  const std::map<FeatureValue, string> &value_names)
       : FeatureType(name), value_names_(value_names) {
     for (const auto &pair : value_names) {
       CHECK_GE(pair.first, 0)
@@ -168,7 +168,26 @@ class EnumFeatureType : public FeatureType {
   FeatureValue domain_size_ = 0;
 
   // Names of feature values.
-  map<FeatureValue, string> value_names_;
+  std::map<FeatureValue, string> value_names_;
+};
+
+// Feature type for numeric features.
+class NumericFeatureType : public FeatureType {
+ public:
+  // Initializes numeric feature.
+  NumericFeatureType(const string &name, FeatureValue size)
+      : FeatureType(name), size_(size) {}
+
+  // Returns numeric feature value.
+  string GetFeatureValueName(FeatureValue value) const override {
+    return value < 0 ? "" : tensorflow::strings::Printf("%lld", value);
+  }
+
+  // Returns the number of feature values.
+  FeatureValue GetDomainSize() const override { return size_; }
+
+ private:
+  FeatureValue size_;
 };
 
 }  // namespace syntaxnet

@@ -32,7 +32,7 @@ namespace syntaxnet {
 // A document format component converts a key/value pair from a record to one or
 // more documents. The record format is used for selecting the document format
 // component. A document format component can be registered with the
-// REGISTER_DOCUMENT_FORMAT macro.
+// REGISTER_SYNTAXNET_DOCUMENT_FORMAT macro.
 class DocumentFormat : public RegisterableClass<DocumentFormat> {
  public:
   DocumentFormat() {}
@@ -47,7 +47,7 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
 
   // Converts a key/value pair to one or more documents.
   virtual void ConvertFromString(const string &key, const string &value,
-                                 vector<Sentence *> *documents) = 0;
+                                 std::vector<Sentence *> *documents) = 0;
 
   // Converts a document to a key/value pair.
   virtual void ConvertToString(const Sentence &document,
@@ -57,8 +57,8 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
   TF_DISALLOW_COPY_AND_ASSIGN(DocumentFormat);
 };
 
-#define REGISTER_DOCUMENT_FORMAT(type, component) \
-  REGISTER_CLASS_COMPONENT(DocumentFormat, type, component)
+#define REGISTER_SYNTAXNET_DOCUMENT_FORMAT(type, component) \
+  REGISTER_SYNTAXNET_CLASS_COMPONENT(DocumentFormat, type, component)
 
 }  // namespace syntaxnet
 

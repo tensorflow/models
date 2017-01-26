@@ -37,7 +37,7 @@ VectorIntWorkspace::VectorIntWorkspace(int size) : elements_(size) {}
 VectorIntWorkspace::VectorIntWorkspace(int size, int value)
     : elements_(size, value) {}
 
-VectorIntWorkspace::VectorIntWorkspace(const vector<int> &elements)
+VectorIntWorkspace::VectorIntWorkspace(const std::vector<int> &elements)
     : elements_(elements) {}
 
 string VectorIntWorkspace::TypeName() { return "Vector"; }

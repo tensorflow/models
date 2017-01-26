@@ -69,7 +69,7 @@ void MorphologyLabelSet::Write(ProtoRecordWriter *writer) const {
 }
 
 string MorphologyLabelSet::StringForMatch(const TokenMorphology &morph) const {
-  vector<string> attributes;
+  std::vector<string> attributes;
   for (const auto &a : morph.attribute()) {
     attributes.push_back(
         tensorflow::strings::StrCat(a.name(), kSeparator, a.value()));
@@ -80,7 +80,7 @@ string MorphologyLabelSet::StringForMatch(const TokenMorphology &morph) const {
 
 string FullLabelFeatureType::GetFeatureValueName(FeatureValue value) const {
   const TokenMorphology &morph = label_set_->Lookup(value);
-  vector<string> attributes;
+  std::vector<string> attributes;
   for (const auto &a : morph.attribute()) {
     attributes.push_back(tensorflow::strings::StrCat(a.name(), ":", a.value()));
   }
