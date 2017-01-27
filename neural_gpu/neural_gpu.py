@@ -128,7 +128,7 @@ def conv_gru(inpts, mem, kw, kh, nmaps, rate, cutoff, prefix, do_layer_norm,
     reset = sigmoid_cutoff(conv_lin(inpts + [mem], "r", 1.0), cutoff)
     gate = sigmoid_cutoff(conv_lin(inpts + [mem], "g", 1.0), cutoff)
   if cutoff > 10:
-    candidate = tf.tanh_hard(conv_lin(inpts + [reset * mem], "c", 0.0))
+    candidate = tanh_hard(conv_lin(inpts + [reset * mem], "c", 0.0))
   else:
     # candidate = tanh_cutoff(conv_lin(inpts + [reset * mem], "c", 0.0), cutoff)
     candidate = tf.tanh(conv_lin(inpts + [reset * mem], "c", 0.0))
@@ -273,7 +273,7 @@ class NeuralGPU(object):
 
     if backward:
       adam_lr = 0.005 * self.lr
-      adam = tf.train.AdamOptimizer(adam_lr, epsilon=2e-4)
+      adam = tf.train.AdamOptimizer(adam_lr, epsilon=1e-3)
 
       def adam_update(grads):
         return adam.apply_gradients(zip(grads, tf.trainable_variables()),

@@ -35,7 +35,7 @@ tf.app.flags.DEFINE_float("max_grad_norm", 4.0, "Clip gradients to this norm.")
 tf.app.flags.DEFINE_float("cutoff", 1.2, "Cutoff at the gates.")
 tf.app.flags.DEFINE_float("curriculum_ppx", 9.9, "Move curriculum if ppl < X.")
 tf.app.flags.DEFINE_float("curriculum_seq", 0.3, "Move curriculum if seq < X.")
-tf.app.flags.DEFINE_float("dropout", 0.0, "Dropout that much.")
+tf.app.flags.DEFINE_float("dropout", 0.1, "Dropout that much.")
 tf.app.flags.DEFINE_float("grad_noise_scale", 0.0, "Gradient noise scale.")
 tf.app.flags.DEFINE_float("max_sampling_rate", 0.1, "Maximal sampling rate.")
 tf.app.flags.DEFINE_float("length_norm", 0.0, "Length normalization.")
@@ -263,7 +263,8 @@ def initialize(sess=None):
     data.rev_vocab = rev_fr_vocab
     data.print_out("Reading development and training data (limit: %d)."
                    % FLAGS.max_train_data_size)
-    dev_set = read_data(en_dev, fr_dev, data.bins)
+    dev_set = {}
+    dev_set["wmt"] = read_data(en_dev, fr_dev, data.bins)
     def data_read(size, print_out):
       read_data_into_global(en_train, fr_train, data.bins, size, print_out)
     data_read(50000, False)
@@ -330,6 +331,7 @@ def initialize(sess=None):
   ngpu.CHOOSE_K = FLAGS.soft_mem_size
   do_beam_model = FLAGS.train_beam_freq > 0.0001 and FLAGS.beam_size > 1
   beam_size = FLAGS.beam_size if FLAGS.mode > 0 and not do_beam_model else 1
+  beam_size = min(beam_size, FLAGS.beam_size)
   beam_model = None
   def make_ngpu(cur_beam_size, back):
     return ngpu.NeuralGPU(
