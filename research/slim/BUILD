@@ -10,6 +10,7 @@ exports_files(["LICENSE"])
 package_group(
     name = "internal",
     packages = [
+        "//googlex/proxy/learning/...",
         "//image/understanding/object_detection/...",
         "//learning/brain/contrib/slim/...",
         "//learning/brain/google/xla/benchmarks/...",
