@@ -73,8 +73,8 @@ class SentenceFeaturesTest : public ::testing::Test {
 
   // Extracts a vector of string representations from evaluating the prepared
   // set feature (returning multiple values) at the given index.
-  virtual vector<string> ExtractMultiFeature(int index) {
-    vector<string> values;
+  virtual std::vector<string> ExtractMultiFeature(int index) {
+    std::vector<string> values;
     FeatureVector result;
     extractor_->ExtractFeatures(workspaces_, sentence_, index,
                                 &result);
@@ -97,8 +97,8 @@ class SentenceFeaturesTest : public ::testing::Test {
 
   // Checks that a vector workspace is equal to a target vector.
   void CheckVectorWorkspace(const VectorIntWorkspace &workspace,
-                            vector<int> target) {
-    vector<int> src;
+                            std::vector<int> target) {
+    std::vector<int> src;
     for (int i = 0; i < workspace.size(); ++i) {
       src.push_back(workspace.element(i));
     }

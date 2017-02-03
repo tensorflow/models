@@ -54,6 +54,16 @@ class Caption(object):
       return -1
     else:
       return 1
+  
+  # For Python 3 compatibility (__cmp__ is deprecated).
+  def __lt__(self, other):
+    assert isinstance(other, Caption)
+    return self.score < other.score
+  
+  # Also for Python 3 compatibility.
+  def __eq__(self, other):
+    assert isinstance(other, Caption)
+    return self.score == other.score
 
 
 class TopN(object):

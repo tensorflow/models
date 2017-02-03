@@ -78,13 +78,10 @@ source. You'll need to install:
 
 *   python 2.7:
     * python 3 support is not available yet
-*   pip (python package manager)
-    * `apt-get install python-pip` on Ubuntu
-    * `brew` installs pip along with python on OSX
 *   bazel:
-    *   **versions 0.3.0 - 0.3.1*
-    *   follow the instructions [here](http://bazel.io/docs/install.html)
-    *   Alternately, Download bazel <.deb> from
+    *   **version 0.4.3**
+    *   follow the instructions [here](http://bazel.build/docs/install.html)
+    *   Alternately, Download bazel (0.4.3) <.deb> from
         [https://github.com/bazelbuild/bazel/releases]
         (https://github.com/bazelbuild/bazel/releases) for your system
         configuration.
@@ -96,12 +93,12 @@ source. You'll need to install:
 *   protocol buffers, with a version supported by TensorFlow:
     *   check your protobuf version with `pip freeze | grep protobuf`
     *   upgrade to a supported version with `pip install -U protobuf==3.0.0b2`
+*   mock, the testing package:
+    *   `pip install mock`
 *   asciitree, to draw parse trees on the console for the demo:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
-*   mock, package for unit testing:
-    *   `pip install mock`
 
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:

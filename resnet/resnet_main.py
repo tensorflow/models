@@ -16,6 +16,7 @@
 """ResNet Train/Eval module.
 """
 import time
+import six
 import sys
 
 import cifar_input
@@ -70,8 +71,8 @@ def train(hps):
   summary_hook = tf.train.SummarySaverHook(
       save_steps=100,
       output_dir=FLAGS.train_dir,
-      summary_op=[model.summaries,
-                  tf.summary.scalar('Precision', precision)])
+      summary_op=tf.summary.merge([model.summaries,
+                                   tf.summary.scalar('Precision', precision)]))
 
   logging_hook = tf.train.LoggingTensorHook(
       tensors={'step': model.global_step,
@@ -140,7 +141,7 @@ def evaluate(hps):
     saver.restore(sess, ckpt_state.model_checkpoint_path)
 
     total_prediction, correct_prediction = 0, 0
-    for _ in xrange(FLAGS.eval_batch_count):
+    for _ in six.moves.range(FLAGS.eval_batch_count):
       (summaries, loss, predictions, truth, train_step) = sess.run(
           [model.summaries, model.cost, model.predictions,
            model.labels, model.global_step])

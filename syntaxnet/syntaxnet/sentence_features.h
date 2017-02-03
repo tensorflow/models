@@ -110,7 +110,7 @@ class TokenLookupSetFeature : public SentenceFeature {
   // feature value set. The index is relative to the start of the sentence.
   virtual void LookupToken(const WorkspaceSet &workspaces,
                            const Sentence &sentence, int index,
-                           vector<int> *values) const = 0;
+                           std::vector<int> *values) const = 0;
 
   // Given a feature value, returns a string representation.
   virtual string GetFeatureValueName(int value) const = 0;
@@ -137,7 +137,7 @@ class TokenLookupSetFeature : public SentenceFeature {
 
   // Returns a pre-computed token value from the cache. This assumes the cache
   // is populated.
-  const vector<int> &GetCachedValueSet(const WorkspaceSet &workspaces,
+  const std::vector<int> &GetCachedValueSet(const WorkspaceSet &workspaces,
                                        const Sentence &sentence,
                                        int focus) const {
     // Do bounds checking on focus.
@@ -152,7 +152,7 @@ class TokenLookupSetFeature : public SentenceFeature {
   void Evaluate(const WorkspaceSet &workspaces, const Sentence &sentence,
                 int focus, FeatureVector *result) const override {
     if (focus >= 0 && focus < sentence.token_size()) {
-      const vector<int> &elements =
+      const std::vector<int> &elements =
           GetCachedValueSet(workspaces, sentence, focus);
       for (auto &value : elements) {
         result->add(this->feature_type(), value);
@@ -233,7 +233,7 @@ class TermFrequencyMapSetFeature : public TokenLookupSetFeature {
 
   // Returns index of raw word text.
   virtual void GetTokenIndices(const Token &token,
-                               vector<int> *values) const = 0;
+                               std::vector<int> *values) const = 0;
 
   // Requests the resource inputs.
   void Setup(TaskContext *context) override;
@@ -261,7 +261,7 @@ class TermFrequencyMapSetFeature : public TokenLookupSetFeature {
   // Given a position in a sentence and workspaces, looks up the corresponding
   // feature value set. The index is relative to the start of the sentence.
   void LookupToken(const WorkspaceSet &workspaces, const Sentence &sentence,
-                   int index, vector<int> *values) const override {
+                   int index, std::vector<int> *values) const override {
     GetTokenIndices(sentence.token(index), values);
   }
 
@@ -376,7 +376,8 @@ class CharNgram : public TermFrequencyMapSetFeature {
   }
 
   // Returns index of raw word text.
-  void GetTokenIndices(const Token &token, vector<int> *values) const override;
+  void GetTokenIndices(const Token &token,
+                       std::vector<int> *values) const override;
 
  private:
   // Size parameter (n) for the ngrams.
@@ -401,7 +402,8 @@ class MorphologySet : public TermFrequencyMapSetFeature {
   }
 
   // Returns index of raw word text.
-  void GetTokenIndices(const Token &token, vector<int> *values) const override;
+  void GetTokenIndices(const Token &token,
+                       std::vector<int> *values) const override;
 };
 
 class LexicalCategoryFeature : public TokenLookupFeature {
@@ -635,7 +637,7 @@ typedef FeatureExtractor<Sentence, int> SentenceExtractor;
 
 // Utility to register the sentence_instance::Feature functions.
 #define REGISTER_SENTENCE_IDX_FEATURE(name, type) \
-  REGISTER_FEATURE_FUNCTION(SentenceFeature, name, type)
+  REGISTER_SYNTAXNET_FEATURE_FUNCTION(SentenceFeature, name, type)
 
 }  // namespace syntaxnet
 

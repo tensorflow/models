@@ -69,7 +69,7 @@ def inception_v3(inputs,
     is_training: whether is training or not.
     restore_logits: whether or not the logits layers should be restored.
       Useful for fine-tuning a model with different num_classes.
-    scope: Optional scope for op_scope.
+    scope: Optional scope for name_scope.
 
   Returns:
     a list containing 'logits', 'aux_logits' Tensors.
@@ -77,7 +77,7 @@ def inception_v3(inputs,
   # end_points will collect relevant activations for external use, for example
   # summaries or losses.
   end_points = {}
-  with tf.op_scope([inputs], scope, 'inception_v3'):
+  with tf.name_scope(scope, 'inception_v3', [inputs]):
     with scopes.arg_scope([ops.conv2d, ops.fc, ops.batch_norm, ops.dropout],
                           is_training=is_training):
       with scopes.arg_scope([ops.conv2d, ops.max_pool, ops.avg_pool],
@@ -122,7 +122,7 @@ def inception_v3(inputs,
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 32, [1, 1])
-          net = tf.concat(3, [branch1x1, branch5x5, branch3x3dbl, branch_pool])
+          net = tf.concat([branch1x1, branch5x5, branch3x3dbl, branch_pool], 3)
           end_points['mixed_35x35x256a'] = net
         # mixed_1: 35 x 35 x 288.
         with tf.variable_scope('mixed_35x35x288a'):
@@ -138,7 +138,7 @@ def inception_v3(inputs,
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 64, [1, 1])
-          net = tf.concat(3, [branch1x1, branch5x5, branch3x3dbl, branch_pool])
+          net = tf.concat([branch1x1, branch5x5, branch3x3dbl, branch_pool], 3)
           end_points['mixed_35x35x288a'] = net
         # mixed_2: 35 x 35 x 288.
         with tf.variable_scope('mixed_35x35x288b'):
@@ -154,7 +154,7 @@ def inception_v3(inputs,
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 64, [1, 1])
-          net = tf.concat(3, [branch1x1, branch5x5, branch3x3dbl, branch_pool])
+          net = tf.concat([branch1x1, branch5x5, branch3x3dbl, branch_pool], 3)
           end_points['mixed_35x35x288b'] = net
         # mixed_3: 17 x 17 x 768.
         with tf.variable_scope('mixed_17x17x768a'):
@@ -167,7 +167,7 @@ def inception_v3(inputs,
                                       stride=2, padding='VALID')
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.max_pool(net, [3, 3], stride=2, padding='VALID')
-          net = tf.concat(3, [branch3x3, branch3x3dbl, branch_pool])
+          net = tf.concat([branch3x3, branch3x3dbl, branch_pool], 3)
           end_points['mixed_17x17x768a'] = net
         # mixed4: 17 x 17 x 768.
         with tf.variable_scope('mixed_17x17x768b'):
@@ -186,7 +186,7 @@ def inception_v3(inputs,
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 192, [1, 1])
-          net = tf.concat(3, [branch1x1, branch7x7, branch7x7dbl, branch_pool])
+          net = tf.concat([branch1x1, branch7x7, branch7x7dbl, branch_pool], 3)
           end_points['mixed_17x17x768b'] = net
         # mixed_5: 17 x 17 x 768.
         with tf.variable_scope('mixed_17x17x768c'):
@@ -205,7 +205,7 @@ def inception_v3(inputs,
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 192, [1, 1])
-          net = tf.concat(3, [branch1x1, branch7x7, branch7x7dbl, branch_pool])
+          net = tf.concat([branch1x1, branch7x7, branch7x7dbl, branch_pool], 3)
           end_points['mixed_17x17x768c'] = net
         # mixed_6: 17 x 17 x 768.
         with tf.variable_scope('mixed_17x17x768d'):
@@ -224,7 +224,7 @@ def inception_v3(inputs,
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 192, [1, 1])
-          net = tf.concat(3, [branch1x1, branch7x7, branch7x7dbl, branch_pool])
+          net = tf.concat([branch1x1, branch7x7, branch7x7dbl, branch_pool], 3)
           end_points['mixed_17x17x768d'] = net
         # mixed_7: 17 x 17 x 768.
         with tf.variable_scope('mixed_17x17x768e'):
@@ -243,7 +243,7 @@ def inception_v3(inputs,
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 192, [1, 1])
-          net = tf.concat(3, [branch1x1, branch7x7, branch7x7dbl, branch_pool])
+          net = tf.concat([branch1x1, branch7x7, branch7x7dbl, branch_pool], 3)
           end_points['mixed_17x17x768e'] = net
         # Auxiliary Head logits
         aux_logits = tf.identity(end_points['mixed_17x17x768e'])
@@ -276,7 +276,7 @@ def inception_v3(inputs,
                                      stride=2, padding='VALID')
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.max_pool(net, [3, 3], stride=2, padding='VALID')
-          net = tf.concat(3, [branch3x3, branch7x7x3, branch_pool])
+          net = tf.concat([branch3x3, branch7x7x3, branch_pool], 3)
           end_points['mixed_17x17x1280a'] = net
         # mixed_9: 8 x 8 x 2048.
         with tf.variable_scope('mixed_8x8x2048a'):
@@ -284,17 +284,17 @@ def inception_v3(inputs,
             branch1x1 = ops.conv2d(net, 320, [1, 1])
           with tf.variable_scope('branch3x3'):
             branch3x3 = ops.conv2d(net, 384, [1, 1])
-            branch3x3 = tf.concat(3, [ops.conv2d(branch3x3, 384, [1, 3]),
-                                      ops.conv2d(branch3x3, 384, [3, 1])])
+            branch3x3 = tf.concat([ops.conv2d(branch3x3, 384, [1, 3]),
+                                   ops.conv2d(branch3x3, 384, [3, 1])], 3)
           with tf.variable_scope('branch3x3dbl'):
             branch3x3dbl = ops.conv2d(net, 448, [1, 1])
             branch3x3dbl = ops.conv2d(branch3x3dbl, 384, [3, 3])
-            branch3x3dbl = tf.concat(3, [ops.conv2d(branch3x3dbl, 384, [1, 3]),
-                                         ops.conv2d(branch3x3dbl, 384, [3, 1])])
+            branch3x3dbl = tf.concat([ops.conv2d(branch3x3dbl, 384, [1, 3]),
+                                      ops.conv2d(branch3x3dbl, 384, [3, 1])], 3)
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 192, [1, 1])
-          net = tf.concat(3, [branch1x1, branch3x3, branch3x3dbl, branch_pool])
+          net = tf.concat([branch1x1, branch3x3, branch3x3dbl, branch_pool], 3)
           end_points['mixed_8x8x2048a'] = net
         # mixed_10: 8 x 8 x 2048.
         with tf.variable_scope('mixed_8x8x2048b'):
@@ -302,17 +302,17 @@ def inception_v3(inputs,
             branch1x1 = ops.conv2d(net, 320, [1, 1])
           with tf.variable_scope('branch3x3'):
             branch3x3 = ops.conv2d(net, 384, [1, 1])
-            branch3x3 = tf.concat(3, [ops.conv2d(branch3x3, 384, [1, 3]),
-                                      ops.conv2d(branch3x3, 384, [3, 1])])
+            branch3x3 = tf.concat([ops.conv2d(branch3x3, 384, [1, 3]),
+                                   ops.conv2d(branch3x3, 384, [3, 1])], 3)
           with tf.variable_scope('branch3x3dbl'):
             branch3x3dbl = ops.conv2d(net, 448, [1, 1])
             branch3x3dbl = ops.conv2d(branch3x3dbl, 384, [3, 3])
-            branch3x3dbl = tf.concat(3, [ops.conv2d(branch3x3dbl, 384, [1, 3]),
-                                         ops.conv2d(branch3x3dbl, 384, [3, 1])])
+            branch3x3dbl = tf.concat([ops.conv2d(branch3x3dbl, 384, [1, 3]),
+                                      ops.conv2d(branch3x3dbl, 384, [3, 1])], 3)
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
             branch_pool = ops.conv2d(branch_pool, 192, [1, 1])
-          net = tf.concat(3, [branch1x1, branch3x3, branch3x3dbl, branch_pool])
+          net = tf.concat([branch1x1, branch3x3, branch3x3dbl, branch_pool], 3)
           end_points['mixed_8x8x2048b'] = net
         # Final pooling and prediction
         with tf.variable_scope('logits'):

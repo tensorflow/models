@@ -32,15 +32,15 @@ class SegmenterUtils {
   // Takes a text and convert it into a vector, where each element is a utf8
   // character.
   static void GetUTF8Chars(const string &text,
-                           vector<tensorflow::StringPiece> *chars);
+                           std::vector<tensorflow::StringPiece> *chars);
 
   // Sets tokens in the sentence so that each token is a single character.
   // Assigns the start/end byte offsets.
   //
   // If the sentence is not empty, the current tokens will be cleared.
-  static void SetCharsAsTokens(const string &text,
-                               const vector<tensorflow::StringPiece> &chars,
-                               Sentence *sentence);
+  static void SetCharsAsTokens(
+      const string &text, const std::vector<tensorflow::StringPiece> &chars,
+      Sentence *sentence);
 
   // Returns true for UTF-8 characters that cannot be 'real' tokens. This is
   // defined as any whitespace, line break or paragraph break.

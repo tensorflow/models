@@ -7,15 +7,15 @@ RUN mkdir -p $SYNTAXNETDIR \
     && apt-get update \
     && apt-get install git zlib1g-dev file swig python2.7 python-dev python-pip python-mock -y \
     && pip install --upgrade pip \
-    && pip install -U protobuf==3.0.0 \
+    && pip install -U protobuf==3.0.0b2 \
     && pip install asciitree \
     && pip install numpy \
-    && wget https://github.com/bazelbuild/bazel/releases/download/0.3.1/bazel-0.3.1-installer-linux-x86_64.sh \
-    && chmod +x bazel-0.3.1-installer-linux-x86_64.sh \
-    && ./bazel-0.3.1-installer-linux-x86_64.sh --user \
+    && wget https://github.com/bazelbuild/bazel/releases/download/0.4.3/bazel-0.4.3-installer-linux-x86_64.sh \
+    && chmod +x bazel-0.4.3-installer-linux-x86_64.sh \
+    && ./bazel-0.4.3-installer-linux-x86_64.sh --user \
     && git clone --recursive https://github.com/tensorflow/models.git \
     && cd $SYNTAXNETDIR/models/syntaxnet/tensorflow \
-    && echo "\n\n\n\n" | ./configure \
+    && echo -e "\n\n\n\n\n\n" | ./configure \
     && apt-get autoremove -y \
     && apt-get clean
 

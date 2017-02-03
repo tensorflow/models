@@ -246,11 +246,8 @@ number. More concretely, the scopes in the example above would be 'conv3_1',
 
 In addition to the types of scope mechanisms in TensorFlow ([name_scope]
 (https://www.tensorflow.org/api_docs/python/framework.html#name_scope),
-[op_scope](https://www.tensorflow.org/api_docs/python/framework.html#op_scope),
 [variable_scope]
 (https://www.tensorflow.org/api_docs/python/state_ops.html#variable_scope),
-[variable_op_scope]
-(https://www.tensorflow.org/api_docs/python/state_ops.html#variable_op_scope)),
 TF-Slim adds a new scoping mechanism called "argument scope" or [arg_scope]
 (scopes.py). This new scope allows a user to specify one or more operations and
 a set of arguments which will be passed to each of the operations defined in the
