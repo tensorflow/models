@@ -77,6 +77,33 @@ TOWER_NAME = 'tower'
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
 
+def _stochastical_binarize_gradients(grads_and_vars):
+  """Stochastically binarize gradients."""
+  gradients, variables = zip(*grads_and_vars)
+  binarized_gradients = []
+  for gradient in gradients:
+    if gradient is None:
+      binarized_gradients.append(None)
+      continue
+    if isinstance(gradient, tf.IndexedSlices):
+      gradient_shape = gradient.dense_shape
+    else:
+      gradient_shape = gradient.get_shape()
+
+    #noise = random_ops.truncated_normal(gradient_shape) * gradient_noise_scale
+    #tf.less
+    #tf.where
+    zeros = tf.zeros(gradient_shape)
+    abs_gradient = tf.abs(gradient)
+    max_abs_gradient = tf.reduce_max( abs_gradient )
+    sign_gradient = tf.sign( gradient )
+    rnd_sample = tf.random_uniform(gradient_shape,0,max_abs_gradient)
+    where_cond = tf.less(rnd_sample, abs_gradient)
+    binarized_gradient = tf.where(where_cond, sign_gradient * max_abs_gradient, zeros)
+
+    binarized_gradients.append(binarized_gradient)
+  return list(zip(binarized_gradients, variables))
+
 def _activation_summary(x):
   """Helper to create summaries for activations.
 
@@ -356,6 +383,9 @@ def train(total_loss, global_step):
     opt = tf.train.GradientDescentOptimizer(lr)
 #    opt = tf.train.AdamOptimizer(INITIAL_LEARNING_RATE)
     grads = opt.compute_gradients(total_loss)
+  
+  # Binarize gradients
+  grads = _stochastical_binarize_gradients(grads)
 
   # Apply gradients.
   apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)

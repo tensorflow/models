@@ -26,6 +26,10 @@ System        | Step Time (sec/batch)  |     Accuracy
 1 Tesla K20m  | 0.35-0.60              | ~86% at 60K steps  (5 hours)
 1 Tesla K40m  | 0.25-0.35              | ~86% at 100K steps (4 hours)
 
+~83.8% at 200K steps, adam float grads, lr=0.001
+~83.9% at 350K steps, gradient descent, stochastic grads, lr=0.1
+<80% at ? steps, adam stochastic grads, lr=0.001
+
 Usage:
 Please see the tutorial and website for how to download the CIFAR-10
 data set, compile the program and train the model.
@@ -48,7 +52,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('train_dir', '/tmp/cifar10_train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
-tf.app.flags.DEFINE_integer('max_steps', 300000,
+tf.app.flags.DEFINE_integer('max_steps', 1000000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
