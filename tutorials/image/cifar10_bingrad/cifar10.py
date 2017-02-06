@@ -39,10 +39,12 @@ import os
 import re
 import sys
 import tarfile
+import numpy as np
 
 from six.moves import urllib
 import tensorflow as tf
 
+import cifar10_common
 import cifar10_input
 
 FLAGS = tf.app.flags.FLAGS
@@ -50,11 +52,16 @@ FLAGS = tf.app.flags.FLAGS
 # Basic model parameters.
 tf.app.flags.DEFINE_integer('batch_size', 128,
                             """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_string('data_dir', '/tmp/cifar10_data',
+tf.app.flags.DEFINE_integer('grad_bits', 32,
+                            """Number of bits of gradients.""")
+tf.app.flags.DEFINE_string('optimizer', 'momentum',
+                           """The optimizer of SGD (momentum, adam or gd).""")
+tf.app.flags.DEFINE_string('data_dir', cifar10_common.WORKSPACE_PATH+'/cifar10_data',
                            """Path to the CIFAR-10 data directory.""")
 tf.app.flags.DEFINE_boolean('use_fp16', False,
                             """Train the model using fp16.""")
-
+tf.app.flags.DEFINE_float('base_lr', 0.001,
+                            """Number of bits of gradients.""")
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
 NUM_CLASSES = cifar10_input.NUM_CLASSES
@@ -64,10 +71,9 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
-NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
+NUM_EPOCHS_PER_DECAY = 256.0      # Epochs after which learning rate decays. (100K when batch size is 128.)
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
-#INITIAL_LEARNING_RATE = 0.001       # Initial learning rate.
+#INITIAL_LEARNING_RATE = FLAGS.base_lr       # Initial learning rate.
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -368,11 +374,17 @@ def train(total_loss, global_step):
   decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
 
   # Decay the learning rate exponentially based on the number of steps.
-  lr = tf.train.exponential_decay(INITIAL_LEARNING_RATE,
-                                  global_step,
-                                  decay_steps,
-                                  LEARNING_RATE_DECAY_FACTOR,
-                                  staircase=True)
+  if( ('momentum' == FLAGS.optimizer) or ('gd' == FLAGS.optimizer) ):
+    lr = tf.train.piecewise_constant(global_step,
+                                    [tf.to_int64(decay_steps),tf.to_int64(decay_steps+decay_steps/2)],
+                                    [FLAGS.base_lr,
+                                     FLAGS.base_lr*LEARNING_RATE_DECAY_FACTOR,
+                                     FLAGS.base_lr*LEARNING_RATE_DECAY_FACTOR*LEARNING_RATE_DECAY_FACTOR])
+  elif('adam' == FLAGS.optimizer):
+    lr = FLAGS.base_lr
+  else:
+    raise ValueError('Unsupported optimizer type.')
+
   tf.contrib.deprecated.scalar_summary('learning_rate', lr)
 
   # Generate moving averages of all losses and associated summaries.
@@ -380,12 +392,20 @@ def train(total_loss, global_step):
 
   # Compute gradients.
   with tf.control_dependencies([loss_averages_op]):
-    opt = tf.train.GradientDescentOptimizer(lr)
-#    opt = tf.train.AdamOptimizer(INITIAL_LEARNING_RATE)
+    if('gd' == FLAGS.optimizer):
+      opt = tf.train.GradientDescentOptimizer(lr)
+    elif ('momentum' == FLAGS.optimizer):
+      opt = tf.train.MomentumOptimizer(lr,0.9)
+    elif ('adam' == FLAGS.optimizer):
+      opt = tf.train.AdamOptimizer(lr)
+    else:
+      opt = tf.train.AdamOptimizer(FLAGS.base_lr)
+
     grads = opt.compute_gradients(total_loss)
   
   # Binarize gradients
-  grads = _stochastical_binarize_gradients(grads)
+  if 1==FLAGS.grad_bits:
+    grads = _stochastical_binarize_gradients(grads)
 
   # Apply gradients.
   apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
