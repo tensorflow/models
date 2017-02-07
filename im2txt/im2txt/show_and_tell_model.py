@@ -244,10 +244,10 @@ class ShowAndTellModel(object):
     # This LSTM cell has biases and outputs tanh(new_c) * sigmoid(o), but the
     # modified LSTM in the "Show and Tell" paper has no biases and outputs
     # new_c * sigmoid(o).
-    lstm_cell = tf.contrib.rnn.BasicLSTMCell(
+    lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(
         num_units=self.config.num_lstm_units, state_is_tuple=True)
     if self.mode == "train":
-      lstm_cell = tf.contrib.rnn.DropoutWrapper(
+      lstm_cell = tf.nn.rnn_cell.DropoutWrapper(
           lstm_cell,
           input_keep_prob=self.config.lstm_dropout_keep_prob,
           output_keep_prob=self.config.lstm_dropout_keep_prob)
@@ -270,7 +270,7 @@ class ShowAndTellModel(object):
         state_feed = tf.placeholder(dtype=tf.float32,
                                     shape=[None, sum(lstm_cell.state_size)],
                                     name="state_feed")
-        state_tuple = tf.split(value=state_feed, num_or_size_splits=2, axis=1)
+        state_tuple = tf.split(value=state_feed, num_split=2, split_dim=1)
 
         # Run a single LSTM step.
         lstm_outputs, state_tuple = lstm_cell(
@@ -312,8 +312,8 @@ class ShowAndTellModel(object):
       batch_loss = tf.div(tf.reduce_sum(tf.multiply(losses, weights)),
                           tf.reduce_sum(weights),
                           name="batch_loss")
-      tf.losses.add_loss(batch_loss)
-      total_loss = tf.losses.get_total_loss()
+      tf.contrib.losses.add_loss(batch_loss)
+      total_loss = tf.contrib.losses.get_total_loss()
 
       # Add summaries.
       tf.summary.scalar("losses/batch_loss", batch_loss)
