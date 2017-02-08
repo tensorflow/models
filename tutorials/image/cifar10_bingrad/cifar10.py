@@ -62,6 +62,9 @@ tf.app.flags.DEFINE_boolean('use_fp16', False,
                             """Train the model using fp16.""")
 tf.app.flags.DEFINE_float('base_lr', 0.001,
                             """Number of bits of gradients.""")
+
+tf.app.flags.DEFINE_float('decay_factor', 0.1,
+                            """Learning rate decay factor.""")
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
 NUM_CLASSES = cifar10_input.NUM_CLASSES
@@ -72,7 +75,7 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 256.0      # Epochs after which learning rate decays. (100K when batch size is 128.)
-LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
+#LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
 #INITIAL_LEARNING_RATE = FLAGS.base_lr       # Initial learning rate.
 
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
@@ -377,9 +380,10 @@ def train(total_loss, global_step):
   if( ('momentum' == FLAGS.optimizer) or ('gd' == FLAGS.optimizer) ):
     lr = tf.train.piecewise_constant(global_step,
                                     [tf.to_int64(decay_steps),tf.to_int64(decay_steps+decay_steps/2)],
+                                    #[tf.to_int64(60000), tf.to_int64(180000)],
                                     [FLAGS.base_lr,
-                                     FLAGS.base_lr*LEARNING_RATE_DECAY_FACTOR,
-                                     FLAGS.base_lr*LEARNING_RATE_DECAY_FACTOR*LEARNING_RATE_DECAY_FACTOR])
+                                     FLAGS.base_lr*FLAGS.decay_factor,
+                                     FLAGS.base_lr*FLAGS.decay_factor*FLAGS.decay_factor])
   elif('adam' == FLAGS.optimizer):
     lr = FLAGS.base_lr
   else:
