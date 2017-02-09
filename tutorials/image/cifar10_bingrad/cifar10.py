@@ -102,13 +102,24 @@ def _stochastical_binarize_gradients(grads_and_vars):
     #noise = random_ops.truncated_normal(gradient_shape) * gradient_noise_scale
     #tf.less
     #tf.where
+    #mean = tf.reduce_mean(var)
+    #stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+    #tf.clip_by_value
     zeros = tf.zeros(gradient_shape)
     abs_gradient = tf.abs(gradient)
+    #tf.summary.tensor_summary(gradient.op.name + '/abs_gradients', abs_gradient)
     max_abs_gradient = tf.reduce_max( abs_gradient )
+    #tf.summary.scalar(gradient.op.name + '/max_abs_gradients', max_abs_gradient)
     sign_gradient = tf.sign( gradient )
     rnd_sample = tf.random_uniform(gradient_shape,0,max_abs_gradient)
     where_cond = tf.less(rnd_sample, abs_gradient)
     binarized_gradient = tf.where(where_cond, sign_gradient * max_abs_gradient, zeros)
+
+    #debug_op = tf.Print(gradient, [gradient, abs_gradient, max_abs_gradient, sign_gradient, rnd_sample,binarized_gradient],
+    #                    first_n=1, summarize=1000,
+    #                    message=gradient.op.name)
+    #with tf.control_dependencies([debug_op]):
+    #  binarized_gradient = tf.negative(tf.negative(binarized_gradient))
 
     binarized_gradients.append(binarized_gradient)
   return list(zip(binarized_gradients, variables))
