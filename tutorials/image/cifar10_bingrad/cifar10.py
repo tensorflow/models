@@ -65,6 +65,8 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
 
 tf.app.flags.DEFINE_float('decay_factor', 0.1,
                             """Learning rate decay factor.""")
+tf.app.flags.DEFINE_float('clip_factor', 2.0,
+                            """The factor of stddev to clip gradients.""")
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
 NUM_CLASSES = cifar10_input.NUM_CLASSES
@@ -99,24 +101,21 @@ def _stochastical_binarize_gradients(grads_and_vars):
     else:
       gradient_shape = gradient.get_shape()
 
-    #noise = random_ops.truncated_normal(gradient_shape) * gradient_noise_scale
-    #tf.less
-    #tf.where
-    #mean = tf.reduce_mean(var)
-    #stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-    #tf.clip_by_value
+    mean_gradient = tf.reduce_mean(gradient)
+    stddev_gradient = tf.sqrt(tf.reduce_mean(tf.square(gradient - mean_gradient)))
+    clipped_gradient = tf.clip_by_value(gradient,-FLAGS.clip_factor*stddev_gradient,FLAGS.clip_factor*stddev_gradient)
     zeros = tf.zeros(gradient_shape)
-    abs_gradient = tf.abs(gradient)
+    abs_gradient = tf.abs(clipped_gradient)
     #tf.summary.tensor_summary(gradient.op.name + '/abs_gradients', abs_gradient)
     max_abs_gradient = tf.reduce_max( abs_gradient )
     #tf.summary.scalar(gradient.op.name + '/max_abs_gradients', max_abs_gradient)
-    sign_gradient = tf.sign( gradient )
+    sign_gradient = tf.sign( clipped_gradient )
     rnd_sample = tf.random_uniform(gradient_shape,0,max_abs_gradient)
     where_cond = tf.less(rnd_sample, abs_gradient)
     binarized_gradient = tf.where(where_cond, sign_gradient * max_abs_gradient, zeros)
 
-    #debug_op = tf.Print(gradient, [gradient, abs_gradient, max_abs_gradient, sign_gradient, rnd_sample,binarized_gradient],
-    #                    first_n=1, summarize=1000,
+    #debug_op = tf.Print(gradient, [gradient, rnd_sample,binarized_gradient],
+    #                    first_n=1, summarize=64,
     #                    message=gradient.op.name)
     #with tf.control_dependencies([debug_op]):
     #  binarized_gradient = tf.negative(tf.negative(binarized_gradient))
