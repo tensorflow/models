@@ -29,15 +29,17 @@ from datasets import dataset_utils
 
 slim = tf.contrib.slim
 
-_FILE_PATTERN = 'flowers_%s_*.tfrecord'
 
-SPLITS_TO_SIZES = {'train': 3320, 'validation': 350}
+_FILE_PATTERN = 'casia_%s_*.tfrecord'
 
-_NUM_CLASSES = 5
+total_number_of_files= 455594
+SPLITS_TO_SIZES = {'train': 400000, 'validation': 55594}
+
+_NUM_CLASSES = 10575
 
 _ITEMS_TO_DESCRIPTIONS = {
-    'image': 'A color image of varying size.',
-    'label': 'A single integer between 0 and 4',
+    'image': 'A color image of fixed size.',
+    'label': 'A single integer between 1 and 10575',
 }
 
 
@@ -63,10 +65,6 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
 
   if not file_pattern:
     file_pattern = _FILE_PATTERN
-
-  # # The format is as below
-  # file_pattern = 'flowers_%s_*.tfrecord'
-  # file_pattern % split_name = file_pattern = 'flowers_train_*.tfrecord'
   file_pattern = os.path.join(dataset_dir, file_pattern % split_name)
 
   # Allowing None in the signature so that dataset_factory can use the default.
