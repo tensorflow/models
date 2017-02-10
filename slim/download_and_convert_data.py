@@ -28,6 +28,10 @@ $ python download_and_convert_data.py \
 $ python download_and_convert_data.py \
     --dataset_name=flowers \
     --dataset_dir=/tmp/flowers
+
+$ python download_and_convert_data.py \
+    --dataset_name=flowers \
+    --dataset_dir=/tmp/casia
 ```
 """
 from __future__ import absolute_import

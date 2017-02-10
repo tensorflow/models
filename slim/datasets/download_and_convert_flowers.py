@@ -142,7 +142,6 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
             class_name = os.path.basename(os.path.dirname(filenames[i]))
             class_id = class_names_to_ids[class_name]
 
-            # Determine the file type.
             example = dataset_utils.image_to_tfexample(
                 image_data, 'jpg', height, width, class_id)
             tfrecord_writer.write(example.SerializeToString())
@@ -190,7 +189,6 @@ def run(dataset_dir):
 
   dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
   photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
-
   class_names_to_ids = dict(zip(class_names, range(len(class_names))))
 
   # Divide into train and test:
@@ -209,7 +207,7 @@ def run(dataset_dir):
   labels_to_class_names = dict(zip(range(len(class_names)), class_names))
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  # # Uncomment if you want you clean the files.
-  # _clean_up_temporary_files(dataset_dir)
+
+  _clean_up_temporary_files(dataset_dir)
   print('\nFinished converting the Flowers dataset!')
 
