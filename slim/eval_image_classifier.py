@@ -46,17 +46,21 @@ tf.app.flags.DEFINE_string(
     'eval_dir', '/tmp/tfmodel/', 'Directory where the results are saved to.')
 
 tf.app.flags.DEFINE_integer(
+    'eval_interval_secs', 60*2,
+    'The frequency with which the model is evaluated, in seconds.')
+
+tf.app.flags.DEFINE_integer(
     'num_preprocessing_threads', 4,
     'The number of threads used to create the batches.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_name', 'imagenet', 'The name of the dataset to load.')
+    'dataset_name', 'casia', 'The name of the dataset to load.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_split_name', 'test', 'The name of the train/test split.')
+    'dataset_split_name', 'validation', 'The name of the train/test split.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_dir', None, 'The directory where the dataset files are stored.')
+    'dataset_dir', '/tmp/data/CASIA', 'The directory where the dataset files are stored.')
 
 tf.app.flags.DEFINE_integer(
     'labels_offset', 0,
@@ -65,7 +69,7 @@ tf.app.flags.DEFINE_integer(
     'class for the ImageNet dataset.')
 
 tf.app.flags.DEFINE_string(
-    'model_name', 'inception_v3', 'The name of the architecture to evaluate.')
+    'model_name', 'vgg_16', 'The name of the architecture to evaluate.')
 
 tf.app.flags.DEFINE_string(
     'preprocessing_name', None, 'The name of the preprocessing to use. If left '
@@ -147,18 +151,22 @@ def main(_):
     else:
       variables_to_restore = slim.get_variables_to_restore()
 
+    one_hot_labels = slim.one_hot_encoding(labels, 10575)
+    loss = slim.losses.softmax_cross_entropy(logits, one_hot_labels)
+
     predictions = tf.argmax(logits, 1)
     labels = tf.squeeze(labels)
 
     # Define the metrics:
     names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
+        'Total_Loss': slim.metrics.streaming_mean(loss),
         'Accuracy': slim.metrics.streaming_accuracy(predictions, labels),
         'Recall@5': slim.metrics.streaming_recall_at_k(
             logits, labels, 5),
     })
 
     # Print the summaries to screen.
-    for name, value in names_to_values.iteritems():
+    for name, value in list(names_to_values.items()):
       summary_name = 'eval/%s' % name
       op = tf.scalar_summary(summary_name, value, collections=[])
       op = tf.Print(op, [value], summary_name)
@@ -171,19 +179,20 @@ def main(_):
       # This ensures that we make a single pass over all of the data.
       num_batches = math.ceil(dataset.num_samples / float(FLAGS.batch_size))
 
-    if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
-      checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
-    else:
-      checkpoint_path = FLAGS.checkpoint_path
+    # if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
+    #   checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
+    # else:
+    #   checkpoint_path = FLAGS.checkpoint_path
 
-    tf.logging.info('Evaluating %s' % checkpoint_path)
+      tf.logging.info('Evaluating %s' % FLAGS.checkpoint_path)
 
-    slim.evaluation.evaluate_once(
+
+    slim.evaluation.evaluation_loop(
         master=FLAGS.master,
-        checkpoint_path=checkpoint_path,
+        checkpoint_dir=FLAGS.checkpoint_path,
         logdir=FLAGS.eval_dir,
         num_evals=num_batches,
-        eval_op=names_to_updates.values(),
+        eval_op=list(names_to_updates.values()),
         variables_to_restore=variables_to_restore)
 
 

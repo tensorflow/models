@@ -478,6 +478,12 @@ def main(_):
             label_smoothing=FLAGS.label_smoothing, weight=0.4, scope='aux_loss')
       slim.losses.softmax_cross_entropy(
           logits, labels, label_smoothing=FLAGS.label_smoothing, weight=1.0)
+
+      # Adding the accuracy metric
+      predictions = tf.argmax(logits, 1)
+      labels = tf.argmax(labels, 1)
+      accuracy = tf.reduce_mean(tf.to_float(tf.equal(predictions, labels)))
+      tf.add_to_collection('accuracy', accuracy)
       return end_points
 
     # Gather initial summaries.
