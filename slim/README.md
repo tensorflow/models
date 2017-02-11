@@ -308,6 +308,10 @@ $ python train_image_classifier.py \
 ```
 
 
+For the vgg_16 if fine-tuning the last layer is desired, then the following command is applicable:
+```python train_image_classifier.py --train_dir=${TRAIN_DIR} --dataset_dir=${DATASET_DIR} --dataset_name=casia --dataset_split_name=train --model_name=vgg_16 --checkpoint_path=${CHECKPOINT_PATH} --checkpoint_exclude_scopes=vgg_16/fc8/biases,vgg_16/fc8/weights --trainable_scopes=vgg_16/fc8/biases,vgg_16/fc8/weights```
+
+
 
 # Evaluating performance of a model
 <a id='Eval'></a>
