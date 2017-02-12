@@ -308,8 +308,19 @@ $ python train_image_classifier.py \
 ```
 
 
-For the vgg_16 if fine-tuning the last layer is desired, then the following command is applicable:
-```python train_image_classifier.py --train_dir=${TRAIN_DIR} --dataset_dir=${DATASET_DIR} --dataset_name=casia --dataset_split_name=train --model_name=vgg_16 --checkpoint_path=${CHECKPOINT_PATH} --checkpoint_exclude_scopes=vgg_16/fc8/biases,vgg_16/fc8/weights --trainable_scopes=vgg_16/fc8/biases,vgg_16/fc8/weights```
+For the vgg_19 if fine-tuning the last layer is desired, then the following command is applicable:
+```python train_image_classifier.py \
+    --train_dir=/tmp/train_logs \
+    --dataset_dir=/tmp/data/CASIA \
+    --dataset_name=casia \
+    --dataset_split_name=train \
+    --checkpoint_path=/tmp/checkpoints/vgg_19.ckpt \
+    --checkpoint_exclude_scopes=vgg_19/fc8/biases,vgg_19/fc8/weights \
+    --num_clones=4 \
+    --ignore_missing_vars
+```
+
+The flag of `checkpoint_exclude_scopes` force the structure to not to read the weights from the specified names(vgg_19/fc8) of the check point.`um_clones=4` distribute the training on multiple GPUs. Activating `ignore_missing_vars` guide the initializer of the network to ignore the variables that are not present in the checkpoint.
 
 
 
