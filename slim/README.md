@@ -308,7 +308,9 @@ $ python train_image_classifier.py \
 ```
 
 For the vgg_19 if fine-tuning the last layer is desired, then the following command is applicable:
-```$ python train_image_classifier.py \
+
+```shell
+$ python train_image_classifier.py \
     --train_dir=/tmp/train_logs \
     --dataset_dir=/tmp/data/CASIA \
     --dataset_name=casia \
