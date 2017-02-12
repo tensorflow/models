@@ -207,6 +207,7 @@ def run(dataset_dir):
                      dataset_dir)
 
     # Finally, write the labels file:
+    print("len(class_names)",len(class_names))
     labels_to_class_names = dict(zip(range(len(class_names)), class_names))
     dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
