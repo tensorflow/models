@@ -365,7 +365,7 @@ class Word2Vec(object):
       self._word2id[w] = i
     true_logits, sampled_logits = self.forward(examples, labels)
     loss = self.nce_loss(true_logits, sampled_logits)
-    tf.scalar_summary("NCE loss", loss)
+    tf.summary.scalar("NCE loss", loss)
     self._loss = loss
     self.optimize(loss)
 
