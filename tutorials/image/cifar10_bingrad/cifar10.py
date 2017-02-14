@@ -65,7 +65,7 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
 
 tf.app.flags.DEFINE_float('decay_factor', 0.1,
                             """Learning rate decay factor.""")
-tf.app.flags.DEFINE_float('clip_factor', 2.0,
+tf.app.flags.DEFINE_float('clip_factor', 0.0,
                             """The factor of stddev to clip gradients.""")
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
@@ -87,41 +87,6 @@ TOWER_NAME = 'tower'
 
 DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 
-
-def _stochastical_binarize_gradients(grads_and_vars):
-  """Stochastically binarize gradients."""
-  gradients, variables = zip(*grads_and_vars)
-  binarized_gradients = []
-  for gradient in gradients:
-    if gradient is None:
-      binarized_gradients.append(None)
-      continue
-    if isinstance(gradient, tf.IndexedSlices):
-      gradient_shape = gradient.dense_shape
-    else:
-      gradient_shape = gradient.get_shape()
-
-    mean_gradient = tf.reduce_mean(gradient)
-    stddev_gradient = tf.sqrt(tf.reduce_mean(tf.square(gradient - mean_gradient)))
-    clipped_gradient = tf.clip_by_value(gradient,-FLAGS.clip_factor*stddev_gradient,FLAGS.clip_factor*stddev_gradient)
-    zeros = tf.zeros(gradient_shape)
-    abs_gradient = tf.abs(clipped_gradient)
-    #tf.summary.tensor_summary(gradient.op.name + '/abs_gradients', abs_gradient)
-    max_abs_gradient = tf.reduce_max( abs_gradient )
-    #tf.summary.scalar(gradient.op.name + '/max_abs_gradients', max_abs_gradient)
-    sign_gradient = tf.sign( clipped_gradient )
-    rnd_sample = tf.random_uniform(gradient_shape,0,max_abs_gradient)
-    where_cond = tf.less(rnd_sample, abs_gradient)
-    binarized_gradient = tf.where(where_cond, sign_gradient * max_abs_gradient, zeros)
-
-    #debug_op = tf.Print(gradient, [gradient, rnd_sample,binarized_gradient],
-    #                    first_n=1, summarize=64,
-    #                    message=gradient.op.name)
-    #with tf.control_dependencies([debug_op]):
-    #  binarized_gradient = tf.negative(tf.negative(binarized_gradient))
-
-    binarized_gradients.append(binarized_gradient)
-  return list(zip(binarized_gradients, variables))
 
 def _activation_summary(x):
   """Helper to create summaries for activations.
@@ -416,10 +381,14 @@ def train(total_loss, global_step):
       opt = tf.train.AdamOptimizer(FLAGS.base_lr)
 
     grads = opt.compute_gradients(total_loss)
-  
+
+  # Clip gradients
+  if FLAGS.clip_factor > 1.0e-5:
+    grads = cifar10_common.clip_gradients(grads,clip_factor=FLAGS.clip_factor)
+
   # Binarize gradients
   if 1==FLAGS.grad_bits:
-    grads = _stochastical_binarize_gradients(grads)
+    grads = cifar10_common.stochastical_binarize_gradients(grads)
 
   # Apply gradients.
   apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
