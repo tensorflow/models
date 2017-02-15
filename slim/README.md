@@ -315,6 +315,7 @@ $ python train_image_classifier.py \
     --dataset_dir=/tmp/data/CASIA \
     --dataset_name=casia \
     --dataset_split_name=train \
+    --model_name=vgg_19 \
     --checkpoint_path=/tmp/checkpoints/vgg_19.ckpt \
     --checkpoint_exclude_scopes=vgg_19/fc8/biases,vgg_19/fc8/weights \
     --num_clones=4 \
