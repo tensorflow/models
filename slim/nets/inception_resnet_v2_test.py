@@ -95,7 +95,7 @@ class InceptionTest(tf.test.TestCase):
       self.assertListEqual(logits.get_shape().as_list(),
                            [None, num_classes])
       images = tf.random_uniform((batch_size, height, width, 3))
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEquals(output.shape, (batch_size, num_classes))
 
@@ -109,7 +109,7 @@ class InceptionTest(tf.test.TestCase):
                                                 num_classes,
                                                 is_training=False)
       predictions = tf.argmax(logits, 1)
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (batch_size,))
 
@@ -127,7 +127,7 @@ class InceptionTest(tf.test.TestCase):
                                                 is_training=False,
                                                 reuse=True)
       predictions = tf.argmax(logits, 1)
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (eval_batch_size,))
 
