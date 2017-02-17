@@ -10,6 +10,7 @@ exports_files(["LICENSE"])
 package_group(
     name = "internal",
     packages = [
+        "//geo/gt/fusion/...",
         "//googlex/proxy/learning/...",
         "//image/understanding/object_detection/...",
         "//learning/brain/contrib/slim/...",
