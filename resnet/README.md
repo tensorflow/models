@@ -93,6 +93,9 @@ bazel-bin/resnet/resnet_main --train_data_path=cifar10/data_batch* \
                              --dataset='cifar10' \
                              --num_gpus=1
 
+# Note that training takes about 5 hours on a TITAN X GPU, but the training script will not produce any output. In the meantime you can check on progress using tensorboard:
+tensorboard --logdir=/tmp/resnet_model
+
 # Evaluate the model.
 # Avoid running on the same GPU as the training job at the same time,
 # otherwise, you might run out of memory.
