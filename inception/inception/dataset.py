@@ -34,7 +34,7 @@ import tensorflow as tf
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_string('data_dir', '/tmp/mydata',
+tf.app.flags.DEFINE_string('data_dir', '/home/local/SPREADTRUM/sean.zhao/workspace/inception/inception/data',
                            """Path to the processed data, i.e. """
                            """TFRecord of Example protos.""")
 
