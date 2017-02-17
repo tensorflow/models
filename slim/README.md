@@ -142,6 +142,16 @@ However, for ImageNet, you have to follow the instructions
 Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and uses about 500MB.
 
+## Just onverting to TFRecord format
+
+If a dataset is already downloaded and available on the system, it can directly be converted to TFrecords. The dataset folder should contains separated folders for each subject. The assumption for running the script is terminal is that we are in the `models/slim` directory whereever it is cloned. The following method shows ho to convert the dataset:
+```shell
+$ DATA_DIR=/path/to/dataset
+$ python download_and_convert_data.py \
+    --dataset_name=Customized_Name_of_DATASET \
+    --dataset_dir="${DATA_DIR}"
+```
+
 
 ## Creating a TF-Slim Dataset Descriptor.
 
