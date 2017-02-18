@@ -128,7 +128,6 @@ def evaluate(hps):
 
   best_precision = 0.0
   while True:
-    time.sleep(60)
     try:
       ckpt_state = tf.train.get_checkpoint_state(FLAGS.log_root)
     except tf.errors.OutOfRangeError as e:
@@ -163,12 +162,16 @@ def evaluate(hps):
         tag='Best Precision', simple_value=best_precision)
     summary_writer.add_summary(best_precision_summ, train_step)
     summary_writer.add_summary(summaries, train_step)
-    tf.logging.info('loss: %.3f, precision: %.3f, best precision: %.3f\n' %
-                    (loss, precision, best_precision))
+    output_str = 'loss: %.3f, precision: %.3f, best precision: %.3f\n' % \
+                 (loss, precision, best_precision)
+    tf.logging.info(output_str)
+    print(output_str)
     summary_writer.flush()
 
     if FLAGS.eval_once:
       break
+
+    time.sleep(60)
 
 
 def main(_):
