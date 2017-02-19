@@ -121,8 +121,8 @@ def count_matrix_input(filenames, submatrix_rows, submatrix_cols):
   sparse_local_col = features['sparse_local_col'].values
   sparse_count = features['sparse_value'].values
 
-  sparse_indices = tf.concat(1, [tf.expand_dims(sparse_local_row, 1),
-                                 tf.expand_dims(sparse_local_col, 1)])
+  sparse_indices = tf.concat([tf.expand_dims(sparse_local_row, 1),
+                              tf.expand_dims(sparse_local_col, 1)], 1)
   count = tf.sparse_to_dense(sparse_indices, [submatrix_rows, submatrix_cols],
                              sparse_count)
 
@@ -217,8 +217,8 @@ class SwivelModel(object):
           embedding_dim=config.embedding_size,
           vocab_size=self.n_cols,
           name='col_embedding')
-      tf.histogram_summary('row_emb', self.row_embedding)
-      tf.histogram_summary('col_emb', self.col_embedding)
+      tf.summary.histogram('row_emb', self.row_embedding)
+      tf.summary.histogram('col_emb', self.col_embedding)
 
       matrix_log_sum = math.log(np.sum(row_sums) + 1)
       row_bias_init = [math.log(x + 1) for x in row_sums]
@@ -227,8 +227,8 @@ class SwivelModel(object):
                                   trainable=config.trainable_bias)
       self.col_bias = tf.Variable(col_bias_init,
                                   trainable=config.trainable_bias)
-      tf.histogram_summary('row_bias', self.row_bias)
-      tf.histogram_summary('col_bias', self.col_bias)
+      tf.summary.histogram('row_bias', self.row_bias)
+      tf.summary.histogram('col_bias', self.col_bias)
 
     # ===== CREATE GRAPH =====
 
@@ -275,9 +275,9 @@ class SwivelModel(object):
 
     self.loss = l2_loss + sigmoid_loss
 
-    tf.scalar_summary("l2_loss", l2_loss)
-    tf.scalar_summary("sigmoid_loss", sigmoid_loss)
-    tf.scalar_summary("loss", self.loss)
+    tf.summary.scalar("l2_loss", l2_loss)
+    tf.summary.scalar("sigmoid_loss", sigmoid_loss)
+    tf.summary.scalar("loss", self.loss)
 
     # Add optimizer.
     self.global_step = tf.Variable(0, name='global_step')
@@ -302,7 +302,7 @@ def main(_):
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
     # Run the Op to initialize the variables.
-    sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
 
     # Start feeding input
     coord = tf.train.Coordinator()
