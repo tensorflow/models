@@ -55,7 +55,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('train_dir', cifar10_common.WORKSPACE_PATH+'/cifar10_train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
-tf.app.flags.DEFINE_integer('max_steps', 1000000,
+tf.app.flags.DEFINE_integer('max_steps', 200000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_integer('num_gpus', 1,
                             """How many GPUs to use.""")
@@ -144,7 +144,7 @@ def train():
     # number of batches processed * FLAGS.num_gpus.
     global_step = tf.get_variable(
         'global_step', [],
-        initializer=tf.constant_initializer(0), trainable=False)
+        initializer=tf.constant_initializer(0), trainable=False,dtype=tf.int64)
 
     # Calculate the learning rate schedule.
     num_batches_per_epoch = (cifar10.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN /
@@ -152,17 +152,39 @@ def train():
     decay_steps = int(num_batches_per_epoch * cifar10.NUM_EPOCHS_PER_DECAY)
 
     # Decay the learning rate exponentially based on the number of steps.
-    lr = tf.train.exponential_decay(FLAGS.base_lr,
-                                    global_step,
-                                    decay_steps,
-                                    FLAGS.decay_factor,
-                                    staircase=True)
+    #lr = tf.train.exponential_decay(FLAGS.base_lr,
+    #                                global_step,
+    #                                decay_steps,
+    #                                FLAGS.decay_factor,
+    #                                staircase=True)
+
+    # Decay the learning rate exponentially based on the number of steps.
+    if (('momentum' == FLAGS.optimizer) or ('gd' == FLAGS.optimizer)):
+      lr = tf.train.piecewise_constant(global_step,
+                                       [tf.to_int64(decay_steps), tf.to_int64(decay_steps + decay_steps / 2)],
+                                       # [tf.to_int64(60000), tf.to_int64(180000)],
+                                       [FLAGS.base_lr,
+                                        FLAGS.base_lr * FLAGS.decay_factor,
+                                        FLAGS.base_lr * FLAGS.decay_factor * FLAGS.decay_factor])
+    elif ('adam' == FLAGS.optimizer):
+      lr = FLAGS.base_lr
+    else:
+      raise ValueError('Unsupported optimizer type.')
 
     # Create an optimizer that performs gradient descent.
-    opt = tf.train.GradientDescentOptimizer(lr)
+    #opt = tf.train.GradientDescentOptimizer(lr)
+    if ('gd' == FLAGS.optimizer):
+      opt = tf.train.GradientDescentOptimizer(lr)
+    elif ('momentum' == FLAGS.optimizer):
+      opt = tf.train.MomentumOptimizer(lr, 0.9)
+    elif ('adam' == FLAGS.optimizer):
+      opt = tf.train.AdamOptimizer(lr)
+    else:
+      opt = tf.train.AdamOptimizer(FLAGS.base_lr)
 
     # Calculate the gradients for each model tower.
     tower_grads = []
+    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
     with tf.variable_scope(tf.get_variable_scope()):
       for i in xrange(FLAGS.num_gpus):
         with tf.device('/gpu:%d' % i):
@@ -176,17 +198,47 @@ def train():
             tf.get_variable_scope().reuse_variables()
 
             # Retain the summaries from the final tower.
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+            #summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
             # Calculate the gradients for the batch of data on this CIFAR tower.
             grads = opt.compute_gradients(loss)
 
+            for grad, var in grads:
+              if grad is not None:
+                summaries.append(
+                  tf.contrib.deprecated.histogram_summary(var.op.name +  '/%s_%d_orig_gradients' % (cifar10.TOWER_NAME, i),grad))
+
+            # Clip gradients
+            if FLAGS.clip_factor > 1.0e-5:
+              grads = cifar10_common.clip_gradients(grads, clip_factor=FLAGS.clip_factor)
+            # Binarize gradients
+            if 1 == FLAGS.grad_bits:
+              grads = cifar10_common.stochastical_binarize_gradients(grads)
+
             # Keep track of the gradients across all towers.
             tower_grads.append(grads)
+
+            for grad, var in grads:
+              if grad is not None:
+                summaries.append(
+                  tf.contrib.deprecated.histogram_summary(var.op.name +  '/%s_%d_bin_gradients' % (cifar10.TOWER_NAME, i),grad))
 
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
     grads = average_gradients(tower_grads)
+
+    # Add histograms for gradients.
+    for grad, var in grads:
+      if grad is not None:
+        summaries.append(
+          tf.contrib.deprecated.histogram_summary(var.op.name + '/mean_bin_gradients',grad))
+
+    ## Clip gradients
+    #if FLAGS.clip_factor > 1.0e-5:
+    #  grads = cifar10_common.clip_gradients(grads, clip_factor=FLAGS.clip_factor)
+    ## Binarize gradients
+    #if 1 == FLAGS.grad_bits:
+    #  grads = cifar10_common.stochastical_binarize_gradients(grads)
 
     # Add a summary to track the learning rate.
     summaries.append(tf.contrib.deprecated.scalar_summary('learning_rate', lr))
@@ -195,8 +247,7 @@ def train():
     for grad, var in grads:
       if grad is not None:
         summaries.append(
-            tf.contrib.deprecated.histogram_summary(var.op.name + '/gradients',
-                                                    grad))
+            tf.contrib.deprecated.histogram_summary(var.op.name + '/final_gradients',grad))
 
     # Apply the gradients to adjust the shared variables.
     apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
@@ -226,9 +277,11 @@ def train():
     # Start running operations on the Graph. allow_soft_placement must be set to
     # True to build towers on GPU, as some of the ops do not have GPU
     # implementations.
-    sess = tf.Session(config=tf.ConfigProto(
-        allow_soft_placement=True,
-        log_device_placement=FLAGS.log_device_placement))
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.log_device_placement = FLAGS.log_device_placement
+    config.allow_soft_placement = True
+    sess = tf.Session(config=config)
     sess.run(init)
 
     # Start the queue runners.
