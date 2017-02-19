@@ -142,6 +142,16 @@ However, for ImageNet, you have to follow the instructions
 Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and uses about 500MB.
 
+## Just onverting to TFRecord format
+
+If a dataset is already downloaded and available on the system, it can directly be converted to TFrecords. The dataset folder should contains separated folders for each subject. The assumption for running the script is terminal is that we are in the `models/slim` directory whereever it is cloned. The following method shows ho to convert the dataset:
+```shell
+$ DATA_DIR=/path/to/dataset
+$ python download_and_convert_data.py \
+    --dataset_name=Customized_Name_of_DATASET \
+    --dataset_dir="${DATA_DIR}"
+```
+
 
 ## Creating a TF-Slim Dataset Descriptor.
 
@@ -307,6 +317,22 @@ $ python train_image_classifier.py \
     --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits
 ```
 
+For the vgg_19 if fine-tuning the last layer is desired, then the following command is applicable:
+
+```shell
+$ python train_image_classifier.py \
+    --train_dir=/tmp/train_logs \
+    --dataset_dir=/tmp/data/CASIA \
+    --dataset_name=casia \
+    --dataset_split_name=train \
+    --model_name=vgg_19 \
+    --checkpoint_path=/tmp/checkpoints/vgg_19.ckpt \
+    --checkpoint_exclude_scopes=vgg_19/fc8/biases,vgg_19/fc8/weights \
+    --num_clones=4 \
+    --ignore_missing_vars
+```
+
+The flag of `checkpoint_exclude_scopes` force the structure to not to read the weights from the specified names(vgg_19/fc8) of the check point.`um_clones=4` distribute the training on multiple GPUs. Activating `ignore_missing_vars` guide the initializer of the network to ignore the variables that are not present in the checkpoint.
 
 
 # Evaluating performance of a model

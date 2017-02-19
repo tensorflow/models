@@ -55,6 +55,7 @@ def vgg_arg_scope(weight_decay=0.0005):
   Returns:
     An arg_scope.
   """
+  # Add normalizer_fn=slim.batch_norm if Batch Normalization is required!
   with slim.arg_scope([slim.conv2d, slim.fully_connected],
                       activation_fn=tf.nn.relu,
                       weights_regularizer=slim.l2_regularizer(weight_decay),
@@ -109,10 +110,12 @@ def vgg_a(inputs,
       net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
       net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                          scope='dropout7')
+
       net = slim.conv2d(net, num_classes, [1, 1],
                         activation_fn=None,
                         normalizer_fn=None,
                         scope='fc8')
+
       # Convert end_points_collection into a end_point dict.
       end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if spatial_squeeze:
