@@ -73,7 +73,7 @@ tf.app.flags.DEFINE_boolean("self_test", False,
                             "Run a self-test if this is set to True.")
 tf.app.flags.DEFINE_boolean("use_fp16", False,
                             "Train using fp16 instead of fp32.")
-tf.app.flags.DEFINE_boolean("FLAGS.normalize_digits", True,
+tf.app.flags.DEFINE_boolean("normalize_digits", True,
                             "Set to True for normalize digits when creating vocabulary and training data.")
 
 FLAGS = tf.app.flags.FLAGS
@@ -147,7 +147,6 @@ def create_model(session, forward_only):
 
 
 def train():
-  print(FLAGS.normalize_digits)
   """Train a en->fr translation model using WMT data."""
   from_train = None
   to_train = None
