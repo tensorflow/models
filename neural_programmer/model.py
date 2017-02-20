@@ -674,5 +674,5 @@ class Graph():
         use_locking=True)
     self.step = adam.apply_gradients(zip(grads, optimize_params), 
 					global_step=self.global_step)
-    self.init_op = tf.initialize_all_variables()
+    self.init_op = tf.global_variables_initializer()
 

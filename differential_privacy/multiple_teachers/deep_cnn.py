@@ -490,7 +490,7 @@ def train(images, labels, ckpt_path, dropout=False):
     print("Graph constructed and saver created")
 
     # Build an initialization operation to run below.
-    init = tf.initialize_all_variables()
+    init = tf.global_variables_initializer()
 
     # Create and init sessions
     sess = tf.Session(config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement)) #NOLINT(long-line)

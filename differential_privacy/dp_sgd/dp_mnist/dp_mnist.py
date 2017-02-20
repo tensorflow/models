@@ -344,7 +344,7 @@ def Train(mnist_train_file, mnist_test_file, network_parameters, num_steps,
     # We need to maintain the intialization sequence.
     for v in tf.trainable_variables():
       sess.run(tf.initialize_variables([v]))
-    sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
     sess.run(init_ops)
 
     results = []

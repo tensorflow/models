@@ -160,7 +160,7 @@ def train(data_dir, checkpoint_path, config):
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             m = NamignizerModel(is_training=True, config=config)
 
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
 
         for i in range(config.max_max_epoch):
             lr_decay = config.lr_decay ** max(i - config.max_epoch, 0.0)
