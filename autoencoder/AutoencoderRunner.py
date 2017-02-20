@@ -25,8 +25,13 @@ training_epochs = 20
 batch_size = 128
 display_step = 1
 
+'''
 autoencoder = Autoencoder(n_input = 784,
                           n_hidden = 200,
+                          transfer_function = tf.nn.softplus,
+                          optimizer = tf.train.AdamOptimizer(learning_rate = 0.001))
+'''
+autoencoder = Autoencoder(n_layers=[784, 200],
                           transfer_function = tf.nn.softplus,
                           optimizer = tf.train.AdamOptimizer(learning_rate = 0.001))
 
