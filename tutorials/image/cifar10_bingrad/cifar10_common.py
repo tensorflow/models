@@ -21,7 +21,7 @@ import tensorflow as tf
 
 WORKSPACE_PATH = '/home/wew57/dataset/'
 
-def clip_gradients(grads_and_vars, clip_factor = 2.5):
+def clip_gradients_by_stddev(grads_and_vars, clip_factor = 2.5):
     """ Clip gradients to [-clip_factor*stddev, clip_factor*stddev]."""
     gradients, variables = zip(*grads_and_vars)
     clipped_gradients = []
@@ -33,6 +33,20 @@ def clip_gradients(grads_and_vars, clip_factor = 2.5):
         mean_gradient = tf.reduce_mean(gradient)
         stddev_gradient = tf.sqrt(tf.reduce_mean(tf.square(gradient - mean_gradient)))
         clipped_gradient = tf.clip_by_value(gradient, -clip_factor * stddev_gradient, clip_factor * stddev_gradient)
+
+        clipped_gradients.append(clipped_gradient)
+    return list(zip(clipped_gradients, variables))
+
+def clip_gradients_by_thresholds(grads_and_vars, thresholds):
+    """ Clip gradients to [-threshold, threshold]."""
+    gradients, variables = zip(*grads_and_vars)
+    clipped_gradients = []
+    for gradient,threshold in zip(gradients,thresholds):
+        if gradient is None:
+            clipped_gradients.append(None)
+            continue
+
+        clipped_gradient = tf.clip_by_value(gradient, -threshold, threshold)
 
         clipped_gradients.append(clipped_gradient)
     return list(zip(clipped_gradients, variables))
@@ -71,3 +85,96 @@ def stochastical_binarize_gradients(grads_and_vars):
 
     binarized_gradients.append(binarized_gradient)
   return list(zip(binarized_gradients, variables))
+
+def gradient_binarizing_scalers(grads_and_vars, clip_factor):
+    """ Get the scalers."""
+    gradients, variables = zip(*grads_and_vars)
+    scalers = []
+    for gradient in gradients:
+        if gradient is None:
+            scalers.append(None)
+            continue
+
+        if(clip_factor > 1.0e-5):
+            mean_gradient = tf.reduce_mean(gradient)
+            stddev_gradient = tf.sqrt(tf.reduce_mean(tf.square(gradient - mean_gradient)))
+            scalers.append(clip_factor * stddev_gradient)
+        else:
+            scalers.append(tf.reduce_max(tf.abs(gradient)))
+
+    return list(zip(scalers, variables))
+
+
+def average_gradients(tower_grads):
+  """Calculate the average gradient for each shared variable across all towers.
+
+  Note that this function provides a synchronization point across all towers.
+
+  Args:
+    tower_grads: List of lists of (gradient, variable) tuples. The outer list
+      is over individual gradients. The inner list is over the gradient
+      calculation for each tower.
+  Returns:
+     List of pairs of (gradient, variable) where the gradient has been averaged
+     across all towers.
+  """
+  average_grads = []
+  for grad_and_vars in zip(*tower_grads):
+    # Note that each grad_and_vars looks like the following:
+    #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
+    grads = []
+    for g, _ in grad_and_vars:
+      # Add 0 dimension to the gradients to represent the tower.
+      expanded_g = tf.expand_dims(g, 0)
+
+      # Append on a 'tower' dimension which we will average over below.
+      grads.append(expanded_g)
+
+    # Average over the 'tower' dimension.
+    grad = tf.concat(grads, 0)
+    grad = tf.reduce_mean(grad, 0)
+
+    # Keep in mind that the Variables are redundant because they are shared
+    # across towers. So .. we will just return the first tower's pointer to
+    # the Variable.
+    v = grad_and_vars[0][1]
+    grad_and_var = (grad, v)
+    average_grads.append(grad_and_var)
+  return average_grads
+
+def average_scalers(tower_scalers):
+  """Calculate the average scalers for gradients across all towers.
+
+  Note that this function provides a synchronization point across all towers.
+
+  Args:
+    tower_scalers: List of lists of (scaler, variable) tuples. The outer list
+      is over individual scaler. The inner list is over the scaler
+      calculation for each tower.
+  Returns:
+     List of pairs of scaler where the scaler has been averaged
+     across all towers.
+  """
+  average_scalers = []
+  for scale_and_vars in zip(*tower_scalers):
+    # Note that each scale_and_vars looks like the following:
+    #   ((scale0_gpu0, var0_gpu0), ... , (scale0_gpuN, var0_gpuN))
+    scalers = []
+    for s, _ in scale_and_vars:
+      # Add 0 dimension to the scalers to represent the tower.
+      expanded_s = tf.expand_dims(s, 0)
+
+      # Append on a 'tower' dimension which we will average over below.
+      scalers.append(expanded_s)
+
+    # Average over the 'tower' dimension.
+    scaler = tf.concat(scalers, 0)
+    scaler = tf.reduce_mean(scaler, 0)
+
+    # Keep in mind that the Variables are redundant because they are shared
+    # across towers. So .. we will just return the first tower's pointer to
+    # the Variable.
+    #v = scale_and_vars[0][1]
+    #scale_and_var = (scale, v)
+    average_scalers.append(scaler)
+  return average_scalers

@@ -93,48 +93,11 @@ def tower_loss(scope):
   for l in losses + [total_loss]:
     # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
     # session. This helps the clarity of presentation on tensorboard.
-    loss_name = re.sub('%s_[0-9]*/' % cifar10.TOWER_NAME, '', l.op.name)
-    tf.contrib.deprecated.scalar_summary(loss_name, l)
+    #loss_name = re.sub('%s_[0-9]*/' % cifar10.TOWER_NAME, '', l.op.name)
+    if re.compile(".*(cross_entropy)|(total_loss).*").match(l.op.name):
+      tf.contrib.deprecated.scalar_summary(l.op.name, l)
 
   return total_loss
-
-
-def average_gradients(tower_grads):
-  """Calculate the average gradient for each shared variable across all towers.
-
-  Note that this function provides a synchronization point across all towers.
-
-  Args:
-    tower_grads: List of lists of (gradient, variable) tuples. The outer list
-      is over individual gradients. The inner list is over the gradient
-      calculation for each tower.
-  Returns:
-     List of pairs of (gradient, variable) where the gradient has been averaged
-     across all towers.
-  """
-  average_grads = []
-  for grad_and_vars in zip(*tower_grads):
-    # Note that each grad_and_vars looks like the following:
-    #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
-    grads = []
-    for g, _ in grad_and_vars:
-      # Add 0 dimension to the gradients to represent the tower.
-      expanded_g = tf.expand_dims(g, 0)
-
-      # Append on a 'tower' dimension which we will average over below.
-      grads.append(expanded_g)
-
-    # Average over the 'tower' dimension.
-    grad = tf.concat(grads, 0)
-    grad = tf.reduce_mean(grad, 0)
-
-    # Keep in mind that the Variables are redundant because they are shared
-    # across towers. So .. we will just return the first tower's pointer to
-    # the Variable.
-    v = grad_and_vars[0][1]
-    grad_and_var = (grad, v)
-    average_grads.append(grad_and_var)
-  return average_grads
 
 
 def train():
@@ -184,7 +147,8 @@ def train():
 
     # Calculate the gradients for each model tower.
     tower_grads = []
-    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
+    tower_scalers = []
+    summaries = [] # tf.get_collection(tf.GraphKeys.SUMMARIES)
     with tf.variable_scope(tf.get_variable_scope()):
       for i in xrange(FLAGS.num_gpus):
         with tf.device('/gpu:%d' % i):
@@ -198,7 +162,7 @@ def train():
             tf.get_variable_scope().reuse_variables()
 
             # Retain the summaries from the final tower.
-            #summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+            summaries.extend(tf.get_collection(tf.GraphKeys.SUMMARIES, scope))
 
             # Calculate the gradients for the batch of data on this CIFAR tower.
             grads = opt.compute_gradients(loss)
@@ -208,34 +172,72 @@ def train():
                 summaries.append(
                   tf.contrib.deprecated.histogram_summary(var.op.name +  '/%s_%d_orig_gradients' % (cifar10.TOWER_NAME, i),grad))
 
-            # Clip gradients
-            if FLAGS.clip_factor > 1.0e-5:
-              grads = cifar10_common.clip_gradients(grads, clip_factor=FLAGS.clip_factor)
-            # Binarize gradients
-            if 1 == FLAGS.grad_bits:
-              grads = cifar10_common.stochastical_binarize_gradients(grads)
+            ## Clip gradients
+            #if FLAGS.clip_factor > 1.0e-5:
+            #  grads = cifar10_common.clip_gradients_by_stddev(grads, clip_factor=FLAGS.clip_factor)
+            ## Binarize gradients
+            #if 1 == FLAGS.grad_bits:
+            #  grads = cifar10_common.stochastical_binarize_gradients(grads)
 
             # Keep track of the gradients across all towers.
+            '''
+            !!!!!!!!!!!!! WARNING, THE WEIGHTS IN grads MAY NOT BE THE SAME IF EACH GPU USES A LOCAL WEIGHTS!!!!!!!!!!!!!!!!!
+            '''
             tower_grads.append(grads)
 
+
+            if 1 == FLAGS.grad_bits:
+              # Always calculate scalers whatever clip_factor is. Returns max value when clip_factor==0.0
+              scalers = cifar10_common.gradient_binarizing_scalers(grads, FLAGS.clip_factor)
+              tower_scalers.append(scalers)
+              for scaler, var in scalers:
+               if scaler is not None:
+                 summaries.append(
+                   tf.contrib.deprecated.scalar_summary(var.op.name +  '/%s_%d_scaler' % (cifar10.TOWER_NAME, i),scaler))
+
+            #for grad, var in grads:
+            #  if grad is not None:
+            #    summaries.append(
+            #      tf.contrib.deprecated.histogram_summary(var.op.name +  '/%s_%d_bin_gradients' % (cifar10.TOWER_NAME, i),grad))
+
+    # We must calculate the mean of each scaler. Note that this is the
+    # synchronization point across all towers.
+    if 1 == FLAGS.grad_bits:
+      mean_scalers = cifar10_common.average_scalers(tower_scalers)
+      for mscaler in mean_scalers:
+        if mscaler is not None:
+          summaries.append(
+            tf.contrib.deprecated.scalar_summary(mscaler.op.name + '/mean_scaler', mscaler))
+
+    for i in xrange(FLAGS.num_gpus):
+      with tf.device('/gpu:%d' % i):
+        with tf.name_scope('%s_%d' % (cifar10.TOWER_NAME, i)) as scope:
+          if 1 == FLAGS.grad_bits:
+            # Clip gradients. Always clip since the max value in towers may be different even when clip_factor==0.0
+            grads = cifar10_common.clip_gradients_by_thresholds(tower_grads[i], mean_scalers)
+            # Binarize gradients
+            grads = cifar10_common.stochastical_binarize_gradients(grads)
+            # Keep track of the gradients across all towers.
+            tower_grads[i]=grads
+
             for grad, var in grads:
-              if grad is not None:
-                summaries.append(
-                  tf.contrib.deprecated.histogram_summary(var.op.name +  '/%s_%d_bin_gradients' % (cifar10.TOWER_NAME, i),grad))
+             if grad is not None:
+               summaries.append(
+                 tf.contrib.deprecated.histogram_summary(var.op.name +  '/%s_%d_bin_gradients' % (cifar10.TOWER_NAME, i),grad))
 
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
-    grads = average_gradients(tower_grads)
+    grads = cifar10_common.average_gradients(tower_grads)
 
-    # Add histograms for gradients.
-    for grad, var in grads:
-      if grad is not None:
-        summaries.append(
-          tf.contrib.deprecated.histogram_summary(var.op.name + '/mean_bin_gradients',grad))
+    ## Add histograms for gradients.
+    #for grad, var in grads:
+    #  if grad is not None:
+    #    summaries.append(
+    #      tf.contrib.deprecated.histogram_summary(var.op.name + '/mean_bin_gradients',grad))
 
     ## Clip gradients
     #if FLAGS.clip_factor > 1.0e-5:
-    #  grads = cifar10_common.clip_gradients(grads, clip_factor=FLAGS.clip_factor)
+    #  grads = cifar10_common.clip_gradients_by_stddev(grads, clip_factor=FLAGS.clip_factor)
     ## Binarize gradients
     #if 1 == FLAGS.grad_bits:
     #  grads = cifar10_common.stochastical_binarize_gradients(grads)

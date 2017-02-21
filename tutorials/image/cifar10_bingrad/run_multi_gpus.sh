@@ -4,8 +4,8 @@ set -x
 
 ROOT_WORKSPACE=/home/wew57/dataset/
 DATA_DIR=/home/wew57/dataset/cifar10_data_0/
-NUM_GPUS=1
-export CUDA_VISIBLE_DEVICES=0
+NUM_GPUS=2
+export CUDA_VISIBLE_DEVICES=0,1
 OPTIMIZER=adam
 GRAD_BITS=1
 BASE_LR=0.0002
