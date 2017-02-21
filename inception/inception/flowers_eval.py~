@@ -12,29 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A binary to train Inception on the flowers data set.
+"""A binary to evaluate Inception on the flowers data set.
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 
-
 import tensorflow as tf
 
-from inception import inception_train
+from inception import inception_eval
 from inception.flowers_data import FlowersData
 
 FLAGS = tf.app.flags.FLAGS
 
 
-def main(_):
+def main(unused_argv=None):
   dataset = FlowersData(subset=FLAGS.subset)
   assert dataset.data_files()
-  if tf.gfile.Exists(FLAGS.train_dir):
-    tf.gfile.DeleteRecursively(FLAGS.train_dir)
-  tf.gfile.MakeDirs(FLAGS.train_dir)
-  inception_train.train(dataset)
+  #if tf.gfile.Exists(FLAGS.eval_dir):
+  #  tf.gfile.DeleteRecursively(FLAGS.eval_dir)
+  tf.gfile.MakeDirs(FLAGS.eval_dir)
+  inception_eval.evaluate(dataset)
 
 
 if __name__ == '__main__':

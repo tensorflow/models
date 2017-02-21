@@ -64,7 +64,7 @@ tf.app.flags.DEFINE_integer('num_readers', 4,
 # of 1024*16 images. Assuming RGB 299x299 images, this implies a queue size of
 # 16GB. If the machine is memory limited, then decrease this factor to
 # decrease the CPU memory footprint, accordingly.
-tf.app.flags.DEFINE_integer('input_queue_memory_factor', 16,
+tf.app.flags.DEFINE_integer('input_queue_memory_factor', 1,
                             """Size of the queue of preprocessed images. """
                             """Default is ideal but try smaller values, e.g. """
                             """4, 2 or 1, if host memory is constrained. See """
