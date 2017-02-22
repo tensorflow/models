@@ -92,7 +92,7 @@ def main(_):
   int_codes = np.asarray([x.astype(np.int8) for x in results])
 
   # Convert int codes to binary.
-  int_codes = (int_codes + 1)/2
+  int_codes = (int_codes + 1)//2
   export = np.packbits(int_codes.reshape(-1))
 
   output = io.BytesIO()
