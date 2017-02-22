@@ -117,7 +117,7 @@ def inception_v3(inputs,
             branch5x5 = ops.conv2d(branch5x5, 64, [5, 5])
           with tf.variable_scope('branch3x3dbl'):
             branch3x3dbl = ops.conv2d(net, 64, [1, 1])
-            branch3x3dbl = ops.conv2d(branch3x3dbl, 96, [3, 3])
+            branch3x3dbl = ops.conv2d(branch3x3dbl, 96, [3, 3]) # ??? 3x3dbl
             branch3x3dbl = ops.conv2d(branch3x3dbl, 96, [3, 3])
           with tf.variable_scope('branch_pool'):
             branch_pool = ops.avg_pool(net, [3, 3])
@@ -263,8 +263,8 @@ def inception_v3(inputs,
         # Note that the scope below is not changed to not void previous
         # checkpoints.
         # (TODO) Fix the scope when appropriate.
-        with tf.variable_scope('mixed_17x17x1280a'):
-          with tf.variable_scope('branch3x3'):
+        with tf.variable_scope('mixed_17x17x1280a'):    # ! Avoid representational bottleneck,
+          with tf.variable_scope('branch3x3'):          # ! increase dimensions while reducing scales.
             branch3x3 = ops.conv2d(net, 192, [1, 1])
             branch3x3 = ops.conv2d(branch3x3, 320, [3, 3], stride=2,
                                    padding='VALID')
