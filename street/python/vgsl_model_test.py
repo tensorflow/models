@@ -180,7 +180,7 @@ class VgslModelTest(tf.test.TestCase):
           filename,
           model_spec='4,0,0,1[Cr5,5,16 Mp3,3 Lfys16 Lfxs16]O0s12',
           mode='train')
-      tf.initialize_all_variables().run(session=sess)
+      tf.global_variables_initializer().run(session=sess)
       coord = tf.train.Coordinator()
       tf.train.start_queue_runners(sess=sess, coord=coord)
       _, step = model.TrainAStep(sess)
@@ -204,7 +204,7 @@ class VgslModelTest(tf.test.TestCase):
           filename,
           model_spec='2,0,0,1[Cr5,5,16 Mp3,3 Lfys16 Lbx100]O1c105',
           mode='train')
-      tf.initialize_all_variables().run(session=sess)
+      tf.global_variables_initializer().run(session=sess)
       coord = tf.train.Coordinator()
       tf.train.start_queue_runners(sess=sess, coord=coord)
       _, step = model.TrainAStep(sess)
@@ -228,7 +228,7 @@ class VgslModelTest(tf.test.TestCase):
           filename,
           model_spec='8,0,0,1[Cr5,5,16 Mp3,3 Lfys16 Lfx64 Lrx64 Lfx64]O1s12',
           mode='train')
-      tf.initialize_all_variables().run(session=sess)
+      tf.global_variables_initializer().run(session=sess)
       coord = tf.train.Coordinator()
       tf.train.start_queue_runners(sess=sess, coord=coord)
       _, step = model.TrainAStep(sess)

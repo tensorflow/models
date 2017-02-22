@@ -31,7 +31,7 @@ def conv_linear(args, kw, kh, nin, nout, do_bias, bias_start, prefix):
     if len(args) == 1:
       res = tf.nn.conv2d(args[0], k, [1, 1, 1, 1], "SAME")
     else:
-      res = tf.nn.conv2d(tf.concat(3, args), k, [1, 1, 1, 1], "SAME")
+      res = tf.nn.conv2d(tf.concat(axis=3, values=args), k, [1, 1, 1, 1], "SAME")
     if not do_bias: return res
     bias_term = tf.get_variable("CvB", [nout],
                                 initializer=tf.constant_initializer(0.0))
@@ -204,23 +204,23 @@ class NeuralGPU(object):
         scales = [shifted_mask[i] * (1.0 - shifted_mask[i+1])
                   for i in xrange(length)]
         scales = [tf.reshape(s, [-1, 1, 1, 1]) for s in scales]
-        mask = tf.concat(1, mask[0:length])  # batch x length
+        mask = tf.concat(axis=1, values=mask[0:length])  # batch x length
         weights = mask
         # Add a height dimension to mask to use later for masking.
         mask = tf.reshape(mask, [-1, length, 1, 1])
-        mask = tf.concat(2, [mask for _ in xrange(height)]) + tf.zeros(
-            tf.pack([batch_size, length, height, nmaps]), dtype=tf.float32)
+        mask = tf.concat(axis=2, values=[mask for _ in xrange(height)]) + tf.zeros(
+            tf.stack([batch_size, length, height, nmaps]), dtype=tf.float32)
 
       # Start is a length-list of batch-by-nmaps tensors, reshape and concat.
       start = [tf.tanh(embedded[l]) for l in xrange(length)]
       start = [tf.reshape(start[l], [-1, 1, nmaps]) for l in xrange(length)]
-      start = tf.reshape(tf.concat(1, start), [-1, length, 1, nmaps])
+      start = tf.reshape(tf.concat(axis=1, values=start), [-1, length, 1, nmaps])
 
       # First image comes from start by applying one convolution and adding 0s.
       first = conv_linear(start, 1, 1, vec_size, nmaps, True, 0.0, "input")
-      first = [first] + [tf.zeros(tf.pack([batch_size, length, 1, nmaps]),
+      first = [first] + [tf.zeros(tf.stack([batch_size, length, 1, nmaps]),
                                   dtype=tf.float32) for _ in xrange(height - 1)]
-      first = tf.concat(2, first)
+      first = tf.concat(axis=2, values=first)
 
       # Computation steps.
       keep_prob = 1.0 - self.do_training * (dropout * 8.0 / float(length))
@@ -250,16 +250,16 @@ class NeuralGPU(object):
       output = conv_linear(output, 1, 1, nmaps, noclass, True, 0.0, "output")
       output = tf.reshape(output, [-1, length, noclass])
       external_output = [tf.reshape(o, [-1, noclass])
-                         for o in list(tf.split(1, length, output))]
+                         for o in list(tf.split(axis=1, num_or_size_splits=length, value=output))]
       external_output = [tf.nn.softmax(o) for o in external_output]
       self.outputs.append(external_output)
 
       # Calculate cross-entropy loss and normalize it.
-      targets = tf.concat(1, [make_dense(self.target[l], noclass)
+      targets = tf.concat(axis=1, values=[make_dense(self.target[l], noclass)
                               for l in xrange(length)])
       targets = tf.reshape(targets, [-1, noclass])
       xent = tf.reshape(tf.nn.softmax_cross_entropy_with_logits(
-          tf.reshape(output, [-1, noclass]), targets), [-1, length])
+          logits=tf.reshape(output, [-1, noclass]), labels=targets), [-1, length])
       perp_loss = tf.reduce_sum(xent * weights)
       perp_loss /= tf.cast(batch_size, dtype=tf.float32)
       perp_loss /= length
@@ -285,7 +285,7 @@ class NeuralGPU(object):
         self.updates.append(update)
       data_utils.print_out("Created model for bin of length %d in"
                            " %.2f s." % (length, time.time() - start_time))
-    self.saver = tf.train.Saver(tf.all_variables())
+    self.saver = tf.train.Saver(tf.global_variables())
 
   def step(self, sess, inp, target, do_backward, noise_param=None,
            get_steps=False):

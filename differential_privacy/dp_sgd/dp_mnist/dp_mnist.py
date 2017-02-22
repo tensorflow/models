@@ -273,7 +273,7 @@ def Train(mnist_train_file, mnist_test_file, network_parameters, num_steps,
         images, network_parameters)
 
     cost = tf.nn.softmax_cross_entropy_with_logits(
-        logits, tf.one_hot(labels, 10))
+        logits=logits, labels=tf.one_hot(labels, 10))
 
     # The actual cost is the average across the examples.
     cost = tf.reduce_sum(cost, [0]) / batch_size
@@ -343,8 +343,8 @@ def Train(mnist_train_file, mnist_test_file, network_parameters, num_steps,
 
     # We need to maintain the intialization sequence.
     for v in tf.trainable_variables():
-      sess.run(tf.initialize_variables([v]))
-    sess.run(tf.initialize_all_variables())
+      sess.run(tf.variables_initializer([v]))
+    sess.run(tf.global_variables_initializer())
     sess.run(init_ops)
 
     results = []

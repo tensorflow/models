@@ -361,12 +361,12 @@ class GaussianMomentsAccountant(MomentsAccountant):
     exponents = tf.constant([j * (j + 1.0 - 2.0 * s) / (2.0 * sigma * sigma)
                              for j in range(t + 1)], dtype=tf.float64)
     # x[i, j] = binomial[i, j] * signs[i, j] = (i choose j) * (-1)^{i-j}
-    x = tf.mul(binomial, signs)
+    x = tf.multiply(binomial, signs)
     # y[i, j] = x[i, j] * exp(exponents[j])
     #         = (i choose j) * (-1)^{i-j} * exp(j(j-1)/(2 sigma^2))
     # Note: this computation is done by broadcasting pointwise multiplication
     # between [t+1, t+1] tensor and [t+1] tensor.
-    y = tf.mul(x, tf.exp(exponents))
+    y = tf.multiply(x, tf.exp(exponents))
     # z[i] = sum_j y[i, j]
     #      = sum_j (i choose j) * (-1)^{i-j} * exp(j(j-1)/(2 sigma^2))
     z = tf.reduce_sum(y, 1)

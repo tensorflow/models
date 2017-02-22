@@ -85,13 +85,13 @@ def batch_norm(inputs,
     if center:
       beta = variables.variable('beta',
                                 params_shape,
-                                initializer=tf.zeros_initializer,
+                                initializer=tf.zeros_initializer(),
                                 trainable=trainable,
                                 restore=restore)
     if scale:
       gamma = variables.variable('gamma',
                                  params_shape,
-                                 initializer=tf.ones_initializer,
+                                 initializer=tf.ones_initializer(),
                                  trainable=trainable,
                                  restore=restore)
     # Create moving_mean and moving_variance add them to
@@ -99,13 +99,13 @@ def batch_norm(inputs,
     moving_collections = [moving_vars, tf.GraphKeys.MOVING_AVERAGE_VARIABLES]
     moving_mean = variables.variable('moving_mean',
                                      params_shape,
-                                     initializer=tf.zeros_initializer,
+                                     initializer=tf.zeros_initializer(),
                                      trainable=False,
                                      restore=restore,
                                      collections=moving_collections)
     moving_variance = variables.variable('moving_variance',
                                          params_shape,
-                                         initializer=tf.ones_initializer,
+                                         initializer=tf.ones_initializer(),
                                          trainable=False,
                                          restore=restore,
                                          collections=moving_collections)
@@ -331,9 +331,9 @@ def one_hot_encoding(labels, num_classes, scope=None):
     batch_size = labels.get_shape()[0]
     indices = tf.expand_dims(tf.range(0, batch_size), 1)
     labels = tf.cast(tf.expand_dims(labels, 1), indices.dtype)
-    concated = tf.concat(1, [indices, labels])
+    concated = tf.concat(axis=1, values=[indices, labels])
     onehot_labels = tf.sparse_to_dense(
-        concated, tf.pack([batch_size, num_classes]), 1.0, 0.0)
+        concated, tf.stack([batch_size, num_classes]), 1.0, 0.0)
     onehot_labels.set_shape([batch_size, num_classes])
     return onehot_labels
 

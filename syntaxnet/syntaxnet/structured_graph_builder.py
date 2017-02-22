@@ -48,7 +48,7 @@ def AddCrossEntropy(batch_size, n):
       beam_scores = tf.reshape(tf.gather(n['all_path_scores'], idx), [1, -1])
       num = tf.shape(idx)
       return tf.nn.softmax_cross_entropy_with_logits(
-          beam_scores, tf.expand_dims(
+          logits=beam_scores, labels=tf.expand_dims(
               tf.sparse_to_dense(beam_gold_slot, num, [1.], 0.), 0))
     # The conditional here is needed to deal with the last few batches of the
     # corpus which can contain -1 in beam_gold_slot for empty batch slots.
@@ -142,7 +142,7 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
       n = self.training
       n['accumulated_alive_steps'] = self._AddVariable(
           [batch_size], tf.int32, 'accumulated_alive_steps',
-          tf.zeros_initializer)
+          tf.zeros_initializer())
       n.update(self._AddBeamReader(task_context, batch_size, corpus_name))
       # This adds a required 'step' node too:
       learning_rate = tf.constant(learning_rate, dtype=tf.float32)
@@ -198,7 +198,7 @@ class StructuredGraphBuilder(graph_builder.GreedyParser):
       for param in trainable_params.values():
         slot = optimizer.get_slot(param, 'momentum')
         self.inits[slot.name] = state_ops.init_variable(slot,
-                                                        tf.zeros_initializer)
+                                                        tf.zeros_initializer())
         self.variables[slot.name] = slot
 
       def NumericalChecks():

@@ -128,7 +128,7 @@ def initialize(sess):
       FLAGS.kw, FLAGS.kh, FLAGS.height, FLAGS.mode, FLAGS.lr,
       FLAGS.pull, FLAGS.pull_incr, min_length + 3)
   data.print_out("Created model.")
-  sess.run(tf.initialize_all_variables())
+  sess.run(tf.global_variables_initializer())
   data.print_out("Initialized variables.")
 
   # Load model from parameters if a checkpoint exists.

@@ -32,10 +32,10 @@ tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
 
 tf.app.flags.DEFINE_string(
-    'train_dir', '/tmp/tfmodel/',
+    'train_dir', '/home/sina/TRAIN_CASIA/train_logs',
     'Directory where checkpoints and event logs are written to.')
 
-tf.app.flags.DEFINE_integer('num_clones', 4,
+tf.app.flags.DEFINE_integer('num_clones', 2,
                             'Number of model clones to deploy.')
 
 tf.app.flags.DEFINE_boolean('clone_on_cpu', False,
@@ -172,7 +172,7 @@ tf.app.flags.DEFINE_string(
     'dataset_split_name', 'train', 'The name of the train/test split.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_dir', '/tmp/data/CASIA', 'The directory where the dataset files are stored.')
+    'dataset_dir', '/home/sina/datasets/CASIA', 'The directory where the dataset files are stored.')
 
 tf.app.flags.DEFINE_integer(
     'labels_offset', 0,
@@ -201,11 +201,11 @@ tf.app.flags.DEFINE_integer('max_number_of_steps', 125000,
 #####################
 
 tf.app.flags.DEFINE_string(
-    'checkpoint_path', None,
+    'checkpoint_path', '/home/sina/TRAIN_CASIA/checkpoints/vgg_19.ckpt',
     'The path to a checkpoint from which to fine-tune.')
 
 tf.app.flags.DEFINE_string(
-    'checkpoint_exclude_scopes', None,
+    'checkpoint_exclude_scopes', 'vgg_19/fc8/biases,vgg_19/fc8/weights',
     'Comma-separated list of scopes of variables to exclude when restoring '
     'from a checkpoint.')
 
@@ -317,8 +317,8 @@ def _configure_optimizer(learning_rate):
 def _add_variables_summaries(learning_rate):
     summaries = []
     for variable in slim.get_model_variables():
-        summaries.append(tf.histogram_summary(variable.op.name, variable))
-    summaries.append(tf.scalar_summary('training/Learning Rate', learning_rate))
+        summaries.append(tf.summary.histogram(variable.op.name, variable))
+    summaries.append(tf.summary.scalar('training/Learning Rate', learning_rate))
     return summaries
 
 
@@ -474,9 +474,9 @@ def main(_):
             if 'AuxLogits' in end_points:
                 slim.losses.softmax_cross_entropy(
                     end_points['AuxLogits'], labels,
-                    label_smoothing=FLAGS.label_smoothing, weight=0.4, scope='aux_loss')
+                    label_smoothing=FLAGS.label_smoothing, scope='aux_loss')
             slim.losses.softmax_cross_entropy(
-                logits, labels, label_smoothing=FLAGS.label_smoothing, weight=1.0)
+                logits, labels, label_smoothing=FLAGS.label_smoothing)
 
             # Adding the accuracy metric
             with tf.name_scope('accuracy'):
@@ -499,17 +499,17 @@ def main(_):
         end_points = clones[0].outputs
         for end_point in end_points:
             x = end_points[end_point]
-            summaries.add(tf.histogram_summary('activations/' + end_point, x))
-            summaries.add(tf.scalar_summary('sparsity/' + end_point,
+            summaries.add(tf.summary.histogram('activations/' + end_point, x))
+            summaries.add(tf.summary.scalar('sparsity/' + end_point,
                                             tf.nn.zero_fraction(x)))
 
         # Add summaries for losses.
         for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
-            summaries.add(tf.scalar_summary('losses/%s' % loss.op.name, loss))
+            summaries.add(tf.summary.scalar('losses/%s' % loss.op.name, loss))
 
         # Add summaries for variables.
         for variable in slim.get_model_variables():
-            summaries.add(tf.histogram_summary(variable.op.name, variable))
+            summaries.add(tf.summary.histogram(variable.op.name, variable))
 
         #################################
         # Configure the moving averages #
@@ -527,8 +527,9 @@ def main(_):
         with tf.device(deploy_config.optimizer_device()):
             learning_rate = _configure_learning_rate(dataset.num_samples, global_step)
             optimizer = _configure_optimizer(learning_rate)
-            summaries.add(tf.scalar_summary('learning_rate', learning_rate,
-                                            name='learning_rate'))
+            summaries.add(tf.summary.scalar('learning_rate', learning_rate))
+            # summaries.add(tf.summary.scalar('learning_rate', learning_rate,
+            #                                 name='learning_rate'))
 
         if FLAGS.sync_replicas:
             # If sync_replicas is enabled, the averaging will be done in the chief
@@ -558,11 +559,13 @@ def main(_):
         #                                 name='total_loss'))
 
         # Add total_loss and accuacy to summary.
-        summaries.add(tf.scalar_summary('eval/Total_Loss', total_loss,
-                                        name='total_loss'))
+        summaries.add(tf.summary.scalar('eval/Total_Loss', total_loss))
+        # summaries.add(tf.summary.scalar('eval/Total_Loss', total_loss,
+        #                                 name='total_loss'))
         accuracy = tf.get_collection('accuracy', first_clone_scope)[0]
-        summaries.add(tf.scalar_summary('eval/Accuracy', accuracy,
-                                        name='accuracy'))
+        summaries.add(tf.summary.scalar('eval/Accuracy', accuracy))
+        # summaries.add(tf.summary.scalar('eval/Accuracy', accuracy,
+        #                                 name='accuracy'))
 
         # Create gradient updates.
         grad_updates = optimizer.apply_gradients(clones_gradients,
@@ -579,7 +582,7 @@ def main(_):
                                            first_clone_scope))
 
         # Merge all summaries together.
-        summary_op = tf.merge_summary(list(summaries), name='summary_op')
+        summary_op = tf.summary.merge(list(summaries), name='summary_op')
 
         ###########################
         # Kicks off the training. #

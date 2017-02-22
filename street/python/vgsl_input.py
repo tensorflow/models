@@ -79,7 +79,7 @@ def ImageInput(input_pattern, num_threads, shape, using_ctc, reader=None):
   # Give the images a nice name as well.
   images = tf.identity(images, name='Images')
 
-  tf.image_summary('Images', images)
+  tf.summary.image('Images', images)
   return images, heights, widths, labels, sparse_labels, truths
 
 
@@ -145,6 +145,6 @@ def _ImageProcessing(image_buffer, shape):
   image = tf.image.decode_png(image_buffer, channels=shape.depth)
   image.set_shape([shape.height, shape.width, shape.depth])
   image = tf.cast(image, tf.float32)
-  image = tf.sub(image, 128.0)
-  image = tf.mul(image, 1 / 100.0)
+  image = tf.subtract(image, 128.0)
+  image = tf.multiply(image, 1 / 100.0)
   return image
