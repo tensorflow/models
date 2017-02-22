@@ -124,7 +124,7 @@ class MomentsAccountant(object):
   """Privacy accountant which keeps track of moments of privacy loss.
 
   Note: The constructor of this class creates tf.Variables that must
-  be initialized with tf.initialize_all_variables() or similar calls.
+  be initialized with tf.global_variables_initializer() or similar calls.
 
   MomentsAccountant accumulates the high moments of the privacy loss. It
   requires a method for computing differenital moments of the noise (See

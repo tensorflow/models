@@ -502,7 +502,7 @@ class DeployTest(tf.test.TestCase):
       self.assertEqual(model.train_op.op.name, 'train_op')
 
       with tf.Session() as sess:
-        sess.run(tf.initialize_all_variables())
+        sess.run(tf.global_variables_initializer())
         moving_mean = tf.contrib.framework.get_variables_by_name(
             'moving_mean')[0]
         moving_variance = tf.contrib.framework.get_variables_by_name(
