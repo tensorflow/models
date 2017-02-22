@@ -264,7 +264,7 @@ class ShowAndTellModel(object):
       if self.mode == "inference":
         # In inference mode, use concatenated states for convenient feeding and
         # fetching.
-        tf.concat_v2(initial_state, 1, name="initial_state")
+        tf.concat(initial_state, 1, name="initial_state")
 
         # Placeholder for feeding a batch of concatenated states.
         state_feed = tf.placeholder(dtype=tf.float32,
@@ -278,7 +278,7 @@ class ShowAndTellModel(object):
             state=state_tuple)
 
         # Concatentate the resulting state.
-        tf.concat_v2(state_tuple, 1, name="state")
+        tf.concat(state_tuple, 1, name="state")
       else:
         # Run the batch of sequence embeddings through the LSTM.
         sequence_length = tf.reduce_sum(self.input_mask, 1)
