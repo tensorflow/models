@@ -5,8 +5,6 @@ import autoencoder.Utils
 class Autoencoder(object):
 
     def __init__(self, n_layers, transfer_function=tf.nn.softplus, optimizer=tf.train.AdamOptimizer()):
-        # self.n_input = n_input
-        # self.n_hidden = n_hidden
         self.n_layers = n_layers
         self.transfer = transfer_function
 
@@ -23,7 +21,6 @@ class Autoencoder(object):
                        self.weights['encode'][layer]['b']))
             self.hidden_encode.append(h)
 
-        #self.hidden = self.transfer(tf.add(tf.matmul(self.x, self.weights['w1']), self.weights['b1']))
         self.hidden_recon = []
         for layer in range(len(self.n_layers)-1):
             h = self.transfer(
@@ -31,7 +28,6 @@ class Autoencoder(object):
                        self.weights['recon'][layer]['b']))
             self.hidden_recon.append(h)
         self.reconstruction = self.hidden_recon[-1]
-        #self.reconstruction = tf.add(tf.matmul(self.hidden, self.weights['w2']), self.weights['b2'])
 
         # cost
         self.cost = 0.5 * tf.reduce_sum(tf.pow(tf.subtract(self.reconstruction, self.x), 2.0))
