@@ -88,7 +88,7 @@ def _get_filenames_and_classes(dataset_dir):
     A list of image file paths, relative to `dataset_dir` and the list of
     subdirectories, representing class names.
   """
-  flower_root = os.path.join(dataset_dir, 'flowers_photo')
+  flower_root = os.path.join(dataset_dir, 'numpy')
   directories = []
   class_names = []
   # os.listdir returns all the files and directories in the input argument.
@@ -108,7 +108,7 @@ def _get_filenames_and_classes(dataset_dir):
 
 
 def _get_dataset_filename(dataset_dir, split_name, shard_id):
-  output_filename = 'flowers_%s_%05d-of-%05d.tfrecord' % (
+  output_filename = 'numpy_%s_%05d-of-%05d.tfrecord' % (
       split_name, shard_id, _NUM_SHARDS)
   return os.path.join(dataset_dir, output_filename)
 

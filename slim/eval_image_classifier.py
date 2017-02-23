@@ -27,6 +27,8 @@ from preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 
+default = 'False'
+
 tf.app.flags.DEFINE_integer(
     'batch_size', 100, 'The number of samples in each batch.')
 
@@ -38,12 +40,11 @@ tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
 
 tf.app.flags.DEFINE_string(
-    'checkpoint_path', '/tmp/tfmodel/',
-    'The directory where the model was written to or an absolute path to a '
-    'checkpoint file.')
+    'checkpoint_path', '/home/sina/TRAIN_CASIA/train_logs',
+    'The directory where the model was written to')
 
 tf.app.flags.DEFINE_string(
-    'eval_dir', '/tmp/tfmodel/', 'Directory where the results are saved to.')
+    'eval_dir', '/home/sina/EVAL_CASIA/', 'Directory where the results are saved to.')
 
 tf.app.flags.DEFINE_integer(
     'eval_interval_secs', 60*2,
@@ -60,7 +61,7 @@ tf.app.flags.DEFINE_string(
     'dataset_split_name', 'validation', 'The name of the train/test split.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_dir', '/tmp/data/CASIA', 'The directory where the dataset files are stored.')
+    'dataset_dir', '/home/sina/datasets/CASIA', 'The directory where the dataset files are stored.')
 
 tf.app.flags.DEFINE_integer(
     'labels_offset', 0,
@@ -69,7 +70,7 @@ tf.app.flags.DEFINE_integer(
     'class for the ImageNet dataset.')
 
 tf.app.flags.DEFINE_string(
-    'model_name', 'vgg_16', 'The name of the architecture to evaluate.')
+    'model_name', 'vgg_19', 'The name of the architecture to evaluate.')
 
 tf.app.flags.DEFINE_string(
     'preprocessing_name', None, 'The name of the preprocessing to use. If left '
@@ -186,7 +187,7 @@ def main(_):
 
       tf.logging.info('Evaluating %s' % FLAGS.checkpoint_path)
 
-
+    print(FLAGS.master,FLAGS.checkpoint_path,FLAGS.eval_dir,num_batches,list(names_to_updates.values()),variables_to_restore)
     slim.evaluation.evaluation_loop(
         master=FLAGS.master,
         checkpoint_dir=FLAGS.checkpoint_path,

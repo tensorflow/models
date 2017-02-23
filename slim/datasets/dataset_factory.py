@@ -23,6 +23,7 @@ from datasets import flowers
 from datasets import imagenet
 from datasets import mnist
 from datasets import casia
+from datasets import numpy
 
 datasets_map = {
     'cifar10': cifar10,
@@ -30,6 +31,7 @@ datasets_map = {
     'imagenet': imagenet,
     'mnist': mnist,
     'casia': casia,
+    'numpy': numpy,
 }
 
 

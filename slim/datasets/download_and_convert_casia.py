@@ -50,7 +50,7 @@ _NUM_VALIDATION = 55594
 _RANDOM_SEED = 0
 
 # The number of shards per dataset split(It is recommended to set as athe maximum number of supported cores).
-_NUM_SHARDS = 4
+_NUM_SHARDS = 2
 
 
 class ImageReader(object):
@@ -84,11 +84,11 @@ def _get_filenames_and_classes(dataset_dir):
       A list of image file paths, relative to `dataset_dir` and the list of
       subdirectories, representing class names.
     """
-    flower_root = os.path.join(dataset_dir, 'CASIA-maxpy-clean')
+    root = os.path.join(dataset_dir, 'CASIA-maxpy-clean')
     directories = []
     class_names = []
-    for filename in os.listdir(flower_root):
-        path = os.path.join(flower_root, filename)
+    for filename in os.listdir(root):
+        path = os.path.join(root, filename)
         if os.path.isdir(path):
             directories.append(path)
             class_names.append(filename)
@@ -192,6 +192,7 @@ def run(dataset_dir):
         return
 
     photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
+    print(photo_filenames)
     class_names_to_ids = dict(zip(class_names, range(len(class_names))))
 
     # Divide into train and test:

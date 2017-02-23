@@ -31,7 +31,6 @@ import math
 import os
 import random
 import sys
-import numpy as np
 
 import tensorflow as tf
 
@@ -41,13 +40,13 @@ from datasets import dataset_utils
 _DATA_URL = 'http://download.tensorflow.org/example_images/flower_photos.tgz'
 
 # The number of images in the validation set.
-_NUM_VALIDATION = 1
+_NUM_VALIDATION = 350
 
 # Seed for repeatability.
 _RANDOM_SEED = 0
 
 # The number of shards per dataset split.
-_NUM_SHARDS = 1
+_NUM_SHARDS = 5
 
 
 class ImageReader(object):
@@ -57,7 +56,6 @@ class ImageReader(object):
     # Initializes function that decodes RGB JPEG data.
     self._decode_jpeg_data = tf.placeholder(dtype=tf.string)
     self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=3)
-    # self._decode_numpy = tf.decode_raw(self._decode_jpeg_data)
 
   def read_image_dims(self, sess, image_data):
     image = self.decode_jpeg(sess, image_data)
@@ -69,12 +67,6 @@ class ImageReader(object):
     assert len(image.shape) == 3
     assert image.shape[2] == 3
     return image
-  # def decode_numpy(self, sess, image_data):
-  #   image = sess.run(self._decode_numpy,
-  #                    feed_dict={self._decode_jpeg_data: image_data})
-  #   assert len(image.shape) == 3
-  #   assert image.shape[2] == 3
-  #   return image
 
 
 def _get_filenames_and_classes(dataset_dir):
@@ -88,12 +80,13 @@ def _get_filenames_and_classes(dataset_dir):
     A list of image file paths, relative to `dataset_dir` and the list of
     subdirectories, representing class names.
   """
-  flower_root = os.path.join(dataset_dir, 'flowers_photo')
+  flower_root = os.path.join(dataset_dir, 'flower_photos')
   directories = []
   class_names = []
-  # os.listdir returns all the files and directories in the input argument.
   for filename in os.listdir(flower_root):
+    print(filename)
     path = os.path.join(flower_root, filename)
+    # print(path)
     if os.path.isdir(path):
       directories.append(path)
       class_names.append(filename)
@@ -104,6 +97,7 @@ def _get_filenames_and_classes(dataset_dir):
       path = os.path.join(directory, filename)
       photo_filenames.append(path)
 
+  print(photo_filenames)
   return photo_filenames, sorted(class_names)
 
 
@@ -130,7 +124,6 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
   with tf.Graph().as_default():
     image_reader = ImageReader()
 
-    # Why tf.Session('')?
     with tf.Session('') as sess:
 
       for shard_id in range(_NUM_SHARDS):
@@ -145,11 +138,9 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
                 i+1, len(filenames), shard_id))
             sys.stdout.flush()
 
-            # # Read the filename:
-            # tf.gfile.FastGFile is the file I/O wrappers.
+            # Read the filename:
             image_data = tf.gfile.FastGFile(filenames[i], 'r').read()
-            # height, width = image_reader.read_image_dims(sess, image_data)
-            height, width, channels = np.load(filenames[i]).shape
+            height, width = image_reader.read_image_dims(sess, image_data)
 
             class_name = os.path.basename(os.path.dirname(filenames[i]))
             class_id = class_names_to_ids[class_name]
@@ -209,7 +200,7 @@ def run(dataset_dir):
   training_filenames = photo_filenames[_NUM_VALIDATION:]
   validation_filenames = photo_filenames[:_NUM_VALIDATION]
 
-
+  sys.exit(1)
   # First, convert the training and validation sets.
   _convert_dataset('train', training_filenames, class_names_to_ids,
                    dataset_dir)
@@ -221,6 +212,6 @@ def run(dataset_dir):
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
 
-  # _clean_up_temporary_files(dataset_dir)
-  # print('\nFinished converting the Flowers dataset!')
+  _clean_up_temporary_files(dataset_dir)
+  print('\nFinished converting the Flowers dataset!')
 

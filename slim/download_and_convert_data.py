@@ -44,17 +44,18 @@ from datasets import download_and_convert_cifar10
 from datasets import download_and_convert_flowers
 from datasets import download_and_convert_mnist
 from datasets import download_and_convert_casia
+from datasets import download_and_convert_numpy
 
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string(
     'dataset_name',
-    None,
+    'numpy',
     'The name of the dataset to convert, one of "cifar10", "flowers", "mnist".')
 
 tf.app.flags.DEFINE_string(
     'dataset_dir',
-    None,
+    '/tmp/data/flowers',
     'The directory where the output TFRecords and temporary files are saved.')
 
 
@@ -72,6 +73,8 @@ def main(_):
     download_and_convert_mnist.run(FLAGS.dataset_dir)
   elif FLAGS.dataset_name == 'casia':
     download_and_convert_casia.run(FLAGS.dataset_dir)
+  elif FLAGS.dataset_name == 'numpy':
+    download_and_convert_numpy.run(FLAGS.dataset_dir)
   else:
     raise ValueError(
         'dataset_name [%s] was not recognized.' % FLAGS.dataset_dir)
