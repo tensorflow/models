@@ -285,7 +285,7 @@ def inception_v3(inputs,
           with tf.variable_scope('branch3x3'):
             branch3x3 = ops.conv2d(net, 384, [1, 1])
             branch3x3 = tf.concat(axis=3, values=[ops.conv2d(branch3x3, 384, [1, 3]),
-                                                 ops.conv2d(branch3x3, 384, [3, 1])])
+                                                  ops.conv2d(branch3x3, 384, [3, 1])])
           with tf.variable_scope('branch3x3dbl'):
             branch3x3dbl = ops.conv2d(net, 448, [1, 1])
             branch3x3dbl = ops.conv2d(branch3x3dbl, 384, [3, 3])
