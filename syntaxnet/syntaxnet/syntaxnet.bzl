@@ -16,6 +16,15 @@
 load("@protobuf//:protobuf.bzl", "cc_proto_library")
 load("@protobuf//:protobuf.bzl", "py_proto_library")
 
+def check_version(expected_version):
+  current_version = native.bazel_version.split(" ")[0].split("-")[0]
+  if current_version != expected_version:
+    fail("\nCurrent Bazel version is {}, expected {}.\n".format(
+             current_version, expected_version) +
+         "To try anyway, remove check_version() call from syntaxnet/WORKSPACE")
+  else:
+    print("Bazel OK")
+
 def if_cuda(if_true, if_false = []):
     """Shorthand for select()'ing on whether we're building with CUDA."""
     return select({
