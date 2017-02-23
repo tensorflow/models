@@ -42,7 +42,7 @@ def SequenceToImageAndDiff(images):
     for i in xrange(0, len(resized_images)-1):
       diffs.append(resized_images[i+1] - resized_images[i])
     image_diff_list.append(
-        (tf.concat(0, resized_images[:-1]), tf.concat(0, diffs)))
+        (tf.concat(axis=0, values=resized_images[:-1]), tf.concat(axis=0, values=diffs)))
   return image_diff_list
 
 

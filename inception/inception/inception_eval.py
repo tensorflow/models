@@ -158,10 +158,10 @@ def evaluate(dataset):
     saver = tf.train.Saver(variables_to_restore)
 
     # Build the summary operation based on the TF collection of Summaries.
-    summary_op = tf.merge_all_summaries()
+    summary_op = tf.summary.merge_all()
 
     graph_def = tf.get_default_graph().as_graph_def()
-    summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir,
+    summary_writer = tf.summary.FileWriter(FLAGS.eval_dir,
                                             graph_def=graph_def)
 
     while True:
