@@ -93,6 +93,9 @@ bazel-bin/resnet/resnet_main --train_data_path=cifar10/data_batch* \
                              --dataset='cifar10' \
                              --num_gpus=1
 
+# While the model is training, you can also check on its progress using tensorboard:
+tensorboard --logdir=/tmp/resnet_model
+
 # Evaluate the model.
 # Avoid running on the same GPU as the training job at the same time,
 # otherwise, you might run out of memory.
