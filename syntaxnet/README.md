@@ -628,9 +628,11 @@ Original authors of the code in this package include (in alphabetical order):
 *   David Weiss
 *   Emily Pitler
 *   Greg Coppola
+*   Ivan Bogatyy
 *   Ji Ma
 *   Keith Hall
 *   Kuzman Ganchev
+*   Livio Baldini Soares
 *   Michael Collins
 *   Michael Ringgaard
 *   Ryan McDonald

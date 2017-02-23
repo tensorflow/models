@@ -4,8 +4,10 @@ local_repository(
 )
 
 load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
-tf_workspace()
+tf_workspace(path_prefix="", tf_repo_name="org_tensorflow")
 
-# Specify the minimum required Bazel version.
-load("@org_tensorflow//tensorflow:tensorflow.bzl", "check_version")
+# Test that Bazel is the correct release, tested for compatibility with the
+# current SyntaxNet snapshot.
+load("//syntaxnet:syntaxnet.bzl", "check_version")
 check_version("0.4.3")
+
