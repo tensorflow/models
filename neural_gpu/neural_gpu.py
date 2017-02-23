@@ -211,7 +211,7 @@ def reorder_beam(beam_size, batch_size, beam_val, output, is_first,
   # beam_val is [batch_size x beam_size]; let b = batch_size * beam_size
   # decided is len x b x a x b
   # output is b x out_size; step is b x len x a x b;
-  outputs = tf.split(axis=tf.nn.log_softmax(output), num_or_size_splits=beam_size, value=0)
+  outputs = tf.split(axis=0, num_or_size_splits=beam_size, value=tf.nn.log_softmax(output))
   all_beam_vals, all_beam_idx = [], []
   beam_range = 1 if is_first else beam_size
   for i in xrange(beam_range):
@@ -266,9 +266,9 @@ class NeuralGPU(object):
     self.input = tf.placeholder(tf.int32, name="inp")
     self.target = tf.placeholder(tf.int32, name="tgt")
     self.prev_step = tf.placeholder(tf.float32, name="prev_step")
-    gpu_input = tf.split(axis=self.input, num_or_size_splits=num_gpus, value=0)
-    gpu_target = tf.split(axis=self.target, num_or_size_splits=num_gpus, value=0)
-    gpu_prev_step = tf.split(axis=self.prev_step, num_or_size_splits=num_gpus, value=0)
+    gpu_input = tf.split(axis=0, num_or_size_splits=num_gpus, value=self.input)
+    gpu_target = tf.split(axis=0, num_or_size_splits=num_gpus, value=self.target)
+    gpu_prev_step = tf.split(axis=0, num_or_size_splits=num_gpus, value=self.prev_step)
     batch_size = tf.shape(gpu_input[0])[0]
 
     if backward:
