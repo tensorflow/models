@@ -4,7 +4,7 @@ import sklearn.preprocessing as prep
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
-from autoencoder.autoencoder_models.VariationalAutoencoder import VariationalAutoencoder
+from autoencoder_models.VariationalAutoencoder import VariationalAutoencoder
 
 mnist = input_data.read_data_sets('MNIST_data', one_hot = True)
 

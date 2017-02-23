@@ -1,7 +1,4 @@
 import tensorflow as tf
-import numpy as np
-import autoencoder.Utils
-
 
 class AdditiveGaussianNoiseAutoencoder(object):
     def __init__(self, n_input, n_hidden, transfer_function = tf.nn.softplus, optimizer = tf.train.AdamOptimizer(),
@@ -31,7 +28,8 @@ class AdditiveGaussianNoiseAutoencoder(object):
 
     def _initialize_weights(self):
         all_weights = dict()
-        all_weights['w1'] = tf.Variable(autoencoder.Utils.xavier_init(self.n_input, self.n_hidden))
+        all_weights['w1'] = tf.get_variable("w1", shape=[self.n_input, self.n_hidden],
+            initializer=tf.contrib.layers.xavier_initializer())
         all_weights['b1'] = tf.Variable(tf.zeros([self.n_hidden], dtype = tf.float32))
         all_weights['w2'] = tf.Variable(tf.zeros([self.n_hidden, self.n_input], dtype = tf.float32))
         all_weights['b2'] = tf.Variable(tf.zeros([self.n_input], dtype = tf.float32))
@@ -55,7 +53,7 @@ class AdditiveGaussianNoiseAutoencoder(object):
 
     def generate(self, hidden = None):
         if hidden is None:
-            hidden = np.random.normal(size = self.weights["b1"])
+            hidden = tf.random_normal(size=self.weights["b1"])
         return self.sess.run(self.reconstruction, feed_dict = {self.hidden: hidden})
 
     def reconstruct(self, X):
@@ -98,7 +96,8 @@ class MaskingNoiseAutoencoder(object):
 
     def _initialize_weights(self):
         all_weights = dict()
-        all_weights['w1'] = tf.Variable(autoencoder.Utils.xavier_init(self.n_input, self.n_hidden))
+        all_weights['w1'] = tf.get_variable("w1", shape=[self.n_input, self.n_hidden],
+            initializer=tf.contrib.layers.xavier_initializer())
         all_weights['b1'] = tf.Variable(tf.zeros([self.n_hidden], dtype = tf.float32))
         all_weights['w2'] = tf.Variable(tf.zeros([self.n_hidden, self.n_input], dtype = tf.float32))
         all_weights['b2'] = tf.Variable(tf.zeros([self.n_input], dtype = tf.float32))
@@ -117,7 +116,7 @@ class MaskingNoiseAutoencoder(object):
 
     def generate(self, hidden = None):
         if hidden is None:
-            hidden = np.random.normal(size = self.weights["b1"])
+            hidden = tf.random_normal(size=self.weights["b1"])
         return self.sess.run(self.reconstruction, feed_dict = {self.hidden: hidden})
 
     def reconstruct(self, X):
