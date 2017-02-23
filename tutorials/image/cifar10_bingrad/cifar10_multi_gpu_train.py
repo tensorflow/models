@@ -57,11 +57,10 @@ tf.app.flags.DEFINE_string('train_dir', cifar10_common.WORKSPACE_PATH+'/cifar10_
                            """and checkpoint.""")
 tf.app.flags.DEFINE_integer('max_steps', 200000,
                             """Number of batches to run.""")
-tf.app.flags.DEFINE_integer('num_gpus', 1,
-                            """How many GPUs to use.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
-
+tf.app.flags.DEFINE_integer('num_gpus', 1,
+                            """How many GPUs to use.""")
 
 def tower_loss(scope):
   """Calculate the total loss on a single tower running the CIFAR model.
@@ -148,10 +147,13 @@ def train():
     # Calculate the gradients for each model tower.
     tower_grads = []
     tower_scalers = []
+    device_list = ['/gpu:0','/gpu:1','/gpu:0','/gpu:1','/gpu:0','/gpu:1','/gpu:0','/gpu:1']
     summaries = [] # tf.get_collection(tf.GraphKeys.SUMMARIES)
     with tf.variable_scope(tf.get_variable_scope()):
       for i in xrange(FLAGS.num_gpus):
         with tf.device('/gpu:%d' % i):
+        #with tf.device(device_list[i]):
+          #with tf.variable_scope('%s_%d' % (cifar10.TOWER_NAME, i)):
           with tf.name_scope('%s_%d' % (cifar10.TOWER_NAME, i)) as scope:
             # Calculate the loss for one tower of the CIFAR model. This function
             # constructs the entire CIFAR model but shares the variables across
@@ -159,13 +161,14 @@ def train():
             loss = tower_loss(scope)
 
             # Reuse variables for the next tower.
-            tf.get_variable_scope().reuse_variables()
+            #tf.get_variable_scope().reuse_variables()
 
             # Retain the summaries from the final tower.
             summaries.extend(tf.get_collection(tf.GraphKeys.SUMMARIES, scope))
 
             # Calculate the gradients for the batch of data on this CIFAR tower.
-            grads = opt.compute_gradients(loss)
+            #grads = opt.compute_gradients(loss)
+            grads = opt.compute_gradients(loss,tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope))
 
             for grad, var in grads:
               if grad is not None:
@@ -211,6 +214,7 @@ def train():
 
     for i in xrange(FLAGS.num_gpus):
       with tf.device('/gpu:%d' % i):
+      #with tf.device(device_list[i]):
         with tf.name_scope('%s_%d' % (cifar10.TOWER_NAME, i)) as scope:
           if 1 == FLAGS.grad_bits:
             # Clip gradients. Always clip since the max value in towers may be different even when clip_factor==0.0
@@ -227,7 +231,8 @@ def train():
 
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
-    grads = cifar10_common.average_gradients(tower_grads)
+    #grads = cifar10_common.average_gradients(tower_grads)
+    tower_grads = cifar10_common.average_gradients2(tower_grads)
 
     ## Add histograms for gradients.
     #for grad, var in grads:
@@ -246,13 +251,16 @@ def train():
     summaries.append(tf.contrib.deprecated.scalar_summary('learning_rate', lr))
 
     # Add histograms for gradients.
-    for grad, var in grads:
+    for grad, var in tower_grads[0]:
       if grad is not None:
         summaries.append(
             tf.contrib.deprecated.histogram_summary(var.op.name + '/final_gradients',grad))
 
     # Apply the gradients to adjust the shared variables.
-    apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+    #apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
+    apply_gradient_op = []
+    for tower_grad in tower_grads:
+      apply_gradient_op.append( opt.apply_gradients(tower_grad, global_step=global_step) )
 
     # Add histograms for trainable variables.
     for var in tf.trainable_variables():
@@ -265,10 +273,20 @@ def train():
     variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
     # Group all updates to into a single train op.
-    train_op = tf.group(apply_gradient_op, variables_averages_op)
+    train_op = tf.group(variables_averages_op,*apply_gradient_op)
 
+    # Only save the variables in the first tower
+    save_pattern = ('(%s_%d)' % (cifar10.TOWER_NAME, 0))+".*ExponentialMovingAverage"
+    var_dic = {}
+    _vars = tf.global_variables() #tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=first_tower_scope)
+    for _var in _vars:
+      if re.compile(save_pattern).match(_var.op.name):
+        _var_name = re.sub('%s_[0-9]*/' % cifar10.TOWER_NAME, '', _var.op.name)
+        var_dic[_var_name] = _var
     # Create a saver.
-    saver = tf.train.Saver(tf.global_variables())
+    #saver = tf.train.Saver(tf.global_variables())
+    saver = tf.train.Saver(var_dic)
+
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.contrib.deprecated.merge_summary(summaries)

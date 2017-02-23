@@ -10,8 +10,9 @@ OPTIMIZER=adam
 GRAD_BITS=1
 BASE_LR=0.0002
 CLIP_FACTOR=2.5 # 0.0 means no clipping
-TOTAL_BATCH_SIZE=128
+TOTAL_BATCH_SIZE=256
 BATCH_SIZE=$( expr ${TOTAL_BATCH_SIZE} / ${NUM_GPUS} )
+SEED=${RANDOM}
 
 if [ ! -d "$ROOT_WORKSPACE" ]; then
   echo "${ROOT_WORKSPACE} does not exsit!"
@@ -41,4 +42,4 @@ if [ ! -d "$EVAL_DIR" ]; then
 fi
 
 python cifar10_eval.py --eval_dir $EVAL_DIR  --data_dir ${DATA_DIR} --checkpoint_dir $TRAIN_DIR   >  ${INFO_WORKSPACE}/eval_${FOLDER_NAME}_info.txt 2>&1 &
-python cifar10_multi_gpu_train.py --optimizer ${OPTIMIZER} --grad_bits ${GRAD_BITS} --base_lr ${BASE_LR} --clip_factor ${CLIP_FACTOR} --data_dir ${DATA_DIR} --train_dir ${TRAIN_DIR} --batch_size ${BATCH_SIZE} --num_gpus ${NUM_GPUS}  > ${INFO_WORKSPACE}/training_${FOLDER_NAME}_info.txt 2>&1 &
+python cifar10_multi_gpu_train.py --seed ${SEED} --optimizer ${OPTIMIZER} --grad_bits ${GRAD_BITS} --base_lr ${BASE_LR} --clip_factor ${CLIP_FACTOR} --data_dir ${DATA_DIR} --train_dir ${TRAIN_DIR} --batch_size ${BATCH_SIZE} --num_gpus ${NUM_GPUS}  > ${INFO_WORKSPACE}/training_${FOLDER_NAME}_info.txt 2>&1 &

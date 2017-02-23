@@ -67,6 +67,10 @@ tf.app.flags.DEFINE_float('decay_factor', 0.1,
                             """Learning rate decay factor.""")
 tf.app.flags.DEFINE_float('clip_factor', 0.0,
                             """The factor of stddev to clip gradients.""")
+
+tf.app.flags.DEFINE_integer('seed', 2017,
+                            """Seed to initialize variables.""")
+
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
 NUM_CLASSES = cifar10_input.NUM_CLASSES
@@ -124,8 +128,24 @@ def _variable_on_cpu(name, shape, initializer):
     var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
   return var
 
+def _variable_on_context(name, initial_value):
+  """Helper to create a Variable stored on CPU/GPU memory. Unshared!
 
-def _variable_with_weight_decay(name, shape, stddev, wd):
+  Args:
+    name: name of the variable
+    initial_value: initial_value for Variable. Use the unique seed to initialize variables across all devices
+
+  Returns:
+    Variable Tensor
+  """
+  dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
+  #var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
+  var = tf.Variable(initial_value=initial_value,
+                    name=name, dtype=dtype)
+  return var
+
+
+def _variable_with_weight_decay(name, shape, stddev, wd, seed):
   """Helper to create an initialized Variable with weight decay.
 
   Note that the Variable is initialized with a truncated normal distribution.
@@ -142,10 +162,11 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
     Variable Tensor
   """
   dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
-  var = _variable_on_cpu(
-      name,
-      shape,
-      tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
+  #var = _variable_on_cpu(
+  #    name,
+  #    shape,
+  #    tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
+  var = _variable_on_context(name,tf.truncated_normal(shape=shape,stddev=stddev,seed=seed,dtype=dtype))
   if wd is not None:
     weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
@@ -217,9 +238,11 @@ def inference(images):
     kernel = _variable_with_weight_decay('weights',
                                          shape=[5, 5, 3, 64],
                                          stddev=5e-2,
-                                         wd=0.0)
+                                         wd=0.0,
+                                         seed=FLAGS.seed)
     conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
-    biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.0))
+    #biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.0))
+    biases = _variable_on_context('biases', tf.constant(0.0,shape=[64]))
     pre_activation = tf.nn.bias_add(conv, biases)
     conv1 = tf.nn.relu(pre_activation, name=scope.name)
     #_activation_summary(conv1)
@@ -236,9 +259,11 @@ def inference(images):
     kernel = _variable_with_weight_decay('weights',
                                          shape=[5, 5, 64, 64],
                                          stddev=5e-2,
-                                         wd=0.0)
+                                         wd=0.0,
+                                         seed=FLAGS.seed+1)
     conv = tf.nn.conv2d(norm1, kernel, [1, 1, 1, 1], padding='SAME')
-    biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.1))
+    #biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.1))
+    biases = _variable_on_context('biases', tf.constant(0.1, shape=[64]))
     pre_activation = tf.nn.bias_add(conv, biases)
     conv2 = tf.nn.relu(pre_activation, name=scope.name)
     #_activation_summary(conv2)
@@ -256,16 +281,20 @@ def inference(images):
     reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
     dim = reshape.get_shape()[1].value
     weights = _variable_with_weight_decay('weights', shape=[dim, 384],
-                                          stddev=0.04, wd=0.004)
-    biases = _variable_on_cpu('biases', [384], tf.constant_initializer(0.1))
+                                          stddev=0.04, wd=0.004,
+                                         seed=FLAGS.seed+2)
+    #biases = _variable_on_cpu('biases', [384], tf.constant_initializer(0.1))
+    biases = _variable_on_context('biases', tf.constant(0.1, shape=[384]))
     local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
     #_activation_summary(local3)
 
   # local4
   with tf.variable_scope('local4') as scope:
     weights = _variable_with_weight_decay('weights', shape=[384, 192],
-                                          stddev=0.04, wd=0.004)
-    biases = _variable_on_cpu('biases', [192], tf.constant_initializer(0.1))
+                                          stddev=0.04, wd=0.004,
+                                         seed=FLAGS.seed+3)
+    #biases = _variable_on_cpu('biases', [192], tf.constant_initializer(0.1))
+    biases = _variable_on_context('biases', tf.constant(0.1, shape=[192]))
     local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
     #_activation_summary(local4)
 
@@ -275,9 +304,11 @@ def inference(images):
   # and performs the softmax internally for efficiency.
   with tf.variable_scope('softmax_linear') as scope:
     weights = _variable_with_weight_decay('weights', [192, NUM_CLASSES],
-                                          stddev=1/192.0, wd=0.0)
-    biases = _variable_on_cpu('biases', [NUM_CLASSES],
-                              tf.constant_initializer(0.0))
+                                          stddev=1/192.0, wd=0.0,
+                                         seed=FLAGS.seed+4)
+    #biases = _variable_on_cpu('biases', [NUM_CLASSES],
+    #                          tf.constant_initializer(0.0))
+    biases = _variable_on_context('biases', tf.constant(0.0, shape=[NUM_CLASSES]))
     softmax_linear = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
     #_activation_summary(softmax_linear)
 
