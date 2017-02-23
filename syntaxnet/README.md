@@ -222,7 +222,7 @@ As mentioned above, the python scripts are configured in two ways:
         also separate from the model parameters, which are saved separately via
         calls to TensorFlow ops, and loaded via the `--model_path` flag.
     -   Because the `TaskSpec` contains file path, remember that copying around
-        this file is not enough to relocate a trained model: you need up move
+        this file is not enough to relocate a trained model: you need to move
         and update all the paths as well.
 
 Note that some run-time flags need to be consistent between training and testing
