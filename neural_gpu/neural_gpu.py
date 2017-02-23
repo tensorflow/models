@@ -36,7 +36,7 @@ def conv_linear(args, kw, kh, nin, nout, rate, do_bias, bias_start, prefix):
     if len(args) == 1:
       arg = args[0]
     else:
-      arg = tf.concat(args, 3)
+      arg = tf.concat(axis=args, values=3)
     res = tf.nn.convolution(arg, k, dilation_rate=(rate, 1), padding="SAME")
     if not do_bias: return res
     with tf.device("/cpu:0"):
@@ -71,14 +71,14 @@ def place_at14(decided, selected, it):
   """Place selected at it-th coordinate of decided, dim=1 of 4."""
   slice1 = decided[:, :it, :, :]
   slice2 = decided[:, it + 1:, :, :]
-  return tf.concat([slice1, selected, slice2], 1)
+  return tf.concat(axis=[slice1, selected, slice2], values=1)
 
 
 def place_at13(decided, selected, it):
   """Place selected at it-th coordinate of decided, dim=1 of 3."""
   slice1 = decided[:, :it, :]
   slice2 = decided[:, it + 1:, :]
-  return tf.concat([slice1, selected, slice2], 1)
+  return tf.concat(axis=[slice1, selected, slice2], values=1)
 
 
 def tanh_cutoff(x, cutoff):
@@ -211,7 +211,7 @@ def reorder_beam(beam_size, batch_size, beam_val, output, is_first,
   # beam_val is [batch_size x beam_size]; let b = batch_size * beam_size
   # decided is len x b x a x b
   # output is b x out_size; step is b x len x a x b;
-  outputs = tf.split(tf.nn.log_softmax(output), beam_size, 0)
+  outputs = tf.split(axis=tf.nn.log_softmax(output), num_or_size_splits=beam_size, value=0)
   all_beam_vals, all_beam_idx = [], []
   beam_range = 1 if is_first else beam_size
   for i in xrange(beam_range):
@@ -221,9 +221,9 @@ def reorder_beam(beam_size, batch_size, beam_val, output, is_first,
                                  cur_beam_val], "GREPO", summarize=8)
     all_beam_vals.append(top_out + tf.expand_dims(cur_beam_val, 1))
     all_beam_idx.append(top_out_idx)
-  all_beam_idx = tf.reshape(tf.transpose(tf.concat(all_beam_idx, 1), [1, 0]),
+  all_beam_idx = tf.reshape(tf.transpose(tf.concat(axis=all_beam_idx, values=1), [1, 0]),
                             [-1])
-  top_beam, top_beam_idx = tf.nn.top_k(tf.concat(all_beam_vals, 1), k=beam_size)
+  top_beam, top_beam_idx = tf.nn.top_k(tf.concat(axis=all_beam_vals, values=1), k=beam_size)
   top_beam_idx = tf.Print(top_beam_idx, [top_beam, top_beam_idx],
                           "GREP", summarize=8)
   reordered = [[] for _ in xrange(len(tensors_to_reorder) + 1)]
@@ -236,8 +236,8 @@ def reorder_beam(beam_size, batch_size, beam_val, output, is_first,
     reordered[0].append(tf.gather(output, which_beam))
     for i, t in enumerate(tensors_to_reorder):
       reordered[i + 1].append(tf.gather(t, which_beam))
-  new_tensors = [tf.concat(t, 0) for t in reordered]
-  top_out_idx = tf.concat(top_out_idx, 0)
+  new_tensors = [tf.concat(axis=t, values=0) for t in reordered]
+  top_out_idx = tf.concat(axis=top_out_idx, values=0)
   return (top_beam, new_tensors[0], top_out_idx, new_tensors[1:])
 
 
@@ -266,9 +266,9 @@ class NeuralGPU(object):
     self.input = tf.placeholder(tf.int32, name="inp")
     self.target = tf.placeholder(tf.int32, name="tgt")
     self.prev_step = tf.placeholder(tf.float32, name="prev_step")
-    gpu_input = tf.split(self.input, num_gpus, 0)
-    gpu_target = tf.split(self.target, num_gpus, 0)
-    gpu_prev_step = tf.split(self.prev_step, num_gpus, 0)
+    gpu_input = tf.split(axis=self.input, num_or_size_splits=num_gpus, value=0)
+    gpu_target = tf.split(axis=self.target, num_or_size_splits=num_gpus, value=0)
+    gpu_prev_step = tf.split(axis=self.prev_step, num_or_size_splits=num_gpus, value=0)
     batch_size = tf.shape(gpu_input[0])[0]
 
     if backward:
@@ -410,7 +410,7 @@ class NeuralGPU(object):
       out_write = output_ta.write(it, output_l[:batch_size, :, :, :])
       output = tf.gather(target_emb_weights, out)
       output = tf.reshape(output, [-1, 1, nmaps])
-      output = tf.concat([output] * height, 1)
+      output = tf.concat(axis=[output] * height, values=1)
       tgt = tgts[it, :, :, :]
       selected = tf.cond(tf.less(tf.random_uniform([]), self.sampling),
                          lambda: output, lambda: tgt)
@@ -419,7 +419,7 @@ class NeuralGPU(object):
       out_idx = place_at13(
           out_idx, tf.reshape(out, [beam_size * batch_size, 1, 1]), it)
       if mem_size > 0:
-        mem = tf.concat([mem] * height, 2)
+        mem = tf.concat(axis=[mem] * height, values=2)
         dec_write = place_at14(dec_write, mem, it_incr)
       return (step, dec_write, out_write, mloss + mem_loss, nupd_in + nupd,
               out_idx, beam_cost)
@@ -459,7 +459,7 @@ class NeuralGPU(object):
                                               gpu_targets_tn)
               embedded_targets_tn = tf.transpose(
                   embedded_targets_tn, [2, 0, 1, 3])  # len x b x 1 x nmaps
-              embedded_targets_tn = tf.concat([embedded_targets_tn] * height, 2)
+              embedded_targets_tn = tf.concat(axis=[embedded_targets_tn] * height, values=2)
 
         # First image comes from start by applying convolution and adding 0s.
         start = tf.transpose(start, [0, 2, 1, 3])  # Now b x len x h x vec_s
@@ -505,7 +505,7 @@ class NeuralGPU(object):
               attn_res = attention_query(attn_q, tf.get_variable(
                   "attn_v", [height * nmaps],
                   initializer=tf.random_uniform_initializer(-0.1, 0.1)))
-              concatenated = tf.reshape(tf.concat([cell_inp, attn_res], 1),
+              concatenated = tf.reshape(tf.concat(axis=[cell_inp, attn_res], values=1),
                                         [batch_size, 2 * height * nmaps])
               cell_inp = tf.layers.dense(
                   concatenated, height * nmaps, name="attn_merge")
@@ -519,14 +519,14 @@ class NeuralGPU(object):
                 res = tf.gather(target_emb_weights, res)
                 res *= tf.expand_dims(mask[:, 0], 1)
                 output = tf.layers.dense(
-                    tf.concat([output, res], 1), height * nmaps, name="rnnmem")
+                    tf.concat(axis=[output, res], values=1), height * nmaps, name="rnnmem")
 
               return new_state, output, mem_loss
             # pylint: enable=cell-var-from-loop
             gpu_targets = tf.squeeze(gpu_target[gpu], [1])  # b x len
             gpu_tgt_trans = tf.transpose(gpu_targets, [1, 0])
             dec_zero = tf.zeros([batch_size, 1], dtype=tf.int32)
-            dec_inp = tf.concat([dec_zero, gpu_targets], 1)
+            dec_inp = tf.concat(axis=[dec_zero, gpu_targets], values=1)
             dec_inp = dec_inp[:, :length]
             embedded_dec_inp = tf.gather(target_emb_weights, dec_inp)
             embedded_dec_inp_proj = tf.layers.dense(
@@ -573,9 +573,9 @@ class NeuralGPU(object):
                                   height, vec_size])
 
             # Prepare for beam search.
-            tgts = tf.concat([embedded_targets_tn] * beam_size, 1)
+            tgts = tf.concat(axis=[embedded_targets_tn] * beam_size, values=1)
             beam_cost = tf.zeros([batch_size, beam_size])
-            step = tf.concat([step] * beam_size, 0)
+            step = tf.concat(axis=[step] * beam_size, values=0)
             # First step hard-coded.
             step, decided_t, output_ta, mem_loss, nupd, oi, bc = dec_step(
                 step, 0, 0, decided_t, output_ta, tgts, 0.0, 0, out_idx,
@@ -654,7 +654,7 @@ class NeuralGPU(object):
                        % (gpu, time.time() - start_time))
 
     self.updates = []
-    self.after_enc_step = tf.concat(self.after_enc_step, 0)  # Concat GPUs.
+    self.after_enc_step = tf.concat(axis=self.after_enc_step, values=0)  # Concat GPUs.
     if backward:
       tf.get_variable_scope()._reuse = False
       tf.get_variable_scope().set_caching_device(None)
@@ -667,10 +667,10 @@ class NeuralGPU(object):
 
     self.losses = [gpu_avg([gpu_losses[g][i] for g in xrange(num_gpus)])
                    for i in xrange(len(gpu_losses[0]))]
-    self.out_idx = tf.concat(gpu_out_idx, 0)
+    self.out_idx = tf.concat(axis=gpu_out_idx, values=0)
     self.grad_norms = [gpu_avg([gpu_grad_norms[g][i] for g in xrange(num_gpus)])
                        for i in xrange(len(gpu_grad_norms[0]))]
-    self.outputs = [tf.concat([gpu_outputs[g] for g in xrange(num_gpus)], 1)]
+    self.outputs = [tf.concat(axis=[gpu_outputs[g] for g in xrange(num_gpus)], values=1)]
     self.quantize_op = quantize_weights_op(512, 8)
     if backward:
       self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=10)

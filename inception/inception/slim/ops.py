@@ -331,9 +331,9 @@ def one_hot_encoding(labels, num_classes, scope=None):
     batch_size = labels.get_shape()[0]
     indices = tf.expand_dims(tf.range(0, batch_size), 1)
     labels = tf.cast(tf.expand_dims(labels, 1), indices.dtype)
-    concated = tf.concat([indices, labels], 1)
+    concated = tf.concat(axis=[indices, labels], values=1)
     onehot_labels = tf.sparse_to_dense(
-        concated, tf.pack([batch_size, num_classes]), 1.0, 0.0)
+        concated, tf.stack([batch_size, num_classes]), 1.0, 0.0)
     onehot_labels.set_shape([batch_size, num_classes])
     return onehot_labels
 

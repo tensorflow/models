@@ -171,8 +171,8 @@ def run():
     saver = tf.train.Saver()
 
     # Create the summary operation and the summary writer.
-    summary_op = tf.merge_all_summaries()
-    summary_writer = tf.train.SummaryWriter(eval_dir)
+    summary_op = tf.summary.merge_all()
+    summary_writer = tf.summary.FileWriter(eval_dir)
 
     g.finalize()
 
