@@ -221,7 +221,7 @@ class ResNet(object):
                      [(out_filter-in_filter)//2, (out_filter-in_filter)//2]])
       x += orig_x
 
-    tf.logging.info('image after unit %s', x.get_shape())
+    tf.logging.debug('image after unit %s', x.get_shape())
     return x
 
   def _bottleneck_residual(self, x, in_filter, out_filter, stride,

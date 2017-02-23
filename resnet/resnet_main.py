@@ -162,10 +162,8 @@ def evaluate(hps):
         tag='Best Precision', simple_value=best_precision)
     summary_writer.add_summary(best_precision_summ, train_step)
     summary_writer.add_summary(summaries, train_step)
-    output_str = 'loss: %.3f, precision: %.3f, best precision: %.3f\n' % \
-                 (loss, precision, best_precision)
-    tf.logging.info(output_str)
-    print(output_str)
+    tf.logging.info('loss: %.3f, precision: %.3f, best precision: %.3f' %
+                    (loss, precision, best_precision))
     summary_writer.flush()
 
     if FLAGS.eval_once:
@@ -210,4 +208,5 @@ def main(_):
 
 
 if __name__ == '__main__':
+  tf.logging.set_verbosity(tf.logging.INFO)
   tf.app.run()
