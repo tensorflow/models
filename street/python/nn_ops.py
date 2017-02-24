@@ -19,6 +19,7 @@ For now, just an LSTM layer.
 """
 import shapes
 import tensorflow as tf
+from tensorflow.python.framework import ops
 rnn = tf.load_op_library("../cc/rnn_ops.so")
 
 
@@ -96,7 +97,7 @@ def rnn_helper(inp,
   return out
 
 
-@tf.RegisterShape("VariableLSTM")
+@ops.RegisterShape("VariableLSTM")
 def _variable_lstm_shape(op):
   """Shape function for the VariableLSTM op."""
   input_shape = op.inputs[0].get_shape().with_rank(4)

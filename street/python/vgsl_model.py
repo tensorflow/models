@@ -369,7 +369,7 @@ class VGSLImageModel(object):
     if self.mode == 'train':
       # Setup loss for training.
       self.loss = self._AddLossFunction(logits, height_in, out_dims, out_func)
-      tf.summary.scalar('loss', self.loss, name='loss')
+      tf.summary.scalar('loss', self.loss)
     elif out_dims == 0:
       # Be sure the labels match the output, even in eval mode.
       self.labels = tf.slice(self.labels, [0, 0], [-1, 1])
@@ -442,7 +442,7 @@ class VGSLImageModel(object):
       ctc_input = tf.transpose(logits, [1, 0, 2])
       # Compute the widths of each batch element from the input widths.
       widths = self.layers.GetLengths(dim=2, factor=height_in)
-      cross_entropy = tf.nn.ctc_loss(ctc_input, self.sparse_labels, widths)
+      cross_entropy = tf.nn.ctc_loss(self.sparse_labels, ctc_input, widths)
     elif out_func == 's':
       if out_dims == 2:
         self.labels = _PadLabels3d(logits, self.labels)
@@ -484,7 +484,7 @@ class VGSLImageModel(object):
       opt = tf.train.AdamOptimizer(learning_rate=learn_rate_dec)
     else:
       raise ValueError('Invalid optimizer type: ' + optimizer_type)
-    tf.summary.scalar('learn_rate', learn_rate_dec, name='lr_summ')
+    tf.summary.scalar('learn_rate', learn_rate_dec)
 
     self.train_op = opt.minimize(
         self.loss, global_step=self.global_step, name='train')
