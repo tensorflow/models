@@ -377,7 +377,7 @@ def initialize(sess=None):
                    % ckpt.model_checkpoint_path)
     model.saver.restore(sess, ckpt.model_checkpoint_path)
   elif sv is None:
-    sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
     data.print_out("Initialized variables (no supervisor mode).")
   elif FLAGS.task < 1 and FLAGS.mem_size > 0:
     # sess.run(model.mem_norm_op)

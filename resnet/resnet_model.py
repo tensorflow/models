@@ -183,8 +183,8 @@ class ResNet(object):
             'moving_variance', params_shape, tf.float32,
             initializer=tf.constant_initializer(1.0, tf.float32),
             trainable=False)
-        tf.histogram_summary(mean.op.name, mean)
-        tf.histogram_summary(variance.op.name, variance)
+        tf.summary.histogram(mean.op.name, mean)
+        tf.summary.histogram(variance.op.name, variance)
       # elipson used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
       y = tf.nn.batch_normalization(
           x, mean, variance, beta, gamma, 0.001)
@@ -221,7 +221,7 @@ class ResNet(object):
                      [(out_filter-in_filter)//2, (out_filter-in_filter)//2]])
       x += orig_x
 
-    tf.logging.info('image after unit %s', x.get_shape())
+    tf.logging.debug('image after unit %s', x.get_shape())
     return x
 
   def _bottleneck_residual(self, x, in_filter, out_filter, stride,
@@ -265,7 +265,7 @@ class ResNet(object):
     for var in tf.trainable_variables():
       if var.op.name.find(r'DW') > 0:
         costs.append(tf.nn.l2_loss(var))
-        # tf.histogram_summary(var.op.name, var)
+        # tf.summary.histogram(var.op.name, var)
 
     return tf.multiply(self.hps.weight_decay_rate, tf.add_n(costs))
 

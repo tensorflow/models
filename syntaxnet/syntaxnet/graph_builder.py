@@ -69,7 +69,7 @@ def EmbeddingLookupFeatures(params, sparse_features, allow_weights):
 
   if allow_weights:
     # Multiply by weights, reshaping to allow broadcast.
-    broadcast_weights_shape = tf.concat_v2([tf.shape(weights), [1]], 0)
+    broadcast_weights_shape = tf.concat([tf.shape(weights), [1]], 0)
     embeddings *= tf.reshape(weights, broadcast_weights_shape)
 
   # Sum embeddings by index.
@@ -251,7 +251,7 @@ class GreedyParser(object):
         self._averaging[name + '_avg_update'] = ema.apply([param])
         self.variables[name + '_avg_var'] = ema.average(param)
         self.inits[name + '_avg_init'] = state_ops.init_variable(
-            ema.average(param), tf.zeros_initializer)
+            ema.average(param), tf.zeros_initializer())
     return (self.variables[name + '_avg_var'] if return_average else
             self.params[name])
 
@@ -330,7 +330,7 @@ class GreedyParser(object):
                                            i,
                                            return_average=return_average))
 
-    last_layer = tf.concat_v2(embeddings, 1)
+    last_layer = tf.concat(embeddings, 1)
     last_layer_size = self.embedding_size
 
     # Create ReLU layers.
@@ -364,7 +364,7 @@ class GreedyParser(object):
         [self._num_actions],
         tf.float32,
         'softmax_bias',
-        tf.zeros_initializer,
+        tf.zeros_initializer(),
         return_average=return_average)
     logits = tf.nn.xw_plus_b(last_layer,
                              softmax_weight,
@@ -530,7 +530,7 @@ class GreedyParser(object):
       for param in trainable_params:
         slot = optimizer.get_slot(param, 'momentum')
         self.inits[slot.name] = state_ops.init_variable(slot,
-                                                        tf.zeros_initializer)
+                                                        tf.zeros_initializer())
         self.variables[slot.name] = slot
       numerical_checks = [
           tf.check_numerics(param,

@@ -21,7 +21,7 @@ class Autoencoder(object):
         self.cost = 0.5 * tf.reduce_sum(tf.pow(tf.sub(self.reconstruction, self.x), 2.0))
         self.optimizer = optimizer.minimize(self.cost)
 
-        init = tf.initialize_all_variables()
+        init = tf.global_variables_initializer()
         self.sess = tf.Session()
         self.sess.run(init)
 

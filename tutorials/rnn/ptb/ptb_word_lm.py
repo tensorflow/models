@@ -146,7 +146,7 @@ class PTBModel(object):
         (cell_output, state) = cell(inputs[:, time_step, :], state)
         outputs.append(cell_output)
 
-    output = tf.reshape(tf.concat_v2(outputs, 1), [-1, size])
+    output = tf.reshape(tf.concat(outputs, 1), [-1, size])
     softmax_w = tf.get_variable(
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
@@ -334,14 +334,14 @@ def main(_):
       train_input = PTBInput(config=config, data=train_data, name="TrainInput")
       with tf.variable_scope("Model", reuse=None, initializer=initializer):
         m = PTBModel(is_training=True, config=config, input_=train_input)
-      tf.scalar_summary("Training Loss", m.cost)
-      tf.scalar_summary("Learning Rate", m.lr)
+      tf.summary.scalar("Training Loss", m.cost)
+      tf.summary.scalar("Learning Rate", m.lr)
 
     with tf.name_scope("Valid"):
       valid_input = PTBInput(config=config, data=valid_data, name="ValidInput")
       with tf.variable_scope("Model", reuse=True, initializer=initializer):
         mvalid = PTBModel(is_training=False, config=config, input_=valid_input)
-      tf.scalar_summary("Validation Loss", mvalid.cost)
+      tf.summary.scalar("Validation Loss", mvalid.cost)
 
     with tf.name_scope("Test"):
       test_input = PTBInput(config=eval_config, data=test_data, name="TestInput")
