@@ -122,7 +122,6 @@ def run_epoch(session, m, names, counts, epoch_size, eval_op, verbose=False):
         cost, _ = session.run([m.cost, eval_op],
                               {m.input_data: x,
                                m.targets: y,
-                               m.initial_state: m.initial_state.eval(),
                                m.weights: np.ones(m.batch_size * m.num_steps)})
         costs += cost
         iters += m.num_steps
@@ -201,7 +200,6 @@ def namignize(names, checkpoint_path, config):
             cost, loss, _ = session.run([m.cost, m.loss, tf.no_op()],
                                   {m.input_data: x,
                                    m.targets: y,
-                                   m.initial_state: m.initial_state.eval(),
                                    m.weights: np.concatenate((
                                        np.ones(len(name)), np.zeros(m.batch_size * m.num_steps - len(name))))})
 
@@ -234,7 +232,6 @@ def namignator(checkpoint_path, config):
         activations, final_state, _ = session.run([m.activations, m.final_state, tf.no_op()],
                                                   {m.input_data: np.zeros((1, 1)),
                                                    m.targets: np.zeros((1, 1)),
-                                                   m.initial_state: m.initial_state.eval(),
                                                    m.weights: np.ones(1)})
 
         # sample from our softmax activations
