@@ -491,6 +491,7 @@ Once the tagged datasets are available, a locally normalized dependency parsing
 model can be trained with the following command:
 
 ```shell
+PARAMS=128-0.08-3600-0.9-0
 bazel-bin/syntaxnet/parser_trainer \
   --arg_prefix=brain_parser \
   --batch_size=32 \
@@ -563,6 +564,7 @@ Once you have the pre-trained locally normalized model, a globally normalized
 parsing model can now be trained with the following command:
 
 ```shell
+PARAMS=200x200-0.08-4400-0.85-4
 bazel-bin/syntaxnet/parser_trainer \
   --arg_prefix=brain_parser \
   --batch_size=8 \
