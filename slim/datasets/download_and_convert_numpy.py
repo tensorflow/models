@@ -36,6 +36,7 @@ import pickle
 
 import tensorflow as tf
 
+from datasets import gen_pairs
 from datasets import dataset_utils
 
 # The URL where the Flowers data can be downloaded.
@@ -166,27 +167,29 @@ def _convert_dataset(split_name, dirnames, class_names_to_ids, dataset_dir):
             Read the cube of the speech features for the whole clip.
             """
 
-            # # tf.gfile.FastGFile is the file I/O wrappers.
-            # speech_data = tf.gfile.FastGFile(filename, 'r').read()
-
+            ################## Extract the speech cube for a clip ####################
             # Only static features
-            speech_data = np.load(os.path.join(dirnames[i], 'sound.npy'))[0,:,:]
+            speech_data = np.load(os.path.join(dirnames[i], 'sound.npy'))[0,:,:]  # ex: (13, 64)
             height_speech, width_speech = speech_data.shape
-            print(speech_data.shape)
 
             # Shift speech for 0.5 sec in order to create impostor pairs
             speech_data_imp = np.roll(speech_data, 25, axis=1)
 
+            ################## Extract the mouth cube for a clip ######################
             with open(os.path.join(dirnames[i], 'gray_mouth.dat'), "rb") as f:
               mouth_list = pickle.load(f)
             num_frames = len(mouth_list)
-            mouth_cube = np.zeros((num_frames, 47, 73), dtype=np.int)
+            mouth_data = np.zeros((47, 73, num_frames), dtype=np.float32) # ex: (29, 47, 73)
 
             for i in range(num_frames):
               if activation[i] == 1:
-                mouth_cube[i, :, :] = np.resize(mouth_list[i], (47, 73))
+                mouth_data[:, :, i] = np.resize(mouth_list[i], (47, 73))
 
-            print(mouth_cube.shape)
+            mouth_pair_gen, speech_pair_gen = gen_pairs.gen_pairs(speech_data, mouth_data)
+            mouth_pair_imp, speech_pair_imp = gen_pairs.gen_pairs(speech_data_imp, mouth_data)
+            print(mouth_pair_gen.shape, speech_pair_gen.shape)
+            print(mouth_pair_imp.shape, speech_pair_imp.shape)
+
             sys.exit(1)
 
             class_name = os.path.basename(os.path.dirname(filenames[i]))
