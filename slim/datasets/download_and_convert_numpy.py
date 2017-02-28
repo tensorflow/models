@@ -32,6 +32,7 @@ import os
 import random
 import sys
 import numpy as np
+import pickle
 
 import tensorflow as tf
 
@@ -44,10 +45,16 @@ _DATA_URL = 'http://download.tensorflow.org/example_images/flower_photos.tgz'
 _NUM_VALIDATION = 1
 
 # Seed for repeatability.
-_RANDOM_SEED = 0
+_RANDOM_SEED = 10
 
 # The number of shards per dataset split.
 _NUM_SHARDS = 1
+
+# The number of shards per dataset split.
+_NUM_SHARDS = 1
+
+# The number train IDs.
+_NUM_TRAIN_IDs = 400
 
 
 class ImageReader(object):
@@ -88,23 +95,29 @@ def _get_filenames_and_classes(dataset_dir):
     A list of image file paths, relative to `dataset_dir` and the list of
     subdirectories, representing class names.
   """
-  flower_root = os.path.join(dataset_dir, 'numpy')
+  dataset_root = os.path.join(dataset_dir)
   directories = []
   class_names = []
   # os.listdir returns all the files and directories in the input argument.
-  for filename in os.listdir(flower_root):
-    path = os.path.join(flower_root, filename)
+  for filename in os.listdir(dataset_root):
+    path = os.path.join(dataset_root, filename)
     if os.path.isdir(path):
       directories.append(path)
       class_names.append(filename)
 
-  photo_filenames = []
-  for directory in directories:
-    for filename in os.listdir(directory):
-      path = os.path.join(directory, filename)
-      photo_filenames.append(path)
+  # For training
+  directories = directories[0:_NUM_TRAIN_IDs]
+  class_names = class_names[0:_NUM_TRAIN_IDs]
 
-  return photo_filenames, sorted(class_names)
+  # The directories which contain sound and mouth numpy files for each clip
+  numpy_dirnames = []
+  for directory in directories:
+    dir_clips = os.path.join(directory, 'val')
+    for dir_clip in os.listdir(dir_clips):
+      path_clip_per_clips_per_subjects = os.path.join(dir_clips, dir_clip)
+      numpy_dirnames.append(path_clip_per_clips_per_subjects)
+
+  return numpy_dirnames, sorted(class_names)
 
 
 def _get_dataset_filename(dataset_dir, split_name, shard_id):
@@ -113,7 +126,7 @@ def _get_dataset_filename(dataset_dir, split_name, shard_id):
   return os.path.join(dataset_dir, output_filename)
 
 
-def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
+def _convert_dataset(split_name, dirnames, class_names_to_ids, dataset_dir):
   """Converts the given filenames to a TFRecord dataset.
 
   Args:
@@ -125,7 +138,7 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
   """
   assert split_name in ['train', 'validation']
 
-  num_per_shard = int(math.ceil(len(filenames) / float(_NUM_SHARDS)))
+  num_per_shard = int(math.ceil(len(dirnames) / float(_NUM_SHARDS)))
 
   with tf.Graph().as_default():
     image_reader = ImageReader()
@@ -139,23 +152,48 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
 
         with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
           start_ndx = shard_id * num_per_shard
-          end_ndx = min((shard_id+1) * num_per_shard, len(filenames))
+          end_ndx = min((shard_id+1) * num_per_shard, len(dirnames))
           for i in range(start_ndx, end_ndx):
-            sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
-                i+1, len(filenames), shard_id))
+            sys.stdout.write('\r>> Converting pair %d/%d shard %d' % (
+                i+1, len(dirnames), shard_id))
             sys.stdout.flush()
 
-            # # Read the filename:
-            # tf.gfile.FastGFile is the file I/O wrappers.
-            image_data = tf.gfile.FastGFile(filenames[i], 'r').read()
-            # height, width = image_reader.read_image_dims(sess, image_data)
-            height, width, channels = np.load(filenames[i]).shape
+            # Read activation of the mouth
+            with open(os.path.join(dirnames[i], 'activation.dat'), "rb") as f:
+              activation = pickle.load(f)
+
+            """
+            Read the cube of the speech features for the whole clip.
+            """
+
+            # # tf.gfile.FastGFile is the file I/O wrappers.
+            # speech_data = tf.gfile.FastGFile(filename, 'r').read()
+
+            # Only static features
+            speech_data = np.load(os.path.join(dirnames[i], 'sound.npy'))[0,:,:]
+            height_speech, width_speech = speech_data.shape
+            print(speech_data.shape)
+
+            # Shift speech for 0.5 sec in order to create impostor pairs
+            speech_data_imp = np.roll(speech_data, 25, axis=1)
+
+            with open(os.path.join(dirnames[i], 'gray_mouth.dat'), "rb") as f:
+              mouth_list = pickle.load(f)
+            num_frames = len(mouth_list)
+            mouth_cube = np.zeros((num_frames, 47, 73), dtype=np.int)
+
+            for i in range(num_frames):
+              if activation[i] == 1:
+                mouth_cube[i, :, :] = np.resize(mouth_list[i], (47, 73))
+
+            print(mouth_cube.shape)
+            sys.exit(1)
 
             class_name = os.path.basename(os.path.dirname(filenames[i]))
             class_id = class_names_to_ids[class_name]
 
-            example = dataset_utils.image_to_tfexample(
-                image_data, 'jpg', height, width, class_id)
+            example = dataset_utils.image_to_tfexample(speech_data, mouth_data, image_format, channel_speech, height_speech, width_speech,
+                   channel_mouth, height_mouth, width_mouth, label)
             tfrecord_writer.write(example.SerializeToString())
 
   sys.stdout.write('\n')
@@ -200,14 +238,14 @@ def run(dataset_dir):
     return
 
   # dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
-  photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
+  numpy_dirnames, class_names = _get_filenames_and_classes(dataset_dir)
   class_names_to_ids = dict(zip(class_names, range(len(class_names))))
 
   # Divide into train and test:
   random.seed(_RANDOM_SEED)
-  random.shuffle(photo_filenames)
-  training_filenames = photo_filenames[_NUM_VALIDATION:]
-  validation_filenames = photo_filenames[:_NUM_VALIDATION]
+  random.shuffle(numpy_dirnames)
+  training_filenames = numpy_dirnames[_NUM_VALIDATION:]
+  validation_filenames = numpy_dirnames[:_NUM_VALIDATION]
 
 
   # First, convert the training and validation sets.

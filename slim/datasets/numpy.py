@@ -85,6 +85,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       'label': slim.tfexample_decoder.Tensor('image/class/label'),
   }
 
+
   decoder = slim.tfexample_decoder.TFExampleDecoder(
       keys_to_features, items_to_handlers)
 

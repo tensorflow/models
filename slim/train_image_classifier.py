@@ -36,7 +36,7 @@ tf.app.flags.DEFINE_string(
     'train_dir', '/home/sina/TRAIN_CASIA/train_logs',
     'Directory where checkpoints and event logs are written to.')
 
-tf.app.flags.DEFINE_integer('num_clones', 1,
+tf.app.flags.DEFINE_integer('num_clones', 2,
                             'Number of model clones to deploy.')
 
 tf.app.flags.DEFINE_boolean('clone_on_cpu', False,
@@ -189,7 +189,7 @@ tf.app.flags.DEFINE_string(
                                 'as `None`, then the model_name flag is used.')
 
 tf.app.flags.DEFINE_integer(
-    'batch_size', 4, 'The number of samples in each batch.')
+    'batch_size', 32, 'The number of samples in each batch.')
 
 tf.app.flags.DEFINE_integer(
     'train_image_size', None, 'Train image size')

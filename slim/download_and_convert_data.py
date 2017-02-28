@@ -55,7 +55,7 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     'dataset_dir',
-    '/tmp/data/flowers',
+    '/home/sina/datasets/lip_read_features',
     'The directory where the output TFRecords and temporary files are saved.')
 
 
