@@ -79,6 +79,10 @@ Options:
   --window_size <int>
       Specifies the window size for computing co-occurrence stats;
       default 10.
+
+  --num_threads <int>
+      The number of workers to calculate the co-occurrence matrix;
+      default 4.
 )";
 
 struct cooc_t {
@@ -448,7 +452,7 @@ void CoocCounter::Count() {
   fin_.seekg(start_);
 
   int nlines = 0;
-  for (off_t filepos = start_; filepos < end_; filepos = fin_.tellg()) {
+  for (off_t filepos = start_; filepos < end_ && !fin_.eof(); filepos = fin_.tellg()) {
     // Buffer a single sentence.
     std::vector<int> sentence;
     bool eos;
@@ -633,6 +637,8 @@ int main(int argc, char *argv[]) {
   std::vector<pthread_t> threads;
   std::vector<CoocCounter*> counters;
   const off_t nbytes_per_thread = input_size / num_threads;
+  std::cout << "Running " << num_threads << " threads, each on "
+            << nbytes_per_thread << " bytes" << std::endl;
 
   pthread_attr_t attr;
   if (pthread_attr_init(&attr) != 0) {
