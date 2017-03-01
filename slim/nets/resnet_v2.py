@@ -206,12 +206,12 @@ def resnet_v2(inputs,
         if num_classes is not None:
           net = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
                             normalizer_fn=None, scope='logits')
+        logits = tf.squeeze(net, [1, 2], name='SpatialSqueeze')
         # Convert end_points_collection into a dictionary of end_points.
         end_points = slim.utils.convert_collection_to_dict(end_points_collection)
         if num_classes is not None:
           end_points['predictions'] = slim.softmax(net, scope='predictions')
-        return net, end_points
-resnet_v2.default_image_size = 224
+        return logits, end_points
 
 
 def resnet_v2_50(inputs,
