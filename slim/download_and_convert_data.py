@@ -45,12 +45,13 @@ from datasets import download_and_convert_flowers
 from datasets import download_and_convert_mnist
 from datasets import download_and_convert_casia
 from datasets import download_and_convert_numpy
+from datasets import convert_lipread
 
 FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string(
     'dataset_name',
-    'numpy',
+    'lipread',
     'The name of the dataset to convert, one of "cifar10", "flowers", "mnist".')
 
 tf.app.flags.DEFINE_string(
@@ -73,8 +74,8 @@ def main(_):
     download_and_convert_mnist.run(FLAGS.dataset_dir)
   elif FLAGS.dataset_name == 'casia':
     download_and_convert_casia.run(FLAGS.dataset_dir)
-  elif FLAGS.dataset_name == 'numpy':
-    download_and_convert_numpy.run(FLAGS.dataset_dir)
+  elif FLAGS.dataset_name == 'lipread':
+      convert_lipread.run(FLAGS.dataset_dir)
   else:
     raise ValueError(
         'dataset_name [%s] was not recognized.' % FLAGS.dataset_dir)

@@ -456,6 +456,7 @@ def main(_):
                 batch_size=FLAGS.batch_size,
                 num_threads=FLAGS.num_preprocessing_threads,
                 capacity=5 * FLAGS.batch_size)
+
             labels = slim.one_hot_encoding(
                 labels, dataset.num_classes - FLAGS.labels_offset)
             batch_queue = slim.prefetch_queue.prefetch_queue(

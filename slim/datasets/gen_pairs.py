@@ -49,12 +49,11 @@ def gen_pairs(speech_data, mouth_data):
     mouth_height = mouth_data.shape[0]
     mouth_width = mouth_data.shape[1]
     max_num_pairs_mouth = int(np.floor((num_mouth_frames - num_video_frame_per_pair)/(Shift_unit * 3.0)) + 1)
-    print('max_num_pairs_mouth',max_num_pairs_mouth)
 
+    # SPEECH
     num_speech_frames = speech_data.shape[1]
     num_speech_features = speech_data.shape[0]
     max_num_pairs_speech = int(np.floor((num_speech_frames - num_audio_frame_per_pair) / (Shift_unit * 5.0)) + 1)
-    print('max_num_pairs_speech',max_num_pairs_speech)
 
     # Calculate number of frames
     num_pairs = min(max_num_pairs_mouth,max_num_pairs_speech)
@@ -67,6 +66,6 @@ def gen_pairs(speech_data, mouth_data):
         mouth_pair_vector[i, :, :, :] = mouth_data[:, :, i * (Shift_unit * 3): i * (Shift_unit * 3) + 9]
         speech_pair_vector[i, :, :, 0] = speech_data[:, i * (Shift_unit * 5): i * (Shift_unit * 5) + 15]
 
-    return mouth_pair_vector, speech_pair_vector
+    return mouth_pair_vector.astype(np.float32), speech_pair_vector.astype(np.float32)
 
 

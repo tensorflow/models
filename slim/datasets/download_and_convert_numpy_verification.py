@@ -49,10 +49,7 @@ _NUM_VALIDATION = 1
 _RANDOM_SEED = 10
 
 # The number of shards per dataset split.
-_NUM_SHARDS = 1
-
-# The number of shards per dataset split.
-_NUM_SHARDS = 1
+_NUM_SHARDS = 2
 
 # The number train IDs.
 _NUM_TRAIN_IDs = 400
@@ -107,18 +104,29 @@ def _get_filenames_and_classes(dataset_dir):
             class_names.append(filename)
 
     # For training
-    directories = directories[0:_NUM_TRAIN_IDs]
+    directories_train = directories[0:_NUM_TRAIN_IDs]
+
+    # For training
+    directories_test = directories[_NUM_TRAIN_IDs:]
+
     class_names = class_names[0:_NUM_TRAIN_IDs]
 
     # The directories which contain sound and mouth numpy files for each clip
-    numpy_dirnames = []
-    for directory in directories:
+    numpy_dirnames_train = []
+    for directory in directories_train:
         dir_clips = os.path.join(directory, 'val')
         for dir_clip in os.listdir(dir_clips):
             path_clip_per_clips_per_subjects = os.path.join(dir_clips, dir_clip)
-            numpy_dirnames.append(path_clip_per_clips_per_subjects)
+            numpy_dirnames_train.append(path_clip_per_clips_per_subjects)
 
-    return numpy_dirnames, sorted(class_names)
+    numpy_dirnames_test = []
+    for directory in directories_test:
+      dir_clips = os.path.join(directory, 'val')
+      for dir_clip in os.listdir(dir_clips):
+        path_clip_per_clips_per_subjects = os.path.join(dir_clips, dir_clip)
+        numpy_dirnames_test.append(path_clip_per_clips_per_subjects)
+
+    return numpy_dirnames_train, numpy_dirnames_test, sorted(class_names)
 
 
 def _get_dataset_filename(dataset_dir, split_name, shard_id):
@@ -224,8 +232,6 @@ def _convert_dataset(split_name, dirnames, class_names_to_ids, dataset_dir):
                                                                        channel_mouth, height_mouth, width_mouth)
                             tfrecord_writer.write(example.SerializeToString())
 
-                        sys.exit(1)
-
     sys.stdout.write('\n')
     sys.stdout.flush()
 
@@ -268,19 +274,23 @@ def run(dataset_dir):
         return
 
     # dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
-    numpy_dirnames, class_names = _get_filenames_and_classes(dataset_dir)
+    numpy_dirnames_train, numpy_dirnames_test, class_names = _get_filenames_and_classes(dataset_dir)
     class_names_to_ids = dict(zip(class_names, range(len(class_names))))
+
+    print(len(numpy_dirnames_train))
+    print(len(numpy_dirnames_test))
+
 
     # Divide into train and test:
     random.seed(_RANDOM_SEED)
-    random.shuffle(numpy_dirnames)
-    training_filenames = numpy_dirnames[_NUM_VALIDATION:]
-    validation_filenames = numpy_dirnames[:_NUM_VALIDATION]
+    # random.shuffle(numpy_dirnames)
+    # training_filenames = numpy_dirnames[_NUM_VALIDATION:]
+    # validation_filenames = numpy_dirnames[:_NUM_VALIDATION]
 
     # First, convert the training and validation sets.
-    _convert_dataset('train', training_filenames, class_names_to_ids,
-                     dataset_dir)
-    _convert_dataset('validation', validation_filenames, class_names_to_ids,
+    # _convert_dataset('train', numpy_dirnames_train, class_names_to_ids,
+    #                  dataset_dir)
+    _convert_dataset('validation', numpy_dirnames_test, class_names_to_ids,
                      dataset_dir)
 
     # Finally, write the labels file:

@@ -68,6 +68,19 @@ def image_to_tfexample(speech_data, mouth_data, image_format, channel_speech, he
         'pair/width_mouth': int64_feature(width_mouth),
     }))
 
+def numpy_to_tfexample(speech_pair, mouth_pair, label, feature_speech, frame_speech, channel_speech, channel_mouth, height_mouth, width_mouth):
+    return tf.train.Example(features=tf.train.Features(feature={
+        'pair/speech': bytes_feature(speech_pair),
+        'pair/mouth': bytes_feature(mouth_pair),
+        'pair/class/label': int64_feature(label),
+        'pair/channel_speech': int64_feature(channel_speech),
+        'pair/feature_speech': int64_feature(feature_speech),
+        'pair/frame_speech': int64_feature(frame_speech),
+        'pair/channel_mouth': int64_feature(channel_mouth),
+        'pair/height_mouth': int64_feature(height_mouth),
+        'pair/width_mouth': int64_feature(width_mouth),
+    }))
+
 
 def download_and_uncompress_tarball(tarball_url, dataset_dir):
     """Downloads the `tarball_url` and uncompresses it locally.

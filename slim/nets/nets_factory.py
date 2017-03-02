@@ -29,6 +29,8 @@ from nets import overfeat
 from nets import resnet_v1
 from nets import resnet_v2
 from nets import vgg
+from nets import lipread_speech
+from nets import lipread_mouth
 
 slim = tf.contrib.slim
 
@@ -52,6 +54,8 @@ networks_map = {'alexnet_v2': alexnet.alexnet_v2,
                 'resnet_v2_101': resnet_v2.resnet_v2_101,
                 'resnet_v2_152': resnet_v2.resnet_v2_152,
                 'resnet_v2_200': resnet_v2.resnet_v2_200,
+                'lipread_speech':lipread_speech.speech_cnn,
+                'lipread_mouth':lipread_mouth.mouth_cnn,
                }
 
 arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
@@ -75,6 +79,8 @@ arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
                   'resnet_v2_101': resnet_v2.resnet_arg_scope,
                   'resnet_v2_152': resnet_v2.resnet_arg_scope,
                   'resnet_v2_200': resnet_v2.resnet_arg_scope,
+                  'lipread_speech':lipread_speech.lipread_speech_arg_scope,
+                  'lipread_mouth':lipread_mouth.lipread_mouth_arg_scope,
                  }
 
 

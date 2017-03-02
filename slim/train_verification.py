@@ -33,10 +33,10 @@ tf.app.flags.DEFINE_string(
     'master', '', 'The address of the TensorFlow master to use.')
 
 tf.app.flags.DEFINE_string(
-    'train_dir', '/home/sina/TRAIN_CASIA/train_logs',
+    'train_dir', '/home/sina/TRAIN_TWIN/train_logs',
     'Directory where checkpoints and event logs are written to.')
 
-tf.app.flags.DEFINE_integer('num_clones', 1,
+tf.app.flags.DEFINE_integer('num_clones', 2,
                             'Number of model clones to deploy.')
 
 tf.app.flags.DEFINE_boolean('clone_on_cpu', False,
@@ -167,13 +167,13 @@ tf.app.flags.DEFINE_float(
 #######################
 
 tf.app.flags.DEFINE_string(
-    'dataset_name', 'numpy', 'The name of the dataset to load.')
+    'dataset_name', 'lipread', 'The name of the dataset to load.')
 
 tf.app.flags.DEFINE_string(
     'dataset_split_name', 'train', 'The name of the train/test split.')
 
 tf.app.flags.DEFINE_string(
-    'dataset_dir', '/tmp/data/flowers', 'The directory where the dataset files are stored.')
+    'dataset_dir', '/home/sina/datasets/lip_read_features', 'The directory where the dataset files are stored.')
 
 tf.app.flags.DEFINE_integer(
     'labels_offset', 0,
@@ -182,14 +182,17 @@ tf.app.flags.DEFINE_integer(
     'class for the ImageNet dataset.')
 
 tf.app.flags.DEFINE_string(
-    'model_name', 'vgg_19', 'The name of the architecture to train.')
+    'model_speech_name', 'lipread_speech', 'The name of the architecture to train.')
+
+tf.app.flags.DEFINE_string(
+    'model_mouth_name', 'lipread_mouth', 'The name of the architecture to train.')
 
 tf.app.flags.DEFINE_string(
     'preprocessing_name', None, 'The name of the preprocessing to use. If left '
                                 'as `None`, then the model_name flag is used.')
 
 tf.app.flags.DEFINE_integer(
-    'batch_size', 4, 'The number of samples in each batch.')
+    'batch_size', 32, 'The number of samples in each batch.')
 
 tf.app.flags.DEFINE_integer(
     'train_image_size', None, 'Train image size')
@@ -421,8 +424,14 @@ def main(_):
         # Select the network #
         ####################
 
-        network_fn = nets_factory.get_network_fn(
-            FLAGS.model_name,
+        network_speech_fn = nets_factory.get_network_fn(
+            FLAGS.model_speech_name,
+            num_classes=(dataset.num_classes - FLAGS.labels_offset),
+            weight_decay=FLAGS.weight_decay,
+            is_training=True)
+
+        network_mouth_fn = nets_factory.get_network_fn(
+            FLAGS.model_speech_name,
             num_classes=(dataset.num_classes - FLAGS.labels_offset),
             weight_decay=FLAGS.weight_decay,
             is_training=True)
@@ -430,10 +439,10 @@ def main(_):
         #####################################
         # Select the preprocessing function #
         #####################################
-        preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
-        image_preprocessing_fn = preprocessing_factory.get_preprocessing(
-            preprocessing_name,
-            is_training=True)
+        # preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
+        # image_preprocessing_fn = preprocessing_factory.get_preprocessing(
+        #     preprocessing_name,
+        #     is_training=True)
 
         ##############################################################
         # Create a dataset provider that loads data from the dataset #
@@ -444,34 +453,35 @@ def main(_):
                 num_readers=FLAGS.num_readers,
                 common_queue_capacity=20 * FLAGS.batch_size,
                 common_queue_min=10 * FLAGS.batch_size)
-            [image, label] = provider.get(['image', 'label'])
-            print("image",image)
+            [speech, lip, label] = provider.get(['speech', 'mouth', 'label'])
+            speech.set_shape([13, 15, 1])
+            lip.set_shape([47, 73, 9])
             label -= FLAGS.labels_offset
 
-            train_image_size = FLAGS.train_image_size or network_fn.default_image_size
+            # train_image_size = FLAGS.train_image_size or network_fn.default_image_size
+            #
+            # # image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
-            # image = image_preprocessing_fn(image, train_image_size, train_image_size)
-
-            images, labels = tf.train.batch(
-                [image, label],
+            speech, lip, labels = tf.train.batch(
+                [speech, lip, label],
                 batch_size=FLAGS.batch_size,
                 num_threads=FLAGS.num_preprocessing_threads,
                 capacity=5 * FLAGS.batch_size)
-            print("images", images)
+
+
             labels = slim.one_hot_encoding(
                 labels, dataset.num_classes - FLAGS.labels_offset)
             batch_queue = slim.prefetch_queue.prefetch_queue(
-                [images, labels], capacity=2 * deploy_config.num_clones)
-
-        sys.exit(1)
+                [speech, lip, labels], capacity=2 * deploy_config.num_clones)
 
         ####################
         # Define the model #
         ####################
         def clone_fn(batch_queue):
             """Allows data parallelism by creating multiple clones of network_fn."""
-            images, labels = batch_queue.dequeue()
-            logits, end_points = network_fn(images)
+            speech, lip, labels = batch_queue.dequeue()
+            logits_speech, end_points_speech = network_speech_fn(speech)
+            logits_lip, end_points_lip = network_mouth_fn(lip)
 
             #############################
             # Specify the loss function #

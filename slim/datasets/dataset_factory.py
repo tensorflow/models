@@ -24,6 +24,7 @@ from datasets import imagenet
 from datasets import mnist
 from datasets import casia
 from datasets import numpy
+from datasets import lipread
 
 datasets_map = {
     'cifar10': cifar10,
@@ -32,6 +33,7 @@ datasets_map = {
     'mnist': mnist,
     'casia': casia,
     'numpy': numpy,
+    'lipread': lipread,
 }
 
 

@@ -240,6 +240,8 @@ def vgg_19(inputs,
         net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
         end_points[sc.name + '/fc8'] = net
       return net, end_points
+
+
 vgg_19.default_image_size = 224
 
 # Alias
