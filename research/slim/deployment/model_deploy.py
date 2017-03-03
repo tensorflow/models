@@ -602,8 +602,7 @@ class DeploymentConfig(object):
     if self._clone_on_cpu:
       device += '/device:CPU:0'
     else:
-      if self._num_clones > 1:
-        device += '/device:GPU:%d' % clone_index
+      device += '/device:GPU:%d' % clone_index
     return device
 
   def clone_scope(self, clone_index):
