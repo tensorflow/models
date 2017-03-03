@@ -39,12 +39,23 @@
 #include <string>
 #include <thread>
 #include <tuple>
+#if __cplusplus < 201402L
 #include <unordered_map>
+#else
+#include "flat_hash_map.hpp"
+#endif
 #include <vector>
 
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "tensorflow/core/example/example.pb.h"
 #include "tensorflow/core/example/feature.pb.h"
+
+template<typename K, typename V, typename H = std::hash<K>, typename E = std::equal_to<K>, typename A = std::allocator<std::pair<K, V> > >
+#if __cplusplus < 201402L
+using hash_table = std::unordered_map<K, V, H, E, A>;
+#else
+using hash_table = ska::flat_hash_map<K, V, H, E, A>;
+#endif
 
 static const char usage[] = R"(
 Prepares a corpus for processing by Swivel.
@@ -94,46 +105,84 @@ struct cooc_t {
 
 typedef std::map<long long, float> cooc_counts_t;
 
-// Retrieves the next word from the input stream, treating words as simply being
-// delimited by whitespace.  Returns true if this is the end of a "sentence";
-// i.e., a newline.
-bool NextWord(std::ifstream &fin, std::string* word) {
-  std::string buf;
-  char c;
+constexpr long int kMmapBufferSize = 8 * 4096;
 
-  if (fin.eof()) {
-    word->erase();
-    return true;
+// RAII for file descriptors.
+class FileDescriptor {
+ public:
+  explicit FileDescriptor(int fd) : fd_ (fd) {
+    assert(fd >= 0);
+  }
+
+  ~FileDescriptor() {
+    close(fd_);
+  }
+
+  int fd() noexcept {
+    return fd_;
+  }
+
+  off_t seekg(off_t offset, int whence=SEEK_SET) noexcept {
+    return lseek(fd_, offset, whence);
+  }
+
+  off_t tellg() noexcept {
+    return seekg(0, SEEK_CUR);
+  }
+
+  off_t size() noexcept {
+    auto pos = tellg();
+    auto size = seekg(0, SEEK_END);
+    seekg(pos);
+    return size;
+  }
+
+  ssize_t write(const void *buf, size_t count) noexcept {
+    return ::write(fd_, buf, count);
+  }
+
+ private:
+  FileDescriptor(const FileDescriptor& that) = delete;
+  FileDescriptor& operator=(FileDescriptor const&) = delete;
+
+  int fd_;
+};
+
+// Retrieves the next word from the input stream, treating words as simply being
+// delimited by whitespace. Returns the number of bytes read, sets nl to true
+// if a newline char was encountered after the word.
+int NextWordPtr(const char *end, const char *ptr, std::string* word,
+                bool *nl = nullptr) {
+  auto start = ptr;
+  if (nl != nullptr) {
+    *nl = false;
   }
 
   // Skip leading whitespace.
-  do {
-    c = fin.get();
-  } while (!fin.eof() && std::isspace(c));
+  for (; ptr != end && std::isspace(*ptr); ptr++) {}
 
-  if (fin.eof()) {
-    word->erase();
-    return true;
+  if (ptr == end) {
+    return ptr - start;
   }
+  auto word_start = ptr;
 
   // Read the next word.
-  do {
-    buf += c;
-    c = fin.get();
-  } while (!fin.eof() && !std::isspace(c));
+  for (; ptr != end && !std::isspace(*ptr); ptr++) {}
 
-  *word = buf;
-  if (c == '\n' || fin.eof()) return true;
+  word->assign(word_start, ptr);
 
   // Skip trailing whitespace.
-  do {
-    c = fin.get();
-  } while (!fin.eof() && std::isspace(c));
+  for (; ptr != end && std::isspace(*ptr); ptr++) {
+    if (*ptr == '\n' and nl != nullptr) {
+      *nl = true;
+    }
+  }
 
-  if (fin.eof()) return true;
+  if (ptr == end) {
+    return ptr - start;
+  }
 
-  fin.unget();
-  return false;
+  return ptr - start - 1;
 }
 
 // Creates a vocabulary from the most frequent terms in the input file.
@@ -143,33 +192,57 @@ std::vector<std::string> CreateVocabulary(const std::string input_filename,
                                           const int max_vocab_size) {
   std::vector<std::string> vocab;
 
+  FileDescriptor fin(open(input_filename.c_str(), O_RDONLY));
+  const auto input_size = fin.size();
+
   // Count all the distinct tokens in the file.  (XXX this will eventually
   // consume all memory and should be re-written to periodically trim the data.)
-  std::unordered_map<std::string, long long> counts;
-
-  std::ifstream fin(input_filename, std::ifstream::ate);
-
-  if (!fin) {
-    std::cerr << "couldn't read input file '" << input_filename << "'"
-              << std::endl;
-
-    return vocab;
-  }
-
-  const auto input_size = fin.tellg();
-  fin.seekg(0);
+  hash_table<std::string, long long> counts;
+  // This shall reduce the number of times rehash() is invoked.
+  counts.rehash(0.0002 * input_size);
 
   long long ntokens = 0;
-  while (!fin.eof()) {
-    std::string word;
-    NextWord(fin, &word);
-    counts[word] += 1;
 
-    if (++ntokens % 1000000 == 0) {
-      const float pct = 100.0 * static_cast<float>(fin.tellg()) / input_size;
-      fprintf(stdout, "\rComputing vocabulary: %0.1f%% complete...", pct);
-      std::flush(std::cout);
+  std::string prev_word;
+  for (std::remove_const<decltype(input_size)>::type offset = 0;
+       offset < input_size;
+       offset += kMmapBufferSize) {
+    auto data = reinterpret_cast<char *>(
+        mmap(nullptr, kMmapBufferSize, PROT_READ, MAP_PRIVATE, fin.fd(),
+             offset));
+    assert(data != MAP_FAILED);
+    auto read_size = std::min(kMmapBufferSize, input_size - offset);
+    int data_offset = 0;
+    std::string word;
+    while (int eaten = NextWordPtr(data + read_size,
+                                   data + data_offset,
+                                   &word)) {
+      data_offset += eaten;
+      if (!prev_word.empty()) {
+        if (std::isspace(data[0])) {
+          counts[prev_word] += 1;
+          ntokens++;
+        } else {
+          word = prev_word + word;
+        }
+        prev_word.erase();
+      }
+      if (data_offset == read_size
+          && !std::isspace(data[read_size - 1])
+          && offset + kMmapBufferSize < input_size) {
+        prev_word = word;
+      } else {
+        counts[word] += 1;
+        if (++ntokens % 1000000 == 0) {
+          const float pct = (100.0 * offset) / input_size;
+          fprintf(stdout, "\rComputing vocabulary: %0.1f%% complete "
+              "| %ld buckets %.03f load ...", pct,
+              counts.bucket_count(), counts.load_factor());
+          std::flush(std::cout);
+        }
+      }
     }
+    munmap(data, kMmapBufferSize);
   }
 
   std::cout << counts.size() << " distinct tokens" << std::endl;
@@ -248,7 +321,7 @@ class CoocBuffer {
 
   // Parallel arrays of temporary file paths and file descriptors.
   std::vector<std::string> paths_;
-  std::vector<int> fds_;
+  std::vector<std::unique_ptr<FileDescriptor>> fds_;
 
   // Ensures that only one buffer file is getting written at a time.
   std::mutex writer_mutex_;
@@ -265,11 +338,10 @@ CoocBuffer::CoocBuffer(const std::string &output_dirname, const int num_shards,
       sprintf(filename, "shard-%03d-%03d.tmp", row, col);
 
       std::string path = output_dirname + "/" + filename;
-      int fd = open(path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
-      assert(fd > 0);
 
       paths_.push_back(path);
-      fds_.push_back(fd);
+      fds_.emplace_back(new FileDescriptor(
+          open(path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666)));
     }
   }
 }
@@ -297,7 +369,7 @@ void CoocBuffer::AccumulateCoocs(const cooc_counts_t &coocs) {
   for (int i = 0; i < static_cast<int>(fds_.size()); ++i) {
     std::lock_guard<std::mutex> rv(writer_mutex_);
     const int nbytes = bufs[i].size() * sizeof(cooc_t);
-    int nwritten = write(fds_[i], bufs[i].data(), nbytes);
+    int nwritten = fds_[i]->write(bufs[i].data(), nbytes);
     assert(nwritten == nbytes);
   }
 }
@@ -327,9 +399,11 @@ void CoocBuffer::WriteShards() {
     // Next we add co-occurrences as a sparse representation.  Map the
     // co-occurrence counts that we've spooled off to disk: these are in
     // arbitrary order and may contain duplicates.
-    const off_t nbytes = lseek(fds_[shard], 0, SEEK_END);
+    const off_t nbytes = fds_[shard]->size();
     cooc_t *coocs = static_cast<cooc_t*>(
-        mmap(0, nbytes, PROT_READ | PROT_WRITE, MAP_SHARED, fds_[shard], 0));
+        mmap(0, nbytes, PROT_READ | PROT_WRITE, MAP_SHARED, fds_[shard]->fd(),
+             0));
+    assert(coocs != MAP_FAILED);
 
     const int ncoocs = nbytes / sizeof(cooc_t);
     cooc_t* cur = coocs;
@@ -369,7 +443,6 @@ void CoocBuffer::WriteShards() {
     }
 
     munmap(coocs, nbytes);
-    close(fds_[shard]);
 
     if (sparse_local_row->value_size() * 8 >= (64 << 20)) {
       std::cout << "Warning: you are likely to catch protobuf parsing errors "
@@ -409,9 +482,9 @@ class CoocCounter {
  public:
   CoocCounter(const std::string &input_filename, const off_t start,
               const off_t end, const int window_size,
-              const std::unordered_map<std::string, int> &token_to_id_map,
+              const hash_table<std::string, int> &token_to_id_map,
               CoocBuffer *coocbuf)
-      : fin_(input_filename, std::ifstream::ate),
+      : fin_(open(input_filename.c_str(), O_RDONLY)),
         start_(start),
         end_(end),
         window_size_(window_size),
@@ -433,7 +506,7 @@ class CoocCounter {
 
  protected:
   // The input stream.
-  std::ifstream fin_;
+  FileDescriptor fin_;
 
   // The range of the file to which this counter should attend.
   const off_t start_;
@@ -443,7 +516,7 @@ class CoocCounter {
   const int window_size_;
 
   // A reference to the mapping from tokens to IDs.
-  const std::unordered_map<std::string, int> &token_to_id_map_;
+  const hash_table<std::string, int> &token_to_id_map_;
 
   // The buffer into which counts are to be accumulated.
   CoocBuffer* coocbuf_;
@@ -453,26 +526,28 @@ class CoocCounter {
 };
 
 void CoocCounter::Count() {
+  if (start_ >= end_) {
+    return;
+  }
   const int max_coocs_size = 16 * 1024 * 1024;
 
   // A buffer of co-occurrence counts that we'll periodically sort into
   // shards.
   cooc_counts_t coocs;
 
-  fin_.seekg(start_);
-
   int nlines = 0;
-  for (off_t filepos = start_; filepos < end_ && !fin_.eof(); filepos = fin_.tellg()) {
-    // Buffer a single sentence.
-    std::vector<int> sentence;
-    bool eos;
-    do {
-      std::string word;
-      eos = NextWord(fin_, &word);
-      auto it = token_to_id_map_.find(word);
-      if (it != token_to_id_map_.end()) sentence.push_back(it->second);
-    } while (!eos);
+  // Buffer a single sentence.
+  std::vector<int> sentence;
 
+  auto handle_word = [&sentence, &coocs, &nlines, this](
+      const std::string& word, bool nl, off_t filepos) {
+    auto it = token_to_id_map_.find(word);
+    if (it != token_to_id_map_.end()) {
+      sentence.push_back(it->second);
+    }
+    if (!nl) {
+      return;
+    }
     // Generate the co-occurrences for the sentence.
     for (int pos = 0; pos < static_cast<int>(sentence.size()); ++pos) {
       const int left_id = sentence[pos];
@@ -510,6 +585,41 @@ void CoocCounter::Count() {
       fprintf(stdout, "\rComputing co-occurrences: %0.1f%% complete...", pct);
       std::flush(std::cout);
     }
+    sentence.clear();
+  };
+
+  std::string prev_word;
+  fin_.seekg(start_);
+  for (off_t offset = start_; offset < end_; offset += kMmapBufferSize) {
+    auto data = reinterpret_cast<char *>(
+        mmap(nullptr, kMmapBufferSize, PROT_READ, MAP_PRIVATE, fin_.fd(),
+             offset));
+    assert(data != MAP_FAILED);
+    auto read_size = std::min(kMmapBufferSize, end_ - offset);
+    int data_offset = 0;
+    std::string word;
+    bool nl;
+    while (int eaten = NextWordPtr(data + read_size,
+                                   data + data_offset,
+                                   &word, &nl)) {
+      data_offset += eaten;
+      if (!prev_word.empty()) {
+        if (std::isspace(data[0])) {
+          handle_word(prev_word, nl, offset + data_offset);
+        } else {
+          word = prev_word + word;
+        }
+        prev_word.erase();
+      }
+      if (data_offset == read_size
+          && !std::isspace(data[read_size - 1])
+          && offset + kMmapBufferSize < end_) {
+        prev_word = word;
+      } else {
+        handle_word(word, nl, offset + data_offset);
+      }
+    }
+    munmap(data, kMmapBufferSize);
   }
 
   // Accumulate anything we haven't flushed yet.
@@ -640,7 +750,7 @@ int main(int argc, char *argv[]) {
   CoocBuffer coocbuf(output_dirname, num_shards, shard_size);
 
   // Build a mapping from the token to its position in the vocabulary file.
-  std::unordered_map<std::string, int> token_to_id_map;
+  hash_table<std::string, int> token_to_id_map;
   for (int i = 0; i < static_cast<int>(vocab.size()); ++i)
     token_to_id_map[vocab[i]] = i;
 
@@ -648,16 +758,17 @@ int main(int argc, char *argv[]) {
   std::vector<std::thread> threads;
   threads.reserve(num_threads);
   std::vector<CoocCounter*> counters;
-  const off_t nbytes_per_thread = input_size / num_threads;
+  const auto page_size = sysconf(_SC_PAGESIZE);
+  const off_t nbytes_per_thread =
+      (input_size / num_threads / page_size + 1) * page_size;
   std::cout << "Running " << num_threads << " threads, each on "
             << nbytes_per_thread << " bytes" << std::endl;
 
   for (int i = 0; i < num_threads; ++i) {
     // We could make this smarter and look around for newlines.  But
     // realistically that's not going to change things much.
-    const off_t start = i * nbytes_per_thread;
-    const off_t end =
-        i < num_threads - 1 ? (i + 1) * nbytes_per_thread : input_size;
+    const off_t start = std::min(i * nbytes_per_thread, input_size);
+    const off_t end = std::min((i + 1) * nbytes_per_thread, input_size);
 
     CoocCounter *counter = new CoocCounter(
         input_filename, start, end, window_size, token_to_id_map, &coocbuf);
