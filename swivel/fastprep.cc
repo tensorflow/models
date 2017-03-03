@@ -374,12 +374,25 @@ void CoocBuffer::WriteShards() {
     munmap(coocs, nbytes);
     close(fds_[shard]);
 
+    if (sparse_local_row->value_size() * 8 >= (64 << 20)) {
+      std::cout << "Warning: you are likely to catch protobuf parsing errors "
+          "in TF 1.0 and older because the shard is too fat (>= 64MiB); see "
+          << std::endl <<
+          "kDefaultTotalBytesLimit in src/google/protobuf/io/coded_stream.h "
+          " changed in protobuf/commit/5a76e633ea9b5adb215e93fdc11e1c0c08b3fc74"
+          << std::endl <<
+          "https://github.com/tensorflow/tensorflow/issues/7311"
+          << std::endl <<
+          "Consider increasing the number of shards.";
+    }
+
     // Write the protocol buffer as a binary blob to disk.
-    char filename[256];
-    snprintf(filename, sizeof(filename), "shard-%03d-%03d.pb", row_shard,
+    const int filename_max_size = 4096;
+    std::unique_ptr<char[]> filename(new char[filename_max_size]);
+    snprintf(filename.get(), filename_max_size, "shard-%03d-%03d.pb", row_shard,
              col_shard);
 
-    const std::string path = output_dirname_ + "/" + filename;
+    const std::string path = output_dirname_ + "/" + filename.get();
     int fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0666);
     assert(fd != -1);
 
