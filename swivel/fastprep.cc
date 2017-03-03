@@ -590,10 +590,11 @@ int main(int argc, char *argv[]) {
 
   struct stat sb;
   if (lstat(output_dirname.c_str(), &sb) != 0 || !S_ISDIR(sb.st_mode)) {
-    std::cerr << "output directory '" << output_dirname
-              << "' does not exist of is not a directory." << std::endl;
-
-    return 1;
+    if (mkdir(output_dirname.c_str(), 0755) != 0) {
+      std::cerr << "output directory '" << output_dirname
+                << "' does not exist or is not a directory." << std::endl;
+      return 1;
+    }
   }
 
   if (lstat(input_filename.c_str(), &sb) != 0 || !S_ISREG(sb.st_mode)) {
