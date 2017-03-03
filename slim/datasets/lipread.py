@@ -76,8 +76,8 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   keys_to_features = {
       'pair/speech': tf.FixedLenFeature((), tf.string, default_value=''),
       'pair/mouth': tf.FixedLenFeature((), tf.string, default_value=''),
-      'speech/format': tf.FixedLenFeature((), tf.string, default_value='npy'),
-      'mouth/format': tf.FixedLenFeature((), tf.string, default_value='npy'),
+      'speech/format': tf.FixedLenFeature((), tf.string, default_value='raw'),
+      'mouth/format': tf.FixedLenFeature((), tf.string, default_value='raw'),
       'pair/class/label': tf.FixedLenFeature(
           [], tf.int64, default_value=tf.zeros([], dtype=tf.int64)),
       'pair/channel_speech': tf.FixedLenFeature(
@@ -97,8 +97,10 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
   items_to_handlers = {
       # 'image': slim.tfexample_decoder.Image(shape=[1,2000,1]),
       # 'lip': slim.tfexample_decoder.Image(shape=[1, 2000, 1]),
-      'speech': slim.tfexample_decoder.Image(format_key='pair/speech', image_key='pair/speech', channels=1),
+      'speech': slim.tfexample_decoder.Image(format_key='speech/format', image_key='pair/speech', channels=1),
       'mouth': slim.tfexample_decoder.Image(format_key='mouth/format', image_key='pair/mouth', channels=9),
+      # 'speech': slim.tfexample_decoder.Tensor(tensor_key='pair/speech', shape=[13,15,1]),
+      # 'mouth': slim.tfexample_decoder.Tensor(tensor_key='mouth/format', shape=[47,73,9]),
       'label': slim.tfexample_decoder.Tensor('pair/class/label'),
       'channel_speech': slim.tfexample_decoder.Tensor('pair/channel_speech'),
       'feature_speech': slim.tfexample_decoder.Tensor('pair/feature_speech'),

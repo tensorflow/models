@@ -26,6 +26,7 @@ from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
 from preprocessing import preprocessing_factory
+import losses
 
 slim = tf.contrib.slim
 
@@ -431,7 +432,7 @@ def main(_):
             is_training=True)
 
         network_mouth_fn = nets_factory.get_network_fn(
-            FLAGS.model_speech_name,
+            FLAGS.model_mouth_name,
             num_classes=(dataset.num_classes - FLAGS.labels_offset),
             weight_decay=FLAGS.weight_decay,
             is_training=True)
@@ -453,53 +454,61 @@ def main(_):
                 num_readers=FLAGS.num_readers,
                 common_queue_capacity=20 * FLAGS.batch_size,
                 common_queue_min=10 * FLAGS.batch_size)
-            [speech, lip, label] = provider.get(['speech', 'mouth', 'label'])
+            [speech, mouth, label] = provider.get(['speech', 'mouth', 'label'])
             speech.set_shape([13, 15, 1])
-            lip.set_shape([47, 73, 9])
+            mouth.set_shape([47, 73, 9])
             label -= FLAGS.labels_offset
 
             # train_image_size = FLAGS.train_image_size or network_fn.default_image_size
             #
             # # image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
-            speech, lip, labels = tf.train.batch(
-                [speech, lip, label],
+            speech, mouth, labels = tf.train.batch(
+                [speech, mouth, label],
                 batch_size=FLAGS.batch_size,
                 num_threads=FLAGS.num_preprocessing_threads,
                 capacity=5 * FLAGS.batch_size)
 
-
             labels = slim.one_hot_encoding(
                 labels, dataset.num_classes - FLAGS.labels_offset)
+
             batch_queue = slim.prefetch_queue.prefetch_queue(
-                [speech, lip, labels], capacity=2 * deploy_config.num_clones)
+                [speech, mouth, labels], capacity=2 * deploy_config.num_clones)
 
         ####################
         # Define the model #
         ####################
         def clone_fn(batch_queue):
             """Allows data parallelism by creating multiple clones of network_fn."""
-            speech, lip, labels = batch_queue.dequeue()
+            speech, mouth, labels = batch_queue.dequeue()
             logits_speech, end_points_speech = network_speech_fn(speech)
-            logits_lip, end_points_lip = network_mouth_fn(lip)
+            logits_mouth, end_points_mouth = network_mouth_fn(mouth)
+
 
             #############################
             # Specify the loss function #
             #############################
-            if 'AuxLogits' in end_points:
-                slim.losses.softmax_cross_entropy(
-                    end_points['AuxLogits'], labels,
-                    label_smoothing=FLAGS.label_smoothing, scope='aux_loss')
-            slim.losses.softmax_cross_entropy(
-                logits, labels, label_smoothing=FLAGS.label_smoothing)
+            distance_vector = tf.subtract(logits_speech, logits_mouth, name=None)
+            distance_weighted = slim.fully_connected(distance_vector, 1, scope='fc_weighted')
+            print("distance_vector",distance_weighted.get_shape())
+            print("labels", labels.get_shape())
+
+            losses.contrastive_loss(labels, distance_weighted, margin=1)
+
+            # if 'AuxLogits' in end_points:
+            #     slim.losses.softmax_cross_entropy(
+            #         end_points['AuxLogits'], labels,
+            #         label_smoothing=FLAGS.label_smoothing, scope='aux_loss')
+            # slim.losses.softmax_cross_entropy(
+            #     logits, labels, label_smoothing=FLAGS.label_smoothing)
 
             # Adding the accuracy metric
             with tf.name_scope('accuracy'):
-                predictions = tf.argmax(logits, 1)
+                predictions = tf.to_int64(tf.sign(tf.sign(distance_weighted) + 1))
                 labels = tf.argmax(labels, 1)
                 accuracy = tf.reduce_mean(tf.to_float(tf.equal(predictions, labels)))
                 tf.add_to_collection('accuracy', accuracy)
-            return end_points
+            return end_points_speech, end_points_mouth
 
         # Gather initial summaries.
         summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
@@ -511,11 +520,17 @@ def main(_):
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
 
         # Add summaries for end_points.
-        end_points = clones[0].outputs
-        for end_point in end_points:
-            x = end_points[end_point]
-            summaries.add(tf.summary.histogram('activations/' + end_point, x))
-            summaries.add(tf.summary.scalar('sparsity/' + end_point,
+        end_points_speech, end_points_mouth = clones[0].outputs
+        for end_point in end_points_speech:
+            x = end_points_speech[end_point]
+            summaries.add(tf.summary.histogram('activations_speech/' + end_point, x))
+            summaries.add(tf.summary.scalar('sparsity_speech/' + end_point,
+                                            tf.nn.zero_fraction(x)))
+
+        for end_point in end_points_mouth:
+            x = end_points_mouth[end_point]
+            summaries.add(tf.summary.histogram('activations_mouth/' + end_point, x))
+            summaries.add(tf.summary.scalar('sparsity_mouth/' + end_point,
                                             tf.nn.zero_fraction(x)))
 
         # Add summaries for losses.
