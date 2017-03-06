@@ -139,10 +139,10 @@ class Seq2SeqAttentionModel(object):
     vsize = self._vocab.NumIds()
 
     with tf.variable_scope('seq2seq'):
-      encoder_inputs = tf.unpack(tf.transpose(self._articles))
-      decoder_inputs = tf.unpack(tf.transpose(self._abstracts))
-      targets = tf.unpack(tf.transpose(self._targets))
-      loss_weights = tf.unpack(tf.transpose(self._loss_weights))
+      encoder_inputs = tf.unstack(tf.transpose(self._articles))
+      decoder_inputs = tf.unstack(tf.transpose(self._abstracts))
+      targets = tf.unstack(tf.transpose(self._targets))
+      loss_weights = tf.unstack(tf.transpose(self._loss_weights))
       article_lens = self._article_lens
 
       # Embedding shared by the input and outputs.
@@ -155,20 +155,22 @@ class Seq2SeqAttentionModel(object):
         emb_decoder_inputs = [tf.nn.embedding_lookup(embedding, x)
                               for x in decoder_inputs]
 
-      for layer_i in xrange(hps.enc_layers):
+
+      for layer_i in range(hps.enc_layers):
         with tf.variable_scope('encoder%d'%layer_i), tf.device(
             self._next_device()):
-          cell_fw = tf.nn.rnn_cell.LSTMCell(
+          cell_fw = tf.contrib.rnn.LSTMCell(
               hps.num_hidden,
               initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=123),
               state_is_tuple=False)
-          cell_bw = tf.nn.rnn_cell.LSTMCell(
+          cell_bw = tf.contrib.rnn.LSTMCell(
               hps.num_hidden,
               initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=113),
               state_is_tuple=False)
-          (emb_encoder_inputs, fw_state, _) = tf.nn.bidirectional_rnn(
+          (emb_encoder_inputs, fw_state, _) = tf.contrib.rnn.static_bidirectional_rnn(
               cell_fw, cell_bw, emb_encoder_inputs, dtype=tf.float32,
               sequence_length=article_lens)
+
       encoder_outputs = emb_encoder_inputs
 
       with tf.variable_scope('output_projection'):
@@ -188,26 +190,26 @@ class Seq2SeqAttentionModel(object):
           loop_function = _extract_argmax_and_embed(
               embedding, (w, v), update_embedding=False)
 
-        cell = tf.nn.rnn_cell.LSTMCell(
+        cell = tf.contrib.rnn.LSTMCell(
             hps.num_hidden,
             initializer=tf.random_uniform_initializer(-0.1, 0.1, seed=113),
             state_is_tuple=False)
 
         encoder_outputs = [tf.reshape(x, [hps.batch_size, 1, 2*hps.num_hidden])
                            for x in encoder_outputs]
-        self._enc_top_states = tf.concat(1, encoder_outputs)
+        self._enc_top_states = tf.concat(axis=1, values=encoder_outputs)
         self._dec_in_state = fw_state
         # During decoding, follow up _dec_in_state are fed from beam_search.
         # dec_out_state are stored by beam_search for next step feeding.
         initial_state_attention = (hps.mode == 'decode')
-        decoder_outputs, self._dec_out_state = tf.nn.seq2seq.attention_decoder(
+        decoder_outputs, self._dec_out_state = tf.contrib.legacy_seq2seq.attention_decoder(
             emb_decoder_inputs, self._dec_in_state, self._enc_top_states,
             cell, num_heads=1, loop_function=loop_function,
             initial_state_attention=initial_state_attention)
 
       with tf.variable_scope('output'), tf.device(self._next_device()):
         model_outputs = []
-        for i in xrange(len(decoder_outputs)):
+        for i in range(len(decoder_outputs)):
           if i > 0:
             tf.get_variable_scope().reuse_variables()
           model_outputs.append(
@@ -218,7 +220,7 @@ class Seq2SeqAttentionModel(object):
           best_outputs = [tf.argmax(x, 1) for x in model_outputs]
           tf.logging.info('best_outputs%s', best_outputs[0].get_shape())
           self._outputs = tf.concat(
-              1, [tf.reshape(x, [hps.batch_size, 1]) for x in best_outputs])
+              axis=1, values=[tf.reshape(x, [hps.batch_size, 1]) for x in best_outputs])
 
           self._topk_log_probs, self._topk_ids = tf.nn.top_k(
               tf.log(tf.nn.softmax(model_outputs[-1])), hps.batch_size*2)
@@ -227,16 +229,16 @@ class Seq2SeqAttentionModel(object):
         def sampled_loss_func(inputs, labels):
           with tf.device('/cpu:0'):  # Try gpu.
             labels = tf.reshape(labels, [-1, 1])
-            return tf.nn.sampled_softmax_loss(w_t, v, inputs, labels,
+            return tf.nn.sampled_softmax_loss(w_t, v, labels, inputs,
                                               hps.num_softmax_samples, vsize)
 
         if hps.num_softmax_samples != 0 and hps.mode == 'train':
           self._loss = seq2seq_lib.sampled_sequence_loss(
               decoder_outputs, targets, loss_weights, sampled_loss_func)
         else:
-          self._loss = tf.nn.seq2seq.sequence_loss(
+          self._loss = tf.contrib.legacy_seq2seq.sequence_loss(
               model_outputs, targets, loss_weights)
-        tf.scalar_summary('loss', tf.minimum(12.0, self._loss))
+        tf.summary.scalar('loss', tf.minimum(12.0, self._loss))
 
   def _add_train_op(self):
     """Sets self._train_op, op to run for training."""
@@ -250,9 +252,9 @@ class Seq2SeqAttentionModel(object):
     with tf.device(self._get_gpu(self._num_gpus-1)):
       grads, global_norm = tf.clip_by_global_norm(
           tf.gradients(self._loss, tvars), hps.max_grad_norm)
-    tf.scalar_summary('global_norm', global_norm)
+    tf.summary.scalar('global_norm', global_norm)
     optimizer = tf.train.GradientDescentOptimizer(self._lr_rate)
-    tf.scalar_summary('learning rate', self._lr_rate)
+    tf.summary.scalar('learning rate', self._lr_rate)
     self._train_op = optimizer.apply_gradients(
         zip(grads, tvars), global_step=self.global_step, name='train_step')
 
@@ -286,6 +288,7 @@ class Seq2SeqAttentionModel(object):
         [self._topk_ids, self._topk_log_probs, self._dec_out_state],
         feed_dict=feed)
 
+
     ids, probs, states = results[0], results[1], results[2]
     new_states = [s for s in states]
     return ids, probs, new_states
@@ -296,4 +299,4 @@ class Seq2SeqAttentionModel(object):
     self.global_step = tf.Variable(0, name='global_step', trainable=False)
     if self._hps.mode == 'train':
       self._add_train_op()
-    self._summaries = tf.merge_all_summaries()
+    self._summaries = tf.summary.merge_all()
