@@ -16,7 +16,7 @@
 """Batch reader to seq2seq attention model, with bucketing support."""
 
 from collections import namedtuple
-import Queue
+import queue as Queue
 from random import shuffle
 from threading import Thread
 import time
@@ -32,6 +32,7 @@ ModelInput = namedtuple('ModelInput',
 
 BUCKET_CACHE_BATCH = 100
 QUEUE_NUM_BATCH = 100
+
 
 
 class Batcher(object):
@@ -66,12 +67,12 @@ class Batcher(object):
     self._input_queue = Queue.Queue(QUEUE_NUM_BATCH * self._hps.batch_size)
     self._bucket_input_queue = Queue.Queue(QUEUE_NUM_BATCH)
     self._input_threads = []
-    for _ in xrange(16):
+    for _ in range(16):
       self._input_threads.append(Thread(target=self._FillInputQueue))
       self._input_threads[-1].daemon = True
       self._input_threads[-1].start()
     self._bucketing_threads = []
-    for _ in xrange(4):
+    for _ in range(4):
       self._bucketing_threads.append(Thread(target=self._FillBucketInputQueue))
       self._bucketing_threads[-1].daemon = True
       self._bucketing_threads[-1].start()
@@ -109,7 +110,7 @@ class Batcher(object):
     origin_abstracts = ['None'] * self._hps.batch_size
 
     buckets = self._bucket_input_queue.get()
-    for i in xrange(self._hps.batch_size):
+    for i in range(self._hps.batch_size):
       (enc_inputs, dec_inputs, targets, enc_input_len, dec_output_len,
        article, abstract) = buckets[i]
 
@@ -120,7 +121,7 @@ class Batcher(object):
       enc_batch[i, :] = enc_inputs[:]
       dec_batch[i, :] = dec_inputs[:]
       target_batch[i, :] = targets[:]
-      for j in xrange(dec_output_len):
+      for j in range(dec_output_len):
         loss_weights[i][j] = 1
     return (enc_batch, dec_batch, target_batch, enc_input_lens, dec_output_lens,
             loss_weights, origin_articles, origin_abstracts)
@@ -132,7 +133,7 @@ class Batcher(object):
     pad_id = self._vocab.WordToId(data.PAD_TOKEN)
     input_gen = self._TextGenerator(data.ExampleGen(self._data_path))
     while True:
-      (article, abstract) = input_gen.next()
+      (article, abstract) = input_gen.__next__()
       article_sentences = [sent.strip() for sent in
                            data.ToSentences(article, include_token=False)]
       abstract_sentences = [sent.strip() for sent in
@@ -143,10 +144,11 @@ class Batcher(object):
       dec_inputs = [start_id]
 
       # Convert first N sentences to word IDs, stripping existing <s> and </s>.
-      for i in xrange(min(self._max_article_sentences,
+      for i in range(min(self._max_article_sentences,
                           len(article_sentences))):
         enc_inputs += data.GetWordIds(article_sentences[i], self._vocab)
-      for i in xrange(min(self._max_abstract_sentences,
+
+      for i in range(min(self._max_abstract_sentences,
                           len(abstract_sentences))):
         dec_inputs += data.GetWordIds(abstract_sentences[i], self._vocab)
 
@@ -198,13 +200,13 @@ class Batcher(object):
     """Fill bucketed batches into the bucket_input_queue."""
     while True:
       inputs = []
-      for _ in xrange(self._hps.batch_size * BUCKET_CACHE_BATCH):
+      for _ in range(self._hps.batch_size * BUCKET_CACHE_BATCH):
         inputs.append(self._input_queue.get())
       if self._bucketing:
         inputs = sorted(inputs, key=lambda inp: inp.enc_len)
 
       batches = []
-      for i in xrange(0, len(inputs), self._hps.batch_size):
+      for i in range(0, len(inputs), self._hps.batch_size):
         batches.append(inputs[i:i+self._hps.batch_size])
       shuffle(batches)
       for b in batches:
@@ -241,7 +243,7 @@ class Batcher(object):
   def _TextGenerator(self, example_gen):
     """Generates article and abstract text from tf.Example."""
     while True:
-      e = example_gen.next()
+      e = example_gen.__next__()
       try:
         article_text = self._GetExFeatureText(e, self._article_key)
         abstract_text = self._GetExFeatureText(e, self._abstract_key)
@@ -260,4 +262,4 @@ class Batcher(object):
     Returns:
       feature: a feature text extracted.
     """
-    return ex.features.feature[key].bytes_list.value[0]
+    return ex.features.feature[key].bytes_list.value[0].decode()#m
