@@ -116,14 +116,18 @@ def run_epoch(session, m, names, counts, epoch_size, eval_op, verbose=False):
     start_time = time.time()
     costs = 0.0
     iters = 0
+    #print('debug: run_epoch: m.initial_state=%s'% m.initial_state)
+    state = session.run(m.initial_state)
     for step, (x, y) in enumerate(data_utils.namignizer_iterator(names, counts,
                                                                  m.batch_size, m.num_steps, epoch_size)):
 
-        cost, _ = session.run([m.cost, eval_op],
-                              {m.input_data: x,
-                               m.targets: y,
-                               m.initial_state: m.initial_state.eval(),
-                               m.weights: np.ones(m.batch_size * m.num_steps)})
+	feed_dict = {m.input_data: x,
+                     m.targets: y,
+                     m.weights: np.ones(m.batch_size * m.num_steps)}
+	for i, (c, h) in enumerate(m.initial_state):
+		feed_dict[c] = state[i].c
+		feed_dict[h] = state[i].h
+        cost, _ = session.run([m.cost, eval_op], feed_dict)
         costs += cost
         iters += m.num_steps
 
@@ -197,13 +201,17 @@ def namignize(names, checkpoint_path, config):
 
         for name in names:
             x, y = data_utils.name_to_batch(name, m.batch_size, m.num_steps)
+            state = session.run(m.initial_state)
+            feed_dict = {m.input_data: x,
+                         m.targets: y,
+                         m.weights: np.concatenate((
+                                       np.ones(len(name)), 
+                                       np.zeros(m.batch_size * m.num_steps - len(name))))} 
+            for i, (c, h) in enumerate(m.initial_state):
+	        feed_dict[c] = state[i].c
+                feed_dict[h] = state[i].h
 
-            cost, loss, _ = session.run([m.cost, m.loss, tf.no_op()],
-                                  {m.input_data: x,
-                                   m.targets: y,
-                                   m.initial_state: m.initial_state.eval(),
-                                   m.weights: np.concatenate((
-                                       np.ones(len(name)), np.zeros(m.batch_size * m.num_steps - len(name))))})
+            cost, loss, _ = session.run([m.cost, m.loss, tf.no_op()], feed_dict)
 
             print("Name {} gives us a perplexity of {}".format(
                 name, np.exp(cost)))
@@ -230,12 +238,16 @@ def namignator(checkpoint_path, config):
             m = NamignizerModel(is_training=False, config=config)
 
         m.saver.restore(session, checkpoint_path)
+	state = session.run(m.initial_state)
+	feed_dict = {m.input_data: np.zeros((1, 1)),
+                     m.targets: np.zeros((1, 1)), 
+                     m.weights: np.ones(1)}
+        for i, (c, h) in enumerate(m.initial_state):
+	    feed_dict[c] = state[i].c
+            feed_dict[h] = state[i].h
 
         activations, final_state, _ = session.run([m.activations, m.final_state, tf.no_op()],
-                                                  {m.input_data: np.zeros((1, 1)),
-                                                   m.targets: np.zeros((1, 1)),
-                                                   m.initial_state: m.initial_state.eval(),
-                                                   m.weights: np.ones(1)})
+                                                   feed_dict)
 
         # sample from our softmax activations
         next_letter = np.random.choice(27, p=activations[0])
@@ -260,3 +272,4 @@ if __name__ == "__main__":
     #     tf.train.latest_checkpoint("model"), SmallConfig)
 
     # namignator(tf.train.latest_checkpoint("model"), SmallConfig)
+    pass
