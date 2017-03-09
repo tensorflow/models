@@ -24,6 +24,7 @@ package_group(
         "//research/vale/instance_segmentation/...",
         "//research/vale/pose_estimation/...",
         "//research/vision/loco/...",
+        "//research/vision/threedeep/...",
         "//third_party/tensorflow_models/domain_adaptation/datasets/...",
         "//vision/face/pittpatt/research/tensorflow/...",
     ],
