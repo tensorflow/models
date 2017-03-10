@@ -316,8 +316,8 @@ def _configure_optimizer(learning_rate):
 def _add_variables_summaries(learning_rate):
   summaries = []
   for variable in slim.get_model_variables():
-    summaries.append(tf.histogram_summary(variable.op.name, variable))
-  summaries.append(tf.scalar_summary('training/Learning Rate', learning_rate))
+    summaries.append(tf.summary.histogram(variable.op.name, variable))
+  summaries.append(tf.summary.scalar('training/Learning Rate', learning_rate))
   return summaries
 
 
@@ -489,17 +489,17 @@ def main(_):
     end_points = clones[0].outputs
     for end_point in end_points:
       x = end_points[end_point]
-      summaries.add(tf.histogram_summary('activations/' + end_point, x))
-      summaries.add(tf.scalar_summary('sparsity/' + end_point,
+      summaries.add(tf.summary.histogram('activations/' + end_point, x))
+      summaries.add(tf.summary.scalar('sparsity/' + end_point,
                                       tf.nn.zero_fraction(x)))
 
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
-      summaries.add(tf.scalar_summary('losses/%s' % loss.op.name, loss))
+      summaries.add(tf.summary.scalar('losses/%s' % loss.op.name, loss))
 
     # Add summaries for variables.
     for variable in slim.get_model_variables():
-      summaries.add(tf.histogram_summary(variable.op.name, variable))
+      summaries.add(tf.summary.histogram(variable.op.name, variable))
 
     #################################
     # Configure the moving averages #
@@ -517,7 +517,7 @@ def main(_):
     with tf.device(deploy_config.optimizer_device()):
       learning_rate = _configure_learning_rate(dataset.num_samples, global_step)
       optimizer = _configure_optimizer(learning_rate)
-      summaries.add(tf.scalar_summary('learning_rate', learning_rate,
+      summaries.add(tf.summary.scalar('learning_rate', learning_rate,
                                       name='learning_rate'))
 
     if FLAGS.sync_replicas:
@@ -543,7 +543,7 @@ def main(_):
         optimizer,
         var_list=variables_to_train)
     # Add total_loss to summary.
-    summaries.add(tf.scalar_summary('total_loss', total_loss,
+    summaries.add(tf.summary.scalar('total_loss', total_loss,
                                     name='total_loss'))
 
     # Create gradient updates.
