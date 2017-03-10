@@ -113,11 +113,11 @@ class Model(object):
     summaries = []
 
     # Split into timesteps.
-    actions = tf.split(1, actions.get_shape()[1], actions)
+    actions = tf.split(actions, int(actions.get_shape()[1]), 1)
     actions = [tf.squeeze(act) for act in actions]
-    states = tf.split(1, states.get_shape()[1], states)
+    states = tf.split(states, int(states.get_shape()[1]), 1)
     states = [tf.squeeze(st) for st in states]
-    images = tf.split(1, images.get_shape()[1], images)
+    images = tf.split(images, int(images.get_shape()[1]), 1)
     images = [tf.squeeze(img) for img in images]
 
     if reuse_scope is None:
