@@ -53,22 +53,32 @@ def bytes_feature(values):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
 
 
-def image_to_tfexample(speech_data, mouth_data, image_format, channel_speech, height_speech, width_speech,
-                       channel_mouth, height_mouth, width_mouth, label):
+def image_to_tfexample(image_data, image_format, height, width, class_id):
+  return tf.train.Example(features=tf.train.Features(feature={
+      'image/encoded': bytes_feature(image_data),
+      'image/format': bytes_feature(image_format),
+      'image/class/label': int64_feature(class_id),
+      'image/height': int64_feature(height),
+      'image/width': int64_feature(width),
+    }))
+
+def numpy_to_tfexample(speech_pair, mouth_pair, speech_format, mouth_format,label, feature_speech, frame_speech, channel_speech, channel_mouth, height_mouth, width_mouth):
     return tf.train.Example(features=tf.train.Features(feature={
-        'speech/encoded': bytes_feature(speech_data),
-        'mouth/encoded': bytes_feature(mouth_data),
-        'pair/format': bytes_feature(image_format),
+        'pair/speech': bytes_feature(speech_pair),
+        'pair/mouth': bytes_feature(mouth_pair),
+        'speech/format': bytes_feature(speech_format),
+        'mouth/format': bytes_feature(mouth_format),
         'pair/class/label': int64_feature(label),
         'pair/channel_speech': int64_feature(channel_speech),
-        'pair/height_speech': int64_feature(height_speech),
-        'pair/width_speech': int64_feature(width_speech),
+        'pair/feature_speech': int64_feature(feature_speech),
+        'pair/frame_speech': int64_feature(frame_speech),
         'pair/channel_mouth': int64_feature(channel_mouth),
         'pair/height_mouth': int64_feature(height_mouth),
         'pair/width_mouth': int64_feature(width_mouth),
     }))
 
-def numpy_to_tfexample(speech_pair, mouth_pair, label, feature_speech, frame_speech, channel_speech, channel_mouth, height_mouth, width_mouth):
+
+def numpy_to_tfexample_main(speech_pair, mouth_pair, label, feature_speech, frame_speech, channel_speech, channel_mouth, height_mouth, width_mouth):
     return tf.train.Example(features=tf.train.Features(feature={
         'pair/speech': bytes_feature(speech_pair),
         'pair/mouth': bytes_feature(mouth_pair),
@@ -80,7 +90,6 @@ def numpy_to_tfexample(speech_pair, mouth_pair, label, feature_speech, frame_spe
         'pair/height_mouth': int64_feature(height_mouth),
         'pair/width_mouth': int64_feature(width_mouth),
     }))
-
 
 def download_and_uncompress_tarball(tarball_url, dataset_dir):
     """Downloads the `tarball_url` and uncompresses it locally.

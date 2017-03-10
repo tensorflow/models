@@ -113,7 +113,6 @@ def speech_cnn(inputs,
       end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if spatial_squeeze:
         net = tf.squeeze(net, [1, 2], name='fc5/squeezed')
-        print("spatial_squeeze=", net.get_shape())
         end_points[sc.name + '/fc5'] = net
       return net, end_points
 

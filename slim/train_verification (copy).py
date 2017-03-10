@@ -59,15 +59,15 @@ tf.app.flags.DEFINE_integer(
     'The number of threads used to create the batches.')
 
 tf.app.flags.DEFINE_integer(
-    'log_every_n_steps', 20,
+    'log_every_n_steps', 10,
     'The frequency with which logs are print.')
 
 tf.app.flags.DEFINE_integer(
-    'save_summaries_secs', 10,
+    'save_summaries_secs', 1000,
     'The frequency with which summaries are saved, in seconds.')
 
 tf.app.flags.DEFINE_integer(
-    'save_interval_secs', 500,
+    'save_interval_secs', 5000,
     'The frequency with which the model is saved, in seconds.')
 
 tf.app.flags.DEFINE_integer(
@@ -455,15 +455,18 @@ def main(_):
                 common_queue_capacity=20 * FLAGS.batch_size,
                 common_queue_min=10 * FLAGS.batch_size)
 
-            [speech, mouth, label] = provider.get(['speech', 'mouth', 'label'])
+            [mouth, speech, label] = provider.get([ 'mouth', 'speech', 'label'])
+            print("speech.get_shape()",speech.get_shape())
+            speech.set_shape([13, 15, 1])
+            mouth.set_shape([47, 73, 9])
             label -= FLAGS.labels_offset
 
             # train_image_size = FLAGS.train_image_size or network_fn.default_image_size
             #
             # # image = image_preprocessing_fn(image, train_image_size, train_image_size)
 
-            speech, mouth, labels = tf.train.batch(
-                [speech, mouth, label],
+            mouth, speech, labels = tf.train.batch(
+                [mouth, speech, label],
                 batch_size=FLAGS.batch_size,
                 num_threads=FLAGS.num_preprocessing_threads,
                 capacity=5 * FLAGS.batch_size)
@@ -484,14 +487,14 @@ def main(_):
             logits_mouth, end_points_mouth = network_mouth_fn(mouth)
 
 
-
             #############################
             # Specify the loss function #
             #############################
             distance_vector = tf.subtract(logits_speech, logits_mouth, name=None)
             distance_weighted = slim.fully_connected(distance_vector, 1, scope='fc_weighted')
+            print("distance_vector",distance_weighted.get_shape())
+            print("labels", labels.get_shape())
 
-            #### Contrastive loss #####
             losses.contrastive_loss(labels, distance_weighted, margin=1)
 
             # if 'AuxLogits' in end_points:
