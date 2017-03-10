@@ -473,7 +473,7 @@ def main(_):
             end_points['AuxLogits'], labels,
             label_smoothing=FLAGS.label_smoothing, weight=0.4, scope='aux_loss')
       slim.losses.softmax_cross_entropy(
-          logits, labels, label_smoothing=FLAGS.label_smoothing, weight=1.0)
+          logits, labels, label_smoothing=FLAGS.label_smoothing, weights=1.0)
       return end_points
 
     # Gather initial summaries.
@@ -559,7 +559,7 @@ def main(_):
                                        first_clone_scope))
 
     # Merge all summaries together.
-    summary_op = tf.merge_summary(list(summaries), name='summary_op')
+    summary_op = tf.summary.merge(list(summaries), name='summary_op')
 
 
     ###########################
