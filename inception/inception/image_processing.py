@@ -221,7 +221,7 @@ def distort_image(image, height, width, bbox, thread_id=0, scope=None):
     if not thread_id:
       image_with_box = tf.image.draw_bounding_boxes(tf.expand_dims(image, 0),
                                                     bbox)
-      tf.image_summary('image_with_bounding_boxes', image_with_box)
+      tf.summary.image('image_with_bounding_boxes', image_with_box)
 
   # A large fraction of image datasets contain a human-annotated bounding
   # box delineating the region of the image containing the object of interest.
@@ -242,7 +242,7 @@ def distort_image(image, height, width, bbox, thread_id=0, scope=None):
     if not thread_id:
       image_with_distorted_box = tf.image.draw_bounding_boxes(
           tf.expand_dims(image, 0), distort_bbox)
-      tf.image_summary('images_with_distorted_bounding_box',
+      tf.summary.image('images_with_distorted_bounding_box',
                        image_with_distorted_box)
 
     # Crop the image to the specified bounding box.
@@ -259,7 +259,7 @@ def distort_image(image, height, width, bbox, thread_id=0, scope=None):
     # the third dimension.
     distorted_image.set_shape([height, width, 3])
     if not thread_id:
-      tf.image_summary('cropped_resized_image',
+      tf.summary.image('cropped_resized_image',
                        tf.expand_dims(distorted_image, 0))
 
     # Randomly flip the image horizontally.
@@ -269,7 +269,7 @@ def distort_image(image, height, width, bbox, thread_id=0, scope=None):
     distorted_image = distort_color(distorted_image, thread_id)
 
     if not thread_id:
-      tf.image_summary('final_distorted_image',
+      tf.summary.image('final_distorted_image',
                        tf.expand_dims(distorted_image, 0))
     return distorted_image
 
@@ -328,8 +328,8 @@ def image_preprocessing(image_buffer, bbox, train, thread_id=0):
     image = eval_image(image, height, width)
 
   # Finally, rescale to [-1,1] instead of [0, 1)
-  image = tf.sub(image, 0.5)
-  image = tf.mul(image, 2.0)
+  image = tf.subtract(image, 0.5)
+  image = tf.multiply(image, 2.0)
   return image
 
 
@@ -394,7 +394,7 @@ def parse_example_proto(example_serialized):
   ymax = tf.expand_dims(features['image/object/bbox/ymax'].values, 0)
 
   # Note that we impose an ordering of (y, x) just to make life difficult.
-  bbox = tf.concat(0, [ymin, xmin, ymax, xmax])
+  bbox = tf.concat([ymin, xmin, ymax, xmax], 0)
 
   # Force the variable number of bounding boxes into the shape
   # [1, num_boxes, coords].
@@ -505,6 +505,6 @@ def batch_inputs(dataset, batch_size, train, num_preprocess_threads=None,
     images = tf.reshape(images, shape=[batch_size, height, width, depth])
 
     # Display the training images in the visualizer.
-    tf.image_summary('images', images)
+    tf.summary.image('images', images)
 
     return images, tf.reshape(label_index_batch, [batch_size])
