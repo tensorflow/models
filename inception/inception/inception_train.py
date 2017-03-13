@@ -56,6 +56,12 @@ tf.app.flags.DEFINE_string('pretrained_model_checkpoint_path', '',
                            """If specified, restore this pretrained model """
                            """before beginning any training.""")
 
+# Flags for checkpoint/data collection
+tf.app.flags.DEFINE_float('checkpoint_steps', 5000,
+                          """Collect checkpoint for each specified steps.""")
+tf.app.flags.DEFINE_float('max_checkpoint_to_keep', 5,
+                          """Maximum number of recent checkpoints are kept.""")
+
 # **IMPORTANT**
 # Please note that this learning rate schedule is heavily dependent on the
 # hardware architecture, batch size and any changes to the model architecture
@@ -301,7 +307,7 @@ def train(dataset):
                         batchnorm_updates_op)
 
     # Create a saver.
-    saver = tf.train.Saver(tf.all_variables())
+    saver = tf.train.Saver(tf.all_variables(), max_to_keep=FLAGS.max_checkpoint_to_keep)
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.merge_summary(summaries)
@@ -340,7 +346,7 @@ def train(dataset):
 
       assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-      if step % 10 == 0:
+      if step % 10 == 0 or step % FLAGS.checkpoint_steps == 0:
         examples_per_sec = FLAGS.batch_size / float(duration)
         format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                       'sec/batch)')
@@ -352,6 +358,6 @@ def train(dataset):
         summary_writer.add_summary(summary_str, step)
 
       # Save the model checkpoint periodically.
-      if step % 5000 == 0 or (step + 1) == FLAGS.max_steps:
+      if step % FLAGS.checkpoint_steps == 0 or (step + 1) == FLAGS.max_steps:
         checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
         saver.save(sess, checkpoint_path, global_step=step)
