@@ -12,9 +12,9 @@ Oriol Vinyals, Alexander Toshev, Samy Bengio, Dumitru Erhan.
 Full text available at: http://arxiv.org/abs/1609.06647
 
 ## Contact
-***Author:*** Chris Shallue (shallue@google.com).
+***Author:*** Chris Shallue
 
-***Pull requests and issues:*** @cshallue.
+***Pull requests and issues:*** @cshallue
 
 ## Contents
 * [Model Overview](#model-overview)
@@ -118,12 +118,12 @@ approximately 10 times slower.
 ### Install Required Packages
 First ensure that you have installed the following required packages:
 
-* **Bazel** ([instructions](http://bazel.io/docs/install.html)).
-* **TensorFlow** r0.12 or greater ([instructions](https://www.tensorflow.org/versions/master/get_started/os_setup.html)).
-* **NumPy** ([instructions](http://www.scipy.org/install.html)).
+* **Bazel** ([instructions](http://bazel.io/docs/install.html))
+* **TensorFlow** 1.0 or greater ([instructions](https://www.tensorflow.org/install/))
+* **NumPy** ([instructions](http://www.scipy.org/install.html))
 * **Natural Language Toolkit (NLTK)**:
-    * First install NLTK ([instructions](http://www.nltk.org/install.html)).
-    * Then install the NLTK data ([instructions](http://www.nltk.org/data.html)).
+    * First install NLTK ([instructions](http://www.nltk.org/install.html))
+    * Then install the NLTK data ([instructions](http://www.nltk.org/data.html))
 
 ### Prepare the Training Data
 
