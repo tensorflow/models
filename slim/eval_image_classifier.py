@@ -153,14 +153,14 @@ def main(_):
     # Define the metrics:
     names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
         'Accuracy': slim.metrics.streaming_accuracy(predictions, labels),
-        'Recall@5': slim.metrics.streaming_recall_at_k(
+        'Recall_5': slim.metrics.streaming_recall_at_k(
             logits, labels, 5),
     })
 
     # Print the summaries to screen.
     for name, value in names_to_values.iteritems():
       summary_name = 'eval/%s' % name
-      op = tf.scalar_summary(summary_name, value, collections=[])
+      op = tf.summary.scalar(summary_name, value, collections=[])
       op = tf.Print(op, [value], summary_name)
       tf.add_to_collection(tf.GraphKeys.SUMMARIES, op)
 
