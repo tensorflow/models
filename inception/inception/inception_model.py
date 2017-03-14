@@ -115,7 +115,7 @@ def loss(logits, labels, batch_size=None):
   # shape [FLAGS.batch_size, num_classes].
   sparse_labels = tf.reshape(labels, [batch_size, 1])
   indices = tf.reshape(tf.range(batch_size), [batch_size, 1])
-  concated = tf.concat(1, [indices, sparse_labels])
+  concated = tf.concat(axis=1, values=[indices, sparse_labels])
   num_classes = logits[0].get_shape()[-1].value
   dense_labels = tf.sparse_to_dense(concated,
                                     [batch_size, num_classes],
@@ -147,8 +147,8 @@ def _activation_summary(x):
   # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
   # session. This helps the clarity of presentation on tensorboard.
   tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
-  tf.contrib.deprecated.histogram_summary(tensor_name + '/activations', x)
-  tf.contrib.deprecated.scalar_summary(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
+  tf.summary.histogram(tensor_name + '/activations', x)
+  tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
 
 def _activation_summaries(endpoints):

@@ -77,7 +77,7 @@ def cifarnet(images, num_classes=10, is_training=False,
     net = slim.fully_connected(net, 192, scope='fc4')
     end_points['fc4'] = net
     logits = slim.fully_connected(net, num_classes,
-                                  biases_initializer=tf.zeros_initializer,
+                                  biases_initializer=tf.zeros_initializer(),
                                   weights_initializer=trunc_normal(1/192.0),
                                   weights_regularizer=None,
                                   activation_fn=None,

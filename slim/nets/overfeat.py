@@ -41,7 +41,7 @@ def overfeat_arg_scope(weight_decay=0.0005):
   with slim.arg_scope([slim.conv2d, slim.fully_connected],
                       activation_fn=tf.nn.relu,
                       weights_regularizer=slim.l2_regularizer(weight_decay),
-                      biases_initializer=tf.zeros_initializer):
+                      biases_initializer=tf.zeros_initializer()):
     with slim.arg_scope([slim.conv2d], padding='SAME'):
       with slim.arg_scope([slim.max_pool2d], padding='VALID') as arg_sc:
         return arg_sc
@@ -107,7 +107,7 @@ def overfeat(inputs,
         net = slim.conv2d(net, num_classes, [1, 1],
                           activation_fn=None,
                           normalizer_fn=None,
-                          biases_initializer=tf.zeros_initializer,
+                          biases_initializer=tf.zeros_initializer(),
                           scope='fc8')
       # Convert end_points_collection into a end_point dict.
       end_points = slim.utils.convert_collection_to_dict(end_points_collection)

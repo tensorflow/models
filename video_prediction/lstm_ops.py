@@ -24,7 +24,7 @@ from tensorflow.contrib.slim import layers
 
 def init_state(inputs,
                state_shape,
-               state_initializer=tf.zeros_initializer,
+               state_initializer=tf.zeros_initializer(),
                dtype=tf.float32):
   """Helper function to create an initial state given inputs.
 
@@ -45,8 +45,6 @@ def init_state(inputs,
     inferred_batch_size = 0
     batch_size = 0
   initial_state=tf.Variable(tf.zeros(tf.stack([batch_size] + state_shape)))
-  #initial_state = state_initializer(dtype=dtype)
-
   initial_state.set_shape([inferred_batch_size] + state_shape)
 
   return initial_state
@@ -99,9 +97,16 @@ def basic_conv_lstm_cell(inputs,
                             scope='Gates')
 
     # i = input_gate, j = new_input, f = forget_gate, o = output_gate
+
     i, j, f, o = tf.split(i_j_f_o, 4,3 )
+
 
     new_c = c * tf.sigmoid(f + forget_bias) + tf.sigmoid(i) * tf.tanh(j)
     new_h = tf.tanh(new_c) * tf.sigmoid(o)
 
     return new_h, tf.concat(axis=3, values=[new_c, new_h])
+
+
+
+
+

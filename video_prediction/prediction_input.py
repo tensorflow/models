@@ -107,8 +107,10 @@ def build_tfrecord_input(training=True):
       action = tf.reshape(features[action_name], shape=[1, STATE_DIM])
       action_seq.append(action)
 
-  image_seq = tf.concat( axis=0,values=image_seq) 
-       
+
+  image_seq = tf.concat(axis=0, values=image_seq)
+
+
   if FLAGS.use_state:
     state_seq = tf.concat(axis=0, values=state_seq)
     action_seq = tf.concat(axis=0, values=action_seq)

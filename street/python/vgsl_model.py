@@ -147,7 +147,7 @@ def Eval(train_dir,
       sequence_error=None)
   with tf.Graph().as_default():
     model = InitNetwork(eval_data, model_str, 'eval', reader=reader)
-    sw = tf.train.SummaryWriter(eval_dir)
+    sw = tf.summary.FileWriter(eval_dir)
 
     while True:
       sess = tf.Session('')
@@ -369,7 +369,7 @@ class VGSLImageModel(object):
     if self.mode == 'train':
       # Setup loss for training.
       self.loss = self._AddLossFunction(logits, height_in, out_dims, out_func)
-      tf.scalar_summary('loss', self.loss, name='loss')
+      tf.summary.scalar('loss', self.loss)
     elif out_dims == 0:
       # Be sure the labels match the output, even in eval mode.
       self.labels = tf.slice(self.labels, [0, 0], [-1, 1])
@@ -484,7 +484,7 @@ class VGSLImageModel(object):
       opt = tf.train.AdamOptimizer(learning_rate=learn_rate_dec)
     else:
       raise ValueError('Invalid optimizer type: ' + optimizer_type)
-    tf.scalar_summary('learn_rate', learn_rate_dec, name='lr_summ')
+    tf.summary.scalar('learn_rate', learn_rate_dec)
 
     self.train_op = opt.minimize(
         self.loss, global_step=self.global_step, name='train')

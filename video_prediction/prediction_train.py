@@ -115,11 +115,13 @@ class Model(object):
     prefixs=''
     
     # Split into timesteps.
+
     actions = tf.split(actions, actions.get_shape().as_list()[1],1)
     actions = [tf.squeeze(act) for act in actions]
     states = tf.split( states, states.get_shape().as_list()[1],1)
     states = [tf.squeeze(st) for st in states]
     images = tf.split(images, images.get_shape().as_list()[1],1 )
+
     images = [tf.squeeze(img) for img in images]
 
 
@@ -169,8 +171,10 @@ class Model(object):
       psnr_i = peak_signal_to_noise_ratio(x, gx)
       psnr_all += psnr_i
       summaries.append(
+
           tf.summary.scalar(prefixs + '_recon_cost' + str(i), recon_cost))
       summaries.append(tf.summary.scalar(prefixs + '_psnr' + str(i), psnr_i))
+
       loss += recon_cost
 
     for i, state, gen_state in zip(
@@ -178,14 +182,18 @@ class Model(object):
         gen_states[FLAGS.context_frames - 1:]):
       state_cost = mean_squared_error(state, gen_state) * 1e-4
       summaries.append(
+
           tf.summary.scalar(prefixs + '_state_cost' + str(i), state_cost))
       loss += state_cost
     summaries.append(tf.summary.scalar(prefixs + '_psnr_all', psnr_all))
+
     self.psnr_all = psnr_all
 
     self.loss = loss = loss / np.float32(len(images) - FLAGS.context_frames)
 
+
     summaries.append(tf.summary.scalar(prefixs + '_loss', loss))
+
 
     self.lr = tf.placeholder_with_default(FLAGS.learning_rate, ())
 
