@@ -109,7 +109,7 @@ def construct_model(images,
         prev_image = image
 
       # Predicted state is always fed back in
-      state_action = tf.concat(1, [action, current_state])
+      state_action = tf.concat([action, current_state], 1)
 
       enc0 = slim.layers.conv2d(
           prev_image,
@@ -207,7 +207,7 @@ def construct_model(images,
       masks = tf.reshape(
           tf.nn.softmax(tf.reshape(masks, [-1, num_masks + 1])),
           [int(batch_size), int(img_height), int(img_width), num_masks + 1])
-      mask_list = tf.split(3, num_masks + 1, masks)
+      mask_list = tf.split(masks, 3, num_masks + 1)
       output = mask_list[0] * prev_image
       for layer, mask in zip(transformed, mask_list[1:]):
         output += layer * mask
@@ -277,8 +277,8 @@ def cdna_transformation(prev_image, cdna_input, num_masks, color_channels):
   cdna_kerns /= norm_factor
 
   cdna_kerns = tf.tile(cdna_kerns, [1, 1, 1, color_channels, 1])
-  cdna_kerns = tf.split(0, batch_size, cdna_kerns)
-  prev_images = tf.split(0, batch_size, prev_image)
+  cdna_kerns = tf.split(cdna_kerns, 0, batch_size)
+  prev_images = tf.split(prev_image, 0, batch_size)
 
   # Transform image.
   transformed = []
@@ -289,7 +289,7 @@ def cdna_transformation(prev_image, cdna_input, num_masks, color_channels):
     transformed.append(
         tf.nn.depthwise_conv2d(preimg, kernel, [1, 1, 1, 1], 'SAME'))
   transformed = tf.concat(0, transformed)
-  transformed = tf.split(3, num_masks, transformed)
+  transformed = tf.split(transformed, 3, num_masks)
   return transformed
 
 
