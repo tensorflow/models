@@ -97,11 +97,11 @@ def build_tfrecord_input(training=True):
       action = tf.reshape(features[action_name], shape=[1, STATE_DIM])
       action_seq.append(action)
 
-  image_seq = tf.concat(0, image_seq)
+  image_seq = tf.concat(axis=0, values=image_seq)
 
   if FLAGS.use_state:
-    state_seq = tf.concat(0, state_seq)
-    action_seq = tf.concat(0, action_seq)
+    state_seq = tf.concat(axis=0, values=state_seq)
+    action_seq = tf.concat(axis=0, values=action_seq)
     [image_batch, action_batch, state_batch] = tf.train.batch(
         [image_seq, action_seq, state_seq],
         FLAGS.batch_size,

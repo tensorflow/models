@@ -149,7 +149,7 @@ class VGSLSpecs(object):
     else:
       lengths = tf.ones_like(lengths)
     if factor != 1:
-      lengths = tf.mul(lengths, tf.cast(factor, tf.float32))
+      lengths = tf.multiply(lengths, tf.cast(factor, tf.float32))
     return tf.cast(lengths, tf.int32)
 
   def BuildFromString(self, prev_layer, index):
@@ -235,7 +235,7 @@ class VGSLSpecs(object):
         final_factors = self.reduction_factors
     if index == len(self.model_str):
       raise ValueError('Missing ) at end of parallel!' + self.model_str)
-    return tf.concat(num_dims - 1, layers), index + 1
+    return tf.concat(axis=num_dims - 1, values=layers), index + 1
 
   def AddConvLayer(self, prev_layer, index):
     """Add a single standard convolutional layer.
@@ -342,7 +342,7 @@ class VGSLSpecs(object):
         factor1 = tf.cast(self.reduction_factors[i], tf.float32)
         factor2 = tf.cast(prev_shape[i], tf.float32)
         divisor = tf.cast(result_shape[i], tf.float32)
-        self.reduction_factors[i] = tf.div(tf.mul(factor1, factor2), divisor)
+        self.reduction_factors[i] = tf.div(tf.multiply(factor1, factor2), divisor)
     return layer, m.end()
 
   def AddFCLayer(self, prev_layer, index):
@@ -401,7 +401,7 @@ class VGSLSpecs(object):
                             name + '_forward')
       back = self._LSTMLayer(prev_layer, 'backward', dim, True, depth,
                              name + '_reverse')
-      return tf.concat(3, [fwd, back], name=name + '_concat'), m.end()
+      return tf.concat(axis=3, values=[fwd, back], name=name + '_concat'), m.end()
     if direction == 'f':
       direction = 'forward'
     elif direction == 'r':

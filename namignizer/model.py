@@ -64,7 +64,7 @@ class NamignizerModel(object):
                 (cell_output, state) = cell(inputs[:, time_step, :], state)
                 outputs.append(cell_output)
 
-        output = tf.reshape(tf.concat(outputs, 1), [-1, size])
+        output = tf.reshape(tf.concat(axis=1, values=outputs), [-1, size])
         softmax_w = tf.get_variable("softmax_w", [size, vocab_size])
         softmax_b = tf.get_variable("softmax_b", [vocab_size])
         logits = tf.matmul(output, softmax_w) + softmax_b

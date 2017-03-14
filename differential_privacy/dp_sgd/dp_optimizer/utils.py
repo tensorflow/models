@@ -236,7 +236,7 @@ def BatchClipByL2norm(t, upper_bound, name=None):
   with tf.op_scope([t, upper_bound], name, "batch_clip_by_l2norm") as name:
     saved_shape = tf.shape(t)
     batch_size = tf.slice(saved_shape, [0], [1])
-    t2 = tf.reshape(t, tf.concat(0, [batch_size, [-1]]))
+    t2 = tf.reshape(t, tf.concat(axis=0, values=[batch_size, [-1]]))
     upper_bound_inv = tf.fill(tf.slice(saved_shape, [0], [1]),
                               tf.constant(1.0/upper_bound))
     # Add a small number to avoid divide by 0
@@ -266,7 +266,7 @@ def SoftThreshold(t, threshold_ratio, name=None):
   assert threshold_ratio >= 0
   with tf.op_scope([t, threshold_ratio], name, "soft_thresholding") as name:
     saved_shape = tf.shape(t)
-    t2 = tf.reshape(t, tf.concat(0, [tf.slice(saved_shape, [0], [1]), -1]))
+    t2 = tf.reshape(t, tf.concat(axis=0, values=[tf.slice(saved_shape, [0], [1]), -1]))
     t_abs = tf.abs(t2)
     t_x = tf.sign(t2) * tf.nn.relu(t_abs -
                                    (tf.reduce_mean(t_abs, [0],

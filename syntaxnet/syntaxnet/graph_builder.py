@@ -69,7 +69,7 @@ def EmbeddingLookupFeatures(params, sparse_features, allow_weights):
 
   if allow_weights:
     # Multiply by weights, reshaping to allow broadcast.
-    broadcast_weights_shape = tf.concat([tf.shape(weights), [1]], 0)
+    broadcast_weights_shape = tf.concat(axis=0, values=[tf.shape(weights), [1]])
     embeddings *= tf.reshape(weights, broadcast_weights_shape)
 
   # Sum embeddings by index.
@@ -330,7 +330,7 @@ class GreedyParser(object):
                                            i,
                                            return_average=return_average))
 
-    last_layer = tf.concat(embeddings, 1)
+    last_layer = tf.concat(axis=1, values=embeddings)
     last_layer_size = self.embedding_size
 
     # Create ReLU layers.
