@@ -115,7 +115,7 @@ def loss(logits, labels, batch_size=None):
   # shape [FLAGS.batch_size, num_classes].
   sparse_labels = tf.reshape(labels, [batch_size, 1])
   indices = tf.reshape(tf.range(batch_size), [batch_size, 1])
-  concated = tf.concat(1, [indices, sparse_labels])
+  concated = tf.concat([indices, sparse_labels], 1)
   num_classes = logits[0].get_shape()[-1].value
   dense_labels = tf.sparse_to_dense(concated,
                                     [batch_size, num_classes],
