@@ -369,7 +369,7 @@ class VGSLImageModel(object):
     if self.mode == 'train':
       # Setup loss for training.
       self.loss = self._AddLossFunction(logits, height_in, out_dims, out_func)
-      tf.summary.scalar('loss', self.loss, name='loss')
+      tf.summary.scalar('loss', self.loss)
     elif out_dims == 0:
       # Be sure the labels match the output, even in eval mode.
       self.labels = tf.slice(self.labels, [0, 0], [-1, 1])
@@ -484,7 +484,7 @@ class VGSLImageModel(object):
       opt = tf.train.AdamOptimizer(learning_rate=learn_rate_dec)
     else:
       raise ValueError('Invalid optimizer type: ' + optimizer_type)
-    tf.summary.scalar('learn_rate', learn_rate_dec, name='lr_summ')
+    tf.summary.scalar('learn_rate', learn_rate_dec)
 
     self.train_op = opt.minimize(
         self.loss, global_step=self.global_step, name='train')
