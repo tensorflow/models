@@ -24,6 +24,11 @@ model architecture.
 
 ## Description of Code
 
+NOTE: For the most part, you will find a newer version of this code at [models/slim](https://github.com/tensorflow/models/tree/master/slim). In particular:
+
+*   `inception_train.py` and `imagenet_train.py` should no longer be used. The slim editions for running on multiple GPUs are the current best examples.
+*   `inception_distributed_train.py` and `imagenet_distributed_train.py` are still valid examples of distributed training.
+
 The code base provides three core binaries for:
 
 *   Training an Inception v3 network from scratch across multiple GPUs and/or
@@ -477,7 +482,7 @@ and `validation-?????-of-00001`, respectively.
 you will need to invoke [`build_image_data.py`](inception/data/build_image_data.py) on
 your custom data set. Please see the associated options and assumptions behind
 this script by reading the comments section of [`build_image_data.py`]
-(inception/data/build_image_data.py). Also, if your custom data has a different 
+(inception/data/build_image_data.py). Also, if your custom data has a different
 number of examples or classes, you need to change the appropriate values in
 [`imagenet_data.py`](inception/imagenet_data.py).
 
@@ -704,8 +709,8 @@ respectively. Generally speaking, we aim for selecting the number of shards such
 that roughly 1024 images reside in each shard. Once this data set is built, you
 are ready to train or fine-tune an Inception model on this data set.
 
-Note, if you are piggy backing on the flowers retraining scripts, be sure to 
-update `num_classes()` and `num_examples_per_epoch()` in `flowers_data.py` 
+Note, if you are piggy backing on the flowers retraining scripts, be sure to
+update `num_classes()` and `num_examples_per_epoch()` in `flowers_data.py`
 to correspond with your data.
 
 ## Practical Considerations for Training a Model
