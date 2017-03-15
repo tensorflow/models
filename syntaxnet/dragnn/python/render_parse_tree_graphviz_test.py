@@ -17,7 +17,7 @@ class RenderParseTreeGraphvizTest(googletest.TestCase):
     document.token.add(start=1, end=1, word='there')
     contents = render_parse_tree_graphviz.parse_tree_graph(document)
     self.assertIn('<polygon', contents)
-    self.assertIn('text/html;base64', contents)
+    self.assertIn('text/html;charset=utf-8;base64', contents)
     self.assertIn('something', contents)
     self.assertIn('hi', contents)
     self.assertIn('there', contents)
