@@ -307,8 +307,9 @@ class SwivelModel(object):
 
     with tf.device('/cpu:0'):
       # ===== MERGE LOSSES =====
-      l2_loss = tf.reduce_mean(tf.concat(l2_losses, 0), 0, name="l2_loss")
-      sigmoid_loss = tf.reduce_mean(tf.concat(sigmoid_losses, 0), 0,
+      l2_loss = tf.reduce_mean(tf.concat(axis=0, values=l2_losses), 0,
+                               name="l2_loss")
+      sigmoid_loss = tf.reduce_mean(tf.concat(axis=0, values=sigmoid_losses), 0,
                                     name="sigmoid_loss")
       self.loss = l2_loss + sigmoid_loss
       average = tf.train.ExponentialMovingAverage(0.8, self.global_step)
