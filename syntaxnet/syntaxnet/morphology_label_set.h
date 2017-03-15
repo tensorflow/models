@@ -19,8 +19,8 @@ limitations under the License.
 #ifndef SYNTAXNET_MORPHOLOGY_LABEL_SET_H_
 #define SYNTAXNET_MORPHOLOGY_LABEL_SET_H_
 
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "syntaxnet/proto_io.h"

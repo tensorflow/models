@@ -22,7 +22,6 @@ limitations under the License.
 #include <vector>
 
 #include "syntaxnet/document_format.h"
-#include "syntaxnet/feature_extractor.pb.h"
 #include "syntaxnet/feature_types.h"
 #include "syntaxnet/registry.h"
 #include "syntaxnet/sentence.pb.h"
@@ -227,7 +226,7 @@ class TextWriter {
 
   ~TextWriter() {
     if (file_) {
-      file_->Close();
+      TF_CHECK_OK(file_->Close());
     }
   }
 

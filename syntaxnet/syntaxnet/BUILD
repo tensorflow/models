@@ -3,7 +3,7 @@
 
 package(
     default_visibility = [
-        "//visibility:private",
+        "//visibility:public",
     ],
     features = ["-layering_check"],
 )
@@ -112,6 +112,7 @@ cc_library(
     deps = [
         "//external:gtest",
         "@org_tensorflow//tensorflow/core:lib",
+        "@org_tensorflow//tensorflow/core:test",
         "@org_tensorflow//tensorflow/core:testlib",
     ],
 )
@@ -131,6 +132,7 @@ cc_library(
     name = "text_formats",
     srcs = ["text_formats.cc"],
     deps = [
+        ":base",
         ":document_format",
         ":segmenter_utils",
         ":sentence_proto",
@@ -169,6 +171,17 @@ cc_library(
         "//util/utf8:unicodetext",
     ],
     alwayslink = 1,
+)
+
+cc_library(
+    name = "char_ngram_string_extractor",
+    srcs = ["char_ngram_string_extractor.cc"],
+    hdrs = ["char_ngram_string_extractor.h"],
+    deps = [
+        ":segmenter_utils",
+        ":task_context",
+        "@org_tensorflow//tensorflow/core:lib",
+    ],
 )
 
 cc_library(
@@ -223,10 +236,31 @@ cc_library(
     hdrs = ["sentence_features.h"],
     deps = [
         ":affix",
+        ":char_ngram_string_extractor",
+        ":char_properties",
         ":feature_extractor",
         ":registry",
         ":segmenter_utils",
+        ":shared_store",
+        ":task_context",
+        ":workspace",
+        "//util/utf8:unicodetext",
     ],
+    alwayslink = 1,
+)
+
+cc_library(
+    name = "whole_sentence_features",
+    srcs = ["whole_sentence_features.cc"],
+    hdrs = ["whole_sentence_features.h"],
+    deps = [
+        ":base",
+        ":feature_extractor",
+        ":registry",
+        ":task_context",
+        ":workspace",
+    ],
+    alwayslink = 1,
 )
 
 cc_library(
@@ -297,22 +331,29 @@ cc_library(
         "arc_standard_transitions.cc",
         "binary_segment_state.cc",
         "binary_segment_transitions.cc",
+        "char_shift_transitions.cc",
+        "head_transitions.cc",
+        "head_transitions.h",
+        "label_transitions.cc",
+        "label_transitions.h",
         "morpher_transitions.cc",
+        "once_transitions.cc",
         "parser_features.cc",
         "parser_state.cc",
         "parser_transitions.cc",
+        "shift_transitions.cc",
         "tagger_transitions.cc",
     ],
     hdrs = [
         "binary_segment_state.h",
+        "char_shift_transitions.h",
         "parser_features.h",
         "parser_state.h",
         "parser_transitions.h",
     ],
     deps = [
-        ":affix",
+        ":base",
         ":feature_extractor",
-        ":kbest_syntax_proto",
         ":morphology_label_set",
         ":registry",
         ":segmenter_utils",
@@ -321,7 +362,10 @@ cc_library(
         ":shared_store",
         ":task_context",
         ":term_frequency_map",
+        ":utils",
+        ":whole_sentence_features",
         ":workspace",
+        "@org_tensorflow//tensorflow/core:lib",
     ],
     alwayslink = 1,
 )
@@ -348,9 +392,12 @@ cc_library(
     deps = [
         ":feature_extractor",
         ":parser_transitions",
+        ":sentence_features",
         ":sparse_proto",
         ":task_context",
+        ":utils",
         ":workspace",
+        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 
@@ -394,6 +441,7 @@ cc_library(
     deps = [
         ":document_format",
         ":parser_transitions",
+        ":segmenter_utils",
         ":sentence_batch",
         ":sentence_proto",
         ":task_context",
@@ -406,14 +454,18 @@ cc_library(
     name = "lexicon_builder",
     srcs = ["lexicon_builder.cc"],
     deps = [
-        ":dictionary_proto",
-        ":document_format",
+        ":affix",
+        ":char_ngram_string_extractor",
+        ":feature_extractor",
         ":parser_transitions",
         ":segmenter_utils",
         ":sentence_batch",
         ":sentence_proto",
-        ":task_context",
+        ":term_frequency_map",
         ":text_formats",
+        ":utils",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:lib",
     ],
     alwayslink = 1,
 )
@@ -432,11 +484,11 @@ cc_library(
     name = "parser_ops_cc",
     srcs = ["ops/parser_ops.cc"],
     deps = [
-        ":base",
         ":document_filters",
         ":lexicon_builder",
         ":reader_ops",
         ":unpack_sparse_features",
+        "@org_tensorflow//tensorflow/core:framework",
     ],
     alwayslink = 1,
 )
@@ -502,6 +554,17 @@ cc_test(
 )
 
 cc_test(
+    name = "char_ngram_string_extractor_test",
+    srcs = ["char_ngram_string_extractor_test.cc"],
+    deps = [
+        ":char_ngram_string_extractor",
+        ":task_context",
+        ":test_main",
+        "@org_tensorflow//tensorflow/core:test",
+    ],
+)
+
+cc_test(
     name = "segmenter_utils_test",
     srcs = ["segmenter_utils_test.cc"],
     deps = [
@@ -525,6 +588,23 @@ cc_test(
         ":task_spec_proto",
         ":term_frequency_map",
         ":test_main",
+        ":utils",
+        ":workspace",
+    ],
+)
+
+cc_test(
+    name = "whole_sentence_features_test",
+    size = "medium",
+    srcs = ["whole_sentence_features_test.cc"],
+    deps = [
+        ":feature_extractor",
+        ":parser_transitions",
+        ":sentence_proto",
+        ":task_context",
+        ":term_frequency_map",
+        ":test_main",
+        ":whole_sentence_features",
         ":workspace",
     ],
 )
@@ -542,6 +622,20 @@ cc_test(
     name = "arc_standard_transitions_test",
     size = "small",
     srcs = ["arc_standard_transitions_test.cc"],
+    data = [":testdata"],
+    deps = [
+        ":parser_transitions",
+        ":populate_test_inputs",
+        ":sentence_proto",
+        ":task_spec_proto",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "char_shift_transitions_test",
+    size = "small",
+    srcs = ["char_shift_transitions_test.cc"],
     data = [":testdata"],
     deps = [
         ":parser_transitions",
@@ -575,6 +669,48 @@ cc_test(
         ":populate_test_inputs",
         ":sentence_proto",
         ":task_spec_proto",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "once_transitions_test",
+    size = "small",
+    srcs = ["once_transitions_test.cc"],
+    deps = [
+        ":base",
+        ":parser_transitions",
+        ":sentence_proto",
+        ":task_context",
+        ":term_frequency_map",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "head_transitions_test",
+    size = "small",
+    srcs = ["head_transitions_test.cc"],
+    deps = [
+        ":base",
+        ":parser_transitions",
+        ":sentence_proto",
+        ":task_context",
+        ":term_frequency_map",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "label_transitions_test",
+    size = "small",
+    srcs = ["label_transitions_test.cc"],
+    deps = [
+        ":base",
+        ":parser_transitions",
+        ":sentence_proto",
+        ":task_context",
+        ":term_frequency_map",
         ":test_main",
     ],
 )

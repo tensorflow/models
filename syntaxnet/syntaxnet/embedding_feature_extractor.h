@@ -21,13 +21,13 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/feature_types.h"
 #include "syntaxnet/parser_features.h"
 #include "syntaxnet/sentence_features.h"
 #include "syntaxnet/sparse.pb.h"
 #include "syntaxnet/task_context.h"
+#include "syntaxnet/utils.h"
 #include "syntaxnet/workspace.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 
@@ -77,6 +77,10 @@ class GenericEmbeddingFeatureExtractor {
   // Returns the dimensionality of the embedding space.
   int EmbeddingDims(int index) const { return embedding_dims_[index]; }
 
+  // Returns the full feature mapping for the given feature channel.
+  // Returns an empty vector if the named embedding doesn't exist.
+  std::vector<string> GetMappingsForEmbedding(const string &embedding_name);
+
   // Accessor for embedding dims (dimensions of the embedding spaces).
   const std::vector<int> &embedding_dims() const { return embedding_dims_; }
 
@@ -91,6 +95,8 @@ class GenericEmbeddingFeatureExtractor {
   const string &embedding_name(int index) const {
     return embedding_names_[index];
   }
+
+  void set_add_strings(bool add_strings) { add_strings_ = add_strings; }
 
  protected:
   // Provides the generic class with access to the templated extractors. This is
@@ -121,7 +127,7 @@ class GenericEmbeddingFeatureExtractor {
   std::vector<int> embedding_dims_;
 
   // Whether or not to add string descriptions to converted examples.
-  bool add_strings_;
+  bool add_strings_ = false;
 };
 
 // Templated, object-specific implementation of the

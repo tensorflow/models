@@ -20,7 +20,11 @@ limitations under the License.
 #ifndef SYNTAXNET_SENTENCE_FEATURES_H_
 #define SYNTAXNET_SENTENCE_FEATURES_H_
 
+#include <map>
+#include <string>
+
 #include "syntaxnet/affix.h"
+#include "syntaxnet/char_ngram_string_extractor.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/feature_types.h"
 #include "syntaxnet/segmenter_utils.h"
@@ -42,8 +46,13 @@ using Locator = FeatureLocator<DER, Sentence, int>;
 class TokenLookupFeature : public SentenceFeature {
  public:
   void Init(TaskContext *context) override {
+    std::map<FeatureValue, string> special_values;
+    if (use_outside_) {
+      outside_value_ = NumValues();
+      special_values[outside_value_] = "<OUTSIDE>";
+    }
     set_feature_type(new ResourceBasedFeatureType<TokenLookupFeature>(
-        name(), this, {{NumValues(), "<OUTSIDE>"}}));
+        name(), this, special_values));
   }
 
   // Given a position in a sentence and workspaces, looks up the corresponding
@@ -77,19 +86,26 @@ class TokenLookupFeature : public SentenceFeature {
     workspace_ = registry->Request<VectorIntWorkspace>(WorkspaceName());
   }
 
-  // Returns the precomputed value, or NumValues() for features outside
-  // the sentence.
+  // Returns the precomputed value, or |outside_value_| for features outside the
+  // sentence.
   FeatureValue Compute(const WorkspaceSet &workspaces,
                        const Sentence &sentence, int focus,
                        const FeatureVector *result) const override {
-    if (focus < 0 || focus >= sentence.token_size()) return NumValues();
+    if (focus < 0 || focus >= sentence.token_size()) return outside_value_;
     return workspaces.Get<VectorIntWorkspace>(workspace_).element(focus);
   }
 
   int Workspace() const { return workspace_; }
 
+ protected:
+  // Sets whether this feature extracts a special value for outside tokens.
+  // Should be called before Init().
+  void set_use_outside(bool use) { use_outside_ = use; }
+
  private:
   int workspace_;
+  bool use_outside_ = true;
+  FeatureValue outside_value_ = kNone;
 };
 
 // A multi purpose specialization of the feature. Processes the tokens in a
@@ -305,6 +321,23 @@ class Word : public TermFrequencyMapFeature {
   }
 };
 
+// Like Word, but extracts nothing for outside or unknown words.
+class KnownWord : public TermFrequencyMapFeature {
+ public:
+  KnownWord() : TermFrequencyMapFeature("known-word-map") {
+    set_use_outside(false);
+  }
+
+  // Returns the number of terms, with no room for additional feature values.
+  int64 NumValues() const override { return term_map().Size(); }
+
+  // Returns -1 for unknown words, so no features are extracted.
+  FeatureValue ComputeValue(const Token &token) const override {
+    const string &form = token.word();
+    return term_map().LookupIndex(form, -1);
+  }
+};
+
 class Char : public TermFrequencyMapFeature {
  public:
   Char() : TermFrequencyMapFeature("char-map") {}
@@ -368,23 +401,14 @@ class CharNgram : public TermFrequencyMapSetFeature {
   CharNgram() : TermFrequencyMapSetFeature("char-ngram-map") {}
   ~CharNgram() override {}
 
-  void Setup(TaskContext *context) override {
-    TermFrequencyMapSetFeature::Setup(context);
-    max_char_ngram_length_ = context->Get("lexicon_max_char_ngram_length", 3);
-    use_terminators_ =
-        context->Get("lexicon_char_ngram_include_terminators", false);
-  }
-
-  // Returns index of raw word text.
+  void Setup(TaskContext *context) override;
+  string WorkspaceName() const override;
   void GetTokenIndices(const Token &token,
                        std::vector<int> *values) const override;
 
  private:
-  // Size parameter (n) for the ngrams.
-  int max_char_ngram_length_ = 3;
-
-  // Whether to pad the word with ^ and $ before extracting ngrams.
-  bool use_terminators_ = false;
+  // Extractor that implements the feature.
+  CharNgramStringExtractor extractor_;
 };
 
 class MorphologySet : public TermFrequencyMapSetFeature {
