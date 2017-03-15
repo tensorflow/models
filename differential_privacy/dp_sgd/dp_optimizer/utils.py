@@ -233,7 +233,8 @@ def BatchClipByL2norm(t, upper_bound, name=None):
   """
 
   assert upper_bound > 0
-  with tf.op_scope([t, upper_bound], name, "batch_clip_by_l2norm") as name:
+  with tf.name_scope(values=[t, upper_bound], name=name,
+                     default_name="batch_clip_by_l2norm") as name:
     saved_shape = tf.shape(t)
     batch_size = tf.slice(saved_shape, [0], [1])
     t2 = tf.reshape(t, tf.concat(axis=0, values=[batch_size, [-1]]))
@@ -264,7 +265,8 @@ def SoftThreshold(t, threshold_ratio, name=None):
   """
 
   assert threshold_ratio >= 0
-  with tf.op_scope([t, threshold_ratio], name, "soft_thresholding") as name:
+  with tf.name_scope(values=[t, threshold_ratio], name=name,
+                     default_name="soft_thresholding") as name:
     saved_shape = tf.shape(t)
     t2 = tf.reshape(t, tf.concat(axis=0, values=[tf.slice(saved_shape, [0], [1]), -1]))
     t_abs = tf.abs(t2)
@@ -286,7 +288,8 @@ def AddGaussianNoise(t, sigma, name=None):
     the noisy tensor.
   """
 
-  with tf.op_scope([t, sigma], name, "add_gaussian_noise") as name:
+  with tf.name_scope(values=[t, sigma], name=name,
+                     default_name="add_gaussian_noise") as name:
     noisy_t = t + tf.random_normal(tf.shape(t), stddev=sigma)
   return noisy_t
 

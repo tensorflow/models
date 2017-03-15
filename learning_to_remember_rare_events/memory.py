@@ -151,8 +151,9 @@ class Memory(object):
 
     if output_given and use_recent_idx:  # add at least one correct memory
       most_recent_hint_idx = tf.gather(self.recent_idx, intended_output)
-      hint_pool_idxs = tf.concat([hint_pool_idxs,
-                                  tf.expand_dims(most_recent_hint_idx, 1)], 1)
+      hint_pool_idxs = tf.concat(
+          axis=1,
+          values=[hint_pool_idxs, tf.expand_dims(most_recent_hint_idx, 1)])
     choose_k = tf.shape(hint_pool_idxs)[1]
 
     with tf.device(self.var_cache_device):
@@ -351,7 +352,7 @@ class LSHMemory(Memory):
             self.memory_size - 1), 0)
         for i, idxs in enumerate(hash_slot_idxs)]
 
-    return tf.concat(hint_pool_idxs, 1)
+    return tf.concat(axis=1, values=hint_pool_idxs)
 
   def make_update_op(self, upd_idxs, upd_keys, upd_vals,
                      batch_size, use_recent_idx, intended_output):
