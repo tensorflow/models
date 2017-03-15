@@ -331,7 +331,7 @@ def train(dataset):
 
     summary_writer = tf.summary.FileWriter(
         FLAGS.train_dir,
-        graph_def=sess.graph.as_graph_def(add_shapes=True))
+        graph=sess.graph)
 
     for step in range(FLAGS.max_steps):
       start_time = time.time()
