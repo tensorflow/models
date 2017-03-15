@@ -54,6 +54,7 @@ flags.DEFINE_string('timeline_output_file', '', 'Path to save timeline to. '
 
 
 def main(unused_argv):
+  tf.logging.set_verbosity(tf.logging.INFO)
 
   # Parse the flags containint lists, using regular expressions.
   # This matches and extracts key=value pairs.
@@ -133,7 +134,6 @@ def main(unused_argv):
     tf.logging.info('Processed %d documents in %.2f seconds.',
                     len(input_corpus), time.time() - start_time)
     pos, uas, las = evaluation.calculate_parse_metrics(input_corpus, processed)
-    print 'POS %.2f UAS %.2f LAS %.2f' % (pos, uas, las)
 
     if FLAGS.output_file:
       with gfile.GFile(FLAGS.output_file, 'w') as f:
