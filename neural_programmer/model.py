@@ -135,7 +135,7 @@ class Graph():
     #Attention on quetsion to decide the question number to passed to comparison ops
     def compute_ans(op_embedding, comparison):
       op_embedding = tf.expand_dims(op_embedding, 0)
-      #dot product of operation embedding with hidden state to the left of the number occurence
+      #dot product of operation embedding with hidden state to the left of the number occurrence
       first = tf.transpose(
           tf.matmul(op_embedding,
                     tf.transpose(

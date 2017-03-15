@@ -152,7 +152,7 @@ class MomentsAccountant(object):
   We further assume that at each step, the mechanism operates on a random
   sample with sampling probability q = batch_size / total_examples. Then
     E[exp(L X)] = E[(Pr[M(D)==x / Pr[M(D')==x])^L]
-  By distinguishign two cases of wether D < D' or D' < D, we have
+  By distinguishing two cases of whether D < D' or D' < D, we have
   that
     E[exp(L X)] <= max (I1, I2)
   where

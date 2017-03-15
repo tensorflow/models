@@ -14,7 +14,7 @@
 """A library showing off sequence recognition and generation with the simple
 example of names.
 
-We use recurrent neural nets to learn complex functions able to recogize and
+We use recurrent neural nets to learn complex functions able to recognize and
 generate sequences of a given form. This can be used for natural language
 syntax recognition, dynamically generating maps or puzzles and of course
 baby name generation.

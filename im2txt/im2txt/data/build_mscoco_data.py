@@ -424,7 +424,7 @@ def _load_and_process_metadata(captions_file, image_dir):
         (len(id_to_filename), captions_file))
 
   # Process the captions and combine the data into a list of ImageMetadata.
-  print("Proccessing captions.")
+  print("Processing captions.")
   image_metadata = []
   num_captions = 0
   for image_id, base_filename in id_to_filename:

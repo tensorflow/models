@@ -15,7 +15,7 @@
 """Contains convenience wrappers for typical Neural Network TensorFlow layers.
 
    Additionally it maintains a collection with update_ops that need to be
-   updated after the ops have been computed, for exmaple to update moving means
+   updated after the ops have been computed, for example to update moving means
    and moving variances of batch_norm.
 
    Ops that have different behavior during training or eval have an is_training

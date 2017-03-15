@@ -191,7 +191,7 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
         end_points['Mixed_6a'] = net
         net = slim.repeat(net, 20, block17, scale=0.10)
 
-        # Auxillary tower
+        # Auxiliary tower
         with tf.variable_scope('AuxLogits'):
           aux = slim.avg_pool2d(net, 5, stride=3, padding='VALID',
                                 scope='Conv2d_1a_3x3')

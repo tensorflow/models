@@ -89,7 +89,7 @@ RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
 def train(target, dataset, cluster_spec):
   """Train Inception on a dataset for a number of steps."""
-  # Number of workers and parameter servers are infered from the workers and ps
+  # Number of workers and parameter servers are inferred from the workers and ps
   # hosts string.
   num_workers = len(cluster_spec.as_dict()['worker'])
   num_parameter_servers = len(cluster_spec.as_dict()['ps'])
