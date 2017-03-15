@@ -610,7 +610,7 @@ class BeamParseReader : public OpKernel {
     // Write features.
     batch_state_->ResetBeams();
     batch_state_->ResetOffsets();
-    batch_state_->PopulateFeatureOutputs(context);
+    TF_CHECK_OK(batch_state_->PopulateFeatureOutputs(context));
 
     // Forward the beam state vector.
     Tensor *output;

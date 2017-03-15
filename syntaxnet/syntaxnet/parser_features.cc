@@ -167,6 +167,9 @@ REGISTER_PARSER_IDX_FEATURE_FUNCTION("label", LabelFeatureFunction);
 typedef BasicParserSentenceFeatureFunction<Word> WordFeatureFunction;
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("word", WordFeatureFunction);
 
+typedef BasicParserSentenceFeatureFunction<KnownWord> KnownWordFeatureFunction;
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("known-word", KnownWordFeatureFunction);
+
 typedef BasicParserSentenceFeatureFunction<Char> CharFeatureFunction;
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("char", CharFeatureFunction);
 
@@ -202,8 +205,9 @@ REGISTER_PARSER_IDX_FEATURE_FUNCTION("suffix", SuffixFeatureFunction);
 
 // Parser feature function that can use nested sentence feature functions for
 // feature extraction.
-class ParserTokenFeatureFunction : public NestedFeatureFunction<
-  FeatureFunction<Sentence, int>, ParserState, int> {
+class ParserTokenFeatureFunction
+    : public NestedFeatureFunction<FeatureFunction<Sentence, int>, ParserState,
+                                   int> {
  public:
   void Preprocess(WorkspaceSet *workspaces, ParserState *state) const override {
     for (auto *function : nested_) {
@@ -221,13 +225,39 @@ class ParserTokenFeatureFunction : public NestedFeatureFunction<
   // Returns the first nested feature's computed value.
   FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
                        int focus, const FeatureVector *result) const override {
-    if (nested_.empty()) return -1;
+    if (nested_.empty()) return kNone;
     return nested_[0]->Compute(workspaces, state.sentence(), focus, result);
   }
 };
 
-REGISTER_PARSER_IDX_FEATURE_FUNCTION("token",
-                                     ParserTokenFeatureFunction);
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("token", ParserTokenFeatureFunction);
+
+class ParserWholeSentenceFeatureFunction
+    : public NestedFeatureFunction<FeatureFunction<Sentence>, ParserState> {
+ public:
+  void Preprocess(WorkspaceSet *workspaces, ParserState *state) const override {
+    for (auto *function : nested_) {
+      function->Preprocess(workspaces, state->mutable_sentence());
+    }
+  }
+
+  void Evaluate(const WorkspaceSet &workspaces, const ParserState &state,
+                FeatureVector *result) const override {
+    for (auto *function : nested_) {
+      function->Evaluate(workspaces, state.sentence(), result);
+    }
+  }
+
+  // Returns the first nested feature's computed value.
+  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
+                       const FeatureVector *result) const override {
+    if (nested_.empty()) return kNone;
+    return nested_[0]->Compute(workspaces, state.sentence(), result);
+  }
+};
+
+REGISTER_PARSER_FEATURE_FUNCTION("sentence",
+                                 ParserWholeSentenceFeatureFunction);
 
 // Parser feature that always fetches the focus (position) of the token.
 class FocusFeatureFunction : public ParserIndexFeatureFunction {
@@ -253,5 +283,68 @@ class FocusFeatureFunction : public ParserIndexFeatureFunction {
 };
 
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("focus", FocusFeatureFunction);
+
+// Parser feature that returns the gold head of the token.
+class GoldHeadFeatureFunction : public FocusFeatureFunction {
+ public:
+  void Evaluate(const WorkspaceSet &workspaces, const ParserState &state,
+                int focus, FeatureVector *result) const override {
+    if (focus >= -1 && focus < state.NumTokens()) focus = state.GoldHead(focus);
+    result->add(feature_type(), focus);
+  }
+
+  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
+                       int focus, const FeatureVector *result) const override {
+    if (focus >= -1 && focus < state.NumTokens()) focus = state.GoldHead(focus);
+    return focus;
+  }
+};
+
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("gold-head", GoldHeadFeatureFunction);
+
+// Parser feature returning a previous predicted action.
+class LastActionFeatureFunction : public ParserFeatureFunction {
+ public:
+  void Init(TaskContext *context) override {
+    // NB: The "100" here is totally bogus, but it doesn't matter if predicate
+    // maps will be used.
+    set_feature_type(new NumericFeatureType(name(), 100));
+  }
+
+  // Turn on history tracking for the parser state to get the history of
+  // features.
+  void Preprocess(WorkspaceSet *workspaces, ParserState *state) const override {
+    state->set_keep_history(true);
+  }
+
+  // Returns '0' for no prior action, otherwise returns the action.
+  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
+                       const FeatureVector *result) const override {
+    const int history_size = state.history().size();
+    const int offset = history_size - argument() - 1;
+    if (offset < 0 || offset >= history_size) return 0;
+    return state.history().at(offset) + 1;
+  }
+};
+
+REGISTER_PARSER_FEATURE_FUNCTION("last-action", LastActionFeatureFunction);
+
+class Constant : public ParserFeatureFunction {
+ public:
+  void Init(TaskContext *context) override {
+    value_ = this->GetIntParameter("value", 0);
+    this->set_feature_type(new NumericFeatureType(this->name(), value_ + 1));
+  }
+
+  // Returns the constant's value.
+  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
+                       const FeatureVector *result) const override {
+    return value_;
+  }
+ private:
+  int value_ = 0;
+};
+
+REGISTER_PARSER_FEATURE_FUNCTION("constant", Constant);
 
 }  // namespace syntaxnet

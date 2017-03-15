@@ -145,7 +145,10 @@ class ArcStandardTransitionSystem : public ParserTransitionSystem {
     // If the stack contains less than 2 tokens, the only valid parser action is
     // shift.
     if (state.StackSize() < 2) {
-      DCHECK(!state.EndOfInput());
+      // It is illegal to request the gold action if the transition system is
+      // in a terminal state.
+      CHECK(!state.EndOfInput());
+      VLOG(2) << "Gold action: SHIFT (stack < 2 tokens)";
       return ShiftAction();
     }
 
@@ -154,6 +157,7 @@ class ArcStandardTransitionSystem : public ParserTransitionSystem {
     if (state.GoldHead(state.Stack(0)) == state.Stack(1) &&
         DoneChildrenRightOf(state, state.Stack(0))) {
       const int gold_label = state.GoldLabel(state.Stack(0));
+      VLOG(2) << "Gold action: RIGHT_ARC, label:" << gold_label;
       return RightArcAction(gold_label);
     }
 
@@ -161,10 +165,12 @@ class ArcStandardTransitionSystem : public ParserTransitionSystem {
     // return a left arc action.
     if (state.GoldHead(state.Stack(1)) == state.Top()) {
       const int gold_label = state.GoldLabel(state.Stack(1));
+      VLOG(2) << "Gold action: LEFT_ARC, label:" << gold_label;
       return LeftArcAction(gold_label);
     }
 
     // Otherwise, shift.
+    VLOG(2) << "Gold action: SHIFT (default)";
     return ShiftAction();
   }
 
@@ -277,6 +283,8 @@ class ArcStandardTransitionSystem : public ParserTransitionSystem {
   // We are in a final state when we reached the end of the input and the stack
   // is empty.
   bool IsFinalState(const ParserState &state) const override {
+    VLOG(2) << "Final state check: EOI: " << state.EndOfInput()
+            << " Stack size: " << state.StackSize();
     return state.EndOfInput() && state.StackSize() < 2;
   }
 

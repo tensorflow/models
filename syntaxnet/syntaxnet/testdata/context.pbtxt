@@ -67,6 +67,12 @@ input {
   }
 }
 input {
+  name: 'char-ngram-map'
+  Part {
+    file_pattern: 'OUTPATH/char-ngram-map'
+  }
+}
+input {
   name: 'prefix-table'
   Part {
     file_pattern: 'OUTPATH/prefix-table'

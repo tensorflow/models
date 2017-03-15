@@ -20,13 +20,12 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/dictionary.pb.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/proto_io.h"
-#include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/term_frequency_map.h"
+#include "syntaxnet/utils.h"
 #include "syntaxnet/workspace.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 

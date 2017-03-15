@@ -26,9 +26,7 @@ limitations under the License.
 #include "syntaxnet/parser_state.h"
 #include "syntaxnet/parser_transitions.h"
 #include "syntaxnet/sentence.pb.h"
-#include "syntaxnet/sparse.pb.h"
 #include "syntaxnet/task_context.h"
-#include "syntaxnet/task_spec.pb.h"
 #include "syntaxnet/term_frequency_map.h"
 
 namespace syntaxnet {

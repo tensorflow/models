@@ -44,7 +44,6 @@ limitations under the License.
 #include "syntaxnet/feature_types.h"
 #include "syntaxnet/proto_io.h"
 #include "syntaxnet/registry.h"
-#include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/utils.h"
 #include "syntaxnet/workspace.h"
@@ -214,6 +213,7 @@ class GenericFeatureFunction {
   // If the named parameter is not found the global parameters are searched.
   string GetParameter(const string &name) const;
   int GetIntParameter(const string &name, int default_value) const;
+  bool GetBoolParameter(const string &name, bool default_value) const;
 
   // Returns the FML function description for the feature function, i.e. the
   // name and parameters without the nested features.

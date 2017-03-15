@@ -532,7 +532,7 @@ class WordEmbeddingInitializer : public OpKernel {
     for (uint64 offset = 0; s.ok(); offset += kBytesToRead) {
       tensorflow::StringPiece data;
       s.Update(source_file->Read(offset, kBytesToRead, &data, &scratch[0]));
-      target_file->Append(data);
+      TF_RETURN_IF_ERROR(target_file->Append(data));
     }
     if (s.code() == OUT_OF_RANGE) {
       return tensorflow::Status::OK();
