@@ -11,8 +11,7 @@ Please see our [paper](paper.pdf) more technical details about the model.
 
 *   Install SyntaxNet/DRAGNN following the install instructions.
 *   Download the models [here](https://drive.google.com/file/d/0BxpbZGYVZsEeSFdrUnBNMUp1YzQ/view?usp=sharing)
-*   Download the contest [data data and
-    tools](https://lindat.mff.cuni.cz/repository/xmlui/handle/11234/1-1976]).
+*   Download the contest [data and tools](http://universaldependencies.org/conll17/)
 *   Run the baseline_eval.py to run the pre-trained tokenizer and evaluate on
     the dev set.
 
