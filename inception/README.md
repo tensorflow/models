@@ -604,7 +604,7 @@ We find that the evaluation arrives at roughly 93.4% precision@1 after the model
 has been running for 2000 steps.
 
 ```shell
-Succesfully loaded model from /tmp/flowers/model.ckpt-1999 at step=1999.
+Successfully loaded model from /tmp/flowers/model.ckpt-1999 at step=1999.
 2016-03-01 16:52:51.761219: starting evaluation on (validation).
 2016-03-01 16:53:05.450419: [20 batches out of 20] (36.5 examples/sec; 0.684sec/batch)
 2016-03-01 16:53:05.450471: precision @ 1 = 0.9340 recall @ 5 = 0.9960 [500 examples]
