@@ -17,7 +17,7 @@ Please see our [paper](paper.pdf) more technical details about the model.
 
 You should obtain the following results on the dev sets with gold
 segmentation. Note: Our segmenter does not split multi-word tokens, which may
-not play nice (yet) the official evaluation script.
+not play nicely (yet) with the official evaluation script.
 
 | Language | UAS | LAS |
 | -------- | :--------: | :-------------: |
