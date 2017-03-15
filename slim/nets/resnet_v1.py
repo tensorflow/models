@@ -228,6 +228,7 @@ def resnet_v1_50(inputs,
                    include_root_block=True, reuse=reuse, scope=scope)
 resnet_v1_50.default_image_size = resnet_v1.default_image_size
 
+
 def resnet_v1_101(inputs,
                   num_classes=None,
                   is_training=True,
@@ -251,6 +252,7 @@ def resnet_v1_101(inputs,
                    include_root_block=True, reuse=reuse, scope=scope)
 resnet_v1_101.default_image_size = resnet_v1.default_image_size
 
+
 def resnet_v1_152(inputs,
                   num_classes=None,
                   is_training=True,
@@ -272,6 +274,7 @@ def resnet_v1_152(inputs,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, reuse=reuse, scope=scope)
 resnet_v1_152.default_image_size = resnet_v1.default_image_size
+
 
 def resnet_v1_200(inputs,
                   num_classes=None,
