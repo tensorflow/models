@@ -87,16 +87,14 @@ def train():
         return tf.train.SessionRunArgs(loss)  # Asks for loss value.
 
       def after_run(self, run_context, run_values):
-        log_frequency = FLAGS.log_frequency
-
-        if self._step % log_frequency == 0:
+        if self._step % FLAGS.log_frequency == 0:
           current_time = time.time()
           duration = current_time - self._start_time
           self._start_time = current_time
 
           loss_value = run_values.results
-          examples_per_sec = log_frequency * FLAGS.batch_size / duration
-          sec_per_batch = float(duration / log_frequency)
+          examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
+          sec_per_batch = float(duration / FLAGS.log_frequency)
 
           format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                         'sec/batch)')
