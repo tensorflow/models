@@ -15,9 +15,9 @@ Please see our [paper](paper.pdf) more technical details about the model.
 *   Run the baseline_eval.py to run the pre-trained tokenizer and evaluate on
     the dev set.
 
-You should obtain the following results on the dev sets with gold
-segmentation. Note: Our segmenter does not split multi-word tokens, which may
-not play nicely (yet) with the official evaluation script.
+You should obtain the following results on the dev sets with gold segmentation.
+Note: Our segmenter does not split multi-word tokens, which may not play nicely
+(yet) with the official evaluation script.
 
 | Language | UAS | LAS |
 | -------- | :--------: | :-------------: |
