@@ -52,9 +52,8 @@ tf.app.flags.DEFINE_integer('max_steps', 1000000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
-
-tf.app.flags.DEFINE_integer('log_steps_count', 10,
-                            """Log process results per count.""")
+tf.app.flags.DEFINE_integer('log_frequency', 10,
+                            """How often to log results to the console.""")
 
 
 def train():
@@ -88,16 +87,16 @@ def train():
         return tf.train.SessionRunArgs(loss)  # Asks for loss value.
 
       def after_run(self, run_context, run_values):
-        log_steps = FLAGS.log_steps_count
-        if self._step % log_steps == 0:
-          duration = time.time() - self._start_time
-          self._start_time = time.time()
+        log_frequency = FLAGS.log_frequency
+
+        if self._step % log_frequency == 0:
+          current_time = time.time()
+          duration = current_time - self._start_time
+          self._start_time = current_time
 
           loss_value = run_values.results
-
-          num_examples_per_step = FLAGS.batch_size
-          examples_per_sec = num_examples_per_step * FLAGS.log_steps_count / duration
-          sec_per_batch = float(duration / log_steps)
+          examples_per_sec = log_frequency * FLAGS.batch_size / duration
+          sec_per_batch = float(duration / log_frequency)
 
           format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                         'sec/batch)')
