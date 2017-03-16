@@ -159,7 +159,7 @@ def resnet_v1(inputs,
       ratio of input to output spatial resolution.
     include_root_block: If True, include the initial convolution followed by
       max-pooling, if False excludes it.
-    spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
+    spatial_squeeze: if True, logits is of shape [B, C], if false logits is
         of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
