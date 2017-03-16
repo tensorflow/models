@@ -41,7 +41,7 @@ class InceptionV3Test(tf.test.TestCase):
   def _countInceptionParameters(self):
     """Counts the number of parameters in the inception model at top scope."""
     counter = {}
-    for v in tf.all_variables():
+    for v in tf.global_variables():
       name_tokens = v.op.name.split("/")
       if name_tokens[0] == "InceptionV3":
         name = "InceptionV3/" + name_tokens[1]
@@ -85,7 +85,7 @@ class InceptionV3Test(tf.test.TestCase):
     self.assertEqual([self._batch_size, 2048], embeddings.get_shape().as_list())
 
     self._verifyParameterCounts()
-    self._assertCollectionSize(376, tf.GraphKeys.VARIABLES)
+    self._assertCollectionSize(376, tf.GraphKeys.GLOBAL_VARIABLES)
     self._assertCollectionSize(188, tf.GraphKeys.TRAINABLE_VARIABLES)
     self._assertCollectionSize(188, tf.GraphKeys.UPDATE_OPS)
     self._assertCollectionSize(94, tf.GraphKeys.REGULARIZATION_LOSSES)
@@ -98,7 +98,7 @@ class InceptionV3Test(tf.test.TestCase):
     self.assertEqual([self._batch_size, 2048], embeddings.get_shape().as_list())
 
     self._verifyParameterCounts()
-    self._assertCollectionSize(376, tf.GraphKeys.VARIABLES)
+    self._assertCollectionSize(376, tf.GraphKeys.GLOBAL_VARIABLES)
     self._assertCollectionSize(188, tf.GraphKeys.TRAINABLE_VARIABLES)
     self._assertCollectionSize(0, tf.GraphKeys.UPDATE_OPS)
     self._assertCollectionSize(94, tf.GraphKeys.REGULARIZATION_LOSSES)
@@ -111,7 +111,7 @@ class InceptionV3Test(tf.test.TestCase):
     self.assertEqual([self._batch_size, 2048], embeddings.get_shape().as_list())
 
     self._verifyParameterCounts()
-    self._assertCollectionSize(376, tf.GraphKeys.VARIABLES)
+    self._assertCollectionSize(376, tf.GraphKeys.GLOBAL_VARIABLES)
     self._assertCollectionSize(0, tf.GraphKeys.TRAINABLE_VARIABLES)
     self._assertCollectionSize(0, tf.GraphKeys.UPDATE_OPS)
     self._assertCollectionSize(0, tf.GraphKeys.REGULARIZATION_LOSSES)
@@ -124,7 +124,7 @@ class InceptionV3Test(tf.test.TestCase):
     self.assertEqual([self._batch_size, 2048], embeddings.get_shape().as_list())
 
     self._verifyParameterCounts()
-    self._assertCollectionSize(376, tf.GraphKeys.VARIABLES)
+    self._assertCollectionSize(376, tf.GraphKeys.GLOBAL_VARIABLES)
     self._assertCollectionSize(0, tf.GraphKeys.TRAINABLE_VARIABLES)
     self._assertCollectionSize(0, tf.GraphKeys.UPDATE_OPS)
     self._assertCollectionSize(0, tf.GraphKeys.REGULARIZATION_LOSSES)

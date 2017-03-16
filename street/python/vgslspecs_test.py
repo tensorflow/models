@@ -55,7 +55,7 @@ class VgslspecsTest(tf.test.TestCase):
         target_widths = tf.div(self.in_widths, factor).eval()
         target_heights = tf.div(self.in_heights, factor).eval()
         # Run with the 'real' data.
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
         res_image, res_widths, res_heights = sess.run(
             [outputs, vgsl.GetLengths(2), vgsl.GetLengths(1)],
             feed_dict={self.ph_image: self.in_image,

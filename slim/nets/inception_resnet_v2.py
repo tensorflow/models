@@ -42,7 +42,7 @@ def block35(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
       tower_conv2_0 = slim.conv2d(net, 32, 1, scope='Conv2d_0a_1x1')
       tower_conv2_1 = slim.conv2d(tower_conv2_0, 48, 3, scope='Conv2d_0b_3x3')
       tower_conv2_2 = slim.conv2d(tower_conv2_1, 64, 3, scope='Conv2d_0c_3x3')
-    mixed = tf.concat(3, [tower_conv, tower_conv1_1, tower_conv2_2])
+    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_1, tower_conv2_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
     net += scale * up
@@ -62,7 +62,7 @@ def block17(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
                                   scope='Conv2d_0b_1x7')
       tower_conv1_2 = slim.conv2d(tower_conv1_1, 192, [7, 1],
                                   scope='Conv2d_0c_7x1')
-    mixed = tf.concat(3, [tower_conv, tower_conv1_2])
+    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
     net += scale * up
@@ -82,7 +82,7 @@ def block8(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
                                   scope='Conv2d_0b_1x3')
       tower_conv1_2 = slim.conv2d(tower_conv1_1, 256, [3, 1],
                                   scope='Conv2d_0c_3x1')
-    mixed = tf.concat(3, [tower_conv, tower_conv1_2])
+    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
     net += scale * up
@@ -165,13 +165,13 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
                                          scope='AvgPool_0a_3x3')
             tower_pool_1 = slim.conv2d(tower_pool, 64, 1,
                                        scope='Conv2d_0b_1x1')
-          net = tf.concat(3, [tower_conv, tower_conv1_1,
+          net = tf.concat(axis=3, values=[tower_conv, tower_conv1_1,
                               tower_conv2_2, tower_pool_1])
 
         end_points['Mixed_5b'] = net
         net = slim.repeat(net, 10, block35, scale=0.17)
 
-        # 17 x 17 x 1024
+        # 17 x 17 x 1088
         with tf.variable_scope('Mixed_6a'):
           with tf.variable_scope('Branch_0'):
             tower_conv = slim.conv2d(net, 384, 3, stride=2, padding='VALID',
@@ -186,12 +186,12 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
           with tf.variable_scope('Branch_2'):
             tower_pool = slim.max_pool2d(net, 3, stride=2, padding='VALID',
                                          scope='MaxPool_1a_3x3')
-          net = tf.concat(3, [tower_conv, tower_conv1_2, tower_pool])
+          net = tf.concat(axis=3, values=[tower_conv, tower_conv1_2, tower_pool])
 
         end_points['Mixed_6a'] = net
         net = slim.repeat(net, 20, block17, scale=0.10)
 
-        # Auxillary tower
+        # Auxiliary tower
         with tf.variable_scope('AuxLogits'):
           aux = slim.avg_pool2d(net, 5, stride=3, padding='VALID',
                                 scope='Conv2d_1a_3x3')
@@ -221,7 +221,7 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
           with tf.variable_scope('Branch_3'):
             tower_pool = slim.max_pool2d(net, 3, stride=2, padding='VALID',
                                          scope='MaxPool_1a_3x3')
-          net = tf.concat(3, [tower_conv_1, tower_conv1_1,
+          net = tf.concat(axis=3, values=[tower_conv_1, tower_conv1_1,
                               tower_conv2_2, tower_pool])
 
         end_points['Mixed_7a'] = net

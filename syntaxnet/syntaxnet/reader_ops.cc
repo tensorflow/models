@@ -143,7 +143,7 @@ class ParsingReader : public OpKernel {
     }
 
     // Create the outputs for each feature space.
-    vector<Tensor *> feature_outputs(features_->NumEmbeddings());
+    std::vector<Tensor *> feature_outputs(features_->NumEmbeddings());
     for (size_t i = 0; i < feature_outputs.size(); ++i) {
       OP_REQUIRES_OK(context, context->allocate_output(
                                   i, TensorShape({sentence_batch_->size(),
@@ -399,7 +399,7 @@ class DecodedParseReader : public ParsingReader {
     // pull from the back of the docids queue as long as the sentences have been
     // completely processed. If the next document has not been completely
     // processed yet, then the docid will not be found in 'sentence_map_'.
-    vector<Sentence> sentences;
+    std::vector<Sentence> sentences;
     while (!docids_.empty() &&
            sentence_map_.find(docids_.back()) != sentence_map_.end()) {
       sentences.emplace_back(sentence_map_[docids_.back()]);
@@ -427,7 +427,7 @@ class DecodedParseReader : public ParsingReader {
   string scoring_type_;
 
   mutable std::deque<string> docids_;
-  mutable map<string, Sentence> sentence_map_;
+  mutable std::map<string, Sentence> sentence_map_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(DecodedParseReader);
 };
@@ -532,7 +532,7 @@ class WordEmbeddingInitializer : public OpKernel {
     for (uint64 offset = 0; s.ok(); offset += kBytesToRead) {
       tensorflow::StringPiece data;
       s.Update(source_file->Read(offset, kBytesToRead, &data, &scratch[0]));
-      target_file->Append(data);
+      TF_RETURN_IF_ERROR(target_file->Append(data));
     }
     if (s.code() == OUT_OF_RANGE) {
       return tensorflow::Status::OK();

@@ -21,8 +21,8 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/registry.h"
+#include "syntaxnet/utils.h"
 
 namespace tensorflow {
 namespace io {
@@ -39,13 +39,6 @@ class TaskContext;
 
 // Parser actions for the transition system are encoded as integers.
 typedef int ParserAction;
-
-// Label type for the parser action.
-enum class LabelType {
-  NO_LABEL = 0,
-  LEFT_LABEL = 1,
-  RIGHT_LABEL = 2,
-};
 
 // Transition system-specific state. Transition systems can subclass this to
 // preprocess the parser state and/or to keep additional information during
@@ -118,7 +111,7 @@ class ParserTransitionSystem
   // Returns all next gold actions for the parser during training using the
   // dependency relations found in the underlying annotated sentence.
   virtual void GetAllNextGoldActions(const ParserState &state,
-                                     vector<ParserAction> *actions) const {
+                                     std::vector<ParserAction> *actions) const {
     ParserAction action = GetNextGoldAction(state);
     *actions = {action};
   }
@@ -177,7 +170,7 @@ class ParserTransitionSystem
   // Action meta data: get pointers to token indices based on meta-info about
   // (state, action) pairs. NOTE: the following interface is somewhat
   // experimental and may be subject to change. Use with caution and ask
-  // djweiss@ for details.
+  // googleuser@ for details.
 
   // Whether or not the system supports computing meta-data about actions.
   virtual bool SupportsActionMetaData() const { return false; }
@@ -201,7 +194,7 @@ class ParserTransitionSystem
 };
 
 #define REGISTER_TRANSITION_SYSTEM(type, component) \
-  REGISTER_CLASS_COMPONENT(ParserTransitionSystem, type, component)
+  REGISTER_SYNTAXNET_CLASS_COMPONENT(ParserTransitionSystem, type, component)
 
 }  // namespace syntaxnet
 

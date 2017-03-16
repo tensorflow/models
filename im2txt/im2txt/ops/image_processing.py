@@ -92,7 +92,7 @@ def process_image(encoded_image,
   # only logged in thread 0.
   def image_summary(name, image):
     if not thread_id:
-      tf.image_summary(name, tf.expand_dims(image, 0))
+      tf.summary.image(name, tf.expand_dims(image, 0))
 
   # Decode image into a float32 Tensor of shape [?, ?, 3] with values in [0, 1).
   with tf.name_scope("decode", values=[encoded_image]):
@@ -128,6 +128,6 @@ def process_image(encoded_image,
   image_summary("final_image", image)
 
   # Rescale to [-1,1] instead of [0, 1]
-  image = tf.sub(image, 0.5)
-  image = tf.mul(image, 2.0)
+  image = tf.subtract(image, 0.5)
+  image = tf.multiply(image, 2.0)
   return image

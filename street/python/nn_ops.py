@@ -92,7 +92,7 @@ def rnn_helper(inp,
     elif direction == "backward":
       out = backward
     else:
-      out = tf.concat(2, [forward, backward])
+      out = tf.concat(axis=2, values=[forward, backward])
   return out
 
 
@@ -183,7 +183,7 @@ def lstm_layer(inp,
   with tf.variable_scope(name):
     if backward:
       if length is None:
-        inp = tf.reverse(inp, [False, True, False])
+        inp = tf.reverse(inp, [1])
       else:
         inp = tf.reverse_sequence(inp, length, 1, 0)
 
@@ -217,14 +217,14 @@ def lstm_layer(inp,
 
     batch_size = shapes.tensor_dim(inp, dim=0)
     num_frames = shapes.tensor_dim(inp, dim=1)
-    prev = tf.reshape(inp, tf.pack([batch_size * num_frames, num_prev]))
+    prev = tf.reshape(inp, tf.stack([batch_size * num_frames, num_prev]))
 
     if use_native_weights:
       with tf.variable_scope("LSTMCell"):
         b = tf.get_variable(
             "B",
             shape=[4 * num_nodes],
-            initializer=tf.zeros_initializer,
+            initializer=tf.zeros_initializer(),
             dtype=tf.float32)
       biases = tf.identity(b, name="biases")
     else:
@@ -236,17 +236,17 @@ def lstm_layer(inp,
               biases, name="biases_reg"))
     prev = tf.nn.xw_plus_b(prev, w_i_m, biases)
 
-    prev = tf.reshape(prev, tf.pack([batch_size, num_frames, 4, num_nodes]))
+    prev = tf.reshape(prev, tf.stack([batch_size, num_frames, 4, num_nodes]))
     if state is None:
-      state = tf.fill(tf.pack([batch_size, num_nodes]), 0.0)
+      state = tf.fill(tf.stack([batch_size, num_nodes]), 0.0)
     if memory is None:
-      memory = tf.fill(tf.pack([batch_size, num_nodes]), 0.0)
+      memory = tf.fill(tf.stack([batch_size, num_nodes]), 0.0)
 
     out, _, mem = rnn.variable_lstm(prev, state, memory, w_m_m, clip=clip)
 
     if backward:
       if length is None:
-        out = tf.reverse(out, [False, True, False])
+        out = tf.reverse(out, [1])
       else:
         out = tf.reverse_sequence(out, length, 1, 0)
 

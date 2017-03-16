@@ -124,7 +124,7 @@ class MomentsAccountant(object):
   """Privacy accountant which keeps track of moments of privacy loss.
 
   Note: The constructor of this class creates tf.Variables that must
-  be initialized with tf.initialize_all_variables() or similar calls.
+  be initialized with tf.global_variables_initializer() or similar calls.
 
   MomentsAccountant accumulates the high moments of the privacy loss. It
   requires a method for computing differenital moments of the noise (See
@@ -152,7 +152,7 @@ class MomentsAccountant(object):
   We further assume that at each step, the mechanism operates on a random
   sample with sampling probability q = batch_size / total_examples. Then
     E[exp(L X)] = E[(Pr[M(D)==x / Pr[M(D')==x])^L]
-  By distinguishign two cases of wether D < D' or D' < D, we have
+  By distinguishing two cases of whether D < D' or D' < D, we have
   that
     E[exp(L X)] <= max (I1, I2)
   where
@@ -361,12 +361,12 @@ class GaussianMomentsAccountant(MomentsAccountant):
     exponents = tf.constant([j * (j + 1.0 - 2.0 * s) / (2.0 * sigma * sigma)
                              for j in range(t + 1)], dtype=tf.float64)
     # x[i, j] = binomial[i, j] * signs[i, j] = (i choose j) * (-1)^{i-j}
-    x = tf.mul(binomial, signs)
+    x = tf.multiply(binomial, signs)
     # y[i, j] = x[i, j] * exp(exponents[j])
     #         = (i choose j) * (-1)^{i-j} * exp(j(j-1)/(2 sigma^2))
     # Note: this computation is done by broadcasting pointwise multiplication
     # between [t+1, t+1] tensor and [t+1] tensor.
-    y = tf.mul(x, tf.exp(exponents))
+    y = tf.multiply(x, tf.exp(exponents))
     # z[i] = sum_j y[i, j]
     #      = sum_j (i choose j) * (-1)^{i-j} * exp(j(j-1)/(2 sigma^2))
     z = tf.reduce_sum(y, 1)

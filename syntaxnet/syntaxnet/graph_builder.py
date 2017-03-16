@@ -64,12 +64,13 @@ def EmbeddingLookupFeatures(params, sparse_features, allow_weights):
     params = [params]
   # Lookup embeddings.
   sparse_features = tf.convert_to_tensor(sparse_features)
-  indices, ids, weights = gen_parser_ops.unpack_sparse_features(sparse_features)
+  indices, ids, weights = gen_parser_ops.unpack_syntax_net_sparse_features(
+      sparse_features)
   embeddings = tf.nn.embedding_lookup(params, ids)
 
   if allow_weights:
     # Multiply by weights, reshaping to allow broadcast.
-    broadcast_weights_shape = tf.concat(0, [tf.shape(weights), [1]])
+    broadcast_weights_shape = tf.concat([tf.shape(weights), [1]], 0)
     embeddings *= tf.reshape(weights, broadcast_weights_shape)
 
   # Sum embeddings by index.
@@ -251,7 +252,7 @@ class GreedyParser(object):
         self._averaging[name + '_avg_update'] = ema.apply([param])
         self.variables[name + '_avg_var'] = ema.average(param)
         self.inits[name + '_avg_init'] = state_ops.init_variable(
-            ema.average(param), tf.zeros_initializer)
+            ema.average(param), tf.zeros_initializer())
     return (self.variables[name + '_avg_var'] if return_average else
             self.params[name])
 
@@ -330,7 +331,7 @@ class GreedyParser(object):
                                            i,
                                            return_average=return_average))
 
-    last_layer = tf.concat(1, embeddings)
+    last_layer = tf.concat(embeddings, 1)
     last_layer_size = self.embedding_size
 
     # Create ReLU layers.
@@ -364,7 +365,7 @@ class GreedyParser(object):
         [self._num_actions],
         tf.float32,
         'softmax_bias',
-        tf.zeros_initializer,
+        tf.zeros_initializer(),
         return_average=return_average)
     logits = tf.nn.xw_plus_b(last_layer,
                              softmax_weight,
@@ -404,8 +405,9 @@ class GreedyParser(object):
     """Cross entropy plus L2 loss on weights and biases of the hidden layers."""
     dense_golden = BatchedSparseToDense(gold_actions, self._num_actions)
     cross_entropy = tf.div(
-        tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(
-            logits, dense_golden)), batch_size)
+        tf.reduce_sum(
+            tf.nn.softmax_cross_entropy_with_logits(
+                labels=dense_golden, logits=logits)), batch_size)
     regularized_params = [tf.nn.l2_loss(p)
                           for k, p in self.params.items()
                           if k.startswith('weights') or k.startswith('bias')]
@@ -529,7 +531,7 @@ class GreedyParser(object):
       for param in trainable_params:
         slot = optimizer.get_slot(param, 'momentum')
         self.inits[slot.name] = state_ops.init_variable(slot,
-                                                        tf.zeros_initializer)
+                                                        tf.zeros_initializer())
         self.variables[slot.name] = slot
       numerical_checks = [
           tf.check_numerics(param,

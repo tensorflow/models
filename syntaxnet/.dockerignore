@@ -1,0 +1,4 @@
+.git
+bazel/
+Dockerfile*
+tensorflow/.git

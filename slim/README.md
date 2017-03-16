@@ -13,7 +13,7 @@ converting them
 to TensorFlow's native TFRecord format and reading them in using TF-Slim's
 data reading and queueing utilities. You can easily train any model on any of
 these datasets, as we demonstrate below. We've also included a
-[jupyter notebook](https://github.com/tensorflow/models/blob/master/slim/slim_walkthough.ipynb),
+[jupyter notebook](https://github.com/tensorflow/models/blob/master/slim/slim_walkthrough.ipynb),
 which provides working examples of how to use TF-Slim for image classification.
 
 ## Contacts
@@ -303,8 +303,8 @@ $ python train_image_classifier.py \
     --dataset_split_name=train \
     --model_name=inception_v3 \
     --checkpoint_path=${CHECKPOINT_PATH} \
-    --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits \
-    --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits
+    --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/AuxLogits \
+    --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits
 ```
 
 
@@ -350,7 +350,7 @@ See
 
 #### The ResNet and VGG Models have 1000 classes but the ImageNet dataset has 1001
 
-The ImageNet dataset provied has an empty background class which was can be used
+The ImageNet dataset provided has an empty background class which can be used
 to fine-tune the model to other tasks. If you try training or fine-tuning the
 VGG or ResNet models using the ImageNet dataset, you might encounter the
 following error:

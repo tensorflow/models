@@ -63,7 +63,7 @@ class ShowAndTellModelTest(tf.test.TestCase):
   def _countModelParameters(self):
     """Counts the number of parameters in the model at top level scope."""
     counter = {}
-    for v in tf.all_variables():
+    for v in tf.global_variables():
       name = v.op.name.split("/")[0]
       num_params = v.get_shape().num_elements()
       assert num_params
@@ -98,7 +98,7 @@ class ShowAndTellModelTest(tf.test.TestCase):
     fetches = expected_shapes.keys()
 
     with self.test_session() as sess:
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       outputs = sess.run(fetches, feed_dict)
 
     for index, output in enumerate(outputs):

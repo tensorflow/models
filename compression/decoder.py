@@ -40,26 +40,26 @@ FLAGS = tf.flags.FLAGS
 
 def get_input_tensor_names():
   name_list = ['GruBinarizer/SignBinarizer/Sign:0']
-  for i in xrange(1, 16):
+  for i in range(1, 16):
     name_list.append('GruBinarizer/SignBinarizer/Sign_{}:0'.format(i))
   return name_list
 
 
 def get_output_tensor_names():
-  return ['loop_{0:02d}/add:0'.format(i) for i in xrange(0, 16)]
+  return ['loop_{0:02d}/add:0'.format(i) for i in range(0, 16)]
 
 
 def main(_):
   if (FLAGS.input_codes is None or FLAGS.output_directory is None or
       FLAGS.model is None):
-    print ('\nUsage: python decoder.py --input_codes=output_codes.pkl '
-           '--iteration=15 --output_directory=/tmp/compression_output/ '
-           '--model=residual_gru.pb\n\n')
+    print('\nUsage: python decoder.py --input_codes=output_codes.pkl '
+          '--iteration=15 --output_directory=/tmp/compression_output/ '
+          '--model=residual_gru.pb\n\n')
     return
 
   if FLAGS.iteration < -1 or FLAGS.iteration > 15:
-    print ('\n--iteration must be between 0 and 15 inclusive, or -1 to infer '
-           'from file.\n')
+    print('\n--iteration must be between 0 and 15 inclusive, or -1 to infer '
+          'from file.\n')
     return
   iteration = FLAGS.iteration
 
@@ -67,7 +67,7 @@ def main(_):
     tf.gfile.MkDir(FLAGS.output_directory)
 
   if not tf.gfile.Exists(FLAGS.input_codes):
-    print '\nInput codes not found.\n'
+    print('\nInput codes not found.\n')
     return
 
   contents = ''

@@ -20,13 +20,12 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/dictionary.pb.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/proto_io.h"
-#include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/term_frequency_map.h"
+#include "syntaxnet/utils.h"
 #include "syntaxnet/workspace.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 
@@ -146,10 +145,10 @@ class AffixTable {
   int max_length_;
 
   // Index from affix ids to affix items.
-  vector<Affix *> affixes_;
+  std::vector<Affix *> affixes_;
 
   // Buckets for word-to-affix hash map.
-  vector<Affix *> buckets_;
+  std::vector<Affix *> buckets_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(AffixTable);
 };

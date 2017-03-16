@@ -56,6 +56,11 @@ class Vocab(object):
         if self._count > max_size:
           raise ValueError('Too many words: >%d.' % max_size)
 
+  def CheckVocab(self, word):
+    if word not in self._word_to_id:
+      return None
+    return self._word_to_id[word]
+  
   def WordToId(self, word):
     if word not in self._word_to_id:
       return self._word_to_id[UNKNOWN_TOKEN]

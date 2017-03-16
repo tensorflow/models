@@ -15,7 +15,6 @@ limitations under the License.
 
 #include "syntaxnet/parser_state.h"
 
-#include "syntaxnet/kbest_syntax.pb.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/term_frequency_map.h"
 #include "syntaxnet/utils.h"
@@ -31,7 +30,8 @@ ParserState::ParserState(Sentence *sentence,
       num_tokens_(sentence->token_size()),
       transition_state_(transition_state),
       label_map_(label_map),
-      root_label_(kDefaultRootLabel),
+      root_label_(label_map->LookupIndex(kRootLabel,
+                                         kDefaultRootLabel  /* unknown */)),
       next_(0) {
   // Initialize the stack. Some transition systems could also push the
   // artificial root on the stack, so we make room for that as well.
@@ -63,43 +63,54 @@ ParserState *ParserState::Clone() const {
   new_state->label_.assign(label_.begin(), label_.end());
   new_state->score_ = score_;
   new_state->is_gold_ = is_gold_;
+  new_state->keep_history_ = keep_history_;
+  new_state->history_.assign(history_.begin(), history_.end());
   return new_state;
 }
 
 int ParserState::RootLabel() const { return root_label_; }
 
+int ParserState::NumLabels() const {
+  return label_map_->Size() + (RootLabel() == kDefaultRootLabel ? 1 : 0);
+}
+
 int ParserState::Next() const {
-  DCHECK_GE(next_, -1);
-  DCHECK_LE(next_, num_tokens_);
+  CHECK_GE(next_, -1);
+  CHECK_LE(next_, num_tokens_);
   return next_;
 }
 
 int ParserState::Input(int offset) const {
-  int index = next_ + offset;
+  const int index = next_ + offset;
   return index >= -1 && index < num_tokens_ ? index : -2;
 }
 
 void ParserState::Advance() {
-  DCHECK_LT(next_, num_tokens_);
+  CHECK_LT(next_, num_tokens_) << utils::Join(history_, ",");
   ++next_;
+}
+
+void ParserState::Advance(int next) {
+  CHECK_LE(next, num_tokens_) << utils::Join(history_, ",");
+  next_ = next;
 }
 
 bool ParserState::EndOfInput() const { return next_ == num_tokens_; }
 
 void ParserState::Push(int index) {
-  DCHECK_LE(stack_.size(), num_tokens_);
+  CHECK_LE(stack_.size(), num_tokens_) << utils::Join(history_, ",");
   stack_.push_back(index);
 }
 
 int ParserState::Pop() {
-  DCHECK(!StackEmpty());
+  CHECK(!StackEmpty()) << utils::Join(history_, ",");
   const int result = stack_.back();
   stack_.pop_back();
   return result;
 }
 
 int ParserState::Top() const {
-  DCHECK(!StackEmpty());
+  CHECK(!StackEmpty()) << utils::Join(history_, ",");
   return stack_.back();
 }
 
@@ -114,28 +125,28 @@ int ParserState::StackSize() const { return stack_.size(); }
 bool ParserState::StackEmpty() const { return stack_.empty(); }
 
 int ParserState::Head(int index) const {
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   return index == -1 ? -1 : head_[index];
 }
 
 int ParserState::Label(int index) const {
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   return index == -1 ? RootLabel() : label_[index];
 }
 
 int ParserState::Parent(int index, int n) const {
   // Find the n-th parent by applying the head function n times.
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   while (n-- > 0) index = Head(index);
   return index;
 }
 
 int ParserState::LeftmostChild(int index, int n) const {
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   while (n-- > 0) {
     // Find the leftmost child by scanning from start until a child is
     // encountered.
@@ -150,8 +161,8 @@ int ParserState::LeftmostChild(int index, int n) const {
 }
 
 int ParserState::RightmostChild(int index, int n) const {
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   while (n-- > 0) {
     // Find the rightmost child by scanning backward from end until a child
     // is encountered.
@@ -168,8 +179,8 @@ int ParserState::RightmostChild(int index, int n) const {
 int ParserState::LeftSibling(int index, int n) const {
   // Find the n-th left sibling by scanning left until the n-th child of the
   // parent is encountered.
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   if (index == -1 && n > 0) return -2;
   int i = index;
   while (n > 0) {
@@ -183,8 +194,8 @@ int ParserState::LeftSibling(int index, int n) const {
 int ParserState::RightSibling(int index, int n) const {
   // Find the n-th right sibling by scanning right until the n-th child of the
   // parent is encountered.
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   if (index == -1 && n > 0) return -2;
   int i = index;
   while (n > 0) {
@@ -196,8 +207,8 @@ int ParserState::RightSibling(int index, int n) const {
 }
 
 void ParserState::AddArc(int index, int head, int label) {
-  DCHECK_GE(index, 0);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, 0);
+  CHECK_LT(index, num_tokens_);
   head_[index] = head;
   label_[index] = label;
 }
@@ -205,8 +216,8 @@ void ParserState::AddArc(int index, int head, int label) {
 int ParserState::GoldHead(int index) const {
   // A valid ParserState index is transformed to a valid Sentence index,
   // then the gold head is extracted.
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   if (index == -1) return -1;
   const int offset = 0;
   const int gold_head = GetToken(index).head();
@@ -216,8 +227,8 @@ int ParserState::GoldHead(int index) const {
 int ParserState::GoldLabel(int index) const {
   // A valid ParserState index is transformed to a valid Sentence index,
   // then the gold label is extracted.
-  DCHECK_GE(index, -1);
-  DCHECK_LT(index, num_tokens_);
+  CHECK_GE(index, -1);
+  CHECK_LT(index, num_tokens_);
   if (index == -1) return RootLabel();
   string gold_label;
   gold_label = GetToken(index).label();
@@ -234,7 +245,7 @@ bool ParserState::IsTokenCorrect(int index) const {
 }
 
 string ParserState::LabelAsString(int label) const {
-  if (label == root_label_) return "ROOT";
+  if (label == root_label_) return kRootLabel;
   if (label >= 0 && label < label_map_->Size()) {
     return label_map_->GetTerm(label);
   }

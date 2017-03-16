@@ -1,0 +1,187 @@
+component {
+  name: "lookahead"
+  transition_system {
+    registered_name: "shift-only"
+    parameters {
+      key: "left_to_right"
+      value: "false"
+    }
+  }
+  resource {
+    name: "word-map"
+    part {
+      file_pattern: "word-map"
+    }
+  }
+  resource {
+    name: "tag-map"
+    part {
+      file_pattern: "tag-map"
+    }
+  }
+  resource {
+    name: "tag-to-category"
+    part {
+      file_pattern: "tag-to-category"
+    }
+  }
+  resource {
+    name: "lcword-map"
+    part {
+      file_pattern: "lcword-map"
+    }
+  }
+  resource {
+    name: "category-map"
+    part {
+      file_pattern: "category-map"
+    }
+  }
+  resource {
+    name: "char-map"
+    part {
+      file_pattern: "char-map"
+    }
+  }
+  resource {
+    name: "char-ngram-map"
+    part {
+      file_pattern: "char-ngram-map"
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_pattern: "label-map"
+    }
+  }
+  resource {
+    name: "prefix-table"
+    part {
+      file_pattern: "prefix-table"
+    }
+  }
+  resource {
+    name: "suffix-table"
+    part {
+      file_pattern: "suffix-table"
+    }
+  }
+  fixed_feature {
+    name: "char"
+    fml: "input(-1).char input.char input(1).char"
+    embedding_dim: 32
+    vocabulary_size: 3521
+    size: 3
+  }
+  fixed_feature {
+    name: "char-bigram"
+    fml: "input.char-bigram"
+    embedding_dim: 32
+    vocabulary_size: 6579
+    size: 1
+  }
+  network_unit {
+    registered_name: "wrapped_units.LayerNormBasicLSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "256"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 1
+  component_builder {
+    registered_name: "DynamicComponentBuilder"
+  }
+}
+component {
+  name: "segmenter"
+  transition_system {
+    registered_name: "binary-segment-transitions"
+  }
+  resource {
+    name: "word-map"
+    part {
+      file_pattern: "word-map"
+    }
+  }
+  resource {
+    name: "tag-map"
+    part {
+      file_pattern: "tag-map"
+    }
+  }
+  resource {
+    name: "tag-to-category"
+    part {
+      file_pattern: "tag-to-category"
+    }
+  }
+  resource {
+    name: "lcword-map"
+    part {
+      file_pattern: "lcword-map"
+    }
+  }
+  resource {
+    name: "category-map"
+    part {
+      file_pattern: "category-map"
+    }
+  }
+  resource {
+    name: "char-map"
+    part {
+      file_pattern: "char-map"
+    }
+  }
+  resource {
+    name: "char-ngram-map"
+    part {
+      file_pattern: "char-ngram-map"
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_pattern: "label-map"
+    }
+  }
+  resource {
+    name: "prefix-table"
+    part {
+      file_pattern: "prefix-table"
+    }
+  }
+  resource {
+    name: "suffix-table"
+    part {
+      file_pattern: "suffix-table"
+    }
+  }
+  linked_feature {
+    name: "lookahead"
+    fml: "input.focus stack.focus"
+    embedding_dim: 32
+    size: 2
+    source_component: "lookahead"
+    source_translator: "reverse-token"
+    source_layer: "state_h_0"
+  }
+  network_unit {
+    registered_name: "wrapped_units.LayerNormBasicLSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "128"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 2
+  component_builder {
+    registered_name: "DynamicComponentBuilder"
+  }
+}

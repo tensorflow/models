@@ -77,7 +77,7 @@ def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
       #   /my-favorite-path/imagenet_train/model.ckpt-0,
       # extract global_step from it.
       global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-      print('Succesfully loaded model from %s at step=%s.' %
+      print('Successfully loaded model from %s at step=%s.' %
             (ckpt.model_checkpoint_path, global_step))
     else:
       print('No checkpoint file found')
@@ -158,10 +158,10 @@ def evaluate(dataset):
     saver = tf.train.Saver(variables_to_restore)
 
     # Build the summary operation based on the TF collection of Summaries.
-    summary_op = tf.merge_all_summaries()
+    summary_op = tf.summary.merge_all()
 
     graph_def = tf.get_default_graph().as_graph_def()
-    summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir,
+    summary_writer = tf.summary.FileWriter(FLAGS.eval_dir,
                                             graph_def=graph_def)
 
     while True:
