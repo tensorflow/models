@@ -39,6 +39,8 @@ tf.flags.DEFINE_string("input_files", "",
                        "File pattern or comma-separated list of file patterns "
                        "of image files.")
 
+tf.logging.set_verbosity(tf.logging.INFO)
+
 
 def main(_):
   # Build the inference graph.
