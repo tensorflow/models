@@ -26,16 +26,9 @@ TF_INC=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
 g++ -std=c++11 -shared word2vec_ops.cc word2vec_kernels.cc -o word2vec_ops.so -fPIC -I $TF_INC -O2 -D_GLIBCXX_USE_CXX11_ABI=0
 ```
 
-If tensorflow was compiled from source using gcc >= 5.0, you don't need to append D_GLIBCXX_USE_CXX11_ABI=0.
-
-```shell
-TF_INC=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
-g++ -std=c++11 -shared word2vec_ops.cc word2vec_kernels.cc -o word2vec_ops.so -fPIC -I $TF_INC -O2
-```
-
 On Mac, add `-undefined dynamic_lookup` to the g++ command.
 
-(For an explanation of what this is doing, see the tutorial on [Adding a New Op to TensorFlow](https://www.tensorflow.org/how_tos/adding_an_op/#building_the_op_library). The flag `-D_GLIBCXX_USE_CXX11_ABI=0` is included to support newer versions of g++.)
+(For an explanation of what this is doing, see the tutorial on [Adding a New Op to TensorFlow](https://www.tensorflow.org/how_tos/adding_an_op/#building_the_op_library). The flag `-D_GLIBCXX_USE_CXX11_ABI=0` is included to support newer versions of g++. If you compiled TensorFlow from source using g++ 5.0 or later, you won't need the flag.)
 Then run using:
 
 ```shell
