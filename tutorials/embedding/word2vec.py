@@ -210,7 +210,7 @@ class Word2Vec(object):
         tf.zeros([opts.vocab_size, opts.emb_dim]),
         name="sm_w_t")
 
-    # Softmax bias: [emb_dim].
+    # Softmax bias: [vocab_size].
     sm_b = tf.Variable(tf.zeros([opts.vocab_size]), name="sm_b")
 
     # Global step: scalar, i.e., shape [].
