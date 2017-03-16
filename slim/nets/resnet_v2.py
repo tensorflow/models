@@ -212,6 +212,7 @@ def resnet_v2(inputs,
         if num_classes is not None:
           end_points['predictions'] = slim.softmax(net, scope='predictions')
         return logits, end_points
+resnet_v2.default_image_size = 224
 
 
 def resnet_v2_50(inputs,
@@ -234,7 +235,8 @@ def resnet_v2_50(inputs,
   return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, reuse=reuse, scope=scope)
-resnet_v2_50.default_image_size = 224
+resnet_v2_50.default_image_size = resnet_v2.default_image_size
+
 
 def resnet_v2_101(inputs,
                   num_classes=None,
@@ -256,7 +258,7 @@ def resnet_v2_101(inputs,
   return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, reuse=reuse, scope=scope)
-resnet_v2_101.default_image_size = 224
+resnet_v2_101.default_image_size = resnet_v2.default_image_size
 
 
 def resnet_v2_152(inputs,
@@ -279,7 +281,7 @@ def resnet_v2_152(inputs,
   return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, reuse=reuse, scope=scope)
-resnet_v2_152.default_image_size = 224
+resnet_v2_152.default_image_size = resnet_v2.default_image_size
 
 
 def resnet_v2_200(inputs,
@@ -302,4 +304,4 @@ def resnet_v2_200(inputs,
   return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, reuse=reuse, scope=scope)
-resnet_v2_200.default_image_size = 224
+resnet_v2_200.default_image_size = resnet_v2.default_image_size
