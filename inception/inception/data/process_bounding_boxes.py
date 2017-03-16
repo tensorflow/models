@@ -102,8 +102,8 @@ def GetItem(name, root, index=0):
 
 
 def GetInt(name, root, index=0):
-  #  In some XML annotation files, the point value are not int,  but float.
-  #  So adding a float function to avoid  ValueError.
+  # In some XML annotation files, the point values are not integers, but floats.
+  # So we add a float function to avoid ValueError.
   return int(float(GetItem(name, root, index)))
 
 
