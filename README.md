@@ -21,6 +21,7 @@ To propose a model for inclusion please submit a pull request.
 - [next_frame_prediction](next_frame_prediction): probabilistic future frame synthesis via cross convolutional networks.
 - [real_nvp](real_nvp): density estimation using real-valued non-volume preserving (real NVP) transformations.
 - [resnet](resnet): deep and wide residual networks.
+- [skip_thoughts](skip_thoughts): recurrent neural network sentence-to-vector encoder.
 - [slim](slim): image classification models in TF-Slim.
 - [street](street): identify the name of a street (in France) from an image using a Deep RNN.
 - [swivel](swivel): the Swivel algorithm for generating word embeddings.
