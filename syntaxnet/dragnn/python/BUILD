@@ -154,6 +154,7 @@ py_test(
     srcs = ["visualization_test.py"],
     deps = [
         ":visualization",
+        "//dragnn/protos:spec_py_pb2",
         "//dragnn/protos:trace_py_pb2",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

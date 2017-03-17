@@ -23,5 +23,6 @@ syntaxnet_base="/opt/tensorflow/syntaxnet"
 docker run --rm -ti \
   -v "${root_path}"/syntaxnet:"${syntaxnet_base}"/syntaxnet \
   -v "${root_path}"/dragnn:"${syntaxnet_base}"/dragnn \
+  -v "${root_path}"/examples:"${syntaxnet_base}"/examples \
   -p 127.0.0.1:8888:8888 \
   dragnn-oss "$@"
