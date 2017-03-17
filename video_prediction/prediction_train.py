@@ -196,7 +196,7 @@ def main(unused_argv):
   print 'Constructing saver.'
   # Make saver.
   saver = tf.train.Saver(
-      tf.get_collection(tf.GraphKeys.VARIABLES), max_to_keep=0)
+      tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES), max_to_keep=0)
 
   # Make training session.
   sess = tf.InteractiveSession()
