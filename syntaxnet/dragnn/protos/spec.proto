@@ -13,14 +13,10 @@ package syntaxnet.dragnn;
 message MasterSpec {
   repeated ComponentSpec component = 1;
 
-  // DEPRECATED: Use the "batch_size" param of DragnnTensorFlowTrainer instead.
-  optional int32 deprecated_batch_size = 2 [default = 1, deprecated = true];
-
-  // DEPRECATED: Use ComponentSpec.*_beam_size instead.
-  optional int32 deprecated_beam_size = 3 [default = 1, deprecated = true];
-
   // Whether to extract debug traces.
   optional bool debug_tracing = 4 [default = false];
+
+  reserved 2, 3, 5;
 }
 
 // Complete specification for a single task.
@@ -221,10 +217,6 @@ message GridPoint {
   // problems for updates at the start of training.
   optional double gradient_clip_norm = 11 [default = 0.0];
 
-  // DEPRECATED: Use TrainTarget instead.
-  repeated double component_weights = 5;
-  repeated bool unroll_using_oracle = 6;
-
   // A spec for using multiple optimization methods.
   message CompositeOptimizerSpec {
     // First optimizer.
@@ -254,6 +246,8 @@ message GridPoint {
   // should be restricted. If left empty, no filtering will take
   // place. Typically a single component.
   optional string self_norm_components_filter = 21;
+
+  reserved 5, 6;
 }
 
 // Training target to be built into the graph.

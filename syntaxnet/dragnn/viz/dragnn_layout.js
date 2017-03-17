@@ -189,6 +189,25 @@ DragnnLayout.prototype.finalLayout = function(partition, stepPartition, cy) {
         Math.sign(slope) * Math.min(300, Math.max(100, Math.abs(slope)));
   });
 
+  // Reset ordering of components based on whether they are actually
+  // left-to-right. In the future, we may want to do the whole layout based on
+  // the master spec (what remains is slope magnitude and component order); then
+  // we can also skip the initial layout and CoSE intermediate layout.
+  if (this.options.masterSpec) {
+    _.each(this.options.masterSpec.component, (component) => {
+      const name = component.name;
+      const transitionParams = component.transition_system.parameters || {};
+      // null/undefined should default to true.
+      const leftToRight = transitionParams.left_to_right != 'false';
+
+      // If the slope isn't going in the direction it should, according to the
+      // master spec, reverse it.
+      if ((leftToRight ? 1 : -1) != Math.sign(stepSlope[name])) {
+        stepSlope[name] = -stepSlope[name];
+      }
+    });
+  }
+
   // Set new node positions. As before, component nodes auto-size to fit.
   _.each(stepPartition, (stepNodes) => {
     const component = _.head(stepNodes).data('parent');

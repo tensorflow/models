@@ -20,12 +20,16 @@ This repository is largely divided into two sub-packages:
 
 1.  **DRAGNN:
     [code](https://github.com/tensorflow/models/tree/master/syntaxnet/dragnn),
-    [documentation](g3doc/DRAGNN.md)** implements Dynamic Recurrent Acyclic
-    Graphical Neural Networks (DRAGNN), a framework for building multi-task,
-    fully dynamic constructed computation graphs. Practically, we use DRAGNN to
-    extend our prior work from [Andor et al.
+    [documentation](g3doc/DRAGNN.md),
+    [paper](https://arxiv.org/pdf/1703.04474.pdf)** implements Dynamic Recurrent
+    Acyclic Graphical Neural Networks (DRAGNN), a framework for building
+    multi-task, fully dynamically constructed computation graphs. Practically, we
+    use DRAGNN to extend our prior work from [Andor et al.
     (2016)](http://arxiv.org/abs/1603.06042) with end-to-end, deep recurrent
-    models and to provide a much easier to use interface to SyntaxNet.
+    models and to provide a much easier to use interface to SyntaxNet. *DRAGNN
+    is designed first and foremost as a Python library, and therefore much
+    easier to use than the original SyntaxNet implementation.*
+
 1.  **SyntaxNet:
     [code](https://github.com/tensorflow/models/tree/master/syntaxnet/syntaxnet),
     [documentation](g3doc/syntaxnet-tutorial.md)** is a transition-based
@@ -42,7 +46,7 @@ There are three ways to use SyntaxNet:
     SyntaxNet/DRAGNN baseline for the CoNLL2017 Shared Task, and running the
     ParseySaurus models.
 *   You can use DRAGNN to train your NLP models for other tasks and dataset. See
-    "Getting started with DRAGNN below."
+    "Getting started with DRAGNN" below.
 *   You can continue to use the Parsey McParseface family of pre-trained
     SyntaxNet models. See "Pre-trained NLP models" below.
 
@@ -117,9 +121,13 @@ We have a few guides on this README, as well as more extensive
 
 ![DRAGNN](g3doc/unrolled-dragnn.png)
 
-An easy and visual way to get started with DRAGNN is to run [our Jupyter
-Notebook](examples/dragnn/basic_parser_tutorial.ipynb). Our tutorial
+An easy and visual way to get started with DRAGNN is to run our Jupyter
+notebooks for [interactive
+debugging](examples/dragnn/interactive_text_analyzer.ipynb) and [training a new
+model](examples/dragnn/basic_parser_tutorial.ipynb). Our tutorial
 [here](g3doc/CLOUD.md) explains how to start it up from the Docker container.
+Once you have DRAGNN installed and running, try out the
+[ParseySaurus](g3doc/conll2017) models.
 
 ### Using the Pre-trained NLP models
 
@@ -285,6 +293,7 @@ Original authors of the code in this package include (in alphabetical order):
 *   Aliaksei Severyn
 *   Andy Golding
 *   Bernd Bohnet
+*   Chayut Thanapirom
 *   Chris Alberti
 *   Daniel Andor
 *   David Weiss
@@ -294,6 +303,7 @@ Original authors of the code in this package include (in alphabetical order):
 *   Ji Ma
 *   Keith Hall
 *   Kuzman Ganchev
+*   Lingpeng Kong
 *   Livio Baldini Soares
 *   Mark Omernick
 *   Michael Collins
