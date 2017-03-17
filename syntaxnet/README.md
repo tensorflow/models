@@ -124,7 +124,7 @@ We have a few guides on this README, as well as more extensive
 An easy and visual way to get started with DRAGNN is to run our Jupyter
 notebooks for [interactive
 debugging](examples/dragnn/interactive_text_analyzer.ipynb) and [training a new
-model](examples/dragnn/basic_parser_tutorial.ipynb). Our tutorial
+model](examples/dragnn/trainer_tutorial.ipynb). Our tutorial
 [here](g3doc/CLOUD.md) explains how to start it up from the Docker container.
 Once you have DRAGNN installed and running, try out the
 [ParseySaurus](g3doc/conll2017) models.
