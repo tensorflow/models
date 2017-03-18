@@ -18,7 +18,7 @@ The following table shows their accuracy on Universal
 Dependencies test sets for different types of annotations.
 
 Language | No. tokens | POS | fPOS | Morph | UAS | LAS
---------  | :--: | :--: | :--: | :--: | :--: | :--: | :--:
+--------  | :--: | :--: | :--: | :--: | :--: | :--:
 Ancient_Greek-PROIEL | 18502 | 97.14% | 96.97% | 89.77% | 78.74% | 73.15%
 Ancient_Greek | 25251 | 93.22% | 84.22% | 90.01% | 68.98% | 62.07%
 Arabic | 28268 | 95.65% | 91.03% | 91.23% | 81.49% | 75.82%
