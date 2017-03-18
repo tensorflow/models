@@ -37,9 +37,7 @@ Full text available at: http://arxiv.org/abs/1609.06647
 The *Show and Tell* model is a deep neural network that learns how to describe
 the content of images. For example:
 
-<center>
 ![Example captions](g3doc/example_captions.jpg)
-</center>
 
 ### Architecture
 
@@ -66,9 +64,7 @@ learned during training.
 
 The following diagram illustrates the model architecture.
 
-<center>
 ![Show and Tell Architecture](g3doc/show_and_tell_architecture.png)
-</center>
 
 In this diagram, \{*s*<sub>0</sub>, *s*<sub>1</sub>, ..., *s*<sub>*N*-1</sub>\}
 are the words of the caption and \{*w*<sub>*e*</sub>*s*<sub>0</sub>,
