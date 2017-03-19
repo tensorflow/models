@@ -398,7 +398,7 @@ import numpy as np
 import os.path
 import scipy.spatial.distance as sd
 from skip_thoughts import configuration
-from skip_thoughts import combined_encoder
+from skip_thoughts import encoder_manager
 
 In [1]:
 # Set paths to the model.
@@ -411,15 +411,15 @@ MR_DATA_DIR = "/dir/containing/mr/data"
 
 In [2]:
 # Set up the encoder. Here we are using a single unidirectional model.
-# To use a bidirectional model as well, call load_encoder() again with
-# configuration.ModelConfig(bidirectional_encoder=True) and paths to the
+# To use a bidirectional model as well, call load_model() again with
+# configuration.model_config(bidirectional_encoder=True) and paths to the
 # bidirectional model's files. The encoder will use the concatenation of
 # all loaded models.
-encoder = combined_encoder.CombinedEncoder()
-encoder.load_encoder(configuration.ModelConfig(),
-                     vocabulary_file=VOCAB_FILE,
-                     embedding_matrix_file=EMBEDDING_MATRIX_FILE,
-                     checkpoint_path=CHECKPOINT_PATH)
+encoder = encoder_manager.EncoderManager()
+encoder.load_model(configuration.model_config(),
+                   vocabulary_file=VOCAB_FILE,
+                   embedding_matrix_file=EMBEDDING_MATRIX_FILE,
+                   checkpoint_path=CHECKPOINT_PATH)
 
 In [3]:
 # Load the movie review dataset.
