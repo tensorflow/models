@@ -2,7 +2,7 @@
 
 This is a TensorFlow implementation of the model described in:
 
-Ryan Kiros, Yukun Zhu, Ruslan Salakhutdinov, Richard S. Zemel,
+Jamie Ryan Kiros, Yukun Zhu, Ruslan Salakhutdinov, Richard S. Zemel,
 Antonio Torralba, Raquel Urtasun, Sanja Fidler.
 [Skip-Thought Vectors](https://papers.nips.cc/paper/5950-skip-thought-vectors.pdf).
 *In NIPS, 2015.*
