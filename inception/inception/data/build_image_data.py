@@ -208,7 +208,11 @@ def _process_image(filename, coder):
     image_data = coder.png_to_jpeg(image_data)
 
   # Decode the RGB JPEG.
-  image = coder.decode_jpeg(image_data)
+  try:
+    image = coder.decode_jpeg(image_data)
+  except:
+    print('Unexpected eror while decoding %s' % filename)
+    raise
 
   # Check that image converted to RGB
   assert len(image.shape) == 3
