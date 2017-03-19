@@ -208,11 +208,7 @@ def _process_image(filename, coder):
     image_data = coder.png_to_jpeg(image_data)
 
   # Decode the RGB JPEG.
-  try:
-    image = coder.decode_jpeg(image_data)
-  except:
-    print('Unexpected eror while decoding %s' % filename)
-    raise
+  image = coder.decode_jpeg(image_data)
 
   # Check that image converted to RGB
   assert len(image.shape) == 3
@@ -265,7 +261,13 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
       label = labels[i]
       text = texts[i]
 
-      image_buffer, height, width = _process_image(filename, coder)
+      try:
+        image_buffer, height, width = _process_image(filename, coder)
+      except Exception, e:
+        print (e)
+        print ('SKIPPED. Unexpected eror while decoding %s' % filename)
+        continue
+
 
       example = _convert_to_example(filename, image_buffer, label,
                                     text, height, width)
