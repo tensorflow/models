@@ -88,13 +88,13 @@ cd ${PRETRAINED_MODELS_DIR}
 
 # Download and extract the unidirectional model.
 wget "http://download.tensorflow.org/models/skip_thoughts_uni_2017_02_02.tar.gz"
-tar -xvf skip_thoughts_uni_2017_02_02.tar
-rm skip_thoughts_uni_2017_02_02.tar
+tar -xvf skip_thoughts_uni_2017_02_02.tar.gz
+rm skip_thoughts_uni_2017_02_02.tar.gz
 
 # Download and extract the bidirectional model.
 wget "http://download.tensorflow.org/models/skip_thoughts_bi_2017_02_16.tar.gz"
-tar -xvf skip_thoughts_bi_2017_02_16.tar
-rm skip_thoughts_bi_2017_02_16.tar
+tar -xvf skip_thoughts_bi_2017_02_16.tar.gz
+rm skip_thoughts_bi_2017_02_16.tar.gz
 ```
 
 You can now skip to the sections [Evaluating a Model](#evaluating-a-model) and
