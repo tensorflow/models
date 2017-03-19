@@ -398,7 +398,7 @@ import numpy as np
 import os.path
 import scipy.spatial.distance as sd
 from skip_thoughts import configuration
-from skip_thoughts import combined_encoder
+from skip_thoughts import encoder_manager
 
 In [1]:
 # Set paths to the model.
@@ -415,7 +415,7 @@ In [2]:
 # configuration.ModelConfig(bidirectional_encoder=True) and paths to the
 # bidirectional model's files. The encoder will use the concatenation of
 # all loaded models.
-encoder = combined_encoder.CombinedEncoder()
+encoder = encoder_manager.EncoderManager()
 encoder.load_encoder(configuration.ModelConfig(),
                      vocabulary_file=VOCAB_FILE,
                      embedding_matrix_file=EMBEDDING_MATRIX_FILE,
