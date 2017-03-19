@@ -54,6 +54,15 @@ def parse_trace_json(trace):
   return as_json
 
 
+def _optional_master_spec_json(master_spec):
+  """Helper function to return 'null' or a master spec JSON string."""
+  if master_spec is None:
+    return 'null'
+  else:
+    return json_format.MessageToJson(
+        master_spec, preserving_proto_field_name=True)
+
+
 def _container_div(height='700px', contents=''):
   elt_id = str(uuid.uuid4())
   html = """
@@ -64,7 +73,11 @@ def _container_div(height='700px', contents=''):
   return elt_id, html
 
 
-def trace_html(trace, convert_to_unicode=True, height='700px', script=None):
+def trace_html(trace,
+               convert_to_unicode=True,
+               height='700px',
+               script=None,
+               master_spec=None):
   """Generates HTML that will render a master trace.
 
   This will result in a self-contained "div" element.
@@ -76,6 +89,8 @@ def trace_html(trace, convert_to_unicode=True, height='700px', script=None):
       often pass the output of this function to IPython.display.HTML.
     height: CSS string representing the height of the element, default '700px'.
     script: Visualization script contents, if the defaults are unacceptable.
+    master_spec: Master spec proto (parsed), which can improve the layout. May
+      be required in future versions.
 
   Returns:
     unicode or str with HTML contents.
@@ -89,10 +104,14 @@ def trace_html(trace, convert_to_unicode=True, height='700px', script=None):
   {div_html}
   <script type='text/javascript'>
   {script}
-  visualizeToDiv({json}, "{elt_id}");
+  visualizeToDiv({json}, "{elt_id}", {master_spec_json});
   </script>
   """.format(
-      script=script, json=json_trace, elt_id=elt_id, div_html=div_html)
+      script=script,
+      json=json_trace,
+      master_spec_json=_optional_master_spec_json(master_spec),
+      elt_id=elt_id,
+      div_html=div_html)
   return unicode(as_str, 'utf-8') if convert_to_unicode else as_str
 
 
@@ -174,11 +193,13 @@ class InteractiveVisualization(object):
         script=script, div_html=div_html)
     return unicode(html, 'utf-8')  # IPython expects unicode.
 
-  def show_trace(self, trace):
+  def show_trace(self, trace, master_spec=None):
     """Returns a JS script HTML fragment, which will populate the container.
 
     Args:
       trace: binary-encoded MasterTrace string.
+      master_spec: Master spec proto (parsed), which can improve the layout. May
+        be required in future versions.
 
     Returns:
       unicode with HTML contents.
@@ -187,8 +208,10 @@ class InteractiveVisualization(object):
     <meta charset="utf-8"/>
     <script type='text/javascript'>
     document.getElementById("{elt_id}").innerHTML = "";  // Clear previous.
-    visualizeToDiv({json}, "{elt_id}");
+    visualizeToDiv({json}, "{elt_id}", {master_spec_json});
     </script>
     """.format(
-        json=parse_trace_json(trace), elt_id=self.elt_id)
+        json=parse_trace_json(trace),
+        master_spec_json=_optional_master_spec_json(master_spec),
+        elt_id=self.elt_id)
     return unicode(html, 'utf-8')  # IPython expects unicode.

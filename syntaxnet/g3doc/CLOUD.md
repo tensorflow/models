@@ -79,8 +79,7 @@ Run this command to download and run the container, setting up the port
 forwarding to be able to access the notebook.
 
 ```shell
-docker load -i <path to container file>
-docker run --rm -ti -p 8888:8888 dragnn
+sudo docker run --rm -ti -p 8888:8888 tensorflow/syntaxnet
 ```
 
 ### 7. Connect to the server, load the IPython Notebook

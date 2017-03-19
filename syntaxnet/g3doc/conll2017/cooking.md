@@ -21,8 +21,8 @@ _First, assemble your network inside your DRAGNN dish:_
     spatula to mark the word boundaries for the rest of the model.
 *   Next, lay the second LSTM backwards across the top of the first. Don't
     forget to project the hidden layer down by 1/4 with each LSTM you add to the
-    pan. Remember, you only need to put a LSTM cell down just once for each word
-    you marked in the previous step.
+    pan. Remember, you only need to put an LSTM cell down just once for each
+    word you marked in the previous step.
 *   Now lay down your final LSTM running in the forwards direction. Sprinkle
     with POS tags at a ratio of 1:8.
 *   Finally, gently put the feed-forward cell down on top. Carefully braid the

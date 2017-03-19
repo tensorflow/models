@@ -1,5 +1,5 @@
 # Java baseimage, for Bazel.
-FROM java:8
+FROM openjdk:8
 
 ENV SYNTAXNETDIR=/opt/tensorflow PATH=$PATH:/root/bin
 
@@ -50,6 +50,8 @@ RUN python -m pip install \
     && python -m pip install pygraphviz \
           --install-option="--include-path=/usr/include/graphviz" \
           --install-option="--library-path=/usr/lib/graphviz/" \
+    && python -m jupyter_core.command nbextension enable \
+          --py --sys-prefix widgetsnbextension \
     && rm -rf /root/.cache/pip /tmp/pip*
 
 # Installs the latest version of Bazel.
@@ -86,6 +88,5 @@ EXPOSE 8888
 # This does not need to be compiled, only copied.
 COPY examples $SYNTAXNETDIR/syntaxnet/examples
 # Todo: Move this earlier in the file (don't want to invalidate caches for now).
-RUN jupyter nbextension enable --py --sys-prefix widgetsnbextension
 
 CMD /bin/bash -c "bazel-bin/dragnn/tools/oss_notebook_launcher notebook --debug --notebook-dir=/opt/tensorflow/syntaxnet/examples"

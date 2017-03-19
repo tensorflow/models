@@ -154,10 +154,13 @@ class InteractiveDragnnGraph {
    *
    * @param {!Object} masterTrace Master trace proto from DRAGNN.
    * @param {!Object} element Container DOM element to populate.
+   * @param {?Object} masterSpec Master spec proto from DRAGNN; if provided,
+   *     used to improve the layout.
    */
-  constructor(masterTrace, element) {
+  constructor(masterTrace, element, masterSpec) {
     this.masterTrace = masterTrace;
     this.element = element;
+    this.masterSpec = masterSpec || null;
   }
 
   /**
@@ -196,7 +199,7 @@ class InteractiveDragnnGraph {
     sel.abscomp().nodes().hide();
 
     // Redo layout.
-    this.cy.layout({name: 'dragnn'});
+    this.cy.layout({name: 'dragnn', masterSpec: this.masterSpec});
   }
 
   /**
@@ -211,7 +214,7 @@ class InteractiveDragnnGraph {
       boxSelectionEnabled: true,
       autounselectify: true,
       // We'll do more custom layout later.
-      layout: {name: 'dragnn'},
+      layout: {name: 'dragnn', masterSpec: this.masterSpec},
       style: [
         {
           selector: 'node',
@@ -285,12 +288,15 @@ class InteractiveDragnnGraph {
  * situations, the script tag containing the graph definition will be generated
  * inline.
  *
- * @param {Object} masterTrace Master trace proto from DRAGNN.
+ * @param {!Object} masterTrace Master trace proto from DRAGNN.
  * @param {string} divId ID of the page element to populate with the graph.
+ * @param {?Object} masterSpec Master spec proto from DRAGNN; if provided, used
+ *     to improve the layout.
  */
-const visualizeToDiv = function(masterTrace, divId) {
-  const interactiveGraph =
-      new InteractiveDragnnGraph(masterTrace, document.getElementById(divId));
+
+const visualizeToDiv = function(masterTrace, divId, masterSpec) {
+  const interactiveGraph = new InteractiveDragnnGraph(
+      masterTrace, document.getElementById(divId), masterSpec);
   interactiveGraph.initDomElements();
 };
 
