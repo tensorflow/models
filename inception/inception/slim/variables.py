@@ -33,7 +33,7 @@ Usage:
 
   biases = variables.variable('biases',
                               shape=[100],
-                              initializer=tf.zeros_initializer,
+                              initializer=tf.zeros_initializer(),
                               device='/cpu:0')
 
   # More complex example.
@@ -84,7 +84,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.core.framework import graph_pb2
 from inception.slim import scopes
 
 # Collection containing all the variables created using slim.variables
@@ -162,7 +161,7 @@ def get_unique_variable(name):
   Raises:
     ValueError: if no variable uniquely identified by the name exists.
   """
-  candidates = tf.get_collection(tf.GraphKeys.VARIABLES, name)
+  candidates = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, name)
   if not candidates:
     raise ValueError('Couldnt find variable %s' % name)
 
@@ -211,7 +210,7 @@ def variable_device(device, name):
   """Fix the variable device to colocate its ops."""
   if callable(device):
     var_name = tf.get_variable_scope().name + '/' + name
-    var_def = graph_pb2.NodeDef(name=var_name, op='Variable')
+    var_def = tf.NodeDef(name=var_name, op='Variable')
     device = device(var_def)
   if device is None:
     device = ''
@@ -235,13 +234,13 @@ def global_step(device=''):
   else:
     collections = [
         VARIABLES_TO_RESTORE,
-        tf.GraphKeys.VARIABLES,
+        tf.GraphKeys.GLOBAL_VARIABLES,
         tf.GraphKeys.GLOBAL_STEP,
     ]
     # Get the device for the variable.
     with tf.device(variable_device(device, 'global_step')):
       return tf.get_variable('global_step', shape=[], dtype=tf.int64,
-                             initializer=tf.zeros_initializer,
+                             initializer=tf.zeros_initializer(),
                              trainable=False, collections=collections)
 
 
@@ -264,7 +263,7 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
     trainable: If `True` also add the variable to the graph collection
       `GraphKeys.TRAINABLE_VARIABLES` (see tf.Variable).
     collections: A list of collection names to which the Variable will be added.
-      Note that the variable is always also added to the tf.GraphKeys.VARIABLES
+      Note that the variable is always also added to the tf.GraphKeys.GLOBAL_VARIABLES
       and MODEL_VARIABLES collections.
     device: Optional device to place the variable. It can be an string or a
       function that is called to get the device for the variable.
@@ -276,8 +275,8 @@ def variable(name, shape=None, dtype=tf.float32, initializer=None,
   """
   collections = list(collections or [])
 
-  # Make sure variables are added to tf.GraphKeys.VARIABLES and MODEL_VARIABLES
-  collections += [tf.GraphKeys.VARIABLES, MODEL_VARIABLES]
+  # Make sure variables are added to tf.GraphKeys.GLOBAL_VARIABLES and MODEL_VARIABLES
+  collections += [tf.GraphKeys.GLOBAL_VARIABLES, MODEL_VARIABLES]
   # Add to VARIABLES_TO_RESTORE if necessary
   if restore:
     collections.append(VARIABLES_TO_RESTORE)

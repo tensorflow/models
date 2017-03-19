@@ -92,7 +92,7 @@ struct CharPropertyWrapper : RegisterableClass<CharPropertyWrapper> {
 };
 
 #define REGISTER_CHAR_PROPERTY_WRAPPER(type, component) \
-  REGISTER_CLASS_COMPONENT(CharPropertyWrapper, type, component)
+  REGISTER_SYNTAXNET_CLASS_COMPONENT(CharPropertyWrapper, type, component)
 
 #define REGISTER_CHAR_PROPERTY(lsp, name)                         \
   struct name##CharPropertyWrapper : public CharPropertyWrapper { \

@@ -44,7 +44,6 @@ limitations under the License.
 #include "syntaxnet/feature_types.h"
 #include "syntaxnet/proto_io.h"
 #include "syntaxnet/registry.h"
-#include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/utils.h"
 #include "syntaxnet/workspace.h"
@@ -101,7 +100,7 @@ class FeatureVector {
   };
 
   // Array for storing feature vector elements.
-  vector<Element> features_;
+  std::vector<Element> features_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(FeatureVector);
 };
@@ -133,7 +132,7 @@ class GenericFeatureExtractor {
 
   // Returns all feature types names used by the extractor. The names are
   // added to the types_names array.  Invalid before Init() has been called.
-  void GetFeatureTypeNames(vector<string> *type_names) const;
+  void GetFeatureTypeNames(std::vector<string> *type_names) const;
 
   // Returns a feature type used in the extractor.  Invalid before Init() has
   // been called.
@@ -157,7 +156,7 @@ class GenericFeatureExtractor {
 
   // Returns all feature types used by the extractor. The feature types are
   // added to the result array.
-  virtual void GetFeatureTypes(vector<FeatureType *> *types) const = 0;
+  virtual void GetFeatureTypes(std::vector<FeatureType *> *types) const = 0;
 
   // Descriptor for the feature extractor. This is a protocol buffer that
   // contains all the information about the feature extractor. The feature
@@ -167,7 +166,7 @@ class GenericFeatureExtractor {
   // All feature types used by the feature extractor. The collection of all the
   // feature types describes the feature space of the feature set produced by
   // the feature extractor.  Not owned.
-  vector<FeatureType *> feature_types_;
+  std::vector<FeatureType *> feature_types_;
 };
 
 // The generic feature function is the type-independent part of a feature
@@ -198,7 +197,7 @@ class GenericFeatureFunction {
   // Appends the feature types produced by the feature function to types.  The
   // default implementation appends feature_type(), if non-null.  Invalid
   // before Init() has been called.
-  virtual void GetFeatureTypes(vector<FeatureType *> *types) const;
+  virtual void GetFeatureTypes(std::vector<FeatureType *> *types) const;
 
   // Returns the feature type for feature produced by this feature function. If
   // the feature function produces features of different types this returns
@@ -214,6 +213,7 @@ class GenericFeatureFunction {
   // If the named parameter is not found the global parameters are searched.
   string GetParameter(const string &name) const;
   int GetIntParameter(const string &name, int default_value) const;
+  bool GetBoolParameter(const string &name, bool default_value) const;
 
   // Returns the FML function description for the feature function, i.e. the
   // name and parameters without the nested features.
@@ -383,7 +383,7 @@ class NestedFeatureFunction : public FeatureFunction<OBJ, ARGS...> {
   ~NestedFeatureFunction() override { utils::STLDeleteElements(&nested_); }
 
   // By default, just appends the nested feature types.
-  void GetFeatureTypes(vector<FeatureType *> *types) const override {
+  void GetFeatureTypes(std::vector<FeatureType *> *types) const override {
     CHECK(!this->nested().empty())
         << "Nested features require nested features to be defined.";
     for (auto *function : nested_) function->GetFeatureTypes(types);
@@ -415,14 +415,14 @@ class NestedFeatureFunction : public FeatureFunction<OBJ, ARGS...> {
   }
 
   // Returns the list of nested feature functions.
-  const vector<NES *> &nested() const { return nested_; }
+  const std::vector<NES *> &nested() const { return nested_; }
 
   // Instantiates nested feature functions for a feature function. Creates and
   // initializes one feature function for each sub-descriptor in the feature
   // descriptor.
   static void CreateNested(GenericFeatureExtractor *extractor,
                            FeatureFunctionDescriptor *fd,
-                           vector<NES *> *functions,
+                           std::vector<NES *> *functions,
                            const string &prefix) {
     for (int i = 0; i < fd->feature_size(); ++i) {
       FeatureFunctionDescriptor *sub = fd->mutable_feature(i);
@@ -434,7 +434,7 @@ class NestedFeatureFunction : public FeatureFunction<OBJ, ARGS...> {
  protected:
   // The nested feature functions, if any, in order of declaration in the
   // feature descriptor.  Owned.
-  vector<NES *> nested_;
+  std::vector<NES *> nested_;
 };
 
 // Base class for a nested feature function that takes nested features with the
@@ -506,7 +506,7 @@ template<class DER, class OBJ, class ...ARGS>
 class FeatureLocator : public MetaFeatureFunction<OBJ, ARGS...> {
  public:
   // Feature locators have an additional check that there is no intrinsic type.
-  void GetFeatureTypes(vector<FeatureType *> *types) const override {
+  void GetFeatureTypes(std::vector<FeatureType *> *types) const override {
     CHECK(this->feature_type() == nullptr)
         << "FeatureLocators should not have an intrinsic type.";
     MetaFeatureFunction<OBJ, ARGS...>::GetFeatureTypes(types);
@@ -604,7 +604,7 @@ class FeatureExtractor : public GenericFeatureExtractor {
   }
 
   // Collect all feature types used in the feature extractor.
-  void GetFeatureTypes(vector<FeatureType *> *types) const override {
+  void GetFeatureTypes(std::vector<FeatureType *> *types) const override {
     for (int i = 0; i < functions_.size(); ++i) {
       functions_[i]->GetFeatureTypes(types);
     }
@@ -612,11 +612,11 @@ class FeatureExtractor : public GenericFeatureExtractor {
 
   // Top-level feature functions (and variables) in the feature extractor.
   // Owned.
-  vector<Function *> functions_;
+  std::vector<Function *> functions_;
 };
 
-#define REGISTER_FEATURE_FUNCTION(base, name, component) \
-  REGISTER_CLASS_COMPONENT(base, name, component)
+#define REGISTER_SYNTAXNET_FEATURE_FUNCTION(base, name, component) \
+  REGISTER_SYNTAXNET_CLASS_COMPONENT(base, name, component)
 
 }  // namespace syntaxnet
 

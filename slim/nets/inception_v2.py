@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from nets import inception_utils
+
 slim = tf.contrib.slim
 trunc_normal = lambda stddev: tf.truncated_normal_initializer(0.0, stddev)
 
@@ -143,7 +145,7 @@ def inception_v2_base(inputs,
               branch_3, depth(32), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 28 x 28 x 256
@@ -173,7 +175,7 @@ def inception_v2_base(inputs,
               branch_3, depth(64), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 28 x 28 x 320
@@ -198,7 +200,7 @@ def inception_v2_base(inputs,
         with tf.variable_scope('Branch_2'):
           branch_2 = slim.max_pool2d(
               net, [3, 3], stride=2, scope='MaxPool_1a_3x3')
-        net = tf.concat(3, [branch_0, branch_1, branch_2])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 14 x 14 x 576
@@ -228,7 +230,7 @@ def inception_v2_base(inputs,
               branch_3, depth(128), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 14 x 14 x 576
@@ -258,7 +260,7 @@ def inception_v2_base(inputs,
               branch_3, depth(128), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 14 x 14 x 576
@@ -288,7 +290,7 @@ def inception_v2_base(inputs,
               branch_3, depth(96), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
 
@@ -319,7 +321,7 @@ def inception_v2_base(inputs,
               branch_3, depth(96), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 14 x 14 x 576
@@ -344,7 +346,7 @@ def inception_v2_base(inputs,
         with tf.variable_scope('Branch_2'):
           branch_2 = slim.max_pool2d(net, [3, 3], stride=2,
                                      scope='MaxPool_1a_3x3')
-        net = tf.concat(3, [branch_0, branch_1, branch_2])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
       # 7 x 7 x 1024
@@ -374,7 +376,7 @@ def inception_v2_base(inputs,
               branch_3, depth(128), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
 
@@ -405,7 +407,7 @@ def inception_v2_base(inputs,
               branch_3, depth(128), [1, 1],
               weights_initializer=trunc_normal(0.1),
               scope='Conv2d_0b_1x1')
-        net = tf.concat(3, [branch_0, branch_1, branch_2, branch_3])
+        net = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
         end_points[end_point] = net
         if end_point == final_endpoint: return net, end_points
     raise ValueError('Unknown final endpoint %s' % final_endpoint)
@@ -441,7 +443,7 @@ def inception_v2(inputs,
       usage will be to set this value in (0, 1) to reduce the number of
       parameters or computation cost of the model.
     prediction_fn: a function to get predictions out of logits.
-    spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
+    spatial_squeeze: if True, logits is of shape [B, C], if false logits is
         of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
@@ -515,31 +517,4 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
   return kernel_size_out
 
 
-def inception_v2_arg_scope(weight_decay=0.00004):
-  """Defines the default InceptionV2 arg scope.
-
-  Args:
-    weight_decay: The weight decay to use for regularizing the model.
-
-  Returns:
-    An `arg_scope` to use for the inception v3 model.
-  """
-  batch_norm_params = {
-      # Decay for the moving averages.
-      'decay': 0.9997,
-      # epsilon to prevent 0s in variance.
-      'epsilon': 0.001,
-      # collection containing update_ops.
-      'updates_collections': tf.GraphKeys.UPDATE_OPS,
-  }
-
-  # Set weight_decay for weights in Conv and FC layers.
-  with slim.arg_scope([slim.conv2d, slim.fully_connected],
-                      weights_regularizer=slim.l2_regularizer(weight_decay)):
-    with slim.arg_scope(
-        [slim.conv2d],
-        weights_initializer=slim.variance_scaling_initializer(),
-        activation_fn=tf.nn.relu,
-        normalizer_fn=slim.batch_norm,
-        normalizer_params=batch_norm_params) as sc:
-      return sc
+inception_v2_arg_scope = inception_utils.inception_arg_scope

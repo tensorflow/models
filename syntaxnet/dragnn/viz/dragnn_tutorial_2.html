@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <script type="text/javascript" src="bundle.js" charset="utf-8"></script>
+        <div id="09e10a38-13d4-4775-a292-48aea5311d6c"
+          style="width: 100%; min-width: 200px; height: 300px;">
+        </div>
+        <script type='text/javascript'>
+        visualizeToDiv({
+          "component_trace": [
+            {
+              "name": "tagger",
+              "step_trace": [
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=fair"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: | Input: fair ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=enough"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: fair | Input: enough ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "value_trace": [
+                        {
+                          "feature_name": "constant",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=;"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: fair enough | Input: ; ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "value_trace": [
+                        {
+                          "feature_name": "constant",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "1",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=you"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: fair enough ; | Input: you ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "value_trace": [
+                        {
+                          "feature_name": "constant",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "2",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=people"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: fair enough ; you | Input: people ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "value_trace": [
+                        {
+                          "feature_name": "constant",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "3",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=have"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: fair enough ; you people | Input: have ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "value_trace": [
+                        {
+                          "feature_name": "constant",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=eaten"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: fair enough ; you people have | Input: eaten ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "value_trace": [
+                        {
+                          "feature_name": "constant",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "5",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=me"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: fair enough ; you people have eaten | Input: me ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "value_trace": [
+                        {
+                          "feature_name": "constant",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "6",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words",
+                      "value_trace": [
+                        {
+                          "feature_name": "",
+                          "value_name": [
+                            "input.word=."
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "html_representation": "Stack: fair enough ; you people have eaten me | Input: . ",
+                  "caption": "SHIFT(.)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "value_trace": [
+                        {
+                          "feature_name": "constant",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "7",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ],
+                  "step_finished": true
+                },
+                {
+                  "fixed_feature_trace": [
+                    {
+                      "name": "words"
+                    }
+                  ],
+                  "html_representation": "Stack: fair enough ; you people have eaten me . | Input: ",
+                  "linked_feature_trace": [
+                    {
+                      "name": "rnn",
+                      "source_component": "tagger",
+                      "source_translator": "history",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "parser",
+              "step_trace": [
+                {
+                  "html_representation": "Stack: | Input: fair ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair | Input: enough ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "1",
+                          "feature_value": "1"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair enough | Input: ; ",
+                  "step_finished": true,
+                  "caption": "RIGHT_ARC(advmod)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "2",
+                          "feature_value": "2"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "1",
+                          "feature_value": "1"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "1",
+                          "feature_value": "1"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair | Input: ; ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "2",
+                          "feature_value": "2"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "2",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair ; | Input: you ",
+                  "step_finished": true,
+                  "caption": "RIGHT_ARC(p)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "3",
+                          "feature_value": "3"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "2",
+                          "feature_value": "2"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "3",
+                          "feature_value": "2"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "2",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair | Input: you ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "3",
+                          "feature_value": "3"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair you | Input: people ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "4"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "3",
+                          "feature_value": "3"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "5",
+                          "feature_value": "3"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair you people | Input: have ",
+                  "step_finished": true,
+                  "caption": "LEFT_ARC(dep)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "5",
+                          "feature_value": "5"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "4"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "3",
+                          "feature_value": "3"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "6",
+                          "feature_value": "4"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "5",
+                          "feature_value": "3"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair people | Input: have ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "5",
+                          "feature_value": "5"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "4"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "7",
+                          "feature_value": "4"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair people have | Input: eaten ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "6",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "5",
+                          "feature_value": "5"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "4"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "8",
+                          "feature_value": "5"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "7",
+                          "feature_value": "4"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair people have eaten | Input: me ",
+                  "step_finished": true,
+                  "caption": "LEFT_ARC(aux)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "7",
+                          "feature_value": "7"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "6",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "5",
+                          "feature_value": "5"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "9",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "8",
+                          "feature_value": "5"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair people eaten | Input: me ",
+                  "step_finished": true,
+                  "caption": "LEFT_ARC(nsubj)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "7",
+                          "feature_value": "7"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "6",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "4"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "10",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "7",
+                          "feature_value": "4"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair eaten | Input: me ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "7",
+                          "feature_value": "7"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "6",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "11",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair eaten me | Input: . ",
+                  "step_finished": true,
+                  "caption": "RIGHT_ARC(dobj)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "8",
+                          "feature_value": "8"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "7",
+                          "feature_value": "7"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "6",
+                          "feature_value": "6"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "12",
+                          "feature_value": "7"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "11",
+                          "feature_value": "6"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair eaten | Input: . ",
+                  "step_finished": true,
+                  "caption": "RIGHT_ARC(parataxis)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "8",
+                          "feature_value": "8"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "6",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "13",
+                          "feature_value": "6"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "4",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair | Input: . ",
+                  "step_finished": true,
+                  "caption": "SHIFT",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "input.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "8",
+                          "feature_value": "8"
+                        },
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "14",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair . | Input: ",
+                  "step_finished": true,
+                  "caption": "RIGHT_ARC(p)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "8",
+                          "feature_value": "8"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "15",
+                          "feature_value": "8"
+                        },
+                        {
+                          "feature_name": "stack(1).focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "14",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: fair | Input: ",
+                  "step_finished": true,
+                  "caption": "RIGHT_ARC(ROOT)",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "0",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "value_trace": [
+                        {
+                          "feature_name": "stack.focus",
+                          "beam_idx": "0",
+                          "batch_idx": "0",
+                          "step_idx": "16",
+                          "feature_value": "0"
+                        }
+                      ],
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                },
+                {
+                  "html_representation": "Stack: | Input: ",
+                  "linked_feature_trace": [
+                    {
+                      "name": "tagger",
+                      "source_component": "tagger",
+                      "source_translator": "identity",
+                      "source_layer": "logits"
+                    },
+                    {
+                      "name": "rnn-stack",
+                      "source_component": "parser",
+                      "source_translator": "shift-reduce-step",
+                      "source_layer": "layer_0"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }, "09e10a38-13d4-4775-a292-48aea5311d6c", {
+          "component": [
+            {
+              "component_builder": {
+                "registered_name": "DynamicComponentBuilder"
+              },
+              "num_actions": 8,
+              "resource": [
+                {
+                  "name": "word-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/word-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "tag-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/tag-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "tag-to-category",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/tag-to-category"
+                    }
+                  ]
+                },
+                {
+                  "name": "lcword-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/lcword-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "category-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/category-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "char-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/char-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "char-ngram-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/char-ngram-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "label-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/label-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "prefix-table",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/prefix-table"
+                    }
+                  ]
+                },
+                {
+                  "name": "suffix-table",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/suffix-table"
+                    }
+                  ]
+                }
+              ],
+              "name": "tagger",
+              "network_unit": {
+                "registered_name": "FeedForwardNetwork",
+                "parameters": {
+                  "hidden_layer_sizes": "256"
+                }
+              },
+              "fixed_feature": [
+                {
+                  "size": 1,
+                  "name": "words",
+                  "vocabulary_size": 12,
+                  "fml": "input.word",
+                  "embedding_dim": 64
+                }
+              ],
+              "transition_system": {
+                "registered_name": "tagger"
+              },
+              "backend": {
+                "registered_name": "SyntaxNetComponent"
+              },
+              "linked_feature": [
+                {
+                  "embedding_dim": -1,
+                  "source_component": "tagger",
+                  "name": "rnn",
+                  "source_layer": "layer_0",
+                  "size": 1,
+                  "source_translator": "history",
+                  "fml": "constant"
+                }
+              ]
+            },
+            {
+              "component_builder": {
+                "registered_name": "DynamicComponentBuilder"
+              },
+              "num_actions": 17,
+              "resource": [
+                {
+                  "name": "word-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/word-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "tag-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/tag-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "tag-to-category",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/tag-to-category"
+                    }
+                  ]
+                },
+                {
+                  "name": "lcword-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/lcword-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "category-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/category-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "char-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/char-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "char-ngram-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/char-ngram-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "label-map",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/label-map"
+                    }
+                  ]
+                },
+                {
+                  "name": "prefix-table",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/prefix-table"
+                    }
+                  ]
+                },
+                {
+                  "name": "suffix-table",
+                  "part": [
+                    {
+                      "file_pattern": "/tmp/tutorial/lexicon/suffix-table"
+                    }
+                  ]
+                }
+              ],
+              "name": "parser",
+              "network_unit": {
+                "registered_name": "FeedForwardNetwork",
+                "parameters": {
+                  "hidden_layer_sizes": "256",
+                  "layer_norm_hidden": "True"
+                }
+              },
+              "transition_system": {
+                "registered_name": "arc-standard"
+              },
+              "backend": {
+                "registered_name": "SyntaxNetComponent"
+              },
+              "linked_feature": [
+                {
+                  "embedding_dim": 32,
+                  "source_component": "tagger",
+                  "name": "tagger",
+                  "source_layer": "logits",
+                  "size": 3,
+                  "source_translator": "identity",
+                  "fml": "input.focus stack.focus stack(1).focus"
+                },
+                {
+                  "embedding_dim": 32,
+                  "source_component": "parser",
+                  "name": "rnn-stack",
+                  "source_layer": "layer_0",
+                  "size": 2,
+                  "source_translator": "shift-reduce-step",
+                  "fml": "stack.focus stack(1).focus"
+                }
+              ]
+            }
+          ]
+        }
+      );
+      </script>
+    </body>
+</html>
+

@@ -13,9 +13,16 @@ converting them
 to TensorFlow's native TFRecord format and reading them in using TF-Slim's
 data reading and queueing utilities. You can easily train any model on any of
 these datasets, as we demonstrate below. We've also included a
-[jupyter notebook](https://github.com/tensorflow/models/blob/master/slim/slim_walkthough.ipynb),
+[jupyter notebook](https://github.com/tensorflow/models/blob/master/slim/slim_walkthrough.ipynb),
 which provides working examples of how to use TF-Slim for image classification.
 
+## Contacts
+
+Maintainers of TF-slim:
+
+* Nathan Silberman,
+  github: [nathansilberman](https://github.com/nathansilberman)
+* Sergio Guadarrama, github: [sguada](https://github.com/sguada)
 
 ## Table of contents
 
@@ -78,7 +85,7 @@ To verify that this has worked, execute the following commands; it should run
 without raising any errors.
 
 ```
-cd $HOME/workspace/slim
+cd $HOME/workspace/models/slim
 python -c "from nets import cifarnet; mynet = cifarnet.cifarnet"
 ```
 
@@ -199,14 +206,16 @@ crops at multiple scales.
 
 Model | TF-Slim File | Checkpoint | Top-1 Accuracy| Top-5 Accuracy |
 :----:|:------------:|:----------:|:-------:|:--------:|
-[Inception V1](http://arxiv.org/abs/1409.4842v1)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v1.py)|[inception_v1.tar.gz](http://download.tensorflow.org/models/inception_v1_2016_08_28.tar.gz)|69.8|89.6|
-[Inception V2](http://arxiv.org/abs/1502.03167)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v2.py)|[inception_v2.tar.gz](http://download.tensorflow.org/models/inception_v2_2016_08_28.tar.gz)|73.9|91.8|
-[Inception V3](http://arxiv.org/abs/1512.00567)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/inception_v3.py)|[inception_v3.tar.gz](http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz)|78.0|93.9|
-[ResNet 50](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_50.tar.gz](http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz)|75.2|92.2|
-[ResNet 101](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_101.tar.gz](http://download.tensorflow.org/models/resnet_v1_101_2016_08_28.tar.gz)|76.4|92.9|
-[ResNet 152](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/resnet_v1.py)|[resnet_v1_152.tar.gz](http://download.tensorflow.org/models/resnet_v1_152_2016_08_28.tar.gz)|76.8|93.2|
-[VGG 16](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_16.tar.gz](http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz)|71.5|89.8|
-[VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/nets/vgg.py)|[vgg_19.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz)|71.1|89.8|
+[Inception V1](http://arxiv.org/abs/1409.4842v1)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_v1.py)|[inception_v1_2016_08_28.tar.gz](http://download.tensorflow.org/models/inception_v1_2016_08_28.tar.gz)|69.8|89.6|
+[Inception V2](http://arxiv.org/abs/1502.03167)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_v2.py)|[inception_v2_2016_08_28.tar.gz](http://download.tensorflow.org/models/inception_v2_2016_08_28.tar.gz)|73.9|91.8|
+[Inception V3](http://arxiv.org/abs/1512.00567)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_v3.py)|[inception_v3_2016_08_28.tar.gz](http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz)|78.0|93.9|
+[Inception V4](http://arxiv.org/abs/1602.07261)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_v4.py)|[inception_v4_2016_09_09.tar.gz](http://download.tensorflow.org/models/inception_v4_2016_09_09.tar.gz)|80.2|95.2|
+[Inception-ResNet-v2](http://arxiv.org/abs/1602.07261)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/inception_resnet_v2.py)|[inception_resnet_v2.tar.gz](http://download.tensorflow.org/models/inception_resnet_v2_2016_08_30.tar.gz)|80.4|95.3|
+[ResNet 50](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/resnet_v1.py)|[resnet_v1_50.tar.gz](http://download.tensorflow.org/models/resnet_v1_50_2016_08_28.tar.gz)|75.2|92.2|
+[ResNet 101](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/resnet_v1.py)|[resnet_v1_101.tar.gz](http://download.tensorflow.org/models/resnet_v1_101_2016_08_28.tar.gz)|76.4|92.9|
+[ResNet 152](https://arxiv.org/abs/1512.03385)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/resnet_v1.py)|[resnet_v1_152.tar.gz](http://download.tensorflow.org/models/resnet_v1_152_2016_08_28.tar.gz)|76.8|93.2|
+[VGG 16](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/vgg.py)|[vgg_16.tar.gz](http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz)|71.5|89.8|
+[VGG 19](http://arxiv.org/abs/1409.1556.pdf)|[Code](https://github.com/tensorflow/models/blob/master/slim/nets/vgg.py)|[vgg_19.tar.gz](http://download.tensorflow.org/models/vgg_19_2016_08_28.tar.gz)|71.1|89.8|
 
 
 Here is an example of how to download the Inception V3 checkpoint:
@@ -296,8 +305,8 @@ $ python train_image_classifier.py \
     --dataset_split_name=train \
     --model_name=inception_v3 \
     --checkpoint_path=${CHECKPOINT_PATH} \
-    --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits \
-    --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits/Logits
+    --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/AuxLogits \
+    --trainable_scopes=InceptionV3/Logits,InceptionV3/AuxLogits
 ```
 
 
@@ -343,7 +352,7 @@ See
 
 #### The ResNet and VGG Models have 1000 classes but the ImageNet dataset has 1001
 
-The ImageNet dataset provied has an empty background class which was can be used
+The ImageNet dataset provided has an empty background class which can be used
 to fine-tune the model to other tasks. If you try training or fine-tuning the
 VGG or ResNet models using the ImageNet dataset, you might encounter the
 following error:

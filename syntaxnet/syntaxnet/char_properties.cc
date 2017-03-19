@@ -88,7 +88,7 @@ namespace syntaxnet {
 
 struct CharPropertyImplementation {
   unordered_set<char32> chars;
-  vector<vector<int> > rows;
+  std::vector<std::vector<int> > rows;
   CharPropertyImplementation() {
     rows.reserve(10);
     rows.resize(1);
@@ -261,7 +261,7 @@ int CharProperty::NextElementAfter(int c) const {
   return *it;
 }
 
-REGISTER_CLASS_REGISTRY("char property wrapper", CharPropertyWrapper);
+REGISTER_SYNTAXNET_CLASS_REGISTRY("char property wrapper", CharPropertyWrapper);
 
 const CharProperty *CharProperty::Lookup(const char *subclass) {
   // Create a CharPropertyWrapper object and delete it.  We only care about

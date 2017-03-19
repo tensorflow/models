@@ -55,7 +55,7 @@ with tf.variable_scope('spatial_transformer_0'):
 
 # %% Run session
 sess = tf.Session()
-sess.run(tf.initialize_all_variables())
+sess.run(tf.global_variables_initializer())
 y = sess.run(h_trans, feed_dict={x: batch})
 
 # plt.imshow(y[0])

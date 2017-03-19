@@ -65,9 +65,9 @@ class InceptionTest(tf.test.TestCase):
         inception.inception_resnet_v2(inputs, num_classes)
       with tf.variable_scope('on_gpu'), tf.device('/gpu:0'):
         inception.inception_resnet_v2(inputs, num_classes)
-      for v in tf.get_collection(tf.GraphKeys.VARIABLES, scope='on_cpu'):
+      for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='on_cpu'):
         self.assertDeviceEqual(v.device, '/cpu:0')
-      for v in tf.get_collection(tf.GraphKeys.VARIABLES, scope='on_gpu'):
+      for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='on_gpu'):
         self.assertDeviceEqual(v.device, '/gpu:0')
 
   def testHalfSizeImages(self):
@@ -95,7 +95,7 @@ class InceptionTest(tf.test.TestCase):
       self.assertListEqual(logits.get_shape().as_list(),
                            [None, num_classes])
       images = tf.random_uniform((batch_size, height, width, 3))
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEquals(output.shape, (batch_size, num_classes))
 
@@ -109,7 +109,7 @@ class InceptionTest(tf.test.TestCase):
                                                 num_classes,
                                                 is_training=False)
       predictions = tf.argmax(logits, 1)
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (batch_size,))
 
@@ -127,7 +127,7 @@ class InceptionTest(tf.test.TestCase):
                                                 is_training=False,
                                                 reuse=True)
       predictions = tf.argmax(logits, 1)
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (eval_batch_size,))
 

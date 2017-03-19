@@ -143,6 +143,62 @@ class OffsetFeatureLocator : public ParserIndexLocator<OffsetFeatureLocator> {
 
 REGISTER_PARSER_IDX_FEATURE_FUNCTION("offset", OffsetFeatureLocator);
 
+// Feature function that returns the id of bigram constructed by concatenating
+// word fields of tokens at focus and focus + 1.
+class CharBigramFunction : public ParserIndexFeatureFunction {
+ public:
+  void Setup(TaskContext *context) override {
+    input_map_ = context->GetInput("char-ngram-map", "text", "");
+  }
+
+  void Init(TaskContext *context) override {
+    min_freq_ = GetIntParameter("char-bigram-min-freq", 2);
+    bigram_map_.Load(TaskContext::InputFile(*input_map_), min_freq_, -1);
+    unknown_id_ = bigram_map_.Size();
+    outside_id_ = unknown_id_ + 1;
+    set_feature_type(
+        new ResourceBasedFeatureType<CharBigramFunction>(name(), this, {}));
+  }
+
+  int64 NumValues() const {
+    return outside_id_ + 1;
+  }
+
+  // Returns the string representation of the given feature value.
+  string GetFeatureValueName(FeatureValue value) const {
+    if (value == outside_id_) return "<OUTSIDE>";
+    if (value == unknown_id_) return "<UNKNOWN>";
+    return bigram_map_.GetTerm(value);
+  }
+
+  FeatureValue Compute(const WorkspaceSet &workspaces, const ParserState &state,
+                       int focus, const FeatureVector *result) const override {
+    if (focus < 0 || focus >= state.sentence().token_size() - 1) {
+      return outside_id_;
+    }
+    const int start = state.GetToken(focus).start();
+    const int length = state.GetToken(focus + 1).end() - start + 1;
+    CHECK_GT(length, 0);
+    CHECK_LE(start + length, state.sentence().text().size());
+    const char *data = state.sentence().text().data() + start;
+    return bigram_map_.LookupIndex(string(data, length), unknown_id_);
+  }
+
+ private:
+  // Task input for the word to id map. Not owned.
+  TaskInput *input_map_ = nullptr;
+  TermFrequencyMap bigram_map_;
+
+  // Special ids of unknown words and out-of-range.
+  int unknown_id_ = 0;
+  int outside_id_ = 0;
+
+  // Minimum frequency for term map.
+  int min_freq_ = 2;
+};
+
+REGISTER_PARSER_IDX_FEATURE_FUNCTION("char-bigram", CharBigramFunction);
+
 // Feature function that returns the id of the n-th most recently constructed
 // word. Note that the argument, n, should be larger than 0. When equals to 0,
 // it points to the word which is not yet completed.
@@ -157,8 +213,8 @@ class LastWordFeatureFunction : public ParserFeatureFunction {
     max_num_terms_ = GetIntParameter("max-num-terms", 0);
     word_map_.Load(
         TaskContext::InputFile(*input_word_map_), min_freq_, max_num_terms_);
-    unk_id_ = word_map_.Size();
-    outside_id_ = unk_id_ + 1;
+    unknown_id_ = word_map_.Size();
+    outside_id_ = unknown_id_ + 1;
     set_feature_type(
         new ResourceBasedFeatureType<LastWordFeatureFunction>(
         name(), this, {}));
@@ -171,7 +227,7 @@ class LastWordFeatureFunction : public ParserFeatureFunction {
   // Returns the string representation of the given feature value.
   string GetFeatureValueName(FeatureValue value) const {
     if (value == outside_id_) return "<OUTSIDE>";
-    if (value == unk_id_) return "<UNKNOWN>";
+    if (value == unknown_id_) return "<UNKNOWN>";
     DCHECK_GE(value, 0);
     DCHECK_LT(value, word_map_.Size());
     return word_map_.GetTerm(value);
@@ -197,7 +253,7 @@ class LastWordFeatureFunction : public ParserFeatureFunction {
     const int start_offset = state.GetToken(start).start();
     const int length = state.GetToken(end).end() - start_offset + 1;
     const auto *data = sentence.text().data() + start_offset;
-    return word_map_.LookupIndex(string(data, length), unk_id_);
+    return word_map_.LookupIndex(string(data, length), unknown_id_);
   }
 
  private:
@@ -206,7 +262,7 @@ class LastWordFeatureFunction : public ParserFeatureFunction {
   TermFrequencyMap word_map_;
 
   // Special ids of unknown words and out-of-range.
-  int unk_id_ = 0;
+  int unknown_id_ = 0;
   int outside_id_ = 0;
 
   // Minimum frequency for term map.

@@ -116,7 +116,7 @@ def prefetch_input_data(reader,
     enqueue_ops.append(values_queue.enqueue([value]))
   tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(
       values_queue, enqueue_ops))
-  tf.scalar_summary(
+  tf.summary.scalar(
       "queue/%s/fraction_of_%d_full" % (values_queue.name, capacity),
       tf.cast(values_queue.size(), tf.float32) * (1. / capacity))
 
@@ -181,7 +181,7 @@ def batch_with_dynamic_pad(images_and_captions,
   enqueue_list = []
   for image, caption in images_and_captions:
     caption_length = tf.shape(caption)[0]
-    input_length = tf.expand_dims(tf.sub(caption_length, 1), 0)
+    input_length = tf.expand_dims(tf.subtract(caption_length, 1), 0)
 
     input_seq = tf.slice(caption, [0], input_length)
     target_seq = tf.slice(caption, [1], input_length)
@@ -197,8 +197,8 @@ def batch_with_dynamic_pad(images_and_captions,
 
   if add_summaries:
     lengths = tf.add(tf.reduce_sum(mask, 1), 1)
-    tf.scalar_summary("caption_length/batch_min", tf.reduce_min(lengths))
-    tf.scalar_summary("caption_length/batch_max", tf.reduce_max(lengths))
-    tf.scalar_summary("caption_length/batch_mean", tf.reduce_mean(lengths))
+    tf.summary.scalar("caption_length/batch_min", tf.reduce_min(lengths))
+    tf.summary.scalar("caption_length/batch_max", tf.reduce_max(lengths))
+    tf.summary.scalar("caption_length/batch_mean", tf.reduce_mean(lengths))
 
   return images, input_seqs, target_seqs, mask

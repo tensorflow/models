@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Provides data for the Cifar10 dataset.
+"""Provides data for the flowers dataset.
 
 The dataset scripts used to create the dataset can be found at:
 tensorflow/models/slim/download_and_convert_data.py
@@ -42,7 +42,7 @@ _ITEMS_TO_DESCRIPTIONS = {
 
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
-  """Gets a dataset tuple with instructions for reading cifar10.
+  """Gets a dataset tuple with instructions for reading flowers.
 
   Args:
     split_name: A train/validation split name.

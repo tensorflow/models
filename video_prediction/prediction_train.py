@@ -113,11 +113,11 @@ class Model(object):
     summaries = []
 
     # Split into timesteps.
-    actions = tf.split(1, actions.get_shape()[1], actions)
+    actions = tf.split(axis=1, num_or_size_splits=actions.get_shape()[1], value=actions)
     actions = [tf.squeeze(act) for act in actions]
-    states = tf.split(1, states.get_shape()[1], states)
+    states = tf.split(axis=1, num_or_size_splits=states.get_shape()[1], value=states)
     states = [tf.squeeze(st) for st in states]
-    images = tf.split(1, images.get_shape()[1], images)
+    images = tf.split(axis=1, num_or_size_splits=images.get_shape()[1], value=images)
     images = [tf.squeeze(img) for img in images]
 
     if reuse_scope is None:
@@ -157,8 +157,8 @@ class Model(object):
       psnr_i = peak_signal_to_noise_ratio(x, gx)
       psnr_all += psnr_i
       summaries.append(
-          tf.scalar_summary(prefix + '_recon_cost' + str(i), recon_cost))
-      summaries.append(tf.scalar_summary(prefix + '_psnr' + str(i), psnr_i))
+          tf.summary.scalar(prefix + '_recon_cost' + str(i), recon_cost))
+      summaries.append(tf.summary.scalar(prefix + '_psnr' + str(i), psnr_i))
       loss += recon_cost
 
     for i, state, gen_state in zip(
@@ -166,19 +166,19 @@ class Model(object):
         gen_states[FLAGS.context_frames - 1:]):
       state_cost = mean_squared_error(state, gen_state) * 1e-4
       summaries.append(
-          tf.scalar_summary(prefix + '_state_cost' + str(i), state_cost))
+          tf.summary.scalar(prefix + '_state_cost' + str(i), state_cost))
       loss += state_cost
-    summaries.append(tf.scalar_summary(prefix + '_psnr_all', psnr_all))
+    summaries.append(tf.summary.scalar(prefix + '_psnr_all', psnr_all))
     self.psnr_all = psnr_all
 
     self.loss = loss = loss / np.float32(len(images) - FLAGS.context_frames)
 
-    summaries.append(tf.scalar_summary(prefix + '_loss', loss))
+    summaries.append(tf.summary.scalar(prefix + '_loss', loss))
 
     self.lr = tf.placeholder_with_default(FLAGS.learning_rate, ())
 
     self.train_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
-    self.summ_op = tf.merge_summary(summaries)
+    self.summ_op = tf.summary.merge(summaries)
 
 
 def main(unused_argv):
@@ -196,18 +196,18 @@ def main(unused_argv):
   print 'Constructing saver.'
   # Make saver.
   saver = tf.train.Saver(
-      tf.get_collection(tf.GraphKeys.VARIABLES), max_to_keep=0)
+      tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES), max_to_keep=0)
 
   # Make training session.
   sess = tf.InteractiveSession()
-  summary_writer = tf.train.SummaryWriter(
+  summary_writer = tf.summary.FileWriter(
       FLAGS.event_log_dir, graph=sess.graph, flush_secs=10)
 
   if FLAGS.pretrained_model:
     saver.restore(sess, FLAGS.pretrained_model)
 
   tf.train.start_queue_runners(sess)
-  sess.run(tf.initialize_all_variables())
+  sess.run(tf.global_variables_initializer())
 
   tf.logging.info('iteration number, cost')
 

@@ -46,14 +46,50 @@ void GenericEmbeddingFeatureExtractor::Setup(TaskContext *context) {
 void GenericEmbeddingFeatureExtractor::Init(TaskContext *context) {
 }
 
-vector<vector<SparseFeatures>> GenericEmbeddingFeatureExtractor::ConvertExample(
-    const vector<FeatureVector> &feature_vectors) const {
+std::vector<string> GenericEmbeddingFeatureExtractor::GetMappingsForEmbedding(
+    const string &embedding_name) {
+  const auto name = std::find(embedding_names_.begin(), embedding_names_.end(),
+                              embedding_name);
+  if (name == embedding_names_.end()) {
+    return {};
+  }
+  const int embedding_idx = std::distance(embedding_names_.begin(), name);
+  const auto &feature_extractor = generic_feature_extractor(embedding_idx);
+  const auto *type = feature_extractor.feature_type(0);
+  const int domain_size = type->GetDomainSize();
+  for (int i = 1; i < feature_extractor.feature_types(); ++i) {
+    // A sanity check that ensures all feature types have the same domain size.
+    CHECK_EQ(domain_size, feature_extractor.feature_type(i)->GetDomainSize())
+        << "FeatureType:" << feature_extractor.feature_type(i)
+        << " (embedding_name:" << type->name() << ")"
+        << " actual domain_size:"
+        << feature_extractor.feature_type(i)->GetDomainSize()
+        << " expected domain size:" << domain_size;
+  }
+  std::vector<string> mapped_feature_values(domain_size);
+  for (Predicate p = 0; p < type->GetDomainSize(); ++p) {
+    const string name = type->GetFeatureValueName(p);
+
+    // Check for a unique mapping.
+    CHECK_EQ(mapped_feature_values[p].size(), 0)
+        << embedding_name << " \"" << name << "\" maps to predicate" << p
+        << ", but collides with \"" << mapped_feature_values[p] << "\"";
+    mapped_feature_values[p] = name;
+  }
+
+  return mapped_feature_values;
+}
+
+std::vector<std::vector<SparseFeatures>>
+GenericEmbeddingFeatureExtractor::ConvertExample(
+    const std::vector<FeatureVector> &feature_vectors) const {
   // Extract the features.
-  vector<vector<SparseFeatures>> sparse_features(feature_vectors.size());
+  std::vector<std::vector<SparseFeatures>> sparse_features(
+      feature_vectors.size());
   for (size_t i = 0; i < feature_vectors.size(); ++i) {
     // Convert the nlp_parser::FeatureVector to dist belief format.
-    sparse_features[i] =
-        vector<SparseFeatures>(generic_feature_extractor(i).feature_types());
+    sparse_features[i] = std::vector<SparseFeatures>(
+        generic_feature_extractor(i).feature_types());
 
     for (int j = 0; j < feature_vectors[i].size(); ++j) {
       const FeatureType &feature_type = *feature_vectors[i].type(j);

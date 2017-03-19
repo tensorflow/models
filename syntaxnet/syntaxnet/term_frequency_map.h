@@ -83,7 +83,7 @@ class TermFrequencyMap {
   TermIndex term_index_;
 
   // Mapping from indices to term and frequency.
-  vector<pair<string, int64>> term_data_;
+  std::vector<std::pair<string, int64>> term_data_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(TermFrequencyMap);
 };
@@ -107,7 +107,11 @@ class TagToCategoryMap {
   void Save(const string &filename) const;
 
  private:
-  map<string, string> tag_to_category_;
+  // List of tags that have multiple coarse tags, and their mappings. Used only
+  // for error reporting at Save() time.
+  std::map<string, std::unordered_set<string>> invalid_mappings_;
+
+  std::map<string, string> tag_to_category_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(TagToCategoryMap);
 };

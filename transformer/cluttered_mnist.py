@@ -123,7 +123,7 @@ y_logits = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
 # %% Define loss/eval/training functions
 cross_entropy = tf.reduce_mean(
-    tf.nn.softmax_cross_entropy_with_logits(y_logits, y))
+    tf.nn.softmax_cross_entropy_with_logits(logits=y_logits, targets=y))
 opt = tf.train.AdamOptimizer()
 optimizer = opt.minimize(cross_entropy)
 grads = opt.compute_gradients(cross_entropy, [b_fc_loc2])
@@ -135,7 +135,7 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, 'float'))
 # %% We now create a new session to actually perform the initialization the
 # variables:
 sess = tf.Session()
-sess.run(tf.initialize_all_variables())
+sess.run(tf.global_variables_initializer())
 
 
 # %% We'll now train in minibatches and report accuracy, loss:

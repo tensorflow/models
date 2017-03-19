@@ -171,7 +171,7 @@ def MultiScaleSSIM(img1, img2, max_val=255, filter_size=11, filter_sigma=1.5,
   im1, im2 = [x.astype(np.float64) for x in [img1, img2]]
   mssim = np.array([])
   mcs = np.array([])
-  for _ in xrange(levels):
+  for _ in range(levels):
     ssim, cs = _SSIMForMultiScale(
         im1, im2, max_val=max_val, filter_size=filter_size,
         filter_sigma=filter_sigma, k1=k1, k2=k2)
@@ -186,16 +186,16 @@ def MultiScaleSSIM(img1, img2, max_val=255, filter_size=11, filter_sigma=1.5,
 
 def main(_):
   if FLAGS.original_image is None or FLAGS.compared_image is None:
-    print ('\nUsage: python msssim.py --original_image=original.png '
-           '--compared_image=distorted.png\n\n')
+    print('\nUsage: python msssim.py --original_image=original.png '
+          '--compared_image=distorted.png\n\n')
     return
 
   if not tf.gfile.Exists(FLAGS.original_image):
-    print '\nCannot find --original_image.\n'
+    print('\nCannot find --original_image.\n')
     return
 
   if not tf.gfile.Exists(FLAGS.compared_image):
-    print '\nCannot find --compared_image.\n'
+    print('\nCannot find --compared_image.\n')
     return
 
   with tf.gfile.FastGFile(FLAGS.original_image) as image_file:
@@ -210,7 +210,7 @@ def main(_):
     img1 = sess.run(decoded_image, feed_dict={input_img: img1_str})
     img2 = sess.run(decoded_image, feed_dict={input_img: img2_str})
 
-  print MultiScaleSSIM(img1, img2, max_val=255)
+  print((MultiScaleSSIM(img1, img2, max_val=255)))
 
 
 if __name__ == '__main__':

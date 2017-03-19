@@ -68,7 +68,9 @@ TOKENIZED_DOCS = u'''बात गलत हो तो गुस्सा से
 लेकिन अभिनेत्री के इस कदम से वहां रंग में भंग पड़ गया ।
 '''
 
-CHARS = u'''अ इ आ क ग ज ट त द न प भ ब य म र ल व ह स ि ा ु ी े ै ो ् ड़ । ं'''
+CHARS = u'''अ इ आ क ग ज ट त द न प भ ब य म र ल व ह स ि ा ु ी े ै ो ् ड़ । ं'''.split(' ')
+
+CHAR_NGRAMS = u'''^ अ  ^ अभ  ^ आ  ^ आन  ^ इ  ^ इस $  ^ क  ^ कद  ^ के $  ^ को $  ^ ग  ^ गय  ^ गल  ^ गु  ^ त  ^ तो $  ^ प  ^ पड़ $  ^ ब  ^ बा  ^ भ  ^ भं  ^ भी $  ^ म  ^ मे  ^ र  ^ रं  ^ ल  ^ ला  ^ ले  ^ व  ^ वह  ^ स  ^ से  ^ से $  ^ ह  ^ है $  ^ हो $  ^ । $  ं  ं $  ंग $  क  कि  ग $  ज  ज $  जम  ट  टि  त  त $  त्  द  दम $  न  न $  ना $  ने  ब  ब्  भ  भि  म  म $  मी $  य  या $  र  रि  री $  ल  ल  लत $  ले  स  स $  सा $  स्  ह  हा  ा  ा $  ां $  ाज  ात $  ि  िज $  िट  िन  िन $  ी $  ु  ुस  े  े $  ें $  ेक  ेत  ेब  ै $  ो $  ्  ्र  ्स  ड़ $'''.split('  ')
 
 COMMENTS = u'# Line with fake comments.'
 
@@ -89,12 +91,21 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
     inp.record_format.append(record_format)
     inp.part.add().file_pattern = file_pattern
 
+  def AddParameter(self, name, value, context):
+    param = context.parameter.add()
+    param.name = name
+    param.value = value
+
   def WriteContext(self, corpus_format):
     context = task_spec_pb2.TaskSpec()
+    self.AddParameter('brain_parser_embedding_names', 'words;tags', context)
+    self.AddParameter('brain_parser_features', 'input.token.word;input.tag',
+                      context)
     self.AddInput('documents', self.corpus_file, corpus_format, context)
     for name in ('word-map', 'lcword-map', 'tag-map',
                  'category-map', 'label-map', 'prefix-table',
-                 'suffix-table', 'tag-to-category', 'char-map'):
+                 'suffix-table', 'tag-to-category', 'char-map',
+                 'char-ngram-map'):
       self.AddInput(name, os.path.join(FLAGS.test_tmpdir, name), '', context)
     logging.info('Writing context to: %s', self.context_file)
     with open(self.context_file, 'w') as f:
@@ -110,7 +121,8 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
     return doc, last
 
   def ValidateDocuments(self):
-    doc_source = gen_parser_ops.document_source(self.context_file, batch_size=1)
+    doc_source = gen_parser_ops.document_source(
+        task_context=self.context_file, batch_size=1)
     with self.test_session() as sess:
       logging.info('Reading document1')
       doc, last = self.ReadNextDocument(sess, doc_source)
@@ -139,15 +151,21 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
     with file(os.path.join(FLAGS.test_tmpdir, map_name), 'r') as f:
       for line in f:
         entries = line.strip().split(' ')
-        if len(entries) == 2:
-          loaded_map[entries[0]] = entries[1]
+        if len(entries) >= 2:
+          loaded_map[' '.join(entries[:-1])] = entries[-1]
     return loaded_map
 
   def ValidateCharMap(self):
     char_map = self.LoadMap('char-map')
-    self.assertEqual(len(char_map), len(CHARS.split(' ')))
-    for char in CHARS.split(' '):
+    self.assertEqual(len(char_map), len(CHARS))
+    for char in CHARS:
       self.assertIn(char.encode('utf-8'), char_map)
+
+  def ValidateCharNgramMap(self):
+    char_ngram_map = self.LoadMap('char-ngram-map')
+    self.assertEqual(len(char_ngram_map), len(CHAR_NGRAMS))
+    for char_ngram in CHAR_NGRAMS:
+      self.assertIn(char_ngram.encode('utf-8'), char_ngram_map)
 
   def ValidateWordMap(self):
     word_map = self.LoadMap('word-map')
@@ -156,7 +174,10 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
 
   def BuildLexicon(self):
     with self.test_session():
-      gen_parser_ops.lexicon_builder(task_context=self.context_file).run()
+      gen_parser_ops.lexicon_builder(
+          task_context=self.context_file,
+          lexicon_max_char_ngram_length=2,
+          lexicon_char_ngram_mark_boundaries=True).run()
 
   def testCoNLLFormat(self):
     self.WriteContext('conll-sentence')
@@ -168,6 +189,7 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
     self.BuildLexicon()
     self.ValidateTagToCategoryMap()
     self.ValidateCharMap()
+    self.ValidateCharNgramMap()
     self.ValidateWordMap()
 
   def testCoNLLFormatExtraNewlinesAndComments(self):
@@ -192,6 +214,27 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
       f.write((u'\n\n\n' + TOKENIZED_DOCS + u'\n\n\n').encode('utf-8'))
     self.ValidateDocuments()
     self.BuildLexicon()
+
+  def testFeatureVocab(self):
+    words_vocab_op = gen_parser_ops.feature_vocab(
+        task_context=self.context_file)
+    foo_vocab_op = gen_parser_ops.feature_vocab(
+        task_context=self.context_file, embedding_name='foo')
+
+    with self.test_session() as sess:
+      words_vocab, foo_vocab = sess.run([words_vocab_op, foo_vocab_op])
+
+    self.assertEqual(0, len(foo_vocab))
+
+    # Explicitly generate the expected vocabulary from the test documents.
+    expected_vocab = set(['<UNKNOWN>', '<OUTSIDE>'])
+    for doc in [CONLL_DOC1, CONLL_DOC2]:
+      for line in doc.split('\n'):
+        expected_vocab.add(line.split(' ')[1])
+
+    actual_vocab = set(s.decode('utf-8') for s in words_vocab)
+    self.assertEqual(expected_vocab, actual_vocab)
+
 
 if __name__ == '__main__':
   googletest.main()

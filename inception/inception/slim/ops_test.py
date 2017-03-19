@@ -128,7 +128,7 @@ class ConvTest(tf.test.TestCase):
       wd = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)[0]
       self.assertEquals(wd.op.name,
                         'Conv/weights/Regularizer/L2Regularizer/value')
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       self.assertTrue(sess.run(wd) <= 0.01)
 
   def testCreateConvWithoutWD(self):
@@ -254,7 +254,7 @@ class FCTest(tf.test.TestCase):
       wd = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)[0]
       self.assertEquals(wd.op.name,
                         'FC/weights/Regularizer/L2Regularizer/value')
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       self.assertTrue(sess.run(wd) <= 0.01)
 
   def testCreateFCWithoutWD(self):
@@ -604,7 +604,7 @@ class BatchNormTest(tf.test.TestCase):
         barrier = tf.no_op(name='gradient_barrier')
         output = control_flow_ops.with_dependencies([barrier], output)
       # Initialize all variables
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
       moving_variance = variables.get_variables('BatchNorm/moving_variance')[0]
       mean, variance = sess.run([moving_mean, moving_variance])
@@ -634,7 +634,7 @@ class BatchNormTest(tf.test.TestCase):
         barrier = tf.no_op(name='gradient_barrier')
         output = control_flow_ops.with_dependencies([barrier], output)
       # Initialize all variables
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
       moving_variance = variables.get_variables('BatchNorm/moving_variance')[0]
       mean, variance = sess.run([moving_mean, moving_variance])
@@ -668,7 +668,7 @@ class BatchNormTest(tf.test.TestCase):
         barrier = tf.no_op(name='gradient_barrier')
         output = control_flow_ops.with_dependencies([barrier], output)
       # Initialize all variables
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
       moving_variance = variables.get_variables('BatchNorm/moving_variance')[0]
       mean, variance = sess.run([moving_mean, moving_variance])

@@ -86,7 +86,7 @@ def _Train(model, data_batcher):
     saver = tf.train.Saver()
     # Train dir is different from log_root to avoid summary directory
     # conflict with Supervisor.
-    summary_writer = tf.train.SummaryWriter(FLAGS.train_dir)
+    summary_writer = tf.summary.FileWriter(FLAGS.train_dir)
     sv = tf.train.Supervisor(logdir=FLAGS.log_root,
                              is_chief=True,
                              saver=saver,
@@ -94,7 +94,8 @@ def _Train(model, data_batcher):
                              save_summaries_secs=60,
                              save_model_secs=FLAGS.checkpoint_secs,
                              global_step=model.global_step)
-    sess = sv.prepare_or_wait_for_session()
+    sess = sv.prepare_or_wait_for_session(config=tf.ConfigProto(
+        allow_soft_placement=True))
     running_avg_loss = 0
     step = 0
     while not sv.should_stop() and step < FLAGS.max_run_steps:
@@ -118,7 +119,7 @@ def _Eval(model, data_batcher, vocab=None):
   """Runs model eval."""
   model.build_graph()
   saver = tf.train.Saver()
-  summary_writer = tf.train.SummaryWriter(FLAGS.eval_dir)
+  summary_writer = tf.summary.FileWriter(FLAGS.eval_dir)
   sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
   running_avg_loss = 0
   step = 0
@@ -159,10 +160,10 @@ def _Eval(model, data_batcher, vocab=None):
 def main(unused_argv):
   vocab = data.Vocab(FLAGS.vocab_path, 1000000)
   # Check for presence of required special tokens.
-  assert vocab.WordToId(data.PAD_TOKEN) > 0
-  assert vocab.WordToId(data.UNKNOWN_TOKEN) >= 0
-  assert vocab.WordToId(data.SENTENCE_START) > 0
-  assert vocab.WordToId(data.SENTENCE_END) > 0
+  assert vocab.CheckVocab(data.PAD_TOKEN) > 0
+  assert vocab.CheckVocab(data.UNKNOWN_TOKEN) >= 0
+  assert vocab.CheckVocab(data.SENTENCE_START) > 0
+  assert vocab.CheckVocab(data.SENTENCE_END) > 0
 
   batch_size = 4
   if FLAGS.mode == 'decode':

@@ -58,7 +58,7 @@ def vgg_arg_scope(weight_decay=0.0005):
   with slim.arg_scope([slim.conv2d, slim.fully_connected],
                       activation_fn=tf.nn.relu,
                       weights_regularizer=slim.l2_regularizer(weight_decay),
-                      biases_initializer=tf.zeros_initializer):
+                      biases_initializer=tf.zeros_initializer()):
     with slim.arg_scope([slim.conv2d], padding='SAME') as arg_sc:
       return arg_sc
 
@@ -114,7 +114,7 @@ def vgg_a(inputs,
                         normalizer_fn=None,
                         scope='fc8')
       # Convert end_points_collection into a end_point dict.
-      end_points = dict(tf.get_collection(end_points_collection))
+      end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if spatial_squeeze:
         net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
         end_points[sc.name + '/fc8'] = net
@@ -173,7 +173,7 @@ def vgg_16(inputs,
                         normalizer_fn=None,
                         scope='fc8')
       # Convert end_points_collection into a end_point dict.
-      end_points = dict(tf.get_collection(end_points_collection))
+      end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if spatial_squeeze:
         net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
         end_points[sc.name + '/fc8'] = net
@@ -232,7 +232,7 @@ def vgg_19(inputs,
                         normalizer_fn=None,
                         scope='fc8')
       # Convert end_points_collection into a end_point dict.
-      end_points = dict(tf.get_collection(end_points_collection))
+      end_points = slim.utils.convert_collection_to_dict(end_points_collection)
       if spatial_squeeze:
         net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
         end_points[sc.name + '/fc8'] = net

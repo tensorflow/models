@@ -42,8 +42,8 @@ limitations under the License.
 
 #include <string>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/feature_extractor.pb.h"
+#include "syntaxnet/utils.h"
 
 namespace syntaxnet {
 

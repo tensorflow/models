@@ -17,7 +17,6 @@ limitations under the License.
 #include "syntaxnet/char_properties.h"
 #include "syntaxnet/registry.h"
 #include "util/utf8/unicodetext.h"
-#include "util/utf8/unilib.h"
 #include "util/utf8/unilib_utf8_utils.h"
 
 namespace syntaxnet {
@@ -45,7 +44,7 @@ void TermFrequencyMapFeature::Init(TaskContext *context) {
 
 string TermFrequencyMapFeature::GetFeatureValueName(FeatureValue value) const {
   if (value == UnknownValue()) return "<UNKNOWN>";
-  if (value >= 0 && value < (NumValues() - 1)) {
+  if (value >= 0 && value < term_map_->Size()) {
     return term_map_->GetTerm(value);
   }
   LOG(ERROR) << "Invalid feature value: " << value;
@@ -83,13 +82,6 @@ string TermFrequencyMapSetFeature::WorkspaceName() const {
 }
 
 namespace {
-void GetUTF8Chars(const string &word, vector<tensorflow::StringPiece> *chars) {
-  UnicodeText text;
-  text.PointToUTF8(word.c_str(), word.size());
-  for (UnicodeText::const_iterator it = text.begin(); it != text.end(); ++it) {
-    chars->push_back(tensorflow::StringPiece(it.utf8_data(), it.utf8_length()));
-  }
-}
 
 int UTF8FirstLetterNumBytes(const char *utf8_str) {
   if (*utf8_str == '\0') return 0;
@@ -98,30 +90,34 @@ int UTF8FirstLetterNumBytes(const char *utf8_str) {
 
 }  // namespace
 
-void CharNgram::GetTokenIndices(const Token &token, vector<int> *values) const {
+void CharNgram::Setup(TaskContext *context) {
+  TermFrequencyMapSetFeature::Setup(context);
+  extractor_.set_min_length(GetIntParameter("min-length", 1));
+  extractor_.set_max_length(GetIntParameter("max-length", 3));
+  extractor_.set_add_terminators(GetBoolParameter("add-terminators", false));
+  extractor_.set_mark_boundaries(GetBoolParameter("mark-boundaries", false));
+  extractor_.Setup(*context);
+}
+
+string CharNgram::WorkspaceName() const {
+  return tensorflow::strings::StrCat(
+      TermFrequencyMapSetFeature::WorkspaceName(), ":",
+      extractor_.GetConfigId());
+}
+
+void CharNgram::GetTokenIndices(const Token &token,
+                                std::vector<int> *values) const {
   values->clear();
-  vector<tensorflow::StringPiece> char_sp;
-  if (use_terminators_) char_sp.push_back("^");
-  GetUTF8Chars(token.word(), &char_sp);
-  if (use_terminators_) char_sp.push_back("$");
-  for (int start = 0; start < char_sp.size(); ++start) {
-    string char_ngram;
-    for (int index = 0;
-         index < max_char_ngram_length_ && start + index < char_sp.size();
-         ++index) {
-      tensorflow::StringPiece c = char_sp[start + index];
-      if (c == " ") break;  // Never add char ngrams containing spaces.
-      tensorflow::strings::StrAppend(&char_ngram, c);
-      int value = LookupIndex(char_ngram);
-      if (value != -1) {  // Skip unknown values.
-        values->push_back(value);
-      }
+  extractor_.Extract(token.word(), [this, values](const string &char_ngram) {
+    const int value = LookupIndex(char_ngram);
+    if (value != -1) {  // Skip unknown values.
+      values->push_back(value);
     }
-  }
+  });
 }
 
 void MorphologySet::GetTokenIndices(const Token &token,
-                                    vector<int> *values) const {
+                                    std::vector<int> *values) const {
   values->clear();
   const TokenMorphology &token_morphology =
       token.GetExtension(TokenMorphology::morphology);
@@ -401,10 +397,12 @@ string AffixTableFeature::GetFeatureValueName(FeatureValue value) const {
 }
 
 // Registry for the Sentence + token index feature functions.
-REGISTER_CLASS_REGISTRY("sentence+index feature function", SentenceFeature);
+REGISTER_SYNTAXNET_CLASS_REGISTRY("sentence+index feature function",
+                                  SentenceFeature);
 
 // Register the features defined in the header.
 REGISTER_SENTENCE_IDX_FEATURE("word", Word);
+REGISTER_SENTENCE_IDX_FEATURE("known-word", KnownWord);
 REGISTER_SENTENCE_IDX_FEATURE("char", Char);
 REGISTER_SENTENCE_IDX_FEATURE("lcword", LowercaseWord);
 REGISTER_SENTENCE_IDX_FEATURE("tag", Tag);
