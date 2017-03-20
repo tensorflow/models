@@ -197,7 +197,6 @@ def train(target, dataset, cluster_spec):
       opt = tf.train.SyncReplicasOptimizer(
           opt,
           replicas_to_aggregate=num_replicas_to_aggregate,
-          replica_id=FLAGS.task_id,
           total_num_replicas=num_workers,
           variable_averages=exp_moving_averager,
           variables_to_average=variables_to_average)
@@ -222,12 +221,11 @@ def train(target, dataset, cluster_spec):
       with tf.control_dependencies([apply_gradients_op]):
         train_op = tf.identity(total_loss, name='train_op')
 
-      # Get chief queue_runners, init_tokens and clean_up_op, which is used to
+      # Get chief queue_runners and init_tokens, which is used to
       # synchronize replicas.
       # More details can be found in sync_replicas_optimizer.
       chief_queue_runners = [opt.get_chief_queue_runner()]
       init_tokens_op = opt.get_init_tokens_op()
-      clean_up_op = opt.get_clean_up_op()
 
       # Create a saver.
       saver = tf.train.Saver()
@@ -301,8 +299,7 @@ def train(target, dataset, cluster_spec):
             next_summary_time += FLAGS.save_summaries_secs
         except:
           if is_chief:
-            tf.logging.info('About to execute sync_clean_up_op!')
-            sess.run(clean_up_op)
+            tf.logging.info('Chief got exception while running!')
           raise
 
       # Stop the supervisor.  This also waits for service threads to finish.
