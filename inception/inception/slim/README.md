@@ -319,7 +319,7 @@ their use, consider the following example.
 def MyNewOp(inputs):
   varA = ...
   varB = ...
-  outputs = tf.mul(varA, inputs) + varB
+  outputs = tf.multiply(varA, inputs) + varB
   return outputs
 
 ```
