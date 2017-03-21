@@ -232,12 +232,12 @@ class Word2Vec(object):
         distortion=0.75,
         unigrams=opts.vocab_counts.tolist()))
 
-        # Embeddings for examples: [batch_size,emb_dim]
-        # On each forward pass...the self._emb will change
+        # Embeddings for examples(emb_examples): [batch_size,emb_dim]
+        # On each forward pass, the self._emb will change
         # (learn) and update. To get the embedding of each
         # example in our training(forward) step, we partition
-        # our embeddings(self._emb) according to ids of examples
-        # embedding matrix looks like:
+        # our embeddings(self._emb) according to ids of examples.
+        # Embedding matrix looks like:
         #      1    2    3    4    5  ..... d (d-dimensions)
         #  1  0.2  0.3  0.1 -0.5 -0.4 
         #  2  0.5  0.4  0.3 -0.1  0.2
@@ -245,8 +245,8 @@ class Word2Vec(object):
         #  4 
         #  .
         #  .
-        #  N(vocab size)
-        # say examples = [1,2,3]
+        # N(vocab size)
+        # let examples = [1,2,3]
         # then example_emb = [
         #                      [0.2,0.3,0.1,-0.5,-0.4],
         #                     [0.5,0.4,0.3,-0.1,0.2],
@@ -267,7 +267,7 @@ class Word2Vec(object):
         #  .
         #  d(d-dimension)
         #
-        # Each column is the weights for a particular word
+        # Each column represents the weights for a particular word
         # We have been given labels = [1,2,3] (say)
         # weights corresponding to 1 : [0.1,0.3,-0.8,.....] (also embedding)
         # weights corresponding to 2 : [0.6,0.4,0.2,......]
