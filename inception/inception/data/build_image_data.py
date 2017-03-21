@@ -261,7 +261,12 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
       label = labels[i]
       text = texts[i]
 
-      image_buffer, height, width = _process_image(filename, coder)
+      try:
+        image_buffer, height, width = _process_image(filename, coder)
+      except Exception as e:
+        print(e)
+        print('SKIPPED: Unexpected eror while decoding %s.' % filename)
+        continue
 
       example = _convert_to_example(filename, image_buffer, label,
                                     text, height, width)

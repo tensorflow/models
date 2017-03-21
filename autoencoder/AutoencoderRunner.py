@@ -4,7 +4,7 @@ import sklearn.preprocessing as prep
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
-from autoencoder.autoencoder_models.Autoencoder import Autoencoder
+from autoencoder_models.Autoencoder import Autoencoder
 
 mnist = input_data.read_data_sets('MNIST_data', one_hot = True)
 
@@ -44,7 +44,6 @@ for epoch in range(training_epochs):
 
     # Display logs per epoch step
     if epoch % display_step == 0:
-        print "Epoch:", '%04d' % (epoch + 1), \
-            "cost=", "{:.9f}".format(avg_cost)
+        print("Epoch:", '%04d' % (epoch + 1), "cost=", "{:.9f}".format(avg_cost))
 
-print "Total cost: " + str(autoencoder.calc_total_cost(X_test))
+print("Total cost: " + str(autoencoder.calc_total_cost(X_test)))

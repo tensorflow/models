@@ -37,9 +37,7 @@ Full text available at: http://arxiv.org/abs/1609.06647
 The *Show and Tell* model is a deep neural network that learns how to describe
 the content of images. For example:
 
-<center>
 ![Example captions](g3doc/example_captions.jpg)
-</center>
 
 ### Architecture
 
@@ -66,9 +64,7 @@ learned during training.
 
 The following diagram illustrates the model architecture.
 
-<center>
 ![Show and Tell Architecture](g3doc/show_and_tell_architecture.png)
-</center>
 
 In this diagram, \{*s*<sub>0</sub>, *s*<sub>1</sub>, ..., *s*<sub>*N*-1</sub>\}
 are the words of the caption and \{*w*<sub>*e*</sub>*s*<sub>0</sub>,
@@ -137,8 +133,7 @@ Each caption is a list of words. During preprocessing, a dictionary is created
 that assigns each word in the vocabulary to an integer-valued id. Each caption
 is encoded as a list of integer word ids in the `tf.SequenceExample` protos.
 
-We have provided a script to download and preprocess the [MSCOCO]
-(http://mscoco.org/) image captioning data set into this format. Downloading
+We have provided a script to download and preprocess the [MSCOCO](http://mscoco.org/) image captioning data set into this format. Downloading
 and preprocessing the data may take several hours depending on your network and
 computer speed. Please be patient.
 
@@ -266,8 +261,7 @@ tensorboard --logdir="${MODEL_DIR}"
 ### Fine Tune the Inception v3 Model
 
 Your model will already be able to generate reasonable captions after the first
-phase of training. Try it out! (See [Generating Captions]
-(#generating-captions)).
+phase of training. Try it out! (See [Generating Captions](#generating-captions)).
 
 You can further improve the performance of the model by running a
 second training phase to jointly fine-tune the parameters of the *Inception v3*
@@ -337,6 +331,4 @@ expected.
 
 Here is the image:
 
-<center>
 ![Surfer](g3doc/COCO_val2014_000000224477.jpg)
-</center>
