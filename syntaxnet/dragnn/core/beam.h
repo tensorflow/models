@@ -2,6 +2,7 @@
 #define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_BEAM_H_
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -112,7 +113,7 @@ class Beam {
             CHECK_LT(matrix_idx, matrix_length)
                 << "Matrix index out of bounds!";
             const double score_delta = transition_matrix[matrix_idx];
-            CHECK(!isnan(score_delta));
+            CHECK(!std::isnan(score_delta));
             candidate.source_idx = beam_idx;
             candidate.action = action_idx;
             candidate.resulting_score = state->GetScore() + score_delta;
