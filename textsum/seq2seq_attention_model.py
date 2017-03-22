@@ -227,7 +227,7 @@ class Seq2SeqAttentionModel(object):
         def sampled_loss_func(inputs, labels):
           with tf.device('/cpu:0'):  # Try gpu.
             labels = tf.reshape(labels, [-1, 1])
-            return tf.nn.sampled_softmax_loss(w_t, v, inputs, labels,
+            return tf.nn.sampled_softmax_loss(w_t, v, labels, inputs,
                                               hps.num_softmax_samples, vsize)
 
         if hps.num_softmax_samples != 0 and hps.mode == 'train':
