@@ -99,18 +99,16 @@ class BeamSearch(object):
     # Run the encoder and extract the outputs and final state.
     enc_top_states, dec_in_state = self._model.encode_top_state(
         sess, enc_inputs, enc_seqlen)
-
     # Replicate the initial states K times for the first step.
-
     hyps = [Hypothesis([self._start_token], 0.0, dec_in_state)
            ] * self._beam_size
-
     results = []
 
     steps = 0
     while steps < self._max_steps and len(results) < self._beam_size:
       latest_tokens = [h.latest_token for h in hyps]
       states = [h.state for h in hyps]
+
       topk_ids, topk_log_probs, new_states = self._model.decode_topk(
           sess, latest_tokens, enc_top_states, states)
       # Extend each hypothesis.
@@ -118,9 +116,9 @@ class BeamSearch(object):
       # The first step takes the best K results from first hyps. Following
       # steps take the best K results from K*K hyps.
       num_beam_source = 1 if steps == 0 else len(hyps)
-      for i in range(num_beam_source):
+      for i in xrange(num_beam_source):
         h, ns = hyps[i], new_states[i]
-        for j in range(self._beam_size*2):
+        for j in xrange(self._beam_size*2):
           all_hyps.append(h.Extend(topk_ids[i, j], topk_log_probs[i, j], ns))
 
       # Filter and collect any hypotheses that have the end token.
