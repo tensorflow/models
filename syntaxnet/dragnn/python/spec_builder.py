@@ -36,16 +36,20 @@ class ComponentSpecBuilder(object):
     spec: The dragnn.ComponentSpec proto.
   """
 
-  def __init__(self, name, builder='DynamicComponentBuilder'):
+  def __init__(self,
+               name,
+               builder='DynamicComponentBuilder',
+               backend='SyntaxNetComponent'):
     """Initializes the ComponentSpec with some defaults for SyntaxNet.
 
     Args:
       name: The name of this Component in the pipeline.
       builder: The component builder type.
+      backend: The component backend type.
     """
     self.spec = spec_pb2.ComponentSpec(
         name=name,
-        backend=self.make_module('SyntaxNetComponent'),
+        backend=self.make_module(backend),
         component_builder=self.make_module(builder))
 
   def make_module(self, name, **kwargs):

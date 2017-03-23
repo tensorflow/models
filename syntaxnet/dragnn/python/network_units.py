@@ -1,3 +1,18 @@
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Basic network units used in assembling DRAGNN graphs."""
 
 from abc import ABCMeta
@@ -88,7 +103,7 @@ class NamedTensor(object):
     self.dim = dim
 
 
-def add_embeddings(channel_id, feature_spec, seed):
+def add_embeddings(channel_id, feature_spec, seed=None):
   """Adds a variable for the embedding of a given fixed feature.
 
   Supports pre-trained or randomly initialized embeddings In both cases, extra
@@ -119,11 +134,14 @@ def add_embeddings(channel_id, feature_spec, seed):
     if len(feature_spec.vocab.part) > 1:
       raise RuntimeError('vocab resource contains more than one part:\n%s',
                          str(feature_spec.vocab))
+    seed1, seed2 = tf.get_seed(seed)
     embeddings = dragnn_ops.dragnn_embedding_initializer(
         embedding_input=feature_spec.pretrained_embedding_matrix.part[0]
         .file_pattern,
         vocab=feature_spec.vocab.part[0].file_pattern,
-        scaling_coefficient=1.0)
+        scaling_coefficient=1.0,
+        seed=seed1,
+        seed2=seed2)
     return tf.get_variable(name, initializer=tf.reshape(embeddings, shape))
   else:
     return tf.get_variable(
@@ -622,7 +640,6 @@ class NetworkUnitInterface(object):
       init_layers: optional initial layers.
       init_context_layers: optional initial context layers.
     """
-    self._seed = component.master.hyperparams.seed
     self._component = component
     self._params = []
     self._layers = init_layers if init_layers else []
@@ -640,7 +657,7 @@ class NetworkUnitInterface(object):
       check.Gt(spec.size, 0, 'Invalid fixed feature size')
       if spec.embedding_dim > 0:
         fixed_dim = spec.embedding_dim
-        self._params.append(add_embeddings(channel_id, spec, self._seed))
+        self._params.append(add_embeddings(channel_id, spec))
       else:
         fixed_dim = 1  # assume feature ID extraction; only one ID per step
       self._fixed_feature_dims[spec.name] = spec.size * fixed_dim
@@ -663,7 +680,7 @@ class NetworkUnitInterface(object):
                 linked_embeddings_name(channel_id),
                 [source_array_dim + 1, spec.embedding_dim],
                 initializer=tf.random_normal_initializer(
-                    stddev=1 / spec.embedding_dim**.5, seed=self._seed)))
+                    stddev=1 / spec.embedding_dim**.5)))
 
         self._linked_feature_dims[spec.name] = spec.size * spec.embedding_dim
       else:
@@ -698,14 +715,12 @@ class NetworkUnitInterface(object):
           tf.get_variable(
               'attention_weights_pm_0',
               [attention_hidden_layer_size, hidden_layer_size],
-              initializer=tf.random_normal_initializer(
-                  stddev=1e-4, seed=self._seed)))
+              initializer=tf.random_normal_initializer(stddev=1e-4)))
 
       self._params.append(
           tf.get_variable(
               'attention_weights_hm_0', [hidden_layer_size, hidden_layer_size],
-              initializer=tf.random_normal_initializer(
-                  stddev=1e-4, seed=self._seed)))
+              initializer=tf.random_normal_initializer(stddev=1e-4)))
 
       self._params.append(
           tf.get_variable(
@@ -721,8 +736,7 @@ class NetworkUnitInterface(object):
           tf.get_variable(
               'attention_weights_pu',
               [attention_hidden_layer_size, component.num_actions],
-              initializer=tf.random_normal_initializer(
-                  stddev=1e-4, seed=self._seed)))
+              initializer=tf.random_normal_initializer(stddev=1e-4)))
 
   @abstractmethod
   def create(self,
@@ -961,8 +975,7 @@ class FeedForwardNetwork(NetworkUnitInterface):
     for index, hidden_layer_size in enumerate(self._hidden_layer_sizes):
       weights = tf.get_variable(
           'weights_%d' % index, [last_layer_dim, hidden_layer_size],
-          initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                   seed=self._seed))
+          initializer=tf.random_normal_initializer(stddev=1e-4))
       self._params.append(weights)
       if index > 0 or self._layer_norm_hidden is None:
         self._params.append(
@@ -988,8 +1001,7 @@ class FeedForwardNetwork(NetworkUnitInterface):
       self._params.append(
           tf.get_variable(
               'weights_softmax', [last_layer_dim, component.num_actions],
-              initializer=tf.random_normal_initializer(
-                  stddev=1e-4, seed=self._seed)))
+              initializer=tf.random_normal_initializer(stddev=1e-4)))
       self._params.append(
           tf.get_variable(
               'bias_softmax', [component.num_actions],
@@ -1106,47 +1118,39 @@ class LSTMNetwork(NetworkUnitInterface):
     # e.g. truncated_normal_initializer?
     self._x2i = tf.get_variable(
         'x2i', [layer_input_dim, self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
     self._h2i = tf.get_variable(
         'h2i', [self._hidden_layer_sizes, self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
     self._c2i = tf.get_variable(
         'c2i', [self._hidden_layer_sizes, self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
     self._bi = tf.get_variable(
         'bi', [self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4, seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
 
     self._x2o = tf.get_variable(
         'x2o', [layer_input_dim, self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
     self._h2o = tf.get_variable(
         'h2o', [self._hidden_layer_sizes, self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
     self._c2o = tf.get_variable(
         'c2o', [self._hidden_layer_sizes, self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
     self._bo = tf.get_variable(
         'bo', [self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4, seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
 
     self._x2c = tf.get_variable(
         'x2c', [layer_input_dim, self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
     self._h2c = tf.get_variable(
         'h2c', [self._hidden_layer_sizes, self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
     self._bc = tf.get_variable(
         'bc', [self._hidden_layer_sizes],
-        initializer=tf.random_normal_initializer(stddev=1e-4, seed=self._seed))
+        initializer=tf.random_normal_initializer(stddev=1e-4))
 
     self._params.extend([
         self._x2i, self._h2i, self._c2i, self._bi, self._x2o, self._h2o,
@@ -1166,8 +1170,7 @@ class LSTMNetwork(NetworkUnitInterface):
 
     self.params.append(tf.get_variable(
         'weights_softmax', [self._hidden_layer_sizes, component.num_actions],
-        initializer=tf.random_normal_initializer(stddev=1e-4,
-                                                 seed=self._seed)))
+        initializer=tf.random_normal_initializer(stddev=1e-4)))
     self.params.append(
         tf.get_variable(
             'bias_softmax', [component.num_actions],
@@ -1324,8 +1327,7 @@ class ConvNetwork(NetworkUnitInterface):
             tf.get_variable(
                 'weights',
                 self.kernel_shapes[i],
-                initializer=tf.random_normal_initializer(
-                    stddev=1e-4, seed=self._seed),
+                initializer=tf.random_normal_initializer(stddev=1e-4),
                 dtype=tf.float32))
         bias_init = 0.0 if (i == len(self._widths) - 1) else 0.2
         self._biases.append(
@@ -1473,8 +1475,7 @@ class PairwiseConvNetwork(NetworkUnitInterface):
             tf.get_variable(
                 'weights',
                 kernel_shape,
-                initializer=tf.random_normal_initializer(
-                    stddev=1e-4, seed=self._seed),
+                initializer=tf.random_normal_initializer(stddev=1e-4),
                 dtype=tf.float32))
         bias_init = 0.0 if i in self._relu_layers else 0.2
         self._biases.append(

@@ -1,3 +1,18 @@
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Utility functions to build DRAGNN MasterSpecs and schedule model training.
 
 Provides functions to finish a MasterSpec, building required lexicons for it and
@@ -27,7 +42,7 @@ def calculate_component_accuracies(eval_res_values):
   ]
 
 
-def _write_summary(summary_writer, label, value, step):
+def write_summary(summary_writer, label, value, step):
   """Write a summary for a certain evaluation."""
   summary = Summary(value=[Summary.Value(tag=label, simple_value=float(value))])
   summary_writer.add_summary(summary, step)
@@ -135,7 +150,7 @@ def run_training(sess, trainers, annotator, evaluator, pretrain_steps,
       annotated = annotate_dataset(sess, annotator, eval_corpus)
       summaries = evaluator(eval_gold, annotated)
       for label, metric in summaries.iteritems():
-        _write_summary(summary_writer, label, metric, actual_step + step)
+        write_summary(summary_writer, label, metric, actual_step + step)
       eval_metric = summaries['eval_metric']
       if best_eval_metric < eval_metric:
         tf.logging.info('Updating best eval to %.2f%%, saving checkpoint.',

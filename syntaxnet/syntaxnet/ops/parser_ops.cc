@@ -249,6 +249,8 @@ REGISTER_OP("WordEmbeddingInitializer")
     .Attr("vectors: string")
     .Attr("task_context: string")
     .Attr("embedding_init: float = 1.0")
+    .Attr("seed: int = 0")
+    .Attr("seed2: int = 0")
     .Doc(R"doc(
 Reads word embeddings from an sstable of dist_belief.TokenEmbedding protos for
 every word specified in a text vocabulary file.
@@ -256,6 +258,13 @@ every word specified in a text vocabulary file.
 word_embeddings: a tensor containing word embeddings from the specified sstable.
 vectors: path to recordio of word embedding vectors.
 task_context: file path at which to read the task context.
+embedding_init: embedding vectors that are not found in the input sstable are
+  initialized randomly from a normal distribution with zero mean and
+  std dev = embedding_init / sqrt(embedding_size).
+seed: If either `seed` or `seed2` are set to be non-zero, the random number
+  generator is seeded by the given seed.  Otherwise, it is seeded by a random
+  seed.
+seed2: A second seed to avoid seed collision.
 )doc");
 
 REGISTER_OP("DocumentSource")

@@ -1,4 +1,7 @@
-package(default_visibility = ["//visibility:public"])
+package(
+    default_visibility = ["//visibility:public"],
+    features = ["-layering_check"],
+)
 
 # Test data.
 filegroup(
@@ -12,7 +15,7 @@ cc_library(
     deps = [
         "//dragnn/core/interfaces:cloneable_transition_state",
         "//dragnn/core/interfaces:transition_state",
-        "@org_tensorflow//tensorflow/core:lib",  # For tf/core/platform/logging.h
+        "//syntaxnet:base",
     ],
 )
 
@@ -50,8 +53,8 @@ cc_library(
         "//dragnn/protos:data_proto",
         "//dragnn/protos:spec_proto",
         "//dragnn/protos:trace_proto",
+        "//syntaxnet:base",
         "//syntaxnet:registry",
-        "@org_tensorflow//tensorflow/core:lib",  # For tf/core/platform/logging.h
     ],
 )
 
@@ -64,7 +67,7 @@ cc_library(
         ":compute_session",
         ":compute_session_impl",
         "//dragnn/protos:spec_proto",
-        "@org_tensorflow//tensorflow/core:lib",
+        "//syntaxnet:base",
     ],
 )
 
@@ -75,7 +78,7 @@ cc_library(
     deps = [
         "//dragnn/core/interfaces:component",
         "//dragnn/core/interfaces:transition_state",
-        "@org_tensorflow//tensorflow/core:lib",  # For tf/core/platform/logging.h
+        "//syntaxnet:base",
     ],
 )
 
@@ -84,17 +87,14 @@ cc_library(
     hdrs = ["input_batch_cache.h"],
     deps = [
         "//dragnn/core/interfaces:input_batch",
-        "@org_tensorflow//tensorflow/core:lib",  # For tf/core/platform/logging.h
+        "//syntaxnet:base",
     ],
 )
 
 cc_library(
     name = "resource_container",
     hdrs = ["resource_container.h"],
-    deps = [
-        "//syntaxnet:base",
-        "@org_tensorflow//tensorflow/core:framework",
-    ],
+    deps = ["//syntaxnet:base"],
 )
 
 # Tests
@@ -107,8 +107,8 @@ cc_test(
         "//dragnn/core/interfaces:cloneable_transition_state",
         "//dragnn/core/interfaces:transition_state",
         "//dragnn/core/test:mock_transition_state",
+        "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:test",
     ],
 )
 
@@ -125,7 +125,7 @@ cc_test(
         "//dragnn/core/test:generic",
         "//dragnn/core/test:mock_component",
         "//dragnn/core/test:mock_transition_state",
-        "@org_tensorflow//tensorflow/core:test",
+        "//syntaxnet:base",
     ],
 )
 
@@ -138,9 +138,8 @@ cc_test(
         "//dragnn/core/test:generic",
         "//dragnn/core/test:mock_component",
         "//dragnn/core/test:mock_compute_session",
+        "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:lib",
-        "@org_tensorflow//tensorflow/core:test",
     ],
 )
 
@@ -151,8 +150,8 @@ cc_test(
         ":index_translator",
         "//dragnn/core/test:mock_component",
         "//dragnn/core/test:mock_transition_state",
+        "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:test",
     ],
 )
 
@@ -162,8 +161,8 @@ cc_test(
     deps = [
         ":input_batch_cache",
         "//dragnn/core/interfaces:input_batch",
+        "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:test",
     ],
 )
 
@@ -172,8 +171,8 @@ cc_test(
     srcs = ["resource_container_test.cc"],
     deps = [
         ":resource_container",
+        "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:test",
     ],
 )
 
@@ -213,7 +212,7 @@ cc_library(
     deps = [
         ":compute_session",
         ":resource_container",
-        "@org_tensorflow//tensorflow/core:framework",
+        "//syntaxnet:base",
         "@org_tensorflow//third_party/eigen3",
     ],
 )
@@ -231,8 +230,7 @@ cc_library(
         ":resource_container",
         "//dragnn/protos:data_proto",
         "//dragnn/protos:spec_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:lib",
+        "//syntaxnet:base",
         "@org_tensorflow//third_party/eigen3",
     ],
     alwayslink = 1,
@@ -247,8 +245,7 @@ cc_library(
     deps = [
         ":compute_session_op",
         ":resource_container",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:lib",
+        "//syntaxnet:base",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//third_party/eigen3",
     ],
@@ -271,8 +268,7 @@ tf_kernel_library(
         ":resource_container",
         "//dragnn/protos:data_proto",
         "//dragnn/protos:spec_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:lib",
+        "//syntaxnet:base",
         "@org_tensorflow//third_party/eigen3",
     ],
 )
@@ -292,8 +288,7 @@ tf_kernel_library(
         ":resource_container",
         "//dragnn/components/util:bulk_feature_extractor",
         "//dragnn/protos:spec_proto",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:lib",
+        "//syntaxnet:base",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//third_party/eigen3",
     ],
@@ -311,11 +306,9 @@ cc_test(
         ":resource_container",
         "//dragnn/core/test:generic",
         "//dragnn/core/test:mock_compute_session",
+        "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:test",
-        "@org_tensorflow//tensorflow/core:testlib",
         "@org_tensorflow//tensorflow/core/kernels:ops_testutil",
         "@org_tensorflow//tensorflow/core/kernels:ops_util",
         "@org_tensorflow//tensorflow/core/kernels:quantized_ops",
@@ -331,9 +324,8 @@ cc_test(
         ":resource_container",
         "//dragnn/components/util:bulk_feature_extractor",
         "//dragnn/core/test:mock_compute_session",
+        "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:testlib",
         "@org_tensorflow//tensorflow/core/kernels:ops_testutil",
         "@org_tensorflow//tensorflow/core/kernels:quantized_ops",
     ],

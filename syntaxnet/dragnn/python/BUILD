@@ -9,6 +9,7 @@ cc_binary(
     linkshared = 1,
     linkstatic = 1,
     deps = [
+        "//dragnn/components/stateless:stateless_component",
         "//dragnn/components/syntaxnet:syntaxnet_component",
         "//dragnn/core:dragnn_bulk_ops_cc",
         "//dragnn/core:dragnn_ops_cc",

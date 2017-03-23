@@ -450,6 +450,13 @@ class WordEmbeddingInitializer : public OpKernel {
     OP_REQUIRES_OK(context,
                    context->GetAttr("embedding_init", &embedding_init_));
 
+    // Convert the seeds into a single 64-bit seed.  NB: seed=0,seed2=0 converts
+    // into seed_=0, which causes Eigen PRNGs to seed non-deterministically.
+    int seed, seed2;
+    OP_REQUIRES_OK(context, context->GetAttr("seed", &seed));
+    OP_REQUIRES_OK(context, context->GetAttr("seed2", &seed2));
+    seed_ = static_cast<uint64>(seed) | static_cast<uint64>(seed2) << 32;
+
     // Sets up number and type of inputs and outputs.
     OP_REQUIRES_OK(context, context->MatchSignature({}, {DT_FLOAT}));
   }
@@ -479,11 +486,10 @@ class WordEmbeddingInitializer : public OpKernel {
             context, context->allocate_output(
                          0, TensorShape({word_map->Size() + 3, embedding_size}),
                          &embedding_matrix));
-        embedding_matrix->matrix<float>()
-            .setRandom<Eigen::internal::NormalRandomGenerator<float>>();
-        embedding_matrix->matrix<float>() =
-            embedding_matrix->matrix<float>() * static_cast<float>(
-                embedding_init_ / sqrt(embedding_size));
+        auto matrix = embedding_matrix->matrix<float>();
+        Eigen::internal::NormalRandomGenerator<float> prng(seed_);
+        matrix =
+            matrix.random(prng) * (embedding_init_ / sqrtf(embedding_size));
       }
       if (vocab.find(embedding.token()) != vocab.end()) {
         SetNormalizedRow(embedding.vector(), vocab[embedding.token()],
@@ -543,6 +549,9 @@ class WordEmbeddingInitializer : public OpKernel {
 
   // Task context used to configure this op.
   TaskContext task_context_;
+
+  // Seed for random initialization.
+  uint64 seed_ = 0;
 
   // Embedding vectors that are not found in the input sstable are initialized
   // randomly from a normal distribution with zero mean and

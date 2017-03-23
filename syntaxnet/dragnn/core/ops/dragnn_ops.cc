@@ -1,3 +1,18 @@
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// =============================================================================
+
 #include "tensorflow/core/framework/op.h"
 
 namespace syntaxnet {
@@ -113,6 +128,8 @@ REGISTER_OP("DragnnEmbeddingInitializer")
     .Attr("embedding_input: string")
     .Attr("vocab: string")
     .Attr("scaling_coefficient: float = 1.0")
+    .Attr("seed: int = 0")
+    .Attr("seed2: int = 0")
     .Doc(R"doc(
 *** PLACEHOLDER OP - FUNCTIONALITY NOT YET IMPLEMENTED ***
 
@@ -122,6 +139,10 @@ embeddings: A tensor containing embeddings from the specified sstable.
 embedding_input: Path to location with embedding vectors.
 vocab: Path to list of keys corresponding to the input.
 scaling_coefficient: A scaling coefficient for the embedding matrix.
+seed: If either `seed` or `seed2` are set to be non-zero, the random number
+      generator is seeded by the given seed.  Otherwise, it is seeded by a
+      random seed.
+seed2: A second seed to avoid seed collision.
 )doc");
 
 REGISTER_OP("ExtractFixedFeatures")
