@@ -21,6 +21,9 @@ import numpy as np
 import tensorflow as tf
 import seq2seq_lib
 
+import sys
+if sys.version_info.major == 3:
+    from past.builtins import xrange # NEED pip install future
 
 HParams = namedtuple('HParams',
                      'mode, min_lr, lr, batch_size, '
