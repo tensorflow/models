@@ -26,10 +26,8 @@ import tensorflow as tf
 
 import data
 
-import sys
-if sys.version_info.major == 3:
-    import queue as Queue
-    from past.builtins import xrange # NEED pip install future
+# compat.py only handel the compatibility of Python 2 & 3 for textsum
+from compat import * # If Python 3, need "pip install future"
 
 ModelInput = namedtuple('ModelInput',
                         'enc_input dec_input target enc_len dec_len '
