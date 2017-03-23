@@ -110,7 +110,7 @@ class PTBModel(object):
     # different than reported in the paper.
     def lstm_cell():
       return tf.contrib.rnn.BasicLSTMCell(
-          size, forget_bias=0.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
+          size, forget_bias=0.0, state_is_tuple=True)
     attn_cell = lstm_cell
     if is_training and config.keep_prob < 1:
       def attn_cell():
