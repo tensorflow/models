@@ -658,7 +658,6 @@ Each entry of the `TFRecord` is a serialized `tf.Example` protocol buffer. A
 complete list of information contained in the `tf.Example` is described in the
 comments of `build_image_data.py`.
 
-
 To run `build_image_data.py`, you can run the following command line:
 
 ```shell
