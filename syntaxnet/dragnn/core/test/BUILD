@@ -1,4 +1,7 @@
-package(default_visibility = ["//visibility:public"])
+package(
+    default_visibility = ["//visibility:public"],
+    features = ["-layering_check"],
+)
 
 cc_library(
     name = "mock_component",
@@ -13,7 +16,6 @@ cc_library(
         "//dragnn/protos:spec_proto",
         "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:test",
     ],
 )
 
@@ -27,7 +29,7 @@ cc_library(
         "//dragnn/protos:data_proto",
         "//dragnn/protos:spec_proto",
         "//syntaxnet:base",
-        "@org_tensorflow//tensorflow/core:test",
+        "//syntaxnet:test_main",
     ],
 )
 
@@ -39,7 +41,6 @@ cc_library(
         "//dragnn/core/interfaces:transition_state",
         "//syntaxnet:base",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:test",
     ],
 )
 
@@ -50,8 +51,6 @@ cc_library(
     hdrs = ["generic.h"],
     deps = [
         "//syntaxnet:base",
-        "@org_tensorflow//tensorflow/core:lib",
-        "@org_tensorflow//tensorflow/core:test",
-        "@org_tensorflow//tensorflow/core:testlib",
+        "//syntaxnet:test_main",
     ],
 )

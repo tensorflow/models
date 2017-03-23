@@ -1,3 +1,18 @@
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Component builders for non-recurrent networks in DRAGNN."""
 
 
@@ -249,7 +264,8 @@ class BulkFeatureExtractorComponentBuilder(component.ComponentBuilderBase):
     update_network_states(self, tensors, network_states, stride)
     cost = self.add_regularizer(tf.constant(0.))
 
-    return state.handle, cost, 0, 0
+    correct, total = tf.constant(0), tf.constant(0)
+    return state.handle, cost, correct, total
 
   def build_greedy_inference(self, state, network_states,
                              during_training=False):
@@ -327,7 +343,8 @@ class BulkFeatureIdExtractorComponentBuilder(component.ComponentBuilderBase):
     """See base class."""
     state.handle = self._extract_feature_ids(state, network_states, True)
     cost = self.add_regularizer(tf.constant(0.))
-    return state.handle, cost, 0, 0
+    correct, total = tf.constant(0), tf.constant(0)
+    return state.handle, cost, correct, total
 
   def build_greedy_inference(self, state, network_states,
                              during_training=False):

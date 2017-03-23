@@ -1,3 +1,18 @@
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Network units used in the Dozat and Manning (2017) biaffine parser."""
 
 from __future__ import absolute_import
@@ -68,13 +83,13 @@ class BiaffineDigraphNetwork(network_units.NetworkUnitInterface):
     self._weights = []
     self._weights.append(tf.get_variable(
         'weights_arc', [self._source_dim, self._target_dim], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4, seed=self._seed)))
+        tf.random_normal_initializer(stddev=1e-4)))
     self._weights.append(tf.get_variable(
         'weights_source', [self._source_dim], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4, seed=self._seed)))
+        tf.random_normal_initializer(stddev=1e-4)))
     self._weights.append(tf.get_variable(
         'root', [self._source_dim], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4, seed=self._seed)))
+        tf.random_normal_initializer(stddev=1e-4)))
 
     self._params.extend(self._weights)
     self._regularized_weights.extend(self._weights)
@@ -178,18 +193,18 @@ class BiaffineLabelNetwork(network_units.NetworkUnitInterface):
     self._weights = []
     self._weights.append(tf.get_variable(
         'weights_pair', [self._num_labels, self._source_dim, self._target_dim],
-        tf.float32, tf.random_normal_initializer(stddev=1e-4, seed=self._seed)))
+        tf.float32, tf.random_normal_initializer(stddev=1e-4)))
     self._weights.append(tf.get_variable(
         'weights_source', [self._num_labels, self._source_dim], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4, seed=self._seed)))
+        tf.random_normal_initializer(stddev=1e-4)))
     self._weights.append(tf.get_variable(
         'weights_target', [self._num_labels, self._target_dim], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4, seed=self._seed)))
+        tf.random_normal_initializer(stddev=1e-4)))
 
     self._biases = []
     self._biases.append(tf.get_variable(
         'biases', [self._num_labels], tf.float32,
-        tf.random_normal_initializer(stddev=1e-4, seed=self._seed)))
+        tf.random_normal_initializer(stddev=1e-4)))
 
     self._params.extend(self._weights + self._biases)
     self._regularized_weights.extend(self._weights)

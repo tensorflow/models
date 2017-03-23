@@ -1,3 +1,18 @@
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Network units wrapping TensorFlows' tf.contrib.rnn cells.
 
 Please put all wrapping logic for tf.contrib.rnn in this module; this will help
@@ -25,7 +40,7 @@ class BaseLSTMNetwork(dragnn.NetworkUnitInterface):
     logits: Logits associated with component actions.
   """
 
-  def __init__(self, component):
+  def __init__(self, component, additional_attr_defaults=None):
     """Initializes the LSTM base class.
 
     Parameters used:
@@ -42,15 +57,18 @@ class BaseLSTMNetwork(dragnn.NetworkUnitInterface):
 
     Args:
       component: parent ComponentBuilderBase object.
+      additional_attr_defaults: Additional attributes for use by derived class.
     """
+    attr_defaults = additional_attr_defaults or {}
+    attr_defaults.update({
+        'layer_norm': True,
+        'input_dropout_rate': -1.0,
+        'recurrent_dropout_rate': 0.8,
+        'hidden_layer_sizes': '256',
+    })
     self._attrs = dragnn.get_attrs_with_defaults(
         component.spec.network_unit.parameters,
-        defaults={
-            'layer_norm': True,
-            'input_dropout_rate': -1.0,
-            'recurrent_dropout_rate': 0.8,
-            'hidden_layer_sizes': '256',
-        })
+        defaults=attr_defaults)
 
     self._hidden_layer_sizes = map(int,
                                    self._attrs['hidden_layer_sizes'].split(','))
@@ -87,8 +105,7 @@ class BaseLSTMNetwork(dragnn.NetworkUnitInterface):
     self._params.append(
         tf.get_variable(
             'weights_softmax', [last_layer_dim, component.num_actions],
-            initializer=tf.random_normal_initializer(
-                stddev=1e-4, seed=self._seed)))
+            initializer=tf.random_normal_initializer(stddev=1e-4)))
     self._params.append(
         tf.get_variable(
             'bias_softmax', [component.num_actions],
@@ -116,14 +133,9 @@ class BaseLSTMNetwork(dragnn.NetworkUnitInterface):
     """Appends layers defined by the base class to the |hidden_layers|."""
     last_layer = hidden_layers[-1]
 
-    # TODO(googleuser): Uncomment the version that uses component.get_variable()
-    # and delete the uses of tf.get_variable().
-    # logits = tf.nn.xw_plus_b(last_layer,
-    #                          self._component.get_variable('weights_softmax'),
-    #                          self._component.get_variable('bias_softmax'))
     logits = tf.nn.xw_plus_b(last_layer,
-                             tf.get_variable('weights_softmax'),
-                             tf.get_variable('bias_softmax'))
+                             self._component.get_variable('weights_softmax'),
+                             self._component.get_variable('bias_softmax'))
     return hidden_layers + [last_layer, logits]
 
   def _create_cell(self, num_units, during_training):
@@ -321,7 +333,18 @@ class BulkBiLSTMNetwork(BaseLSTMNetwork):
   """
 
   def __init__(self, component):
-    super(BulkBiLSTMNetwork, self).__init__(component)
+    """Initializes the bulk bi-LSTM.
+
+    Parameters used:
+      parallel_iterations (1): Parallelism of the underlying tf.while_loop().
+        Defaults to 1 thread to encourage deterministic behavior, but can be
+        increased to trade memory for speed.
+
+    Args:
+      component: parent ComponentBuilderBase object.
+    """
+    super(BulkBiLSTMNetwork, self).__init__(
+        component, additional_attr_defaults={'parallel_iterations': 1})
 
     check.In('lengths', self._linked_feature_dims,
              'Missing required linked feature')
@@ -426,6 +449,7 @@ class BulkBiLSTMNetwork(BaseLSTMNetwork):
           initial_states_fw=initial_states_forward,
           initial_states_bw=initial_states_backward,
           sequence_length=lengths_s,
+          parallel_iterations=self._attrs['parallel_iterations'],
           scope=scope)
       return outputs_sxnxd
 

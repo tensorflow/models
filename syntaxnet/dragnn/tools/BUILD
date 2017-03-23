@@ -1,5 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "testdata",
+    srcs = glob(["testdata/**"]),
+)
+
 py_binary(
     name = "evaluator",
     srcs = ["evaluator.py"],
@@ -78,10 +83,29 @@ py_binary(
         "//dragnn/core:dragnn_bulk_ops",
         "//dragnn/core:dragnn_ops",
         "//dragnn/protos:spec_py_pb2",
+        "//dragnn/python:evaluation",
+        "//dragnn/python:graph_builder",
+        "//dragnn/python:load_dragnn_cc_impl_py",
+        "//dragnn/python:sentence_io",
+        "//dragnn/python:spec_builder",
+        "//dragnn/python:trainer_lib",
+        "//syntaxnet:load_parser_ops_py",
+        "//syntaxnet:parser_ops",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)
+
+py_binary(
+    name = "model_trainer",
+    srcs = ["model_trainer.py"],
+    deps = [
+        "//dragnn/core:dragnn_bulk_ops",
+        "//dragnn/core:dragnn_ops",
+        "//dragnn/protos:spec_py_pb2",
         "//dragnn/python:dragnn_ops",
         "//dragnn/python:evaluation",
         "//dragnn/python:graph_builder",
-        "//dragnn/python:lexicon",
         "//dragnn/python:load_dragnn_cc_impl_py",
         "//dragnn/python:sentence_io",
         "//dragnn/python:spec_builder",
@@ -90,8 +114,21 @@ py_binary(
         "//syntaxnet:parser_ops",
         "//syntaxnet:sentence_py_pb2",
         "//syntaxnet:task_spec_py_pb2",
+        "//syntaxnet/util:check",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)
+
+sh_test(
+    name = "model_trainer_test",
+    size = "medium",
+    srcs = ["model_trainer_test.sh"],
+    data = [
+        ":model_trainer",
+        ":testdata",
+    ],
+    deps = [
     ],
 )
 

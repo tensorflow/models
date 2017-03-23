@@ -178,9 +178,9 @@ cc_library(
     srcs = ["char_ngram_string_extractor.cc"],
     hdrs = ["char_ngram_string_extractor.h"],
     deps = [
+        ":base",
         ":segmenter_utils",
         ":task_context",
-        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 
@@ -365,7 +365,6 @@ cc_library(
         ":utils",
         ":whole_sentence_features",
         ":workspace",
-        "@org_tensorflow//tensorflow/core:lib",
     ],
     alwayslink = 1,
 )
@@ -390,6 +389,7 @@ cc_library(
     srcs = ["embedding_feature_extractor.cc"],
     hdrs = ["embedding_feature_extractor.h"],
     deps = [
+        ":base",
         ":feature_extractor",
         ":parser_transitions",
         ":sentence_features",
@@ -397,7 +397,6 @@ cc_library(
         ":task_context",
         ":utils",
         ":workspace",
-        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 
@@ -455,6 +454,7 @@ cc_library(
     srcs = ["lexicon_builder.cc"],
     deps = [
         ":affix",
+        ":base",
         ":char_ngram_string_extractor",
         ":feature_extractor",
         ":parser_transitions",
@@ -464,8 +464,6 @@ cc_library(
         ":term_frequency_map",
         ":text_formats",
         ":utils",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:lib",
     ],
     alwayslink = 1,
 )
@@ -484,11 +482,11 @@ cc_library(
     name = "parser_ops_cc",
     srcs = ["ops/parser_ops.cc"],
     deps = [
+        ":base",
         ":document_filters",
         ":lexicon_builder",
         ":reader_ops",
         ":unpack_sparse_features",
-        "@org_tensorflow//tensorflow/core:framework",
     ],
     alwayslink = 1,
 )

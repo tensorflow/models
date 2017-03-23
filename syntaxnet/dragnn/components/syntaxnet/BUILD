@@ -1,4 +1,7 @@
-package(default_visibility = ["//visibility:public"])
+package(
+    default_visibility = ["//visibility:public"],
+    features = ["-layering_check"],
+)
 
 cc_library(
     name = "syntaxnet_component",
@@ -25,7 +28,6 @@ cc_library(
         "//syntaxnet:task_context",
         "//syntaxnet:task_spec_proto",
         "//syntaxnet:utils",
-        "@org_tensorflow//tensorflow/core:lib",  # For tf/core/platform/logging.h
     ],
     alwayslink = 1,
 )
@@ -36,10 +38,10 @@ cc_library(
     hdrs = ["syntaxnet_link_feature_extractor.h"],
     deps = [
         "//dragnn/protos:spec_proto",
+        "//syntaxnet:base",
         "//syntaxnet:embedding_feature_extractor",
         "//syntaxnet:parser_transitions",
         "//syntaxnet:task_context",
-        "@org_tensorflow//tensorflow/core:lib",  # For tf/core/platform/logging.h
     ],
 )
 
@@ -54,7 +56,6 @@ cc_library(
         "//dragnn/protos:trace_proto",
         "//syntaxnet:base",
         "//syntaxnet:parser_transitions",
-        "@org_tensorflow//tensorflow/core:lib",  # For tf/core/platform/logging.h
     ],
 )
 
@@ -75,9 +76,9 @@ cc_test(
         "//dragnn/core/test:generic",
         "//dragnn/core/test:mock_transition_state",
         "//dragnn/io:sentence_input_batch",
+        "//syntaxnet:base",
         "//syntaxnet:sentence_proto",
-        "@org_tensorflow//tensorflow/core:lib",
-        "@org_tensorflow//tensorflow/core:test",
+        "//syntaxnet:test_main",
     ],
 )
 
@@ -90,7 +91,6 @@ cc_test(
         "//dragnn/protos:spec_proto",
         "//syntaxnet:task_context",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:test",
         "@org_tensorflow//tensorflow/core:testlib",
     ],
 )
@@ -107,10 +107,9 @@ cc_test(
         "//dragnn/core/test:mock_transition_state",
         "//dragnn/io:sentence_input_batch",
         "//dragnn/protos:spec_proto",
+        "//syntaxnet:base",
         "//syntaxnet:sentence_proto",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:lib",
-        "@org_tensorflow//tensorflow/core:test",
         "@org_tensorflow//tensorflow/core:testlib",
     ],
 )

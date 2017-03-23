@@ -1,3 +1,18 @@
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Tests for graph_builder."""
 
 
@@ -516,6 +531,23 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
           unroll_using_oracle=[False, True, True],
           expected_num_actions=9,
           expected=_TAGGER_PARSER_EXPECTED_SENTENCES)
+
+  def testStructuredTrainingNotImplementedDeath(self):
+    spec = self.LoadSpec('simple_parser_master_spec.textproto')
+
+    # Make the 'parser' component have a beam at training time.
+    self.assertEqual('parser', spec.component[0].name)
+    spec.component[0].training_beam_size = 8
+
+    # The training run should fail at runtime rather than build time.
+    with self.assertRaisesRegexp(tf.errors.InvalidArgumentError,
+                                 r'\[Not implemented.\]'):
+      self.RunFullTrainingAndInference(
+          'simple-parser',
+          master_spec=spec,
+          expected_num_actions=8,
+          component_weights=[1],
+          expected=_LABELED_PARSER_EXPECTED_SENTENCES)
 
   def testSimpleParser(self):
     self.RunFullTrainingAndInference(

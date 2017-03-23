@@ -1,3 +1,18 @@
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Builds a DRAGNN graph for local training."""
 
 from abc import ABCMeta
@@ -146,6 +161,32 @@ class ComponentBuilderBase(object):
       correctly predicted actions, and the total number of actions.
     """
     pass
+
+  def build_structured_training(self, state, network_states):
+    """Builds a beam search based training loop for this component.
+
+    The default implementation builds a dummy graph and raises a
+    TensorFlow runtime exception to indicate that structured training
+    is not implemented.
+
+    Args:
+      state: MasterState from the 'AdvanceMaster' op that advances the
+        underlying master to this component.
+      network_states: dictionary of component NetworkState objects.
+
+    Returns:
+      (handle, cost, correct, total) -- These are TF ops corresponding
+      to the final handle after unrolling, the total cost, and the
+      total number of actions. Since the number of correctly predicted
+      actions is not applicable in the structured training setting, a
+      dummy value should returned.
+    """
+    del network_states  # Unused.
+    with tf.control_dependencies([tf.Assert(False, ['Not implemented.'])]):
+      handle = tf.identity(state.handle)
+    cost = tf.constant(0.)
+    correct, total = tf.constant(0), tf.constant(0)
+    return handle, cost, correct, total
 
   @abstractmethod
   def build_greedy_inference(self, state, network_states,
@@ -349,14 +390,13 @@ class DynamicComponentBuilder(ComponentBuilderBase):
       correctly predicted actions, and the total number of actions.
     """
     logging.info('Building component: %s', self.spec.name)
-    stride = state.current_batch_size * self.training_beam_size
+    with tf.control_dependencies([tf.assert_equal(self.training_beam_size, 1)]):
+      stride = state.current_batch_size * self.training_beam_size
 
     cost = tf.constant(0.)
     correct = tf.constant(0)
     total = tf.constant(0)
 
-    # Create the TensorArray's to store activations for downstream/recurrent
-    # connections.
     def cond(handle, *_):
       all_final = dragnn_ops.emit_all_final(handle, component=self.name)
       return tf.logical_not(tf.reduce_all(all_final))

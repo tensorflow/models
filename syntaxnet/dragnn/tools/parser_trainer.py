@@ -60,7 +60,6 @@ flags.DEFINE_string('dev_corpus_path', '', 'Path to development set data.')
 flags.DEFINE_bool('compute_lexicon', False, '')
 flags.DEFINE_bool('projectivize_training_set', True, '')
 
-flags.DEFINE_integer('num_epochs', 10, 'Number of epochs to train for.')
 flags.DEFINE_integer('batch_size', 4, 'Batch size.')
 flags.DEFINE_integer('report_every', 200,
                      'Report cost and training accuracy every this many steps.')

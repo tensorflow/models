@@ -1,3 +1,18 @@
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Builds a DRAGNN graph for local training."""
 
 
@@ -60,6 +75,13 @@ def _create_optimizer(hyperparams, learning_rate_var, step_var=None):
         learning_rate_var, use_locking=True)
   elif hyperparams.learning_method == 'adam':
     return tf.train.AdamOptimizer(
+        learning_rate_var,
+        beta1=hyperparams.adam_beta1,
+        beta2=hyperparams.adam_beta2,
+        epsilon=hyperparams.adam_eps,
+        use_locking=True)
+  elif hyperparams.learning_method == 'lazyadam':
+    return tf.contrib.opt.LazyAdamOptimizer(
         learning_rate_var,
         beta1=hyperparams.adam_beta1,
         beta2=hyperparams.adam_beta2,
@@ -137,6 +159,10 @@ class MasterBuilder(object):
     self.hyperparams = (spec_pb2.GridPoint()
                         if hyperparam_config is None else hyperparam_config)
     self.pool_scope = pool_scope
+
+    # Set the graph-level random seed before creating the Components so the ops
+    # they create will use this seed.
+    tf.set_random_seed(hyperparam_config.seed)
 
     # Construct all utility class and variables for each Component.
     self.components = []
@@ -318,15 +344,18 @@ class MasterBuilder(object):
                                            dragnn_ops.batch_size(
                                                handle, component=comp.name))
       with tf.control_dependencies([handle, cost]):
-        component_cost = tf.constant(0.)
-        component_correct = tf.constant(0)
-        component_total = tf.constant(0)
+        args = (master_state, network_states)
         if unroll_using_oracle[component_index]:
-          handle, component_cost, component_correct, component_total = (
-              comp.build_greedy_training(master_state, network_states))
+
+          handle, component_cost, component_correct, component_total = (tf.cond(
+              comp.training_beam_size > 1,
+              lambda: comp.build_structured_training(*args),
+              lambda: comp.build_greedy_training(*args)))
+
         else:
-          handle = comp.build_greedy_inference(
-              master_state, network_states, during_training=True)
+          handle = comp.build_greedy_inference(*args, during_training=True)
+          component_cost = tf.constant(0.)
+          component_correct, component_total = tf.constant(0), tf.constant(0)
 
         weighted_component_cost = tf.multiply(
             component_cost,
@@ -497,30 +526,23 @@ class MasterBuilder(object):
     with tf.name_scope(scope_id):
       # Construct training targets. Disable tracing during training.
       handle, input_batch = self._get_session_with_reader(trace_only)
+
+      # If `trace_only` is True, the training graph shouldn't have any
+      # side effects. Otherwise, the standard training scenario should
+      # generate gradients and update counters.
+      handle, outputs = self.build_training(
+          handle,
+          compute_gradients=not trace_only,
+          advance_counters=not trace_only,
+          component_weights=target_config.component_weights,
+          unroll_using_oracle=target_config.unroll_using_oracle,
+          max_index=target_config.max_index,
+          **kwargs)
       if trace_only:
-        # Build a training graph that doesn't have any side effects.
-        handle, outputs = self.build_training(
-            handle,
-            compute_gradients=False,
-            advance_counters=False,
-            component_weights=target_config.component_weights,
-            unroll_using_oracle=target_config.unroll_using_oracle,
-            max_index=target_config.max_index,
-            **kwargs)
         outputs['traces'] = dragnn_ops.get_component_trace(
             handle, component=self.spec.component[-1].name)
       else:
-        # The standard training scenario has gradients and updates counters.
-        handle, outputs = self.build_training(
-            handle,
-            compute_gradients=True,
-            advance_counters=True,
-            component_weights=target_config.component_weights,
-            unroll_using_oracle=target_config.unroll_using_oracle,
-            max_index=target_config.max_index,
-            **kwargs)
-
-        # In addition, it keeps track of the number of training steps.
+        # Standard training keeps track of the number of training steps.
         outputs['target_step'] = tf.get_variable(
             scope_id + '/TargetStep', [],
             initializer=tf.zeros_initializer(),

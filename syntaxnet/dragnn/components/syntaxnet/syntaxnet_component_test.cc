@@ -1,3 +1,18 @@
+// Copyright 2017 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// =============================================================================
+
 #include "dragnn/components/syntaxnet/syntaxnet_component.h"
 
 #include "dragnn/core/input_batch_cache.h"
@@ -833,10 +848,94 @@ TEST_F(SyntaxNetComponentTest, ExportsFixedFeatures) {
   const int num_features =
       test_parser->GetFixedFeatures(indices_fn, ids_fn, weights_fn, kChannelId);
 
+  constexpr int kExpectedOutputSize = 12;
+  const vector<int32> expected_indices({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
+  const vector<int64> expected_ids({7, 50, 12, 7, 12, 7, 7, 50, 12, 7, 12, 7});
+  const vector<float> expected_weights(
+      {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
+
+  EXPECT_EQ(expected_indices.size(), kExpectedOutputSize);
+  EXPECT_EQ(expected_ids.size(), kExpectedOutputSize);
+  EXPECT_EQ(expected_weights.size(), kExpectedOutputSize);
+  EXPECT_EQ(num_features, kExpectedOutputSize);
+
+  EXPECT_EQ(expected_indices, indices);
+  EXPECT_EQ(expected_ids, ids);
+  EXPECT_EQ(expected_weights, weights);
+}
+
+TEST_F(SyntaxNetComponentTest, AdvancesAccordingToHighestWeightedInputOption) {
+  // Create an empty input batch and beam vector to initialize the parser.
+  Sentence sentence_0;
+  TextFormat::ParseFromString(kSentence0, &sentence_0);
+  string sentence_0_str;
+  sentence_0.SerializeToString(&sentence_0_str);
+
+  Sentence sentence_1;
+  TextFormat::ParseFromString(kSentence1, &sentence_1);
+  string sentence_1_str;
+  sentence_1.SerializeToString(&sentence_1_str);
+
+  constexpr int kBeamSize = 3;
+
+  auto test_parser =
+      CreateParserWithBeamSize(kBeamSize, {}, {sentence_0_str, sentence_1_str});
+
+  // There are 93 possible transitions for any given state. Create a transition
+  // array with a score of 10.0 for each transition.
+  constexpr int kBatchSize = 2;
+  constexpr int kNumPossibleTransitions = 93;
+  constexpr float kTransitionValue = 10.0;
+  float transition_matrix[kNumPossibleTransitions * kBeamSize * kBatchSize];
+  for (int i = 0; i < kNumPossibleTransitions * kBeamSize * kBatchSize; ++i) {
+    transition_matrix[i] = kTransitionValue;
+  }
+
+  // Replace the first several options with varying scores to test sorting.
+  constexpr int kBatchOffset = kNumPossibleTransitions * kBeamSize;
+  transition_matrix[0] = 3 * kTransitionValue;
+  transition_matrix[1] = 3 * kTransitionValue;
+  transition_matrix[2] = 4 * kTransitionValue;
+  transition_matrix[3] = 4 * kTransitionValue;
+  transition_matrix[4] = 2 * kTransitionValue;
+  transition_matrix[5] = 2 * kTransitionValue;
+  transition_matrix[kBatchOffset + 0] = 3 * kTransitionValue;
+  transition_matrix[kBatchOffset + 1] = 3 * kTransitionValue;
+  transition_matrix[kBatchOffset + 2] = 4 * kTransitionValue;
+  transition_matrix[kBatchOffset + 3] = 4 * kTransitionValue;
+  transition_matrix[kBatchOffset + 4] = 2 * kTransitionValue;
+  transition_matrix[kBatchOffset + 5] = 2 * kTransitionValue;
+
+  // Advance twice, so that the underlying parser fills the beam.
+  test_parser->AdvanceFromPrediction(
+      transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+  test_parser->AdvanceFromPrediction(
+      transition_matrix, kNumPossibleTransitions * kBeamSize * kBatchSize);
+
+  // Get and check the raw link features.
+  vector<int32> indices;
+  auto indices_fn = [&indices](int size) {
+    indices.resize(size);
+    return indices.data();
+  };
+  vector<int64> ids;
+  auto ids_fn = [&ids](int size) {
+    ids.resize(size);
+    return ids.data();
+  };
+  vector<float> weights;
+  auto weights_fn = [&weights](int size) {
+    weights.resize(size);
+    return weights.data();
+  };
+  constexpr int kChannelId = 0;
+  const int num_features =
+      test_parser->GetFixedFeatures(indices_fn, ids_fn, weights_fn, kChannelId);
+
   // In this case, all even features and all odd features are identical.
   constexpr int kExpectedOutputSize = 12;
   const vector<int32> expected_indices({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
-  const vector<int64> expected_ids({12, 7, 12, 7, 12, 7, 12, 7, 12, 7, 12, 7});
+  const vector<int64> expected_ids({12, 7, 7, 50, 12, 7, 12, 7, 7, 50, 12, 7});
   const vector<float> expected_weights(
       {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
 
@@ -1024,11 +1123,11 @@ TEST_F(SyntaxNetComponentTest, ExportsRawLinkFeatures) {
   EXPECT_EQ(link_features.size(), kBeamSize * kBatchSize * kNumLinkFeatures);
 
   // These should index into batch 0.
-  EXPECT_EQ(link_features.at(0).feature_value(), -1);
+  EXPECT_EQ(link_features.at(0).feature_value(), 1);
   EXPECT_EQ(link_features.at(0).batch_idx(), 0);
   EXPECT_EQ(link_features.at(0).beam_idx(), 0);
 
-  EXPECT_EQ(link_features.at(1).feature_value(), -2);
+  EXPECT_EQ(link_features.at(1).feature_value(), 0);
   EXPECT_EQ(link_features.at(1).batch_idx(), 0);
   EXPECT_EQ(link_features.at(1).beam_idx(), 0);
 
@@ -1049,11 +1148,11 @@ TEST_F(SyntaxNetComponentTest, ExportsRawLinkFeatures) {
   EXPECT_EQ(link_features.at(5).beam_idx(), 2);
 
   // These should index into batch 1.
-  EXPECT_EQ(link_features.at(6).feature_value(), -1);
+  EXPECT_EQ(link_features.at(6).feature_value(), 1);
   EXPECT_EQ(link_features.at(6).batch_idx(), 1);
   EXPECT_EQ(link_features.at(6).beam_idx(), 0);
 
-  EXPECT_EQ(link_features.at(7).feature_value(), -2);
+  EXPECT_EQ(link_features.at(7).feature_value(), 0);
   EXPECT_EQ(link_features.at(7).batch_idx(), 1);
   EXPECT_EQ(link_features.at(7).beam_idx(), 0);
 
