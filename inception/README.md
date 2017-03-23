@@ -24,7 +24,7 @@ model architecture.
 
 ## Description of Code
 
-NOTE: For the most part, you will find a newer version of this code at [models/slim](https://github.com/tensorflow/models/tree/master/slim). In particular:
+**NOTE**: For the most part, you will find a newer version of this code at [models/slim](https://github.com/tensorflow/models/tree/master/slim). In particular:
 
 *   `inception_train.py` and `imagenet_train.py` should no longer be used. The slim editions for running on multiple GPUs are the current best examples.
 *   `inception_distributed_train.py` and `imagenet_distributed_train.py` are still valid examples of distributed training.
@@ -60,11 +60,6 @@ For more details about TensorFlow-Slim, please see the [Slim README]
 subsequent research.
 
 ## Getting Started
-
-**NOTE** Before doing anything, we first need to build TensorFlow from source,
-and installed as a PIP package. Please follow the instructions at [Installing
-From Source]
-(https://www.tensorflow.org/install/install_sources).
 
 Before you run the training script for the first time, you will need to download
 and convert the ImageNet data to native TFRecord format. The TFRecord format
@@ -639,9 +634,9 @@ reside within `$TRAIN_DIR` and `$VALIDATION_DIR` arranged as such:
   $VALIDATION_DIR/cat/cat.JPG
   ...
 ```
-**NOTE** This script will append an extra background class indexed at 0, so your
-class labels will range from [0, num_labels]. Using the example above, the
-corresponding class labels generated from `build_image_data.py` will be as follows:
+**NOTE**: This script will append an extra background class indexed at 0. Using the
+example above, the corresponding class labels generated from `build_image_data.py`
+will be as follows:
 ```shell
 0
 1 dog
