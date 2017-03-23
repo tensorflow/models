@@ -26,6 +26,10 @@ import tensorflow as tf
 
 import data
 
+import sys
+if sys.version_info.major == 3:
+    from past.builtins import xrange # NEED pip install future
+
 ModelInput = namedtuple('ModelInput',
                         'enc_input dec_input target enc_len dec_len '
                         'origin_article origin_abstract')
