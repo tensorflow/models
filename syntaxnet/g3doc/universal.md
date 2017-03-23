@@ -1,7 +1,7 @@
 # Parsey Universal.
 
 A collection of pretrained syntactic models is now available for download at
-`http://download.tensorflow.org/models/<language>.zip`
+`http://download.tensorflow.org/models/parsey_universal/<language>.zip`
 
 After downloading and unzipping a model, you can run it similarly to
 Parsey McParseface with:
