@@ -28,6 +28,7 @@ import data
 
 import sys
 if sys.version_info.major == 3:
+    import queue as Queue
     from past.builtins import xrange # NEED pip install future
 
 ModelInput = namedtuple('ModelInput',
