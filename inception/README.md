@@ -639,6 +639,14 @@ reside within `$TRAIN_DIR` and `$VALIDATION_DIR` arranged as such:
   $VALIDATION_DIR/cat/cat.JPG
   ...
 ```
+**NOTE** This script will append an extra background class indexed at 0, so your
+class labels will range from [0, num_labels]. Using the example above, the
+corresponding class labels generated from `build_image_data.py` will be as follows:
+```shell
+0
+1 dog
+2 cat
+```
 
 Each sub-directory in `$TRAIN_DIR` and `$VALIDATION_DIR` corresponds to a unique
 label for the images that reside within that sub-directory. The images may be
@@ -649,6 +657,7 @@ Once the data is arranged in this directory structure, we can run
 Each entry of the `TFRecord` is a serialized `tf.Example` protocol buffer. A
 complete list of information contained in the `tf.Example` is described in the
 comments of `build_image_data.py`.
+
 
 To run `build_image_data.py`, you can run the following command line:
 
