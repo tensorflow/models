@@ -23,9 +23,8 @@ decoded.
 
 import tensorflow as tf
 
-import sys
-if sys.version_info.major == 3:
-    from past.builtins import xrange # NEED pip install future
+# compat.py only handel the compatibility of Python 2 & 3 for textsum
+from compat import * # If Python 3, need "pip install future"
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_bool('normalize_by_length', True, 'Whether normalize')
