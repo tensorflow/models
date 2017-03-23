@@ -22,9 +22,8 @@ import tensorflow as tf
 import beam_search
 import data
 
-import sys
-if sys.version_info.major == 3:
-    from past.builtins import xrange # NEED pip install future
+# compat.py only handel the compatibility of Python 2 & 3 for textsum
+from compat import * # If Python 3, need "pip install future"
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('max_decode_steps', 1000000,
