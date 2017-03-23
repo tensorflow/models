@@ -60,7 +60,6 @@ _CLASS_NAMES = [
     'nine',
 ]
 
-
 def _extract_images(filename, num_images):
   """Extract the images into a numpy array.
 
@@ -75,9 +74,9 @@ def _extract_images(filename, num_images):
   with gzip.open(filename) as bytestream:
     bytestream.read(16)
     buf = bytestream.read(
-        _IMAGE_SIZE * _IMAGE_SIZE * num_images * _NUM_CHANNELS)
+        _IMAGE_SIZE * _IMAGE_SIZE * num_images)
     data = np.frombuffer(buf, dtype=np.uint8)
-    data = data.reshape(num_images, _IMAGE_SIZE, _IMAGE_SIZE, _NUM_CHANNELS)
+    data = data.reshape(num_images, _IMAGE_SIZE, _IMAGE_SIZE)
   return data
 
 
@@ -112,10 +111,11 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
   images = _extract_images(data_filename, num_images)
   labels = _extract_labels(labels_filename, num_images)
 
-  shape = (_IMAGE_SIZE, _IMAGE_SIZE, _NUM_CHANNELS)
+  shape = (_IMAGE_SIZE, _IMAGE_SIZE)
   with tf.Graph().as_default():
     image = tf.placeholder(dtype=tf.uint8, shape=shape)
-    encoded_png = tf.image.encode_png(image)
+    resized =  tf.image.resize_images(tf.stack([image, image, image], 2), [299, 299])
+    encoded_png = tf.image.encode_png(tf.cast(resized, tf.uint8))
 
     with tf.Session('') as sess:
       for j in range(num_images):
@@ -125,7 +125,7 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
         png_string = sess.run(encoded_png, feed_dict={image: images[j]})
 
         example = dataset_utils.image_to_tfexample(
-            png_string, 'png'.encode(), _IMAGE_SIZE, _IMAGE_SIZE, labels[j])
+            png_string, 'png'.encode(), 299, 299, labels[j])
         tfrecord_writer.write(example.SerializeToString())
 
 
