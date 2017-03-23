@@ -674,8 +674,8 @@ bazel-bin/inception/build_image_data \
   --validation_directory="${VALIDATION_DIR}" \
   --output_directory="${OUTPUT_DIRECTORY}" \
   --labels_file="${LABELS_FILE}" \
-  --train_shards=128 \
-  --validation_shards=24 \
+  --train_shards=24 \
+  --validation_shards=8 \
   --num_threads=8
 ```
 
