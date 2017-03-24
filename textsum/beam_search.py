@@ -24,7 +24,7 @@ decoded.
 import tensorflow as tf
 
 # compat.py only handel the compatibility of Python 2 & 3 for textsum
-from compat import * # If Python 3, need "pip install future"
+from compat import * 
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_bool('normalize_by_length', True, 'Whether normalize')
