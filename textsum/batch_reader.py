@@ -27,7 +27,7 @@ import tensorflow as tf
 import data
 
 # compat.py only handel the compatibility of Python 2 & 3 for textsum
-from compat import * # If Python 3, need "pip install future"
+from compat import * 
 
 ModelInput = namedtuple('ModelInput',
                         'enc_input dec_input target enc_len dec_len '
