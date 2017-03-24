@@ -23,7 +23,7 @@ import beam_search
 import data
 
 # compat.py only handel the compatibility of Python 2 & 3 for textsum
-from compat import * # If Python 3, need "pip install future"
+from compat import * 
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('max_decode_steps', 1000000,
