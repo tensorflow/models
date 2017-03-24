@@ -668,8 +668,8 @@ bazel-bin/inception/build_image_data \
   --validation_directory="${VALIDATION_DIR}" \
   --output_directory="${OUTPUT_DIRECTORY}" \
   --labels_file="${LABELS_FILE}" \
-  --train_shards=24 \
-  --validation_shards=8 \
+  --train_shards=128 \
+  --validation_shards=24 \
   --num_threads=8
 ```
 
@@ -694,20 +694,20 @@ class.
 After running this script produces files that look like the following:
 
 ```shell
-  $TRAIN_DIR/train-00000-of-00024
-  $TRAIN_DIR/train-00001-of-00024
+  $TRAIN_DIR/train-00000-of-00128
+  $TRAIN_DIR/train-00001-of-00128
   ...
-  $TRAIN_DIR/train-00023-of-00024
+  $TRAIN_DIR/train-00127-of-00128
 
 and
 
-  $VALIDATION_DIR/validation-00000-of-00008
-  $VALIDATION_DIR/validation-00001-of-00008
+  $VALIDATION_DIR/validation-00000-of-00024
+  $VALIDATION_DIR/validation-00001-of-00024
   ...
-  $VALIDATION_DIR/validation-00007-of-00008
+  $VALIDATION_DIR/validation-00023-of-00024
 ```
 
-where 24 and 8 are the number of shards specified for each dataset,
+where 128 and 24 are the number of shards specified for each dataset,
 respectively. Generally speaking, we aim for selecting the number of shards such
 that roughly 1024 images reside in each shard. Once this data set is built, you
 are ready to train or fine-tune an Inception model on this data set.
