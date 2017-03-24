@@ -131,7 +131,7 @@ class StatelessComponentTest : public ::testing::Test {
 };
 
 TEST_F(StatelessComponentTest, ForwardsTransitionStates) {
-  const MockTransitionState mock_state_1, mock_state_2, mock_state_3;
+  MockTransitionState mock_state_1, mock_state_2, mock_state_3;
   const std::vector<std::vector<const TransitionState *>> parent_states = {
       {}, {&mock_state_1}, {&mock_state_2, &mock_state_3}};
 

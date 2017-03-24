@@ -246,7 +246,6 @@ cc_library(
         ":compute_session_op",
         ":resource_container",
         "//syntaxnet:base",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//third_party/eigen3",
     ],
 )
