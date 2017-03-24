@@ -634,9 +634,10 @@ reside within `$TRAIN_DIR` and `$VALIDATION_DIR` arranged as such:
   $VALIDATION_DIR/cat/cat.JPG
   ...
 ```
-**NOTE**: This script will append an extra background class indexed at 0. Using the
-example above, the corresponding class labels generated from `build_image_data.py`
-will be as follows:
+**NOTE**: This script will append an extra background class indexed at 0, so
+your class labels will range from 0 to num_labels. Using the example above, the
+corresponding class labels generated from `build_image_data.py` will be as
+follows:
 ```shell
 0
 1 dog
