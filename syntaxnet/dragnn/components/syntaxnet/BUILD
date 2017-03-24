@@ -91,7 +91,6 @@ cc_test(
         "//dragnn/protos:spec_proto",
         "//syntaxnet:task_context",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:testlib",
     ],
 )
 
@@ -110,6 +109,5 @@ cc_test(
         "//syntaxnet:base",
         "//syntaxnet:sentence_proto",
         "//syntaxnet:test_main",
-        "@org_tensorflow//tensorflow/core:testlib",
     ],
 )
