@@ -22,7 +22,7 @@ import tensorflow as tf
 import seq2seq_lib
 
 # compat.py only handel the compatibility of Python 2 & 3 for textsum
-from compat import * # If Python 3, need "pip install future"
+from compat import * 
 
 HParams = namedtuple('HParams',
                      'mode, min_lr, lr, batch_size, '
