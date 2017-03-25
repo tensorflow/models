@@ -21,10 +21,8 @@ K*K results, and start over again until certain number of results are fully
 decoded.
 """
 
+from six.moves import xrange
 import tensorflow as tf
-
-# compat.py only handel the compatibility of Python 2 & 3 for textsum
-from compat import * 
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_bool('normalize_by_length', True, 'Whether normalize')

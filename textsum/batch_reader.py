@@ -16,18 +16,16 @@
 """Batch reader to seq2seq attention model, with bucketing support."""
 
 from collections import namedtuple
-import Queue
 from random import shuffle
 from threading import Thread
 import time
 
 import numpy as np
+from six.moves.queue import Queue
+from six.moves import xrange
 import tensorflow as tf
 
 import data
-
-# compat.py only handel the compatibility of Python 2 & 3 for textsum
-from compat import * 
 
 ModelInput = namedtuple('ModelInput',
                         'enc_input dec_input target enc_len dec_len '

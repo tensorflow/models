@@ -18,12 +18,10 @@
 import os
 import time
 
-import tensorflow as tf
 import beam_search
 import data
-
-# compat.py only handel the compatibility of Python 2 & 3 for textsum
-from compat import * 
+from six.moves import xrange
+import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('max_decode_steps', 1000000,

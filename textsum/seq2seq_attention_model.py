@@ -18,11 +18,9 @@
 from collections import namedtuple
 
 import numpy as np
-import tensorflow as tf
 import seq2seq_lib
-
-# compat.py only handel the compatibility of Python 2 & 3 for textsum
-from compat import * 
+from six.moves import xrange
+import tensorflow as tf
 
 HParams = namedtuple('HParams',
                      'mode, min_lr, lr, batch_size, '
