@@ -35,7 +35,7 @@
 set -e
 
 if [ -z "$1" ]; then
-  echo "usage download_and_preprocess_flowers.sh [data dir]"
+  echo "Usage: download_and_preprocess_flowers.sh [data dir]"
   exit
 fi
 

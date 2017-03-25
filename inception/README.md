@@ -111,15 +111,12 @@ ready to train or evaluate with the ImageNet data set.
 intensive task and depending on your compute setup may take several days or even
 weeks.
 
-*Before proceeding* please read the [Convolutional Neural Networks]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html) tutorial in
-particular focus on [Training a Model Using Multiple GPU Cards]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html#training-a-model-using-multiple-gpu-cards)
-. The model training method is nearly identical to that described in the
+*Before proceeding* please read the [Convolutional Neural Networks](https://www.tensorflow.org/tutorials/deep_cnn/index.html) tutorial; in
+particular, focus on [Training a Model Using Multiple GPU Cards](https://www.tensorflow.org/tutorials/deep_cnn/index.html#launching_and_training_the_model_on_multiple_gpu_cards). The model training method is nearly identical to that described in the
 CIFAR-10 multi-GPU model training. Briefly, the model training
 
-*   Places an individual model replica on each GPU. Split the batch across the
-    GPUs.
+*   Places an individual model replica on each GPU.
+*   Splits the batch across the GPUs.
 *   Updates model parameters synchronously by waiting for all GPUs to finish
     processing a batch of data.
 
@@ -245,11 +242,9 @@ We term each machine that maintains model parameters a `ps`, short for
 `ps` as the model parameters may be sharded across multiple machines.
 
 Variables may be updated with synchronous or asynchronous gradient updates. One
-may construct a an [`Optimizer`]
-(https://www.tensorflow.org/api_docs/python/train.html#optimizers) in TensorFlow
-that constructs the necessary graph for either case diagrammed below from
-TensorFlow [Whitepaper]
-(http://download.tensorflow.org/paper/whitepaper2015.pdf):
+may construct a an [`Optimizer`](https://www.tensorflow.org/api_docs/python/train.html#optimizers) in TensorFlow
+that constructs the necessary graph for either case diagrammed below from the
+TensorFlow [Whitepaper](http://download.tensorflow.org/paper/whitepaper2015.pdf):
 
 <div style="width:40%; margin:auto; margin-bottom:10px; margin-top:20px;">
   <img style="width:100%"
@@ -380,10 +375,8 @@ training Inception in a distributed manner.
 Evaluating an Inception v3 model on the ImageNet 2012 validation data set
 requires running a separate binary.
 
-The evaluation procedure is nearly identical to [Evaluating a Model]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html#evaluating-a-model)
-described in the [Convolutional Neural Network]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html) tutorial.
+The evaluation procedure is nearly identical to [Evaluating a Model](https://www.tensorflow.org/tutorials/deep_cnn/index.html#evaluating_a_model)
+described in the [Convolutional Neural Network](https://www.tensorflow.org/tutorials/deep_cnn/index.html) tutorial.
 
 **WARNING** Be careful not to run the evaluation and training binary on the same
 GPU or else you might run out of memory. Consider running the evaluation on a
@@ -438,8 +431,7 @@ daisy, dandelion, roses, sunflowers, tulips
 There is a single automated script that downloads the data set and converts it
 to the TFRecord format. Much like the ImageNet data set, each record in the
 TFRecord format is a serialized `tf.Example` proto whose entries include a
-JPEG-encoded string and an integer label. Please see [`parse_example_proto`]
-(inception/image_processing.py) for details.
+JPEG-encoded string and an integer label. Please see [`parse_example_proto`](inception/image_processing.py) for details.
 
 The script just takes a few minutes to run depending your network connection
 speed for downloading and processing the images. Your hard disk requires 200MB
@@ -471,14 +463,12 @@ and `validation-?????-of-00002`, respectively.
 **NOTE** If you wish to prepare a custom image data set for transfer learning,
 you will need to invoke [`build_image_data.py`](inception/data/build_image_data.py) on
 your custom data set. Please see the associated options and assumptions behind
-this script by reading the comments section of [`build_image_data.py`]
-(inception/data/build_image_data.py). Also, if your custom data has a different
+this script by reading the comments section of [`build_image_data.py`](inception/data/build_image_data.py). Also, if your custom data has a different
 number of examples or classes, you need to change the appropriate values in
 [`imagenet_data.py`](inception/imagenet_data.py).
 
 The second piece you will need is a trained Inception v3 image model. You have
-the option of either training one yourself (See [How to Train from Scratch]
-(#how-to-train-from-scratch) for details) or you can download a pre-trained
+the option of either training one yourself (See [How to Train from Scratch](#how-to-train-from-scratch) for details) or you can download a pre-trained
 model like so:
 
 ```shell
@@ -806,8 +796,7 @@ comments in [`image_processing.py`](inception/image_processing.py) for more deta
 #### The model runs out of CPU memory.
 
 In lieu of buying more CPU memory, an easy fix is to decrease
-`--input_queue_memory_factor`. See [Adjusting Memory Demands]
-(#adjusting-memory-demands).
+`--input_queue_memory_factor`. See [Adjusting Memory Demands](#adjusting-memory-demands).
 
 #### The model runs out of GPU memory.
 
