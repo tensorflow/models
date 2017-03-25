@@ -21,6 +21,7 @@ K*K results, and start over again until certain number of results are fully
 decoded.
 """
 
+from six.moves import xrange
 import tensorflow as tf
 
 FLAGS = tf.flags.FLAGS
