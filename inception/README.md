@@ -37,13 +37,12 @@ The code base provides three core binaries for:
     errors to fine tune the network weights.
 
 The training procedure employs synchronous stochastic gradient descent across
-multiple GPUs. The user may specify the number of GPUs they wish harness. The
+multiple GPUs. The user may specify the number of GPUs they wish to harness. The
 synchronous training performs *batch-splitting* by dividing a given batch across
 multiple GPUs.
 
 The training set up is nearly identical to the section [Training a Model Using
-Multiple GPU Cards]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html#training-a-model-using-multiple-gpu-cards)
+Multiple GPU Cards](https://www.tensorflow.org/tutorials/deep_cnn/index.html#launching_and_training_the_model_on_multiple_gpu_cards)
 where we have substituted the CIFAR-10 model architecture with Inception v3. The
 primary differences with that setup are:
 
@@ -52,8 +51,7 @@ primary differences with that setup are:
 *   Specify the model architecture using a (still experimental) higher level
     language called TensorFlow-Slim.
 
-For more details about TensorFlow-Slim, please see the [Slim README]
-(inception/slim/README.md). Please note that this higher-level language is still
+For more details about TensorFlow-Slim, please see the [Slim README](inception/slim/README.md). Please note that this higher-level language is still
 *experimental* and the API may change over time depending on usage and
 subsequent research.
 
@@ -71,8 +69,7 @@ downloading and converting ImageNet data to TFRecord format. Downloading and
 preprocessing the data may take several hours (up to half a day) depending on
 your network and computer speed. Please be patient.
 
-To begin, you will need to sign up for an account with [ImageNet]
-(http://image-net.org) to gain access to the data. Look for the sign up page,
+To begin, you will need to sign up for an account with [ImageNet](http://image-net.org) to gain access to the data. Look for the sign up page,
 create an account and request an access key to download the data.
 
 After you have `USERNAME` and `PASSWORD`, you are ready to run our script. Make
@@ -101,9 +98,9 @@ The final line of the output script should read:
 2016-02-17 14:30:17.287989: Finished writing all 1281167 images in data set.
 ```
 
-When the script finishes you will find 1024 and 128 training and validation
-files in the `DATA_DIR`. The files will match the patterns `train-????-of-1024`
-and `validation-?????-of-00128`, respectively.
+When the script finishes, you will find 1024 training files and 128 validation
+files in the `DATA_DIR`. The files will match the patterns
+`train-?????-of-01024` and `validation-?????-of-00128`, respectively.
 
 [Congratulations!](https://www.youtube.com/watch?v=9bZkp7q19f0) You are now
 ready to train or evaluate with the ImageNet data set.

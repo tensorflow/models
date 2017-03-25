@@ -26,7 +26,7 @@
 #   data_dir/train-00000-of-01024
 #   data_dir/train-00001-of-01024
 #    ...
-#   data_dir/train-00127-of-01024
+#   data_dir/train-01023-of-01024
 #
 # and
 #
