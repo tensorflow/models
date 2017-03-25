@@ -32,11 +32,9 @@ identify the name of a street (in France) from an image containing upto four
 different views of the street name sign. The model merges information from the
 different views and normalizes the text to the correct format. For example:
 
-<center>
 ![Example image](g3doc/avdessapins.png)
 
 Avenue des Sapins
-</center>
 
 
 ## Installing and setting up the STREET model
