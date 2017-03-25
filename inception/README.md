@@ -18,9 +18,7 @@ evaluation with a computational cost of 5 billion multiply-adds per inference
 and with using less than 25 million parameters. Below is a visualization of the
 model architecture.
 
-<center>
 ![Inception-v3 Architecture](g3doc/inception_v3_architecture.png)
-</center>
 
 ## Description of Code
 
