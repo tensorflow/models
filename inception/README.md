@@ -487,6 +487,7 @@ model like so:
 ```shell
 # location of where to place the Inception v3 model
 DATA_DIR=$HOME/inception-v3-model
+mkdir -p ${DATA_DIR}
 cd ${DATA_DIR}
 
 # download the Inception v3 model
