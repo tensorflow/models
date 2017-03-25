@@ -24,7 +24,7 @@
 # downloading the raw images.
 #
 # usage:
-#  ./download_imagenet.sh [dirname]
+#  ./download_imagenet.sh [dir name] [synsets file]
 set -e
 
 if [ "x$IMAGENET_ACCESS_KEY" == x -o "x$IMAGENET_USERNAME" == x ]; then
