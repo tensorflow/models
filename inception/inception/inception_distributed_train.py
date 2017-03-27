@@ -221,9 +221,8 @@ def train(target, dataset, cluster_spec):
       with tf.control_dependencies([apply_gradients_op]):
         train_op = tf.identity(total_loss, name='train_op')
 
-      # Get chief queue_runners and init_tokens, which is used to
-      # synchronize replicas.
-      # More details can be found in sync_replicas_optimizer.
+      # Get chief queue_runners and init_tokens, which is used to synchronize
+      # replicas. More details can be found in sync_replicas_optimizer.
       chief_queue_runners = [opt.get_chief_queue_runner()]
       init_tokens_op = opt.get_init_tokens_op()
 
