@@ -14,6 +14,7 @@ package_group(
         "//googlex/proxy/learning/...",
         "//image/understanding/object_detection/...",
         "//learning/brain/contrib/slim/...",
+        "//learning/brain/contrib/tfgan/...",
         "//learning/brain/google/xla/benchmarks/...",
         "//learning/brain/models/image/imagenet_multigpu/...",
         "//learning/brain/models/image/imagenet_opensource/...",
