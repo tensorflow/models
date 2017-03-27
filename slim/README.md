@@ -41,23 +41,9 @@ prerequisite packages.
 
 ## Installing latest version of TF-slim
 
-As of 8/28/16, the latest [stable release of TF](https://www.tensorflow.org/versions/r0.10/get_started/os_setup.html#pip-installation)
-is r0.10, which contains most of TF-Slim but not some later additions. To obtain the
-latest version, you must install the most recent nightly build of
-TensorFlow. You can find the latest nightly binaries at
-[TensorFlow Installation](https://github.com/tensorflow/tensorflow#installation)
-in the section that reads "People who are a little more adventurous can
-also try our nightly binaries". Copy the link address that corresponds to
-the appropriate machine architecture and python version, and pip install
-it. For example:
-
-```shell
-export TF_BINARY_URL=https://ci.tensorflow.org/view/Nightly/job/nightly-matrix-cpu/TF_BUILD_CONTAINER_TYPE=CPU,TF_BUILD_IS_OPT=OPT,TF_BUILD_IS_PIP=PIP,TF_BUILD_PYTHON_VERSION=PYTHON2,label=cpu-slave/lastSuccessfulBuild/artifact/pip_test/whl/tensorflow-0.10.0rc0-cp27-none-linux_x86_64.whl
-sudo pip install --upgrade $TF_BINARY_URL
-```
-
-To test this has worked, execute the following command; it should run
-without raising any errors.
+TF-Slim is available as `tf.contrib.slim` via TensorFlow 1.0. To test that your
+installation is working, execute the following command; it should run without
+raising any errors.
 
 ```
 python -c "import tensorflow.contrib.slim as slim; eval = slim.evaluation.evaluate_once"
@@ -140,7 +126,7 @@ You can use the same script to create the mnist and cifar10 datasets.
 However, for ImageNet, you have to follow the instructions
 [here](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started).
 Note that you first have to sign up for an account at image-net.org.
-Also, the download can take several hours, and uses about 500MB.
+Also, the download can take several hours, and could use up to 500GB.
 
 
 ## Creating a TF-Slim Dataset Descriptor.
