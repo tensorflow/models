@@ -9,6 +9,7 @@ To propose a model for inclusion please submit a pull request.
 
 ## Models
 - [autoencoder](autoencoder): various autoencoders.
+- [domain_adaptation](domain_adaptation): Domain Separation Networks.
 - [compression](compression): compressing and decompressing images using a pre-trained Residual GRU network.
 - [differential_privacy](differential_privacy): privacy-preserving student models from multiple teachers.
 - [im2txt](im2txt): image-to-text neural network for image captioning.
