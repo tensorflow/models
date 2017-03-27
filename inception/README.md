@@ -486,8 +486,8 @@ model like so:
 
 ```shell
 # location of where to place the Inception v3 model
-DATA_DIR=$HOME/inception-v3-model
-cd ${DATA_DIR}
+INCEPTION_MODEL_DIR=$HOME/inception-v3-model
+cd ${INCEPTION_MODEL_DIR}
 
 # download the Inception v3 model
 curl -O http://download.tensorflow.org/models/image/imagenet/inception-v3-2016-03-01.tar.gz
@@ -538,10 +538,10 @@ the flowers data set with the following command.
 bazel build inception/flowers_train
 
 # Path to the downloaded Inception-v3 model.
-MODEL_PATH="${INCEPTION_MODEL_DIR}/model.ckpt-157585"
+MODEL_PATH="${INCEPTION_MODEL_DIR}/inception-v3/model.ckpt-157585"
 
 # Directory where the flowers data resides.
-FLOWERS_DATA_DIR=/tmp/flowers-data/
+FLOWERS_DATA_DIR=$HOME/flowers-data/
 
 # Directory where to save the checkpoint and events files.
 TRAIN_DIR=/tmp/flowers_train/
