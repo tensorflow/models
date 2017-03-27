@@ -13,9 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Provides data for the MNIST-M dataset.
-
-The dataset scripts used to create the dataset can be found at:
-tensorflow_models/domain_adaptation_/datasets/download_and_convert_mnist_m_dataset.py
 """
 
 from __future__ import absolute_import

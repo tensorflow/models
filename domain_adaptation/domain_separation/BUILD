@@ -60,10 +60,8 @@ py_library(
     ],
     deps = [
         ":grl_op_grads_py",
-        #":grl_op_kernels",
         ":grl_op_shapes_py",
         ":grl_ops",
-        #":grl_ops_py",
         ":losses",
         ":models",
         ":utils",
@@ -148,28 +146,6 @@ py_library(
     srcs = ["grl_ops.py"],
     data = ["_grl_ops.so"],
 )
-#cc_library(
-#    name = "grl_ops",
-#    srcs = ["grl_ops.cc"],
-#    deps = ["//tensorflow/core:framework"],
-#   alwayslink = 1,
-#)
-
-#tf_gen_op_wrapper_py(
-#    name = "grl_ops_py",
-#    out = "grl_ops.py",
-#    deps = [":grl_ops"],
-#)
-
-#cc_library(
-#    name = "grl_op_kernels",
-#    srcs = ["grl_op_kernels.cc"],
-#    deps = [
-#        "//tensorflow/core:framework",
-#        "//tensorflow/core:protos_all",
-#    ],
-#    alwayslink = 1,
-#)
 
 py_test(
     name = "grl_ops_test",
@@ -177,9 +153,7 @@ py_test(
     srcs = ["grl_ops_test.py"],
     deps = [
         ":grl_op_grads_py",
-        #   ":grl_op_kernels",
         ":grl_op_shapes_py",
         ":grl_ops",
-        #":grl_ops_py",
     ],
 )
