@@ -56,6 +56,10 @@ tf.app.flags.DEFINE_boolean('log_device_placement', False,
 tf.app.flags.DEFINE_integer(
     'task_id', 0, 'Task ID of the worker/replica running the training.')
 
+# GPU ID is used to select the local GPU for each worker
+tf.app.flags.DEFINE_integer(
+    'gpu_id', 0, 'GPU ID of the worker/replica running on the local device.')
+
 # More details can be found in the sync_replicas_optimizer class:
 # tensorflow/python/training/sync_replicas_optimizer.py
 tf.app.flags.DEFINE_integer('num_replicas_to_aggregate', -1,
@@ -110,7 +114,7 @@ def train(target, dataset, cluster_spec):
   is_chief = (FLAGS.task_id == 0)
 
   # Ops are assigned to worker by default.
-  with tf.device('/job:worker/task:%d' % FLAGS.task_id):
+  with tf.device('/job:worker/task:%d/gpu:%d' % (FLAGS.task_id, FLAGS.gpu_id)):
     # Variables and its related init/assign ops are assigned to ps.
     with slim.scopes.arg_scope(
         [slim.variables.variable, slim.variables.global_step],
