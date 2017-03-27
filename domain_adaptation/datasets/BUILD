@@ -27,14 +27,6 @@ py_library(
 )
 
 py_binary(
-    name = "download_and_convert_mnist_m",
-    srcs = ["download_and_convert_mnist_m.py"],
-    deps = [
-        "//slim:dataset_utils",
-    ],
-)
-
-py_binary(
     name = "mnist_m",
     srcs = ["mnist_m.py"],
     deps = [
