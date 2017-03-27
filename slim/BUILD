@@ -1,7 +1,10 @@
 # Description:
 #   Contains files for loading, training and evaluating TF-Slim-based models.
 
-package(default_visibility = [":internal"])
+package(default_visibility = [
+    ":internal",
+    "//domain_adaptation:__subpackages__",
+])
 
 licenses(["notice"])  # Apache 2.0
 
