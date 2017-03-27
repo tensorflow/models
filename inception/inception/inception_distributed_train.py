@@ -52,11 +52,11 @@ tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             'Whether to log device placement.')
 
 # Task ID is used to select the chief and also to access the local_step for
-# each replica to check staleness of the gradients in sync_replicas_optimizer.
+# each replica to check staleness of the gradients in SyncReplicasOptimizer.
 tf.app.flags.DEFINE_integer(
     'task_id', 0, 'Task ID of the worker/replica running the training.')
 
-# More details can be found in the sync_replicas_optimizer class:
+# More details can be found in the SyncReplicasOptimizer class:
 # tensorflow/python/training/sync_replicas_optimizer.py
 tf.app.flags.DEFINE_integer('num_replicas_to_aggregate', -1,
                             """Number of gradients to collect before """
@@ -222,7 +222,7 @@ def train(target, dataset, cluster_spec):
         train_op = tf.identity(total_loss, name='train_op')
 
       # Get chief queue_runners and init_tokens, which is used to synchronize
-      # replicas. More details can be found in sync_replicas_optimizer.
+      # replicas. More details can be found in SyncReplicasOptimizer.
       chief_queue_runners = [opt.get_chief_queue_runner()]
       init_tokens_op = opt.get_init_tokens_op()
 
