@@ -35,7 +35,7 @@
 set -e
 
 if [ -z "$1" ]; then
-  echo "usage download_and_preprocess_flowers.sh [data dir]"
+  echo "Usage: download_and_preprocess_flowers.sh [data dir]"
   exit
 fi
 
@@ -53,7 +53,7 @@ cd "${DATA_DIR}"
 TARBALL="flower_photos.tgz"
 if [ ! -f ${TARBALL} ]; then
   echo "Downloading flower data set."
-  wget -O ${TARBALL} "${DATA_URL}"
+  curl -o ${TARBALL} "${DATA_URL}"
 else
   echo "Skipping download of flower data."
 fi

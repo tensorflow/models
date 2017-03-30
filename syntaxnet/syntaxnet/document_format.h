@@ -21,10 +21,10 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "syntaxnet/utils.h"
 #include "syntaxnet/registry.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
+#include "syntaxnet/utils.h"
 #include "tensorflow/core/lib/io/buffered_inputstream.h"
 
 namespace syntaxnet {

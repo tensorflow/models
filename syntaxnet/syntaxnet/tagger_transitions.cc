@@ -151,7 +151,9 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
   void Setup(TaskContext *context) override {
     input_tag_map_ = context->GetInput("tag-map", "text", "");
     join_category_to_pos_ = context->GetBoolParameter("join_category_to_pos");
-    input_tag_to_category_ = context->GetInput("tag-to-category", "text", "");
+    if (!join_category_to_pos_) {
+      input_tag_to_category_ = context->GetInput("tag-to-category", "text", "");
+    }
   }
 
   // Reads tag map and tag to category map.
@@ -162,7 +164,8 @@ class TaggerTransitionSystem : public ParserTransitionSystem {
     if (!join_category_to_pos_) {
       const string tag_to_category_path =
           TaskContext::InputFile(*input_tag_to_category_);
-      tag_to_category_ = SharedStoreUtils::GetWithDefaultName<TagToCategoryMap>(
+      tag_to_category_ =
+      SharedStoreUtils::GetWithDefaultName<TagToCategoryMap>(
           tag_to_category_path);
     }
   }

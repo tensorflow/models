@@ -1,33 +1,92 @@
-FROM java:8
+# Java baseimage, for Bazel.
+FROM openjdk:8
 
 ENV SYNTAXNETDIR=/opt/tensorflow PATH=$PATH:/root/bin
 
+# Install system packages. This doesn't include everything the TensorFlow
+# dockerfile specifies, so if anything goes awry, maybe install more packages
+# from there. Also, running apt-get clean before further commands will make the
+# Docker images smaller.
 RUN mkdir -p $SYNTAXNETDIR \
     && cd $SYNTAXNETDIR \
     && apt-get update \
-    && apt-get install git zlib1g-dev file swig python2.7 python-dev python-pip python-mock -y \
-    && pip install --upgrade pip \
-    && pip install -U protobuf==3.0.0b2 \
-    && pip install asciitree \
-    && pip install numpy \
-    && wget https://github.com/bazelbuild/bazel/releases/download/0.4.3/bazel-0.4.3-installer-linux-x86_64.sh \
+    && apt-get install -y \
+          file \
+          git \
+          graphviz \
+          libcurl3-dev \
+          libfreetype6-dev \
+          libgraphviz-dev \
+          liblapack-dev \
+          libopenblas-dev \
+          libpng12-dev \
+          libxft-dev \
+          python-dev \
+          python-mock \
+          python-pip \
+          python2.7 \
+          swig \
+          vim \
+          zlib1g-dev \
+    && apt-get clean \
+    && (rm -f /var/cache/apt/archives/*.deb \
+        /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true)
+
+# Install common Python dependencies. Similar to above, remove caches
+# afterwards to help keep Docker images smaller.
+RUN pip install --ignore-installed pip \
+    && python -m pip install numpy \
+    && rm -rf /root/.cache/pip /tmp/pip*
+RUN python -m pip install \
+          asciitree \
+          ipykernel \
+          jupyter \
+          matplotlib \
+          pandas \
+          protobuf \
+          scipy \
+          sklearn \
+    && python -m ipykernel.kernelspec \
+    && python -m pip install pygraphviz \
+          --install-option="--include-path=/usr/include/graphviz" \
+          --install-option="--library-path=/usr/lib/graphviz/" \
+    && python -m jupyter_core.command nbextension enable \
+          --py --sys-prefix widgetsnbextension \
+    && rm -rf /root/.cache/pip /tmp/pip*
+
+# Installs the latest version of Bazel.
+RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.4.3/bazel-0.4.3-installer-linux-x86_64.sh \
     && chmod +x bazel-0.4.3-installer-linux-x86_64.sh \
-    && ./bazel-0.4.3-installer-linux-x86_64.sh --user \
-    && git clone --recursive https://github.com/tensorflow/models.git \
-    && cd $SYNTAXNETDIR/models/syntaxnet/tensorflow \
-    && echo -e "\n\n\n\n\n\n" | ./configure \
-    && apt-get autoremove -y \
-    && apt-get clean
+    && ./bazel-0.4.3-installer-linux-x86_64.sh \
+    && rm ./bazel-0.4.3-installer-linux-x86_64.sh
 
-RUN cd $SYNTAXNETDIR/models/syntaxnet \
-    && bazel test --genrule_strategy=standalone syntaxnet/... util/utf8/...
+COPY WORKSPACE $SYNTAXNETDIR/syntaxnet/WORKSPACE
+COPY tools/bazel.rc $SYNTAXNETDIR/syntaxnet/tools/bazel.rc
+COPY tensorflow $SYNTAXNETDIR/syntaxnet/tensorflow
 
-WORKDIR $SYNTAXNETDIR/models/syntaxnet
+# Compile common TensorFlow targets, which don't depend on DRAGNN / SyntaxNet
+# source. This makes it more convenient to re-compile DRAGNN / SyntaxNet for
+# development (though not as convenient as the docker-devel scripts).
+RUN cd $SYNTAXNETDIR/syntaxnet/tensorflow \
+    && tensorflow/tools/ci_build/builds/configured CPU \
+    && cd $SYNTAXNETDIR/syntaxnet \
+    && bazel build -c opt @org_tensorflow//tensorflow:tensorflow_py
 
-CMD [ "sh", "-c", "echo 'Bob brought the pizza to Alice.' | syntaxnet/demo.sh" ]
+# Build the codez.
+WORKDIR $SYNTAXNETDIR/syntaxnet
+COPY dragnn $SYNTAXNETDIR/syntaxnet/dragnn
+COPY syntaxnet $SYNTAXNETDIR/syntaxnet/syntaxnet
+COPY third_party $SYNTAXNETDIR/syntaxnet/third_party
+COPY util/utf8 $SYNTAXNETDIR/syntaxnet/util/utf8
+RUN bazel build -c opt //dragnn/python:all //dragnn/tools:all
 
-# COMMANDS to build and run
-# ===============================
-# mkdir build && cp Dockerfile build/ && cd build
-# docker build -t syntaxnet .
-# docker run syntaxnet
+# This makes the IP exposed actually "*"; we'll do host restrictions by passing
+# a hostname to the `docker run` command.
+COPY tensorflow/tensorflow/tools/docker/jupyter_notebook_config.py /root/.jupyter/
+EXPOSE 8888
+
+# This does not need to be compiled, only copied.
+COPY examples $SYNTAXNETDIR/syntaxnet/examples
+# Todo: Move this earlier in the file (don't want to invalidate caches for now).
+
+CMD /bin/bash -c "bazel-bin/dragnn/tools/oss_notebook_launcher notebook --debug --notebook-dir=/opt/tensorflow/syntaxnet/examples"

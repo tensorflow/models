@@ -132,8 +132,8 @@ def _tower_loss(images, labels, num_classes, scope, reuse_variables=None):
     loss_name = re.sub('%s_[0-9]*/' % inception.TOWER_NAME, '', l.op.name)
     # Name each loss as '(raw)' and name the moving average version of the loss
     # as the original loss name.
-    tf.scalar_summary(loss_name +' (raw)', l)
-    tf.scalar_summary(loss_name, loss_averages.average(l))
+    tf.summary.scalar(loss_name +' (raw)', l)
+    tf.summary.scalar(loss_name, loss_averages.average(l))
 
   with tf.control_dependencies([loss_averages_op]):
     total_loss = tf.identity(total_loss)
@@ -166,7 +166,7 @@ def _average_gradients(tower_grads):
       grads.append(expanded_g)
 
     # Average over the 'tower' dimension.
-    grad = tf.concat(0, grads)
+    grad = tf.concat(axis=0, values=grads)
     grad = tf.reduce_mean(grad, 0)
 
     # Keep in mind that the Variables are redundant because they are shared
@@ -223,8 +223,8 @@ def train(dataset):
     num_classes = dataset.num_classes() + 1
 
      # Split the batch of images and labels for towers.
-    images_splits = tf.split(0, FLAGS.num_gpus, images)
-    labels_splits = tf.split(0, FLAGS.num_gpus, labels)
+    images_splits = tf.split(axis=0, num_or_size_splits=FLAGS.num_gpus, value=images)
+    labels_splits = tf.split(axis=0, num_or_size_splits=FLAGS.num_gpus, value=labels)
 
     # Calculate the gradients for each model tower.
     tower_grads = []
@@ -268,20 +268,20 @@ def train(dataset):
     summaries.extend(input_summaries)
 
     # Add a summary to track the learning rate.
-    summaries.append(tf.scalar_summary('learning_rate', lr))
+    summaries.append(tf.summary.scalar('learning_rate', lr))
 
     # Add histograms for gradients.
     for grad, var in grads:
       if grad is not None:
         summaries.append(
-            tf.histogram_summary(var.op.name + '/gradients', grad))
+            tf.summary.histogram(var.op.name + '/gradients', grad))
 
     # Apply the gradients to adjust the shared variables.
     apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
 
     # Add histograms for trainable variables.
     for var in tf.trainable_variables():
-      summaries.append(tf.histogram_summary(var.op.name, var))
+      summaries.append(tf.summary.histogram(var.op.name, var))
 
     # Track the moving averages of all trainable variables.
     # Note that we maintain a "double-average" of the BatchNormalization
@@ -290,7 +290,7 @@ def train(dataset):
     variable_averages = tf.train.ExponentialMovingAverage(
         inception.MOVING_AVERAGE_DECAY, global_step)
 
-    # Another possiblility is to use tf.slim.get_variables().
+    # Another possibility is to use tf.slim.get_variables().
     variables_to_average = (tf.trainable_variables() +
                             tf.moving_average_variables())
     variables_averages_op = variable_averages.apply(variables_to_average)
@@ -301,10 +301,10 @@ def train(dataset):
                         batchnorm_updates_op)
 
     # Create a saver.
-    saver = tf.train.Saver(tf.all_variables())
+    saver = tf.train.Saver(tf.global_variables())
 
     # Build the summary operation from the last tower summaries.
-    summary_op = tf.merge_summary(summaries)
+    summary_op = tf.summary.merge(summaries)
 
     # Build an initialization operation to run below.
     init = tf.global_variables_initializer()
@@ -329,9 +329,9 @@ def train(dataset):
     # Start the queue runners.
     tf.train.start_queue_runners(sess=sess)
 
-    summary_writer = tf.train.SummaryWriter(
+    summary_writer = tf.summary.FileWriter(
         FLAGS.train_dir,
-        graph_def=sess.graph.as_graph_def(add_shapes=True))
+        graph=sess.graph)
 
     for step in range(FLAGS.max_steps):
       start_time = time.time()

@@ -42,9 +42,9 @@ using tensorflow::errors::InvalidArgument;
 namespace syntaxnet {
 
 // Operator to unpack ids and weights stored in SparseFeatures proto.
-class UnpackSparseFeatures : public OpKernel {
+class UnpackSyntaxNetSparseFeatures : public OpKernel {
  public:
-  explicit UnpackSparseFeatures(OpKernelConstruction *context)
+  explicit UnpackSyntaxNetSparseFeatures(OpKernelConstruction *context)
       : OpKernel(context) {
     OP_REQUIRES_OK(context, context->MatchSignature(
                                 {DT_STRING}, {DT_INT32, DT_INT64, DT_FLOAT}));
@@ -105,7 +105,8 @@ class UnpackSparseFeatures : public OpKernel {
   }
 };
 
-REGISTER_KERNEL_BUILDER(Name("UnpackSparseFeatures").Device(DEVICE_CPU),
-                        UnpackSparseFeatures);
+REGISTER_KERNEL_BUILDER(
+    Name("UnpackSyntaxNetSparseFeatures").Device(DEVICE_CPU),
+    UnpackSyntaxNetSparseFeatures);
 
 }  // namespace syntaxnet

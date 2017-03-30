@@ -17,8 +17,8 @@ limitations under the License.
 #define SYNTAXNET_SEGMENTER_UTILS_H_
 
 #include <string>
-#include <vector>
 #include <unordered_set>
+#include <vector>
 
 #include "syntaxnet/sentence.pb.h"
 #include "tensorflow/core/lib/strings/strcat.h"
@@ -41,6 +41,25 @@ class SegmenterUtils {
   static void SetCharsAsTokens(
       const string &text, const std::vector<tensorflow::StringPiece> &chars,
       Sentence *sentence);
+
+  // Takes a sentence with its original text and gold tokens and outputs a new
+  // sentence with the original text, but have a single utf8 character per token
+  // and a break level that is set to:
+  //   0 (NO_BREAK) iff in the gold tokenization there was no break from the
+  //                    last token and merge with previous token.
+  //   1 (SPACE_BREAK) iff in the gold tokenization there was a break from the
+  //                       last token. SPACE_BREAK represents all breaks.
+  // Returns true if sentence token start/end bytes are consistent with UTF-8
+  // characters.
+  static bool ConvertToCharTokenDoc(const Sentence &sentence,
+                                    Sentence *char_sentence);
+
+  // Returns true if the start/end byte offsets of a sentence's tokens are
+  // consistent with UTF8 character boundaries.
+  // Note: it must be the case that chars was constructed from sentence.text().
+  static bool DocTokensUTF8Consistent(
+      const std::vector<tensorflow::StringPiece> &chars,
+      const Sentence &document);
 
   // Returns true for UTF-8 characters that cannot be 'real' tokens. This is
   // defined as any whitespace, line break or paragraph break.

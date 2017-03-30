@@ -43,21 +43,21 @@ class ParserFeatureFunctionTest : public ::testing::Test {
     const char *kTaggedDocument =
         "text: 'I saw a man with a telescope.' "
         "token { word: 'I' start: 0 end: 0 tag: 'PRP' category: 'PRON'"
-        " break_level: NO_BREAK } "
+        " break_level: NO_BREAK head: 1 } "
         "token { word: 'saw' start: 2 end: 4 tag: 'VBD' category: 'VERB'"
         " break_level: SPACE_BREAK } "
         "token { word: 'a' start: 6 end: 6 tag: 'DT' category: 'DET'"
-        " break_level: SPACE_BREAK } "
+        " break_level: SPACE_BREAK head: 3 } "
         "token { word: 'man' start: 8 end: 10 tag: 'NN' category: 'NOUN'"
-        " break_level: SPACE_BREAK } "
+        " break_level: SPACE_BREAK head: 1 } "
         "token { word: 'with' start: 12 end: 15 tag: 'IN' category: 'ADP'"
-        " break_level: SPACE_BREAK } "
+        " break_level: SPACE_BREAK head: 1 } "
         "token { word: 'a' start: 17 end: 17 tag: 'DT' category: 'DET'"
-        " break_level: SPACE_BREAK } "
+        " break_level: SPACE_BREAK head: 6 } "
         "token { word: 'telescope' start: 19 end: 27 tag: 'NN' category: 'NOUN'"
-        " break_level: SPACE_BREAK } "
+        " break_level: SPACE_BREAK head: 4 } "
         "token { word: '.' start: 28 end: 28 tag: '.' category: '.'"
-        " break_level: NO_BREAK }";
+        " break_level: NO_BREAK head: 1 }";
     CHECK(TextFormat::ParseFromString(kTaggedDocument, &sentence_));
     creators_ = PopulateTestInputs::Defaults(sentence_);
 
@@ -139,6 +139,17 @@ TEST_F(ParserFeatureFunctionTest, LabelFeatureFunction) {
   // may not be the artificial root token.)
   state_->Push(-1);
   EXPECT_EQ("<ROOT>", ExtractFeature("stack.label"));
+}
+
+TEST_F(ParserFeatureFunctionTest, GoldHeadFeatureFunction) {
+  EXPECT_EQ("1", ExtractFeature("input.gold-head"));
+  EXPECT_EQ("", ExtractFeature("input(1).gold-head"));  // extracts -1
+  EXPECT_EQ("3", ExtractFeature("input(2).gold-head"));
+  EXPECT_EQ("1", ExtractFeature("input(3).gold-head"));
+  EXPECT_EQ("1", ExtractFeature("input(4).gold-head"));
+  EXPECT_EQ("6", ExtractFeature("input(5).gold-head"));
+  EXPECT_EQ("4", ExtractFeature("input(6).gold-head"));
+  EXPECT_EQ("1", ExtractFeature("input(7).gold-head"));
 }
 
 }  // namespace syntaxnet

@@ -75,7 +75,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   var = _variable_on_cpu(name, shape,
                          tf.truncated_normal_initializer(stddev=stddev))
   if wd is not None:
-    weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
+    weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
   return var
 
@@ -84,7 +84,7 @@ def inference(images, dropout=False):
   """Build the CNN model.
   Args:
     images: Images returned from distorted_inputs() or inputs().
-    dropout: Boolean controling whether to use dropout or not
+    dropout: Boolean controlling whether to use dropout or not
   Returns:
     Logits
   """
@@ -194,7 +194,7 @@ def inference_deeper(images, dropout=False):
   """Build a deeper CNN model.
   Args:
     images: Images returned from distorted_inputs() or inputs().
-    dropout: Boolean controling whether to use dropout or not
+    dropout: Boolean controlling whether to use dropout or not
   Returns:
     Logits
   """
@@ -398,7 +398,7 @@ def train_op_fun(total_loss, global_step):
                                   decay_steps,
                                   LEARNING_RATE_DECAY_FACTOR,
                                   staircase=True)
-  tf.scalar_summary('learning_rate', lr)
+  tf.summary.scalar('learning_rate', lr)
 
   # Generate moving averages of all losses and associated summaries.
   loss_averages_op = moving_av(total_loss)
@@ -413,7 +413,7 @@ def train_op_fun(total_loss, global_step):
 
   # Add histograms for trainable variables.
   for var in tf.trainable_variables():
-    tf.histogram_summary(var.op.name, var)
+    tf.summary.histogram(var.op.name, var)
 
   # Track the moving averages of all trainable variables.
   variable_averages = tf.train.ExponentialMovingAverage(
@@ -485,7 +485,7 @@ def train(images, labels, ckpt_path, dropout=False):
     train_op = train_op_fun(loss, global_step)
 
     # Create a saver.
-    saver = tf.train.Saver(tf.all_variables())
+    saver = tf.train.Saver(tf.global_variables())
 
     print("Graph constructed and saver created")
 

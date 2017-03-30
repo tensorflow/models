@@ -99,8 +99,8 @@ def conv_layer(input_,
                     filter_size[1] - input_.get_shape().as_list()[2],
                     input_.get_shape().as_list()[3]
                 ])
-                res = tf.concat(1, [pad_1, res])
-                res = tf.concat(2, [pad_2, res])
+                res = tf.concat(axis=1, values=[pad_1, res])
+                res = tf.concat(axis=2, values=[pad_2, res])
         res = tf.nn.conv2d(
             input=res,
             filter=weights,
@@ -139,8 +139,8 @@ def depool_2x2(input_, stride=2):
     channels = shape[3]
     res = tf.reshape(input_, [batch_size, height, 1, width, 1, channels])
     res = tf.concat(
-        2, [res, tf.zeros([batch_size, height, stride - 1, width, 1, channels])])
-    res = tf.concat(4, [
+        axis=2, values=[res, tf.zeros([batch_size, height, stride - 1, width, 1, channels])])
+    res = tf.concat(axis=4, values=[
         res, tf.zeros([batch_size, height, stride, width, stride - 1, channels])
     ])
     res = tf.reshape(res, [batch_size, stride * height, stride * width, channels])
@@ -158,11 +158,11 @@ def batch_random_flip(input_):
     height = shape[1]
     width = shape[2]
     channels = shape[3]
-    res = tf.split(0, batch_size, input_)
+    res = tf.split(axis=0, num_or_size_splits=batch_size, value=input_)
     res = [elem[0, :, :, :] for elem in res]
     res = [tf.image.random_flip_left_right(elem) for elem in res]
     res = [tf.reshape(elem, [1, height, width, channels]) for elem in res]
-    res = tf.concat(0, res)
+    res = tf.concat(axis=0, values=res)
 
     return res
 
@@ -175,7 +175,7 @@ def as_one_hot(input_, n_indices):
     n_elem = numpy.prod(shape)
     indices = tf.range(n_elem)
     indices = tf.cast(indices, tf.int64)
-    indices_input = tf.concat(0, [indices, tf.reshape(input_, [-1])])
+    indices_input = tf.concat(axis=0, values=[indices, tf.reshape(input_, [-1])])
     indices_input = tf.reshape(indices_input, [2, -1])
     indices_input = tf.transpose(indices_input)
     res = tf.sparse_to_dense(

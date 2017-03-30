@@ -24,6 +24,7 @@ limitations under the License.
 #include "tensorflow/core/lib/io/random_inputstream.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/platform/regexp.h"
 
 namespace syntaxnet {
 
@@ -74,14 +75,11 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
   int64 last_frequency = -1;
   for (int i = 0; i < total && i < max_num_terms; ++i) {
     TF_CHECK_OK(buffer.ReadLine(&line));
-    std::vector<string> elements = utils::Split(line, ' ');
-    CHECK_EQ(2, elements.size());
-    CHECK(!elements[0].empty());
-    CHECK(!elements[1].empty());
+    string term;
     int64 frequency = 0;
-    CHECK(utils::ParseInt64(elements[1].c_str(), &frequency));
+    CHECK(RE2::FullMatch(line, "(.*) (\\d*)", &term, &frequency));
+    CHECK(!term.empty());
     CHECK_GT(frequency, 0);
-    const string &term = elements[0];
 
     // Check frequency sorting (descending order).
     if (i > 0) CHECK_GE(last_frequency, frequency);
@@ -165,16 +163,28 @@ const string &TagToCategoryMap::GetCategory(const string &tag) const {
 void TagToCategoryMap::SetCategory(const string &tag, const string &category) {
   const auto it = tag_to_category_.find(tag);
   if (it != tag_to_category_.end()) {
-    CHECK_EQ(category, it->second)
-        << "POS tag cannot be mapped to multiple coarse POS tags. "
-        << "'" << tag << "' is mapped to: '" << category << "' and '"
-        << it->second << "'";
+    if (category != it->second) {
+      invalid_mappings_[tag].insert(it->second);
+      invalid_mappings_[tag].insert(category);
+    }
   } else {
     tag_to_category_[tag] = category;
   }
 }
 
 void TagToCategoryMap::Save(const string &filename) const {
+  for (auto &pair : invalid_mappings_) {
+    LOG(ERROR)
+        << "Warning: POS tag is being mapped to multiple coarse POS tags. "
+        << "'" << pair.first << "' is mapped to " << pair.second.size()
+        << " categories:";
+    for (auto &category : pair.second) {
+      LOG(ERROR) << category;
+    }
+    LOG(ERROR) << "Recommend setting "
+               << "join_category_to_pos to 'true' in this case.";
+  }
+
   // Write tag and category on each line.
   std::unique_ptr<tensorflow::WritableFile> file;
   TF_CHECK_OK(tensorflow::Env::Default()->NewWritableFile(filename, &file));

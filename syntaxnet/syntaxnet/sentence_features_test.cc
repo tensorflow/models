@@ -144,6 +144,55 @@ class CommonSentenceFeaturesTest : public SentenceFeaturesTest {
             " head: 1 label: 'p' break_level: NO_BREAK }") {}
 };
 
+TEST_F(CommonSentenceFeaturesTest, WordFeature) {
+  TermFrequencyMap word_map;
+  word_map.Increment("saw");
+  word_map.Increment("man");
+  word_map.Increment("telescope");
+  word_map.Increment(".");
+  creators_.Add("word-map", "text", "",
+                [&](const string &path) { word_map.Save(path); });
+
+  PrepareFeature("word");
+
+  EXPECT_EQ("<OUTSIDE>", utils::Join(ExtractMultiFeature(-1), ","));
+  EXPECT_EQ("<UNKNOWN>", utils::Join(ExtractMultiFeature(0), ","));
+  EXPECT_EQ("saw", utils::Join(ExtractMultiFeature(1), ","));
+  EXPECT_EQ("<UNKNOWN>", utils::Join(ExtractMultiFeature(2), ","));
+  EXPECT_EQ("man", utils::Join(ExtractMultiFeature(3), ","));
+  EXPECT_EQ("<UNKNOWN>", utils::Join(ExtractMultiFeature(4), ","));
+  EXPECT_EQ("<UNKNOWN>", utils::Join(ExtractMultiFeature(5), ","));
+  EXPECT_EQ("telescope", utils::Join(ExtractMultiFeature(6), ","));
+  EXPECT_EQ(".", utils::Join(ExtractMultiFeature(7), ","));
+  EXPECT_EQ("<OUTSIDE>", utils::Join(ExtractMultiFeature(8), ","));
+}
+
+TEST_F(CommonSentenceFeaturesTest, KnownWordFeature) {
+  TermFrequencyMap word_map;
+  word_map.Increment("saw");
+  word_map.Increment("man");
+  word_map.Increment("telescope");
+  word_map.Increment(".");
+  creators_.Add("known-word-map", "text", "",
+                [&](const string &path) { word_map.Save(path); });
+
+  PrepareFeature("known-word");
+
+  // Unlike the "word" feature, does not extract "<OUTSIDE>" or "<UNKNOWN>".
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(-1), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(0), ","));
+  EXPECT_EQ("saw", utils::Join(ExtractMultiFeature(1), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(2), ","));
+  EXPECT_EQ("man", utils::Join(ExtractMultiFeature(3), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(4), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(5), ","));
+  EXPECT_EQ("telescope", utils::Join(ExtractMultiFeature(6), ","));
+  EXPECT_EQ(".", utils::Join(ExtractMultiFeature(7), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(8), ","));
+
+  EXPECT_EQ(word_map.Size(), extractor_->feature_type(0)->GetDomainSize());
+}
+
 TEST_F(CommonSentenceFeaturesTest, TagFeature) {
   PrepareFeature("tag");
   EXPECT_EQ("<OUTSIDE>", ExtractFeature(-1));
@@ -181,19 +230,94 @@ TEST_F(CommonSentenceFeaturesTest, OffsetPlusTag) {
 
 TEST_F(CommonSentenceFeaturesTest, CharNgramFeature) {
   TermFrequencyMap char_ngram_map;
-  char_ngram_map.Increment("a");
-  char_ngram_map.Increment("aw");
-  char_ngram_map.Increment("sa");
+  for (const string &char_ngram : {"a", "aw", "sa"}) {
+    char_ngram_map.Increment(char_ngram);
+  }
   creators_.Add(
       "char-ngram-map", "text", "",
       [&char_ngram_map](const string &path) { char_ngram_map.Save(path); });
 
-  // Test that CharNgram works as expected.
   PrepareFeature("char-ngram");
   EXPECT_EQ("", utils::Join(ExtractMultiFeature(-1), ","));
   EXPECT_EQ("", utils::Join(ExtractMultiFeature(0), ","));
   EXPECT_EQ("sa,a,aw", utils::Join(ExtractMultiFeature(1), ","));
   EXPECT_EQ("a", utils::Join(ExtractMultiFeature(2), ","));
+  EXPECT_EQ("a", utils::Join(ExtractMultiFeature(3), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(8), ","));
+}
+
+TEST_F(CommonSentenceFeaturesTest, CharNgramFeatureWithMinLength) {
+  TermFrequencyMap char_ngram_map;
+  for (const string &char_ngram : {"a", "aw", "sa"}) {
+    char_ngram_map.Increment(char_ngram);
+  }
+  creators_.Add(
+      "char-ngram-map", "text", "",
+      [&char_ngram_map](const string &path) { char_ngram_map.Save(path); });
+
+  PrepareFeature("char-ngram(min-length=2)");
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(-1), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(0), ","));
+  EXPECT_EQ("sa,aw", utils::Join(ExtractMultiFeature(1), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(2), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(3), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(8), ","));
+}
+
+TEST_F(CommonSentenceFeaturesTest, CharNgramFeatureWithMaxLength) {
+  TermFrequencyMap char_ngram_map;
+  for (const string &char_ngram : {"a", "aw", "sa"}) {
+    char_ngram_map.Increment(char_ngram);
+  }
+  creators_.Add(
+      "char-ngram-map", "text", "",
+      [&char_ngram_map](const string &path) { char_ngram_map.Save(path); });
+
+  PrepareFeature("char-ngram(max-length=1)");
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(-1), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(0), ","));
+  EXPECT_EQ("a", utils::Join(ExtractMultiFeature(1), ","));
+  EXPECT_EQ("a", utils::Join(ExtractMultiFeature(2), ","));
+  EXPECT_EQ("a", utils::Join(ExtractMultiFeature(3), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(8), ","));
+}
+
+TEST_F(CommonSentenceFeaturesTest, CharNgramFeatureWithTerminators) {
+  TermFrequencyMap char_ngram_map;
+  for (const string &char_ngram :
+       {"^", "^s", "^sa", "^saw", "^saw$", "s", "sa", "saw", "a", "^a", "a$",
+        "^a$", "aw", "aw$", "w$", "$"}) {
+    char_ngram_map.Increment(char_ngram);
+  }
+  creators_.Add("char-ngram-map", "text", "",
+                [&](const string &path) { char_ngram_map.Save(path); });
+
+  PrepareFeature("char-ngram(add-terminators=true)");
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(-1), ","));
+  EXPECT_EQ("^,$", utils::Join(ExtractMultiFeature(0), ","));
+  EXPECT_EQ("^,^s,^sa,s,sa,saw,a,aw,aw$,w$,$",
+            utils::Join(ExtractMultiFeature(1), ","));
+  EXPECT_EQ("^,^a,^a$,a,a$,$", utils::Join(ExtractMultiFeature(2), ","));
+  EXPECT_EQ("^,a,$", utils::Join(ExtractMultiFeature(3), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(8), ","));
+}
+
+TEST_F(CommonSentenceFeaturesTest, CharNgramFeatureWithBoundaries) {
+  TermFrequencyMap char_ngram_map;
+  for (const string &char_ngram :
+       {"^ ", "^ s", "^ sa", "^ saw", "^ saw $", "s", "sa", "saw", "a", "^ a",
+        "a $", "^ a $", "aw", "aw $", "w $", " $"}) {
+    char_ngram_map.Increment(char_ngram);
+  }
+  creators_.Add("char-ngram-map", "text", "",
+                [&](const string &path) { char_ngram_map.Save(path); });
+
+  PrepareFeature("char-ngram(mark-boundaries=true)");
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(-1), ","));
+  EXPECT_EQ("", utils::Join(ExtractMultiFeature(0), ","));
+  EXPECT_EQ("^ s,^ sa,^ saw $,a,aw $,w $",
+            utils::Join(ExtractMultiFeature(1), ","));
+  EXPECT_EQ("^ a $", utils::Join(ExtractMultiFeature(2), ","));
   EXPECT_EQ("a", utils::Join(ExtractMultiFeature(3), ","));
   EXPECT_EQ("", utils::Join(ExtractMultiFeature(8), ","));
 }
@@ -209,7 +333,6 @@ TEST_F(CommonSentenceFeaturesTest, MorphologySetFeature) {
       "morphology-map", "text", "",
       [&morphology_map](const string &path) { morphology_map.Save(path); });
 
-  // Test that CharNgram works as expected.
   PrepareFeature("morphology-set");
   EXPECT_EQ("", utils::Join(ExtractMultiFeature(-1), ","));
   EXPECT_EQ("", utils::Join(ExtractMultiFeature(0), ","));

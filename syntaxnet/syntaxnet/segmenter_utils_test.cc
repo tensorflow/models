@@ -25,40 +25,51 @@ limitations under the License.
 
 namespace syntaxnet {
 
-// Creates a Korean senence and also initializes the token field.
-static Sentence GetKoSentence() {
-  Sentence sentence;
+namespace {
 
-  string text = "서울시는 2012년부터";
+// Returns a Sentence proto constructed by parsing the given prototxt.
+Sentence ParseASCII(const string &prototxt) {
+  Sentence document;
+  CHECK(TextFormat::ParseFromString(prototxt, &document));
+  return document;
+}
 
-  // Add tokens.
-  sentence.set_text(text);
-  Token *tok = sentence.add_token();
-  tok->set_word("서울시");
-  tok->set_start(0);
-  tok->set_end(8);
-  tok = sentence.add_token();
-  tok->set_word("는");
-  tok->set_start(9);
-  tok->set_end(11);
-  tok = sentence.add_token();
-  tok->set_word("2012");
-  tok->set_start(13);
-  tok->set_end(16);
-  tok = sentence.add_token();
-  tok->set_word("년");
-  tok->set_start(17);
-  tok->set_end(19);
-  tok = sentence.add_token();
-  tok->set_word("부터");
-  tok->set_start(20);
-  tok->set_end(25);
+// Creates a Korean senence.
+Sentence GetKoSentence() {
+  return ParseASCII(
+      "text: '서울시는 2012년부터' "
+      "token { word: '서울시' start: 0 end: 8 } "
+      "token { word: '는' start: 9 end: 11 } "
+      "token { word: '2012' start: 13 end: 16 } "
+      "token { word: '년' start: 17 end: 19 } "
+      "token { word: '부터' start: 20 end: 25 } "
+  );
+}
 
-  return sentence;
+Sentence GetUTF8InconsistentKoSentence1() {
+  return ParseASCII(
+      "text: '서울시는 2012년부터' "
+      "token { word: '서울시' start: 0 end: 7 } "  // End should be 8.
+      "token { word: '는' start: 9 end: 11 } "
+      "token { word: '2012' start: 13 end: 16 } "
+      "token { word: '년' start: 17 end: 19 } "
+      "token { word: '부터' start: 20 end: 25 } "
+  );
+}
+
+Sentence GetUTF8InconsistentKoSentence2() {
+  return ParseASCII(
+      "text: '서울시는  2012년부터' "  // Extra space in text field.
+      "token { word: '서울시' start: 0 end: 8 } "
+      "token { word: '는' start: 9 end: 11 } "
+      "token { word: '2012' start: 13 end: 16 } "
+      "token { word: '년' start: 17 end: 19 } "
+      "token { word: '부터' start: 20 end: 25 } "
+  );
 }
 
 // Gets the start end bytes of the given chars in the given text.
-static void GetStartEndBytes(const string &text,
+void GetStartEndBytes(const string &text,
                              const std::vector<tensorflow::StringPiece> &chars,
                              std::vector<int> *starts,
                              std::vector<int> *ends) {
@@ -69,6 +80,82 @@ static void GetStartEndBytes(const string &text,
     starts->push_back(start);
     ends->push_back(end);
   }
+}
+
+}  // namespace
+
+TEST(SegmenterUtilsTest, DocTokensUTF8ConsistentTest) {
+  Sentence consistent_sentence = GetKoSentence();
+  std::vector<tensorflow::StringPiece> chars;
+  SegmenterUtils::GetUTF8Chars(consistent_sentence.text(), &chars);
+  EXPECT_TRUE(SegmenterUtils::DocTokensUTF8Consistent(
+      chars, consistent_sentence));
+
+  // Test an inconsistent sentence.
+  Sentence inconsistent_sentence = GetUTF8InconsistentKoSentence1();
+  chars.clear();
+  SegmenterUtils::GetUTF8Chars(inconsistent_sentence.text(), &chars);
+  EXPECT_FALSE(SegmenterUtils::DocTokensUTF8Consistent(
+      chars, inconsistent_sentence));
+
+  // Test another inconsistent sentence.
+  inconsistent_sentence = GetUTF8InconsistentKoSentence2();
+  chars.clear();
+  SegmenterUtils::GetUTF8Chars(inconsistent_sentence.text(), &chars);
+  EXPECT_FALSE(SegmenterUtils::DocTokensUTF8Consistent(
+      chars, inconsistent_sentence));
+}
+
+TEST(SegmenterUtilsTest, ConvertToCharTokenDocTest) {
+  Sentence sentence = GetKoSentence();
+  Sentence char_sentence;
+  EXPECT_TRUE(SegmenterUtils::ConvertToCharTokenDoc(sentence, &char_sentence));
+  std::vector<int> starts, ends;
+  std::vector<Token::BreakLevel> breaks;
+  for (const auto &token : char_sentence.token()) {
+    starts.push_back(token.start());
+    ends.push_back(token.end());
+    breaks.push_back(token.break_level());
+  }
+  EXPECT_THAT(starts,
+              testing::ContainerEq<std::vector<int>>(
+                  {0, 3, 6, 9, 12, 13, 14, 15, 16, 17, 20, 23}));
+  EXPECT_THAT(ends,
+              testing::ContainerEq<std::vector<int>>(
+                  {2, 5, 8, 11, 12, 13, 14, 15, 16, 19, 22, 25}));
+  EXPECT_THAT(breaks,
+              testing::ContainerEq<std::vector<Token::BreakLevel>>(
+                  {
+                    // Token '서울시'
+                    Token::SPACE_BREAK,
+                    Token::NO_BREAK,
+                    Token::NO_BREAK,
+
+                    // Token '는'
+                    Token::SPACE_BREAK,
+
+                    // Token ' '
+                    Token::SPACE_BREAK,
+
+                    // Token '2012'
+                    Token::SPACE_BREAK,
+                    Token::NO_BREAK,
+                    Token::NO_BREAK,
+                    Token::NO_BREAK,
+
+                    // Token '년'
+                    Token::SPACE_BREAK,
+
+                    // Token '부터'
+                    Token::SPACE_BREAK,
+                    Token::NO_BREAK
+                   }));
+
+  // Another test where tokens of the sentence is not consistent with the text
+  // of the sentence.
+  Sentence inconsistent_sentence = GetUTF8InconsistentKoSentence1();
+  EXPECT_FALSE(SegmenterUtils::ConvertToCharTokenDoc(
+      inconsistent_sentence, &char_sentence));
 }
 
 // Test the GetChars function.

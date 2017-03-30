@@ -14,9 +14,8 @@ limitations under the License.
 ==============================================================================*/
 
 #include <memory>
-#include <string>
-#include <vector>
 
+#include "syntaxnet/base.h"
 #include "syntaxnet/document_format.h"
 #include "syntaxnet/segmenter_utils.h"
 #include "syntaxnet/sentence.pb.h"
@@ -27,6 +26,26 @@ limitations under the License.
 #include "tensorflow/core/platform/regexp.h"
 
 namespace syntaxnet {
+
+namespace {
+
+// Reads up to the first empty line, and returns false end of file is reached.
+//
+// This reader is shared by CONLL and prototext formats, where records are
+// separated by double newlines.
+bool DoubleNewlineReadRecord(tensorflow::io::BufferedInputStream *buffer,
+                             string *record) {
+  string line;
+  record->clear();
+  tensorflow::Status status = buffer->ReadLine(&line);
+  while (!line.empty() && status.ok()) {
+    tensorflow::strings::StrAppend(record, line, "\n");
+    status = buffer->ReadLine(&line);
+  }
+  return status.ok() || !record->empty();
+}
+
+}  // namespace
 
 // CoNLL document format reader for dependency annotated corpora.
 // The expected format is described e.g. at http://ilk.uvt.nl/conll/#dataformat
@@ -56,10 +75,12 @@ namespace syntaxnet {
 //
 // This CoNLL reader is compatible with the CoNLL-U format described at
 //   http://universaldependencies.org/format.html
-// Note that this reader skips CoNLL-U multiword tokens and ignores the last two
-// fields of every line, which are PHEAD and PDEPREL in CoNLL format, but are
-// replaced by DEPS and MISC in CoNLL-U.
+// Note that this reader skips CoNLL-U multiword tokens and empty nodes.
 //
+// Note on reconstruct the raw text of a sentence: the raw text is constructed
+// by concatenating all words (field 2) with a intervening space between
+// consecutive words.  If the last field of a token is "SpaceAfter=No", there
+// would be no space between current word and the next one.
 class CoNLLSyntaxFormat : public DocumentFormat {
  public:
   CoNLLSyntaxFormat() {}
@@ -67,19 +88,14 @@ class CoNLLSyntaxFormat : public DocumentFormat {
   void Setup(TaskContext *context) override {
     join_category_to_pos_ = context->GetBoolParameter("join_category_to_pos");
     add_pos_as_attribute_ = context->GetBoolParameter("add_pos_as_attribute");
+    serialize_morph_to_pos_ =
+        context->GetBoolParameter("serialize_morph_to_pos");
   }
 
   // Reads up to the first empty line and returns false end of file is reached.
   bool ReadRecord(tensorflow::io::BufferedInputStream *buffer,
                   string *record) override {
-    string line;
-    record->clear();
-    tensorflow::Status status = buffer->ReadLine(&line);
-    while (!line.empty() && status.ok()) {
-      tensorflow::strings::StrAppend(record, line, "\n");
-      status = buffer->ReadLine(&line);
-    }
-    return status.ok() || !record->empty();
+    return DoubleNewlineReadRecord(buffer, record);
   }
 
   void ConvertFromString(const string &key, const string &value,
@@ -89,6 +105,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
 
     // Each line corresponds to one token.
     string text;
+    bool add_space_to_text = true;
     std::vector<string> lines = utils::Split(value, '\n');
 
     // Add each token to the sentence.
@@ -107,6 +124,10 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       // hyphenated line numbers, e.g., "2-4".
       // http://universaldependencies.github.io/docs/format.html
       if (RE2::FullMatch(fields[0], "[0-9]+-[0-9]+")) continue;
+
+      // Skip CoNLLU lines for empty tokens, indicated by decimals.
+      // Introduced in v2. http://universaldependencies.org/format.html
+      if (RE2::FullMatch(fields[0], "[0-9]+\\.[0-9]+")) continue;
 
       // Clear all optional fields equal to '_'.
       for (size_t j = 2; j < fields.size(); ++j) {
@@ -132,10 +153,11 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       const string &label = fields[7];
 
       // Add token to sentence text.
-      if (!text.empty()) text.append(" ");
+      if (!text.empty() && add_space_to_text) text.append(" ");
       const int start = text.size();
       const int end = start + word.size() - 1;
       text.append(word);
+      add_space_to_text = fields[9] != "SpaceAfter=No";
 
       // Add token to sentence.
       Token *token = sentence->add_token();
@@ -149,6 +171,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       if (!attributes.empty()) AddMorphAttributes(attributes, token);
       if (join_category_to_pos_) JoinCategoryToPos(token);
       if (add_pos_as_attribute_) AddPosAsAttribute(token);
+      if (serialize_morph_to_pos_) SerializeMorphToPos(token);
     }
 
     if (sentence->token_size() > 0) {
@@ -276,8 +299,19 @@ class CoNLLSyntaxFormat : public DocumentFormat {
     }
   }
 
+  void SerializeMorphToPos(Token *token) {
+    const TokenMorphology &morph =
+        token->GetExtension(TokenMorphology::morphology);
+    TextFormat::Printer printer;
+    printer.SetSingleLineMode(true);
+    string morph_str;
+    printer.PrintToString(morph, &morph_str);
+    token->set_tag(morph_str);
+  }
+
   bool join_category_to_pos_ = false;
   bool add_pos_as_attribute_ = false;
+  bool serialize_morph_to_pos_ = false;
 
   TF_DISALLOW_COPY_AND_ASSIGN(CoNLLSyntaxFormat);
 };
@@ -654,5 +688,36 @@ class EnglishTextFormat : public TokenizedTextFormat {
 };
 
 REGISTER_SYNTAXNET_DOCUMENT_FORMAT("english-text", EnglishTextFormat);
+
+// Converts double-newline-separated prototext records into sentences.
+class SentencePrototextFormat : public DocumentFormat {
+ public:
+  SentencePrototextFormat() {}
+
+  bool ReadRecord(tensorflow::io::BufferedInputStream *buffer,
+                  string *record) override {
+    return DoubleNewlineReadRecord(buffer, record);
+  }
+
+  void ConvertFromString(const string &key, const string &value,
+                         std::vector<Sentence *> *sentences) override {
+    Sentence *sentence = new Sentence();
+    CHECK(TextFormat::ParseFromString(value, sentence))
+        << "Failed to parse " << value;
+    sentences->push_back(sentence);
+  }
+
+  void ConvertToString(const Sentence &sentence, string *key,
+                       string *value) override {
+    *key = sentence.docid();
+    string as_prototext;
+    CHECK(TextFormat::PrintToString(sentence, &as_prototext))
+        << "Failed to sentence with ID " << (*key);
+    *value = tensorflow::strings::StrCat(as_prototext, "\n\n");
+  }
+};
+
+REGISTER_SYNTAXNET_DOCUMENT_FORMAT("sentence-prototext",
+                                   SentencePrototextFormat);
 
 }  // namespace syntaxnet

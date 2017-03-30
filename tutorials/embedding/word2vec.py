@@ -210,7 +210,7 @@ class Word2Vec(object):
         tf.zeros([opts.vocab_size, opts.emb_dim]),
         name="sm_w_t")
 
-    # Softmax bias: [emb_dim].
+    # Softmax bias: [vocab_size].
     sm_b = tf.Variable(tf.zeros([opts.vocab_size]), name="sm_b")
 
     # Global step: scalar, i.e., shape [].
@@ -246,7 +246,7 @@ class Word2Vec(object):
     sampled_b = tf.nn.embedding_lookup(sm_b, sampled_ids)
 
     # True logits: [batch_size, 1]
-    true_logits = tf.reduce_sum(tf.mul(example_emb, true_w), 1) + true_b
+    true_logits = tf.reduce_sum(tf.multiply(example_emb, true_w), 1) + true_b
 
     # Sampled logits: [batch_size, num_sampled]
     # We replicate sampled noise labels for all examples in the batch

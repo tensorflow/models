@@ -15,7 +15,7 @@
 """Contains convenience wrappers for typical Neural Network TensorFlow layers.
 
    Additionally it maintains a collection with update_ops that need to be
-   updated after the ops have been computed, for exmaple to update moving means
+   updated after the ops have been computed, for example to update moving means
    and moving variances of batch_norm.
 
    Ops that have different behavior during training or eval have an is_training
@@ -331,9 +331,9 @@ def one_hot_encoding(labels, num_classes, scope=None):
     batch_size = labels.get_shape()[0]
     indices = tf.expand_dims(tf.range(0, batch_size), 1)
     labels = tf.cast(tf.expand_dims(labels, 1), indices.dtype)
-    concated = tf.concat([indices, labels], 1)
+    concated = tf.concat(axis=1, values=[indices, labels])
     onehot_labels = tf.sparse_to_dense(
-        concated, tf.pack([batch_size, num_classes]), 1.0, 0.0)
+        concated, tf.stack([batch_size, num_classes]), 1.0, 0.0)
     onehot_labels.set_shape([batch_size, num_classes])
     return onehot_labels
 
