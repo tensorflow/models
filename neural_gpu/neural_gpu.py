@@ -186,13 +186,13 @@ def quantize_weights_op(quant_scale, max_value):
 def autoenc_quantize(x, nbits, nmaps, do_training, layers=1):
   """Autoencoder into nbits vectors of bits, using noise and sigmoids."""
   enc_x = tf.reshape(x, [-1, nmaps])
-  for i in xrange(layers - 1):
+  for i in range(layers - 1):
     enc_x = tf.layers.dense(enc_x, nmaps, name="autoenc_%d" % i)
   enc_x = tf.layers.dense(enc_x, nbits, name="autoenc_%d" % (layers - 1))
   noise = tf.truncated_normal(tf.shape(enc_x), stddev=2.0)
   dec_x = sigmoid_cutoff_12(enc_x + noise * do_training)
   dec_x = tf.reshape(dec_x, [-1, nbits])
-  for i in xrange(layers):
+  for i in range(layers):
     dec_x = tf.layers.dense(dec_x, nmaps, name="autodec_%d" % i)
   return tf.reshape(dec_x, tf.shape(x))
 
@@ -214,7 +214,7 @@ def reorder_beam(beam_size, batch_size, beam_val, output, is_first,
   outputs = tf.split(axis=0, num_or_size_splits=beam_size, value=tf.nn.log_softmax(output))
   all_beam_vals, all_beam_idx = [], []
   beam_range = 1 if is_first else beam_size
-  for i in xrange(beam_range):
+  for i in range(beam_range):
     top_out, top_out_idx = tf.nn.top_k(outputs[i], k=beam_size)
     cur_beam_val = beam_val[:, i]
     top_out = tf.Print(top_out, [top_out, top_out_idx, beam_val, i,
@@ -226,9 +226,9 @@ def reorder_beam(beam_size, batch_size, beam_val, output, is_first,
   top_beam, top_beam_idx = tf.nn.top_k(tf.concat(axis=1, values=all_beam_vals), k=beam_size)
   top_beam_idx = tf.Print(top_beam_idx, [top_beam, top_beam_idx],
                           "GREP", summarize=8)
-  reordered = [[] for _ in xrange(len(tensors_to_reorder) + 1)]
+  reordered = [[] for _ in range(len(tensors_to_reorder) + 1)]
   top_out_idx = []
-  for i in xrange(beam_size):
+  for i in range(beam_size):
     which_idx = top_beam_idx[:, i] * batch_size + tf.range(batch_size)
     top_out_idx.append(tf.gather(all_beam_idx, which_idx))
     which_beam = top_beam_idx[:, i] / beam_size  # [batch]
@@ -276,7 +276,7 @@ class NeuralGPU(object):
       adam = tf.train.AdamOptimizer(adam_lr, epsilon=1e-3)
 
       def adam_update(grads):
-        return adam.apply_gradients(zip(grads, tf.trainable_variables()),
+        return adam.apply_gradients(list(zip(grads, tf.trainable_variables())),
                                     global_step=self.global_step,
                                     name="adam_update")
 
@@ -350,11 +350,11 @@ class NeuralGPU(object):
       # Do nconvs-many CGRU steps.
       if do_jit and tf.get_variable_scope().reuse:
         with jit_scope():
-          for layer in xrange(nconvs):
+          for layer in range(nconvs):
             cur = conv_gru([], cur, kw, kh, nmaps, conv_rate(layer),
                            cutoff, "ecgru_%d" % layer, do_layer_norm)
       else:
-        for layer in xrange(nconvs):
+        for layer in range(nconvs):
           cur = conv_gru([], cur, kw, kh, nmaps, conv_rate(layer),
                          cutoff, "ecgru_%d" % layer, do_layer_norm)
       return cur
@@ -372,11 +372,11 @@ class NeuralGPU(object):
       # Do nconvs-many CGRU steps.
       if do_jit and tf.get_variable_scope().reuse:
         with jit_scope():
-          for layer in xrange(nconvs):
+          for layer in range(nconvs):
             cur = conv_gru([decided], cur, kw, kh, nmaps, conv_rate(layer),
                            cutoff, "dcgru_%d" % layer, do_layer_norm)
       else:
-        for layer in xrange(nconvs):
+        for layer in range(nconvs):
           cur = conv_gru([decided], cur, kw, kh, nmaps, conv_rate(layer),
                          cutoff, "dcgru_%d" % layer, do_layer_norm)
       return cur
@@ -431,7 +431,7 @@ class NeuralGPU(object):
     grads_list = []
     gpu_out_idx = []
     self.after_enc_step = []
-    for gpu in xrange(num_gpus):  # Multi-GPU towers, average gradients later.
+    for gpu in range(num_gpus):  # Multi-GPU towers, average gradients later.
       length = self.length_tensor
       length_float = tf.cast(length, tf.float32)
       if gpu > 0:
@@ -498,8 +498,10 @@ class NeuralGPU(object):
             return tf.reduce_sum(encoder_outputs * tf.expand_dims(mask, 2), 1)
 
           with tf.variable_scope("decoder"):
-            def decoder_loop_fn((state, prev_cell_out, _), (cell_inp, cur_tgt)):
+            def decoder_loop_fn(xxx_todo_changeme, xxx_todo_changeme1):
               """Decoder loop function."""
+              (state, prev_cell_out, _) = xxx_todo_changeme
+              (cell_inp, cur_tgt) = xxx_todo_changeme1
               attn_q = tf.layers.dense(prev_cell_out, height * nmaps,
                                        name="attn_query")
               attn_res = attention_query(attn_q, tf.get_variable(
@@ -658,19 +660,19 @@ class NeuralGPU(object):
     if backward:
       tf.get_variable_scope()._reuse = False
       tf.get_variable_scope().set_caching_device(None)
-      grads = [gpu_avg([grads_list[g][i] for g in xrange(num_gpus)])
-               for i in xrange(len(grads_list[0]))]
+      grads = [gpu_avg([grads_list[g][i] for g in range(num_gpus)])
+               for i in range(len(grads_list[0]))]
       update = adam_update(grads)
       self.updates.append(update)
     else:
       self.updates.append(tf.no_op())
 
-    self.losses = [gpu_avg([gpu_losses[g][i] for g in xrange(num_gpus)])
-                   for i in xrange(len(gpu_losses[0]))]
+    self.losses = [gpu_avg([gpu_losses[g][i] for g in range(num_gpus)])
+                   for i in range(len(gpu_losses[0]))]
     self.out_idx = tf.concat(axis=0, values=gpu_out_idx)
-    self.grad_norms = [gpu_avg([gpu_grad_norms[g][i] for g in xrange(num_gpus)])
-                       for i in xrange(len(gpu_grad_norms[0]))]
-    self.outputs = [tf.concat(axis=1, values=[gpu_outputs[g] for g in xrange(num_gpus)])]
+    self.grad_norms = [gpu_avg([gpu_grad_norms[g][i] for g in range(num_gpus)])
+                       for i in range(len(gpu_grad_norms[0]))]
+    self.outputs = [tf.concat(axis=1, values=[gpu_outputs[g] for g in range(num_gpus)])]
     self.quantize_op = quantize_weights_op(512, 8)
     if backward:
       self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=10)
@@ -716,13 +718,13 @@ class NeuralGPU(object):
       feed_in[self.sampling.name] = 1.1  # Sample every time.
       res = sess.run([self.after_enc_step, self.out_idx] + feed_out, feed_in)
       after_enc_state, out_idx = res[0], res[1]
-      res = [res[2][l] for l in xrange(length)]
-      outputs = [out_idx[:, i] for i in xrange(length)]
-      cost = [0.0 for _ in xrange(beam_size * batch_size)]
-      seen_eos = [0 for _ in xrange(beam_size * batch_size)]
+      res = [res[2][l] for l in range(length)]
+      outputs = [out_idx[:, i] for i in range(length)]
+      cost = [0.0 for _ in range(beam_size * batch_size)]
+      seen_eos = [0 for _ in range(beam_size * batch_size)]
       for idx, logit in enumerate(res):
         best = outputs[idx]
-        for b in xrange(batch_size):
+        for b in range(batch_size):
           if seen_eos[b] > 1:
             cost[b] -= eos_cost
           else:
@@ -738,5 +740,5 @@ class NeuralGPU(object):
       norm = res[1]
     if train_mode:
       outputs = res[offset + 1]
-      outputs = [outputs[l] for l in xrange(length)]
+      outputs = [outputs[l] for l in range(length)]
     return res[offset], outputs, norm, after_enc_state

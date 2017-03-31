@@ -16,7 +16,7 @@
 
 import contextlib
 import sys
-import StringIO
+import io
 import random
 import os
 
@@ -160,7 +160,7 @@ def c_scan(f, xs):
 def stdoutIO(stdout=None):
   old = sys.stdout
   if stdout is None:
-    stdout = StringIO.StringIO()
+    stdout = io.StringIO()
   sys.stdout = stdout
   yield stdout
   sys.stdout = old
@@ -168,7 +168,7 @@ def stdoutIO(stdout=None):
 
 def evaluate(program_str, input_names_to_vals, default="ERROR"):
   exec_str = []
-  for name, val in input_names_to_vals.iteritems():
+  for name, val in input_names_to_vals.items():
     exec_str += name + " = " + str(val) + "; "
   exec_str += program_str
   if type(exec_str) is list:
@@ -177,7 +177,7 @@ def evaluate(program_str, input_names_to_vals, default="ERROR"):
   with stdoutIO() as s:
     # pylint: disable=bare-except
     try:
-      exec exec_str + " print(out)"
+      exec(exec_str + " print(out)")
       return s.getvalue()[:-1]
     except:
       return default
@@ -216,7 +216,7 @@ class ProgramGrower(object):
     """Grow the program body."""
     choices = []
     for f in self.functions:
-      if all([a in types_to_vars.keys() for a in f.arg_types]):
+      if all([a in list(types_to_vars.keys()) for a in f.arg_types]):
         choices.append(f)
 
     f = random.choice(choices)
@@ -235,7 +235,7 @@ class ProgramGrower(object):
 
   def grow(self, program_len, input_types):
     """Grow the program."""
-    var_names = list(reversed(map(chr, range(97, 123))))
+    var_names = list(reversed(list(map(chr, list(range(97, 123))))))
     dependencies = dict()
     types_to_vars = dict()
     input_names = []
@@ -251,7 +251,7 @@ class ProgramGrower(object):
       statements.append(self.grow_body(var, dependencies, types_to_vars))
     statements.append(self.grow_body("out", dependencies, types_to_vars))
 
-    new_var_names = [c for c in map(chr, range(97, 123))
+    new_var_names = [c for c in map(chr, list(range(97, 123)))
                      if c not in input_names]
     new_var_names.reverse()
     keep_statements = []
@@ -290,7 +290,7 @@ class Program(object):
 
     with stdoutIO() as s:
       # pylint: disable=exec-used
-      exec inp_str + self.body + "; print(out)"
+      exec(inp_str + self.body + "; print(out)")
       # pylint: enable=exec-used
     return s.getvalue()[:-1]
 
@@ -368,12 +368,12 @@ def gen(max_len, how_many):
   tokens = []
   for f in functions:
     tokens.append(f.name)
-  for v in types_to_lambdas.values():
+  for v in list(types_to_lambdas.values()):
     tokens.extend(v)
   tokens.extend(["=", ";", ",", "(", ")", "[", "]", "Int", "out"])
-  tokens.extend(map(chr, range(97, 123)))
+  tokens.extend(list(map(chr, list(range(97, 123)))))
 
-  io_tokens = map(str, range(-220, 220))
+  io_tokens = list(map(str, list(range(-220, 220))))
   if not prog_vocab:
     prog_vocab.extend(["_PAD", "_EOS"] + tokens + io_tokens)
     for i, t in enumerate(prog_vocab):
@@ -384,7 +384,7 @@ def gen(max_len, how_many):
                          types_to_lambdas=types_to_lambdas)
 
   def mk_inp(l):
-    return [random.choice(range(-5, 5)) for _ in range(l)]
+    return [random.choice(list(range(-5, 5))) for _ in range(l)]
 
   tar = [ListType("Int")]
   inps = [[mk_inp(3)], [mk_inp(5)], [mk_inp(7)], [mk_inp(15)]]
@@ -393,7 +393,7 @@ def gen(max_len, how_many):
   outcomes_to_programs = dict()
   tried = set()
   counter = 0
-  choices = [0] if max_len == 0 else range(max_len)
+  choices = [0] if max_len == 0 else list(range(max_len))
   while counter < 100 * how_many and len(outcomes_to_programs) < how_many:
     counter += 1
     length = random.choice(choices)
@@ -404,7 +404,7 @@ def gen(max_len, how_many):
     # print(t.flat_str())
     tried.add(t)
     outcomes = [clean_up(t.evaluate(i)) for i in inps]
-    outcome_str = str(zip(inps, outcomes))
+    outcome_str = str(list(zip(inps, outcomes)))
     if outcome_str in outcomes_to_programs:
       outcomes_to_programs[outcome_str] = min(
           [t.flat_str(), outcomes_to_programs[outcome_str]],
@@ -412,11 +412,11 @@ def gen(max_len, how_many):
     else:
       outcomes_to_programs[outcome_str] = t.flat_str()
     if counter % 5000 == 0:
-      print "== proggen: tried: " + str(counter)
-      print "== proggen: kept:  " + str(len(outcomes_to_programs))
+      print("== proggen: tried: " + str(counter))
+      print("== proggen: kept:  " + str(len(outcomes_to_programs)))
 
     if counter % 250000 == 0 and save_prefix is not None:
-      print "saving..."
+      print("saving...")
       save_counter = 0
       progfilename = os.path.join(save_prefix, "prog_" + str(counter) + ".txt")
       iofilename = os.path.join(save_prefix, "io_" + str(counter) + ".txt")
@@ -428,10 +428,10 @@ def gen(max_len, how_many):
            open(iofilename, "a+") as fi, \
            open(prog_token_filename, "a+") as ftp, \
            open(io_token_filename, "a+") as fti:
-        for (o, p) in outcomes_to_programs.iteritems():
+        for (o, p) in outcomes_to_programs.items():
           save_counter += 1
           if save_counter % 500 == 0:
-            print "saving %d of %d" % (save_counter, len(outcomes_to_programs))
+            print("saving %d of %d" % (save_counter, len(outcomes_to_programs)))
           fp.write(p+"\n")
           fi.write(o+"\n")
           ftp.write(str(tokenize(p, tokens))+"\n")

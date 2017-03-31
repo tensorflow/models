@@ -144,7 +144,7 @@ def read_data(source_path, target_path, buckets, max_size=None, print_out=True):
         while source and target and (not max_size or counter < max_size):
           counter += 1
           if counter % 100000 == 0 and print_out:
-            print "  reading data line %d" % counter
+            print("  reading data line %d" % counter)
             sys.stdout.flush()
           source_ids = [int(x) for x in source.split()]
           target_ids = [int(x) for x in target.split()]
@@ -164,7 +164,7 @@ train_buckets_scale = {"wmt": []}
 
 def calculate_buckets_scale(data_set, buckets, problem):
   """Calculate buckets scales for the given data set."""
-  train_bucket_sizes = [len(data_set[b]) for b in xrange(len(buckets))]
+  train_bucket_sizes = [len(data_set[b]) for b in range(len(buckets))]
   train_total_size = max(1, float(sum(train_bucket_sizes)))
 
   # A bucket scale is a list of increasing numbers from 0 to 1 that we'll use
@@ -174,7 +174,7 @@ def calculate_buckets_scale(data_set, buckets, problem):
     train_buckets_scale[problem] = []
   train_buckets_scale[problem].append(
       [sum(train_bucket_sizes[:i + 1]) / train_total_size
-       for i in xrange(len(train_bucket_sizes))])
+       for i in range(len(train_bucket_sizes))])
   return train_total_size
 
 
@@ -188,7 +188,7 @@ def read_data_into_global(source_path, target_path, buckets,
   global_train_set["wmt"].append(data_set)
   train_total_size = calculate_buckets_scale(data_set, buckets, "wmt")
   if print_out:
-    print "  Finished global data reading (%d)." % train_total_size
+    print("  Finished global data reading (%d)." % train_total_size)
 
 
 def initialize(sess=None):
@@ -291,7 +291,7 @@ def initialize(sess=None):
         data.rev_vocab = program_utils.prog_vocab
         data.vocab = program_utils.prog_rev_vocab
       else:
-        for l in xrange(max_length + EXTRA_EVAL - 1):
+        for l in range(max_length + EXTRA_EVAL - 1):
           data.init_data(t, l, data_size, FLAGS.vocab_size)
         data.init_data(t, data.bins[-2], data_size, FLAGS.vocab_size)
         data.init_data(t, data.bins[-1], data_size, FLAGS.vocab_size)
@@ -390,8 +390,8 @@ def initialize(sess=None):
 
 def m_step(model, beam_model, sess, batch_size, inp, target, bucket, nsteps, p):
   """Evaluation multi-step for program synthesis."""
-  state, scores, hist = None, [[-11.0 for _ in xrange(batch_size)]], []
-  for _ in xrange(nsteps):
+  state, scores, hist = None, [[-11.0 for _ in range(batch_size)]], []
+  for _ in range(nsteps):
     # Get the best beam (no training, just forward model).
     new_target, new_first, new_inp, new_scores = get_best_beam(
         beam_model, sess, inp, target,
@@ -400,7 +400,7 @@ def m_step(model, beam_model, sess, batch_size, inp, target, bucket, nsteps, p):
     _, _, _, state = model.step(sess, inp, new_target, False, state=state)
     inp = new_inp
     scores.append([max(scores[-1][i], new_scores[i])
-                   for i in xrange(batch_size)])
+                   for i in range(batch_size)])
   # The final step with the true target.
   loss, res, _, _ = model.step(sess, inp, target, False, state=state)
   return loss, res, new_target, scores[1:]
@@ -422,7 +422,7 @@ def single_test(bin_id, model, sess, nprint, batch_size, dev, p, print_out=True,
     score_avgs = [sum(s) / float(len(s)) for s in scores]
     score_maxs = [max(s) for s in scores]
     score_str = ["(%.2f, %.2f)" % (score_avgs[i], score_maxs[i])
-                 for i in xrange(FLAGS.eval_beam_steps)]
+                 for i in range(FLAGS.eval_beam_steps)]
     data.print_out("  == scores (avg, max): %s" % "; ".join(score_str))
     errors, total, seq_err = data.accuracy(inpt, res, target, batch_size,
                                            nprint, new_tgt, scores[-1])
@@ -463,7 +463,7 @@ def assign_vectors(word_vector_file, embedding_key, vocab_path, sess):
       word = line_parts[0]
       if word in vocab:
         # Remaining parts are components of the vector.
-        word_vector = np.array(map(float, line_parts[1:]))
+        word_vector = np.array(list(map(float, line_parts[1:])))
         if len(word_vector) != FLAGS.vec_size:
           data.print_out("Warn: Word '%s', Expecting vector size %d, "
                          "found %d" % (word, FLAGS.vec_size,
@@ -490,9 +490,9 @@ def print_vectors(embedding_key, vocab_path, word_vector_file):
                  % (l, embedding_key, word_vector_file))
   with tf.gfile.GFile(word_vector_file, mode="w") as f:
     # Lines have format: dog 0.045123 -0.61323 0.413667 ...
-    for i in xrange(l):
+    for i in range(l):
       f.write(rev_vocab[i])
-      for j in xrange(s):
+      for j in range(s):
         f.write(" %.8f" % vectors[i][j])
       f.write("\n")
 
@@ -502,14 +502,14 @@ def get_bucket_id(train_buckets_scale_c, max_cur_length, data_set):
   # Choose a bucket according to data distribution. Pick a random number
   # in [0, 1] and use the corresponding interval in train_buckets_scale.
   random_number_01 = np.random.random_sample()
-  bucket_id = min([i for i in xrange(len(train_buckets_scale_c))
+  bucket_id = min([i for i in range(len(train_buckets_scale_c))
                    if train_buckets_scale_c[i] > random_number_01])
   while bucket_id > 0 and not data_set[bucket_id]:
     bucket_id -= 1
-  for _ in xrange(10 if np.random.random_sample() < 0.9 else 1):
+  for _ in range(10 if np.random.random_sample() < 0.9 else 1):
     if data.bins[bucket_id] > max_cur_length:
       random_number_01 = min(random_number_01, np.random.random_sample())
-      bucket_id = min([i for i in xrange(len(train_buckets_scale_c))
+      bucket_id = min([i for i in range(len(train_buckets_scale_c))
                        if train_buckets_scale_c[i] > random_number_01])
       while bucket_id > 0 and not data_set[bucket_id]:
         bucket_id -= 1
@@ -534,7 +534,7 @@ def score_beams(beams, target, inp, history, p,
       if eos_id and eos_id in beam:
         beam = beam[:beam.index(eos_id)]
       l = min(len(tgt), len(beam))
-      score = len([i for i in xrange(l) if tgt[i] == beam[i]]) / float(len(tgt))
+      score = len([i for i in range(l) if tgt[i] == beam[i]]) / float(len(tgt))
       hist_score = 20.0 if str([b for b in beam if b > 0]) in history_s else 0.0
       if score < 1.0:
         score -= hist_score
@@ -552,10 +552,10 @@ def score_beams_prog(beams, target, inp, history, print_out=False,
                 for h in history]
   tgt_set = set(target)
   if print_out:
-    print "target: ", tgt_prog
+    print("target: ", tgt_prog)
   inps, tgt_outs = [], []
-  for i in xrange(3):
-    ilist = [inp[i + 1, l] for l in xrange(inp.shape[1])]
+  for i in range(3):
+    ilist = [inp[i + 1, l] for l in range(inp.shape[1])]
     clist = [program_utils.prog_vocab[x] for x in ilist if x > 0]
     olist = clist[clist.index("]") + 1:]  # outputs
     clist = clist[1:clist.index("]")]     # inputs
@@ -566,16 +566,16 @@ def score_beams_prog(beams, target, inp, history, print_out=False,
       if len(olist) == 1:
         tgt_outs.append(olist[0])
       else:
-        print [program_utils.prog_vocab[x] for x in ilist if x > 0]
-        print olist
-        print tgt_prog
-        print program_utils.evaluate(tgt_prog, {"a": inps[-1]})
-        print "AAAAA"
+        print([program_utils.prog_vocab[x] for x in ilist if x > 0])
+        print(olist)
+        print(tgt_prog)
+        print(program_utils.evaluate(tgt_prog, {"a": inps[-1]}))
+        print("AAAAA")
         tgt_outs.append(olist[0])
   if not test_mode:
-    for _ in xrange(7):
+    for _ in range(7):
       ilen = np.random.randint(len(target) - 3) + 1
-      inps.append([random.choice(range(-15, 15)) for _ in range(ilen)])
+      inps.append([random.choice(list(range(-15, 15))) for _ in range(ilen)])
     tgt_outs.extend([program_utils.evaluate(tgt_prog, {"a": inp})
                      for inp in inps[3:]])
   best, best_prog, best_score = None, "", -1000.0
@@ -585,13 +585,13 @@ def score_beams_prog(beams, target, inp, history, print_out=False,
     jsim = len(tgt_set & b_set) / float(len(tgt_set | b_set))
     b_outs = [program_utils.evaluate(b_prog, {"a": inp}) for inp in inps]
     errs = len([x for x in b_outs if x == "ERROR"])
-    imatches = len([i for i in xrange(3) if b_outs[i] == tgt_outs[i]])
+    imatches = len([i for i in range(3) if b_outs[i] == tgt_outs[i]])
     perfect = 10.0 if imatches == 3 else 0.0
     hist_score = 20.0 if b_prog in hist_progs else 0.0
     if test_mode:
       score = perfect - errs
     else:
-      matches = len([i for i in xrange(10) if b_outs[i] == tgt_outs[i]])
+      matches = len([i for i in range(10) if b_outs[i] == tgt_outs[i]])
       score = perfect + matches + jsim - errs
     if score < 10.0:
       score -= hist_score
@@ -602,7 +602,7 @@ def score_beams_prog(beams, target, inp, history, print_out=False,
       best_prog = b_prog
       best_score = score
   if print_out:
-    print "best score: ", best_score, " best prog: ", best_prog
+    print("best score: ", best_score, " best prog: ", best_prog)
   return best, best_score
 
 
@@ -612,33 +612,33 @@ def get_best_beam(beam_model, sess, inp, target, batch_size, beam_size,
   _, output_logits, _, _ = beam_model.step(
       sess, inp, target, None, beam_size=FLAGS.beam_size)
   new_targets, new_firsts, scores, new_inp = [], [], [], np.copy(inp)
-  for b in xrange(batch_size):
+  for b in range(batch_size):
     outputs = []
-    history_b = [[h[b, 0, l] for l in xrange(data.bins[bucket])]
+    history_b = [[h[b, 0, l] for l in range(data.bins[bucket])]
                  for h in history]
-    for beam_idx in xrange(beam_size):
+    for beam_idx in range(beam_size):
       outputs.append([int(o[beam_idx * batch_size + b])
                       for o in output_logits])
-    target_t = [target[b, 0, l] for l in xrange(data.bins[bucket])]
+    target_t = [target[b, 0, l] for l in range(data.bins[bucket])]
     best, best_score = score_beams(
         outputs, [t for t in target_t if t > 0], inp[b, :, :],
         [[t for t in h if t > 0] for h in history_b], p, test_mode=test_mode)
     scores.append(best_score)
     if 1 in best:  # Only until _EOS.
       best = best[:best.index(1) + 1]
-    best += [0 for _ in xrange(len(target_t) - len(best))]
+    best += [0 for _ in range(len(target_t) - len(best))]
     new_targets.append([best])
     first, _ = score_beams(
         outputs, [t for t in target_t if t > 0], inp[b, :, :],
         [[t for t in h if t > 0] for h in history_b], p, test_mode=True)
     if 1 in first:  # Only until _EOS.
       first = first[:first.index(1) + 1]
-    first += [0 for _ in xrange(len(target_t) - len(first))]
+    first += [0 for _ in range(len(target_t) - len(first))]
     new_inp[b, 0, :] = np.array(first, dtype=np.int32)
     new_firsts.append([first])
   # Change target if we found a great answer.
   new_target = np.array(new_targets, dtype=np.int32)
-  for b in xrange(batch_size):
+  for b in range(batch_size):
     if scores[b] >= 10.0:
       target[b, 0, :] = new_target[b, 0, :]
   new_first = np.array(new_firsts, dtype=np.int32)
@@ -653,7 +653,7 @@ def train():
   with sess.as_default():
     quant_op = model.quantize_op
     max_cur_length = min(min_length + 3, max_length)
-    prev_acc_perp = [1000000 for _ in xrange(5)]
+    prev_acc_perp = [1000000 for _ in range(5)]
     prev_seq_err = 1.0
     is_chief = FLAGS.task < 1
     do_report = False
@@ -681,7 +681,7 @@ def train():
           assign_vectors(FLAGS.word_vector_file_fr, "target_embedding:0",
                          fr_vocab_path, sess)
 
-      for _ in xrange(FLAGS.steps_per_checkpoint):
+      for _ in range(FLAGS.steps_per_checkpoint):
         step_count += 1
         step_c1 += 1
         global_step = int(model.global_step.eval())
@@ -719,7 +719,7 @@ def train():
           inp = new_inp
           # If all results are great, stop (todo: not to wait for all?).
           if FLAGS.nprint > 1:
-            print scores
+            print(scores)
           if sum(scores) / float(len(scores)) >= 10.0:
             break
         # The final step with the true target.
@@ -735,7 +735,7 @@ def train():
         errors, total, seq_err = data.accuracy(
             inp, res, target, batch_size, 0, new_target, scores)
         if FLAGS.nprint > 1:
-          print "seq_err: ", seq_err
+          print("seq_err: ", seq_err)
         acc_total += total
         acc_errors += errors
         acc_seq_err += seq_err
@@ -797,7 +797,7 @@ def train():
         bin_bound = 4
         for p in FLAGS.problem.split("-"):
           total_loss, total_err, tl_counter = 0.0, 0.0, 0
-          for bin_id in xrange(len(data.bins)):
+          for bin_id in range(len(data.bins)):
             if bin_id < bin_bound or bin_id % FLAGS.eval_bin_print == 1:
               err, _, loss = single_test(bin_id, model, sess, FLAGS.nprint,
                                          batch_size * 4, dev_set, p,
@@ -841,7 +841,7 @@ def evaluate():
     (model, beam_model, _, _, _,
      (_, dev_set, en_vocab_path, fr_vocab_path), _, sess) = initialize(sess)
     for p in FLAGS.problem.split("-"):
-      for bin_id in xrange(len(data.bins)):
+      for bin_id in range(len(data.bins)):
         if (FLAGS.task >= 0 and bin_id > 4) or (FLAGS.nprint == 0 and
                                                 bin_id > 8 and p == "wmt"):
           break
@@ -877,7 +877,7 @@ def evaluate():
         if idx % 5 == 0:
           data.print_out("Translating example %d of %d." % (idx, len(en_ids)))
         # Which bucket does it belong to?
-        buckets = [b for b in xrange(len(data.bins))
+        buckets = [b for b in range(len(data.bins))
                    if data.bins[b] >= len(token_ids)]
         if buckets:
           result, result_cost = [], 100000000.0
@@ -944,8 +944,8 @@ def interactive():
     for v in tf.trainable_variables():
       shape = v.get_shape().as_list()
       total += mul(shape)
-      print (v.name, shape, mul(shape))
-    print total
+      print((v.name, shape, mul(shape)))
+    print(total)
     # Start interactive loop.
     sys.stdout.write("Input to Neural GPU Translation Model.\n")
     sys.stdout.write("> ")
@@ -960,9 +960,9 @@ def interactive():
             normalize_digits=FLAGS.normalize_digits)
       else:
         token_ids = wmt.sentence_to_token_ids(inpt, en_vocab)
-      print [rev_en_vocab[t] for t in token_ids]
+      print([rev_en_vocab[t] for t in token_ids])
       # Which bucket does it belong to?
-      buckets = [b for b in xrange(len(data.bins))
+      buckets = [b for b in range(len(data.bins))
                  if data.bins[b] >= max(len(token_ids), len(cures))]
       if cures:
         buckets = [buckets[0]]
@@ -972,7 +972,7 @@ def interactive():
           if data.bins[bucket_id] > MAXLEN_F * len(token_ids) + EVAL_LEN_INCR:
             break
           glen = 1
-          for gen_idx in xrange(glen):
+          for gen_idx in range(glen):
             # Get a 1-element batch to feed the sentence to the model.
             inp, target = data.get_batch(
                 bucket_id, 1, None, FLAGS.height, preset=([token_ids], [cures]))
@@ -986,12 +986,12 @@ def interactive():
               loss = loss[0] - (data.bins[bucket_id] * FLAGS.length_norm)
               outputs = [int(np.argmax(logit, axis=1))
                          for logit in output_logits]
-            print [rev_fr_vocab[t] for t in outputs]
-            print loss, data.bins[bucket_id]
-            print linearize(outputs, rev_fr_vocab)
+            print([rev_fr_vocab[t] for t in outputs])
+            print(loss, data.bins[bucket_id])
+            print(linearize(outputs, rev_fr_vocab))
             cures.append(outputs[gen_idx])
-            print cures
-            print linearize(cures, rev_fr_vocab)
+            print(cures)
+            print(linearize(cures, rev_fr_vocab))
           if FLAGS.simple_tokenizer:
             cur_out = outputs
             if wmt.EOS_ID in cur_out:
@@ -1002,11 +1002,11 @@ def interactive():
           if loss < result_cost:
             result = outputs
             result_cost = loss
-        print ("FINAL", result_cost)
-        print [rev_fr_vocab[t] for t in result]
-        print linearize(result, rev_fr_vocab)
+        print(("FINAL", result_cost))
+        print([rev_fr_vocab[t] for t in result])
+        print(linearize(result, rev_fr_vocab))
       else:
-        print "TOOO_LONG"
+        print("TOOO_LONG")
       sys.stdout.write("> ")
       sys.stdout.flush()
       inpt = sys.stdin.readline(), ""
