@@ -135,7 +135,8 @@ def init_data(task, length, nbr_cases, nclass):
 
   def rand_dup_pair(l):
     """Random data pair for duplication task. Total length should be <= l."""
-    k = l/2
+    #k = l/2
+    k = l//2
     x = [np.random.randint(nclass - 1) + 1 for _ in range(k)]
     inp = x + [0 for _ in range(l - k)]
     res = x + x + [0 for _ in range(l - 2*k)]
@@ -144,14 +145,14 @@ def init_data(task, length, nbr_cases, nclass):
   def rand_rev2_pair(l):
     """Random data pair for reverse2 task. Total length should be <= l."""
     inp = [(np.random.randint(nclass - 1) + 1,
-            np.random.randint(nclass - 1) + 1) for _ in range(l/2)]
+            np.random.randint(nclass - 1) + 1) for _ in range(l//2)] #range(l/2)
     res = [i for i in reversed(inp)]
     return [x for p in inp for x in p], [x for p in res for x in p]
 
   def rand_search_pair(l):
     """Random data pair for search task. Total length should be <= l."""
     inp = [(np.random.randint(nclass - 1) + 1,
-            np.random.randint(nclass - 1) + 1) for _ in range(l-1/2)]
+            np.random.randint(nclass - 1) + 1) for _ in range((l-1)//2)] #range(l-1/2), brackets around (l-1)
     q = np.random.randint(nclass - 1) + 1
     res = 0
     for (k, v) in reversed(inp):
@@ -161,8 +162,8 @@ def init_data(task, length, nbr_cases, nclass):
 
   def rand_kvsort_pair(l):
     """Random data pair for key-value sort. Total length should be <= l."""
-    keys = [(np.random.randint(nclass - 1) + 1, i) for i in range(l/2)]
-    vals = [np.random.randint(nclass - 1) + 1 for _ in range(l/2)]
+    keys = [(np.random.randint(nclass - 1) + 1, i) for i in range(l//2)] #range(l/2)
+    vals = [np.random.randint(nclass - 1) + 1 for _ in range(l//2)] #range(l/2)
     kv = [(k, vals[i]) for (k, i) in keys]
     sorted_kv = [(k, vals[i]) for (k, i) in sorted(keys)]
     return [x for p in kv for x in p], [x for p in sorted_kv for x in p]
@@ -170,7 +171,7 @@ def init_data(task, length, nbr_cases, nclass):
   def prog_io_pair(prog, max_len, counter=0):
     try:
       ilen = np.random.randint(max_len - 3) + 1
-      bound = max(15 - (counter / 20), 1)
+      bound = max(15 - (counter // 20), 1) #(counter / 20)
       inp = [random.choice(list(range(-bound, bound))) for _ in range(ilen)]
       inp_toks = [program_utils.prog_rev_vocab[t]
                   for t in program_utils.tokenize(str(inp)) if t != ","]
@@ -230,11 +231,11 @@ def init_data(task, length, nbr_cases, nclass):
   if is_prog:
     inputs_per_prog = 5
     program_utils.make_vocab()
-    progs = read_tmp_file("programs_len%d" % (l / 10))
+    progs = read_tmp_file("programs_len%d" % (l // 10)) #(l / 10)
     if not progs:
-      progs = program_utils.gen(l / 10, 1.2 * nbr_cases / inputs_per_prog)
-      write_tmp_file("programs_len%d" % (l / 10), progs)
-    prog_ios = read_tmp_file("programs_len%d_io" % (l / 10))
+      progs = program_utils.gen(l // 10, 1.2 * nbr_cases / inputs_per_prog) # l // 10 
+      write_tmp_file("programs_len%d" % (l // 10), progs) #(l / 10)
+    prog_ios = read_tmp_file("programs_len%d_io" % (l // 10)) #(l / 10)
     nbr_cases = min(nbr_cases, len(progs) * inputs_per_prog) / 1.2
     if not prog_ios:
       # Generate program io data.
@@ -255,9 +256,9 @@ def init_data(task, length, nbr_cases, nclass):
           elif task == "progsynth":
             plen = max(len(ptoks), 8)
             for _ in range(3):
-              inp, out = prog_io_pair(prog, plen / 2)
+              inp, out = prog_io_pair(prog, plen // 2) #plen / 2
               prog_ios.append(str(inp) + "\t" + str(out) + "\t" + prog)
-      write_tmp_file("programs_len%d_io" % (l / 10), prog_ios)
+      write_tmp_file("programs_len%d_io" % (l // 10), prog_ios) #(l / 10)
     prog_ios_dict = {}
     for s in prog_ios:
       i, o, p = s.split("\t")

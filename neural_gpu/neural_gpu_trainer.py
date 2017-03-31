@@ -173,7 +173,7 @@ def calculate_buckets_scale(data_set, buckets, problem):
   if problem not in train_buckets_scale:
     train_buckets_scale[problem] = []
   train_buckets_scale[problem].append(
-      [sum(train_bucket_sizes[:i + 1]) / train_total_size
+      [sum(train_bucket_sizes[:i + 1]) / train_total_size 
        for i in range(len(train_bucket_sizes))])
   return train_total_size
 
@@ -308,7 +308,7 @@ def initialize(sess=None):
   if sess is not None and FLAGS.task > -1:
     def job_id_factor(step):
       """If jobid / step mod 3 is 0, 1, 2: say 0, 1, -1."""
-      return ((((FLAGS.task / step) % 3) + 1) % 3) - 1
+      return ((((FLAGS.task // step) % 3) + 1) % 3) - 1 #FLAGS.task / step
     lr *= math.pow(2, job_id_factor(1))
     init_weight *= math.pow(1.5, job_id_factor(3))
     max_grad_norm *= math.pow(2, job_id_factor(9))
