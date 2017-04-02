@@ -24,7 +24,7 @@ Twitter @bousmalis.
 ## Running the code for adapting MNIST to MNIST-M
 In order to run the MNIST to MNIST-M experiments with DANNs and/or DANNs with
 domain separation (DSNs) you will need to set the directory you used to download
-MNIST and MNIST-M: \
+MNIST and MNIST-M:\
 $ export DSN_DATA_DIR=/your/dir
 
 Then you need to build the binaries with Bazel:
