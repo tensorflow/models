@@ -1,4 +1,4 @@
-# Domain Seperation Networks
+# Domain Separation Networks
 
 
 ## Introduction
@@ -52,7 +52,7 @@ Evaluation can be invoked with the following command:\
 $ ./bazel-bin/domain_adaptation/domain_separation/dsn_eval  \
     -v --dataset mnist_m --split test --num_examples=9001  \
     --dataset_dir=${DSN_DATA_DIR}
-# Domain Seperation Networks
+# Domain Separation Networks
 
 ## Introduction
 This code is the code used for the "Domain Separation Networks" paper
