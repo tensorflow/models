@@ -44,7 +44,8 @@ DATA_DIR="${1%/}"
 SCRATCH_DIR="${DATA_DIR}/raw-data/"
 mkdir -p "${DATA_DIR}"
 mkdir -p "${SCRATCH_DIR}"
-WORK_DIR="$0.runfiles/inception/inception"
+# http://stackoverflow.com/questions/59895/getting-the-source-directory-of-a-bash-script-from-within
+WORK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Download the flowers data.
 DATA_URL="http://download.tensorflow.org/example_images/flower_photos.tgz"
@@ -87,9 +88,9 @@ done < "${LABELS_FILE}"
 
 # Build the TFRecords version of the image data.
 cd "${CURRENT_DIR}"
-BUILD_SCRIPT="${WORK_DIR}/build_image_data"
+BUILD_SCRIPT="${WORK_DIR}/build_image_data.py"
 OUTPUT_DIRECTORY="${DATA_DIR}"
-"${BUILD_SCRIPT}" \
+python "${BUILD_SCRIPT}" \
   --train_directory="${TRAIN_DIRECTORY}" \
   --validation_directory="${VALIDATION_DIRECTORY}" \
   --output_directory="${OUTPUT_DIRECTORY}" \
