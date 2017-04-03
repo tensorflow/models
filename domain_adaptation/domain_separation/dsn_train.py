@@ -70,7 +70,7 @@ tf.app.flags.DEFINE_string('train_log_dir', '/tmp/da/',
 
 tf.app.flags.DEFINE_string(
     'layers_to_regularize', 'fc3',
-    'Comma-seperated list of layer names to use MMD regularization on.')
+    'Comma-separated list of layer names to use MMD regularization on.')
 
 tf.app.flags.DEFINE_float('learning_rate', .01, 'The learning rate')
 
