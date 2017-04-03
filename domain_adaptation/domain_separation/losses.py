@@ -100,7 +100,7 @@ def mmd_loss(source_samples, target_samples, weight, scope=None):
     tag = 'MMD Loss'
     if scope:
       tag = scope + tag
-    tf.contrib.deprecated.scalar_summary(tag, loss_value)
+    tf.summary.scalar(tag, loss_value)
     tf.losses.add_loss(loss_value)
 
   return loss_value
@@ -135,7 +135,7 @@ def correlation_loss(source_samples, target_samples, weight, scope=None):
     tag = 'Correlation Loss'
     if scope:
       tag = scope + tag
-    tf.contrib.deprecated.scalar_summary(tag, corr_loss)
+    tf.summary.scalar(tag, corr_loss)
     tf.losses.add_loss(corr_loss)
 
   return corr_loss
@@ -155,11 +155,11 @@ def dann_loss(source_samples, target_samples, weight, scope=None):
   """
   with tf.variable_scope('dann'):
     batch_size = tf.shape(source_samples)[0]
-    samples = tf.concat([source_samples, target_samples], 0)
+    samples = tf.concat(axis=0, values=[source_samples, target_samples])
     samples = slim.flatten(samples)
 
     domain_selection_mask = tf.concat(
-        [tf.zeros((batch_size, 1)), tf.ones((batch_size, 1))], 0)
+        axis=0, values=[tf.zeros((batch_size, 1)), tf.ones((batch_size, 1))])
 
     # Perform the gradient reversal and be careful with the shape.
     grl = grl_ops.gradient_reversal(samples)
@@ -184,9 +184,9 @@ def dann_loss(source_samples, target_samples, weight, scope=None):
       tag_loss = scope + tag_loss
       tag_accuracy = scope + tag_accuracy
 
-    tf.contrib.deprecated.scalar_summary(
+    tf.summary.scalar(
         tag_loss, domain_loss, name='domain_loss_summary')
-    tf.contrib.deprecated.scalar_summary(
+    tf.summary.scalar(
         tag_accuracy, domain_accuracy, name='domain_accuracy_summary')
 
   return domain_loss
@@ -216,7 +216,7 @@ def difference_loss(private_samples, shared_samples, weight=1.0, name=''):
   cost = tf.reduce_mean(tf.square(correlation_matrix)) * weight
   cost = tf.where(cost > 0, cost, 0, name='value')
 
-  tf.contrib.deprecated.scalar_summary('losses/Difference Loss {}'.format(name),
+  tf.summary.scalar('losses/Difference Loss {}'.format(name),
                                        cost)
   assert_op = tf.Assert(tf.is_finite(cost), [cost])
   with tf.control_dependencies([assert_op]):

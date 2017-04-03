@@ -26,7 +26,7 @@ class HelperFunctionsTest(tf.test.TestCase):
     with self.test_session() as sess:
       # Test for when global_step < domain_separation_startpoint
       step = tf.contrib.slim.get_or_create_global_step()
-      sess.run(tf.initialize_all_variables())  # global_step = 0
+      sess.run(tf.global_variables_initializer())  # global_step = 0
       params = {'domain_separation_startpoint': 2}
       weight = dsn.dsn_loss_coefficient(params)
       weight_np = sess.run(weight)
