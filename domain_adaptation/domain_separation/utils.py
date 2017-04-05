@@ -75,15 +75,15 @@ def reshape_feature_maps(features_tensor):
       num_filters)
   num_filters_sqrt = int(num_filters_sqrt)
   conv_summary = tf.unstack(features_tensor, axis=3)
-  conv_one_row = tf.concat(conv_summary[0:num_filters_sqrt], 2)
+  conv_one_row = tf.concat(axis=2, values=conv_summary[0:num_filters_sqrt])
   ind = 1
   conv_final = conv_one_row
   for ind in range(1, num_filters_sqrt):
-    conv_one_row = tf.concat(conv_summary[
-        ind * num_filters_sqrt + 0:ind * num_filters_sqrt + num_filters_sqrt],
-                             2)
+    conv_one_row = tf.concat(axis=2,
+                             values=conv_summary[
+        ind * num_filters_sqrt + 0:ind * num_filters_sqrt + num_filters_sqrt])
     conv_final = tf.concat(
-        [tf.squeeze(conv_final), tf.squeeze(conv_one_row)], 1)
+        axis=1, values=[tf.squeeze(conv_final), tf.squeeze(conv_one_row)])
     conv_final = tf.expand_dims(conv_final, -1)
   return conv_final
 

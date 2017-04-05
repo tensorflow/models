@@ -115,7 +115,7 @@ class DecoderTest(tf.test.TestCase):
           width=width,
           channels=channels,
           batch_norm_params=batch_norm_params)
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output_np = sess.run(output)
     self.assertEqual(output_np.shape, (32, height, width, channels))
     self.assertTrue(np.any(output_np))

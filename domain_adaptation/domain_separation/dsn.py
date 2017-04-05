@@ -282,15 +282,17 @@ def add_autoencoders(source_data, source_shared, target_data, target_shared,
 
   # Add summaries
   source_reconstructions = tf.concat(
-      map(normalize_images, [
+      axis=2,
+      values=map(normalize_images, [
           source_data, source_recons, source_shared_recons,
           source_private_recons
-      ]), 2)
+      ]))
   target_reconstructions = tf.concat(
-      map(normalize_images, [
+      axis=2,
+      values=map(normalize_images, [
           target_data, target_recons, target_shared_recons,
           target_private_recons
-      ]), 2)
+      ]))
   tf.summary.image(
       'Source Images:Recons:RGB',
       source_reconstructions[:, :, :, :3],
