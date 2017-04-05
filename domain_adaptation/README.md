@@ -36,6 +36,12 @@ Then you need to build the binaries with Bazel:
 $ bazel build -c opt domain_adaptation/domain_separation/...
 ```
 
+Add models and models/slim to your `$PYTHONPATH`:
+
+```
+$ export PYTHONPATH=$PYTHONPATH:$PWD:$PWD/slim
+```
+
 You can then train with the following command:
 
 ```
@@ -53,7 +59,6 @@ $ ./bazel-bin/domain_adaptation/domain_separation/dsn_train  \
       --dataset_dir=${DSN_DATA_DIR}  \
       -v --use_logging
 ```
-
 
 Evaluation can be invoked with the following command:
 
