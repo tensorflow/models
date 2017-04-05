@@ -103,11 +103,20 @@ following commands:
   bazel test --linkopt=-headerpad_max_install_names \
     dragnn/... syntaxnet/... util/utf8/...
 ```
-
 Bazel should complete reporting all tests passed.
+
+Now you can install the SyntaxNet and DRAGNN Python modules with the following commands:
+```shell
+  mkdir /tmp/syntaxnet_pkg
+  bazel-bin/dragnn/tools/build_pip_package --output-dir=/tmp/syntaxnet_pkg
+  #  The filename of the .whl depends on your platform.
+  sudo pip install /tmp/syntaxnet_pkg/syntaxnet-x.xx-none-any.whl
+```
 
 To build SyntaxNet with GPU support please refer to the instructions in
 [issues/248](https://github.com/tensorflow/models/issues/248).
+
+
 
 **Note:** If you are running Docker on OSX, make sure that you have enough
 memory allocated for your Docker VM.
