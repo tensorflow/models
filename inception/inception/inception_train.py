@@ -318,13 +318,18 @@ def train(dataset):
     sess.run(init)
 
     if FLAGS.pretrained_model_checkpoint_path:
-      assert tf.gfile.Exists(FLAGS.pretrained_model_checkpoint_path)
       variables_to_restore = tf.get_collection(
           slim.variables.VARIABLES_TO_RESTORE)
       restorer = tf.train.Saver(variables_to_restore)
-      restorer.restore(sess, FLAGS.pretrained_model_checkpoint_path)
-      print('%s: Pre-trained model restored from %s' %
-            (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
+      ckpt = tf.train.get_checkpoint_state(FLAGS.pretrained_model_checkpoint_path)
+      if ckpt and ckpt.model_checkpoint_path:
+        restorer.restore(sess, ckpt.model_checkpoint_path)
+        print('%s: Pre-trained model restored from %s' %
+                (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
+      else:
+        print('%s: Pre-trained model is not found from %s' %
+                (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
+        return
 
     # Start the queue runners.
     tf.train.start_queue_runners(sess=sess)
