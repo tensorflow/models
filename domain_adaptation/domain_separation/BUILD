@@ -34,10 +34,8 @@ py_library(
     ],
     deps = [
         ":grl_op_grads_py",
-        # ":grl_op_kernels",
         ":grl_op_shapes_py",
         ":grl_ops",
-        # ":grl_ops_py",
         ":utils",
     ],
 )
