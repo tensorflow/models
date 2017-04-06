@@ -89,4 +89,4 @@ EXPOSE 8888
 COPY examples $SYNTAXNETDIR/syntaxnet/examples
 # Todo: Move this earlier in the file (don't want to invalidate caches for now).
 
-CMD /bin/bash -c "bazel-bin/dragnn/tools/oss_notebook_launcher notebook --debug --notebook-dir=/opt/tensorflow/syntaxnet/examples"
+CMD /bin/bash -c "bazel-bin/dragnn/tools/oss_notebook_launcher notebook --debug --notebook-dir=/opt/tensorflow/syntaxnet/examples --allow-root"
