@@ -180,7 +180,7 @@ def main(_):
       if FLAGS.target_labeled_dataset != 'none':
         # 1000 is the maximum number of labelled target samples that exists in
         # the datasets.
-        target_semi_images, target_semi_labels = data_provider.provide(
+        target_semi_images, target_semi_labels = provide_batch_fn()(
             FLAGS.target_labeled_dataset, 'train', FLAGS.batch_size)
 
         # Calculate the proportion of source domain samples in the semi-
