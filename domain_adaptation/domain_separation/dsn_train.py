@@ -13,30 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# pylint: disable=line-too-long
-r"""Training for Domain Separation Networks (DSNs).
-
--- Compile:
-$ blaze build -c opt --copt=-mavx --config=cuda \
-    third_party/tensorflow_models/domain_adaptation/domain_separation:dsn_train
-
--- Run:
-$
-./blaze-bin/third_party/tensorflow_models/domain_adaptation/domain_separation/dsn_train
-\
-    --similarity_loss=dann \
-    --basic_tower=dsn_cropped_linemod \
-    --source_dataset=pose_synthetic \
-    --target_dataset=pose_real \
-    --learning_rate=0.012 \
-    --alpha_weight=0.26 \
-    --gamma_weight=0.0115 \
-    --weight_decay=4e-5 \
-    --layers_to_regularize=fc3 \
-    --use_separation \
-    --alsologtostderr
-"""
-# pylint: enable=line-too-long
+"""Training for Domain Separation Networks (DSNs)."""
 from __future__ import division
 
 import tensorflow as tf
@@ -59,7 +36,7 @@ tf.app.flags.DEFINE_string('target_dataset', 'pose_real',
 tf.app.flags.DEFINE_string('target_labeled_dataset', 'none',
                            'Target dataset to train on.')
 
-tf.app.flags.DEFINE_string('dataset_dir', '/cns/ok-d/home/konstantinos/cad_learning/',
+tf.app.flags.DEFINE_string('dataset_dir', None,
                            'The directory where the dataset files are stored.')
 
 tf.app.flags.DEFINE_string('master', '',
