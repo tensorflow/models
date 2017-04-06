@@ -435,12 +435,12 @@ JPEG-encoded string and an integer label. Please see [`parse_example_proto`](inc
 
 The script just takes a few minutes to run depending your network connection
 speed for downloading and processing the images. Your hard disk requires 200MB
-of free storage. Here we select `DATA_DIR=$HOME/flowers-data` as such a location
+of free storage. Here we select `DATA_DIR=/tmp/flowers-data/` as such a location
 but feel free to edit accordingly.
 
 ```shell
 # location of where to place the flowers data
-FLOWERS_DATA_DIR=$HOME/flowers-data
+FLOWERS_DATA_DIR=/tmp/flowers-data/
 
 # build the preprocessing script.
 bazel build inception/download_and_preprocess_flowers
@@ -473,9 +473,9 @@ model like so:
 
 ```shell
 # location of where to place the Inception v3 model
-DATA_DIR=$HOME/inception-v3-model
-mkdir -p ${DATA_DIR}
-cd ${DATA_DIR}
+INCEPTION_MODEL_DIR=$HOME/inception-v3-model
+mkdir -p ${INCEPTION_MODEL_DIR}
+cd ${INCEPTION_MODEL_DIR}
 
 # download the Inception v3 model
 curl -O http://download.tensorflow.org/models/image/imagenet/inception-v3-2016-03-01.tar.gz
@@ -526,7 +526,7 @@ the flowers data set with the following command.
 bazel build inception/flowers_train
 
 # Path to the downloaded Inception-v3 model.
-MODEL_PATH="${INCEPTION_MODEL_DIR}/model.ckpt-157585"
+MODEL_PATH="${INCEPTION_MODEL_DIR}/inception-v3/model.ckpt-157585"
 
 # Directory where the flowers data resides.
 FLOWERS_DATA_DIR=/tmp/flowers-data/
