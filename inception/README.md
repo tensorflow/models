@@ -37,13 +37,12 @@ The code base provides three core binaries for:
     errors to fine tune the network weights.
 
 The training procedure employs synchronous stochastic gradient descent across
-multiple GPUs. The user may specify the number of GPUs they wish harness. The
+multiple GPUs. The user may specify the number of GPUs they wish to harness. The
 synchronous training performs *batch-splitting* by dividing a given batch across
 multiple GPUs.
 
 The training set up is nearly identical to the section [Training a Model Using
-Multiple GPU Cards]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html#training-a-model-using-multiple-gpu-cards)
+Multiple GPU Cards](https://www.tensorflow.org/tutorials/deep_cnn/index.html#launching_and_training_the_model_on_multiple_gpu_cards)
 where we have substituted the CIFAR-10 model architecture with Inception v3. The
 primary differences with that setup are:
 
@@ -52,8 +51,7 @@ primary differences with that setup are:
 *   Specify the model architecture using a (still experimental) higher level
     language called TensorFlow-Slim.
 
-For more details about TensorFlow-Slim, please see the [Slim README]
-(inception/slim/README.md). Please note that this higher-level language is still
+For more details about TensorFlow-Slim, please see the [Slim README](inception/slim/README.md). Please note that this higher-level language is still
 *experimental* and the API may change over time depending on usage and
 subsequent research.
 
@@ -71,8 +69,7 @@ downloading and converting ImageNet data to TFRecord format. Downloading and
 preprocessing the data may take several hours (up to half a day) depending on
 your network and computer speed. Please be patient.
 
-To begin, you will need to sign up for an account with [ImageNet]
-(http://image-net.org) to gain access to the data. Look for the sign up page,
+To begin, you will need to sign up for an account with [ImageNet](http://image-net.org) to gain access to the data. Look for the sign up page,
 create an account and request an access key to download the data.
 
 After you have `USERNAME` and `PASSWORD`, you are ready to run our script. Make
@@ -101,9 +98,9 @@ The final line of the output script should read:
 2016-02-17 14:30:17.287989: Finished writing all 1281167 images in data set.
 ```
 
-When the script finishes you will find 1024 and 128 training and validation
-files in the `DATA_DIR`. The files will match the patterns `train-????-of-1024`
-and `validation-?????-of-00128`, respectively.
+When the script finishes, you will find 1024 training files and 128 validation
+files in the `DATA_DIR`. The files will match the patterns
+`train-?????-of-01024` and `validation-?????-of-00128`, respectively.
 
 [Congratulations!](https://www.youtube.com/watch?v=9bZkp7q19f0) You are now
 ready to train or evaluate with the ImageNet data set.
@@ -114,15 +111,12 @@ ready to train or evaluate with the ImageNet data set.
 intensive task and depending on your compute setup may take several days or even
 weeks.
 
-*Before proceeding* please read the [Convolutional Neural Networks]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html) tutorial in
-particular focus on [Training a Model Using Multiple GPU Cards]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html#training-a-model-using-multiple-gpu-cards)
-. The model training method is nearly identical to that described in the
+*Before proceeding* please read the [Convolutional Neural Networks](https://www.tensorflow.org/tutorials/deep_cnn/index.html) tutorial; in
+particular, focus on [Training a Model Using Multiple GPU Cards](https://www.tensorflow.org/tutorials/deep_cnn/index.html#launching_and_training_the_model_on_multiple_gpu_cards). The model training method is nearly identical to that described in the
 CIFAR-10 multi-GPU model training. Briefly, the model training
 
-*   Places an individual model replica on each GPU. Split the batch across the
-    GPUs.
+*   Places an individual model replica on each GPU.
+*   Splits the batch across the GPUs.
 *   Updates model parameters synchronously by waiting for all GPUs to finish
     processing a batch of data.
 
@@ -248,11 +242,9 @@ We term each machine that maintains model parameters a `ps`, short for
 `ps` as the model parameters may be sharded across multiple machines.
 
 Variables may be updated with synchronous or asynchronous gradient updates. One
-may construct a an [`Optimizer`]
-(https://www.tensorflow.org/api_docs/python/train.html#optimizers) in TensorFlow
-that constructs the necessary graph for either case diagrammed below from
-TensorFlow [Whitepaper]
-(http://download.tensorflow.org/paper/whitepaper2015.pdf):
+may construct a an [`Optimizer`](https://www.tensorflow.org/api_docs/python/train.html#optimizers) in TensorFlow
+that constructs the necessary graph for either case diagrammed below from the
+TensorFlow [Whitepaper](http://download.tensorflow.org/paper/whitepaper2015.pdf):
 
 <div style="width:40%; margin:auto; margin-bottom:10px; margin-top:20px;">
   <img style="width:100%"
@@ -383,10 +375,8 @@ training Inception in a distributed manner.
 Evaluating an Inception v3 model on the ImageNet 2012 validation data set
 requires running a separate binary.
 
-The evaluation procedure is nearly identical to [Evaluating a Model]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html#evaluating-a-model)
-described in the [Convolutional Neural Network]
-(https://www.tensorflow.org/tutorials/deep_cnn/index.html) tutorial.
+The evaluation procedure is nearly identical to [Evaluating a Model](https://www.tensorflow.org/tutorials/deep_cnn/index.html#evaluating_a_model)
+described in the [Convolutional Neural Network](https://www.tensorflow.org/tutorials/deep_cnn/index.html) tutorial.
 
 **WARNING** Be careful not to run the evaluation and training binary on the same
 GPU or else you might run out of memory. Consider running the evaluation on a
@@ -441,17 +431,16 @@ daisy, dandelion, roses, sunflowers, tulips
 There is a single automated script that downloads the data set and converts it
 to the TFRecord format. Much like the ImageNet data set, each record in the
 TFRecord format is a serialized `tf.Example` proto whose entries include a
-JPEG-encoded string and an integer label. Please see [`parse_example_proto`]
-(inception/image_processing.py) for details.
+JPEG-encoded string and an integer label. Please see [`parse_example_proto`](inception/image_processing.py) for details.
 
 The script just takes a few minutes to run depending your network connection
 speed for downloading and processing the images. Your hard disk requires 200MB
-of free storage. Here we select `DATA_DIR=$HOME/flowers-data` as such a location
+of free storage. Here we select `DATA_DIR=/tmp/flowers-data/` as such a location
 but feel free to edit accordingly.
 
 ```shell
 # location of where to place the flowers data
-FLOWERS_DATA_DIR=$HOME/flowers-data
+FLOWERS_DATA_DIR=/tmp/flowers-data/
 
 # build the preprocessing script.
 bazel build inception/download_and_preprocess_flowers
@@ -474,20 +463,19 @@ and `validation-?????-of-00002`, respectively.
 **NOTE** If you wish to prepare a custom image data set for transfer learning,
 you will need to invoke [`build_image_data.py`](inception/data/build_image_data.py) on
 your custom data set. Please see the associated options and assumptions behind
-this script by reading the comments section of [`build_image_data.py`]
-(inception/data/build_image_data.py). Also, if your custom data has a different
+this script by reading the comments section of [`build_image_data.py`](inception/data/build_image_data.py). Also, if your custom data has a different
 number of examples or classes, you need to change the appropriate values in
 [`imagenet_data.py`](inception/imagenet_data.py).
 
 The second piece you will need is a trained Inception v3 image model. You have
-the option of either training one yourself (See [How to Train from Scratch]
-(#how-to-train-from-scratch) for details) or you can download a pre-trained
+the option of either training one yourself (See [How to Train from Scratch](#how-to-train-from-scratch) for details) or you can download a pre-trained
 model like so:
 
 ```shell
 # location of where to place the Inception v3 model
-DATA_DIR=$HOME/inception-v3-model
-cd ${DATA_DIR}
+INCEPTION_MODEL_DIR=$HOME/inception-v3-model
+mkdir -p ${INCEPTION_MODEL_DIR}
+cd ${INCEPTION_MODEL_DIR}
 
 # download the Inception v3 model
 curl -O http://download.tensorflow.org/models/image/imagenet/inception-v3-2016-03-01.tar.gz
@@ -538,7 +526,7 @@ the flowers data set with the following command.
 bazel build inception/flowers_train
 
 # Path to the downloaded Inception-v3 model.
-MODEL_PATH="${INCEPTION_MODEL_DIR}/model.ckpt-157585"
+MODEL_PATH="${INCEPTION_MODEL_DIR}/inception-v3/model.ckpt-157585"
 
 # Directory where the flowers data resides.
 FLOWERS_DATA_DIR=/tmp/flowers-data/
@@ -808,8 +796,7 @@ comments in [`image_processing.py`](inception/image_processing.py) for more deta
 #### The model runs out of CPU memory.
 
 In lieu of buying more CPU memory, an easy fix is to decrease
-`--input_queue_memory_factor`. See [Adjusting Memory Demands]
-(#adjusting-memory-demands).
+`--input_queue_memory_factor`. See [Adjusting Memory Demands](#adjusting-memory-demands).
 
 #### The model runs out of GPU memory.
 

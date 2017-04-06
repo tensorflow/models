@@ -4,10 +4,17 @@
 ## Introduction
 This code is the code used for the "Domain Separation Networks" paper
 by Bousmalis K., Trigeorgis G., et al. which was presented at NIPS 2016. The
+<<<<<<< HEAD
 paper can be found here: https://arxiv.org/abs/1608.06019
 
 ## Contact
 This code was open-sourced by Konstantinos Bousmalis (konstantinos@google.com, github:bousmalis)
+=======
+paper can be found here: https://arxiv.org/abs/1608.06019.
+
+## Contact
+This code was open-sourced by [Konstantinos Bousmalis](https://github.com/bousmalis) (konstantinos@google.com).
+>>>>>>> d6bee2c713c6aed6522ab32c34b57412d0216d95
 
 ## Installation
 You will need to have the following installed on your machine before trying out the DSN code.
@@ -19,12 +26,20 @@ You will need to have the following installed on your machine before trying out 
 Although we are making the code available, you are only able to use the MNIST
 provider for now. We will soon provide a script to download and convert MNIST-M
 as well. Check back here in a few weeks or wait for a relevant announcement from
+<<<<<<< HEAD
 Twitter @bousmalis.
+=======
+[@bousmalis](https://twitter.com/bousmalis).
+>>>>>>> d6bee2c713c6aed6522ab32c34b57412d0216d95
 
 ## Running the code for adapting MNIST to MNIST-M
 In order to run the MNIST to MNIST-M experiments with DANNs and/or DANNs with
 domain separation (DSNs) you will need to set the directory you used to download
+<<<<<<< HEAD
 MNIST and MNIST-M:\
+=======
+MNIST and MNIST-M:
+>>>>>>> d6bee2c713c6aed6522ab32c34b57412d0216d95
 
 ```
 $ export DSN_DATA_DIR=/your/dir

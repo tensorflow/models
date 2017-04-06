@@ -32,7 +32,7 @@ a sharded data set consisting of TFRecord files
   train_directory/train-00000-of-01024
   train_directory/train-00001-of-01024
   ...
-  train_directory/train-00127-of-01024
+  train_directory/train-01023-of-01024
 
 and
 
@@ -50,7 +50,7 @@ contains the following fields:
   image/width: integer, image width in pixels
   image/colorspace: string, specifying the colorspace, always 'RGB'
   image/channels: integer, specifying the number of channels, always 3
-  image/format: string, specifying the format, always'JPEG'
+  image/format: string, specifying the format, always 'JPEG'
 
   image/filename: string containing the basename of the image file
             e.g. 'n01440764_10026.JPEG' or 'ILSVRC2012_val_00000293.JPEG'
@@ -60,7 +60,7 @@ contains the following fields:
   image/class/text: string specifying the human-readable version of the label
     e.g. 'dog'
 
-If you data set involves bounding boxes, please look at build_imagenet_data.py.
+If your data set involves bounding boxes, please look at build_imagenet_data.py.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -71,7 +71,6 @@ import os
 import random
 import sys
 import threading
-
 
 import numpy as np
 import tensorflow as tf
@@ -199,7 +198,7 @@ def _process_image(filename, coder):
     width: integer, image width in pixels.
   """
   # Read the image file.
-  with tf.gfile.FastGFile(filename, 'r') as f:
+  with tf.gfile.FastGFile(filename, 'rb') as f:
     image_data = f.read()
 
   # Convert any PNG to JPEG's for consistency.
@@ -306,7 +305,7 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
   spacing = np.linspace(0, len(filenames), FLAGS.num_threads + 1).astype(np.int)
   ranges = []
   for i in range(len(spacing) - 1):
-    ranges.append([spacing[i], spacing[i+1]])
+    ranges.append([spacing[i], spacing[i + 1]])
 
   # Launch a thread for each batch.
   print('Launching %d threads for spacings: %s' % (FLAGS.num_threads, ranges))

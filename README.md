@@ -2,9 +2,12 @@
 
 This repository contains machine learning models implemented in
 [TensorFlow](https://tensorflow.org). The models are maintained by their
-respective authors.
+respective authors. To propose a model for inclusion, please submit a pull
+request.
 
-To propose a model for inclusion please submit a pull request.
+Currently, the models are compatible with TensorFlow 1.0 or later. If you are
+running TensorFlow 0.12 or earlier, please
+[upgrade your installation](https://www.tensorflow.org/install).
 
 
 ## Models
