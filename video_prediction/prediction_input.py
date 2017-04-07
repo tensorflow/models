@@ -48,6 +48,16 @@ def build_tfrecord_input(training=True):
     list of tensors corresponding to images, actions, and states. The images
     tensor is 5D, batch x time x height x width x channels. The state and
     action tensors are 3D, batch x time x dimension.
+
+def build_tfrecord_input(training=True):
+  """Create input tfrecord tensors.
+
+  Args:
+    training: training or validation data.
+  Returns:
+    list of tensors corresponding to images, actions, and states. The images
+    tensor is 5D, batch x time x height x width x channels. The state and
+    action tensors are 3D, batch x time x dimension.
   Raises:
     RuntimeError: if no files found.
   """
@@ -59,7 +69,7 @@ def build_tfrecord_input(training=True):
     filenames = filenames[:index]
   else:
     filenames = filenames[index:]
-  filename_queue = tf.train.string_input_producer(filenames, shuffle=True)
+  filename_queue = tf.train.string_input_producer(filenames, shuffle=False)
   reader = tf.TFRecordReader()
   _, serialized_example = reader.read(filename_queue)
 
@@ -97,7 +107,9 @@ def build_tfrecord_input(training=True):
       action = tf.reshape(features[action_name], shape=[1, STATE_DIM])
       action_seq.append(action)
 
+
   image_seq = tf.concat(axis=0, values=image_seq)
+
 
   if FLAGS.use_state:
     state_seq = tf.concat(axis=0, values=state_seq)
@@ -116,4 +128,5 @@ def build_tfrecord_input(training=True):
         capacity=100 * FLAGS.batch_size)
     zeros_batch = tf.zeros([FLAGS.batch_size, FLAGS.sequence_length, STATE_DIM])
     return image_batch, zeros_batch, zeros_batch
+
 

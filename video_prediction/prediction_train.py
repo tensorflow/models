@@ -71,6 +71,7 @@ flags.DEFINE_float('learning_rate', 0.001,
                    'the base learning rate of the generator')
 
 
+
 ## Helper functions
 def peak_signal_to_noise_ratio(true, pred):
   """Image quality metric based on maximal signal power vs. power of the noise.
@@ -111,14 +112,18 @@ class Model(object):
     self.prefix = prefix = tf.placeholder(tf.string, [])
     self.iter_num = tf.placeholder(tf.float32, [])
     summaries = []
-
+    prefixs=''
+    
     # Split into timesteps.
-    actions = tf.split(axis=1, num_or_size_splits=actions.get_shape()[1], value=actions)
+
+    actions = tf.split(actions, actions.get_shape().as_list()[1],1)
     actions = [tf.squeeze(act) for act in actions]
-    states = tf.split(axis=1, num_or_size_splits=states.get_shape()[1], value=states)
+    states = tf.split( states, states.get_shape().as_list()[1],1)
     states = [tf.squeeze(st) for st in states]
-    images = tf.split(axis=1, num_or_size_splits=images.get_shape()[1], value=images)
+    images = tf.split(images, images.get_shape().as_list()[1],1 )
+
     images = [tf.squeeze(img) for img in images]
+
 
     if reuse_scope is None:
       gen_images, gen_states = construct_model(
@@ -150,6 +155,15 @@ class Model(object):
 
     # L2 loss, PSNR for eval.
     loss, psnr_all = 0.0, 0.0
+    try:
+        tf.equal(prefix,'train').eval()
+    except:
+        prefixs='initial'
+    else:
+        if tf.equal(prefix,'train').eval():
+            prefixs='train'
+        else:
+            prefixs='val'
     for i, x, gx in zip(
         range(len(gen_images)), images[FLAGS.context_frames:],
         gen_images[FLAGS.context_frames - 1:]):
@@ -157,8 +171,10 @@ class Model(object):
       psnr_i = peak_signal_to_noise_ratio(x, gx)
       psnr_all += psnr_i
       summaries.append(
-          tf.summary.scalar(prefix + '_recon_cost' + str(i), recon_cost))
-      summaries.append(tf.summary.scalar(prefix + '_psnr' + str(i), psnr_i))
+
+          tf.summary.scalar(prefixs + '_recon_cost' + str(i), recon_cost))
+      summaries.append(tf.summary.scalar(prefixs + '_psnr' + str(i), psnr_i))
+
       loss += recon_cost
 
     for i, state, gen_state in zip(
@@ -166,14 +182,18 @@ class Model(object):
         gen_states[FLAGS.context_frames - 1:]):
       state_cost = mean_squared_error(state, gen_state) * 1e-4
       summaries.append(
-          tf.summary.scalar(prefix + '_state_cost' + str(i), state_cost))
+
+          tf.summary.scalar(prefixs + '_state_cost' + str(i), state_cost))
       loss += state_cost
-    summaries.append(tf.summary.scalar(prefix + '_psnr_all', psnr_all))
+    summaries.append(tf.summary.scalar(prefixs + '_psnr_all', psnr_all))
+
     self.psnr_all = psnr_all
 
     self.loss = loss = loss / np.float32(len(images) - FLAGS.context_frames)
 
-    summaries.append(tf.summary.scalar(prefix + '_loss', loss))
+
+    summaries.append(tf.summary.scalar(prefixs + '_loss', loss))
+
 
     self.lr = tf.placeholder_with_default(FLAGS.learning_rate, ())
 
@@ -183,7 +203,7 @@ class Model(object):
 
 def main(unused_argv):
 
-  print 'Constructing models and inputs.'
+  print ('Constructing models and inputs.')
   with tf.variable_scope('model', reuse=None) as training_scope:
     images, actions, states = build_tfrecord_input(training=True)
     model = Model(images, actions, states, FLAGS.sequence_length)
@@ -193,7 +213,7 @@ def main(unused_argv):
     val_model = Model(val_images, val_actions, val_states,
                       FLAGS.sequence_length, training_scope)
 
-  print 'Constructing saver.'
+  print ('Constructing saver.')
   # Make saver.
   saver = tf.train.Saver(
       tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES), max_to_keep=0)
