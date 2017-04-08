@@ -14,7 +14,7 @@ slim = tf.contrib.slim
 
 _FILE_PATTERN = 'mammo_%s_*.tfrecord'
 
-SPLITS_TO_SIZES = { 'train': 28330, 'validation': 1490 }
+SPLITS_TO_SIZES = { 'train': 27310, 'validation': 0 }
 
 _NUM_CLASSES = 2
 

@@ -28,15 +28,15 @@ import tensorflow as tf
 
 from datasets import dataset_utils
 
-_DATA_DIR = "/root/mammo-data/mammo/data/images"
+_DATA_DIR = "/mnt/hdd0/mammo-data/mammo/data/images"
 
-_NUM_VALIDATION = 1490
+_NUM_VALIDATION = 0
 
 # Seed for repeatability.
 _RANDOM_SEED = 0
 
 # The number of shards per dataset split.
-_NUM_SHARDS = 8
+_NUM_SHARDS = 1
 
 class ImageReader(object):
   """Helper class that provides TensorFlow image coding utilities."""
