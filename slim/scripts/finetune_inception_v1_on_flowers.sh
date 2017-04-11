@@ -8,6 +8,7 @@
 # Usage:
 # cd slim
 # ./slim/scripts/finetune_inception_v1_on_flowers.sh
+set -e
 
 # Where the pre-trained InceptionV1 checkpoint is saved to.
 PRETRAINED_CHECKPOINT_DIR=/tmp/checkpoints
