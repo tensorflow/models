@@ -25,6 +25,7 @@ from nets import nets_factory
 
 slim = tf.contrib.slim
 
+
 class NetworksTest(tf.test.TestCase):
 
   def testGetNetworkFn(self):
