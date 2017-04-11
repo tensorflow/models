@@ -27,6 +27,7 @@ import tensorflow as tf
 import six
 
 from tensorflow.python.training import moving_averages
+from tensorflow.contrib.layers import batch_norm
 
 
 HParams = namedtuple('HParams',
@@ -51,6 +52,7 @@ class ResNet(object):
     self._images = images
     self.labels = labels
     self.mode = mode
+    self.is_training = True is self.mode == 'train' else False
 
     self._extra_train_ops = []
 
@@ -145,8 +147,15 @@ class ResNet(object):
     train_ops = [apply_op] + self._extra_train_ops
     self.train_op = tf.group(*train_ops)
 
-  # TODO(xpan): Consider batch_norm in contrib/layers/python/layers/layers.py
+  # Using batch_norm in contrib/layers/python/layers/layers.py
   def _batch_norm(self, name, x):
+    with tf.variable_scope(name):
+      bn = batch_norm(x, is_training=self.is_training, updates_collections=tf.GraphKeys.UPDATE_OPS)
+      self._extra_train_ops.extend(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+      return bn
+
+  # TODO(xpan): Consider batch_norm in contrib/layers/python/layers/layers.py
+  def _batch_norm_old(self, name, x):
     """Batch normalization."""
     with tf.variable_scope(name):
       params_shape = [x.get_shape()[-1]]
@@ -218,7 +227,7 @@ class ResNet(object):
         orig_x = tf.nn.avg_pool(orig_x, stride, stride, 'VALID')
         orig_x = tf.pad(
             orig_x, [[0, 0], [0, 0], [0, 0],
-                     [(out_filter-in_filter)//2, (out_filter-in_filter)//2]])
+                     [(out_filter - in_filter) // 2, (out_filter - in_filter) // 2]])
       x += orig_x
 
     tf.logging.debug('image after unit %s', x.get_shape())
@@ -239,17 +248,17 @@ class ResNet(object):
         x = self._relu(x, self.hps.relu_leakiness)
 
     with tf.variable_scope('sub1'):
-      x = self._conv('conv1', x, 1, in_filter, out_filter/4, stride)
+      x = self._conv('conv1', x, 1, in_filter, out_filter / 4, stride)
 
     with tf.variable_scope('sub2'):
       x = self._batch_norm('bn2', x)
       x = self._relu(x, self.hps.relu_leakiness)
-      x = self._conv('conv2', x, 3, out_filter/4, out_filter/4, [1, 1, 1, 1])
+      x = self._conv('conv2', x, 3, out_filter / 4, out_filter / 4, [1, 1, 1, 1])
 
     with tf.variable_scope('sub3'):
       x = self._batch_norm('bn3', x)
       x = self._relu(x, self.hps.relu_leakiness)
-      x = self._conv('conv3', x, 1, out_filter/4, out_filter, [1, 1, 1, 1])
+      x = self._conv('conv3', x, 1, out_filter / 4, out_filter, [1, 1, 1, 1])
 
     with tf.variable_scope('sub_add'):
       if in_filter != out_filter:
@@ -276,7 +285,7 @@ class ResNet(object):
       kernel = tf.get_variable(
           'DW', [filter_size, filter_size, in_filters, out_filters],
           tf.float32, initializer=tf.random_normal_initializer(
-              stddev=np.sqrt(2.0/n)))
+              stddev=np.sqrt(2.0 / n)))
       return tf.nn.conv2d(x, kernel, strides, padding='SAME')
 
   def _relu(self, x, leakiness=0.0):
