@@ -64,11 +64,11 @@ def train_teacher(dataset, nb_teachers, teacher_id):
   else:
     print("Check value of dataset flag")
     return False
-    
+
   # Retrieve subset of data for this teacher
-  data, labels = input.partition_dataset(train_data, 
-                                         train_labels, 
-                                         nb_teachers, 
+  data, labels = input.partition_dataset(train_data,
+                                         train_labels,
+                                         nb_teachers,
                                          teacher_id)
 
   print("Length of training data: " + str(len(labels)))
