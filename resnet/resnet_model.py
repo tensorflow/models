@@ -154,7 +154,7 @@ class ResNet(object):
       self._extra_train_ops.extend(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
       return bn
 
-  # TODO(xpan): Consider batch_norm in contrib/layers/python/layers/layers.py
+  # Implementing batch_norm from scratch
   def _batch_norm_old(self, name, x):
     """Batch normalization."""
     with tf.variable_scope(name):
