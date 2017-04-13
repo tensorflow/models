@@ -10,15 +10,15 @@ Also, please understand that many of the models included in this repository are 
 ------------------------
 
 ### System information
-- What is the top-level directory of the model you are using:
-- Have I written custom code (as opposed to using a stock example script provided in TensorFlow):
-- OS Platform and Distribution (e.g., Linux Ubuntu 16.04):
-- TensorFlow installed from (source or binary):
-- TensorFlow version (use command below):
-- Bazel version (if compiling from source):
-- CUDA/cuDNN version:
-- GPU model and memory:
-- Exact command to reproduce:
+- **What is the top-level directory of the model you are using**:
+- **Have I written custom code (as opposed to using a stock example script provided in TensorFlow)**:
+- **OS Platform and Distribution (e.g., Linux Ubuntu 16.04)**:
+- **TensorFlow installed from (source or binary)**:
+- **TensorFlow version (use command below)**:
+- **Bazel version (if compiling from source)**:
+- **CUDA/cuDNN version**:
+- **GPU model and memory**:
+- **Exact command to reproduce**:
 
 You can collect some of this information using our environment capture script: https://github.com/tensorflow/tensorflow/tree/master/tools
 
