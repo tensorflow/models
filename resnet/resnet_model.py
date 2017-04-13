@@ -51,6 +51,7 @@ class ResNet(object):
     self._images = images
     self.labels = labels
     self.mode = mode
+    self.is_training = True is self.mode == 'train' else False
 
     self._extra_train_ops = []
 
@@ -145,8 +146,15 @@ class ResNet(object):
     train_ops = [apply_op] + self._extra_train_ops
     self.train_op = tf.group(*train_ops)
 
-  # TODO(xpan): Consider batch_norm in contrib/layers/python/layers/layers.py
+  # Using batch_norm in contrib/layers/python/layers/layers.py
   def _batch_norm(self, name, x):
+    with tf.variable_scope(name):
+      bn = batch_norm(x, is_training=self.is_training, updates_collections=tf.GraphKeys.UPDATE_OPS)
+      self._extra_train_ops.extend(tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+      return bn
+
+  # Implementing batch_norm from scratch
+  def _batch_norm_old(self, name, x):
     """Batch normalization."""
     with tf.variable_scope(name):
       params_shape = [x.get_shape()[-1]]
