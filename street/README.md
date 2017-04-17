@@ -48,10 +48,17 @@ sudo pip install numpy
 
 Build the LSTM op:
 
+Linux
 ```
 cd cc
 TF_INC=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
 g++ -std=c++11 -shared rnn_ops.cc -o rnn_ops.so -fPIC -I $TF_INC -O3 -mavx
+```
+Mac
+```
+cd cc
+TF_INC=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
+g++ -std=c++11 -shared rnn_ops.cc -o rnn_ops.so -fPIC -I $TF_INC -O3 -mavx -undefined dynamic_lookup
 ```
 
 Run the unittests:
