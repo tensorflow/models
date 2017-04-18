@@ -158,7 +158,7 @@ def main(_):
     })
 
     # Print the summaries to screen.
-    for name, value in names_to_values.iteritems():
+    for name, value in names_to_values.items():
       summary_name = 'eval/%s' % name
       op = tf.summary.scalar(summary_name, value, collections=[])
       op = tf.Print(op, [value], summary_name)
