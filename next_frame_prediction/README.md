@@ -12,16 +12,9 @@ Authors: Xin Pan (Github: panyx0718), Anelia Angelova
 
 <b>Results:</b>
 
-<left>
 ![Sample1](g3doc/cross_conv.png)
-</left>
-<left>
 ![Sample2](g3doc/cross_conv2.png)
-</left>
-
-<left>
 ![Loss](g3doc/cross_conv3.png)
-</left>
 
 
 <b>Prerequisite:</b>
