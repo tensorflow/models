@@ -21,7 +21,7 @@ language=English
 output_dir=./trained-"$language"
 
 training_corpus=$1
-dev_corpus=$2
+tune_corpus=$2
 
 bazel build -c opt //dragnn/tools:trainer //dragnn/conll2017:make_parser_spec
 
@@ -35,6 +35,6 @@ bazel-bin/dragnn/tools/trainer \
   --dragnn_spec="$output_dir/parser_spec.textproto" \
   --resource_path="$output_dir/resources" \
   --training_corpus_path="$training_corpus" \
-  --tune_corpus_path="$dev_corpus" \
+  --tune_corpus_path="$tune_corpus" \
   --tensorboard_dir="$output_dir/tensorboard" \
   --checkpoint_filename="$output_dir/checkpoint.model"
