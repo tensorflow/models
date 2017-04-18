@@ -2,8 +2,7 @@
 
 This is a [TensorFlow](http://www.tensorflow.org/) model for compressing and
 decompressing images using an already trained  Residual GRU model as descibed
-in [Full Resolution Image Compression with Recurrent Neural Networks]
-(https://arxiv.org/abs/1608.05148). Please consult the paper for more details
+in [Full Resolution Image Compression with Recurrent Neural Networks](https://arxiv.org/abs/1608.05148). Please consult the paper for more details
 on the architecture and compression results.
 
 This code will allow you to perform the lossy compression on an model
@@ -13,8 +12,7 @@ Entropy Coding portions of our paper.
 
 ## Prerequisites
 The only software requirements for running the encoder and decoder is having
-Tensorflow installed. You will also need to [download]
-(http://download.tensorflow.org/models/compression_residual_gru-2016-08-23.tar.gz)
+Tensorflow installed. You will also need to [download](http://download.tensorflow.org/models/compression_residual_gru-2016-08-23.tar.gz)
 and extract the model residual_gru.pb.
 
 If you want to generate the perceptual similarity under MS-SSIM, you will also
