@@ -92,6 +92,8 @@ flags.DEFINE_float('per_process_gpu_memory_fraction', 0,
                    'Fraction of GPU memory to use, 0 means allow_growth')
 flags.DEFINE_integer('num_gpus', 0,
                      'Number of GPUs to use, 0 means all available')
+flags.DEFINE_string('logs', '',
+                    'Path for TensorBoard logs (empty value disables them)')
 
 FLAGS = flags.FLAGS
 
@@ -313,7 +315,7 @@ class SwivelModel(object):
       sigmoid_loss = tf.reduce_mean(tf.concat(axis=0, values=sigmoid_losses), 0,
                                     name="sigmoid_loss")
       self.loss = l2_loss + sigmoid_loss
-      average = tf.train.ExponentialMovingAverage(0.8, self.global_step)
+      average = tf.train.ExponentialMovingAverage(0.999)
       loss_average_op = average.apply((self.loss,))
       tf.summary.scalar("l2_loss", l2_loss)
       tf.summary.scalar("sigmoid_loss", sigmoid_loss)
@@ -328,6 +330,21 @@ class SwivelModel(object):
       self.train_op = tf.group(loss_average_op, *apply_gradient_ops)
       self.saver = tf.train.Saver(sharded=True)
 
+  def servants(self, sess):
+    summary = tf.summary.merge_all()
+    writer = tf.summary.FileWriter(FLAGS.logs, sess.graph)
+    projector_config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
+    embedding_config = projector_config.embeddings.add()
+    length = min(10000, self.n_rows, self.n_cols)
+    embedding10k = tf.Variable(tf.zeros((length, self._config.embedding_size)),
+                               name='top10k_embedding')
+    embedding10k.assign(
+        (self.row_embedding[:length] + self.col_embedding[:length]) / 2)
+    embedding_config.tensor_name = embedding10k.name
+    tf.contrib.tensorboard.plugins.projector.visualize_embeddings(
+        writer, projector_config)
+    saver = tf.train.Saver((embedding10k,), max_to_keep=1)
+    return summary, writer, saver
 
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
@@ -340,6 +357,7 @@ def main(_):
 
   # Create and run model
   with tf.Graph().as_default():
+    log('creating the model...')
     model = SwivelModel(FLAGS)
 
     # Create a session for running Ops on the Graph.
@@ -351,11 +369,16 @@ def main(_):
         gpu_opts['allow_growth'] = True
     gpu_options = tf.GPUOptions(**gpu_opts)
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+    if FLAGS.logs:
+      log('creating TensorBoard\'s servants...')
+      summary, writer, saver = model.servants(sess)
 
     # Run the Op to initialize the variables.
+    log('initializing the variables...')
     sess.run(tf.global_variables_initializer())
 
     # Start feeding input
+    log('starting the input threads...')
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
@@ -367,7 +390,8 @@ def main(_):
     n_submatrices_to_train = model.n_submatrices * FLAGS.num_epochs
     t0 = [time.time()]
     n_steps_between_status_updates = 100
-    status_i = [0]
+    n_steps_between_summary_updates = 10000
+    status_i = [0, 0]
     status_lock = threading.Lock()
     msg = ('%%%dd/%%d submatrices trained (%%.1f%%%%), %%5.1f submatrices/sec '
            '| loss %%f') % len(str(n_submatrices_to_train))
@@ -378,17 +402,28 @@ def main(_):
             model.train_op, model.global_step, model.loss))
 
         show_status = False
+        update_summary = False
         with status_lock:
           new_i = global_step // n_steps_between_status_updates
           if new_i > status_i[0]:
             status_i[0] = new_i
             show_status = True
+          new_i = global_step // n_steps_between_summary_updates
+          if new_i > status_i[1]:
+            status_i[1] = new_i
+            update_summary = True
         if show_status:
           elapsed = float(time.time() - t0[0])
           log(msg, global_step, n_submatrices_to_train,
               100.0 * global_step / n_submatrices_to_train,
               n_steps_between_status_updates / elapsed, loss)
           t0[0] = time.time()
+        if update_summary and FLAGS.logs:
+          log("writing the summary...")
+          writer.add_summary(sess.run(summary), global_step)
+          saver.save(sess,
+                     os.path.join(FLAGS.logs, 'embeddings10k.checkpoint'),
+                     global_step)
 
     # Start training threads
     train_threads = []
