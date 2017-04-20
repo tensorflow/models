@@ -55,7 +55,6 @@ from __future__ import print_function
 import glob
 import math
 import os
-import sys
 import time
 import threading
 
@@ -83,6 +82,7 @@ flags.DEFINE_float('confidence_exponent', 0.5,
 flags.DEFINE_float('confidence_scale', 0.25, 'Scale for l2 confidence function')
 flags.DEFINE_float('confidence_base', 0.1, 'Base for l2 confidence function')
 flags.DEFINE_float('learning_rate', 1.0, 'Initial learning rate')
+flags.DEFINE_string('optimizer', 'Adagrad', 'SGD optimizer (tf.train.*Optimizer)')
 flags.DEFINE_integer('num_concurrent_steps', 2,
                      'Number of threads to train with')
 flags.DEFINE_integer('num_readers', 4,
@@ -246,64 +246,65 @@ class SwivelModel(object):
       l2_losses = []
       sigmoid_losses = []
       self.global_step = tf.Variable(0, name='global_step')
-      opt = tf.train.AdagradOptimizer(config.learning_rate)
+      learning_rate = tf.Variable(config.learning_rate, name='learning_rate')
+      opt = getattr(tf.train, FLAGS.optimizer + 'Optimizer')(learning_rate)
+      tf.summary.scalar('learning_rate', learning_rate)
 
       all_grads = []
 
     devices = ['/gpu:%d' % i for i in range(FLAGS.num_gpus)] \
         if FLAGS.num_gpus > 0 else get_available_gpus()
     self.devices_number = len(devices)
-    with tf.variable_scope(tf.get_variable_scope()):
-      for dev in devices:
-        with tf.device(dev):
-          with tf.name_scope(dev[1:].replace(':', '_')):
-            # ===== CREATE GRAPH =====
-            # Fetch embeddings.
-            selected_row_embedding = tf.nn.embedding_lookup(
-                self.row_embedding, global_row)
-            selected_col_embedding = tf.nn.embedding_lookup(
-                self.col_embedding, global_col)
+    for dev in devices:
+      with tf.device(dev):
+        with tf.name_scope(dev[1:].replace(':', '_')):
+          # ===== CREATE GRAPH =====
+          # Fetch embeddings.
+          selected_row_embedding = tf.nn.embedding_lookup(
+              self.row_embedding, global_row)
+          selected_col_embedding = tf.nn.embedding_lookup(
+              self.col_embedding, global_col)
 
-            # Fetch biases.
-            selected_row_bias = tf.nn.embedding_lookup(
-                [self.row_bias], global_row)
-            selected_col_bias = tf.nn.embedding_lookup(
-                [self.col_bias], global_col)
+          # Fetch biases.
+          selected_row_bias = tf.nn.embedding_lookup(
+              [self.row_bias], global_row)
+          selected_col_bias = tf.nn.embedding_lookup(
+              [self.col_bias], global_col)
 
-            # Multiply the row and column embeddings to generate predictions.
-            predictions = tf.matmul(
-                selected_row_embedding, selected_col_embedding,
-                transpose_b=True)
+          # Multiply the row and column embeddings to generate predictions.
+          predictions = tf.matmul(
+              selected_row_embedding, selected_col_embedding,
+              transpose_b=True)
 
-            # These binary masks separate zero from non-zero values.
-            count_is_nonzero = tf.to_float(tf.cast(count, tf.bool))
-            count_is_zero = 1 - count_is_nonzero
+          # These binary masks separate zero from non-zero values.
+          count_is_nonzero = tf.to_float(tf.cast(count, tf.bool))
+          count_is_zero = 1 - count_is_nonzero
 
-            objectives = count_is_nonzero * tf.log(count + 1e-30)
-            objectives -= tf.reshape(
-                selected_row_bias, [config.submatrix_rows, 1])
-            objectives -= selected_col_bias
-            objectives += matrix_log_sum
+          objectives = count_is_nonzero * tf.log(count + 1e-30)
+          objectives -= tf.reshape(
+              selected_row_bias, [config.submatrix_rows, 1])
+          objectives -= selected_col_bias
+          objectives += matrix_log_sum
 
-            err = predictions - objectives
+          err = predictions - objectives
 
-            # The confidence function scales the L2 loss based on the raw
-            # co-occurrence count.
-            l2_confidence = (config.confidence_base +
-                             config.confidence_scale * tf.pow(
-                                 count, config.confidence_exponent))
+          # The confidence function scales the L2 loss based on the raw
+          # co-occurrence count.
+          l2_confidence = (
+              config.confidence_base + config.confidence_scale * tf.pow(
+                  count, config.confidence_exponent))
 
-            l2_loss = config.loss_multiplier * tf.reduce_sum(
-                0.5 * l2_confidence * err * err * count_is_nonzero)
-            l2_losses.append(tf.expand_dims(l2_loss, 0))
+          l2_loss = config.loss_multiplier * tf.reduce_sum(
+              0.5 * l2_confidence * err * err * count_is_nonzero)
+          l2_losses.append(tf.expand_dims(l2_loss, 0))
 
-            sigmoid_loss = config.loss_multiplier * tf.reduce_sum(
-                tf.nn.softplus(err) * count_is_zero)
-            sigmoid_losses.append(tf.expand_dims(sigmoid_loss, 0))
+          sigmoid_loss = config.loss_multiplier * tf.reduce_sum(
+              tf.nn.softplus(err) * count_is_zero)
+          sigmoid_losses.append(tf.expand_dims(sigmoid_loss, 0))
 
-            loss = l2_loss + sigmoid_loss
-            grads = opt.compute_gradients(loss)
-            all_grads.append(grads)
+          loss = l2_loss + sigmoid_loss
+          grads = opt.compute_gradients(loss)
+          all_grads.append(grads)
 
     with tf.device('/cpu:0'):
       # ===== MERGE LOSSES =====
@@ -344,10 +345,10 @@ def main(_):
     # Create a session for running Ops on the Graph.
     gpu_opts = {}
     if FLAGS.per_process_gpu_memory_fraction > 0:
-        gpu_opts["per_process_gpu_memory_fraction"] = \
+        gpu_opts['per_process_gpu_memory_fraction'] = \
             FLAGS.per_process_gpu_memory_fraction
     else:
-        gpu_opts["allow_growth"] = True
+        gpu_opts['allow_growth'] = True
     gpu_options = tf.GPUOptions(**gpu_opts)
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
@@ -368,8 +369,8 @@ def main(_):
     n_steps_between_status_updates = 100
     status_i = [0]
     status_lock = threading.Lock()
-    msg = ('%%%dd/%%d submatrices trained (%%.1f%%%%), %%5.1f submatrices/sec |'
-           ' loss %%f') % len(str(n_submatrices_to_train))
+    msg = ('%%%dd/%%d submatrices trained (%%.1f%%%%), %%5.1f submatrices/sec '
+           '| loss %%f') % len(str(n_submatrices_to_train))
 
     def TrainingFn():
       for _ in range(int(n_steps_per_thread)):
