@@ -314,12 +314,13 @@ class SwivelModel(object):
                                name="l2_loss")
       sigmoid_loss = tf.reduce_mean(tf.concat(axis=0, values=sigmoid_losses), 0,
                                     name="sigmoid_loss")
-      self.loss = l2_loss + sigmoid_loss
+      overall_loss = l2_loss + sigmoid_loss
       average = tf.train.ExponentialMovingAverage(0.999)
-      loss_average_op = average.apply((self.loss,))
-      tf.summary.scalar("l2_loss", l2_loss)
-      tf.summary.scalar("sigmoid_loss", sigmoid_loss)
-      tf.summary.scalar("loss", self.loss)
+      loss_average_op = average.apply((overall_loss, l2_loss, sigmoid_loss))
+      self.loss = average.average(overall_loss)
+      tf.summary.scalar("overall_loss", self.loss)
+      tf.summary.scalar("l2_loss", average.average(l2_loss))
+      tf.summary.scalar("sigmoid_loss", average.average(sigmoid_loss))
 
       # Apply the gradients to adjust the shared variables.
       apply_gradient_ops = []
