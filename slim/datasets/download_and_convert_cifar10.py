@@ -25,8 +25,10 @@ The script should take several minutes to run.
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-import _pickle as cPickle
+try:
+    import _pickle as cPickle
+except:
+    import cPickle
 import os
 import sys
 import tarfile
