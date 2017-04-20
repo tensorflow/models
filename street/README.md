@@ -54,8 +54,9 @@ TF_INC=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
 g++ -std=c++11 -shared rnn_ops.cc -o rnn_ops.so -fPIC -I $TF_INC -O3 -mavx
 ```
 
-(Note: if running on Mac, add `-undefined dynamic_lookup` to the end of your
-`g++` command.)
+(Note: if running on Mac, add `-undefined dynamic_lookup` to your `g++` command.
+If you are running a newer version of gcc, you may also need to add
+`-D_GLIBCXX_USE_CXX11_ABI=0`.)
 
 Run the unittests:
 
