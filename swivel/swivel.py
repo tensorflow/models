@@ -62,21 +62,21 @@ import threading
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.client import device_lib
-
+import codecs
 flags = tf.app.flags
 
-flags.DEFINE_string('input_base_path', '/tmp/swivel_data',
+flags.DEFINE_string('input_base_path', 'data/swivel_data',
                     'Directory containing input shards, vocabularies, '
                     'and marginals.')
-flags.DEFINE_string('output_base_path', '/tmp/swivel_data',
+flags.DEFINE_string('output_base_path', 'data/swivel_data/tsv',
                     'Path where to write the trained embeddings.')
-flags.DEFINE_integer('embedding_size', 300, 'Size of the embeddings')
+flags.DEFINE_integer('embedding_size', 100, 'Size of the embeddings')
 flags.DEFINE_boolean('trainable_bias', False, 'Biases are trainable')
-flags.DEFINE_integer('submatrix_rows', 4096, 'Rows in each training submatrix. '
+flags.DEFINE_integer('submatrix_rows', 2048, 'Rows in each training submatrix. '
                      'This must match the training data.')
-flags.DEFINE_integer('submatrix_cols', 4096, 'Rows in each training submatrix. '
+flags.DEFINE_integer('submatrix_cols', 2048, 'Rows in each training submatrix. '
                      'This must match the training data.')
-flags.DEFINE_float('loss_multiplier', 1.0 / 4096,
+flags.DEFINE_float('loss_multiplier', 1.0 / 2048,
                    'constant multiplier on loss.')
 flags.DEFINE_float('confidence_exponent', 0.5,
                    'Exponent for l2 confidence function')
@@ -155,7 +155,7 @@ def count_matrix_input(filenames, submatrix_rows, submatrix_cols):
 
 def read_marginals_file(filename):
   """Reads text file with one number per line to an array."""
-  with open(filename) as lines:
+  with codecs.open(filename) as lines:
     return [float(line) for line in lines]
 
 
@@ -164,8 +164,8 @@ def write_embedding_tensor_to_disk(vocab_path, output_path, sess, embedding):
   # Fetch the embedding values from the model
   embeddings = sess.run(embedding)
 
-  with open(output_path, 'w') as out_f:
-    with open(vocab_path) as vocab_f:
+  with codecs.open(output_path, 'w','utf-8') as out_f:
+    with codecs.open(vocab_path,'r','utf-8') as vocab_f:
       for index, word in enumerate(vocab_f):
         word = word.strip()
         embedding = embeddings[index]
@@ -307,6 +307,7 @@ class SwivelModel(object):
 
     with tf.device('/cpu:0'):
       # ===== MERGE LOSSES =====
+      print(l2_losses) # new print statement
       l2_loss = tf.reduce_mean(tf.concat(axis=0, values=l2_losses), 0,
                                name="l2_loss")
       sigmoid_loss = tf.reduce_mean(tf.concat(axis=0, values=sigmoid_losses), 0,
@@ -343,11 +344,15 @@ def main(_):
 
     # Create a session for running Ops on the Graph.
     gpu_opts = {}
+
+
+
     if FLAGS.per_process_gpu_memory_fraction > 0:
         gpu_opts["per_process_gpu_memory_fraction"] = \
             FLAGS.per_process_gpu_memory_fraction
     else:
         gpu_opts["allow_growth"] = True
+
     gpu_options = tf.GPUOptions(**gpu_opts)
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
