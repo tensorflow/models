@@ -331,28 +331,39 @@ class SwivelModel(object):
       self.train_op = tf.group(loss_average_op, *apply_gradient_ops)
       self.saver = tf.train.Saver(sharded=True)
 
-  def servants(self, sess):
-    summary = tf.summary.merge_all()
-    writer = tf.summary.FileWriter(FLAGS.logs, sess.graph)
+  def initialize_summary(self, sess):
+    log('creating TensorBoard stuff...')
+    self.summary = tf.summary.merge_all()
+    self.writer = tf.summary.FileWriter(FLAGS.logs, sess.graph)
     projector_config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
     embedding_config = projector_config.embeddings.add()
     length = min(10000, self.n_rows, self.n_cols)
-    embedding10k = tf.Variable(tf.zeros((length, self._config.embedding_size)),
-                               name='top10k_embedding')
-    embedding10k.assign(
-        (self.row_embedding[:length] + self.col_embedding[:length]) / 2)
-    embedding_config.tensor_name = embedding10k.name
+    self.embedding10k = tf.Variable(
+        tf.zeros((length, self._config.embedding_size)),
+        name='top10k_embedding')
+    embedding_config.tensor_name = self.embedding10k.name
     tf.contrib.tensorboard.plugins.projector.visualize_embeddings(
-        writer, projector_config)
-    saver = tf.train.Saver((embedding10k,), max_to_keep=1)
-    return summary, writer, saver
+        self.writer, projector_config)
+    self.saver = tf.train.Saver((self.embedding10k,), max_to_keep=1)
+
+  def write_summary(self, sess):
+      log("writing the summary...")
+      length = min(10000, self.n_rows, self.n_cols)
+      assignment = self.embedding10k.assign(
+          (self.row_embedding[:length] + self.col_embedding[:length]) / 2)
+      summary, _, global_step = sess.run(
+          (self.summary, assignment, self.global_step))
+      self.writer.add_summary(summary, global_step)
+      self.saver.save(
+          sess, os.path.join(FLAGS.logs, 'embeddings10k.checkpoint'),
+          global_step)
+
 
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
   start_time = time.time()
 
-  # Create the output path.  If this fails, it really ought to fail
-  # now. :)
+  # Create the output path.  If this fails, it really ought to fail now. :)
   if not os.path.isdir(FLAGS.output_base_path):
     os.makedirs(FLAGS.output_base_path)
 
@@ -371,8 +382,7 @@ def main(_):
     gpu_options = tf.GPUOptions(**gpu_opts)
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
     if FLAGS.logs:
-      log('creating TensorBoard\'s servants...')
-      summary, writer, saver = model.servants(sess)
+      model.initialize_summary(sess)
 
     # Run the Op to initialize the variables.
     log('initializing the variables...')
@@ -420,11 +430,7 @@ def main(_):
               n_steps_between_status_updates / elapsed, loss)
           t0[0] = time.time()
         if update_summary and FLAGS.logs:
-          log("writing the summary...")
-          writer.add_summary(sess.run(summary), global_step)
-          saver.save(sess,
-                     os.path.join(FLAGS.logs, 'embeddings10k.checkpoint'),
-                     global_step)
+          model.write_summary(sess)
 
     # Start training threads
     train_threads = []
