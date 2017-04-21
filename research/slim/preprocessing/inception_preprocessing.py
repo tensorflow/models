@@ -249,7 +249,7 @@ def preprocess_for_eval(image, height, width,
     image: 3-D Tensor of image. If dtype is tf.float32 then the range should be
       [0, 1], otherwise it would converted to tf.float32 assuming that the range
       is [0, MAX], where MAX is largest positive representable number for
-      int(8/16/32) data type (see `tf.image.convert_image_dtype` for details)
+      int(8/16/32) data type (see `tf.image.convert_image_dtype` for details).
     height: integer
     width: integer
     central_fraction: Optional Float, fraction of the image to crop.
@@ -283,7 +283,11 @@ def preprocess_image(image, height, width,
   """Pre-process one image for training or evaluation.
 
   Args:
-    image: 3-D Tensor [height, width, channels] with the image.
+    image: 3-D Tensor [height, width, channels] with the image. If dtype is
+      tf.float32 then the range should be [0, 1], otherwise it would converted
+      to tf.float32 assuming that the range is [0, MAX], where MAX is largest
+      positive representable number for int(8/16/32) data type (see
+      `tf.image.convert_image_dtype` for details).
     height: integer, image expected height.
     width: integer, image expected width.
     is_training: Boolean. If true it would transform an image for train,
