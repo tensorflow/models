@@ -310,15 +310,6 @@ def _configure_optimizer(learning_rate):
     raise ValueError('Optimizer [%s] was not recognized', FLAGS.optimizer)
   return optimizer
 
-
-def _add_variables_summaries(learning_rate):
-  summaries = []
-  for variable in slim.get_model_variables():
-    summaries.append(tf.summary.histogram(variable.op.name, variable))
-  summaries.append(tf.summary.scalar('training/Learning Rate', learning_rate))
-  return summaries
-
-
 def _get_init_fn():
   """Returns a function run by the chief worker to warm-start the training.
 
