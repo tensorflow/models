@@ -11,6 +11,8 @@ running TensorFlow 0.12 or earlier, please
 
 
 ## Models
+- [adversarial_text](adversarial_text): semi-supervised sequence learning with
+  adversarial training.
 - [autoencoder](autoencoder): various autoencoders.
 - [compression](compression): compressing and decompressing images using a pre-trained Residual GRU network.
 - [differential_privacy](differential_privacy): privacy-preserving student models from multiple teachers.
