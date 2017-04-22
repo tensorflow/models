@@ -1,8 +1,6 @@
 # Adversarial Text Classification
 
-Code for *Adversarial Training Methods for Semi-Supervised Text Classification*
-(https://arxiv.org/abs/1605.07725) and *Semi-Supervised Sequence Learning*
-(https://arxiv.org/abs/1511.01432).
+Code for [*Adversarial Training Methods for Semi-Supervised Text Classification*](https://arxiv.org/abs/1605.07725) and [*Semi-Supervised Sequence Learning*](https://arxiv.org/abs/1511.01432).
 
 ## Requirements
 
