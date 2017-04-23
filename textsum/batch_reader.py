@@ -133,7 +133,7 @@ class Batcher(object):
     pad_id = self._vocab.WordToId(data.PAD_TOKEN)
     input_gen = self._TextGenerator(data.ExampleGen(self._data_path))
     while True:
-      (article, abstract) = input_gen.next()
+      (article, abstract) = input_gen.__next__()
       article_sentences = [sent.strip() for sent in
                            data.ToSentences(article, include_token=False)]
       abstract_sentences = [sent.strip() for sent in
@@ -242,7 +242,7 @@ class Batcher(object):
   def _TextGenerator(self, example_gen):
     """Generates article and abstract text from tf.Example."""
     while True:
-      e = example_gen.next()
+      e = example_gen.__next__()
       try:
         article_text = self._GetExFeatureText(e, self._article_key)
         abstract_text = self._GetExFeatureText(e, self._abstract_key)
