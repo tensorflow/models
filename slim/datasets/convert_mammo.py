@@ -28,7 +28,7 @@ import tensorflow as tf
 
 from datasets import dataset_utils
 
-_DATA_DIR = "/mnt/hdd0/mammo-data/mammo/data/images"
+_DATA_DIR = "/mnt/hdd0/mammo-data/mammo-subregions/train"
 
 _NUM_VALIDATION = 0
 
