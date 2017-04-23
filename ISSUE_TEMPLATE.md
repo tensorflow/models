@@ -1,4 +1,6 @@
-Please go to Stack Overflow for help and support: http://stackoverflow.com/questions/tagged/tensorflow
+Please go to Stack Overflow for help and support:
+
+http://stackoverflow.com/questions/tagged/tensorflow
 
 Also, please understand that many of the models included in this repository are experimental and research-style code. If you open a GitHub issue, here is our policy:
 
@@ -20,14 +22,15 @@ Also, please understand that many of the models included in this repository are 
 - **GPU model and memory**:
 - **Exact command to reproduce**:
 
-You can collect some of this information using our environment capture script: https://github.com/tensorflow/tensorflow/tree/master/tools
+You can collect some of this information using our environment capture script:
+
+https://github.com/tensorflow/tensorflow/tree/master/tools/tf_env_collect.sh
 
 You can obtain the TensorFlow version with
 
 python -c "import tensorflow as tf; print(tf.GIT_VERSION, tf.VERSION)"
 
 ### Describe the problem
-
 Describe the problem clearly here. Be sure to convey here why it's a bug in TensorFlow or a feature request.
 
 ### Source code / logs
