@@ -367,6 +367,13 @@ I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPo
 I tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc:202] Started server with target: grpc://localhost:2222
 ```
 
+If you compiled TensorFlow (from v1.1-rc3) with VERBS support and you have the
+required device and IB verbs SW stack, you can specify --protocol='grpc+verbs'
+In order to use Verbs RDMA for Tensor passing between workers and ps.
+Need to add the the --protocol flag in all tasks (ps and workers).
+The default protocol is the TensorFlow default protocol of grpc.
+
+
 [Congratulations!](https://www.youtube.com/watch?v=9bZkp7q19f0) You are now
 training Inception in a distributed manner.
 
