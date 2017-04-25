@@ -65,9 +65,9 @@ curl -o cifar-100-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-100-binar
 <b>How to run:</b>
 
 ```shell
-# cd to your workspace.
-# It contains an empty WORKSPACE file, resnet codes and cifar10 dataset.
-# Note: User can split 5k from train set for eval set.
+# cd to the models repository and run with bash. Expected command output shown.
+# The directory should contain an empty WORKSPACE file, the resnet code, and the cifar10 dataset.
+# Note: The user can split 5k from train set for eval set.
 $ ls -R
 .:
 cifar10  resnet  WORKSPACE
