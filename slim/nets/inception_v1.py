@@ -218,7 +218,7 @@ def inception_v1_base(inputs,
             branch_1 = slim.conv2d(branch_1, 320, [3, 3], scope='Conv2d_0b_3x3')
           with tf.variable_scope('Branch_2'):
             branch_2 = slim.conv2d(net, 32, [1, 1], scope='Conv2d_0a_1x1')
-            branch_2 = slim.conv2d(branch_2, 128, [3, 3], scope='Conv2d_0a_3x3')
+            branch_2 = slim.conv2d(branch_2, 128, [3, 3], scope='Conv2d_0b_3x3')
           with tf.variable_scope('Branch_3'):
             branch_3 = slim.max_pool2d(net, [3, 3], scope='MaxPool_0a_3x3')
             branch_3 = slim.conv2d(branch_3, 128, [1, 1], scope='Conv2d_0b_1x1')
