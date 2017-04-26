@@ -16,7 +16,7 @@ The results described below are based on model trained on multi-gpu and
 multi-machine settings. It has been simplified to run on only one machine
 for open source purpose.
 
-<b>DataSet</b>
+<b>Dataset</b>
 
 We used the Gigaword dataset described in [Rush et al. A Neural Attention Model
 for Sentence Summarization](https://arxiv.org/abs/1509.00685).
