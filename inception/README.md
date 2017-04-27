@@ -756,7 +756,7 @@ batch-splitting the model across multiple GPUs.
     permit training the model with higher learning rates.
 
 *   Often the GPU memory is a bottleneck that prevents employing larger batch
-    sizes. Employing more GPUs allows one to user larger batch sizes because
+    sizes. Employing more GPUs allows one to use larger batch sizes because
     this model splits the batch across the GPUs.
 
 **NOTE** If one wishes to train this model with *asynchronous* gradient updates,
