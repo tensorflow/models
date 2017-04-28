@@ -83,7 +83,7 @@ def _LoadModel(gd_file, ckpt_file):
   with tf.Graph().as_default():
     sys.stderr.write('Recovering graph.\n')
     with tf.gfile.FastGFile(gd_file, 'r') as f:
-      s = f.read()
+      s = f.read().decode()
       gd = tf.GraphDef()
       text_format.Merge(s, gd)
 
@@ -177,7 +177,7 @@ def _SampleModel(prefix_words, vocab):
 
   prefix = [vocab.word_to_id(w) for w in prefix_words.split()]
   prefix_char_ids = [vocab.word_to_char_ids(w) for w in prefix_words.split()]
-  for _ in xrange(FLAGS.num_samples):
+  for _ in range(FLAGS.num_samples):
     inputs = np.zeros([BATCH_SIZE, NUM_TIMESTEPS], np.int32)
     char_ids_inputs = np.zeros(
         [BATCH_SIZE, NUM_TIMESTEPS, vocab.max_word_length], np.int32)
@@ -269,7 +269,7 @@ def _DumpSentenceEmbedding(sentence, vocab):
   inputs = np.zeros([BATCH_SIZE, NUM_TIMESTEPS], np.int32)
   char_ids_inputs = np.zeros(
       [BATCH_SIZE, NUM_TIMESTEPS, vocab.max_word_length], np.int32)
-  for i in xrange(len(word_ids)):
+  for i in range(len(word_ids)):
     inputs[0, 0] = word_ids[i]
     char_ids_inputs[0, 0, :] = char_ids[i]
 
