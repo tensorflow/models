@@ -8,14 +8,14 @@ Open Sourced By: Xin Pan (xpan@google.com, github: panyx0718)
 
 <Introduction>
 
-Machine learning techniques based on neural networks are achieving remarkable 
-results in a wide variety of domains. Often, the training of models requires 
-large, representative datasets, which may be crowdsourced and contain sensitive 
-information. The models should not expose private information in these datasets. 
-Addressing this goal, we develop new algorithmic techniques for learning and a 
-refined analysis of privacy costs within the framework of differential privacy. 
-Our implementation and experiments demonstrate that we can train deep neural 
-networks with non-convex objectives, under a modest privacy budget, and at a 
+Machine learning techniques based on neural networks are achieving remarkable
+results in a wide variety of domains. Often, the training of models requires
+large, representative datasets, which may be crowdsourced and contain sensitive
+information. The models should not expose private information in these datasets.
+Addressing this goal, we develop new algorithmic techniques for learning and a
+refined analysis of privacy costs within the framework of differential privacy.
+Our implementation and experiments demonstrate that we can train deep neural
+networks with non-convex objectives, under a modest privacy budget, and at a
 manageable cost in software complexity, training efficiency, and model quality.
 
 paper: https://arxiv.org/abs/1607.00133
@@ -46,7 +46,7 @@ https://github.com/panyx0718/models/tree/master/slim
 # Download the data to the data/ directory.
 
 # List the codes.
-ls -R differential_privacy/
+$ ls -R differential_privacy/
 differential_privacy/:
 dp_sgd  __init__.py  privacy_accountant  README.md
 
@@ -72,16 +72,16 @@ differential_privacy/privacy_accountant/tf:
 accountant.py  accountant_test.py  BUILD
 
 # List the data.
-ls -R data/
+$ ls -R data/
 
 ./data:
 mnist_test.tfrecord  mnist_train.tfrecord
 
 # Build the codes.
-bazel build -c opt differential_privacy/...
+$ bazel build -c opt differential_privacy/...
 
 # Run the mnist differntial privacy training codes.
-bazel-bin/differential_privacy/dp_sgd/dp_mnist/dp_mnist \
+$ bazel-bin/differential_privacy/dp_sgd/dp_mnist/dp_mnist \
     --training_data_path=data/mnist_train.tfrecord \
     --eval_data_path=data/mnist_test.tfrecord \
     --save_path=/tmp/mnist_dir
@@ -102,6 +102,6 @@ train_accuracy: 0.53
 eval_accuracy: 0.53
 ...
 
-ls /tmp/mnist_dir/
+$ ls /tmp/mnist_dir/
 checkpoint  ckpt  ckpt.meta  results-0.json
 ```
