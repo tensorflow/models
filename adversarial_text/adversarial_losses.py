@@ -173,8 +173,8 @@ def _mask_by_length(t, length):
 
 def _scale_l2(x, norm_length):
   # shape(x) = (batch, num_timesteps, d)
-  x /= (1e-12 + tf.reduce_max(tf.abs(x), 2, keep_dims=True))
-  x_2 = tf.reduce_sum(tf.pow(x, 2), 2, keep_dims=True)
+  x /= (1e-12 + tf.reduce_max(tf.abs(x), (1, 2), keep_dims=True))
+  x_2 = tf.reduce_sum(tf.pow(x, 2), (1, 2), keep_dims=True)
   x /= tf.sqrt(1e-6 + x_2)
 
   return norm_length * x
