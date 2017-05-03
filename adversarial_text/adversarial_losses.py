@@ -83,8 +83,10 @@ def virtual_adversarial_loss(logits, embedded, inputs,
   """
   # Stop gradient of logits. See https://arxiv.org/abs/1507.00677 for details.
   logits = tf.stop_gradient(logits)
+  # Only care about the KL divergence on the final timestep.
   weights = _end_of_seq_mask(inputs.labels)
 
+  # Initialize perturbation with random noise.
   # shape(embedded) = (batch_size, num_timesteps, embedding_dim)
   d = _mask_by_length(tf.random_normal(shape=tf.shape(embedded)), inputs.length)
 
@@ -173,11 +175,15 @@ def _mask_by_length(t, length):
 
 def _scale_l2(x, norm_length):
   # shape(x) = (batch, num_timesteps, d)
-  x /= (1e-12 + tf.reduce_max(tf.abs(x), 2, keep_dims=True))
-  x_2 = tf.reduce_sum(tf.pow(x, 2), 2, keep_dims=True)
-  x /= tf.sqrt(1e-6 + x_2)
 
-  return norm_length * x
+  # Divide x by max(abs(x)) for a numerically stable L2 norm.
+  # 2norm(x) = a * 2norm(x/a)
+  # Scale over the full sequence, dims (1, 2)
+  alpha = tf.reduce_max(tf.abs(x), (1, 2), keep_dims=True) + 1e-12
+  l2_norm = alpha * tf.sqrt(tf.reduce_sum(tf.pow(x / alpha, 2), (1, 2),
+                                          keep_dims=True) + 1e-6)
+  x_unit = x / l2_norm
+  return norm_length * x_unit
 
 
 def _end_of_seq_mask(tokens):
@@ -225,5 +231,8 @@ def _kl_divergence_with_logits(q_logits, p_logits, weights):
   num_labels = tf.reduce_sum(weights)
   num_labels = tf.where(tf.equal(num_labels, 0.), 1., num_labels)
 
-  loss = tf.identity(tf.reduce_sum(weights * kl) / num_labels, name='kl')
+  kl.get_shape().assert_has_rank(2)
+  weights.get_shape().assert_has_rank(1)
+  loss = tf.identity(tf.reduce_sum(tf.expand_dims(weights, -1) * kl) /
+                     num_labels, name='kl')
   return loss
