@@ -32,7 +32,7 @@ from tensorflow.python.training import moving_averages
 HParams = namedtuple('HParams',
                      'batch_size, num_classes, min_lrn_rate, lrn_rate, '
                      'num_residual_units, use_bottleneck, weight_decay_rate, '
-                     'relu_leakiness, optimizer')
+                     'relu_leakiness, optimizer, keep_prob, dropout_identity, dropout_conv ')
 
 
 class ResNet(object):
@@ -212,6 +212,21 @@ class ResNet(object):
       x = self._batch_norm('bn2', x)
       x = self._relu(x, self.hps.relu_leakiness)
       x = self._conv('conv2', x, 3, out_filter, out_filter, [1, 1, 1, 1])
+
+    """Dropout Layer"""
+    if self.hps.dropout_identity:
+        if self.mode == 'train':
+            with tf.variable_scope('Dropout'):
+                orig_x = tf.nn.dropout(orig_x, self.hps.keep_prob)
+        else:
+            orig_x *= self.hps.keep_prob
+
+    if self.hps.dropout_conv:
+        if self.mode == 'train':
+            with tf.variable_scope('Dropout'):
+                x = tf.nn.dropout(x, self.hps.keep_prob)
+        else:
+            x *= self.hps.keep_prob
 
     with tf.variable_scope('sub_add'):
       if in_filter != out_filter:
