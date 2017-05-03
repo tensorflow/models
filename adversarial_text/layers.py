@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-
+import numpy as np
 K = tf.contrib.keras
 
 
@@ -34,8 +34,8 @@ def cl_logits_subgraph(layer_sizes, input_size, num_classes, keep_prob=1.):
       subgraph.add(K.layers.Dense(layer_size, activation='relu'))
 
     if keep_prob < 1.:
-      subgraph.add(K.layers.Dropout(keep_prob))
-  subgraph.add(K.layers.Dense(1 if num_classes == 2 else num_classes))
+      subgraph.add(K.layers.Dropout(1 - keep_prob))
+  subgraph.add(K.layers.Dense(1 if num_classes == 2 else num_classes)) 
   return subgraph
 
 
@@ -76,7 +76,10 @@ class Embedding(K.layers.Layer):
   def call(self, x):
     embedded = tf.nn.embedding_lookup(self.var, x)
     if self.keep_prob < 1.:
-      embedded = tf.nn.dropout(embedded, self.keep_prob)
+      shape = embedded.get_shape().as_list()
+      tf.logging.info("shape:%d,%d,%d", shape[0], shape[1], shape[2])
+      embedded = tf.nn.dropout(embedded, self.keep_prob, noise_shape=(shape[0], 1, shape[2]), seed=np.random.randint(123456))
+      #embedded = tf.nn.dropout(embedded, self.keep_prob)
     return embedded
 
   def _normalize(self, emb):
@@ -207,6 +210,7 @@ def classification_loss(logits, labels, weights):
     Loss scalar of type float.
   """
   inner_dim = logits.get_shape().as_list()[-1]
+  tf.logging.info('inner_dim:%d', inner_dim)
   with tf.name_scope('classifier_loss'):
     # Logistic loss
     if inner_dim == 1:
