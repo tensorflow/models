@@ -20,7 +20,7 @@ set -e
 PS_HOSTS="localhost:4000"
 
 # A comma-separated list of worker processes.
-WORKER_HOSTS="localhost:5000,localhost:5001,localhost:5002"
+WORKER_HOSTS="localhost:5000,localhost:5001,localhost:5002,localhost:5003"
 
 # Where the Swivel training data is located.  All processes must be able to read
 # from this directory, so it ought to be a network filesystem if you're running
@@ -39,14 +39,17 @@ ARGS="--ps_hosts ${PS_HOSTS}
 --output_base_path ${OUTPUT_BASE_PATH}
 --eval_base_path ${EVAL_BASE_PATH}
 --hparams learning_rate=0.1,optimizer=rmsprop,confidence_scale=1.0,confidence_base=0.0"
-  
+
+# This configuration is for a two-GPU machine.  It starts four worker
+# processes, two for each GPU.
 python swivel.py --job_name ps --task_index 0 ${ARGS} >& /tmp/ps.0 &
-python swivel.py --job_name worker --task_index 0 ${ARGS} >& /tmp/worker.0 &
-python swivel.py --job_name worker --task_index 1 ${ARGS} >& /tmp/worker.1 &
-python swivel.py --job_name worker --task_index 2 ${ARGS} >& /tmp/worker.2 &
+python swivel.py --job_name worker --task_index 0 --gpu_device 0 ${ARGS} >& /tmp/worker.0 &
+python swivel.py --job_name worker --task_index 1 --gpu_device 1 ${ARGS} >& /tmp/worker.1 &
+python swivel.py --job_name worker --task_index 2 --gpu_device 0 ${ARGS} >& /tmp/worker.2 &
+python swivel.py --job_name worker --task_index 3 --gpu_device 1 ${ARGS} >& /tmp/worker.3 &
 
 # Perhaps there is a more clever way to clean up the parameter server once all
 # the workers are done.
-wait %2 %3 %4
+wait %2 %3 %4 %5
 kill %1
 

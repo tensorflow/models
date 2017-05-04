@@ -87,6 +87,8 @@ flags.DEFINE_string(
     'job_name', '', 'The job this process will run, either "ps" or "worker"')
 flags.DEFINE_integer(
     'task_index', 0, 'The task index for this process')
+flags.DEFINE_integer(
+    'gpu_device', 0, 'The GPU device to use.')
 
 FLAGS = flags.FLAGS
 
@@ -397,7 +399,9 @@ def main(_):
       # the same machine as a worker.
       config = tf.ConfigProto(device_count={'GPU': 0})
     elif FLAGS.job_name == 'worker':
-      config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+      config = tf.ConfigProto(gpu_options=tf.GPUOptions(
+          visible_device_list='%d' % FLAGS.gpu_device,
+          allow_growth=True))
     else:
       raise ValueError('unknown job name "%s"' % FLAGS.job_name)
 
