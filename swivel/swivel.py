@@ -55,7 +55,6 @@ from __future__ import print_function
 import glob
 import math
 import os
-import sys
 import time
 import threading
 
@@ -83,6 +82,7 @@ flags.DEFINE_float('confidence_exponent', 0.5,
 flags.DEFINE_float('confidence_scale', 0.25, 'Scale for l2 confidence function')
 flags.DEFINE_float('confidence_base', 0.1, 'Base for l2 confidence function')
 flags.DEFINE_float('learning_rate', 1.0, 'Initial learning rate')
+flags.DEFINE_string('optimizer', 'Adagrad', 'SGD optimizer (tf.train.*Optimizer)')
 flags.DEFINE_integer('num_concurrent_steps', 2,
                      'Number of threads to train with')
 flags.DEFINE_integer('num_readers', 4,
@@ -92,6 +92,8 @@ flags.DEFINE_float('per_process_gpu_memory_fraction', 0,
                    'Fraction of GPU memory to use, 0 means allow_growth')
 flags.DEFINE_integer('num_gpus', 0,
                      'Number of GPUs to use, 0 means all available')
+flags.DEFINE_string('logs', '',
+                    'Path for TensorBoard logs (empty value disables them)')
 
 FLAGS = flags.FLAGS
 
@@ -246,64 +248,65 @@ class SwivelModel(object):
       l2_losses = []
       sigmoid_losses = []
       self.global_step = tf.Variable(0, name='global_step')
-      opt = tf.train.AdagradOptimizer(config.learning_rate)
+      learning_rate = tf.Variable(config.learning_rate, name='learning_rate')
+      opt = getattr(tf.train, FLAGS.optimizer + 'Optimizer')(learning_rate)
+      tf.summary.scalar('learning_rate', learning_rate)
 
       all_grads = []
 
     devices = ['/gpu:%d' % i for i in range(FLAGS.num_gpus)] \
         if FLAGS.num_gpus > 0 else get_available_gpus()
     self.devices_number = len(devices)
-    with tf.variable_scope(tf.get_variable_scope()):
-      for dev in devices:
-        with tf.device(dev):
-          with tf.name_scope(dev[1:].replace(':', '_')):
-            # ===== CREATE GRAPH =====
-            # Fetch embeddings.
-            selected_row_embedding = tf.nn.embedding_lookup(
-                self.row_embedding, global_row)
-            selected_col_embedding = tf.nn.embedding_lookup(
-                self.col_embedding, global_col)
+    for dev in devices:
+      with tf.device(dev):
+        with tf.name_scope(dev[1:].replace(':', '_')):
+          # ===== CREATE GRAPH =====
+          # Fetch embeddings.
+          selected_row_embedding = tf.nn.embedding_lookup(
+              self.row_embedding, global_row)
+          selected_col_embedding = tf.nn.embedding_lookup(
+              self.col_embedding, global_col)
 
-            # Fetch biases.
-            selected_row_bias = tf.nn.embedding_lookup(
-                [self.row_bias], global_row)
-            selected_col_bias = tf.nn.embedding_lookup(
-                [self.col_bias], global_col)
+          # Fetch biases.
+          selected_row_bias = tf.nn.embedding_lookup(
+              [self.row_bias], global_row)
+          selected_col_bias = tf.nn.embedding_lookup(
+              [self.col_bias], global_col)
 
-            # Multiply the row and column embeddings to generate predictions.
-            predictions = tf.matmul(
-                selected_row_embedding, selected_col_embedding,
-                transpose_b=True)
+          # Multiply the row and column embeddings to generate predictions.
+          predictions = tf.matmul(
+              selected_row_embedding, selected_col_embedding,
+              transpose_b=True)
 
-            # These binary masks separate zero from non-zero values.
-            count_is_nonzero = tf.to_float(tf.cast(count, tf.bool))
-            count_is_zero = 1 - count_is_nonzero
+          # These binary masks separate zero from non-zero values.
+          count_is_nonzero = tf.to_float(tf.cast(count, tf.bool))
+          count_is_zero = 1 - count_is_nonzero
 
-            objectives = count_is_nonzero * tf.log(count + 1e-30)
-            objectives -= tf.reshape(
-                selected_row_bias, [config.submatrix_rows, 1])
-            objectives -= selected_col_bias
-            objectives += matrix_log_sum
+          objectives = count_is_nonzero * tf.log(count + 1e-30)
+          objectives -= tf.reshape(
+              selected_row_bias, [config.submatrix_rows, 1])
+          objectives -= selected_col_bias
+          objectives += matrix_log_sum
 
-            err = predictions - objectives
+          err = predictions - objectives
 
-            # The confidence function scales the L2 loss based on the raw
-            # co-occurrence count.
-            l2_confidence = (config.confidence_base +
-                             config.confidence_scale * tf.pow(
-                                 count, config.confidence_exponent))
+          # The confidence function scales the L2 loss based on the raw
+          # co-occurrence count.
+          l2_confidence = (
+              config.confidence_base + config.confidence_scale * tf.pow(
+                  count, config.confidence_exponent))
 
-            l2_loss = config.loss_multiplier * tf.reduce_sum(
-                0.5 * l2_confidence * err * err * count_is_nonzero)
-            l2_losses.append(tf.expand_dims(l2_loss, 0))
+          l2_loss = config.loss_multiplier * tf.reduce_sum(
+              0.5 * l2_confidence * err * err * count_is_nonzero)
+          l2_losses.append(tf.expand_dims(l2_loss, 0))
 
-            sigmoid_loss = config.loss_multiplier * tf.reduce_sum(
-                tf.nn.softplus(err) * count_is_zero)
-            sigmoid_losses.append(tf.expand_dims(sigmoid_loss, 0))
+          sigmoid_loss = config.loss_multiplier * tf.reduce_sum(
+              tf.nn.softplus(err) * count_is_zero)
+          sigmoid_losses.append(tf.expand_dims(sigmoid_loss, 0))
 
-            loss = l2_loss + sigmoid_loss
-            grads = opt.compute_gradients(loss)
-            all_grads.append(grads)
+          loss = l2_loss + sigmoid_loss
+          grads = opt.compute_gradients(loss)
+          all_grads.append(grads)
 
     with tf.device('/cpu:0'):
       # ===== MERGE LOSSES =====
@@ -311,12 +314,13 @@ class SwivelModel(object):
                                name="l2_loss")
       sigmoid_loss = tf.reduce_mean(tf.concat(axis=0, values=sigmoid_losses), 0,
                                     name="sigmoid_loss")
-      self.loss = l2_loss + sigmoid_loss
-      average = tf.train.ExponentialMovingAverage(0.8, self.global_step)
-      loss_average_op = average.apply((self.loss,))
-      tf.summary.scalar("l2_loss", l2_loss)
-      tf.summary.scalar("sigmoid_loss", sigmoid_loss)
-      tf.summary.scalar("loss", self.loss)
+      overall_loss = l2_loss + sigmoid_loss
+      average = tf.train.ExponentialMovingAverage(0.999)
+      loss_average_op = average.apply((overall_loss, l2_loss, sigmoid_loss))
+      self.loss = average.average(overall_loss)
+      tf.summary.scalar("overall_loss", self.loss)
+      tf.summary.scalar("l2_loss", average.average(l2_loss))
+      tf.summary.scalar("sigmoid_loss", average.average(sigmoid_loss))
 
       # Apply the gradients to adjust the shared variables.
       apply_gradient_ops = []
@@ -327,34 +331,64 @@ class SwivelModel(object):
       self.train_op = tf.group(loss_average_op, *apply_gradient_ops)
       self.saver = tf.train.Saver(sharded=True)
 
+  def initialize_summary(self, sess):
+    log('creating TensorBoard stuff...')
+    self.summary = tf.summary.merge_all()
+    self.writer = tf.summary.FileWriter(FLAGS.logs, sess.graph)
+    projector_config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
+    embedding_config = projector_config.embeddings.add()
+    length = min(10000, self.n_rows, self.n_cols)
+    self.embedding10k = tf.Variable(
+        tf.zeros((length, self._config.embedding_size)),
+        name='top10k_embedding')
+    self.embedding10k.assign(
+        (self.row_embedding[:length] + self.col_embedding[:length]) / 2)
+    embedding_config.tensor_name = self.embedding10k.name
+    tf.contrib.tensorboard.plugins.projector.visualize_embeddings(
+        self.writer, projector_config)
+    self.saver = tf.train.Saver((self.embedding10k,), max_to_keep=1)
+
+  def write_summary(self, sess):
+      log("writing the summary...")
+      summary, _, global_step = sess.run(
+          (self.summary, self.embedding10k, self.global_step))
+      self.writer.add_summary(summary, global_step)
+      self.saver.save(
+          sess, os.path.join(FLAGS.logs, 'embeddings10k.checkpoint'),
+          global_step)
+
 
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
   start_time = time.time()
 
-  # Create the output path.  If this fails, it really ought to fail
-  # now. :)
+  # Create the output path.  If this fails, it really ought to fail now. :)
   if not os.path.isdir(FLAGS.output_base_path):
     os.makedirs(FLAGS.output_base_path)
 
   # Create and run model
   with tf.Graph().as_default():
+    log('creating the model...')
     model = SwivelModel(FLAGS)
 
     # Create a session for running Ops on the Graph.
     gpu_opts = {}
     if FLAGS.per_process_gpu_memory_fraction > 0:
-        gpu_opts["per_process_gpu_memory_fraction"] = \
+        gpu_opts['per_process_gpu_memory_fraction'] = \
             FLAGS.per_process_gpu_memory_fraction
     else:
-        gpu_opts["allow_growth"] = True
+        gpu_opts['allow_growth'] = True
     gpu_options = tf.GPUOptions(**gpu_opts)
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+    if FLAGS.logs:
+      model.initialize_summary(sess)
 
     # Run the Op to initialize the variables.
+    log('initializing the variables...')
     sess.run(tf.global_variables_initializer())
 
     # Start feeding input
+    log('starting the input threads...')
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
@@ -366,10 +400,11 @@ def main(_):
     n_submatrices_to_train = model.n_submatrices * FLAGS.num_epochs
     t0 = [time.time()]
     n_steps_between_status_updates = 100
-    status_i = [0]
+    n_steps_between_summary_updates = 10000
+    status_i = [0, 0]
     status_lock = threading.Lock()
-    msg = ('%%%dd/%%d submatrices trained (%%.1f%%%%), %%5.1f submatrices/sec |'
-           ' loss %%f') % len(str(n_submatrices_to_train))
+    msg = ('%%%dd/%%d submatrices trained (%%.1f%%%%), %%5.1f submatrices/sec '
+           '| loss %%f') % len(str(n_submatrices_to_train))
 
     def TrainingFn():
       for _ in range(int(n_steps_per_thread)):
@@ -377,17 +412,24 @@ def main(_):
             model.train_op, model.global_step, model.loss))
 
         show_status = False
+        update_summary = False
         with status_lock:
           new_i = global_step // n_steps_between_status_updates
           if new_i > status_i[0]:
             status_i[0] = new_i
             show_status = True
+          new_i = global_step // n_steps_between_summary_updates
+          if new_i > status_i[1]:
+            status_i[1] = new_i
+            update_summary = True
         if show_status:
           elapsed = float(time.time() - t0[0])
           log(msg, global_step, n_submatrices_to_train,
               100.0 * global_step / n_submatrices_to_train,
               n_steps_between_status_updates / elapsed, loss)
           t0[0] = time.time()
+        if update_summary and FLAGS.logs:
+          model.write_summary(sess)
 
     # Start training threads
     train_threads = []
