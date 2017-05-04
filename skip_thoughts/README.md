@@ -285,7 +285,7 @@ bazel-bin/skip_thoughts/vocabulary_expansion \
 
 The model can be evaluated using the benchmark tasks described in the
 [Skip-Thought Vectors](https://papers.nips.cc/paper/5950-skip-thought-vectors.pdf)
-paper. The following tasks are suported (refer to the paper for full details):
+paper. The following tasks are supported (refer to the paper for full details):
 
  * **SICK** semantic relatedness task.
  * **MSRP** (Microsoft Research Paraphrase Corpus) paraphrase detection task.
