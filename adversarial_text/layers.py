@@ -81,11 +81,10 @@ class Embedding(K.layers.Layer):
 
   def _normalize(self, emb):
     weights = self.vocab_freqs / tf.reduce_sum(self.vocab_freqs)
-
-    emb -= tf.reduce_sum(weights * emb, 0, keep_dims=True)
-    emb /= tf.sqrt(1e-6 + tf.reduce_sum(
-        weights * tf.pow(emb, 2.), 0, keep_dims=True))
-    return emb
+    mean = tf.reduce_sum(weights * emb, 0, keep_dims=True)
+    var = tf.reduce_sum(weights * tf.pow(emb - mean, 2.), 0, keep_dims=True)
+    stddev = tf.sqrt(1e-6 + var)
+    return (emb - mean) / stddev
 
 
 class LSTM(object):
@@ -201,7 +200,7 @@ def classification_loss(logits, labels, weights):
     logits: 2-D [timesteps*batch_size, m] float tensor, where m=1 if
       num_classes=2, otherwise m=num_classes.
     labels: 1-D [timesteps*batch_size] integer tensor.
-    weights: 2-D [timesteps*batch_size] float tensor.
+    weights: 1-D [timesteps*batch_size] float tensor.
 
   Returns:
     Loss scalar of type float.
