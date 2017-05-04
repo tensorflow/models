@@ -60,16 +60,16 @@ import math
 import os
 import struct
 import sys
-
+import codecs
 import tensorflow as tf
 
 flags = tf.app.flags
 
-flags.DEFINE_string('input', '', 'The input text.')
-flags.DEFINE_string('output_dir', '/tmp/swivel_data',
+flags.DEFINE_string('input', 'data/processed/Corps.txt', 'The input text.')
+flags.DEFINE_string('output_dir', 'data/swivel_data',
                     'Output directory for Swivel data')
-flags.DEFINE_integer('shard_size', 4096, 'The size for each shard')
-flags.DEFINE_integer('min_count', 5,
+flags.DEFINE_integer('shard_size', 2048, 'The size for each shard')
+flags.DEFINE_integer('min_count', 20,
                      'The minimum number of times a word should occur to be '
                      'included in the vocabulary')
 flags.DEFINE_integer('max_vocab', 4096 * 64, 'The maximum vocabulary size')
@@ -126,8 +126,8 @@ def create_vocabulary(lines):
 
 def write_vocab_and_sums(vocab, sums, vocab_filename, sums_filename):
   """Writes vocabulary and marginal sum files."""
-  with open(os.path.join(FLAGS.output_dir, vocab_filename), 'w') as vocab_out:
-    with open(os.path.join(FLAGS.output_dir, sums_filename), 'w') as sums_out:
+  with codecs.open(os.path.join(FLAGS.output_dir, vocab_filename), 'w','utf-8') as vocab_out:
+    with codecs.open(os.path.join(FLAGS.output_dir, sums_filename), 'w','utf-8') as sums_out:
       for tok, cnt in itertools.izip(vocab, sums):
         print >> vocab_out, tok
         print >> sums_out, cnt
@@ -149,13 +149,12 @@ def compute_coocs(lines, vocab):
   num_shards = len(vocab) / FLAGS.shard_size
 
   shardfiles = {}
+
   for row in range(num_shards):
     for col in range(num_shards):
       filename = os.path.join(
           FLAGS.output_dir, 'shard-%03d-%03d.tmp' % (row, col))
-
-      shardfiles[(row, col)] = open(filename, 'w+')
-
+      shardfiles[(row, col)]=filename
   def flush_coocs():
     for (row_id, col_id), cnt in coocs.iteritems():
       row_shard = row_id % num_shards
@@ -164,10 +163,12 @@ def compute_coocs(lines, vocab):
       col_off = col_id / num_shards
 
       # Since we only stored (a, b), we emit both (a, b) and (b, a).
-      shardfiles[(row_shard, col_shard)].write(
-          shard_cooc_fmt.pack(row_off, col_off, cnt))
+      with codecs.open(shardfiles[(row_shard, col_shard)],'w+') as f:
+        f.write(
+        shard_cooc_fmt.pack(row_off, col_off, cnt))
 
-      shardfiles[(col_shard, row_shard)].write(
+      with codecs.open(shardfiles[(col_shard, row_shard)],'w+') as f:
+        f.write(
           shard_cooc_fmt.pack(col_off, row_off, cnt))
 
   coocs = {}
@@ -223,15 +224,16 @@ def write_shards(vocab, shardfiles):
   num_shards = len(vocab) / FLAGS.shard_size
 
   ix = 0
-  for (row, col), fh in shardfiles.iteritems():
+  for (row, col), f in shardfiles.iteritems():
     ix += 1
     sys.stdout.write('\rwriting shard %d/%d' % (ix, len(shardfiles)))
     sys.stdout.flush()
 
     # Read the entire binary co-occurrence and unpack it into an array.
+    fh = codecs.open(f,'w+')
     fh.seek(0)
     buf = fh.read()
-    os.unlink(fh.name)
+    os.unlink(f)
     fh.close()
 
     coocs = [
@@ -279,7 +281,7 @@ def write_shards(vocab, shardfiles):
     }))
 
     filename = os.path.join(FLAGS.output_dir, 'shard-%03d-%03d.pb' % (row, col))
-    with open(filename, 'w') as out:
+    with codecs.open(filename, 'w') as out:
       out.write(example.SerializeToString())
 
   sys.stdout.write('\n')
@@ -292,14 +294,14 @@ def main(_):
 
   # Read the file onces to create the vocabulary.
   if FLAGS.vocab:
-    with open(FLAGS.vocab, 'r') as lines:
+    with codecs.open(FLAGS.vocab, 'r','utf-8') as lines:
       vocab = [line.strip() for line in lines]
   else:
-    with open(FLAGS.input, 'r') as lines:
+    with codecs.open(FLAGS.input, 'r','utf-8') as lines:
       vocab = create_vocabulary(lines)
 
   # Now read the file again to determine the co-occurrence stats.
-  with open(FLAGS.input, 'r') as lines:
+  with codecs.open(FLAGS.input, 'r') as lines:
     shardfiles, sums = compute_coocs(lines, vocab)
 
   # Collect individual shards into the shards.recs file.
