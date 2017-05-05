@@ -177,11 +177,5 @@ mixed case and evaluate them using lower case, things won't work well.
 # Contact
 
 If you have any questions about Swivel, feel free to post to
-[swivel-embeddings@googlegroups.com](https://groups.google.com/forum/#!forum/swivel-embeddings)
-or contact us directly:
-
-* Noam Shazeer (`noam@google.com`)
-* Ryan Doherty (`portalfire@google.com`)
-* Colin Evans (`colinhevans@google.com`)
-* Chris Waterson (`waterson@google.com`)
+[swivel-embeddings@googlegroups.com](https://groups.google.com/forum/#!forum/swivel-embeddings).
 
