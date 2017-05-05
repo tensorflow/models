@@ -37,8 +37,7 @@ ARGS="--ps_hosts ${PS_HOSTS}
 --worker_hosts ${WORKER_HOSTS}
 --input_base_path ${INPUT_BASE_PATH}
 --output_base_path ${OUTPUT_BASE_PATH}
---eval_base_path ${EVAL_BASE_PATH}
---hparams learning_rate=0.1,optimizer=rmsprop,confidence_scale=1.0,confidence_base=0.0"
+--eval_base_path ${EVAL_BASE_PATH}"
 
 # This configuration is for a two-GPU machine.  It starts four worker
 # processes, two for each GPU.

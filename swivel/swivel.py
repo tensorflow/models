@@ -77,6 +77,27 @@ flags.DEFINE_string('eval_base_path', '', 'Path to evaluation data')
 flags.DEFINE_float('num_epochs', 40, 'Number epochs to train')
 flags.DEFINE_string('hparams', '', 'Model hyper-parameters')
 
+# Model hyper-parameters. (Move these to tf.HParams once that gets integrated
+# into TF from tf.contrib.)
+flags.DEFINE_integer(
+    'dim', 300, 'Embedding dimensionality')
+flags.DEFINE_string(
+    'optimizer', 'rmsprop', 'SGD optimizer; either "adagrad" or "rmsprop"')
+flags.DEFINE_float(
+    'learning_rate', 0.1, 'Optimizer learning rate')
+flags.DEFINE_float(
+    'momentum', 0.1, 'Optimizer momentum; used with RMSProp')
+flags.DEFINE_float(
+    'confidence_base', 0.0, 'Base for count weighting')
+flags.DEFINE_float(
+    'confidence_scale', 1.0, 'Scale for count weighting')
+flags.DEFINE_float(
+    'confidence_exponent', 0.5, 'Exponent for count weighting')
+flags.DEFINE_integer(
+    'submatrix_rows', 4096, 'Number of rows in each submatrix')
+flags.DEFINE_integer(
+    'submatrix_cols', 4096, 'Number of cols in each submatrix')
+
 # For distributed training.
 flags.DEFINE_string(
     'ps_hosts', '',
@@ -95,26 +116,6 @@ FLAGS = flags.FLAGS
 
 class Model(object):
   """A Swivel model."""
-
-  @classmethod
-  def default_hparams(cls):
-    return tf.contrib.training.HParams(
-        # Embedding dimensionality
-        dim=300,
-
-        optimizer='rmsprop',  # rmsprop or adagrad
-        learning_rate=0.1,
-        momentum=0.1,
-
-        # Weighting to use for the L2 loss: base + scale * (x_ij ** exponent)
-        confidence_base=0.0,
-        confidence_scale=1.0,
-        confidence_exponent=0.5,
-
-        # Number of rows and columns in each submatrix.
-        submatrix_rows=4096,
-        submatrix_cols=4096,
-    )
 
   def __init__(self, input_base_path, hparams):
     """Creates a new Swivel model."""
@@ -423,10 +424,9 @@ def main(_):
     device_setter = tf.train.replica_device_setter(0)
 
   # Build the graph.
-  hparams = Model.default_hparams().parse(FLAGS.hparams)
   with tf.Graph().as_default():
     with tf.device(device_setter):
-      model = Model(FLAGS.input_base_path, hparams)
+      model = Model(FLAGS.input_base_path, FLAGS)
 
       # If an eval path is present, then create eval operators and set up scalar
       # summaries to report on the results.  Run the evals on the CPU since
