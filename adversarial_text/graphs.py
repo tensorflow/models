@@ -303,6 +303,7 @@ class VatxtModel(object):
     def adversarial_loss():
       return adv_lib.adversarial_loss(self.tensors['cl_embedded'],
                                       self.tensors['cl_loss'],
+                                      self.cl_inputs.length,
                                       self.cl_loss_from_embedding)
 
     def virtual_adversarial_loss():
@@ -538,6 +539,7 @@ class VatxtBidirModel(VatxtModel):
     def adversarial_loss():
       return adv_lib.adversarial_loss_bidir(self.tensors['cl_embedded'],
                                             self.tensors['cl_loss'],
+                                            self.cl_inputs[0].length,
                                             self.cl_loss_from_embedding)
 
     def virtual_adversarial_loss():
@@ -610,7 +612,8 @@ def _inputs(dataset='train', pretrain=False, bidir=False):
       state_size=FLAGS.rnn_cell_size,
       num_layers=FLAGS.rnn_num_layers,
       batch_size=FLAGS.batch_size,
-      unroll_steps=FLAGS.num_timesteps)
+      unroll_steps=FLAGS.num_timesteps,
+      eos_id=FLAGS.vocab_size-1)
 
 
 def _get_vocab_freqs():

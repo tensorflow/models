@@ -215,13 +215,16 @@ def build_lm_sequence(seq):
 
   Returns:
     SequenceWrapper with `seq` tokens copied over to output sequence tokens and
-    labels (offset by 1, i.e. predict next token) with weights set to 1.0.
+    labels (offset by 1, i.e. predict next token) with weights set to 1.0, except for <eos> token.
   """
   lm_seq = SequenceWrapper()
-  for i, timestep in enumerate(seq[:-1]):
-    lm_seq.add_timestep().set_token(timestep.token).set_label(
+  for i, timestep in enumerate(seq):
+    if i == len(seq) - 1:
+      lm_seq.add_timestep().set_token(timestep.token).set_label(
+        seq[i].token).set_weight(0.0)
+    else:
+      lm_seq.add_timestep().set_token(timestep.token).set_label(
         seq[i + 1].token).set_weight(1.0)
-
   return lm_seq
 
 
