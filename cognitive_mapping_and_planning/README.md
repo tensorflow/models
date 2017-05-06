@@ -106,7 +106,7 @@ citing the following paper:
 
 ### Train Your Own Models
 All models were trained asynchronously with 16 workers each worker using data
-from a single floor. The default hyper-parameters coorespond to this setting.
+from a single floor. The default hyper-parameters correspond to this setting.
 See [distributed training with
 Tensorflow](https://www.tensorflow.org/deploy/distributed) for setting up
 distributed training. Training with a single worker is possible with the current

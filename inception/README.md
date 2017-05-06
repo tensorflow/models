@@ -260,7 +260,7 @@ Note that in this example each replica has a single tower that uses one GPU.
 The command-line flags `worker_hosts` and `ps_hosts` specify available servers.
 The same binary will be used for both the `worker` jobs and the `ps` jobs.
 Command line flag `job_name` will be used to specify what role a task will be
-playing and `task_id` will be used to idenify which one of the jobs it is
+playing and `task_id` will be used to identify which one of the jobs it is
 running. Several things to note here:
 
 *   The numbers of `ps` and `worker` tasks are inferred from the lists of hosts
