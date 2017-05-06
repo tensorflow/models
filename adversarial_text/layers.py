@@ -35,6 +35,7 @@ def cl_logits_subgraph(layer_sizes, input_size, num_classes, keep_prob=1.):
 
     if keep_prob < 1.:
       subgraph.add(K.layers.Dropout(1 - keep_prob))
+  #subgraph.add(K.layers.Dense(1 if num_classes == 2 else num_classes, kernel_initializer='zeros')) 
   subgraph.add(K.layers.Dense(1 if num_classes == 2 else num_classes)) 
   return subgraph
 
@@ -78,8 +79,7 @@ class Embedding(K.layers.Layer):
     if self.keep_prob < 1.:
       shape = embedded.get_shape().as_list()
       tf.logging.info("shape:%d,%d,%d", shape[0], shape[1], shape[2])
-      embedded = tf.nn.dropout(embedded, self.keep_prob, noise_shape=(shape[0], 1, shape[2]), seed=np.random.randint(123456))
-      #embedded = tf.nn.dropout(embedded, self.keep_prob)
+      embedded = tf.nn.dropout(embedded, self.keep_prob, noise_shape=(shape[0], 1, shape[2]))
     return embedded
 
   def _normalize(self, emb):
