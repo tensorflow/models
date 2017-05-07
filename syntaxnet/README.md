@@ -116,6 +116,7 @@ Now you can install the SyntaxNet and DRAGNN Python modules with the following c
 To build SyntaxNet with GPU support please refer to the instructions in
 [issues/248](https://github.com/tensorflow/models/issues/248).
 
+Alternatively, checkout, build and install [tensorflow](https://github.com/tensorflow/tensorflow.git) with gpu support separately. Use the same git-tag as models/syntaxnet/tensorflow to ensure api compatibility. 
 
 
 **Note:** If you are running Docker on OSX, make sure that you have enough
