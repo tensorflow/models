@@ -201,7 +201,7 @@ def main(_):
                              optimizer='mom',
                              keep_prob=0.9,
                              dropout_identity=False,
-                             dropout_conv=True
+                             dropout_conv=False
                              )
 
   with tf.device(dev):

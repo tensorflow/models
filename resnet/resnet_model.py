@@ -149,7 +149,8 @@ class ResNet(object):
   def _batch_norm(self, name, x):
     """Batch normalization."""
     with tf.variable_scope(name):
-      params_shape = [x.get_shape()[-1]]
+      #params_shape = [x.get_shape()[-1]]
+      params_shape = x.get_shape()[1:]
 
       beta = tf.get_variable(
           'beta', params_shape, tf.float32,
@@ -159,7 +160,7 @@ class ResNet(object):
           initializer=tf.constant_initializer(1.0, tf.float32))
 
       if self.mode == 'train':
-        mean, variance = tf.nn.moments(x, [0, 1, 2], name='moments')
+        mean, variance = tf.nn.moments(x, [0], name='moments')
 
         moving_mean = tf.get_variable(
             'moving_mean', params_shape, tf.float32,
