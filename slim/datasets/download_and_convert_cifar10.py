@@ -72,7 +72,7 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
   Returns:
     The new offset.
   """
-  with tf.gfile.Open(filename, 'r') as f:
+  with open(filename, 'r') as f:
     data = cPickle.load(f)
 
   images = data['data']
