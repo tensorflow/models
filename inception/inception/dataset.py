@@ -45,7 +45,7 @@ class Dataset(object):
 
   def __init__(self, name, subset):
     """Initialize dataset using a subset and the path to the data."""
-    assert subset in self.available_subsets(), self.available_subsets()
+    assert subset in self.available_subsets()
     self.name = name
     self.subset = subset
 
@@ -53,16 +53,11 @@ class Dataset(object):
   def num_classes(self):
     """Returns the number of classes in the data set."""
     pass
-    # return 10
 
   @abstractmethod
   def num_examples_per_epoch(self):
     """Returns the number of examples in the data subset."""
     pass
-    # if self.subset == 'train':
-    #   return 10000
-    # if self.subset == 'validation':
-    #   return 1000
 
   @abstractmethod
   def download_message(self):
