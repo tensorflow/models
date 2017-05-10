@@ -138,59 +138,65 @@ class ResNet(object):
     elif self.hps.optimizer == 'mom':
       optimizer = tf.train.MomentumOptimizer(self.lrn_rate, 0.9)
 
-    apply_op = optimizer.apply_gradients(
+    extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(extra_update_ops):
+        self.train_op = optimizer.apply_gradients(
         zip(grads, trainable_variables),
         global_step=self.global_step, name='train_step')
 
-    train_ops = [apply_op] + self._extra_train_ops
-    self.train_op = tf.group(*train_ops)
+    #train_ops = [apply_op] + self._extra_train_ops
+    #self.train_op = tf.group(*train_ops)
 
   # TODO(xpan): Consider batch_norm in contrib/layers/python/layers/layers.py
+  # ultrons: Replaced with tf.layers.batch_normalization
   def _batch_norm(self, name, x):
-    """Batch normalization."""
-    with tf.variable_scope(name):
-      #params_shape = [x.get_shape()[-1]]
-      params_shape = x.get_shape()[1:]
+#    """Batch normalization."""
+#    with tf.variable_scope(name):
+#      #params_shape = [x.get_shape()[-1]]
+#      params_shape = x.get_shape()[1:]
+#
+#      beta = tf.get_variable(
+#          'beta', params_shape, tf.float32,
+#          initializer=tf.constant_initializer(0.0, tf.float32))
+#      gamma = tf.get_variable(
+#          'gamma', params_shape, tf.float32,
+#          initializer=tf.constant_initializer(1.0, tf.float32))
+#
+#      if self.mode == 'train':
+#        mean, variance = tf.nn.moments(x, [0], name='moments')
+#
+#        moving_mean = tf.get_variable(
+#            'moving_mean', params_shape, tf.float32,
+#            initializer=tf.constant_initializer(0.0, tf.float32),
+#            trainable=False)
+#        moving_variance = tf.get_variable(
+#            'moving_variance', params_shape, tf.float32,
+#            initializer=tf.constant_initializer(1.0, tf.float32),
+#            trainable=False)
+#
+#        self._extra_train_ops.append(moving_averages.assign_moving_average(
+#            moving_mean, mean, 0.9))
+#        self._extra_train_ops.append(moving_averages.assign_moving_average(
+#            moving_variance, variance, 0.9))
+#      else:
+#        mean = tf.get_variable(
+#            'moving_mean', params_shape, tf.float32,
+#            initializer=tf.constant_initializer(0.0, tf.float32),
+#            trainable=False)
+#        variance = tf.get_variable(
+#            'moving_variance', params_shape, tf.float32,
+#            initializer=tf.constant_initializer(1.0, tf.float32),
+#            trainable=False)
+#        tf.summary.histogram(mean.op.name, mean)
+#        tf.summary.histogram(variance.op.name, variance)
+#      # elipson used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
+#      y = tf.nn.batch_normalization(
+#          x, mean, variance, beta, gamma, 0.001)
+#      y.set_shape(x.get_shape())
+#      return y
+       return tf.layers.batch_normalization(x,training=tf.constant(self.mode ==
+           'train'), name = name)
 
-      beta = tf.get_variable(
-          'beta', params_shape, tf.float32,
-          initializer=tf.constant_initializer(0.0, tf.float32))
-      gamma = tf.get_variable(
-          'gamma', params_shape, tf.float32,
-          initializer=tf.constant_initializer(1.0, tf.float32))
-
-      if self.mode == 'train':
-        mean, variance = tf.nn.moments(x, [0], name='moments')
-
-        moving_mean = tf.get_variable(
-            'moving_mean', params_shape, tf.float32,
-            initializer=tf.constant_initializer(0.0, tf.float32),
-            trainable=False)
-        moving_variance = tf.get_variable(
-            'moving_variance', params_shape, tf.float32,
-            initializer=tf.constant_initializer(1.0, tf.float32),
-            trainable=False)
-
-        self._extra_train_ops.append(moving_averages.assign_moving_average(
-            moving_mean, mean, 0.9))
-        self._extra_train_ops.append(moving_averages.assign_moving_average(
-            moving_variance, variance, 0.9))
-      else:
-        mean = tf.get_variable(
-            'moving_mean', params_shape, tf.float32,
-            initializer=tf.constant_initializer(0.0, tf.float32),
-            trainable=False)
-        variance = tf.get_variable(
-            'moving_variance', params_shape, tf.float32,
-            initializer=tf.constant_initializer(1.0, tf.float32),
-            trainable=False)
-        tf.summary.histogram(mean.op.name, mean)
-        tf.summary.histogram(variance.op.name, variance)
-      # elipson used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
-      y = tf.nn.batch_normalization(
-          x, mean, variance, beta, gamma, 0.001)
-      y.set_shape(x.get_shape())
-      return y
 
   def _residual(self, x, in_filter, out_filter, stride,
                 activate_before_residual=False):
