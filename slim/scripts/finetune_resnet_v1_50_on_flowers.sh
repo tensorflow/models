@@ -8,6 +8,7 @@
 # Usage:
 # cd slim
 # ./slim/scripts/finetune_resnet_v1_50_on_flowers.sh
+set -e
 
 # Where the pre-trained ResNetV1-50 checkpoint is saved to.
 PRETRAINED_CHECKPOINT_DIR=/tmp/checkpoints
