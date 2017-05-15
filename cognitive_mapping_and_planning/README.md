@@ -94,7 +94,7 @@ citing the following paper:
     ```
 
 ### Requirements: data
-1.  Download the Stanford 3D Inddor Spaces Dataset (S3DIS Dataset) and ImageNet
+1.  Download the Stanford 3D Indoor Spaces Dataset (S3DIS Dataset) and ImageNet
     Pre-trained models for initializing different models. Follow instructions in
     `data/README.md`
 
