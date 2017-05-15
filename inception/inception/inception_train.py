@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A library to train Inception using multiple GPU's with synchronous updates.
+"""A library to train Inception using multiple GPUs with synchronous updates.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -83,7 +83,7 @@ def _tower_loss(images, labels, num_classes, scope, reuse_variables=None):
   """Calculate the total loss on a single tower running the ImageNet model.
 
   We perform 'batch splitting'. This means that we cut up a batch across
-  multiple GPU's. For instance, if the batch size = 32 and num_gpus = 2,
+  multiple GPUs. For instance, if the batch size = 32 and num_gpus = 2,
   then each tower will operate on an batch of 16 images.
 
   Args:

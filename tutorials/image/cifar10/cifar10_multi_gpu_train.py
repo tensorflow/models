@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""A binary to train CIFAR-10 using multiple GPU's with synchronous updates.
+"""A binary to train CIFAR-10 using multiple GPUs with synchronous updates.
 
 Accuracy:
 cifar10_multi_gpu_train.py achieves ~86% accuracy after 100K steps (256
