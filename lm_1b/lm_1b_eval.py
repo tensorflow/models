@@ -17,9 +17,9 @@
 """
 import os
 import sys
-import six
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -178,7 +178,7 @@ def _SampleModel(prefix_words, vocab):
 
   prefix = [vocab.word_to_id(w) for w in prefix_words.split()]
   prefix_char_ids = [vocab.word_to_char_ids(w) for w in prefix_words.split()]
-  for _ in six.moves.range(FLAGS.num_samples):
+  for _ in xrange(FLAGS.num_samples):
     inputs = np.zeros([BATCH_SIZE, NUM_TIMESTEPS], np.int32)
     char_ids_inputs = np.zeros(
         [BATCH_SIZE, NUM_TIMESTEPS, vocab.max_word_length], np.int32)
@@ -231,7 +231,7 @@ def _DumpEmb(vocab):
   sys.stderr.write('Finished softmax weights\n')
 
   all_embs = np.zeros([vocab.size, 1024])
-  for i in six.moves.range(vocab.size):
+  for i in xrange(vocab.size):
     input_dict = {t['inputs_in']: inputs,
                   t['targets_in']: targets,
                   t['target_weights_in']: weights}
@@ -270,7 +270,7 @@ def _DumpSentenceEmbedding(sentence, vocab):
   inputs = np.zeros([BATCH_SIZE, NUM_TIMESTEPS], np.int32)
   char_ids_inputs = np.zeros(
       [BATCH_SIZE, NUM_TIMESTEPS, vocab.max_word_length], np.int32)
-  for i in six.moves.range(len(word_ids)):
+  for i in xrange(len(word_ids)):
     inputs[0, 0] = word_ids[i]
     char_ids_inputs[0, 0, :] = char_ids[i]
 
