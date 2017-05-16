@@ -84,7 +84,7 @@ def virtual_adversarial_loss(logits, embedded, inputs,
   """
   # Stop gradient of logits. See https://arxiv.org/abs/1507.00677 for details.
   logits = tf.stop_gradient(logits)
-  
+
   # Only care about the KL divergence on the final timestep.
   weights = inputs.eos_weights
   assert weights is not None
@@ -218,5 +218,8 @@ def _kl_divergence_with_logits(q_logits, p_logits, weights):
   num_labels = tf.reduce_sum(weights)
   num_labels = tf.where(tf.equal(num_labels, 0.), 1., num_labels)
 
-  loss = tf.identity(tf.reduce_sum(weights * kl) / num_labels, name='kl')
+  kl.get_shape().assert_has_rank(2)
+  weights.get_shape().assert_has_rank(1)
+  loss = tf.identity(tf.reduce_sum(tf.expand_dims(weights, -1) * kl) /
+                     num_labels, name='kl')
   return loss

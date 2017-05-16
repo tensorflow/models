@@ -8,6 +8,7 @@
 # Usage:
 # cd slim
 # ./slim/scripts/train_lenet_on_mnist.sh
+set -e
 
 # Where the checkpoint and logs will be saved to.
 TRAIN_DIR=/tmp/lenet-model
