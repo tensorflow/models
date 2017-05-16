@@ -18,11 +18,11 @@
 Model trains with adversarial or virtual adversarial training.
 
 Computational time:
-  6 hours to train 10000 steps without adversarial or virtual adversarial
+  1.8 hours to train 10000 steps without adversarial or virtual adversarial
     training, on 1 layer 1024 hidden units LSTM, 256 embeddings, 400 truncated
-    BP, 64 minibatch and on single GPU.
+    BP, 64 minibatch and on single GPU (Pascal Titan X, cuDNNv5).
 
-  12 hours to train 10000 steps with adversarial or virtual adversarial
+  4 hours to train 10000 steps with adversarial or virtual adversarial
     training, with above condition.
 
 To initialize embedding and LSTM cell weights from a pretrained model, set

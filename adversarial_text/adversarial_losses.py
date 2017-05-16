@@ -26,7 +26,8 @@ FLAGS = flags.FLAGS
 # Adversarial and virtual adversarial training parameters.
 flags.DEFINE_float('perturb_norm_length', 5.0,
                    'Norm length of adversarial perturbation to be '
-                   'optimized with validation')
+                   'optimized with validation. '
+                   '5.0 is optimal on IMDB with virtual adversarial training. ' )
 
 # Virtual adversarial training parameters
 flags.DEFINE_integer('num_power_iteration', 1, 'The number of power iteration')
@@ -87,7 +88,7 @@ def virtual_adversarial_loss(logits, embedded, inputs,
   # Only care about the KL divergence on the final timestep.
   weights = inputs.eos_weights
   assert weights is not None
-
+  
   # Initialize perturbation with random noise.
   # shape(embedded) = (batch_size, num_timesteps, embedding_dim)
   d = tf.random_normal(shape=tf.shape(embedded))
@@ -108,8 +109,7 @@ def virtual_adversarial_loss(logits, embedded, inputs,
         aggregation_method=tf.AggregationMethod.EXPERIMENTAL_ACCUMULATE_N)
     d = tf.stop_gradient(d)
 
-  perturb = _scale_l2(
-      _mask_by_length(d, inputs.length), FLAGS.perturb_norm_length)
+  perturb = _scale_l2(d, FLAGS.perturb_norm_length)
   vadv_logits = logits_from_embedding_fn(embedded + perturb)
   return _kl_divergence_with_logits(logits, vadv_logits, weights)
 
@@ -160,10 +160,7 @@ def virtual_adversarial_loss_bidir(logits, embedded, inputs,
         aggregation_method=tf.AggregationMethod.EXPERIMENTAL_ACCUMULATE_N)
     perturbs = [tf.stop_gradient(d) for d in perturbs]
 
-  perturbs = [
-      _scale_l2(_mask_by_length(d, f_inputs.length), FLAGS.perturb_norm_length)
-      for d in perturbs
-  ]
+  perturbs = [_scale_l2(d, FLAGS.perturb_norm_length) for d in perturbs]
   vadv_logits = logits_from_embedding_fn(
       [emb + d for (emb, d) in zip(embedded, perturbs)])
   return _kl_divergence_with_logits(logits, vadv_logits, weights)
@@ -172,7 +169,9 @@ def virtual_adversarial_loss_bidir(logits, embedded, inputs,
 def _mask_by_length(t, length):
   """Mask t, 3-D [batch, time, dim], by length, 1-D [batch,]."""
   maxlen = t.get_shape().as_list()[1]
-  mask = tf.sequence_mask(length, maxlen=maxlen)
+
+  # Subtract 1 from length to prevent the perturbation from going on 'eos'
+  mask = tf.sequence_mask(length - 1, maxlen=maxlen)
   mask = tf.expand_dims(tf.cast(mask, tf.float32), -1)
   # shape(mask) = (batch, num_timesteps, 1)
   return t * mask
@@ -219,8 +218,5 @@ def _kl_divergence_with_logits(q_logits, p_logits, weights):
   num_labels = tf.reduce_sum(weights)
   num_labels = tf.where(tf.equal(num_labels, 0.), 1., num_labels)
 
-  kl.get_shape().assert_has_rank(2)
-  weights.get_shape().assert_has_rank(1)
-  loss = tf.identity(tf.reduce_sum(tf.expand_dims(weights, -1) * kl) /
-                     num_labels, name='kl')
+  loss = tf.identity(tf.reduce_sum(weights * kl) / num_labels, name='kl')
   return loss

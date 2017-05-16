@@ -96,7 +96,8 @@ $ bazel run :train_classifier -- \
     --num_timesteps=400 \
     --keep_prob_emb=0.5 \
     --normalize_embeddings \
-    --adv_training_method=vat
+    --adv_training_method=vat \
+    --perturb_norm_length=5.0
 ```
 
 ### Evaluate on test data

@@ -81,7 +81,9 @@ flags.DEFINE_integer('replicas_to_aggregate', 1,
 # Regularization
 flags.DEFINE_float('max_grad_norm', 1.0,
                    'Clip the global gradient norm to this value.')
-flags.DEFINE_float('keep_prob_emb', 1.0, 'keep probability on embedding layer')
+flags.DEFINE_float('keep_prob_emb', 1.0, 
+                   'keep probability on embedding layer. '
+                   '0.5 is optimal on IMDB with virtual adversarial training.')
 flags.DEFINE_float('keep_prob_lstm_out', 1.0,
                    'keep probability on lstm output.')
 flags.DEFINE_float('keep_prob_cl_hidden', 1.0,

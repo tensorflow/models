@@ -60,13 +60,12 @@ class VatxtInput(object):
     self._labels = l
 
     # eos weights
+    self._eos_weights = None
     if eos_id:
       ew = tf.cast(tf.equal(self._tokens, eos_id), tf.float32) 
       ew = tf.transpose(ew, [1, 0])
       ew = tf.reshape(ew, [-1])
       self._eos_weights = ew
-    else:
-      self._eos_weights = None
 
   @property
   def tokens(self):

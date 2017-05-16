@@ -16,9 +16,8 @@
 """Pretrains a recurrent language model.
 
 Computational time:
-  5 days to train 100000 steps on 1 layer 1024 hidden units LSTM,
-  256 embeddings, 400 truncated BP, 64 minibatch and on 4 GPU with
-  SyncReplicasOptimizer, that is the total minibatch is 256.
+  2 days to train 100000 steps on 1 layer 1024 hidden units LSTM,
+  256 embeddings, 400 truncated BP, 256 minibatch and on single GPU (Pascal Titan X, cuDNNv5).
 """
 from __future__ import absolute_import
 from __future__ import division
