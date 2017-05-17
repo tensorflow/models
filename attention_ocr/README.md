@@ -23,10 +23,22 @@ Pull requests:
 ## Requirements
 
 1. Installed TensorFlow library ([instructions][TF]).
-2. At least 158Gb of free disk space to download FSNS dataset:
 
 ```
-aria2c -c -j 20 -i ../street/python/fsns_urls.txt
+virtualenv --system-site-packages ~/.tensorflow
+source ~/.tensorflow/bin/activate
+pip install --upgrade pip
+pip install --upgrade tensorflow_gpu
+```
+
+2. At least 158Gb of free disk space to download FSNS dataset:
+
+Assume your current directory is `models/attention_ocr/python`
+
+```
+cd datasets
+aria2c -c -j 20 -i ../../../street/python/fsns_urls.txt
+cd -
 ```
 
 3. 16Gb of RAM or more, 32Gb is recommended.
@@ -60,16 +72,17 @@ python train.py --checkpoint_inception=inception_v3.ckpt
 To fine tune the Attention OCR model using a checkpoint:
 
 ```
-wget http://download.tensorflow.org/models/attention_ocr_2017_05_01.tar.gz
-tar xf attention_ocr_2017_05_01.tar.gz
-python train.py --checkpoint=model.ckpt-232572
+wget http://download.tensorflow.org/models/attention_ocr_2017_05_17.tar.gz
+tar xf attention_ocr_2017_05_17.tar.gz
+python train.py --checkpoint=model.ckpt-399731
 ```
 
 ## Disclaimer
 
 This code is a modified version of the internal model we used for our paper.
-Currently it reaches 82.71% full sequence accuracy after 215k steps of training.
+Currently it reaches 83.79% full sequence accuracy after 400k steps of training.
 The main difference between this version and the version used in the paper - for
 the paper we used a distributed training with 50 GPU (K80) workers (asynchronous
-updates), the provided checkpoint was created using this code after ~60 hours of
-training on a single GPU (Titan X).
+updates), the provided checkpoint was created using this code after ~6 days of
+training on a single GPU (Titan X) (it reached 81% after 24 hours of training),
+the coordinate encoding is missing TODO(alexgorban@).
