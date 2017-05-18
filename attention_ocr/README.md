@@ -22,7 +22,7 @@ Pull requests:
 
 ## Requirements
 
-1. Installed TensorFlow library ([instructions][TF]).
+1. Install the TensorFlow library ([instructions][TF]). For example:
 
 ```
 virtualenv --system-site-packages ~/.tensorflow
@@ -31,19 +31,16 @@ pip install --upgrade pip
 pip install --upgrade tensorflow_gpu
 ```
 
-2. At least 158Gb of free disk space to download FSNS dataset:
-
-Assume your current directory is `models/attention_ocr/python`
+2. At least 158GB of free disk space to download the FSNS dataset:
 
 ```
-cd datasets
+cd models/attention_ocr/python/datasets
 aria2c -c -j 20 -i ../../../street/python/fsns_urls.txt
-cd -
+cd ..
 ```
 
-3. 16Gb of RAM or more, 32Gb is recommended.
-4. The train.py works with in both modes CPU and GPU, using GPU is preferable.
-   The GPU mode was tested with Titan X and GTX980.
+3. 16GB of RAM or more; 32GB is recommended.
+4. `train.py` works with both CPU and GPU, though using GPU is preferable. It has been tested with a Titan X and with a GTX980.
 
 [TF]: https://www.tensorflow.org/install/
 [FSNS]: https://github.com/tensorflow/models/tree/master/street
@@ -62,7 +59,8 @@ To train from scratch:
 python train.py
 ```
 
-To train a model using a pre-trained inception weights as initialization:
+To train a model using pre-trained Inception weights as initialization:
+
 ```
 wget http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz
 tar xf inception_v3_2016_08_28.tar.gz
