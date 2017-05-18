@@ -34,8 +34,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
-
 slim = tf.contrib.slim
 
 _R_MEAN = 123.68
@@ -71,9 +69,8 @@ def _crop(image, offset_height, offset_width, crop_height, crop_width):
   rank_assertion = tf.Assert(
       tf.equal(tf.rank(image), 3),
       ['Rank of image must be equal to 3.'])
-  cropped_shape = control_flow_ops.with_dependencies(
-      [rank_assertion],
-      tf.stack([crop_height, crop_width, original_shape[2]]))
+  with tf.control_dependencies([rank_assertion]):
+    cropped_shape = tf.stack([crop_height, crop_width, original_shape[2]])
 
   size_assertion = tf.Assert(
       tf.logical_and(
@@ -85,9 +82,8 @@ def _crop(image, offset_height, offset_width, crop_height, crop_width):
 
   # Use tf.slice instead of crop_to_bounding box as it accepts tensors to
   # define the crop size.
-  image = control_flow_ops.with_dependencies(
-      [size_assertion],
-      tf.slice(image, offsets, cropped_shape))
+  with tf.control_dependencies([size_assertion]):
+    image = tf.slice(image, offsets, cropped_shape)
   return tf.reshape(image, cropped_shape)
 
 
@@ -126,9 +122,8 @@ def _random_crop(image_list, crop_height, crop_width):
          image_list[i].name, 3, image_rank])
     rank_assertions.append(rank_assert)
 
-  image_shape = control_flow_ops.with_dependencies(
-      [rank_assertions[0]],
-      tf.shape(image_list[0]))
+  with tf.control_dependencies([rank_assertions[0]]):
+    image_shape = tf.shape(image_list[0])
   image_height = image_shape[0]
   image_width = image_shape[1]
   crop_size_assert = tf.Assert(
@@ -142,8 +137,8 @@ def _random_crop(image_list, crop_height, crop_width):
   for i in range(1, len(image_list)):
     image = image_list[i]
     asserts.append(rank_assertions[i])
-    shape = control_flow_ops.with_dependencies([rank_assertions[i]],
-                                               tf.shape(image))
+    with tf.control_dependencies([rank_assertions[i]]):
+      shape = tf.shape(image)
     height = shape[0]
     width = shape[1]
 
@@ -162,10 +157,10 @@ def _random_crop(image_list, crop_height, crop_width):
   # Use tf.random_uniform and not numpy.random.rand as doing the former would
   # generate random numbers at graph eval time, unlike the latter which
   # generates random numbers at graph definition time.
-  max_offset_height = control_flow_ops.with_dependencies(
-      asserts, tf.reshape(image_height - crop_height + 1, []))
-  max_offset_width = control_flow_ops.with_dependencies(
-      asserts, tf.reshape(image_width - crop_width + 1, []))
+  with tf.control_dependencies(asserts):
+    max_offset_height = tf.reshape(image_height - crop_height + 1, [])
+  with tf.control_dependencies(asserts):
+    max_offset_width = tf.reshape(image_width - crop_width + 1, [])
   offset_height = tf.random_uniform(
       [], maxval=max_offset_height, dtype=tf.int32)
   offset_width = tf.random_uniform(

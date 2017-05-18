@@ -21,8 +21,6 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
-
 from inception.slim import ops
 from inception.slim import scopes
 from inception.slim import variables
@@ -602,7 +600,8 @@ class BatchNormTest(tf.test.TestCase):
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
         barrier = tf.no_op(name='gradient_barrier')
-        output = control_flow_ops.with_dependencies([barrier], output)
+        with tf.control_dependencies([barrier]):
+          output = output
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
@@ -632,7 +631,8 @@ class BatchNormTest(tf.test.TestCase):
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
         barrier = tf.no_op(name='gradient_barrier')
-        output = control_flow_ops.with_dependencies([barrier], output)
+        with tf.control_dependencies([barrier]):
+          output = output
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
@@ -666,7 +666,8 @@ class BatchNormTest(tf.test.TestCase):
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
         barrier = tf.no_op(name='gradient_barrier')
-        output = control_flow_ops.with_dependencies([barrier], output)
+        with tf.control_dependencies([barrier]):
+          output = output
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
