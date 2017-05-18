@@ -165,7 +165,7 @@ def main(unused_argv):
   assert vocab.CheckVocab(data.SENTENCE_START) > 0
   assert vocab.CheckVocab(data.SENTENCE_END) > 0
 
-  batch_size = 4
+  batch_size = 64
   if FLAGS.mode == 'decode':
     batch_size = FLAGS.beam_size
 
