@@ -601,7 +601,7 @@ class BatchNormTest(tf.test.TestCase):
       with tf.control_dependencies(update_ops):
         barrier = tf.no_op(name='gradient_barrier')
         with tf.control_dependencies([barrier]):
-          output = output
+          output = tf.identity(output)
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
@@ -632,7 +632,7 @@ class BatchNormTest(tf.test.TestCase):
       with tf.control_dependencies(update_ops):
         barrier = tf.no_op(name='gradient_barrier')
         with tf.control_dependencies([barrier]):
-          output = output
+          output = tf.identity(output)
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
@@ -667,7 +667,7 @@ class BatchNormTest(tf.test.TestCase):
       with tf.control_dependencies(update_ops):
         barrier = tf.no_op(name='gradient_barrier')
         with tf.control_dependencies([barrier]):
-          output = output
+          output = tf.identity(output)
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
