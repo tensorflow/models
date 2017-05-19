@@ -30,7 +30,7 @@ class ModelConfig(object):
     self.input_file_pattern = None
 
     # Image format ("jpeg" or "png").
-    self.image_format = "jpeg"
+    self.image_format = "png"
 
     # Approximate number of values per input shard. Used to ensure sufficient
     # mixing between shards in training.
