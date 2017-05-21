@@ -13,6 +13,7 @@ package_group(
         "//geo/gt/fusion/...",
         "//googlex/proxy/learning/...",
         "//image/understanding/object_detection/...",
+        "//learning/biotensorflow/...",
         "//learning/brain/contrib/hub/examples/slim_nets/...",
         "//learning/brain/contrib/slim/...",
         "//learning/brain/contrib/tfgan/...",
