@@ -136,7 +136,6 @@ class BlocksStdTest(tf.test.TestCase):
   def testLinearShared(self):
     # Create a linear map which is applied twice on different inputs
     # (i.e. the weights of the map are shared).
-    # TODO(sjhwang): Make this test deterministic.
     linear_map = blocks_std.Linear(6)
     x1 = tf.random_normal(shape=[1, 5])
     x2 = tf.random_normal(shape=[1, 5])

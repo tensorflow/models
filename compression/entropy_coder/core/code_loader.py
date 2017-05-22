@@ -39,7 +39,7 @@ def LoadBinaryCode(input_config, batch_size):
   """
   data = input_config.data
 
-  # TODO(damienv): Possibly use multiple files (instead of just one).
+  # TODO: Possibly use multiple files (instead of just one).
   file_list = [data]
   filename_queue = tf.train.string_input_producer(file_list,
                                                   capacity=4)

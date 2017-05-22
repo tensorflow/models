@@ -222,7 +222,6 @@ class NN(block_base.BlockBase):
       self._bias = BiasAdd(bias) if bias else PassThrough()
       self._act = act if act else PassThrough()
 
-  # TODO(sjhwang): Stop using **kwargs, if we ever switch to python3.
   def _Apply(self, *args):
     if not self._matrices:
       self._matrices = [

@@ -43,7 +43,7 @@ class EntropyCoderModel(object):
         corresponding to the codes to compress.
         The input codes are {-1, +1} codes.
     """
-    # TODO(damienv):
+    # TODO:
     # - consider switching to {0, 1} codes.
     # - consider passing an extra tensor which gives for each (b, y, x)
     #   what is the actual depth (which would allow to use more or less bits
