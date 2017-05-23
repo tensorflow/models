@@ -37,6 +37,8 @@ tf.flags.DEFINE_boolean("train_inception", False,
 tf.flags.DEFINE_integer("number_of_steps", 1000000, "Number of training steps.")
 tf.flags.DEFINE_integer("log_every_n_steps", 1,
                         "Frequency at which loss and global step are logged.")
+tf.flags.DEFINE_string("eval_dir", "",
+                       "Directory for saving and loading model checkpoints.")
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -63,6 +65,7 @@ def main(unused_argv):
     model = show_and_tell_model.ShowAndTellModel(
         model_config, mode="train", train_inception=FLAGS.train_inception)
     model.build()
+
 
     # Set up the learning rate.
     learning_rate_decay_fn = None
@@ -108,6 +111,10 @@ def main(unused_argv):
       number_of_steps=FLAGS.number_of_steps,
       init_fn=model.init_fn,
       saver=saver)
+  #
+  # with tf.Session(graph=g) as sess:
+  #   # Load the model from checkpoint.
+  #   restore_fn(sess)
 
 
 if __name__ == "__main__":
