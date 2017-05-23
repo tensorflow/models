@@ -379,7 +379,7 @@ def deploy(config,
 
         update_op = tf.group(*update_ops)
         with tf.control_dependencies([update_op]):
-          train_op = total_loss
+          train_op = tf.identity(total_loss, name='train_op')
     else:
       clones_losses = []
       regularization_losses = tf.get_collection(

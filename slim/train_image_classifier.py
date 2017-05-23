@@ -540,7 +540,7 @@ def main(_):
 
     update_op = tf.group(*update_ops)
     with tf.control_dependencies([update_op]):
-      train_tensor = total_loss
+      train_tensor = tf.identity(total_loss, name='train_op')
 
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().

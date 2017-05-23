@@ -418,7 +418,7 @@ class DropoutTest(tf.test.TestCase):
     with self.test_session():
       images = tf.random_uniform((5, height, width, 3), seed=1)
       output = ops.dropout(images)
-      self.assertEquals(output.op.name, 'Dropout/dropout/mul_1')
+      self.assertEquals(output.op.name, 'Dropout/dropout/mul')
       output.get_shape().assert_is_compatible_with(images.get_shape())
 
   def testCreateDropoutNoTraining(self):
@@ -599,9 +599,7 @@ class BatchNormTest(tf.test.TestCase):
       output = ops.batch_norm(images, decay=0.1)
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
-        barrier = tf.no_op(name='gradient_barrier')
-        with tf.control_dependencies([barrier]):
-          output = tf.identity(output)
+        output = tf.identity(output)
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
@@ -630,9 +628,7 @@ class BatchNormTest(tf.test.TestCase):
       output = ops.batch_norm(images, decay=0.1, is_training=False)
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
-        barrier = tf.no_op(name='gradient_barrier')
-        with tf.control_dependencies([barrier]):
-          output = tf.identity(output)
+        output = tf.identity(output)
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
@@ -665,9 +661,7 @@ class BatchNormTest(tf.test.TestCase):
       output = ops.batch_norm(images, decay=0.1, is_training=False)
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
-        barrier = tf.no_op(name='gradient_barrier')
-        with tf.control_dependencies([barrier]):
-          output = tf.identity(output)
+        output = tf.identity(output)
       # Initialize all variables
       sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
