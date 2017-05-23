@@ -50,6 +50,7 @@ cd ..
 To run all unit tests:
 
 ```
+cd models/attention_ocr/python
 python -m unittest discover -p  '*_test.py'
 ```
 
@@ -74,6 +75,98 @@ wget http://download.tensorflow.org/models/attention_ocr_2017_05_17.tar.gz
 tar xf attention_ocr_2017_05_17.tar.gz
 python train.py --checkpoint=model.ckpt-399731
 ```
+
+## How to use your own image data to train the Model?
+
+You need to define a new dataset. There are two options:
+
+1. Store data in the same format as the FSNS dataset and just reuse the
+[python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/datasets/fsns.py)
+module. E.g. create a file datasets/newtextdataset.py
+```
+import fsns
+
+DEFAULT_DATASET_DIR = 'path/to/the/dataset'
+
+DEFAULT_CONFIG = {
+    'name':
+        'MYDATASET',
+    'splits': {
+        'train': {
+            'size': 123,
+            'pattern': 'tfexample_train*'
+        },
+        'test': {
+            'size': 123,
+            'pattern': 'tfexample_test*'
+        }
+    },
+    'charset_filename':
+        'charset_size.txt',
+    'image_shape': (150, 600, 3),
+    'num_of_views':
+        4,
+    'max_sequence_length':
+        37,
+    'null_code':
+        42,
+    'items_to_descriptions': {
+        'image':
+            'A [150 x 600 x 3] color image.',
+        'label':
+            'Characters codes.',
+        'text':
+            'A unicode string.',
+        'length':
+            'A length of the encoded text.',
+        'num_of_views':
+            'A number of different views stored within the image.'
+    }
+}
+
+
+def get_split(split_name, dataset_dir=None, config=None):
+  if not dataset_dir:
+    dataset_dir = DEFAULT_DATASET_DIR
+  if not config:
+    config = DEFAULT_CONFIG
+
+  return fsns.get_split(split_name, dataset_dir, config)
+```
+You will also need to include it into the `datasets/__init__.py` and specify the
+dataset name in the command line.
+
+```
+python train.py --dataset_name=newtextdataset
+```
+
+Please note the eval.py will also require the same flag.
+
+2. Define a new dataset format. The model needs the following data to train:
+
+- images: input images,  shape [batch_size x H x W x 3];
+- labels: ground truth label ids,  shape=[batch_size x seq_length];
+- labels_one_hot: labels in one-hot encoding,  shape [batch_size x seq_length x num_char_classes];
+
+Refer to the [python/data_provider.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/data_provider.py#L33)
+for more details. You can use the [python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/datasets/fsns.py)
+as the example.
+
+## How to use a pre-trained model
+
+The inference part was not released yet, but it is pretty straightforward to
+implement one in python or C++.
+
+The recommended way is to use the [Serving infrastructure](https://tensorflow.github.io/serving/serving_basic).
+
+Alternatively you can:
+1. define a placeholder for images (or use directly an numpy array)
+2. [create a graph ](https://github.com/tensorflow/models/blob/master/attention_ocr/python/eval.py#L60)
+`endpoints = model.create_base(images_placeholder, labels_one_hot=None)`
+3. [load a pretrained model](https://github.com/tensorflow/models/blob/master/attention_ocr/python/model.py#L494)
+4. run computations through the graph:
+`predictions = sess.run(endpoints.predicted_chars, feed_dict={images_placeholder:images_actual_data})`
+5. Convert character IDs (predictions) to UTF8 using the provided charset file.
 
 ## Disclaimer
 
