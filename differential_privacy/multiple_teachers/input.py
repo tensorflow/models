@@ -258,8 +258,7 @@ def extract_mnist_data(filename, num_images, image_size, pixel_depth):
 
   Values are rescaled from [0, 255] down to [-0.5, 0.5].
   """
-  # if not os.path.exists(file):
-  if not tf.gfile.Exists(filename+".npy"):
+  if not os.path.exists(filename+".npy"):
     with gzip.open(filename) as bytestream:
       bytestream.read(16)
       buf = bytestream.read(image_size * image_size * num_images)
@@ -269,7 +268,9 @@ def extract_mnist_data(filename, num_images, image_size, pixel_depth):
       np.save(filename, data)
       return data
   else:
-    with tf.gfile.Open(filename+".npy", mode='r') as file_obj:
+    fo = open(filename+".npy", "rw+")
+    fo.close()
+    with open(filename+".npy", mode='r+') as file_obj:
       return np.load(file_obj)
 
 
