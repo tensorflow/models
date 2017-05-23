@@ -381,6 +381,7 @@ def _create_vocab(captions):
 
 def _process_caption(caption):
   """Processes a caption string into a list of tonenized words.
+  This can be used for tokenize my own caption, yo :D
 
   Args:
     caption: A string caption.
@@ -392,10 +393,12 @@ def _process_caption(caption):
   tokenized_caption.extend(nltk.tokenize.word_tokenize(caption.lower()))
   tokenized_caption.append(FLAGS.end_word)
   return tokenized_caption
+#  And then the tokenized_caption is linked with its image? :D
 
 
 def _load_and_process_metadata(captions_file, image_dir):
   """Loads image metadata from a JSON file and processes the captions.
+  What are the caption metadata :D 
 
   Args:
     captions_file: JSON file containing caption annotations.

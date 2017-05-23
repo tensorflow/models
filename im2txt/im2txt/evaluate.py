@@ -14,7 +14,6 @@
 # ==============================================================================
 
 """Evaluate the model.
-
 This script should be run concurrently with training so that summaries show up
 in TensorBoard.
 """
@@ -55,9 +54,7 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 def evaluate_model(sess, model, global_step, summary_writer, summary_op):
   """Computes perplexity-per-word over the evaluation dataset.
-
   Summaries and perplexity-per-word are written out to the eval directory.
-
   Args:
     sess: Session object.
     model: Instance of ShowAndTellModel; the model to evaluate.
@@ -106,7 +103,6 @@ def evaluate_model(sess, model, global_step, summary_writer, summary_op):
 
 def run_once(model, saver, summary_writer, summary_op):
   """Evaluates the latest model checkpoint.
-
   Args:
     model: Instance of ShowAndTellModel; the model to evaluate.
     saver: Instance of tf.train.Saver for restoring model Variables.
@@ -195,4 +191,4 @@ def main(unused_argv):
 
 
 if __name__ == "__main__":
-  tf.app.run()
+    tf.app.run()

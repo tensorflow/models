@@ -29,6 +29,8 @@ class Vocabulary(object):
                vocab_file,
                start_word="<S>",
                end_word="</S>",
+               # start_word= "b'<S>'",
+               # end_word="b'</S>'",
                unk_word="<UNK>"):
     """Initializes the vocabulary.
 
@@ -41,12 +43,15 @@ class Vocabulary(object):
       unk_word: Special word denoting unknown words.
     """
     if not tf.gfile.Exists(vocab_file):
+      print (":D")
       tf.logging.fatal("Vocab file %s not found.", vocab_file)
     tf.logging.info("Initializing vocabulary from file: %s", vocab_file)
 
     with tf.gfile.GFile(vocab_file, mode="r") as f:
       reverse_vocab = list(f.readlines())
-    reverse_vocab = [line.split()[0] for line in reverse_vocab]
+    # reverse_vocab = [line.split()[0] for line in reverse_vocab]
+    reverse_vocab = [eval(line.split()[0]) for line in reverse_vocab]
+
     assert start_word in reverse_vocab
     assert end_word in reverse_vocab
     if unk_word not in reverse_vocab:

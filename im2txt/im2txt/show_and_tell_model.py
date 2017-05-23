@@ -30,6 +30,9 @@ from im2txt.ops import image_embedding
 from im2txt.ops import image_processing
 from im2txt.ops import inputs as input_ops
 
+import matplotlib.image as mpimg
+import insert
+
 
 class ShowAndTellModel(object):
   """Image-to-text implementation based on http://arxiv.org/abs/1411.4555.
@@ -118,6 +121,7 @@ class ShowAndTellModel(object):
                                           thread_id=thread_id,
                                           image_format=self.config.image_format)
 
+
   def build_inputs(self):
     """Input prefetching, preprocessing and batching.
 
@@ -165,18 +169,25 @@ class ShowAndTellModel(object):
         image = self.process_image(encoded_image, thread_id=thread_id)
         images_and_captions.append([image, caption])
 
+
       # Batch inputs.
       queue_capacity = (2 * self.config.num_preprocess_threads *
                         self.config.batch_size)
       images, input_seqs, target_seqs, input_mask = (
           input_ops.batch_with_dynamic_pad(images_and_captions,
+                                           # batch_size=32,
                                            batch_size=self.config.batch_size,
                                            queue_capacity=queue_capacity))
+
+    # Inserting googled images into batch seems not working. Change the raw input folder instead.
+    # images_insert, input_seqs_insert, target_seqs_insert, input_mask_insert =\
+    #     insert.insert(n_infer = 2, n_google = 3, n_sentence=2, parse_input_seqs=input_seqs)
 
     self.images = images
     self.input_seqs = input_seqs
     self.target_seqs = target_seqs
     self.input_mask = input_mask
+
 
   def build_image_embeddings(self):
     """Builds the image model subgraph and generates image embeddings.

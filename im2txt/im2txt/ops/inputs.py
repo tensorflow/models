@@ -194,6 +194,7 @@ def batch_with_dynamic_pad(images_and_captions,
       capacity=queue_capacity,
       dynamic_pad=True,
       name="batch_and_pad")
+  # print (type(images))
 
   if add_summaries:
     lengths = tf.add(tf.reduce_sum(mask, 1), 1)
