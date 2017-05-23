@@ -378,8 +378,8 @@ def deploy(config,
         update_ops.append(grad_updates)
 
         update_op = tf.group(*update_ops)
-        train_op = control_flow_ops.with_dependencies([update_op], total_loss,
-                                                      name='train_op')
+        with tf.control_dependencies([update_op]):
+          train_op = tf.identity(total_loss, name='train_op')
     else:
       clones_losses = []
       regularization_losses = tf.get_collection(

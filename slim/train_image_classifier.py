@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
@@ -540,8 +539,8 @@ def main(_):
     update_ops.append(grad_updates)
 
     update_op = tf.group(*update_ops)
-    train_tensor = control_flow_ops.with_dependencies([update_op], total_loss,
-                                                      name='train_op')
+    with tf.control_dependencies([update_op]):
+      train_tensor = tf.identity(total_loss, name='train_op')
 
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().
