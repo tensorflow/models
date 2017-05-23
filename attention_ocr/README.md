@@ -76,13 +76,13 @@ tar xf attention_ocr_2017_05_17.tar.gz
 python train.py --checkpoint=model.ckpt-399731
 ```
 
-## How to use your own image data to train the Model?
+## How to use your own image data to train the model
 
 You need to define a new dataset. There are two options:
 
 1. Store data in the same format as the FSNS dataset and just reuse the
 [python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/datasets/fsns.py)
-module. E.g. create a file datasets/newtextdataset.py
+module. E.g., create a file datasets/newtextdataset.py:
 ```
 import fsns
 
@@ -140,7 +140,7 @@ dataset name in the command line.
 python train.py --dataset_name=newtextdataset
 ```
 
-Please note the eval.py will also require the same flag.
+Please note that eval.py will also require the same flag.
 
 2. Define a new dataset format. The model needs the following data to train:
 
@@ -148,14 +148,14 @@ Please note the eval.py will also require the same flag.
 - labels: ground truth label ids,  shape=[batch_size x seq_length];
 - labels_one_hot: labels in one-hot encoding,  shape [batch_size x seq_length x num_char_classes];
 
-Refer to the [python/data_provider.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/data_provider.py#L33)
-for more details. You can use the [python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/datasets/fsns.py)
+Refer to [python/data_provider.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/data_provider.py#L33)
+for more details. You can use [python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/datasets/fsns.py)
 as the example.
 
 ## How to use a pre-trained model
 
 The inference part was not released yet, but it is pretty straightforward to
-implement one in python or C++.
+implement one in Python or C++.
 
 The recommended way is to use the [Serving infrastructure](https://tensorflow.github.io/serving/serving_basic).
 
