@@ -202,11 +202,10 @@ class ProgressiveModel(entropy_coder_model.EntropyCoderModel):
       code_length.append(code_length_block(
           blocks.ConvertSignCodeToZeroOneCode(x),
           blocks.ConvertSignCodeToZeroOneCode(predicted_x)))
-      tf.contrib.deprecated.scalar_summary('code_length_layer_{:02d}'.format(k),
-                                           code_length[-1])
+      tf.summary.scalar('code_length_layer_{:02d}'.format(k), code_length[-1])
     code_length = tf.stack(code_length)
     self.loss = tf.reduce_mean(code_length)
-    tf.contrib.deprecated.scalar_summary('loss', self.loss)
+    tf.summary.scalar('loss', self.loss)
 
     # Loop over all the remaining layers just to make sure they are
     # instantiated. Otherwise, loading model params could fail.

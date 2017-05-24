@@ -111,7 +111,7 @@ def train():
           decay_steps=decay_steps,
           decay_rate=decay_rate,
           staircase=True)
-      tf.contrib.deprecated.scalar_summary('Learning Rate', learning_rate)
+      tf.summary.scalar('Learning Rate', learning_rate)
       optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
                                          epsilon=1.0)
 
