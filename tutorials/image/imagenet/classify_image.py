@@ -48,7 +48,7 @@ import tensorflow as tf
 FLAGS = None
 
 # pylint: disable=line-too-long
-DATA_URL = 'http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz'
+DATA_URL = 'https://storage.googleapis.com/download.tensorflow.org/models/inception_v3_2016_08_28_frozen.pb.tar.gz'
 # pylint: enable=line-too-long
 
 
