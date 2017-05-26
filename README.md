@@ -38,3 +38,4 @@ running TensorFlow 0.12 or earlier, please
 - [transformer](transformer): spatial transformer network, which allows the spatial manipulation of data within the network.
 - [tutorials](tutorials): models described in the [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
 - [video_prediction](video_prediction): predicting future video frames with neural advection.
+- [DeepTrade](DeepTrade): estimate risk in buying and selling stock using LSTM.
