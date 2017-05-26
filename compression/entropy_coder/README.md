@@ -14,6 +14,11 @@ the width of the binary codes,
 sliced into N groups of K, where each additional group is used by the image
 decoder to add more details to the reconstructed image.
 
+The code in this directory only contains the underlying code probability model
+but does not perform the actual compression using arithmetic coding.
+The code probability model is enough to compute the theoretical compression
+ratio.
+
 
 ## Prerequisites
 The only software requirements for running the encoder and decoder is having
@@ -22,7 +27,7 @@ Tensorflow installed.
 You will also need to add the top level source directory of the entropy coder
 to your `PYTHONPATH`, for example:
 
-`export PYTHONPATH=${PYTHONPATH}:/tmp/compression/entropy_coder`
+`export PYTHONPATH=${PYTHONPATH}:/tmp/models/compression`
 
 
 ## Training the entropy coder
@@ -37,6 +42,8 @@ representation of encoded images. Consider it as a toy dataset, no more, no
 less.
 
 To generate a synthetic dataset with 20000 samples:
+
+`mkdir -p /tmp/dataset`
 
 `python ./dataset/gen_synthetic_dataset.py --dataset_dir=/tmp/dataset/
 --count=20000`
