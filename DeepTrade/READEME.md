@@ -1,8 +1,8 @@
 ## Introduction
 
-    Could deep learning help us with buying and selling stocks in market? The answer could be 'Yes'. We design a solution, named DeepTrade, including history data representation, neural network construction and trading optimization methods, which could maximizing our profit based on passed experience.
+   Could deep learning help us with buying and selling stocks in market? The answer could be 'Yes'. We design a solution, named DeepTrade, including history data representation, neural network construction and trading optimization methods, which could maximizing our profit based on passed experience.
 
-    In our solution, effective representations are extracted from history data (including date/open/high/low/close/volume) first. Then a neural network based on LSTM is constructed to learn useful knowledges to direct our trading behaviors. Meanwhile, a loss function is elaborately designed to ensure the network optimizing our profit and minimizing our risk. Finaly, according the predictions of this neural network, buying and selling plans are carried out.
+   In our solution, effective representations are extracted from history data (including date/open/high/low/close/volume) first. Then a neural network based on LSTM is constructed to learn useful knowledges to direct our trading behaviors. Meanwhile, a loss function is elaborately designed to ensure the network optimizing our profit and minimizing our risk. Finaly, according the predictions of this neural network, buying and selling plans are carried out.
 
 ## Feature Representation
 
