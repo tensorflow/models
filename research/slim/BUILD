@@ -32,6 +32,7 @@ package_group(
         "//research/vision/loco/...",
         "//research/vision/threedeep/...",
         "//robotics/learning/...",
+        "//robotics/reinforcement_learning/evol/...",
         "//third_party/tensorflow_models/domain_adaptation/datasets/...",
         "//third_party/tensorflow_models/object_detection/...",
         "//vision/face/pittpatt/research/tensorflow/...",
