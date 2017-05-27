@@ -27,7 +27,7 @@ P is a set of our output, and R is the set of corresponding rates of price chang
    Every day, at the time before market close (nearer is better), input history features into the network, then we get an output value p. This p mean an advice of next-day's position. If p=0, we should sell all we have before close. If p is positive, we should keep a poistion of p to next day, sell the redundant or buy the insufficient.
 
 ## Experimental Results
-   For more demos of the experimental results, visit our website: https://deeplearning.xin.
+   For more demos of the experimental results, visit our website: http://www.deeplearning.xin.
    
 ## Requirements
 ta-lib, ta-lib for python, numpy, tensorflow
