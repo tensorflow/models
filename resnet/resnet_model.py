@@ -51,7 +51,7 @@ class ResNet(object):
     self._images = images
     self.labels = labels
     self.mode = mode
-    self.is_training = True if self.mode == 'train' else False
+    self.is_training = self.mode == 'train'
 
     self._extra_train_ops = []
 
