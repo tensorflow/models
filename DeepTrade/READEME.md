@@ -1,3 +1,6 @@
+A LSTM model using Risk Estimation loss function for trades in market
+===
+
 ## Introduction
 
    Could deep learning help us with buying and selling stocks in market? The answer could be 'Yes'. We design a solution, named DeepTrade, including history data representation, neural network construction and trading optimization methods, which could maximizing our profit based on passed experience.
@@ -27,9 +30,13 @@ P is a set of our output, and R is the set of corresponding rates of price chang
    Every day, at the time before market close (nearer is better), input history features into the network, then we get an output value p. This p mean an advice of next-day's position. If p=0, we should sell all we have before close. If p is positive, we should keep a poistion of p to next day, sell the redundant or buy the insufficient.
 
 ## Experimental Results
+
    For more demos of the experimental results, visit our website: http://www.deeplearning.xin.
    
+   [Experimental Results](http://www.deeplearning.xin)
+   
 ## Requirements
+
 ta-lib, ta-lib for python, numpy, tensorflow
 
 ## Liecence
