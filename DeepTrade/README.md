@@ -31,7 +31,7 @@ P is a set of our output, and R is the set of corresponding rates of price chang
 
 ## Experimental Results
 
-   If the network goes crazy(overfitting), just restart it. Or, a dropout layer [2] is good idea.
+   If the network goes crazy(overfitting), just restart it. Or, a dropout layer [2] is good idea. Also, larger train dataset will help.
  
    For more demos of the experimental results, visit our website: http://www.deeplearning.xin.
    
