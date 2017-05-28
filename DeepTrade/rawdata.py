@@ -14,6 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 
+
 class RawData(object):
     def __init__(self, date, open, high, close, low, volume):
         self.date = date

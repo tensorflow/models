@@ -35,7 +35,7 @@ class SmartTrader(object):
         self.learning_rate = None
         self.hidden_size = hidden_size
         self.nclasses = nclasses
-        self.prediction = None
+        self.position = None
         self.summary_op = None
         self.weights = None
         self.biases = None
@@ -83,10 +83,10 @@ class SmartTrader(object):
         norm_signal = self.batch_norm_layer(signal, scope=scope)
         # batch_norm(signal, 0.9, center=True, scale=True, epsilon=0.001, activation_fn=tf.nn.relu6,
         #           is_training=is_training, scope="activation_batch_norm", reuse=False)
-        self.prediction = tf.nn.relu6(norm_signal) / 6.
-        self.avg_position = tf.reduce_mean(self.prediction)
+        self.position = tf.nn.relu6(norm_signal) / 6.
+        self.avg_position = tf.reduce_mean(self.position)
         # self.cost = 0.0002
-        self.loss = -100. * tf.reduce_mean(tf.multiply((self.y - self.cost), self.prediction, name="profit"))
+        self.loss = -100. * tf.reduce_mean(tf.multiply((self.y - self.cost), self.position, name="profit"))
 
     def _create_optimizer(self):
         #with tf.device("/cpu:0"):
@@ -137,7 +137,7 @@ def train(trader, features, labels, train_steps=10000, batch_size=32, validation
                     hint = 'Average loss at step {}: {:.7f} Average position {:.7f}'.format(i, loss, avg_pos)
                 print(hint)
 
-        pred, avg_pos = sess.run([trader.prediction, trader.avg_position],
+        pred, avg_pos = sess.run([trader.position, trader.avg_position],
                                  feed_dict={trader.x: features, trader.y: labels, trader.is_training: False})
         print("ChangeRate\tPositionAdvice")
         for i in range(len(labels)):
