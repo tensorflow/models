@@ -26,6 +26,17 @@ from tensorflow.contrib.layers.python.layers.layers import batch_norm
 
 class SmartTrader(object):
     def __init__(self, step, input_size, starter_learning_rate, hidden_size, nclasses, decay_step=500, decay_rate=0.9, cost=0.0002):
+        '''
+        Initialize parameters for the SmartTrader
+        :param step: time steps of the feature
+        :param input_size: size of each time step of the feature
+        :param starter_learning_rate: initial learning rate, the learning rate decays along global train step
+        :param hidden_size: hidden units of the LSTM layer
+        :param nclasses: number of classes, should be 1
+        :param decay_step: learning rate decay step
+        :param decay_rate: learning rate decay rate
+        :param cost: the constant cost for money occupied by buying stock
+        '''
         self.step = step
         self.input_size = input_size
         self.global_step = None
@@ -44,6 +55,10 @@ class SmartTrader(object):
         self.avg_position = None
 
     def _create_learning_rate(self):
+        '''
+        create learning rate
+        :return:
+        '''
         self.global_step = tf.Variable(0, trainable=False, name="global_step")
         self.learning_rate = tf.train.exponential_decay(self.starter_learning_rate, self.global_step,
                                                    self.decay_step, self.decay_rate, staircase=True)
@@ -65,6 +80,12 @@ class SmartTrader(object):
             }
 
     def batch_norm_layer(self, signal, scope):
+        '''
+        batch normalization layer before activation
+        :param signal: input signal
+        :param scope: name scope
+        :return: normalized signal
+        '''
         # Note: is_training is tf.placeholder(tf.bool) type
         return tf.cond(self.is_training,
                        lambda: batch_norm(signal, is_training=True,
@@ -74,6 +95,13 @@ class SmartTrader(object):
                                           scope=scope, reuse=True))
 
     def _create_loss(self):
+        '''
+        Risk estimation loss function. The output is the planed position we should hold to next day. The change rate of
+        next day is self.y, so we loss two categories of money: - self.y * self.position is trade loss,
+        cost * self.position is constant loss because of tax and like missing profit of buying national debt. Therefore,
+        the loss function is formulated as: 100 * (- self.y * self.position + cost * self.position) = -100 * ((self.y - cost) * self.position)
+        :return:
+        '''
         #with tf.device("/cpu:0"):
         xx = tf.unstack(self.x, self.step, 1)
         lstm_cell = rnn.LSTMCell(self.hidden_size, forget_bias=1.0)
@@ -89,6 +117,10 @@ class SmartTrader(object):
         self.loss = -100. * tf.reduce_mean(tf.multiply((self.y - self.cost), self.position, name="profit"))
 
     def _create_optimizer(self):
+        '''
+        create optimizer
+        :return:
+        '''
         #with tf.device("/cpu:0"):
         self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.loss, global_step=self.global_step)
 
