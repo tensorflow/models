@@ -13,7 +13,7 @@ A LSTM model using Risk Estimation loss function for trades in market
 
 ## Network Construction
 
-   LSTM network is effective with learning knowleges from time series. A fixed length of history data (i.e., 30 days) is used to plan trade of next day. We make the network output a real value (p) between 0 and 1, which means how much position (in percent) of the stock we should hold to tomorrow. So that if the rate of price change is r next day, out profit will be p*r. If r is negtive, we lost our money. Therefore, we define a Loss Function (called Risk Estimation) for the LSTM network:
+   LSTM network [1] is effective with learning knowleges from time series. A fixed length of history data (i.e., 30 days) is used to plan trade of next day. We make the network output a real value (p) between 0 and 1, which means how much position (in percent) of the stock we should hold to tomorrow. So that if the rate of price change is r next day, out profit will be p*r. If r is negtive, we lost our money. Therefore, we define a Loss Function (called Risk Estimation) for the LSTM network:
 
    Loss = -100. * mean(P * R)
 
@@ -23,7 +23,7 @@ P is a set of our output, and R is the set of corresponding rates of price chang
 
   Both of these two loss functions are evaluated in our experiments.
 
-  Our network includes four layers: LSTM layer, dense connected layer, batch normalization(renormalization) layer, activation layer. LSTM layer is used to learn knowldges from histories. The relu6 function is used as activation to produce output value.  
+  Our network includes four layers: LSTM layer, dense connected layer, batch normalization [3] layer, activation layer. LSTM layer is used to learn knowldges from histories. The relu6 function is used as activation to produce output value.  
 
 ## Trading Plans
 
@@ -31,7 +31,9 @@ P is a set of our output, and R is the set of corresponding rates of price chang
 
 ## Experimental Results
 
-   For more demos of the experimental results, visit our website: http://www.deeplearning.xin.
+   If the network goes crazy(overfitting), just restart it. Or, a dropout layer [2] is good idea.
+ 
+   For more demos of the experimental results, visit our website: http://www.deeplearning.xin.
    
    [Experimental Results](http://www.deeplearning.xin)
    
@@ -46,3 +48,14 @@ The author is Xiaoyu Fang from China. Please quot the source whenever you use it
 ## Bug Report
 
 Contact happynoom@163.com to report any bugs.
+
+## Reference
+
+[1] Gers F A, Schmidhuber J, Cummins F, et al. Learning to Forget: Continual Prediction with LSTM[J]. Neural Computation, 2000, 12(10): 2451-2471.
+
+[2] Srivastava N, Hinton G E, Krizhevsky A, et al. Dropout: a simple way to prevent neural networks from overfitting[J]. Journal of Machine Learning Research, 2014, 15(1): 1929-1958.
+
+[3] Ioffe S, Szegedy C. Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift[C]. international conference on machine learning, 2015: 448-456.
+
+
+
