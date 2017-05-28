@@ -74,23 +74,23 @@ class SmartTrader(object):
                                           scope=scope, reuse=True))
 
     def _create_loss(self):
-        with tf.device("/gpu:0"):
-            xx = tf.unstack(self.x, self.step, 1)
-            lstm_cell = rnn.LSTMCell(self.hidden_size, forget_bias=1.0)
-            outputs, states = rnn.static_rnn(lstm_cell, xx, dtype=tf.float32)
-            signal = tf.matmul(outputs[-1], self.weights['out']) + self.biases['out']
-            scope = "activation_batch_norm"
-            norm_signal = self.batch_norm_layer(signal, scope=scope)
-            # batch_norm(signal, 0.9, center=True, scale=True, epsilon=0.001, activation_fn=tf.nn.relu6,
-            #           is_training=is_training, scope="activation_batch_norm", reuse=False)
-            self.prediction = tf.nn.relu6(norm_signal) / 6.
-            self.avg_position = tf.reduce_mean(self.prediction)
-            # self.cost = 0.0002
-            self.loss = -100. * tf.reduce_mean(tf.multiply((self.y - self.cost), self.prediction, name="profit"))
+        #with tf.device("/cpu:0"):
+        xx = tf.unstack(self.x, self.step, 1)
+        lstm_cell = rnn.LSTMCell(self.hidden_size, forget_bias=1.0)
+        outputs, states = rnn.static_rnn(lstm_cell, xx, dtype=tf.float32)
+        signal = tf.matmul(outputs[-1], self.weights['out']) + self.biases['out']
+        scope = "activation_batch_norm"
+        norm_signal = self.batch_norm_layer(signal, scope=scope)
+        # batch_norm(signal, 0.9, center=True, scale=True, epsilon=0.001, activation_fn=tf.nn.relu6,
+        #           is_training=is_training, scope="activation_batch_norm", reuse=False)
+        self.prediction = tf.nn.relu6(norm_signal) / 6.
+        self.avg_position = tf.reduce_mean(self.prediction)
+        # self.cost = 0.0002
+        self.loss = -100. * tf.reduce_mean(tf.multiply((self.y - self.cost), self.prediction, name="profit"))
 
     def _create_optimizer(self):
-        with tf.device("/gpu:0"):
-            self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.loss, global_step=self.global_step)
+        #with tf.device("/cpu:0"):
+        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.loss, global_step=self.global_step)
 
     def _create_summary(self):
         tf.summary.scalar("loss", self.loss)
@@ -121,7 +121,7 @@ def train(trader, features, labels, train_steps=10000, batch_size=32, validation
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         writer = tf.summary.FileWriter("./graphs", sess.graph)
-        for i in xrange(initial_step, initial_step + train_steps):
+        for i in range(initial_step, initial_step + train_steps):
             batch_features, batch_labels = ds.next_batch(batch_size)
             _, loss, avg_pos, summary = sess.run([trader.optimizer, trader.loss, trader.avg_position, trader.summary_op],
                                         feed_dict={trader.x: batch_features, trader.y: batch_labels, trader.is_training: True})

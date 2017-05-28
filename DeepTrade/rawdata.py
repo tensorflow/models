@@ -36,6 +36,6 @@ def read_sample_data(path):
             fields = l.split(separator)
             if len(fields) > 5:
                 raw_data.append(RawData(fields[0], float(fields[1]), float(fields[2]), float(fields[3]), float(fields[4]), float(fields[5])))
-    sorted_data = sorted(raw_data, cmp=lambda x, y: cmp(x.date, y.date))
+    sorted_data = sorted(raw_data, key=lambda x: x.date)
     print("got %s records." % len(sorted_data))
     return sorted_data

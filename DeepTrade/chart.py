@@ -228,7 +228,7 @@ class ChartFeature(object):
 
 def extract_feature(raw_data, selector, window=30, with_label=True, flatten=True):
     chart_feature = ChartFeature(selector)
-    sorted_data = sorted(raw_data, cmp=lambda x, y: cmp(x.date, y.date))
+    sorted_data = sorted(raw_data, key=lambda x:x.date)
     closes = []
     opens = []
     highs = []
