@@ -202,6 +202,7 @@ py_library(
         ":cifarnet",
         ":inception",
         ":lenet",
+        ":mobilenet_v1",
         ":overfeat",
         ":resnet_v1",
         ":resnet_v2",
@@ -359,6 +360,24 @@ py_library(
     name = "lenet",
     srcs = ["nets/lenet.py"],
     deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "mobilenet_v1",
+    srcs = ["nets/mobilenet_v1.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_test(
+    name = "mobilenet_v1_test",
+    size = "large",
+    srcs = ["nets/mobilenet_v1_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":mobilenet_v1",
         "//tensorflow",
     ],
 )
