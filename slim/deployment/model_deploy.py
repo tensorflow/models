@@ -218,6 +218,12 @@ def _gather_clone_loss(clone, num_clones, regularization_losses):
   with tf.device(clone.device):
     all_losses = []
     clone_losses = tf.get_collection(tf.GraphKeys.LOSSES, clone.scope)
+
+    try:
+      clone_accuracy = tf.reduce_mean(tf.get_collection('accuracy', clone.scope))
+    except:
+      print('no collection named accuracy')
+
     if clone_losses:
       clone_loss = tf.add_n(clone_losses, name='clone_loss')
       if num_clones > 1:
@@ -232,10 +238,14 @@ def _gather_clone_loss(clone, num_clones, regularization_losses):
       sum_loss = tf.add_n(all_losses)
   # Add the summaries out of the clone device block.
   if clone_loss is not None:
+    # tf.summary.scalar(clone.scope + '/clone_loss', clone_loss,
+    #                   name='clone_loss')
     tf.summary.scalar(clone.scope + '/clone_loss', clone_loss)
   if regularization_loss is not None:
     tf.summary.scalar('regularization_loss', regularization_loss)
-  return sum_loss
+    # tf.summary.scalar('regularization_loss', regularization_loss,
+    #                   name='regularization_loss')
+  return sum_loss, clone_accuracy
 
 
 def _optimize_clone(optimizer, clone, num_clones, regularization_losses,
@@ -256,12 +266,12 @@ def _optimize_clone(optimizer, clone, num_clones, regularization_losses,
       - clone_grads_and_vars: List of (gradient, variable) for the clone.
         Can be empty.
   """
-  sum_loss = _gather_clone_loss(clone, num_clones, regularization_losses)
+  sum_loss,clone_accuracy = _gather_clone_loss(clone, num_clones, regularization_losses)
   clone_grad = None
   if sum_loss is not None:
     with tf.device(clone.device):
       clone_grad = optimizer.compute_gradients(sum_loss, **kwargs)
-  return sum_loss, clone_grad
+  return sum_loss, clone_grad,clone_accuracy
 
 
 def optimize_clones(clones, optimizer,
@@ -289,24 +299,29 @@ def optimize_clones(clones, optimizer,
   """
   grads_and_vars = []
   clones_losses = []
+  clones_accuracy=[]
   num_clones = len(clones)
   if regularization_losses is None:
     regularization_losses = tf.get_collection(
         tf.GraphKeys.REGULARIZATION_LOSSES)
   for clone in clones:
     with tf.name_scope(clone.scope):
-      clone_loss, clone_grad = _optimize_clone(
+      clone_loss, clone_grad,clone_accuracy = _optimize_clone(
           optimizer, clone, num_clones, regularization_losses, **kwargs)
+      # clone_accuracy
       if clone_loss is not None:
         clones_losses.append(clone_loss)
         grads_and_vars.append(clone_grad)
+        clones_accuracy.append(clone_accuracy)
       # Only use regularization_losses for the first clone
       regularization_losses = None
   # Compute the total_loss summing all the clones_losses.
   total_loss = tf.add_n(clones_losses, name='total_loss')
-  # Sum the gradients across clones.
+  total_accuracy = tf.divide(tf.add_n(clones_accuracy, name='total_loss'),num_clones)
+  # Sum the gradients accross clones.
   grads_and_vars = _sum_clones_gradients(grads_and_vars)
-  return total_loss, grads_and_vars
+
+  return total_loss, grads_and_vars,total_accuracy
 
 
 def deploy(config,
@@ -378,8 +393,8 @@ def deploy(config,
         update_ops.append(grad_updates)
 
         update_op = tf.group(*update_ops)
-        with tf.control_dependencies([update_op]):
-          train_op = tf.identity(total_loss, name='train_op')
+        train_op = control_flow_ops.with_dependencies([update_op], total_loss,
+                                                      name='train_op')
     else:
       clones_losses = []
       regularization_losses = tf.get_collection(
@@ -402,7 +417,8 @@ def deploy(config,
 
     if total_loss is not None:
       # Add total_loss to summary.
-      summaries.add(tf.summary.scalar('total_loss', total_loss))
+      summaries.add(tf.summary.scalar('total_loss', total_loss,
+                                      name='total_loss'))
 
     if summaries:
       # Merge all summaries together.
