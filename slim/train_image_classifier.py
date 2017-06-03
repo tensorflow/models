@@ -491,7 +491,7 @@ def main(_):
       x = end_points[end_point]
       summaries.add(tf.summary.histogram('activations/' + end_point, x))
       summaries.add(tf.summary.scalar('sparsity/' + end_point,
-                                    tf.nn.zero_fraction(x)))
+                                      tf.nn.zero_fraction(x)))
 
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
@@ -518,33 +518,33 @@ def main(_):
     # Configure the moving averages #
     #################################
     if FLAGS.moving_average_decay:
-        moving_average_variables = slim.get_model_variables()
-        variable_averages = tf.train.ExponentialMovingAverage(
-            FLAGS.moving_average_decay, global_step)
+      moving_average_variables = slim.get_model_variables()
+      variable_averages = tf.train.ExponentialMovingAverage(
+          FLAGS.moving_average_decay, global_step)
     else:
-        moving_average_variables, variable_averages = None, None
+      moving_average_variables, variable_averages = None, None
 
     #########################################
     # Configure the optimization procedure. #
     #########################################
     with tf.device(deploy_config.optimizer_device()):
-        learning_rate = _configure_learning_rate(dataset.num_samples, global_step)
-        optimizer = _configure_optimizer(learning_rate)
-        summaries.add(tf.summary.scalar('learning_rate', learning_rate))
+      learning_rate = _configure_learning_rate(dataset.num_samples, global_step)
+      optimizer = _configure_optimizer(learning_rate)
+      summaries.add(tf.summary.scalar('learning_rate', learning_rate))
 
     if FLAGS.sync_replicas:
-        # If sync_replicas is enabled, the averaging will be done in the chief
-        # queue runner.
-        optimizer = tf.train.SyncReplicasOptimizer(
-            opt=optimizer,
-            replicas_to_aggregate=FLAGS.replicas_to_aggregate,
-            variable_averages=variable_averages,
-            variables_to_average=moving_average_variables,
-            replica_id=tf.constant(FLAGS.task, tf.int32, shape=()),
-            total_num_replicas=FLAGS.worker_replicas)
+      # If sync_replicas is enabled, the averaging will be done in the chief
+      # queue runner.
+      optimizer = tf.train.SyncReplicasOptimizer(
+          opt=optimizer,
+          replicas_to_aggregate=FLAGS.replicas_to_aggregate,
+          variable_averages=variable_averages,
+          variables_to_average=moving_average_variables,
+          replica_id=tf.constant(FLAGS.task, tf.int32, shape=()),
+          total_num_replicas=FLAGS.worker_replicas)
     elif FLAGS.moving_average_decay:
-        # Update ops executed locally by trainer.
-        update_ops.append(variable_averages.apply(moving_average_variables))
+      # Update ops executed locally by trainer.
+      update_ops.append(variable_averages.apply(moving_average_variables))
 
     # Variables to train.
     variables_to_train = _get_variables_to_train()
@@ -564,7 +564,7 @@ def main(_):
 
     update_op = tf.group(*update_ops)
     with tf.control_dependencies([update_op]):
-        train_tensor = tf.identity(total_loss, name='train_op')
+      train_tensor = tf.identity(total_loss, name='train_op')
 
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().
@@ -593,4 +593,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-    tf.app.run()
+  tf.app.run()
