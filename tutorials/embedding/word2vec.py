@@ -232,10 +232,46 @@ class Word2Vec(object):
         distortion=0.75,
         unigrams=opts.vocab_counts.tolist()))
 
-    # Embeddings for examples: [batch_size, emb_dim]
+        # Embeddings for examples(emb_examples): [batch_size,emb_dim]
+        # On each forward pass, the self._emb will change
+        # (learn) and update. To get the embedding of each
+        # example in our training(forward) step, we partition
+        # our embeddings(self._emb) according to ids of examples.
+        # Embedding matrix looks like:
+        #      1    2    3    4    5  ..... d (d-dimensions)
+        #  1  0.2  0.3  0.1 -0.5 -0.4 
+        #  2  0.5  0.4  0.3 -0.1  0.2
+        #  3 -0.3  0.1 -0.1 -0.4  0.3
+        #  4 
+        #  .
+        #  .
+        # N(vocab size)
+        # let examples = [1,2,3]
+        # then example_emb = [
+        #                      [0.2,0.3,0.1,-0.5,-0.4],
+        #                     [0.5,0.4,0.3,-0.1,0.2],
+        #                     [-0.3,0.1,-0.1,-0.4,0.3]
+        #                     ]
     example_emb = tf.nn.embedding_lookup(emb, examples)
-
-    # Weights for labels: [batch_size, emb_dim]
+    
+        # Weights for labels:
+        # The weight matrix of final softmax layer is of the shape: [emb_dim,vocab_size]
+        # That is just the mapping from the embedding space to the word space
+        # our "sm_w_t" matrix looks like:
+        #      1    2    3    4    5  ..... N (N -vocab_size)
+        #  1  0.1  0.6  0.1 -1.5 -2.4 
+        #  2  0.3  0.4  0.9 -1.1  2.2
+        #  3 -0.8  0.2 -0.1 -1.4  2.3
+        #  4 
+        #  .
+        #  .
+        #  d(d-dimension)
+        #
+        # Each column represents the weights for a particular word
+        # We have been given labels = [1,2,3] (say)
+        # weights corresponding to 1 : [0.1,0.3,-0.8,.....] (also embedding)
+        # weights corresponding to 2 : [0.6,0.4,0.2,......]
+        # weights corresponding to 3 : [0.1,0.9,-0.1,.....]
     true_w = tf.nn.embedding_lookup(sm_w_t, labels)
     # Biases for labels: [batch_size, 1]
     true_b = tf.nn.embedding_lookup(sm_b, labels)
