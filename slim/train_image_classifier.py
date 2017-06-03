@@ -474,8 +474,6 @@ def main(_):
 
       return end_points
 
-
-
     # Gather initial summaries.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
