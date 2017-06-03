@@ -309,7 +309,6 @@ def _configure_optimizer(learning_rate):
         raise ValueError('Optimizer [%s] was not recognized', FLAGS.optimizer)
     return optimizer
 
-
 def _get_init_fn():
     """Returns a function run by the chief worker to warm-start the training.
 
