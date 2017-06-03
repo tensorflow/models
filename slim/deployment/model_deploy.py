@@ -218,7 +218,6 @@ def _gather_clone_loss(clone, num_clones, regularization_losses):
   with tf.device(clone.device):
     all_losses = []
     clone_losses = tf.get_collection(tf.GraphKeys.LOSSES, clone.scope)
-    clone_accuracy = tf.reduce_mean(tf.get_collection('accuracy', clone.scope))
     if clone_losses:
       clone_loss = tf.add_n(clone_losses, name='clone_loss')
       if num_clones > 1:
@@ -236,7 +235,7 @@ def _gather_clone_loss(clone, num_clones, regularization_losses):
     tf.summary.scalar(clone.scope + '/clone_loss', clone_loss)
   if regularization_loss is not None:
     tf.summary.scalar('regularization_loss', regularization_loss)
-  return sum_loss,clone_accuracy
+  return sum_loss
 
 
 def _optimize_clone(optimizer, clone, num_clones, regularization_losses,
@@ -257,12 +256,12 @@ def _optimize_clone(optimizer, clone, num_clones, regularization_losses,
       - clone_grads_and_vars: List of (gradient, variable) for the clone.
         Can be empty.
   """
-  sum_loss,clone_accuracy = _gather_clone_loss(clone, num_clones, regularization_losses)
+  sum_loss = _gather_clone_loss(clone, num_clones, regularization_losses)
   clone_grad = None
   if sum_loss is not None:
     with tf.device(clone.device):
       clone_grad = optimizer.compute_gradients(sum_loss, **kwargs)
-  return sum_loss, clone_grad,clone_accuracy
+  return sum_loss, clone_grad
 
 
 def optimize_clones(clones, optimizer,
@@ -290,27 +289,24 @@ def optimize_clones(clones, optimizer,
   """
   grads_and_vars = []
   clones_losses = []
-  clones_accuracy = []
   num_clones = len(clones)
   if regularization_losses is None:
     regularization_losses = tf.get_collection(
         tf.GraphKeys.REGULARIZATION_LOSSES)
   for clone in clones:
     with tf.name_scope(clone.scope):
-      clone_loss, clone_grad, clone_accuracy = _optimize_clone(
+      clone_loss, clone_grad = _optimize_clone(
           optimizer, clone, num_clones, regularization_losses, **kwargs)
       if clone_loss is not None:
         clones_losses.append(clone_loss)
         grads_and_vars.append(clone_grad)
-        clones_accuracy.append(clone_accuracy)
       # Only use regularization_losses for the first clone
       regularization_losses = None
   # Compute the total_loss summing all the clones_losses.
   total_loss = tf.add_n(clones_losses, name='total_loss')
-  averaged_accuracy = tf.divide(tf.add_n(clones_accuracy, name='total_loss'), num_clones)
   # Sum the gradients across clones.
   grads_and_vars = _sum_clones_gradients(grads_and_vars)
-  return total_loss, grads_and_vars,averaged_accuracy
+  return total_loss, grads_and_vars
 
 
 def deploy(config,

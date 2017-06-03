@@ -474,6 +474,8 @@ def main(_):
 
             return end_points
 
+
+
         # Gather initial summaries.
         summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
@@ -498,6 +500,19 @@ def main(_):
         # Add summaries for variables.
         for variable in slim.get_model_variables():
             summaries.add(tf.summary.histogram(variable.op.name, variable))
+
+        #########################################################
+        ## Calculation of the averaged accuracy for all clones ##
+        #########################################################
+
+        # Accuracy for all clones
+        accuracy = tf.get_collection('accuracy')
+
+        # Stach and take the mean.
+        accuracy = tf.reduce_mean(tf.stack(accuracy, axis=0))
+
+        # Add summaries for accuracy.
+        summaries.add(tf.summary.scalar('accuracy/accuracy-hand', accuracy))
 
         #################################
         # Configure the moving averages #
