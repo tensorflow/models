@@ -182,7 +182,7 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     'preprocessing_name', None, 'The name of the preprocessing to use. If left '
-                                'as `None`, then the model_name flag is used.')
+    'as `None`, then the model_name flag is used.')
 
 tf.app.flags.DEFINE_integer(
     'batch_size', 32, 'The number of samples in each batch.')
