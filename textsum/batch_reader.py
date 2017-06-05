@@ -66,7 +66,7 @@ class Batcher(object):
     self._bucketing = bucketing
     self._truncate_input = truncate_input
     self._input_queue = Queue.Queue(QUEUE_NUM_BATCH * self._hps.batch_size)
-    self._bucket_input_queue = Queue.Queue(QUEUE_NUM_BATCH)
+    self._bucket_input_queue = Queue.Queue(BUCKET_CACHE_BATCH)
     self._input_threads = []
     for _ in xrange(16):
       self._input_threads.append(Thread(target=self._FillInputQueue))
