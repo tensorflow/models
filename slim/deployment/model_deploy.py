@@ -663,7 +663,7 @@ class DeploymentConfig(object):
         if op.device:
           return op.device
         node_def = op if isinstance(op, tf.NodeDef) else op.node_def
-        if node_def.op == 'Variable':
+        if node_def.op.startswith('Variable'):
           t = self._task
           self._task = (self._task + 1) % self._tasks
           d = '%s/task:%d' % (self._device, t)
