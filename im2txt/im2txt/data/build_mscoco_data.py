@@ -169,7 +169,7 @@ class ImageDecoder(object):
 
     # TensorFlow ops for JPEG decoding.
     self._encoded_jpeg = tf.placeholder(dtype=tf.string)
-    self._decode_jpeg = tf.image.decode_jpeg(self._encoded_jpeg, channels=3)
+    self._decode_jpeg = tf.image.decode_png(self._encoded_jpeg, channels=3)
 
   def decode_jpeg(self, encoded_jpeg):
     image = self._sess.run(self._decode_jpeg,
