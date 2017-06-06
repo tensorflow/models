@@ -16,12 +16,13 @@
 
 import tensorflow as tf
 from tensorflow.contrib import rnn
-
+import os
 from rawdata import RawData, read_sample_data
 from dataset import DataSet
 from chart import extract_feature
 import numpy
 from tensorflow.contrib.layers.python.layers.layers import batch_norm
+import sys
 
 
 class SmartTrader(object):
@@ -59,9 +60,10 @@ class SmartTrader(object):
         create learning rate
         :return:
         '''
-        self.global_step = tf.Variable(0, trainable=False, name="global_step")
-        self.learning_rate = tf.train.exponential_decay(self.starter_learning_rate, self.global_step,
-                                                   self.decay_step, self.decay_rate, staircase=True)
+        with tf.variable_scope("parameter"):
+            self.global_step = tf.Variable(0, trainable=False, name="global_step")
+            self.learning_rate = tf.train.exponential_decay(self.starter_learning_rate, self.global_step,
+                                                   self.decay_step, self.decay_rate, staircase=True, name="learning_rate")
 
     def _create_placeholders(self):
         with tf.variable_scope("input"):
@@ -114,7 +116,7 @@ class SmartTrader(object):
         self.position = tf.nn.relu6(norm_signal) / 6.
         self.avg_position = tf.reduce_mean(self.position)
         # self.cost = 0.0002
-        self.loss = -100. * tf.reduce_mean(tf.multiply((self.y - self.cost), self.position, name="profit"))
+        self.loss = -100. * tf.reduce_mean(tf.multiply((self.y - self.cost), self.position, name="estimated_risk"))
 
     def _create_optimizer(self):
         '''
@@ -122,7 +124,7 @@ class SmartTrader(object):
         :return:
         '''
         #with tf.device("/cpu:0"):
-        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.loss, global_step=self.global_step)
+        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate, name="optimizer").minimize(self.loss, global_step=self.global_step)
 
     def _create_summary(self):
         tf.summary.scalar("loss", self.loss)
@@ -149,6 +151,8 @@ def train(trader, features, labels, train_steps=10000, batch_size=32, validation
     VERBOSE_STEP = 10  # int(len(train_features) / batch_size)
     VALIDATION_STEP = VERBOSE_STEP
 
+    saver = tf.train.Saver()
+    min_validation_loss = 100000000.
     ds = DataSet(train_features, train_labels)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -165,18 +169,15 @@ def train(trader, features, labels, train_steps=10000, batch_size=32, validation
                                            feed_dict={trader.x: val_features, trader.y: val_labels,
                                            trader.is_training: False})
                     hint = 'Average Train Loss at step {}: {:.7f} Average position {:.7f}, Validation Loss: {:.7f} Average Position: {:.7f}'.format(i, loss, avg_pos, val_loss, val_avg_pos)
+                    if val_loss < min_validation_loss:
+                        min_validation_loss = val_loss
+                        saver.save(sess, "./checkpoint/best_model", i)
                 else:
                     hint = 'Average loss at step {}: {:.7f} Average position {:.7f}'.format(i, loss, avg_pos)
                 print(hint)
 
-        pred, avg_pos = sess.run([trader.position, trader.avg_position],
-                                 feed_dict={trader.x: features, trader.y: labels, trader.is_training: False})
-        print("ChangeRate\tPositionAdvice")
-        for i in range(len(labels)):
-            print(str(labels[i][0]) + "\t" + str(pred[i][0]))
 
-
-def main():
+def predict(features, labels):
     step = 30
     input_size = 61
     train_steps = 5000
@@ -186,6 +187,27 @@ def main():
     nclasses = 1
     trader = SmartTrader(step, input_size, learning_rate, hidden_size, nclasses)
     trader.build_graph()
+    saver = tf.train.Saver()
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        ckpt = tf.train.get_checkpoint_state(os.path.dirname('checkpoint/checkpoint'))
+        if ckpt and ckpt.model_checkpoint_path:
+            saver.restore(sess, ckpt.model_checkpoint_path)
+        pred, avg_pos = sess.run([trader.position, trader.avg_position],
+                                 feed_dict={trader.x: features, trader.y: labels, trader.is_training: False})
+        print("ChangeRate\tPositionAdvice")
+        for i in range(len(labels)):
+            print(str(labels[i][0]) + "\t" + str(pred[i][0]))
+
+
+def main(operation='train'):
+    step = 30
+    input_size = 61
+    train_steps = 5000
+    batch_size = 32
+    learning_rate = 0.02
+    hidden_size = 8
+    nclasses = 1
 
     selector = ["ROCP", "OROCP", "HROCP", "LROCP", "MACD", "RSI", "VROCP", "BOLL", "MA", "VMA", "PRICE_VOLUME"]
     input_shape = [30, 61]  # [length of time series, length of feature]
@@ -197,8 +219,15 @@ def main():
     moving_labels = numpy.asarray(moving_labels)
     moving_labels = numpy.reshape(moving_labels, [moving_labels.shape[0], 1])
 
-    train(trader, moving_features, moving_labels, train_steps, batch_size)
-
+    if operation == 'train':
+        trader = SmartTrader(step, input_size, learning_rate, hidden_size, nclasses)
+        trader.build_graph()
+        train(trader, moving_features, moving_labels, train_steps, batch_size)
+    else:
+        predict(moving_features, moving_labels)
 
 if __name__ == '__main__':
-    main()
+    operation = 'train'
+    if len(sys.argv) > 1:
+        operation = sys.argv[1]
+    main(operation)
