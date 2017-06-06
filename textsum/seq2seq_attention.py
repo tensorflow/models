@@ -37,7 +37,7 @@ tf.app.flags.DEFINE_string('vocab_path',
                            '', 'Path expression to text vocabulary file.')
 tf.app.flags.DEFINE_string('article_key', 'article',
                            'tf.Example feature key for article.')
-tf.app.flags.DEFINE_string('abstract_key', 'headline',
+tf.app.flags.DEFINE_string('abstract_key', 'abstract',
                            'tf.Example feature key for abstract.')
 tf.app.flags.DEFINE_string('log_root', '', 'Directory for model root.')
 tf.app.flags.DEFINE_string('train_dir', '', 'Directory for train.')
