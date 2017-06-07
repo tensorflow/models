@@ -1,0 +1,6 @@
+/bazel-bin
+/bazel-ci_build-cache
+/bazel-genfiles
+/bazel-out
+/bazel-testlogs
+/bazel-tf
