@@ -26,7 +26,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import cPickle
+from six.moves import cPickle
 import os
 import sys
 import tarfile
@@ -72,14 +72,17 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
   Returns:
     The new offset.
   """
-  with tf.gfile.Open(filename, 'r') as f:
-    data = cPickle.load(f)
+  with tf.gfile.Open(filename, 'rb') as f:
+    if sys.version_info < (3,):
+      data = cPickle.load(f)
+    else:
+      data = cPickle.load(f, encoding='bytes')
 
-  images = data['data']
+  images = data[b'data']
   num_images = images.shape[0]
 
   images = images.reshape((num_images, 3, 32, 32))
-  labels = data['labels']
+  labels = data[b'labels']
 
   with tf.Graph().as_default():
     image_placeholder = tf.placeholder(dtype=tf.uint8)
@@ -99,7 +102,7 @@ def _add_to_tfrecord(filename, tfrecord_writer, offset=0):
                               feed_dict={image_placeholder: image})
 
         example = dataset_utils.image_to_tfexample(
-            png_string, 'png', _IMAGE_SIZE, _IMAGE_SIZE, label)
+            png_string, b'png', _IMAGE_SIZE, _IMAGE_SIZE, label)
         tfrecord_writer.write(example.SerializeToString())
 
   return offset + num_images
