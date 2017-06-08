@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Layers for VatxtModel."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+# Dependency imports
 
+import tensorflow as tf
 K = tf.contrib.keras
 
 
@@ -34,7 +34,7 @@ def cl_logits_subgraph(layer_sizes, input_size, num_classes, keep_prob=1.):
       subgraph.add(K.layers.Dense(layer_size, activation='relu'))
 
     if keep_prob < 1.:
-      subgraph.add(K.layers.Dropout(keep_prob))
+      subgraph.add(K.layers.Dropout(1. - keep_prob))
   subgraph.add(K.layers.Dense(1 if num_classes == 2 else num_classes))
   return subgraph
 
@@ -76,7 +76,14 @@ class Embedding(K.layers.Layer):
   def call(self, x):
     embedded = tf.nn.embedding_lookup(self.var, x)
     if self.keep_prob < 1.:
-      embedded = tf.nn.dropout(embedded, self.keep_prob)
+      shape = embedded.get_shape().as_list()
+
+      # Use same dropout masks at each timestep with specifying noise_shape.
+      # This slightly improves performance.
+      # Please see https://arxiv.org/abs/1512.05287 for the theoretical
+      # explanation.
+      embedded = tf.nn.dropout(
+          embedded, self.keep_prob, noise_shape=(shape[0], 1, shape[2]))
     return embedded
 
   def _normalize(self, emb):
@@ -153,11 +160,11 @@ class SoftmaxLoss(K.layers.Layer):
       self.lin_w = self.add_weight(
           shape=(input_shape[-1], self.vocab_size),
           name='lm_lin_w',
-          initializer='glorot_uniform')
+          initializer=K.initializers.glorot_uniform())
       self.lin_b = self.add_weight(
           shape=(self.vocab_size,),
           name='lm_lin_b',
-          initializer='glorot_uniform')
+          initializer=K.initializers.glorot_uniform())
 
     super(SoftmaxLoss, self).build(input_shape)
 

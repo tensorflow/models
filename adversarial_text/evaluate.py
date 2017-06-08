@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Evaluates text classification model."""
 
 from __future__ import absolute_import
@@ -21,6 +20,8 @@ from __future__ import print_function
 
 import math
 import time
+
+# Dependency imports
 
 import tensorflow as tf
 
@@ -100,6 +101,7 @@ def run_eval(eval_ops, summary_writer, saver):
 
 
 def _log_values(sess, value_ops, summary_writer=None):
+  """Evaluate, log, and write summaries of the eval metrics in value_ops."""
   metric_names, value_ops = zip(*value_ops.items())
   values = sess.run(value_ops)
 
