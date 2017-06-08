@@ -27,7 +27,7 @@ import program_utils
 
 FLAGS = tf.app.flags.FLAGS
 
-bins = [2 + bin_idx_i for bin_idx_i in xrange(256)]
+bins = [2 + bin_idx_i for bin_idx_i in range(256)]
 all_tasks = ["sort", "kvsort", "id", "rev", "rev2", "incr", "add", "left",
              "right", "left-shift", "right-shift", "bmul", "mul", "dup",
              "badd", "qadd", "search", "progeval", "progsynth"]
@@ -52,7 +52,7 @@ test_set = {}
 for some_task in all_tasks:
   train_set[some_task] = []
   test_set[some_task] = []
-  for all_max_len in xrange(10000):
+  for all_max_len in range(10000):
     train_set[some_task].append([])
     test_set[some_task].append([])
 
@@ -89,11 +89,11 @@ def write_tmp_file(name, lines):
 def add(n1, n2, base=10):
   """Add two numbers represented as lower-endian digit lists."""
   k = max(len(n1), len(n2)) + 1
-  d1 = n1 + [0 for _ in xrange(k - len(n1))]
-  d2 = n2 + [0 for _ in xrange(k - len(n2))]
+  d1 = n1 + [0 for _ in range(k - len(n1))]
+  d2 = n2 + [0 for _ in range(k - len(n2))]
   res = []
   carry = 0
-  for i in xrange(k):
+  for i in range(k):
     if d1[i] + d2[i] + carry < base:
       res.append(d1[i] + d2[i] + carry)
       carry = 0
@@ -110,12 +110,13 @@ def init_data(task, length, nbr_cases, nclass):
   """Data initialization."""
   def rand_pair(l, task):
     """Random data pair for a task. Total length should be <= l."""
-    k = (l-1)/2
+    k = (l-1)//2
+    #k = (l-1)/2
     base = 10
     if task[0] == "b": base = 2
     if task[0] == "q": base = 4
-    d1 = [np.random.randint(base) for _ in xrange(k)]
-    d2 = [np.random.randint(base) for _ in xrange(k)]
+    d1 = [np.random.randint(base) for _ in range(k)]
+    d2 = [np.random.randint(base) for _ in range(k)]
     if task in ["add", "badd", "qadd"]:
       res = add(d1, d2, base)
     elif task in ["mul", "bmul"]:
@@ -134,23 +135,24 @@ def init_data(task, length, nbr_cases, nclass):
 
   def rand_dup_pair(l):
     """Random data pair for duplication task. Total length should be <= l."""
-    k = l/2
-    x = [np.random.randint(nclass - 1) + 1 for _ in xrange(k)]
-    inp = x + [0 for _ in xrange(l - k)]
-    res = x + x + [0 for _ in xrange(l - 2*k)]
+    #k = l/2
+    k = l//2
+    x = [np.random.randint(nclass - 1) + 1 for _ in range(k)]
+    inp = x + [0 for _ in range(l - k)]
+    res = x + x + [0 for _ in range(l - 2*k)]
     return inp, res
 
   def rand_rev2_pair(l):
     """Random data pair for reverse2 task. Total length should be <= l."""
     inp = [(np.random.randint(nclass - 1) + 1,
-            np.random.randint(nclass - 1) + 1) for _ in xrange(l/2)]
+            np.random.randint(nclass - 1) + 1) for _ in range(l//2)] #range(l/2)
     res = [i for i in reversed(inp)]
     return [x for p in inp for x in p], [x for p in res for x in p]
 
   def rand_search_pair(l):
     """Random data pair for search task. Total length should be <= l."""
     inp = [(np.random.randint(nclass - 1) + 1,
-            np.random.randint(nclass - 1) + 1) for _ in xrange(l-1/2)]
+            np.random.randint(nclass - 1) + 1) for _ in range((l-1)//2)] #range(l-1/2), brackets around (l-1)
     q = np.random.randint(nclass - 1) + 1
     res = 0
     for (k, v) in reversed(inp):
@@ -160,8 +162,8 @@ def init_data(task, length, nbr_cases, nclass):
 
   def rand_kvsort_pair(l):
     """Random data pair for key-value sort. Total length should be <= l."""
-    keys = [(np.random.randint(nclass - 1) + 1, i) for i in xrange(l/2)]
-    vals = [np.random.randint(nclass - 1) + 1 for _ in xrange(l/2)]
+    keys = [(np.random.randint(nclass - 1) + 1, i) for i in range(l//2)] #range(l/2)
+    vals = [np.random.randint(nclass - 1) + 1 for _ in range(l//2)] #range(l/2)
     kv = [(k, vals[i]) for (k, i) in keys]
     sorted_kv = [(k, vals[i]) for (k, i) in sorted(keys)]
     return [x for p in kv for x in p], [x for p in sorted_kv for x in p]
@@ -169,8 +171,8 @@ def init_data(task, length, nbr_cases, nclass):
   def prog_io_pair(prog, max_len, counter=0):
     try:
       ilen = np.random.randint(max_len - 3) + 1
-      bound = max(15 - (counter / 20), 1)
-      inp = [random.choice(range(-bound, bound)) for _ in range(ilen)]
+      bound = max(15 - (counter // 20), 1) #(counter / 20)
+      inp = [random.choice(list(range(-bound, bound))) for _ in range(ilen)]
       inp_toks = [program_utils.prog_rev_vocab[t]
                   for t in program_utils.tokenize(str(inp)) if t != ","]
       out = program_utils.evaluate(prog, {"a": inp})
@@ -201,7 +203,7 @@ def init_data(task, length, nbr_cases, nclass):
     elif task == "incr":
       carry = 1
       res = []
-      for i in xrange(len(inp)):
+      for i in range(len(inp)):
         if inp[i] + carry < nclass:
           res.append(inp[i] + carry)
           carry = 0
@@ -214,9 +216,9 @@ def init_data(task, length, nbr_cases, nclass):
     elif task == "right":
       return [inp[-1]]
     elif task == "left-shift":
-      return [inp[l-1] for l in xrange(len(inp))]
+      return [inp[l-1] for l in range(len(inp))]
     elif task == "right-shift":
-      return [inp[l+1] for l in xrange(len(inp))]
+      return [inp[l+1] for l in range(len(inp))]
     else:
       print_out("Unknown spec for task " + str(task))
       sys.exit()
@@ -229,11 +231,11 @@ def init_data(task, length, nbr_cases, nclass):
   if is_prog:
     inputs_per_prog = 5
     program_utils.make_vocab()
-    progs = read_tmp_file("programs_len%d" % (l / 10))
+    progs = read_tmp_file("programs_len%d" % (l // 10)) #(l / 10)
     if not progs:
-      progs = program_utils.gen(l / 10, 1.2 * nbr_cases / inputs_per_prog)
-      write_tmp_file("programs_len%d" % (l / 10), progs)
-    prog_ios = read_tmp_file("programs_len%d_io" % (l / 10))
+      progs = program_utils.gen(l // 10, 1.2 * nbr_cases / inputs_per_prog) # l // 10 
+      write_tmp_file("programs_len%d" % (l // 10), progs) #(l / 10)
+    prog_ios = read_tmp_file("programs_len%d_io" % (l // 10)) #(l / 10)
     nbr_cases = min(nbr_cases, len(progs) * inputs_per_prog) / 1.2
     if not prog_ios:
       # Generate program io data.
@@ -247,16 +249,16 @@ def init_data(task, length, nbr_cases, nclass):
                  for t in program_utils.tokenize(prog)]
         ptoks.append(program_utils.prog_rev_vocab["_EOS"])
         plen = len(ptoks)
-        for _ in xrange(inputs_per_prog):
+        for _ in range(inputs_per_prog):
           if task == "progeval":
             inp, out = prog_io_pair(prog, plen)
             prog_ios.append(str(inp) + "\t" + str(out) + "\t" + prog)
           elif task == "progsynth":
             plen = max(len(ptoks), 8)
-            for _ in xrange(3):
-              inp, out = prog_io_pair(prog, plen / 2)
+            for _ in range(3):
+              inp, out = prog_io_pair(prog, plen // 2) #plen / 2
               prog_ios.append(str(inp) + "\t" + str(out) + "\t" + prog)
-      write_tmp_file("programs_len%d_io" % (l / 10), prog_ios)
+      write_tmp_file("programs_len%d_io" % (l // 10), prog_ios) #(l / 10)
     prog_ios_dict = {}
     for s in prog_ios:
       i, o, p = s.split("\t")
@@ -284,18 +286,18 @@ def init_data(task, length, nbr_cases, nclass):
       ptoks.append(program_utils.prog_rev_vocab["_EOS"])
       plen = len(ptoks)
       dset = train_set if pidx < nbr_cases / inputs_per_prog else test_set
-      for _ in xrange(inputs_per_prog):
+      for _ in range(inputs_per_prog):
         if task == "progeval":
           inp, out = prog_ios_dict[prog].pop()
           dset[task][bin_for(plen)].append([[ptoks, inp, [], []], [out]])
         elif task == "progsynth":
           plen, ilist = max(len(ptoks), 8), [[]]
-          for _ in xrange(3):
+          for _ in range(3):
             inp, out = prog_ios_dict[prog].pop()
             ilist.append(inp + out)
           dset[task][bin_for(plen)].append([ilist, [ptoks]])
 
-  for case in xrange(0 if is_prog else nbr_cases):
+  for case in range(0 if is_prog else nbr_cases):
     total_time += time.time() - cur_time
     cur_time = time.time()
     if l > 10000 and case % 100 == 1:
@@ -326,10 +328,10 @@ def init_data(task, length, nbr_cases, nclass):
       i, t = rand_kvsort_pair(l)
       test_set[task][bin_for(len(i))].append([[i], [t]])
     elif task not in ["progeval", "progsynth"]:
-      inp = [np.random.randint(nclass - 1) + 1 for i in xrange(l)]
+      inp = [np.random.randint(nclass - 1) + 1 for i in range(l)]
       target = spec(inp)
       train_set[task][bin_for(l)].append([[inp], [target]])
-      inp = [np.random.randint(nclass - 1) + 1 for i in xrange(l)]
+      inp = [np.random.randint(nclass - 1) + 1 for i in range(l)]
       target = spec(inp)
       test_set[task][bin_for(l)].append([[inp], [target]])
 
@@ -353,7 +355,7 @@ def get_batch(bin_id, batch_size, data_set, height, offset=None, preset=None):
   """Get a batch of data, training or testing."""
   inputs, targets = [], []
   pad_length = bins[bin_id]
-  for b in xrange(batch_size):
+  for b in range(batch_size):
     if preset is None:
       elem = random.choice(data_set[bin_id])
       if offset is not None and offset + b < len(data_set[bin_id]):
@@ -362,12 +364,12 @@ def get_batch(bin_id, batch_size, data_set, height, offset=None, preset=None):
       elem = preset
     inpt, targett, inpl, targetl = elem[0], elem[1], [], []
     for inp in inpt:
-      inpl.append(inp + [0 for _ in xrange(pad_length - len(inp))])
+      inpl.append(inp + [0 for _ in range(pad_length - len(inp))])
     if len(inpl) == 1:
-      for _ in xrange(height - 1):
-        inpl.append([0 for _ in xrange(pad_length)])
+      for _ in range(height - 1):
+        inpl.append([0 for _ in range(pad_length)])
     for target in targett:
-      targetl.append(target + [0 for _ in xrange(pad_length - len(target))])
+      targetl.append(target + [0 for _ in range(pad_length - len(target))])
     inputs.append(inpl)
     targets.append(targetl)
   res_input = np.array(inputs, dtype=np.int32)
@@ -399,9 +401,9 @@ def accuracy(inpt_t, output, target_t, batch_size, nprint,
   """Calculate output accuracy given target."""
   assert nprint < batch_size + 1
   inpt = []
-  for h in xrange(inpt_t.shape[1]):
-    inpt.extend([inpt_t[:, h, l] for l in xrange(inpt_t.shape[2])])
-  target = [target_t[:, 0, l] for l in xrange(target_t.shape[2])]
+  for h in range(inpt_t.shape[1]):
+    inpt.extend([inpt_t[:, h, l] for l in range(inpt_t.shape[2])])
+  target = [target_t[:, 0, l] for l in range(target_t.shape[2])]
   def tok(i):
     if rev_vocab and i < len(rev_vocab):
       return rev_vocab[i]
@@ -413,39 +415,39 @@ def accuracy(inpt_t, output, target_t, batch_size, nprint,
       print_len += 1
     print_out("    i: " + " ".join([tok(i) for i in inp if i > 0]))
     print_out("    o: " +
-              " ".join([tok(output[l]) for l in xrange(print_len)]))
+              " ".join([tok(output[l]) for l in range(print_len)]))
     print_out("    t: " +
-              " ".join([tok(target[l]) for l in xrange(print_len)]))
+              " ".join([tok(target[l]) for l in range(print_len)]))
   decoded_target = target
   decoded_output = decode(output)
   # Use beam output if given and score is high enough.
   if beam_out is not None:
-    for b in xrange(batch_size):
+    for b in range(batch_size):
       if beam_scores[b] >= 10.0:
-        for l in xrange(min(len(decoded_output), beam_out.shape[2])):
+        for l in range(min(len(decoded_output), beam_out.shape[2])):
           decoded_output[l][b] = int(beam_out[b, 0, l])
   total = 0
   errors = 0
-  seq = [0 for b in xrange(batch_size)]
-  for l in xrange(len(decoded_output)):
-    for b in xrange(batch_size):
+  seq = [0 for b in range(batch_size)]
+  for l in range(len(decoded_output)):
+    for b in range(batch_size):
       if decoded_target[l][b] > 0:
         total += 1
         if decoded_output[l][b] != decoded_target[l][b]:
           seq[b] = 1
           errors += 1
   e = 0  # Previous error index
-  for _ in xrange(min(nprint, sum(seq))):
+  for _ in range(min(nprint, sum(seq))):
     while seq[e] == 0:
       e += 1
-    task_print([inpt[l][e] for l in xrange(len(inpt))],
-               [decoded_output[l][e] for l in xrange(len(decoded_target))],
-               [decoded_target[l][e] for l in xrange(len(decoded_target))])
+    task_print([inpt[l][e] for l in range(len(inpt))],
+               [decoded_output[l][e] for l in range(len(decoded_target))],
+               [decoded_target[l][e] for l in range(len(decoded_target))])
     e += 1
-  for b in xrange(nprint - errors):
-    task_print([inpt[l][b] for l in xrange(len(inpt))],
-               [decoded_output[l][b] for l in xrange(len(decoded_target))],
-               [decoded_target[l][b] for l in xrange(len(decoded_target))])
+  for b in range(nprint - errors):
+    task_print([inpt[l][b] for l in range(len(inpt))],
+               [decoded_output[l][b] for l in range(len(decoded_target))],
+               [decoded_target[l][b] for l in range(len(decoded_target))])
   return errors, total, sum(seq)
 
 
