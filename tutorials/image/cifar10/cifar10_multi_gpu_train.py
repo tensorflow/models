@@ -162,10 +162,7 @@ def train():
     opt = tf.train.GradientDescentOptimizer(lr)
 
     # Get images and labels for CIFAR-10.
-    # Force input pipeline to CPU:0 to avoid opertaios sometimes ending up on GPU
-    # and resulting in a slow down.
-    with tf.device('/CPU:0'):
-      images, labels = cifar10.distorted_inputs()
+    images, labels = cifar10.distorted_inputs()
 
     # Calculate the gradients for each model tower.
     tower_grads = []
