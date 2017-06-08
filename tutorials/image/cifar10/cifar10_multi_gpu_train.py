@@ -67,6 +67,8 @@ def tower_loss(scope, images, labels):
 
   Args:
     scope: unique prefix string identifying the CIFAR tower, e.g. 'tower_0'
+    images: Images. 4D tensor of [batch_size, height, width, 3] size.
+    labels: Labels. 1D tensor of [batch_size] size.
 
   Returns:
      Tensor of shape [] containing the total loss for a batch of data
