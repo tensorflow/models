@@ -64,7 +64,8 @@ def EmbeddingLookupFeatures(params, sparse_features, allow_weights):
     params = [params]
   # Lookup embeddings.
   sparse_features = tf.convert_to_tensor(sparse_features)
-  indices, ids, weights = gen_parser_ops.unpack_sparse_features(sparse_features)
+  indices, ids, weights = gen_parser_ops.unpack_syntax_net_sparse_features(
+      sparse_features)
   embeddings = tf.nn.embedding_lookup(params, ids)
 
   if allow_weights:
@@ -477,11 +478,15 @@ class GreedyParser(object):
     """Embeddings at the given index will be set to pretrained values."""
 
     def _Initializer(shape, dtype=tf.float32, partition_info=None):
+      """Variable initializer that loads pretrained embeddings."""
       unused_dtype = dtype
+      seed1, seed2 = tf.get_seed(self._seed)
       t = gen_parser_ops.word_embedding_initializer(
           vectors=embeddings_path,
           task_context=task_context,
-          embedding_init=self._embedding_init)
+          embedding_init=self._embedding_init,
+          seed=seed1,
+          seed2=seed2)
 
       t.set_shape(shape)
       return t

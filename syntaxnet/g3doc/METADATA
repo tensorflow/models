@@ -1,0 +1,13 @@
+# Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
+name: "syntaxnet"
+# Use "base" template
+g3doc {
+    headerfooter {
+      path_regexp: ".*\\.md$"
+      name: "base"
+    }
+    navbar_file : "/company/teams/saft/navbar.md"
+    logo : "/company/teams/saft/images/logo.png"
+    favicon : "/company/teams/saft/images/saft-favicon.png"
+}
+teams_product_id: 7805219680

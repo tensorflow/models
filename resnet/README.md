@@ -23,7 +23,7 @@ https://arxiv.org/pdf/1605.07146v1.pdf
 <b>Settings:</b>
 
 * Random split 50k training set into 45k/5k train/eval split.
-* Pad to 36x36 and random crop. Horizontal flip. Per-image whitenting. 
+* Pad to 36x36 and random crop. Horizontal flip. Per-image whitening.
 * Momentum optimizer 0.9.
 * Learning rate schedule: 0.1 (40k), 0.01 (60k), 0.001 (>60k).
 * L2 weight decay: 0.002.
@@ -31,13 +31,9 @@ https://arxiv.org/pdf/1605.07146v1.pdf
 
 <b>Results:</b>
 
-<left>
 ![Precisions](g3doc/cifar_resnet.gif)
-</left>
-<left>
-![Precisions Legends](g3doc/cifar_resnet_legends.gif)
-</left>
 
+![Precisions Legends](g3doc/cifar_resnet_legends.gif)
 
 CIFAR-10 Model|Best Precision|Steps
 --------------|--------------|------
@@ -69,40 +65,40 @@ curl -o cifar-100-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-100-binar
 <b>How to run:</b>
 
 ```shell
-# cd to the your workspace.
-# It contains an empty WORKSPACE file, resnet codes and cifar10 dataset.
-# Note: User can split 5k from train set for eval set.
-ls -R
-  .:
-  cifar10  resnet  WORKSPACE
+# cd to the models repository and run with bash. Expected command output shown.
+# The directory should contain an empty WORKSPACE file, the resnet code, and the cifar10 dataset.
+# Note: The user can split 5k from train set for eval set.
+$ ls -R
+.:
+cifar10  resnet  WORKSPACE
 
-  ./cifar10:
-  data_batch_1.bin  data_batch_2.bin  data_batch_3.bin  data_batch_4.bin
-  data_batch_5.bin  test_batch.bin
+./cifar10:
+data_batch_1.bin  data_batch_2.bin  data_batch_3.bin  data_batch_4.bin
+data_batch_5.bin  test_batch.bin
 
-  ./resnet:
-  BUILD  cifar_input.py  g3doc  README.md  resnet_main.py  resnet_model.py
+./resnet:
+BUILD  cifar_input.py  g3doc  README.md  resnet_main.py  resnet_model.py
 
 # Build everything for GPU.
-bazel build -c opt --config=cuda resnet/...
+$ bazel build -c opt --config=cuda resnet/...
 
 # Train the model.
-bazel-bin/resnet/resnet_main --train_data_path=cifar10/data_batch* \
-                             --log_root=/tmp/resnet_model \
-                             --train_dir=/tmp/resnet_model/train \
-                             --dataset='cifar10' \
-                             --num_gpus=1
+$ bazel-bin/resnet/resnet_main --train_data_path=cifar10/data_batch* \
+                               --log_root=/tmp/resnet_model \
+                               --train_dir=/tmp/resnet_model/train \
+                               --dataset='cifar10' \
+                               --num_gpus=1
 
 # While the model is training, you can also check on its progress using tensorboard:
-tensorboard --logdir=/tmp/resnet_model
+$ tensorboard --logdir=/tmp/resnet_model
 
 # Evaluate the model.
 # Avoid running on the same GPU as the training job at the same time,
 # otherwise, you might run out of memory.
-bazel-bin/resnet/resnet_main --eval_data_path=cifar10/test_batch.bin \
-                             --log_root=/tmp/resnet_model \
-                             --eval_dir=/tmp/resnet_model/test \
-                             --mode=eval \
-                             --dataset='cifar10' \
-                             --num_gpus=0
+$ bazel-bin/resnet/resnet_main --eval_data_path=cifar10/test_batch.bin \
+                               --log_root=/tmp/resnet_model \
+                               --eval_dir=/tmp/resnet_model/test \
+                               --mode=eval \
+                               --dataset='cifar10' \
+                               --num_gpus=0
 ```

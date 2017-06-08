@@ -24,7 +24,7 @@
 # downloading the raw images.
 #
 # usage:
-#  ./download_imagenet.sh [dirname]
+#  ./download_imagenet.sh [dir name] [synsets file]
 set -e
 
 if [ "x$IMAGENET_ACCESS_KEY" == x -o "x$IMAGENET_USERNAME" == x ]; then
@@ -40,7 +40,6 @@ fi
 
 OUTDIR="${1:-./imagenet-data}"
 SYNSETS_FILE="${2:-./synsets.txt}"
-SYNSETS_FILE="${PWD}/${SYNSETS_FILE}"
 
 echo "Saving downloaded files to $OUTDIR"
 mkdir -p "${OUTDIR}"

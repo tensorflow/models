@@ -18,7 +18,6 @@ limitations under the License.
 #include <map>
 #include <utility>
 
-#include "syntaxnet/dictionary.pb.h"
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/task_context.h"
 #include "syntaxnet/task_spec.pb.h"

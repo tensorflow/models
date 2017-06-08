@@ -232,11 +232,9 @@ def _gather_clone_loss(clone, num_clones, regularization_losses):
       sum_loss = tf.add_n(all_losses)
   # Add the summaries out of the clone device block.
   if clone_loss is not None:
-    tf.scalar_summary(clone.scope + '/clone_loss', clone_loss,
-                      name='clone_loss')
+    tf.summary.scalar(clone.scope + '/clone_loss', clone_loss)
   if regularization_loss is not None:
-    tf.scalar_summary('regularization_loss', regularization_loss,
-                      name='regularization_loss')
+    tf.summary.scalar('regularization_loss', regularization_loss)
   return sum_loss
 
 
@@ -306,7 +304,7 @@ def optimize_clones(clones, optimizer,
       regularization_losses = None
   # Compute the total_loss summing all the clones_losses.
   total_loss = tf.add_n(clones_losses, name='total_loss')
-  # Sum the gradients accross clones.
+  # Sum the gradients across clones.
   grads_and_vars = _sum_clones_gradients(grads_and_vars)
   return total_loss, grads_and_vars
 
@@ -380,8 +378,8 @@ def deploy(config,
         update_ops.append(grad_updates)
 
         update_op = tf.group(*update_ops)
-        train_op = control_flow_ops.with_dependencies([update_op], total_loss,
-                                                      name='train_op')
+        with tf.control_dependencies([update_op]):
+          train_op = tf.identity(total_loss, name='train_op')
     else:
       clones_losses = []
       regularization_losses = tf.get_collection(
@@ -404,12 +402,11 @@ def deploy(config,
 
     if total_loss is not None:
       # Add total_loss to summary.
-      summaries.add(tf.scalar_summary('total_loss', total_loss,
-                                      name='total_loss'))
+      summaries.add(tf.summary.scalar('total_loss', total_loss))
 
     if summaries:
       # Merge all summaries together.
-      summary_op = tf.merge_summary(list(summaries), name='summary_op')
+      summary_op = tf.summary.merge(list(summaries), name='summary_op')
     else:
       summary_op = None
 
@@ -467,9 +464,9 @@ def _add_gradients_summaries(grads_and_vars):
         grad_values = grad.values
       else:
         grad_values = grad
-      summaries.append(tf.histogram_summary(var.op.name + ':gradient',
+      summaries.append(tf.summary.histogram(var.op.name + ':gradient',
                                             grad_values))
-      summaries.append(tf.histogram_summary(var.op.name + ':gradient_norm',
+      summaries.append(tf.summary.histogram(var.op.name + ':gradient_norm',
                                             tf.global_norm([grad_values])))
     else:
       tf.logging.info('Var %s has no gradient', var.op.name)
@@ -666,7 +663,7 @@ class DeploymentConfig(object):
         if op.device:
           return op.device
         node_def = op if isinstance(op, tf.NodeDef) else op.node_def
-        if node_def.op == 'Variable':
+        if node_def.op.startswith('Variable'):
           t = self._task
           self._task = (self._task + 1) % self._tasks
           d = '%s/task:%d' % (self._device, t)

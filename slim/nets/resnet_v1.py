@@ -119,6 +119,7 @@ def resnet_v1(inputs,
               global_pool=True,
               output_stride=None,
               include_root_block=True,
+              spatial_squeeze=True,
               reuse=None,
               scope=None):
   """Generator for v1 ResNet models.
@@ -158,6 +159,8 @@ def resnet_v1(inputs,
       ratio of input to output spatial resolution.
     include_root_block: If True, include the initial convolution followed by
       max-pooling, if False excludes it.
+    spatial_squeeze: if True, logits is of shape [B, C], if false logits is
+        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -197,11 +200,15 @@ def resnet_v1(inputs,
         if num_classes is not None:
           net = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
                             normalizer_fn=None, scope='logits')
+        if spatial_squeeze:
+          logits = tf.squeeze(net, [1, 2], name='SpatialSqueeze')
+        else:
+          logits = net
         # Convert end_points_collection into a dictionary of end_points.
         end_points = slim.utils.convert_collection_to_dict(end_points_collection)
         if num_classes is not None:
-          end_points['predictions'] = slim.softmax(net, scope='predictions')
-        return net, end_points
+          end_points['predictions'] = slim.softmax(logits, scope='predictions')
+        return logits, end_points
 resnet_v1.default_image_size = 224
 
 
@@ -210,6 +217,7 @@ def resnet_v1_50(inputs,
                  is_training=True,
                  global_pool=True,
                  output_stride=None,
+                 spatial_squeeze=True,
                  reuse=None,
                  scope='resnet_v1_50'):
   """ResNet-50 model of [1]. See resnet_v1() for arg and return description."""
@@ -225,7 +233,9 @@ def resnet_v1_50(inputs,
   ]
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
-                   include_root_block=True, reuse=reuse, scope=scope)
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v1_50.default_image_size = resnet_v1.default_image_size
 
 
 def resnet_v1_101(inputs,
@@ -233,6 +243,7 @@ def resnet_v1_101(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v1_101'):
   """ResNet-101 model of [1]. See resnet_v1() for arg and return description."""
@@ -248,7 +259,9 @@ def resnet_v1_101(inputs,
   ]
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
-                   include_root_block=True, reuse=reuse, scope=scope)
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v1_101.default_image_size = resnet_v1.default_image_size
 
 
 def resnet_v1_152(inputs,
@@ -256,6 +269,7 @@ def resnet_v1_152(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v1_152'):
   """ResNet-152 model of [1]. See resnet_v1() for arg and return description."""
@@ -270,7 +284,9 @@ def resnet_v1_152(inputs,
           'block4', bottleneck, [(2048, 512, 1)] * 3)]
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
-                   include_root_block=True, reuse=reuse, scope=scope)
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v1_152.default_image_size = resnet_v1.default_image_size
 
 
 def resnet_v1_200(inputs,
@@ -278,6 +294,7 @@ def resnet_v1_200(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v1_200'):
   """ResNet-200 model of [2]. See resnet_v1() for arg and return description."""
@@ -292,4 +309,6 @@ def resnet_v1_200(inputs,
           'block4', bottleneck, [(2048, 512, 1)] * 3)]
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
-                   include_root_block=True, reuse=reuse, scope=scope)
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v1_200.default_image_size = resnet_v1.default_image_size

@@ -41,6 +41,7 @@ class SegmentationTransitionTest : public ::testing::Test {
         "token { word: '样' start: 14 end: 16 break_level: NO_BREAK } ";
     sentence_ = std::unique_ptr<Sentence>(new Sentence());
     TextFormat::ParseFromString(str_sentence, sentence_.get());
+    context_.reset(new TaskContext());
 
     word_map_.Increment("因为");
     word_map_.Increment("因为");
@@ -51,16 +52,22 @@ class SegmentationTransitionTest : public ::testing::Test {
     word_map_.Increment("样");
     word_map_.Increment("这样");
     word_map_.Increment("这样");
+    bigram_map_.Increment("因为");
+    bigram_map_.Increment("因为");
+    bigram_map_.Increment("因为");
+    bigram_map_.Increment("为有");
+    bigram_map_.Increment("这样");
+    bigram_map_.Increment("这样");
     string filename = tensorflow::strings::StrCat(
         tensorflow::testing::TmpDir(), "word-map");
     word_map_.Save(filename);
-
-    // Re-load in sorted order, ignore words that only occurs once.
     word_map_.Load(filename, 2, -1);
-
-    // Prepare task context.
-    context_ = std::unique_ptr<TaskContext>(new TaskContext());
     AddInputToContext("word-map", filename, "text", "");
+
+    filename = tensorflow::strings::StrCat(
+        tensorflow::testing::TmpDir(), "char-ngram-map");
+    bigram_map_.Save(filename);
+    AddInputToContext("char-ngram-map", filename, "text", "");
     registry_ = std::unique_ptr<WorkspaceRegistry>( new WorkspaceRegistry());
   }
 
@@ -115,6 +122,7 @@ class SegmentationTransitionTest : public ::testing::Test {
   std::unique_ptr<ParserTransitionSystem> transition_system_;
   TermFrequencyMap label_map_;
   TermFrequencyMap word_map_;
+  TermFrequencyMap bigram_map_;
 };
 
 TEST_F(SegmentationTransitionTest, GoldNextActionTest) {
@@ -169,6 +177,33 @@ TEST_F(SegmentationTransitionTest, DefaultActionTest) {
   EXPECT_EQ(sentence_->token(2).word(), "有");
   EXPECT_EQ(sentence_->token(3).word(), "这");
   EXPECT_EQ(sentence_->token(4).word(), "样");
+}
+
+TEST_F(SegmentationTransitionTest, BigramFeatureTest) {
+  context_->SetParameter("char-bigram-min-freq", "2");
+  const int unk_id = 2;
+  const int outside_id = 3;
+
+  // Prepare a parser state.
+  auto state = std::unique_ptr<ParserState>(new ParserState(
+      sentence_.get(),
+      transition_system_->NewTransitionState(/*training_mode=*/false),
+      &label_map_));
+
+  PrepareFeature("input.char-bigram", state.get());
+  EXPECT_EQ(0, ComputeFeature(*state));
+  PrepareFeature("input(1).char-bigram", state.get());
+  EXPECT_EQ(unk_id, ComputeFeature(*state));
+  PrepareFeature("input(2).char-bigram", state.get());
+  EXPECT_EQ(unk_id, ComputeFeature(*state));
+  PrepareFeature("input(3).char-bigram", state.get());
+  EXPECT_EQ(unk_id, ComputeFeature(*state));
+  PrepareFeature("input(4).char-bigram", state.get());
+  EXPECT_EQ(unk_id, ComputeFeature(*state));
+  PrepareFeature("input(5).char-bigram", state.get());
+  EXPECT_EQ(1, ComputeFeature(*state));
+  PrepareFeature("input(6).char-bigram", state.get());
+  EXPECT_EQ(outside_id, ComputeFeature(*state));
 }
 
 TEST_F(SegmentationTransitionTest, LastWordFeatureTest) {

@@ -1,0 +1,9 @@
+# A GPU/screen config to run all jobs for training and evaluation in parallel.
+# Execute:
+# source /path/to/your/virtualenv/bin/activate
+# screen -R TF -c all_jobs.screenrc
+
+screen -t train 0 python train.py --train_log_dir=workdir/train
+screen -t eval_train 1 python eval.py --split_name=train --train_log_dir=workdir/train --eval_log_dir=workdir/eval_train
+screen -t eval_test 2 python eval.py --split_name=test --train_log_dir=workdir/train --eval_log_dir=workdir/eval_test
+screen -t tensorboard 3 tensorboard --logdir=workdir

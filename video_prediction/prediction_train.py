@@ -103,21 +103,24 @@ class Model(object):
                actions=None,
                states=None,
                sequence_length=None,
-               reuse_scope=None):
+               reuse_scope=None,
+               prefix=None):
 
     if sequence_length is None:
       sequence_length = FLAGS.sequence_length
 
-    self.prefix = prefix = tf.placeholder(tf.string, [])
+    if prefix is None:
+        prefix = tf.placeholder(tf.string, [])
+    self.prefix = prefix
     self.iter_num = tf.placeholder(tf.float32, [])
     summaries = []
 
     # Split into timesteps.
-    actions = tf.split(1, actions.get_shape()[1], actions)
+    actions = tf.split(axis=1, num_or_size_splits=int(actions.get_shape()[1]), value=actions)
     actions = [tf.squeeze(act) for act in actions]
-    states = tf.split(1, states.get_shape()[1], states)
+    states = tf.split(axis=1, num_or_size_splits=int(states.get_shape()[1]), value=states)
     states = [tf.squeeze(st) for st in states]
-    images = tf.split(1, images.get_shape()[1], images)
+    images = tf.split(axis=1, num_or_size_splits=int(images.get_shape()[1]), value=images)
     images = [tf.squeeze(img) for img in images]
 
     if reuse_scope is None:
@@ -157,8 +160,8 @@ class Model(object):
       psnr_i = peak_signal_to_noise_ratio(x, gx)
       psnr_all += psnr_i
       summaries.append(
-          tf.scalar_summary(prefix + '_recon_cost' + str(i), recon_cost))
-      summaries.append(tf.scalar_summary(prefix + '_psnr' + str(i), psnr_i))
+          tf.summary.scalar(prefix + '_recon_cost' + str(i), recon_cost))
+      summaries.append(tf.summary.scalar(prefix + '_psnr' + str(i), psnr_i))
       loss += recon_cost
 
     for i, state, gen_state in zip(
@@ -166,41 +169,42 @@ class Model(object):
         gen_states[FLAGS.context_frames - 1:]):
       state_cost = mean_squared_error(state, gen_state) * 1e-4
       summaries.append(
-          tf.scalar_summary(prefix + '_state_cost' + str(i), state_cost))
+          tf.summary.scalar(prefix + '_state_cost' + str(i), state_cost))
       loss += state_cost
-    summaries.append(tf.scalar_summary(prefix + '_psnr_all', psnr_all))
+    summaries.append(tf.summary.scalar(prefix + '_psnr_all', psnr_all))
     self.psnr_all = psnr_all
 
     self.loss = loss = loss / np.float32(len(images) - FLAGS.context_frames)
 
-    summaries.append(tf.scalar_summary(prefix + '_loss', loss))
+    summaries.append(tf.summary.scalar(prefix + '_loss', loss))
 
     self.lr = tf.placeholder_with_default(FLAGS.learning_rate, ())
 
     self.train_op = tf.train.AdamOptimizer(self.lr).minimize(loss)
-    self.summ_op = tf.merge_summary(summaries)
+    self.summ_op = tf.summary.merge(summaries)
 
 
 def main(unused_argv):
 
-  print 'Constructing models and inputs.'
+  print('Constructing models and inputs.')
   with tf.variable_scope('model', reuse=None) as training_scope:
     images, actions, states = build_tfrecord_input(training=True)
-    model = Model(images, actions, states, FLAGS.sequence_length)
+    model = Model(images, actions, states, FLAGS.sequence_length,
+                  prefix='train')
 
   with tf.variable_scope('val_model', reuse=None):
     val_images, val_actions, val_states = build_tfrecord_input(training=False)
     val_model = Model(val_images, val_actions, val_states,
-                      FLAGS.sequence_length, training_scope)
+                      FLAGS.sequence_length, training_scope, prefix='val')
 
-  print 'Constructing saver.'
+  print('Constructing saver.')
   # Make saver.
   saver = tf.train.Saver(
-      tf.get_collection(tf.GraphKeys.VARIABLES), max_to_keep=0)
+      tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES), max_to_keep=0)
 
   # Make training session.
   sess = tf.InteractiveSession()
-  summary_writer = tf.train.SummaryWriter(
+  summary_writer = tf.summary.FileWriter(
       FLAGS.event_log_dir, graph=sess.graph, flush_secs=10)
 
   if FLAGS.pretrained_model:
@@ -214,8 +218,7 @@ def main(unused_argv):
   # Run training.
   for itr in range(FLAGS.num_iterations):
     # Generate new batch of data.
-    feed_dict = {model.prefix: 'train',
-                 model.iter_num: np.float32(itr),
+    feed_dict = {model.iter_num: np.float32(itr),
                  model.lr: FLAGS.learning_rate}
     cost, _, summary_str = sess.run([model.loss, model.train_op, model.summ_op],
                                     feed_dict)
@@ -226,7 +229,6 @@ def main(unused_argv):
     if (itr) % VAL_INTERVAL == 2:
       # Run through validation set.
       feed_dict = {val_model.lr: 0.0,
-                   val_model.prefix: 'val',
                    val_model.iter_num: np.float32(itr)}
       _, val_summary_str = sess.run([val_model.train_op, val_model.summ_op],
                                      feed_dict)

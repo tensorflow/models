@@ -62,7 +62,7 @@ def evaluate_model(sess, model, global_step, summary_writer, summary_op):
     sess: Session object.
     model: Instance of ShowAndTellModel; the model to evaluate.
     global_step: Integer; global step of the model checkpoint.
-    summary_writer: Instance of SummaryWriter.
+    summary_writer: Instance of FileWriter.
     summary_op: Op for generating model summaries.
   """
   # Log model summaries on a single batch.
@@ -91,7 +91,7 @@ def evaluate_model(sess, model, global_step, summary_writer, summary_op):
   perplexity = math.exp(sum_losses / sum_weights)
   tf.logging.info("Perplexity = %f (%.2g sec)", perplexity, eval_time)
 
-  # Log perplexity to the SummaryWriter.
+  # Log perplexity to the FileWriter.
   summary = tf.Summary()
   value = summary.value.add()
   value.simple_value = perplexity
@@ -110,7 +110,7 @@ def run_once(model, saver, summary_writer, summary_op):
   Args:
     model: Instance of ShowAndTellModel; the model to evaluate.
     saver: Instance of tf.train.Saver for restoring model Variables.
-    summary_writer: Instance of SummaryWriter.
+    summary_writer: Instance of FileWriter.
     summary_op: Op for generating model summaries.
   """
   model_path = tf.train.latest_checkpoint(FLAGS.checkpoint_dir)
@@ -171,8 +171,8 @@ def run():
     saver = tf.train.Saver()
 
     # Create the summary operation and the summary writer.
-    summary_op = tf.merge_all_summaries()
-    summary_writer = tf.train.SummaryWriter(eval_dir)
+    summary_op = tf.summary.merge_all()
+    summary_writer = tf.summary.FileWriter(eval_dir)
 
     g.finalize()
 

@@ -25,8 +25,6 @@ introduced by:
 
 The key difference of the full preactivation 'v2' variant compared to the
 'v1' variant in [1] is the use of batch normalization before every weight layer.
-Another difference is that 'v2' ResNets do not include an activation function in
-the main pathway. Also see [2; Fig. 4e].
 
 Typical use:
 
@@ -117,6 +115,7 @@ def resnet_v2(inputs,
               global_pool=True,
               output_stride=None,
               include_root_block=True,
+              spatial_squeeze=True,
               reuse=None,
               scope=None):
   """Generator for v2 (preactivation) ResNet models.
@@ -157,6 +156,8 @@ def resnet_v2(inputs,
     include_root_block: If True, include the initial convolution followed by
       max-pooling, if False excludes it. If excluded, `inputs` should be the
       results of an activation-less convolution.
+    spatial_squeeze: if True, logits is of shape [B, C], if false logits is
+        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -206,11 +207,15 @@ def resnet_v2(inputs,
         if num_classes is not None:
           net = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
                             normalizer_fn=None, scope='logits')
+        if spatial_squeeze:
+          logits = tf.squeeze(net, [1, 2], name='SpatialSqueeze')
+        else:
+          logits = net
         # Convert end_points_collection into a dictionary of end_points.
         end_points = slim.utils.convert_collection_to_dict(end_points_collection)
         if num_classes is not None:
-          end_points['predictions'] = slim.softmax(net, scope='predictions')
-        return net, end_points
+          end_points['predictions'] = slim.softmax(logits, scope='predictions')
+        return logits, end_points
 resnet_v2.default_image_size = 224
 
 
@@ -219,6 +224,7 @@ def resnet_v2_50(inputs,
                  is_training=True,
                  global_pool=True,
                  output_stride=None,
+                 spatial_squeeze=True,
                  reuse=None,
                  scope='resnet_v2_50'):
   """ResNet-50 model of [1]. See resnet_v2() for arg and return description."""
@@ -233,7 +239,9 @@ def resnet_v2_50(inputs,
           'block4', bottleneck, [(2048, 512, 1)] * 3)]
   return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
                    global_pool=global_pool, output_stride=output_stride,
-                   include_root_block=True, reuse=reuse, scope=scope)
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v2_50.default_image_size = resnet_v2.default_image_size
 
 
 def resnet_v2_101(inputs,
@@ -241,6 +249,7 @@ def resnet_v2_101(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v2_101'):
   """ResNet-101 model of [1]. See resnet_v2() for arg and return description."""
@@ -255,7 +264,9 @@ def resnet_v2_101(inputs,
           'block4', bottleneck, [(2048, 512, 1)] * 3)]
   return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
                    global_pool=global_pool, output_stride=output_stride,
-                   include_root_block=True, reuse=reuse, scope=scope)
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v2_101.default_image_size = resnet_v2.default_image_size
 
 
 def resnet_v2_152(inputs,
@@ -263,6 +274,7 @@ def resnet_v2_152(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v2_152'):
   """ResNet-152 model of [1]. See resnet_v2() for arg and return description."""
@@ -277,7 +289,9 @@ def resnet_v2_152(inputs,
           'block4', bottleneck, [(2048, 512, 1)] * 3)]
   return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
                    global_pool=global_pool, output_stride=output_stride,
-                   include_root_block=True, reuse=reuse, scope=scope)
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v2_152.default_image_size = resnet_v2.default_image_size
 
 
 def resnet_v2_200(inputs,
@@ -285,6 +299,7 @@ def resnet_v2_200(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v2_200'):
   """ResNet-200 model of [2]. See resnet_v2() for arg and return description."""
@@ -299,4 +314,6 @@ def resnet_v2_200(inputs,
           'block4', bottleneck, [(2048, 512, 1)] * 3)]
   return resnet_v2(inputs, blocks, num_classes, is_training=is_training,
                    global_pool=global_pool, output_stride=output_stride,
-                   include_root_block=True, reuse=reuse, scope=scope)
+                   include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   reuse=reuse, scope=scope)
+resnet_v2_200.default_image_size = resnet_v2.default_image_size

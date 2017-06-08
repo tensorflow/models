@@ -18,8 +18,8 @@ limitations under the License.
 
 #include <functional>
 #include <string>
-#include <vector>
 #include <unordered_set>
+#include <vector>
 #include "syntaxnet/base.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/strings/strcat.h"
@@ -186,6 +186,7 @@ class LazyStaticPtr {
 
   // Named accessor/initializer:
   Type *get() const {
+    mutex_lock l(mu_);
     if (!ptr_) Initialize(this);
     return ptr_;
   }
@@ -204,6 +205,9 @@ class LazyStaticPtr {
 
   // The object we create and show.
   mutable Type *ptr_;
+
+  // Ensures the ptr_ is initialized only once.
+  mutable mutex mu_;
 
  private:
   template <typename A1, typename A2, typename A3>

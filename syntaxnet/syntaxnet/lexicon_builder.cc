@@ -17,7 +17,7 @@ limitations under the License.
 #include <string>
 
 #include "syntaxnet/affix.h"
-#include "syntaxnet/dictionary.pb.h"
+#include "syntaxnet/char_ngram_string_extractor.h"
 #include "syntaxnet/feature_extractor.h"
 #include "syntaxnet/segmenter_utils.h"
 #include "syntaxnet/sentence.pb.h"
@@ -34,6 +34,7 @@ limitations under the License.
 
 using tensorflow::DEVICE_CPU;
 using tensorflow::DT_INT32;
+using tensorflow::DT_STRING;
 using tensorflow::OpKernel;
 using tensorflow::OpKernelConstruction;
 using tensorflow::OpKernelContext;
@@ -42,14 +43,23 @@ using tensorflow::TensorShape;
 using tensorflow::errors::InvalidArgument;
 
 namespace syntaxnet {
+namespace {
 
-// A workflow task that creates term maps (e.g., word, tag, etc.).
-//
-// Non-flag task parameters:
-// int lexicon_max_prefix_length (3):
-//   The maximum prefix length for lexicon words.
-// int lexicon_max_suffix_length (3):
-//   The maximum suffix length for lexicon words.
+// Helper function to load the TaskSpec either from the `task_context`
+// or the `task_context_str` arguments of the op.
+void LoadSpec(OpKernelConstruction *context, TaskSpec *task_spec) {
+  string file_path, data;
+  OP_REQUIRES_OK(context, context->GetAttr("task_context", &file_path));
+  if (!file_path.empty()) {
+    OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
+                                             file_path, &data));
+  } else {
+    OP_REQUIRES_OK(context, context->GetAttr("task_context_str", &data));
+  }
+  OP_REQUIRES(context, TextFormat::ParseFromString(data, task_spec),
+              InvalidArgument("Could not parse task context from ", data));
+}
+
 class LexiconBuilder : public OpKernel {
  public:
   explicit LexiconBuilder(OpKernelConstruction *context) : OpKernel(context) {
@@ -58,14 +68,25 @@ class LexiconBuilder : public OpKernel {
                                              &max_prefix_length_));
     OP_REQUIRES_OK(context, context->GetAttr("lexicon_max_suffix_length",
                                              &max_suffix_length_));
+    LoadSpec(context, task_context_.mutable_spec());
 
-    string file_path, data;
-    OP_REQUIRES_OK(context, context->GetAttr("task_context", &file_path));
-    OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
-                                             file_path, &data));
-    OP_REQUIRES(context,
-                TextFormat::ParseFromString(data, task_context_.mutable_spec()),
-                InvalidArgument("Could not parse task context at ", file_path));
+    int min_length, max_length;
+    OP_REQUIRES_OK(context, context->GetAttr("lexicon_min_char_ngram_length",
+                                             &min_length));
+    OP_REQUIRES_OK(context, context->GetAttr("lexicon_max_char_ngram_length",
+                                             &max_length));
+    bool add_terminators, mark_boundaries;
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("lexicon_char_ngram_include_terminators",
+                                    &add_terminators));
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("lexicon_char_ngram_mark_boundaries",
+                                    &mark_boundaries));
+    char_ngram_string_extractor_.set_min_length(min_length);
+    char_ngram_string_extractor_.set_max_length(max_length);
+    char_ngram_string_extractor_.set_add_terminators(add_terminators);
+    char_ngram_string_extractor_.set_mark_boundaries(mark_boundaries);
+    char_ngram_string_extractor_.Setup(task_context_);
   }
 
   // Counts term frequencies.
@@ -77,6 +98,7 @@ class LexiconBuilder : public OpKernel {
     TermFrequencyMap categories;
     TermFrequencyMap labels;
     TermFrequencyMap chars;
+    TermFrequencyMap char_ngrams;
 
     // Affix tables to be populated by the corpus.
     AffixTable prefixes(AffixTable::PREFIX, max_prefix_length_);
@@ -124,6 +146,12 @@ class LexiconBuilder : public OpKernel {
           if (!c_str.empty() && !HasSpaces(c_str)) chars.Increment(c_str);
         }
 
+        // Add character ngrams.
+        char_ngram_string_extractor_.Extract(
+            word, [&](const string &char_ngram) {
+              char_ngrams.Increment(char_ngram);
+            });
+
         // Update the number of processed tokens.
         ++num_tokens;
       }
@@ -142,6 +170,12 @@ class LexiconBuilder : public OpKernel {
         TaskContext::InputFile(*task_context_.GetInput("category-map")));
     labels.Save(TaskContext::InputFile(*task_context_.GetInput("label-map")));
     chars.Save(TaskContext::InputFile(*task_context_.GetInput("char-map")));
+
+    // Optional, for backwards-compatibility with existing specs.
+    TaskInput *char_ngrams_input = task_context_.GetInput("char-ngram-map");
+    if (char_ngrams_input->part_size() > 0) {
+      char_ngrams.Save(TaskContext::InputFile(*char_ngrams_input));
+    }
 
     // Write affixes to disk.
     WriteAffixTable(prefixes, TaskContext::InputFile(
@@ -179,6 +213,9 @@ class LexiconBuilder : public OpKernel {
   // Max length for suffix table.
   int max_suffix_length_;
 
+  // Extractor for character n-gram strings.
+  CharNgramStringExtractor char_ngram_string_extractor_;
+
   // Task context used to configure this op.
   TaskContext task_context_;
 };
@@ -189,20 +226,14 @@ REGISTER_KERNEL_BUILDER(Name("LexiconBuilder").Device(DEVICE_CPU),
 class FeatureSize : public OpKernel {
  public:
   explicit FeatureSize(OpKernelConstruction *context) : OpKernel(context) {
-    string task_context_path;
-    OP_REQUIRES_OK(context,
-                   context->GetAttr("task_context", &task_context_path));
     OP_REQUIRES_OK(context, context->GetAttr("arg_prefix", &arg_prefix_));
     OP_REQUIRES_OK(context, context->MatchSignature(
                                 {}, {DT_INT32, DT_INT32, DT_INT32, DT_INT32}));
-    string data;
-    OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
-                                             task_context_path, &data));
-    OP_REQUIRES(
-        context,
-        TextFormat::ParseFromString(data, task_context_.mutable_spec()),
-        InvalidArgument("Could not parse task context at ", task_context_path));
-    string label_map_path =
+
+    LoadSpec(context, task_context_.mutable_spec());
+
+    // See comment at the bottom of Compute() below.
+    const string label_map_path =
         TaskContext::InputFile(*task_context_.GetInput("label-map"));
     label_map_ = SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(
         label_map_path, 0, 0);
@@ -239,6 +270,10 @@ class FeatureSize : public OpKernel {
             features.GetParamName("transition_system"), "arc-standard")));
     transition_system->Setup(&task_context_);
     transition_system->Init(&task_context_);
+
+    // Note: label_map_->Size() is ignored by non-parser transition systems.
+    // So even though we read the parser's label-map (output value tags and
+    // their frequency), this function works for other transition systems.
     num_actions->scalar<int32>()() =
         transition_system->NumActions(label_map_->Size());
   }
@@ -256,4 +291,43 @@ class FeatureSize : public OpKernel {
 
 REGISTER_KERNEL_BUILDER(Name("FeatureSize").Device(DEVICE_CPU), FeatureSize);
 
+class FeatureVocab : public OpKernel {
+ public:
+  explicit FeatureVocab(OpKernelConstruction *context) : OpKernel(context) {
+    OP_REQUIRES_OK(context, context->GetAttr("arg_prefix", &arg_prefix_));
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("embedding_name", &embedding_name_));
+    OP_REQUIRES_OK(context, context->MatchSignature({}, {DT_STRING}));
+    LoadSpec(context, task_context_.mutable_spec());
+  }
+
+  void Compute(OpKernelContext *context) override {
+    // Computes feature sizes.
+    ParserEmbeddingFeatureExtractor features(arg_prefix_);
+    features.Setup(&task_context_);
+    features.Init(&task_context_);
+    const std::vector<string> mapped_words =
+        features.GetMappingsForEmbedding(embedding_name_);
+    Tensor *vocab = nullptr;
+    const int64 size = mapped_words.size();
+    TF_CHECK_OK(context->allocate_output(0, TensorShape({size}), &vocab));
+    for (int i = 0; i < size; ++i) {
+      vocab->vec<string>()(i) = mapped_words[i];
+    }
+  }
+
+ private:
+  // Task context used to configure this op.
+  TaskContext task_context_;
+
+  // Prefix for context parameters.
+  string arg_prefix_;
+
+  // Name of embedding for which the vocabulary is to be extracted.
+  string embedding_name_;
+};
+
+REGISTER_KERNEL_BUILDER(Name("FeatureVocab").Device(DEVICE_CPU), FeatureVocab);
+
+}  // namespace
 }  // namespace syntaxnet

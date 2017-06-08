@@ -223,7 +223,7 @@ def list_join(a):
 
 
 def group_by_max(table, number):
-  #computes the most frequently occuring entry in a column
+  #computes the most frequently occurring entry in a column
   answer = []
   for i in range(len(table)):
     temp = []

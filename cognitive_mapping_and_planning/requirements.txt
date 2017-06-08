@@ -1,0 +1,9 @@
+numpy
+pillow
+PyOpenGL
+PyOpenGL-accelerate
+six
+networkx
+scikit-image
+scipy
+opencv-python

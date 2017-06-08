@@ -85,7 +85,7 @@ class ResNet(object):
       # comparably good performance.
       # https://arxiv.org/pdf/1605.07146v1.pdf
       # filters = [16, 160, 320, 640]
-      # Update hps.num_residual_units to 9
+      # Update hps.num_residual_units to 4
 
     with tf.variable_scope('unit_1_0'):
       x = res_func(x, filters[0], filters[1], self._stride_arr(strides[0]),
@@ -128,7 +128,7 @@ class ResNet(object):
   def _build_train_op(self):
     """Build training specific ops for the graph."""
     self.lrn_rate = tf.constant(self.hps.lrn_rate, tf.float32)
-    tf.summary.scalar('learning rate', self.lrn_rate)
+    tf.summary.scalar('learning_rate', self.lrn_rate)
 
     trainable_variables = tf.trainable_variables()
     grads = tf.gradients(self.cost, trainable_variables)

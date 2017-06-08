@@ -37,6 +37,77 @@ const std::unordered_set<int> SegmenterUtils::kBreakChars({
   0x2009, 0x200a
 });
 
+bool SegmenterUtils::ConvertToCharTokenDoc(const Sentence &sentence,
+                                           Sentence *char_sentence) {
+  CHECK(char_sentence);
+
+  // Extracts tokens and byte offsets.
+  std::vector<tensorflow::StringPiece> orig_chars;
+  GetUTF8Chars(sentence.text(), &orig_chars);
+
+  // If sentence's token start/end bytes are not consistent with UTF-8
+  // characters, then do not process the sentence.
+  if (!DocTokensUTF8Consistent(orig_chars, sentence)) {
+    LOG(WARNING) << "Document token boundaries not UTF8 consistent.";
+    return false;
+  }
+
+  // Create a mapping from text byte to token index or -1.
+  // token_ids[i] = index of the token byte i is contained in and -1 o.w.
+  std::vector<int> token_ids;
+  for (int t = 0; t < sentence.token_size(); ++t) {
+    const Token &token = sentence.token(t);
+    while (token_ids.size() < token.start()) token_ids.push_back(-1);
+    while (token_ids.size() <= token.end()) token_ids.push_back(t);
+  }
+  while (token_ids.size() < sentence.text().size()) token_ids.push_back(-1);
+
+  // Infer SPLIT/MERGE for each UTF-8 char.
+  std::vector<Token::BreakLevel> break_levels;
+  break_levels.push_back(Token::SPACE_BREAK);  // first token is always a split.
+  for (int c = 1; c < orig_chars.size(); ++c) {
+    int char_start, char_end;
+    GetCharStartEndBytes(sentence.text(), orig_chars[c], &char_start,
+                         &char_end);
+    int prev_char_start, prev_char_end;
+    GetCharStartEndBytes(sentence.text(), orig_chars[c - 1], &prev_char_start,
+                         &prev_char_end);
+
+    // We split if this character is a break token (token_ids = -1) or if this
+    // character is part of a different token from the previous.
+    const bool is_split =
+        token_ids[char_start] == -1 ||
+        token_ids[char_start] != token_ids[prev_char_end];
+    break_levels.push_back(is_split ? Token::SPACE_BREAK : Token::NO_BREAK);
+  }
+
+  // Initialize character sentence.
+  SetCharsAsTokens(sentence.text(), orig_chars, char_sentence);
+  CHECK_EQ(break_levels.size(), char_sentence->token_size());
+  for (int i = 0 ; i < break_levels.size(); ++i) {
+    char_sentence->mutable_token(i)->set_break_level(break_levels[i]);
+  }
+  return true;
+}
+
+bool SegmenterUtils::DocTokensUTF8Consistent(
+    const std::vector<tensorflow::StringPiece> &chars,
+    const Sentence &sentence) {
+  std::set<int> starts;
+  std::set<int> ends;
+  for (const tensorflow::StringPiece c : chars) {
+    int start_byte, end_byte;
+    GetCharStartEndBytes(sentence.text(), c, &start_byte, &end_byte);
+    starts.insert(start_byte);
+    ends.insert(end_byte);
+  }
+  for (const Token &t : sentence.token()) {
+    if (starts.find(t.start()) == starts.end()) return false;
+    if (ends.find(t.end()) == ends.end()) return false;
+  }
+  return true;
+}
+
 void SegmenterUtils::GetUTF8Chars(const string &text,
                                   std::vector<tensorflow::StringPiece> *chars) {
   const char *start = text.c_str();

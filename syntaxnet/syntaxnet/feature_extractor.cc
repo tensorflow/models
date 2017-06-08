@@ -96,9 +96,19 @@ GenericFeatureFunction::~GenericFeatureFunction() {
 
 int GenericFeatureFunction::GetIntParameter(const string &name,
                                             int default_value) const {
-  string value = GetParameter(name);
+  const string value = GetParameter(name);
   return utils::ParseUsing<int>(value, default_value,
                                 tensorflow::strings::safe_strto32);
+}
+
+bool GenericFeatureFunction::GetBoolParameter(const string &name,
+                                              bool default_value) const {
+  const string value = GetParameter(name);
+  if (value.empty()) return default_value;
+  if (value == "true") return true;
+  if (value == "false") return false;
+  LOG(FATAL) << "Illegal value '" << value << "' for option '" << name << "'";
+  return false;
 }
 
 void GenericFeatureFunction::GetFeatureTypes(

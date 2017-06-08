@@ -62,7 +62,7 @@ flags.DEFINE_bool('slim_model', False,
 
 def RewriteContext(task_context):
   context = task_spec_pb2.TaskSpec()
-  with gfile.FastGFile(task_context) as fin:
+  with gfile.FastGFile(task_context, 'rb') as fin:
     text_format.Merge(fin.read(), context)
   for resource in context.input:
     for part in resource.part:

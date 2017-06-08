@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
@@ -117,8 +116,6 @@ tf.app.flags.DEFINE_float(
 tf.app.flags.DEFINE_float(
     'momentum', 0.9,
     'The momentum for the MomentumOptimizer and RMSPropOptimizer.')
-
-tf.app.flags.DEFINE_float('rmsprop_momentum', 0.9, 'Momentum.')
 
 tf.app.flags.DEFINE_float('rmsprop_decay', 0.9, 'Decay term for RMSProp.')
 
@@ -304,22 +301,13 @@ def _configure_optimizer(learning_rate):
     optimizer = tf.train.RMSPropOptimizer(
         learning_rate,
         decay=FLAGS.rmsprop_decay,
-        momentum=FLAGS.rmsprop_momentum,
+        momentum=FLAGS.momentum,
         epsilon=FLAGS.opt_epsilon)
   elif FLAGS.optimizer == 'sgd':
     optimizer = tf.train.GradientDescentOptimizer(learning_rate)
   else:
     raise ValueError('Optimizer [%s] was not recognized', FLAGS.optimizer)
   return optimizer
-
-
-def _add_variables_summaries(learning_rate):
-  summaries = []
-  for variable in slim.get_model_variables():
-    summaries.append(tf.histogram_summary(variable.op.name, variable))
-  summaries.append(tf.scalar_summary('training/Learning Rate', learning_rate))
-  return summaries
-
 
 def _get_init_fn():
   """Returns a function run by the chief worker to warm-start the training.
@@ -394,9 +382,9 @@ def main(_):
 
   tf.logging.set_verbosity(tf.logging.INFO)
   with tf.Graph().as_default():
-    ######################
-    # Config model_deploy#
-    ######################
+    #######################
+    # Config model_deploy #
+    #######################
     deploy_config = model_deploy.DeploymentConfig(
         num_clones=FLAGS.num_clones,
         clone_on_cpu=FLAGS.clone_on_cpu,
@@ -414,9 +402,9 @@ def main(_):
     dataset = dataset_factory.get_dataset(
         FLAGS.dataset_name, FLAGS.dataset_split_name, FLAGS.dataset_dir)
 
-    ####################
+    ######################
     # Select the network #
-    ####################
+    ######################
     network_fn = nets_factory.get_network_fn(
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
@@ -469,11 +457,12 @@ def main(_):
       # Specify the loss function #
       #############################
       if 'AuxLogits' in end_points:
-        slim.losses.softmax_cross_entropy(
-            end_points['AuxLogits'], labels,
-            label_smoothing=FLAGS.label_smoothing, weight=0.4, scope='aux_loss')
-      slim.losses.softmax_cross_entropy(
-          logits, labels, label_smoothing=FLAGS.label_smoothing, weight=1.0)
+        tf.losses.softmax_cross_entropy(
+            logits=end_points['AuxLogits'], onehot_labels=labels,
+            label_smoothing=FLAGS.label_smoothing, weights=0.4, scope='aux_loss')
+      tf.losses.softmax_cross_entropy(
+          logits=logits, onehot_labels=labels,
+          label_smoothing=FLAGS.label_smoothing, weights=1.0)
       return end_points
 
     # Gather initial summaries.
@@ -489,17 +478,17 @@ def main(_):
     end_points = clones[0].outputs
     for end_point in end_points:
       x = end_points[end_point]
-      summaries.add(tf.histogram_summary('activations/' + end_point, x))
-      summaries.add(tf.scalar_summary('sparsity/' + end_point,
+      summaries.add(tf.summary.histogram('activations/' + end_point, x))
+      summaries.add(tf.summary.scalar('sparsity/' + end_point,
                                       tf.nn.zero_fraction(x)))
 
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
-      summaries.add(tf.scalar_summary('losses/%s' % loss.op.name, loss))
+      summaries.add(tf.summary.scalar('losses/%s' % loss.op.name, loss))
 
     # Add summaries for variables.
     for variable in slim.get_model_variables():
-      summaries.add(tf.histogram_summary(variable.op.name, variable))
+      summaries.add(tf.summary.histogram(variable.op.name, variable))
 
     #################################
     # Configure the moving averages #
@@ -517,8 +506,7 @@ def main(_):
     with tf.device(deploy_config.optimizer_device()):
       learning_rate = _configure_learning_rate(dataset.num_samples, global_step)
       optimizer = _configure_optimizer(learning_rate)
-      summaries.add(tf.scalar_summary('learning_rate', learning_rate,
-                                      name='learning_rate'))
+      summaries.add(tf.summary.scalar('learning_rate', learning_rate))
 
     if FLAGS.sync_replicas:
       # If sync_replicas is enabled, the averaging will be done in the chief
@@ -543,8 +531,7 @@ def main(_):
         optimizer,
         var_list=variables_to_train)
     # Add total_loss to summary.
-    summaries.add(tf.scalar_summary('total_loss', total_loss,
-                                    name='total_loss'))
+    summaries.add(tf.summary.scalar('total_loss', total_loss))
 
     # Create gradient updates.
     grad_updates = optimizer.apply_gradients(clones_gradients,
@@ -552,8 +539,8 @@ def main(_):
     update_ops.append(grad_updates)
 
     update_op = tf.group(*update_ops)
-    train_tensor = control_flow_ops.with_dependencies([update_op], total_loss,
-                                                      name='train_op')
+    with tf.control_dependencies([update_op]):
+      train_tensor = tf.identity(total_loss, name='train_op')
 
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().
@@ -561,7 +548,7 @@ def main(_):
                                        first_clone_scope))
 
     # Merge all summaries together.
-    summary_op = tf.merge_summary(list(summaries), name='summary_op')
+    summary_op = tf.summary.merge(list(summaries), name='summary_op')
 
 
     ###########################

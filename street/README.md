@@ -32,11 +32,9 @@ identify the name of a street (in France) from an image containing upto four
 different views of the street name sign. The model merges information from the
 different views and normalizes the text to the correct format. For example:
 
-<center>
 ![Example image](g3doc/avdessapins.png)
 
 Avenue des Sapins
-</center>
 
 
 ## Installing and setting up the STREET model
@@ -55,6 +53,10 @@ cd cc
 TF_INC=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
 g++ -std=c++11 -shared rnn_ops.cc -o rnn_ops.so -fPIC -I $TF_INC -O3 -mavx
 ```
+
+(Note: if running on Mac, add `-undefined dynamic_lookup` to your `g++` command.
+If you are running a newer version of gcc, you may also need to add
+`-D_GLIBCXX_USE_CXX11_ABI=0`.)
 
 Run the unittests:
 
@@ -77,6 +79,7 @@ Note that these datasets are very large. The approximate sizes are:
 *   Validation: 64 files of 40MB each.
 *   Test: 64 files of 50MB each.
 *   Testdata: some smaller data files of a few MB for testing.
+*   Total: ~158 Gb.
 
 Here is a list of the download paths:
 
@@ -97,9 +100,14 @@ https://download.tensorflow.org/data/fsns-20160927/validation/validation-00000-o
 https://download.tensorflow.org/data/fsns-20160927/validation/validation-00063-of-00064
 ```
 
-The above files need to be downloaded individually, as they are large and
-downloads are more likely to succeed with the individual files than with a
-single archive containing them all.
+All URLs are stored in the text file `python/fsns_urls.txt`, to download them in
+parallel:
+
+```
+aria2c -c -j 20 -i fsns_urls.txt
+```
+If you ctrl+c and re-execute the command it will continue the aborted download.
+
 
 ## Confidence Tests
 
@@ -254,4 +262,3 @@ defines a Tensor Flow graph that can be used to process images of variable sizes
 to output a 1-dimensional sequence, like a transcription/OCR problem, or a
 0-dimensional label, as for image identification problems. For more information
 see [vgslspecs](g3doc/vgslspecs.md)
-

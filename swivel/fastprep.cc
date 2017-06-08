@@ -25,7 +25,6 @@
 
 #include <assert.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -36,7 +35,9 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -79,6 +80,10 @@ Options:
   --window_size <int>
       Specifies the window size for computing co-occurrence stats;
       default 10.
+
+  --num_threads <int>
+      The number of workers to calculate the co-occurrence matrix;
+      default 4.
 )";
 
 struct cooc_t {
@@ -246,15 +251,14 @@ class CoocBuffer {
   std::vector<int> fds_;
 
   // Ensures that only one buffer file is getting written at a time.
-  pthread_mutex_t writer_mutex_;
+  std::mutex writer_mutex_;
 };
 
 CoocBuffer::CoocBuffer(const std::string &output_dirname, const int num_shards,
                        const int shard_size)
     : output_dirname_(output_dirname),
       num_shards_(num_shards),
-      shard_size_(shard_size),
-      writer_mutex_(PTHREAD_MUTEX_INITIALIZER) {
+      shard_size_(shard_size) {
   for (int row = 0; row < num_shards_; ++row) {
     for (int col = 0; col < num_shards_; ++col) {
       char filename[256];
@@ -290,14 +294,11 @@ void CoocBuffer::AccumulateCoocs(const cooc_counts_t &coocs) {
     bufs[bot_shard_idx].push_back(cooc_t{col_off, row_off, cnt});
   }
 
-  // XXX TODO: lock
   for (int i = 0; i < static_cast<int>(fds_.size()); ++i) {
-    int rv = pthread_mutex_lock(&writer_mutex_);
-    assert(rv == 0);
+    std::lock_guard<std::mutex> rv(writer_mutex_);
     const int nbytes = bufs[i].size() * sizeof(cooc_t);
     int nwritten = write(fds_[i], bufs[i].data(), nbytes);
     assert(nwritten == nbytes);
-    pthread_mutex_unlock(&writer_mutex_);
   }
 }
 
@@ -370,12 +371,25 @@ void CoocBuffer::WriteShards() {
     munmap(coocs, nbytes);
     close(fds_[shard]);
 
+    if (sparse_local_row->value_size() * 8 >= (64 << 20)) {
+      std::cout << "Warning: you are likely to catch protobuf parsing errors "
+          "in TF 1.0 and older because the shard is too fat (>= 64MiB); see "
+          << std::endl <<
+          "kDefaultTotalBytesLimit in src/google/protobuf/io/coded_stream.h "
+          " changed in protobuf/commit/5a76e633ea9b5adb215e93fdc11e1c0c08b3fc74"
+          << std::endl <<
+          "https://github.com/tensorflow/tensorflow/issues/7311"
+          << std::endl <<
+          "Consider increasing the number of shards.";
+    }
+
     // Write the protocol buffer as a binary blob to disk.
-    char filename[256];
-    snprintf(filename, sizeof(filename), "shard-%03d-%03d.pb", row_shard,
+    const int filename_max_size = 4096;
+    std::unique_ptr<char[]> filename(new char[filename_max_size]);
+    snprintf(filename.get(), filename_max_size, "shard-%03d-%03d.pb", row_shard,
              col_shard);
 
-    const std::string path = output_dirname_ + "/" + filename;
+    const std::string path = output_dirname_ + "/" + filename.get();
     int fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0666);
     assert(fd != -1);
 
@@ -448,7 +462,7 @@ void CoocCounter::Count() {
   fin_.seekg(start_);
 
   int nlines = 0;
-  for (off_t filepos = start_; filepos < end_; filepos = fin_.tellg()) {
+  for (off_t filepos = start_; filepos < end_ && !fin_.eof(); filepos = fin_.tellg()) {
     // Buffer a single sentence.
     std::vector<int> sentence;
     bool eos;
@@ -586,10 +600,11 @@ int main(int argc, char *argv[]) {
 
   struct stat sb;
   if (lstat(output_dirname.c_str(), &sb) != 0 || !S_ISDIR(sb.st_mode)) {
-    std::cerr << "output directory '" << output_dirname
-              << "' does not exist of is not a directory." << std::endl;
-
-    return 1;
+    if (mkdir(output_dirname.c_str(), 0755) != 0) {
+      std::cerr << "output directory '" << output_dirname
+                << "' does not exist or is not a directory." << std::endl;
+      return 1;
+    }
   }
 
   if (lstat(input_filename.c_str(), &sb) != 0 || !S_ISREG(sb.st_mode)) {
@@ -630,15 +645,12 @@ int main(int argc, char *argv[]) {
     token_to_id_map[vocab[i]] = i;
 
   // Compute the co-occurrences
-  std::vector<pthread_t> threads;
+  std::vector<std::thread> threads;
+  threads.reserve(num_threads);
   std::vector<CoocCounter*> counters;
   const off_t nbytes_per_thread = input_size / num_threads;
-
-  pthread_attr_t attr;
-  if (pthread_attr_init(&attr) != 0) {
-    std::cerr << "unable to initalize pthreads" << std::endl;
-    return 1;
-  }
+  std::cout << "Running " << num_threads << " threads, each on "
+            << nbytes_per_thread << " bytes" << std::endl;
 
   for (int i = 0; i < num_threads; ++i) {
     // We could make this smarter and look around for newlines.  But
@@ -652,16 +664,16 @@ int main(int argc, char *argv[]) {
 
     counters.push_back(counter);
 
-    pthread_t thread;
-    pthread_create(&thread, &attr, CoocCounter::Run, counter);
-
-    threads.push_back(thread);
+    threads.emplace_back(CoocCounter::Run, counter);
   }
 
   // Wait for threads to finish and collect marginals.
   std::vector<double> marginals(vocab.size());
   for (int i = 0; i < num_threads; ++i) {
-    pthread_join(threads[i], 0);
+    if (i > 0) {
+      std::cout << "joining thread #" << (i + 1) << std::endl;
+    }
+    threads[i].join();
 
     const std::vector<double>& counter_marginals = counters[i]->Marginals();
     for (int j = 0; j < static_cast<int>(vocab.size()); ++j)
