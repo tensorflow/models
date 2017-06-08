@@ -23,6 +23,7 @@ As described in http://arxiv.org/abs/1602.07261.
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from six.moves import range
 
 import tensorflow as tf
 

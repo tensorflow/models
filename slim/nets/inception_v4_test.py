@@ -16,6 +16,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from six import iteritems
 
 import tensorflow as tf
 
@@ -115,7 +116,7 @@ class InceptionTest(tf.test.TestCase):
         'Mixed_6e', 'Mixed_6f', 'Mixed_6g', 'Mixed_6h', 'Mixed_7a',
         'Mixed_7b', 'Mixed_7c', 'Mixed_7d']
     self.assertItemsEqual(end_points.keys(), expected_endpoints)
-    for name, op in end_points.iteritems():
+    for name, op in iteritems(end_points):
       self.assertTrue(op.name.startswith('InceptionV4/' + name))
 
   def testBuildOnlyUpToFinalEndpoint(self):
