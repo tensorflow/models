@@ -138,6 +138,7 @@ def average_gradients(tower_grads):
 
 
 def train():
+  print(FLAGS.batch_size)
   """Train CIFAR-10 for a number of steps."""
   with tf.Graph().as_default(), tf.device('/cpu:0'):
     # Create a variable to count the number of train() calls. This equals the
@@ -163,13 +164,16 @@ def train():
 
     # Get images and labels for CIFAR-10.
     images, labels = cifar10.distorted_inputs()
-
+    batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
+          [images, labels], capacity=2 * FLAGS.num_gpus)
     # Calculate the gradients for each model tower.
     tower_grads = []
     with tf.variable_scope(tf.get_variable_scope()):
       for i in xrange(FLAGS.num_gpus):
         with tf.device('/gpu:%d' % i):
           with tf.name_scope('%s_%d' % (cifar10.TOWER_NAME, i)) as scope:
+            # Dequeues one batch for the GPU
+            images, labels = batch_queue.dequeue()
             # Calculate the loss for one tower of the CIFAR model. This function
             # constructs the entire CIFAR model but shares the variables across
             # all towers.
