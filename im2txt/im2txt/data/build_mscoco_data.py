@@ -405,7 +405,7 @@ def _load_and_process_metadata(captions_file, image_dir):
     A list of ImageMetadata.
   """
   with tf.gfile.FastGFile(captions_file, "r") as f:
-    caption_data = json.load(f)
+    caption_data = json.loads(str(f.read(), encoding = "utf-8"))
 
   # Extract the filenames.
   id_to_filename = [(x["id"], x["file_name"]) for x in caption_data["images"]]
