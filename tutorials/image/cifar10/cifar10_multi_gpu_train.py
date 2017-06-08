@@ -62,7 +62,7 @@ tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
 
 
-def tower_loss(scope):
+def tower_loss(scope, images, labels):
   """Calculate the total loss on a single tower running the CIFAR model.
 
   Args:
@@ -71,8 +71,7 @@ def tower_loss(scope):
   Returns:
      Tensor of shape [] containing the total loss for a batch of data
   """
-  # Get images and labels for CIFAR-10.
-  images, labels = cifar10.distorted_inputs()
+
 
   # Build inference Graph.
   logits = cifar10.inference(images)
@@ -160,6 +159,12 @@ def train():
     # Create an optimizer that performs gradient descent.
     opt = tf.train.GradientDescentOptimizer(lr)
 
+    # Get images and labels for CIFAR-10.
+    # Force input pipeline to CPU:0 to avoid opertaios sometimes ending up on GPU
+    # and resulting in a slow down.
+    with tf.device('/CPU:0'):
+      images, labels = cifar10.distorted_inputs()
+
     # Calculate the gradients for each model tower.
     tower_grads = []
     with tf.variable_scope(tf.get_variable_scope()):
@@ -169,7 +174,7 @@ def train():
             # Calculate the loss for one tower of the CIFAR model. This function
             # constructs the entire CIFAR model but shares the variables across
             # all towers.
-            loss = tower_loss(scope)
+            loss = tower_loss(scope, images, labels)
 
             # Reuse variables for the next tower.
             tf.get_variable_scope().reuse_variables()
