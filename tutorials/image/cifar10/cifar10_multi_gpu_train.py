@@ -67,13 +67,12 @@ def tower_loss(scope, images, labels):
 
   Args:
     scope: unique prefix string identifying the CIFAR tower, e.g. 'tower_0'
-    images: Images. 4D tensor of [batch_size, height, width, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
+    images: Images. 4D tensor of shape [batch_size, height, width, 3].
+    labels: Labels. 1D tensor of shape [batch_size].
 
   Returns:
      Tensor of shape [] containing the total loss for a batch of data
   """
-
 
   # Build inference Graph.
   logits = cifar10.inference(images)
@@ -138,7 +137,6 @@ def average_gradients(tower_grads):
 
 
 def train():
-  print(FLAGS.batch_size)
   """Train CIFAR-10 for a number of steps."""
   with tf.Graph().as_default(), tf.device('/cpu:0'):
     # Create a variable to count the number of train() calls. This equals the
