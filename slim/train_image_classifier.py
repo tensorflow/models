@@ -467,8 +467,7 @@ def main(_):
       #############################
       ## Calculation of accuracy ##
       #############################
-      accuracy = slim.metrics.accuracy(tf.to_int32(tf.argmax(logits, 1)),
-                                         tf.to_int32(tf.argmax(labels, 1)))
+      accuracy = slim.metrics.accuracy(tf.argmax(logits, 1), tf.argmax(labels, 1))
       tf.add_to_collection('accuracy', accuracy)
 
       return end_points
