@@ -25,6 +25,8 @@ from deployment import model_deploy
 from nets import nets_factory
 from preprocessing import preprocessing_factory
 
+import re
+
 slim = tf.contrib.slim
 
 tf.app.flags.DEFINE_string(
@@ -331,19 +333,11 @@ def _get_init_fn():
 
   exclusions = []
   if FLAGS.checkpoint_exclude_scopes:
-    exclusions = [scope.strip()
+    exclusions = [re.escape(scope.strip())
                   for scope in FLAGS.checkpoint_exclude_scopes.split(',')]
 
-  # TODO(sguada) variables.filter_variables()
-  variables_to_restore = []
-  for var in slim.get_model_variables():
-    excluded = False
-    for exclusion in exclusions:
-      if var.op.name.startswith(exclusion):
-        excluded = True
-        break
-    if not excluded:
-      variables_to_restore.append(var)
+  var_list = slim.get_model_variables()
+  variables_to_restore = slim.filter_variables(var_list=var_list, exclude_patterns=exclusions, reg_search=False)
 
   if tf.gfile.IsDirectory(FLAGS.checkpoint_path):
     checkpoint_path = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
