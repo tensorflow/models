@@ -508,7 +508,7 @@ def main(_):
     accuracy = tf.reduce_mean(tf.stack(accuracy, axis=0))
 
     # Add summaries for accuracy.
-    summaries.add(tf.summary.scalar('accuracy/accuracy-hand', accuracy))  #################################
+    summaries.add(tf.summary.scalar('accuracy/training', accuracy))  #################################
 
     #################################
     # Configure the moving averages #
