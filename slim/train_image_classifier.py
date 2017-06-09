@@ -461,8 +461,8 @@ def main(_):
             logits=end_points['AuxLogits'], onehot_labels=labels,
             label_smoothing=FLAGS.label_smoothing, weights=0.4, scope='aux_loss')
       tf.losses.softmax_cross_entropy(
-            logits=logits, onehot_labels=labels,
-            label_smoothing=FLAGS.label_smoothing, weights=1.0)
+          logits=logits, onehot_labels=labels,
+          label_smoothing=FLAGS.label_smoothing, weights=1.0)
 
       #############################
       ## Calculation of accuracy ##
