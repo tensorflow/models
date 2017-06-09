@@ -171,11 +171,11 @@ def train():
         with tf.device('/gpu:%d' % i):
           with tf.name_scope('%s_%d' % (cifar10.TOWER_NAME, i)) as scope:
             # Dequeues one batch for the GPU
-            images, labels = batch_queue.dequeue()
+            image_batch, label_batch = batch_queue.dequeue()
             # Calculate the loss for one tower of the CIFAR model. This function
             # constructs the entire CIFAR model but shares the variables across
             # all towers.
-            loss = tower_loss(scope, images, labels)
+            loss = tower_loss(scope, image_batch, label_batch)
 
             # Reuse variables for the next tower.
             tf.get_variable_scope().reuse_variables()
