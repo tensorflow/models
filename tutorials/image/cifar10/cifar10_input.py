@@ -18,7 +18,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+from multiprocessing import cpu_count
 import os
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -116,7 +116,7 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
   """
   # Create a queue that shuffles the examples, and then
   # read 'batch_size' images + labels from the example queue.
-  num_preprocess_threads = 16
+  num_preprocess_threads = cpu_count
   if shuffle:
     images, label_batch = tf.train.shuffle_batch(
         [image, label],
