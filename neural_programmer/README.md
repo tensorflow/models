@@ -8,4 +8,4 @@ Testing: python neural_programmer.py --evaluator_job=True. The models are loaded
 
 In case of errors because of encoding, add "# -*- coding: utf-8 -*-" as the first line in wiki_data.py
 
-Maintained by Arvind Neelakantan (arvind2505)
+Maintained by Arvind Neelakantan (arvind2505) till Tensorflow version 0.10
