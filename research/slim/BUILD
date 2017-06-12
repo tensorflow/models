@@ -29,6 +29,7 @@ package_group(
         "//research/drishti/app/vesper/...",
         "//research/vale/instance_segmentation/...",
         "//research/vale/pose_estimation/...",
+        "//research/vision/classomatic/...",
         "//research/vision/loco/...",
         "//research/vision/threedeep/...",
         "//robotics/learning/...",
