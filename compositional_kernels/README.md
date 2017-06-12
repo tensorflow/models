@@ -1,9 +1,9 @@
 Compositional kernels
 ====
 This package contains code that is related to the duality between neural networks and compositional kernels as developed in:
-https://arxiv.org/abs/1602.05897
-https://arxiv.org/abs/1702.08503
-https://arxiv.org/abs/1703.07872
+* https://arxiv.org/abs/1602.05897
+* https://arxiv.org/abs/1702.08503
+* https://arxiv.org/abs/1703.07872
 
 In a nutshell, it is based on a notion named "computational skeleton". Each skeleton gives rise to a family of neural networks as well as a reproducing kernel and a corresponding random featues scheme.
 The current package implements several concepts from the above papers:
@@ -36,10 +36,7 @@ The file base/config.py declares flags to specify:
 1. Relevant files such as the skeleton file, where to save the model, and so on
 
 ## Contact
-vineet@google.com
-amitdaniely@google.com
-singer@google.com
-frostig@google.com
+\{vineet, amitdaniely, singer, frostig\}@google.com
 
-## Maintainance
+## Maintenance
 @vineet-gupta
