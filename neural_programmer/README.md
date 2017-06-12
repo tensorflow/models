@@ -16,4 +16,4 @@ The models are loaded from ``FLAGS.output_dir``. The evaluation is done on devel
 
 In case of errors because of encoding, add ``"# -*- coding: utf-8 -*-"`` as the first line in ``wiki_data.py``
 
-Maintained by Arvind Neelakantan (arvind2505)
+Maintained by Arvind Neelakantan (arvind2505) for Tensorflow version 0.10
