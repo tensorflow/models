@@ -1,0 +1,15 @@
+input {
+  dimension_size: 28
+  dimension_size: 1
+  channels:        1
+}
+hidden {
+  dim {
+    fully_connected: true
+  }
+  dim {
+    fully_connected: true
+  }
+  replication: 1024
+}
+

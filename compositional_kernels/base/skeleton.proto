@@ -1,0 +1,87 @@
+syntax = "proto2";
+
+// Protocol message specifying a skeleton
+// This can be loaded into skeleton.py, to construct a neural net or a kernel.
+
+
+message Skeleton {
+  // We support only one input layer, generalizing to multiple inputs is
+  // straightforward and unnecessary, as one can concatenate the inputs.
+  optional InputLayer input = 1;
+  repeated HiddenLayer hidden = 2;
+}
+
+
+message InputLayer {
+  // for each dimension of this input, specify the size.
+  repeated int32 dimension_size = 1;
+
+  // How many input channels (3 for pictures often)
+  optional int32 channels = 2 [default=1];
+}
+
+
+// Hidden layer description
+message HiddenLayer {
+  repeated DimensionSpec dim = 1;
+
+  // padding used for convolution, irrelevant for fully connected
+  optional PaddingType padding = 2 [default=VALID];
+
+  // operator to be applied to this input
+  optional OperatorType operator = 3 [default=CONVOLUTION];
+
+  // Number of times this unit should be replicated.
+  // Not a part of the skeleton spec, but helpful to keep it here.
+  optional int32 replication = 4;
+
+  // Activation type for the layer. e.g. relu, exp, etc
+  optional ActivationType activation = 5 [default=RELU];
+  optional ActivationParams activation_params = 6;
+}
+
+
+// Specification of the filter applied to the input for each dimension
+message DimensionSpec {
+  // width of the convolution for the dimension
+  optional int32 width = 1;
+
+  // stride of the convolution for the dimension
+  optional int32 stride = 2 [default=1];
+
+  // If fully connected, no need to specify the width/stride
+  optional bool fully_connected = 3 [default=false];
+}
+
+
+enum OperatorType {
+  // List of operators that can be applied to the inputs
+  CONVOLUTION = 0;
+  MAX_POOL = 1;
+  AVERAGE_POOL = 2;
+}
+
+enum ActivationType {
+  // List of activation unit types implemented.  For each, the activation
+  // and dual activation should be implemented in activations.py
+  RELU = 0;
+  IDENTITY = 1;
+  EXPONENTIAL = 2;
+  POLYNOMIAL = 3;
+  SINE = 4;
+  COSINE = 5;
+}
+
+message ActivationParams {
+  // Any parameters to be passed to the activation are set here.
+  repeated double coefficients = 1;
+  // scaling of the sine/cosine argument
+  optional double scale = 2;
+}
+
+
+enum PaddingType {
+  // Types of padding for the convolution
+  VALID = 0;
+  SAME = 1;
+}

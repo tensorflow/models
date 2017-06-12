@@ -1,0 +1,25 @@
+input {
+  dimension_size: 4
+  dimension_size: 4
+  channels:    2
+}
+hidden {
+  dim {
+    width: 2
+    stride: 1
+  }
+  dim {
+    width: 2
+    stride: 1
+  }
+}
+hidden {
+  dim {
+    width: 3
+    stride: 1
+  }
+  dim {
+    width: 3
+    stride: 1
+  }
+}

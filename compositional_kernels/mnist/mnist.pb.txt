@@ -1,0 +1,37 @@
+input {
+  dimension_size: 28
+  dimension_size: 28
+  channels:        2
+}
+hidden {
+  dim {
+    width: 5
+    stride: 2
+  }
+  dim {
+    width: 5
+    stride: 2
+  }
+  replication: 64
+}
+hidden {
+  dim {
+    width: 5
+    stride: 2
+  }
+  dim {
+    width: 5
+    stride: 2
+  }
+  replication: 64
+}
+hidden {
+  dim {
+    fully_connected: true
+  }
+  dim {
+    fully_connected: true
+  }
+  replication: 256
+}
+
