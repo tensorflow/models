@@ -23,6 +23,7 @@ package_group(
         "//learning/brain/models/image/imagenet_opensource/...",
         "//learning/brain/research/image_stylization/...",
         "//learning/brain/research/meta_architect/...",
+        "//medical/pathology/...",
         "//nlp/neon/projects/visual_qa/...",
         "//photos/vision/human_sensing/...",
         "//photos/vision/object_net/...",
