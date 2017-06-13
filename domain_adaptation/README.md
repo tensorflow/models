@@ -30,16 +30,16 @@ MNIST and MNIST-M:
 $ export DSN_DATA_DIR=/your/dir
 ```
 
-Then you need to build the binaries with Bazel:
-
-```
-$ bazel build -c opt domain_adaptation/domain_separation/...
-```
-
 Add models and models/slim to your `$PYTHONPATH`:
 
 ```
 $ export PYTHONPATH=$PYTHONPATH:$PWD:$PWD/slim
+```
+
+Then you need to build the binaries with Bazel:
+
+```
+$ bazel build -c opt domain_adaptation/domain_separation/...
 ```
 
 You can then train with the following command:

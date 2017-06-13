@@ -14,22 +14,7 @@
 # ==============================================================================
 
 # pylint: disable=line-too-long
-r"""Evaluation for Domain Separation Networks (DSNs).
-
-To build locally for CPU:
-  blaze build -c opt --copt=-mavx \
-    third_party/tensorflow_models/domain_adaptation/domain_separation:dsn_eval
-
-To build locally for GPU:
-  blaze build -c opt --copt=-mavx --config=cuda_clang \
-    third_party/tensorflow_models/domain_adaptation/domain_separation:dsn_eval
-
-To run locally:
-$
-./blaze-bin/third_party/tensorflow_models/domain_adaptation/domain_separation/dsn_eval
-\
-    --alsologtostderr
-"""
+"""Evaluation for Domain Separation Networks (DSNs)."""
 # pylint: enable=line-too-long
 import math
 
@@ -57,7 +42,7 @@ tf.app.flags.DEFINE_string(
     'eval_dir', '/tmp/da/',
     'Directory where we should write the tf summaries to.')
 
-tf.app.flags.DEFINE_string('dataset_dir', '/cns/ok-d/home/konstantinos/cad_learning/',
+tf.app.flags.DEFINE_string('dataset_dir', None,
                            'The directory where the dataset files are stored.')
 
 tf.app.flags.DEFINE_string('dataset', 'mnist_m',

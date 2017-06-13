@@ -133,7 +133,8 @@ INPUT_FILES="${HOME}/skip_thoughts/bookcorpus/*.txt"
 DATA_DIR="${HOME}/skip_thoughts/data"
 
 # Build the preprocessing script.
-bazel build -c opt skip_thoughts/data/preprocess_dataset
+cd tensorflow-models/skip_thoughts
+bazel build -c opt //skip_thoughts/data:preprocess_dataset
 
 # Run the preprocessing script.
 bazel-bin/skip_thoughts/data/preprocess_dataset \
@@ -164,7 +165,8 @@ DATA_DIR="${HOME}/skip_thoughts/data"
 MODEL_DIR="${HOME}/skip_thoughts/model"
 
 # Build the model.
-bazel build -c opt skip_thoughts/...
+cd tensorflow-models/skip_thoughts
+bazel build -c opt //skip_thoughts/...
 
 # Run the training script.
 bazel-bin/skip_thoughts/train \
@@ -269,7 +271,8 @@ WORD2VEC_MODEL="${HOME}/skip_thoughts/googlenews/GoogleNews-vectors-negative300.
 EXP_VOCAB_DIR="${HOME}/skip_thoughts/exp_vocab"
 
 # Build the vocabulary expansion script.
-bazel build -c opt skip_thoughts/vocabulary_expansion
+cd tensorflow-models/skip_thoughts
+bazel build -c opt //skip_thoughts:vocabulary_expansion
 
 # Run the vocabulary expansion script.
 bazel-bin/skip_thoughts/vocabulary_expansion \
@@ -285,7 +288,7 @@ bazel-bin/skip_thoughts/vocabulary_expansion \
 
 The model can be evaluated using the benchmark tasks described in the
 [Skip-Thought Vectors](https://papers.nips.cc/paper/5950-skip-thought-vectors.pdf)
-paper. The following tasks are suported (refer to the paper for full details):
+paper. The following tasks are supported (refer to the paper for full details):
 
  * **SICK** semantic relatedness task.
  * **MSRP** (Microsoft Research Paraphrase Corpus) paraphrase detection task.
@@ -343,7 +346,8 @@ EMBEDDINGS_FILE="${HOME}/skip_thoughts/exp_vocab/embeddings.npy"
 EVAL_DATA_DIR="${HOME}/skip_thoughts/eval_data"
 
 # Build the evaluation script.
-bazel build -c opt skip_thoughts/evaluate
+cd tensorflow-models/skip_thoughts
+bazel build -c opt //skip_thoughts:evaluate
 
 # Run the evaluation script.
 bazel-bin/skip_thoughts/evaluate \

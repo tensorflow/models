@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A binary to evaluate Inception on the flowers data set.
+"""A binary to evaluate Inception on the ImageNet data set.
 
 Note that using the supplied pre-trained inception checkpoint, the eval should
 achieve:

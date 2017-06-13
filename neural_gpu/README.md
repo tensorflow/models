@@ -1,6 +1,6 @@
 # NeuralGPU
-Code for the Neural GPU model described in [[http://arxiv.org/abs/1511.08228]].
-The extended version was described in [[https://arxiv.org/abs/1610.08613]].
+Code for the Neural GPU model described in http://arxiv.org/abs/1511.08228.
+The extended version was described in https://arxiv.org/abs/1610.08613.
 
 Requirements:
 * TensorFlow (see tensorflow.org for how to install)

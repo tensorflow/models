@@ -11,7 +11,11 @@ running TensorFlow 0.12 or earlier, please
 
 
 ## Models
+- [adversarial_crypto](adversarial_crypto): protecting communications with adversarial neural cryptography.
+- [adversarial_text](adversarial_text): semi-supervised sequence learning with adversarial training.
+- [attention_ocr](attention_ocr): a model for real-world image text extraction.
 - [autoencoder](autoencoder): various autoencoders.
+- [cognitive_mapping_and_planning](cognitive_mapping_and_planning): implementation of a spatial memory based mapping and planning architecture for visual navigation.
 - [compression](compression): compressing and decompressing images using a pre-trained Residual GRU network.
 - [differential_privacy](differential_privacy): privacy-preserving student models from multiple teachers.
 - [domain_adaptation](domain_adaptation): domain separation networks.
