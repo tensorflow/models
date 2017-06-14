@@ -28,6 +28,7 @@ from __future__ import print_function
 
 import gzip
 import os
+import six
 import sys
 
 import numpy as np
@@ -125,7 +126,7 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
         png_string = sess.run(encoded_png, feed_dict={image: images[j]})
 
         example = dataset_utils.image_to_tfexample(
-            png_string, 'png'.encode(), _IMAGE_SIZE, _IMAGE_SIZE, labels[j])
+            png_string, six.b('png'), _IMAGE_SIZE, _IMAGE_SIZE, int(labels[j]))
         tfrecord_writer.write(example.SerializeToString())
 
 

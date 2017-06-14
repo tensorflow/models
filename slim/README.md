@@ -86,6 +86,7 @@ Dataset | Training Set Size | Testing Set Size | Number of Classes | Comments
 :------:|:---------------:|:---------------------:|:-----------:|:-----------:
 Flowers|2500 | 2500 | 5 | Various sizes (source: Flickr)
 [Cifar10](https://www.cs.toronto.edu/~kriz/cifar.html) | 60k| 10k | 10 |32x32 color
+[Cifar100](https://www.cs.toronto.edu/~kriz/cifar.html) | 60k| 10k | 100 |32x32 color
 [MNIST](http://yann.lecun.com/exdb/mnist/)| 60k | 10k | 10 | 28x28 gray
 [ImageNet](http://www.image-net.org/challenges/LSVRC/2012/)|1.2M| 50k | 1000 | Various sizes
 
@@ -122,7 +123,7 @@ These represent the training and validation data, sharded over 5 files each.
 You will also find the `$DATA_DIR/labels.txt` file which contains the mapping
 from integer labels to class names.
 
-You can use the same script to create the mnist and cifar10 datasets.
+You can use the same script to create the mnist, cifar10 and cifar100 datasets.
 However, for ImageNet, you have to follow the instructions
 [here](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started).
 Note that you first have to sign up for an account at image-net.org.
@@ -138,6 +139,7 @@ metadata, such as the class labels, the train/test split, and how to parse the
 TFExample protos. We have included the TF-Slim Dataset descriptors
 for
 [Cifar10](https://github.com/tensorflow/models/blob/master/slim/datasets/cifar10.py),
+[Cifar100](https://github.com/tensorflow/models/blob/master/slim/datasets/cifar100.py),
 [ImageNet](https://github.com/tensorflow/models/blob/master/slim/datasets/imagenet.py),
 [Flowers](https://github.com/tensorflow/models/blob/master/slim/datasets/flowers.py),
 and
