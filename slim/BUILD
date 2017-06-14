@@ -284,7 +284,6 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":mobilenet_v1",
-        "//third_party/py/tensorflow",
     ],
 )
 
