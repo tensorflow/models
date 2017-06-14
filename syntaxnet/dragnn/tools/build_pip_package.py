@@ -63,13 +63,12 @@ def main():
 
   # Copy the files.
   subprocess.check_call([
-      "cp", "-r",
-      "--no-preserve=all", os.path.join(base_dir, "dragnn"), os.path.join(
+      "cp", "-r", os.path.join(base_dir, "dragnn"), os.path.join(
           base_dir, "syntaxnet"), tmp_packaging
   ])
   if args.include_tensorflow:
     subprocess.check_call(
-        ["cp", "-r", "--no-preserve=all", tensorflow_dir, tmp_packaging])
+        ["cp", "-r", tensorflow_dir, tmp_packaging])
   shutil.copy(
       os.path.join(base_dir, "dragnn/tools/oss_setup.py"),
       os.path.join(tmp_packaging, "setup.py"))

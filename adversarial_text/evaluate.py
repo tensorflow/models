@@ -84,27 +84,34 @@ def run_eval(eval_ops, summary_writer, saver):
     metric_names, ops = zip(*eval_ops.items())
     value_ops, update_ops = zip(*ops)
 
+    value_ops_dict = dict(zip(metric_names, value_ops))
+
     # Run update ops
     num_batches = int(math.ceil(FLAGS.num_examples / FLAGS.batch_size))
     tf.logging.info('Running %d batches for evaluation.', num_batches)
     for i in range(num_batches):
       if (i + 1) % 10 == 0:
         tf.logging.info('Running batch %d/%d...', i + 1, num_batches)
+      if (i + 1) % 50 == 0:
+        _log_values(sess, value_ops_dict)
       sess.run(update_ops)
 
-    values = sess.run(value_ops)
-    metric_values = dict(zip(metric_names, values))
+    _log_values(sess, value_ops_dict, summary_writer=summary_writer)
 
-    tf.logging.info('Eval metric values:')
-    summary = tf.summary.Summary()
-    for name, val in metric_values.items():
-      summary.value.add(tag=name, simple_value=val)
-      tf.logging.info('%s = %.3f', name, val)
 
+def _log_values(sess, value_ops, summary_writer=None):
+  metric_names, value_ops = zip(*value_ops.items())
+  values = sess.run(value_ops)
+
+  tf.logging.info('Eval metric values:')
+  summary = tf.summary.Summary()
+  for name, val in zip(metric_names, values):
+    summary.value.add(tag=name, simple_value=val)
+    tf.logging.info('%s = %.3f', name, val)
+
+  if summary_writer is not None:
     global_step_val = sess.run(tf.train.get_global_step())
     summary_writer.add_summary(summary, global_step_val)
-
-    return metric_values
 
 
 def main(_):

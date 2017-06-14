@@ -94,7 +94,7 @@ citing the following paper:
     ```
 
 ### Requirements: data
-1.  Download the Stanford 3D Inddor Spaces Dataset (S3DIS Dataset) and ImageNet
+1.  Download the Stanford 3D Indoor Spaces Dataset (S3DIS Dataset) and ImageNet
     Pre-trained models for initializing different models. Follow instructions in
     `data/README.md`
 
@@ -106,7 +106,7 @@ citing the following paper:
 
 ### Train Your Own Models
 All models were trained asynchronously with 16 workers each worker using data
-from a single floor. The default hyper-parameters coorespond to this setting.
+from a single floor. The default hyper-parameters correspond to this setting.
 See [distributed training with
 Tensorflow](https://www.tensorflow.org/deploy/distributed) for setting up
 distributed training. Training with a single worker is possible with the current

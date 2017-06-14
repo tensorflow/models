@@ -241,7 +241,7 @@ def preprocess_for_eval(image, height, width,
   If height and width are specified it would output an image with that size by
   applying resize_bilinear.
 
-  If central_fraction is specified it would cropt the central fraction of the
+  If central_fraction is specified it would crop the central fraction of the
   input image.
 
   Args:
