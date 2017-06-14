@@ -128,9 +128,7 @@ def inception_resnet_v2_base(inputs,
   if output_stride != 8 and output_stride != 16:
     raise ValueError('output_stride must be 8 or 16.')
 
-  padding = 'VALID'
-  if align_feature_maps:
-    padding = 'SAME'
+  padding = 'SAME' if align_feature_maps else 'VALID'
 
   end_points = {}
 
