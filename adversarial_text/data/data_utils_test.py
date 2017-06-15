@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for data_utils."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+# Dependency imports
 
 import tensorflow as tf
 
@@ -91,9 +92,16 @@ class DataUtilsTest(tf.test.TestCase):
     seq = self._buildDummySequence()
     lm_seq = data.build_lm_sequence(seq)
     for i, ts in enumerate(lm_seq):
-      self.assertEqual(ts.token, i)
-      self.assertEqual(ts.label, i + 1)
-      self.assertEqual(ts.weight, 1.0)
+      # For end of sequence, the token and label should be same, and weight
+      # should be 0.0.
+      if i == len(lm_seq) - 1:
+        self.assertEqual(ts.token, i)
+        self.assertEqual(ts.label, i)
+        self.assertEqual(ts.weight, 0.0)
+      else:
+        self.assertEqual(ts.token, i)
+        self.assertEqual(ts.label, i + 1)
+        self.assertEqual(ts.weight, 1.0)
 
   def testBuildSAESeq(self):
     seq = self._buildDummySequence()
