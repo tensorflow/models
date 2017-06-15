@@ -81,7 +81,9 @@ flags.DEFINE_integer('replicas_to_aggregate', 1,
 # Regularization
 flags.DEFINE_float('max_grad_norm', 1.0,
                    'Clip the global gradient norm to this value.')
-flags.DEFINE_float('keep_prob_emb', 1.0, 'keep probability on embedding layer')
+flags.DEFINE_float('keep_prob_emb', 1.0, 
+                   'keep probability on embedding layer. '
+                   '0.5 is optimal on IMDB with virtual adversarial training.')
 flags.DEFINE_float('keep_prob_lstm_out', 1.0,
                    'keep probability on lstm output.')
 flags.DEFINE_float('keep_prob_cl_hidden', 1.0,
@@ -303,6 +305,7 @@ class VatxtModel(object):
     def adversarial_loss():
       return adv_lib.adversarial_loss(self.tensors['cl_embedded'],
                                       self.tensors['cl_loss'],
+                                      self.cl_inputs.length,
                                       self.cl_loss_from_embedding)
 
     def virtual_adversarial_loss():
@@ -538,6 +541,7 @@ class VatxtBidirModel(VatxtModel):
     def adversarial_loss():
       return adv_lib.adversarial_loss_bidir(self.tensors['cl_embedded'],
                                             self.tensors['cl_loss'],
+                                            self.cl_inputs[0].length,
                                             self.cl_loss_from_embedding)
 
     def virtual_adversarial_loss():
@@ -610,7 +614,8 @@ def _inputs(dataset='train', pretrain=False, bidir=False):
       state_size=FLAGS.rnn_cell_size,
       num_layers=FLAGS.rnn_num_layers,
       batch_size=FLAGS.batch_size,
-      unroll_steps=FLAGS.num_timesteps)
+      unroll_steps=FLAGS.num_timesteps,
+      eos_id=FLAGS.vocab_size-1)
 
 
 def _get_vocab_freqs():
