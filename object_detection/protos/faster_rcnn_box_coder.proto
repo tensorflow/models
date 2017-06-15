@@ -1,0 +1,17 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Configuration proto for FasterRCNNBoxCoder. See
+// box_coders/faster_rcnn_box_coder.py for details.
+message FasterRcnnBoxCoder {
+  // Scale factor for anchor encoded box center.
+  optional float y_scale = 1 [default = 10.0];
+  optional float x_scale = 2 [default = 10.0];
+
+  // Scale factor for anchor encoded box height.
+  optional float height_scale = 3 [default = 5.0];
+
+  // Scale factor for anchor encoded box width.
+  optional float width_scale = 4 [default = 5.0];
+}
