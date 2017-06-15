@@ -34,7 +34,7 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 Quick Start:
 * <a href='object_detection_tutorial.ipynb'>
       Quick Start: Jupyter notebook for off-the-shelf inference</a><br>
-* <a href="g3doc/running_pets.md">Quick Start: Training on a pet detector</a><br>
+* <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
 
 Setup:
 * <a href='g3doc/installation.md'>Installation</a><br>
@@ -66,7 +66,6 @@ release includes:
   * Region-Based Fully Convolutional Networks (R-FCN) with Resnet 101,
   * Faster RCNN with Resnet 101,
   * Faster RCNN with Inception Resnet v2
-  * Mask R-CNN with Resnet 101.
 * Frozen weights (trained on the COCO dataset) for each of the above models to
   be used for out-of-the-box inference purposes.
 * A [Jupyter notebook](object_detection_tutorial.ipynb) for performing

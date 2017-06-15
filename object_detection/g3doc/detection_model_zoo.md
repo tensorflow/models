@@ -16,7 +16,7 @@ In the table below, we list each such pre-trained model including:
 * detector performance on COCO data as measured by the COCO mAP measure.
   Here, higher is better, and we only report bounding box mAP rounded to the
   nearest integer.
-* Output types (currently only `Boxes` or `Boxes, Masks`)
+* Output types (currently only `Boxes`)
 
 You can un-tar each tar.gz file via, e.g.,:
 
@@ -40,4 +40,3 @@ Inside the un-tar'ed directory, you will find:
 | [rfcn_resnet101_coco](http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_11_06_2017.tar.gz)  | medium | 30 | Boxes |
 | [faster_rcnn_resnet101_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_coco_11_06_2017.tar.gz) | medium | 32 | Boxes |
 | [faster_rcnn_inception_resnet_v2_atrous_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_coco_11_06_2017.tar.gz) | slow | 37 | Boxes |
-| [mask_rcnn_resnet101_coco](http://download.tensorflow.org/models/object_detection/) | medium | | Boxes, Masks |
