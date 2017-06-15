@@ -78,7 +78,7 @@ def inference(images):
     lrn1 = tf.nn.local_response_normalization(conv1,
                                               alpha=1e-4,
                                               beta=0.75,
-                                              depth_radius=5,
+                                              depth_radius=2,
                                               bias=2.0)
 
   # pool1
@@ -106,7 +106,7 @@ def inference(images):
     lrn2 = tf.nn.local_response_normalization(conv2,
                                               alpha=1e-4,
                                               beta=0.75,
-                                              depth_radius=5,
+                                              depth_radius=2,
                                               bias=2.0)
 
   # pool2
