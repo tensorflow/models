@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Input utils for virtual adversarial text classification."""
 
 from __future__ import absolute_import
@@ -20,6 +19,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
+# Dependency imports
+
 import tensorflow as tf
 
 from adversarial_text.data import data_utils
@@ -28,7 +30,12 @@ from adversarial_text.data import data_utils
 class VatxtInput(object):
   """Wrapper around NextQueuedSequenceBatch."""
 
-  def __init__(self, batch, state_name=None, tokens=None, num_states=0):
+  def __init__(self,
+               batch,
+               state_name=None,
+               tokens=None,
+               num_states=0,
+               eos_id=None):
     """Construct VatxtInput.
 
     Args:
@@ -36,6 +43,7 @@ class VatxtInput(object):
       state_name: str, name of state to fetch and save.
       tokens: int Tensor, tokens. Defaults to batch's F_TOKEN_ID sequence.
       num_states: int The number of states to store.
+      eos_id: int Id of end of Sequence.
     """
     self._batch = batch
     self._state_name = state_name
@@ -58,6 +66,14 @@ class VatxtInput(object):
     l = tf.reshape(l, [-1])
     self._labels = l
 
+    # eos weights
+    self._eos_weights = None
+    if eos_id:
+      ew = tf.cast(tf.equal(self._tokens, eos_id), tf.float32)
+      ew = tf.transpose(ew, [1, 0])
+      ew = tf.reshape(ew, [-1])
+      self._eos_weights = ew
+
   @property
   def tokens(self):
     return self._tokens
@@ -65,6 +81,10 @@ class VatxtInput(object):
   @property
   def weights(self):
     return self._weights
+
+  @property
+  def eos_weights(self):
+    return self._eos_weights
 
   @property
   def labels(self):
@@ -246,7 +266,8 @@ def inputs(data_dir=None,
            state_size=None,
            num_layers=0,
            batch_size=32,
-           unroll_steps=100):
+           unroll_steps=100,
+           eos_id=None):
   """Inputs for text model.
 
   Args:
@@ -260,7 +281,7 @@ def inputs(data_dir=None,
     num_layers: int, the number of LSTM layers.
     batch_size: int, batch size.
     unroll_steps: int, number of timesteps to unroll for TBTT.
-
+    eos_id: int, id of end of sequence. used for the kl weights on vat
   Returns:
     Instance of VatxtInput (x2 if bidir=True and pretrain=True, i.e. forward and
       reverse).
@@ -280,9 +301,15 @@ def inputs(data_dir=None,
                                       state_size, num_layers, unroll_steps,
                                       batch_size)
       forward_input = VatxtInput(
-          forward_batch, state_name=state_name, num_states=num_layers)
+          forward_batch,
+          state_name=state_name,
+          num_states=num_layers,
+          eos_id=eos_id)
       reverse_input = VatxtInput(
-          reverse_batch, state_name=state_name_rev, num_states=num_layers)
+          reverse_batch,
+          state_name=state_name_rev,
+          num_states=num_layers,
+          eos_id=eos_id)
       return forward_input, reverse_input
 
     elif bidir:
@@ -322,4 +349,5 @@ def inputs(data_dir=None,
           unroll_steps,
           batch_size,
           bidir_input=False)
-      return VatxtInput(batch, state_name=state_name, num_states=num_layers)
+      return VatxtInput(
+          batch, state_name=state_name, num_states=num_layers, eos_id=eos_id)
