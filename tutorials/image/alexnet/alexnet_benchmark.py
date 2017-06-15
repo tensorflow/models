@@ -75,13 +75,11 @@ def inference(images):
 
 
   with tf.name_scope('lrn1') as scope:
-    lrn1 = tf.nn.local_response_normalization(
-      conv1,
-      alpha=1e-04,
-      beta=0.75,
-      depth_radius=5,
-      bias=2.0
-    )
+    lrn1 = tf.nn.local_response_normalization(conv1,
+                                              alpha=1e-4,
+                                              beta=0.75,
+                                              depth_radius=5,
+                                              bias=2.0)
 
   # pool1
   pool1 = tf.nn.max_pool(lrn1,
@@ -105,13 +103,11 @@ def inference(images):
 
 
   with tf.name_scope('lrn2') as scope:
-    lrn2 = tf.nn.local_response_normalization(
-      conv2,
-      alpha=1e-04,
-      beta=0.75,
-      depth_radius=5,
-      bias=2.0
-    )
+    lrn2 = tf.nn.local_response_normalization(conv2,
+                                              alpha=1e-4,
+                                              beta=0.75,
+                                              depth_radius=5,
+                                              bias=2.0)
 
   # pool2
   pool2 = tf.nn.max_pool(lrn2,
