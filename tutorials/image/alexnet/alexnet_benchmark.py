@@ -73,7 +73,7 @@ def inference(images):
     print_activations(conv1)
     parameters += [kernel, biases]
 
-
+  # lrn1
   with tf.name_scope('lrn1') as scope:
     lrn1 = tf.nn.local_response_normalization(conv1,
                                               alpha=1e-4,
@@ -101,7 +101,7 @@ def inference(images):
     parameters += [kernel, biases]
   print_activations(conv2)
 
-
+  # lrn2
   with tf.name_scope('lrn2') as scope:
     lrn2 = tf.nn.local_response_normalization(conv2,
                                               alpha=1e-4,
