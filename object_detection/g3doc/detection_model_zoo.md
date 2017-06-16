@@ -1,7 +1,7 @@
 # Tensorflow detection model zoo
 
 We provide a collection of detection models pre-trained on the
-[COCO dataset](mscoco.org).
+[COCO dataset](http://mscoco.org).
 These models can be useful for out-of-the-box inference if you are interested
 in categories already in COCO (e.g., humans, cars, etc).
 They are also useful for initializing your models when training on novel
