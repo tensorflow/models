@@ -122,6 +122,7 @@ class FasterRCNNResnetV1FeatureExtractor(
               is_training=False,
               global_pool=False,
               output_stride=self._first_stage_features_stride,
+              spatial_squeeze=False,
               scope=var_scope)
 
     handle = scope + '/%s/block3' % self._architecture
