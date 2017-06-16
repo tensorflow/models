@@ -8,7 +8,8 @@ code for the following papers:
 
 ## Organization
 [Image Encoder](image_encoder/): Encoding and decoding images into their binary representation.
+
 [Entropy Coder](entropy_coder/): Lossless compression of the binary representation.
 
 ## Contact Info
-Model repository maintained by Nick Johnston ([nickj-google](https://github.com/nickj-google)).
+Model repository maintained by Nick Johnston ([nmjohn](https://github.com/nmjohn)).

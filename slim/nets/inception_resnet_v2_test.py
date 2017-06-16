@@ -30,7 +30,26 @@ class InceptionTest(tf.test.TestCase):
     num_classes = 1000
     with self.test_session():
       inputs = tf.random_uniform((batch_size, height, width, 3))
-      logits, _ = inception.inception_resnet_v2(inputs, num_classes)
+      logits, endpoints = inception.inception_resnet_v2(inputs, num_classes)
+      self.assertTrue('AuxLogits' in endpoints)
+      auxlogits = endpoints['AuxLogits']
+      self.assertTrue(
+          auxlogits.op.name.startswith('InceptionResnetV2/AuxLogits'))
+      self.assertListEqual(auxlogits.get_shape().as_list(),
+                           [batch_size, num_classes])
+      self.assertTrue(logits.op.name.startswith('InceptionResnetV2/Logits'))
+      self.assertListEqual(logits.get_shape().as_list(),
+                           [batch_size, num_classes])
+
+  def testBuildWithoutAuxLogits(self):
+    batch_size = 5
+    height, width = 299, 299
+    num_classes = 1000
+    with self.test_session():
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      logits, endpoints = inception.inception_resnet_v2(inputs, num_classes,
+                                                        create_aux_logits=False)
+      self.assertTrue('AuxLogits' not in endpoints)
       self.assertTrue(logits.op.name.startswith('InceptionResnetV2/Logits'))
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, num_classes])
@@ -50,9 +69,119 @@ class InceptionTest(tf.test.TestCase):
       aux_logits = end_points['AuxLogits']
       self.assertListEqual(aux_logits.get_shape().as_list(),
                            [batch_size, num_classes])
-      pre_pool = end_points['PrePool']
+      pre_pool = end_points['Conv2d_7b_1x1']
       self.assertListEqual(pre_pool.get_shape().as_list(),
                            [batch_size, 8, 8, 1536])
+
+  def testBuildBaseNetwork(self):
+    batch_size = 5
+    height, width = 299, 299
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    net, end_points = inception.inception_resnet_v2_base(inputs)
+    self.assertTrue(net.op.name.startswith('InceptionResnetV2/Conv2d_7b_1x1'))
+    self.assertListEqual(net.get_shape().as_list(),
+                         [batch_size, 8, 8, 1536])
+    expected_endpoints = ['Conv2d_1a_3x3', 'Conv2d_2a_3x3', 'Conv2d_2b_3x3',
+                          'MaxPool_3a_3x3', 'Conv2d_3b_1x1', 'Conv2d_4a_3x3',
+                          'MaxPool_5a_3x3', 'Mixed_5b', 'Mixed_6a',
+                          'PreAuxLogits', 'Mixed_7a', 'Conv2d_7b_1x1']
+    self.assertItemsEqual(end_points.keys(), expected_endpoints)
+
+  def testBuildOnlyUptoFinalEndpoint(self):
+    batch_size = 5
+    height, width = 299, 299
+    endpoints = ['Conv2d_1a_3x3', 'Conv2d_2a_3x3', 'Conv2d_2b_3x3',
+                 'MaxPool_3a_3x3', 'Conv2d_3b_1x1', 'Conv2d_4a_3x3',
+                 'MaxPool_5a_3x3', 'Mixed_5b', 'Mixed_6a',
+                 'PreAuxLogits', 'Mixed_7a', 'Conv2d_7b_1x1']
+    for index, endpoint in enumerate(endpoints):
+      with tf.Graph().as_default():
+        inputs = tf.random_uniform((batch_size, height, width, 3))
+        out_tensor, end_points = inception.inception_resnet_v2_base(
+            inputs, final_endpoint=endpoint)
+        if endpoint != 'PreAuxLogits':
+          self.assertTrue(out_tensor.op.name.startswith(
+              'InceptionResnetV2/' + endpoint))
+        self.assertItemsEqual(endpoints[:index+1], end_points)
+
+  def testBuildAndCheckAllEndPointsUptoPreAuxLogits(self):
+    batch_size = 5
+    height, width = 299, 299
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    _, end_points = inception.inception_resnet_v2_base(
+        inputs, final_endpoint='PreAuxLogits')
+    endpoints_shapes = {'Conv2d_1a_3x3': [5, 149, 149, 32],
+                        'Conv2d_2a_3x3': [5, 147, 147, 32],
+                        'Conv2d_2b_3x3': [5, 147, 147, 64],
+                        'MaxPool_3a_3x3': [5, 73, 73, 64],
+                        'Conv2d_3b_1x1': [5, 73, 73, 80],
+                        'Conv2d_4a_3x3': [5, 71, 71, 192],
+                        'MaxPool_5a_3x3': [5, 35, 35, 192],
+                        'Mixed_5b': [5, 35, 35, 320],
+                        'Mixed_6a': [5, 17, 17, 1088],
+                        'PreAuxLogits': [5, 17, 17, 1088]
+                       }
+
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    for endpoint_name in endpoints_shapes:
+      expected_shape = endpoints_shapes[endpoint_name]
+      self.assertTrue(endpoint_name in end_points)
+      self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
+                           expected_shape)
+
+  def testBuildAndCheckAllEndPointsUptoPreAuxLogitsWithAlignedFeatureMaps(self):
+    batch_size = 5
+    height, width = 299, 299
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    _, end_points = inception.inception_resnet_v2_base(
+        inputs, final_endpoint='PreAuxLogits', align_feature_maps=True)
+    endpoints_shapes = {'Conv2d_1a_3x3': [5, 150, 150, 32],
+                        'Conv2d_2a_3x3': [5, 150, 150, 32],
+                        'Conv2d_2b_3x3': [5, 150, 150, 64],
+                        'MaxPool_3a_3x3': [5, 75, 75, 64],
+                        'Conv2d_3b_1x1': [5, 75, 75, 80],
+                        'Conv2d_4a_3x3': [5, 75, 75, 192],
+                        'MaxPool_5a_3x3': [5, 38, 38, 192],
+                        'Mixed_5b': [5, 38, 38, 320],
+                        'Mixed_6a': [5, 19, 19, 1088],
+                        'PreAuxLogits': [5, 19, 19, 1088]
+                       }
+
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    for endpoint_name in endpoints_shapes:
+      expected_shape = endpoints_shapes[endpoint_name]
+      self.assertTrue(endpoint_name in end_points)
+      self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
+                           expected_shape)
+
+  def testBuildAndCheckAllEndPointsUptoPreAuxLogitsWithOutputStrideEight(self):
+    batch_size = 5
+    height, width = 299, 299
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    _, end_points = inception.inception_resnet_v2_base(
+        inputs, final_endpoint='PreAuxLogits', output_stride=8)
+    endpoints_shapes = {'Conv2d_1a_3x3': [5, 149, 149, 32],
+                        'Conv2d_2a_3x3': [5, 147, 147, 32],
+                        'Conv2d_2b_3x3': [5, 147, 147, 64],
+                        'MaxPool_3a_3x3': [5, 73, 73, 64],
+                        'Conv2d_3b_1x1': [5, 73, 73, 80],
+                        'Conv2d_4a_3x3': [5, 71, 71, 192],
+                        'MaxPool_5a_3x3': [5, 35, 35, 192],
+                        'Mixed_5b': [5, 35, 35, 320],
+                        'Mixed_6a': [5, 33, 33, 1088],
+                        'PreAuxLogits': [5, 33, 33, 1088]
+                       }
+
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    for endpoint_name in endpoints_shapes:
+      expected_shape = endpoints_shapes[endpoint_name]
+      self.assertTrue(endpoint_name in end_points)
+      self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
+                           expected_shape)
 
   def testVariablesSetDevice(self):
     batch_size = 5
@@ -80,7 +209,7 @@ class InceptionTest(tf.test.TestCase):
       self.assertTrue(logits.op.name.startswith('InceptionResnetV2/Logits'))
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, num_classes])
-      pre_pool = end_points['PrePool']
+      pre_pool = end_points['Conv2d_7b_1x1']
       self.assertListEqual(pre_pool.get_shape().as_list(),
                            [batch_size, 3, 3, 1536])
 
