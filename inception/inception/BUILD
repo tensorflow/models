@@ -153,7 +153,7 @@ py_binary(
 
 sh_binary(
     name = "download_and_preprocess_flowers",
-    srcs = ["data/download_and_preprocess_flowers.sh"],
+    srcs = ["data/download_and_preprocess_flowers.py"],
     data = [
         ":build_image_data",
     ],
