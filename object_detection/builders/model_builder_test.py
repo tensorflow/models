@@ -255,7 +255,7 @@ class ModelBuilderTest(tf.test.TestCase):
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
-    for extractor_type, extractor_class in FEATURE_EXTRACTOR_MAPS.iteritems():
+    for extractor_type, extractor_class in FEATURE_EXTRACTOR_MAPS.items():
       model_proto.faster_rcnn.feature_extractor.type = extractor_type
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, faster_rcnn_meta_arch.FasterRCNNMetaArch)
@@ -445,7 +445,7 @@ class ModelBuilderTest(tf.test.TestCase):
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
-    for extractor_type, extractor_class in FEATURE_EXTRACTOR_MAPS.iteritems():
+    for extractor_type, extractor_class in FEATURE_EXTRACTOR_MAPS.items():
       model_proto.faster_rcnn.feature_extractor.type = extractor_type
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, rfcn_meta_arch.RFCNMetaArch)
