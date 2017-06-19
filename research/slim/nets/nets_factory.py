@@ -55,6 +55,9 @@ networks_map = {'alexnet_v2': alexnet.alexnet_v2,
                 'resnet_v2_152': resnet_v2.resnet_v2_152,
                 'resnet_v2_200': resnet_v2.resnet_v2_200,
                 'mobilenet_v1': mobilenet_v1.mobilenet_v1,
+                'mobilenet_v1_075': mobilenet_v1.mobilenet_v1_075,
+                'mobilenet_v1_050': mobilenet_v1.mobilenet_v1_050,
+                'mobilenet_v1_025': mobilenet_v1.mobilenet_v1_025,
                }
 
 arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
@@ -79,6 +82,9 @@ arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
                   'resnet_v2_152': resnet_v2.resnet_arg_scope,
                   'resnet_v2_200': resnet_v2.resnet_arg_scope,
                   'mobilenet_v1': mobilenet_v1.mobilenet_v1_arg_scope,
+                  'mobilenet_v1_075': mobilenet_v1.mobilenet_v1_arg_scope,
+                  'mobilenet_v1_050': mobilenet_v1.mobilenet_v1_arg_scope,
+                  'mobilenet_v1_025': mobilenet_v1.mobilenet_v1_arg_scope,
                  }
 
 

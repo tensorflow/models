@@ -32,6 +32,8 @@ Maintainers of TF-slim:
 <a href='#Training'>Training from scratch</a><br>
 <a href='#Tuning'>Fine tuning to a new task</a><br>
 <a href='#Eval'>Evaluating performance</a><br>
+<a href='#Export'>Exporting Inference Graph</a><br>
+<a href='#Troubleshooting'>Troubleshooting</a><br>
 
 # Installation
 <a id='Install'></a>
@@ -326,8 +328,72 @@ $ python eval_image_classifier.py \
 ```
 
 
+# Exporting the Inference Graph
+<a id='Export'></a>
+
+Saves out a GraphDef containing the architecture of the model.
+
+To use it with a model name defined by slim, run:
+
+```shell
+$ python export_inference_graph.py \
+  --alsologtostderr \
+  --model_name=inception_v3 \
+  --output_file=/tmp/inception_v3_inf_graph.pb
+
+$ python export_inference_graph.py \
+  --alsologtostderr \
+  --model_name=mobilenet_v1 \
+  --image_size=224 \
+  --output_file=/tmp/mobilenet_v1_224.pb
+```
+
+## Freezing the exported Graph
+If you then want to use the resulting model with your own or pretrained
+checkpoints as part of a mobile model, you can run freeze_graph to get a graph
+def with the variables inlined as constants using:
+
+```shell
+bazel build tensorflow/python/tools:freeze_graph
+
+bazel-bin/tensorflow/python/tools/freeze_graph \
+  --input_graph=/tmp/inception_v3_inf_graph.pb \
+  --input_checkpoint=/tmp/checkpoints/inception_v3.ckpt \
+  --input_binary=true --output_graph=/tmp/frozen_inception_v3.pb \
+  --output_node_names=InceptionV3/Predictions/Reshape_1
+```
+
+The output node names will vary depending on the model, but you can inspect and
+estimate them using the summarize_graph tool:
+
+```shell
+bazel build tensorflow/tools/graph_transforms:summarize_graph
+
+bazel-bin/tensorflow/tools/graph_transforms/summarize_graph \
+  --in_graph=/tmp/inception_v3_inf_graph.pb
+```
+
+## Run label image in C++
+
+To run the resulting graph in C++, you can look at the label_image sample code:
+
+```shell
+bazel build tensorflow/examples/label_image:label_image
+
+bazel-bin/tensorflow/examples/label_image/label_image \
+  --image=${HOME}/Pictures/flowers.jpg \
+  --input_layer=input \
+  --output_layer=InceptionV3/Predictions/Reshape_1 \
+  --graph=/tmp/frozen_inception_v3.pb \
+  --labels=/tmp/imagenet_slim_labels.txt \
+  --input_mean=0 \
+  --input_std=255 \
+  --logtostderr
+```
+
 
 # Troubleshooting
+<a id='Troubleshooting'></a>
 
 #### The model runs out of CPU memory.
 
