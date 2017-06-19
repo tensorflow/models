@@ -549,7 +549,7 @@ def position_sensitive_crop_regions(image,
       raise ValueError('crop_size should be divisible by num_spatial_bins')
 
     total_bins *= num_bins
-    bin_crop_size.append(crop_dim / num_bins)
+    bin_crop_size.append(crop_dim // num_bins)
 
   if not global_pool and bin_crop_size[0] != bin_crop_size[1]:
     raise ValueError('Only support square bin crop size for now.')

@@ -15,7 +15,11 @@
 
 """Tests for object_detection.core.preprocessor."""
 
-import mock
+import six
+if six.PY2:
+  import mock
+else:
+  from unittest import mock
 import numpy as np
 
 import tensorflow as tf

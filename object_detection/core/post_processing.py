@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """Post-processing operations on detected boxes."""
+import six
 
 import tensorflow as tf
 
@@ -131,7 +132,7 @@ def multiclass_non_max_suppression(boxes,
         boxlist_and_class_scores.add_field(fields.BoxListFields.masks,
                                            per_class_masks)
       if additional_fields is not None:
-        for key, tensor in additional_fields.iteritems():
+        for key, tensor in six.iteritems(additional_fields):
           boxlist_and_class_scores.add_field(key, tensor)
       boxlist_filtered = box_list_ops.filter_greater_than(
           boxlist_and_class_scores, score_thresh)
