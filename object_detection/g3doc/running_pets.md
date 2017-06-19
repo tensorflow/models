@@ -233,7 +233,7 @@ submit training` command is correct. ML Engine does not distinguish between
 training and evaluation jobs.
 
 Users can monitor and stop training and evaluation jobs on the [ML Engine
-Dasboard](https://pantheon.corp.google.com/mlengine/jobs).
+Dasboard](https://console.cloud.google.com/mlengine/jobs).
 
 ## Monitoring Progress with Tensorboard
 
