@@ -104,8 +104,6 @@ import collections
 import google3
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
-
 slim = tf.contrib.slim
 
 
@@ -305,7 +303,7 @@ def optimize_clones(clones, optimizer,
       regularization_losses = None
   # Compute the total_loss summing all the clones_losses.
   total_loss = tf.add_n(clones_losses, name='total_loss')
-  # Sum the gradients accross clones.
+  # Sum the gradients across clones.
   grads_and_vars = _sum_clones_gradients(grads_and_vars)
   return total_loss, grads_and_vars
 
@@ -379,8 +377,8 @@ def deploy(config,
         update_ops.append(grad_updates)
 
         update_op = tf.group(*update_ops)
-        train_op = control_flow_ops.with_dependencies([update_op], total_loss,
-                                                      name='train_op')
+        with tf.control_dependencies([update_op]):
+          train_op = tf.identity(total_loss, name='train_op')
     else:
       clones_losses = []
       regularization_losses = tf.get_collection(
@@ -663,7 +661,7 @@ class DeploymentConfig(object):
         if op.device:
           return op.device
         node_def = op if isinstance(op, tf.NodeDef) else op.node_def
-        if node_def.op in ['Variable', 'VariableV2']:
+        if node_def.op.startswith('Variable'):
           t = self._task
           self._task = (self._task + 1) % self._tasks
           d = '%s/task:%d' % (self._device, t)
