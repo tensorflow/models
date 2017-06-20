@@ -83,7 +83,7 @@ def dict_to_tf_example(data,
   """
   img_path = os.path.join(data['folder'], image_subdirectory, data['filename'])
   full_path = os.path.join(dataset_directory, img_path)
-  with tf.gfile.GFile(full_path) as fid:
+  with tf.gfile.GFile(full_path, 'rb') as fid:
     encoded_jpg = fid.read()
   encoded_jpg_io = io.BytesIO(encoded_jpg)
   image = PIL.Image.open(encoded_jpg_io)
@@ -114,19 +114,21 @@ def dict_to_tf_example(data,
     ymin.append(float(obj['bndbox']['ymin']) / height)
     xmax.append(float(obj['bndbox']['xmax']) / width)
     ymax.append(float(obj['bndbox']['ymax']) / height)
-    classes_text.append(obj['name'])
+    classes_text.append(obj['name'].encode('utf8'))
     classes.append(label_map_dict[obj['name']])
     truncated.append(int(obj['truncated']))
-    poses.append(obj['pose'])
+    poses.append(obj['pose'].encode('utf8'))
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': dataset_util.int64_feature(height),
       'image/width': dataset_util.int64_feature(width),
-      'image/filename': dataset_util.bytes_feature(data['filename']),
-      'image/source_id': dataset_util.bytes_feature(data['filename']),
-      'image/key/sha256': dataset_util.bytes_feature(key),
+      'image/filename': dataset_util.bytes_feature(
+          data['filename'].encode('utf8')),
+      'image/source_id': dataset_util.bytes_feature(
+          data['filename'].encode('utf8')),
+      'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
       'image/encoded': dataset_util.bytes_feature(encoded_jpg),
-      'image/format': dataset_util.bytes_feature('jpeg'),
+      'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
       'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
       'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
       'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
