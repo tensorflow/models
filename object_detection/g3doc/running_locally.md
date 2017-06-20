@@ -10,7 +10,7 @@ dependencies, compiling the configuration protobufs and setting up the Python
 environment.
 2. A valid data set has been created. See [this page](preparing_inputs.md) for
 instructions on how to generate a dataset for the PASCAL VOC challenge or the
-Oxford-IIT Pet dataset.
+Oxford-IIIT Pet dataset.
 3. A Object Detection pipeline configuration has been written. See
 [this page](configuring_jobs.md) for details on how to write a pipeline configuration.
 
