@@ -501,14 +501,14 @@ def main(_):
     ## Calculation of the averaged accuracy for all clones ##
     #########################################################
 
-    # Accuracy for all clones
+    # Accuracy for all clones.
     accuracy = tf.get_collection('accuracy')
 
-    # Stach and take the mean.
+    # Stack and take the mean.
     accuracy = tf.reduce_mean(tf.stack(accuracy, axis=0))
 
     # Add summaries for accuracy.
-    summaries.add(tf.summary.scalar('accuracy/training', accuracy))  #################################
+    summaries.add(tf.summary.scalar('accuracy/training', accuracy))
 
     #################################
     # Configure the moving averages #
