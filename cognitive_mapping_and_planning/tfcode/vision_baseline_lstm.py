@@ -145,7 +145,7 @@ def visit_count_fc(visit_count, last_visit, embed_neurons, wt_decay, fc_dropout)
                              on_value=10., off_value=0.)
     last_visit = tf.one_hot(last_visit, depth=16, axis=1, dtype=tf.float32,
                              on_value=10., off_value=0.)
-    f = tf.concat_v2([visit_count, last_visit], 1)
+    f = tf.concat([visit_count, last_visit], 1)
     x, _ = tf_utils.fc_network(
         f, neurons=embed_neurons, wt_decay=wt_decay, name='visit_count_embed',
         offset=0, batch_norm_param=None, dropout_ratio=fc_dropout,
@@ -201,7 +201,7 @@ def combine_setup(name, combine_type, embed_img, embed_goal, num_img_neuorons=No
 
 def preprocess_egomotion(locs, thetas):
   with tf.name_scope('pre_ego'):
-    pre_ego = tf.concat_v2([locs, tf.sin(thetas), tf.cos(thetas)], 2)
+    pre_ego = tf.concat([locs, tf.sin(thetas), tf.cos(thetas)], 2)
     sh = pre_ego.get_shape().as_list()
     pre_ego = tf.reshape(pre_ego, [-1, sh[-1]])
   return pre_ego
