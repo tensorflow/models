@@ -11,7 +11,7 @@ See [the Cloud ML quick start guide](https://cloud.google.com/ml-engine/docs/qui
 in the [installation instructions](installation.md).
 3. The reader has a valid data set and stored it in a Google Cloud Storage
 bucket. See [this page](preparing_inputs.md) for instructions on how to generate
-a dataset for the PASCAL VOC challenge or the Oxford-IIT Pet dataset.
+a dataset for the PASCAL VOC challenge or the Oxford-IIIT Pet dataset.
 4. The reader has configured a valid Object Detection pipeline, and stored it
 in a Google Cloud Storage bucket. See [this page](configuring_jobs.md) for
 details on how to write a pipeline configuration.

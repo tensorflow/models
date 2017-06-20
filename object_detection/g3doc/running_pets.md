@@ -1,7 +1,7 @@
-# Quick Start: Distributed Training on the Oxford-IIT Pets Dataset on Google Cloud
+# Quick Start: Distributed Training on the Oxford-IIIT Pets Dataset on Google Cloud
 
 This page is a walkthrough for training an object detector using the Tensorflow
-Object Detection API. In this tutorial, we'll be training on the Oxford-IIT Pets
+Object Detection API. In this tutorial, we'll be training on the Oxford-IIIT Pets
 dataset to build a system to detect various breeds of cats and dogs. The output
 of the detector will look like the following:
 
@@ -43,11 +43,11 @@ Please run through the [installation instructions](installation.md) to install
 Tensorflow and all it dependencies. Ensure the Protobuf libraries are
 compiled and the library directories are added to `PYTHONPATH`.
 
-## Getting the Oxford-IIT Pets Dataset and Uploading it to Google Cloud Storage
+## Getting the Oxford-IIIT Pets Dataset and Uploading it to Google Cloud Storage
 
 In order to train a detector, we require a dataset of images, bounding boxes and
-classifications. For this demo, we'll use the Oxford-IIT Pets dataset. The raw
-dataset for Oxford-IIT Pets lives
+classifications. For this demo, we'll use the Oxford-IIIT Pets dataset. The raw
+dataset for Oxford-IIIT Pets lives
 [here](http://www.robots.ox.ac.uk/~vgg/data/pets/). You will need to download
 both the image dataset [`images.tar.gz`](http://www.robots.ox.ac.uk/~vgg/data/pets/data/images.tar.gz)
 and the groundtruth data [`annotations.tar.gz`](http://www.robots.ox.ac.uk/~vgg/data/pets/data/annotations.tar.gz)
@@ -65,7 +65,7 @@ the tarballs, your object_detection directory should appear as follows:
 
 The Tensorflow Object Detection API expects data to be in the TFRecord format,
 so we'll now run the _create_pet_tf_record_ script to convert from the raw
-Oxford-IIT Pet dataset into TFRecords. Run the following commands from the
+Oxford-IIIT Pet dataset into TFRecords. Run the following commands from the
 object_detection directory:
 
 ``` bash
