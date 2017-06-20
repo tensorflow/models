@@ -10,6 +10,7 @@ exports_files(["LICENSE"])
 package_group(
     name = "internal",
     packages = [
+        "//cityblock/bestview/training/...",
         "//cloud/ml/applications/vision/...",
         "//geo/gt/fusion/...",
         "//googlex/proxy/learning/...",
