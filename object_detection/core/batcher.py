@@ -77,12 +77,17 @@ class BatchQueue(object):
         assembled batches.
     """
     # Remember static shapes to set shapes of batched tensors.
+    try:
+        iteritems = tensor_dict.iteritems
+    except AttributeError:
+        iteritems = tensor_dict.items
+
     static_shapes = collections.OrderedDict(
-        {key: tensor.get_shape() for key, tensor in tensor_dict.iteritems()})
+        {key: tensor.get_shape() for key, tensor in iteritems()})
     # Remember runtime shapes to unpad tensors after batching.
     runtime_shapes = collections.OrderedDict(
         {(key, 'runtime_shapes'): tf.shape(tensor)
-         for key, tensor in tensor_dict.iteritems()})
+         for key, tensor in iteritems()})
     all_tensors = tensor_dict
     all_tensors.update(runtime_shapes)
     batched_tensors = tf.train.batch(
