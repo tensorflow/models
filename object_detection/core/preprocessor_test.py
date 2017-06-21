@@ -15,13 +15,18 @@
 
 """Tests for object_detection.core.preprocessor."""
 
-import mock
 import numpy as np
+import six
 
 import tensorflow as tf
 
 from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
+
+if six.PY2:
+  import mock # pylint: disable=g-import-not-at-top
+else:
+  from unittest import mock # pylint: disable=g-import-not-at-top
 
 
 class PreprocessorTest(tf.test.TestCase):
