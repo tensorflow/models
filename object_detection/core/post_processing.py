@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """Post-processing operations on detected boxes."""
+
 import tensorflow as tf
 
 from object_detection.core import box_list
