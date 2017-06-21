@@ -45,7 +45,7 @@ def prefetch(tensor_dict, capacity):
   Returns:
     a FIFO prefetcher queue
   """
-  names = tensor_dict.keys()
+  names = list(tensor_dict.keys())
   dtypes = [t.dtype for t in tensor_dict.values()]
   shapes = [t.get_shape() for t in tensor_dict.values()]
   prefetch_queue = tf.PaddingFIFOQueue(capacity, dtypes=dtypes,
