@@ -83,7 +83,7 @@ def dict_to_tf_example(data,
   """
   img_path = os.path.join(data['folder'], image_subdirectory, data['filename'])
   full_path = os.path.join(dataset_directory, img_path)
-  with tf.gfile.GFile(full_path) as fid:
+  with tf.gfile.GFile(full_path,mode='rb') as fid:
     encoded_jpg = fid.read()
   encoded_jpg_io = io.BytesIO(encoded_jpg)
   image = PIL.Image.open(encoded_jpg_io)
