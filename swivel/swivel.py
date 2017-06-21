@@ -257,6 +257,9 @@ class SwivelModel(object):
     devices = ['/gpu:%d' % i for i in range(FLAGS.num_gpus)] \
         if FLAGS.num_gpus > 0 else get_available_gpus()
     self.devices_number = len(devices)
+    if not self.devices_number:
+        devices = ['/cpu:0']
+        self.devices_number = 1
     for dev in devices:
       with tf.device(dev):
         with tf.name_scope(dev[1:].replace(':', '_')):
