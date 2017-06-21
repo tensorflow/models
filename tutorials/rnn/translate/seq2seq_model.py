@@ -178,6 +178,13 @@ class Seq2SeqModel(object):
           lambda x, y: seq2seq_f(x, y, False),
           softmax_loss_function=softmax_loss_function)
 
+    self.train_loss_summaries = []
+    self.forward_only_loss_summaries = []
+    for i in range(len(self.losses)):
+        self.train_loss_summaries.append(tf.summary.scalar("train_loss_bucket_{}".format(i), self.losses[i]))
+        self.forward_only_loss_summaries.append(tf.summary.scalar("forward_only_loss_bucket_{}".format(i),
+                                                                  self.losses[i]))
+
     # Gradients and SGD update operation for training the model.
     params = tf.trainable_variables()
     if not forward_only:
@@ -242,17 +249,19 @@ class Seq2SeqModel(object):
     if not forward_only:
       output_feed = [self.updates[bucket_id],  # Update Op that does SGD.
                      self.gradient_norms[bucket_id],  # Gradient norm.
-                     self.losses[bucket_id]]  # Loss for this batch.
+                     self.losses[bucket_id],   # Loss for this batch.
+                     self.train_loss_summaries[bucket_id]]  # Summary op for Train Loss
     else:
-      output_feed = [self.losses[bucket_id]]  # Loss for this batch.
+      output_feed = [self.losses[bucket_id],  # Loss for this batch.
+                     self.forward_only_loss_summaries[bucket_id]]  # Summary op for forward only loss
       for l in xrange(decoder_size):  # Output logits.
         output_feed.append(self.outputs[bucket_id][l])
 
     outputs = session.run(output_feed, input_feed)
     if not forward_only:
-      return outputs[1], outputs[2], None  # Gradient norm, loss, no outputs.
+      return outputs[1], outputs[2], outputs[3], None  # Gradient norm, loss, loss summary, no outputs.
     else:
-      return None, outputs[0], outputs[1:]  # No gradient norm, loss, outputs.
+      return None, outputs[0], outputs[1], outputs[2:]  # No gradient norm, loss, loss summary, outputs.
 
   def get_batch(self, data, bucket_id):
     """Get a random batch of data from the specified bucket, prepare for step.
