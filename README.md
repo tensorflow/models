@@ -22,6 +22,7 @@ running TensorFlow 0.12 or earlier, please
 - [im2txt](im2txt): image-to-text neural network for image captioning.
 - [inception](inception): deep convolutional networks for computer vision.
 - [learning_to_remember_rare_events](learning_to_remember_rare_events):  a large-scale life-long memory module for use in deep learning.
+- [lfads](lfads): sequential variational autoencoder for analyzing neuroscience data.
 - [lm_1b](lm_1b): language modeling on the one billion word benchmark.
 - [namignizer](namignizer): recognize and generate names.
 - [neural_gpu](neural_gpu): highly parallel neural computer.
