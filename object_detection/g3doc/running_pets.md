@@ -279,12 +279,12 @@ three files:
 * model.ckpt-${CHECKPOINT_NUMBER}.meta
 
 After you've identified a candidate checkpoint to export, run the following
-command from tensorflow/models/object_detection:
+command from tensorflow/models:
 
 ``` bash
 # From tensorflow/models
 gsutil cp gs://${YOUR_GCS_BUCKET}/train/model.ckpt-${CHECKPOINT_NUMBER}.* .
-python object_detection/export_inference_graph \
+python object_detection/export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path object_detection/samples/configs/faster_rcnn_resnet101_pets.config \
     --checkpoint_path model.ckpt-${CHECKPOINT_NUMBER} \
