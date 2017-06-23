@@ -57,7 +57,7 @@ class ModelConfig(object):
 
     # Batch size.
     self.batch_size = 32
-    # self.batch_size = 40
+    # self.batch_size = 33
 
     # File containing an Inception v3 checkpoint to initialize the variables
     # of the Inception model. Must be provided when starting training for the

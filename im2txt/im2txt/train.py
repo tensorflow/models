@@ -25,20 +25,18 @@ from im2txt import configuration
 from im2txt import show_and_tell_model
 
 FLAGS = tf.app.flags.FLAGS
-
-tf.flags.DEFINE_string("input_file_pattern", "",
+tf.flags.DEFINE_string("input_file_pattern", "/mnt/raid/data/ni/dnn/zlian/mscoco/train-?????-of-?????",
                        "File pattern of sharded TFRecord input files.")
-tf.flags.DEFINE_string("inception_checkpoint_file", "",
-                       "Path to a pretrained inception_v3 model.")
-tf.flags.DEFINE_string("train_dir", "",
+tf.flags.DEFINE_string("train_dir",
+                       # "",
+                       "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli-1109938-onlycoco/",
                        "Directory for saving and loading model checkpoints.")
-tf.flags.DEFINE_boolean("train_inception", False,
+tf.flags.DEFINE_boolean("train_inception", True,
                         "Whether to train inception submodel variables.")
-tf.flags.DEFINE_integer("number_of_steps", 1000000, "Number of training steps.")
-tf.flags.DEFINE_integer("log_every_n_steps", 1,
+tf.flags.DEFINE_integer("number_of_steps", 1109938, "Number of training steps.")
+tf.flags.DEFINE_integer("log_every_n_steps", 100,
                         "Frequency at which loss and global step are logged.")
-tf.flags.DEFINE_string("eval_dir", "",
-                       "Directory for saving and loading model checkpoints.")
+
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -49,7 +47,7 @@ def main(unused_argv):
 
   model_config = configuration.ModelConfig()
   model_config.input_file_pattern = FLAGS.input_file_pattern
-  model_config.inception_checkpoint_file = FLAGS.inception_checkpoint_file
+  # model_config.inception_checkpoint_file = FLAGS.inception_checkpoint_file
   training_config = configuration.TrainingConfig()
 
   # Create training directory.

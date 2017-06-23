@@ -34,10 +34,13 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("checkpoint_path", "",
                        "Model checkpoint file or directory containing a "
                        "model checkpoint file.")
-tf.flags.DEFINE_string("vocab_file", "", "Text file containing the vocabulary.")
-tf.flags.DEFINE_string("input_files", "",
+tf.flags.DEFINE_string("vocab_file", "/mnt/raid/data/ni/dnn/zlian/checkpoint_1_million/word_counts_copy.txt", "Text file containing the vocabulary.")
+tf.flags.DEFINE_string("input_files", "/mnt/raid/data/ni/dnn/zlian/mscoco/raw-data/val2014/COCO_val2014_000000224477.jpg",
                        "File pattern or comma-separated list of file patterns "
                        "of image files.")
+
+# vocab_file="/mnt/raid/data/ni/dnn/zlian/checkpoint_1_million/word_counts.txt"
+# image_file="/mnt/raid/data/ni/dnn/zlian/mscoco/raw-data/val2014/COCO_val2014_000000224477.jpg"
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -75,7 +78,6 @@ def main(_):
       captions = generator.beam_search(sess, image)
       print("Captions for image %s:" % os.path.basename(filename))
       for i, caption in enumerate(captions):
-        # Ignore begin and end words.
         sentence = [vocab.id_to_word(w) for w in caption.sentence[1:-1]]
         sentence = " ".join(sentence)
         print("  %d) %s (p=%f)" % (i, sentence, math.exp(caption.logprob)))

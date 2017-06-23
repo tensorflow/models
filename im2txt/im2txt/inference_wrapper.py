@@ -21,7 +21,7 @@ from __future__ import print_function
 
 
 # Use duplicate model instead :)
-from im2txt import show_and_tell_model_duplicate
+from im2txt import show_and_tell_model
 from im2txt.inference_utils import inference_wrapper_base
 
 
@@ -32,8 +32,9 @@ class InferenceWrapper(inference_wrapper_base.InferenceWrapperBase):
     super(InferenceWrapper, self).__init__()
 
   def build_model(self, model_config):
-    model = show_and_tell_model_duplicate.ShowAndTellModel(model_config, mode="inference")
+    model = show_and_tell_model.ShowAndTellModel(model_config, mode="inference")
     model.build()
+    self.global_stepp= model.global_step
     return model
 
   def feed_image(self, sess, encoded_image):

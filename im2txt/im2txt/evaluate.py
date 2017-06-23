@@ -40,6 +40,13 @@ tf.flags.DEFINE_string("input_file_pattern", "",
 tf.flags.DEFINE_string("checkpoint_dir", "",
                        "Directory containing model checkpoints.")
 tf.flags.DEFINE_string("eval_dir", "", "Directory to write event logs.")
+#
+# tf.flags.DEFINE_string("input_file_pattern", "/mnt/raid/data/ni/dnn/zlian/mscoco/val-?????-of-00004",
+#                        "File pattern of sharded TFRecord input files.")
+# tf.flags.DEFINE_string("checkpoint_dir", "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli",
+#                        "Directory containing model checkpoints.")
+# tf.flags.DEFINE_string("eval_dir", "/mnt/raid/data/ni/dnn/zlian/eval/ckpt-1-milli", "Directory to write event logs.")
+
 
 tf.flags.DEFINE_integer("eval_interval_secs", 600,
                         "Interval between evaluation runs.")
@@ -78,6 +85,11 @@ def evaluate_model(sess, model, global_step, summary_writer, summary_op):
         model.target_cross_entropy_losses,
         model.target_cross_entropy_loss_weights
     ])
+    # TODO: delete this later :D
+    # print ('try to understand how the losses look like')
+    # print ((cross_entropy_losses).shape)
+    # print ((weights).shape)
+
     sum_losses += np.sum(cross_entropy_losses * weights)
     sum_weights += np.sum(weights)
     if not i % 100:
@@ -105,11 +117,13 @@ def run_once(model, saver, summary_writer, summary_op):
   """Evaluates the latest model checkpoint.
   Args:
     model: Instance of ShowAndTellModel; the model to evaluate.
-    saver: Instance of tf.train.Saver for restoring model Variables.
+    saver: Instance of tf.train.Saver for restoring model Variables
     summary_writer: Instance of FileWriter.
     summary_op: Op for generating model summaries.
   """
   model_path = tf.train.latest_checkpoint(FLAGS.checkpoint_dir)
+  print ("This is the ckpt_dir")
+  print (FLAGS.checkpoint_dir)
   if not model_path:
     tf.logging.info("Skipping evaluation. No checkpoint found in: %s",
                     FLAGS.checkpoint_dir)

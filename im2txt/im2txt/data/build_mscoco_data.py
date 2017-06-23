@@ -33,6 +33,7 @@ and val_captions_file respectively.
 This script converts the combined MSCOCO data into sharded data files consisting
 of 256, 4 and 8 TFRecord files, respectively:
 
+
   output_dir/train-00000-of-00256
   output_dir/train-00001-of-00256
   ...
@@ -94,22 +95,22 @@ import sys
 import threading
 
 
-
 import nltk.tokenize
 import numpy as np
 import tensorflow as tf
 
 tf.flags.DEFINE_string("train_image_dir", "/tmp/train2014/",
                        "Training image directory.")
-tf.flags.DEFINE_string("val_image_dir", "/tmp/val2014",
-                       "Validation image directory.")
+# tf.flags.DEFINE_string("val_image_dir", "/tmp/val2014",
+#                        "Validation image directory.")
 
 tf.flags.DEFINE_string("train_captions_file", "/tmp/captions_train2014.json",
                        "Training captions JSON file.")
-tf.flags.DEFINE_string("val_captions_file", "/tmp/captions_val2014.json",
-                       "Validation captions JSON file.")
-
-tf.flags.DEFINE_string("output_dir", "/tmp/", "Output data directory.")
+# tf.flags.DEFINE_string("val_captions_file", "/tmp/captions_val2014.json",
+#                        "Validation captions JSON file.")
+# Save image-caption pairs from Google to dir of training set :D
+# tf.flags.DEFINE_string("output_dir", "/tmp/", "Output data directory.")
+tf.flags.DEFINE_string("output_dir", "/mnt/raid/data/ni/dnn/zlian/Google_image/", "Output data directory.")
 
 tf.flags.DEFINE_integer("train_shards", 256,
                         "Number of shards in training TFRecord files.")
@@ -238,7 +239,7 @@ def _to_sequence_example(image, decoder, vocab):
 
 
 def _process_image_files(thread_index, ranges, name, images, decoder, vocab,
-                         num_shards):
+                         num_shards, output_file= None):
   """Processes and saves a subset of images as TFRecord files in one thread.
 
   Args:
@@ -392,14 +393,13 @@ def _process_caption(caption):
   tokenized_caption = [FLAGS.start_word]
   tokenized_caption.extend(nltk.tokenize.word_tokenize(caption.lower()))
   tokenized_caption.append(FLAGS.end_word)
+  print (':D')
+  print (tokenized_caption)
   return tokenized_caption
-#  And then the tokenized_caption is linked with its image? :D
 
 
 def _load_and_process_metadata(captions_file, image_dir):
   """Loads image metadata from a JSON file and processes the captions.
-  What are the caption metadata :D 
-
   Args:
     captions_file: JSON file containing caption annotations.
     image_dir: Directory containing the image files.
@@ -437,7 +437,8 @@ def _load_and_process_metadata(captions_file, image_dir):
     num_captions += len(captions)
   print("Finished processing %d captions for %d images in %s" %
         (num_captions, len(id_to_filename), captions_file))
-
+  print ('This is image metadata :D')
+  print (image_metadata)
   return image_metadata
 
 
@@ -459,26 +460,29 @@ def main(unused_argv):
   # Load image metadata from caption files.
   mscoco_train_dataset = _load_and_process_metadata(FLAGS.train_captions_file,
                                                     FLAGS.train_image_dir)
-  mscoco_val_dataset = _load_and_process_metadata(FLAGS.val_captions_file,
-                                                  FLAGS.val_image_dir)
+  # mscoco_val_dataset = _load_and_process_metadata(FLAGS.val_captions_file,
+  #                                                 FLAGS.val_image_dir)
 
   # Redistribute the MSCOCO data as follows:
   #   train_dataset = 100% of mscoco_train_dataset + 85% of mscoco_val_dataset.
   #   val_dataset = 5% of mscoco_val_dataset (for validation during training).
   #   test_dataset = 10% of mscoco_val_dataset (for final evaluation).
-  train_cutoff = int(0.85 * len(mscoco_val_dataset))
-  val_cutoff = int(0.90 * len(mscoco_val_dataset))
-  train_dataset = mscoco_train_dataset + mscoco_val_dataset[0:train_cutoff]
-  val_dataset = mscoco_val_dataset[train_cutoff:val_cutoff]
-  test_dataset = mscoco_val_dataset[val_cutoff:]
+  # train_cutoff = int(0.85 * len(mscoco_val_dataset))
+  # val_cutoff = int(0.90 * len(mscoco_val_dataset))
+  # train_dataset = mscoco_train_dataset + mscoco_val_dataset[0:train_cutoff]
+  # val_dataset = mscoco_val_dataset[train_cutoff:val_cutoff]
+  # test_dataset = mscoco_val_dataset[val_cutoff:]
+  # All images downloaded from Google are added as training samples :D
+  train_dataset = mscoco_train_dataset
 
   # Create vocabulary from the training captions.
+  # Vocab shall be the one used by coco training set :D
   train_captions = [c for image in train_dataset for c in image.captions]
   vocab = _create_vocab(train_captions)
-
   _process_dataset("train", train_dataset, vocab, FLAGS.train_shards)
-  _process_dataset("val", val_dataset, vocab, FLAGS.val_shards)
-  _process_dataset("test", test_dataset, vocab, FLAGS.test_shards)
+  # Val, test sets are unchanged when adding images from Google :D
+  # _process_dataset("val", val_dataset, vocab, FLAGS.val_shards)
+  # _process_dataset("test", test_dataset, vocab, FLAGS.test_shards)
 
 
 if __name__ == "__main__":
