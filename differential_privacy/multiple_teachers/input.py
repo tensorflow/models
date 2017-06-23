@@ -47,7 +47,7 @@ def create_dir_if_needed(dest_directory):
 def maybe_download(file_urls, directory):
   """
   Download a set of files in temporary local folder
-  :param directory: the directory where to download 
+  :param directory: the directory where to download
   :return: a tuple of filepaths corresponding to the files given as input
   """
   # Create directory if doesn't exist
@@ -73,7 +73,7 @@ def maybe_download(file_urls, directory):
     result.append(filepath)
 
     # Test if file already exists
-    if not gfile.Exists(filepath):
+    if not tf.gfile.Exists(filepath):
       def _progress(count, block_size, total_size):
         sys.stdout.write('\r>> Downloading %s %.1f%%' % (filename,
             float(count * block_size) / float(total_size) * 100.0))
@@ -124,7 +124,7 @@ def extract_svhn(local_url):
   :return:
   """
 
-  with gfile.Open(local_url, mode='r') as file_obj:
+  with tf.gfile.Open(local_url, mode='r') as file_obj:
     # Load MATLAB matrix using scipy IO
     dict = loadmat(file_obj)
 

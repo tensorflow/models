@@ -44,16 +44,16 @@ DATA_DIR="${1%/}"
 SCRATCH_DIR="${DATA_DIR}/raw-data"
 mkdir -p "${DATA_DIR}"
 mkdir -p "${SCRATCH_DIR}"
-# http://stackoverflow.com/questions/59895/getting-the-source-directory-of-a-bash-script-from-within
-WORK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+WORK_DIR="$0.runfiles/inception/inception"
 
 # Download the flowers data.
 DATA_URL="http://download.tensorflow.org/example_images/flower_photos.tgz"
 CURRENT_DIR=$(pwd)
+cd "${DATA_DIR}"
 TARBALL="flower_photos.tgz"
 if [ ! -f ${TARBALL} ]; then
   echo "Downloading flower data set."
-  curl -o ${DATA_DIR}/${TARBALL} "${DATA_URL}"
+  curl -o ${TARBALL} "${DATA_URL}"
 else
   echo "Skipping download of flower data."
 fi
@@ -64,9 +64,8 @@ VALIDATION_DIRECTORY="${SCRATCH_DIR}/validation"
 
 # Expands the data into the flower_photos/ directory and rename it as the
 # train directory.
-tar xf ${DATA_DIR}/flower_photos.tgz
+tar xf flower_photos.tgz
 rm -rf "${TRAIN_DIRECTORY}" "${VALIDATION_DIRECTORY}"
-mkdir -p "${TRAIN_DIRECTORY}"
 mv flower_photos "${TRAIN_DIRECTORY}"
 
 # Generate a list of 5 labels: daisy, dandelion, roses, sunflowers, tulips
@@ -88,9 +87,9 @@ done < "${LABELS_FILE}"
 
 # Build the TFRecords version of the image data.
 cd "${CURRENT_DIR}"
-BUILD_SCRIPT="${WORK_DIR}/build_image_data.py"
+BUILD_SCRIPT="${WORK_DIR}/build_image_data"
 OUTPUT_DIRECTORY="${DATA_DIR}"
-python "${BUILD_SCRIPT}" \
+"${BUILD_SCRIPT}" \
   --train_directory="${TRAIN_DIRECTORY}" \
   --validation_directory="${VALIDATION_DIRECTORY}" \
   --output_directory="${OUTPUT_DIRECTORY}" \

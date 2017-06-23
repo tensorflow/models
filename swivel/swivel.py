@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # Copyright 2016 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,366 +47,442 @@ number of epochs.  When complete, it will output the trained vectors to a
 tab-separated file that contains one line per embedding.  Row and column
 embeddings are stored in separate files.
 
+Swivel can be run "stand-alone" or "distributed".  The latter involves running
+at least one parameter server process, along with one or more worker processes.
 """
 
+from __future__ import division
 from __future__ import print_function
+
 import glob
-import math
+import itertools
 import os
-import sys
-import time
-import threading
+import random
 
 import numpy as np
+import scipy.stats
 import tensorflow as tf
-from tensorflow.python.client import device_lib
 
 flags = tf.app.flags
 
-flags.DEFINE_string('input_base_path', '/tmp/swivel_data',
-                    'Directory containing input shards, vocabularies, '
-                    'and marginals.')
-flags.DEFINE_string('output_base_path', '/tmp/swivel_data',
-                    'Path where to write the trained embeddings.')
-flags.DEFINE_integer('embedding_size', 300, 'Size of the embeddings')
-flags.DEFINE_boolean('trainable_bias', False, 'Biases are trainable')
-flags.DEFINE_integer('submatrix_rows', 4096, 'Rows in each training submatrix. '
-                     'This must match the training data.')
-flags.DEFINE_integer('submatrix_cols', 4096, 'Rows in each training submatrix. '
-                     'This must match the training data.')
-flags.DEFINE_float('loss_multiplier', 1.0 / 4096,
-                   'constant multiplier on loss.')
-flags.DEFINE_float('confidence_exponent', 0.5,
-                   'Exponent for l2 confidence function')
-flags.DEFINE_float('confidence_scale', 0.25, 'Scale for l2 confidence function')
-flags.DEFINE_float('confidence_base', 0.1, 'Base for l2 confidence function')
-flags.DEFINE_float('learning_rate', 1.0, 'Initial learning rate')
-flags.DEFINE_integer('num_concurrent_steps', 2,
-                     'Number of threads to train with')
-flags.DEFINE_integer('num_readers', 4,
-                     'Number of threads to read the input data and feed it')
-flags.DEFINE_float('num_epochs', 40, 'Number epochs to train for')
-flags.DEFINE_float('per_process_gpu_memory_fraction', 0,
-                   'Fraction of GPU memory to use, 0 means allow_growth')
-flags.DEFINE_integer('num_gpus', 0,
-                     'Number of GPUs to use, 0 means all available')
+flags.DEFINE_string(
+    'input_base_path', '/tmp/swivel_data',
+    'Directory containing input shards, vocabularies, and marginals.')
+flags.DEFINE_string(
+    'output_base_path', '/tmp/swivel_data',
+    'Path where to write the trained embeddings.')
+flags.DEFINE_string('eval_base_path', '', 'Path to evaluation data')
+
+# Control for training.
+flags.DEFINE_float('num_epochs', 40, 'Number epochs to train')
+flags.DEFINE_string('hparams', '', 'Model hyper-parameters')
+
+# Model hyper-parameters. (Move these to tf.HParams once that gets integrated
+# into TF from tf.contrib.)
+flags.DEFINE_integer(
+    'dim', 300, 'Embedding dimensionality')
+flags.DEFINE_string(
+    'optimizer', 'rmsprop', 'SGD optimizer; either "adagrad" or "rmsprop"')
+flags.DEFINE_float(
+    'learning_rate', 0.1, 'Optimizer learning rate')
+flags.DEFINE_float(
+    'momentum', 0.1, 'Optimizer momentum; used with RMSProp')
+flags.DEFINE_float(
+    'confidence_base', 0.0, 'Base for count weighting')
+flags.DEFINE_float(
+    'confidence_scale', 1.0, 'Scale for count weighting')
+flags.DEFINE_float(
+    'confidence_exponent', 0.5, 'Exponent for count weighting')
+flags.DEFINE_integer(
+    'submatrix_rows', 4096, 'Number of rows in each submatrix')
+flags.DEFINE_integer(
+    'submatrix_cols', 4096, 'Number of cols in each submatrix')
+
+# For distributed training.
+flags.DEFINE_string(
+    'ps_hosts', '',
+    'Comma-separated list of parameter server host:port; if empty, run local')
+flags.DEFINE_string(
+    'worker_hosts', '', 'Comma-separated list of worker host:port')
+flags.DEFINE_string(
+    'job_name', '', 'The job this process will run, either "ps" or "worker"')
+flags.DEFINE_integer(
+    'task_index', 0, 'The task index for this process')
+flags.DEFINE_integer(
+    'gpu_device', 0, 'The GPU device to use.')
 
 FLAGS = flags.FLAGS
 
 
-def log(message, *args, **kwargs):
-    tf.logging.info(message, *args, **kwargs)
+class Model(object):
+  """A Swivel model."""
 
+  def __init__(self, input_base_path, hparams):
+    """Creates a new Swivel model."""
+    # Read vocab
+    self.row_ix_to_word, self.row_word_to_ix = self._read_vocab(
+        os.path.join(input_base_path, 'row_vocab.txt'))
+    self.col_ix_to_word, self.col_word_to_ix = self._read_vocab(
+        os.path.join(input_base_path, 'col_vocab.txt'))
 
-def get_available_gpus():
-    return [d.name for d in device_lib.list_local_devices()
-            if d.device_type == 'GPU']
+    # Read marginals.
+    row_sums = self._read_marginals_file(
+        os.path.join(input_base_path, 'row_sums.txt'))
+    col_sums = self._read_marginals_file(
+        os.path.join(input_base_path, 'col_sums.txt'))
 
+    # Construct input tensors.
+    count_matrix_files = glob.glob(
+        os.path.join(input_base_path, 'shard-*.pb'))
 
-def embeddings_with_init(vocab_size, embedding_dim, name):
-  """Creates and initializes the embedding tensors."""
-  return tf.get_variable(name=name,
-                         shape=[vocab_size, embedding_dim],
-                         initializer=tf.random_normal_initializer(
-                             stddev=math.sqrt(1.0 / embedding_dim)))
+    global_rows, global_cols, counts = self._count_matrix_input(
+        count_matrix_files, hparams.submatrix_rows, hparams.submatrix_cols)
 
+    # Create embedding variables.
+    sigma = 1.0 / np.sqrt(hparams.dim)
+    self.row_embedding = tf.get_variable(
+        'row_embedding',
+        shape=[len(row_sums), hparams.dim],
+        initializer=tf.random_normal_initializer(0, sigma),
+        dtype=tf.float32)
+    self.col_embedding = tf.get_variable(
+        'col_embedding',
+        shape=[len(col_sums), hparams.dim],
+        initializer=tf.random_normal_initializer(0, sigma),
+        dtype=tf.float32)
 
-def count_matrix_input(filenames, submatrix_rows, submatrix_cols):
-  """Reads submatrix shards from disk."""
-  filename_queue = tf.train.string_input_producer(filenames)
-  reader = tf.WholeFileReader()
-  _, serialized_example = reader.read(filename_queue)
-  features = tf.parse_single_example(
-      serialized_example,
-      features={
-          'global_row': tf.FixedLenFeature([submatrix_rows], dtype=tf.int64),
-          'global_col': tf.FixedLenFeature([submatrix_cols], dtype=tf.int64),
-          'sparse_local_row': tf.VarLenFeature(dtype=tf.int64),
-          'sparse_local_col': tf.VarLenFeature(dtype=tf.int64),
-          'sparse_value': tf.VarLenFeature(dtype=tf.float32)
-      })
+    matrix_log_sum = np.log(np.sum(row_sums) + 1)
+    row_bias = tf.constant(
+        [np.log(x + 1) for x in row_sums], dtype=tf.float32)
+    col_bias = tf.constant(
+        [np.log(x + 1) for x in col_sums], dtype=tf.float32)
 
-  global_row = features['global_row']
-  global_col = features['global_col']
+    # Fetch embeddings.
+    selected_rows = tf.nn.embedding_lookup(self.row_embedding, global_rows)
+    selected_cols = tf.nn.embedding_lookup(self.col_embedding, global_cols)
 
-  sparse_local_row = features['sparse_local_row'].values
-  sparse_local_col = features['sparse_local_col'].values
-  sparse_count = features['sparse_value'].values
+    selected_row_bias = tf.gather(row_bias, global_rows)
+    selected_col_bias = tf.gather(col_bias, global_cols)
 
-  sparse_indices = tf.concat(axis=1, values=[tf.expand_dims(sparse_local_row, 1),
-                                             tf.expand_dims(sparse_local_col, 1)])
-  count = tf.sparse_to_dense(sparse_indices, [submatrix_rows, submatrix_cols],
-                             sparse_count)
+    predictions = tf.matmul(selected_rows, selected_cols, transpose_b=True)
 
-  queued_global_row, queued_global_col, queued_count = tf.train.batch(
-      [global_row, global_col, count],
-      batch_size=1,
-      num_threads=FLAGS.num_readers,
-      capacity=32)
+    # These binary masks separate zero from non-zero values.
+    count_is_nonzero = tf.to_float(tf.cast(counts, tf.bool))
+    count_is_zero = 1 - count_is_nonzero
 
-  queued_global_row = tf.reshape(queued_global_row, [submatrix_rows])
-  queued_global_col = tf.reshape(queued_global_col, [submatrix_cols])
-  queued_count = tf.reshape(queued_count, [submatrix_rows, submatrix_cols])
+    objectives = count_is_nonzero * tf.log(counts + 1e-30)
+    objectives -= tf.reshape(selected_row_bias, [-1, 1])
+    objectives -= selected_col_bias
+    objectives += matrix_log_sum
 
-  return queued_global_row, queued_global_col, queued_count
+    err = predictions - objectives
 
+    # The confidence function scales the L2 loss based on the raw
+    # co-occurrence count.
+    l2_confidence = (hparams.confidence_base +
+                     hparams.confidence_scale * tf.pow(
+                         counts, hparams.confidence_exponent))
 
-def read_marginals_file(filename):
-  """Reads text file with one number per line to an array."""
-  with open(filename) as lines:
-    return [float(line) for line in lines]
+    loss_multiplier = 1 / np.sqrt(
+        hparams.submatrix_rows * hparams.submatrix_cols)
 
+    l2_loss = loss_multiplier * tf.reduce_sum(
+        0.5 * l2_confidence * tf.square(err))
 
-def write_embedding_tensor_to_disk(vocab_path, output_path, sess, embedding):
-  """Writes tensor to output_path as tsv"""
-  # Fetch the embedding values from the model
-  embeddings = sess.run(embedding)
+    sigmoid_loss = loss_multiplier * tf.reduce_sum(
+        tf.nn.softplus(err) * count_is_zero)
 
-  with open(output_path, 'w') as out_f:
-    with open(vocab_path) as vocab_f:
-      for index, word in enumerate(vocab_f):
-        word = word.strip()
-        embedding = embeddings[index]
-        out_f.write(word + '\t' + '\t'.join([str(x) for x in embedding]) + '\n')
+    self.loss_op = l2_loss + sigmoid_loss
 
+    if hparams.optimizer == 'adagrad':
+      opt = tf.train.AdagradOptimizer(hparams.learning_rate)
+    elif hparams.optimizer == 'rmsprop':
+      opt = tf.train.RMSPropOptimizer(hparams.learning_rate, hparams.momentum)
+    else:
+      raise ValueError('unknown optimizer "%s"' % hparams.optimizer)
 
-def write_embeddings_to_disk(config, model, sess):
-  """Writes row and column embeddings disk"""
-  # Row Embedding
-  row_vocab_path = config.input_base_path + '/row_vocab.txt'
-  row_embedding_output_path = config.output_base_path + '/row_embedding.tsv'
-  log('Writing row embeddings to: %s', row_embedding_output_path)
-  write_embedding_tensor_to_disk(row_vocab_path, row_embedding_output_path,
-                                 sess, model.row_embedding)
+    self.global_step = tf.get_variable(
+        'global_step', initializer=0, trainable=False)
 
-  # Column Embedding
-  col_vocab_path = config.input_base_path + '/col_vocab.txt'
-  col_embedding_output_path = config.output_base_path + '/col_embedding.tsv'
-  log('Writing column embeddings to: %s', col_embedding_output_path)
-  write_embedding_tensor_to_disk(col_vocab_path, col_embedding_output_path,
-                                 sess, model.col_embedding)
+    self.train_op = opt.minimize(self.loss_op, global_step=self.global_step)
 
+    # One epoch trains each submatrix once.
+    self.steps_per_epoch = (
+        (len(row_sums) / hparams.submatrix_rows) *
+        (len(col_sums) / hparams.submatrix_cols))
 
-class SwivelModel(object):
-  """Small class to gather needed pieces from a Graph being built."""
+  def _read_vocab(self, filename):
+    """Reads the vocabulary file."""
+    with open(filename) as lines:
+      ix_to_word = [line.strip() for line in lines]
+      word_to_ix = {word: ix for ix, word in enumerate(ix_to_word)}
+      return ix_to_word, word_to_ix
 
-  def __init__(self, config):
-    """Construct graph for dmc."""
-    self._config = config
+  def _read_marginals_file(self, filename):
+    """Reads text file with one number per line to an array."""
+    with open(filename) as lines:
+      return [float(line.strip()) for line in lines]
 
-    # Create paths to input data files
-    log('Reading model from: %s', config.input_base_path)
-    count_matrix_files = glob.glob(config.input_base_path + '/shard-*.pb')
-    row_sums_path = config.input_base_path + '/row_sums.txt'
-    col_sums_path = config.input_base_path + '/col_sums.txt'
+  def _count_matrix_input(self, filenames, submatrix_rows, submatrix_cols):
+    """Creates ops that read submatrix shards from disk."""
+    random.shuffle(filenames)
+    filename_queue = tf.train.string_input_producer(filenames)
+    reader = tf.WholeFileReader()
+    _, serialized_example = reader.read(filename_queue)
+    features = tf.parse_single_example(
+        serialized_example,
+        features={
+            'global_row': tf.FixedLenFeature([submatrix_rows], dtype=tf.int64),
+            'global_col': tf.FixedLenFeature([submatrix_cols], dtype=tf.int64),
+            'sparse_local_row': tf.VarLenFeature(dtype=tf.int64),
+            'sparse_local_col': tf.VarLenFeature(dtype=tf.int64),
+            'sparse_value': tf.VarLenFeature(dtype=tf.float32)
+        })
 
-    # Read marginals
-    row_sums = read_marginals_file(row_sums_path)
-    col_sums = read_marginals_file(col_sums_path)
+    global_row = features['global_row']
+    global_col = features['global_col']
 
-    self.n_rows = len(row_sums)
-    self.n_cols = len(col_sums)
-    log('Matrix dim: (%d,%d) SubMatrix dim: (%d,%d)',
-        self.n_rows, self.n_cols, config.submatrix_rows, config.submatrix_cols)
-    self.n_submatrices = (self.n_rows * self.n_cols /
-                          (config.submatrix_rows * config.submatrix_cols))
-    log('n_submatrices: %d', self.n_submatrices)
+    sparse_local_row = features['sparse_local_row'].values
+    sparse_local_col = features['sparse_local_col'].values
+    sparse_count = features['sparse_value'].values
 
-    with tf.device('/cpu:0'):
-      # ===== CREATE VARIABLES ======
-      # Get input
-      global_row, global_col, count = count_matrix_input(
-        count_matrix_files, config.submatrix_rows, config.submatrix_cols)
+    sparse_indices = tf.concat(
+        axis=1, values=[tf.expand_dims(sparse_local_row, 1),
+                        tf.expand_dims(sparse_local_col, 1)])
 
-      # Embeddings
-      self.row_embedding = embeddings_with_init(
-        embedding_dim=config.embedding_size,
-        vocab_size=self.n_rows,
-        name='row_embedding')
-      self.col_embedding = embeddings_with_init(
-        embedding_dim=config.embedding_size,
-        vocab_size=self.n_cols,
-        name='col_embedding')
-      tf.summary.histogram('row_emb', self.row_embedding)
-      tf.summary.histogram('col_emb', self.col_embedding)
+    count = tf.sparse_to_dense(sparse_indices, [submatrix_rows, submatrix_cols],
+                               sparse_count)
 
-      matrix_log_sum = math.log(np.sum(row_sums) + 1)
-      row_bias_init = [math.log(x + 1) for x in row_sums]
-      col_bias_init = [math.log(x + 1) for x in col_sums]
-      self.row_bias = tf.Variable(
-          row_bias_init, trainable=config.trainable_bias)
-      self.col_bias = tf.Variable(
-          col_bias_init, trainable=config.trainable_bias)
-      tf.summary.histogram('row_bias', self.row_bias)
-      tf.summary.histogram('col_bias', self.col_bias)
+    return global_row, global_col, count
 
-      # Add optimizer
-      l2_losses = []
-      sigmoid_losses = []
-      self.global_step = tf.Variable(0, name='global_step')
-      opt = tf.train.AdagradOptimizer(config.learning_rate)
+  def wordsim_eval_op(self, filename):
+    """Returns an op that runs an eval on a word similarity dataset.
 
-      all_grads = []
+    The eval dataset is assumed to be tab-separated, one scored word pair per
+    line.  The resulting value is Spearman's rho of the human judgements with
+    the cosine similarity of the word embeddings.
 
-    devices = ['/gpu:%d' % i for i in range(FLAGS.num_gpus)] \
-        if FLAGS.num_gpus > 0 else get_available_gpus()
-    self.devices_number = len(devices)
-    with tf.variable_scope(tf.get_variable_scope()):
-      for dev in devices:
-        with tf.device(dev):
-          with tf.name_scope(dev[1:].replace(':', '_')):
-            # ===== CREATE GRAPH =====
-            # Fetch embeddings.
-            selected_row_embedding = tf.nn.embedding_lookup(
-                self.row_embedding, global_row)
-            selected_col_embedding = tf.nn.embedding_lookup(
-                self.col_embedding, global_col)
+    Args:
+      filename: the filename containing the word similarity data.
 
-            # Fetch biases.
-            selected_row_bias = tf.nn.embedding_lookup(
-                [self.row_bias], global_row)
-            selected_col_bias = tf.nn.embedding_lookup(
-                [self.col_bias], global_col)
+    Returns:
+      An operator that will compute Spearman's rho of the current row
+      embeddings.
+    """
+    with open(filename, 'r') as fh:
+      tuples = (line.strip().split('\t') for line in fh.read().splitlines())
+      word1s, word2s, sims = zip(*tuples)
+      actuals = map(float, sims)
 
-            # Multiply the row and column embeddings to generate predictions.
-            predictions = tf.matmul(
-                selected_row_embedding, selected_col_embedding,
-                transpose_b=True)
+    v1s_t = tf.nn.embedding_lookup(
+        self.row_embedding,
+        [self.row_word_to_ix.get(w, 0) for w in word1s])
 
-            # These binary masks separate zero from non-zero values.
-            count_is_nonzero = tf.to_float(tf.cast(count, tf.bool))
-            count_is_zero = 1 - count_is_nonzero
+    v2s_t = tf.nn.embedding_lookup(
+        self.row_embedding,
+        [self.row_word_to_ix.get(w, 0) for w in word2s])
 
-            objectives = count_is_nonzero * tf.log(count + 1e-30)
-            objectives -= tf.reshape(
-                selected_row_bias, [config.submatrix_rows, 1])
-            objectives -= selected_col_bias
-            objectives += matrix_log_sum
+    # Compute the predicted word similarity as the cosine similarity between the
+    # embedding vectors.
+    preds_t = tf.reduce_sum(
+        tf.nn.l2_normalize(v1s_t, dim=1) * tf.nn.l2_normalize(v2s_t, dim=1),
+        axis=1)
 
-            err = predictions - objectives
+    def _op(preds):
+      rho, _ = scipy.stats.spearmanr(preds, actuals)
+      return rho
 
-            # The confidence function scales the L2 loss based on the raw
-            # co-occurrence count.
-            l2_confidence = (config.confidence_base +
-                             config.confidence_scale * tf.pow(
-                                 count, config.confidence_exponent))
+    return tf.py_func(_op, [preds_t], tf.float64)
 
-            l2_loss = config.loss_multiplier * tf.reduce_sum(
-                0.5 * l2_confidence * err * err * count_is_nonzero)
-            l2_losses.append(tf.expand_dims(l2_loss, 0))
+  def analogy_eval_op(self, filename, max_vocab_size=20000):
+    """Returns an op that runs an eval on an analogy dataset.
 
-            sigmoid_loss = config.loss_multiplier * tf.reduce_sum(
-                tf.nn.softplus(err) * count_is_zero)
-            sigmoid_losses.append(tf.expand_dims(sigmoid_loss, 0))
+    The eval dataset is assumed to be tab-separated, with four tokens per
+    line. The first three tokens are query terms, the last is the expected
+    answer. For each line (e.g., "man king woman queen"), the vectors
+    corresponding to the query terms are added ("king - man + woman") to produce
+    a query vector.  If the expected answer's vector is the nearest neighbor to
+    the query vector (not counting any of the query vectors themselves), then
+    the line is scored as correct.  The reported accuracy is the number of
+    correct rows divided by the total number of rows.  Missing terms are
+    replaced with an arbitrary vector and will almost certainly result in
+    incorrect answers.
 
-            loss = l2_loss + sigmoid_loss
-            grads = opt.compute_gradients(loss)
-            all_grads.append(grads)
+    Note that the results are approximate: for efficiency's sake, only the first
+    `max_vocab_size` terms are included in the nearest neighbor search.
 
-    with tf.device('/cpu:0'):
-      # ===== MERGE LOSSES =====
-      l2_loss = tf.reduce_mean(tf.concat(axis=0, values=l2_losses), 0,
-                               name="l2_loss")
-      sigmoid_loss = tf.reduce_mean(tf.concat(axis=0, values=sigmoid_losses), 0,
-                                    name="sigmoid_loss")
-      self.loss = l2_loss + sigmoid_loss
-      average = tf.train.ExponentialMovingAverage(0.8, self.global_step)
-      loss_average_op = average.apply((self.loss,))
-      tf.summary.scalar("l2_loss", l2_loss)
-      tf.summary.scalar("sigmoid_loss", sigmoid_loss)
-      tf.summary.scalar("loss", self.loss)
+    Args:
+      filename: the filename containing the analogy data.
+      max_vocab_size: the maximum number of tokens to include in the nearest
+        neighbor search. By default, 20000.
 
-      # Apply the gradients to adjust the shared variables.
-      apply_gradient_ops = []
-      for grads in all_grads:
-        apply_gradient_ops.append(opt.apply_gradients(
-            grads, global_step=self.global_step))
+    Returns:
+      The accuracy on the analogy task.
+    """
+    analogy_ixs = []
+    with open(filename, 'r') as lines:
+      for line in lines:
+        parts = line.strip().split('\t')
+        if len(parts) == 4:
+          analogy_ixs.append([self.row_word_to_ix.get(w, 0) for w in parts])
 
-      self.train_op = tf.group(loss_average_op, *apply_gradient_ops)
-      self.saver = tf.train.Saver(sharded=True)
+    # man:king :: woman:queen => king - man + woman == queen
+    ix1s, ix2s, ix3s, _ = zip(*analogy_ixs)
+    v1s_t, v2s_t, v3s_t = (
+        tf.nn.l2_normalize(
+            tf.nn.embedding_lookup(self.row_embedding, ixs),
+            dim=1)
+        for ixs in (ix1s, ix2s, ix3s))
+
+    preds_t = v2s_t - v1s_t + v3s_t
+
+    # Compute the nearest neighbors as the cosine similarity.  We only consider
+    # up to max_vocab_size to avoid a matmul that swamps the machine.
+    sims_t = tf.matmul(
+        preds_t,
+        tf.nn.l2_normalize(self.row_embedding[:max_vocab_size], dim=1),
+        transpose_b=True)
+
+    # Take the four nearest neighbors, since the eval explicitly discards the
+    # query terms.
+    _, preds_ixs_t = tf.nn.top_k(sims_t, 4)
+
+    def _op(preds_ixs):
+      correct, total = 0, 0
+      for pred_ixs, actual_ixs in itertools.izip(preds_ixs, analogy_ixs):
+        pred_ixs = [ix for ix in pred_ixs if ix not in actual_ixs[:3]]
+        correct += pred_ixs[0] == actual_ixs[3]
+        total += 1
+
+      return correct / total
+
+    return tf.py_func(_op, [preds_ixs_t], tf.float64)
+
+  def _write_tensor(self, vocab_path, output_path, session, embedding):
+    """Writes tensor to output_path as tsv."""
+    embeddings = session.run(embedding)
+
+    with open(output_path, 'w') as out_f:
+      with open(vocab_path) as vocab_f:
+        for index, word in enumerate(vocab_f):
+          word = word.strip()
+          embedding = embeddings[index]
+          print('\t'.join([word.strip()] + [str(x) for x in embedding]),
+                file=out_f)
+
+  def write_embeddings(self, config, session):
+    """Writes row and column embeddings disk."""
+    self._write_tensor(
+        os.path.join(config.input_base_path, 'row_vocab.txt'),
+        os.path.join(config.output_base_path, 'row_embedding.tsv'),
+        session, self.row_embedding)
+
+    self._write_tensor(
+        os.path.join(config.input_base_path, 'col_vocab.txt'),
+        os.path.join(config.output_base_path, 'col_embedding.tsv'),
+        session, self.col_embedding)
 
 
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
-  start_time = time.time()
 
-  # Create the output path.  If this fails, it really ought to fail
-  # now. :)
-  if not os.path.isdir(FLAGS.output_base_path):
-    os.makedirs(FLAGS.output_base_path)
+  # If we have ps_hosts, then we'll assume that this is going to be a
+  # distributed training run.  Configure the cluster appropriately.  Otherwise,
+  # we just do everything in-process.
+  if FLAGS.ps_hosts:
+    cluster = tf.train.ClusterSpec({
+        'ps': FLAGS.ps_hosts.split(','),
+        'worker': FLAGS.worker_hosts.split(','),
+    })
 
-  # Create and run model
-  with tf.Graph().as_default():
-    model = SwivelModel(FLAGS)
-
-    # Create a session for running Ops on the Graph.
-    gpu_opts = {}
-    if FLAGS.per_process_gpu_memory_fraction > 0:
-        gpu_opts["per_process_gpu_memory_fraction"] = \
-            FLAGS.per_process_gpu_memory_fraction
+    if FLAGS.job_name == 'ps':
+      # Ignore the GPU if we're the parameter server. This let's the PS run on
+      # the same machine as a worker.
+      config = tf.ConfigProto(device_count={'GPU': 0})
+    elif FLAGS.job_name == 'worker':
+      config = tf.ConfigProto(gpu_options=tf.GPUOptions(
+          visible_device_list='%d' % FLAGS.gpu_device,
+          allow_growth=True))
     else:
-        gpu_opts["allow_growth"] = True
-    gpu_options = tf.GPUOptions(**gpu_opts)
-    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+      raise ValueError('unknown job name "%s"' % FLAGS.job_name)
 
-    # Run the Op to initialize the variables.
-    sess.run(tf.global_variables_initializer())
+    server = tf.train.Server(
+        cluster,
+        job_name=FLAGS.job_name,
+        task_index=FLAGS.task_index,
+        config=config)
 
-    # Start feeding input
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    if FLAGS.job_name == 'ps':
+      return server.join()
 
-    # Calculate how many steps each thread should run
-    n_total_steps = int(FLAGS.num_epochs * model.n_rows * model.n_cols) / (
-        FLAGS.submatrix_rows * FLAGS.submatrix_cols)
-    n_steps_per_thread = n_total_steps / (
-        FLAGS.num_concurrent_steps * model.devices_number)
-    n_submatrices_to_train = model.n_submatrices * FLAGS.num_epochs
-    t0 = [time.time()]
-    n_steps_between_status_updates = 100
-    status_i = [0]
-    status_lock = threading.Lock()
-    msg = ('%%%dd/%%d submatrices trained (%%.1f%%%%), %%5.1f submatrices/sec |'
-           ' loss %%f') % len(str(n_submatrices_to_train))
+    device_setter = tf.train.replica_device_setter(
+        worker_device='/job:worker/task:%d' % FLAGS.task_index,
+        cluster=cluster)
 
-    def TrainingFn():
-      for _ in range(int(n_steps_per_thread)):
-        _, global_step, loss = sess.run((
-            model.train_op, model.global_step, model.loss))
+  else:
+    server = None
+    device_setter = tf.train.replica_device_setter(0)
 
-        show_status = False
-        with status_lock:
-          new_i = global_step // n_steps_between_status_updates
-          if new_i > status_i[0]:
-            status_i[0] = new_i
-            show_status = True
-        if show_status:
-          elapsed = float(time.time() - t0[0])
-          log(msg, global_step, n_submatrices_to_train,
-              100.0 * global_step / n_submatrices_to_train,
-              n_steps_between_status_updates / elapsed, loss)
-          t0[0] = time.time()
+  # Build the graph.
+  with tf.Graph().as_default():
+    with tf.device(device_setter):
+      model = Model(FLAGS.input_base_path, FLAGS)
 
-    # Start training threads
-    train_threads = []
-    for _ in range(FLAGS.num_concurrent_steps):
-      t = threading.Thread(target=TrainingFn)
-      train_threads.append(t)
-      t.start()
+      # If an eval path is present, then create eval operators and set up scalar
+      # summaries to report on the results.  Run the evals on the CPU since
+      # the analogy eval requires a fairly enormous tensor to be allocated to
+      # do the nearest neighbor search.
+      if FLAGS.eval_base_path:
+        wordsim_filenames = glob.glob(
+            os.path.join(FLAGS.eval_base_path, '*.ws.tab'))
 
-    # Wait for threads to finish.
-    for t in train_threads:
-      t.join()
+        for filename in wordsim_filenames:
+          name = os.path.basename(filename).split('.')[0]
+          with tf.device(tf.DeviceSpec(device_type='CPU')):
+            op = model.wordsim_eval_op(filename)
+            tf.summary.scalar(name, op)
 
-    coord.request_stop()
-    coord.join(threads)
+        analogy_filenames = glob.glob(
+            os.path.join(FLAGS.eval_base_path, '*.an.tab'))
 
-    # Write out vectors
-    write_embeddings_to_disk(FLAGS, model, sess)
+        for filename in analogy_filenames:
+          name = os.path.basename(filename).split('.')[0]
+          with tf.device(tf.DeviceSpec(device_type='CPU')):
+            op = model.analogy_eval_op(filename)
+            tf.summary.scalar(name, op)
 
-    # Shutdown
-    sess.close()
-    log("Elapsed: %s", time.time() - start_time)
+      tf.summary.scalar('loss', model.loss_op)
+
+    # Train on, soldier.
+    supervisor = tf.train.Supervisor(
+        logdir=FLAGS.output_base_path,
+        is_chief=(FLAGS.task_index == 0),
+        save_summaries_secs=60,
+        recovery_wait_secs=5)
+
+    max_step = FLAGS.num_epochs * model.steps_per_epoch
+    master = server.target if server else ''
+    with supervisor.managed_session(master) as session:
+      local_step = 0
+      global_step = session.run(model.global_step)
+      while not supervisor.should_stop() and global_step < max_step:
+        global_step, loss, _ = session.run([
+            model.global_step, model.loss_op, model.train_op])
+
+        if not np.isfinite(loss):
+          raise ValueError('non-finite cost at step %d' % global_step)
+
+        local_step += 1
+        if local_step % 10 == 0:
+          tf.logging.info(
+              'local_step=%d global_step=%d loss=%.1f, %.1f%% complete',
+              local_step, global_step, loss, 100.0 * global_step / max_step)
+
+      if FLAGS.task_index == 0:
+        supervisor.saver.save(
+            session, supervisor.save_path, global_step=global_step)
+
+        model.write_embeddings(FLAGS, session)
 
 
 if __name__ == '__main__':

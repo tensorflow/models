@@ -1,0 +1,64 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+import "object_detection/protos/optimizer.proto";
+import "object_detection/protos/preprocessor.proto";
+
+// Message for configuring DetectionModel training jobs (train.py).
+message TrainConfig {
+  // Input queue batch size.
+  optional uint32 batch_size = 1 [default=32];
+
+  // Data augmentation options.
+  repeated PreprocessingStep data_augmentation_options = 2;
+
+  // Whether to synchronize replicas during training.
+  optional bool sync_replicas = 3 [default=false];
+
+  // How frequently to keep checkpoints.
+  optional uint32 keep_checkpoint_every_n_hours = 4 [default=1000];
+
+  // Optimizer used to train the DetectionModel.
+  optional Optimizer optimizer = 5;
+
+  // If greater than 0, clips gradients by this value.
+  optional float gradient_clipping_by_norm = 6 [default=0.0];
+
+  // Checkpoint to restore variables from. Typically used to load feature
+  // extractor variables trained outside of object detection.
+  optional string fine_tune_checkpoint = 7 [default=""];
+
+  // Specifies if the finetune checkpoint is from an object detection model.
+  // If from an object detection model, the model being trained should have
+  // the same parameters with the exception of the num_classes parameter.
+  // If false, it assumes the checkpoint was a object classification model.
+  optional bool from_detection_checkpoint = 8 [default=false];
+
+  // Number of steps to train the DetectionModel for. If 0, will train the model
+  // indefinitely.
+  optional uint32 num_steps = 9 [default=0];
+
+  // Number of training steps between replica startup.
+  // This flag must be set to 0 if sync_replicas is set to true.
+  optional float startup_delay_steps = 10 [default=15];
+
+  // If greater than 0, multiplies the gradient of bias variables by this
+  // amount.
+  optional float bias_grad_multiplier = 11 [default=0];
+
+  // Variables that should not be updated during training.
+  repeated string freeze_variables = 12;
+
+  // Number of replicas to aggregate before making parameter updates.
+  optional int32 replicas_to_aggregate = 13 [default=1];
+
+  // Maximum number of elements to store within a queue.
+  optional int32 batch_queue_capacity = 14 [default=600];
+
+  // Number of threads to use for batching.
+  optional int32 num_batch_queue_threads = 15 [default=8];
+
+  // Maximum capacity of the queue used to prefetch assembled batches.
+  optional int32 prefetch_queue_capacity = 16 [default=10];
+}

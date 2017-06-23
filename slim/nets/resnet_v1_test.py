@@ -156,14 +156,17 @@ class ResnetUtilsTest(tf.test.TestCase):
     with tf.variable_scope(scope, values=[inputs]):
       with slim.arg_scope([slim.conv2d], outputs_collections='end_points'):
         net = resnet_utils.stack_blocks_dense(inputs, blocks, output_stride)
-        end_points = dict(tf.get_collection('end_points'))
+        end_points = slim.utils.convert_collection_to_dict('end_points')
         return net, end_points
 
   def testEndPointsV1(self):
     """Test the end points of a tiny v1 bottleneck network."""
-    bottleneck = resnet_v1.bottleneck
-    blocks = [resnet_utils.Block('block1', bottleneck, [(4, 1, 1), (4, 1, 2)]),
-              resnet_utils.Block('block2', bottleneck, [(8, 2, 1), (8, 2, 1)])]
+    blocks = [
+        resnet_v1.resnet_v1_block(
+            'block1', base_depth=1, num_units=2, stride=2),
+        resnet_v1.resnet_v1_block(
+            'block2', base_depth=2, num_units=2, stride=1),
+    ]
     inputs = create_test_input(2, 32, 16, 3)
     with slim.arg_scope(resnet_utils.resnet_arg_scope()):
       _, end_points = self._resnet_plain(inputs, blocks, scope='tiny')
@@ -189,30 +192,23 @@ class ResnetUtilsTest(tf.test.TestCase):
     for block in blocks:
       with tf.variable_scope(block.scope, 'block', [net]):
         for i, unit in enumerate(block.args):
-          depth, depth_bottleneck, stride = unit
           with tf.variable_scope('unit_%d' % (i + 1), values=[net]):
-            net = block.unit_fn(net,
-                                depth=depth,
-                                depth_bottleneck=depth_bottleneck,
-                                stride=stride,
-                                rate=1)
+            net = block.unit_fn(net, rate=1, **unit)
     return net
 
-  def _atrousValues(self, bottleneck):
+  def testAtrousValuesBottleneck(self):
     """Verify the values of dense feature extraction by atrous convolution.
 
     Make sure that dense feature extraction by stack_blocks_dense() followed by
     subsampling gives identical results to feature extraction at the nominal
     network output stride using the simple self._stack_blocks_nondense() above.
-
-    Args:
-      bottleneck: The bottleneck function.
     """
+    block = resnet_v1.resnet_v1_block
     blocks = [
-        resnet_utils.Block('block1', bottleneck, [(4, 1, 1), (4, 1, 2)]),
-        resnet_utils.Block('block2', bottleneck, [(8, 2, 1), (8, 2, 2)]),
-        resnet_utils.Block('block3', bottleneck, [(16, 4, 1), (16, 4, 2)]),
-        resnet_utils.Block('block4', bottleneck, [(32, 8, 1), (32, 8, 1)])
+        block('block1', base_depth=1, num_units=2, stride=2),
+        block('block2', base_depth=2, num_units=2, stride=2),
+        block('block3', base_depth=4, num_units=2, stride=2),
+        block('block4', base_depth=8, num_units=2, stride=1),
     ]
     nominal_stride = 8
 
@@ -244,9 +240,6 @@ class ResnetUtilsTest(tf.test.TestCase):
               output, expected = sess.run([output, expected])
               self.assertAllClose(output, expected, atol=1e-4, rtol=1e-4)
 
-  def testAtrousValuesBottleneck(self):
-    self._atrousValues(resnet_v1.bottleneck)
-
 
 class ResnetCompleteNetworkTest(tf.test.TestCase):
   """Tests with complete small ResNet v1 networks."""
@@ -261,16 +254,13 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                     reuse=None,
                     scope='resnet_v1_small'):
     """A shallow and thin ResNet v1 for faster tests."""
-    bottleneck = resnet_v1.bottleneck
+    block = resnet_v1.resnet_v1_block
     blocks = [
-        resnet_utils.Block(
-            'block1', bottleneck, [(4, 1, 1)] * 2 + [(4, 1, 2)]),
-        resnet_utils.Block(
-            'block2', bottleneck, [(8, 2, 1)] * 2 + [(8, 2, 2)]),
-        resnet_utils.Block(
-            'block3', bottleneck, [(16, 4, 1)] * 2 + [(16, 4, 2)]),
-        resnet_utils.Block(
-            'block4', bottleneck, [(32, 8, 1)] * 2)]
+        block('block1', base_depth=1, num_units=3, stride=2),
+        block('block2', base_depth=2, num_units=3, stride=2),
+        block('block3', base_depth=4, num_units=3, stride=2),
+        block('block4', base_depth=8, num_units=2, stride=1),
+    ]
     return resnet_v1.resnet_v1(inputs, blocks, num_classes,
                                is_training=is_training,
                                global_pool=global_pool,

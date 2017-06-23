@@ -223,7 +223,7 @@ def inception_v4_base(inputs, final_endpoint='Mixed_7d', scope=None):
 
       # 35 x 35 x 384
       # 4 x Inception-A blocks
-      for idx in xrange(4):
+      for idx in range(4):
         block_scope = 'Mixed_5' + chr(ord('b') + idx)
         net = block_inception_a(net, block_scope)
         if add_and_check_final(block_scope, net): return net, end_points
@@ -235,7 +235,7 @@ def inception_v4_base(inputs, final_endpoint='Mixed_7d', scope=None):
 
       # 17 x 17 x 1024
       # 7 x Inception-B blocks
-      for idx in xrange(7):
+      for idx in range(7):
         block_scope = 'Mixed_6' + chr(ord('b') + idx)
         net = block_inception_b(net, block_scope)
         if add_and_check_final(block_scope, net): return net, end_points
@@ -247,7 +247,7 @@ def inception_v4_base(inputs, final_endpoint='Mixed_7d', scope=None):
 
       # 8 x 8 x 1536
       # 3 x Inception-C blocks
-      for idx in xrange(3):
+      for idx in range(3):
         block_scope = 'Mixed_7' + chr(ord('b') + idx)
         net = block_inception_c(net, block_scope)
         if add_and_check_final(block_scope, net): return net, end_points

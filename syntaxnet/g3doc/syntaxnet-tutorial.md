@@ -87,8 +87,7 @@ Note that `stack` here means "words we have already tagged." Thus, this feature
 spec uses three types of features: words, suffixes, and prefixes. The features
 are grouped into blocks that share an embedding matrix, concatenated together,
 and fed into a chain of hidden layers. This structure is based upon the model
-proposed by [Chen and Manning (2014)]
-(http://cs.stanford.edu/people/danqi/papers/emnlp2014.pdf).
+proposed by [Chen and Manning (2014)](http://cs.stanford.edu/people/danqi/papers/emnlp2014.pdf).
 
 We show this layout in the schematic below: the state of the system (a stack and
 a buffer, visualized below for both the POS and the dependency parsing task) is

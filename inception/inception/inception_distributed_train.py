@@ -42,6 +42,9 @@ tf.app.flags.DEFINE_string('worker_hosts', '',
                            """Comma-separated list of hostname:port for the """
                            """worker jobs. e.g. """
                            """'machine1:2222,machine2:1111,machine2:2222'""")
+tf.app.flags.DEFINE_string('protocol', 'grpc',
+                           """Communication protocol to use in distributed """
+                           """execution (default grpc) """)
 
 tf.app.flags.DEFINE_string('train_dir', '/tmp/imagenet_train',
                            """Directory where to write event logs """

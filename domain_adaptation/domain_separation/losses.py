@@ -178,16 +178,14 @@ def dann_loss(source_samples, target_samples, weight, scope=None):
 
   assert_op = tf.Assert(tf.is_finite(domain_loss), [domain_loss])
   with tf.control_dependencies([assert_op]):
-    tag_loss = 'losses/Domain Loss'
-    tag_accuracy = 'losses/Domain Accuracy'
+    tag_loss = 'losses/domain_loss'
+    tag_accuracy = 'losses/domain_accuracy'
     if scope:
       tag_loss = scope + tag_loss
       tag_accuracy = scope + tag_accuracy
 
-    tf.summary.scalar(
-        tag_loss, domain_loss, name='domain_loss_summary')
-    tf.summary.scalar(
-        tag_accuracy, domain_accuracy, name='domain_accuracy_summary')
+    tf.summary.scalar(tag_loss, domain_loss)
+    tf.summary.scalar(tag_accuracy, domain_accuracy)
 
   return domain_loss
 

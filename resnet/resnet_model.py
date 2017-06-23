@@ -85,7 +85,7 @@ class ResNet(object):
       # comparably good performance.
       # https://arxiv.org/pdf/1605.07146v1.pdf
       # filters = [16, 160, 320, 640]
-      # Update hps.num_residual_units to 9
+      # Update hps.num_residual_units to 4
 
     with tf.variable_scope('unit_1_0'):
       x = res_func(x, filters[0], filters[1], self._stride_arr(strides[0]),
@@ -185,7 +185,7 @@ class ResNet(object):
             trainable=False)
         tf.summary.histogram(mean.op.name, mean)
         tf.summary.histogram(variance.op.name, variance)
-      # elipson used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
+      # epsilon used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
       y = tf.nn.batch_normalization(
           x, mean, variance, beta, gamma, 0.001)
       y.set_shape(x.get_shape())
