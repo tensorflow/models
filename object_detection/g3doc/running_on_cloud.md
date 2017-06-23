@@ -88,7 +88,7 @@ training checkpoints and events will be written to and
 Google Cloud Storage.
 
 Users can monitor the progress of their training job on the [ML Engine
-Dasboard](https://pantheon.corp.google.com/mlengine/jobs).
+Dashboard](https://pantheon.corp.google.com/mlengine/jobs).
 
 ## Running an Evaluation Job on Cloud
 
