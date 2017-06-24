@@ -146,7 +146,7 @@ upload your edited file onto GCS, making note of the path it was uploaded to
 sed -i "s|PATH_TO_BE_CONFIGURED|"gs://${YOUR_GCS_BUCKET}"/data|g" \
     object_detection/samples/configs/faster_rcnn_resnet101_pets.config
 
-# Copy editted template to cloud.
+# Copy edited template to cloud.
 gsutil cp object_detection/samples/configs/faster_rcnn_resnet101_pets.config \
     gs://${YOUR_GCS_BUCKET}/data/faster_rcnn_resnet101_pets.config
 ```
