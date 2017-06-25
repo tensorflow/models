@@ -252,7 +252,7 @@ def resnet_v2_50(inputs,
                  is_training=True,
                  global_pool=True,
                  output_stride=None,
-                 spatial_squeeze=False,
+                 spatial_squeeze=True,
                  reuse=None,
                  scope='resnet_v2_50'):
   """ResNet-50 model of [1]. See resnet_v2() for arg and return description."""
@@ -274,7 +274,7 @@ def resnet_v2_101(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
-                  spatial_squeeze=False,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v2_101'):
   """ResNet-101 model of [1]. See resnet_v2() for arg and return description."""
@@ -296,7 +296,7 @@ def resnet_v2_152(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
-                  spatial_squeeze=False,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v2_152'):
   """ResNet-152 model of [1]. See resnet_v2() for arg and return description."""
@@ -318,7 +318,7 @@ def resnet_v2_200(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
-                  spatial_squeeze=False,
+                  spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v2_200'):
   """ResNet-200 model of [2]. See resnet_v2() for arg and return description."""
