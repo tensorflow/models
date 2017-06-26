@@ -73,6 +73,11 @@ tf.app.flags.DEFINE_boolean(
     'is_training', False,
     'Whether to save out a training-focused version of the model.')
 
+tf.app.flags.DEFINE_boolean(
+    'override_default_image_size', False,
+    'use image size specified by default_image_size even when the model does '
+    'define it')
+
 tf.app.flags.DEFINE_integer(
     'default_image_size', 224,
     'The image size to use if the model does not define it.')
@@ -107,7 +112,10 @@ def main(_):
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         is_training=FLAGS.is_training)
     if hasattr(network_fn, 'default_image_size'):
-      image_size = network_fn.default_image_size
+      if FLAGS.override_default_image_size:
+        image_size = FLAGS.default_image_size
+      else:
+        image_size = network_fn.default_image_size
     else:
       image_size = FLAGS.default_image_size
     placeholder = tf.placeholder(name='input', dtype=tf.float32,
