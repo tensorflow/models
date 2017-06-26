@@ -349,8 +349,14 @@ $ python export_inference_graph.py \
 $ python export_inference_graph.py \
   --alsologtostderr \
   --model_name=mobilenet_v1 \
-  --image_size=224 \
   --output_file=/tmp/mobilenet_v1_224.pb
+
+$ python export_inference_graph.py \
+  --alsologtostderr \
+  --model_name=mobilenet_v1 \
+  --override_default_image_size=true \
+  --default_image_size=192 \
+  --output_file=/tmp/mobilenet_v1_192.pb
 ```
 
 ## Freezing the exported Graph
