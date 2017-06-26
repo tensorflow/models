@@ -25,7 +25,7 @@ package_group(
         "//learning/brain/research/image_stylization/...",
         "//learning/brain/research/meta_architect/...",
         "//medical/pathology/...",
-        "//nlp/neon/projects/visual_qa/...",
+        "//nlp/neon/...",
         "//photos/vision/features/delf/...",
         "//photos/vision/human_sensing/...",
         "//photos/vision/object_net/...",
