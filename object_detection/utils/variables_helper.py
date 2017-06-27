@@ -122,7 +122,7 @@ def get_variables_available_in_checkpoint(variables, checkpoint_path):
   ckpt_reader = tf.train.NewCheckpointReader(checkpoint_path)
   ckpt_vars = ckpt_reader.get_variable_to_shape_map().keys()
   vars_in_ckpt = {}
-  for variable_name, variable in sorted(variable_names_map.iteritems()):
+  for variable_name, variable in sorted(variable_names_map.items()):
     if variable_name in ckpt_vars:
       vars_in_ckpt[variable_name] = variable
     else:
