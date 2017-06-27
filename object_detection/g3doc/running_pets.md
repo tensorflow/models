@@ -51,8 +51,8 @@ dataset for Oxford-IIIT Pets lives
 [here](http://www.robots.ox.ac.uk/~vgg/data/pets/). You will need to download
 both the image dataset [`images.tar.gz`](http://www.robots.ox.ac.uk/~vgg/data/pets/data/images.tar.gz)
 and the groundtruth data [`annotations.tar.gz`](http://www.robots.ox.ac.uk/~vgg/data/pets/data/annotations.tar.gz)
-to the tensorflow/models directory. This may take some time. After downloading
-the tarballs, your object_detection directory should appear as follows:
+to the `tensorflow/models` directory. This may take some time. After downloading
+the tarballs, your `object_detection` directory should appear as follows:
 
 ```lang-none
 + object_detection/
@@ -66,7 +66,7 @@ the tarballs, your object_detection directory should appear as follows:
 The Tensorflow Object Detection API expects data to be in the TFRecord format,
 so we'll now run the `create_pet_tf_record` script to convert from the raw
 Oxford-IIIT Pet dataset into TFRecords. Run the following commands from the
-object_detection directory:
+`object_detection` directory:
 
 ``` bash
 # From tensorflow/models/
@@ -84,7 +84,7 @@ Note: It is normal to see some warnings when running this script. You may ignore
 them.
 
 Two TFRecord files named `pet_train.record` and `pet_val.record` should be generated
-in the object_detection/ directory.
+in the `object_detection` directory.
 
 Now that the data has been generated, we'll need to upload it to Google Cloud
 Storage so the data can be accessed by ML Engine. Run the following command to
@@ -127,7 +127,7 @@ In the Tensorflow Object Detection API, the model parameters, training
 parameters and eval parameters are all defined by a config file. More details
 can be found [here](configuring_jobs.md). For this tutorial, we will use some
 predefined templates provided with the source code. In the
-object_detection/samples/configs folder, there are skeleton object_detection
+`object_detection/samples/configs` folder, there are skeleton object_detection
 configuration files. We will use `faster_rcnn_resnet101_pets.config` as a
 starting point for configuring the pipeline. Open the file with your favourite
 text editor.
@@ -181,7 +181,7 @@ Before we can start a job on Google Cloud ML Engine, we must:
 2. Write a cluster configuration for our Google Cloud ML job.
 
 To package the Tensorflow Object Detection code, run the following commands from
-the tensorflow/models/ directory:
+the `tensorflow/models/` directory:
 
 ``` bash
 # From tensorflow/models/
@@ -196,7 +196,7 @@ For running the training Cloud ML job, we'll configure the cluster to use 10
 training jobs (1 master + 9 workers) and three parameters servers. The
 configuration file can be found at `object_detection/samples/cloud/cloud.yml`.
 
-To start training, execute the following command from the tensorflow/models/
+To start training, execute the following command from the `tensorflow/models/`
 directory:
 
 ``` bash
@@ -274,12 +274,12 @@ Browser](https://console.cloud.google.com/storage/browser). The file should be
 stored under `${YOUR_GCS_BUCKET}/train`. The checkpoint will typically consist of
 three files:
 
-* model.ckpt-${CHECKPOINT_NUMBER}.data-00000-of-00001,
-* model.ckpt-${CHECKPOINT_NUMBER}.index
-* model.ckpt-${CHECKPOINT_NUMBER}.meta
+* `model.ckpt-${CHECKPOINT_NUMBER}.data-00000-of-00001`
+* `model.ckpt-${CHECKPOINT_NUMBER}.index`
+* `model.ckpt-${CHECKPOINT_NUMBER}.meta`
 
 After you've identified a candidate checkpoint to export, run the following
-command from tensorflow/models/object_detection:
+command from `tensorflow/models/object_detection`:
 
 ``` bash
 # From tensorflow/models
