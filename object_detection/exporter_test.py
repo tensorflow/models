@@ -15,13 +15,18 @@
 
 """Tests for object_detection.export_inference_graph."""
 import os
-import mock
 import numpy as np
+import six
 import tensorflow as tf
 from object_detection import exporter
 from object_detection.builders import model_builder
 from object_detection.core import model
 from object_detection.protos import pipeline_pb2
+
+if six.PY2:
+  import mock  # pylint: disable=g-import-not-at-top
+else:
+  from unittest import mock  # pylint: disable=g-import-not-at-top
 
 
 class FakeModel(model.DetectionModel):
@@ -348,6 +353,45 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       self.assertAllClose(masks, np.arange(32).reshape([2, 4, 4]))
       self.assertAllClose(num_detections, [2])
 
+  def test_export_saved_model_and_run_inference(self):
+    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
+    self._save_checkpoint_from_mock_model(checkpoint_path,
+                                          use_moving_averages=False)
+    inference_graph_path = os.path.join(self.get_temp_dir(),
+                                        'saved_model')
+
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      pipeline_config.eval_config.use_moving_averages = False
+      exporter.export_inference_graph(
+          input_type='tf_example',
+          pipeline_config=pipeline_config,
+          checkpoint_path=checkpoint_path,
+          inference_graph_path=inference_graph_path,
+          export_as_saved_model=True)
+
+    with tf.Graph().as_default() as od_graph:
+      with self.test_session(graph=od_graph) as sess:
+        tf.saved_model.loader.load(
+            sess, [tf.saved_model.tag_constants.SERVING], inference_graph_path)
+        tf_example = od_graph.get_tensor_by_name('import/tf_example:0')
+        boxes = od_graph.get_tensor_by_name('import/detection_boxes:0')
+        scores = od_graph.get_tensor_by_name('import/detection_scores:0')
+        classes = od_graph.get_tensor_by_name('import/detection_classes:0')
+        masks = od_graph.get_tensor_by_name('import/detection_masks:0')
+        num_detections = od_graph.get_tensor_by_name('import/num_detections:0')
+        (boxes, scores, classes, masks, num_detections) = sess.run(
+            [boxes, scores, classes, masks, num_detections],
+            feed_dict={tf_example: self._create_tf_example(
+                np.ones((4, 4, 3)).astype(np.uint8))})
+        self.assertAllClose(boxes, [[0.0, 0.0, 0.5, 0.5],
+                                    [0.5, 0.5, 0.8, 0.8]])
+        self.assertAllClose(scores, [[0.7, 0.6]])
+        self.assertAllClose(classes, [[1, 2]])
+        self.assertAllClose(masks, np.arange(32).reshape([2, 4, 4]))
+        self.assertAllClose(num_detections, [2])
 
 if __name__ == '__main__':
   tf.test.main()
