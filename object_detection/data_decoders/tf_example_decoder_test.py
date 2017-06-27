@@ -64,7 +64,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     })).SerializeToString()
 
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((tensor_dict[fields.InputDataFields.image].
                          get_shape().as_list()), [None, None, 3])
@@ -84,7 +84,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     })).SerializeToString()
 
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     with self.test_session() as sess:
       tensor_dict = sess.run(tensor_dict)
@@ -103,7 +103,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     })).SerializeToString()
 
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((tensor_dict[fields.InputDataFields.image].
                          get_shape().as_list()), [None, None, 3])
@@ -130,7 +130,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     })).SerializeToString()
 
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((tensor_dict[fields.InputDataFields.groundtruth_boxes].
                          get_shape().as_list()), [None, 4])
@@ -153,7 +153,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     })).SerializeToString()
 
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((tensor_dict[
         fields.InputDataFields.groundtruth_classes].get_shape().as_list()),
@@ -176,7 +176,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     })).SerializeToString()
 
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((tensor_dict[fields.InputDataFields.groundtruth_area].
                          get_shape().as_list()), [None])
@@ -197,7 +197,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     })).SerializeToString()
 
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((tensor_dict[
         fields.InputDataFields.groundtruth_is_crowd].get_shape().as_list()),
@@ -220,7 +220,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
     })).SerializeToString()
 
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((tensor_dict[
         fields.InputDataFields.groundtruth_difficult].get_shape().as_list()),
@@ -263,7 +263,7 @@ class TfExampleDecoderTest(tf.test.TestCase):
         'image/segmentation/object/class': self._Int64Feature(
             instance_segmentation_classes)})).SerializeToString()
     example_decoder = tf_example_decoder.TfExampleDecoder()
-    tensor_dict = example_decoder.Decode(tf.convert_to_tensor(example))
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((
         tensor_dict[fields.InputDataFields.groundtruth_instance_masks].
