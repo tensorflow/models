@@ -30,8 +30,8 @@ from object_detection.data_decoders import tf_example_decoder
 slim = tf.contrib.slim
 
 
-# TODO: Replace with freeze_graph.freeze_graph_with_def_protos when newer
-# version of Tensorflow becomes more common.
+# TODO: Replace with freeze_graph.freeze_graph_with_def_protos when
+# newer version of Tensorflow becomes more common.
 def freeze_graph_with_def_protos(
     input_graph_def,
     input_saver_def,
@@ -48,12 +48,12 @@ def freeze_graph_with_def_protos(
 
   # 'input_checkpoint' may be a prefix if we're using Saver V2 format
   if not saver_lib.checkpoint_exists(input_checkpoint):
-    logging.info('Input checkpoint "' + input_checkpoint + '" does not exist!')
-    return -1
+    raise ValueError(
+        'Input checkpoint "' + input_checkpoint + '" does not exist!')
 
   if not output_node_names:
-    logging.info('You must supply the name of a node to --output_node_names.')
-    return -1
+    raise ValueError(
+        'You must supply the name of a node to --output_node_names.')
 
   # Remove all the explicit device specifications for this node. This helps to
   # make the graph more portable.
@@ -101,7 +101,7 @@ def freeze_graph_with_def_protos(
 def _tf_example_input_placeholder():
   tf_example_placeholder = tf.placeholder(
       tf.string, shape=[], name='tf_example')
-  tensor_dict = tf_example_decoder.TfExampleDecoder().Decode(
+  tensor_dict = tf_example_decoder.TfExampleDecoder().decode(
       tf_example_placeholder)
   image = tensor_dict[fields.InputDataFields.image]
   return tf.expand_dims(image, axis=0)
@@ -112,9 +112,21 @@ def _image_tensor_input_placeholder():
                         shape=(1, None, None, 3),
                         name='image_tensor')
 
+
+def _encoded_image_string_tensor_input_placeholder():
+  image_str = tf.placeholder(dtype=tf.string,
+                             shape=[],
+                             name='encoded_image_string_tensor')
+  image_tensor = tf.image.decode_image(image_str, channels=3)
+  image_tensor.set_shape((None, None, 3))
+  return tf.expand_dims(image_tensor, axis=0)
+
+
 input_placeholder_fn_map = {
+    'image_tensor': _image_tensor_input_placeholder,
+    'encoded_image_string_tensor':
+    _encoded_image_string_tensor_input_placeholder,
     'tf_example': _tf_example_input_placeholder,
-    'image_tensor': _image_tensor_input_placeholder
 }
 
 
@@ -129,23 +141,31 @@ def _add_output_tensor_nodes(postprocessed_tensors):
       containing scores for the detected boxes.
     * detection_classes: float32 tensor of shape [batch_size, num_boxes]
       containing class predictions for the detected boxes.
+    * detection_masks: (Optional) float32 tensor of shape
+      [batch_size, num_boxes, mask_height, mask_width] containing masks for each
+      detection box.
 
   Args:
     postprocessed_tensors: a dictionary containing the following fields
       'detection_boxes': [batch, max_detections, 4]
       'detection_scores': [batch, max_detections]
       'detection_classes': [batch, max_detections]
+      'detection_masks': [batch, max_detections, mask_height, mask_width]
+        (optional).
       'num_detections': [batch]
   """
   label_id_offset = 1
   boxes = postprocessed_tensors.get('detection_boxes')
   scores = postprocessed_tensors.get('detection_scores')
   classes = postprocessed_tensors.get('detection_classes') + label_id_offset
+  masks = postprocessed_tensors.get('detection_masks')
   num_detections = postprocessed_tensors.get('num_detections')
   tf.identity(boxes, name='detection_boxes')
   tf.identity(scores, name='detection_scores')
   tf.identity(classes, name='detection_classes')
   tf.identity(num_detections, name='num_detections')
+  if masks is not None:
+    tf.identity(masks, name='detection_masks')
 
 
 def _write_inference_graph(inference_graph_path,
@@ -201,6 +221,7 @@ def _export_inference_graph(input_type,
                             use_moving_averages,
                             checkpoint_path,
                             inference_graph_path):
+  """Export helper."""
   if input_type not in input_placeholder_fn_map:
     raise ValueError('Unknown input type: {}'.format(input_type))
   inputs = tf.to_float(input_placeholder_fn_map[input_type]())
@@ -208,8 +229,13 @@ def _export_inference_graph(input_type,
   output_tensors = detection_model.predict(preprocessed_inputs)
   postprocessed_tensors = detection_model.postprocess(output_tensors)
   _add_output_tensor_nodes(postprocessed_tensors)
+  out_node_names = ['num_detections', 'detection_scores,'
+                    'detection_boxes', 'detection_classes']
+  if 'detection_masks' in postprocessed_tensors:
+    out_node_names.append('detection_masks')
   _write_inference_graph(inference_graph_path, checkpoint_path,
-                         use_moving_averages)
+                         use_moving_averages,
+                         output_node_names=','.join(out_node_names))
 
 
 def export_inference_graph(input_type, pipeline_config, checkpoint_path,
