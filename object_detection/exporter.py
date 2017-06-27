@@ -101,7 +101,7 @@ def freeze_graph_with_def_protos(
 def _tf_example_input_placeholder():
   tf_example_placeholder = tf.placeholder(
       tf.string, shape=[], name='tf_example')
-  tensor_dict = tf_example_decoder.TfExampleDecoder().decode(
+  tensor_dict = tf_example_decoder.TfExampleDecoder().Decode(
       tf_example_placeholder)
   image = tensor_dict[fields.InputDataFields.image]
   return tf.expand_dims(image, axis=0)
