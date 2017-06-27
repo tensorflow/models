@@ -16,7 +16,8 @@
 r"""Tool to export an object detection model for inference.
 
 Prepares an object detection tensorflow graph for inference using model
-configuration and an optional trained checkpoint.
+configuration and an optional trained checkpoint. Outputs either an inference
+graph or a SavedModel (https://tensorflow.github.io/serving/serving_basic.html).
 
 The inference graph contains one of three input nodes depending on the user
 specified option.
@@ -77,6 +78,8 @@ flags.DEFINE_string('checkpoint_path', '', 'Optional path to checkpoint file. '
                     'the graph.')
 flags.DEFINE_string('inference_graph_path', '', 'Path to write the output '
                     'inference graph.')
+flags.DEFINE_bool('export_as_saved_model', False, 'Whether the exported graph '
+                  'should be saved as a SavedModel')
 
 FLAGS = flags.FLAGS
 
@@ -90,7 +93,8 @@ def main(_):
     text_format.Merge(f.read(), pipeline_config)
   exporter.export_inference_graph(FLAGS.input_type, pipeline_config,
                                   FLAGS.checkpoint_path,
-                                  FLAGS.inference_graph_path)
+                                  FLAGS.inference_graph_path,
+                                  FLAGS.export_as_saved_model)
 
 
 if __name__ == '__main__':
