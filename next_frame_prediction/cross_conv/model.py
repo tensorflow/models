@@ -65,7 +65,7 @@ class CrossConvModel(object):
       diff = diff * 2.0 - self.params['scale']
       diff_output = self.diff_output * 2.0 - self.params['scale']
       concat_image = tf.concat(
-          1, [image, image + diff_output, image + diff, diff_output])
+          axis=1, values=[image, image + diff_output, image + diff, diff_output])
       tf.summary.image('origin_predict_expect_predictdiff', concat_image)
       self.summary_op = tf.summary.merge_all()
       return self.loss
@@ -113,7 +113,7 @@ class CrossConvModel(object):
     assert shape[1] == shape[2] and shape[1] == 128
     batch_size = shape[0]
 
-    net = tf.concat(3, [image, diff])
+    net = tf.concat(axis=3, values=[image, diff])
     with tf.variable_scope('motion_encoder'):
       with slim.arg_scope([slim.conv2d], padding='VALID'):
         net = slim.conv2d(net, 96, [5, 5], stride=1)
@@ -128,7 +128,7 @@ class CrossConvModel(object):
 
         z = tf.reshape(net, shape=[batch_size, -1])
         self.z_mean, self.z_stddev_log = tf.split(
-            split_dim=1, num_split=2, value=z)
+            axis=1, num_or_size_splits=2, value=z)
         self.z_stddev = tf.exp(self.z_stddev_log)
 
         epsilon = tf.random_normal(
@@ -174,7 +174,7 @@ class CrossConvModel(object):
   def _CrossConv(self, encoded_images):
     """Apply the motion kernel on the encoded_images."""
     cross_conved_images = []
-    kernels = tf.split(split_dim=3, num_split=4, value=self.kernel)
+    kernels = tf.split(axis=3, num_or_size_splits=4, value=self.kernel)
     for (i, encoded_image) in enumerate(encoded_images):
       with tf.variable_scope('cross_conv_%d' % i):
         kernel = kernels[i]
@@ -187,7 +187,7 @@ class CrossConvModel(object):
         for j in xrange(len(encoded_image)):
           conved_image.append(self._CrossConvHelper(
               encoded_image[j], kernel[j]))
-        cross_conved_images.append(tf.concat(0, conved_image))
+        cross_conved_images.append(tf.concat(axis=0, values=conved_image))
         sys.stderr.write('cross_conved shape: %s\n' %
                          cross_conved_images[-1].get_shape())
     return cross_conved_images
@@ -224,7 +224,7 @@ class CrossConvModel(object):
         nets.append(self._Deconv(
             cross_conved_image, 64, kernel_size=3, stride=stride))
 
-    net = tf.concat(3, nets)
+    net = tf.concat(axis=3, values=nets)
     net = slim.conv2d(net, 128, [9, 9], padding='SAME', stride=1)
     net = slim.conv2d(net, 128, [1, 1], padding='SAME', stride=1)
     net = slim.conv2d(net, 3, [1, 1], padding='SAME', stride=1)

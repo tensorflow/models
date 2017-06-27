@@ -121,21 +121,21 @@ class Graph():
       if (self.utility.FLAGS.rnn_dropout > 0.0):
         question_hidden = question_hidden * rnn_dropout_mask
       hidden_vectors.append(tf.expand_dims(question_hidden, 0))
-    hidden_vectors = tf.concat(0, hidden_vectors)
+    hidden_vectors = tf.concat(axis=0, values=hidden_vectors)
     return question_hidden, hidden_vectors
 
   def history_recurrent_step(self, curr_hprev, hprev):
     #A single RNN step for controller or history RNN
     return tf.tanh(
         tf.matmul(
-            tf.concat(1, [hprev, curr_hprev]), self.params[
+            tf.concat(axis=1, values=[hprev, curr_hprev]), self.params[
                 "history_recurrent"])) + self.params["history_recurrent_bias"]
 
   def question_number_softmax(self, hidden_vectors):
     #Attention on quetsion to decide the question number to passed to comparison ops
     def compute_ans(op_embedding, comparison):
       op_embedding = tf.expand_dims(op_embedding, 0)
-      #dot product of operation embedding with hidden state to the left of the number occurence
+      #dot product of operation embedding with hidden state to the left of the number occurrence
       first = tf.transpose(
           tf.matmul(op_embedding,
                     tf.transpose(
@@ -150,13 +150,13 @@ class Graph():
                             tf.expand_dims(
                                 tf.transpose(self.batch_ordinal_question_one), 2
                             ), [1, 1, self.utility.FLAGS.embedding_dims]), 0))))
-      question_number_softmax = tf.nn.softmax(tf.concat(1, [first, second]))
+      question_number_softmax = tf.nn.softmax(tf.concat(axis=1, values=[first, second]))
       if (self.mode == "test"):
         cond = tf.equal(question_number_softmax,
                         tf.reshape(
                             tf.reduce_max(question_number_softmax, 1),
                             [self.batch_size, 1]))
-        question_number_softmax = tf.select(
+        question_number_softmax = tf.where(
             cond,
             tf.fill(tf.shape(question_number_softmax), 1.0),
             tf.fill(tf.shape(question_number_softmax), 0.0))
@@ -164,7 +164,7 @@ class Graph():
                                           self.data_type)
       ans = tf.reshape(
           tf.reduce_sum(question_number_softmax * tf.concat(
-              1, [self.batch_question_number, self.batch_question_number_one]),
+              axis=1, values=[self.batch_question_number, self.batch_question_number_one]),
                         1), [self.batch_size, 1])
       return ans
 
@@ -225,7 +225,7 @@ class Graph():
     column_controller_vector = nn_utils.apply_dropout(
         column_controller_vector, self.utility.FLAGS.dropout, self.mode)
     self.full_column_hidden_vectors = tf.concat(
-        1, [self.column_hidden_vectors, self.word_column_hidden_vectors])
+        axis=1, values=[self.column_hidden_vectors, self.word_column_hidden_vectors])
     self.full_column_hidden_vectors += self.summary_text_entry_embeddings
     self.full_column_hidden_vectors = nn_utils.apply_dropout(
         self.full_column_hidden_vectors, self.utility.FLAGS.dropout, self.mode)
@@ -258,7 +258,7 @@ class Graph():
           temp_ans.append(curr_prob)
         else:
           temp_ans.append(tf.zeros_like(curr_prob))
-      temp_ans = tf.transpose(tf.concat(0, temp_ans))
+      temp_ans = tf.transpose(tf.concat(axis=0, values=temp_ans))
       answer += temp_ans
     return answer
 
@@ -266,7 +266,7 @@ class Graph():
     #converts soft selection to hard selection. used at test time
     cond = tf.equal(
         softmax, tf.reshape(tf.reduce_max(softmax, 1), [self.batch_size, 1]))
-    softmax = tf.select(
+    softmax = tf.where(
         cond, tf.fill(tf.shape(softmax), 1.0), tf.fill(tf.shape(softmax), 0.0))
     softmax = tf.cast(softmax, self.data_type)
     return softmax
@@ -297,7 +297,7 @@ class Graph():
       curr_prob = curr_prob * tf.expand_dims((1 - sum_prob), 2)
       curr_prob = curr_prob * tf.expand_dims(
           tf.cast((1 - sum_prob) > 0.0, self.data_type), 2)
-      answer = tf.select(select_mask, curr_prob, answer)
+      answer = tf.where(select_mask, curr_prob, answer)
       sum_prob += tf.reduce_sum(curr_prob, 2)
     return answer
 
@@ -335,11 +335,11 @@ class Graph():
                                1)  #BS * max_elements
     select_min = tf.reduce_sum(init_min * select_full_column_softmax,
                                1)  #BS * max_elements
-    select_prev = tf.concat(1, [
+    select_prev = tf.concat(axis=1, values=[
         tf.slice(select, [0, 1], [self.batch_size, self.max_elements - 1]),
         tf.cast(tf.zeros([self.batch_size, 1]), self.data_type)
     ])
-    select_next = tf.concat(1, [
+    select_next = tf.concat(axis=1, values=[
         tf.cast(tf.zeros([self.batch_size, 1]), self.data_type), tf.slice(
             select, [0, 0], [self.batch_size, self.max_elements - 1])
     ])
@@ -352,11 +352,11 @@ class Graph():
     length_content = 1
     length_select = 13
     length_print = 1
-    values = tf.concat(1, [count])
+    values = tf.concat(axis=1, values=[count])
     softmax_content = tf.slice(softmax, [0, 0],
                                [self.batch_size, length_content])
     #compute scalar output
-    output = tf.reduce_sum(tf.mul(softmax_content, values), 1)
+    output = tf.reduce_sum(tf.multiply(softmax_content, values), 1)
     #compute lookup answer
     softmax_print = tf.slice(softmax, [0, length_content + length_select],
                              [self.batch_size, length_print])
@@ -384,7 +384,7 @@ class Graph():
     ]
     select = tf.reduce_sum(
         tf.tile(tf.expand_dims(softmax_select, 2), [1, 1, self.max_elements]) *
-        tf.concat(1, select_lists), 1)
+        tf.concat(axis=1, values=select_lists), 1)
     select = select * self.select_whole_mask
     return output, select
 
@@ -396,11 +396,11 @@ class Graph():
         self.batch_question_attention_mask)  #batch_size * embedding_dims
     controller_vector = tf.nn.relu(
         tf.matmul(hprev, self.params["controller_prev"]) + tf.matmul(
-            tf.concat(1, [question_embedding, attention_vector]), self.params[
+            tf.concat(axis=1, values=[question_embedding, attention_vector]), self.params[
                 "controller"]))
     column_controller_vector = tf.nn.relu(
         tf.matmul(hprev, self.params["column_controller_prev"]) + tf.matmul(
-            tf.concat(1, [question_embedding, attention_vector]), self.params[
+            tf.concat(axis=1, values=[question_embedding, attention_vector]), self.params[
                 "column_controller"]))
     controller_vector = nn_utils.apply_dropout(
         controller_vector, self.utility.FLAGS.dropout, self.mode)
@@ -413,7 +413,7 @@ class Graph():
         tf.matmul(tf.transpose(self.params_unit), tf.transpose(softmax)))
     column_controller_vector = tf.nn.relu(
         tf.matmul(
-            tf.concat(1, [
+            tf.concat(axis=1, values=[
                 column_controller_vector, weighted_op_representation
             ]), self.params["break_conditional"]))
     full_column_softmax = self.compute_column_softmax(column_controller_vector,
@@ -429,7 +429,7 @@ class Graph():
   def compute_lookup_error(self, val):
     #computes lookup error.
     cond = tf.equal(self.batch_print_answer, val)
-    inter = tf.select(
+    inter = tf.where(
         cond, self.init_print_error,
         tf.tile(
             tf.reshape(tf.constant(1e10, self.data_type), [1, 1, 1]), [
@@ -450,12 +450,12 @@ class Graph():
 
   def error_computation(self):
     #computes the error of each example in a batch
-    math_error = 0.5 * tf.square(tf.sub(self.scalar_output, self.batch_answer))
+    math_error = 0.5 * tf.square(tf.subtract(self.scalar_output, self.batch_answer))
     #scale math error
     math_error = math_error / self.rows
     math_error = tf.minimum(math_error, self.utility.FLAGS.max_math_error *
                             tf.ones(tf.shape(math_error), self.data_type))
-    self.init_print_error = tf.select(
+    self.init_print_error = tf.where(
         self.batch_gold_select, -1 * tf.log(self.batch_lookup_answer + 1e-300 +
                                             self.invert_select_full_mask), -1 *
         tf.log(1 - self.batch_lookup_answer)) * self.select_full_mask
@@ -466,24 +466,24 @@ class Graph():
       print_error += self.compute_lookup_error(val + 0.0)
     print_error = print_error * self.utility.FLAGS.print_cost / self.num_entries
     if (self.mode == "train"):
-      error = tf.select(
+      error = tf.where(
           tf.logical_and(
               tf.not_equal(self.batch_answer, 0.0),
               tf.not_equal(
                   tf.reduce_sum(tf.reduce_sum(self.batch_print_answer, 1), 1),
                   0.0)),
           self.soft_min(math_error, print_error),
-          tf.select(
+          tf.where(
               tf.not_equal(self.batch_answer, 0.0), math_error, print_error))
     else:
-      error = tf.select(
+      error = tf.where(
           tf.logical_and(
               tf.equal(self.scalar_output, 0.0),
               tf.equal(
                   tf.reduce_sum(tf.reduce_sum(self.batch_lookup_answer, 1), 1),
                   0.0)),
           tf.ones_like(math_error),
-          tf.select(
+          tf.where(
               tf.equal(self.scalar_output, 0.0), print_error, math_error))
     return error
 
@@ -558,7 +558,7 @@ class Graph():
       input_col = tf.reduce_sum(
           tf.expand_dims(soft_column_softmax, 2) *
           self.full_column_hidden_vectors, 1)
-      history_input = tf.concat(1, [input_op, input_col])
+      history_input = tf.concat(axis=1, values=[input_op, input_col])
       history_input = nn_utils.apply_dropout(
           history_input, self.utility.FLAGS.dropout, self.mode)
       hprev = self.history_recurrent_step(history_input, hprev)
@@ -567,7 +567,7 @@ class Graph():
     self.scalar_output = output
     error = self.error_computation()
     cond = tf.less(error, 0.0001, name="cond")
-    correct_add = tf.select(
+    correct_add = tf.where(
         cond, tf.fill(tf.shape(cond), 1.0), tf.fill(tf.shape(cond), 0.0))
     correct = tf.reduce_sum(correct_add)
     error = error / batch_size
@@ -579,11 +579,11 @@ class Graph():
     #Sets mask variables and performs batch processing
     self.batch_gold_select = self.batch_print_answer > 0.0
     self.full_column_mask = tf.concat(
-        1, [self.batch_number_column_mask, self.batch_word_column_mask])
+        axis=1, values=[self.batch_number_column_mask, self.batch_word_column_mask])
     self.full_processed_column = tf.concat(
-        1,
-        [self.batch_processed_number_column, self.batch_processed_word_column])
-    self.full_processed_sorted_index_column = tf.concat(1, [
+        axis=1,
+        values=[self.batch_processed_number_column, self.batch_processed_word_column])
+    self.full_processed_sorted_index_column = tf.concat(axis=1, values=[
         self.batch_processed_sorted_index_number_column,
         self.batch_processed_sorted_index_word_column
     ])
@@ -603,7 +603,7 @@ class Graph():
             tf.equal(self.batch_word_column_entry_mask,
                      self.utility.dummy_token_id)), self.data_type)
     self.select_full_mask = tf.concat(
-        1, [self.select_mask, self.select_word_mask])
+        axis=1, values=[self.select_mask, self.select_word_mask])
     self.select_whole_mask = tf.maximum(
         tf.reshape(
             tf.slice(self.select_mask, [0, 0, 0],
@@ -614,7 +614,7 @@ class Graph():
                      [self.batch_size, 1, self.max_elements]),
             [self.batch_size, self.max_elements]))
     self.invert_select_full_mask = tf.cast(
-        tf.concat(1, [
+        tf.concat(axis=1, values=[
             tf.equal(self.batch_number_column, self.utility.FLAGS.pad_int),
             tf.equal(self.batch_word_column_entry_mask,
                      self.utility.dummy_token_id)
@@ -674,5 +674,5 @@ class Graph():
         use_locking=True)
     self.step = adam.apply_gradients(zip(grads, optimize_params), 
 					global_step=self.global_step)
-    self.init_op = tf.initialize_all_variables()
+    self.init_op = tf.global_variables_initializer()
 

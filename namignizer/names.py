@@ -14,7 +14,7 @@
 """A library showing off sequence recognition and generation with the simple
 example of names.
 
-We use recurrent neural nets to learn complex functions able to recogize and
+We use recurrent neural nets to learn complex functions able to recognize and
 generate sequences of a given form. This can be used for natural language
 syntax recognition, dynamically generating maps or puzzles and of course
 baby name generation.
@@ -122,7 +122,6 @@ def run_epoch(session, m, names, counts, epoch_size, eval_op, verbose=False):
         cost, _ = session.run([m.cost, eval_op],
                               {m.input_data: x,
                                m.targets: y,
-                               m.initial_state: m.initial_state.eval(),
                                m.weights: np.ones(m.batch_size * m.num_steps)})
         costs += cost
         iters += m.num_steps
@@ -160,7 +159,7 @@ def train(data_dir, checkpoint_path, config):
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             m = NamignizerModel(is_training=True, config=config)
 
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
 
         for i in range(config.max_max_epoch):
             lr_decay = config.lr_decay ** max(i - config.max_epoch, 0.0)
@@ -201,7 +200,6 @@ def namignize(names, checkpoint_path, config):
             cost, loss, _ = session.run([m.cost, m.loss, tf.no_op()],
                                   {m.input_data: x,
                                    m.targets: y,
-                                   m.initial_state: m.initial_state.eval(),
                                    m.weights: np.concatenate((
                                        np.ones(len(name)), np.zeros(m.batch_size * m.num_steps - len(name))))})
 
@@ -234,7 +232,6 @@ def namignator(checkpoint_path, config):
         activations, final_state, _ = session.run([m.activations, m.final_state, tf.no_op()],
                                                   {m.input_data: np.zeros((1, 1)),
                                                    m.targets: np.zeros((1, 1)),
-                                                   m.initial_state: m.initial_state.eval(),
                                                    m.weights: np.ones(1)})
 
         # sample from our softmax activations
@@ -254,9 +251,9 @@ def namignator(checkpoint_path, config):
 
 
 if __name__ == "__main__":
-    # train("data/SmallNames.txt", "model/namignizer", SmallConfig)
+    train("data/SmallNames.txt", "model/namignizer", SmallConfig)
 
-    # namignize(["mary", "ida", "gazorbazorb", "mmmhmm", "bob"],
-    #     tf.train.latest_checkpoint("model"), SmallConfig)
+    namignize(["mary", "ida", "gazorbazorb", "mmmhmm", "bob"],
+        tf.train.latest_checkpoint("model"), SmallConfig)
 
-    # namignator(tf.train.latest_checkpoint("model"), SmallConfig)
+    namignator(tf.train.latest_checkpoint("model"), SmallConfig)

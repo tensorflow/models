@@ -125,7 +125,7 @@ def _add_to_tfrecord(data_filename, labels_filename, num_images,
         png_string = sess.run(encoded_png, feed_dict={image: images[j]})
 
         example = dataset_utils.image_to_tfexample(
-            png_string, 'png', _IMAGE_SIZE, _IMAGE_SIZE, labels[j])
+            png_string, 'png'.encode(), _IMAGE_SIZE, _IMAGE_SIZE, labels[j])
         tfrecord_writer.write(example.SerializeToString())
 
 
@@ -165,7 +165,7 @@ def _download_dataset(dataset_dir):
                                                _progress)
       print()
       with tf.gfile.GFile(filepath) as f:
-        size = f.Size()
+        size = f.size()
       print('Successfully downloaded', filename, size, 'bytes.')
 
 

@@ -21,13 +21,17 @@ from __future__ import print_function
 
 import collections
 import os
+import sys
 
 import tensorflow as tf
 
 
 def _read_words(filename):
   with tf.gfile.GFile(filename, "r") as f:
-    return f.read().decode("utf-8").replace("\n", "<eos>").split()
+    if sys.version_info[0] >= 3:
+      return f.read().replace("\n", "<eos>").split()
+    else:
+      return f.read().decode("utf-8").replace("\n", "<eos>").split()
 
 
 def _build_vocab(filename):

@@ -26,7 +26,7 @@
 #   data_dir/train-00000-of-01024
 #   data_dir/train-00001-of-01024
 #    ...
-#   data_dir/train-00127-of-01024
+#   data_dir/train-01023-of-01024
 #
 # and
 #
@@ -49,7 +49,7 @@
 set -e
 
 if [ -z "$1" ]; then
-  echo "usage download_and_preprocess_imagenet.sh [data dir]"
+  echo "Usage: download_and_preprocess_imagenet.sh [data dir]"
   exit
 fi
 
@@ -84,7 +84,7 @@ BOUNDING_BOX_FILE="${SCRATCH_DIR}/imagenet_2012_bounding_boxes.csv"
 BOUNDING_BOX_DIR="${SCRATCH_DIR}bounding_boxes/"
 
 "${BOUNDING_BOX_SCRIPT}" "${BOUNDING_BOX_DIR}" "${LABELS_FILE}" \
- | sort >"${BOUNDING_BOX_FILE}"
+ | sort > "${BOUNDING_BOX_FILE}"
 echo "Finished downloading and preprocessing the ImageNet data."
 
 # Build the TFRecords version of the ImageNet data.

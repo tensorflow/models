@@ -16,7 +16,7 @@ The results described below are based on model trained on multi-gpu and
 multi-machine settings. It has been simplified to run on only one machine
 for open source purpose.
 
-<b>DataSet</b>
+<b>Dataset</b>
 
 We used the Gigaword dataset described in [Rush et al. A Neural Attention Model
 for Sentence Summarization](https://arxiv.org/abs/1509.00685).
@@ -70,9 +70,7 @@ vocabulary size: Most frequent 200k words from dataset's article and summaries.
 
 <b>How To Run</b>
 
-Pre-requesite:
-
-Install TensorFlow and Bazel.
+Prerequisite: install TensorFlow and Bazel.
 
 ```shell
 # cd to your workspace
@@ -83,7 +81,7 @@ Install TensorFlow and Bazel.
 #    If your data files have different names, update the --data_path.
 #    If you don't have data but want to try out the model, copy the toy
 #    data from the textsum/data/data to the data/ directory in the workspace.
-ls -R
+$ ls -R
 .:
 data  textsum  WORKSPACE
 
@@ -97,38 +95,38 @@ data.py  seq2seq_attention_decode.py  seq2seq_attention.py        seq2seq_lib.py
 ./textsum/data:
 data  vocab
 
-bazel build -c opt --config=cuda textsum/...
+$ bazel build -c opt --config=cuda textsum/...
 
 # Run the training.
-bazel-bin/textsum/seq2seq_attention \
-  --mode=train \
-  --article_key=article \
-  --abstract_key=abstract \
-  --data_path=data/training-* \
-  --vocab_path=data/vocab \
-  --log_root=textsum/log_root \
-  --train_dir=textsum/log_root/train
+$ bazel-bin/textsum/seq2seq_attention \
+    --mode=train \
+    --article_key=article \
+    --abstract_key=abstract \
+    --data_path=data/training-* \
+    --vocab_path=data/vocab \
+    --log_root=textsum/log_root \
+    --train_dir=textsum/log_root/train
 
 # Run the eval. Try to avoid running on the same machine as training.
-bazel-bin/textsum/seq2seq_attention \
-  --mode=eval \
-  --article_key=article \
-  --abstract_key=abstract \
-  --data_path=data/validation-* \
-  --vocab_path=data/vocab \
-  --log_root=textsum/log_root \
-  --eval_dir=textsum/log_root/eval
+$ bazel-bin/textsum/seq2seq_attention \
+    --mode=eval \
+    --article_key=article \
+    --abstract_key=abstract \
+    --data_path=data/validation-* \
+    --vocab_path=data/vocab \
+    --log_root=textsum/log_root \
+    --eval_dir=textsum/log_root/eval
 
 # Run the decode. Run it when the most is mostly converged.
-bazel-bin/textsum/seq2seq_attention \
-  --mode=decode \
-  --article_key=article \
-  --abstract_key=abstract \
-  --data_path=data/test-* \
-  --vocab_path=data/vocab \
-  --log_root=textsum/log_root \
-  --decode_dir=textsum/log_root/decode \
-  --beam_size=8
+$ bazel-bin/textsum/seq2seq_attention \
+    --mode=decode \
+    --article_key=article \
+    --abstract_key=abstract \
+    --data_path=data/test-* \
+    --vocab_path=data/vocab \
+    --log_root=textsum/log_root \
+    --decode_dir=textsum/log_root/decode \
+    --beam_size=8
 ```
 
 
@@ -157,7 +155,7 @@ article:  the european court of justice ( ecj ) recently ruled in lock v british
 
 abstract: will british gas ecj ruling fuel holiday pay hike ?
 
-decode: eu law requires worker 's statutory holiday pay 
+decode: eu law requires worker 's statutory holiday pay
 
 ======================================
 

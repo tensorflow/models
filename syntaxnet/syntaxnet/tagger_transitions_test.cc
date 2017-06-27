@@ -101,8 +101,7 @@ TEST_F(TaggerTransitionTest, SingleSentenceDocumentTest) {
   Sentence document;
   TF_CHECK_OK(ReadFileToString(
       tensorflow::Env::Default(),
-      "syntaxnet/testdata/document",
-      &document_text));
+      "syntaxnet/testdata/document", &document_text));
   LOG(INFO) << "see doc\n:" << document_text;
   CHECK(TextFormat::ParseFromString(document_text, &document));
   SetUpForDocument(document);

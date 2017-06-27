@@ -15,7 +15,7 @@
 """Provides data for the Cifar10 dataset.
 
 The dataset scripts used to create the dataset can be found at:
-tensorflow/models/slim/data/create_cifar10_dataset.py
+tensorflow/models/slim/datasets/download_and_convert_cifar10.py
 """
 
 from __future__ import absolute_import

@@ -1,0 +1,99 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+import "object_detection/protos/hyperparams.proto";
+
+
+// Configuration proto for box predictor. See core/box_predictor.py for details.
+message BoxPredictor {
+  oneof box_predictor_oneof {
+    ConvolutionalBoxPredictor convolutional_box_predictor = 1;
+    MaskRCNNBoxPredictor mask_rcnn_box_predictor = 2;
+    RfcnBoxPredictor rfcn_box_predictor = 3;
+  }
+}
+
+// Configuration proto for Convolutional box predictor.
+message ConvolutionalBoxPredictor {
+  // Hyperparameters for convolution ops used in the box predictor.
+  optional Hyperparams conv_hyperparams = 1;
+
+  // Minumum feature depth prior to predicting box encodings and class
+  // predictions.
+  optional int32 min_depth = 2 [default = 0];
+
+  // Maximum feature depth prior to predicting box encodings and class
+  // predictions. If max_depth is set to 0, no additional feature map will be
+  // inserted before location and class predictions.
+  optional int32 max_depth = 3 [default = 0];
+
+  // Number of the additional conv layers before the predictor.
+  optional int32 num_layers_before_predictor = 4 [default = 0];
+
+  // Whether to use dropout for class prediction.
+  optional bool use_dropout = 5 [default = true];
+
+  // Keep probability for dropout
+  optional float dropout_keep_probability = 6 [default = 0.8];
+
+  // Size of final convolution kernel. If the spatial resolution of the feature
+  // map is smaller than the kernel size, then the kernel size is set to
+  // min(feature_width, feature_height).
+  optional int32 kernel_size = 7 [default = 1];
+
+  // Size of the encoding for boxes.
+  optional int32 box_code_size = 8 [default = 4];
+
+  // Whether to apply sigmoid to the output of class predictions.
+  // TODO: Do we need this since we have a post processing module.?
+  optional bool apply_sigmoid_to_scores = 9 [default = false];
+}
+
+message MaskRCNNBoxPredictor {
+  // Hyperparameters for fully connected ops used in the box predictor.
+  optional Hyperparams fc_hyperparams = 1;
+
+  // Whether to use dropout op prior to the both box and class predictions.
+  optional bool use_dropout = 2 [default= false];
+
+  // Keep probability for dropout. This is only used if use_dropout is true.
+  optional float dropout_keep_probability = 3 [default = 0.5];
+
+  // Size of the encoding for the boxes.
+  optional int32 box_code_size = 4 [default = 4];
+
+  // Hyperparameters for convolution ops used in the box predictor.
+  optional Hyperparams conv_hyperparams = 5;
+
+  // Whether to predict instance masks inside detection boxes.
+  optional bool predict_instance_masks = 6 [default = false];
+
+  // The depth for the first conv2d_transpose op  applied to the
+  // image_features in the mask prediciton branch
+  optional int32 mask_prediction_conv_depth = 7 [default = 256];
+
+  // Whether to predict keypoints inside detection boxes.
+  optional bool predict_keypoints = 8 [default = false];
+}
+
+message RfcnBoxPredictor {
+  // Hyperparameters for convolution ops used in the box predictor.
+  optional Hyperparams conv_hyperparams = 1;
+
+  // Bin sizes for RFCN crops.
+  optional int32 num_spatial_bins_height = 2 [default = 3];
+
+  optional int32 num_spatial_bins_width = 3 [default = 3];
+
+  // Target depth to reduce the input image features to.
+  optional int32 depth = 4 [default=1024];
+
+  // Size of the encoding for the boxes.
+  optional int32 box_code_size = 5 [default = 4];
+
+  // Size to resize the rfcn crops to.
+  optional int32 crop_height = 6 [default= 12];
+
+  optional int32 crop_width = 7 [default=12];
+}

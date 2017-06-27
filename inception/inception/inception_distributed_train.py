@@ -42,6 +42,9 @@ tf.app.flags.DEFINE_string('worker_hosts', '',
                            """Comma-separated list of hostname:port for the """
                            """worker jobs. e.g. """
                            """'machine1:2222,machine2:1111,machine2:2222'""")
+tf.app.flags.DEFINE_string('protocol', 'grpc',
+                           """Communication protocol to use in distributed """
+                           """execution (default grpc) """)
 
 tf.app.flags.DEFINE_string('train_dir', '/tmp/imagenet_train',
                            """Directory where to write event logs """
@@ -52,11 +55,11 @@ tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             'Whether to log device placement.')
 
 # Task ID is used to select the chief and also to access the local_step for
-# each replica to check staleness of the gradients in sync_replicas_optimizer.
+# each replica to check staleness of the gradients in SyncReplicasOptimizer.
 tf.app.flags.DEFINE_integer(
     'task_id', 0, 'Task ID of the worker/replica running the training.')
 
-# More details can be found in the sync_replicas_optimizer class:
+# More details can be found in the SyncReplicasOptimizer class:
 # tensorflow/python/training/sync_replicas_optimizer.py
 tf.app.flags.DEFINE_integer('num_replicas_to_aggregate', -1,
                             """Number of gradients to collect before """
@@ -89,7 +92,7 @@ RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
 def train(target, dataset, cluster_spec):
   """Train Inception on a dataset for a number of steps."""
-  # Number of workers and parameter servers are infered from the workers and ps
+  # Number of workers and parameter servers are inferred from the workers and ps
   # hosts string.
   num_workers = len(cluster_spec.as_dict()['worker'])
   num_parameter_servers = len(cluster_spec.as_dict()['ps'])
@@ -133,7 +136,7 @@ def train(target, dataset, cluster_spec):
                                       FLAGS.learning_rate_decay_factor,
                                       staircase=True)
       # Add a summary to track the learning rate.
-      tf.scalar_summary('learning_rate', lr)
+      tf.summary.scalar('learning_rate', lr)
 
       # Create an optimizer that performs gradient descent.
       opt = tf.train.RMSPropOptimizer(lr,
@@ -171,8 +174,8 @@ def train(target, dataset, cluster_spec):
           loss_name = l.op.name
           # Name each loss as '(raw)' and name the moving average version of the
           # loss as the original loss name.
-          tf.scalar_summary(loss_name + ' (raw)', l)
-          tf.scalar_summary(loss_name, loss_averages.average(l))
+          tf.summary.scalar(loss_name + ' (raw)', l)
+          tf.summary.scalar(loss_name, loss_averages.average(l))
 
         # Add dependency to compute loss_averages.
         with tf.control_dependencies([loss_averages_op]):
@@ -191,13 +194,12 @@ def train(target, dataset, cluster_spec):
 
       # Add histograms for model variables.
       for var in variables_to_average:
-        tf.histogram_summary(var.op.name, var)
+        tf.summary.histogram(var.op.name, var)
 
       # Create synchronous replica optimizer.
       opt = tf.train.SyncReplicasOptimizer(
           opt,
           replicas_to_aggregate=num_replicas_to_aggregate,
-          replica_id=FLAGS.task_id,
           total_num_replicas=num_workers,
           variable_averages=exp_moving_averager,
           variables_to_average=variables_to_average)
@@ -215,28 +217,26 @@ def train(target, dataset, cluster_spec):
       # Add histograms for gradients.
       for grad, var in grads:
         if grad is not None:
-          tf.histogram_summary(var.op.name + '/gradients', grad)
+          tf.summary.histogram(var.op.name + '/gradients', grad)
 
       apply_gradients_op = opt.apply_gradients(grads, global_step=global_step)
 
       with tf.control_dependencies([apply_gradients_op]):
         train_op = tf.identity(total_loss, name='train_op')
 
-      # Get chief queue_runners, init_tokens and clean_up_op, which is used to
-      # synchronize replicas.
-      # More details can be found in sync_replicas_optimizer.
+      # Get chief queue_runners and init_tokens, which is used to synchronize
+      # replicas. More details can be found in SyncReplicasOptimizer.
       chief_queue_runners = [opt.get_chief_queue_runner()]
       init_tokens_op = opt.get_init_tokens_op()
-      clean_up_op = opt.get_clean_up_op()
 
       # Create a saver.
       saver = tf.train.Saver()
 
       # Build the summary operation based on the TF collection of Summaries.
-      summary_op = tf.merge_all_summaries()
+      summary_op = tf.summary.merge_all()
 
       # Build an initialization operation to run below.
-      init_op = tf.initialize_all_variables()
+      init_op = tf.global_variables_initializer()
 
       # We run the summaries in the same thread as the training operations by
       # passing in None for summary_op to avoid a summary_thread being started.
@@ -301,8 +301,7 @@ def train(target, dataset, cluster_spec):
             next_summary_time += FLAGS.save_summaries_secs
         except:
           if is_chief:
-            tf.logging.info('About to execute sync_clean_up_op!')
-            sess.run(clean_up_op)
+            tf.logging.info('Chief got exception while running!')
           raise
 
       # Stop the supervisor.  This also waits for service threads to finish.

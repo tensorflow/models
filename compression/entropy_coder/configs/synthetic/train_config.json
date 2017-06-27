@@ -1,0 +1,6 @@
+{
+	"batch_size": 4,
+	"learning_rate": 0.1,
+	"decay_rate": 0.9,
+	"samples_per_decay": 20000
+}

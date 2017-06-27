@@ -18,6 +18,6 @@ limitations under the License.
 namespace syntaxnet {
 
 // Component registry for document formatters.
-REGISTER_CLASS_REGISTRY("document format", DocumentFormat);
+REGISTER_SYNTAXNET_CLASS_REGISTRY("document format", DocumentFormat);
 
 }  // namespace syntaxnet

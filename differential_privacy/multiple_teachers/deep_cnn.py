@@ -75,7 +75,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   var = _variable_on_cpu(name, shape,
                          tf.truncated_normal_initializer(stddev=stddev))
   if wd is not None:
-    weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
+    weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
   return var
 
@@ -84,7 +84,7 @@ def inference(images, dropout=False):
   """Build the CNN model.
   Args:
     images: Images returned from distorted_inputs() or inputs().
-    dropout: Boolean controling whether to use dropout or not
+    dropout: Boolean controlling whether to use dropout or not
   Returns:
     Logits
   """
@@ -95,9 +95,9 @@ def inference(images, dropout=False):
 
   # conv1
   with tf.variable_scope('conv1') as scope:
-    kernel = _variable_with_weight_decay('weights', 
+    kernel = _variable_with_weight_decay('weights',
                                          shape=first_conv_shape,
-                                         stddev=1e-4, 
+                                         stddev=1e-4,
                                          wd=0.0)
     conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
     biases = _variable_on_cpu('biases', [64], tf.constant_initializer(0.0))
@@ -108,25 +108,25 @@ def inference(images, dropout=False):
 
 
   # pool1
-  pool1 = tf.nn.max_pool(conv1, 
-                         ksize=[1, 3, 3, 1], 
+  pool1 = tf.nn.max_pool(conv1,
+                         ksize=[1, 3, 3, 1],
                          strides=[1, 2, 2, 1],
-                         padding='SAME', 
+                         padding='SAME',
                          name='pool1')
-  
+
   # norm1
-  norm1 = tf.nn.lrn(pool1, 
-                    4, 
-                    bias=1.0, 
-                    alpha=0.001 / 9.0, 
+  norm1 = tf.nn.lrn(pool1,
+                    4,
+                    bias=1.0,
+                    alpha=0.001 / 9.0,
                     beta=0.75,
                     name='norm1')
 
   # conv2
   with tf.variable_scope('conv2') as scope:
-    kernel = _variable_with_weight_decay('weights', 
+    kernel = _variable_with_weight_decay('weights',
                                          shape=[5, 5, 64, 128],
-                                         stddev=1e-4, 
+                                         stddev=1e-4,
                                          wd=0.0)
     conv = tf.nn.conv2d(norm1, kernel, [1, 1, 1, 1], padding='SAME')
     biases = _variable_on_cpu('biases', [128], tf.constant_initializer(0.1))
@@ -137,18 +137,18 @@ def inference(images, dropout=False):
 
 
   # norm2
-  norm2 = tf.nn.lrn(conv2, 
-                    4, 
-                    bias=1.0, 
-                    alpha=0.001 / 9.0, 
+  norm2 = tf.nn.lrn(conv2,
+                    4,
+                    bias=1.0,
+                    alpha=0.001 / 9.0,
                     beta=0.75,
                     name='norm2')
-  
+
   # pool2
-  pool2 = tf.nn.max_pool(norm2, 
+  pool2 = tf.nn.max_pool(norm2,
                          ksize=[1, 3, 3, 1],
-                         strides=[1, 2, 2, 1], 
-                         padding='SAME', 
+                         strides=[1, 2, 2, 1],
+                         padding='SAME',
                          name='pool2')
 
   # local3
@@ -156,9 +156,9 @@ def inference(images, dropout=False):
     # Move everything into depth so we can perform a single matrix multiply.
     reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
     dim = reshape.get_shape()[1].value
-    weights = _variable_with_weight_decay('weights', 
+    weights = _variable_with_weight_decay('weights',
                                           shape=[dim, 384],
-                                          stddev=0.04, 
+                                          stddev=0.04,
                                           wd=0.004)
     biases = _variable_on_cpu('biases', [384], tf.constant_initializer(0.1))
     local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
@@ -167,9 +167,9 @@ def inference(images, dropout=False):
 
   # local4
   with tf.variable_scope('local4') as scope:
-    weights = _variable_with_weight_decay('weights', 
+    weights = _variable_with_weight_decay('weights',
                                           shape=[384, 192],
-                                          stddev=0.04, 
+                                          stddev=0.04,
                                           wd=0.004)
     biases = _variable_on_cpu('biases', [192], tf.constant_initializer(0.1))
     local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
@@ -178,11 +178,11 @@ def inference(images, dropout=False):
 
   # compute logits
   with tf.variable_scope('softmax_linear') as scope:
-    weights = _variable_with_weight_decay('weights', 
+    weights = _variable_with_weight_decay('weights',
                                           [192, FLAGS.nb_labels],
-                                          stddev=1/192.0, 
+                                          stddev=1/192.0,
                                           wd=0.0)
-    biases = _variable_on_cpu('biases', 
+    biases = _variable_on_cpu('biases',
                               [FLAGS.nb_labels],
                               tf.constant_initializer(0.0))
     logits = tf.add(tf.matmul(local4, weights), biases, name=scope.name)
@@ -194,7 +194,7 @@ def inference_deeper(images, dropout=False):
   """Build a deeper CNN model.
   Args:
     images: Images returned from distorted_inputs() or inputs().
-    dropout: Boolean controling whether to use dropout or not
+    dropout: Boolean controlling whether to use dropout or not
   Returns:
     Logits
   """
@@ -386,7 +386,7 @@ def train_op_fun(total_loss, global_step):
   """
   # Variables that affect learning rate.
   nb_ex_per_train_epoch = int(60000 / FLAGS.nb_teachers)
-  
+
   num_batches_per_epoch = nb_ex_per_train_epoch / FLAGS.batch_size
   decay_steps = int(num_batches_per_epoch * FLAGS.epochs_per_decay)
 
@@ -398,7 +398,7 @@ def train_op_fun(total_loss, global_step):
                                   decay_steps,
                                   LEARNING_RATE_DECAY_FACTOR,
                                   staircase=True)
-  tf.scalar_summary('learning_rate', lr)
+  tf.summary.scalar('learning_rate', lr)
 
   # Generate moving averages of all losses and associated summaries.
   loss_averages_op = moving_av(total_loss)
@@ -413,7 +413,7 @@ def train_op_fun(total_loss, global_step):
 
   # Add histograms for trainable variables.
   for var in tf.trainable_variables():
-    tf.histogram_summary(var.op.name, var)
+    tf.summary.histogram(var.op.name, var)
 
   # Track the moving averages of all trainable variables.
   variable_averages = tf.train.ExponentialMovingAverage(
@@ -485,12 +485,12 @@ def train(images, labels, ckpt_path, dropout=False):
     train_op = train_op_fun(loss, global_step)
 
     # Create a saver.
-    saver = tf.train.Saver(tf.all_variables())
+    saver = tf.train.Saver(tf.global_variables())
 
     print("Graph constructed and saver created")
 
     # Build an initialization operation to run below.
-    init = tf.initialize_all_variables()
+    init = tf.global_variables_initializer()
 
     # Create and init sessions
     sess = tf.Session(config=tf.ConfigProto(log_device_placement=FLAGS.log_device_placement)) #NOLINT(long-line)

@@ -1,0 +1,104 @@
+item {
+  id: 0
+  name: 'none_of_the_above'
+}
+
+item {
+  id: 1
+  name: 'aeroplane'
+}
+
+item {
+  id: 2
+  name: 'bicycle'
+}
+
+item {
+  id: 3
+  name: 'bird'
+}
+
+item {
+  id: 4
+  name: 'boat'
+}
+
+item {
+  id: 5
+  name: 'bottle'
+}
+
+item {
+  id: 6
+  name: 'bus'
+}
+
+item {
+  id: 7
+  name: 'car'
+}
+
+item {
+  id: 8
+  name: 'cat'
+}
+
+item {
+  id: 9
+  name: 'chair'
+}
+
+item {
+  id: 10
+  name: 'cow'
+}
+
+item {
+  id: 11
+  name: 'diningtable'
+}
+
+item {
+  id: 12
+  name: 'dog'
+}
+
+item {
+  id: 13
+  name: 'horse'
+}
+
+item {
+  id: 14
+  name: 'motorbike'
+}
+
+item {
+  id: 15
+  name: 'person'
+}
+
+item {
+  id: 16
+  name: 'pottedplant'
+}
+
+item {
+  id: 17
+  name: 'sheep'
+}
+
+item {
+  id: 18
+  name: 'sofa'
+}
+
+item {
+  id: 19
+  name: 'train'
+}
+
+item {
+  id: 20
+  name: 'tvmonitor'
+}

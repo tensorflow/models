@@ -27,7 +27,7 @@ def ComputeDPPrincipalProjection(data, projection_dims,
   Args:
     data: the input data, each row is a data vector.
     projection_dims: the projection dimension.
-    sanitizer: the sanitizer used for acheiving privacy.
+    sanitizer: the sanitizer used for achieving privacy.
     eps_delta: (eps, delta) pair.
     sigma: if not None, use noise sigma; otherwise compute it using
       eps_delta pair.

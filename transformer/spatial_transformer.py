@@ -53,7 +53,7 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
     def _repeat(x, n_repeats):
         with tf.variable_scope('_repeat'):
             rep = tf.transpose(
-                tf.expand_dims(tf.ones(shape=tf.pack([n_repeats, ])), 1), [1, 0])
+                tf.expand_dims(tf.ones(shape=tf.stack([n_repeats, ])), 1), [1, 0])
             rep = tf.cast(rep, 'int32')
             x = tf.matmul(tf.reshape(x, (-1, 1)), rep)
             return tf.reshape(x, [-1])
@@ -102,7 +102,7 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
 
             # use indices to lookup pixels in the flat image and restore
             # channels dim
-            im_flat = tf.reshape(im, tf.pack([-1, channels]))
+            im_flat = tf.reshape(im, tf.stack([-1, channels]))
             im_flat = tf.cast(im_flat, 'float32')
             Ia = tf.gather(im_flat, idx_a)
             Ib = tf.gather(im_flat, idx_b)
@@ -128,16 +128,16 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
             #                         np.linspace(-1, 1, height))
             #  ones = np.ones(np.prod(x_t.shape))
             #  grid = np.vstack([x_t.flatten(), y_t.flatten(), ones])
-            x_t = tf.matmul(tf.ones(shape=tf.pack([height, 1])),
+            x_t = tf.matmul(tf.ones(shape=tf.stack([height, 1])),
                             tf.transpose(tf.expand_dims(tf.linspace(-1.0, 1.0, width), 1), [1, 0]))
             y_t = tf.matmul(tf.expand_dims(tf.linspace(-1.0, 1.0, height), 1),
-                            tf.ones(shape=tf.pack([1, width])))
+                            tf.ones(shape=tf.stack([1, width])))
 
             x_t_flat = tf.reshape(x_t, (1, -1))
             y_t_flat = tf.reshape(y_t, (1, -1))
 
             ones = tf.ones_like(x_t_flat)
-            grid = tf.concat(0, [x_t_flat, y_t_flat, ones])
+            grid = tf.concat(axis=0, values=[x_t_flat, y_t_flat, ones])
             return grid
 
     def _transform(theta, input_dim, out_size):
@@ -157,11 +157,11 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
             grid = _meshgrid(out_height, out_width)
             grid = tf.expand_dims(grid, 0)
             grid = tf.reshape(grid, [-1])
-            grid = tf.tile(grid, tf.pack([num_batch]))
-            grid = tf.reshape(grid, tf.pack([num_batch, 3, -1]))
+            grid = tf.tile(grid, tf.stack([num_batch]))
+            grid = tf.reshape(grid, tf.stack([num_batch, 3, -1]))
 
             # Transform A x (x_t, y_t, 1)^T -> (x_s, y_s)
-            T_g = tf.batch_matmul(theta, grid)
+            T_g = tf.matmul(theta, grid)
             x_s = tf.slice(T_g, [0, 0, 0], [-1, 1, -1])
             y_s = tf.slice(T_g, [0, 1, 0], [-1, 1, -1])
             x_s_flat = tf.reshape(x_s, [-1])
@@ -172,7 +172,7 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
                 out_size)
 
             output = tf.reshape(
-                input_transformed, tf.pack([num_batch, out_height, out_width, num_channels]))
+                input_transformed, tf.stack([num_batch, out_height, out_width, num_channels]))
             return output
 
     with tf.variable_scope(name):

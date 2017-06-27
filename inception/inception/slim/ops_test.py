@@ -21,8 +21,6 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
-
 from inception.slim import ops
 from inception.slim import scopes
 from inception.slim import variables
@@ -128,7 +126,7 @@ class ConvTest(tf.test.TestCase):
       wd = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)[0]
       self.assertEquals(wd.op.name,
                         'Conv/weights/Regularizer/L2Regularizer/value')
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       self.assertTrue(sess.run(wd) <= 0.01)
 
   def testCreateConvWithoutWD(self):
@@ -254,7 +252,7 @@ class FCTest(tf.test.TestCase):
       wd = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)[0]
       self.assertEquals(wd.op.name,
                         'FC/weights/Regularizer/L2Regularizer/value')
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       self.assertTrue(sess.run(wd) <= 0.01)
 
   def testCreateFCWithoutWD(self):
@@ -420,7 +418,7 @@ class DropoutTest(tf.test.TestCase):
     with self.test_session():
       images = tf.random_uniform((5, height, width, 3), seed=1)
       output = ops.dropout(images)
-      self.assertEquals(output.op.name, 'Dropout/dropout/mul_1')
+      self.assertEquals(output.op.name, 'Dropout/dropout/mul')
       output.get_shape().assert_is_compatible_with(images.get_shape())
 
   def testCreateDropoutNoTraining(self):
@@ -601,10 +599,9 @@ class BatchNormTest(tf.test.TestCase):
       output = ops.batch_norm(images, decay=0.1)
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
-        barrier = tf.no_op(name='gradient_barrier')
-        output = control_flow_ops.with_dependencies([barrier], output)
+        output = tf.identity(output)
       # Initialize all variables
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
       moving_variance = variables.get_variables('BatchNorm/moving_variance')[0]
       mean, variance = sess.run([moving_mean, moving_variance])
@@ -631,10 +628,9 @@ class BatchNormTest(tf.test.TestCase):
       output = ops.batch_norm(images, decay=0.1, is_training=False)
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
-        barrier = tf.no_op(name='gradient_barrier')
-        output = control_flow_ops.with_dependencies([barrier], output)
+        output = tf.identity(output)
       # Initialize all variables
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
       moving_variance = variables.get_variables('BatchNorm/moving_variance')[0]
       mean, variance = sess.run([moving_mean, moving_variance])
@@ -665,10 +661,9 @@ class BatchNormTest(tf.test.TestCase):
       output = ops.batch_norm(images, decay=0.1, is_training=False)
       update_ops = tf.get_collection(ops.UPDATE_OPS_COLLECTION)
       with tf.control_dependencies(update_ops):
-        barrier = tf.no_op(name='gradient_barrier')
-        output = control_flow_ops.with_dependencies([barrier], output)
+        output = tf.identity(output)
       # Initialize all variables
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       moving_mean = variables.get_variables('BatchNorm/moving_mean')[0]
       moving_variance = variables.get_variables('BatchNorm/moving_variance')[0]
       mean, variance = sess.run([moving_mean, moving_variance])
