@@ -16,7 +16,7 @@ Extract the tar file and run the `create_pascal_tf_record` script:
 tar -xvf VOCtrainval_11-May-2012.tar
 python create_pascal_tf_record.py --data_dir=VOCdevkit \
     --year=VOC2012 --set=train --output_path=pascal_train.record
-python create_pascal_tf_record.py --data_dir=/home/user/VOCdevkit \
+python create_pascal_tf_record.py --data_dir=VOCdevkit \
     --year=VOC2012 --set=val --output_path=pascal_val.record
 ```
 
