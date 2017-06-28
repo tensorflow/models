@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*- 
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +20,9 @@ from __future__ import print_function
 
 import os
 import sys
+reload(sys)
+sys.setdefaultencoding("utf-8")
+
 import tarfile
 
 from six.moves import urllib
@@ -77,7 +81,8 @@ def download_and_uncompress_tarball(tarball_url, dataset_dir):
     sys.stdout.write('\r>> Downloading %s %.1f%%' % (
         filename, float(count * block_size) / float(total_size) * 100.0))
     sys.stdout.flush()
-  filepath, _ = urllib.request.urlretrieve(tarball_url, filepath, _progress)
+  if not os.path.exists(file_path):
+    filepath, _ = urllib.request.urlretrieve(tarball_url, filepath, _progress)
   print()
   statinfo = os.stat(filepath)
   print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')

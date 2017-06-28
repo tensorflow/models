@@ -40,13 +40,13 @@ from datasets import dataset_utils
 _DATA_URL = 'http://download.tensorflow.org/example_images/flower_photos.tgz'
 
 # The number of images in the validation set.
-_NUM_VALIDATION = 350
+_NUM_VALIDATION = 180
 
 # Seed for repeatability.
 _RANDOM_SEED = 0
 
 # The number of shards per dataset split.
-_NUM_SHARDS = 5
+_NUM_SHARDS = 2
 
 
 class ImageReader(object):
@@ -80,7 +80,7 @@ def _get_filenames_and_classes(dataset_dir):
     A list of image file paths, relative to `dataset_dir` and the list of
     subdirectories, representing class names.
   """
-  flower_root = os.path.join(dataset_dir, 'flower_photos')
+  flower_root = os.path.join(dataset_dir, 'my_data')
   directories = []
   class_names = []
   for filename in os.listdir(flower_root):
@@ -187,7 +187,7 @@ def run(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
 
-  dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
+#  dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
   photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
   class_names_to_ids = dict(zip(class_names, range(len(class_names))))
 
@@ -207,6 +207,6 @@ def run(dataset_dir):
   labels_to_class_names = dict(zip(range(len(class_names)), class_names))
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(dataset_dir)
+#  _clean_up_temporary_files(dataset_dir)
   print('\nFinished converting the Flowers dataset!')
 
