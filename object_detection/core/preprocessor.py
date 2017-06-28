@@ -341,7 +341,6 @@ def random_pixel_value_scale(image, minval=0.9, maxval=1.1, seed=None):
 
   Returns:
     image: image which is the same shape as input image.
-    boxes: boxes which is the same shape as input boxes.
   """
   with tf.name_scope('RandomPixelValueScale', values=[image]):
     color_coef = tf.random_uniform(
