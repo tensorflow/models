@@ -11,7 +11,7 @@ See [the Cloud ML quick start guide](https://cloud.google.com/ml-engine/docs/qui
 in the [installation instructions](installation.md).
 3. The reader has a valid data set and stored it in a Google Cloud Storage
 bucket. See [this page](preparing_inputs.md) for instructions on how to generate
-a dataset for the PASCAL VOC challenge or the Oxford-IIT Pet dataset.
+a dataset for the PASCAL VOC challenge or the Oxford-IIIT Pet dataset.
 4. The reader has configured a valid Object Detection pipeline, and stored it
 in a Google Cloud Storage bucket. See [this page](configuring_jobs.md) for
 details on how to write a pipeline configuration.
@@ -88,7 +88,7 @@ training checkpoints and events will be written to and
 Google Cloud Storage.
 
 Users can monitor the progress of their training job on the [ML Engine
-Dasboard](https://pantheon.corp.google.com/mlengine/jobs).
+Dashboard](https://pantheon.corp.google.com/mlengine/jobs).
 
 ## Running an Evaluation Job on Cloud
 

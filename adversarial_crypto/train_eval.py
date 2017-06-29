@@ -118,7 +118,7 @@ class AdversarialCrypto(object):
 
   def model(self, collection, message, key=None):
     """The model for Alice, Bob, and Eve.  If key=None, the first FC layer
-    takes only the Key as inputs.  Otherwise, it uses both the key
+    takes only the message as inputs.  Otherwise, it uses both the key
     and the message.
 
     Args:

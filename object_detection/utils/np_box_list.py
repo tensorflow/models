@@ -16,6 +16,7 @@
 """Numpy BoxList classes and functions."""
 
 import numpy as np
+from six import moves
 
 
 class BoxList(object):
@@ -127,7 +128,7 @@ class BoxList(object):
           ymin, and all xmax of boxes are equal or greater than xmin.
     """
     if data.shape[0] > 0:
-      for i in xrange(data.shape[0]):
+      for i in moves.range(data.shape[0]):
         if data[i, 0] > data[i, 2] or data[i, 1] > data[i, 3]:
           return False
     return True

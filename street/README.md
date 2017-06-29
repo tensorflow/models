@@ -38,7 +38,7 @@ Avenue des Sapins
 
 
 ## Installing and setting up the STREET model
-[Install Tensorflow](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/g3doc/get_started/os_setup.md#virtualenv-installation)
+[Install Tensorflow](https://www.tensorflow.org/install/)
 
 Install numpy:
 
