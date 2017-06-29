@@ -212,6 +212,7 @@ def _kl_divergence_with_logits(q_logits, p_logits, weights):
 
   # For softmax regression
   else:
+    q = tf.nn.softmax(q_logits)
     kl = tf.reduce_sum(
         q * (tf.nn.log_softmax(q_logits) - tf.nn.log_softmax(p_logits)), 1)
 
