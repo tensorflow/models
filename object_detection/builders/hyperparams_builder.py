@@ -111,9 +111,9 @@ def _build_regularizer(regularizer):
   """
   regularizer_oneof = regularizer.WhichOneof('regularizer_oneof')
   if  regularizer_oneof == 'l1_regularizer':
-    return slim.l1_regularizer(scale=regularizer.l1_regularizer.weight)
+    return slim.l1_regularizer(scale=float(regularizer.l1_regularizer.weight))
   if regularizer_oneof == 'l2_regularizer':
-    return slim.l2_regularizer(scale=regularizer.l2_regularizer.weight)
+    return slim.l2_regularizer(scale=float(regularizer.l2_regularizer.weight))
   raise ValueError('Unknown regularizer function: {}'.format(regularizer_oneof))
 
 

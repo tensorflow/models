@@ -17,6 +17,7 @@
 from __future__ import division
 
 import numpy as np
+from six import moves
 
 
 def compute_precision_recall(scores, labels, num_gt):
@@ -103,7 +104,7 @@ def compute_average_precision(precision, recall):
     raise ValueError("Precision must be in the range of [0, 1].")
   if np.amin(recall) < 0 or np.amax(recall) > 1:
     raise ValueError("recall must be in the range of [0, 1].")
-  if not all(recall[i] <= recall[i + 1] for i in xrange(len(recall) - 1)):
+  if not all(recall[i] <= recall[i + 1] for i in moves.range(len(recall) - 1)):
     raise ValueError("recall must be a non-decreasing array")
 
   recall = np.concatenate([[0], recall, [1]])

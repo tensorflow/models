@@ -80,7 +80,7 @@ def encode_image_array_as_png_str(image):
     PNG encoded image string.
   """
   image_pil = Image.fromarray(np.uint8(image))
-  output = six.StringIO()
+  output = six.BytesIO()
   image_pil.save(output, format='PNG')
   png_string = output.getvalue()
   output.close()

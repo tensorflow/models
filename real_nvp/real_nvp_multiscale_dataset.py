@@ -321,8 +321,8 @@ def masked_conv_aff_coupling(input_, mask_in, dim, name,
                 input_=res, dim=channels, name="bn_in", scale=False,
                 train=train, epsilon=1e-4, axes=[0, 1, 2])
             res *= 2.
-        res = tf.concat_v2([res, -res], 3)
-        res = tf.concat_v2([res, mask], 3)
+        res = tf.concat([res, -res], 3)
+        res = tf.concat([res, mask], 3)
         dim_in = 2. * channels + 1
         res = tf.nn.relu(res)
         res = resnet(input_=res, dim_in=dim_in, dim=dim,
@@ -411,8 +411,8 @@ def masked_conv_add_coupling(input_, mask_in, dim, name,
                 input_=res, dim=channels, name="bn_in", scale=False,
                 train=train, epsilon=1e-4, axes=[0, 1, 2])
             res *= 2.
-        res = tf.concat_v2([res, -res], 3)
-        res = tf.concat_v2([res, mask], 3)
+        res = tf.concat([res, -res], 3)
+        res = tf.concat([res, mask], 3)
         dim_in = 2. * channels + 1
         res = tf.nn.relu(res)
         shift = resnet(input_=res, dim_in=dim_in, dim=dim, dim_out=channels,
@@ -501,7 +501,7 @@ def conv_ch_aff_coupling(input_, dim, name,
             res = batch_norm(
                 input_=res, dim=channels, name="bn_in", scale=False,
                 train=train, epsilon=1e-4, axes=[0, 1, 2])
-        res = tf.concat_v2([res, -res], 3)
+        res = tf.concat([res, -res], 3)
         dim_in = 2. * channels
         res = tf.nn.relu(res)
         res = resnet(input_=res, dim_in=dim_in, dim=dim, dim_out=2 * channels,
@@ -551,11 +551,11 @@ def conv_ch_aff_coupling(input_, dim, name,
                 res *= tf.exp(-.5 * log_var)
                 log_diff -= .5 * log_var
         if change_bottom:
-            res = tf.concat_v2([input_, res], 3)
-            log_diff = tf.concat_v2([tf.zeros_like(log_diff), log_diff], 3)
+            res = tf.concat([input_, res], 3)
+            log_diff = tf.concat([tf.zeros_like(log_diff), log_diff], 3)
         else:
-            res = tf.concat_v2([res, input_], 3)
-            log_diff = tf.concat_v2([log_diff, tf.zeros_like(log_diff)], 3)
+            res = tf.concat([res, input_], 3)
+            log_diff = tf.concat([log_diff, tf.zeros_like(log_diff)], 3)
 
     return res, log_diff
 
@@ -582,7 +582,7 @@ def conv_ch_add_coupling(input_, dim, name,
             res = batch_norm(
                 input_=res, dim=channels, name="bn_in", scale=False,
                 train=train, epsilon=1e-4, axes=[0, 1, 2])
-        res = tf.concat_v2([res, -res], 3)
+        res = tf.concat([res, -res], 3)
         dim_in = 2. * channels
         res = tf.nn.relu(res)
         shift = resnet(input_=res, dim_in=dim_in, dim=dim, dim_out=channels,
@@ -616,11 +616,11 @@ def conv_ch_add_coupling(input_, dim, name,
                 res *= tf.exp(-.5 * log_var)
                 log_diff -= .5 * log_var
         if change_bottom:
-            res = tf.concat_v2([input_, res], 3)
-            log_diff = tf.concat_v2([tf.zeros_like(log_diff), log_diff], 3)
+            res = tf.concat([input_, res], 3)
+            log_diff = tf.concat([tf.zeros_like(log_diff), log_diff], 3)
         else:
-            res = tf.concat_v2([res, input_], 3)
-            log_diff = tf.concat_v2([log_diff, tf.zeros_like(log_diff)], 3)
+            res = tf.concat([res, input_], 3)
+            log_diff = tf.concat([log_diff, tf.zeros_like(log_diff)], 3)
 
     return res, log_diff
 
@@ -742,9 +742,9 @@ def rec_masked_conv_coupling(input_, hps, scale_idx, n_scale,
                 input_=res_1, hps=hps, scale_idx=scale_idx + 1, n_scale=n_scale,
                 use_batch_norm=use_batch_norm, weight_norm=weight_norm,
                 train=train)
-            res = tf.concat_v2([res_1, res_2], 3)
+            res = tf.concat([res_1, res_2], 3)
             log_diff_1 += inc_log_diff
-            log_diff = tf.concat_v2([log_diff_1, log_diff_2], 3)
+            log_diff = tf.concat([log_diff_1, log_diff_2], 3)
             res = squeeze_2x2_ordered(res, reverse=True)
             log_diff = squeeze_2x2_ordered(log_diff, reverse=True)
         else:
@@ -805,8 +805,8 @@ def rec_masked_deconv_coupling(input_, hps, scale_idx, n_scale,
                 scale_idx=scale_idx + 1, n_scale=n_scale,
                 use_batch_norm=use_batch_norm, weight_norm=weight_norm,
                 train=train)
-            res = tf.concat_v2([res_1, res_2], 3)
-            log_diff = tf.concat_v2([log_diff_1, log_diff_2], 3)
+            res = tf.concat([res_1, res_2], 3)
+            log_diff = tf.concat([log_diff_1, log_diff_2], 3)
             res = squeeze_2x2_ordered(res, reverse=True)
             log_diff = squeeze_2x2_ordered(log_diff, reverse=True)
         else:
@@ -1018,7 +1018,7 @@ class RealNVP(object):
                 width = tf.cast(width, tf.int32)
                 depth = tf.reshape((features["depth"], tf.int64)[0], [1])
                 depth = tf.cast(depth, tf.int32)
-                image = tf.reshape(image, tf.concat_v2([height, width, depth], 0))
+                image = tf.reshape(image, tf.concat([height, width, depth], 0))
                 image = tf.random_crop(image, [64, 64, 3])
                 if FLAGS.mode == "train":
                     image = tf.image.random_flip_left_right(image)
@@ -1309,19 +1309,19 @@ class RealNVP(object):
                 z_compressed = z_lost
                 z_noisy = z_lost
                 for _ in xrange(scale_idx + 1):
-                    z_compressed = tf.concat_v2(
+                    z_compressed = tf.concat(
                         [z_compressed, tf.zeros_like(z_compressed)], 3)
                     z_compressed = squeeze_2x2_ordered(
                         z_compressed, reverse=True)
-                    z_noisy = tf.concat_v2(
+                    z_noisy = tf.concat(
                         [z_noisy, tf.random_normal(
                             z_noisy.get_shape().as_list())], 3)
                     z_noisy = squeeze_2x2_ordered(z_noisy, reverse=True)
                 z_compressed_list.append(z_compressed)
                 z_noisy_list.append(z_noisy)
             self.z_reduced = z_lost
-            z_compressed = tf.concat_v2(z_compressed_list, 0)
-            z_noisy = tf.concat_v2(z_noisy_list, 0)
+            z_compressed = tf.concat(z_compressed_list, 0)
+            z_noisy = tf.concat(z_noisy_list, 0)
             noisy_images, _ = decoder(
                 input_=z_noisy, hps=hps, n_scale=hps.n_scale,
                 use_batch_norm=hps.use_batch_norm, weight_norm=True,
