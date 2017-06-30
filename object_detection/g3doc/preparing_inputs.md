@@ -26,7 +26,7 @@ You should end up with two TFRecord files named `pascal_train.record` and
 The label map for the PASCAL VOC data set can be found at
 `data/pascal_label_map.pbtxt`.
 
-## Generation the Oxford-IIIT Pet TFRecord files.
+## Generating the Oxford-IIIT Pet TFRecord files.
 
 The Oxford-IIIT Pet data set can be downloaded from
 [their website](http://www.robots.ox.ac.uk/~vgg/data/pets/). Extract the tar
