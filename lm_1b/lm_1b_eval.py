@@ -19,6 +19,7 @@ import os
 import sys
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -83,7 +84,7 @@ def _LoadModel(gd_file, ckpt_file):
   with tf.Graph().as_default():
     sys.stderr.write('Recovering graph.\n')
     with tf.gfile.FastGFile(gd_file, 'r') as f:
-      s = f.read()
+      s = f.read().decode()
       gd = tf.GraphDef()
       text_format.Merge(s, gd)
 
@@ -230,7 +231,7 @@ def _DumpEmb(vocab):
   sys.stderr.write('Finished softmax weights\n')
 
   all_embs = np.zeros([vocab.size, 1024])
-  for i in range(vocab.size):
+  for i in xrange(vocab.size):
     input_dict = {t['inputs_in']: inputs,
                   t['targets_in']: targets,
                   t['target_weights_in']: weights}

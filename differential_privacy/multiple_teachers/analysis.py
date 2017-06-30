@@ -216,10 +216,10 @@ def main(unused_argv):
   # If we are reproducing results from paper https://arxiv.org/abs/1610.05755,
   # download the required binaries with label information.
   ##################################################################
-  
+
   # Binaries for MNIST results
   paper_binaries_mnist = \
-    ["https://github.com/npapernot/multiple-teachers-for-privacy/blob/master/mnist_250_teachers_labels.npy?raw=true", 
+    ["https://github.com/npapernot/multiple-teachers-for-privacy/blob/master/mnist_250_teachers_labels.npy?raw=true",
     "https://github.com/npapernot/multiple-teachers-for-privacy/blob/master/mnist_250_teachers_100_indices_used_by_student.npy?raw=true"]
   if FLAGS.counts_file == "mnist_250_teachers_labels.npy" \
     or FLAGS.indices_file == "mnist_250_teachers_100_indices_used_by_student.npy":
@@ -254,7 +254,7 @@ def main(unused_argv):
   total_log_mgf_nm = np.array([0.0 for _ in l_list])
   total_ss_nm = np.array([0.0 for _ in l_list])
   noise_eps = FLAGS.noise_eps
-  
+
   for i in indices:
     total_log_mgf_nm += np.array(
         [logmgf_from_counts(counts_mat[i], noise_eps, l)
