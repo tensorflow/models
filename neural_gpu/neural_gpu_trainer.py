@@ -652,7 +652,6 @@ def train():
    (train_set, dev_set, en_vocab_path, fr_vocab_path), sv, sess) = initialize()
   with sess.as_default():
     quant_op = model.quantize_op
-    max_cur_length = min(min_length + 3, max_length)
     prev_acc_perp = [1000000 for _ in xrange(5)]
     prev_seq_err = 1.0
     is_chief = FLAGS.task < 1

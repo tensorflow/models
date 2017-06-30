@@ -423,7 +423,6 @@ class LFADS(object):
           assert False, "NIY"
 
         preds[d] = tf.equal(tf.constant(name), self.dataName)
-        data_dim = hps.dataset_dims[name]
         fns_out_fac_Ws[d] = makelambda(out_fac_W)
         fns_out_fac_bs[d] =  makelambda(out_fac_b)
 
@@ -769,8 +768,6 @@ class LFADS(object):
     # Variational Lower Bound on posterior, p(z|x), plus reconstruction cost.
     # KL and reconstruction costs are normalized only by batch size, not by
     # dimension, or by time steps.
-    kl_cost_g0_b = tf.zeros_like(batch_size, dtype=tf.float32)
-    kl_cost_co_b = tf.zeros_like(batch_size, dtype=tf.float32)
     self.kl_cost = tf.constant(0.0) # VAE KL cost
     self.recon_cost = tf.constant(0.0) # VAE reconstruction cost
     self.nll_bound_vae = tf.constant(0.0)
@@ -1891,7 +1888,6 @@ class LFADS(object):
 
     var_names = vars_dict.keys()
     nested_vars_dict = {}
-    current_dict = nested_vars_dict
     for v, var_name in enumerate(var_names):
       var_split_name_list = var_name.split('/')
       split_name_list_len = len(var_split_name_list)

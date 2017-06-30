@@ -502,10 +502,6 @@ class Graph():
         self.data_type)  #running sum of the hidden states of the model
     output = tf.cast(tf.fill([self.batch_size, 1], 0.0),
                      self.data_type)  #output of the model
-    correct = tf.cast(
-        tf.fill([1], 0.0), self.data_type
-    )  #to compute accuracy, returns number of correct examples for this batch
-    total_error = 0.0
     prev_select_1 = tf.zeros_like(select)
     self.create_summary_embeddings()
     self.get_column_hidden_vectors()
@@ -567,6 +563,7 @@ class Graph():
     self.scalar_output = output
     error = self.error_computation()
     cond = tf.less(error, 0.0001, name="cond")
+    #to compute accuracy, returns number of correct examples for this batch
     correct_add = tf.where(
         cond, tf.fill(tf.shape(cond), 1.0), tf.fill(tf.shape(cond), 0.0))
     correct = tf.reduce_sum(correct_add)

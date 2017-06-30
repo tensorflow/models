@@ -75,7 +75,6 @@ def main():
         image_raw = numpy.array(Image.open(os.path.join(fn_root, img_fn)))
         rows = image_raw.shape[0]
         cols = image_raw.shape[1]
-        depth = image_raw.shape[2]
         downscale = min(rows / 96., cols / 96.)
         image_raw = skimage.transform.pyramid_reduce(image_raw, downscale)
         image_raw *= 255.

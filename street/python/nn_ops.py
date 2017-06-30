@@ -103,7 +103,6 @@ def _variable_lstm_shape(op):
   state_shape = op.inputs[1].get_shape().with_rank(2)
   memory_shape = op.inputs[2].get_shape().with_rank(2)
   w_m_m_shape = op.inputs[3].get_shape().with_rank(3)
-  batch_size = input_shape[0].merge_with(state_shape[0])
   batch_size = input_shape[0].merge_with(memory_shape[0])
   seq_len = input_shape[1]
   gate_num = input_shape[2].merge_with(w_m_m_shape[1])
