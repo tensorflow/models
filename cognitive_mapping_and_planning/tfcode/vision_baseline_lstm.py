@@ -196,6 +196,7 @@ def combine_setup(name, combine_type, embed_img, embed_goal, num_img_neuorons=No
       out = embed_goal
     else:
       logging.fatal('Undefined combine_type: %s', combine_type)
+      raise ValueError('Undefined combine_type: %s', combine_type)
   return out
 
 

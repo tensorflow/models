@@ -138,8 +138,7 @@ def plot_lfads_timeseries(data_bxtxn, model_vals, ext_input_bxtxi=None,
     plot_time_series(means-stds, bidx, n_to_plot=n_to_plot, scale=scale,
                      color='c')
   else:
-    assert 'NIY'
-
+    raise ValueError("output_dist '{}' not implemented.".format(output_dist))
 
   if truth_bxtxn is not None:
     plot_time_series(truth_bxtxn, bidx, n_to_plot=n_to_plot, color='k',
@@ -182,8 +181,6 @@ def plot_lfads_timeseries(data_bxtxn, model_vals, ext_input_bxtxi=None,
     means_nxt = params_nxt
   elif output_dist == 'gaussian': # (means+vars) x time
     means_nxt = np.vsplit(params_nxt,2)[0] # get means
-  else:
-    assert "NIY"
 
   plt.subplot(nrows,2,11+subplot_cidx)
   plt.imshow(data_nxt, aspect='auto', interpolation='nearest')
