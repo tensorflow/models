@@ -336,6 +336,7 @@ class Building(GridWorld):
                category_list=None, small=False, flip=False, logdir=None,
                building_loader=None):
 
+    GridWorld.__init__(self)
     self.restrict_to_largest_cc = True
     self.robot = robot
     self.env = env
