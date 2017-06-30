@@ -111,7 +111,6 @@ f_sum = Function("sum", [ListType("Int")], "Int")
 def plus_one(x): return x + 1
 def minus_one(x): return x - 1
 def times_two(x): return x * 2
-def neg(x): return x * (-1)
 def div_two(x): return int(x/2)
 def sq(x): return x**2 
 def times_three(x): return x * 3
