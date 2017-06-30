@@ -181,17 +181,18 @@ def main(_):
         # 1000 is the maximum number of labelled target samples that exists in
         # the datasets.
         target_semi_images, target_semi_labels = provide_batch_fn()(
-            FLAGS.target_labeled_dataset, 'train', FLAGS.batch_size)
+          FLAGS.target_labeled_dataset, 'train', FLAGS.dataset_dir,
+          FLAGS.num_readers, FLAGS.batch_size, FLAGS.num_preprocessing_threads)
 
         # Calculate the proportion of source domain samples in the semi-
         # supervised setting, so that the proportion is set accordingly in the
         # batches.
         proportion = float(source_labels['num_train_samples']) / (
-            source_labels['num_train_samples'] +
-            target_semi_labels['num_train_samples'])
+          source_labels['num_train_samples'] +
+          target_semi_labels['num_train_samples'])
 
         rnd_tensor = tf.random_uniform(
-            (target_semi_images.get_shape().as_list()[0],))
+          (target_semi_images.get_shape().as_list()[0],))
 
         domain_selection_mask = rnd_tensor < proportion
         source_images = tf.where(domain_selection_mask, source_images,
