@@ -12,17 +12,11 @@ Authors: Xin Pan (Github: panyx0718), Anelia Angelova
 
 <b>Results:</b>
 
-<left>
 ![Sample1](g3doc/cross_conv.png)
-</left>
-<left>
+
 ![Sample2](g3doc/cross_conv2.png)
-</left>
 
-<left>
 ![Loss](g3doc/cross_conv3.png)
-</left>
-
 
 <b>Prerequisite:</b>
 
@@ -40,7 +34,7 @@ to tf.SequenceExample.
 <b>How to run:</b>
 
 ```shell
-ls -R
+$ ls -R
 .:
 data  next_frame_prediction  WORKSPACE
 
@@ -58,18 +52,18 @@ cross_conv2.png  cross_conv3.png  cross_conv.png
 
 
 # Build everything.
-bazel build -c opt next_frame_prediction/...
+$ bazel build -c opt next_frame_prediction/...
 
 # The following example runs the generated 2d objects.
 # For Sprites dataset, image_size should be 60, norm_scale should be 255.0.
 # Batch size is normally 16~64, depending on your memory size.
-#
+
 # Run training.
-bazel-bin/next_frame_prediction/cross_conv/train \
-  --batch_size=1 \
-  --data_filepattern=data/tfrecords \
-  --image_size=64 \
-  --log_root=/tmp/predict
+$ bazel-bin/next_frame_prediction/cross_conv/train \
+    --batch_size=1 \
+    --data_filepattern=data/tfrecords \
+    --image_size=64 \
+    --log_root=/tmp/predict
 
 step: 1, loss: 24.428671
 step: 2, loss: 19.211605
@@ -81,11 +75,11 @@ step: 7, loss: 1.747665
 step: 8, loss: 1.572436
 step: 9, loss: 1.586816
 step: 10, loss: 1.434191
-#
+
 # Run eval.
-bazel-bin/next_frame_prediction/cross_conv/eval \
-  --batch_size=1 \
-  --data_filepattern=data/tfrecords_test \
-  --image_size=64 \
-  --log_root=/tmp/predict
+$ bazel-bin/next_frame_prediction/cross_conv/eval \
+    --batch_size=1 \
+    --data_filepattern=data/tfrecords_test \
+    --image_size=64 \
+    --log_root=/tmp/predict
 ```

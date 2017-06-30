@@ -68,7 +68,8 @@ def vgg_a(inputs,
           is_training=True,
           dropout_keep_prob=0.5,
           spatial_squeeze=True,
-          scope='vgg_a'):
+          scope='vgg_a',
+          fc_conv_padding='VALID'):
   """Oxford Net VGG 11-Layers version A Example.
 
   Note: All the fully_connected layers have been transformed to conv2d layers.
@@ -83,6 +84,11 @@ def vgg_a(inputs,
     spatial_squeeze: whether or not should squeeze the spatial dimensions of the
       outputs. Useful to remove unnecessary dimensions for classification.
     scope: Optional scope for the variables.
+    fc_conv_padding: the type of padding to use for the fully connected layer
+      that is implemented as a convolutional layer. Use 'SAME' padding if you
+      are applying the network in a fully convolutional manner and want to
+      get a prediction map downsampled by a factor of 32 as an output. Otherwise,
+      the output prediction map will be (input / 32) - 6 in case of 'VALID' padding.
 
   Returns:
     the last op containing the log predictions and end_points dict.
@@ -103,7 +109,7 @@ def vgg_a(inputs,
       net = slim.repeat(net, 2, slim.conv2d, 512, [3, 3], scope='conv5')
       net = slim.max_pool2d(net, [2, 2], scope='pool5')
       # Use conv2d instead of fully_connected layers.
-      net = slim.conv2d(net, 4096, [7, 7], padding='VALID', scope='fc6')
+      net = slim.conv2d(net, 4096, [7, 7], padding=fc_conv_padding, scope='fc6')
       net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                          scope='dropout6')
       net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
@@ -127,7 +133,8 @@ def vgg_16(inputs,
            is_training=True,
            dropout_keep_prob=0.5,
            spatial_squeeze=True,
-           scope='vgg_16'):
+           scope='vgg_16',
+           fc_conv_padding='VALID'):
   """Oxford Net VGG 16-Layers version D Example.
 
   Note: All the fully_connected layers have been transformed to conv2d layers.
@@ -142,6 +149,11 @@ def vgg_16(inputs,
     spatial_squeeze: whether or not should squeeze the spatial dimensions of the
       outputs. Useful to remove unnecessary dimensions for classification.
     scope: Optional scope for the variables.
+    fc_conv_padding: the type of padding to use for the fully connected layer
+      that is implemented as a convolutional layer. Use 'SAME' padding if you
+      are applying the network in a fully convolutional manner and want to
+      get a prediction map downsampled by a factor of 32 as an output. Otherwise,
+      the output prediction map will be (input / 32) - 6 in case of 'VALID' padding.
 
   Returns:
     the last op containing the log predictions and end_points dict.
@@ -162,7 +174,7 @@ def vgg_16(inputs,
       net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv5')
       net = slim.max_pool2d(net, [2, 2], scope='pool5')
       # Use conv2d instead of fully_connected layers.
-      net = slim.conv2d(net, 4096, [7, 7], padding='VALID', scope='fc6')
+      net = slim.conv2d(net, 4096, [7, 7], padding=fc_conv_padding, scope='fc6')
       net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                          scope='dropout6')
       net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
@@ -186,7 +198,8 @@ def vgg_19(inputs,
            is_training=True,
            dropout_keep_prob=0.5,
            spatial_squeeze=True,
-           scope='vgg_19'):
+           scope='vgg_19',
+           fc_conv_padding='VALID'):
   """Oxford Net VGG 19-Layers version E Example.
 
   Note: All the fully_connected layers have been transformed to conv2d layers.
@@ -201,6 +214,11 @@ def vgg_19(inputs,
     spatial_squeeze: whether or not should squeeze the spatial dimensions of the
       outputs. Useful to remove unnecessary dimensions for classification.
     scope: Optional scope for the variables.
+    fc_conv_padding: the type of padding to use for the fully connected layer
+      that is implemented as a convolutional layer. Use 'SAME' padding if you
+      are applying the network in a fully convolutional manner and want to
+      get a prediction map downsampled by a factor of 32 as an output. Otherwise,
+      the output prediction map will be (input / 32) - 6 in case of 'VALID' padding.
 
   Returns:
     the last op containing the log predictions and end_points dict.
@@ -221,7 +239,7 @@ def vgg_19(inputs,
       net = slim.repeat(net, 4, slim.conv2d, 512, [3, 3], scope='conv5')
       net = slim.max_pool2d(net, [2, 2], scope='pool5')
       # Use conv2d instead of fully_connected layers.
-      net = slim.conv2d(net, 4096, [7, 7], padding='VALID', scope='fc6')
+      net = slim.conv2d(net, 4096, [7, 7], padding=fc_conv_padding, scope='fc6')
       net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                          scope='dropout6')
       net = slim.conv2d(net, 4096, [1, 1], scope='fc7')

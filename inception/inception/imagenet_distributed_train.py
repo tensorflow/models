@@ -45,7 +45,8 @@ def main(unused_args):
       {'ps': ps_hosts,
        'worker': worker_hosts},
       job_name=FLAGS.job_name,
-      task_index=FLAGS.task_id)
+      task_index=FLAGS.task_id,
+      protocol=FLAGS.protocol)
 
   if FLAGS.job_name == 'ps':
     # `ps` jobs wait for incoming connections from the workers.

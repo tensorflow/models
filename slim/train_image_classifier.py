@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
@@ -117,8 +116,6 @@ tf.app.flags.DEFINE_float(
 tf.app.flags.DEFINE_float(
     'momentum', 0.9,
     'The momentum for the MomentumOptimizer and RMSPropOptimizer.')
-
-tf.app.flags.DEFINE_float('rmsprop_momentum', 0.9, 'Momentum.')
 
 tf.app.flags.DEFINE_float('rmsprop_decay', 0.9, 'Decay term for RMSProp.')
 
@@ -304,22 +301,13 @@ def _configure_optimizer(learning_rate):
     optimizer = tf.train.RMSPropOptimizer(
         learning_rate,
         decay=FLAGS.rmsprop_decay,
-        momentum=FLAGS.rmsprop_momentum,
+        momentum=FLAGS.momentum,
         epsilon=FLAGS.opt_epsilon)
   elif FLAGS.optimizer == 'sgd':
     optimizer = tf.train.GradientDescentOptimizer(learning_rate)
   else:
     raise ValueError('Optimizer [%s] was not recognized', FLAGS.optimizer)
   return optimizer
-
-
-def _add_variables_summaries(learning_rate):
-  summaries = []
-  for variable in slim.get_model_variables():
-    summaries.append(tf.summary.histogram(variable.op.name, variable))
-  summaries.append(tf.summary.scalar('training/Learning Rate', learning_rate))
-  return summaries
-
 
 def _get_init_fn():
   """Returns a function run by the chief worker to warm-start the training.
@@ -462,7 +450,8 @@ def main(_):
     ####################
     def clone_fn(batch_queue):
       """Allows data parallelism by creating multiple clones of network_fn."""
-      images, labels = batch_queue.dequeue()
+      with tf.device(deploy_config.inputs_device()):
+        images, labels = batch_queue.dequeue()
       logits, end_points = network_fn(images)
 
       #############################
@@ -551,8 +540,8 @@ def main(_):
     update_ops.append(grad_updates)
 
     update_op = tf.group(*update_ops)
-    train_tensor = control_flow_ops.with_dependencies([update_op], total_loss,
-                                                      name='train_op')
+    with tf.control_dependencies([update_op]):
+      train_tensor = tf.identity(total_loss, name='train_op')
 
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().
