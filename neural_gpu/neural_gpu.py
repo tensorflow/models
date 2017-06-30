@@ -234,8 +234,8 @@ def reorder_beam(beam_size, batch_size, beam_val, output, is_first,
     which_beam = top_beam_idx[:, i] / beam_size  # [batch]
     which_beam = which_beam * batch_size + tf.range(batch_size)
     reordered[0].append(tf.gather(output, which_beam))
-    for i, t in enumerate(tensors_to_reorder):
-      reordered[i + 1].append(tf.gather(t, which_beam))
+    for j, t in enumerate(tensors_to_reorder):
+      reordered[j + 1].append(tf.gather(t, which_beam))
   new_tensors = [tf.concat(axis=0, values=t) for t in reordered]
   top_out_idx = tf.concat(axis=0, values=top_out_idx)
   return (top_beam, new_tensors[0], top_out_idx, new_tensors[1:])
