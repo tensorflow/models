@@ -332,6 +332,55 @@ def mobilenet_v1(inputs,
         end_points['Predictions'] = prediction_fn(logits, scope='Predictions')
   return logits, end_points
 
+def mobilenet_v1_075(inputs,
+                 num_classes=1000,
+                 dropout_keep_prob=0.999,
+                 is_training=True,
+                 min_depth=8,
+                 depth_multiplier=0.75,
+                 conv_defs=None,
+                 prediction_fn=tf.contrib.layers.softmax,
+                 spatial_squeeze=True,
+                 reuse=None,
+                 scope='MobilenetV1'):
+
+  mobilenet_v1(inputs, num_classes, dropout_keep_prob, is_training, min_depth,
+               depth_multiplier, conv_defs, prediction_fn, spatial_squeeze,
+               reuse, scope)
+
+def mobilenet_v1_050(inputs,
+                 num_classes=1001,
+                 dropout_keep_prob=0.999,
+                 is_training=True,
+                 min_depth=8,
+                 depth_multiplier=0.50,
+                 conv_defs=None,
+                 prediction_fn=tf.contrib.layers.softmax,
+                 spatial_squeeze=True,
+                 reuse=None,
+                 scope='MobilenetV1'):
+
+  mobilenet_v1(inputs, num_classes, dropout_keep_prob, is_training, min_depth,
+               depth_multiplier, conv_defs, prediction_fn, spatial_squeeze,
+               reuse, scope)
+
+def mobilenet_v1_025(inputs,
+                 num_classes=1001,
+                 dropout_keep_prob=0.999,
+                 is_training=True,
+                 min_depth=8,
+                 depth_multiplier=0.25,
+                 conv_defs=None,
+                 prediction_fn=tf.contrib.layers.softmax,
+                 spatial_squeeze=True,
+                 reuse=None,
+                 scope='MobilenetV1'):
+
+  mobilenet_v1(inputs, num_classes, dropout_keep_prob, is_training, min_depth,
+               depth_multiplier, conv_defs, prediction_fn, spatial_squeeze,
+               reuse, scope)
+
+
 mobilenet_v1.default_image_size = 224
 
 
