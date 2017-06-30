@@ -132,7 +132,8 @@ def _add_summaries(m, summary_mode, arop_full_summary_iters):
                                      m.input_tensors, scope_name=scope_name)
     m.summary_ops = {summary_mode: s_ops}
 
-def visit_count_fc(visit_count, last_visit, embed_neurons, wt_decay, fc_dropout):
+def visit_count_fc(visit_count, last_visit, embed_neurons, wt_decay, fc_dropout,
+                   is_training):
   with tf.variable_scope('embed_visit_count'):
     visit_count = tf.reshape(visit_count, shape=[-1])
     last_visit = tf.reshape(last_visit, shape=[-1])
