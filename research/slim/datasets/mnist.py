@@ -15,7 +15,7 @@
 """Provides data for the MNIST dataset.
 
 The dataset scripts used to create the dataset can be found at:
-tensorflow/models/slim/data/create_mnist_dataset.py
+tensorflow/models/slim/datasets/download_and_convert_mnist.py
 """
 
 from __future__ import absolute_import
