@@ -174,9 +174,8 @@ def write_data(data_fname, data_dict, use_json=False, compression=None):
     os.makedirs(dir_name)
 
   if use_json:
-    the_file = open(data_fname,'w')
-    json.dump(data_dict, the_file)
-    the_file.close()
+    with open(data_fname,'w') as the_file:
+        json.dump(data_dict, the_file)
   else:
     try:
       with h5py.File(data_fname, 'w') as hf:
