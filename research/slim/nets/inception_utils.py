@@ -53,6 +53,8 @@ def inception_arg_scope(weight_decay=0.00004,
       'epsilon': batch_norm_epsilon,
       # collection containing update_ops.
       'updates_collections': tf.GraphKeys.UPDATE_OPS,
+      # use fused batch norm.
+      'fused': None,
   }
   if use_batch_norm:
     normalizer_fn = slim.batch_norm
