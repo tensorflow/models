@@ -51,7 +51,7 @@ dataset for Oxford-IIIT Pets lives
 [here](http://www.robots.ox.ac.uk/~vgg/data/pets/). You will need to download
 both the image dataset [`images.tar.gz`](http://www.robots.ox.ac.uk/~vgg/data/pets/data/images.tar.gz)
 and the groundtruth data [`annotations.tar.gz`](http://www.robots.ox.ac.uk/~vgg/data/pets/data/annotations.tar.gz)
-to the `tensorflow/models` directory. This may take some time. After downloading
+to the `tensorflow/models/object_detection/` directory. This may take some time. After downloading
 the tarballs, your `object_detection` directory should appear as follows:
 
 ```lang-none
@@ -69,13 +69,13 @@ Oxford-IIIT Pet dataset into TFRecords. Run the following commands from the
 `object_detection` directory:
 
 ``` bash
-# From tensorflow/models/
+# From tensorflow/models/object_detection/
 wget http://www.robots.ox.ac.uk/~vgg/data/pets/data/images.tar.gz
 wget http://www.robots.ox.ac.uk/~vgg/data/pets/data/annotations.tar.gz
 tar -xvf annotations.tar.gz
 tar -xvf images.tar.gz
-python object_detection/create_pet_tf_record.py \
-    --label_map_path=object_detection/data/pet_label_map.pbtxt \
+python create_pet_tf_record.py \
+    --label_map_path=data/pet_label_map.pbtxt \
     --data_dir=`pwd` \
     --output_dir=`pwd`
 ```
@@ -91,10 +91,10 @@ Storage so the data can be accessed by ML Engine. Run the following command to
 copy the files into your GCS bucket (substituting `${YOUR_GCS_BUCKET}`):
 
 ``` bash
-# From tensorflow/models/
+# From tensorflow/models/object_detection/
 gsutil cp pet_train.record gs://${YOUR_GCS_BUCKET}/data/pet_train.record
 gsutil cp pet_val.record gs://${YOUR_GCS_BUCKET}/data/pet_val.record
-gsutil cp object_detection/data/pet_label_map.pbtxt gs://${YOUR_GCS_BUCKET}/data/pet_label_map.pbtxt
+gsutil cp data/pet_label_map.pbtxt gs://${YOUR_GCS_BUCKET}/data/pet_label_map.pbtxt
 ```
 
 Please remember the path where you upload the data to, as we will need this
