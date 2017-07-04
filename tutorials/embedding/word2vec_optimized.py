@@ -377,7 +377,6 @@ class Word2Vec(object):
           else:
             # The correct label is not the precision@1
             break
-    print()
     print("Eval %4d/%d accuracy = %4.1f%%" % (correct, total,
                                               correct * 100.0 / total))
 
