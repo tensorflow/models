@@ -84,7 +84,7 @@ Note: It is normal to see some warnings when running this script. You may ignore
 them.
 
 Two TFRecord files named `pet_train.record` and `pet_val.record` should be generated
-in the `object_detection` directory.
+in the `tensorflow/models` directory.
 
 Now that the data has been generated, we'll need to upload it to Google Cloud
 Storage so the data can be accessed by ML Engine. Run the following command to
