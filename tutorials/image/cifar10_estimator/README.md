@@ -2,13 +2,13 @@ CIFAR-10 is a common benchmark in machine learning for image recognition.
 
 http://www.cs.toronto.edu/~kriz/cifar.html
 
-Code in this directory focus on how to use TensorFlow Estimator to train and evaluate CIFAR-10ResetNet model, on a single host with one CPU and potentially multiple GPUs.
+Code in this directory focus on how to use TensorFlow Estimator to train and evaluate CIFAR-10 ResetNet model, on a single host with one CPU and potentially multiple GPUs.
 
 <b>Prerequisite:</b>
 
 1. Install TensorFlow with GPU support  with a version more recent than 1.2.0-cp27.
 
-2. Download CIFAR-10 dataset.
+2. Download the CIFAR-10 dataset.
 
 ```shell
 curl -o cifar-10-python.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
@@ -41,5 +41,5 @@ $ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-
 						 --num_gpus=2 \
 					     --train_steps=1000
 
-# There are more commandline flags to play with, check cifar10_main.py for details.
+# There are more command line flags to play with; check cifar10_main.py for details.
 ```
