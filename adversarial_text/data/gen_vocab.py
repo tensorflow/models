@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Generates vocabulary and term frequency files for datasets."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 from collections import defaultdict
+
+# Dependency imports
 
 import tensorflow as tf
 
@@ -66,6 +67,7 @@ def fill_vocab_from_doc(doc, vocab_freqs, doc_counts):
 
 
 def main(_):
+  tf.logging.set_verbosity(tf.logging.INFO)
   vocab_freqs = defaultdict(int)
   doc_counts = defaultdict(int)
 

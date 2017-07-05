@@ -86,7 +86,8 @@ you will not need to interact with the script again.
 DATA_DIR=$HOME/imagenet-data
 
 # build the preprocessing script.
-bazel build inception/download_and_preprocess_imagenet
+cd tensorflow-models/inception
+bazel build //inception:download_and_preprocess_imagenet
 
 # run it
 bazel-bin/inception/download_and_preprocess_imagenet "${DATA_DIR}"
@@ -153,7 +154,8 @@ To train this model, you simply need to specify the following:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/imagenet_train
+cd tensorflow-models/inception
+bazel build //inception:imagenet_train
 
 # run it
 bazel-bin/inception/imagenet_train --num_gpus=1 --batch_size=32 --train_dir=/tmp/imagenet_train --data_dir=/tmp/imagenet_data
@@ -189,7 +191,8 @@ GPU cards.
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/imagenet_train
+cd tensorflow-models/inception
+bazel build //inception:imagenet_train
 
 # run it
 bazel-bin/inception/imagenet_train --num_gpus=2 --batch_size=64 --train_dir=/tmp/imagenet_train
@@ -288,7 +291,8 @@ running. Several things to note here:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/imagenet_distributed_train
+cd tensorflow-models/inception
+bazel build //inception:imagenet_distributed_train
 
 # To start worker 0, go to the worker0 host and run the following (Note that
 # task_id should be in the range [0, num_worker_tasks):
@@ -395,7 +399,8 @@ Briefly, one can evaluate the model by running:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/imagenet_eval
+cd tensorflow-models/inception
+bazel build //inception:imagenet_eval
 
 # run it
 bazel-bin/inception/imagenet_eval --checkpoint_dir=/tmp/imagenet_train --eval_dir=/tmp/imagenet_eval
@@ -450,7 +455,8 @@ but feel free to edit accordingly.
 FLOWERS_DATA_DIR=/tmp/flowers-data/
 
 # build the preprocessing script.
-bazel build inception/download_and_preprocess_flowers
+cd tensorflow-models/inception
+bazel build //inception:download_and_preprocess_flowers
 
 # run it
 bazel-bin/inception/download_and_preprocess_flowers "${FLOWERS_DATA_DIR}"
@@ -530,7 +536,8 @@ the flowers data set with the following command.
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/flowers_train
+cd tensorflow-models/inception
+bazel build //inception:flowers_train
 
 # Path to the downloaded Inception-v3 model.
 MODEL_PATH="${INCEPTION_MODEL_DIR}/inception-v3/model.ckpt-157585"
@@ -566,7 +573,8 @@ fine-tuned model, you will need to run `flowers_eval`:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/flowers_eval
+cd tensorflow-models/inception
+bazel build //inception:flowers_eval
 
 # Directory where we saved the fine-tuned checkpoint and events files.
 TRAIN_DIR=/tmp/flowers_train/
@@ -654,7 +662,8 @@ To run `build_image_data.py`, you can run the following command line:
 OUTPUT_DIRECTORY=$HOME/my-custom-data/
 
 # build the preprocessing script.
-bazel build inception/build_image_data
+cd tensorflow-models/inception
+bazel build //inception:build_image_data
 
 # convert the data.
 bazel-bin/inception/build_image_data \

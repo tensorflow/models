@@ -118,7 +118,7 @@ class AdversarialCrypto(object):
 
   def model(self, collection, message, key=None):
     """The model for Alice, Bob, and Eve.  If key=None, the first FC layer
-    takes only the Key as inputs.  Otherwise, it uses both the key
+    takes only the message as inputs.  Otherwise, it uses both the key
     and the message.
 
     Args:
@@ -128,13 +128,13 @@ class AdversarialCrypto(object):
     """
 
     if key is not None:
-      combined_message = tf.concat(1, [message, key])
+      combined_message = tf.concat(axis=1, values=[message, key])
     else:
       combined_message = message
 
     # Ensure that all variables created are in the specified collection.
     with tf.contrib.framework.arg_scope(
-        [tf.contrib.layers.fully_connected, tf.contrib.layers.convolution],
+        [tf.contrib.layers.fully_connected, tf.contrib.layers.conv2d],
         variables_collections=[collection]):
 
       fc = tf.contrib.layers.fully_connected(
@@ -147,13 +147,13 @@ class AdversarialCrypto(object):
       # and then squeezing it back down).
       fc = tf.expand_dims(fc, 2)
       # 2,1 -> 1,2
-      conv = tf.contrib.layers.convolution(
+      conv = tf.contrib.layers.conv2d(
           fc, 2, 2, 2, 'SAME', activation_fn=tf.nn.sigmoid)
       # 1,2 -> 1, 2
-      conv = tf.contrib.layers.convolution(
+      conv = tf.contrib.layers.conv2d(
           conv, 2, 1, 1, 'SAME', activation_fn=tf.nn.sigmoid)
       # 1,2 -> 1, 1
-      conv = tf.contrib.layers.convolution(
+      conv = tf.contrib.layers.conv2d(
           conv, 1, 1, 1, 'SAME', activation_fn=tf.nn.tanh)
       conv = tf.squeeze(conv, 2)
       return conv

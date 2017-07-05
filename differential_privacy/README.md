@@ -3,7 +3,7 @@
 Open Sourced By: Xin Pan (xpan@google.com, github: panyx0718)
 
 
-###Introduction for dp_sgd/README.md
+### Introduction for [dp_sgd/README.md](dp_sgd/README.md)
 
 Machine learning techniques based on neural networks are achieving remarkable 
 results in a wide variety of domains. Often, the training of models requires 
@@ -18,7 +18,7 @@ manageable cost in software complexity, training efficiency, and model quality.
 paper: https://arxiv.org/abs/1607.00133
 
 
-###Introduction for multiple_teachers/README.md
+### Introduction for [multiple_teachers/README.md](multiple_teachers/README.md)
 
 This repository contains code to create a setup for learning privacy-preserving 
 student models by transferring knowledge from an ensemble of teachers trained 

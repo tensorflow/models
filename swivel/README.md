@@ -24,7 +24,7 @@ Note that the resulting co-occurrence matrix is very sparse (i.e., contains many
 zeros) since most words won't have been observed in the context of other words.
 In the case of very rare words, it seems reasonable to assume that you just
 haven't sampled enough data to spot their co-occurrence yet.  On the other hand,
-if we've failed to observed to common words co-occuring, it seems likely that
+if we've failed to observed two common words co-occuring, it seems likely that
 they are *anti-correlated*.
 
 Swivel attempts to capture this intuition by using both the observed and the

@@ -269,9 +269,7 @@ class ArcStandardTransitionSystem : public ParserTransitionSystem {
   void PerformRightArc(ParserState *state, int label) const {
     DCHECK(IsAllowedRightArc(*state));
     int s0 = state->Pop();
-    int s1 = state->Pop();
-    state->AddArc(s0, s1, label);
-    state->Push(s1);
+    state->AddArc(s0, state->Top(), label);
   }
 
   // We are in a deterministic state when we either reached the end of the input
