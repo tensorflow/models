@@ -8,6 +8,7 @@
 # Usage:
 # cd slim
 # ./scripts/train_cifarnet_on_cifar10.sh
+set -e
 
 # Where the checkpoint and logs will be saved to.
 TRAIN_DIR=/tmp/cifarnet-model

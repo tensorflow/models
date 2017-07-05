@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import google3
 import tensorflow as tf
 
 from tensorflow.python.ops import control_flow_ops
@@ -242,7 +241,7 @@ def preprocess_for_eval(image, height, width,
   If height and width are specified it would output an image with that size by
   applying resize_bilinear.
 
-  If central_fraction is specified it would cropt the central fraction of the
+  If central_fraction is specified it would crop the central fraction of the
   input image.
 
   Args:
