@@ -195,8 +195,8 @@ message RandomBlackPatches {
 
 // Randomly resizes the image up to [target_height, target_width].
 message RandomResizeMethod {
-  optional float target_height = 1;
-  optional float target_width = 2;
+  optional int32 target_height = 1;
+  optional int32 target_width = 2;
 }
 
 // Scales boxes from normalized coordinates to pixel coordinates.
