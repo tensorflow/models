@@ -204,6 +204,8 @@ def main(unused_argv):
 
   # Make training session.
   sess = tf.InteractiveSession()
+  sess.run(tf.global_variables_initializer())
+
   summary_writer = tf.summary.FileWriter(
       FLAGS.event_log_dir, graph=sess.graph, flush_secs=10)
 
@@ -211,7 +213,6 @@ def main(unused_argv):
     saver.restore(sess, FLAGS.pretrained_model)
 
   tf.train.start_queue_runners(sess)
-  sess.run(tf.global_variables_initializer())
 
   tf.logging.info('iteration number, cost')
 

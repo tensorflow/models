@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Virtual adversarial text models."""
 from __future__ import absolute_import
 from __future__ import division
@@ -20,6 +19,9 @@ from __future__ import print_function
 
 import csv
 import os
+
+# Dependency imports
+
 import tensorflow as tf
 
 import adversarial_losses as adv_lib
@@ -81,7 +83,8 @@ flags.DEFINE_integer('replicas_to_aggregate', 1,
 # Regularization
 flags.DEFINE_float('max_grad_norm', 1.0,
                    'Clip the global gradient norm to this value.')
-flags.DEFINE_float('keep_prob_emb', 1.0, 'keep probability on embedding layer')
+flags.DEFINE_float('keep_prob_emb', 1.0, 'keep probability on embedding layer. '
+                   '0.5 is optimal on IMDB with virtual adversarial training.')
 flags.DEFINE_float('keep_prob_lstm_out', 1.0,
                    'keep probability on lstm output.')
 flags.DEFINE_float('keep_prob_cl_hidden', 1.0,
@@ -249,8 +252,7 @@ class VatxtModel(object):
     eval_ops = {
         'accuracy':
             tf.contrib.metrics.streaming_accuracy(
-                layers_lib.predictions(logits), inputs.labels,
-                inputs.weights)
+                layers_lib.predictions(logits), inputs.labels, inputs.weights)
     }
 
     with tf.control_dependencies([inputs.save_state(next_state)]):
@@ -610,7 +612,8 @@ def _inputs(dataset='train', pretrain=False, bidir=False):
       state_size=FLAGS.rnn_cell_size,
       num_layers=FLAGS.rnn_num_layers,
       batch_size=FLAGS.batch_size,
-      unroll_steps=FLAGS.num_timesteps)
+      unroll_steps=FLAGS.num_timesteps,
+      eos_id=FLAGS.vocab_size - 1)
 
 
 def _get_vocab_freqs():

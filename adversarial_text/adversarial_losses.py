@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Adversarial losses for text models."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+# Dependency imports
 
 import tensorflow as tf
 
@@ -24,13 +25,14 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 # Adversarial and virtual adversarial training parameters.
-flags.DEFINE_float('perturb_norm_length', 0.1,
+flags.DEFINE_float('perturb_norm_length', 5.0,
                    'Norm length of adversarial perturbation to be '
-                   'optimized with validation')
+                   'optimized with validation. '
+                   '5.0 is optimal on IMDB with virtual adversarial training. ')
 
 # Virtual adversarial training parameters
 flags.DEFINE_integer('num_power_iteration', 1, 'The number of power iteration')
-flags.DEFINE_float('small_constant_for_finite_diff', 1e-3,
+flags.DEFINE_float('small_constant_for_finite_diff', 1e-1,
                    'Small constant for finite difference method')
 
 # Parameters for building the graph
@@ -83,19 +85,22 @@ def virtual_adversarial_loss(logits, embedded, inputs,
   """
   # Stop gradient of logits. See https://arxiv.org/abs/1507.00677 for details.
   logits = tf.stop_gradient(logits)
+
   # Only care about the KL divergence on the final timestep.
-  weights = _end_of_seq_mask(inputs.labels)
+  weights = inputs.eos_weights
+  assert weights is not None
 
   # Initialize perturbation with random noise.
   # shape(embedded) = (batch_size, num_timesteps, embedding_dim)
-  d = _mask_by_length(tf.random_normal(shape=tf.shape(embedded)), inputs.length)
+  d = tf.random_normal(shape=tf.shape(embedded))
 
   # Perform finite difference method and power iteration.
   # See Eq.(8) in the paper http://arxiv.org/pdf/1507.00677.pdf,
   # Adding small noise to input and taking gradient with respect to the noise
   # corresponds to 1 power iteration.
   for _ in xrange(FLAGS.num_power_iteration):
-    d = _scale_l2(d, FLAGS.small_constant_for_finite_diff)
+    d = _scale_l2(
+        _mask_by_length(d, inputs.length), FLAGS.small_constant_for_finite_diff)
     d_logits = logits_from_embedding_fn(embedded + d)
     kl = _kl_divergence_with_logits(logits, d_logits, weights)
     d, = tf.gradients(
@@ -104,8 +109,7 @@ def virtual_adversarial_loss(logits, embedded, inputs,
         aggregation_method=tf.AggregationMethod.EXPERIMENTAL_ACCUMULATE_N)
     d = tf.stop_gradient(d)
 
-  perturb = _scale_l2(
-      _mask_by_length(d, inputs.length), FLAGS.perturb_norm_length)
+  perturb = _scale_l2(d, FLAGS.perturb_norm_length)
   vadv_logits = logits_from_embedding_fn(embedded + perturb)
   return _kl_divergence_with_logits(logits, vadv_logits, weights)
 
@@ -136,7 +140,8 @@ def virtual_adversarial_loss_bidir(logits, embedded, inputs,
   """Virtual adversarial loss for bidirectional models."""
   logits = tf.stop_gradient(logits)
   f_inputs, _ = inputs
-  weights = _end_of_seq_mask(f_inputs.labels)
+  weights = f_inputs.eos_weights
+  assert weights is not None
 
   perturbs = [
       _mask_by_length(tf.random_normal(shape=tf.shape(emb)), f_inputs.length)
@@ -155,10 +160,7 @@ def virtual_adversarial_loss_bidir(logits, embedded, inputs,
         aggregation_method=tf.AggregationMethod.EXPERIMENTAL_ACCUMULATE_N)
     perturbs = [tf.stop_gradient(d) for d in perturbs]
 
-  perturbs = [
-      _scale_l2(_mask_by_length(d, f_inputs.length), FLAGS.perturb_norm_length)
-      for d in perturbs
-  ]
+  perturbs = [_scale_l2(d, FLAGS.perturb_norm_length) for d in perturbs]
   vadv_logits = logits_from_embedding_fn(
       [emb + d for (emb, d) in zip(embedded, perturbs)])
   return _kl_divergence_with_logits(logits, vadv_logits, weights)
@@ -167,7 +169,9 @@ def virtual_adversarial_loss_bidir(logits, embedded, inputs,
 def _mask_by_length(t, length):
   """Mask t, 3-D [batch, time, dim], by length, 1-D [batch,]."""
   maxlen = t.get_shape().as_list()[1]
-  mask = tf.sequence_mask(length, maxlen=maxlen)
+
+  # Subtract 1 from length to prevent the perturbation from going on 'eos'
+  mask = tf.sequence_mask(length - 1, maxlen=maxlen)
   mask = tf.expand_dims(tf.cast(mask, tf.float32), -1)
   # shape(mask) = (batch, num_timesteps, 1)
   return t * mask
@@ -175,30 +179,14 @@ def _mask_by_length(t, length):
 
 def _scale_l2(x, norm_length):
   # shape(x) = (batch, num_timesteps, d)
-
   # Divide x by max(abs(x)) for a numerically stable L2 norm.
   # 2norm(x) = a * 2norm(x/a)
   # Scale over the full sequence, dims (1, 2)
   alpha = tf.reduce_max(tf.abs(x), (1, 2), keep_dims=True) + 1e-12
-  l2_norm = alpha * tf.sqrt(tf.reduce_sum(tf.pow(x / alpha, 2), (1, 2),
-                                          keep_dims=True) + 1e-6)
+  l2_norm = alpha * tf.sqrt(
+      tf.reduce_sum(tf.pow(x / alpha, 2), (1, 2), keep_dims=True) + 1e-6)
   x_unit = x / l2_norm
   return norm_length * x_unit
-
-
-def _end_of_seq_mask(tokens):
-  """Generate a mask for the EOS token (1.0 on EOS, 0.0 otherwise).
-
-  Args:
-    tokens: 1-D integer tensor [num_timesteps*batch_size]. Each element is an
-      id from the vocab.
-
-  Returns:
-    Float tensor same shape as tokens, whose values are 1.0 on the end of
-    sequence and 0.0 on the others.
-  """
-  eos_id = FLAGS.vocab_size - 1
-  return tf.cast(tf.equal(tokens, eos_id), tf.float32)
 
 
 def _kl_divergence_with_logits(q_logits, p_logits, weights):
@@ -218,21 +206,20 @@ def _kl_divergence_with_logits(q_logits, p_logits, weights):
   # For logistic regression
   if FLAGS.num_classes == 2:
     q = tf.nn.sigmoid(q_logits)
-    p = tf.nn.sigmoid(p_logits)
     kl = (-tf.nn.sigmoid_cross_entropy_with_logits(logits=q_logits, labels=q) +
           tf.nn.sigmoid_cross_entropy_with_logits(logits=p_logits, labels=q))
+    kl = tf.squeeze(kl)
 
   # For softmax regression
   else:
     q = tf.nn.softmax(q_logits)
-    p = tf.nn.softmax(p_logits)
-    kl = tf.reduce_sum(q * (tf.log(q) - tf.log(p)), 1)
+    kl = tf.reduce_sum(
+        q * (tf.nn.log_softmax(q_logits) - tf.nn.log_softmax(p_logits)), 1)
 
   num_labels = tf.reduce_sum(weights)
   num_labels = tf.where(tf.equal(num_labels, 0.), 1., num_labels)
 
-  kl.get_shape().assert_has_rank(2)
+  kl.get_shape().assert_has_rank(1)
   weights.get_shape().assert_has_rank(1)
-  loss = tf.identity(tf.reduce_sum(tf.expand_dims(weights, -1) * kl) /
-                     num_labels, name='kl')
+  loss = tf.identity(tf.reduce_sum(weights * kl) / num_labels, name='kl')
   return loss
