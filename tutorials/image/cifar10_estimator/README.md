@@ -6,7 +6,7 @@ Code in this directory focus on how to use TensorFlow Estimator to train and eva
 
 <b>Prerequisite:</b>
 
-1. Install TensorFlow with GPU support  with a version more recent than 1.2.0-cp27.
+1. Install TensorFlow with GPU support  with a version more recent than 1.2.1.
 
 2. Download the CIFAR-10 dataset.
 
