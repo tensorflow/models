@@ -1246,7 +1246,6 @@ def random_resize_method(image, target_size):
   Returns:
     resized image.
   """
-
   resized_image = _apply_with_random_selector(
       image,
       lambda x, method: tf.image.resize_images(x, target_size, method),
@@ -1442,7 +1441,7 @@ def subtract_channel_mean(image, means=None):
       raise ValueError('Input must be of size [height, width, channels]')
     if len(means) != image.get_shape()[-1]:
       raise ValueError('len(means) must match the number of channels')
-    return image - [[means]]
+    return tf.subtract(image, tf.constant([m for m in means]))
 
 
 def one_hot_encoding(labels, num_classes=None):
