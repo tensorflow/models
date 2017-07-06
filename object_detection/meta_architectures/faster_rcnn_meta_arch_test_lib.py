@@ -271,7 +271,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         self.assertEqual(set(prediction_out.keys()), expected_output_keys)
 
         self.assertAllEqual(prediction_out['image_shape'], input_image_shape)
-        for output_key, expected_shape in expected_output_shapes.iteritems():
+        for output_key, expected_shape in expected_output_shapes.items():
           self.assertAllEqual(prediction_out[output_key].shape, expected_shape)
 
         # Check that anchors are clipped to window.

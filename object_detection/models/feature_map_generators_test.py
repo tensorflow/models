@@ -63,7 +63,7 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
       sess.run(init_op)
       out_feature_maps = sess.run(feature_maps)
       out_feature_map_shapes = dict(
-          (key, value.shape) for key, value in out_feature_maps.iteritems())
+          (key, value.shape) for key, value in out_feature_maps.items())
       self.assertDictEqual(out_feature_map_shapes, expected_feature_map_shapes)
 
   def test_get_expected_feature_map_shapes_with_inception_v3(self):
@@ -93,7 +93,7 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
       sess.run(init_op)
       out_feature_maps = sess.run(feature_maps)
       out_feature_map_shapes = dict(
-          (key, value.shape) for key, value in out_feature_maps.iteritems())
+          (key, value.shape) for key, value in out_feature_maps.items())
       self.assertDictEqual(out_feature_map_shapes, expected_feature_map_shapes)
 
 
