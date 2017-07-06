@@ -30,6 +30,7 @@ package_group(
         "//photos/vision/human_sensing/...",
         "//photos/vision/object_net/...",
         "//research/drishti/app/vesper/...",
+        "//research/vale/imagination/...",
         "//research/vale/instance_segmentation/...",
         "//research/vale/pose_estimation/...",
         "//research/vision/classomatic/...",
