@@ -25,7 +25,6 @@ import PIL.Image as Image
 import PIL.ImageColor as ImageColor
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
-import six
 import tensorflow as tf
 
 
@@ -398,7 +397,7 @@ def visualize_boxes_and_labels_on_image_array(image,
               classes[i] % len(STANDARD_COLORS)]
 
   # Draw all boxes onto image.
-  for box, color in six.iteritems(box_to_color_map):
+  for box, color in box_to_color_map.items():
     ymin, xmin, ymax, xmax = box
     if instance_masks is not None:
       draw_mask_on_image_array(
