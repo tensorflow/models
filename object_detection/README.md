@@ -54,6 +54,17 @@ Extras:
       Exporting a trained model for inference</a><br>
 * <a href='g3doc/defining_your_own_model.md'>
       Defining your own model architecture</a><br>
+* <a href='g3doc/using_your_own_dataset.md'>
+      Bringing in your own dataset</a><br>
+
+## Getting Help
+
+Please report bugs to the tensorflow/models/ Github
+[issue tracker](https://github.com/tensorflow/models/issues), prefixing the
+issue name with "object_detection". To get help with issues you may encounter
+using the Tensorflow Object Detection API, create a new question on
+[StackOverflow](https://stackoverflow.com/) with the tags "tensorflow" and
+"object-detection".
 
 ## Release information
 
