@@ -72,6 +72,11 @@ tf.flags.DEFINE_float('weight_decay', 1e-4, 'Weight decay for convolutions.')
 tf.flags.DEFINE_boolean('use_distortion_for_training', True,
                         'If doing image distortion for training.')
 
+tf.flags.DEFINE_boolean('run_experiment', False,
+                        "If True will run an experiment," 
+                        "otherwise will run training and evaluatio"
+                        "using the estimator's methods")
+
 # Perf flags
 tf.flags.DEFINE_integer('num_intra_threads', 1,
                         """Number of threads to use for intra-op parallelism.
@@ -359,6 +364,19 @@ def input_fn(subset, num_shards):
     label_shards = [tf.parallel_stack(x) for x in label_shards]
     return feature_shards, label_shards
 
+# create experiment
+def experiment_fn(run_config, hparams):    
+	# create estimator
+	classifier = tf.estimator.Estimator(model_fn=_resnet_model_fn,
+									                    config=run_config)
+	return tf.contrib.learn.Experiment(
+		classifier,
+		train_input_fn=train_input_fn,
+		eval_input_fn=test_input_fn,
+    train_steps=FLAGS.train_steps,
+    eval_steps=num_eval_examples // FLAGS.eval_batch_size
+	)
+
 
 def main(unused_argv):
   # The env variable is on deprecation path, default is set to off.
@@ -381,7 +399,7 @@ def main(unused_argv):
   if num_eval_examples % FLAGS.eval_batch_size != 0:
     raise ValueError('validation set size must be multiple of eval_batch_size')
 
-  config = tf.estimator.RunConfig()
+  config = tf.contrib.learn.RunConfig(model_dir=FLAGS.model_dir)
   sess_config = tf.ConfigProto()
   sess_config.allow_soft_placement = True
   sess_config.log_device_placement = FLAGS.log_device_placement
@@ -390,26 +408,29 @@ def main(unused_argv):
   sess_config.gpu_options.force_gpu_compatible = FLAGS.force_gpu_compatible
   config = config.replace(session_config=sess_config)
 
-  classifier = tf.estimator.Estimator(
-      model_fn=_resnet_model_fn, model_dir=FLAGS.model_dir, config=config)
+  if FLAGS.run_experiment:
+    tf.contrib.learn.learn_runner.run(experiment_fn, run_config=run_config)
+  else:
+    classifier = tf.estimator.Estimator(
+        model_fn=_resnet_model_fn, config=config)
 
-  tensors_to_log = {'learning_rate': 'learning_rate'}
-  logging_hook = tf.train.LoggingTensorHook(
-      tensors=tensors_to_log, every_n_iter=100)
+    tensors_to_log = {'learning_rate': 'learning_rate'}
+    logging_hook = tf.train.LoggingTensorHook(
+        tensors=tensors_to_log, every_n_iter=100)
 
-  print('Starting to train...')
-  classifier.train(
-      input_fn=functools.partial(
-          input_fn, subset='train', num_shards=FLAGS.num_gpus),
-      steps=FLAGS.train_steps,
-      hooks=[logging_hook])
+    print('Starting to train...')
+    classifier.train(
+        input_fn=functools.partial(
+            input_fn, subset='train', num_shards=FLAGS.num_gpus),
+        steps=FLAGS.train_steps,
+        hooks=[logging_hook])
 
-  print('Starting to evaluate...')
-  eval_results = classifier.evaluate(
-      input_fn=functools.partial(
-          input_fn, subset='eval', num_shards=FLAGS.num_gpus),
-      steps=num_eval_examples // FLAGS.eval_batch_size)
-  print(eval_results)
+    print('Starting to evaluate...')
+    eval_results = classifier.evaluate(
+        input_fn=functools.partial(
+            input_fn, subset='eval', num_shards=FLAGS.num_gpus),
+        steps=num_eval_examples // FLAGS.eval_batch_size)
+    print(eval_results)
 
 
 if __name__ == '__main__':
