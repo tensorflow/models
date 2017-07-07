@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import google3
 from datasets import cifar10
 from datasets import flowers
 from datasets import imagenet

@@ -32,7 +32,6 @@ import os
 import random
 import sys
 
-import google3
 import tensorflow as tf
 
 from datasets import dataset_utils

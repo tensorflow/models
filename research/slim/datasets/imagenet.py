@@ -33,7 +33,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import google3
 from six.moves import urllib
 import tensorflow as tf
 

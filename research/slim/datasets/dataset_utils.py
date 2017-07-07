@@ -21,7 +21,6 @@ import os
 import sys
 import tarfile
 
-import google3
 from six.moves import urllib
 import tensorflow as tf
 
