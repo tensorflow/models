@@ -22,6 +22,20 @@ from google.protobuf import text_format
 from object_detection.protos import string_int_label_map_pb2
 
 
+def _validate_label_map(label_map):
+  """Checks if a label map is valid.
+
+  Args:
+    label_map: StringIntLabelMap to validate.
+
+  Raises:
+    ValueError: if label map is invalid.
+  """
+  for item in label_map.item:
+    if item.id < 1:
+      raise ValueError('Label map ids should be >= 1.')
+
+
 def create_category_index(categories):
   """Creates dictionary of COCO compatible categories keyed by category id.
 
@@ -91,7 +105,6 @@ def convert_label_map_to_categories(label_map,
   return categories
 
 
-# TODO: double check documentaion.
 def load_labelmap(path):
   """Loads label map proto.
 
@@ -107,6 +120,7 @@ def load_labelmap(path):
       text_format.Merge(label_map_string, label_map)
     except text_format.ParseError:
       label_map.ParseFromString(label_map_string)
+  _validate_label_map(label_map)
   return label_map
 
 

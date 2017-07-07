@@ -53,7 +53,29 @@ class LabelMapUtilTest(tf.test.TestCase):
     self.assertEqual(label_map_dict['dog'], 1)
     self.assertEqual(label_map_dict['cat'], 2)
 
-  def test_keep_categories_with_unique_id(self):
+  def test_load_bad_label_map(self):
+    label_map_string = """
+      item {
+        id:0
+        name:'class that should not be indexed at zero'
+      }
+      item {
+        id:2
+        name:'cat'
+      }
+      item {
+        id:1
+        name:'dog'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+
+    with self.assertRaises(ValueError):
+      label_map_util.load_labelmap(label_map_path)
+
+    def test_keep_categories_with_unique_id(self):
     label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
     label_map_string = """
       item {
