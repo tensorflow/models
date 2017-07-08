@@ -98,7 +98,6 @@ tf.flags.DEFINE_boolean('log_device_placement', False,
                         'Whether to log device placement.')
 
 
-# TODO(jamesqin): Replace with fix in b/62239022
 class ParamServerDeviceSetter(object):
   """Helper class to assign variables on the least loaded ps-device."""
 
@@ -106,7 +105,7 @@ class ParamServerDeviceSetter(object):
     """Initializer for ParamServerDeviceSetter.
 
     Args:
-      worker_device: the device to use for computer ops.
+      worker_device: the device to use for computation ops.
       ps_devices: a list of devices to use for Variable ops. Each variable is
       assigned to the least loaded device.
     """
