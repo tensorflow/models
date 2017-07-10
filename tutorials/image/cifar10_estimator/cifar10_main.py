@@ -302,43 +302,16 @@ def input_fn(subset, num_shards):
   Returns:
     two lists of tensors for features and labels, each of num_shards length.
   """
-  dataset = cifar10.Cifar10DataSet(FLAGS.data_dir)
-  is_training = (subset == 'train')
-  if is_training:
+  if subset == 'train':
     batch_size = FLAGS.train_batch_size
-  else:
+  elif subset == 'validate' or subset == 'eval':
     batch_size = FLAGS.eval_batch_size
-  with tf.device('/cpu:0'), tf.name_scope('batching'):
-    # CPU loads all data from disk since there're only 60k 32*32 RGB images.
-    all_images, all_labels = dataset.read_all_data(subset)
-    dataset = tf.contrib.data.Dataset.from_tensor_slices(
-        (all_images, all_labels))
-    dataset = dataset.map(
-        lambda x, y: (tf.cast(x, tf.float32), tf.cast(y, tf.int32)),
-        num_threads=2,
-        output_buffer_size=batch_size)
-
-    # Image preprocessing.
-    def _preprocess(image, label):
-      # If GPU is available, NHWC to NCHW transpose is done in ResNetCifar10
-      # class, not included in preprocessing.
-      return cifar10.Cifar10DataSet.preprocess(
-          image, is_training, FLAGS.use_distortion_for_training), label
-    dataset = dataset.map(
-        _preprocess, num_threads=batch_size, output_buffer_size=2 * batch_size)
-    # Repeat infinitely.
-    dataset = dataset.repeat()
-    if is_training:
-      min_fraction_of_examples_in_queue = 0.4
-      min_queue_examples = int(
-          cifar10.Cifar10DataSet.num_examples_per_epoch(subset) *
-          min_fraction_of_examples_in_queue)
-      # Ensure that the capacity is sufficiently large to provide good random
-      # shuffling
-      dataset = dataset.shuffle(buffer_size=min_queue_examples + 3 * batch_size)
-    dataset = dataset.batch(batch_size)
-    iterator = dataset.make_one_shot_iterator()
-    image_batch, label_batch = iterator.get_next()
+  else:
+    raise ValueError('Subset must be one of \'train\', \'validate\' and \'eval\'')
+  with tf.device('/cpu:0'):
+    use_distortion = subset == 'train' and FLAGS.use_distortion_for_training
+    dataset = cifar10.Cifar10DataSet(FLAGS.data_dir, subset, use_distortion)
+    image_batch, label_batch = dataset.make_batch(batch_size)
     if num_shards <= 1:
       # No GPU available or only 1 GPU.
       return [image_batch], [label_batch]
