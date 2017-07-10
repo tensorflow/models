@@ -24,7 +24,7 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow import app
 from tensorflow.python.platform import flags
-from tensorflow.contrib.tfprof import model_analyzer
+#from tensorflow.contrib.tfprof import model_analyzer -- not in Python 3
 
 import data_provider
 import common_flags

@@ -17,6 +17,7 @@
 """Configuration to read FSNS dataset https://goo.gl/3Ldm8v."""
 
 import os
+import sys
 import re
 import tensorflow as tf
 from tensorflow.contrib import slim
@@ -79,7 +80,10 @@ def read_charset(filename, null_character=u'\u2591'):
         logging.warning('incorrect charset file. line #%d: %s', i, line)
         continue
       code = int(m.group(1))
-      char = m.group(2).decode('utf-8')
+      if sys.version_info[0] >= 3:
+        char = m.group(2)
+      else:
+        char = m.group(2).decode('utf-8')
       if char == '<nul>':
         char = null_character
       charset[code] = char

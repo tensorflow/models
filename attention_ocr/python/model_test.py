@@ -15,11 +15,12 @@
 
 """Tests for the model."""
 
+import sys
 import numpy as np
 import string
 import tensorflow as tf
 from tensorflow.contrib import slim
-from tensorflow.contrib.tfprof import model_analyzer
+#from tensorflow.contrib.tfprof import model_analyzer -- not in Python 3
 
 import model
 import data_provider
@@ -27,8 +28,12 @@ import data_provider
 
 def create_fake_charset(num_char_classes):
   charset = {}
-  for i in xrange(num_char_classes):
-    charset[i] = string.printable[i % len(string.printable)]
+  if sys.version_info[0] >= 3:
+    for i in range(num_char_classes):
+      charset[i] = string.printable[i % len(string.printable)]
+  else:
+    for i in xrange(num_char_classes):
+      charset[i] = string.printable[i % len(string.printable)]
   return charset
 
 
@@ -125,9 +130,10 @@ class ModelTest(tf.test.TestCase):
     ocr_model = self.create_model()
     ocr_model.create_base(images=self.fake_images, labels_one_hot=None)
     with self.test_session() as sess:
-      tfprof_root = model_analyzer.print_model_analysis(
-          sess.graph,
-          tfprof_options=model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+      if sys.version_info[0] < 3:
+        tfprof_root = model_analyzer.print_model_analysis(
+        sess.graph,
+        tfprof_options=model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
 
       model_size_bytes = 4 * tfprof_root.total_parameters
       self.assertLess(model_size_bytes, 1 * 2**30)

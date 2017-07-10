@@ -59,8 +59,12 @@ SequenceLossParams = collections.namedtuple('SequenceLossParams', [
 def _dict_to_array(id_to_char, default_character):
   num_char_classes = max(id_to_char.keys()) + 1
   array = [default_character] * num_char_classes
-  for k, v in id_to_char.iteritems():
-    array[k] = v
+  if sys.version_info[0] >= 3:
+    for k, v in id_to_char.items():
+      array[k] = v
+  else:
+    for k, v in id_to_char.iteritems():
+      array[k] = v
   return array
 
 
@@ -485,11 +489,16 @@ class Model(object):
                      data.labels,
                      streaming=True,
                      rej_char=self._params.null_code))
-
-      for name, value in names_to_values.iteritems():
-        summary_name = 'eval/' + name
-        tf.summary.scalar(summary_name, tf.Print(value, [value], summary_name))
-      return names_to_updates.values()
+      if sys.version_info[0] >= 3:
+        for name, value in names_to_values.items():
+          summary_name = 'eval/' + name
+          tf.summary.scalar(summary_name, tf.Print(value, [value], summary_name))
+        return list(names_to_updates.values())
+      else:
+        for name, value in names_to_values.iteritems():
+          summary_name = 'eval/' + name
+          tf.summary.scalar(summary_name, tf.Print(value, [value], summary_name))
+        return names_to_updates.values()
 
   def create_init_fn_to_restore(self, master_checkpoint, inception_checkpoint):
     """Creates an init operations to restore weights from various checkpoints.
