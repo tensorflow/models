@@ -25,8 +25,8 @@ import PIL.Image as Image
 import PIL.ImageColor as ImageColor
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
-import tensorflow as tf
 import six
+import tensorflow as tf
 
 
 _TITLE_LEFT_MARGIN = 10
