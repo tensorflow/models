@@ -35,7 +35,7 @@ Before You Start:
 * <a href='g3doc/installation.md'>Installation</a><br>
 
 Quick Start:
-* <a href='object_detection_tutorial.ipynb'>
+* <a href='g3doc/running_notebook.md'>
       Quick Start: Jupyter notebook for off-the-shelf inference</a><br>
 * <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
 
