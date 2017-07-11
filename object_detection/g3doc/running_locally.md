@@ -77,5 +77,5 @@ tensorboard --logdir=${PATH_TO_MODEL_DIRECTORY}
 ```
 
 where `${PATH_TO_MODEL_DIRECTORY}` points to the directory that contains the
-train and eval directories. Please note it make take Tensorboard a couple
+train and eval directories. Please note it may take Tensorboard a couple
 minutes to populate with data.
