@@ -26,8 +26,8 @@ swivel/* @waterson
 syntaxnet/* @calberti @andorardo
 textsum/* @panyx0718 @peterjliu
 transformer/* @daviddao
-tutorials/embedding/*	@zffchen78 @a-dai
-tutorials/image	@sherrym @shlens
-tutorials/rnn @lukaszkaiser @ebrevdo
+tutorials/embedding/* @zffchen78 @a-dai
+tutorials/image/* @sherrym @shlens
+tutorials/rnn/* @lukaszkaiser @ebrevdo
 video_prediction/* @cbfinn
 
