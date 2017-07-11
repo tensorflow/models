@@ -1,9 +1,4 @@
 item {
-  id: 0
-  name: 'none_of_the_above'
-}
-
-item {
   id: 1
   name: 'Abyssinian'
 }
