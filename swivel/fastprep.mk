@@ -33,22 +33,23 @@
 # "prep.py" and runs significantly faster.  Use it to generate the co-occurrence
 # matrices and other files necessary to train a Swivel matrix.
 
-
-CXXFLAGS=-std=c++11 -march=native -g -O2 -flto -Wall -I.
+# -std=c++11 is also supported => the standard std::unordered_map will be used
+CXXFLAGS=-std=c++14 -march=native -g -O2 -flto -Wall -I.
 LDLIBS=-lprotobuf -pthread -lm
 
 FETCHER=curl -L -o
 TF_URL=https://github.com/tensorflow/tensorflow/raw/master
 PROTOC=protoc
+TF_EXAMPLE=tensorflow/core/example
 
 
-%.proto: tensorflow/core/example
+%.proto: $(TF_EXAMPLE)
 	$(FETCHER) $@ $(TF_URL)/$@
 
 %.pb.cc: %.proto
 	$(PROTOC) --cpp_out=. $<
 
-fastprep: fastprep.cc tensorflow/core/example/feature.pb.cc tensorflow/core/example/example.pb.cc
+fastprep: fastprep.cc $(TF_EXAMPLE)/feature.pb.cc $(TF_EXAMPLE)/example.pb.cc
 
 tensorflow/core/example:
 	@mkdir -p tensorflow/core/example
