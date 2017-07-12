@@ -181,7 +181,7 @@ def _add_output_tensor_nodes(postprocessed_tensors):
   label_id_offset = 1
   boxes = postprocessed_tensors.get('detection_boxes')
   scores = postprocessed_tensors.get('detection_scores')
-  if classes:
+  if classes != None:
       classes += label_id_offset
   else:
       classes = tf.constant(1, tf.int32, scores.shape)
