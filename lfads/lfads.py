@@ -952,7 +952,7 @@ class LFADS(object):
 
     session = tf.get_default_session()
     self.logfile = os.path.join(hps.lfads_save_dir, "lfads_log")
-    self.writer = tf.summary.FileWriter(self.logfile, session.graph)
+    self.writer = tf.summary.FileWriter(self.logfile)
 
   def build_feed_dict(self, train_name, data_bxtxd, ext_input_bxtxi=None,
                       keep_prob=None):
