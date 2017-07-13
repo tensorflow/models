@@ -55,6 +55,10 @@ SequenceLossParams = collections.namedtuple('SequenceLossParams', [
     'label_smoothing', 'ignore_nulls', 'average_across_timesteps'
 ])
 
+EncodeCoordinatesParams = collections.namedtuple('EncodeCoordinatesParams', [
+  'enabled'
+])
+
 
 def _dict_to_array(id_to_char, default_character):
   num_char_classes = max(id_to_char.keys()) + 1
@@ -162,7 +166,8 @@ class Model(object):
         SequenceLossParams(
             label_smoothing=0.1,
             ignore_nulls=True,
-            average_across_timesteps=False)
+            average_across_timesteps=False),
+        'encode_coordinates_fn': EncodeCoordinatesParams(enabled=False)
     }
 
   def set_mparam(self, function, **kwargs):
@@ -293,6 +298,30 @@ class Model(object):
     scores = tf.reshape(selected_scores, shape=(-1, self._params.seq_length))
     return ids, log_prob, scores
 
+  def encode_coordinates_fn(self, net):
+    """Adds one-hot encoding of coordinates to different views in the networks.
+
+    For each "pixel" of a feature map it adds a onehot encoded x and y
+    coordinates.
+
+    Args:
+      net: a tensor of shape=[batch_size, height, width, num_features]
+
+    Returns:
+      a tensor with the same height and width, but altered feature_size.
+    """
+    mparams = self._mparams['encode_coordinates_fn']
+    if mparams.enabled:
+      batch_size, h, w, _ = net.shape.as_list()
+      x, y = tf.meshgrid(tf.range(w), tf.range(h))
+      w_loc = slim.one_hot_encoding(x, num_classes=w)
+      h_loc = slim.one_hot_encoding(y, num_classes=h)
+      loc = tf.concat([h_loc, w_loc], 2)
+      loc = tf.tile(tf.expand_dims(loc, 0), [batch_size, 1, 1, 1])
+      return tf.concat([net, loc], 3)
+    else:
+      return net
+
   def create_base(self,
                   images,
                   labels_one_hot,
@@ -323,6 +352,9 @@ class Model(object):
           for i, v in enumerate(views)
       ]
       logging.debug('Conv tower: %s', nets[0])
+
+      nets = [self.encode_coordinates_fn(net) for net in nets]
+      logging.debug('Conv tower w/ encoded coordinates: %s', nets[0])
 
       net = self.pool_views_fn(nets)
       logging.debug('Pooled views: %s', net)
