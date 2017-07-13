@@ -28,7 +28,7 @@ Pull requests:
 virtualenv --system-site-packages ~/.tensorflow
 source ~/.tensorflow/bin/activate
 pip install --upgrade pip
-pip install --upgrade tensorflow_gpu
+pip install --upgrade tensorflow-gpu
 ```
 
 2. At least 158GB of free disk space to download the FSNS dataset:
