@@ -33,10 +33,10 @@ $ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-
                          --num_gpus=0 \
                          --train_steps=1000
 
-# Run the model on CPU and 2 CPUs. After training, it runs the evaluation.
+# Run the model on CPU and 2 GPUs. After training, it runs the evaluation.
 $ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
                          --model_dir=/tmp/cifar10 \
-                         --is_cpu_ps=False \
+                         --is_cpu_ps=True \
                          --force_gpu_compatible=True \
                          --num_gpus=2 \
                          --train_steps=1000
