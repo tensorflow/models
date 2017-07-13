@@ -48,7 +48,8 @@ bazel-bin/tensorflow/examples/label_image/label_image \
 --graph=/tmp/frozen_inception_v3.pb \
 --labels=/tmp/imagenet_slim_labels.txt \
 --input_mean=0 \
---input_std=255
+--input_std=255 \
+--logtostderr
 
 """
 
@@ -73,8 +74,8 @@ tf.app.flags.DEFINE_boolean(
     'Whether to save out a training-focused version of the model.')
 
 tf.app.flags.DEFINE_integer(
-    'default_image_size', 224,
-    'The image size to use if the model does not define it.')
+    'image_size', None,
+    'The image size to use, otherwise use the model default_image_size.')
 
 tf.app.flags.DEFINE_string('dataset_name', 'imagenet',
                            'The name of the dataset to use with the model.')
@@ -105,10 +106,7 @@ def main(_):
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         is_training=FLAGS.is_training)
-    if hasattr(network_fn, 'default_image_size'):
-      image_size = network_fn.default_image_size
-    else:
-      image_size = FLAGS.default_image_size
+    image_size = FLAGS.image_size or network_fn.default_image_size
     placeholder = tf.placeholder(name='input', dtype=tf.float32,
                                  shape=[1, image_size, image_size, 3])
     network_fn(placeholder)

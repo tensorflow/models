@@ -30,6 +30,8 @@ def inception_v2_base(inputs,
                       final_endpoint='Mixed_5c',
                       min_depth=16,
                       depth_multiplier=1.0,
+                      use_separable_conv=True,
+                      data_format='NHWC',
                       scope=None):
   """Inception v2 (6a2).
 
@@ -51,6 +53,9 @@ def inception_v2_base(inputs,
       for all convolution ops. The value must be greater than zero. Typical
       usage will be to set this value in (0, 1) to reduce the number of
       parameters or computation cost of the model.
+    use_separable_conv: Use a separable convolution for the first layer
+      Conv2d_1a_7x7. If this is False, use a normal convolution instead.
+    data_format: Data format of the activations ('NHWC' or 'NCHW').
     scope: Optional variable_scope.
 
   Returns:
@@ -72,28 +77,52 @@ def inception_v2_base(inputs,
     raise ValueError('depth_multiplier is not greater than zero.')
   depth = lambda d: max(int(d * depth_multiplier), min_depth)
 
+  if data_format != 'NHWC' and data_format != 'NCHW':
+    raise ValueError('data_format must be either NHWC or NCHW.')
+  if data_format == 'NCHW' and use_separable_conv:
+    raise ValueError(
+        'separable convolution only supports NHWC layout. NCHW data format can'
+        ' only be used when use_separable_conv is False.'
+    )
+
+  concat_dim = 3 if data_format == 'NHWC' else 1
   with tf.variable_scope(scope, 'InceptionV2', [inputs]):
     with slim.arg_scope(
-        [slim.conv2d, slim.max_pool2d, slim.avg_pool2d, slim.separable_conv2d],
-        stride=1, padding='SAME'):
+        [slim.conv2d, slim.max_pool2d, slim.avg_pool2d],
+        stride=1,
+        padding='SAME',
+        data_format=data_format):
 
       # Note that sizes in the comments below assume an input spatial size of
       # 224x224, however, the inputs can be of any size greater 32x32.
 
       # 224 x 224 x 3
       end_point = 'Conv2d_1a_7x7'
-      # depthwise_multiplier here is different from depth_multiplier.
-      # depthwise_multiplier determines the output channels of the initial
-      # depthwise conv (see docs for tf.nn.separable_conv2d), while
-      # depth_multiplier controls the # channels of the subsequent 1x1
-      # convolution. Must have
-      #   in_channels * depthwise_multipler <= out_channels
-      # so that the separable convolution is not overparameterized.
-      depthwise_multiplier = min(int(depth(64) / 3), 8)
-      net = slim.separable_conv2d(
-          inputs, depth(64), [7, 7], depth_multiplier=depthwise_multiplier,
-          stride=2, weights_initializer=trunc_normal(1.0),
-          scope=end_point)
+
+      if use_separable_conv:
+        # depthwise_multiplier here is different from depth_multiplier.
+        # depthwise_multiplier determines the output channels of the initial
+        # depthwise conv (see docs for tf.nn.separable_conv2d), while
+        # depth_multiplier controls the # channels of the subsequent 1x1
+        # convolution. Must have
+        #   in_channels * depthwise_multipler <= out_channels
+        # so that the separable convolution is not overparameterized.
+        depthwise_multiplier = min(int(depth(64) / 3), 8)
+        net = slim.separable_conv2d(
+            inputs, depth(64), [7, 7],
+            depth_multiplier=depthwise_multiplier,
+            stride=2,
+            padding='SAME',
+            weights_initializer=trunc_normal(1.0),
+            scope=end_point)
+      else:
+        # Use a normal convolution instead of a separable convolution.
+        net = slim.conv2d(
+            inputs,
+            depth(64), [7, 7],
+            stride=2,
+            weights_initializer=trunc_normal(1.0),
+            scope=end_point)
       end_points[end_point] = net
       if end_point == final_endpoint: return net, end_points
       # 112 x 112 x 64
@@ -443,8 +472,8 @@ def inception_v2(inputs,
       usage will be to set this value in (0, 1) to reduce the number of
       parameters or computation cost of the model.
     prediction_fn: a function to get predictions out of logits.
-    spatial_squeeze: if True, logits is of shape [B, C], if false logits is
-        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
+    spatial_squeeze: if True, logits is of shape [B, C], if false logits is of
+        shape [B, 1, 1, C], where B is batch_size and C is number of classes.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -504,8 +533,8 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
   known, it will be lost. (2) inception.slim.ops._two_element_tuple cannot
   handle tensors that define the kernel size.
       shape = tf.shape(input_tensor)
-      return = tf.pack([tf.minimum(shape[1], kernel_size[0]),
-                        tf.minimum(shape[2], kernel_size[1])])
+      return = tf.stack([tf.minimum(shape[1], kernel_size[0]),
+                         tf.minimum(shape[2], kernel_size[1])])
 
   """
   shape = input_tensor.get_shape().as_list()
