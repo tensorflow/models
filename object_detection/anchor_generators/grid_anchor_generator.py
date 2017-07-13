@@ -88,7 +88,7 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
         format [(height_0, width_0)].  For example, setting
         feature_map_shape_list=[(8, 8)] asks for anchors that correspond
         to an 8x8 layer.  For this anchor generator, only lists of length 1 are
-        allowed.
+        allowed (Faster R-CNN).
 
     Returns:
       boxes: a BoxList holding a collection of N anchor boxes
@@ -104,9 +104,12 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
     if not all([isinstance(list_item, tuple) and len(list_item) == 2
                 for list_item in feature_map_shape_list]):
       raise ValueError('feature_map_shape_list must be a list of pairs.')
+    # grid_height=8, grid_width=8
     grid_height, grid_width = feature_map_shape_list[0]
+    # the size of two matrix is [len(self._aspect_ratios), len(self._scales)]
     scales_grid, aspect_ratios_grid = ops.meshgrid(self._scales,
                                                    self._aspect_ratios)
+    # 1-d tensor of 'scales_grid' and 'aspect_ratios_grid'
     scales_grid = tf.reshape(scales_grid, [-1])
     aspect_ratios_grid = tf.reshape(aspect_ratios_grid, [-1])
     return tile_anchors(grid_height,
