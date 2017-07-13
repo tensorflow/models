@@ -25,7 +25,7 @@ import os
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile
-from google3.third_party.tensorflow_models.slim import export_inference_graph
+import export_inference_graph
 
 
 class ExportInferenceGraphTest(tf.test.TestCase):
