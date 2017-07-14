@@ -75,7 +75,7 @@ def convert_label_map_to_categories(label_map,
       list is created with max_num_classes categories.
     max_num_classes: maximum number of (consecutive) label indices to include.
     use_display_name: (boolean) choose whether to load 'display_name' field
-      as category name.  If False of if the display_name field does not exist,
+      as category name.  If False or if the display_name field does not exist,
       uses 'name' field as category names instead.
   Returns:
     categories: a list of dictionaries representing all possible categories.
