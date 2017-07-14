@@ -202,6 +202,8 @@ class PerImageEvaluation(object):
 
   def _remove_invalid_boxes(self, detected_boxes, detected_scores,
                             detected_class_labels):
+    if len(detected_boxes) == 0:
+      return (detected_boxes, detected_scores, detected_class_labels)
     valid_indices = np.logical_and(detected_boxes[:, 0] < detected_boxes[:, 2],
                                    detected_boxes[:, 1] < detected_boxes[:, 3])
     return (detected_boxes[valid_indices, :], detected_scores[valid_indices],
