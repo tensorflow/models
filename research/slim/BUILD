@@ -14,6 +14,7 @@ package_group(
         "//cloud/ml/applications/vision/...",
         "//geo/gt/fusion/...",
         "//googlex/proxy/learning/...",
+        "//i18n/input/font/...",
         "//image/understanding/object_detection/...",
         "//learning/biotensorflow/...",
         "//learning/brain/contrib/hub/examples/slim_nets/...",
