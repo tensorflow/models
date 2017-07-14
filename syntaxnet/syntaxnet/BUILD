@@ -748,6 +748,15 @@ py_library(
 )
 
 py_library(
+    name = "syntaxnet_ops",
+    srcs = ["syntaxnet_ops.py"],
+    deps = [
+        ":parser_ops",
+        ":load_parser_ops_py",
+    ],
+)
+
+py_library(
     name = "graph_builder",
     srcs = ["graph_builder.py"],
     deps = [
