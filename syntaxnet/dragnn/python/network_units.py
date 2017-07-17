@@ -15,9 +15,11 @@
 
 """Basic network units used in assembling DRAGNN graphs."""
 
-from abc import ABCMeta
-from abc import abstractmethod
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
+import abc
 
 import tensorflow as tf
 from tensorflow.python.ops import nn
@@ -25,6 +27,7 @@ from tensorflow.python.ops import tensor_array_ops as ta
 from tensorflow.python.platform import tf_logging as logging
 
 from dragnn.python import dragnn_ops
+from syntaxnet import syntaxnet_ops
 from syntaxnet.util import check
 from syntaxnet.util import registry
 
@@ -135,11 +138,11 @@ def add_embeddings(channel_id, feature_spec, seed=None):
       raise RuntimeError('vocab resource contains more than one part:\n%s',
                          str(feature_spec.vocab))
     seed1, seed2 = tf.get_seed(seed)
-    embeddings = dragnn_ops.dragnn_embedding_initializer(
-        embedding_input=feature_spec.pretrained_embedding_matrix.part[0]
-        .file_pattern,
-        vocab=feature_spec.vocab.part[0].file_pattern,
-        scaling_coefficient=1.0,
+    embeddings = syntaxnet_ops.word_embedding_initializer(
+        vectors=feature_spec.pretrained_embedding_matrix.part[0].file_pattern,
+        vocabulary=feature_spec.vocab.part[0].file_pattern,
+        num_special_embeddings=1,
+        embedding_init=1.0,
         seed=seed1,
         seed2=seed2)
     return tf.get_variable(name, initializer=tf.reshape(embeddings, shape))
@@ -626,7 +629,7 @@ class NetworkUnitInterface(object):
     layers (list): List of Layer objects to track network layers that should
       be written to Tensors during training and inference.
   """
-  __metaclass__ = ABCMeta  # required for @abstractmethod
+  __metaclass__ = abc.ABCMeta  # required for @abstractmethod
 
   def __init__(self, component, init_layers=None, init_context_layers=None):
     """Initializes parameters for embedding matrices.
@@ -738,7 +741,7 @@ class NetworkUnitInterface(object):
               [attention_hidden_layer_size, component.num_actions],
               initializer=tf.random_normal_initializer(stddev=1e-4)))
 
-  @abstractmethod
+  @abc.abstractmethod
   def create(self,
              fixed_embeddings,
              linked_embeddings,
