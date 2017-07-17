@@ -174,7 +174,8 @@ def batch_multiclass_non_max_suppression(boxes,
                                          change_coordinate_frame=False,
                                          num_valid_boxes=None,
                                          masks=None,
-                                         scope=None):
+                                         scope=None,
+                                         parallel_iterations=32):
   """Multi-class version of non maximum suppression that operates on a batch.
 
   This op is similar to `multiclass_non_max_suppression` but operates on a batch
@@ -208,6 +209,8 @@ def batch_multiclass_non_max_suppression(boxes,
       float32 tensor containing box masks. `q` can be either number of classes
       or 1 depending on whether a separate mask is predicted per class.
     scope: tf scope name.
+    parallel_iterations: (optional) number of batch items to process in
+      parallel.
 
   Returns:
     A dictionary containing the following entries:
@@ -227,7 +230,7 @@ def batch_multiclass_non_max_suppression(boxes,
 
   Raises:
     ValueError: if iou_thresh is not in [0, 1] or if input boxlist does not have
-      a valid scores field.
+      a valid scores field or if num_anchors is not statically defined.
   """
   q = boxes.shape[2].value
   num_classes = scores.shape[2].value
@@ -235,36 +238,44 @@ def batch_multiclass_non_max_suppression(boxes,
     raise ValueError('third dimension of boxes must be either 1 or equal '
                      'to the third dimension of scores')
 
+  original_masks = masks
   with tf.name_scope(scope, 'BatchMultiClassNonMaxSuppression'):
-    per_image_boxes_list = tf.unstack(boxes)
-    per_image_scores_list = tf.unstack(scores)
-    num_valid_boxes_list = len(per_image_boxes_list) * [None]
-    per_image_masks_list = len(per_image_boxes_list) * [None]
-    if num_valid_boxes is not None:
-      num_valid_boxes_list = tf.unstack(num_valid_boxes)
-    if masks is not None:
-      per_image_masks_list = tf.unstack(masks)
+    boxes_shape = boxes.shape
+    batch_size = boxes_shape[0].value
+    num_anchors = boxes_shape[1].value
+    if batch_size is None:
+      batch_size = tf.shape(boxes)[0]
+    if num_anchors is None:
+      raise ValueError('anchors dimension of the `boxes` must be statically '
+                       'defined.')
 
-    detection_boxes_list = []
-    detection_scores_list = []
-    detection_classes_list = []
-    num_detections_list = []
-    detection_masks_list = []
-    for (per_image_boxes, per_image_scores, per_image_masks, num_valid_boxes
-        ) in zip(per_image_boxes_list, per_image_scores_list,
-                 per_image_masks_list, num_valid_boxes_list):
-      if num_valid_boxes is not None:
-        per_image_boxes = tf.reshape(
-            tf.slice(per_image_boxes, 3*[0],
-                     tf.stack([num_valid_boxes, -1, -1])), [-1, q, 4])
-        per_image_scores = tf.reshape(
-            tf.slice(per_image_scores, [0, 0],
-                     tf.stack([num_valid_boxes, -1])), [-1, num_classes])
-        if masks is not None:
-          per_image_masks = tf.reshape(
-              tf.slice(per_image_masks, 4*[0],
-                       tf.stack([num_valid_boxes, -1, -1, -1])),
-              [-1, q, masks.shape[3].value, masks.shape[4].value])
+    # If num valid boxes aren't provided, create one and mark all boxes as
+    # valid.
+    if num_valid_boxes is None:
+      num_valid_boxes_shape = tf.expand_dims(batch_size, axis=0)
+      num_valid_boxes = tf.fill(num_valid_boxes_shape, num_anchors)
+
+    # If masks aren't provided, create dummy masks so we can only have one copy
+    # of single_image_nms_fn and discard the dummy masks after map_fn.
+    if masks is None:
+      masks_shape = tf.stack([batch_size, num_anchors, 1, 0, 0])
+      masks = tf.zeros(masks_shape)
+
+    def single_image_nms_fn(args):
+      """Runs NMS on a single image and returns padded output."""
+      per_image_boxes, per_image_scores, per_image_masks, num_valid_boxes = args
+      per_image_boxes = tf.reshape(
+          tf.slice(per_image_boxes, 3 * [0],
+                   tf.stack([num_valid_boxes, -1, -1])), [-1, q, 4])
+      per_image_scores = tf.reshape(
+          tf.slice(per_image_scores, [0, 0],
+                   tf.stack([num_valid_boxes, -1])), [-1, num_classes])
+
+      per_image_masks = tf.reshape(
+          tf.slice(per_image_masks, 4 * [0],
+                   tf.stack([num_valid_boxes, -1, -1, -1])),
+          [-1, q, per_image_masks.shape[2].value,
+           per_image_masks.shape[3].value])
       nmsed_boxlist = multiclass_non_max_suppression(
           per_image_boxes,
           per_image_scores,
@@ -275,24 +286,30 @@ def batch_multiclass_non_max_suppression(boxes,
           masks=per_image_masks,
           clip_window=clip_window,
           change_coordinate_frame=change_coordinate_frame)
-      num_detections_list.append(tf.to_float(nmsed_boxlist.num_boxes()))
+      num_detections = tf.to_float(nmsed_boxlist.num_boxes())
       padded_boxlist = box_list_ops.pad_or_clip_box_list(nmsed_boxlist,
                                                          max_total_size)
-      detection_boxes_list.append(padded_boxlist.get())
-      detection_scores_list.append(
-          padded_boxlist.get_field(fields.BoxListFields.scores))
-      detection_classes_list.append(
-          padded_boxlist.get_field(fields.BoxListFields.classes))
-      if masks is not None:
-        detection_masks_list.append(
-            padded_boxlist.get_field(fields.BoxListFields.masks))
+      detection_boxes = padded_boxlist.get()
+      detection_scores = padded_boxlist.get_field(fields.BoxListFields.scores)
+      detection_classes = padded_boxlist.get_field(fields.BoxListFields.classes)
+      detection_masks = padded_boxlist.get_field(fields.BoxListFields.masks)
+      return [detection_boxes, detection_scores, detection_classes,
+              detection_masks, num_detections]
+
+    (batch_detection_boxes, batch_detection_scores,
+     batch_detection_classes, batch_detection_masks,
+     batch_num_detections) = tf.map_fn(
+         single_image_nms_fn,
+         elems=[boxes, scores, masks, num_valid_boxes],
+         dtype=[tf.float32, tf.float32, tf.float32, tf.float32, tf.float32],
+         parallel_iterations=parallel_iterations)
 
     nms_dict = {
-        'detection_boxes': tf.stack(detection_boxes_list),
-        'detection_scores': tf.stack(detection_scores_list),
-        'detection_classes': tf.stack(detection_classes_list),
-        'num_detections': tf.stack(num_detections_list)
+        'detection_boxes': batch_detection_boxes,
+        'detection_scores': batch_detection_scores,
+        'detection_classes': batch_detection_classes,
+        'num_detections': batch_num_detections
     }
-    if masks is not None:
-      nms_dict['detection_masks'] = tf.stack(detection_masks_list)
+    if original_masks is not None:
+      nms_dict['detection_masks'] = batch_detection_masks
     return nms_dict

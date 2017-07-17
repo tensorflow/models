@@ -499,6 +499,7 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     nms_dict = post_processing.batch_multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh,
         max_size_per_class=max_output_size, max_total_size=max_output_size)
+
     with self.test_session() as sess:
       nms_output = sess.run(nms_dict)
       self.assertAllClose(nms_output['detection_boxes'], exp_nms_corners)
@@ -524,6 +525,58 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     iou_thresh = .5
     max_output_size = 4
 
+    exp_nms_corners = np.array([[[0, 10, 1, 11],
+                                 [0, 0, 1, 1],
+                                 [0, 0, 0, 0],
+                                 [0, 0, 0, 0]],
+                                [[0, 999, 2, 1004],
+                                 [0, 10.1, 1, 11.1],
+                                 [0, 100, 1, 101],
+                                 [0, 0, 0, 0]]])
+    exp_nms_scores = np.array([[.95, .9, 0, 0],
+                               [.85, .5, .3, 0]])
+    exp_nms_classes = np.array([[0, 0, 0, 0],
+                                [1, 0, 0, 0]])
+
+    nms_dict = post_processing.batch_multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size)
+
+    # Check static shapes
+    self.assertAllEqual(nms_dict['detection_boxes'].get_shape().as_list(),
+                        exp_nms_corners.shape)
+    self.assertAllEqual(nms_dict['detection_scores'].get_shape().as_list(),
+                        exp_nms_scores.shape)
+    self.assertAllEqual(nms_dict['detection_classes'].get_shape().as_list(),
+                        exp_nms_classes.shape)
+    self.assertEqual(nms_dict['num_detections'].get_shape().as_list(), [2])
+
+    with self.test_session() as sess:
+      nms_output = sess.run(nms_dict)
+      self.assertAllClose(nms_output['detection_boxes'], exp_nms_corners)
+      self.assertAllClose(nms_output['detection_scores'], exp_nms_scores)
+      self.assertAllClose(nms_output['detection_classes'], exp_nms_classes)
+      self.assertAllClose(nms_output['num_detections'], [2, 3])
+
+  def test_batch_multiclass_nms_with_dynamic_batch_size(self):
+    boxes_placeholder = tf.placeholder(tf.float32, shape=(None, 4, 2, 4))
+    scores_placeholder = tf.placeholder(tf.float32, shape=(None, 4, 2))
+    boxes = np.array([[[[0, 0, 1, 1], [0, 0, 4, 5]],
+                       [[0, 0.1, 1, 1.1], [0, 0.1, 2, 1.1]],
+                       [[0, -0.1, 1, 0.9], [0, -0.1, 1, 0.9]],
+                       [[0, 10, 1, 11], [0, 10, 1, 11]]],
+                      [[[0, 10.1, 1, 11.1], [0, 10.1, 1, 11.1]],
+                       [[0, 100, 1, 101], [0, 100, 1, 101]],
+                       [[0, 1000, 1, 1002], [0, 999, 2, 1004]],
+                       [[0, 1000, 1, 1002.1], [0, 999, 2, 1002.7]]]])
+    scores = np.array([[[.9, 0.01], [.75, 0.05],
+                        [.6, 0.01], [.95, 0]],
+                       [[.5, 0.01], [.3, 0.01],
+                        [.01, .85], [.01, .5]]])
+    score_thresh = 0.1
+    iou_thresh = .5
+    max_output_size = 4
+
     exp_nms_corners = [[[0, 10, 1, 11],
                         [0, 0, 1, 1],
                         [0, 0, 0, 0],
@@ -538,10 +591,21 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
                        [1, 0, 0, 0]]
 
     nms_dict = post_processing.batch_multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh,
+        boxes_placeholder, scores_placeholder, score_thresh, iou_thresh,
         max_size_per_class=max_output_size, max_total_size=max_output_size)
+
+    # Check static shapes
+    self.assertAllEqual(nms_dict['detection_boxes'].get_shape().as_list(),
+                        [None, 4, 4])
+    self.assertAllEqual(nms_dict['detection_scores'].get_shape().as_list(),
+                        [None, 4])
+    self.assertAllEqual(nms_dict['detection_classes'].get_shape().as_list(),
+                        [None, 4])
+    self.assertEqual(nms_dict['num_detections'].get_shape().as_list(), [None])
+
     with self.test_session() as sess:
-      nms_output = sess.run(nms_dict)
+      nms_output = sess.run(nms_dict, feed_dict={boxes_placeholder: boxes,
+                                                 scores_placeholder: scores})
       self.assertAllClose(nms_output['detection_boxes'], exp_nms_corners)
       self.assertAllClose(nms_output['detection_scores'], exp_nms_scores)
       self.assertAllClose(nms_output['detection_classes'], exp_nms_classes)
@@ -574,33 +638,121 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     iou_thresh = .5
     max_output_size = 4
 
-    exp_nms_corners = [[[0, 10, 1, 11],
-                        [0, 0, 1, 1],
-                        [0, 0, 0, 0],
-                        [0, 0, 0, 0]],
-                       [[0, 999, 2, 1004],
-                        [0, 10.1, 1, 11.1],
-                        [0, 100, 1, 101],
-                        [0, 0, 0, 0]]]
-    exp_nms_scores = [[.95, .9, 0, 0],
-                      [.85, .5, .3, 0]]
-    exp_nms_classes = [[0, 0, 0, 0],
-                       [1, 0, 0, 0]]
-    exp_nms_masks = [[[[6, 7], [8, 9]],
-                      [[0, 1], [2, 3]],
-                      [[0, 0], [0, 0]],
-                      [[0, 0], [0, 0]]],
-                     [[[13, 14], [15, 16]],
-                      [[8, 9], [10, 11]],
-                      [[10, 11], [12, 13]],
-                      [[0, 0], [0, 0]]]]
+    exp_nms_corners = np.array([[[0, 10, 1, 11],
+                                 [0, 0, 1, 1],
+                                 [0, 0, 0, 0],
+                                 [0, 0, 0, 0]],
+                                [[0, 999, 2, 1004],
+                                 [0, 10.1, 1, 11.1],
+                                 [0, 100, 1, 101],
+                                 [0, 0, 0, 0]]])
+    exp_nms_scores = np.array([[.95, .9, 0, 0],
+                               [.85, .5, .3, 0]])
+    exp_nms_classes = np.array([[0, 0, 0, 0],
+                                [1, 0, 0, 0]])
+    exp_nms_masks = np.array([[[[6, 7], [8, 9]],
+                               [[0, 1], [2, 3]],
+                               [[0, 0], [0, 0]],
+                               [[0, 0], [0, 0]]],
+                              [[[13, 14], [15, 16]],
+                               [[8, 9], [10, 11]],
+                               [[10, 11], [12, 13]],
+                               [[0, 0], [0, 0]]]])
 
     nms_dict = post_processing.batch_multiclass_non_max_suppression(
         boxes, scores, score_thresh, iou_thresh,
         max_size_per_class=max_output_size, max_total_size=max_output_size,
         masks=masks)
+
+    # Check static shapes
+    self.assertAllEqual(nms_dict['detection_boxes'].get_shape().as_list(),
+                        exp_nms_corners.shape)
+    self.assertAllEqual(nms_dict['detection_scores'].get_shape().as_list(),
+                        exp_nms_scores.shape)
+    self.assertAllEqual(nms_dict['detection_classes'].get_shape().as_list(),
+                        exp_nms_classes.shape)
+    self.assertAllEqual(nms_dict['detection_masks'].get_shape().as_list(),
+                        exp_nms_masks.shape)
+    self.assertEqual(nms_dict['num_detections'].get_shape().as_list(), [2])
+
     with self.test_session() as sess:
       nms_output = sess.run(nms_dict)
+      self.assertAllClose(nms_output['detection_boxes'], exp_nms_corners)
+      self.assertAllClose(nms_output['detection_scores'], exp_nms_scores)
+      self.assertAllClose(nms_output['detection_classes'], exp_nms_classes)
+      self.assertAllClose(nms_output['num_detections'], [2, 3])
+      self.assertAllClose(nms_output['detection_masks'], exp_nms_masks)
+
+  def test_batch_multiclass_nms_with_masks_with_dynamic_batch_size(self):
+    boxes_placeholder = tf.placeholder(tf.float32, shape=(None, 4, 2, 4))
+    scores_placeholder = tf.placeholder(tf.float32, shape=(None, 4, 2))
+    masks_placeholder = tf.placeholder(tf.float32, shape=(None, 4, 2, 2, 2))
+
+    boxes = np.array([[[[0, 0, 1, 1], [0, 0, 4, 5]],
+                       [[0, 0.1, 1, 1.1], [0, 0.1, 2, 1.1]],
+                       [[0, -0.1, 1, 0.9], [0, -0.1, 1, 0.9]],
+                       [[0, 10, 1, 11], [0, 10, 1, 11]]],
+                      [[[0, 10.1, 1, 11.1], [0, 10.1, 1, 11.1]],
+                       [[0, 100, 1, 101], [0, 100, 1, 101]],
+                       [[0, 1000, 1, 1002], [0, 999, 2, 1004]],
+                       [[0, 1000, 1, 1002.1], [0, 999, 2, 1002.7]]]])
+    scores = np.array([[[.9, 0.01], [.75, 0.05],
+                        [.6, 0.01], [.95, 0]],
+                       [[.5, 0.01], [.3, 0.01],
+                        [.01, .85], [.01, .5]]])
+    masks = np.array([[[[[0, 1], [2, 3]], [[1, 2], [3, 4]]],
+                       [[[2, 3], [4, 5]], [[3, 4], [5, 6]]],
+                       [[[4, 5], [6, 7]], [[5, 6], [7, 8]]],
+                       [[[6, 7], [8, 9]], [[7, 8], [9, 10]]]],
+                      [[[[8, 9], [10, 11]], [[9, 10], [11, 12]]],
+                       [[[10, 11], [12, 13]], [[11, 12], [13, 14]]],
+                       [[[12, 13], [14, 15]], [[13, 14], [15, 16]]],
+                       [[[14, 15], [16, 17]], [[15, 16], [17, 18]]]]])
+    score_thresh = 0.1
+    iou_thresh = .5
+    max_output_size = 4
+
+    exp_nms_corners = np.array([[[0, 10, 1, 11],
+                                 [0, 0, 1, 1],
+                                 [0, 0, 0, 0],
+                                 [0, 0, 0, 0]],
+                                [[0, 999, 2, 1004],
+                                 [0, 10.1, 1, 11.1],
+                                 [0, 100, 1, 101],
+                                 [0, 0, 0, 0]]])
+    exp_nms_scores = np.array([[.95, .9, 0, 0],
+                               [.85, .5, .3, 0]])
+    exp_nms_classes = np.array([[0, 0, 0, 0],
+                                [1, 0, 0, 0]])
+    exp_nms_masks = np.array([[[[6, 7], [8, 9]],
+                               [[0, 1], [2, 3]],
+                               [[0, 0], [0, 0]],
+                               [[0, 0], [0, 0]]],
+                              [[[13, 14], [15, 16]],
+                               [[8, 9], [10, 11]],
+                               [[10, 11], [12, 13]],
+                               [[0, 0], [0, 0]]]])
+
+    nms_dict = post_processing.batch_multiclass_non_max_suppression(
+        boxes_placeholder, scores_placeholder, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size,
+        masks=masks_placeholder)
+
+    # Check static shapes
+    self.assertAllEqual(nms_dict['detection_boxes'].get_shape().as_list(),
+                        [None, 4, 4])
+    self.assertAllEqual(nms_dict['detection_scores'].get_shape().as_list(),
+                        [None, 4])
+    self.assertAllEqual(nms_dict['detection_classes'].get_shape().as_list(),
+                        [None, 4])
+    self.assertAllEqual(nms_dict['detection_masks'].get_shape().as_list(),
+                        [None, 4, 2, 2])
+    self.assertEqual(nms_dict['num_detections'].get_shape().as_list(), [None])
+
+    with self.test_session() as sess:
+      nms_output = sess.run(nms_dict, feed_dict={boxes_placeholder: boxes,
+                                                 scores_placeholder: scores,
+                                                 masks_placeholder: masks})
       self.assertAllClose(nms_output['detection_boxes'], exp_nms_corners)
       self.assertAllClose(nms_output['detection_scores'], exp_nms_scores)
       self.assertAllClose(nms_output['detection_classes'], exp_nms_classes)
