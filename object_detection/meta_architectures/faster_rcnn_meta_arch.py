@@ -1083,13 +1083,20 @@ class FasterRCNNMetaArch(model.DetectionModel):
       mask_predictions_batch = tf.reshape(
           mask_predictions, [-1, self.max_num_proposals,
                              self.num_classes, mask_height, mask_width])
-    detections = self._second_stage_nms_fn(
-        refined_decoded_boxes_batch,
-        class_predictions_batch,
-        clip_window=clip_window,
-        change_coordinate_frame=True,
-        num_valid_boxes=num_proposals,
-        masks=mask_predictions_batch)
+    (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
+     num_detections) = self._second_stage_nms_fn(
+         refined_decoded_boxes_batch,
+         class_predictions_batch,
+         clip_window=clip_window,
+         change_coordinate_frame=True,
+         num_valid_boxes=num_proposals,
+         masks=mask_predictions_batch)
+    detections = {'detection_boxes': nmsed_boxes,
+                  'detection_scores': nmsed_scores,
+                  'detection_classes': nmsed_classes,
+                  'num_detections': tf.to_float(num_detections)}
+    if nmsed_masks is not None:
+      detections['detection_masks'] = nmsed_masks
     if mask_predictions is not None:
       detections['detection_masks'] = tf.to_float(
           tf.greater_equal(detections['detection_masks'], mask_threshold))

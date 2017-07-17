@@ -213,24 +213,24 @@ def batch_multiclass_non_max_suppression(boxes,
       parallel.
 
   Returns:
-    A dictionary containing the following entries:
-    'detection_boxes': A [batch_size, max_detections, 4] float32 tensor
+    'nmsed_boxes': A [batch_size, max_detections, 4] float32 tensor
       containing the non-max suppressed boxes.
-    'detection_scores': A [bath_size, max_detections] float32 tensor containing
+    'nmsed_scores': A [batch_size, max_detections] float32 tensor containing
       the scores for the boxes.
-    'detection_classes': A [batch_size, max_detections] float32 tensor
+    'nmsed_classes': A [batch_size, max_detections] float32 tensor
       containing the class for boxes.
-    'num_detections': A [batchsize] float32 tensor indicating the number of
+    'nmsed_masks': (optional) a
+      [batch_size, max_detections, mask_height, mask_width] float32 tensor
+      containing masks for each selected box. This is set to None if input
+      `masks` is None.
+    'num_detections': A [batch_size] int32 tensor indicating the number of
       valid detections per batch item. Only the top num_detections[i] entries in
       nms_boxes[i], nms_scores[i] and nms_class[i] are valid. the rest of the
       entries are zero paddings.
-    'detection_masks': (optional) a
-      [batch_size, max_detections, mask_height, mask_width] float32 tensor
-      containing masks for each selected box.
 
   Raises:
-    ValueError: if iou_thresh is not in [0, 1] or if input boxlist does not have
-      a valid scores field or if num_anchors is not statically defined.
+    ValueError: if `q` in boxes.shape is not 1 or not equal to number of
+      classes as inferred from scores.shape.
   """
   q = boxes.shape[2].value
   num_classes = scores.shape[2].value
@@ -243,17 +243,16 @@ def batch_multiclass_non_max_suppression(boxes,
     boxes_shape = boxes.shape
     batch_size = boxes_shape[0].value
     num_anchors = boxes_shape[1].value
+
     if batch_size is None:
       batch_size = tf.shape(boxes)[0]
     if num_anchors is None:
-      raise ValueError('anchors dimension of the `boxes` must be statically '
-                       'defined.')
+      num_anchors = tf.shape(boxes)[1]
 
     # If num valid boxes aren't provided, create one and mark all boxes as
     # valid.
     if num_valid_boxes is None:
-      num_valid_boxes_shape = tf.expand_dims(batch_size, axis=0)
-      num_valid_boxes = tf.fill(num_valid_boxes_shape, num_anchors)
+      num_valid_boxes = tf.ones([batch_size], dtype=tf.int32) * num_anchors
 
     # If masks aren't provided, create dummy masks so we can only have one copy
     # of single_image_nms_fn and discard the dummy masks after map_fn.
@@ -263,17 +262,19 @@ def batch_multiclass_non_max_suppression(boxes,
 
     def single_image_nms_fn(args):
       """Runs NMS on a single image and returns padded output."""
-      per_image_boxes, per_image_scores, per_image_masks, num_valid_boxes = args
+      (per_image_boxes, per_image_scores, per_image_masks,
+       per_image_num_valid_boxes) = args
       per_image_boxes = tf.reshape(
           tf.slice(per_image_boxes, 3 * [0],
-                   tf.stack([num_valid_boxes, -1, -1])), [-1, q, 4])
+                   tf.stack([per_image_num_valid_boxes, -1, -1])), [-1, q, 4])
       per_image_scores = tf.reshape(
           tf.slice(per_image_scores, [0, 0],
-                   tf.stack([num_valid_boxes, -1])), [-1, num_classes])
+                   tf.stack([per_image_num_valid_boxes, -1])),
+          [-1, num_classes])
 
       per_image_masks = tf.reshape(
           tf.slice(per_image_masks, 4 * [0],
-                   tf.stack([num_valid_boxes, -1, -1, -1])),
+                   tf.stack([per_image_num_valid_boxes, -1, -1, -1])),
           [-1, q, per_image_masks.shape[2].value,
            per_image_masks.shape[3].value])
       nmsed_boxlist = multiclass_non_max_suppression(
@@ -286,30 +287,26 @@ def batch_multiclass_non_max_suppression(boxes,
           masks=per_image_masks,
           clip_window=clip_window,
           change_coordinate_frame=change_coordinate_frame)
-      num_detections = tf.to_float(nmsed_boxlist.num_boxes())
       padded_boxlist = box_list_ops.pad_or_clip_box_list(nmsed_boxlist,
                                                          max_total_size)
-      detection_boxes = padded_boxlist.get()
-      detection_scores = padded_boxlist.get_field(fields.BoxListFields.scores)
-      detection_classes = padded_boxlist.get_field(fields.BoxListFields.classes)
-      detection_masks = padded_boxlist.get_field(fields.BoxListFields.masks)
-      return [detection_boxes, detection_scores, detection_classes,
-              detection_masks, num_detections]
+      num_detections = nmsed_boxlist.num_boxes()
+      nmsed_boxes = padded_boxlist.get()
+      nmsed_scores = padded_boxlist.get_field(fields.BoxListFields.scores)
+      nmsed_classes = padded_boxlist.get_field(fields.BoxListFields.classes)
+      nmsed_masks = padded_boxlist.get_field(fields.BoxListFields.masks)
+      return [nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
+              num_detections]
 
-    (batch_detection_boxes, batch_detection_scores,
-     batch_detection_classes, batch_detection_masks,
+    (batch_nmsed_boxes, batch_nmsed_scores,
+     batch_nmsed_classes, batch_nmsed_masks,
      batch_num_detections) = tf.map_fn(
          single_image_nms_fn,
          elems=[boxes, scores, masks, num_valid_boxes],
-         dtype=[tf.float32, tf.float32, tf.float32, tf.float32, tf.float32],
+         dtype=[tf.float32, tf.float32, tf.float32, tf.float32, tf.int32],
          parallel_iterations=parallel_iterations)
 
-    nms_dict = {
-        'detection_boxes': batch_detection_boxes,
-        'detection_scores': batch_detection_scores,
-        'detection_classes': batch_detection_classes,
-        'num_detections': batch_num_detections
-    }
-    if original_masks is not None:
-      nms_dict['detection_masks'] = batch_detection_masks
-    return nms_dict
+    if original_masks is None:
+      batch_nmsed_masks = None
+
+    return (batch_nmsed_boxes, batch_nmsed_scores, batch_nmsed_classes,
+            batch_nmsed_masks, batch_num_detections)

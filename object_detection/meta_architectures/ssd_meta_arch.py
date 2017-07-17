@@ -374,10 +374,14 @@ class SSDMetaArch(model.DetectionModel):
       detection_scores = self._score_conversion_fn(
           class_predictions_without_background)
       clip_window = tf.constant([0, 0, 1, 1], tf.float32)
-      detections = self._non_max_suppression_fn(detection_boxes,
-                                                detection_scores,
-                                                clip_window=clip_window)
-    return detections
+      (nmsed_boxes, nmsed_scores, nmsed_classes, _,
+       num_detections) = self._non_max_suppression_fn(detection_boxes,
+                                                      detection_scores,
+                                                      clip_window=clip_window)
+      return {'detection_boxes': nmsed_boxes,
+              'detection_scores': nmsed_scores,
+              'detection_classes': nmsed_classes,
+              'num_detections': tf.to_float(num_detections)}
 
   def loss(self, prediction_dict, scope=None):
     """Compute scalar loss tensors with respect to provided groundtruth.
