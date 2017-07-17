@@ -23,12 +23,12 @@ from abc import abstractmethod
 import re
 import tensorflow as tf
 
-from object_detection.core import box_coder as bcoder
 from object_detection.core import box_list
 from object_detection.core import box_predictor as bpredictor
 from object_detection.core import model
 from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner
+from object_detection.utils import shape_utils
 
 slim = tf.contrib.slim
 
@@ -323,7 +323,8 @@ class SSDMetaArch(model.DetectionModel):
       a list of pairs (height, width) for each feature map in feature_maps
     """
     feature_map_shapes = [
-        feature_map.get_shape().as_list() for feature_map in feature_maps
+        shape_utils.combined_static_and_dynamic_shape(
+            feature_map) for feature_map in feature_maps
     ]
     return [(shape[1], shape[2]) for shape in feature_map_shapes]
 
@@ -364,8 +365,7 @@ class SSDMetaArch(model.DetectionModel):
     with tf.name_scope('Postprocessor'):
       box_encodings = prediction_dict['box_encodings']
       class_predictions = prediction_dict['class_predictions_with_background']
-      detection_boxes = bcoder.batch_decode(box_encodings, self._box_coder,
-                                            self.anchors)
+      detection_boxes = self._batch_decode(box_encodings)
       detection_boxes = tf.expand_dims(detection_boxes, axis=2)
 
       class_predictions_without_background = tf.slice(class_predictions,
@@ -549,8 +549,7 @@ class SSDMetaArch(model.DetectionModel):
         tf.slice(prediction_dict['class_predictions_with_background'],
                  [0, 0, 1], class_pred_shape), class_pred_shape)
 
-    decoded_boxes = bcoder.batch_decode(prediction_dict['box_encodings'],
-                                        self._box_coder, self.anchors)
+    decoded_boxes = self._batch_decode(prediction_dict['box_encodings'])
     decoded_box_tensors_list = tf.unstack(decoded_boxes)
     class_prediction_list = tf.unstack(class_predictions)
     decoded_boxlist_list = []
@@ -564,6 +563,31 @@ class SSDMetaArch(model.DetectionModel):
         cls_losses=cls_losses,
         decoded_boxlist_list=decoded_boxlist_list,
         match_list=match_list)
+
+  def _batch_decode(self, box_encodings):
+    """Decodes a batch of box encodings with respect to the anchors.
+
+    Args:
+      box_encodings: A float32 tensor of shape
+        [batch_size, num_anchors, box_code_size] containing box encodings.
+
+    Returns:
+      decoded_boxes: A float32 tensor of shape
+        [batch_size, num_anchors, 4] containing the decoded boxes.
+    """
+    combined_shape = shape_utils.combined_static_and_dynamic_shape(
+        box_encodings)
+    batch_size = combined_shape[0]
+    tiled_anchor_boxes = tf.tile(
+        tf.expand_dims(self.anchors.get(), 0), [batch_size, 1, 1])
+    tiled_anchors_boxlist = box_list.BoxList(
+        tf.reshape(tiled_anchor_boxes, [-1, self._box_coder.code_size]))
+    decoded_boxes = self._box_coder.decode(
+        tf.reshape(box_encodings, [-1, self._box_coder.code_size]),
+        tiled_anchors_boxlist)
+    return tf.reshape(decoded_boxes.get(),
+                      tf.stack([combined_shape[0], combined_shape[1],
+                                4]))
 
   def restore_map(self, from_detection_checkpoint=True):
     """Returns a map of variables to load from a foreign checkpoint.
