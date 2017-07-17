@@ -80,7 +80,6 @@ from object_detection.core import post_processing
 from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner
 from object_detection.utils import ops
-from object_detection.utils import variables_helper
 
 slim = tf.contrib.slim
 
@@ -159,21 +158,19 @@ class FasterRCNNFeatureExtractor(object):
 
   def restore_from_classification_checkpoint_fn(
       self,
-      checkpoint_path,
       first_stage_feature_extractor_scope,
       second_stage_feature_extractor_scope):
-    """Returns callable for loading a checkpoint into the tensorflow graph.
+    """Returns a map of variables to load from a foreign checkpoint.
 
     Args:
-      checkpoint_path: path to checkpoint to restore.
       first_stage_feature_extractor_scope: A scope name for the first stage
         feature extractor.
       second_stage_feature_extractor_scope: A scope name for the second stage
         feature extractor.
 
     Returns:
-      a callable which takes a tf.Session as input and loads a checkpoint when
-        run.
+      A dict mapping variable names (to load from a checkpoint) to variables in
+      the model graph.
     """
     variables_to_restore = {}
     for variable in tf.global_variables():
@@ -182,13 +179,7 @@ class FasterRCNNFeatureExtractor(object):
         if variable.op.name.startswith(scope_name):
           var_name = variable.op.name.replace(scope_name + '/', '')
           variables_to_restore[var_name] = variable
-    variables_to_restore = (
-        variables_helper.get_variables_available_in_checkpoint(
-            variables_to_restore, checkpoint_path))
-    saver = tf.train.Saver(variables_to_restore)
-    def restore(sess):
-      saver.restore(sess, checkpoint_path)
-    return restore
+    return variables_to_restore
 
 
 class FasterRCNNMetaArch(model.DetectionModel):
@@ -1413,25 +1404,22 @@ class FasterRCNNMetaArch(model.DetectionModel):
           cls_losses=tf.expand_dims(single_image_cls_loss, 0),
           decoded_boxlist_list=[proposal_boxlist])
 
-  def restore_fn(self, checkpoint_path, from_detection_checkpoint=True):
-    """Returns callable for loading a checkpoint into the tensorflow graph.
+  def restore_map(self, from_detection_checkpoint=True):
+    """Returns a map of variables to load from a foreign checkpoint.
+
+    See parent class for details.
 
     Args:
-      checkpoint_path: path to checkpoint to restore.
-      from_detection_checkpoint: whether to restore from a detection checkpoint
-        (with compatible variable names) or to restore from a classification
-        checkpoint for initialization prior to training.  Note that when
-        from_detection_checkpoint=True, the current implementation only
-        supports restoration from an (exactly) identical model (with exception
-        of the num_classes parameter).
+      from_detection_checkpoint: whether to restore from a full detection
+        checkpoint (with compatible variable names) or to restore from a
+        classification checkpoint for initialization prior to training.
 
     Returns:
-      a callable which takes a tf.Session as input and loads a checkpoint when
-        run.
+      A dict mapping variable names (to load from a checkpoint) to variables in
+      the model graph.
     """
     if not from_detection_checkpoint:
       return self._feature_extractor.restore_from_classification_checkpoint_fn(
-          checkpoint_path,
           self.first_stage_feature_extractor_scope,
           self.second_stage_feature_extractor_scope)
 
@@ -1439,13 +1427,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
     variables_to_restore.append(slim.get_or_create_global_step())
     # Only load feature extractor variables to be consistent with loading from
     # a classification checkpoint.
-    first_stage_variables = tf.contrib.framework.filter_variables(
+    feature_extractor_variables = tf.contrib.framework.filter_variables(
         variables_to_restore,
         include_patterns=[self.first_stage_feature_extractor_scope,
                           self.second_stage_feature_extractor_scope])
+    return {var.op.name: var for var in feature_extractor_variables}
 
-    saver = tf.train.Saver(first_stage_variables)
-
-    def restore(sess):
-      saver.restore(sess, checkpoint_path)
-    return restore

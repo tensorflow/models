@@ -56,7 +56,6 @@ py_library(
         "//tensorflow_models/object_detection/core:standard_fields",
         "//tensorflow_models/object_detection/core:target_assigner",
         "//tensorflow_models/object_detection/utils:ops",
-        "//tensorflow_models/object_detection/utils:variables_helper",
     ],
 )
 

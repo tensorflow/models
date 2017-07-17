@@ -207,20 +207,21 @@ class SsdMetaArchTest(tf.test.TestCase):
       self.assertAllClose(losses_out['classification_loss'],
                           expected_classification_loss)
 
-  def test_restore_fn_detection(self):
+  def test_restore_map_for_detection_ckpt(self):
     init_op = tf.global_variables_initializer()
     saver = tf_saver.Saver()
     save_path = self.get_temp_dir()
     with self.test_session() as sess:
       sess.run(init_op)
       saved_model_path = saver.save(sess, save_path)
-      restore_fn = self._model.restore_fn(saved_model_path,
-                                          from_detection_checkpoint=True)
-      restore_fn(sess)
+      var_map = self._model.restore_map(from_detection_checkpoint=True)
+      self.assertIsInstance(var_map, dict)
+      saver = tf.train.Saver(var_map)
+      saver.restore(sess, saved_model_path)
       for var in sess.run(tf.report_uninitialized_variables()):
         self.assertNotIn('FeatureExtractor', var.name)
 
-  def test_restore_fn_classification(self):
+  def test_restore_map_for_classification_ckpt(self):
     # Define mock tensorflow classification graph and save variables.
     test_graph_classification = tf.Graph()
     with test_graph_classification.as_default():
@@ -246,10 +247,11 @@ class SsdMetaArchTest(tf.test.TestCase):
       preprocessed_inputs = self._model.preprocess(inputs)
       prediction_dict = self._model.predict(preprocessed_inputs)
       self._model.postprocess(prediction_dict)
-      restore_fn = self._model.restore_fn(saved_model_path,
-                                          from_detection_checkpoint=False)
+      var_map = self._model.restore_map(from_detection_checkpoint=False)
+      self.assertIsInstance(var_map, dict)
+      saver = tf.train.Saver(var_map)
       with self.test_session() as sess:
-        restore_fn(sess)
+        saver.restore(sess, saved_model_path)
         for var in sess.run(tf.report_uninitialized_variables()):
           self.assertNotIn('FeatureExtractor', var.name)
 

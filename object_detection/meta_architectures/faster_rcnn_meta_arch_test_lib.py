@@ -957,7 +957,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
                           exp_loc_loss)
       self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
 
-  def test_restore_fn_classification(self):
+  def test_restore_map_for_classification_ckpt(self):
     # Define mock tensorflow classification graph and save variables.
     test_graph_classification = tf.Graph()
     with test_graph_classification.as_default():
@@ -986,12 +986,17 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       preprocessed_inputs = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs)
       model.postprocess(prediction_dict)
-      restore_fn = model.restore_fn(saved_model_path,
-                                    from_detection_checkpoint=False)
+      var_map = model.restore_map(from_detection_checkpoint=False)
+      self.assertIsInstance(var_map, dict)
+      saver = tf.train.Saver(var_map)
       with self.test_session() as sess:
-        restore_fn(sess)
+        saver.restore(sess, saved_model_path)
+        for var in sess.run(tf.report_uninitialized_variables()):
+          self.assertNotIn(model.first_stage_feature_extractor_scope, var.name)
+          self.assertNotIn(model.second_stage_feature_extractor_scope,
+                           var.name)
 
-  def test_restore_fn_detection(self):
+  def test_restore_map_for_detection_ckpt(self):
     # Define first detection graph and save variables.
     test_graph_detection1 = tf.Graph()
     with test_graph_detection1.as_default():
@@ -1022,10 +1027,11 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       preprocessed_inputs2 = model2.preprocess(inputs2)
       prediction_dict2 = model2.predict(preprocessed_inputs2)
       model2.postprocess(prediction_dict2)
-      restore_fn = model2.restore_fn(saved_model_path,
-                                     from_detection_checkpoint=True)
+      var_map = model2.restore_map(from_detection_checkpoint=True)
+      self.assertIsInstance(var_map, dict)
+      saver = tf.train.Saver(var_map)
       with self.test_session() as sess:
-        restore_fn(sess)
+        saver.restore(sess, saved_model_path)
         for var in sess.run(tf.report_uninitialized_variables()):
           self.assertNotIn(model2.first_stage_feature_extractor_scope, var.name)
           self.assertNotIn(model2.second_stage_feature_extractor_scope,
