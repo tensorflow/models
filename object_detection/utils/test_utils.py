@@ -22,6 +22,7 @@ from object_detection.core import box_coder
 from object_detection.core import box_list
 from object_detection.core import box_predictor
 from object_detection.core import matcher
+from object_detection.utils import shape_utils
 
 
 class MockBoxCoder(box_coder.BoxCoder):
@@ -45,9 +46,10 @@ class MockBoxPredictor(box_predictor.BoxPredictor):
     super(MockBoxPredictor, self).__init__(is_training, num_classes)
 
   def _predict(self, image_features, num_predictions_per_location):
-    batch_size = image_features.get_shape().as_list()[0]
-    num_anchors = (image_features.get_shape().as_list()[1]
-                   * image_features.get_shape().as_list()[2])
+    combined_feature_shape = shape_utils.combined_static_and_dynamic_shape(
+        image_features)
+    batch_size = combined_feature_shape[0]
+    num_anchors = (combined_feature_shape[1] * combined_feature_shape[2])
     code_size = 4
     zero = tf.reduce_sum(0 * image_features)
     box_encodings = zero + tf.zeros(
