@@ -1395,7 +1395,7 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllEqual(expected_images_shape_,
                           resized_images_shape_)
 
-  def testResizeToRange(self):
+  def testResizeToRangePreservesStaticSpatialShape(self):
     """Tests image resizing, checking output sizes."""
     in_shape_list = [[60, 40, 3], [15, 30, 3], [15, 50, 3]]
     min_dim = 50
@@ -1406,13 +1406,27 @@ class PreprocessorTest(tf.test.TestCase):
       in_image = tf.random_uniform(in_shape)
       out_image = preprocessor.resize_to_range(
           in_image, min_dimension=min_dim, max_dimension=max_dim)
-      out_image_shape = tf.shape(out_image)
+      self.assertAllEqual(out_image.get_shape().as_list(), expected_shape)
 
+  def testResizeToRangeWithDynamicSpatialShape(self):
+    """Tests image resizing, checking output sizes."""
+    in_shape_list = [[60, 40, 3], [15, 30, 3], [15, 50, 3]]
+    min_dim = 50
+    max_dim = 100
+    expected_shape_list = [[75, 50, 3], [50, 100, 3], [30, 100, 3]]
+
+    for in_shape, expected_shape in zip(in_shape_list, expected_shape_list):
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      out_image = preprocessor.resize_to_range(
+          in_image, min_dimension=min_dim, max_dimension=max_dim)
+      out_image_shape = tf.shape(out_image)
       with self.test_session() as sess:
-        out_image_shape = sess.run(out_image_shape)
+        out_image_shape = sess.run(out_image_shape,
+                                   feed_dict={in_image:
+                                              np.random.randn(*in_shape)})
         self.assertAllEqual(out_image_shape, expected_shape)
 
-  def testResizeToRangeWithMasks(self):
+  def testResizeToRangeWithMasksPreservesStaticSpatialShape(self):
     """Tests image resizing, checking output sizes."""
     in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
     in_masks_shape_list = [[15, 60, 40], [10, 15, 30]]
@@ -1430,30 +1444,25 @@ class PreprocessorTest(tf.test.TestCase):
       in_masks = tf.random_uniform(in_masks_shape)
       out_image, out_masks = preprocessor.resize_to_range(
           in_image, in_masks, min_dimension=min_dim, max_dimension=max_dim)
-      out_image_shape = tf.shape(out_image)
-      out_masks_shape = tf.shape(out_masks)
+      self.assertAllEqual(out_masks.get_shape().as_list(), expected_mask_shape)
+      self.assertAllEqual(out_image.get_shape().as_list(), expected_image_shape)
 
-      with self.test_session() as sess:
-        out_image_shape, out_masks_shape = sess.run(
-            [out_image_shape, out_masks_shape])
-        self.assertAllEqual(out_image_shape, expected_image_shape)
-        self.assertAllEqual(out_masks_shape, expected_mask_shape)
-
-  def testResizeToRangeWithNoInstanceMask(self):
+  def testResizeToRangeWithMasksAndDynamicSpatialShape(self):
     """Tests image resizing, checking output sizes."""
     in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
-    in_masks_shape_list = [[0, 60, 40], [0, 15, 30]]
+    in_masks_shape_list = [[15, 60, 40], [10, 15, 30]]
     min_dim = 50
     max_dim = 100
     expected_image_shape_list = [[75, 50, 3], [50, 100, 3]]
-    expected_masks_shape_list = [[0, 75, 50], [0, 50, 100]]
+    expected_masks_shape_list = [[15, 75, 50], [10, 50, 100]]
 
     for (in_image_shape, expected_image_shape, in_masks_shape,
          expected_mask_shape) in zip(in_image_shape_list,
                                      expected_image_shape_list,
                                      in_masks_shape_list,
                                      expected_masks_shape_list):
-      in_image = tf.random_uniform(in_image_shape)
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      in_masks = tf.placeholder(tf.float32, shape=(None, None, None))
       in_masks = tf.random_uniform(in_masks_shape)
       out_image, out_masks = preprocessor.resize_to_range(
           in_image, in_masks, min_dimension=min_dim, max_dimension=max_dim)
@@ -1462,38 +1471,15 @@ class PreprocessorTest(tf.test.TestCase):
 
       with self.test_session() as sess:
         out_image_shape, out_masks_shape = sess.run(
-            [out_image_shape, out_masks_shape])
+            [out_image_shape, out_masks_shape],
+            feed_dict={
+                in_image: np.random.randn(*in_image_shape),
+                in_masks: np.random.randn(*in_masks_shape)
+            })
         self.assertAllEqual(out_image_shape, expected_image_shape)
         self.assertAllEqual(out_masks_shape, expected_mask_shape)
 
-  def testResizeImageWithMasks(self):
-    """Tests image resizing, checking output sizes."""
-    in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
-    in_masks_shape_list = [[15, 60, 40], [10, 15, 30]]
-    height = 50
-    width = 100
-    expected_image_shape_list = [[50, 100, 3], [50, 100, 3]]
-    expected_masks_shape_list = [[15, 50, 100], [10, 50, 100]]
-
-    for (in_image_shape, expected_image_shape, in_masks_shape,
-         expected_mask_shape) in zip(in_image_shape_list,
-                                     expected_image_shape_list,
-                                     in_masks_shape_list,
-                                     expected_masks_shape_list):
-      in_image = tf.random_uniform(in_image_shape)
-      in_masks = tf.random_uniform(in_masks_shape)
-      out_image, out_masks = preprocessor.resize_image(
-          in_image, in_masks, new_height=height, new_width=width)
-      out_image_shape = tf.shape(out_image)
-      out_masks_shape = tf.shape(out_masks)
-
-      with self.test_session() as sess:
-        out_image_shape, out_masks_shape = sess.run(
-            [out_image_shape, out_masks_shape])
-        self.assertAllEqual(out_image_shape, expected_image_shape)
-        self.assertAllEqual(out_masks_shape, expected_mask_shape)
-
-  def testResizeImageWithNoInstanceMask(self):
+  def testResizeToRangeWithInstanceMasksTensorOfSizeZero(self):
     """Tests image resizing, checking output sizes."""
     in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
     in_masks_shape_list = [[0, 60, 40], [0, 15, 30]]
