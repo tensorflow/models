@@ -7,9 +7,7 @@ This code implements the model from the paper "[LFADS - Latent Factor Analysis v
 
 The code is written in Python 2.7.6. You will also need:
 
-* **TensorFlow** version 1.1 ([install](http://tflearn.org/installation/)) -
-  there is an incompatibility with LFADS and TF v1.2, which we are in the
-  process of resolving
+* **TensorFlow** version 1.2.1 ([install](http://tflearn.org/installation/)) -
 * **NumPy, SciPy, Matplotlib** ([install SciPy stack](https://www.scipy.org/install.html), contains all of them)
 * **h5py** ([install](https://pypi.python.org/pypi/h5py))
 
