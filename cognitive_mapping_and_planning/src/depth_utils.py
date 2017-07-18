@@ -16,6 +16,7 @@
 """Utilities for processing depth images.
 """
 import numpy as np
+import src.utils as utils
 import src.rotation_utils as ru 
 
 def get_camera_matrix(width, height, fov):
