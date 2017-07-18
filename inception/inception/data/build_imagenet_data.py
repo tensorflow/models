@@ -208,19 +208,19 @@ def _convert_to_example(filename, image_buffer, label, synset, human, bbox,
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': _int64_feature(height),
       'image/width': _int64_feature(width),
-      'image/colorspace': _bytes_feature(colorspace),
+      'image/colorspace': _bytes_feature(tf.compat.as_bytes(colorspace)),
       'image/channels': _int64_feature(channels),
       'image/class/label': _int64_feature(label),
-      'image/class/synset': _bytes_feature(synset),
-      'image/class/text': _bytes_feature(human),
+      'image/class/synset': _bytes_feature(tf.compat.as_bytes(synset)),
+      'image/class/text': _bytes_feature(tf.compat.as_bytes(human)),
       'image/object/bbox/xmin': _float_feature(xmin),
       'image/object/bbox/xmax': _float_feature(xmax),
       'image/object/bbox/ymin': _float_feature(ymin),
       'image/object/bbox/ymax': _float_feature(ymax),
       'image/object/bbox/label': _int64_feature([label] * len(xmin)),
-      'image/format': _bytes_feature(image_format),
-      'image/filename': _bytes_feature(os.path.basename(filename)),
-      'image/encoded': _bytes_feature(image_buffer)}))
+      'image/format': _bytes_feature(tf.compat.as_bytes(image_format)),
+      'image/filename': _bytes_feature(tf.compat.as_bytes(os.path.basename(filename))),
+      'image/encoded': _bytes_feature(tf.compat.as_bytes(image_buffer))}))
   return example
 
 
@@ -312,7 +312,7 @@ def _process_image(filename, coder):
     width: integer, image width in pixels.
   """
   # Read the image file.
-  with tf.gfile.FastGFile(filename, 'r') as f:
+  with tf.gfile.FastGFile(filename, 'rb') as f:
     image_data = f.read()
 
   # Clean the dirty data.

@@ -62,6 +62,7 @@ WORK_DIR="$0.runfiles/inception/inception"
 
 # Download the ImageNet data.
 LABELS_FILE="${WORK_DIR}/data/imagenet_lsvrc_2015_synsets.txt"
+LABELS_FILE="${PWD}/${LABELS_FILE}"
 DOWNLOAD_SCRIPT="${WORK_DIR}/data/download_imagenet.sh"
 "${DOWNLOAD_SCRIPT}" "${SCRATCH_DIR}" "${LABELS_FILE}"
 
