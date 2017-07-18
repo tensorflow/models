@@ -76,35 +76,35 @@ class LabelMapUtilTest(tf.test.TestCase):
       label_map_util.load_labelmap(label_map_path)
 
     def test_keep_categories_with_unique_id(self):
-    label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
-    label_map_string = """
-      item {
-        id:2
-        name:'cat'
-      }
-      item {
-        id:1
-        name:'child'
-      }
-      item {
-        id:1
-        name:'person'
-      }
-      item {
-        id:1
-        name:'n00007846'
-      }
-    """
-    text_format.Merge(label_map_string, label_map_proto)
-    categories = label_map_util.convert_label_map_to_categories(
-        label_map_proto, max_num_classes=3)
-    self.assertListEqual([{
-        'id': 2,
-        'name': u'cat'
-    }, {
-        'id': 1,
-        'name': u'child'
-    }], categories)
+      label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
+      label_map_string = """
+        item {
+          id:2
+          name:'cat'
+        }
+        item {
+          id:1
+          name:'child'
+        }
+        item {
+          id:1
+          name:'person'
+        }
+        item {
+          id:1
+          name:'n00007846'
+        }
+      """
+      text_format.Merge(label_map_string, label_map_proto)
+      categories = label_map_util.convert_label_map_to_categories(
+          label_map_proto, max_num_classes=3)
+      self.assertListEqual([{
+          'id': 2,
+          'name': u'cat'
+        }, {
+          'id': 1,
+          'name': u'child'
+        }], categories)
 
   def test_convert_label_map_to_categories_no_label_map(self):
     categories = label_map_util.convert_label_map_to_categories(
