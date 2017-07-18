@@ -94,7 +94,6 @@ py_library(
     deps = [
         "//tensorflow",
         "//tensorflow_models/object_detection/meta_architectures:faster_rcnn_meta_arch",
-        "//tensorflow_models/object_detection/utils:variables_helper",
         "//tensorflow_models/slim:inception_resnet_v2",
     ],
 )
