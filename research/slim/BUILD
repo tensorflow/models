@@ -35,6 +35,7 @@ package_group(
         "//research/vale/instance_segmentation/...",
         "//research/vale/pose_estimation/...",
         "//research/vision/classomatic/...",
+        "//research/vision/couchpotato/...",
         "//research/vision/loco/...",
         "//research/vision/threedeep/...",
         "//robotics/learning/...",
