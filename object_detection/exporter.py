@@ -111,29 +111,46 @@ def freeze_graph_with_def_protos(
   return output_graph_def
 
 
-# TODO: Support batch tf example inputs.
-def _tf_example_input_placeholder():
-  tf_example_placeholder = tf.placeholder(
-      tf.string, shape=[], name='tf_example')
-  tensor_dict = tf_example_decoder.TfExampleDecoder().decode(
-      tf_example_placeholder)
-  image = tensor_dict[fields.InputDataFields.image]
-  return tf.expand_dims(image, axis=0)
-
 
 def _image_tensor_input_placeholder():
+  """Returns input node that accepts a batch of uint8 images."""
   return tf.placeholder(dtype=tf.uint8,
-                        shape=(1, None, None, 3),
+                        shape=(None, None, None, 3),
                         name='image_tensor')
 
 
+def _tf_example_input_placeholder():
+  """Returns input node that accepts a batch of strings with tf examples."""
+  batch_tf_example_placeholder = tf.placeholder(
+      tf.string, shape=[None], name='tf_example')
+  def decode(tf_example_string_tensor):
+    tensor_dict = tf_example_decoder.TfExampleDecoder().decode(
+        tf_example_string_tensor)
+    image_tensor = tensor_dict[fields.InputDataFields.image]
+    return image_tensor
+  return tf.map_fn(decode,
+                   elems=batch_tf_example_placeholder,
+                   dtype=tf.uint8,
+                   parallel_iterations=32,
+                   back_prop=False)
+
+
 def _encoded_image_string_tensor_input_placeholder():
-  image_str = tf.placeholder(dtype=tf.string,
-                             shape=[],
-                             name='encoded_image_string_tensor')
-  image_tensor = tf.image.decode_image(image_str, channels=3)
-  image_tensor.set_shape((None, None, 3))
-  return tf.expand_dims(image_tensor, axis=0)
+  """Returns input node that accepts a batch of PNG or JPEG strings."""
+  batch_image_str_placeholder = tf.placeholder(
+      dtype=tf.string,
+      shape=[None],
+      name='encoded_image_string_tensor')
+  def decode(encoded_image_string_tensor):
+    image_tensor = tf.image.decode_image(encoded_image_string_tensor,
+                                         channels=3)
+    image_tensor.set_shape((None, None, 3))
+    return image_tensor
+  return tf.map_fn(decode,
+                   elems=batch_image_str_placeholder,
+                   dtype=tf.uint8,
+                   parallel_iterations=32,
+                   back_prop=False)
 
 
 input_placeholder_fn_map = {
