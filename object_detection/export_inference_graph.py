@@ -16,8 +16,9 @@
 r"""Tool to export an object detection model for inference.
 
 Prepares an object detection tensorflow graph for inference using model
-configuration and an optional trained checkpoint. Outputs either an inference
-graph or a SavedModel (https://tensorflow.github.io/serving/serving_basic.html).
+configuration and an optional trained checkpoint. Outputs inference
+graph, associated checkpoint files, a frozen inference graph and a
+SavedModel (https://tensorflow.github.io/serving/serving_basic.html).
 
 The inference graph contains one of three input nodes depending on the user
 specified option.
@@ -41,23 +42,28 @@ and the following output nodes returned by the model.postprocess(..):
       masks for each box if its present in the dictionary of postprocessed
       tensors returned by the model.
 
-Note that currently `batch` is always 1, but we will support `batch` > 1 in
-the future.
-
-Optionally, one can freeze the graph by converting the weights in the provided
-checkpoint as graph constants thereby eliminating the need to use a checkpoint
-file during inference.
-
-Note that this tool uses `use_moving_averages` from eval_config to decide
-which weights to freeze.
+Notes:
+ * Currently `batch` is always 1, but we will support `batch` > 1 in the future.
+ * This tool uses `use_moving_averages` from eval_config to decide which
+   weights to freeze.
 
 Example Usage:
 --------------
 python export_inference_graph \
     --input_type image_tensor \
     --pipeline_config_path path/to/ssd_inception_v2.config \
-    --checkpoint_path path/to/model-ckpt \
-    --inference_graph_path path/to/inference_graph.pb
+    --trained_checkpoint_prefix path/to/model.ckpt \
+    --output_directory path/to/exported_model_directory
+
+The expected output would be in the directory
+path/to/exported_model_directory (which is created if it does not exist)
+with contents:
+ - graph.pbtxt
+ - model.ckpt.data-00000-of-00001
+ - model.ckpt.info
+ - model.ckpt.meta
+ - frozen_inference_graph.pb
+ + saved_model (a directory)
 """
 import tensorflow as tf
 from google.protobuf import text_format
@@ -70,31 +76,27 @@ flags = tf.app.flags
 flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '
                     'one of [`image_tensor`, `encoded_image_string_tensor`, '
                     '`tf_example`]')
-flags.DEFINE_string('pipeline_config_path', '',
+flags.DEFINE_string('pipeline_config_path', None,
                     'Path to a pipeline_pb2.TrainEvalPipelineConfig config '
                     'file.')
-flags.DEFINE_string('checkpoint_path', '', 'Optional path to checkpoint file. '
-                    'If provided, bakes the weights from the checkpoint into '
-                    'the graph.')
-flags.DEFINE_string('inference_graph_path', '', 'Path to write the output '
-                    'inference graph.')
-flags.DEFINE_bool('export_as_saved_model', False, 'Whether the exported graph '
-                  'should be saved as a SavedModel')
+flags.DEFINE_string('trained_checkpoint_prefix', None,
+                    'Path to trained checkpoint, typically of the form '
+                    'path/to/model.ckpt')
+flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
 
+tf.app.flags.MarkFlagAsRequired('pipeline_config_path')
+tf.app.flags.MarkFlagAsRequired('trained_checkpoint_prefix')
+tf.app.flags.MarkFlagAsRequired('output_directory')
 FLAGS = flags.FLAGS
 
 
 def main(_):
-  assert FLAGS.pipeline_config_path, 'TrainEvalPipelineConfig missing.'
-  assert FLAGS.inference_graph_path, 'Inference graph path missing.'
-  assert FLAGS.input_type, 'Input type missing.'
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
   with tf.gfile.GFile(FLAGS.pipeline_config_path, 'r') as f:
     text_format.Merge(f.read(), pipeline_config)
-  exporter.export_inference_graph(FLAGS.input_type, pipeline_config,
-                                  FLAGS.checkpoint_path,
-                                  FLAGS.inference_graph_path,
-                                  FLAGS.export_as_saved_model)
+  exporter.export_inference_graph(
+      FLAGS.input_type, pipeline_config, FLAGS.trained_checkpoint_prefix,
+      FLAGS.output_directory)
 
 
 if __name__ == '__main__':
