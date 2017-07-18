@@ -85,13 +85,15 @@ flags.DEFINE_string('trained_checkpoint_prefix', None,
                     'path/to/model.ckpt')
 flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
 
-tf.app.flags.MarkFlagAsRequired('pipeline_config_path')
-tf.app.flags.MarkFlagAsRequired('trained_checkpoint_prefix')
-tf.app.flags.MarkFlagAsRequired('output_directory')
 FLAGS = flags.FLAGS
 
 
 def main(_):
+  assert FLAGS.pipeline_config_path, '`pipeline_config_path` is missing'
+  assert FLAGS.trained_checkpoint_prefix, (
+         '`trained_checkpoint_prefix` is missing')
+  assert FLAGS.output_directory, '`output_directory` is missing'
+
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
   with tf.gfile.GFile(FLAGS.pipeline_config_path, 'r') as f:
     text_format.Merge(f.read(), pipeline_config)

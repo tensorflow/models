@@ -43,7 +43,7 @@ def freeze_graph_with_def_protos(
     filename_tensor_name,
     clear_devices,
     initializer_nodes,
-    optimize_graph=True,
+    optimize_graph=False,
     variable_names_blacklist=''):
   """Converts all variables in a graph and checkpoint into constants."""
   del restore_op_name, filename_tensor_name  # Unused by updated loading code.
@@ -289,7 +289,7 @@ def _export_inference_graph(input_type,
                             use_moving_averages,
                             trained_checkpoint_prefix,
                             output_directory,
-                            optimize_graph=True,
+                            optimize_graph=False,
                             output_collection_name='inference_op'):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
@@ -340,7 +340,7 @@ def export_inference_graph(input_type,
                            pipeline_config,
                            trained_checkpoint_prefix,
                            output_directory,
-                           optimize_graph=True,
+                           optimize_graph=False,
                            output_collection_name='inference_op'):
   """Exports inference graph for the model specified in the pipeline config.
 
