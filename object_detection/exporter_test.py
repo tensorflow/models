@@ -103,71 +103,62 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     return example
 
   def test_export_graph_with_image_tensor_input(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=False)
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
-      inference_graph_path = os.path.join(self.get_temp_dir(),
-                                          'exported_graph.pbtxt')
-
+      output_directory = os.path.join(tmp_dir, 'output')
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='image_tensor',
           pipeline_config=pipeline_config,
-          checkpoint_path=None,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
 
   def test_export_graph_with_tf_example_input(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=False)
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
-      inference_graph_path = os.path.join(self.get_temp_dir(),
-                                          'exported_graph.pbtxt')
+      output_directory = os.path.join(tmp_dir, 'output')
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='tf_example',
           pipeline_config=pipeline_config,
-          checkpoint_path=None,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
 
   def test_export_graph_with_encoded_image_string_input(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=False)
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
-      inference_graph_path = os.path.join(self.get_temp_dir(),
-                                          'exported_graph.pbtxt')
+      output_directory = os.path.join(tmp_dir, 'output')
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='encoded_image_string_tensor',
           pipeline_config=pipeline_config,
-          checkpoint_path=None,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
 
-  def test_export_frozen_graph(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path,
-                                          use_moving_averages=False)
-    inference_graph_path = os.path.join(self.get_temp_dir(),
-                                        'exported_graph.pb')
-    with mock.patch.object(
-        model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel()
-      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-      pipeline_config.eval_config.use_moving_averages = False
-      exporter.export_inference_graph(
-          input_type='image_tensor',
-          pipeline_config=pipeline_config,
-          checkpoint_path=checkpoint_path,
-          inference_graph_path=inference_graph_path)
-
-  def test_export_frozen_graph_with_moving_averages(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path,
+  def test_export_graph_with_moving_averages(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
                                           use_moving_averages=True)
-    inference_graph_path = os.path.join(self.get_temp_dir(),
-                                        'exported_graph.pb')
+    output_directory = os.path.join(tmp_dir, 'output')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
@@ -176,15 +167,17 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       exporter.export_inference_graph(
           input_type='image_tensor',
           pipeline_config=pipeline_config,
-          checkpoint_path=checkpoint_path,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
 
   def test_export_model_with_all_output_nodes(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path,
-                                          use_moving_averages=False)
-    inference_graph_path = os.path.join(self.get_temp_dir(),
-                                        'exported_graph.pb')
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=True)
+    output_directory = os.path.join(tmp_dir, 'output')
+    inference_graph_path = os.path.join(output_directory,
+                                        'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel(add_detection_masks=True)
@@ -192,8 +185,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       exporter.export_inference_graph(
           input_type='image_tensor',
           pipeline_config=pipeline_config,
-          checkpoint_path=checkpoint_path,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
     inference_graph = self._load_inference_graph(inference_graph_path)
     with self.test_session(graph=inference_graph):
       inference_graph.get_tensor_by_name('image_tensor:0')
@@ -204,11 +197,13 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       inference_graph.get_tensor_by_name('num_detections:0')
 
   def test_export_model_with_detection_only_nodes(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path,
-                                          use_moving_averages=False)
-    inference_graph_path = os.path.join(self.get_temp_dir(),
-                                        'exported_graph.pb')
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=True)
+    output_directory = os.path.join(tmp_dir, 'output')
+    inference_graph_path = os.path.join(output_directory,
+                                        'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel(add_detection_masks=False)
@@ -216,8 +211,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       exporter.export_inference_graph(
           input_type='image_tensor',
           pipeline_config=pipeline_config,
-          checkpoint_path=checkpoint_path,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
     inference_graph = self._load_inference_graph(inference_graph_path)
     with self.test_session(graph=inference_graph):
       inference_graph.get_tensor_by_name('image_tensor:0')
@@ -229,11 +224,13 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         inference_graph.get_tensor_by_name('detection_masks:0')
 
   def test_export_and_run_inference_with_image_tensor(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path,
-                                          use_moving_averages=False)
-    inference_graph_path = os.path.join(self.get_temp_dir(),
-                                        'exported_graph.pb')
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=True)
+    output_directory = os.path.join(tmp_dir, 'output')
+    inference_graph_path = os.path.join(output_directory,
+                                        'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel(add_detection_masks=True)
@@ -242,8 +239,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       exporter.export_inference_graph(
           input_type='image_tensor',
           pipeline_config=pipeline_config,
-          checkpoint_path=checkpoint_path,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
 
     inference_graph = self._load_inference_graph(inference_graph_path)
     with self.test_session(graph=inference_graph) as sess:
@@ -276,11 +273,13 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       return encoded_string.eval()
 
   def test_export_and_run_inference_with_encoded_image_string_tensor(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path,
-                                          use_moving_averages=False)
-    inference_graph_path = os.path.join(self.get_temp_dir(),
-                                        'exported_graph.pb')
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=True)
+    output_directory = os.path.join(tmp_dir, 'output')
+    inference_graph_path = os.path.join(output_directory,
+                                        'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel(add_detection_masks=True)
@@ -289,8 +288,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       exporter.export_inference_graph(
           input_type='encoded_image_string_tensor',
           pipeline_config=pipeline_config,
-          checkpoint_path=checkpoint_path,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
 
     inference_graph = self._load_inference_graph(inference_graph_path)
     jpg_image_str = self._create_encoded_image_string(
@@ -318,11 +317,13 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         self.assertAllClose(num_detections_np, [2])
 
   def test_export_and_run_inference_with_tf_example(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path,
-                                          use_moving_averages=False)
-    inference_graph_path = os.path.join(self.get_temp_dir(),
-                                        'exported_graph.pb')
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=True)
+    output_directory = os.path.join(tmp_dir, 'output')
+    inference_graph_path = os.path.join(output_directory,
+                                        'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel(add_detection_masks=True)
@@ -331,8 +332,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       exporter.export_inference_graph(
           input_type='tf_example',
           pipeline_config=pipeline_config,
-          checkpoint_path=checkpoint_path,
-          inference_graph_path=inference_graph_path)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
 
     inference_graph = self._load_inference_graph(inference_graph_path)
     with self.test_session(graph=inference_graph) as sess:
@@ -354,11 +355,12 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       self.assertAllClose(num_detections, [2])
 
   def test_export_saved_model_and_run_inference(self):
-    checkpoint_path = os.path.join(self.get_temp_dir(), 'model-ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path,
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
                                           use_moving_averages=False)
-    inference_graph_path = os.path.join(self.get_temp_dir(),
-                                        'saved_model')
+    output_directory = os.path.join(tmp_dir, 'output')
+    saved_model_path = os.path.join(output_directory, 'saved_model')
 
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
@@ -368,20 +370,19 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       exporter.export_inference_graph(
           input_type='tf_example',
           pipeline_config=pipeline_config,
-          checkpoint_path=checkpoint_path,
-          inference_graph_path=inference_graph_path,
-          export_as_saved_model=True)
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
 
     with tf.Graph().as_default() as od_graph:
       with self.test_session(graph=od_graph) as sess:
         tf.saved_model.loader.load(
-            sess, [tf.saved_model.tag_constants.SERVING], inference_graph_path)
-        tf_example = od_graph.get_tensor_by_name('import/tf_example:0')
-        boxes = od_graph.get_tensor_by_name('import/detection_boxes:0')
-        scores = od_graph.get_tensor_by_name('import/detection_scores:0')
-        classes = od_graph.get_tensor_by_name('import/detection_classes:0')
-        masks = od_graph.get_tensor_by_name('import/detection_masks:0')
-        num_detections = od_graph.get_tensor_by_name('import/num_detections:0')
+            sess, [tf.saved_model.tag_constants.SERVING], saved_model_path)
+        tf_example = od_graph.get_tensor_by_name('tf_example:0')
+        boxes = od_graph.get_tensor_by_name('detection_boxes:0')
+        scores = od_graph.get_tensor_by_name('detection_scores:0')
+        classes = od_graph.get_tensor_by_name('detection_classes:0')
+        masks = od_graph.get_tensor_by_name('detection_masks:0')
+        num_detections = od_graph.get_tensor_by_name('num_detections:0')
         (boxes, scores, classes, masks, num_detections) = sess.run(
             [boxes, scores, classes, masks, num_detections],
             feed_dict={tf_example: self._create_tf_example(
@@ -392,6 +393,49 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         self.assertAllClose(classes, [[1, 2]])
         self.assertAllClose(masks, np.arange(32).reshape([2, 4, 4]))
         self.assertAllClose(num_detections, [2])
+
+  def test_export_checkpoint_and_run_inference(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=False)
+    output_directory = os.path.join(tmp_dir, 'output')
+    model_path = os.path.join(output_directory, 'model.ckpt')
+    meta_graph_path = model_path + '.meta'
+
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      pipeline_config.eval_config.use_moving_averages = False
+      exporter.export_inference_graph(
+          input_type='tf_example',
+          pipeline_config=pipeline_config,
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
+
+    with tf.Graph().as_default() as od_graph:
+      with self.test_session(graph=od_graph) as sess:
+        new_saver = tf.train.import_meta_graph(meta_graph_path)
+        new_saver.restore(sess, model_path)
+
+        tf_example = od_graph.get_tensor_by_name('tf_example:0')
+        boxes = od_graph.get_tensor_by_name('detection_boxes:0')
+        scores = od_graph.get_tensor_by_name('detection_scores:0')
+        classes = od_graph.get_tensor_by_name('detection_classes:0')
+        masks = od_graph.get_tensor_by_name('detection_masks:0')
+        num_detections = od_graph.get_tensor_by_name('num_detections:0')
+        (boxes, scores, classes, masks, num_detections) = sess.run(
+            [boxes, scores, classes, masks, num_detections],
+            feed_dict={tf_example: self._create_tf_example(
+                np.ones((4, 4, 3)).astype(np.uint8))})
+        self.assertAllClose(boxes, [[0.0, 0.0, 0.5, 0.5],
+                                    [0.5, 0.5, 0.8, 0.8]])
+        self.assertAllClose(scores, [[0.7, 0.6]])
+        self.assertAllClose(classes, [[1, 2]])
+        self.assertAllClose(masks, np.arange(32).reshape([2, 4, 4]))
+        self.assertAllClose(num_detections, [2])
+
 
 if __name__ == '__main__':
   tf.test.main()
