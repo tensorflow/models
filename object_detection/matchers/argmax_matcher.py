@@ -156,17 +156,24 @@ class ArgMaxMatcher(matcher.Matcher):
                                                      -1)
 
       if self._force_match_for_each_row:
-        forced_matches_ids = tf.cast(tf.argmax(similarity_matrix, 1), tf.int32)
+        def _force_match():
+          forced_matches_ids = tf.cast(tf.argmax(similarity_matrix, 1), tf.int32)
 
-        # Set matches[forced_matches_ids] = [0, ..., R], R is number of rows.
-        row_range = tf.range(tf.shape(similarity_matrix)[0])
-        col_range = tf.range(tf.shape(similarity_matrix)[1])
-        forced_matches_values = tf.cast(row_range, matches.dtype)
-        keep_matches_ids, _ = tf.setdiff1d(col_range, forced_matches_ids)
-        keep_matches_values = tf.gather(matches, keep_matches_ids)
-        matches = tf.dynamic_stitch(
-            [forced_matches_ids,
-             keep_matches_ids], [forced_matches_values, keep_matches_values])
+          # Set matches[forced_matches_ids] = [0, ..., R], R is number of rows.
+          row_range = tf.range(tf.shape(similarity_matrix)[0])
+          col_range = tf.range(tf.shape(similarity_matrix)[1])
+          forced_matches_values = tf.cast(row_range, matches.dtype)
+          keep_matches_ids, _ = tf.setdiff1d(col_range, forced_matches_ids)
+          keep_matches_values = tf.gather(matches, keep_matches_ids)
+          return tf.dynamic_stitch(
+              [forced_matches_ids,
+              keep_matches_ids], [forced_matches_values, keep_matches_values])
+
+        matches = tf.cond(
+          tf.greater(tf.shape(similarity_matrix)[1], 0),
+          true_fn=_force_match,
+          false_fn=lambda: matches
+        )
 
       return tf.cast(matches, tf.int32)
 
