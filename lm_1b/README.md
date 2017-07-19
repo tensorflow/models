@@ -73,7 +73,7 @@ LSTM-8192-2048 (50\% Dropout) | 32.2 | 3.3
 
 <b>How To Run</b>
 
-Pre-requesite:
+Prerequisites:
 
 * Install TensorFlow.
 * Install Bazel.
@@ -97,7 +97,7 @@ Pre-requesite:
   [link](http://download.tensorflow.org/models/LM_LSTM_CNN/vocab-2016-09-10.txt)
   * test dataset: link
   [link](http://download.tensorflow.org/models/LM_LSTM_CNN/test/news.en.heldout-00000-of-00050)
-* It is recommended to run on modern desktop instead of laptop.
+* It is recommended to run on a modern desktop instead of a laptop.
 
 ```shell
 # 1. Clone the code to your workspace.
@@ -105,7 +105,7 @@ Pre-requesite:
 # 3. Create an empty WORKSPACE file in your workspace.
 # 4. Create an empty output directory in your workspace.
 # Example directory structure below:
-ls -R
+$ ls -R
 .:
 data  lm_1b  output  WORKSPACE
 
@@ -121,13 +121,13 @@ BUILD  data_utils.py  lm_1b_eval.py  README.md
 ./output:
 
 # Build the codes.
-bazel build -c opt lm_1b/...
+$ bazel build -c opt lm_1b/...
 # Run sample mode:
-bazel-bin/lm_1b/lm_1b_eval --mode sample \
-                           --prefix "I love that I" \
-                           --pbtxt data/graph-2016-09-10.pbtxt \
-                           --vocab_file data/vocab-2016-09-10.txt  \
-                           --ckpt 'data/ckpt-*'
+$ bazel-bin/lm_1b/lm_1b_eval --mode sample \
+                             --prefix "I love that I" \
+                             --pbtxt data/graph-2016-09-10.pbtxt \
+                             --vocab_file data/vocab-2016-09-10.txt  \
+                             --ckpt 'data/ckpt-*'
 ...(omitted some TensorFlow output)
 I love
 I love that
@@ -138,11 +138,11 @@ I love that I find that amazing
 ...(omitted)
 
 # Run eval mode:
-bazel-bin/lm_1b/lm_1b_eval --mode eval \
-                           --pbtxt data/graph-2016-09-10.pbtxt \
-                           --vocab_file data/vocab-2016-09-10.txt  \
-                           --input_data data/news.en.heldout-00000-of-00050 \
-                           --ckpt 'data/ckpt-*'
+$ bazel-bin/lm_1b/lm_1b_eval --mode eval \
+                             --pbtxt data/graph-2016-09-10.pbtxt \
+                             --vocab_file data/vocab-2016-09-10.txt  \
+                             --input_data data/news.en.heldout-00000-of-00050 \
+                             --ckpt 'data/ckpt-*'
 ...(omitted some TensorFlow output)
 Loaded step 14108582.
 # perplexity is high initially because words without context are harder to
@@ -166,28 +166,28 @@ Eval Step: 4531, Average Perplexity: 29.285674.
 ...(omitted. At convergence, it should be around 30.)
 
 # Run dump_emb mode:
-bazel-bin/lm_1b/lm_1b_eval --mode dump_emb \
-                           --pbtxt data/graph-2016-09-10.pbtxt \
-                           --vocab_file data/vocab-2016-09-10.txt  \
-                           --ckpt 'data/ckpt-*' \
-                           --save_dir output
+$ bazel-bin/lm_1b/lm_1b_eval --mode dump_emb \
+                             --pbtxt data/graph-2016-09-10.pbtxt \
+                             --vocab_file data/vocab-2016-09-10.txt  \
+                             --ckpt 'data/ckpt-*' \
+                             --save_dir output
 ...(omitted some TensorFlow output)
 Finished softmax weights
 Finished word embedding 0/793471
 Finished word embedding 1/793471
 Finished word embedding 2/793471
 ...(omitted)
-ls output/
+$ ls output/
 embeddings_softmax.npy ...
 
 # Run dump_lstm_emb mode:
-bazel-bin/lm_1b/lm_1b_eval --mode dump_lstm_emb \
-                           --pbtxt data/graph-2016-09-10.pbtxt \
-                           --vocab_file data/vocab-2016-09-10.txt \
-                           --ckpt 'data/ckpt-*' \
-                           --sentence "I love who I am ." \
-                           --save_dir output
-ls output/
+$ bazel-bin/lm_1b/lm_1b_eval --mode dump_lstm_emb \
+                             --pbtxt data/graph-2016-09-10.pbtxt \
+                             --vocab_file data/vocab-2016-09-10.txt \
+                             --ckpt 'data/ckpt-*' \
+                             --sentence "I love who I am ." \
+                             --save_dir output
+$ ls output/
 lstm_emb_step_0.npy  lstm_emb_step_2.npy  lstm_emb_step_4.npy
 lstm_emb_step_6.npy  lstm_emb_step_1.npy  lstm_emb_step_3.npy
 lstm_emb_step_5.npy

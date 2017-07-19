@@ -478,8 +478,10 @@ class NeuralGPU(object):
         # This is just for running a baseline RNN seq2seq model.
         if do_rnn:
           self.after_enc_step.append(step)  # Not meaningful here, but needed.
-          lstm_cell = tf.contrib.rnn.BasicLSTMCell(height * nmaps)
-          cell = tf.contrib.rnn.MultiRNNCell([lstm_cell] * nconvs)
+          def lstm_cell():
+            return tf.contrib.rnn.BasicLSTMCell(height * nmaps)
+          cell = tf.contrib.rnn.MultiRNNCell(
+              [lstm_cell() for _ in range(nconvs)])
           with tf.variable_scope("encoder"):
             encoder_outputs, encoder_state = tf.nn.dynamic_rnn(
                 cell, tf.reshape(step, [batch_size, length, height * nmaps]),

@@ -38,17 +38,11 @@ def init_state(inputs,
   if inputs is not None:
     # Handle both the dynamic shape as well as the inferred shape.
     inferred_batch_size = inputs.get_shape().with_rank_at_least(1)[0]
-    batch_size = tf.shape(inputs)[0]
     dtype = inputs.dtype
   else:
     inferred_batch_size = 0
-    batch_size = 0
-
   initial_state = state_initializer(
-      tf.stack([batch_size] + state_shape),
-      dtype=dtype)
-  initial_state.set_shape([inferred_batch_size] + state_shape)
-
+      [inferred_batch_size] + state_shape, dtype=dtype)
   return initial_state
 
 

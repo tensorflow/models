@@ -145,7 +145,8 @@ available space for storing the downloaded and processed data.
 MSCOCO_DIR="${HOME}/im2txt/data/mscoco"
 
 # Build the preprocessing script.
-bazel build im2txt/download_and_preprocess_mscoco
+cd tensorflow-models/im2txt
+bazel build //im2txt:download_and_preprocess_mscoco
 
 # Run the preprocessing script.
 bazel-bin/im2txt/download_and_preprocess_mscoco "${MSCOCO_DIR}"
@@ -211,7 +212,8 @@ INCEPTION_CHECKPOINT="${HOME}/im2txt/data/inception_v3.ckpt"
 MODEL_DIR="${HOME}/im2txt/model"
 
 # Build the model.
-bazel build -c opt im2txt/...
+cd tensorflow-models/im2txt
+bazel build -c opt //im2txt/...
 
 # Run the training script.
 bazel-bin/im2txt/train \
@@ -304,7 +306,8 @@ VOCAB_FILE="${HOME}/im2txt/data/mscoco/word_counts.txt"
 IMAGE_FILE="${HOME}/im2txt/data/mscoco/raw-data/val2014/COCO_val2014_000000224477.jpg"
 
 # Build the inference binary.
-bazel build -c opt im2txt/run_inference
+cd tensorflow-models/im2txt
+bazel build -c opt //im2txt:run_inference
 
 # Ignore GPU devices (only necessary if your GPU is currently memory
 # constrained, for example, by running the training script).
@@ -319,7 +322,7 @@ bazel-bin/im2txt/run_inference \
 
 Example output:
 
-```shell
+```
 Captions for image COCO_val2014_000000224477.jpg:
   0) a man riding a wave on top of a surfboard . (p=0.040413)
   1) a person riding a surf board on a wave (p=0.017452)

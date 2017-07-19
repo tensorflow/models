@@ -86,7 +86,8 @@ you will not need to interact with the script again.
 DATA_DIR=$HOME/imagenet-data
 
 # build the preprocessing script.
-bazel build inception/download_and_preprocess_imagenet
+cd tensorflow-models/inception
+bazel build //inception:download_and_preprocess_imagenet
 
 # run it
 bazel-bin/inception/download_and_preprocess_imagenet "${DATA_DIR}"
@@ -153,7 +154,8 @@ To train this model, you simply need to specify the following:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/imagenet_train
+cd tensorflow-models/inception
+bazel build //inception:imagenet_train
 
 # run it
 bazel-bin/inception/imagenet_train --num_gpus=1 --batch_size=32 --train_dir=/tmp/imagenet_train --data_dir=/tmp/imagenet_data
@@ -189,7 +191,8 @@ GPU cards.
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/imagenet_train
+cd tensorflow-models/inception
+bazel build //inception:imagenet_train
 
 # run it
 bazel-bin/inception/imagenet_train --num_gpus=2 --batch_size=64 --train_dir=/tmp/imagenet_train
@@ -260,7 +263,7 @@ Note that in this example each replica has a single tower that uses one GPU.
 The command-line flags `worker_hosts` and `ps_hosts` specify available servers.
 The same binary will be used for both the `worker` jobs and the `ps` jobs.
 Command line flag `job_name` will be used to specify what role a task will be
-playing and `task_id` will be used to idenify which one of the jobs it is
+playing and `task_id` will be used to identify which one of the jobs it is
 running. Several things to note here:
 
 *   The numbers of `ps` and `worker` tasks are inferred from the lists of hosts
@@ -288,7 +291,8 @@ running. Several things to note here:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/imagenet_distributed_train
+cd tensorflow-models/inception
+bazel build //inception:imagenet_distributed_train
 
 # To start worker 0, go to the worker0 host and run the following (Note that
 # task_id should be in the range [0, num_worker_tasks):
@@ -367,6 +371,13 @@ I tensorflow/core/distributed_runtime/rpc/grpc_channel.cc:206] Initialize HostPo
 I tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc:202] Started server with target: grpc://localhost:2222
 ```
 
+If you compiled TensorFlow (from v1.1-rc3) with VERBS support and you have the
+required device and IB verbs SW stack, you can specify --protocol='grpc+verbs'
+In order to use Verbs RDMA for Tensor passing between workers and ps.
+Need to add the the --protocol flag in all tasks (ps and workers).
+The default protocol is the TensorFlow default protocol of grpc.
+
+
 [Congratulations!](https://www.youtube.com/watch?v=9bZkp7q19f0) You are now
 training Inception in a distributed manner.
 
@@ -388,7 +399,8 @@ Briefly, one can evaluate the model by running:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/imagenet_eval
+cd tensorflow-models/inception
+bazel build //inception:imagenet_eval
 
 # run it
 bazel-bin/inception/imagenet_eval --checkpoint_dir=/tmp/imagenet_train --eval_dir=/tmp/imagenet_eval
@@ -435,15 +447,16 @@ JPEG-encoded string and an integer label. Please see [`parse_example_proto`](inc
 
 The script just takes a few minutes to run depending your network connection
 speed for downloading and processing the images. Your hard disk requires 200MB
-of free storage. Here we select `DATA_DIR=$HOME/flowers-data` as such a location
+of free storage. Here we select `DATA_DIR=/tmp/flowers-data/` as such a location
 but feel free to edit accordingly.
 
 ```shell
 # location of where to place the flowers data
-FLOWERS_DATA_DIR=$HOME/flowers-data
+FLOWERS_DATA_DIR=/tmp/flowers-data/
 
 # build the preprocessing script.
-bazel build inception/download_and_preprocess_flowers
+cd tensorflow-models/inception
+bazel build //inception:download_and_preprocess_flowers
 
 # run it
 bazel-bin/inception/download_and_preprocess_flowers "${FLOWERS_DATA_DIR}"
@@ -473,9 +486,9 @@ model like so:
 
 ```shell
 # location of where to place the Inception v3 model
-DATA_DIR=$HOME/inception-v3-model
-mkdir -p ${DATA_DIR}
-cd ${DATA_DIR}
+INCEPTION_MODEL_DIR=$HOME/inception-v3-model
+mkdir -p ${INCEPTION_MODEL_DIR}
+cd ${INCEPTION_MODEL_DIR}
 
 # download the Inception v3 model
 curl -O http://download.tensorflow.org/models/image/imagenet/inception-v3-2016-03-01.tar.gz
@@ -523,10 +536,11 @@ the flowers data set with the following command.
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/flowers_train
+cd tensorflow-models/inception
+bazel build //inception:flowers_train
 
 # Path to the downloaded Inception-v3 model.
-MODEL_PATH="${INCEPTION_MODEL_DIR}/model.ckpt-157585"
+MODEL_PATH="${INCEPTION_MODEL_DIR}/inception-v3/model.ckpt-157585"
 
 # Directory where the flowers data resides.
 FLOWERS_DATA_DIR=/tmp/flowers-data/
@@ -559,7 +573,8 @@ fine-tuned model, you will need to run `flowers_eval`:
 ```shell
 # Build the model. Note that we need to make sure the TensorFlow is ready to
 # use before this as this command will not build TensorFlow.
-bazel build inception/flowers_eval
+cd tensorflow-models/inception
+bazel build //inception:flowers_eval
 
 # Directory where we saved the fine-tuned checkpoint and events files.
 TRAIN_DIR=/tmp/flowers_train/
@@ -647,7 +662,8 @@ To run `build_image_data.py`, you can run the following command line:
 OUTPUT_DIRECTORY=$HOME/my-custom-data/
 
 # build the preprocessing script.
-bazel build inception/build_image_data
+cd tensorflow-models/inception
+bazel build //inception:build_image_data
 
 # convert the data.
 bazel-bin/inception/build_image_data \
@@ -749,7 +765,7 @@ batch-splitting the model across multiple GPUs.
     permit training the model with higher learning rates.
 
 *   Often the GPU memory is a bottleneck that prevents employing larger batch
-    sizes. Employing more GPUs allows one to user larger batch sizes because
+    sizes. Employing more GPUs allows one to use larger batch sizes because
     this model splits the batch across the GPUs.
 
 **NOTE** If one wishes to train this model with *asynchronous* gradient updates,
