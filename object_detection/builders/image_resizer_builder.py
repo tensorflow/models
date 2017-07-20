@@ -16,8 +16,20 @@
 """Builder function for image resizing operations."""
 import functools
 
+import tensorflow as tf
+
 from object_detection.core import preprocessor
 from object_detection.protos import image_resizer_pb2
+
+# A map to convert from image_resizer_pb2.ImageResizer.Method enum to
+# tf.image.ResizeMethod.
+RESIZE_METHOD_MAP = {
+  image_resizer_pb2.ImageResizer.AREA: tf.image.ResizeMethod.AREA,
+  image_resizer_pb2.ImageResizer.BICUBIC: tf.image.ResizeMethod.BICUBIC,
+  image_resizer_pb2.ImageResizer.BILINEAR: tf.image.ResizeMethod.BILINEAR,
+  image_resizer_pb2.ImageResizer.NEAREST_NEIGHBOR: (
+    tf.image.ResizeMethod.NEAREST_NEIGHBOR),
+}
 
 
 def build(image_resizer_config):
@@ -43,6 +55,9 @@ def build(image_resizer_config):
     raise ValueError('image_resizer_config not of type '
                      'image_resizer_pb2.ImageResizer.')
 
+  default_method = RESIZE_METHOD_MAP[image_resizer_config.method]
+  random_method = image_resizer_config.random_method
+
   if image_resizer_config.WhichOneof(
       'image_resizer_oneof') == 'keep_aspect_ratio_resizer':
     keep_aspect_ratio_config = image_resizer_config.keep_aspect_ratio_resizer
@@ -52,11 +67,16 @@ def build(image_resizer_config):
     return functools.partial(
         preprocessor.resize_to_range,
         min_dimension=keep_aspect_ratio_config.min_dimension,
-        max_dimension=keep_aspect_ratio_config.max_dimension)
+        max_dimension=keep_aspect_ratio_config.max_dimension,
+        method=default_method,
+        random_method=random_method)
   if image_resizer_config.WhichOneof(
       'image_resizer_oneof') == 'fixed_shape_resizer':
     fixed_shape_resizer_config = image_resizer_config.fixed_shape_resizer
+    method = RESIZE_METHOD_MAP[image_resizer_config.method]
     return functools.partial(preprocessor.resize_image,
                              new_height=fixed_shape_resizer_config.height,
-                             new_width=fixed_shape_resizer_config.width)
+                             new_width=fixed_shape_resizer_config.width,
+                             method=default_method,
+                             random_method=random_method)
   raise ValueError('Invalid image resizer option.')

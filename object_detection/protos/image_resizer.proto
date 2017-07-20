@@ -9,6 +9,18 @@ message ImageResizer {
     KeepAspectRatioResizer keep_aspect_ratio_resizer = 1;
     FixedShapeResizer fixed_shape_resizer = 2;
   }
+
+  enum Method {
+    AREA=1;
+    BICUBIC=2;
+    BILINEAR=3;
+    NEAREST_NEIGHBOR=4;
+  }
+  // Method to use when resizing the image.
+  optional Method method = 3 [default=BILINEAR];
+
+  // Choose the resize method randomly
+  optional bool random_method = 4 [default=false];
 }
 
 
