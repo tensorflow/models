@@ -1242,6 +1242,8 @@ def random_resize_method(image, target_size, align_corners=False):
   Args:
     image: a rank 3 tensor.
     target_size: a list of [target_height, target_width]
+    align_corners: bool. If true, exactly align all 4 corners of the input and
+                   output. Defaults to `false`.
 
   Returns:
     resized image.
@@ -1278,8 +1280,13 @@ def resize_to_range(image,
                    dimension.
     max_dimension: (optional) (scalar) maximum allowed size
                    of the larger image dimension.
+    method: (optional) the method to use with `tf.image.resize_image`.
+            This parameter is not used if `random_method` is set to `True`.
+            Defaults to `tf.image.ResizeMethod.BILINEAR`.
+    random_method: bool. If true, a random method will be used when resizing.
+                   The value of method will be ignored. Defaults to `False`.
     align_corners: bool. If true, exactly align all 4 corners of the input
-                   and output. Defaults to False.
+                   and output. Defaults to `False`.
 
   Returns:
     A 3D tensor of shape [new_height, new_width, channels],
