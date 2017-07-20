@@ -11,6 +11,7 @@ Reference: [Orginal implementation in Torch](https://github.com/xcyan/nips16_PTN
 
 This implementation is ready to be run locally or ["distributed across multiple machines/tasks"](https://www.tensorflow.org/deploy/distributed).
 You will need to set the task number flag for each task when running in a distributed fashion.
+Please refer to the original paper for parameter explanations and training details.
 
 ### Installation
 *   TensorFlow
