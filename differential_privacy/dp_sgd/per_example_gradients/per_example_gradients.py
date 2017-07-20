@@ -210,45 +210,6 @@ class Conv2DPXG(object):
     self.colocate_gradients_with_ops = colocate_gradients_with_ops
     self.gate_gradients = gate_gradients
 
-  def _PxConv2DBuilder(self, input_, w, strides, padding):
-    """conv2d run separately per example, to help compute per-example gradients.
-
-    Args:
-      input_: tensor containing a minibatch of images / feature maps.
-              Shape [batch_size, rows, columns, channels]
-      w: convolution kernels. Shape
-        [kernel rows, kernel columns, input channels, output channels]
-      strides: passed through to regular conv_2d
-      padding: passed through to regular conv_2d
-
-    Returns:
-      conv: the output of the convolution.
-         single tensor, same as what regular conv_2d does
-      w_px: a list of batch_size copies of w. each copy was used
-          for the corresponding example in the minibatch.
-           calling tf.gradients on the copy gives the gradient for just
-                  that example.
-    """
-    input_shape = [int(e) for e in input_.get_shape()]
-    batch_size = input_shape[0]
-    input_px = [tf.slice(
-        input_, [example] + [0] * 3, [1] + input_shape[1:]) for example
-                in xrange(batch_size)]
-    for input_x in input_px:
-      assert int(input_x.get_shape()[0]) == 1
-    w_px = [tf.identity(w) for example in xrange(batch_size)]
-    conv_px = [tf.nn.conv2d(input_x, w_x,
-                            strides=strides,
-                            padding=padding)
-               for input_x, w_x in zip(input_px, w_px)]
-    for conv_x in conv_px:
-      num_x = int(conv_x.get_shape()[0])
-      assert num_x == 1, num_x
-    assert len(conv_px) == batch_size
-    conv = tf.concat(axis=0, values=conv_px)
-    assert int(conv.get_shape()[0]) == batch_size
-    return conv, w_px
-
   def __call__(self, w, z_grads):
     idx = list(self.op.inputs).index(w)
     # Make sure that `op` was actually applied to `w`
@@ -263,18 +224,39 @@ class Conv2DPXG(object):
     images, filters = self.op.inputs
     strides = self.op.get_attr("strides")
     padding = self.op.get_attr("padding")
+    data_format = self.op.get_attr("data_format")
+
+    def add_strides(input, stride, axis):
+      tensor_list = tf.unstack(input, axis=axis)
+      for i in range(len(tensor_list)-1, 0, -1):
+        for j in range(stride-1):
+          tensor_list.insert(i, tf.zeros_like(tensor_list[0]))
+      return tf.stack(tensor_list, axis=axis)
+
+    if strides[1] > 1:
+      add_strides(z_grads, strides[1], 0)
+    if strides[2] > 1:
+      add_strides(z_grads, strides[2], 1)
+
+    if data_format == "NHWC":
+      input_perm = [3, 1, 2, 0]
+      output_perm = [1, 2, 0, 3]
+    else:
+      input_perm = [1, 0, 2, 3]
+      output_perm = [2, 3, 0, 1]
     # Currently assuming that one specifies at most these four arguments and
     # that all other arguments to conv2d are set to default.
 
-    conv, w_px = self._PxConv2DBuilder(images, filters, strides, padding)
-    z_grads, = z_grads
+    def conv2d_one_example_grad(image):
+      assert len(image.get_shape()) == 3
+      input = tf.expand_dims(image, axis=0)
+      input = tf.transpose(input, perm=input_perm)
+      filter = tf.transpose(z_grads, perm=[1, 2, 0, 3])
+      grad = conv2d(input, filter, [1, 1, 1, 1], padding)
+      return tf.transpose(grad, perm=output_perm)
 
-    gradients_list = tf.gradients(conv, w_px, z_grads,
-                                  colocate_gradients_with_ops=
-                                  self.colocate_gradients_with_ops,
-                                  gate_gradients=self.gate_gradients)
-
-    return tf.stack(gradients_list)
+    grads = tf.map_fn(conv2d_one_example_grad, images)
+    return tf.concat(grads, 0)
 
 pxg_registry.Register("Conv2D", Conv2DPXG)
 
