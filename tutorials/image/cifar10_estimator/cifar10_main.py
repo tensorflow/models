@@ -282,7 +282,6 @@ def _tower_fn(is_training, weight_decay, feature, label, tower_losses,
   tower_loss = tf.losses.sparse_softmax_cross_entropy(
       logits=logits, labels=label)
   tower_loss = tf.reduce_mean(tower_loss)
-  tower_losses.append(tower_loss)
 
   model_params = tf.trainable_variables()
   tower_loss += weight_decay * tf.add_n(
