@@ -51,7 +51,7 @@ _NUM_SHARDS = 5
 
 # Python regex that matches names of image files in the archive.
 # Used for filtering out extra hidden files that can appear on OSX.
-_FILE_NAME_REGEX = re.compile(r".+\.(?:jpg|JPG)$")
+_FILE_NAME_REGEX = re.compile(r"[^\.].+\.(?:jpg|JPG)$")
 
 class ImageReader(object):
   """Helper class that provides TensorFlow image coding utilities."""
