@@ -5,7 +5,7 @@ autoencoders/* @snurkabill
 cognitive_mapping_and_planning/* @s-gupta
 compression/* @nmjohn
 differential_privacy/* @panyx0718
-domain_adaptation/* @bousmalis
+domain_adaptation/* @bousmalis @ddohan
 im2txt/* @cshallue
 inception/* @shlens @vincentvanhoucke
 learning_to_remember_rare_events/* @lukaszkaiser @ofirnachum
