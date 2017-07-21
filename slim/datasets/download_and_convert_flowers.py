@@ -30,6 +30,7 @@ from __future__ import print_function
 import math
 import os
 import random
+import re
 import sys
 
 import tensorflow as tf
@@ -48,6 +49,9 @@ _RANDOM_SEED = 0
 # The number of shards per dataset split.
 _NUM_SHARDS = 5
 
+# Python regex that matches names of image files in the archive.
+# Used for filtering out extra hidden files that can appear on OSX.
+_FILE_NAME_REGEX = re.compile(r".+\.(?:jpg|JPG)$")
 
 class ImageReader(object):
   """Helper class that provides TensorFlow image coding utilities."""
@@ -92,8 +96,9 @@ def _get_filenames_and_classes(dataset_dir):
   photo_filenames = []
   for directory in directories:
     for filename in os.listdir(directory):
-      path = os.path.join(directory, filename)
-      photo_filenames.append(path)
+      if (_FILE_NAME_REGEX.match(filename)):
+        path = os.path.join(directory, filename)
+        photo_filenames.append(path)
 
   return photo_filenames, sorted(class_names)
 
