@@ -132,7 +132,7 @@ def spikify_data(data_e, rng, dt=1.0, max_firing_rate=100):
     dt: how often the data are sampled
     max_firing_rate: the firing rate that is associated with a value of 1.0
   Returns:
-    spikified_data_e: a list of length b of the data represented as spikes,
+    spikified_e: a list of length b of the data represented as spikes,
     sampled from the underlying poisson process.
     """
 
@@ -160,8 +160,7 @@ def gaussify_data(data_e, rng, dt=1.0, max_firing_rate=100):
     dt: how often the data are sampled
     max_firing_rate: the firing rate that is associated with a value of 1.0
   Returns:
-    spikified_data_e: a list of length b of the data represented as spikes,
-    sampled from the underlying poisson process.
+    gauss_e: a list of length b of the data with noise.
     """
 
   E = len(data_e)
