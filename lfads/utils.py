@@ -82,9 +82,9 @@ def linear(x, out_size, do_bias=True, alpha=1.0, identity_if_possible=False,
     return tf.matmul(x, W)
 
 
-def init_linear(in_size, out_size, do_bias=True, mat_init_value=None, alpha=1.0,
-                identity_if_possible=False, normalized=False,
-                name=None, collections=None):
+def init_linear(in_size, out_size, do_bias=True, mat_init_value=None,
+                bias_init_value=None, alpha=1.0, identity_if_possible=False,
+                normalized=False, name=None, collections=None):
   """Linear (affine) transformation, y = x W + b, for a variety of
   configurations.
 
@@ -110,6 +110,9 @@ def init_linear(in_size, out_size, do_bias=True, mat_init_value=None, alpha=1.0,
   if mat_init_value is not None and mat_init_value.shape != (in_size, out_size):
     raise ValueError(
         'Provided mat_init_value must have shape [%d, %d].'%(in_size, out_size))
+  if bias_init_value is not None and bias_init_value.shape != (1,out_size):
+    raise ValueError(
+        'Provided bias_init_value must have shape [1,%d].'%(1,out_size))
 
   if mat_init_value is None:
     stddev = alpha/np.sqrt(float(in_size))
@@ -143,16 +146,20 @@ def init_linear(in_size, out_size, do_bias=True, mat_init_value=None, alpha=1.0,
       w = tf.get_variable(wname, [in_size, out_size], initializer=mat_init,
                           collections=w_collections)
 
+  b = None
   if do_bias:
     b_collections = [tf.GraphKeys.GLOBAL_VARIABLES]
     if collections:
       b_collections += collections
     bname = (name + "/b") if name else "/b"
-    b = tf.get_variable(bname, [1, out_size],
-                        initializer=tf.zeros_initializer(),
-                        collections=b_collections)
-  else:
-    b = None
+    if bias_init_value is None:
+      b = tf.get_variable(bname, [1, out_size],
+                          initializer=tf.zeros_initializer(),
+                          collections=b_collections)
+    else:
+      b = tf.Variable(bias_init_value, name=bname,
+                      collections=b_collections)
+
 
   return (w, b)
 

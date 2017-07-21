@@ -43,6 +43,10 @@ The nested dictionary is the DATA DICTIONARY, which has the following keys:
      output adapter for each dataset. These matrices, if provided, must be of
      size [data_dim x factors] where data_dim is the number of neurons recorded
      on that day, and factors is chosen and set through the '--factors' flag.
+   'alignment_bias_c' - See alignment_matrix_cxf.  This bias will used to
+     the offset for the alignment transformation.  It will *subtract* off the
+     bias from the data, so pca style inits can align factors across sessions.
+
 
   If one runs LFADS on data where the true rates are known for some trials,
   (say simulated, testing data, as in the example shipped with the paper), then
@@ -356,18 +360,36 @@ class LFADS(object):
     for d, name in enumerate(dataset_names):
       data_dim = hps.dataset_dims[name]
       in_mat_cxf = None
+      in_bias_1xf = None
+      align_bias_1xc = None
+
       if datasets and 'alignment_matrix_cxf' in datasets[name].keys():
         dataset = datasets[name]
         print("Using alignment matrix provided for dataset:", name)
         in_mat_cxf = dataset['alignment_matrix_cxf'].astype(np.float32)
         if in_mat_cxf.shape != (data_dim, factors_dim):
-          raise ValueError("""Alignment matrix must have dimensions %d x %d 
+          raise ValueError("""Alignment matrix must have dimensions %d x %d
           (data_dim x factors_dim), but currently has %d x %d."""%
                            (data_dim, factors_dim, in_mat_cxf.shape[0],
                             in_mat_cxf.shape[1]))
+      if datasets and 'alignment_bias_c' in datasets[name].keys():
+        dataset = datasets[name]
+        print("Using alignment bias provided for dataset:", name)
+        align_bias_c = dataset['alignment_bias_c'].astype(np.float32)
+        align_bias_1xc = np.expand_dims(align_bias_c, axis=0)
+        if align_bias_1xc.shape[1] != data_dim:
+          raise ValueError("""Alignment bias must have dimensions %d
+          (data_dim), but currently has %d."""%
+                           (data_dim, in_mat_cxf.shape[0]))
+        if in_mat_cxf is not None and align_bias_1xc is not None:
+          # (data - alignment_bias) * W_in
+          # data * W_in - alignment_bias * W_in
+          # So b = -alignment_bias * W_in to accommodate PCA style offset.
+          in_bias_1xf = -np.dot(align_bias_1xc, in_mat_cxf)
 
       in_fac_lin = init_linear(data_dim, used_in_factors_dim, do_bias=True,
                                mat_init_value=in_mat_cxf,
+                               bias_init_value=in_bias_1xf,
                                identity_if_possible=in_identity_if_poss,
                                normalized=False, name="x_2_infac_"+name,
                                collections=['IO_transformations'])
@@ -387,13 +409,17 @@ class LFADS(object):
           dataset = datasets[name]
           in_mat_cxf = dataset['alignment_matrix_cxf'].astype(np.float32)
 
-        out_mat_cxf = None
+        out_mat_fxc = None
+        out_bias_1xc = None
         if in_mat_cxf is not None:
-          out_mat_cxf = in_mat_cxf.T
+          out_mat_fxc = np.linalg.pinv(in_mat_cxf)
+        if align_bias_1xc is not None:
+          out_bias_1xc = align_bias_1xc
 
         if hps.output_dist == 'poisson':
           out_fac_lin = init_linear(factors_dim, data_dim, do_bias=True,
-                                    mat_init_value=out_mat_cxf,
+                                    mat_init_value=out_mat_fxc,
+                                    bias_init_value=out_bias_1xc,
                                     identity_if_possible=out_identity_if_poss,
                                     normalized=False,
                                     name="fac_2_logrates_"+name,
@@ -403,13 +429,19 @@ class LFADS(object):
         elif hps.output_dist == 'gaussian':
           out_fac_lin_mean = \
               init_linear(factors_dim, data_dim, do_bias=True,
-                          mat_init_value=out_mat_cxf,
+                          mat_init_value=out_mat_fxc,
+                          bias_init_value=out_bias_1xc,
                           normalized=False,
                           name="fac_2_means_"+name,
                           collections=['IO_transformations'])
+          out_fac_W_mean, out_fac_b_mean = out_fac_lin_mean
+
+          mat_init_value = np.zeros([factors_dim, data_dim]).astype(np.float32)
+          bias_init_value = np.ones([1, data_dim]).astype(np.float32)
           out_fac_lin_logvar = \
               init_linear(factors_dim, data_dim, do_bias=True,
-                          mat_init_value=out_mat_cxf,
+                          mat_init_value=mat_init_value,
+                          bias_init_value=bias_init_value,
                           normalized=False,
                           name="fac_2_logvars_"+name,
                           collections=['IO_transformations'])
