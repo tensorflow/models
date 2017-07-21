@@ -41,6 +41,10 @@ fi
 
 # Create the output and temporary directories.
 DATA_DIR="${1%/}"
+# Get an absolute path for DATA_DIR, if needed.
+if [ "${DATA_DIR:0:1}" != "/"  ]; then
+    DATA_DIR="$(pwd)/${DATA_DIR}"
+fi
 SCRATCH_DIR="${DATA_DIR}/raw-data"
 mkdir -p "${DATA_DIR}"
 mkdir -p "${SCRATCH_DIR}"
@@ -79,7 +83,14 @@ while read LABEL; do
 
   # Move the first randomly selected 100 images to the validation set.
   mkdir -p "${VALIDATION_DIR_FOR_LABEL}"
-  VALIDATION_IMAGES=$(ls -1 "${TRAIN_DIR_FOR_LABEL}" | shuf | head -100)
+  if [ "$(command -v shuf)" ]; then
+    VALIDATION_IMAGES=$(ls -1 "${TRAIN_DIR_FOR_LABEL}" | shuf | head -100)
+  elif [ "$(command -v gshuf)" ]; then
+    VALIDATION_IMAGES=$(ls -1 "${TRAIN_DIR_FOR_LABEL}" | gshuf | head -100)
+  else
+    echo 'Error: neither shuf or gshuf are installed.' >&2
+    exit 1
+  fi
   for IMAGE in ${VALIDATION_IMAGES}; do
     mv -f "${TRAIN_DIRECTORY}/${LABEL}/${IMAGE}" "${VALIDATION_DIR_FOR_LABEL}"
   done
