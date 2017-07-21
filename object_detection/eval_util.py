@@ -52,7 +52,7 @@ def write_metrics(metrics, global_step, summary_dir):
 
 def evaluate_detection_results_pascal_voc(result_lists,
                                           categories,
-                                          label_id_offset=0,
+                                          label_id_offset=1,
                                           iou_thres=0.5,
                                           corloc_summary=False):
   """Computes Pascal VOC detection metrics given groundtruth and detections.

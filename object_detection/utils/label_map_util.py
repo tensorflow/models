@@ -57,7 +57,8 @@ def create_category_index(categories):
 
 def convert_label_map_to_categories(label_map,
                                     max_num_classes,
-                                    use_display_name=True):
+                                    use_display_name=True,
+                                    label_id_offset=1):
   """Loads label map proto and returns categories list compatible with eval.
 
   This function loads a label map and returns a list of dicts, each of which
@@ -77,13 +78,13 @@ def convert_label_map_to_categories(label_map,
     use_display_name: (boolean) choose whether to load 'display_name' field
       as category name.  If False or if the display_name field does not exist,
       uses 'name' field as category names instead.
+    label_id_offset: an integer offset for the label space.
   Returns:
     categories: a list of dictionaries representing all possible categories.
   """
   categories = []
   list_of_ids_already_added = []
   if not label_map:
-    label_id_offset = 1
     for class_id in range(max_num_classes):
       categories.append({
           'id': class_id + label_id_offset,
@@ -99,7 +100,7 @@ def convert_label_map_to_categories(label_map,
       name = item.display_name
     else:
       name = item.name
-    if item.id not in list_of_ids_already_added:
+    if item.id - label_id_offset not in list_of_ids_already_added:
       list_of_ids_already_added.append(item.id)
       categories.append({'id': item.id, 'name': name})
   return categories
