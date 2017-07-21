@@ -136,7 +136,6 @@ def spikify_data(data_e, rng, dt=1.0, max_firing_rate=100):
     sampled from the underlying poisson process.
     """
 
-  spikifies_data_e = []
   E = len(data_e)
   spikes_e = []
   for e in range(E):
@@ -150,6 +149,32 @@ def spikify_data(data_e, rng, dt=1.0, max_firing_rate=100):
     spikes_e.append(data_s)
 
   return spikes_e
+
+
+def gaussify_data(data_e, rng, dt=1.0, max_firing_rate=100):
+  """ Apply gaussian noise to a continuous dataset whose values are between
+  0.0 and 1.0
+
+  Args:
+    data_e: nexamples length list of NxT trials
+    dt: how often the data are sampled
+    max_firing_rate: the firing rate that is associated with a value of 1.0
+  Returns:
+    spikified_data_e: a list of length b of the data represented as spikes,
+    sampled from the underlying poisson process.
+    """
+
+  E = len(data_e)
+  mfr = max_firing_rate
+  gauss_e = []
+  for e in range(E):
+    data = data_e[e]
+    N,T = data.shape
+    noisy_data = data * mfr + np.random.randn(N,T) * (5.0*mfr) * np.sqrt(dt)
+    gauss_e.append(noisy_data)
+
+  return gauss_e
+
 
 
 def get_train_n_valid_inds(num_trials, train_fraction, nspikifications):
@@ -295,6 +320,8 @@ def add_alignment_projections(datasets, npcs, ntime=None, nsamples=None):
     W_chxp, _, _, _ = \
         np.linalg.lstsq(all_data_zm_chxtc.T, all_data_pca_pxtc.T)
     dataset['alignment_matrix_cxf'] = W_chxp
+    alignment_bias_cx1 = all_data_mean_nx1[cidx_s:cidx_f]
+    dataset['alignment_bias_c'] = np.squeeze(alignment_bias_cx1, axis=1)
 
   do_debug_plot = False
   if do_debug_plot:

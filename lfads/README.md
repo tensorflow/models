@@ -36,10 +36,10 @@ These synthetic datasets are provided 1. to gain insight into how the LFADS algo
 
 ## Train an LFADS model
 
-Now that we have our example datasets, we can train some models! To spin up an LFADS model on the synthetic data, run any of the following commands. For the examples that are in the paper, the important hyperparameters are roughly replicated. Most hyperparameters are insensitive to small changes or won't ever be changed unless you want a very fine level of control. In the first example, all hyperparameter flags are enumerated for easy copy-pasting, but for the rest of the examples only the most important flags (~the first 8) are specified for brevity. For a full list of flags, their descriptions, and their default values, refer to the top of `run_lfads.py`.  Please see Table 1 in the Online Methods of the associated paper for definitions of the most important hyperparameters.
+Now that we have our example datasets, we can train some models! To spin up an LFADS model on the synthetic data, run any of the following commands. For the examples that are in the paper, the important hyperparameters are roughly replicated. Most hyperparameters are insensitive to small changes or won't ever be changed unless you want a very fine level of control. In the first example, all hyperparameter flags are enumerated for easy copy-pasting, but for the rest of the examples only the most important flags (~the first 9) are specified for brevity. For a full list of flags, their descriptions, and their default values, refer to the top of `run_lfads.py`.  Please see Table 1 in the Online Methods of the associated paper for definitions of the most important hyperparameters.
 
 ```sh
-# Run LFADS on chaotic rnn data with no input pulses (g = 1.5)
+# Run LFADS on chaotic rnn data with no input pulses (g = 1.5) with spiking noise
 $ python run_lfads.py --kind=train \
 --data_dir=/tmp/rnn_synth_data_v1.0/ \
 --data_filename_stem=chaotic_rnn_no_inputs \
@@ -106,14 +106,16 @@ $ python run_lfads.py --kind=train \
 --data_filename_stem=chaotic_rnn_inputs_g2p5 \
 --lfads_save_dir=/tmp/lfads_chaotic_rnn_inputs_g2p5 \
 --co_dim=1 \
---factors_dim=20
+--factors_dim=20 \
+--output_dist=poisson
 
 # Run LFADS on multi-session RNN data
 $ python run_lfads.py --kind=train \
 --data_dir=/tmp/rnn_synth_data_v1.0/ \
 --data_filename_stem=chaotic_rnn_multisession \
 --lfads_save_dir=/tmp/lfads_chaotic_rnn_multisession \
---factors_dim=10
+--factors_dim=10 \
+--output_dist=poisson
 
 # Run LFADS on integration to bound model data
 $ python run_lfads.py --kind=train \
@@ -122,7 +124,8 @@ $ python run_lfads.py --kind=train \
 --lfads_save_dir=/tmp/lfads_itb_rnn \
 --co_dim=1 \
 --factors_dim=20 \
---controller_input_lag=0
+--controller_input_lag=0 \
+--output_dist=poisson
 
 # Run LFADS on chaotic RNN data with labels
 $ python run_lfads.py --kind=train \
@@ -132,7 +135,20 @@ $ python run_lfads.py --kind=train \
 --co_dim=0 \
 --factors_dim=20 \
 --controller_input_lag=0 \
---ext_input_dim=1
+--ext_input_dim=1 \
+--output_dist=poisson
+
+# Run LFADS on chaotic rnn data with no input pulses (g = 1.5) with Gaussian noise
+$ python run_lfads.py --kind=train \
+--data_dir=/tmp/rnn_synth_data_v1.0/ \
+--data_filename_stem=chaotic_rnn_no_inputs \
+--lfads_save_dir=/tmp/lfads_chaotic_rnn_no_inputs \
+--co_dim=0 \
+--factors_dim=20 \
+--ext_input_dim=0 \
+--controller_input_lag=1 \
+--output_dist=gaussian \
+
 
 ```
 
