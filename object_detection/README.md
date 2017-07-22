@@ -31,13 +31,15 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 ## Table of contents
 
+Before You Start:
+* <a href='g3doc/installation.md'>Installation</a><br>
+
 Quick Start:
 * <a href='object_detection_tutorial.ipynb'>
       Quick Start: Jupyter notebook for off-the-shelf inference</a><br>
 * <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
 
 Setup:
-* <a href='g3doc/installation.md'>Installation</a><br>
 * <a href='g3doc/configuring_jobs.md'>
       Configuring an object detection pipeline</a><br>
 * <a href='g3doc/preparing_inputs.md'>Preparing inputs</a><br>
@@ -52,6 +54,17 @@ Extras:
       Exporting a trained model for inference</a><br>
 * <a href='g3doc/defining_your_own_model.md'>
       Defining your own model architecture</a><br>
+* <a href='g3doc/using_your_own_dataset.md'>
+      Bringing in your own dataset</a><br>
+
+## Getting Help
+
+Please report bugs to the tensorflow/models/ Github
+[issue tracker](https://github.com/tensorflow/models/issues), prefixing the
+issue name with "object_detection". To get help with issues you may encounter
+using the Tensorflow Object Detection API, create a new question on
+[StackOverflow](https://stackoverflow.com/) with the tags "tensorflow" and
+"object-detection".
 
 ## Release information
 

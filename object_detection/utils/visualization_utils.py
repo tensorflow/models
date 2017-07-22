@@ -80,7 +80,7 @@ def encode_image_array_as_png_str(image):
     PNG encoded image string.
   """
   image_pil = Image.fromarray(np.uint8(image))
-  output = six.StringIO()
+  output = six.BytesIO()
   image_pil.save(output, format='PNG')
   png_string = output.getvalue()
   output.close()
@@ -398,7 +398,7 @@ def visualize_boxes_and_labels_on_image_array(image,
               classes[i] % len(STANDARD_COLORS)]
 
   # Draw all boxes onto image.
-  for box, color in six.iteritems(box_to_color_map):
+  for box, color in box_to_color_map.items():
     ymin, xmin, ymax, xmax = box
     if instance_masks is not None:
       draw_mask_on_image_array(

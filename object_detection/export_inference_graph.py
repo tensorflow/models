@@ -16,23 +16,30 @@
 r"""Tool to export an object detection model for inference.
 
 Prepares an object detection tensorflow graph for inference using model
-configuration and an optional trained checkpoint.
+configuration and an optional trained checkpoint. Outputs either an inference
+graph or a SavedModel (https://tensorflow.github.io/serving/serving_basic.html).
 
-The inference graph contains one of two input nodes depending on the user
+The inference graph contains one of three input nodes depending on the user
 specified option.
   * `image_tensor`: Accepts a uint8 4-D tensor of shape [1, None, None, 3]
+  * `encoded_image_string_tensor`: Accepts a scalar string tensor of encoded PNG
+    or JPEG image.
   * `tf_example`: Accepts a serialized TFExample proto. The batch size in this
     case is always 1.
 
-and the following output nodes:
-  * `num_detections` : Outputs float32 tensors of the form [batch]
+and the following output nodes returned by the model.postprocess(..):
+  * `num_detections`: Outputs float32 tensors of the form [batch]
       that specifies the number of valid boxes per image in the batch.
-  * `detection_boxes`  : Outputs float32 tensors of the form
+  * `detection_boxes`: Outputs float32 tensors of the form
       [batch, num_boxes, 4] containing detected boxes.
-  * `detection_scores` : Outputs float32 tensors of the form
+  * `detection_scores`: Outputs float32 tensors of the form
       [batch, num_boxes] containing class scores for the detections.
   * `detection_classes`: Outputs float32 tensors of the form
       [batch, num_boxes] containing classes for the detections.
+  * `detection_masks`: Outputs float32 tensors of the form
+      [batch, num_boxes, mask_height, mask_width] containing predicted instance
+      masks for each box if its present in the dictionary of postprocessed
+      tensors returned by the model.
 
 Note that currently `batch` is always 1, but we will support `batch` > 1 in
 the future.
@@ -61,7 +68,8 @@ slim = tf.contrib.slim
 flags = tf.app.flags
 
 flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '
-                    'one of [`image_tensor` `tf_example_proto`]')
+                    'one of [`image_tensor`, `encoded_image_string_tensor`, '
+                    '`tf_example`]')
 flags.DEFINE_string('pipeline_config_path', '',
                     'Path to a pipeline_pb2.TrainEvalPipelineConfig config '
                     'file.')
@@ -70,6 +78,8 @@ flags.DEFINE_string('checkpoint_path', '', 'Optional path to checkpoint file. '
                     'the graph.')
 flags.DEFINE_string('inference_graph_path', '', 'Path to write the output '
                     'inference graph.')
+flags.DEFINE_bool('export_as_saved_model', False, 'Whether the exported graph '
+                  'should be saved as a SavedModel')
 
 FLAGS = flags.FLAGS
 
@@ -83,7 +93,8 @@ def main(_):
     text_format.Merge(f.read(), pipeline_config)
   exporter.export_inference_graph(FLAGS.input_type, pipeline_config,
                                   FLAGS.checkpoint_path,
-                                  FLAGS.inference_graph_path)
+                                  FLAGS.inference_graph_path,
+                                  FLAGS.export_as_saved_model)
 
 
 if __name__ == '__main__':

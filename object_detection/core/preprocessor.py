@@ -341,7 +341,6 @@ def random_pixel_value_scale(image, minval=0.9, maxval=1.1, seed=None):
 
   Returns:
     image: image which is the same shape as input image.
-    boxes: boxes which is the same shape as input boxes.
   """
   with tf.name_scope('RandomPixelValueScale', values=[image]):
     color_coef = tf.random_uniform(
@@ -707,8 +706,8 @@ def _strict_random_crop_image(image,
       masks_of_boxes_inside_window = tf.gather(masks, inside_window_ids)
       masks_of_boxes_completely_inside_window = tf.gather(
           masks_of_boxes_inside_window, keep_ids)
-      masks_box_begin = [im_box_begin[2], im_box_begin[0], im_box_begin[1]]
-      masks_box_size = [im_box_size[2], im_box_size[0], im_box_size[1]]
+      masks_box_begin = [0, im_box_begin[0], im_box_begin[1]]
+      masks_box_size = [-1, im_box_size[0], im_box_size[1]]
       new_masks = tf.slice(
           masks_of_boxes_completely_inside_window,
           masks_box_begin, masks_box_size)

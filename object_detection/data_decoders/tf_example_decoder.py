@@ -82,7 +82,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Tensor('image/segmentation/object/class')),
     }
 
-  def Decode(self, tf_example_string_tensor):
+  def decode(self, tf_example_string_tensor):
     """Decodes serialized tensorflow example and returns a tensor dictionary.
 
     Args:
