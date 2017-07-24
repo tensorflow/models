@@ -58,7 +58,7 @@ def build_input(dataset, data_path, batch_size, mode):
   record = tf.reshape(tf.decode_raw(value, tf.uint8), [record_bytes])
   label = tf.cast(tf.slice(record, [label_offset], [label_bytes]), tf.int32)
   # Convert from string to [depth * height * width] to [depth, height, width].
-  depth_major = tf.reshape(tf.slice(record, [label_bytes], [image_bytes]),
+  depth_major = tf.reshape(tf.slice(record, [label_offset + label_bytes], [image_bytes]),
                            [depth, image_size, image_size])
   # Convert from [depth, height, width] to [height, width, depth].
   image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
