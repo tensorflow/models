@@ -150,11 +150,12 @@ def main(_):
     predictions = tf.argmax(logits, 1)
     labels = tf.squeeze(labels)
 
+    tf.summary.scalar('StevesAccuracty',slim.metrics.accuracy(predictions, labels))
+
+
     # Define the metrics:
     names_to_values, names_to_updates = slim.metrics.aggregate_metric_map({
         'Accuracy': slim.metrics.streaming_accuracy(predictions, labels),
-        'Recall_5': slim.metrics.streaming_recall_at_k(
-            logits, labels, 5),
     })
 
     # Print the summaries to screen.
