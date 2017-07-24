@@ -1,7 +1,7 @@
 # REINFORCing Concrete with REBAR
 *Implemention of REBAR (and other closely related methods) as described
 in "REBAR: Low-variance, unbiased gradient estimates for discrete latent variable models" by
-George Tucker, Andriy Mnih, Chris J. Maddison, Dieterich Lawson, Jascha Sohl-Dickstein [https://arxiv.org/abs/1703.07370](https://arxiv.org/abs/1703.07370).*
+George Tucker, Andriy Mnih, Chris J. Maddison, Dieterich Lawson, Jascha Sohl-Dickstein [(https://arxiv.org/abs/1703.07370)](https://arxiv.org/abs/1703.07370).*
 
 Learning in models with discrete latent variables is challenging due to high variance gradient estimators. Generally, approaches have relied on control variates to reduce the variance of the REINFORCE estimator. Recent work (Jang et al. 2016; Maddison et al. 2016) has taken a different approach, introducing a continuous relaxation of discrete variables to produce low-variance, but biased, gradient estimates. In this work, we combine the two approaches through a novel control variate that produces low-variance, unbiased gradient estimates. Then, we introduce a novel continuous relaxation and show that the tightness of the relaxation can be adapted online, removing it as a hyperparameter. We show state-of-the-art variance reduction on several benchmark generative modeling tasks, generally leading to faster convergence to a better final log likelihood.
 
