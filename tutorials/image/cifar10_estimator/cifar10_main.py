@@ -411,7 +411,7 @@ def main(unused_argv):
   sess_config.inter_op_parallelism_threads = FLAGS.num_inter_threads
   sess_config.gpu_options.force_gpu_compatible = FLAGS.force_gpu_compatible
 
-  # log learning_rate 
+  # log learning_rate
   tensors_to_log = {'learning_rate': 'learning_rate'}
   logging_hook = tf.train.LoggingTensorHook(
       tensors=tensors_to_log, every_n_iter=100)
