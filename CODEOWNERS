@@ -19,6 +19,7 @@ object_detection/* @jch1 @tombstone @derekjchow @jesu9 @dreamdragon
 pcl_rl/* @ofirnachum
 ptn/* @xcyan @arkanath @hellojas @honglaklee
 real_nvp/* @laurent-dinh
+rebar/* @gjtucker
 resnet/* @panyx0718
 skip_thoughts/* @cshallue
 slim/* @sguada @nathansilberman
