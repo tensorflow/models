@@ -23,7 +23,7 @@ DATASET_DIR=/tmp/flowers
 if [ ! -d "$PRETRAINED_CHECKPOINT_DIR" ]; then
   mkdir ${PRETRAINED_CHECKPOINT_DIR}
 fi
-if [ ! -f ${PRETRAINED_CHECKPOINT_DIR}/mobilenet_v1_1.0.ckpt.index ]; then
+if [ ! -f ${PRETRAINED_CHECKPOINT_DIR}/mobilenet_v1_1.0_224.ckpt.index ]; then
   wget http://download.tensorflow.org/models/mobilenet_v1_1.0_224_2017_06_14.tar.gz
   tar -xvf mobilenet_v1_1.0_224_2017_06_14.tar.gz
   mv mobilenet_v1_1.0.ckpt.* ${PRETRAINED_CHECKPOINT_DIR}/
