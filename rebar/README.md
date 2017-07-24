@@ -3,7 +3,7 @@
 in "REBAR: Low-variance, unbiased gradient estimates for discrete latent variable models" by
 George Tucker, Andriy Mnih, Chris J. Maddison, Dieterich Lawson, Jascha Sohl-Dickstein [(https://arxiv.org/abs/1703.07370)](https://arxiv.org/abs/1703.07370).*
 
-Learning in models with discrete latent variables is challenging due to high variance gradient estimators. Generally, approaches have relied on control variates to reduce the variance of the REINFORCE estimator. Recent work (Jang et al. 2016; Maddison et al. 2016) has taken a different approach, introducing a continuous relaxation of discrete variables to produce low-variance, but biased, gradient estimates. In this work, we combine the two approaches through a novel control variate that produces low-variance, unbiased gradient estimates. Then, we introduce a novel continuous relaxation and show that the tightness of the relaxation can be adapted online, removing it as a hyperparameter. We show state-of-the-art variance reduction on several benchmark generative modeling tasks, generally leading to faster convergence to a better final log likelihood.
+Learning in models with discrete latent variables is challenging due to high variance gradient estimators. Generally, approaches have relied on control variates to reduce the variance of the REINFORCE estimator. Recent work ([Jang et al. 2016](https://arxiv.org/abs/1611.01144); [Maddison et al. 2016](https://arxiv.org/abs/1611.00712)) has taken a different approach, introducing a continuous relaxation of discrete variables to produce low-variance, but biased, gradient estimates. In this work, we combine the two approaches through a novel control variate that produces low-variance, unbiased gradient estimates. Then, we introduce a novel continuous relaxation and show that the tightness of the relaxation can be adapted online, removing it as a hyperparameter. We show state-of-the-art variance reduction on several benchmark generative modeling tasks, generally leading to faster convergence to a better final log likelihood.
 
 REBAR applied to multilayer sigmoid belief networks is implemented in rebar.py and rebar_train.py provides a training/evaluation setup. As a comparison, we also implemented the following methods:
 * [NVIL](https://arxiv.org/abs/1402.0030)
@@ -20,7 +20,7 @@ Requirements:
 * MNIST dataset
 * Omniglot dataset
 
-First download datasets, by selecting URLs to download the data from. Then
+First download datasets by selecting URLs to download the data from. Then
 fill in the download_data.py script like so:
 
 ```
@@ -102,7 +102,7 @@ The training script has a number of hyperparameter configuration flags:
   temperature. The ones named after
   methods uses that method to estimate the gradients (SBN refers to
   REINFORCE). SBNTrackGradVariances runs multiple methods and follows a single
-  optimization trajectory.
+  optimization trajectory
 * n_hidden (200): number of hidden nodes per layer
 * n_layer (1): number of layers in the model
 * nonlinear (false): if true use 2 x tanh layers between each stochastic layer,
