@@ -67,7 +67,7 @@ tf.flags.DEFINE_integer('eval_batch_size', 100, 'Batch size for validation.')
 
 tf.flags.DEFINE_float('momentum', 0.9, 'Momentum for MomentumOptimizer.')
 
-tf.flags.DEFINE_float('weight_decay', 1e-4, 'Weight decay for convolutions.')
+tf.flags.DEFINE_float('weight_decay', 2e-4, 'Weight decay for convolutions.')
 
 tf.flags.DEFINE_boolean('use_distortion_for_training', True,
                         'If doing image distortion for training.')
