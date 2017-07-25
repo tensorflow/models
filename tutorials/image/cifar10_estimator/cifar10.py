@@ -43,7 +43,7 @@ class Cifar10DataSet(object):
     if self.subset == 'train':
       return [
           os.path.join(self.data_dir, 'data_batch_%d.bin' % i)
-          for i in xrange(1, 5)
+          for i in xrange(1, 6)
       ]
     elif self.subset == 'validation':
       return [os.path.join(self.data_dir, 'data_batch_5.bin')]
