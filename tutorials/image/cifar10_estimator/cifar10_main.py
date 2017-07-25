@@ -245,7 +245,7 @@ def _resnet_model_fn(features, labels, mode):
       optimizer = tf.train.SyncReplicasOptimizer(
           optimizer,
           replicas_to_aggregate=FLAGS.num_workers)
-      sync_replicas_hook = opt.make_session_run_hook(True)
+      sync_replicas_hook = optimizer.make_session_run_hook(True)
       chief_hooks.append(sync_replicas_hook)
 
     # Create single grouped train op
