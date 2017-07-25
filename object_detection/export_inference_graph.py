@@ -64,7 +64,6 @@ from google.protobuf import text_format
 from object_detection import exporter
 from object_detection.protos import pipeline_pb2
 
-slim = tf.contrib.slim
 flags = tf.app.flags
 
 flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '
