@@ -38,6 +38,7 @@ package_group(
         "//research/vision/couchpotato/...",
         "//research/vision/enhancement/...",
         "//research/vision/loco/...",
+        "//research/vision/npcam/lib_image_quality/nima/...",
         "//research/vision/threedeep/...",
         "//robotics/learning/...",
         "//robotics/reinforcement_learning/evol/...",
