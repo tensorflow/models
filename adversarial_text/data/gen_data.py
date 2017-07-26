@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Create TFRecord files of SequenceExample protos from dataset.
 
 Constructs 3 datasets:
@@ -30,6 +29,8 @@ from __future__ import print_function
 
 import os
 import string
+
+# Dependency imports
 
 import tensorflow as tf
 
@@ -197,6 +198,7 @@ def generate_test_data(vocab_ids, writer_lm_all, writer_seq_ae_all):
 
 
 def main(_):
+  tf.logging.set_verbosity(tf.logging.INFO)
   tf.logging.info('Assigning vocabulary ids...')
   vocab_ids = make_vocab_ids(
       FLAGS.vocab_file or os.path.join(FLAGS.output_dir, 'vocab.txt'))

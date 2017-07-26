@@ -1,0 +1,103 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Configuration proto for the convolution op hyperparameters to use in the
+// object detection pipeline.
+message Hyperparams {
+
+  // Operations affected by hyperparameters.
+  enum Op {
+    // Convolution, Separable Convolution, Convolution transpose.
+    CONV = 1;
+
+    // Fully connected
+    FC = 2;
+  }
+  optional Op op = 1 [default = CONV];
+
+  // Regularizer for the weights of the convolution op.
+  optional Regularizer regularizer = 2;
+
+  // Initializer for the weights of the convolution op.
+  optional Initializer initializer = 3;
+
+  // Type of activation to apply after convolution.
+  enum Activation {
+    // Use None (no activation)
+    NONE = 0;
+
+    // Use tf.nn.relu
+    RELU = 1;
+
+    // Use tf.nn.relu6
+    RELU_6 = 2;
+  }
+  optional Activation activation = 4 [default = RELU];
+
+  // BatchNorm hyperparameters. If this parameter is NOT set then BatchNorm is
+  // not applied!
+  optional BatchNorm batch_norm = 5;
+}
+
+// Proto with one-of field for regularizers.
+message Regularizer {
+  oneof regularizer_oneof {
+    L1Regularizer l1_regularizer = 1;
+    L2Regularizer l2_regularizer = 2;
+  }
+}
+
+// Configuration proto for L1 Regularizer.
+// See https://www.tensorflow.org/api_docs/python/tf/contrib/layers/l1_regularizer
+message L1Regularizer {
+  optional float weight = 1 [default = 1.0];
+}
+
+// Configuration proto for L2 Regularizer.
+// See https://www.tensorflow.org/api_docs/python/tf/contrib/layers/l2_regularizer
+message L2Regularizer {
+  optional float weight = 1 [default = 1.0];
+}
+
+// Proto with one-of field for initializers.
+message Initializer {
+  oneof initializer_oneof {
+    TruncatedNormalInitializer truncated_normal_initializer = 1;
+    VarianceScalingInitializer variance_scaling_initializer = 2;
+  }
+}
+
+// Configuration proto for truncated normal initializer. See
+// https://www.tensorflow.org/api_docs/python/tf/truncated_normal_initializer
+message TruncatedNormalInitializer {
+  optional float mean = 1 [default = 0.0];
+  optional float stddev = 2 [default = 1.0];
+}
+
+// Configuration proto for variance scaling initializer. See
+// https://www.tensorflow.org/api_docs/python/tf/contrib/layers/
+// variance_scaling_initializer
+message VarianceScalingInitializer {
+  optional float factor = 1 [default = 2.0];
+  optional bool uniform = 2 [default = false];
+  enum Mode {
+    FAN_IN = 0;
+    FAN_OUT = 1;
+    FAN_AVG = 2;
+  }
+  optional Mode mode = 3 [default = FAN_IN];
+}
+
+// Configuration proto for batch norm to apply after convolution op. See
+// https://www.tensorflow.org/api_docs/python/tf/contrib/layers/batch_norm
+message BatchNorm {
+  optional float decay = 1 [default = 0.999];
+  optional bool center = 2 [default = true];
+  optional bool scale = 3 [default = false];
+  optional float epsilon = 4 [default = 0.001];
+  // Whether to train the batch norm variables. If this is set to false during
+  // training, the current value of the batch_norm variables are used for
+  // forward pass but they are never updated.
+  optional bool train = 5 [default = true];
+}

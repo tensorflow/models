@@ -162,11 +162,21 @@ class PTBModel(object):
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
     logits = tf.matmul(output, softmax_w) + softmax_b
-    loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
-        [logits],
-        [tf.reshape(input_.targets, [-1])],
-        [tf.ones([batch_size * num_steps], dtype=data_type())])
-    self._cost = cost = tf.reduce_sum(loss) / batch_size
+
+    # Reshape logits to be 3-D tensor for sequence loss
+    logits = tf.reshape(logits, [batch_size, num_steps, vocab_size])
+
+    # use the contrib sequence loss and average over the batches
+    loss = tf.contrib.seq2seq.sequence_loss(
+        logits,
+        input_.targets,
+        tf.ones([batch_size, num_steps], dtype=data_type()),
+        average_across_timesteps=False,
+        average_across_batch=True
+    )
+
+    # update the cost variables
+    self._cost = cost = tf.reduce_sum(loss)
     self._final_state = state
 
     if not is_training:

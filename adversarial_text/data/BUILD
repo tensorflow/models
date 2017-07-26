@@ -1,3 +1,5 @@
+licenses(["notice"])  # Apache 2.0
+
 package(
     default_visibility = [
         "//adversarial_text:__subpackages__",
@@ -10,6 +12,7 @@ py_binary(
     deps = [
         ":data_utils",
         ":document_generators",
+        # tensorflow dep,
     ],
 )
 
@@ -19,17 +22,24 @@ py_binary(
     deps = [
         ":data_utils",
         ":document_generators",
+        # tensorflow dep,
     ],
 )
 
 py_library(
     name = "document_generators",
     srcs = ["document_generators.py"],
+    deps = [
+        # tensorflow dep,
+    ],
 )
 
 py_library(
     name = "data_utils",
     srcs = ["data_utils.py"],
+    deps = [
+        # tensorflow dep,
+    ],
 )
 
 py_test(
@@ -37,5 +47,6 @@ py_test(
     srcs = ["data_utils_test.py"],
     deps = [
         ":data_utils",
+        # tensorflow dep,
     ],
 )

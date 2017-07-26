@@ -62,8 +62,9 @@ class ModelTest(tf.test.TestCase):
         self.rng.randint(low=0, high=255,
                          size=self.images_shape).astype('float32'),
         name='input_node')
-    self.fake_conv_tower_np = tf.constant(
-        self.rng.randn(*self.conv_tower_shape).astype('float32'))
+    self.fake_conv_tower_np = self.rng.randn(
+        *self.conv_tower_shape).astype('float32')
+    self.fake_conv_tower = tf.constant(self.fake_conv_tower_np)
     self.fake_logits = tf.constant(
         self.rng.randn(*self.chars_logit_shape).astype('float32'))
     self.fake_labels = tf.constant(
@@ -161,6 +162,87 @@ class ModelTest(tf.test.TestCase):
 
     # This test checks that the loss function is 'runnable'.
     self.assertEqual(loss_np.shape, tuple())
+
+  def encode_coordinates_alt(self, net):
+    """An alternative implemenation for the encoding coordinates.
+
+    Args:
+      net: a tensor of shape=[batch_size, height, width, num_features]
+
+    Returns:
+      a list of tensors with encoded image coordinates in them.
+    """
+    batch_size, h, w, _ = net.shape.as_list()
+    h_loc = [
+      tf.tile(
+          tf.reshape(
+              tf.contrib.layers.one_hot_encoding(
+                  tf.constant([i]), num_classes=h), [h, 1]), [1, w])
+      for i in xrange(h)
+    ]
+    h_loc = tf.concat([tf.expand_dims(t, 2) for t in h_loc], 2)
+    w_loc = [
+      tf.tile(
+          tf.contrib.layers.one_hot_encoding(tf.constant([i]), num_classes=w),
+          [h, 1]) for i in xrange(w)
+    ]
+    w_loc = tf.concat([tf.expand_dims(t, 2) for t in w_loc], 2)
+    loc = tf.concat([h_loc, w_loc], 2)
+    loc = tf.tile(tf.expand_dims(loc, 0), [batch_size, 1, 1, 1])
+    return tf.concat([net, loc], 3)
+
+  def test_encoded_coordinates_have_correct_shape(self):
+    model = self.create_model()
+    model.set_mparam('encode_coordinates_fn', enabled=True)
+    conv_w_coords_tf = model.encode_coordinates_fn(self.fake_conv_tower)
+
+    with self.test_session() as sess:
+      conv_w_coords = sess.run(conv_w_coords_tf)
+
+    batch_size, height, width, feature_size = self.conv_tower_shape
+    self.assertEqual(conv_w_coords.shape, (batch_size, height, width,
+                                           feature_size + height + width))
+
+  def test_disabled_coordinate_encoding_returns_features_unchanged(self):
+    model = self.create_model()
+    model.set_mparam('encode_coordinates_fn', enabled=False)
+    conv_w_coords_tf = model.encode_coordinates_fn(self.fake_conv_tower)
+
+    with self.test_session() as sess:
+      conv_w_coords = sess.run(conv_w_coords_tf)
+
+    self.assertAllEqual(conv_w_coords, self.fake_conv_tower_np)
+
+  def test_coordinate_encoding_is_correct_for_simple_example(self):
+    shape = (1, 2, 3, 4)  # batch_size, height, width, feature_size
+    fake_conv_tower = tf.constant(2 * np.ones(shape), dtype=tf.float32)
+    model = self.create_model()
+    model.set_mparam('encode_coordinates_fn', enabled=True)
+    conv_w_coords_tf = model.encode_coordinates_fn(fake_conv_tower)
+
+    with self.test_session() as sess:
+      conv_w_coords = sess.run(conv_w_coords_tf)
+
+    # Original features
+    self.assertAllEqual(conv_w_coords[0, :, :, :4],
+                        [[[2, 2, 2, 2], [2, 2, 2, 2], [2, 2, 2, 2]],
+                         [[2, 2, 2, 2], [2, 2, 2, 2], [2, 2, 2, 2]]])
+    # Encoded coordinates
+    self.assertAllEqual(conv_w_coords[0, :, :, 4:],
+                        [[[1, 0, 1, 0, 0], [1, 0, 0, 1, 0], [1, 0, 0, 0, 1]],
+                         [[0, 1, 1, 0, 0], [0, 1, 0, 1, 0], [0, 1, 0, 0, 1]]])
+
+  def test_alt_implementation_of_coordinate_encoding_returns_same_values(self):
+    model = self.create_model()
+    model.set_mparam('encode_coordinates_fn', enabled=True)
+    conv_w_coords_tf = model.encode_coordinates_fn(self.fake_conv_tower)
+    conv_w_coords_alt_tf = self.encode_coordinates_alt(self.fake_conv_tower)
+
+    with self.test_session() as sess:
+      conv_w_coords_tf, conv_w_coords_alt_tf = sess.run(
+          [conv_w_coords_tf, conv_w_coords_alt_tf])
+
+    self.assertAllEqual(conv_w_coords_tf, conv_w_coords_alt_tf)
 
 
 class CharsetMapperTest(tf.test.TestCase):

@@ -2,8 +2,7 @@
 #   Contains files for loading, training and evaluating TF-Slim-based models.
 
 package(default_visibility = [
-    ":internal",
-    "//domain_adaptation:__subpackages__",
+    "//visibility:public",
 ])
 
 licenses(["notice"])  # Apache 2.0
@@ -132,6 +131,7 @@ py_library(
         ":cifarnet",
         ":inception",
         ":lenet",
+        ":mobilenet_v1",
         ":overfeat",
         ":resnet_v1",
         ":resnet_v2",
@@ -270,6 +270,23 @@ py_library(
 )
 
 py_library(
+    name = "mobilenet_v1",
+    srcs = ["nets/mobilenet_v1.py"],
+    srcs_version = "PY2AND3",
+)
+
+py_test(
+    name = "mobilenet_v1_test",
+    size = "large",
+    srcs = ["nets/mobilenet_v1_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":mobilenet_v1",
+    ],
+)
+
+py_library(
     name = "overfeat",
     srcs = ["nets/overfeat.py"],
     srcs_version = "PY2AND3",
@@ -370,5 +387,28 @@ py_binary(
         ":model_deploy",
         ":nets_factory",
         ":preprocessing_factory",
+    ],
+)
+
+py_binary(
+    name = "export_inference_graph",
+    srcs = ["export_inference_graph.py"],
+    deps = [
+        ":dataset_factory",
+        ":nets_factory",
+    ],
+)
+
+py_test(
+    name = "export_inference_graph_test",
+    size = "medium",
+    srcs = ["export_inference_graph_test.py"],
+    srcs_version = "PY2AND3",
+    tags = [
+        "manual",
+    ],
+    deps = [
+        ":export_inference_graph",
+        ":nets_factory",
     ],
 )

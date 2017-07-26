@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Pretrains a recurrent language model.
 
 Computational time:
-  5 days to train 100000 steps on 1 layer 1024 hidden units LSTM,
-  256 embeddings, 400 truncated BP, 64 minibatch and on 4 GPU with
-  SyncReplicasOptimizer, that is the total minibatch is 256.
+  2 days to train 100000 steps on 1 layer 1024 hidden units LSTM,
+  256 embeddings, 400 truncated BP, 256 minibatch and on single GPU (Pascal
+  Titan X, cuDNNv5).
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+# Dependency imports
 
 import tensorflow as tf
 
