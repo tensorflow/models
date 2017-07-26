@@ -185,7 +185,7 @@ class ResNet(object):
             trainable=False)
         tf.summary.histogram(mean.op.name, mean)
         tf.summary.histogram(variance.op.name, variance)
-      # elipson used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
+      # epsilon used to be 1e-5. Maybe 0.001 solves NaN problem in deeper net.
       y = tf.nn.batch_normalization(
           x, mean, variance, beta, gamma, 0.001)
       y.set_shape(x.get_shape())

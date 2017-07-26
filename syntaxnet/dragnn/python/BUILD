@@ -89,6 +89,7 @@ py_library(
     srcs = ["network_units.py"],
     deps = [
         ":dragnn_ops",
+        "//syntaxnet:syntaxnet_ops",
         "//syntaxnet/util:check",
         "//syntaxnet/util:pyregistry",
         "@org_tensorflow//tensorflow:tensorflow_py",

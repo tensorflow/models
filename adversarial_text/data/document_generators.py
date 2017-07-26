@@ -1,4 +1,4 @@
-# Copyright 2017 Google, Inc. All Rights Reserved.
+# Copyright 2017 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Input readers and document/token generators for datasets."""
 from __future__ import absolute_import
 from __future__ import division
@@ -22,6 +21,8 @@ from collections import namedtuple
 import csv
 import os
 import random
+
+# Dependency imports
 
 import tensorflow as tf
 
@@ -59,7 +60,6 @@ flags.DEFINE_string('rcv1_input_dir', '',
 # Rotten Tomatoes
 flags.DEFINE_string('rt_input_dir', '',
                     'The Rotten Tomatoes dataset input directory.')
-
 
 # The amazon reviews input file to use in either the RT or IMDB datasets.
 flags.DEFINE_string('amazon_unlabeled_input_file', '',
@@ -211,8 +211,12 @@ def imdb_documents(dataset='train',
   if FLAGS.amazon_unlabeled_input_file and include_unlabeled:
     with open(FLAGS.amazon_unlabeled_input_file) as rt_f:
       for content in rt_f:
-        yield Document(content=content, is_validation=False, is_test=False,
-                       label=None, add_tokens=False)
+        yield Document(
+            content=content,
+            is_validation=False,
+            is_test=False,
+            label=None,
+            add_tokens=False)
 
 
 def dbpedia_documents(dataset='train',
@@ -265,7 +269,8 @@ def rcv1_documents(dataset='train',
   # pylint:disable=line-too-long
   """Generates Documents for Reuters Corpus (rcv1) dataset.
 
-  Dataset described at http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_rcv1v2_README.htm
+  Dataset described at
+  http://www.ai.mit.edu/projects/jmlr/papers/volume5/lewis04a/lyrl2004_rcv1v2_README.htm
 
   Args:
     dataset: str, identifies the csv file within the rcv1 data directory.
@@ -354,17 +359,25 @@ def rt_documents(dataset='train',
         if class_label is None:
           # Process Amazon Review data for unlabeled dataset
           if content.startswith('review/text'):
-            yield Document(content=content, is_validation=False,
-                           is_test=False, label=None, add_tokens=False)
+            yield Document(
+                content=content,
+                is_validation=False,
+                is_test=False,
+                label=None,
+                add_tokens=False)
         else:
           # 10% of the data is randomly held out for the validation set and
           # another 10% of it is randomly held out for the test set
           random_int = random.randint(1, 10)
           is_validation = random_int == 1
           is_test = random_int == 2
-          if (is_test and dataset != 'test') or (
-              is_validation and not include_validation):
+          if (is_test and dataset != 'test') or (is_validation and
+                                                 not include_validation):
             continue
 
-          yield Document(content=content, is_validation=is_validation,
-                         is_test=is_test, label=class_label, add_tokens=True)
+          yield Document(
+              content=content,
+              is_validation=is_validation,
+              is_test=is_test,
+              label=class_label,
+              add_tokens=True)

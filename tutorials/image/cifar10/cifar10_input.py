@@ -175,6 +175,8 @@ def distorted_inputs(data_dir, batch_size):
 
   # Because these operations are not commutative, consider randomizing
   # the order their operation.
+  # NOTE: since per_image_standardization zeros the mean and makes
+  # the stddev unit, this likely has no effect see tensorflow#1458.
   distorted_image = tf.image.random_brightness(distorted_image,
                                                max_delta=63)
   distorted_image = tf.image.random_contrast(distorted_image,
