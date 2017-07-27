@@ -27,8 +27,8 @@ import tensorflow as tf
 
 
 def _read_words(filename):
-  with tf.gfile.GFile(filename, "r") as f:
-    return f.read().decode("utf-8").replace("\n", "<eos>").split()
+  with tf.gfile.GFile(filename, "r") as f: # WQ: gfile?
+    return f.read().decode("utf-8").replace("\n", "<eos>").split() # WQ: decode("utf-8")
 
 
 def _build_vocab(filename):
