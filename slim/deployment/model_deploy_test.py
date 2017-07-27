@@ -33,7 +33,7 @@ class DeploymentConfigTest(tf.test.TestCase):
 
     self.assertEqual(slim.get_variables(), [])
     self.assertEqual(deploy_config.caching_device(), None)
-    self.assertDeviceEqual(deploy_config.clone_device(0), '')
+    self.assertDeviceEqual(deploy_config.clone_device(0), 'GPU:0')
     self.assertEqual(deploy_config.clone_scope(0), '')
     self.assertDeviceEqual(deploy_config.optimizer_device(), 'CPU:0')
     self.assertDeviceEqual(deploy_config.inputs_device(), 'CPU:0')
@@ -65,7 +65,7 @@ class DeploymentConfigTest(tf.test.TestCase):
     deploy_config = model_deploy.DeploymentConfig(num_clones=1, num_ps_tasks=1)
 
     self.assertDeviceEqual(deploy_config.clone_device(0),
-                           '/job:worker')
+                           '/job:worker/device:GPU:0')
     self.assertEqual(deploy_config.clone_scope(0), '')
     self.assertDeviceEqual(deploy_config.optimizer_device(),
                            '/job:worker/device:CPU:0')
@@ -105,7 +105,7 @@ class DeploymentConfigTest(tf.test.TestCase):
                                                   num_ps_tasks=2)
 
     self.assertDeviceEqual(deploy_config.clone_device(0),
-                           '/job:worker')
+                           '/job:worker/device:GPU:0')
     self.assertEqual(deploy_config.clone_scope(0), '')
     self.assertDeviceEqual(deploy_config.optimizer_device(),
                            '/job:worker/device:CPU:0')
@@ -201,7 +201,7 @@ class CreatecloneTest(tf.test.TestCase):
       self.assertEqual(clone.outputs.op.name,
                        'LogisticClassifier/fully_connected/Sigmoid')
       self.assertEqual(clone.scope, '')
-      self.assertDeviceEqual(clone.device, '')
+      self.assertDeviceEqual(clone.device, 'GPU:0')
       self.assertEqual(len(slim.losses.get_losses()), 1)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       self.assertEqual(update_ops, [])
@@ -227,7 +227,7 @@ class CreatecloneTest(tf.test.TestCase):
       self.assertEqual(clone.outputs.op.name,
                        'BatchNormClassifier/fully_connected/Sigmoid')
       self.assertEqual(clone.scope, '')
-      self.assertDeviceEqual(clone.device, '')
+      self.assertDeviceEqual(clone.device, 'GPU:0')
       self.assertEqual(len(slim.losses.get_losses()), 1)
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       self.assertEqual(len(update_ops), 2)
@@ -278,7 +278,7 @@ class CreatecloneTest(tf.test.TestCase):
       clone = clones[0]
       self.assertEqual(clone.outputs.op.name,
                        'BatchNormClassifier/fully_connected/Sigmoid')
-      self.assertDeviceEqual(clone.device, '/job:worker')
+      self.assertDeviceEqual(clone.device, '/job:worker/device:GPU:0')
       self.assertEqual(clone.scope, '')
       self.assertEqual(len(slim.get_variables()), 5)
       for v in slim.get_variables():
@@ -350,7 +350,7 @@ class OptimizeclonesTest(tf.test.TestCase):
       self.assertEqual(len(grads_and_vars), len(tf.trainable_variables()))
       self.assertEqual(total_loss.op.name, 'total_loss')
       for g, v in grads_and_vars:
-        self.assertDeviceEqual(g.device, '')
+        self.assertDeviceEqual(g.device, 'GPU:0')
         self.assertDeviceEqual(v.device, 'CPU:0')
 
   def testCreateSingleclone(self):
@@ -376,7 +376,7 @@ class OptimizeclonesTest(tf.test.TestCase):
       self.assertEqual(len(grads_and_vars), len(tf.trainable_variables()))
       self.assertEqual(total_loss.op.name, 'total_loss')
       for g, v in grads_and_vars:
-        self.assertDeviceEqual(g.device, '')
+        self.assertDeviceEqual(g.device, 'GPU:0')
         self.assertDeviceEqual(v.device, 'CPU:0')
 
   def testCreateMulticlone(self):
@@ -458,7 +458,7 @@ class OptimizeclonesTest(tf.test.TestCase):
       self.assertEqual(len(grads_and_vars), len(tf.trainable_variables()))
       self.assertEqual(total_loss.op.name, 'total_loss')
       for g, v in grads_and_vars:
-        self.assertDeviceEqual(g.device, '/job:worker')
+        self.assertDeviceEqual(g.device, '/job:worker/device:GPU:0')
         self.assertDeviceEqual(v.device, '/job:ps/task:0/CPU:0')
 
 
@@ -515,7 +515,7 @@ class DeployTest(tf.test.TestCase):
         for _ in range(10):
           sess.run(model.train_op)
         final_loss = sess.run(model.total_loss)
-        self.assertLess(final_loss, initial_loss / 10.0)
+        self.assertLess(final_loss, initial_loss / 5.0)
 
         final_mean, final_variance = sess.run([moving_mean,
                                                moving_variance])

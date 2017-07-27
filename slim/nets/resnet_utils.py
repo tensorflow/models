@@ -178,26 +178,16 @@ def stack_blocks_dense(net, blocks, output_stride=None,
           raise ValueError('The target output_stride cannot be reached.')
 
         with tf.variable_scope('unit_%d' % (i + 1), values=[net]):
-          unit_depth, unit_depth_bottleneck, unit_stride = unit
-
           # If we have reached the target output_stride, then we need to employ
           # atrous convolution with stride=1 and multiply the atrous rate by the
           # current unit's stride for use in subsequent layers.
           if output_stride is not None and current_stride == output_stride:
-            net = block.unit_fn(net,
-                                depth=unit_depth,
-                                depth_bottleneck=unit_depth_bottleneck,
-                                stride=1,
-                                rate=rate)
-            rate *= unit_stride
+            net = block.unit_fn(net, rate=rate, **dict(unit, stride=1))
+            rate *= unit.get('stride', 1)
 
           else:
-            net = block.unit_fn(net,
-                                depth=unit_depth,
-                                depth_bottleneck=unit_depth_bottleneck,
-                                stride=unit_stride,
-                                rate=1)
-            current_stride *= unit_stride
+            net = block.unit_fn(net, rate=1, **unit)
+            current_stride *= unit.get('stride', 1)
       net = slim.utils.collect_named_outputs(outputs_collections, sc.name, net)
 
   if output_stride is not None and current_stride != output_stride:
@@ -209,7 +199,9 @@ def stack_blocks_dense(net, blocks, output_stride=None,
 def resnet_arg_scope(weight_decay=0.0001,
                      batch_norm_decay=0.997,
                      batch_norm_epsilon=1e-5,
-                     batch_norm_scale=True):
+                     batch_norm_scale=True,
+                     activation_fn=tf.nn.relu,
+                     use_batch_norm=True):
   """Defines the default ResNet arg scope.
 
   TODO(gpapan): The batch-normalization related default values above are
@@ -225,6 +217,8 @@ def resnet_arg_scope(weight_decay=0.0001,
       normalizing activations by their variance in batch normalization.
     batch_norm_scale: If True, uses an explicit `gamma` multiplier to scale the
       activations in the batch normalization layer.
+    activation_fn: The activation function which is used in ResNet.
+    use_batch_norm: Whether or not to use batch normalization.
 
   Returns:
     An `arg_scope` to use for the resnet models.
@@ -240,8 +234,8 @@ def resnet_arg_scope(weight_decay=0.0001,
       [slim.conv2d],
       weights_regularizer=slim.l2_regularizer(weight_decay),
       weights_initializer=slim.variance_scaling_initializer(),
-      activation_fn=tf.nn.relu,
-      normalizer_fn=slim.batch_norm,
+      activation_fn=activation_fn,
+      normalizer_fn=slim.batch_norm if use_batch_norm else None,
       normalizer_params=batch_norm_params):
     with slim.arg_scope([slim.batch_norm], **batch_norm_params):
       # The following implies padding='SAME' for pool1, which makes feature

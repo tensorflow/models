@@ -22,11 +22,13 @@ running TensorFlow 0.12 or earlier, please
 - [im2txt](im2txt): image-to-text neural network for image captioning.
 - [inception](inception): deep convolutional networks for computer vision.
 - [learning_to_remember_rare_events](learning_to_remember_rare_events):  a large-scale life-long memory module for use in deep learning.
+- [lfads](lfads): sequential variational autoencoder for analyzing neuroscience data.
 - [lm_1b](lm_1b): language modeling on the one billion word benchmark.
 - [namignizer](namignizer): recognize and generate names.
 - [neural_gpu](neural_gpu): highly parallel neural computer.
 - [neural_programmer](neural_programmer): neural network augmented with logic and mathematic operations.
 - [next_frame_prediction](next_frame_prediction): probabilistic future frame synthesis via cross convolutional networks.
+- [object_detection](object_detection): localizing and identifying multiple objects in a single image.
 - [real_nvp](real_nvp): density estimation using real-valued non-volume preserving (real NVP) transformations.
 - [resnet](resnet): deep and wide residual networks.
 - [skip_thoughts](skip_thoughts): recurrent neural network sentence-to-vector encoder.

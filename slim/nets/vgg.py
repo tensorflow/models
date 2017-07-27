@@ -87,8 +87,9 @@ def vgg_a(inputs,
     fc_conv_padding: the type of padding to use for the fully connected layer
       that is implemented as a convolutional layer. Use 'SAME' padding if you
       are applying the network in a fully convolutional manner and want to
-      get a prediction map downsampled by a factor of 32 as an output. Otherwise,
-      the output prediction map will be (input / 32) - 6 in case of 'VALID' padding.
+      get a prediction map downsampled by a factor of 32 as an output.
+      Otherwise, the output prediction map will be (input / 32) - 6 in case of
+      'VALID' padding.
 
   Returns:
     the last op containing the log predictions and end_points dict.
@@ -152,8 +153,9 @@ def vgg_16(inputs,
     fc_conv_padding: the type of padding to use for the fully connected layer
       that is implemented as a convolutional layer. Use 'SAME' padding if you
       are applying the network in a fully convolutional manner and want to
-      get a prediction map downsampled by a factor of 32 as an output. Otherwise,
-      the output prediction map will be (input / 32) - 6 in case of 'VALID' padding.
+      get a prediction map downsampled by a factor of 32 as an output.
+      Otherwise, the output prediction map will be (input / 32) - 6 in case of
+      'VALID' padding.
 
   Returns:
     the last op containing the log predictions and end_points dict.
@@ -217,8 +219,10 @@ def vgg_19(inputs,
     fc_conv_padding: the type of padding to use for the fully connected layer
       that is implemented as a convolutional layer. Use 'SAME' padding if you
       are applying the network in a fully convolutional manner and want to
-      get a prediction map downsampled by a factor of 32 as an output. Otherwise,
-      the output prediction map will be (input / 32) - 6 in case of 'VALID' padding.
+      get a prediction map downsampled by a factor of 32 as an output.
+      Otherwise, the output prediction map will be (input / 32) - 6 in case of
+      'VALID' padding.
+
 
   Returns:
     the last op containing the log predictions and end_points dict.
