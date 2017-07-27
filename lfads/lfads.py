@@ -411,7 +411,6 @@ class LFADS(object):
 
         if datasets and 'alignment_bias_c' in datasets[name].keys():
           dataset = datasets[name]
-          print("Using alignment bias provided for dataset:", name)
           align_bias_c = dataset['alignment_bias_c'].astype(np.float32)
           align_bias_1xc = np.expand_dims(align_bias_c, axis=0)
 
