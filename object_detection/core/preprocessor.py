@@ -1236,12 +1236,14 @@ def image_to_float(image):
     return image
 
 
-def random_resize_method(image, target_size):
+def random_resize_method(image, target_size, align_corners=False):
   """Uses a random resize method to resize the image to target size.
 
   Args:
     image: a rank 3 tensor.
     target_size: a list of [target_height, target_width]
+    align_corners: bool. If true, exactly align all 4 corners of the input and
+                   output. Defaults to `false`.
 
   Returns:
     resized image.
@@ -1249,7 +1251,7 @@ def random_resize_method(image, target_size):
 
   resized_image = _apply_with_random_selector(
       image,
-      lambda x, method: tf.image.resize_images(x, target_size, method),
+      lambda x, method: tf.image.resize_images(x, target_size, method, align_corners),
       num_cases=4)
 
   return resized_image
@@ -1259,6 +1261,8 @@ def resize_to_range(image,
                     masks=None,
                     min_dimension=None,
                     max_dimension=None,
+                    method=tf.image.ResizeMethod.BILINEAR,
+                    random_method=False,
                     align_corners=False):
   """Resizes an image so its dimensions are within the provided value.
 
@@ -1276,8 +1280,13 @@ def resize_to_range(image,
                    dimension.
     max_dimension: (optional) (scalar) maximum allowed size
                    of the larger image dimension.
+    method: (optional) the method to use with `tf.image.resize_image`.
+            This parameter is not used if `random_method` is set to `True`.
+            Defaults to `tf.image.ResizeMethod.BILINEAR`.
+    random_method: bool. If true, a random method will be used when resizing.
+                   The value of method will be ignored. Defaults to `False`.
     align_corners: bool. If true, exactly align all 4 corners of the input
-                   and output. Defaults to False.
+                   and output. Defaults to `False`.
 
   Returns:
     A 3D tensor of shape [new_height, new_width, channels],
@@ -1331,8 +1340,12 @@ def resize_to_range(image,
     else:
       new_size = large_size
 
-    new_image = tf.image.resize_images(image, new_size,
-                                       align_corners=align_corners)
+    if random_method:
+      new_image = random_resize_method(image, new_size, align_corners)
+    else:
+      new_image = tf.image.resize_images(image, new_size,
+                                         method=method,
+                                         align_corners=align_corners)
 
     result = new_image
     if masks is not None:
@@ -1394,14 +1407,18 @@ def resize_image(image,
                  new_height=600,
                  new_width=1024,
                  method=tf.image.ResizeMethod.BILINEAR,
+                 random_method=False,
                  align_corners=False):
   """See `tf.image.resize_images` for detailed doc."""
   with tf.name_scope(
       'ResizeImage',
       values=[image, new_height, new_width, method, align_corners]):
-    new_image = tf.image.resize_images(image, [new_height, new_width],
-                                       method=method,
-                                       align_corners=align_corners)
+    if random_method:
+      new_image = random_resize_method(image, [new_height, new_width], align_corners)
+    else:
+      new_image = tf.image.resize_images(image, [new_height, new_width],
+                                         method=method,
+                                         align_corners=align_corners)
     result = new_image
     if masks is not None:
       num_instances = tf.shape(masks)[0]
