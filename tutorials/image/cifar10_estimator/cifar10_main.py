@@ -226,7 +226,7 @@ def _resnet_model_fn(features, labels, mode):
     # https://github.com/ppwwyyxx/tensorpack/blob/master/examples/ResNet/cifar10-resnet.py#L155
     # users could apply other scheduling.
     num_batches_per_epoch = cifar10.Cifar10DataSet.num_examples_per_epoch(
-        'train') // FLAGS.train_batch_size
+        'train') // (FLAGS.train_batch_size * FLAGS.num_workers)
     boundaries = [
         num_batches_per_epoch * x
         for x in np.array([82, 123, 300], dtype=np.int64)
