@@ -22,24 +22,32 @@ tar xzf cifar-10-python.tar.gz
 # where the data is downloaded.
 $ ls -R cifar-10-batches-py
 
-cifar-10-batches-py:
-batches.meta  data_batch_2  data_batch_4  readme.html
-data_batch_1  data_batch_3  data_batch_5  test_batch
+cifar-10-batches-bin:
+batches.meta  data_batch_1  data_batch_2  data_batch_3
+data_batch_4  data_batch_5  readme.html  test_batch
 
 # Run the model on CPU only. After training, it runs the evaluation.
-$ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-py \
-						 --model_dir=/tmp/resnet_model \
-						 --is_cpu_ps=True \
-						 --num_gpus=0 \
-					     --train_steps=1000
+$ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
+                         --model_dir=/tmp/cifar10 \
+                         --is_cpu_ps=True \
+                         --num_gpus=0 \
+                         --train_steps=1000
 
-# Run the model on CPU and 2 CPUs. After training, it runs the evaluation.
-$ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-py \
-						 --model_dir=/tmp/resnet_model \
-						 --is_cpu_ps=False \
-						 --force_gpu_compatible=True \
-						 --num_gpus=2 \
-					     --train_steps=1000
+# Run the model on 2 GPUs using CPU as parameter server. After training, it runs the evaluation.
+$ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
+                         --model_dir=/tmp/cifar10 \
+                         --is_cpu_ps=True \
+                         --force_gpu_compatible=True \
+                         --num_gpus=2 \
+                         --train_steps=1000
+
+# Run the model on 2 GPUs using GPU as parameter server. After training, it runs the evaluation.
+$ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
+                         --model_dir=/tmp/cifar10 \
+                         --is_cpu_ps=False \
+                         --force_gpu_compatible=True \
+                         --num_gpus=2 \
+                         --train_steps=1000
 
 # There are more command line flags to play with; check cifar10_main.py for details.
 ```
