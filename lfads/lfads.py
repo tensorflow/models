@@ -281,7 +281,7 @@ class LFADS(object):
     """Create an LFADS model.
 
        train - a model for training, sampling of posteriors is used
-       posterior_sample_and_average - sample from the posterior, this is used 
+       posterior_sample_and_average - sample from the posterior, this is used
          for evaluating the expected value of the outputs of LFADS, given a
          specific input, by averaging over multiple samples from the approx
          posterior.  Also used for the lower bound on the negative
@@ -408,6 +408,11 @@ class LFADS(object):
         if datasets and 'alignment_matrix_cxf' in datasets[name].keys():
           dataset = datasets[name]
           in_mat_cxf = dataset['alignment_matrix_cxf'].astype(np.float32)
+
+        if datasets and 'alignment_bias_c' in datasets[name].keys():
+          dataset = datasets[name]
+          align_bias_c = dataset['alignment_bias_c'].astype(np.float32)
+          align_bias_1xc = np.expand_dims(align_bias_c, axis=0)
 
         out_mat_fxc = None
         out_bias_1xc = None
@@ -1714,7 +1719,7 @@ class LFADS(object):
       out_dist_params = np.zeros([E_to_process, T, D+D])
     else:
       assert False, "NIY"
-    
+
     costs = np.zeros(E_to_process)
     nll_bound_vaes = np.zeros(E_to_process)
     nll_bound_iwaes = np.zeros(E_to_process)
@@ -1914,7 +1919,7 @@ class LFADS(object):
     for i, (var, var_eval) in enumerate(zip(all_tf_vars, all_tf_vars_eval)):
       if any(s in include_strs for s in var.name):
         if not isinstance(var_eval, np.ndarray): # for H5PY
-          print(var.name, """ is not numpy array, saving as numpy array 
+          print(var.name, """ is not numpy array, saving as numpy array
                 with value: """, var_eval, type(var_eval))
           e = np.array(var_eval)
           print(e, type(e))
