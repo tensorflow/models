@@ -34,7 +34,7 @@ def _read_words(filename):
 def _build_vocab(filename):
   data = _read_words(filename)
 
-  counter = collections.Counter(data)
+  counter = collections.Counter(data) # counter is used for sort the words according to frequency
   count_pairs = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
 
   words, _ = list(zip(*count_pairs))
