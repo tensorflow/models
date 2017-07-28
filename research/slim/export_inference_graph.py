@@ -48,8 +48,7 @@ bazel-bin/tensorflow/examples/label_image/label_image \
 --graph=/tmp/frozen_inception_v3.pb \
 --labels=/tmp/imagenet_slim_labels.txt \
 --input_mean=0 \
---input_std=255 \
---logtostderr
+--input_std=255
 
 """
 
@@ -100,7 +99,7 @@ def main(_):
     raise ValueError('You must supply the path to save to with --output_file')
   tf.logging.set_verbosity(tf.logging.INFO)
   with tf.Graph().as_default() as graph:
-    dataset = dataset_factory.get_dataset(FLAGS.dataset_name, 'validation',
+    dataset = dataset_factory.get_dataset(FLAGS.dataset_name, 'train',
                                           FLAGS.dataset_dir)
     network_fn = nets_factory.get_network_fn(
         FLAGS.model_name,
