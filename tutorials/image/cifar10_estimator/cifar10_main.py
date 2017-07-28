@@ -72,6 +72,11 @@ tf.flags.DEFINE_float('weight_decay', 1e-4, 'Weight decay for convolutions.')
 tf.flags.DEFINE_boolean('use_distortion_for_training', True,
                         'If doing image distortion for training.')
 
+tf.flags.DEFINE_string('data_format', '',
+                       """Set to force data_format (NCHW or NHWC).
+                        Default is NCHW if num_gpus > 0 and NHWC if num_gpus = 0
+                        """)
+
 # Perf flags
 tf.flags.DEFINE_integer('num_intra_threads', 1,
                         """Number of threads to use for intra-op parallelism.
@@ -275,7 +280,20 @@ def _tower_fn(is_training, weight_decay, feature, label, tower_losses,
     tower_preds: a list to be appended with current tower's predictions.
     is_cpu: true if build tower on CPU.
   """
-  data_format = 'channels_last' if is_cpu else 'channels_first'
+  data_format = 'channels_first'
+  # If data format is passed as a flag, respect the value. Otherwise pick
+  # most likely optimal format for the training device.
+  if FLAGS.data_format:
+    if FLAGS.data_format == 'NCHW':
+      data_format = 'channels_first'
+    elif FLAGS.data_format == 'NHWC':
+      data_format = 'channels_last'
+    else:
+      raise ValueError('data_format command line flag set to unknown value:{}'
+                       .format(FLAGS.data_format))
+  else:
+    data_format = 'channels_last' if is_cpu else 'channels_first'
+
   model = cifar10_model.ResNetCifar10(
       FLAGS.num_layers, is_training=is_training, data_format=data_format)
   logits = model.forward_pass(feature, input_data_format='channels_last')
