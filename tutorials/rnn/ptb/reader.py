@@ -116,11 +116,12 @@ def ptb_producer(raw_data, batch_size, num_steps, name=None):
     # A Queue with the output integers. A QueueRunner for the Queue is added to the current Graph's QUEUE_RUNNER collection.
     # Produces the integers from 0 to limit-1 in a queue.
     i = tf.train.range_input_producer(epoch_size, shuffle=False).dequeue() # Q: dequeue()？？ cannot find in in python docs.
-   
+    # still not quite understand the role of i. 
+    #  can i change over something like ... time?
     
     x = tf.strided_slice(data, [0, i * num_steps],
                          [batch_size, (i + 1) * num_steps])
-    x.set_shape([batch_size, num_steps])
+    x.set_shape([batch_size, num_steps]) # necessary to set shape for x?
     y = tf.strided_slice(data, [0, i * num_steps + 1],
                          [batch_size, (i + 1) * num_steps + 1])
     y.set_shape([batch_size, num_steps])
