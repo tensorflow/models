@@ -93,6 +93,9 @@ tf.flags.DEFINE_boolean('force_gpu_compatible', False,
                         tensorflow/core/protobuf/config.proto#L69
                         for details.""")
 
+tf.flags.DEFINE_boolean('mkl', False,
+                        'True to set MKL environment variables to defaults.')
+
 # Debugging flags
 tf.flags.DEFINE_boolean('log_device_placement', False,
                         'Whether to log device placement.')
@@ -358,6 +361,14 @@ def main(unused_argv):
   num_eval_examples = cifar10.Cifar10DataSet.num_examples_per_epoch('eval')
   if num_eval_examples % FLAGS.eval_batch_size != 0:
     raise ValueError('validation set size must be multiple of eval_batch_size')
+
+  # Sets reasonable defaults for MKL related environment variables.
+  if FLAGS.mkl:
+    os.environ['KMP_BLOCKTIME'] = '0'
+    os.environ['KMP_SETTINGS'] = '1'
+    os.environ['KMP_AFFINITY'] = 'granularity=fine,verbose,compact,1,0'
+    if FLAGS.num_intra_threads > 0:
+      os.environ['OMP_NUM_THREADS'] = str(FLAGS.num_intra_threads)
 
   config = tf.estimator.RunConfig()
   sess_config = tf.ConfigProto()
