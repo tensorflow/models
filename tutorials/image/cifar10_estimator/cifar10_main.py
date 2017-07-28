@@ -433,10 +433,6 @@ def main(unused_argv):
   sess_config.intra_op_parallelism_threads = FLAGS.num_intra_threads
   sess_config.inter_op_parallelism_threads = FLAGS.num_inter_threads
   sess_config.gpu_options.force_gpu_compatible = FLAGS.force_gpu_compatible
-  # Turns on XLA, which needs to be compiled into TensorFlow from source.
-  if FLAGS.xla:
-    sess_config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
-  config = config.replace(session_config=sess_config)
 
   classifier = tf.estimator.Estimator(
       model_fn=_resnet_model_fn, model_dir=FLAGS.model_dir, config=config)
