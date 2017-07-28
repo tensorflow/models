@@ -23,8 +23,9 @@ tar xzf cifar-10-binary.tar.gz
 $ ls -R cifar-10-batches-bin
 
 cifar-10-batches-bin:
-batches.meta.txt  data_batch_1.bin  data_batch_2.bin  data_batch_3.bin
-data_batch_4.bin  data_batch_5.bin  readme.html  test_batch.bin
+batches.meta  data_batch_1  data_batch_2  data_batch_3
+data_batch_4  data_batch_5  readme.html  test_batch
+
 
 # Run the model on CPU only. After training, it runs the evaluation.
 $ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
