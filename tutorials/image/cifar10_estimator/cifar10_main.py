@@ -33,12 +33,16 @@ import functools
 import operator
 import os
 
+import cifar10
+import cifar10_model
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+from tensorflow.python.platform import tf_logging as logging
+from tensorflow.python.training import basic_session_run_hooks
+from tensorflow.python.training import session_run_hook
+from tensorflow.python.training import training_util
 
-import cifar10
-import cifar10_model
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -50,7 +54,7 @@ tf.flags.DEFINE_string('data_dir', '',
 tf.flags.DEFINE_string('model_dir', '',
                        'The directory where the model will be stored.')
 
-tf.flags.DEFINE_boolean('is_cpu_ps', False,
+tf.flags.DEFINE_boolean('is_cpu_ps', True,
                         'If using CPU as the parameter server.')
 
 tf.flags.DEFINE_integer('num_gpus', 1,
@@ -58,7 +62,7 @@ tf.flags.DEFINE_integer('num_gpus', 1,
 
 tf.flags.DEFINE_integer('num_layers', 44, 'The number of layers of the model.')
 
-tf.flags.DEFINE_integer('train_steps', 10000,
+tf.flags.DEFINE_integer('train_steps', 80000,
                         'The number of steps to use for training.')
 
 tf.flags.DEFINE_integer('train_batch_size', 128, 'Batch size for training.')
@@ -67,10 +71,25 @@ tf.flags.DEFINE_integer('eval_batch_size', 100, 'Batch size for validation.')
 
 tf.flags.DEFINE_float('momentum', 0.9, 'Momentum for MomentumOptimizer.')
 
-tf.flags.DEFINE_float('weight_decay', 1e-4, 'Weight decay for convolutions.')
+tf.flags.DEFINE_float('weight_decay', 2e-4, 'Weight decay for convolutions.')
 
 tf.flags.DEFINE_boolean('use_distortion_for_training', True,
                         'If doing image distortion for training.')
+
+tf.flags.DEFINE_boolean('run_experiment', False,
+                        'If True will run an experiment,'
+                        'otherwise will run training and evaluation'
+                        'using the estimator interface.'
+                        'Experiments perform training on several workers in'
+                        'parallel, in other words experiments know how to'
+                        ' invoke train and eval in a sensible fashion for'
+                        ' distributed training.')
+
+tf.flags.DEFINE_boolean('sync', False,
+                        'If true when running in a distributed environment'
+                        'will run on sync mode')
+
+tf.flags.DEFINE_integer('num_workers', 1, 'Number of workers')
 
 # Perf flags
 tf.flags.DEFINE_integer('num_intra_threads', 1,
@@ -98,6 +117,68 @@ tf.flags.DEFINE_boolean('log_device_placement', False,
                         'Whether to log device placement.')
 
 
+class ExamplesPerSecondHook(session_run_hook.SessionRunHook):
+  """Hook to print out examples per second.
+
+    Total time is tracked and then divided by the total number of steps
+    to get the average step time and then batch_size is used to determine
+    the running average of examples per second. The examples per second for the
+    most recent interval is also logged.
+  """
+
+  def __init__(
+      self,
+      batch_size,
+      every_n_steps=100,
+      every_n_secs=None,):
+    """Initializer for ExamplesPerSecondHook.
+
+      Args:
+      batch_size: Total batch size used to calculate examples/second from
+      global time.
+      every_n_steps: Log stats every n steps.
+      every_n_secs: Log stats every n seconds.
+    """
+    if (every_n_steps is None) == (every_n_secs is None):
+      raise ValueError('exactly one of every_n_steps'
+                       ' and every_n_secs should be provided.')
+    self._timer = basic_session_run_hooks.SecondOrStepTimer(
+        every_steps=every_n_steps, every_secs=every_n_secs)
+
+    self._step_train_time = 0
+    self._total_steps = 0
+    self._batch_size = batch_size
+
+  def begin(self):
+    self._global_step_tensor = training_util.get_global_step()
+    if self._global_step_tensor is None:
+      raise RuntimeError(
+          'Global step should be created to use StepCounterHook.')
+
+  def before_run(self, run_context):  # pylint: disable=unused-argument
+    return basic_session_run_hooks.SessionRunArgs(self._global_step_tensor)
+
+  def after_run(self, run_context, run_values):
+    _ = run_context
+
+    global_step = run_values.results
+    if self._timer.should_trigger_for_step(global_step):
+      elapsed_time, elapsed_steps = self._timer.update_last_triggered_step(
+          global_step)
+      if elapsed_time is not None:
+        steps_per_sec = elapsed_steps / elapsed_time
+        self._step_train_time += elapsed_time
+        self._total_steps += elapsed_steps
+
+        average_examples_per_sec = self._batch_size * (
+            self._total_steps / self._step_train_time)
+        current_examples_per_sec = steps_per_sec * self._batch_size
+        # Average examples/sec followed by current examples/sec
+        logging.info('%s: %g (%g), step = %g', 'Average examples/sec',
+                     average_examples_per_sec, current_examples_per_sec,
+                     self._total_steps)
+
+
 class GpuParamServerDeviceSetter(object):
   """Used with tf.device() to place variables on the least loaded GPU.
 
@@ -109,6 +190,7 @@ class GpuParamServerDeviceSetter(object):
 
   def __init__(self, worker_device, ps_devices):
     """Initializer for GpuParamServerDeviceSetter.
+
     Args:
       worker_device: the device to use for computation Ops.
       ps_devices: a list of devices to use for Variable Ops. Each variable is
@@ -123,7 +205,7 @@ class GpuParamServerDeviceSetter(object):
       return op.device
     if op.type not in ['Variable', 'VariableV2', 'VarHandleOp']:
       return self.worker_device
-      
+
     # Gets the least loaded ps_device
     device_index, _ = min(enumerate(self.ps_sizes), key=operator.itemgetter(1))
     device_name = self.ps_devices[device_index]
@@ -131,6 +213,7 @@ class GpuParamServerDeviceSetter(object):
     self.ps_sizes[device_index] += var_size
 
     return device_name
+
 
 def _create_device_setter(is_cpu_ps, worker, num_gpus):
   """Create device setter object."""
@@ -204,7 +287,7 @@ def _resnet_model_fn(features, labels, mode):
   ps_device = '/cpu:0' if is_cpu_ps else '/gpu:0'
   with tf.device(ps_device):
     with tf.name_scope('gradient_averaging'):
-      loss = tf.reduce_mean(tower_losses)
+      loss = tf.reduce_mean(tower_losses, name='loss')
       for zipped_gradvars in zip(*tower_gradvars):
         # Averaging one var's gradients computed from multiple towers
         var = zipped_gradvars[0][1]
@@ -220,7 +303,7 @@ def _resnet_model_fn(features, labels, mode):
     # https://github.com/ppwwyyxx/tensorpack/blob/master/examples/ResNet/cifar10-resnet.py#L155
     # users could apply other scheduling.
     num_batches_per_epoch = cifar10.Cifar10DataSet.num_examples_per_epoch(
-        'train') // FLAGS.train_batch_size
+        'train') // (FLAGS.train_batch_size * FLAGS.num_workers)
     boundaries = [
         num_batches_per_epoch * x
         for x in np.array([82, 123, 300], dtype=np.int64)
@@ -233,6 +316,14 @@ def _resnet_model_fn(features, labels, mode):
 
     optimizer = tf.train.MomentumOptimizer(
         learning_rate=learning_rate, momentum=momentum)
+
+    chief_hooks = []
+    if FLAGS.sync:
+      optimizer = tf.train.SyncReplicasOptimizer(
+          optimizer,
+          replicas_to_aggregate=FLAGS.num_workers)
+      sync_replicas_hook = optimizer.make_session_run_hook(True)
+      chief_hooks.append(sync_replicas_hook)
 
     # Create single grouped train op
     train_op = [
@@ -258,6 +349,7 @@ def _resnet_model_fn(features, labels, mode):
       predictions=predictions,
       loss=loss,
       train_op=train_op,
+      training_chief_hooks=chief_hooks,
       eval_metric_ops=metrics)
 
 
@@ -312,7 +404,8 @@ def input_fn(subset, num_shards):
   elif subset == 'validate' or subset == 'eval':
     batch_size = FLAGS.eval_batch_size
   else:
-    raise ValueError('Subset must be one of \'train\', \'validate\' and \'eval\'')
+    raise ValueError('Subset must be one of \'train\''
+                     ', \'validate\' and \'eval\'')
   with tf.device('/cpu:0'):
     use_distortion = subset == 'train' and FLAGS.use_distortion_for_training
     dataset = cifar10.Cifar10DataSet(FLAGS.data_dir, subset, use_distortion)
@@ -338,6 +431,33 @@ def input_fn(subset, num_shards):
     return feature_shards, label_shards
 
 
+# create experiment
+def get_experiment_fn(train_input_fn, eval_input_fn, train_steps, eval_steps,
+                      train_hooks):
+  """Returns an Experiment function.
+
+  Experiments perform training on several workers in parallel,
+  in other words experiments know how to invoke train and eval in a sensible
+  fashion for distributed training.
+  """
+  def _experiment_fn(run_config, hparams):
+    """Returns an Experiment."""
+    del hparams  # unused arg
+    # create estimator
+    classifier = tf.estimator.Estimator(model_fn=_resnet_model_fn,
+                                        config=run_config)
+    experiment = tf.contrib.learn.Experiment(
+        classifier,
+        train_input_fn=train_input_fn,
+        eval_input_fn=eval_input_fn,
+        train_steps=train_steps,
+        eval_steps=eval_steps)
+    # adding hooks to estimator on training mode
+    experiment.extend_train_hooks(train_hooks)
+    return experiment
+  return _experiment_fn
+
+
 def main(unused_argv):
   # The env variable is on deprecation path, default is set to off.
   os.environ['TF_SYNC_ON_FINISH'] = '0'
@@ -359,36 +479,60 @@ def main(unused_argv):
   if num_eval_examples % FLAGS.eval_batch_size != 0:
     raise ValueError('validation set size must be multiple of eval_batch_size')
 
-  config = tf.estimator.RunConfig()
+  train_input_fn = functools.partial(input_fn, subset='train',
+                                     num_shards=FLAGS.num_gpus)
+
+  eval_input_fn = functools.partial(input_fn, subset='eval',
+                                    num_shards=FLAGS.num_gpus)
+
+  train_steps = FLAGS.train_steps
+  eval_steps = num_eval_examples // FLAGS.eval_batch_size
+
+  # Session configuration.
   sess_config = tf.ConfigProto()
   sess_config.allow_soft_placement = True
   sess_config.log_device_placement = FLAGS.log_device_placement
   sess_config.intra_op_parallelism_threads = FLAGS.num_intra_threads
   sess_config.inter_op_parallelism_threads = FLAGS.num_inter_threads
   sess_config.gpu_options.force_gpu_compatible = FLAGS.force_gpu_compatible
-  config = config.replace(session_config=sess_config)
 
-  classifier = tf.estimator.Estimator(
-      model_fn=_resnet_model_fn, model_dir=FLAGS.model_dir, config=config)
+  # Hooks that add extra logging that is useful to see the loss more often in
+  # the console as well as examples per second.
+  tensors_to_log = {'learning_rate': 'learning_rate',
+                    'loss': 'gradient_averaging/loss'}
 
-  tensors_to_log = {'learning_rate': 'learning_rate'}
   logging_hook = tf.train.LoggingTensorHook(
       tensors=tensors_to_log, every_n_iter=100)
 
-  print('Starting to train...')
-  classifier.train(
-      input_fn=functools.partial(
-          input_fn, subset='train', num_shards=FLAGS.num_gpus),
-      steps=FLAGS.train_steps,
-      hooks=[logging_hook])
+  examples_sec_hook = ExamplesPerSecondHook(
+      FLAGS.train_batch_size, every_n_steps=10)
 
-  print('Starting to evaluate...')
-  eval_results = classifier.evaluate(
-      input_fn=functools.partial(
-          input_fn, subset='eval', num_shards=FLAGS.num_gpus),
-      steps=num_eval_examples // FLAGS.eval_batch_size)
-  print(eval_results)
+  hooks = [logging_hook, examples_sec_hook]
 
+  if FLAGS.run_experiment:
+    config = tf.contrib.learn.RunConfig(model_dir=FLAGS.model_dir)
+    config = config.replace(session_config=sess_config)
+    tf.contrib.learn.learn_runner.run(
+        get_experiment_fn(train_input_fn, eval_input_fn,
+                          train_steps, eval_steps,
+                          hooks), run_config=config)
+
+  else:
+    config = tf.estimator.RunConfig()
+    config = config.replace(session_config=sess_config)
+    classifier = tf.estimator.Estimator(
+        model_fn=_resnet_model_fn, model_dir=FLAGS.model_dir, config=config)
+
+    print('Starting to train...')
+    classifier.train(input_fn=train_input_fn,
+                     steps=train_steps,
+                     hooks=hooks)
+
+    print('Starting to evaluate...')
+    eval_results = classifier.evaluate(
+        input_fn=eval_input_fn,
+        steps=eval_steps)
+    print(eval_results)
 
 if __name__ == '__main__':
   tf.app.run()
