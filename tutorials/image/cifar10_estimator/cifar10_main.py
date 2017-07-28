@@ -36,6 +36,10 @@ import os
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+from tensorflow.python.platform import tf_logging as logging
+from tensorflow.python.training import basic_session_run_hooks
+from tensorflow.python.training import session_run_hook
+from tensorflow.python.training import training_util
 
 import cifar10
 import cifar10_model
@@ -96,6 +100,67 @@ tf.flags.DEFINE_boolean('force_gpu_compatible', False,
 # Debugging flags
 tf.flags.DEFINE_boolean('log_device_placement', False,
                         'Whether to log device placement.')
+
+
+class ExamplesPerSecondHook(session_run_hook.SessionRunHook):
+  """Hook to print out examples per second
+    
+    Total time is tracked and then divided by the total number of steps
+    to get the average step time and then batch_size is used to determine
+    the running average of examples per second. The examples per second for the
+    most recent interval is also logged.
+  """
+
+  def __init__(
+      self,
+      batch_size,
+      every_n_steps=100,
+      every_n_secs=None,):
+    """Initializer for ExamplesPerSecondHook.
+    Args:
+      batch_size: Total batch size used to calculate examples/second from
+      global time.
+      every_n_steps: Log stats every n steps.
+      every_n_secs: Log stats every n seconds.
+      """
+    if (every_n_steps is None) == (every_n_secs is None):
+      raise ValueError(
+          'exactly one of every_n_steps and every_n_secs should be provided.')
+    self._timer = basic_session_run_hooks.SecondOrStepTimer(
+        every_steps=every_n_steps, every_secs=every_n_secs)
+
+    self._step_train_time = 0
+    self._total_steps = 0
+    self._batch_size = batch_size
+
+  def begin(self):
+    self._global_step_tensor = training_util.get_global_step()
+    if self._global_step_tensor is None:
+      raise RuntimeError(
+          'Global step should be created to use StepCounterHook.')
+
+  def before_run(self, run_context):  # pylint: disable=unused-argument
+    return basic_session_run_hooks.SessionRunArgs(self._global_step_tensor)
+
+  def after_run(self, run_context, run_values):
+    _ = run_context
+
+    global_step = run_values.results
+    if self._timer.should_trigger_for_step(global_step):
+      elapsed_time, elapsed_steps = self._timer.update_last_triggered_step(
+          global_step)
+      if elapsed_time is not None:
+        steps_per_sec = elapsed_steps / elapsed_time
+        self._step_train_time += elapsed_time
+        self._total_steps += elapsed_steps
+
+        average_examples_per_sec = self._batch_size * (
+            self._total_steps / self._step_train_time)
+        current_examples_per_sec = steps_per_sec * self._batch_size
+        # Average examples/sec followed by current examples/sec
+        logging.info('%s: %g (%g), step = %g', 'Average examples/sec',
+                     average_examples_per_sec, current_examples_per_sec,
+                     self._total_steps)
 
 
 class GpuParamServerDeviceSetter(object):
@@ -204,7 +269,8 @@ def _resnet_model_fn(features, labels, mode):
   ps_device = '/cpu:0' if is_cpu_ps else '/gpu:0'
   with tf.device(ps_device):
     with tf.name_scope('gradient_averaging'):
-      loss = tf.reduce_mean(tower_losses)
+      loss = tf.reduce_mean(tower_losses, name='loss')
+      tf.summary.scalar('loss', loss)
       for zipped_gradvars in zip(*tower_gradvars):
         # Averaging one var's gradients computed from multiple towers
         var = zipped_gradvars[0][1]
@@ -312,7 +378,8 @@ def input_fn(subset, num_shards):
   elif subset == 'validate' or subset == 'eval':
     batch_size = FLAGS.eval_batch_size
   else:
-    raise ValueError('Subset must be one of \'train\', \'validate\' and \'eval\'')
+    raise ValueError(
+        'Subset must be one of \'train\', \'validate\' and \'eval\'')
   with tf.device('/cpu:0'):
     use_distortion = subset == 'train' and FLAGS.use_distortion_for_training
     dataset = cifar10.Cifar10DataSet(FLAGS.data_dir, subset, use_distortion)
@@ -366,21 +433,28 @@ def main(unused_argv):
   sess_config.intra_op_parallelism_threads = FLAGS.num_intra_threads
   sess_config.inter_op_parallelism_threads = FLAGS.num_inter_threads
   sess_config.gpu_options.force_gpu_compatible = FLAGS.force_gpu_compatible
+  # Turns on XLA, which needs to be compiled into TensorFlow from source.
+  if FLAGS.xla:
+    sess_config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
   config = config.replace(session_config=sess_config)
 
   classifier = tf.estimator.Estimator(
       model_fn=_resnet_model_fn, model_dir=FLAGS.model_dir, config=config)
 
-  tensors_to_log = {'learning_rate': 'learning_rate'}
+  # Hooks that add extra logging that is useful to see the loss more often in
+  # the console as well as examples per second.
+  tensors_to_log = {'loss': 'gradient_averaging/loss'}
   logging_hook = tf.train.LoggingTensorHook(
-      tensors=tensors_to_log, every_n_iter=100)
+      tensors=tensors_to_log, every_n_iter=10)
+  examples_sec_hook = ExamplesPerSecondHook(
+      FLAGS.train_batch_size, every_n_steps=10)
 
   print('Starting to train...')
   classifier.train(
       input_fn=functools.partial(
           input_fn, subset='train', num_shards=FLAGS.num_gpus),
       steps=FLAGS.train_steps,
-      hooks=[logging_hook])
+      hooks=[logging_hook, examples_sec_hook])
 
   print('Starting to evaluate...')
   eval_results = classifier.evaluate(
