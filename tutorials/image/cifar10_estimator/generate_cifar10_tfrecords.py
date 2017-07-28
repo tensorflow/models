@@ -30,6 +30,7 @@ FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_string('input_dir', '',
                        'Directory where CIFAR10 data is located.')
+
 tf.flags.DEFINE_string('output_dir', '',
                        'Directory where TFRecords will be saved.'
                        'The TFRecords will have the same name as'
@@ -56,6 +57,7 @@ def read_pickle_from_file(filename):
     data_dict = cPickle.load(f)
   return data_dict
 
+
 def main(argv):
   del argv  # Unused.
 
@@ -80,9 +82,8 @@ def main(argv):
               'label': _int64_feature(labels[i])
           }))
       record_writer.write(example.SerializeToString())
-
     record_writer.close()
-  
+
   print('Done!')
 
 
