@@ -16,10 +16,8 @@
 
 See http://www.cs.toronto.edu/~kriz/cifar.html.
 """
-import cPickle
 import os
 
-import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 import tensorflow as tf
@@ -27,6 +25,7 @@ import tensorflow as tf
 HEIGHT = 32
 WIDTH = 32
 DEPTH = 3
+
 
 class Cifar10DataSet(object):
   """Cifar10 data set.
@@ -38,7 +37,7 @@ class Cifar10DataSet(object):
     self.data_dir = data_dir
     self.subset = subset
     self.use_distortion = use_distortion
- 
+
   def get_filenames(self):
     if self.subset == 'train':
       return [
@@ -60,32 +59,30 @@ class Cifar10DataSet(object):
     features = tf.parse_single_example(
         serialized_example,
         features={
-            "image": tf.FixedLenFeature([], tf.string),
-            "label": tf.FixedLenFeature([], tf.int64),
+            'image': tf.FixedLenFeature([], tf.string),
+            'label': tf.FixedLenFeature([], tf.int64),
         })
-    image = tf.decode_raw(features["image"], tf.uint8)
-    image.set_shape([3*32*32])
-    
+    image = tf.decode_raw(features['image'], tf.uint8)
+    image.set_shape([DEPTH * HEIGHT * WIDTH])
+
     # Reshape from [depth * height * width] to [depth, height, width].
-    image = tf.transpose(tf.reshape(image, [3, 32, 32]), [1, 2, 0])
-    label = tf.cast(features["label"], tf.int32)
+    image = tf.transpose(tf.reshape(image, [DEPTH, HEIGHT, WIDTH]), [1, 2, 0])
+    label = tf.cast(features['label'], tf.int32)
 
     # Custom preprocessing .
     image = self.preprocess(image)
 
-    print(image, label)
     return image, label
 
   def make_batch(self, batch_size):
     """Read the images and labels from 'filenames'."""
     filenames = self.get_filenames()
-    record_bytes = (32 * 32 * 3) + 1
     # Repeat infinitely.
     dataset = tf.contrib.data.TFRecordDataset(filenames).repeat()
-    
+
     # Parse records.
     dataset = dataset.map(self.parser, num_threads=batch_size,
-      output_buffer_size=2 * batch_size)
+                          output_buffer_size=2 * batch_size)
 
     # Potentially shuffle records.
     if self.subset == 'train':
@@ -94,11 +91,12 @@ class Cifar10DataSet(object):
       # Ensure that the capacity is sufficiently large to provide good random
       # shuffling.
       dataset = dataset.shuffle(buffer_size=min_queue_examples + 3 * batch_size)
+
     # Batch it up.
     dataset = dataset.batch(batch_size)
     iterator = dataset.make_one_shot_iterator()
     image_batch, label_batch = iterator.get_next()
-    print(image_batch, label_batch)
+
     return image_batch, label_batch
 
   def preprocess(self, image):
