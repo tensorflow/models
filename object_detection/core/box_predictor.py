@@ -317,6 +317,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
     self._predict_instance_masks = predict_instance_masks
     self._mask_prediction_conv_depth = mask_prediction_conv_depth
     self._predict_keypoints = predict_keypoints
+    if self._predict_instance_masks:
+      raise ValueError('Mask prediction is unimplemented.')
     if self._predict_keypoints:
       raise ValueError('Keypoint prediction is unimplemented.')
     if ((self._predict_instance_masks or self._predict_keypoints) and
