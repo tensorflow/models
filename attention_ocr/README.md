@@ -28,7 +28,7 @@ Pull requests:
 virtualenv --system-site-packages ~/.tensorflow
 source ~/.tensorflow/bin/activate
 pip install --upgrade pip
-pip install --upgrade tensorflow_gpu
+pip install --upgrade tensorflow-gpu
 ```
 
 2. At least 158GB of free disk space to download the FSNS dataset:
@@ -65,7 +65,7 @@ To train a model using pre-trained Inception weights as initialization:
 ```
 wget http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz
 tar xf inception_v3_2016_08_28.tar.gz
-python train.py --checkpoint_inception=inception_v3.ckpt
+python train.py --checkpoint_inception=./inception_v3.ckpt
 ```
 
 To fine tune the Attention OCR model using a checkpoint:
@@ -142,6 +142,9 @@ python train.py --dataset_name=newtextdataset
 
 Please note that eval.py will also require the same flag.
 
+To learn how to store a data in the FSNS
+ format please refer to the https://stackoverflow.com/a/44461910/743658.
+
 2. Define a new dataset format. The model needs the following data to train:
 
 - images: input images,  shape [batch_size x H x W x 3];
@@ -176,4 +179,4 @@ The main difference between this version and the version used in the paper - for
 the paper we used a distributed training with 50 GPU (K80) workers (asynchronous
 updates), the provided checkpoint was created using this code after ~6 days of
 training on a single GPU (Titan X) (it reached 81% after 24 hours of training),
-the coordinate encoding is missing TODO(alexgorban@).
+the coordinate encoding is disabled by default.

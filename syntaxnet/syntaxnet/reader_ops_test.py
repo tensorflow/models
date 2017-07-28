@@ -15,6 +15,7 @@
 
 """Tests for reader_ops."""
 
+# pylint: disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member,no-member,g-importing-member
 
 import os.path
 import numpy as np
@@ -28,7 +29,6 @@ from syntaxnet import dictionary_pb2
 from syntaxnet import graph_builder
 from syntaxnet import sparse_pb2
 from syntaxnet.ops import gen_parser_ops
-
 
 FLAGS = tf.app.flags.FLAGS
 if not hasattr(FLAGS, 'test_srcdir'):
@@ -219,6 +219,76 @@ class ParsingReaderOpsTest(test_util.TensorFlowTestCase):
         self.assertEqual(tf.shape(embeddings1)[1].eval(), 3)
         self.assertEqual(tf.shape(embeddings2)[1].eval(), 3)
         self.assertAllEqual(embeddings1.eval(), embeddings2.eval())
+
+  def testWordEmbeddingInitializerFailIfNeitherTaskContextOrVocabulary(self):
+    with self.test_session():
+      with self.assertRaises(Exception):
+        gen_parser_ops.word_embedding_initializer(vectors='/dev/null').eval()
+
+  def testWordEmbeddingInitializerFailIfBothTaskContextAndVocabulary(self):
+    with self.test_session():
+      with self.assertRaises(Exception):
+        gen_parser_ops.word_embedding_initializer(
+            vectors='/dev/null',
+            task_context='/dev/null',
+            vocabulary='/dev/null').eval()
+
+  def testWordEmbeddingInitializerVocabularyFile(self):
+    records_path = os.path.join(FLAGS.test_tmpdir, 'records3')
+    writer = tf.python_io.TFRecordWriter(records_path)
+    writer.write(self._token_embedding('a', [1, 2, 3]))
+    writer.write(self._token_embedding('b', [2, 3, 4]))
+    writer.write(self._token_embedding('c', [3, 4, 5]))
+    writer.write(self._token_embedding('d', [4, 5, 6]))
+    writer.write(self._token_embedding('e', [5, 6, 7]))
+    del writer
+
+    vocabulary_path = os.path.join(FLAGS.test_tmpdir, 'vocabulary3')
+    with open(vocabulary_path, 'w') as vocabulary_file:
+      vocabulary_file.write('a\nc\ne\nx\n')  # 'x' not in pretrained embeddings
+
+    # Enumerate a variety of configurations.
+    for cache_vectors_locally in [False, True]:
+      for num_special_embeddings in [None, 1, 2, 5]:  # None = use default of 3
+        with self.test_session():
+          embeddings = gen_parser_ops.word_embedding_initializer(
+              vectors=records_path,
+              vocabulary=vocabulary_path,
+              cache_vectors_locally=cache_vectors_locally,
+              num_special_embeddings=num_special_embeddings)
+
+          # Expect 4 embeddings from the vocabulary plus special embeddings.
+          expected_num_embeddings = 4 + (num_special_embeddings or 3)
+          self.assertAllEqual([expected_num_embeddings, 3],
+                              tf.shape(embeddings).eval())
+
+          # The first 3 embeddings should be pretrained.
+          norm_a = (1.0 + 4.0 + 9.0) ** 0.5
+          norm_c = (9.0 + 16.0 + 25.0) ** 0.5
+          norm_e = (25.0 + 36.0 + 49.0) ** 0.5
+          self.assertAllClose([[1.0 / norm_a, 2.0 / norm_a, 3.0 / norm_a],
+                               [3.0 / norm_c, 4.0 / norm_c, 5.0 / norm_c],
+                               [5.0 / norm_e, 6.0 / norm_e, 7.0 / norm_e]],
+                              embeddings[:3].eval())
+
+  def testWordEmbeddingInitializerVocabularyFileWithDuplicates(self):
+    records_path = os.path.join(FLAGS.test_tmpdir, 'records4')
+    writer = tf.python_io.TFRecordWriter(records_path)
+    writer.write(self._token_embedding('a', [1, 2, 3]))
+    writer.write(self._token_embedding('b', [2, 3, 4]))
+    writer.write(self._token_embedding('c', [3, 4, 5]))
+    writer.write(self._token_embedding('d', [4, 5, 6]))
+    writer.write(self._token_embedding('e', [5, 6, 7]))
+    del writer
+
+    vocabulary_path = os.path.join(FLAGS.test_tmpdir, 'vocabulary4')
+    with open(vocabulary_path, 'w') as vocabulary_file:
+      vocabulary_file.write('a\nc\ne\nx\ny\nx')  # 'x' duplicated
+
+    with self.test_session():
+      with self.assertRaises(Exception):
+        gen_parser_ops.word_embedding_initializer(
+            vectors=records_path, vocabulary=vocabulary_path).eval()
 
 
 if __name__ == '__main__':

@@ -11,8 +11,8 @@ Code in this directory focuses on how to use TensorFlow Estimators to train and 
 2. Download the CIFAR-10 dataset.
 
 ```shell
-curl -o cifar-10-python.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
-tar xzf cifar-10-python.tar.gz
+curl -o cifar-10-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz
+tar xzf cifar-10-binary.tar.gz
 ```
 
 <b>How to run:</b>
@@ -20,11 +20,12 @@ tar xzf cifar-10-python.tar.gz
 ```shell
 # After running the above commands, you should see the following in the folder
 # where the data is downloaded.
-$ ls -R cifar-10-batches-py
+$ ls -R cifar-10-batches-bin
 
 cifar-10-batches-bin:
 batches.meta  data_batch_1  data_batch_2  data_batch_3
 data_batch_4  data_batch_5  readme.html  test_batch
+
 
 # Run the model on CPU only. After training, it runs the evaluation.
 $ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
