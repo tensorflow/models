@@ -29,6 +29,7 @@ few box predictor architectures are shared across many models.
 from abc import abstractmethod
 import tensorflow as tf
 from object_detection.utils import ops
+from object_detection.utils import shape_utils
 from object_detection.utils import static_shape
 
 slim = tf.contrib.slim
@@ -316,6 +317,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
     self._predict_instance_masks = predict_instance_masks
     self._mask_prediction_conv_depth = mask_prediction_conv_depth
     self._predict_keypoints = predict_keypoints
+    if self._predict_instance_masks:
+      raise ValueError('Mask prediction is unimplemented.')
     if self._predict_keypoints:
       raise ValueError('Keypoint prediction is unimplemented.')
     if ((self._predict_instance_masks or self._predict_keypoints) and
@@ -524,23 +527,21 @@ class ConvolutionalBoxPredictor(BoxPredictor):
           class_predictions_with_background = tf.sigmoid(
               class_predictions_with_background)
 
-    batch_size = static_shape.get_batch_size(image_features.get_shape())
-    if batch_size is None:
-      features_height = static_shape.get_height(image_features.get_shape())
-      features_width = static_shape.get_width(image_features.get_shape())
-      flattened_predictions_size = (features_height * features_width *
-                                    num_predictions_per_location)
-      box_encodings = tf.reshape(
-          box_encodings,
-          [-1, flattened_predictions_size, 1, self._box_code_size])
-      class_predictions_with_background = tf.reshape(
-          class_predictions_with_background,
-          [-1, flattened_predictions_size, num_class_slots])
-    else:
-      box_encodings = tf.reshape(
-          box_encodings, [batch_size, -1, 1, self._box_code_size])
-      class_predictions_with_background = tf.reshape(
-          class_predictions_with_background, [batch_size, -1, num_class_slots])
+    combined_feature_map_shape = shape_utils.combined_static_and_dynamic_shape(
+        image_features)
+    box_encodings = tf.reshape(
+        box_encodings, tf.stack([combined_feature_map_shape[0],
+                                 combined_feature_map_shape[1] *
+                                 combined_feature_map_shape[2] *
+                                 num_predictions_per_location,
+                                 1, self._box_code_size]))
+    class_predictions_with_background = tf.reshape(
+        class_predictions_with_background,
+        tf.stack([combined_feature_map_shape[0],
+                  combined_feature_map_shape[1] *
+                  combined_feature_map_shape[2] *
+                  num_predictions_per_location,
+                  num_class_slots]))
     return {BOX_ENCODINGS: box_encodings,
             CLASS_PREDICTIONS_WITH_BACKGROUND:
             class_predictions_with_background}
