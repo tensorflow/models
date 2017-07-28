@@ -110,10 +110,14 @@ def ptb_producer(raw_data, batch_size, num_steps, name=None):
     assertion = tf.assert_positive(
         epoch_size,
         message="epoch_size == 0, decrease batch_size or num_steps")
-    with tf.control_dependencies([assertion]):
+    with tf.control_dependencies([assertion]):# W: don't understand, but not essential, temporarily ignore
       epoch_size = tf.identity(epoch_size, name="epoch_size")
 
-    i = tf.train.range_input_producer(epoch_size, shuffle=False).dequeue()
+    # A Queue with the output integers. A QueueRunner for the Queue is added to the current Graph's QUEUE_RUNNER collection.
+    # Produces the integers from 0 to limit-1 in a queue.
+    i = tf.train.range_input_producer(epoch_size, shuffle=False).dequeue() # Q: dequeue()？？ cannot find in in python docs.
+   
+    
     x = tf.strided_slice(data, [0, i * num_steps],
                          [batch_size, (i + 1) * num_steps])
     x.set_shape([batch_size, num_steps])
