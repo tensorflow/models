@@ -179,6 +179,7 @@ class ExamplesPerSecondHook(session_run_hook.SessionRunHook):
 
 class GpuParamServerDeviceSetter(object):
   """Used with tf.device() to place variables on the least loaded GPU.
+
     A common use for this class is to pass a list of GPU devices, e.g. ['gpu:0',
     'gpu:1','gpu:2'], as ps_devices.  When each variable is placed, it will be
     placed on the least loaded gpu. All other Ops, which will be the computation
