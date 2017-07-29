@@ -59,14 +59,14 @@ def create_cat_tf_example(encoded_cat_image_data):
 
   height = 1032.0
   width = 1200.0
-  filename = 'example_cat.jpg'
+  filename = b'example_cat.jpg'
   image_format = b'jpg'
 
   xmins = [322.0 / 1200.0]
   xmaxs = [1062.0 / 1200.0]
   ymins = [174.0 / 1032.0]
   ymaxs = [761.0 / 1032.0]
-  classes_text = ['Cat']
+  classes_text = [b'Cat']
   classes = [1]
 
   tf_example = tf.train.Example(features=tf.train.Features(feature={
@@ -74,7 +74,7 @@ def create_cat_tf_example(encoded_cat_image_data):
       'image/width': dataset_util.int64_feature(width),
       'image/filename': dataset_util.bytes_feature(filename),
       'image/source_id': dataset_util.bytes_feature(filename),
-      'image/encoded': dataset_util.bytes_feature(encoded_image_data),
+      'image/encoded': dataset_util.bytes_feature(encoded_cat_image_data),
       'image/format': dataset_util.bytes_feature(image_format),
       'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
       'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
