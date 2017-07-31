@@ -157,6 +157,6 @@ number of workers, gpu type).
 
 ## Configuring the Evaluator
 
-Currently evaluation is fixed to generating metrics as defined by the PASCAL
-VOC challenge. The parameters for `eval_config` are set to reasonable defaults
-and typically do not need to be configured.
+Currently evaluation is fixed to generating metrics as defined by the PASCAL VOC
+challenge. The parameters for `eval_config` are set to reasonable defaults and
+typically do not need to be configured.

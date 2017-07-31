@@ -228,25 +228,24 @@ class DetectionModel(object):
           fields.BoxListFields.keypoints] = groundtruth_keypoints_list
 
   @abstractmethod
-  def restore_fn(self, checkpoint_path, from_detection_checkpoint=True):
-    """Return callable for loading a foreign checkpoint into tensorflow graph.
+  def restore_map(self, from_detection_checkpoint=True):
+    """Returns a map of variables to load from a foreign checkpoint.
 
-    Loads variables from a different tensorflow graph (typically feature
-    extractor variables). This enables the model to initialize based on weights
-    from another task. For example, the feature extractor variables from a
+    Returns a map of variable names to load from a checkpoint to variables in
+    the model graph. This enables the model to initialize based on weights from
+    another task. For example, the feature extractor variables from a
     classification model can be used to bootstrap training of an object
     detector. When loading from an object detection model, the checkpoint model
     should have the same parameters as this detection model with exception of
     the num_classes parameter.
 
     Args:
-      checkpoint_path: path to checkpoint to restore.
       from_detection_checkpoint: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
 
     Returns:
-      a callable which takes a tf.Session as input and loads a checkpoint when
-        run.
+      A dict mapping variable names (to load from a checkpoint) to variables in
+      the model graph.
     """
     pass

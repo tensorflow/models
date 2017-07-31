@@ -112,7 +112,7 @@ def init_linear(in_size, out_size, do_bias=True, mat_init_value=None,
         'Provided mat_init_value must have shape [%d, %d].'%(in_size, out_size))
   if bias_init_value is not None and bias_init_value.shape != (1,out_size):
     raise ValueError(
-        'Provided bias_init_value must have shape [1,%d].'%(1,out_size))
+        'Provided bias_init_value must have shape [1,%d].'%(out_size,))
 
   if mat_init_value is None:
     stddev = alpha/np.sqrt(float(in_size))

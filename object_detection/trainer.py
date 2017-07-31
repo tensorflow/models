@@ -211,9 +211,15 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     # Create ops required to initialize the model from a given checkpoint.
     init_fn = None
     if train_config.fine_tune_checkpoint:
-      init_fn = detection_model.restore_fn(
-          train_config.fine_tune_checkpoint,
+      var_map = detection_model.restore_map(
           from_detection_checkpoint=train_config.from_detection_checkpoint)
+      available_var_map = (variables_helper.
+                           get_variables_available_in_checkpoint(
+                               var_map, train_config.fine_tune_checkpoint))
+      init_saver = tf.train.Saver(available_var_map)
+      def initializer_fn(sess):
+        init_saver.restore(sess, train_config.fine_tune_checkpoint)
+      init_fn = initializer_fn
 
     with tf.device(deploy_config.optimizer_device()):
       total_loss, grads_and_vars = model_deploy.optimize_clones(
