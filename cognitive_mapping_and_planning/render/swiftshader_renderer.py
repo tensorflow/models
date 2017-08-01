@@ -74,8 +74,8 @@ class Shape():
     scene = assimp.load(obj_file, processing=load_flags)
     filter_ind = self._filter_triangles(scene.meshes)
     self.meshes = [scene.meshes[i] for i in filter_ind]
-    for m in self.meshes:
-      m.name = name_prefix + m.name + name_suffix
+    for i, m in enumerate(self.meshes):
+      m.name = name_prefix + m.name + '_{:05d}'.format(i) + name_suffix
 
     dir_name = os.path.dirname(obj_file)
     # Load materials
