@@ -58,6 +58,25 @@ def read_pickle_from_file(filename):
   return data_dict
 
 
+def convert_to_tfrecord(input_file, name):
+  """Converts a file to tfrecords."""
+  print('Generating %s' % output_file)
+  record_writer = tf.python_io.TFRecordWriter(output_file)
+
+  data_dict = read_pickle_from_file(input_file)
+  data = data_dict['data']
+  labels = data_dict['labels']
+
+  num_entries_in_batch = len(labels)
+  for i in range(num_entries_in_batch):
+    example = tf.train.Example(
+        features=tf.train.Features(feature={
+            'image': _bytes_feature(data[i].tobytes()),
+            'label': _int64_feature(labels[i])
+        }))
+    record_writer.write(example.SerializeToString())
+  record_writer.close()
+
 def main(argv):
   del argv  # Unused.
 
@@ -65,24 +84,8 @@ def main(argv):
   for file_name in file_names:
     input_file = os.path.join(FLAGS.input_dir, file_name)
     output_file = os.path.join(FLAGS.output_dir, file_name + '.tfrecords')
-
-    print('Generating %s' % output_file)
-
-    record_writer = tf.python_io.TFRecordWriter(output_file)
-
-    data_dict = read_pickle_from_file(input_file)
-    data = data_dict['data']
-    labels = data_dict['labels']
-
-    num_entries_in_batch = len(labels)
-    for i in range(num_entries_in_batch):
-      example = tf.train.Example(
-          features=tf.train.Features(feature={
-              'image': _bytes_feature(data[i].tobytes()),
-              'label': _int64_feature(labels[i])
-          }))
-      record_writer.write(example.SerializeToString())
-    record_writer.close()
+    # Convert to Examples and write the result to TFRecords.
+    convert_to_tfrecord(input_file, output_file)
 
   print('Done!')
 
