@@ -42,7 +42,7 @@ def block35(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
       tower_conv2_0 = slim.conv2d(net, 32, 1, scope='Conv2d_0a_1x1')
       tower_conv2_1 = slim.conv2d(tower_conv2_0, 48, 3, scope='Conv2d_0b_3x3')
       tower_conv2_2 = slim.conv2d(tower_conv2_1, 64, 3, scope='Conv2d_0c_3x3')
-    mixed = tf.concat([tower_conv, tower_conv1_1, tower_conv2_2], 3)
+    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_1, tower_conv2_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
     net += scale * up
@@ -62,7 +62,7 @@ def block17(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
                                   scope='Conv2d_0b_1x7')
       tower_conv1_2 = slim.conv2d(tower_conv1_1, 192, [7, 1],
                                   scope='Conv2d_0c_7x1')
-    mixed = tf.concat([tower_conv, tower_conv1_2], 3)
+    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
     net += scale * up
@@ -82,7 +82,7 @@ def block8(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
                                   scope='Conv2d_0b_1x3')
       tower_conv1_2 = slim.conv2d(tower_conv1_1, 256, [3, 1],
                                   scope='Conv2d_0c_3x1')
-    mixed = tf.concat([tower_conv, tower_conv1_2], 3)
+    mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
     net += scale * up
@@ -331,7 +331,7 @@ inception_resnet_v2.default_image_size = 299
 def inception_resnet_v2_arg_scope(weight_decay=0.00004,
                                   batch_norm_decay=0.9997,
                                   batch_norm_epsilon=0.001):
-  """Yields the scope with the default parameters for inception_resnet_v2.
+  """Returns the scope with the default parameters for inception_resnet_v2.
 
   Args:
     weight_decay: the weight decay for weights variables.
