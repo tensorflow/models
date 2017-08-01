@@ -21,8 +21,14 @@ python object_detection/export_inference_graph.py \
 
 The expected output would be in the directory `${EXPORTED_MODEL_PATH}` (which is created if it does not exist) with contents:
 
-* graph.pbtxt
-* model.ckpt.data-00000-of-00001
-* model.ckpt.info
-* model.ckpt.meta
-* frozen_inference_graph.pb
+```
+.
+├── checkpoint
+├── frozen_inference_graph.pb
+├── model.ckpt.data-00000-of-00001
+├── model.ckpt.index
+├── model.ckpt.meta
+└── saved_model
+    ├── saved_model.pb
+    └── variables
+```
