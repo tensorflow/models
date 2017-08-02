@@ -64,7 +64,7 @@ class Cifar10DataSet(object):
         tf.float32)
     label = tf.cast(features['label'], tf.int32)
 
-    # Custom preprocessing .
+    # Custom preprocessing.
     image = self.preprocess(image)
 
     return image, label
