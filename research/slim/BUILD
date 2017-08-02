@@ -16,6 +16,7 @@ package_group(
         "//googlex/proxy/learning/...",
         "//i18n/input/font/...",
         "//image/understanding/object_detection/...",
+        "//knowledge/cerebra/imresearch/deep_upsampling/...",
         "//knowledge/cerebra/sense/im2query/...",
         "//learning/biotensorflow/...",
         "//learning/brain/contrib/hub/examples/slim_nets/...",
