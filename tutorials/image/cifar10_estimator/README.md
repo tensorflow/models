@@ -7,6 +7,8 @@ Code in this directory focuses on how to use TensorFlow Estimators to train and 
 * A single host with multiple GPUs;
 * Multiple hosts with CPU or multiple GPUs;
 
+Before trying to run the model we highly encourage you to read all the README.
+
 ## Prerequisite
 
 1. Install TensorFlow version 1.2.1 or later with GPU support.
@@ -448,3 +450,42 @@ You'll see something similar to this if you "point" TensorBoard to the `model_di
 # by default the model_dir is "sentiment_analysis_output"
 $ tensorboard --log_dir="sentiment_analysis_output"
 ```
+
+## Warnings
+
+When runninng `cifar10_main.py` with `--sync=True` argument you may see a Warning message similar to:
+
+```python
+File "cifar10_main.py", line 538, in <module>
+    tf.app.run()
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/platform/app.py", line 48, in run
+    _sys.exit(main(_sys.argv[:1] + flags_passthrough))
+File "cifar10_main.py", line 518, in main
+    hooks), run_config=config)
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/contrib/learn/python/learn/learn_runner.py", line 210, in run
+    return _execute_schedule(experiment, schedule)
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/contrib/learn/python/learn/learn_runner.py", line 47, in _execute_schedule
+    return task()
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/contrib/learn/python/learn/experiment.py", line 501, in train_and_evaluate
+    hooks=self._eval_hooks)
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/contrib/learn/python/learn/experiment.py", line 681, in _call_evaluate
+    hooks=hooks)
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/estimator/estimator.py", line 292, in evaluate
+    name=name)
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/estimator/estimator.py", line 638, in _evaluate_model
+    features, labels, model_fn_lib.ModeKeys.EVAL)
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/estimator/estimator.py", line 545, in _call_model_fn
+    features=features, labels=labels, **kwargs)
+File "cifar10_main.py", line 331, in _resnet_model_fn
+    gradvars, global_step=tf.train.get_global_step())
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/training/sync_replicas_optimizer.py", line 252, in apply_gradients
+    variables.global_variables())
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/util/tf_should_use.py", line 170, in wrapped
+    return _add_should_use_warning(fn(*args, **kwargs))
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/util/tf_should_use.py", line 139, in _add_should_use_warning
+    wrapped = TFShouldUseWarningWrapper(x)
+File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/util/tf_should_use.py", line 96, in __init__
+    stack = [s.strip() for s in traceback.format_stack()]
+```
+
+This should not affect your training, and this should be solved on the next releases.
