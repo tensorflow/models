@@ -331,7 +331,7 @@ inception_resnet_v2.default_image_size = 299
 def inception_resnet_v2_arg_scope(weight_decay=0.00004,
                                   batch_norm_decay=0.9997,
                                   batch_norm_epsilon=0.001):
-  """Yields the scope with the default parameters for inception_resnet_v2.
+  """Returns the scope with the default parameters for inception_resnet_v2.
 
   Args:
     weight_decay: the weight decay for weights variables.
