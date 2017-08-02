@@ -241,7 +241,7 @@ def _resnet_model_fn(features, labels, mode):
   Support single host, one or more GPU training. Parameter distribution can be
   either one of the following scheme.
   1. CPU is the parameter server and manages gradient updates.
-  2. Paramters are distributed evenly across all GPUs, and the first GPU
+  2. Parameters are distributed evenly across all GPUs, and the first GPU
      manages gradient updates.
 
   Args:
