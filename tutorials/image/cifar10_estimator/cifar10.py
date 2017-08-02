@@ -69,8 +69,7 @@ class Cifar10DataSet(object):
     image = tf.transpose(tf.reshape(image, [DEPTH, HEIGHT, WIDTH]), [1, 2, 0])
     label = tf.cast(features['label'], tf.int32)
 
-    # Custom preprocessing .
-    image = tf.cast(image, tf.float32)
+    # Custom preprocessing.
     image = self.preprocess(image)
 
     return image, label
