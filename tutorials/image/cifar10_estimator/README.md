@@ -453,7 +453,7 @@ $ tensorboard --log_dir="sentiment_analysis_output"
 
 ## Warnings
 
-When runninng `cifar10_main.py` with `--sync=True` argument you may see a Warning message similar to:
+When runninng `cifar10_main.py` with `--sync=True` argument you may see an error similar to:
 
 ```python
 File "cifar10_main.py", line 538, in <module>
@@ -488,4 +488,4 @@ File "/usr/local/lib/python2.7/dist-packages/tensorflow/python/util/tf_should_us
     stack = [s.strip() for s in traceback.format_stack()]
 ```
 
-This should not affect your training, and this should be solved on the next releases.
+This should not affect your training, and should be fixed on the next releases.
