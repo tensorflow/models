@@ -18,13 +18,31 @@ Code in this directory focuses on how to use TensorFlow Estimators to train and 
 $ curl -o cifar-10-python.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
 $ tar xzf cifar-10-python.tar.gz
 ```
-After running the above commands, you should see the following files in the folder where the data was downloaded.
+
+After running the commands above, you should see the following files in the folder where the data was downloaded.
 
 ``` shell
 $ ls -R cifar-10-batches-py
 
 batches.meta  data_batch_1  data_batch_2  data_batch_3
 data_batch_4  data_batch_5  readme.html  test_batch
+```
+
+3. Generate TFRecord files.
+```shell
+# This will generate a tf record for the training and test data available at the input_dir.
+# You can see more details in generate_cifar10_tf_records.py
+$ python generate_cifar10_tfrecords.py --input_dir=/prefix/to/downloaded/data/cifar-10-batches-py \
+                                       --output_dir=/prefix/to/downloaded/data/cifar-10-batches-py
+```
+
+After running the command above, you should see the following new files in the output_dir.
+
+``` shell
+$ ls -R cifar-10-batches-py
+
+data_batch_1.tfrecords  data_batch_2.tfrecords  data_batch_3.tfrecords
+data_batch_4.tfrecords  data_batch_5.tfrecords  test_batch.tfrecords
 ```
 
 ## How to run on local mode
