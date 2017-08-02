@@ -73,10 +73,11 @@ tf.flags.DEFINE_float('momentum', 0.9, 'Momentum for MomentumOptimizer.')
 
 tf.flags.DEFINE_float('weight_decay', 2e-4, 'Weight decay for convolutions.')
 
-tf.flags.DEFINE_float('adjust_learning_rate', 1,
-                      """This value will be multiplied by the learning rate.
-                      By default the learning rate is
-                      [0.1, 0.001, 0.0001, 0.00002]
+tf.flags.DEFINE_float('learning_rate', 0.1,
+                      """This is the inital learning rate value.
+                      The learning rate will decrease during training.
+                      For more details check the model_fn implementation
+                      in this file.
                       """.)
 
 tf.flags.DEFINE_boolean('use_distortion_for_training', True,
@@ -316,9 +317,8 @@ def _resnet_model_fn(features, labels, mode):
         num_batches_per_epoch * x
         for x in np.array([82, 123, 300], dtype=np.int64)
     ]
-    staged_lr = [
-        FLAGS.adjust_learning_rate * x 
-        for x in [0.1, 0.01, 0.001, 0.0002]]
+    staged_lr = [FLAGS.learning_rate * x 
+        for x in [1, 0.1, 0.01, 0.002]]
     
     learning_rate = tf.train.piecewise_constant(tf.train.get_global_step(),
                                                 boundaries, staged_lr)
