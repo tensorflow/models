@@ -15,7 +15,7 @@
 
 """A module for helper tensorflow ops."""
 import math
-import six
+from past.builtins import long
 
 import tensorflow as tf
 
@@ -198,9 +198,9 @@ def padded_one_hot_encoding(indices, depth, left_pad):
 
   TODO: add runtime checks for depth and indices.
   """
-  if depth < 0 or not isinstance(depth, (int, long) if six.PY2 else int):
+  if depth < 0 or not isinstance(depth, (int, long)):
     raise ValueError('`depth` must be a non-negative integer.')
-  if left_pad < 0 or not isinstance(left_pad, (int, long) if six.PY2 else int):
+  if left_pad < 0 or not isinstance(left_pad, (int, long)):
     raise ValueError('`left_pad` must be a non-negative integer.')
   if depth == 0:
     return None
