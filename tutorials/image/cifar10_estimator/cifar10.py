@@ -18,8 +18,6 @@ See http://www.cs.toronto.edu/~kriz/cifar.html.
 """
 import os
 
-from six.moves import xrange  # pylint: disable=redefined-builtin
-
 import tensorflow as tf
 
 HEIGHT = 32
