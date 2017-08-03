@@ -192,7 +192,7 @@ def construct_model(images,
       if stp:
         stp_input0 = tf.reshape(hidden5, [int(batch_size), -1])
         stp_input1 = slim.layers.fully_connected(
-            stp_input0, 100, scope='fc_stp', activation_fn=None)
+            stp_input0, 100, scope='fc_stp')
         transformed += stp_transformation(prev_image, stp_input1, num_masks)
       elif cdna:
         cdna_input = tf.reshape(hidden5, [int(batch_size), -1])
