@@ -6,7 +6,7 @@ in [Full Resolution Image Compression with Recurrent Neural Networks](https://ar
 on the architecture and compression results.
 
 This code will allow you to perform the lossy compression on an model
-already trained on compression. This code doesn't not currently contain the
+already trained on compression. This code does not currently contain the
 Entropy Coding portions of our paper.
 
 
