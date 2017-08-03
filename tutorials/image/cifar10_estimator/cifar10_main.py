@@ -107,8 +107,8 @@ tf.flags.DEFINE_integer('num_intra_threads', 1,
                         ' from intra-op parallelism are scheduled to run on GPUs.')
 
 tf.flags.DEFINE_integer('num_inter_threads', 0,
-                        'Number of threads to use for inter-op
-                        ' parallelism. If set to 0, the system will pick
+                        'Number of threads to use for inter-op'
+                        ' parallelism. If set to 0, the system will pick'
                         ' an appropriate number.')
 
 tf.flags.DEFINE_boolean('force_gpu_compatible', False,
