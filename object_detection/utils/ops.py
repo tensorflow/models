@@ -16,6 +16,7 @@
 """A module for helper tensorflow ops."""
 import math
 import six
+
 import tensorflow as tf
 
 from object_detection.core import box_list
