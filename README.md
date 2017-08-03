@@ -29,6 +29,7 @@ running TensorFlow 0.12 or earlier, please
 - [neural_programmer](neural_programmer): neural network augmented with logic and mathematic operations.
 - [next_frame_prediction](next_frame_prediction): probabilistic future frame synthesis via cross convolutional networks.
 - [object_detection](object_detection): localizing and identifying multiple objects in a single image.
+- [PathNet](pathnet): a super neural network with sparse activations per each tasks.
 - [real_nvp](real_nvp): density estimation using real-valued non-volume preserving (real NVP) transformations.
 - [rebar](rebar): low-variance, unbiased gradient estimates for discrete latent variable models.
 - [resnet](resnet): deep and wide residual networks.
