@@ -249,17 +249,17 @@ def train_and_evaluate():
 
     if train_until_thresh(s, ac):
       for _ in xrange(EVE_EXTRA_ROUNDS):
-        s.run(eve_optimizer)
+        s.run(ac.eve_optimizer)
       print('Loss after eve extra training:')
       doeval(s, ac, EVAL_BATCHES * 2, 0)
       for _ in xrange(NUMBER_OF_EVE_RESETS):
         print('Resetting Eve')
-        s.run(reset_eve_vars)
+        s.run(ac.reset_eve_vars)
         eve_counter = 0
         for _ in xrange(RETRAIN_EVE_LOOPS):
           for _ in xrange(RETRAIN_EVE_ITERS):
             eve_counter += 1
-            s.run(eve_optimizer)
+            s.run(ac.eve_optimizer)
           doeval(s, ac, EVAL_BATCHES, eve_counter)
         doeval(s, ac, EVAL_BATCHES, eve_counter)
 
