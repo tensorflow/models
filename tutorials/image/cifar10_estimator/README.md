@@ -148,7 +148,6 @@ By the default environment is *local*, for a distributed setting we need to chan
 
 Once you have a `TF_CONFIG` configured properly on each host you're ready to run on distributed settings.
 
-
 #### Master
 ```shell
 # Run this on master:
@@ -157,7 +156,7 @@ Once you have a `TF_CONFIG` configured properly on each host you're ready to run
 # The num_workers arugument is used only to update the learning rate correctly.
 # Make sure the model_dir is the same as defined on the TF_CONFIG.
 $ python cifar10_main.py --data_dir=gs://path/cifar-10-batches-py \
-                         --model_dir=gs://path/model_dir \
+                         --model_dir=gs://path/model_dir/ \
                          --is_cpu_ps=True \
                          --force_gpu_compatible=True \
                          --num_gpus=4 \
@@ -170,8 +169,8 @@ $ python cifar10_main.py --data_dir=gs://path/cifar-10-batches-py \
 *Output:*
 
 ```shell
-INFO:tensorflow:Using model_dir in TF_CONFIG: gs://path/model_dir
-INFO:tensorflow:Using config: {'_save_checkpoints_secs': 600, '_num_ps_replicas': 1, '_keep_checkpoint_max': 5, '_task_type': u'master', '_is_chief': True, '_cluster_spec': <tensorflow.python.training.server_lib.ClusterSpec object at 0x7fd16fb2be10>, '_model_dir': 'gs://path/model_dir', '_save_checkpoints_steps': None, '_keep_checkpoint_every_n_hours': 10000, '_session_config': intra_op_parallelism_threads: 1
+INFO:tensorflow:Using model_dir in TF_CONFIG: gs://path/model_dir/
+INFO:tensorflow:Using config: {'_save_checkpoints_secs': 600, '_num_ps_replicas': 1, '_keep_checkpoint_max': 5, '_task_type': u'master', '_is_chief': True, '_cluster_spec': <tensorflow.python.training.server_lib.ClusterSpec object at 0x7fd16fb2be10>, '_model_dir': 'gs://path/model_dir/', '_save_checkpoints_steps': None, '_keep_checkpoint_every_n_hours': 10000, '_session_config': intra_op_parallelism_threads: 1
 gpu_options {
 }
 allow_soft_placement: true
@@ -234,7 +233,7 @@ gpu_options {
 }
 allow_soft_placement: true
 
-INFO:tensorflow:Saving checkpoints for 1 into gs://path/model_dirmodel.ckpt.
+INFO:tensorflow:Saving checkpoints for 1 into gs://path/model_dir/model.ckpt.
 INFO:tensorflow:loss = 1.20682, step = 1
 INFO:tensorflow:loss = 1.20682, learning_rate = 0.1
 INFO:tensorflow:image after unit resnet/tower_0/stage/residual_v1/: (?, 16, 32, 32)
@@ -300,7 +299,7 @@ INFO:tensorflow:Saving dict for global step 1: accuracy = 0.0994, global_step = 
 # It will run evaluation a couple of times during training.
 # Make sure the model_dir is the same as defined on the TF_CONFIG.
 $ python cifar10_main.py --data_dir=gs://path/cifar-10-batches-py \
-                         --model_dir=gs://path/model_dir \
+                         --model_dir=gs://path/model_dir/ \
                          --is_cpu_ps=True \
                          --force_gpu_compatible=True \
                          --num_gpus=4 \
@@ -312,12 +311,12 @@ $ python cifar10_main.py --data_dir=gs://path/cifar-10-batches-py \
 *Output:*
 
 ```shell
-INFO:tensorflow:Using model_dir in TF_CONFIG: gs://path/model_dir
+INFO:tensorflow:Using model_dir in TF_CONFIG: gs://path/model_dir/
 INFO:tensorflow:Using config: {'_save_checkpoints_secs': 600,
 '_num_ps_replicas': 1, '_keep_checkpoint_max': 5, '_task_type': u'worker',
 '_is_chief': False, '_cluster_spec':
 <tensorflow.python.training.server_lib.ClusterSpec object at 0x7f6918438e10>,
-'_model_dir': 'gs://<path>/model_dir',
+'_model_dir': 'gs://<path>/model_dir/',
 '_save_checkpoints_steps': None, '_keep_checkpoint_every_n_hours': 10000,
 '_session_config': intra_op_parallelism_threads: 1
 gpu_options {
@@ -407,7 +406,7 @@ INFO:tensorflow:Average examples/sec: 2325.81 (2745.63), step = 150
 INFO:tensorflow:Average examples/sec: 2347.14 (2721.53), step = 160
 INFO:tensorflow:Average examples/sec: 2367.74 (2754.54), step = 170
 INFO:tensorflow:loss = 27.8453, step = 179 (18.893 sec)
-....
+...
 ```
 
 #### PS
@@ -415,7 +414,7 @@ INFO:tensorflow:loss = 27.8453, step = 179 (18.893 sec)
 ```shell
 # Run this on ps:
 # The ps will not do training so most of the arguments won't affect the execution
-$ python cifar10_main.py --run_experiment=True --model_dir=gs://path/model_dir
+$ python cifar10_main.py --run_experiment=True --model_dir=gs://path/model_dir/
 
 # There are more command line flags to play with; check cifar10_main.py for details.
 ```
@@ -423,7 +422,7 @@ $ python cifar10_main.py --run_experiment=True --model_dir=gs://path/model_dir
 *Output:*
 
 ```shell
-INFO:tensorflow:Using model_dir in TF_CONFIG: gs://path/model_dirrds/
+INFO:tensorflow:Using model_dir in TF_CONFIG: gs://path/model_dir/
 INFO:tensorflow:Using config: {'_save_checkpoints_secs': 600, '_num_ps_replicas': 1, '_keep_checkpoint_max': 5, '_task_type': u'ps', '_is_chief': False, '_cluster_spec': <tensorflow.python.training.server_lib.ClusterSpec object at 0x7f48f1addf90>, '_model_dir': 'gs://path/model_dir/', '_save_checkpoints_steps': None, '_keep_checkpoint_every_n_hours': 10000, '_session_config': intra_op_parallelism_threads: 1
 gpu_options {
 }
