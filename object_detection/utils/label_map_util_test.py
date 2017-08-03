@@ -75,7 +75,7 @@ class LabelMapUtilTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       label_map_util.load_labelmap(label_map_path)
 
-    def test_keep_categories_with_unique_id(self):
+  def test_keep_categories_with_unique_id(self):
     label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
     label_map_string = """
       item {
