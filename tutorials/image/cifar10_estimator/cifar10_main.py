@@ -78,7 +78,7 @@ tf.flags.DEFINE_float('learning_rate', 0.1,
                       The learning rate will decrease during training.
                       For more details check the model_fn implementation
                       in this file.
-                      """.)
+                      """)
 
 tf.flags.DEFINE_boolean('use_distortion_for_training', True,
                         'If doing image distortion for training.')
@@ -317,9 +317,11 @@ def _resnet_model_fn(features, labels, mode):
         num_batches_per_epoch * x
         for x in np.array([82, 123, 300], dtype=np.int64)
     ]
-    staged_lr = [FLAGS.learning_rate * x 
-        for x in [1, 0.1, 0.01, 0.002]]
-    
+    staged_lr = [
+        FLAGS.learning_rate * x
+        for x in [1, 0.1, 0.01, 0.002]
+    ]
+
     learning_rate = tf.train.piecewise_constant(tf.train.get_global_step(),
                                                 boundaries, staged_lr)
     # Create a nicely-named tensor for logging
