@@ -318,8 +318,7 @@ def _resnet_model_fn(features, labels, mode):
         for x in np.array([82, 123, 300], dtype=np.int64)
     ]
     staged_lr = [
-        FLAGS.learning_rate * x
-        for x in [1, 0.1, 0.01, 0.002]
+        FLAGS.learning_rate * x for x in [1, 0.1, 0.01, 0.002]
     ]
 
     learning_rate = tf.train.piecewise_constant(tf.train.get_global_step(),
