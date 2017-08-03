@@ -17,8 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import model_base
 import tensorflow as tf
+
+import model_base
 
 
 class ResNetCifar10(model_base.ResNet):
