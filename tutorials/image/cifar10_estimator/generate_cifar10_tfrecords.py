@@ -81,9 +81,7 @@ def convert_to_tfrecord(input_files, output_file):
   record_writer.close()
 
 
-def main(argv):
-  del argv  # Unused.
-
+def main(unused_argv):
   file_names = _get_file_names()
   for mode, files in file_names.items():
     input_files = [
