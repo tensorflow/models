@@ -21,3 +21,6 @@ Follow either of the two links above to access the appropriate CLA and instructi
 
 ***NOTE***: Only original source code from you and other people that have signed the CLA can be accepted into the repository.
 
+### Compatibility with both Python 2 and Python 3
+
+The Python module [six](https://pythonhosted.org/six/) is the recommended method for achieve compatibility with both Python 2 and Python 3.  For instance, if a Python file contains one or more calls to `xrange()` then the statement `from six.moves import xrange()` should be added to the imports section at the top of that file.
