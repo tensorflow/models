@@ -23,11 +23,7 @@ from tensorflow.contrib.tfprof import model_analyzer
 
 import model
 import data_provider
-
-try:
-  xrange          # Python 2
-except NameError:
-  xrange = range  # Python 3
+from six.moves import xrange
 
 
 def create_fake_charset(num_char_classes):
