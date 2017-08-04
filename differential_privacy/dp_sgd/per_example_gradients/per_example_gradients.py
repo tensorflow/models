@@ -222,71 +222,22 @@ class Conv2DPXG(object):
     # MNIST experiments.
     assert idx == 1  # We expect convolution weights to be arg 1
 
-    images, filters = self.op.inputs
-    in_shape = images.get_shape().as_list()
-    out_shape = z_grads[0].get_shape().as_list()
-    filter_shape = w.get_shape().as_list()
+    images, _ = self.op.inputs
     strides = self.op.get_attr("strides")
     padding = self.op.get_attr("padding")
     data_format = self.op.get_attr("data_format")
-
-    z_grads = tf.transpose(z_grads, perm=[1, 0, 2, 3, 4])
-
-    if data_format == "NHWC":
-      input_perm = [3, 1, 2, 0]
-      output_perm = [1, 2, 0, 3]
-    else:
-      input_perm = [1, 0, 2, 3]
-      output_perm = [2, 3, 0, 1]
-
-    def pad_length(in_length, out_length, filter_length, stride):
-        total_pad_length = max((out_length - 1) * stride + filter_length -
-                               in_length, 0)
-        if padding == 'SAME':
-            pad_before = total_pad_length // 2
-        else:
-            pad_before = 0
-        pad_after = total_pad_length - pad_before
-        return pad_before, pad_after
-
-    pad_top, pad_bottom = pad_length(in_shape[1], out_shape[1],
-                                     filter_shape[0], strides[1])
-    pad_left, pad_right = pad_length(in_shape[2], out_shape[2],
-                                     filter_shape[1], strides[2])
-
-    def add_strides(input, stride, axis):
-      tensor_list = tf.unstack(input, axis=axis)
-      for i in range(len(tensor_list)-1, 0, -1):
-        for j in range(stride-1):
-          tensor_list.insert(i, tf.zeros_like(tensor_list[0]))
-      return tf.stack(tensor_list, axis=axis)
-
-    def conv2d_one_example_grad(x):
+    
+    def _conv2d_one_example_grad(x):
       image, grad = x
-      assert len(image.get_shape()) == 3
-      assert len(grad.get_shape()) == 4
-      image = tf.concat([tf.zeros([pad_top] + in_shape[2:]),
-                         image,
-                         tf.zeros([pad_bottom] + in_shape[2:])],
-                        0)
-      image = tf.concat([tf.zeros([in_shape[1] + pad_top + pad_bottom,
-                                   pad_left,
-                                   in_shape[3]]),
-                         image,
-                         tf.zeros([in_shape[1] + pad_top + pad_bottom,
-                                   pad_right,
-                                   in_shape[3]])], 1)
-      if strides[1] > 1:
-        grad = add_strides(grad, strides[1], 1)
-      if strides[2] > 1:
-        grad = add_strides(grad, strides[2], 2)
-      input = tf.expand_dims(image, axis=0)
-      input = tf.transpose(input, perm=input_perm)
-      filter = tf.transpose(grad, perm=[1, 2, 0, 3])
-      pxg = tf.nn.conv2d(input, filter, [1, 1, 1, 1], padding='VALID')
-      return tf.transpose(pxg, perm=output_perm)
+      assert image.get_shape().ndims == 4
+      assert grad.get_shape().ndims == 4
+      return tf.nn.conv2d_backprop_filter(image, w.get_shape(), grad
+                                          strides, padding,
+                                          data_format=data_format)
 
-    grads = tf.map_fn(conv2d_one_example_grad,
+    images = tf.expand_dims(images, axis=1)
+    z_grads = tf.transpose(z_grads, perm=[1, 0, 2, 3, 4])
+    grads = tf.map_fn(_conv2d_one_example_grad,
                       (images, z_grads),
                       dtype=tf.float32)
     return tf.concat(grads, 0)
@@ -326,7 +277,7 @@ class AddPXG(object):
     z_grads, = z_grads
     return z_grads
 
-
+  
 pxg_registry.Register("Add", AddPXG)
 
 
