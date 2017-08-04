@@ -726,7 +726,7 @@ def random_pixel_value_scale(image,
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     minval: lower ratio of scaling pixel values.
     maxval: upper ratio of scaling pixel values.
     seed: random seed.
@@ -749,7 +749,7 @@ def random_pixel_value_scale(image,
         preprocess_vars_cache)
 
     image = tf.multiply(image, color_coef)
-    image = tf.clip_by_value(image, 0.0, 1.0)
+    image = tf.clip_by_value(image, 0.0, 255.0)
 
   return image
 
@@ -815,7 +815,7 @@ def random_rgb_to_gray(image,
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     probability: the probability of returning a grayscale image.
             The probability should be a number between [0, 1].
     seed: random seed.
@@ -852,11 +852,11 @@ def random_adjust_brightness(image,
                              preprocess_vars_cache=None):
   """Randomly adjusts brightness.
 
-  Makes sure the output image is still between 0 and 1.
+  Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     max_delta: how much to change the brightness. A value between [0, 1).
     seed: random seed.
     preprocess_vars_cache: PreprocessorCache object that records previously
@@ -876,8 +876,8 @@ def random_adjust_brightness(image,
         preprocessor_cache.PreprocessorCache.ADJUST_BRIGHTNESS,
         preprocess_vars_cache)
 
-    image = tf.image.adjust_brightness(image, delta)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+    image = tf.image.adjust_brightness(image / 255, delta) * 255
+    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
 
 
@@ -888,11 +888,11 @@ def random_adjust_contrast(image,
                            preprocess_vars_cache=None):
   """Randomly adjusts contrast.
 
-  Makes sure the output image is still between 0 and 1.
+  Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     min_delta: see max_delta.
     max_delta: how much to change the contrast. Contrast will change with a
                value between min_delta and max_delta. This value will be
@@ -913,8 +913,8 @@ def random_adjust_contrast(image,
         generator_func,
         preprocessor_cache.PreprocessorCache.ADJUST_CONTRAST,
         preprocess_vars_cache)
-    image = tf.image.adjust_contrast(image, contrast_factor)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+    image = tf.image.adjust_contrast(image / 255, contrast_factor) * 255
+    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
 
 
@@ -924,11 +924,11 @@ def random_adjust_hue(image,
                       preprocess_vars_cache=None):
   """Randomly adjusts hue.
 
-  Makes sure the output image is still between 0 and 1.
+  Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     max_delta: change hue randomly with a value between 0 and max_delta.
     seed: random seed.
     preprocess_vars_cache: PreprocessorCache object that records previously
@@ -945,8 +945,8 @@ def random_adjust_hue(image,
     delta = _get_or_create_preprocess_rand_vars(
         generator_func, preprocessor_cache.PreprocessorCache.ADJUST_HUE,
         preprocess_vars_cache)
-    image = tf.image.adjust_hue(image, delta)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+    image = tf.image.adjust_hue(image / 255, delta) * 255
+    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
 
 
@@ -957,11 +957,11 @@ def random_adjust_saturation(image,
                              preprocess_vars_cache=None):
   """Randomly adjusts saturation.
 
-  Makes sure the output image is still between 0 and 1.
+  Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     min_delta: see max_delta.
     max_delta: how much to change the saturation. Saturation will change with a
                value between min_delta and max_delta. This value will be
@@ -982,8 +982,8 @@ def random_adjust_saturation(image,
         generator_func,
         preprocessor_cache.PreprocessorCache.ADJUST_SATURATION,
         preprocess_vars_cache)
-    image = tf.image.adjust_saturation(image, saturation_factor)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+    image = tf.image.adjust_saturation(image / 255, saturation_factor) * 255
+    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
 
 
@@ -991,11 +991,11 @@ def random_distort_color(image, color_ordering=0, preprocess_vars_cache=None):
   """Randomly distorts color.
 
   Randomly distorts color using a combination of brightness, hue, contrast
-  and saturation changes. Makes sure the output image is still between 0 and 1.
+  and saturation changes. Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     color_ordering: Python int, a type of distortion (valid values: 0, 1).
     preprocess_vars_cache: PreprocessorCache object that records previously
                            performed augmentations. Updated in-place. If this
