@@ -33,9 +33,11 @@ The code in this repository is based on the original
 
 ## Data
 
-1.  Download the [MetaQA dataset](https://goo.gl/f3AmcY). Read the documents
-    there for dataset details.
-2.  Put the MetaQA folder in the root directory of this repository.
+1.  Download the [MetaQA dataset](https://goo.gl/f3AmcY). Click the button
+    `MetaQA` and then click `Download` in the drop-down list. Extract the zip
+    file after downloading completed. Read the documents there for dataset
+    details.
+2.  Move the `MetaQA` folder to the root directory of this repository.
 
 ## How to use this code
 
