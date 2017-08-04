@@ -24,12 +24,15 @@ from tensorflow.contrib.tfprof import model_analyzer
 import model
 import data_provider
 
+try:
+  xrange          # Python 2
+except NameError:
+  xrange = range  # Python 3
+
 
 def create_fake_charset(num_char_classes):
-  charset = {}
-  for i in xrange(num_char_classes):
-    charset[i] = string.printable[i % len(string.printable)]
-  return charset
+  return {i: string.printable[i % len(string.printable)]
+          for i in xrange(num_char_classes)}
 
 
 class ModelTest(tf.test.TestCase):
