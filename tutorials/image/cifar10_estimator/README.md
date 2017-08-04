@@ -43,8 +43,7 @@ After running the command above, you should see the following new files in the o
 ``` shell
 $ ls -R cifar-10-batches-py
 
-data_batch_1.tfrecords  data_batch_2.tfrecords  data_batch_3.tfrecords
-data_batch_4.tfrecords  data_batch_5.tfrecords  test_batch.tfrecords
+train.tfrecords validation.tfrecords eval.tfrecords
 ```
 
 ## How to run on local mode
