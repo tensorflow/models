@@ -66,8 +66,8 @@ $ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-
                          --train_steps=1000
 
 # Run the model on 2 GPUs using GPU as parameter server.
-# It will run an experiment, which for local setting basically means it will run stop training
-# a couple of times to perform evaluation.
+# It will run an experiment, which for local settings basically means it will perform
+# evaluation during training.
 $ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
                          --model_dir=/tmp/cifar10 \
                          --is_cpu_ps=False \
@@ -137,11 +137,12 @@ TF_CONFIG = json.dumps(
 *Model_dir*
 
 This is the path where the master will save the checkpoints, graph and TensorBoard files.
-For a multi host environment you may want to use a Distributed File System, Google Storage and DFS are supported.
+For a multi host environment you may want to use a Distributed File System, Google Storage
+and DFS are supported.
 
 *Environment*
 
-By the default environment is *local*, for a distributed setting we need to change it to *cloud*.
+By default the environment is *local*, for distributed settings we need to change it to *cloud*.
 
 ### Running script
 
@@ -152,8 +153,8 @@ Once you have a `TF_CONFIG` configured properly on each host you're ready to run
 # Run this on master:
 # Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for 40000 steps.
 # It will run evaluation a couple of times during training.
-# The num_workers arugument is used only to update the learning rate correctly.
-# Make sure the model_dir is the same as defined on the TF_CONFIG.
+# The num_workers argument is used only to update the learning rate correctly.
+# Make sure the model_dir is the same as defined on TF_CONFIG.
 $ python cifar10_main.py --data_dir=gs://path/cifar-10-batches-py \
                          --model_dir=gs://path/model_dir/ \
                          --is_cpu_ps=True \
@@ -296,7 +297,7 @@ INFO:tensorflow:Saving dict for global step 1: accuracy = 0.0994, global_step = 
 # Run this on worker:
 # Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for 40000 steps.
 # It will run evaluation a couple of times during training.
-# Make sure the model_dir is the same as defined on the TF_CONFIG.
+# Make sure the model_dir is the same as defined on TF_CONFIG.
 $ python cifar10_main.py --data_dir=gs://path/cifar-10-batches-py \
                          --model_dir=gs://path/model_dir/ \
                          --is_cpu_ps=True \
@@ -438,15 +439,11 @@ allow_soft_placement: true
 
 ## Visualizing results with TensorFlow
 
-When using Estimators you can also visualize your data in TensorBoard, with no changes in your code. You can use TensorBoard to visualize your TensorFlow graph, plot quantitative metrics about the execution of your graph, and show additional data like images that pass through it.
-
-You'll see something similar to this if you "point" TensorBoard to the `model_dir` you used to train or evaluate your model.
-
+When using Estimators you can also visualize your data in TensorBoard.
 ```shell
 # Check TensorBoard during training or after it.
-# Just point TensorBoard to the model_dir you chose on the previous step
-# by default the model_dir is "sentiment_analysis_output"
-$ tensorboard --log_dir="sentiment_analysis_output"
+# Just point TensorBoard to the model_dir you chose.
+$ tensorboard --log_dir="path/to/model_dir"
 ```
 
 ## Warnings

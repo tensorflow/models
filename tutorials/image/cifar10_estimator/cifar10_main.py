@@ -49,7 +49,8 @@ tf.logging.set_verbosity(tf.logging.INFO)
 FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_string('data_dir', '',
-                       'The directory where the CIFAR-10 input data is stored.')
+                       'The directory where the CIFAR-10 input data is'
+                       ' stored.')
 
 tf.flags.DEFINE_string('model_dir', '',
                        'The directory where the model will be stored.')
@@ -100,11 +101,12 @@ tf.flags.DEFINE_integer('num_workers', 1, 'Number of workers.')
 # Perf flags
 tf.flags.DEFINE_integer('num_intra_threads', 1,
                         'Number of threads to use for intra-op parallelism.'
-                        ' If set to 0, the system will pick an appropriate number.'
-                        ' The default is 1 since in this example CPU only handles'
-                        ' the input pipeline and gradient aggregation (when'
-                        ' --is_cpu_ps). Ops that could potentially benefit'
-                        ' from intra-op parallelism are scheduled to run on GPUs.')
+                        ' If set to 0, the system will pick an appropriate
+                        ' number. The default is 1 since in this example CPU'
+                        ' only handles the input pipeline and gradient'
+                        ' aggregation (when --is_cpu_ps). Ops that could'
+                        ' potentially benefit from intra-op parallelism are'
+                        ' scheduled to run on GPUs.')
 
 tf.flags.DEFINE_integer('num_inter_threads', 0,
                         'Number of threads to use for inter-op'
@@ -187,10 +189,10 @@ class ExamplesPerSecondHook(session_run_hook.SessionRunHook):
 class GpuParamServerDeviceSetter(object):
   """Used with tf.device() to place variables on the least loaded GPU.
 
-    A common use for this class is to pass a list of GPU devices, e.g. ['gpu:0',
-    'gpu:1','gpu:2'], as ps_devices.  When each variable is placed, it will be
-    placed on the least loaded gpu. All other Ops, which will be the computation
-    Ops, will be placed on the worker_device.
+    A common use for this class is to pass a list of GPU devices, e.g.
+    ['gpu:0', 'gpu:1','gpu:2'], as ps_devices.  When each variable is placed,
+    it will be placed on the least loaded gpu. All other Ops, which will be the
+    computation Ops, will be placed on the worker_device.
   """
 
   def __init__(self, worker_device, ps_devices):
@@ -437,7 +439,6 @@ def input_fn(subset, num_shards):
     return feature_shards, label_shards
 
 
-# create experiment
 def get_experiment_fn(train_input_fn, eval_input_fn, train_steps, eval_steps,
                       train_hooks):
   """Returns an Experiment function.
