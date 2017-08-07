@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import model_base
+from . import model_base
 
 
 class ResNetCifar10(model_base.ResNet):
