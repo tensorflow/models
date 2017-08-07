@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.ops import control_flow_ops
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
@@ -313,17 +312,6 @@ def _configure_optimizer(learning_rate):
   return optimizer
 
 
-def _add_variables_summaries(learning_rate):
-  summaries = []
-  for variable in slim.get_model_variables():
-    summaries.append(
-        tf.contrib.deprecated.histogram_summary(variable.op.name, variable))
-  summaries.append(
-      tf.contrib.deprecated.scalar_summary('training/Learning Rate',
-                                           learning_rate))
-  return summaries
-
-
 def _get_init_fn():
   """Returns a function run by the chief worker to warm-start the training.
 
@@ -553,8 +541,8 @@ def main(_):
     update_ops.append(grad_updates)
 
     update_op = tf.group(*update_ops)
-    train_tensor = control_flow_ops.with_dependencies([update_op], total_loss,
-                                                      name='train_op')
+    with tf.control_dependencies([update_op]):
+      train_tensor = tf.identity(total_loss, name='train_op')
 
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().

@@ -4,7 +4,7 @@
 
 MobileNets trade off between latency, size and accuracy while comparing favorably with popular models from the literature.
 
-![alt text](https://github.com/tensorflow/models/tree/master/slim/nets/mobilenet_v1.png, "MobileNet Graph")
+![alt text](mobilenet_v1.png "MobileNet Graph")
 
 # Pre-trained Models
 
