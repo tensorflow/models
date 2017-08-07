@@ -33,8 +33,9 @@ import functools
 import operator
 import os
 
-import cifar10
-import cifar10_model
+from . import cifar10
+from . import cifar10_model
+
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
