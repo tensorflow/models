@@ -108,9 +108,9 @@ def transformer(voxels,
       max_x = tf.to_int32(tf.shape(im)[3] - 1)
 
       # Converts scale indices from [-1, 1] to [0, width/height/depth].
-      x = (x + 1.0) * (width_f) / 2.0
-      y = (y + 1.0) * (height_f) / 2.0
-      z = (z + 1.0) * (depth_f) / 2.0
+      x = (x + 1.0) * (width_f - 1.0) / 2.0
+      y = (y + 1.0) * (height_f - 1.0) / 2.0
+      z = (z + 1.0) * (depth_f - 1.0) / 2.0
 
       x0 = tf.to_int32(tf.floor(x))
       x1 = x0 + 1

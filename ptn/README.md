@@ -56,6 +56,8 @@ You'll also need to set the inp_dir flag to where your data resides.
 ### Training: train_ptn.py with last pretrained model.
 $ bazel run -c opt :train_ptn -- --init_model={}
 
+Note that the BUILD files assume the ptn directory to be the root workspace for bazel.
+
 ### Example TensorBoard Visualizations
 
 To compare the visualizations make sure to set the model_name flag different for each parametric setting:
