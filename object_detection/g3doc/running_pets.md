@@ -89,8 +89,8 @@ python object_detection/create_pet_tf_record.py \
 Note: It is normal to see some warnings when running this script. You may ignore
 them.
 
-Two TFRecord files named `pet_train.record` and `pet_val.record` should be generated
-in the `tensorflow/models` directory.
+Two TFRecord files named `pet_train.record` and `pet_val.record` should be
+generated in the `tensorflow/models` directory.
 
 Now that the data has been generated, we'll need to upload it to Google Cloud
 Storage so the data can be accessed by ML Engine. Run the following command to
@@ -269,7 +269,10 @@ Note: It takes roughly 10 minutes for a job to get started on ML Engine, and
 roughly an hour for the system to evaluate the validation dataset. It may take
 some time to populate the dashboards. If you do not see any entries after half
 an hour, check the logs from the [ML Engine
-Dashboard](https://console.cloud.google.com/mlengine/jobs).
+Dashboard](https://console.cloud.google.com/mlengine/jobs). Note that by default
+the training jobs are configured to go for much longer than is necessary for
+convergence.  To save money, we recommend killing your jobs once you've seen
+that they've converged.
 
 ## Exporting the Tensorflow Graph
 

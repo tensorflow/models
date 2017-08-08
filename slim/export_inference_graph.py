@@ -62,7 +62,6 @@ from tensorflow.python.platform import gfile
 from datasets import dataset_factory
 from nets import nets_factory
 
-
 slim = tf.contrib.slim
 
 tf.app.flags.DEFINE_string(
@@ -73,8 +72,13 @@ tf.app.flags.DEFINE_boolean(
     'Whether to save out a training-focused version of the model.')
 
 tf.app.flags.DEFINE_integer(
-    'default_image_size', 224,
-    'The image size to use if the model does not define it.')
+    'image_size', None,
+    'The image size to use, otherwise use the model default_image_size.')
+
+tf.app.flags.DEFINE_integer(
+    'batch_size', None,
+    'Batch size for the exported model. Defaulted to "None" so batch size can '
+    'be specified at model runtime.')
 
 tf.app.flags.DEFINE_string('dataset_name', 'imagenet',
                            'The name of the dataset to use with the model.')
@@ -105,12 +109,10 @@ def main(_):
         FLAGS.model_name,
         num_classes=(dataset.num_classes - FLAGS.labels_offset),
         is_training=FLAGS.is_training)
-    if hasattr(network_fn, 'default_image_size'):
-      image_size = network_fn.default_image_size
-    else:
-      image_size = FLAGS.default_image_size
+    image_size = FLAGS.image_size or network_fn.default_image_size
     placeholder = tf.placeholder(name='input', dtype=tf.float32,
-                                 shape=[1, image_size, image_size, 3])
+                                 shape=[FLAGS.batch_size, image_size,
+                                        image_size, 3])
     network_fn(placeholder)
     graph_def = graph.as_graph_def()
     with gfile.GFile(FLAGS.output_file, 'wb') as f:

@@ -454,8 +454,8 @@ def inception_v3(inputs,
       usage will be to set this value in (0, 1) to reduce the number of
       parameters or computation cost of the model.
     prediction_fn: a function to get predictions out of logits.
-    spatial_squeeze: if True, logits is of shape [B, C], if false logits is
-        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
+    spatial_squeeze: if True, logits is of shape [B, C], if false logits is of
+        shape [B, 1, 1, C], where B is batch_size and C is number of classes.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     create_aux_logits: Whether to create the auxiliary logits.
@@ -547,8 +547,8 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
   known, it will be lost. (2) inception.slim.ops._two_element_tuple cannot
   handle tensors that define the kernel size.
       shape = tf.shape(input_tensor)
-      return = tf.pack([tf.minimum(shape[1], kernel_size[0]),
-                        tf.minimum(shape[2], kernel_size[1])])
+      return = tf.stack([tf.minimum(shape[1], kernel_size[0]),
+                         tf.minimum(shape[2], kernel_size[1])])
 
   """
   shape = input_tensor.get_shape().as_list()

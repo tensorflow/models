@@ -256,6 +256,17 @@ and/or multiple CPUs, either synchrononously or asynchronously.
 See [model_deploy](https://github.com/tensorflow/models/blob/master/slim/deployment/model_deploy.py)
 for details.
 
+### TensorBoard
+
+To visualize the losses and other metrics during training, you can use
+[TensorBoard](https://github.com/tensorflow/tensorboard)
+by running the command below.
+
+```shell
+tensorboard --logdir=${TRAIN_DIR}
+```
+
+Once TensorBoard is running, navigate your web browser to http://localhost:6006.
 
 # Fine-tuning a model from an existing checkpoint
 <a id='Tuning'></a>

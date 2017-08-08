@@ -31,6 +31,7 @@ running TensorFlow 0.12 or earlier, please
 - [object_detection](object_detection): localizing and identifying multiple objects in a single image.
 - [ptn](ptn): TF implementation for the NIPS16 work on Perspective Transformer Nets.
 - [real_nvp](real_nvp): density estimation using real-valued non-volume preserving (real NVP) transformations.
+- [rebar](rebar): low-variance, unbiased gradient estimates for discrete latent variable models.
 - [resnet](resnet): deep and wide residual networks.
 - [skip_thoughts](skip_thoughts): recurrent neural network sentence-to-vector encoder.
 - [slim](slim): image classification models in TF-Slim.
