@@ -497,12 +497,15 @@ def main(unused_argv):
   eval_steps = num_eval_examples // FLAGS.eval_batch_size
 
   # Session configuration.
-  sess_config = tf.ConfigProto()
-  sess_config.allow_soft_placement = True
-  sess_config.log_device_placement = FLAGS.log_device_placement
-  sess_config.intra_op_parallelism_threads = FLAGS.num_intra_threads
-  sess_config.inter_op_parallelism_threads = FLAGS.num_inter_threads
-  sess_config.gpu_options.force_gpu_compatible = FLAGS.force_gpu_compatible
+  sess_config = tf.ConfigProto(
+      allow_soft_placement=True,
+      log_device_placement=FLAGS.log_device_placement,
+      intra_op_parallelism_threads=FLAGS.num_intra_threads,
+      inter_op_parallelism_threads=FLAGS.num_inter_threads,
+      gpu_options=tf.GPUOptions(
+          force_gpu_compatible=FLAGS.force_gpu_compatible
+      )
+  )
 
   # Hooks that add extra logging that is useful to see the loss more often in
   # the console as well as examples per second.
