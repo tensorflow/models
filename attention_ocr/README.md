@@ -28,7 +28,7 @@ Pull requests:
 virtualenv --system-site-packages ~/.tensorflow
 source ~/.tensorflow/bin/activate
 pip install --upgrade pip
-pip install --upgrade tensorflow_gpu
+pip install --upgrade tensorflow-gpu
 ```
 
 2. At least 158GB of free disk space to download the FSNS dataset:
@@ -65,7 +65,7 @@ To train a model using pre-trained Inception weights as initialization:
 ```
 wget http://download.tensorflow.org/models/inception_v3_2016_08_28.tar.gz
 tar xf inception_v3_2016_08_28.tar.gz
-python train.py --checkpoint_inception=inception_v3.ckpt
+python train.py --checkpoint_inception=./inception_v3.ckpt
 ```
 
 To fine tune the Attention OCR model using a checkpoint:

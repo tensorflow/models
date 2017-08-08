@@ -7,7 +7,7 @@
 #
 # Usage:
 # cd slim
-# ./slim/scripts/finetune_inceptionv3_on_flowers.sh
+# ./slim/scripts/finetune_inception_v3_on_flowers.sh
 set -e
 
 # Where the pre-trained InceptionV3 checkpoint is saved to.

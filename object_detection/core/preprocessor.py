@@ -1255,6 +1255,82 @@ def random_resize_method(image, target_size):
   return resized_image
 
 
+def _compute_new_static_size(image,
+                             min_dimension,
+                             max_dimension):
+  """Compute new static shape for resize_to_range method."""
+  image_shape = image.get_shape().as_list()
+  orig_height = image_shape[0]
+  orig_width = image_shape[1]
+  orig_min_dim = min(orig_height, orig_width)
+  # Calculates the larger of the possible sizes
+  large_scale_factor = min_dimension / float(orig_min_dim)
+  # Scaling orig_(height|width) by large_scale_factor will make the smaller
+  # dimension equal to min_dimension, save for floating point rounding errors.
+  # For reasonably-sized images, taking the nearest integer will reliably
+  # eliminate this error.
+  large_height = int(round(orig_height * large_scale_factor))
+  large_width = int(round(orig_width * large_scale_factor))
+  large_size = [large_height, large_width]
+  if max_dimension:
+    # Calculates the smaller of the possible sizes, use that if the larger
+    # is too big.
+    orig_max_dim = max(orig_height, orig_width)
+    small_scale_factor = max_dimension / float(orig_max_dim)
+    # Scaling orig_(height|width) by small_scale_factor will make the larger
+    # dimension equal to max_dimension, save for floating point rounding
+    # errors. For reasonably-sized images, taking the nearest integer will
+    # reliably eliminate this error.
+    small_height = int(round(orig_height * small_scale_factor))
+    small_width = int(round(orig_width * small_scale_factor))
+    small_size = [small_height, small_width]
+    new_size = large_size
+    if max(large_size) > max_dimension:
+      new_size = small_size
+  else:
+    new_size = large_size
+  return tf.constant(new_size)
+
+
+def _compute_new_dynamic_size(image,
+                              min_dimension,
+                              max_dimension):
+  """Compute new dynamic shape for resize_to_range method."""
+  image_shape = tf.shape(image)
+  orig_height = tf.to_float(image_shape[0])
+  orig_width = tf.to_float(image_shape[1])
+  orig_min_dim = tf.minimum(orig_height, orig_width)
+  # Calculates the larger of the possible sizes
+  min_dimension = tf.constant(min_dimension, dtype=tf.float32)
+  large_scale_factor = min_dimension / orig_min_dim
+  # Scaling orig_(height|width) by large_scale_factor will make the smaller
+  # dimension equal to min_dimension, save for floating point rounding errors.
+  # For reasonably-sized images, taking the nearest integer will reliably
+  # eliminate this error.
+  large_height = tf.to_int32(tf.round(orig_height * large_scale_factor))
+  large_width = tf.to_int32(tf.round(orig_width * large_scale_factor))
+  large_size = tf.stack([large_height, large_width])
+  if max_dimension:
+    # Calculates the smaller of the possible sizes, use that if the larger
+    # is too big.
+    orig_max_dim = tf.maximum(orig_height, orig_width)
+    max_dimension = tf.constant(max_dimension, dtype=tf.float32)
+    small_scale_factor = max_dimension / orig_max_dim
+    # Scaling orig_(height|width) by small_scale_factor will make the larger
+    # dimension equal to max_dimension, save for floating point rounding
+    # errors. For reasonably-sized images, taking the nearest integer will
+    # reliably eliminate this error.
+    small_height = tf.to_int32(tf.round(orig_height * small_scale_factor))
+    small_width = tf.to_int32(tf.round(orig_width * small_scale_factor))
+    small_size = tf.stack([small_height, small_width])
+    new_size = tf.cond(
+        tf.to_float(tf.reduce_max(large_size)) > max_dimension,
+        lambda: small_size, lambda: large_size)
+  else:
+    new_size = large_size
+  return new_size
+
+
 def resize_to_range(image,
                     masks=None,
                     min_dimension=None,
@@ -1295,64 +1371,22 @@ def resize_to_range(image,
     raise ValueError('Image should be 3D tensor')
 
   with tf.name_scope('ResizeToRange', values=[image, min_dimension]):
-    image_shape = tf.shape(image)
-    orig_height = tf.to_float(image_shape[0])
-    orig_width = tf.to_float(image_shape[1])
-    orig_min_dim = tf.minimum(orig_height, orig_width)
-
-    # Calculates the larger of the possible sizes
-    min_dimension = tf.constant(min_dimension, dtype=tf.float32)
-    large_scale_factor = min_dimension / orig_min_dim
-    # Scaling orig_(height|width) by large_scale_factor will make the smaller
-    # dimension equal to min_dimension, save for floating point rounding errors.
-    # For reasonably-sized images, taking the nearest integer will reliably
-    # eliminate this error.
-    large_height = tf.to_int32(tf.round(orig_height * large_scale_factor))
-    large_width = tf.to_int32(tf.round(orig_width * large_scale_factor))
-    large_size = tf.stack([large_height, large_width])
-
-    if max_dimension:
-      # Calculates the smaller of the possible sizes, use that if the larger
-      # is too big.
-      orig_max_dim = tf.maximum(orig_height, orig_width)
-      max_dimension = tf.constant(max_dimension, dtype=tf.float32)
-      small_scale_factor = max_dimension / orig_max_dim
-      # Scaling orig_(height|width) by small_scale_factor will make the larger
-      # dimension equal to max_dimension, save for floating point rounding
-      # errors. For reasonably-sized images, taking the nearest integer will
-      # reliably eliminate this error.
-      small_height = tf.to_int32(tf.round(orig_height * small_scale_factor))
-      small_width = tf.to_int32(tf.round(orig_width * small_scale_factor))
-      small_size = tf.stack([small_height, small_width])
-
-      new_size = tf.cond(
-          tf.to_float(tf.reduce_max(large_size)) > max_dimension,
-          lambda: small_size, lambda: large_size)
+    if image.get_shape().is_fully_defined():
+      new_size = _compute_new_static_size(image, min_dimension,
+                                          max_dimension)
     else:
-      new_size = large_size
-
+      new_size = _compute_new_dynamic_size(image, min_dimension,
+                                           max_dimension)
     new_image = tf.image.resize_images(image, new_size,
                                        align_corners=align_corners)
 
     result = new_image
     if masks is not None:
-      num_instances = tf.shape(masks)[0]
-
-      def resize_masks_branch():
-        new_masks = tf.expand_dims(masks, 3)
-        new_masks = tf.image.resize_nearest_neighbor(
-            new_masks, new_size, align_corners=align_corners)
-        new_masks = tf.squeeze(new_masks, axis=3)
-        return new_masks
-
-      def reshape_masks_branch():
-        new_masks = tf.reshape(masks, [0, new_size[0], new_size[1]])
-        return new_masks
-
-      masks = tf.cond(num_instances > 0,
-                      resize_masks_branch,
-                      reshape_masks_branch)
-      result = [new_image, masks]
+      new_masks = tf.expand_dims(masks, 3)
+      new_masks = tf.image.resize_nearest_neighbor(new_masks, new_size,
+                                                   align_corners=align_corners)
+      new_masks = tf.squeeze(new_masks, 3)
+      result = [new_image, new_masks]
 
     return result
 

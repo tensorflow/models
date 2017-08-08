@@ -322,7 +322,7 @@ bazel-bin/im2txt/run_inference \
 
 Example output:
 
-```shell
+```
 Captions for image COCO_val2014_000000224477.jpg:
   0) a man riding a wave on top of a surfboard . (p=0.040413)
   1) a person riding a surf board on a wave (p=0.017452)

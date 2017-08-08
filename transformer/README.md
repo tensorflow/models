@@ -8,7 +8,7 @@ The Spatial Transformer Network [1] allows the spatial manipulation of data with
 
 ### API 
 
-A Spatial Transformer Network implemented in Tensorflow 0.7 and based on [2].
+A Spatial Transformer Network implemented in Tensorflow 1.0 and based on [2].
 
 #### How to use
 
