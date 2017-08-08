@@ -22,7 +22,7 @@ citing the following paper:
 ### Contents
 1.  [Requirements: software](#requirements-software)
 2.  [Requirements: data](#requirements-data)
-3.  [Test Pre-trained Models](#test-pre_trained-models)
+3.  [Test Pre-trained Models](#test-pre-trained-models)
 4.  [Train your Own Models](#train-your-own-models)
 
 ### Requirements: software
@@ -46,7 +46,8 @@ citing the following paper:
       ```
 
 2.  Install [Tensorflow](https://www.tensorflow.org/) inside this virtual
-    environment. Typically done with `pip install --upgrade tensorflow-gpu`.
+    environment. You will need to use one of the latest nightly builds 
+    (see instructions [here](https://github.com/tensorflow/tensorflow#installation)).
 
 3.  Swiftshader: We use
     [Swiftshader](https://github.com/google/swiftshader.git), a CPU based
@@ -99,8 +100,7 @@ citing the following paper:
     `data/README.md`
 
 ### Test Pre-trained Models
-1.  Download pre-trained models using
-    `scripts/scripts_download_pretrained_models.sh`
+1.  Download pre-trained models. See `output/README.md`.
 
 2.  Test models using `scripts/script_test_pretrained_models.sh`.
 

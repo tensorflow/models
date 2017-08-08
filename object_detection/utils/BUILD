@@ -120,6 +120,7 @@ py_library(
         "//tensorflow_models/object_detection/core:box_list",
         "//tensorflow_models/object_detection/core:box_predictor",
         "//tensorflow_models/object_detection/core:matcher",
+        "//tensorflow_models/object_detection/utils:shape_utils"
     ],
 )
 
