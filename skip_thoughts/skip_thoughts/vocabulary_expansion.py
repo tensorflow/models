@@ -42,7 +42,7 @@ import collections
 import os.path
 
 
-import gensim.models
+import gensim.models.keyedvectors
 import numpy as np
 import sklearn.linear_model
 import tensorflow as tf
@@ -179,7 +179,7 @@ def main(unused_argv):
   skip_thoughts_vocab = _load_vocabulary(FLAGS.skip_thoughts_vocab)
 
   # Load the Word2Vec model.
-  word2vec = gensim.models.Word2Vec.load_word2vec_format(
+  word2vec = gensim.models.keyedvectors.KeyedVectors.load_word2vec_format(
       FLAGS.word2vec_model, binary=True)
 
   # Run vocabulary expansion.
