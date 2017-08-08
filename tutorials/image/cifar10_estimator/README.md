@@ -81,6 +81,40 @@ $ python cifar10_main.py --data_dir=/prefix/to/downloaded/data/cifar-10-batches-
 
 ## How to run on distributed mode
 
+### (Optional) Running on Google Cloud Machine Learning Engine
+
+This example can be run on Google Cloud Machine Learning Engine (ML Engine), which will configure the environment and take care of running workers, parameters servers, and masters in a fault tolerant way.
+
+To install the command line tool, and set up a project and billing, see the quickstart [here](https://cloud.google.com/ml-engine/docs/quickstarts/command-line).
+
+You'll also need a Google Cloud Storage bucket for the data. If you followed the instructions above, you can just run:
+
+```
+MY_BUCKET=gs://<my-bucket-name>
+gsutil cp -r cifar-10-batches-py $MY_BUCKET/
+```
+
+Then run the following command from the `tutorials/image` directory of this repository (the parent directory of this README):
+
+```
+gcloud ml-engine jobs submit training cifarmultigpu \
+    --runtime-version 1.2 \
+    --staging-bucket $MY_BUCKET \
+    --config cifar10_estimator/job_config.yaml \
+    --package-path cifar10_estimator/ \
+    --region us-central1 \
+    --module-name cifar10_estimator.cifar10_main \
+    -- \
+    --data_dir=$MY_BUCKET/cifar-10-batches-py \
+    --model_dir=$MY_BUCKLET/model_dirs/cifarmultigpu \
+    --is_cpu_ps=True \
+    --force_gpu_compatible=True \
+    --num_gpus=4 \
+    --train_steps=1000 \
+    --run_experiment=True
+```
+
+
 ### Set TF_CONFIG
 
 Considering that you already have multiple hosts configured, all you need is a `TF_CONFIG`
