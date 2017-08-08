@@ -129,8 +129,9 @@ class Im2Vox(object):
       var_list.extend(
           filter(is_trainable, tf.contrib.framework.get_model_variables(scope)))
 
+    model_path = tf.train.latest_checkpoint(self._params.init_model)
     init_assign_op, init_feed_dict = slim.assign_from_checkpoint(
-        self._params.init_model, var_list)
+        model_path, var_list)
 
     def init_assign_function(sess):
       sess.run(init_assign_op, init_feed_dict)
