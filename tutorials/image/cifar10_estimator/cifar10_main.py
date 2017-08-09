@@ -83,7 +83,7 @@ tf.flags.DEFINE_float('learning_rate', 0.1,
 tf.flags.DEFINE_boolean('use_distortion_for_training', True,
                         'If doing image distortion for training.')
 
-tf.flags.DEFINE_boolean('run_experiment', False,
+tf.flags.DEFINE_boolean('run_experiment', True,
                         'If True will run an experiment,'
                         ' otherwise will run training and evaluation'
                         ' using the estimator interface.'
