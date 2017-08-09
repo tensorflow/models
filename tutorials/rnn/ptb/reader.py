@@ -27,14 +27,14 @@ import tensorflow as tf
 
 
 def _read_words(filename):
-  with tf.gfile.GFile(filename, "r") as f:
-    return f.read().decode("utf-8").replace("\n", "<eos>").split()
+  with tf.gfile.GFile(filename, "r") as f: # WQ: gfile?
+    return f.read().decode("utf-8").replace("\n", "<eos>").split() # WQ: decode("utf-8")
 
 
 def _build_vocab(filename):
   data = _read_words(filename)
 
-  counter = collections.Counter(data)
+  counter = collections.Counter(data) # counter is used for sort the words according to frequency
   count_pairs = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
 
   words, _ = list(zip(*count_pairs))
@@ -71,7 +71,7 @@ def ptb_raw_data(data_path=None):
   valid_path = os.path.join(data_path, "ptb.valid.txt")
   test_path = os.path.join(data_path, "ptb.test.txt")
 
-  word_to_id = _build_vocab(train_path)
+  word_to_id = _build_vocab(train_path) # what if some words from valid/test set do not appear in train set?
   train_data = _file_to_word_ids(train_path, word_to_id)
   valid_data = _file_to_word_ids(valid_path, word_to_id)
   test_data = _file_to_word_ids(test_path, word_to_id)
@@ -110,13 +110,18 @@ def ptb_producer(raw_data, batch_size, num_steps, name=None):
     assertion = tf.assert_positive(
         epoch_size,
         message="epoch_size == 0, decrease batch_size or num_steps")
-    with tf.control_dependencies([assertion]):
+    with tf.control_dependencies([assertion]):# W: don't understand, but not essential, temporarily ignore
       epoch_size = tf.identity(epoch_size, name="epoch_size")
 
-    i = tf.train.range_input_producer(epoch_size, shuffle=False).dequeue()
+    # A Queue with the output integers. A QueueRunner for the Queue is added to the current Graph's QUEUE_RUNNER collection.
+    # Produces the integers from 0 to limit-1 in a queue.
+    i = tf.train.range_input_producer(epoch_size, shuffle=False).dequeue() # Q: dequeue()？？ cannot find in in python docs.
+    # still not quite understand the role of i. 
+    #  can i change over something like ... time?
+    
     x = tf.strided_slice(data, [0, i * num_steps],
                          [batch_size, (i + 1) * num_steps])
-    x.set_shape([batch_size, num_steps])
+    x.set_shape([batch_size, num_steps]) # necessary to set shape for x?
     y = tf.strided_slice(data, [0, i * num_steps + 1],
                          [batch_size, (i + 1) * num_steps + 1])
     y.set_shape([batch_size, num_steps])

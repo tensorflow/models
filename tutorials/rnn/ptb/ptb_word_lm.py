@@ -90,7 +90,7 @@ class PTBInput(object):
   def __init__(self, config, data, name=None):
     self.batch_size = batch_size = config.batch_size
     self.num_steps = num_steps = config.num_steps
-    self.epoch_size = ((len(data) // batch_size) - 1) // num_steps
+    self.epoch_size = ((len(data) // batch_size) - 1) // num_steps # Q: why minus 1? A: for generating targets
     self.input_data, self.targets = reader.ptb_producer(
         data, batch_size, num_steps, name=name)
 
@@ -99,7 +99,7 @@ class PTBModel(object):
   """The PTB model."""
 
   def __init__(self, is_training, config, input_):
-    self._input = input_
+    self._input = input_ # input_ is a paire of tensors: input_data, targets
 
     batch_size = input_.batch_size
     num_steps = input_.num_steps
@@ -123,7 +123,7 @@ class PTBModel(object):
         return tf.contrib.rnn.BasicLSTMCell(
             size, forget_bias=0.0, state_is_tuple=True)
     attn_cell = lstm_cell
-    if is_training and config.keep_prob < 1:
+    if is_training and config.keep_prob < 1: # if is training, then add a dropout wrapper
       def attn_cell():
         return tf.contrib.rnn.DropoutWrapper(
             lstm_cell(), output_keep_prob=config.keep_prob)
