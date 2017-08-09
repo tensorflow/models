@@ -10,3 +10,4 @@ apply_gradients 会 increment global_step
 - [ ] moving average 不知道是什么
 - [x] 有点迷的语法：with tf.control_dependencies([loss_averages_op]):
                   with tf.control_dependencies([apply_gradient_op, variables_averages_op]): --- run 这个 context 里定义的 op 之前，必须执行作为参数的 ops 和 tensors.
+- [x] train() 只有 opt.apply_gradients, 没有 opt.minimize()？apply_gradients 真的有用吗？Answer: minimize()分为两部分：compute_gradient() 和 apply_gradient()
