@@ -80,7 +80,7 @@ from object_detection.core import post_processing
 from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner
 from object_detection.utils import ops
-from object_detection.utils import variables_helper
+from object_detection.utils import shape_utils
 
 slim = tf.contrib.slim
 
@@ -159,21 +159,19 @@ class FasterRCNNFeatureExtractor(object):
 
   def restore_from_classification_checkpoint_fn(
       self,
-      checkpoint_path,
       first_stage_feature_extractor_scope,
       second_stage_feature_extractor_scope):
-    """Returns callable for loading a checkpoint into the tensorflow graph.
+    """Returns a map of variables to load from a foreign checkpoint.
 
     Args:
-      checkpoint_path: path to checkpoint to restore.
       first_stage_feature_extractor_scope: A scope name for the first stage
         feature extractor.
       second_stage_feature_extractor_scope: A scope name for the second stage
         feature extractor.
 
     Returns:
-      a callable which takes a tf.Session as input and loads a checkpoint when
-        run.
+      A dict mapping variable names (to load from a checkpoint) to variables in
+      the model graph.
     """
     variables_to_restore = {}
     for variable in tf.global_variables():
@@ -182,13 +180,7 @@ class FasterRCNNFeatureExtractor(object):
         if variable.op.name.startswith(scope_name):
           var_name = variable.op.name.replace(scope_name + '/', '')
           variables_to_restore[var_name] = variable
-    variables_to_restore = (
-        variables_helper.get_variables_available_in_checkpoint(
-            variables_to_restore, checkpoint_path))
-    saver = tf.train.Saver(variables_to_restore)
-    def restore(sess):
-      saver.restore(sess, checkpoint_path)
-    return restore
+    return variables_to_restore
 
 
 class FasterRCNNMetaArch(model.DetectionModel):
@@ -774,10 +766,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
       A float tensor with shape [A * B, ..., depth] (where the first and last
         dimension are statically defined.
     """
-    inputs_shape = inputs.get_shape().as_list()
-    flattened_shape = tf.concat([
-        [inputs_shape[0]*inputs_shape[1]], tf.shape(inputs)[2:-1],
-        [inputs_shape[-1]]], 0)
+    combined_shape = shape_utils.combined_static_and_dynamic_shape(inputs)
+    flattened_shape = tf.stack([combined_shape[0] * combined_shape[1]] +
+                               combined_shape[2:])
     return tf.reshape(inputs, flattened_shape)
 
   def postprocess(self, prediction_dict):
@@ -875,52 +866,128 @@ class FasterRCNNMetaArch(model.DetectionModel):
         representing the number of proposals predicted for each image in
         the batch.
     """
+    rpn_box_encodings_batch = tf.expand_dims(rpn_box_encodings_batch, axis=2)
+    rpn_encodings_shape = shape_utils.combined_static_and_dynamic_shape(
+        rpn_box_encodings_batch)
+    tiled_anchor_boxes = tf.tile(
+        tf.expand_dims(anchors, 0), [rpn_encodings_shape[0], 1, 1])
+    proposal_boxes = self._batch_decode_boxes(rpn_box_encodings_batch,
+                                              tiled_anchor_boxes)
+    proposal_boxes = tf.squeeze(proposal_boxes, axis=2)
+    rpn_objectness_softmax_without_background = tf.nn.softmax(
+        rpn_objectness_predictions_with_background_batch)[:, :, 1]
     clip_window = tf.to_float(tf.stack([0, 0, image_shape[1], image_shape[2]]))
+    (proposal_boxes, proposal_scores, _, _,
+     num_proposals) = post_processing.batch_multiclass_non_max_suppression(
+         tf.expand_dims(proposal_boxes, axis=2),
+         tf.expand_dims(rpn_objectness_softmax_without_background,
+                        axis=2),
+         self._first_stage_nms_score_threshold,
+         self._first_stage_nms_iou_threshold,
+         self._first_stage_max_proposals,
+         self._first_stage_max_proposals,
+         clip_window=clip_window)
     if self._is_training:
-      (groundtruth_boxlists, groundtruth_classes_with_background_list
-      ) = self._format_groundtruth_data(image_shape)
+      proposal_boxes = tf.stop_gradient(proposal_boxes)
+      if not self._hard_example_miner:
+        (groundtruth_boxlists, groundtruth_classes_with_background_list,
+         ) = self._format_groundtruth_data(image_shape)
+        (proposal_boxes, proposal_scores,
+         num_proposals) = self._unpad_proposals_and_sample_box_classifier_batch(
+             proposal_boxes, proposal_scores, num_proposals,
+             groundtruth_boxlists, groundtruth_classes_with_background_list)
+    # normalize proposal boxes
+    proposal_boxes_reshaped = tf.reshape(proposal_boxes, [-1, 4])
+    normalized_proposal_boxes_reshaped = box_list_ops.to_normalized_coordinates(
+        box_list.BoxList(proposal_boxes_reshaped),
+        image_shape[1], image_shape[2], check_range=False).get()
+    proposal_boxes = tf.reshape(normalized_proposal_boxes_reshaped,
+                                [-1, proposal_boxes.shape[1].value, 4])
+    return proposal_boxes, proposal_scores, num_proposals
 
-    proposal_boxes_list = []
-    proposal_scores_list = []
-    num_proposals_list = []
-    for (batch_index,
-         (rpn_box_encodings,
-          rpn_objectness_predictions_with_background)) in enumerate(zip(
-              tf.unstack(rpn_box_encodings_batch),
-              tf.unstack(rpn_objectness_predictions_with_background_batch))):
-      decoded_boxes = self._box_coder.decode(
-          rpn_box_encodings, box_list.BoxList(anchors))
-      objectness_scores = tf.unstack(
-          tf.nn.softmax(rpn_objectness_predictions_with_background), axis=1)[1]
-      proposal_boxlist = post_processing.multiclass_non_max_suppression(
-          tf.expand_dims(decoded_boxes.get(), 1),
-          tf.expand_dims(objectness_scores, 1),
-          self._first_stage_nms_score_threshold,
-          self._first_stage_nms_iou_threshold, self._first_stage_max_proposals,
-          clip_window=clip_window)
+  def _unpad_proposals_and_sample_box_classifier_batch(
+      self,
+      proposal_boxes,
+      proposal_scores,
+      num_proposals,
+      groundtruth_boxlists,
+      groundtruth_classes_with_background_list):
+    """Unpads proposals and samples a minibatch for second stage.
 
-      if self._is_training:
-        proposal_boxlist.set(tf.stop_gradient(proposal_boxlist.get()))
-        if not self._hard_example_miner:
-          proposal_boxlist = self._sample_box_classifier_minibatch(
-              proposal_boxlist, groundtruth_boxlists[batch_index],
-              groundtruth_classes_with_background_list[batch_index])
+    Args:
+      proposal_boxes: A float tensor with shape
+        [batch_size, num_proposals, 4] representing the (potentially zero
+        padded) proposal boxes for all images in the batch.  These boxes are
+        represented as normalized coordinates.
+      proposal_scores:  A float tensor with shape
+        [batch_size, num_proposals] representing the (potentially zero
+        padded) proposal objectness scores for all images in the batch.
+      num_proposals: A Tensor of type `int32`. A 1-D tensor of shape [batch]
+        representing the number of proposals predicted for each image in
+        the batch.
+      groundtruth_boxlists: A list of BoxLists containing (absolute) coordinates
+        of the groundtruth boxes.
+      groundtruth_classes_with_background_list: A list of 2-D one-hot
+        (or k-hot) tensors of shape [num_boxes, num_classes+1] containing the
+        class targets with the 0th index assumed to map to the background class.
 
-      normalized_proposals = box_list_ops.to_normalized_coordinates(
-          proposal_boxlist, image_shape[1], image_shape[2],
-          check_range=False)
+    Returns:
+      proposal_boxes: A float tensor with shape
+        [batch_size, second_stage_batch_size, 4] representing the (potentially
+        zero padded) proposal boxes for all images in the batch.  These boxes
+        are represented as normalized coordinates.
+      proposal_scores:  A float tensor with shape
+        [batch_size, second_stage_batch_size] representing the (potentially zero
+        padded) proposal objectness scores for all images in the batch.
+      num_proposals: A Tensor of type `int32`. A 1-D tensor of shape [batch]
+        representing the number of proposals predicted for each image in
+        the batch.
+    """
+    single_image_proposal_box_sample = []
+    single_image_proposal_score_sample = []
+    single_image_num_proposals_sample = []
+    for (single_image_proposal_boxes,
+         single_image_proposal_scores,
+         single_image_num_proposals,
+         single_image_groundtruth_boxlist,
+         single_image_groundtruth_classes_with_background) in zip(
+             tf.unstack(proposal_boxes),
+             tf.unstack(proposal_scores),
+             tf.unstack(num_proposals),
+             groundtruth_boxlists,
+             groundtruth_classes_with_background_list):
+      static_shape = single_image_proposal_boxes.get_shape()
+      sliced_static_shape = tf.TensorShape([tf.Dimension(None),
+                                            static_shape.dims[-1]])
+      single_image_proposal_boxes = tf.slice(
+          single_image_proposal_boxes,
+          [0, 0],
+          [single_image_num_proposals, -1])
+      single_image_proposal_boxes.set_shape(sliced_static_shape)
 
-      # pad proposals to max_num_proposals
-      padded_proposals = box_list_ops.pad_or_clip_box_list(
-          normalized_proposals, num_boxes=self.max_num_proposals)
-      proposal_boxes_list.append(padded_proposals.get())
-      proposal_scores_list.append(
-          padded_proposals.get_field(fields.BoxListFields.scores))
-      num_proposals_list.append(tf.minimum(normalized_proposals.num_boxes(),
-                                           self.max_num_proposals))
-
-    return (tf.stack(proposal_boxes_list), tf.stack(proposal_scores_list),
-            tf.stack(num_proposals_list))
+      single_image_proposal_scores = tf.slice(single_image_proposal_scores,
+                                              [0],
+                                              [single_image_num_proposals])
+      single_image_boxlist = box_list.BoxList(single_image_proposal_boxes)
+      single_image_boxlist.add_field(fields.BoxListFields.scores,
+                                     single_image_proposal_scores)
+      sampled_boxlist = self._sample_box_classifier_minibatch(
+          single_image_boxlist,
+          single_image_groundtruth_boxlist,
+          single_image_groundtruth_classes_with_background)
+      sampled_padded_boxlist = box_list_ops.pad_or_clip_box_list(
+          sampled_boxlist,
+          num_boxes=self._second_stage_batch_size)
+      single_image_num_proposals_sample.append(tf.minimum(
+          sampled_boxlist.num_boxes(),
+          self._second_stage_batch_size))
+      bb = sampled_padded_boxlist.get()
+      single_image_proposal_box_sample.append(bb)
+      single_image_proposal_score_sample.append(
+          sampled_padded_boxlist.get_field(fields.BoxListFields.scores))
+    return (tf.stack(single_image_proposal_box_sample),
+            tf.stack(single_image_proposal_score_sample),
+            tf.stack(single_image_num_proposals_sample))
 
   def _format_groundtruth_data(self, image_shape):
     """Helper function for preparing groundtruth data for target assignment.
@@ -1074,7 +1141,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         class_predictions_with_background,
         [-1, self.max_num_proposals, self.num_classes + 1]
     )
-    refined_decoded_boxes_batch = self._batch_decode_refined_boxes(
+    refined_decoded_boxes_batch = self._batch_decode_boxes(
         refined_box_encodings_batch, proposal_boxes)
     class_predictions_with_background_batch = (
         self._second_stage_score_conversion_fn(
@@ -1092,19 +1159,26 @@ class FasterRCNNMetaArch(model.DetectionModel):
       mask_predictions_batch = tf.reshape(
           mask_predictions, [-1, self.max_num_proposals,
                              self.num_classes, mask_height, mask_width])
-    detections = self._second_stage_nms_fn(
-        refined_decoded_boxes_batch,
-        class_predictions_batch,
-        clip_window=clip_window,
-        change_coordinate_frame=True,
-        num_valid_boxes=num_proposals,
-        masks=mask_predictions_batch)
+    (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
+     num_detections) = self._second_stage_nms_fn(
+         refined_decoded_boxes_batch,
+         class_predictions_batch,
+         clip_window=clip_window,
+         change_coordinate_frame=True,
+         num_valid_boxes=num_proposals,
+         masks=mask_predictions_batch)
+    detections = {'detection_boxes': nmsed_boxes,
+                  'detection_scores': nmsed_scores,
+                  'detection_classes': nmsed_classes,
+                  'num_detections': tf.to_float(num_detections)}
+    if nmsed_masks is not None:
+      detections['detection_masks'] = nmsed_masks
     if mask_predictions is not None:
       detections['detection_masks'] = tf.to_float(
           tf.greater_equal(detections['detection_masks'], mask_threshold))
     return detections
 
-  def _batch_decode_refined_boxes(self, refined_box_encodings, proposal_boxes):
+  def _batch_decode_boxes(self, box_encodings, anchor_boxes):
     """Decode tensor of refined box encodings.
 
     Args:
@@ -1119,15 +1193,33 @@ class FasterRCNNMetaArch(model.DetectionModel):
         float tensor representing (padded) refined bounding box predictions
         (for each image in batch, proposal and class).
     """
-    tiled_proposal_boxes = tf.tile(
-        tf.expand_dims(proposal_boxes, 2), [1, 1, self.num_classes, 1])
-    tiled_proposals_boxlist = box_list.BoxList(
-        tf.reshape(tiled_proposal_boxes, [-1, 4]))
+    """Decodes box encodings with respect to the anchor boxes.
+
+    Args:
+      box_encodings: a 4-D tensor with shape
+        [batch_size, num_anchors, num_classes, self._box_coder.code_size]
+        representing box encodings.
+      anchor_boxes: [batch_size, num_anchors, 4] representing
+        decoded bounding boxes.
+
+    Returns:
+      decoded_boxes: a [batch_size, num_anchors, num_classes, 4]
+        float tensor representing bounding box predictions
+        (for each image in batch, proposal and class).
+    """
+    combined_shape = shape_utils.combined_static_and_dynamic_shape(
+        box_encodings)
+    num_classes = combined_shape[2]
+    tiled_anchor_boxes = tf.tile(
+        tf.expand_dims(anchor_boxes, 2), [1, 1, num_classes, 1])
+    tiled_anchors_boxlist = box_list.BoxList(
+        tf.reshape(tiled_anchor_boxes, [-1, 4]))
     decoded_boxes = self._box_coder.decode(
-        tf.reshape(refined_box_encodings, [-1, self._box_coder.code_size]),
-        tiled_proposals_boxlist)
+        tf.reshape(box_encodings, [-1, self._box_coder.code_size]),
+        tiled_anchors_boxlist)
     return tf.reshape(decoded_boxes.get(),
-                      [-1, self.max_num_proposals, self.num_classes, 4])
+                      tf.stack([combined_shape[0], combined_shape[1],
+                                num_classes, 4]))
 
   def loss(self, prediction_dict, scope=None):
     """Compute scalar loss tensors given prediction tensors.
@@ -1413,25 +1505,22 @@ class FasterRCNNMetaArch(model.DetectionModel):
           cls_losses=tf.expand_dims(single_image_cls_loss, 0),
           decoded_boxlist_list=[proposal_boxlist])
 
-  def restore_fn(self, checkpoint_path, from_detection_checkpoint=True):
-    """Returns callable for loading a checkpoint into the tensorflow graph.
+  def restore_map(self, from_detection_checkpoint=True):
+    """Returns a map of variables to load from a foreign checkpoint.
+
+    See parent class for details.
 
     Args:
-      checkpoint_path: path to checkpoint to restore.
-      from_detection_checkpoint: whether to restore from a detection checkpoint
-        (with compatible variable names) or to restore from a classification
-        checkpoint for initialization prior to training.  Note that when
-        from_detection_checkpoint=True, the current implementation only
-        supports restoration from an (exactly) identical model (with exception
-        of the num_classes parameter).
+      from_detection_checkpoint: whether to restore from a full detection
+        checkpoint (with compatible variable names) or to restore from a
+        classification checkpoint for initialization prior to training.
 
     Returns:
-      a callable which takes a tf.Session as input and loads a checkpoint when
-        run.
+      A dict mapping variable names (to load from a checkpoint) to variables in
+      the model graph.
     """
     if not from_detection_checkpoint:
       return self._feature_extractor.restore_from_classification_checkpoint_fn(
-          checkpoint_path,
           self.first_stage_feature_extractor_scope,
           self.second_stage_feature_extractor_scope)
 
@@ -1439,13 +1528,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
     variables_to_restore.append(slim.get_or_create_global_step())
     # Only load feature extractor variables to be consistent with loading from
     # a classification checkpoint.
-    first_stage_variables = tf.contrib.framework.filter_variables(
+    feature_extractor_variables = tf.contrib.framework.filter_variables(
         variables_to_restore,
         include_patterns=[self.first_stage_feature_extractor_scope,
                           self.second_stage_feature_extractor_scope])
-
-    saver = tf.train.Saver(first_stage_variables)
-
-    def restore(sess):
-      saver.restore(sess, checkpoint_path)
-    return restore
+    return {var.op.name: var for var in feature_extractor_variables}

@@ -116,24 +116,46 @@ class SsdMetaArchTest(tf.test.TestCase):
         localization_loss_weight, normalize_loss_by_num_matches,
         hard_example_miner)
 
+  def test_preprocess_preserves_input_shapes(self):
+    image_shapes = [(3, None, None, 3),
+                    (None, 10, 10, 3),
+                    (None, None, None, 3)]
+    for image_shape in image_shapes:
+      image_placeholder = tf.placeholder(tf.float32, shape=image_shape)
+      preprocessed_inputs = self._model.preprocess(image_placeholder)
+      self.assertAllEqual(preprocessed_inputs.shape.as_list(), image_shape)
+
   def test_predict_results_have_correct_keys_and_shapes(self):
     batch_size = 3
-    preprocessed_input = tf.random_uniform((batch_size, 2, 2, 3),
-                                           dtype=tf.float32)
-    prediction_dict = self._model.predict(preprocessed_input)
-
-    self.assertTrue('box_encodings' in prediction_dict)
-    self.assertTrue('class_predictions_with_background' in prediction_dict)
-    self.assertTrue('feature_maps' in prediction_dict)
-
+    image_size = 2
+    input_shapes = [(batch_size, image_size, image_size, 3),
+                    (None, image_size, image_size, 3),
+                    (batch_size, None, None, 3),
+                    (None, None, None, 3)]
     expected_box_encodings_shape_out = (
         batch_size, self._num_anchors, self._code_size)
     expected_class_predictions_with_background_shape_out = (
         batch_size, self._num_anchors, self._num_classes+1)
-    init_op = tf.global_variables_initializer()
-    with self.test_session() as sess:
-      sess.run(init_op)
-      prediction_out = sess.run(prediction_dict)
+
+    for input_shape in input_shapes:
+      tf_graph = tf.Graph()
+      with tf_graph.as_default():
+        preprocessed_input_placeholder = tf.placeholder(tf.float32,
+                                                        shape=input_shape)
+        prediction_dict = self._model.predict(preprocessed_input_placeholder)
+
+        self.assertTrue('box_encodings' in prediction_dict)
+        self.assertTrue('class_predictions_with_background' in prediction_dict)
+        self.assertTrue('feature_maps' in prediction_dict)
+
+        init_op = tf.global_variables_initializer()
+      with self.test_session(graph=tf_graph) as sess:
+        sess.run(init_op)
+        prediction_out = sess.run(prediction_dict,
+                                  feed_dict={
+                                      preprocessed_input_placeholder:
+                                      np.random.uniform(
+                                          size=(batch_size, 2, 2, 3))})
       self.assertAllEqual(prediction_out['box_encodings'].shape,
                           expected_box_encodings_shape_out)
       self.assertAllEqual(
@@ -142,10 +164,11 @@ class SsdMetaArchTest(tf.test.TestCase):
 
   def test_postprocess_results_are_correct(self):
     batch_size = 2
-    preprocessed_input = tf.random_uniform((batch_size, 2, 2, 3),
-                                           dtype=tf.float32)
-    prediction_dict = self._model.predict(preprocessed_input)
-    detections = self._model.postprocess(prediction_dict)
+    image_size = 2
+    input_shapes = [(batch_size, image_size, image_size, 3),
+                    (None, image_size, image_size, 3),
+                    (batch_size, None, None, 3),
+                    (None, None, None, 3)]
 
     expected_boxes = np.array([[[0, 0, .5, .5],
                                 [0, .5, .5, 1],
@@ -163,15 +186,25 @@ class SsdMetaArchTest(tf.test.TestCase):
                                  [0, 0, 0, 0, 0]])
     expected_num_detections = np.array([4, 4])
 
-    self.assertTrue('detection_boxes' in detections)
-    self.assertTrue('detection_scores' in detections)
-    self.assertTrue('detection_classes' in detections)
-    self.assertTrue('num_detections' in detections)
-
-    init_op = tf.global_variables_initializer()
-    with self.test_session() as sess:
-      sess.run(init_op)
-      detections_out = sess.run(detections)
+    for input_shape in input_shapes:
+      tf_graph = tf.Graph()
+      with tf_graph.as_default():
+        preprocessed_input_placeholder = tf.placeholder(tf.float32,
+                                                        shape=input_shape)
+        prediction_dict = self._model.predict(preprocessed_input_placeholder)
+        detections = self._model.postprocess(prediction_dict)
+        self.assertTrue('detection_boxes' in detections)
+        self.assertTrue('detection_scores' in detections)
+        self.assertTrue('detection_classes' in detections)
+        self.assertTrue('num_detections' in detections)
+        init_op = tf.global_variables_initializer()
+      with self.test_session(graph=tf_graph) as sess:
+        sess.run(init_op)
+        detections_out = sess.run(detections,
+                                  feed_dict={
+                                      preprocessed_input_placeholder:
+                                      np.random.uniform(
+                                          size=(batch_size, 2, 2, 3))})
       self.assertAllClose(detections_out['detection_boxes'], expected_boxes)
       self.assertAllClose(detections_out['detection_scores'], expected_scores)
       self.assertAllClose(detections_out['detection_classes'], expected_classes)
@@ -207,20 +240,21 @@ class SsdMetaArchTest(tf.test.TestCase):
       self.assertAllClose(losses_out['classification_loss'],
                           expected_classification_loss)
 
-  def test_restore_fn_detection(self):
+  def test_restore_map_for_detection_ckpt(self):
     init_op = tf.global_variables_initializer()
     saver = tf_saver.Saver()
     save_path = self.get_temp_dir()
     with self.test_session() as sess:
       sess.run(init_op)
       saved_model_path = saver.save(sess, save_path)
-      restore_fn = self._model.restore_fn(saved_model_path,
-                                          from_detection_checkpoint=True)
-      restore_fn(sess)
+      var_map = self._model.restore_map(from_detection_checkpoint=True)
+      self.assertIsInstance(var_map, dict)
+      saver = tf.train.Saver(var_map)
+      saver.restore(sess, saved_model_path)
       for var in sess.run(tf.report_uninitialized_variables()):
         self.assertNotIn('FeatureExtractor', var.name)
 
-  def test_restore_fn_classification(self):
+  def test_restore_map_for_classification_ckpt(self):
     # Define mock tensorflow classification graph and save variables.
     test_graph_classification = tf.Graph()
     with test_graph_classification.as_default():
@@ -246,10 +280,11 @@ class SsdMetaArchTest(tf.test.TestCase):
       preprocessed_inputs = self._model.preprocess(inputs)
       prediction_dict = self._model.predict(preprocessed_inputs)
       self._model.postprocess(prediction_dict)
-      restore_fn = self._model.restore_fn(saved_model_path,
-                                          from_detection_checkpoint=False)
+      var_map = self._model.restore_map(from_detection_checkpoint=False)
+      self.assertIsInstance(var_map, dict)
+      saver = tf.train.Saver(var_map)
       with self.test_session() as sess:
-        restore_fn(sess)
+        saver.restore(sess, saved_model_path)
         for var in sess.run(tf.report_uninitialized_variables()):
           self.assertNotIn('FeatureExtractor', var.name)
 

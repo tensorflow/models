@@ -51,48 +51,6 @@ def all_plot(d, full_name="", exclude="", nspaces=0):
         _plot_item(v, name=k, full_name=full_name+"/"+k, nspaces=nspaces+4)
 
 
-def plot_priors():
-  g0s_prior_mean_bxn = train_modelvals['prior_g0_mean']
-  g0s_prior_var_bxn = train_modelvals['prior_g0_var']
-  g0s_post_mean_bxn = train_modelvals['posterior_g0_mean']
-  g0s_post_var_bxn = train_modelvals['posterior_g0_var']
-
-  plt.figure(figsize=(10,4), tight_layout=True);
-  plt.subplot(1,2,1)
-  plt.hist(g0s_post_mean_bxn.flatten(), bins=20, color='b');
-  plt.hist(g0s_prior_mean_bxn.flatten(), bins=20, color='g');
-
-  plt.title('Histogram of Prior/Posterior Mean Values')
-  plt.subplot(1,2,2)
-  plt.hist((g0s_post_var_bxn.flatten()), bins=20, color='b');
-  plt.hist((g0s_prior_var_bxn.flatten()), bins=20, color='g');
-  plt.title('Histogram of Prior/Posterior Log Variance Values')
-
-  plt.figure(figsize=(10,10), tight_layout=True)
-  plt.subplot(2,2,1)
-  plt.imshow(g0s_prior_mean_bxn.T, interpolation='nearest', cmap='jet')
-  plt.colorbar(fraction=0.025, pad=0.04)
-  plt.title('Prior g0 means')
-
-  plt.subplot(2,2,2)
-  plt.imshow(g0s_post_mean_bxn.T, interpolation='nearest', cmap='jet')
-  plt.colorbar(fraction=0.025, pad=0.04)
-  plt.title('Posterior g0 means');
-
-  plt.subplot(2,2,3)
-  plt.imshow(g0s_prior_var_bxn.T, interpolation='nearest', cmap='jet')
-  plt.colorbar(fraction=0.025, pad=0.04)
-  plt.title('Prior g0 variance Values')
-
-  plt.subplot(2,2,4)
-  plt.imshow(g0s_post_var_bxn.T, interpolation='nearest', cmap='jet')
-  plt.colorbar(fraction=0.025, pad=0.04)
-  plt.title('Posterior g0 variance Values')
-
-  plt.figure(figsize=(10,5))
-  plt.stem(np.sort(np.log(g0s_post_mean_bxn.std(axis=0))));
-  plt.title('Log standard deviation of h0 means');
-
 
 def plot_time_series(vals_bxtxn, bidx=None, n_to_plot=np.inf, scale=1.0,
                      color='r', title=None):

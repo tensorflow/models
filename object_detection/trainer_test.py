@@ -139,21 +139,18 @@ class FakeDetectionModel(model.DetectionModel):
     }
     return loss_dict
 
-  def restore_fn(self, checkpoint_path, from_detection_checkpoint=True):
-    """Return callable for loading a checkpoint into the tensorflow graph.
+  def restore_map(self, from_detection_checkpoint=True):
+    """Returns a map of variables to load from a foreign checkpoint.
 
     Args:
-      checkpoint_path: path to checkpoint to restore.
       from_detection_checkpoint: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
 
     Returns:
-      a callable which takes a tf.Session and does nothing.
+      A dict mapping variable names to variables.
     """
-    def restore(unused_sess):
-      return
-    return restore
+    return {var.op.name: var for var in tf.global_variables()}
 
 
 class TrainerTest(tf.test.TestCase):
