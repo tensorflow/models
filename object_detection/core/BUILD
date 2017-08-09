@@ -270,6 +270,7 @@ py_library(
     deps = [
         "//tensorflow",
         "//tensorflow_models/object_detection/utils:ops",
+        "//tensorflow_models/object_detection/utils:shape_utils",
         "//tensorflow_models/object_detection/utils:static_shape",
     ],
 )

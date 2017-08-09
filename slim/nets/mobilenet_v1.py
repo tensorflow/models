@@ -27,6 +27,8 @@ As described in https://arxiv.org/abs/1704.04861.
 
 100% Mobilenet V1 (base) with input size 224x224:
 
+See mobilenet_v1()
+
 Layer                                                     params           macs
 --------------------------------------------------------------------------------
 MobilenetV1/Conv2d_0/Conv2D:                                 864      10,838,016
@@ -61,6 +63,8 @@ Total:                                                 3,185,088     567,716,352
 
 
 75% Mobilenet V1 (base) with input size 128x128:
+
+See mobilenet_v1_075()
 
 Layer                                                     params           macs
 --------------------------------------------------------------------------------
@@ -102,6 +106,7 @@ from __future__ import division
 from __future__ import print_function
 
 from collections import namedtuple
+import functools
 
 import tensorflow as tf
 
@@ -333,6 +338,17 @@ def mobilenet_v1(inputs,
   return logits, end_points
 
 mobilenet_v1.default_image_size = 224
+
+
+def wrapped_partial(func, *args, **kwargs):
+  partial_func = functools.partial(func, *args, **kwargs)
+  functools.update_wrapper(partial_func, func)
+  return partial_func
+
+
+mobilenet_v1_075 = wrapped_partial(mobilenet_v1, depth_multiplier=0.75)
+mobilenet_v1_050 = wrapped_partial(mobilenet_v1, depth_multiplier=0.50)
+mobilenet_v1_025 = wrapped_partial(mobilenet_v1, depth_multiplier=0.25)
 
 
 def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):

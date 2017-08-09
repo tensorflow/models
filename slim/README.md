@@ -213,7 +213,7 @@ Model | TF-Slim File | Checkpoint | Top-1 Accuracy| Top-5 Accuracy |
 ^ ResNet V2 models use Inception pre-processing and input image size of 299 (use
 `--preprocessing_name inception --eval_image_size 299` when using
 `eval_image_classifier.py`). Performance numbers for ResNet V2 models are
-reported on ImageNet valdiation set.
+reported on the ImageNet validation set.
 
 All 16 MobileNet Models reported in the [MobileNet Paper](https://arxiv.org/abs/1704.04861) can be found [here](https://github.com/tensorflow/models/tree/master/slim/nets/mobilenet_v1.md).
 
@@ -256,6 +256,17 @@ and/or multiple CPUs, either synchrononously or asynchronously.
 See [model_deploy](https://github.com/tensorflow/models/blob/master/slim/deployment/model_deploy.py)
 for details.
 
+### TensorBoard
+
+To visualize the losses and other metrics during training, you can use
+[TensorBoard](https://github.com/tensorflow/tensorboard)
+by running the command below.
+
+```shell
+tensorboard --logdir=${TRAIN_DIR}
+```
+
+Once TensorBoard is running, navigate your web browser to http://localhost:6006.
 
 # Fine-tuning a model from an existing checkpoint
 <a id='Tuning'></a>
@@ -392,8 +403,7 @@ bazel-bin/tensorflow/examples/label_image/label_image \
   --graph=/tmp/frozen_inception_v3.pb \
   --labels=/tmp/imagenet_slim_labels.txt \
   --input_mean=0 \
-  --input_std=255 \
-  --logtostderr
+  --input_std=255
 ```
 
 
