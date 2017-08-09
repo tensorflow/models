@@ -71,8 +71,8 @@ python train.py --checkpoint_inception=./inception_v3.ckpt
 To fine tune the Attention OCR model using a checkpoint:
 
 ```
-wget http://download.tensorflow.org/models/attention_ocr_2017_05_17.fixed.tar.gz
-tar xf attention_ocr_2017_05_17.tar.gz
+wget http://download.tensorflow.org/models/attention_ocr_2017_08_09.tar.gz
+tar xf attention_ocr_2017_08_09.tar.gz
 python train.py --checkpoint=model.ckpt-399731
 ```
 
