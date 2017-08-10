@@ -20,7 +20,6 @@ PYTHONPATH='.' PYOPENGL_PLATFORM=egl python scripts/script_env_vis.py \
 import sys
 import numpy as np
 import matplotlib
-matplotlib.use('TkAgg')
 from PIL import ImageTk, Image
 import Tkinter as tk
 import logging
@@ -30,8 +29,9 @@ from tensorflow.python.platform import flags
 import datasets.nav_env_config as nec
 import datasets.nav_env as nav_env
 import cv2
-from datasets import factory 
-import render.swiftshader_renderer as renderer 
+from datasets import factory
+import render.swiftshader_renderer as renderer
+matplotlib.use('TkAgg')
 
 SwiftshaderRenderer = renderer.SwiftshaderRenderer
 VisualNavigationEnv = nav_env.VisualNavigationEnv
@@ -41,6 +41,7 @@ flags.DEFINE_string('dataset_name', 'sbpd', 'Name of the dataset.')
 flags.DEFINE_float('fov', 60., 'Field of view')
 flags.DEFINE_integer('image_size', 512, 'Size of the image.')
 flags.DEFINE_string('building_name', '', 'Name of the building.')
+
 
 def get_args():
   navtask = nec.nav_env_base_config()
@@ -53,12 +54,13 @@ def get_args():
   navtask.camera_param.width = sz
   navtask.task_params.img_height = sz
   navtask.task_params.img_width = sz
-  
+
   # navtask.task_params.semantic_task.class_map_names = ['chair', 'door', 'table']
   # navtask.task_params.type = 'to_nearest_obj_acc'
-  
+
   logging.info('navtask: %s', navtask)
   return navtask
+
 
 def load_building(dataset_name, building_name):
   dataset = factory.get_dataset(dataset_name)
@@ -80,6 +82,7 @@ def load_building(dataset_name, building_name):
   b.set_building_visibility(False)
   return b
 
+
 def walk_through(b):
   # init agent at a random location in the environment.
   init_env_state = b.reset([np.random.RandomState(0), np.random.RandomState(0)])
@@ -90,20 +93,20 @@ def walk_through(b):
 
   root = tk.Tk()
   image = b.render_nodes(b.task.nodes[[current_node],:])[0]
-  print image.shape
+  print(image.shape)
   image = image.astype(np.uint8)
   im = Image.fromarray(image)
   im = ImageTk.PhotoImage(im)
   panel = tk.Label(root, image=im)
- 
+
   map_size = b.traversible.shape
   sc = np.max(map_size)/256.
   loc = np.array([[map_size[1]/2., map_size[0]/2.]])
   x_axis = np.zeros_like(loc); x_axis[:,1] = sc
   y_axis = np.zeros_like(loc); y_axis[:,0] = -sc
   cum_fs, cum_valid = nav_env.get_map_to_predict(loc, x_axis, y_axis,
-                                                   map=b.traversible*1.,
-                                                   map_size=256)
+                                                 map=b.traversible*1.,
+                                                 map_size=256)
   cum_fs = cum_fs[0]
   cum_fs = cv2.applyColorMap((cum_fs*255).astype(np.uint8), cv2.COLORMAP_JET)
   im = Image.fromarray(cum_fs)
@@ -128,15 +131,15 @@ def walk_through(b):
     global current_node
     current_node = b.take_action([current_node], [3], 1)[0][0]
     refresh()
-  
+
   def right_key(event):
     global current_node
     current_node = b.take_action([current_node], [1], 1)[0][0]
     refresh()
 
   def quit(event):
-    root.destroy() 
-  
+    root.destroy()
+
   panel_overhead.grid(row=4, column=5, rowspan=1, columnspan=1,
                       sticky=tk.W+tk.E+tk.N+tk.S)
   panel.bind('<Left>', left_key)
@@ -148,21 +151,22 @@ def walk_through(b):
              sticky=tk.W+tk.E+tk.N+tk.S)
   root.mainloop()
 
+
 def simple_window():
   root = tk.Tk()
-  
+
   image = np.zeros((128, 128, 3), dtype=np.uint8)
   image[32:96, 32:96, 0] = 255
   im = Image.fromarray(image)
   im = ImageTk.PhotoImage(im)
-  
+
   image = np.zeros((128, 128, 3), dtype=np.uint8)
   image[32:96, 32:96, 1] = 255
   im2 = Image.fromarray(image)
   im2 = ImageTk.PhotoImage(im2)
-  
+
   panel = tk.Label(root, image=im)
-  
+
   def left_key(event):
     panel.configure(image=im2)
     panel.image = im2
@@ -175,12 +179,14 @@ def simple_window():
   panel.bind('<Down>', left_key)
   panel.bind('q', quit)
   panel.focus_set()
-  panel.pack(side = "bottom", fill = "both", expand = "yes")
-  root.mainloop() 
+  panel.pack(side="bottom", fill="both", expand="yes")
+  root.mainloop()
+
 
 def main(_):
   b = load_building(FLAGS.dataset_name, FLAGS.building_name)
   walk_through(b)
+
 
 if __name__ == '__main__':
   app.run()
