@@ -16,6 +16,7 @@
 """Generate a synthetic dataset."""
 
 import os
+from six.moves import range
 
 import numpy as np
 import tensorflow as tf
@@ -71,7 +72,7 @@ def AddToTFRecord(code, tfrecord_writer):
 
 def GenerateDataset(filename, count, code_shape):
   with tf.python_io.TFRecordWriter(filename) as tfrecord_writer:
-    for _ in xrange(count):
+    for _ in range(count):
       code = synthetic_model.GenerateSingleCode(code_shape)
       # Convert {0,1} codes to {-1,+1} codes.
       code = 2.0 * code - 1.0
