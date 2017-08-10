@@ -34,7 +34,7 @@ def int64_feature(values):
     values: A scalar or list of values.
 
   Returns:
-    a TF-Feature.
+    A TF-Feature.
   """
   if not isinstance(values, (tuple, list)):
     values = [values]
@@ -48,9 +48,23 @@ def bytes_feature(values):
     values: A string.
 
   Returns:
-    a TF-Feature.
+    A TF-Feature.
   """
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
+
+
+def float_feature(values):
+  """Returns a TF-Feature of floats.
+
+  Args:
+    values: A scalar of list of values.
+
+  Returns:
+    A TF-Feature.
+  """
+  if not isinstance(values, (tuple, list)):
+    values = [values]
+  return tf.train.Feature(float_list=tf.train.FloatList(value=values))
 
 
 def image_to_tfexample(image_data, image_format, height, width, class_id):
