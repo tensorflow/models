@@ -22,6 +22,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import range
+
 import math
 import os.path
 import time
@@ -75,7 +77,7 @@ def evaluate_model(sess, losses, weights, num_batches, global_step,
   start_time = time.time()
   sum_losses = 0.0
   sum_weights = 0.0
-  for i in xrange(num_batches):
+  for i in range(num_batches):
     batch_losses, batch_weights = sess.run([losses, weights])
     sum_losses += np.sum(batch_losses * batch_weights)
     sum_weights += np.sum(batch_weights)
