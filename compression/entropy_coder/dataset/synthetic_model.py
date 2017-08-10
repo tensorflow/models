@@ -15,6 +15,7 @@
 
 """Binary code sample generator."""
 
+from six.moves import range
 import numpy as np
 
 
@@ -29,11 +30,11 @@ _CRC_DEPTH = [1, 1, 0, 1]
 
 def ComputeLineCrc(code, width, y, x, d):
   crc = 0
-  for dy in xrange(len(_CRC_LINE)):
+  for dy in range(len(_CRC_LINE)):
     i = y - 1 - dy
     if i < 0:
       continue
-    for dx in xrange(len(_CRC_LINE[dy])):
+    for dx in range(len(_CRC_LINE[dy])):
       j = x - 2 + dx
       if j < 0 or j >= width:
         continue
@@ -43,7 +44,7 @@ def ComputeLineCrc(code, width, y, x, d):
 
 def ComputeDepthCrc(code, y, x, d):
   crc = 0
-  for delta in xrange(len(_CRC_DEPTH)):
+  for delta in range(len(_CRC_DEPTH)):
     k = d - 1 - delta
     if k < 0:
       continue
@@ -60,9 +61,9 @@ def GenerateSingleCode(code_shape):
   width = code_shape[1]
   depth = code_shape[2]
 
-  for d in xrange(depth):
-    for y in xrange(height):
-      for x in xrange(width):
+  for d in range(depth):
+    for y in range(height):
+      for x in range(width):
         v1 = ComputeLineCrc(code, width, y, x, d)
         v2 = ComputeDepthCrc(code, y, x, d)
         v = 1 if (v1 + v2 >= 6) else 0
