@@ -23,11 +23,10 @@ from object_detection.builders import model_builder
 from object_detection.core import model
 from object_detection.protos import pipeline_pb2
 
-if six.PY2:
-  import mock  # pylint: disable=g-import-not-at-top
-else:
-  from unittest import mock  # pylint: disable=g-import-not-at-top
-
+try:
+  from unittest import mock
+except ImportError:
+  import mock
 
 class FakeModel(model.DetectionModel):
 
