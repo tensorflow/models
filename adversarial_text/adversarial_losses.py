@@ -16,7 +16,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from six.moves import range
+from six.moves import xrange  # pylint: disable=redefined-builtin
 
 # Dependency imports
 
@@ -99,7 +99,7 @@ def virtual_adversarial_loss(logits, embedded, inputs,
   # See Eq.(8) in the paper http://arxiv.org/pdf/1507.00677.pdf,
   # Adding small noise to input and taking gradient with respect to the noise
   # corresponds to 1 power iteration.
-  for _ in range(FLAGS.num_power_iteration):
+  for _ in xrange(FLAGS.num_power_iteration):
     d = _scale_l2(
         _mask_by_length(d, inputs.length), FLAGS.small_constant_for_finite_diff)
     d_logits = logits_from_embedding_fn(embedded + d)
@@ -148,7 +148,7 @@ def virtual_adversarial_loss_bidir(logits, embedded, inputs,
       _mask_by_length(tf.random_normal(shape=tf.shape(emb)), f_inputs.length)
       for emb in embedded
   ]
-  for _ in range(FLAGS.num_power_iteration):
+  for _ in xrange(FLAGS.num_power_iteration):
     perturbs = [
         _scale_l2(d, FLAGS.small_constant_for_finite_diff) for d in perturbs
     ]
