@@ -17,7 +17,7 @@
 
 import tensorflow as tf
 
-from tensorflow.contrib.image.python.ops import image_ops
+from tensorflow.python.ops import image_ops
 from object_detection.core import matcher
 
 
