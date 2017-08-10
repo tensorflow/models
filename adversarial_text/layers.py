@@ -16,6 +16,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from six.moves import range
 
 # Dependency imports
 
@@ -115,7 +116,7 @@ class LSTM(object):
               self.cell_size,
               forget_bias=0.0,
               reuse=tf.get_variable_scope().reuse)
-          for _ in xrange(self.num_layers)
+          for _ in range(self.num_layers)
       ])
 
       # shape(x) = (batch_size, num_timesteps, embedding_dim)
