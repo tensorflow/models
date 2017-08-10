@@ -211,13 +211,6 @@ class ResNet(object):
     tf.logging.info('image after unit %s: %s', name_scope, x.get_shape())
     return x
 
-  def _max_pool(self, x, pool_size, stride):
-    with tf.name_scope('max_pool') as name_scope:
-      x = tf.layers.max_pooling2d(
-          x, pool_size, stride, padding='SAME', data_format=self._data_format)
-    tf.logging.info('image after unit %s: %s', name_scope, x.get_shape())
-    return x
-
   def _global_avg_pool(self, x):
     with tf.name_scope('global_avg_pool') as name_scope:
       assert x.get_shape().ndims == 4
