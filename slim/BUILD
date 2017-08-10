@@ -17,6 +17,28 @@ py_library(
     ],
 )
 
+sh_binary(
+    name = "download_and_convert_imagenet",
+    srcs = ["datasets/download_and_convert_imagenet.sh"],
+    data = [
+        "datasets/download_imagenet.sh",
+        "datasets/imagenet_2012_validation_synset_labels.txt",
+        "datasets/imagenet_lsvrc_2015_synsets.txt",
+        "datasets/imagenet_metadata.txt",
+        "datasets/preprocess_imagenet_validation_data.py",
+        "datasets/process_bounding_boxes.py",
+        ":build_imagenet_data",
+    ],
+)
+
+py_binary(
+    name = "build_imagenet_data",
+    srcs = ["datasets/build_imagenet_data.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
 py_library(
     name = "download_and_convert_cifar10",
     srcs = ["datasets/download_and_convert_cifar10.py"],
