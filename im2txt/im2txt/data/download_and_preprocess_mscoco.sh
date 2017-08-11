@@ -47,13 +47,8 @@ WORK_DIR="$0.runfiles/im2txt/im2txt"
 function download_and_unzip() {
   local BASE_URL=${1}
   local FILENAME=${2}
-
-  if [ ! -f ${FILENAME} ]; then
-    echo "Downloading ${FILENAME} to $(pwd)"
-    wget -nd -c "${BASE_URL}/${FILENAME}"
-  else
-    echo "Skipping download of ${FILENAME}"
-  fi
+  echo "Downloading ${FILENAME} to $(pwd)"
+  wget -nd -c "${BASE_URL}/${FILENAME}"
   echo "Unzipping ${FILENAME}"
   ${UNZIP} ${FILENAME}
 }
