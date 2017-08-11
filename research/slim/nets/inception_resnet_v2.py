@@ -349,6 +349,7 @@ def inception_resnet_v2_arg_scope(weight_decay=0.00004,
     batch_norm_params = {
         'decay': batch_norm_decay,
         'epsilon': batch_norm_epsilon,
+        'fused': None,  # Use fused batch norm if possible.
     }
     # Set activation_fn and parameters for batch_norm.
     with slim.arg_scope([slim.conv2d], activation_fn=tf.nn.relu,
