@@ -327,7 +327,10 @@ def mobilenet_v1(inputs,
                               scope='AvgPool_1a')
         end_points['AvgPool_1a'] = net
         # 1 x 1 x 1024
-        net = slim.dropout(net, keep_prob=dropout_keep_prob, scope='Dropout_1b')
+        # Note that this is in essence a fc layer with bias terms
+        # (which slim.conv2d automatically adds if you don't pass a normalizer_fn)
+        net = slim.dropout(net, keep_prob=dropout_keep_prob, scope='Dropout_1b',
+                           is_training=is_training)
         logits = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
                              normalizer_fn=None, scope='Conv2d_1c_1x1')
         if spatial_squeeze:
