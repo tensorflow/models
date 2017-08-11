@@ -94,18 +94,24 @@ class FasterRCNNInceptionResnetV2FeatureExtractor(
     if len(preprocessed_inputs.get_shape().as_list()) != 4:
       raise ValueError('`preprocessed_inputs` must be 4 dimensional, got a '
                        'tensor of shape %s' % preprocessed_inputs.get_shape())
-
-    with slim.arg_scope(inception_resnet_v2.inception_resnet_v2_arg_scope(
-        weight_decay=self._weight_decay)):
-      # Forces is_training to False to disable batch norm update.
-      with slim.arg_scope([slim.batch_norm], is_training=False):
-        with tf.variable_scope('InceptionResnetV2',
-                               reuse=self._reuse_weights) as scope:
-          rpn_feature_map, _ = (
-              inception_resnet_v2.inception_resnet_v2_base(
-                  preprocessed_inputs, final_endpoint='PreAuxLogits',
-                  scope=scope, output_stride=self._first_stage_features_stride,
-                  align_feature_maps=True))
+    shape_assert = tf.Assert(
+        tf.logical_and(
+            tf.greater_equal(tf.shape(preprocessed_inputs)[1], 33),
+            tf.greater_equal(tf.shape(preprocessed_inputs)[2], 33)),
+        ['image size must at least be 33 in both height and width.'])
+    
+    with tf.control_dependencies([shape_assert]):
+      with slim.arg_scope(inception_resnet_v2.inception_resnet_v2_arg_scope(
+          weight_decay=self._weight_decay)):
+        # Forces is_training to False to disable batch norm update.
+        with slim.arg_scope([slim.batch_norm], is_training=False):
+          with tf.variable_scope('InceptionResnetV2',
+                                reuse=self._reuse_weights) as scope:
+            rpn_feature_map, _ = (
+                inception_resnet_v2.inception_resnet_v2_base(
+                    preprocessed_inputs, final_endpoint='PreAuxLogits',
+                    scope=scope, output_stride=self._first_stage_features_stride,
+                    align_feature_maps=True))
     return rpn_feature_map
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
