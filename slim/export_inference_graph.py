@@ -75,6 +75,11 @@ tf.app.flags.DEFINE_integer(
     'image_size', None,
     'The image size to use, otherwise use the model default_image_size.')
 
+tf.app.flags.DEFINE_integer(
+    'batch_size', None,
+    'Batch size for the exported model. Defaulted to "None" so batch size can '
+    'be specified at model runtime.')
+
 tf.app.flags.DEFINE_string('dataset_name', 'imagenet',
                            'The name of the dataset to use with the model.')
 
@@ -106,7 +111,8 @@ def main(_):
         is_training=FLAGS.is_training)
     image_size = FLAGS.image_size or network_fn.default_image_size
     placeholder = tf.placeholder(name='input', dtype=tf.float32,
-                                 shape=[1, image_size, image_size, 3])
+                                 shape=[FLAGS.batch_size, image_size,
+                                        image_size, 3])
     network_fn(placeholder)
     graph_def = graph.as_graph_def()
     with gfile.GFile(FLAGS.output_file, 'wb') as f:
