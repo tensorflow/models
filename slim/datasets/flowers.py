@@ -33,8 +33,6 @@ _FILE_PATTERN = 'flowers_%s_*.tfrecord'
 
 SPLITS_TO_SIZES = {'train': 3320, 'validation': 350}
 
-_NUM_CLASSES = 5
-
 _ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying size.',
     'label': 'A single integer between 0 and 4',
@@ -94,5 +92,5 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
       decoder=decoder,
       num_samples=SPLITS_TO_SIZES[split_name],
       items_to_descriptions=_ITEMS_TO_DESCRIPTIONS,
-      num_classes=_NUM_CLASSES,
+      num_classes=len(labels_to_names),
       labels_to_names=labels_to_names)
