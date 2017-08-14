@@ -15,6 +15,7 @@
 
 r"""Convert VOC format dataset to TFRecord for object_detection.
 
+For example
 Hollywood head dataset:
 See: http://www.di.ens.fr/willow/research/headdetection/
      Context-aware CNNs for person head detection
