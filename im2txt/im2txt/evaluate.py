@@ -37,14 +37,14 @@ FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_string("input_file_pattern", "",
                        "File pattern of sharded TFRecord input files.")
-tf.flags.DEFINE_string("checkpoint_dir", "",
-                       "Directory containing model checkpoints.")
+# tf.flags.DEFINE_string("checkpoint_dir", "",
+#                        "Directory containing model checkpoints.")
 tf.flags.DEFINE_string("eval_dir", "", "Directory to write event logs.")
 #
 # tf.flags.DEFINE_string("input_file_pattern", "/mnt/raid/data/ni/dnn/zlian/mscoco/val-?????-of-00004",
 #                        "File pattern of sharded TFRecord input files.")
-# tf.flags.DEFINE_string("checkpoint_dir", "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli",
-#                        "Directory containing model checkpoints.")
+tf.flags.DEFINE_string("checkpoint_dir", "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli",
+                       "Directory containing model checkpoints.")
 # tf.flags.DEFINE_string("eval_dir", "/mnt/raid/data/ni/dnn/zlian/eval/ckpt-1-milli", "Directory to write event logs.")
 
 
@@ -85,7 +85,7 @@ def evaluate_model(sess, model, global_step, summary_writer, summary_op):
         model.target_cross_entropy_losses,
         model.target_cross_entropy_loss_weights
     ])
-    # TODO: delete this later :D
+    # TODO: delete later :D
     # print ('try to understand how the losses look like')
     # print ((cross_entropy_losses).shape)
     # print ((weights).shape)
@@ -127,7 +127,9 @@ def run_once(model, saver, summary_writer, summary_op):
   if not model_path:
     tf.logging.info("Skipping evaluation. No checkpoint found in: %s",
                     FLAGS.checkpoint_dir)
+    # What this return does?
     return
+
 
   with tf.Session() as sess:
     # Load model from checkpoint.

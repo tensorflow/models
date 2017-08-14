@@ -1,6 +1,9 @@
 # coding=utf-8
-''' build TFrecords, overwrite old ones
-# build model, train for one epoch '''
+'''
+train for one epoch
+start build_google_data
+start train_wrapper
+'''
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -27,13 +30,14 @@ tf.flags.DEFINE_string("google_file_folder", "/mnt/raid/data/ni/dnn/zlian/Google
 ImageMetadata = namedtuple("ImageMetadata",
                            ["image_id", "filename", "captions"])
 vocab_file = "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli/word_counts_copy.txt"
-ckpt_foler = "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli"
+# ckpt_foler = "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli"
+# ckpt_foler = "/mnt/raid/data/ni/dnn/zlian/checkpoint_1_million/"
+ckpt_foler="/mnt/raid/data/ni/dnn/zlian/ckpt-3milli/"
 coco_folder = "/mnt/raid/data/ni/dnn/zlian/mscoco/"
 flag_file = "/mnt/raid/data/ni/dnn/zlian/Google_image/flag.txt"
 current_folder = None
 
-
-def predict_images(filenames,vocab, ckpt, n_sentences =2):
+def predict_images(filenames,vocab, n_sentences =2):
     """filenames: list of filenames from disk to infer
        n_sentence: number of sentences generated for each iamge, max=3
        return: list of captions predicted by the most recent ckpt. Each caption shall be a string
@@ -64,6 +68,7 @@ def predict_images(filenames,vocab, ckpt, n_sentences =2):
                 sentence = [vocab.id_to_word(w) for w in captions[i].sentence[1:-2]]
                 sentence = " ".join(sentence)
                 predict_seqs.append(sentence)
+        # Get values by eval model parameters :D
         global_step = model.global_stepp.eval()
 
     global current_folder
@@ -82,10 +87,13 @@ def png2jpg(png_files):
         rgb_im.save(png[:-4]+'.jpg')
         os.remove(png)
         print (png + ' is saaaaaaaved :D')
+
+
 def jPG2jpg(jPG_files):
     for jPG in jPG_files:
         os.rename(jPG, jPG[:-4]+'.jpg')
         print(jPG + ' is saaaaaaaved :D')
+
 
 def crawl_images(queries, n_google):
     """Queries: A list of strings used to google images.
@@ -101,7 +109,7 @@ def crawl_images(queries, n_google):
                                                 storage={'root_dir':current_dir})
             google_crawler.crawl(keyword=query, offset=0, max_num=n_google,
                                  date_min=None, date_max=None,
-                                 min_size=(200, 200), max_size=None)
+                                 min_size=(300, 300), max_size=None)
             query = query.split()
             pngs = glob.glob(current_dir + "/*.png")+ glob.glob(current_dir + "/*.PNG")
             JPGs = glob.glob(current_dir + "/*.JPG") + glob.glob(current_dir + "/*.JPEG")
@@ -116,7 +124,7 @@ def crawl_images(queries, n_google):
                 utils.save(image_metadata, current_folder+ 'metadata_template_%d.pkl'%counter, '\n')
         except:
             print ('Abandon folder %s' %current_dir)
-
+    # TODO: this part is very fragile, shall change ---
     print ('Metadata len %d' %len(image_metadata))
     savingname = current_folder+ 'metadata.pkl'
     utils.save(image_metadata, savingname, '\n')
@@ -127,9 +135,12 @@ def clear(file_folder):
     # TODO: update clear up function
     os.remove(file_folder, "train-?????-of-00001")
 
+
 def main():
-    # TODO: change this back to 610
-    n_infer = 610
+    # This part is changed on 2017-8-14
+    # n_infer = 610/625
+    # n_infer=2450
+    n_infer=135
     n_google = 10
     n_sentences = 3
     print (n_infer, n_google, n_sentences)
@@ -138,7 +149,6 @@ def main():
     train_filenames = glob.glob(input_file_folder + "/*.jpg")
     rand = np.random.randint(len(train_filenames), size=n_infer)
     images_rand = [train_filenames[i] for i in rand]
-    ckptpath = glob.glob(ckpt_foler + "/")
     # tf sess exist: flag=1, otherwise, flag=0
     while True:
         flag = utils.readflag(path=flag_file)
@@ -146,22 +156,29 @@ def main():
             utils.writeflag(path=flag_file, flag=1, info='start prediction')
             # creating vocab uses tf sess
             vocab = vocabulary.Vocabulary(vocab_file)
-            seqpath = predict_images(filenames=images_rand, vocab = vocab, n_sentences=n_sentences, ckpt=ckptpath)
+            seqpath = predict_images(filenames=images_rand, vocab = vocab, n_sentences=n_sentences)
             utils.writeflag(path=flag_file, flag=0, info='finish prediction')
             predict_seqs = utils.load(seqpath, 'Predicted seqs are loaded from %s' % seqpath)
             print ('len of predicted_seqs %s' %len(predict_seqs))
             # This part is vulnerable. Shall change
             metapath = crawl_images(predict_seqs, n_google = n_google)
             metadata = utils.load(metapath, 'Metadata is loaded from %s' % metapath)
-
-            while True:
-                flag = utils.readflag(path=flag_file)
-                time.sleep(60)
-                if not flag:
-                    utils.writeflag(path=flag_file, flag=1, info='build data')
-                    break
+            # TODO: ideally now training is done. Can change back
+            # while True:
+            #     flag = utils.readflag(path=flag_file)
+            #     time.sleep(600)
+            #     if not flag:
+            #         utils.writeflag(path=flag_file, flag=1, info='build data')
+            #         break
+            print ('Ideally training is done at the moment. Start building data from crawled images.')
             # build_mscoco_data.output_dir = current_folder
-            build_mscoco_data._process_dataset("train", metadata, vocab, num_shards=8)
+            while True:
+                try:
+                    build_mscoco_data._process_dataset("train", metadata, vocab, num_shards=8)
+                    break
+                except:
+                    print("No, training is not done. OOM error may occur? Let's wait -_- ")
+                    time.sleep(600)
             try:
                 os.system('rm %strain-*****-of-00008' % (coco_folder))
                 print ('removed :D')
@@ -170,8 +187,7 @@ def main():
             os.system('cp %s/train* %s' % (FLAGS.google_file_folder, current_folder))
             os.system('cp %s/train* %s' % (FLAGS.google_file_folder, coco_folder))
             os.system('rm %s/train*'%FLAGS.google_file_folder)
-            utils.writeflag(path=flag_file, flag=0, info='New images are ready for a new training')
-        #     TODO: copy everything in train_dir to ckpt folder :D
+            utils.writeflag(path=flag_file, flag=2, info='New images are ready for a new training')
         else:
             time.sleep(300)
 if __name__=='__main__':

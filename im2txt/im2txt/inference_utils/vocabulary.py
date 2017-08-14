@@ -29,8 +29,6 @@ class Vocabulary(object):
                vocab_file,
                start_word="<S>",
                end_word="</S>",
-               # start_word= "b'<S>'",
-               # end_word="b'</S>'",
                unk_word="<UNK>"):
     """Initializes the vocabulary.
 

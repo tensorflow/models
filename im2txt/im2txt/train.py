@@ -25,23 +25,22 @@ from im2txt import configuration
 from im2txt import show_and_tell_model
 
 FLAGS = tf.app.flags.FLAGS
-tf.flags.DEFINE_string("input_file_pattern", "/mnt/raid/data/ni/dnn/zlian/mscoco/train-?????-of-?????",
+tf.flags.DEFINE_string("input_file_pattern", "/mnt/raid/data/ni/dnn/zlian/mscoco/train-?????-of-00256",
                        "File pattern of sharded TFRecord input files.")
 tf.flags.DEFINE_string("train_dir",
                        # "",
-                       "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli-1109938-onlycoco/",
+                       "/mnt/raid/data/ni/dnn/zlian/ckpt-3milli/",
                        "Directory for saving and loading model checkpoints.")
 tf.flags.DEFINE_boolean("train_inception", True,
                         "Whether to train inception submodel variables.")
-tf.flags.DEFINE_integer("number_of_steps", 1109938, "Number of training steps.")
+tf.flags.DEFINE_integer("number_of_steps", 5000000, "Number of training steps.")
 tf.flags.DEFINE_integer("log_every_n_steps", 100,
                         "Frequency at which loss and global step are logged.")
-
-
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
 def main(unused_argv):
+  print ('train till step={0}'.format(FLAGS.number_of_steps))
   assert FLAGS.input_file_pattern, "--input_file_pattern is required"
   assert FLAGS.train_dir, "--train_dir is required"
 
@@ -97,7 +96,8 @@ def main(unused_argv):
         learning_rate_decay_fn=learning_rate_decay_fn)
 
     # Set up the Saver for saving and restoring model checkpoints.
-    saver = tf.train.Saver(max_to_keep=training_config.max_checkpoints_to_keep)
+    # saver = tf.train.Saver(max_to_keep=training_config.max_checkpoints_to_keep)
+    saver = tf.train.Saver(keep_checkpoint_every_n_hours = 0.25)
 
   # Run training.
   tf.contrib.slim.learning.train(

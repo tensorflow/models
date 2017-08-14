@@ -46,3 +46,5 @@ def cleartfrecord(path, pattern='/train-*****-of-00008', info= None):
         print (info)
     except:
         pass
+
+

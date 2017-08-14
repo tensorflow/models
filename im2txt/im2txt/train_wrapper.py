@@ -9,7 +9,6 @@ from im2txt import utils
 import time
 
 
-# TODO: if this works, use the train.py instead :D
 FLAGS = tf.app.flags.FLAGS
 tf.flags.DEFINE_string("input_file_pattern", "/mnt/raid/data/ni/dnn/zlian/mscoco/train-?????-of-?????",
                        "File pattern of sharded TFRecord input files.")
@@ -17,9 +16,11 @@ tf.flags.DEFINE_boolean("train_inception", True,
                         "Whether to train inception submodel variables.")
 tf.flags.DEFINE_integer("log_every_n_steps", 100,
                         "Frequency at which loss and global step are logged.")
-
 tf.flags.DEFINE_string("train_dir",
-                       "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli",
+                       # TODO: the behaviour of ckpt files are weird =_=
+                       # "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli",
+                       # "/mnt/raid/data/ni/dnn/zlian/checkpoint_1_million/",
+                        "/mnt/raid/data/ni/dnn/zlian/ckpt-3milli/",
                        "Directory for saving and loading model checkpoints.")
 
 vocab_file = "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli/word_counts_copy.txt"
@@ -41,15 +42,16 @@ def train(number_of_steps):
   g = tf.Graph()
   with g.as_default():
     # Build the model.
-    model = show_and_tell_model.ShowAndTellModel(
+    model=show_and_tell_model.ShowAndTellModel(
         model_config, mode="train", train_inception=FLAGS.train_inception)
     model.build()
 
-    # TODO: this part of learning rate is changed according to Youssef :D
     # Set up the learning rate.
     learning_rate_decay_fn = None
     if FLAGS.train_inception:
       learning_rate = tf.constant(training_config.train_inception_learning_rate)
+    # if 0:
+    #     print ('This should not be called :DDDDDDDD')
     else:
       learning_rate = tf.constant(training_config.initial_learning_rate)
       if training_config.learning_rate_decay_factor > 0:
@@ -77,11 +79,11 @@ def train(number_of_steps):
         clip_gradients=training_config.clip_gradients,
         learning_rate_decay_fn=learning_rate_decay_fn)
 
-    # Set up the Saver for saving and restoring model checkpoints.
+    # This was used when trying to calculate other kinds of losses somehow
+    saver = tf.train.Saver(keep_checkpoint_every_n_hours=0.25)
     # saver = tf.train.Saver(max_to_keep=training_config.max_checkpoints_to_keep)
-    saver = tf.train.Saver(max_to_keep=training_config.max_checkpoints_to_keep)
+
   # Run training.
-  # print ("Current global step %d" % number_of_steps)
   tf.contrib.slim.learning.train(
       train_op,
       train_dir,
@@ -92,22 +94,31 @@ def train(number_of_steps):
       init_fn=model.init_fn,
       saver=saver)
 
-
 def main(unused_argv):
-    print ('Why the flag is not print using nohup -_-')
+    print ('OOM solved :DDD')
     tf.logging.set_verbosity(tf.logging.INFO)
-    # Set n_steps
     steps_per_epoch = 18323
-    min_step = 1000000
-    min_step +=steps_per_epoch
-    steps = [min_step]
-    n_loops =5
+    # TODO: change this later :)
+    min_step = 5000000
+    min_step +=steps_per_epoch*1
+    steps=[min_step]
+    n_loops = 10
     i = 0
-    while(i< n_loops):
-        steps.append(steps[i]+18323)
+    while(i<n_loops):
+        steps.append(steps[i]+steps_per_epoch)
         i+=1
     print (steps)
-    # Train in a loop
+    # Train a few steps with only coco data
+    # flag=1, crawler waits till training ends. Crawler starts predicting, flag=1. Crawler starts crawling, flag=0.
+    # Train one more epoch ...
+    min_step=5000000
+    min_step+=100
+    utils.writeflag(path=flag_file, flag=1, info='Train for a few steps')
+    train(number_of_steps=min_step)
+    utils.writeflag(path=flag_file, flag=0, info='Stop train for a few steps')
+    time.sleep(600)
+
+
     for step in steps:
         while True:
             flag = utils.readflag(path=flag_file)
@@ -115,12 +126,19 @@ def main(unused_argv):
                 utils.writeflag(path=flag_file, flag=1, info='start training')
                 print ("Train until step %d" %step)
                 train(number_of_steps=step)
-                utils.writeflag(path=flag_file, flag=0, info='finish training')
-                # TODO: adding sleep here only help when downloading can finish soon after training is done :(
-                # time.sleep(600)
+                utils.writeflag(path=flag_file, flag=0, info='finish training, wait for the crawler')
                 break
             else: time.sleep(600)
+        while True:
+            flag = utils.readflag(path=flag_file)
+            if flag==2:
+                utils.writeflag(path=flag_file, flag=0, info='Crawling is done. Move to the next step :D')
+                # Allow some time for prediction :D
+                time.sleep(600)
+                break
+            else:   time.sleep(300)
     print ("Eventually it's down! Yeah!")
+
 
 if __name__ == "__main__":
   tf.app.run()

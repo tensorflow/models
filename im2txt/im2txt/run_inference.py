@@ -30,14 +30,18 @@ from im2txt.inference_utils import caption_generator
 from im2txt.inference_utils import vocabulary
 
 FLAGS = tf.flags.FLAGS
-
-tf.flags.DEFINE_string("checkpoint_path", "",
-                       "Model checkpoint file or directory containing a "
-                       "model checkpoint file.")
-tf.flags.DEFINE_string("vocab_file", "/mnt/raid/data/ni/dnn/zlian/checkpoint_1_million/word_counts_copy.txt", "Text file containing the vocabulary.")
+#
+# tf.flags.DEFINE_string("checkpoint_path", "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli-1109938-withgoogle/model.ckpt-1109259",
+#                        "Model checkpoint file or directory containing a "
+#                        "model checkpoint file.")
+tf.flags.DEFINE_string("vocab_file", "/mnt/raid/data/ni/dnn/zlian/ckpt-1-milli/word_counts_copy.txt", "Text file containing the vocabulary.")
 tf.flags.DEFINE_string("input_files", "/mnt/raid/data/ni/dnn/zlian/mscoco/raw-data/val2014/COCO_val2014_000000224477.jpg",
                        "File pattern or comma-separated list of file patterns "
                        "of image files.")
+
+tf.flags.DEFINE_string("checkpoint_path", "/mnt/raid/data/ni/dnn/zlian/checkpoint_1_million/model.ckpt-3000000",
+                       "Model checkpoint file or directory containing a model checkpoint file.")
+
 
 # vocab_file="/mnt/raid/data/ni/dnn/zlian/checkpoint_1_million/word_counts.txt"
 # image_file="/mnt/raid/data/ni/dnn/zlian/mscoco/raw-data/val2014/COCO_val2014_000000224477.jpg"

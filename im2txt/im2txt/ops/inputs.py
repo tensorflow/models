@@ -93,6 +93,7 @@ def prefetch_input_data(reader,
     tf.logging.info("Prefetching values from %d files matching %s",
                     len(data_files), file_pattern)
 
+
   if is_training:
     filename_queue = tf.train.string_input_producer(
         data_files, shuffle=True, capacity=16, name=shard_queue_name)

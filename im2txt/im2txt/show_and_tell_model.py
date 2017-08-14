@@ -311,9 +311,9 @@ class ShowAndTellModel(object):
     if self.mode == "inference":
       tf.nn.softmax(logits, name="softmax")
     else:
+      #   a shape of [-1] flattens into 1-D :D
       targets = tf.reshape(self.target_seqs, [-1])
       weights = tf.to_float(tf.reshape(self.input_mask, [-1]))
-      # TODO: understand this :D
       # Compute losses.
       losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=targets,
                                                               logits=logits)
@@ -322,9 +322,7 @@ class ShowAndTellModel(object):
                           name="batch_loss")
       tf.losses.add_loss(batch_loss)
       total_loss = tf.losses.get_total_loss()
-      # TODO: delete later
-      print (losses)
-      print (batch_loss)
+
 
       # Add summaries.
       tf.summary.scalar("losses/batch_loss", batch_loss)
