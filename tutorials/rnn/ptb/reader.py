@@ -27,7 +27,7 @@ import tensorflow as tf
 
 
 def _read_words(filename):
-  with tf.gfile.GFile(filename, "r") as f:
+  with tf.gfile.GFile(filename, "rb") as f:
     return f.read().decode("utf-8").replace("\n", "<eos>").split()
 
 
