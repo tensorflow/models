@@ -23,12 +23,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
+
 import tensorflow as tf
 
-FLAGS = tf.flags.FLAGS
+FLAGS = None
 
-tf.flags.DEFINE_float('batch_norm_decay', 0.997, 'Decay for batch norm.')
-tf.flags.DEFINE_float('batch_norm_epsilon', 1e-5, 'Epsilon for batch norm.')
 
 
 class ResNet(object):
