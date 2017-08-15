@@ -22,19 +22,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import cPickle
 import os
+
 import tensorflow as tf
 
-FLAGS = tf.flags.FLAGS
+FLAGS = None
 
-tf.flags.DEFINE_string('input_dir', '',
-                       'Directory where CIFAR10 data is located.')
 
-tf.flags.DEFINE_string('output_dir', '',
-                       'Directory where TFRecords will be saved.'
-                       'The TFRecords will have the same name as'
-                       ' the CIFAR10 inputs + .tfrecords.')
 
 
 def _int64_feature(value):
@@ -91,4 +87,22 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--input_dir',
+      type=str,
+      default='',
+      help='Directory where CIFAR10 data is located.'
+  )
+  parser.add_argument(
+      '--output_dir',
+      type=str,
+      default='',
+      help="""\
+      Directory where TFRecords will be saved.The TFRecords will have the same
+      name as the CIFAR10 inputs + .tfrecords.\
+      """
+  )
+  FLAGS = parser.parse_args()
+
   tf.app.run(main)
