@@ -290,8 +290,7 @@ def _write_graph_and_checkpoint(inference_graph_def,
   with tf.Graph().as_default():
     tf.import_graph_def(inference_graph_def, name='')
     with session.Session() as sess:
-      saver = saver_lib.Saver(saver_def=input_saver_def,
-                              save_relative_paths=True)
+      saver = saver_lib.Saver(saver_def=input_saver_def)
       saver.restore(sess, trained_checkpoint_prefix)
       saver.save(sess, model_path)
 
