@@ -147,7 +147,7 @@ def normalize_image(image, original_minval, original_maxval, target_minval,
     return image
 
 
-def flip_boxes(boxes):
+def flip_boxes_horizontally(boxes):
   """Left-right flip the boxes.
 
   Args:
@@ -157,14 +157,33 @@ def flip_boxes(boxes):
            Each row is in the form of [ymin, xmin, ymax, xmax].
 
   Returns:
-    Flipped boxes.
+    Horizontally flipped boxes.
   """
-  # Flip boxes.
+  # Flip boxes horizontally.
   ymin, xmin, ymax, xmax = tf.split(value=boxes, num_or_size_splits=4, axis=1)
   flipped_xmin = tf.subtract(1.0, xmax)
   flipped_xmax = tf.subtract(1.0, xmin)
   flipped_boxes = tf.concat([ymin, flipped_xmin, ymax, flipped_xmax], 1)
   return flipped_boxes
+
+
+def flip_boxes_vertically(boxes):
+    """Up-down flip the boxes
+
+    Args:
+      boxes: rank 2 float32 tensor containing bounding boxes -> [N, 4].
+             Boxes are in normalized form meaning their coordinates vary
+             between [0, 1]
+             Each row is in the form of [ymin, xmin, ymax, xmax]
+    Returns:
+      Vertically flipped boxes
+    """
+    # Flip boxes vertically
+    ymin, xmin, ymax, xmax = tf.split(value=boxes, num_or_size_splits=4, axis=1)
+    flipped_ymin = tf.subtract(1.0, ymax)
+    flipped_ymax = tf.subtract(1.0, ymin)
+    flipped_boxes = tf.concat([flipped_ymin, xmin, flipped_ymax, xmax], axis=1)
+    return flipped_boxes
 
 
 def retain_boxes_above_threshold(
@@ -221,7 +240,7 @@ def retain_boxes_above_threshold(
     return result
 
 
-def _flip_masks(masks):
+def _flip_masks_horizontally(masks):
   """Left-right flips masks.
 
   Args:
@@ -235,6 +254,20 @@ def _flip_masks(masks):
   return masks[:, :, ::-1]
 
 
+
+def _flip_masks_vertically(masks):
+    """Up-down flips masks
+    Args:
+      masks: rank 3 float tensor with shape
+        [num_instances, height, width] representing instance masks
+
+    ReturnsL
+      flipped masks: rank 3 float32 tensor with shape
+        [num_instances, height, width] representing instance masks
+    """
+    return masks[:, ::-1, :]
+
+
 def random_horizontal_flip(
     image,
     boxes=None,
@@ -242,7 +275,7 @@ def random_horizontal_flip(
     keypoints=None,
     keypoint_flip_permutation=None,
     seed=None):
-  """Randomly decides whether to mirror the image and detections or not.
+  """Randomly decides whether to horizontally mirror the image and detections or not.
 
   The probability of flipping the image is 50%.
 
@@ -304,13 +337,13 @@ def random_horizontal_flip(
     # flip boxes
     if boxes is not None:
       boxes = tf.cond(
-          do_a_flip_random, lambda: flip_boxes(boxes), lambda: boxes)
+          do_a_flip_random, lambda: flip_boxes_horizontally(boxes), lambda: boxes)
       result.append(boxes)
 
     # flip masks
     if masks is not None:
       masks = tf.cond(
-          do_a_flip_random, lambda: _flip_masks(masks), lambda: masks)
+          do_a_flip_random, lambda: _flip_masks_horizontally(masks), lambda: masks)
       result.append(masks)
 
     # flip keypoints
@@ -319,6 +352,96 @@ def random_horizontal_flip(
       keypoints = tf.cond(
           do_a_flip_random,
           lambda: keypoint_ops.flip_horizontal(keypoints, 0.5, permutation),
+          lambda: keypoints)
+      result.append(keypoints)
+
+    return tuple(result)
+
+
+def random_vertical_flip(
+    image,
+    boxes=None,
+    masks=None,
+    keypoints=None,
+    keypoint_flip_permutation=None,
+    seed=None):
+  """Randomly decides whether to vertically mirror the image and detections or not.
+
+  The probability of flipping the image is 50%.
+
+  Args:
+    image: rank 3 float32 tensor with shape [height, width, channels].
+    boxes: (optional) rank 2 float32 tensor with shape [N, 4]
+           containing the bounding boxes.
+           Boxes are in normalized form meaning their coordinates vary
+           between [0, 1].
+           Each row is in the form of [ymin, xmin, ymax, xmax].
+    masks: (optional) rank 3 float32 tensor with shape
+           [num_instances, height, width] containing instance masks. The masks
+           are of the same height, width as the input `image`.
+    keypoints: (optional) rank 3 float32 tensor with shape
+               [num_instances, num_keypoints, 2]. The keypoints are in y-x
+               normalized coordinates.
+    keypoint_flip_permutation: rank 1 int32 tensor containing keypoint flip
+                               permutation.
+    seed: random seed
+
+  Returns:
+    image: image which is the same shape as input image.
+
+    If boxes, masks, keypoints, and keypoint_flip_permutation is not None,
+    the function also returns the following tensors.
+
+    boxes: rank 2 float32 tensor containing the bounding boxes -> [N, 4].
+           Boxes are in normalized form meaning their coordinates vary
+           between [0, 1].
+    masks: rank 3 float32 tensor with shape [num_instances, height, width]
+           containing instance masks.
+    keypoints: rank 3 float32 tensor with shape
+               [num_instances, num_keypoints, 2]
+
+  Raises:
+    ValueError: if keypoints are provided but keypoint_flip_permutation is not.
+  """
+  def _flip_image(image):
+    # flip image
+    image_flipped = tf.image.flip_up_down(image)
+    return image_flipped
+
+  if keypoints is not None and keypoint_flip_permutation is None:
+    raise ValueError(
+        'keypoints are provided but keypoints_flip_permutation is not provided')
+
+  with tf.name_scope('RandomVerticalFlip', values=[image, boxes]):
+    result = []
+    # random variable defining whether to do flip or not
+    do_a_flip_random = tf.random_uniform([], seed=seed)
+    # flip only if there are bounding boxes in image!
+    do_a_flip_random = tf.logical_and(
+        tf.greater(tf.size(boxes), 0), tf.greater(do_a_flip_random, 0.5))
+
+    # flip image
+    image = tf.cond(do_a_flip_random, lambda: _flip_image(image), lambda: image)
+    result.append(image)
+
+    # flip boxes
+    if boxes is not None:
+      boxes = tf.cond(
+          do_a_flip_random, lambda: flip_boxes_vertically(boxes), lambda: boxes)
+      result.append(boxes)
+
+    # flip masks
+    if masks is not None:
+      masks = tf.cond(
+          do_a_flip_random, lambda: _flip_masks_vertically(masks), lambda: masks)
+      result.append(masks)
+
+    # flip keypoints
+    if keypoints is not None and keypoint_flip_permutation is not None:
+      permutation = keypoint_flip_permutation
+      keypoints = tf.cond(
+          do_a_flip_random,
+          lambda: keypoint_ops.flip_vertical(keypoints, 0.5, permutation),
           lambda: keypoints)
       result.append(keypoints)
 
@@ -1809,6 +1932,10 @@ def get_default_func_arg_map(include_instance_masks=False,
                                fields.InputDataFields.groundtruth_boxes,
                                groundtruth_instance_masks,
                                groundtruth_keypoints,),
+      random_vertical_flip: (fields.InputDataFields.image,
+                             fields.InputDataFields.groundtruth_boxes,
+                             groundtruth_instance_masks,
+                             groundtruth_keypoints,),
       random_pixel_value_scale: (fields.InputDataFields.image,),
       random_image_scale: (fields.InputDataFields.image,
                            groundtruth_instance_masks,),
@@ -1849,7 +1976,8 @@ def get_default_func_arg_map(include_instance_masks=False,
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
           groundtruth_keypoints,),
-      flip_boxes: (fields.InputDataFields.groundtruth_boxes,),
+      flip_boxes_horizontally: (fields.InputDataFields.groundtruth_boxes,),
+      flip_boxes_vertically: (fields.InputDataFields.groundtruth_boxes,),
       resize_image: (fields.InputDataFields.image,
                      groundtruth_instance_masks,),
       subtract_channel_mean: (fields.InputDataFields.image,),

@@ -8,6 +8,7 @@ message PreprocessingStep {
   oneof preprocessing_step {
     NormalizeImage normalize_image = 1;
     RandomHorizontalFlip random_horizontal_flip = 2;
+    RandomVerticalFlip random_vertical_flip = 24;
     RandomPixelValueScale random_pixel_value_scale = 3;
     RandomImageScale random_image_scale = 4;
     RandomRGBtoGray random_rgb_to_gray = 5;
@@ -44,6 +45,10 @@ message NormalizeImage {
 
 // Randomly horizontally mirrors the image and detections 50% of the time.
 message RandomHorizontalFlip {
+}
+
+// Randomly vertically up-down flip the image and detections 50% of the time
+message RandomVerticalFlip {
 }
 
 // Randomly scales the values of all pixels in the image by some constant value
