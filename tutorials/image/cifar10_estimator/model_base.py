@@ -23,18 +23,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
-
 import tensorflow as tf
-
-FLAGS = None
-
 
 
 class ResNet(object):
   """ResNet model."""
 
-  def __init__(self, is_training, data_format):
+  def __init__(self, is_training, data_format, batch_norm_decay, batch_norm_epsilon):
     """ResNet constructor.
 
     Args:
@@ -42,6 +37,8 @@ class ResNet(object):
       data_format: the data_format used during computation.
                    one of 'channels_first' or 'channels_last'.
     """
+    self._batch_norm_decay = batch_norm_decay
+    self._batch_norm_epsilon = batch_norm_epsilon
     self._is_training = is_training
     assert data_format in ('channels_first', 'channels_last')
     self._data_format = data_format
@@ -185,10 +182,10 @@ class ResNet(object):
       data_format = 'NHWC'
     return tf.contrib.layers.batch_norm(
         x,
-        decay=FLAGS.batch_norm_decay,
+        decay=self._batch_norm_decay,
         center=True,
         scale=True,
-        epsilon=FLAGS.batch_norm_epsilon,
+        epsilon=self._batch_norm_epsilon,
         is_training=self._is_training,
         fused=True,
         data_format=data_format)
