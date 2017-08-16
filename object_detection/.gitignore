@@ -1,0 +1,5 @@
+models/**/*.record
+models/**/train
+models/**/eval
+.idea
+*.pyc
