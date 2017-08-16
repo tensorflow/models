@@ -53,15 +53,13 @@ train.tfrecords validation.tfrecords eval.tfrecords
 # Run the model on CPU only. After training, it runs the evaluation.
 $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-py \
                          --job-dir=/tmp/cifar10 \
-                         --is-cpu-ps=True \
                          --num-gpus=0 \
                          --train-steps=1000
 
 # Run the model on 2 GPUs using CPU as parameter server. After training, it runs the evaluation.
 $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-py \
                          --job-dir=/tmp/cifar10 \
-                         --is-cpu-ps=True \
-                         --force-gpu-compatible=True \
+                         --force-gpu-compatible \
                          --num-gpus=2 \
                          --train-steps=1000
 
@@ -70,8 +68,8 @@ $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-
 # a couple of times to perform evaluation.
 $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
                          --job-dir=/tmp/cifar10 \
-                         --is-cpu-ps=False \
-                         --force-gpu-compatible=True \
+                         --avg-on-gpu \
+                         --force-gpu-compatible \
                          --num-gpus=2 \
 
 
@@ -104,8 +102,7 @@ gcloud ml-engine jobs submit training cifarmultigpu \
     --module-name cifar10_estimator.cifar10_main \
     -- \
     --data-dir=$MY_BUCKET/cifar-10-batches-py \
-    --is-cpu-ps=True \
-    --force-gpu-compatible=True \
+    --force-gpu-compatible \
     --num-gpus=4 \
     --train-steps=1000
 ```
@@ -186,11 +183,10 @@ Once you have a `TF_CONFIG` configured properly on each host you're ready to run
 # Make sure the model_dir is the same as defined on the TF_CONFIG.
 $ python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
                          --job-dir=gs://path/model_dir/ \
-                         --is-cpu-ps=True \
-                         --force-gpu-compatible=True \
+                         --force-gpu-compatible \
                          --num-gpus=4 \
                          --train-steps=40000 \
-                         --sync=True \
+                         --sync \
                           \
                          --num-workers=2
 ```
@@ -329,11 +325,10 @@ INFO:tensorflow:Saving dict for global step 1: accuracy = 0.0994, global_step = 
 # Make sure the model_dir is the same as defined on the TF_CONFIG.
 $ python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
                          --job-dir=gs://path/model_dir/ \
-                         --is-cpu-ps=True \
-                         --force-gpu-compatible=True \
+                         --force-gpu-compatible \
                          --num-gpus=4 \
                          --train-steps=40000 \
-                         --sync=True
+                         --sync
 ```
 
 *Output:*
@@ -480,7 +475,7 @@ $ tensorboard --log-dir="sentiment_analysis_output"
 
 ## Warnings
 
-When runninng `cifar10_main.py` with `--sync=True` argument you may see an error similar to:
+When runninng `cifar10_main.py` with `--sync` argument you may see an error similar to:
 
 ```python
 File "cifar10_main.py", line 538, in <module>

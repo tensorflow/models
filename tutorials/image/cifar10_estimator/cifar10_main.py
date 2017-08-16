@@ -25,7 +25,6 @@ http://www.cs.toronto.edu/~kriz/cifar.html
 
 
 """
-from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
@@ -42,8 +41,8 @@ from tensorflow.python.training import basic_session_run_hooks
 from tensorflow.python.training import session_run_hook
 from tensorflow.python.training import training_util
 
-from . import cifar10
-from . import cifar10_model
+import cifar10
+import cifar10_model
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -192,9 +191,18 @@ def get_model_fn(num_gpus, avg_on_gpu, num_workers):
         with tf.variable_scope('resnet', reuse=bool(i != 0)):
           with tf.name_scope('tower_%d' % i) as name_scope:
             with tf.device(device_setter):
-              _tower_fn(is_training, weight_decay, tower_features[i],
-                        tower_labels[i], tower_losses, tower_gradvars,
-                        tower_preds, False, params['num_layers'])
+              loss, gradvars, preds = _tower_fn(
+                  is_training,
+                  weight_decay,
+                  tower_features[i],
+                  tower_labels[i],
+                  False,
+                  params['num_layers'],
+                  params['batch_norm_decay'],
+                  params['batch_norm_epsilon'])
+              tower_losses.append(loss)
+              tower_gradvars.append(gradvars)
+              tower_preds.append(preds)
               if i == 0:
                 # Only trigger batch_norm moving mean and variance update from
                 # the 1st tower. Ideally, we should grab the updates from all
@@ -206,8 +214,19 @@ def get_model_fn(num_gpus, avg_on_gpu, num_workers):
     else:
       with tf.variable_scope('resnet'), tf.device('/cpu:0'):
         with tf.name_scope('tower_cpu') as name_scope:
-          _tower_fn(is_training, weight_decay, tower_features[0], tower_labels[0],
-                    tower_losses, tower_gradvars, tower_preds, True)
+          loss, gradvars, preds = _tower_fn(
+              is_training,
+              weight_decay,
+              tower_features[0],
+              tower_labels[0],
+              True,
+              params['num_layers'],
+              params['batch_norm_decay'],
+              params['batch_norm_epsilon'])
+          tower_losses.append(loss)
+          tower_gradvars.append(gradvars)
+          tower_preds.append(preds)
+
           update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, name_scope)
 
     # Now compute global loss and gradients.
@@ -281,10 +300,17 @@ def get_model_fn(num_gpus, avg_on_gpu, num_workers):
         train_op=train_op,
         training_chief_hooks=chief_hooks,
         eval_metric_ops=metrics)
+  return _resnet_model_fn
 
 
-def _tower_fn(is_training, weight_decay, feature, label, tower_losses,
-              tower_gradvars, tower_preds, is_cpu, num_layers):
+def _tower_fn(is_training,
+              weight_decay,
+              feature,
+              label,
+              is_cpu,
+              num_layers,
+              batch_norm_decay,
+              batch_norm_epsilon):
   """Build computation tower for each device (CPU or GPU).
 
   Args:
@@ -299,13 +325,15 @@ def _tower_fn(is_training, weight_decay, feature, label, tower_losses,
   """
   data_format = 'channels_last' if is_cpu else 'channels_first'
   model = cifar10_model.ResNetCifar10(
-      num_layers, is_training=is_training, data_format=data_format)
+      num_layers,
+      batch_norm_decay=batch_norm_decay,
+      batch_norm_epsilon=batch_norm_epsilon,
+      is_training=is_training, data_format=data_format)
   logits = model.forward_pass(feature, input_data_format='channels_last')
   tower_pred = {
       'classes': tf.argmax(input=logits, axis=1),
       'probabilities': tf.nn.softmax(logits)
   }
-  tower_preds.append(tower_pred)
 
   tower_loss = tf.losses.sparse_softmax_cross_entropy(
       logits=logits, labels=label)
@@ -314,10 +342,10 @@ def _tower_fn(is_training, weight_decay, feature, label, tower_losses,
   model_params = tf.trainable_variables()
   tower_loss += weight_decay * tf.add_n(
       [tf.nn.l2_loss(v) for v in model_params])
-  tower_losses.append(tower_loss)
 
   tower_grad = tf.gradients(tower_loss, model_params)
-  tower_gradvars.append(zip(tower_grad, model_params))
+
+  return tower_loss, tower_grad, tower_pred
 
 
 def input_fn(data_dir, subset, num_shards, batch_size,
@@ -535,6 +563,7 @@ if __name__ == '__main__':
       default=2e-4,
       help='Weight decay for convolutions.'
   )
+  
   parser.add_argument(
       '--learning-rate',
       type=float,
@@ -595,12 +624,24 @@ if __name__ == '__main__':
       default=False,
       help='Whether to log device placement.'
   )
+  parser.add_argument(
+      '--batch_norm_decay',
+      type=float,
+      default=0.997,
+      help='Decay for batch norm.'
+  )
+  parser.add_argument(
+      '--batch_norm_epsilon',
+      type=float,
+      default=1e-5,
+      help='Epsilon for batch norm.'
+  )
   args = parser.parse_args()
 
   if args.num_gpus < 0:
     raise ValueError(
         'Invalid GPU count: \"num_gpus\" must be 0 or a positive integer.')
-  if args.num_gpus == 0 and not args.avg_on_gpu:
+  if args.num_gpus == 0 and args.avg_on_gpu:
     raise ValueError(
         'No GPU available for use, must use CPU to average gradients.')
   if (args.num_layers - 2) % 6 != 0:
