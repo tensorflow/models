@@ -433,7 +433,7 @@ def random_vertical_flip(
     # flip masks
     if masks is not None:
       masks = tf.cond(
-          do_a_flip_random, lambda: _flip_masks_verically(masks), lambda: masks)
+          do_a_flip_random, lambda: _flip_masks_vertically(masks), lambda: masks)
       result.append(masks)
 
     # flip keypoints
