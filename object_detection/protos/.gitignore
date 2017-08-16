@@ -1,4 +1,3 @@
-*.py
-!__init__.py
-*.pyc
-*.old
+*pyc
+*py
+!.gitignore
