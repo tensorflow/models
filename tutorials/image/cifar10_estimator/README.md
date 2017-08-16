@@ -73,8 +73,7 @@ $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-
                          --is-cpu-ps=False \
                          --force-gpu-compatible=True \
                          --num-gpus=2 \
-                         --train-steps=1000
-                         
+
 
 # There are more command line flags to play with; check cifar10_main.py for details.
 ```
@@ -99,19 +98,16 @@ Then run the following command from the `tutorials/image` directory of this repo
 ```
 gcloud ml-engine jobs submit training cifarmultigpu \
     --runtime-version 1.2 \
-    --staging-bucket $MY_BUCKET \
-    --config cifar10_estimator/job_config.yaml \
+    --job-dir=$MY_BUCKET/model_dirs/cifarmultigpu \
+    --config cifar10_estimator/cmle_config.yaml \
     --package-path cifar10_estimator/ \
-    --region us-central1 \
     --module-name cifar10_estimator.cifar10_main \
     -- \
     --data-dir=$MY_BUCKET/cifar-10-batches-py \
-    --job-dir=$MY_BUCKLET/model_dirs/cifarmultigpu \
     --is-cpu-ps=True \
     --force-gpu-compatible=True \
     --num-gpus=4 \
-    --train-steps=1000 \
-    
+    --train-steps=1000
 ```
 
 

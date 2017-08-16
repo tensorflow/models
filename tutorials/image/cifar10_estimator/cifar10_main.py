@@ -560,12 +560,6 @@ if __name__ == '__main__':
       """
   )
   parser.add_argument(
-      '--num-workers',
-      type=int,
-      default=1,
-      help='Number of workers.'
-  )
-  parser.add_argument(
       '--num-intra-threads',
       type=int,
       default=1,
