@@ -101,7 +101,7 @@ tf.flags.DEFINE_integer('num_workers', 1, 'Number of workers.')
 # Perf flags
 tf.flags.DEFINE_integer('num_intra_threads', 1,
                         'Number of threads to use for intra-op parallelism.'
-                        ' If set to 0, the system will pick an appropriate
+                        ' If set to 0, the system will pick an appropriate'
                         ' number. The default is 1 since in this example CPU'
                         ' only handles the input pipeline and gradient'
                         ' aggregation (when --is_cpu_ps). Ops that could'
