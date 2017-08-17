@@ -39,10 +39,10 @@ ResNet-101 for image classification into 1000 classes:
 ResNet-101 for semantic segmentation into 21 classes:
 
    # inputs has shape [batch, 513, 513, 3]
-   with slim.arg_scope(resnet_v2.resnet_arg_scope(is_training)):
+   with slim.arg_scope(resnet_v2.resnet_arg_scope()):
       net, end_points = resnet_v2.resnet_v2_101(inputs,
                                                 21,
-                                                is_training=False,
+                                                is_training=is_training,
                                                 global_pool=False,
                                                 output_stride=16)
 """
