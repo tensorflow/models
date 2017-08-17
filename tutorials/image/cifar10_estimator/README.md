@@ -59,7 +59,6 @@ $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-
 # Run the model on 2 GPUs using CPU as parameter server. After training, it runs the evaluation.
 $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-py \
                          --job-dir=/tmp/cifar10 \
-                         --force-gpu-compatible \
                          --num-gpus=2 \
                          --train-steps=1000
 
@@ -68,8 +67,7 @@ $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-
 # a couple of times to perform evaluation.
 $ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
                          --job-dir=/tmp/cifar10 \
-                         --avg-on-gpu \
-                         --force-gpu-compatible \
+                         --variable-strategy GPU \
                          --num-gpus=2 \
 
 
@@ -102,7 +100,6 @@ gcloud ml-engine jobs submit training cifarmultigpu \
     --module-name cifar10_estimator.cifar10_main \
     -- \
     --data-dir=$MY_BUCKET/cifar-10-batches-py \
-    --force-gpu-compatible \
     --num-gpus=4 \
     --train-steps=1000
 ```
@@ -183,11 +180,9 @@ Once you have a `TF_CONFIG` configured properly on each host you're ready to run
 # Make sure the model_dir is the same as defined on the TF_CONFIG.
 $ python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
                          --job-dir=gs://path/model_dir/ \
-                         --force-gpu-compatible \
                          --num-gpus=4 \
                          --train-steps=40000 \
                          --sync \
-                          \
                          --num-workers=2
 ```
 
@@ -325,7 +320,6 @@ INFO:tensorflow:Saving dict for global step 1: accuracy = 0.0994, global_step = 
 # Make sure the model_dir is the same as defined on the TF_CONFIG.
 $ python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
                          --job-dir=gs://path/model_dir/ \
-                         --force-gpu-compatible \
                          --num-gpus=4 \
                          --train-steps=40000 \
                          --sync

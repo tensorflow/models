@@ -28,10 +28,6 @@ import os
 
 import tensorflow as tf
 
-FLAGS = None
-
-
-
 
 def _int64_feature(value):
   return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -75,12 +71,12 @@ def convert_to_tfrecord(input_files, output_file):
         record_writer.write(example.SerializeToString())
 
 
-def main(unused_argv):
+def main(input_dir, output_dir):
   file_names = _get_file_names()
   for mode, files in file_names.items():
     input_files = [
-        os.path.join(FLAGS.input_dir, f) for f in files]
-    output_file = os.path.join(FLAGS.output_dir, mode + '.tfrecords')
+        os.path.join(input_dir, f) for f in files]
+    output_file = os.path.join(output_dir, mode + '.tfrecords')
     # Convert to Examples and write the result to TFRecords.
     convert_to_tfrecord(input_files, output_file)
   print('Done!')
@@ -89,13 +85,13 @@ def main(unused_argv):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      '--input_dir',
+      '--input-dir',
       type=str,
       default='',
       help='Directory where CIFAR10 data is located.'
   )
   parser.add_argument(
-      '--output_dir',
+      '--output-dir',
       type=str,
       default='',
       help="""\
@@ -103,6 +99,5 @@ if __name__ == '__main__':
       name as the CIFAR10 inputs + .tfrecords.\
       """
   )
-  FLAGS = parser.parse_args()
-
-  tf.app.run(main)
+  args = parser.parse_args()
+  main(args.input_dir, args.output_dir)
