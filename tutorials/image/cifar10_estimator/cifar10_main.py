@@ -30,138 +30,28 @@ from __future__ import print_function
 
 import argparse
 import functools
-import operator
+import itertools
 import os
+import six
 
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-from tensorflow.python.platform import tf_logging as logging
-from tensorflow.python.training import basic_session_run_hooks
-from tensorflow.python.training import session_run_hook
-from tensorflow.python.training import training_util
 
 import cifar10
 import cifar10_model
+import cifar10_utils
+
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-class ExamplesPerSecondHook(session_run_hook.SessionRunHook):
-  """Hook to print out examples per second.
-
-    Total time is tracked and then divided by the total number of steps
-    to get the average step time and then batch_size is used to determine
-    the running average of examples per second. The examples per second for the
-    most recent interval is also logged.
-  """
-
-  def __init__(
-      self,
-      batch_size,
-      every_n_steps=100,
-      every_n_secs=None,):
-    """Initializer for ExamplesPerSecondHook.
-
-      Args:
-      batch_size: Total batch size used to calculate examples/second from
-      global time.
-      every_n_steps: Log stats every n steps.
-      every_n_secs: Log stats every n seconds.
-    """
-    if (every_n_steps is None) == (every_n_secs is None):
-      raise ValueError('exactly one of every_n_steps'
-                       ' and every_n_secs should be provided.')
-    self._timer = basic_session_run_hooks.SecondOrStepTimer(
-        every_steps=every_n_steps, every_secs=every_n_secs)
-
-    self._step_train_time = 0
-    self._total_steps = 0
-    self._batch_size = batch_size
-
-  def begin(self):
-    self._global_step_tensor = training_util.get_global_step()
-    if self._global_step_tensor is None:
-      raise RuntimeError(
-          'Global step should be created to use StepCounterHook.')
-
-  def before_run(self, run_context):  # pylint: disable=unused-argument
-    return basic_session_run_hooks.SessionRunArgs(self._global_step_tensor)
-
-  def after_run(self, run_context, run_values):
-    _ = run_context
-
-    global_step = run_values.results
-    if self._timer.should_trigger_for_step(global_step):
-      elapsed_time, elapsed_steps = self._timer.update_last_triggered_step(
-          global_step)
-      if elapsed_time is not None:
-        steps_per_sec = elapsed_steps / elapsed_time
-        self._step_train_time += elapsed_time
-        self._total_steps += elapsed_steps
-
-        average_examples_per_sec = self._batch_size * (
-            self._total_steps / self._step_train_time)
-        current_examples_per_sec = steps_per_sec * self._batch_size
-        # Average examples/sec followed by current examples/sec
-        logging.info('%s: %g (%g), step = %g', 'Average examples/sec',
-                     average_examples_per_sec, current_examples_per_sec,
-                     self._total_steps)
-
-
-class GpuParamServerDeviceSetter(object):
-  """Used with tf.device() to place variables on the least loaded GPU.
-
-    A common use for this class is to pass a list of GPU devices, e.g. ['gpu:0',
-    'gpu:1','gpu:2'], as ps_devices.  When each variable is placed, it will be
-    placed on the least loaded gpu. All other Ops, which will be the computation
-    Ops, will be placed on the worker_device.
-  """
-
-  def __init__(self, worker_device, ps_devices):
-    """Initializer for GpuParamServerDeviceSetter.
-
-    Args:
-      worker_device: the device to use for computation Ops.
-      ps_devices: a list of devices to use for Variable Ops. Each variable is
-      assigned to the least loaded device.
-    """
-    self.ps_devices = ps_devices
-    self.worker_device = worker_device
-    self.ps_sizes = [0] * len(self.ps_devices)
-
-  def __call__(self, op):
-    if op.device:
-      return op.device
-    if op.type not in ['Variable', 'VariableV2', 'VarHandleOp']:
-      return self.worker_device
-
-    # Gets the least loaded ps_device
-    device_index, _ = min(enumerate(self.ps_sizes), key=operator.itemgetter(1))
-    device_name = self.ps_devices[device_index]
-    var_size = op.outputs[0].get_shape().num_elements()
-    self.ps_sizes[device_index] += var_size
-
-    return device_name
-
-
-def _create_device_setter(avg_on_gpu, worker, num_gpus):
-  """Create device setter object."""
-  if avg_on_gpu:
-    gpus = ['/gpu:%d' % i for i in range(num_gpus)]
-    return GpuParamServerDeviceSetter(worker, gpus)
-  else:
-    # tf.train.replica_device_setter supports placing variables on the CPU, all
-    # on one GPU, or on ps_servers defined in a cluster_spec.
-    return tf.train.replica_device_setter(
-        worker_device=worker, ps_device='/cpu:0', ps_tasks=1)
-
-def get_model_fn(num_gpus, avg_on_gpu, num_workers):
+def get_model_fn(num_gpus, variable_strategy, num_workers):
   def _resnet_model_fn(features, labels, mode, params):
     """Resnet model body.
 
-    Support single host, one or more GPU training. Parameter distribution can be
-    either one of the following scheme.
+    Support single host, one or more GPU training. Parameter distribution can
+    be either one of the following scheme.
     1. CPU is the parameter server and manages gradient updates.
     2. Parameters are distributed evenly across all GPUs, and the first GPU
        manages gradient updates.
@@ -186,8 +76,19 @@ def get_model_fn(num_gpus, avg_on_gpu, num_workers):
 
     if num_gpus != 0:
       for i in range(num_gpus):
-        worker = '/gpu:%d' % i
-        device_setter = _create_device_setter(avg_on_gpu, worker, num_gpus)
+        worker_device = '/gpu:{}'.format(i)
+        if variable_strategy == 'CPU':
+            device_setter = cifar10_utils.local_device_setter(
+                worker_device=worker_device)
+        elif variable_strategy == 'GPU':
+            device_setter = cifar10_utils.local_device_setter(
+                ps_device_type='gpu',
+                worker_device=worker_device,
+                ps_strategy=tf.contrib.training.GreedyLoadBalancingStrategy(
+                    num_gpus,
+                    tf.contrib.training.byte_size_load_fn
+                )
+            )
         with tf.variable_scope('resnet', reuse=bool(i != 0)):
           with tf.name_scope('tower_%d' % i) as name_scope:
             with tf.device(device_setter):
@@ -231,22 +132,25 @@ def get_model_fn(num_gpus, avg_on_gpu, num_workers):
 
     # Now compute global loss and gradients.
     gradvars = []
-    # Server that runs the ops to apply global gradient updates.
-    avg_device = '/gpu:0' if avg_on_gpu else '/cpu:0'
-    with tf.device(avg_device):
-      with tf.name_scope('gradient_averaging'):
-        loss = tf.reduce_mean(tower_losses, name='loss')
-        for zipped_gradvars in zip(*tower_gradvars):
-          # Averaging one var's gradients computed from multiple towers
-          var = zipped_gradvars[0][1]
-          grads = [gv[0] for gv in zipped_gradvars]
-          with tf.device(var.device):
-            if len(grads) == 1:
-              avg_grad = grads[0]
-            else:
-              avg_grad = tf.multiply(tf.add_n(grads), 1. / len(grads))
-          gradvars.append((avg_grad, var))
+    with tf.name_scope('gradient_averaging'):
+      all_grads = {}
+      for grad, var in itertools.chain(*tower_gradvars):
+        if grad is not None:
+          all_grads.setdefault(var, []).append(grad)
+      for var, grads in six.iteritems(all_grads):
+        # Average gradients on the same device as the variables
+        # to which they apply.
+        with tf.device(var.device):
+          if len(grads) == 1:
+            avg_grad = grads[0]
+          else:
+            avg_grad = tf.multiply(tf.add_n(grads), 1. / len(grads))
+        gradvars.append((avg_grad, var))
 
+
+    # Device that runs the ops to apply global gradient updates.
+    consolidation_device = '/gpu:0' if variable_strategy == 'GPU' else '/cpu:0'
+    with tf.device(consolidation_device):
       # Suggested learning rate scheduling from
       # https://github.com/ppwwyyxx/tensorpack/blob/master/examples/ResNet/cifar10-resnet.py#L155
       # users could apply other scheduling.
@@ -292,6 +196,7 @@ def get_model_fn(num_gpus, avg_on_gpu, num_workers):
       metrics = {
           'accuracy': tf.metrics.accuracy(stacked_labels, predictions['classes'])
       }
+      loss = tf.reduce_mean(tower_losses, name='loss')
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
@@ -345,7 +250,7 @@ def _tower_fn(is_training,
 
   tower_grad = tf.gradients(tower_loss, model_params)
 
-  return tower_loss, tower_grad, tower_pred
+  return tower_loss, zip(tower_grad, model_params), tower_pred
 
 
 def input_fn(data_dir, subset, num_shards, batch_size,
@@ -433,11 +338,11 @@ def get_experiment_fn(data_dir, num_gpus, is_gpu_ps,
 
     train_steps = hparams.train_steps
     eval_steps = num_eval_examples // hparams.eval_batch_size
-    examples_sec_hook = ExamplesPerSecondHook(
+    examples_sec_hook = cifar10_utils.ExamplesPerSecondHook(
       hparams.train_batch_size, every_n_steps=10)
 
     tensors_to_log = {'learning_rate': 'learning_rate',
-                      'loss': 'gradient_averaging/loss'}
+                      'loss': 'loss'}
 
     logging_hook = tf.train.LoggingTensorHook(
       tensors=tensors_to_log, every_n_iter=100)
@@ -446,7 +351,7 @@ def get_experiment_fn(data_dir, num_gpus, is_gpu_ps,
 
     classifier = tf.estimator.Estimator(
         model_fn=get_model_fn(
-            num_gpus, is_gpu_ps, run_config.num_worker_replicas),
+            num_gpus, is_gpu_ps, run_config.num_worker_replicas or 1),
         config=run_config,
         params=vars(hparams)
     )
@@ -467,11 +372,10 @@ def get_experiment_fn(data_dir, num_gpus, is_gpu_ps,
 def main(job_dir,
          data_dir,
          num_gpus,
-         avg_on_gpu,
+         variable_strategy,
          use_distortion_for_training,
          log_device_placement,
          num_intra_threads,
-         force_gpu_compatible,
          **hparams):
   # The env variable is on deprecation path, default is set to off.
   os.environ['TF_SYNC_ON_FINISH'] = '0'
@@ -482,7 +386,7 @@ def main(job_dir,
       log_device_placement=log_device_placement,
       intra_op_parallelism_threads=num_intra_threads,
       gpu_options=tf.GPUOptions(
-          force_gpu_compatible=force_gpu_compatible
+          force_gpu_compatible=True
       )
   )
 
@@ -493,7 +397,7 @@ def main(job_dir,
       get_experiment_fn(
           data_dir,
           num_gpus,
-          avg_on_gpu,
+          variable_strategy,
           use_distortion_for_training
       ),
       run_config=config,
@@ -516,10 +420,11 @@ if __name__ == '__main__':
       help='The directory where the model will be stored.'
   )
   parser.add_argument(
-      '--avg-on-gpu',
-      action='store_true',
-      default=False,
-      help='If present, use GPU to average gradients.'
+      '--variable_strategy',
+      choices=['CPU', 'GPU'],
+      type=str,
+      default='CPU',
+      help='Where to locate variable operations'
   )
   parser.add_argument(
       '--num-gpus',
@@ -562,8 +467,7 @@ if __name__ == '__main__':
       type=float,
       default=2e-4,
       help='Weight decay for convolutions.'
-  )
-  
+  ) 
   parser.add_argument(
       '--learning-rate',
       type=float,
@@ -610,15 +514,6 @@ if __name__ == '__main__':
       """
   )
   parser.add_argument(
-      '--force-gpu-compatible',
-      action='store_true',
-      default=False,
-      help="""\
-      Whether to enable force_gpu_compatible in GPU_Options. Check
-      tensorflow/core/protobuf/config.proto#L69 for details.\
-      """
-  )
-  parser.add_argument(
       '--log-device-placement',
       action='store_true',
       default=False,
@@ -641,7 +536,7 @@ if __name__ == '__main__':
   if args.num_gpus < 0:
     raise ValueError(
         'Invalid GPU count: \"num_gpus\" must be 0 or a positive integer.')
-  if args.num_gpus == 0 and args.avg_on_gpu:
+  if args.num_gpus == 0 and args.variable_strategy == 'GPU':
     raise ValueError(
         'No GPU available for use, must use CPU to average gradients.')
   if (args.num_layers - 2) % 6 != 0:
