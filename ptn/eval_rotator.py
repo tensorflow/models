@@ -91,7 +91,7 @@ def main(argv=()):
     ## data ##
     ##########
     val_data = model.get_inputs(
-        FLAGS.data_sst_path,
+        FLAGS.inp_dir,
         FLAGS.dataset_name,
         'val',
         FLAGS.batch_size,
