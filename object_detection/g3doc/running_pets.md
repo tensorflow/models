@@ -296,11 +296,11 @@ gsutil cp gs://${YOUR_GCS_BUCKET}/train/model.ckpt-${CHECKPOINT_NUMBER}.* .
 python object_detection/export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path object_detection/samples/configs/faster_rcnn_resnet101_pets.config \
-    --checkpoint_path model.ckpt-${CHECKPOINT_NUMBER} \
-    --inference_graph_path output_inference_graph.pb
+    --trained_checkpoint_prefix model.ckpt-${CHECKPOINT_NUMBER} \
+    --output_directory output
 ```
 
-Afterwards, you should see a graph named `output_inference_graph.pb`.
+Afterwards, you should see a graph in `output/saved_model` directory.
 
 ## What's Next
 
