@@ -16,10 +16,7 @@ import mmap
 import numpy as np
 import os
 
-try:
-    basestring        # Python 2
-except NameError:
-    basestring = str  # Python 3
+from six import string_types
 
 
 class Vecs(object):
@@ -76,7 +73,7 @@ class Vecs(object):
 
   def neighbors(self, query):
     """Returns the nearest neighbors to the query (a word or vector)."""
-    if isinstance(query, basestring):
+    if isinstance(query, string_types):
       idx = self.word_to_idx.get(query)
       if idx is None:
         return None
