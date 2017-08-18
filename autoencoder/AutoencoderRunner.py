@@ -51,7 +51,7 @@ for epoch in range(training_epochs):
 
     # Display logs per epoch step
     if epoch % display_step == 0:
-        print("Epoch: ", '%d,' % (epoch + 1),
-              "Cost: ", "{:.9f}".format(avg_cost))
-        
+        print("Epoch:", '%d,' % (epoch + 1),
+              "Cost:", "{:.9f}".format(avg_cost))
+
 print("Total cost: " + str(autoencoder.calc_total_cost(X_test)))
