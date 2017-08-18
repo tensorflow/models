@@ -34,6 +34,7 @@ the scored human judgement.
 
 """
 
+from __future__ import print_function
 import scipy.stats
 import sys
 from getopt import GetoptError, getopt
@@ -42,8 +43,8 @@ from vecs import Vecs
 
 try:
   opts, args = getopt(sys.argv[1:], '', ['embeddings=', 'vocab='])
-except GetoptError, e:
-  print >> sys.stderr, e
+except GetoptError as e:
+  print(e, file=sys.stderr)
   sys.exit(2)
 
 opt_embeddings = None
@@ -56,18 +57,19 @@ for o, a in opts:
     opt_vocab = a
 
 if not opt_vocab:
-  print >> sys.stderr, 'please specify a vocabulary file with "--vocab"'
+  print('please specify a vocabulary file with "--vocab"', file=sys.stderr)
   sys.exit(2)
 
 if not opt_embeddings:
-  print >> sys.stderr, 'please specify the embeddings with "--embeddings"'
+  print('please specify the embeddings with "--embeddings"', file=sys.stderr)
   sys.exit(2)
 
 try:
   vecs = Vecs(opt_vocab, opt_embeddings)
-except IOError, e:
-  print >> sys.stderr, e
+except IOError as e:
+  print(e, file=sys.stderr)
   sys.exit(1)
+
 
 def evaluate(lines):
   acts, preds = [], []
@@ -85,6 +87,7 @@ def evaluate(lines):
   rho, _ = scipy.stats.spearmanr(acts, preds)
   return rho
 
+
 for filename in args:
   with open(filename, 'r') as lines:
-    print '%0.3f %s' % (evaluate(lines), filename)
+    print('%0.3f %s' % (evaluate(lines), filename))
