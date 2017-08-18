@@ -22,19 +22,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import cPickle
 import os
+
 import tensorflow as tf
-
-FLAGS = tf.flags.FLAGS
-
-tf.flags.DEFINE_string('input_dir', '',
-                       'Directory where CIFAR10 data is located.')
-
-tf.flags.DEFINE_string('output_dir', '',
-                       'Directory where TFRecords will be saved.'
-                       'The TFRecords will have the same name as'
-                       ' the CIFAR10 inputs + .tfrecords.')
 
 
 def _int64_feature(value):
@@ -55,7 +47,7 @@ def _get_file_names():
 
 
 def read_pickle_from_file(filename):
-  with open(filename, 'r') as f:
+  with tf.gfile.Open(filename, 'r') as f:
     data_dict = cPickle.load(f)
   return data_dict
 
@@ -63,34 +55,49 @@ def read_pickle_from_file(filename):
 def convert_to_tfrecord(input_files, output_file):
   """Converts a file to tfrecords."""
   print('Generating %s' % output_file)
-  record_writer = tf.python_io.TFRecordWriter(output_file)
+  with tf.python_io.TFRecordWriter(output_file) as record_writer:
+    for input_file in input_files:
+      data_dict = read_pickle_from_file(input_file)
+      data = data_dict['data']
+      labels = data_dict['labels']
 
-  for input_file in input_files:
-    data_dict = read_pickle_from_file(input_file)
-    data = data_dict['data']
-    labels = data_dict['labels']
-
-    num_entries_in_batch = len(labels)
-    for i in range(num_entries_in_batch):
-      example = tf.train.Example(
-          features=tf.train.Features(feature={
-              'image': _bytes_feature(data[i].tobytes()),
-              'label': _int64_feature(labels[i])
-          }))
-      record_writer.write(example.SerializeToString())
-  record_writer.close()
+      num_entries_in_batch = len(labels)
+      for i in range(num_entries_in_batch):
+        example = tf.train.Example(
+            features=tf.train.Features(feature={
+                'image': _bytes_feature(data[i].tobytes()),
+                'label': _int64_feature(labels[i])
+            }))
+        record_writer.write(example.SerializeToString())
 
 
-def main(unused_argv):
+def main(input_dir, output_dir):
   file_names = _get_file_names()
   for mode, files in file_names.items():
     input_files = [
-        os.path.join(FLAGS.input_dir, f) for f in files]
-    output_file = os.path.join(FLAGS.output_dir, mode + '.tfrecords')
+        os.path.join(input_dir, f) for f in files]
+    output_file = os.path.join(output_dir, mode + '.tfrecords')
     # Convert to Examples and write the result to TFRecords.
     convert_to_tfrecord(input_files, output_file)
   print('Done!')
 
 
 if __name__ == '__main__':
-  tf.app.run(main)
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--input-dir',
+      type=str,
+      default='',
+      help='Directory where CIFAR10 data is located.'
+  )
+  parser.add_argument(
+      '--output-dir',
+      type=str,
+      default='',
+      help="""\
+      Directory where TFRecords will be saved.The TFRecords will have the same
+      name as the CIFAR10 inputs + .tfrecords.\
+      """
+  )
+  args = parser.parse_args()
+  main(args.input_dir, args.output_dir)
