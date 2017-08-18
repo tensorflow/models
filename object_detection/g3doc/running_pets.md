@@ -300,7 +300,7 @@ python object_detection/export_inference_graph.py \
     --output_directory output
 ```
 
-Afterwards, you should see a graph in `output/saved_model` directory.
+Afterwards, you should see a graph `frozen_inference_graph.pb` in `output/` directory.
 
 ## What's Next
 
