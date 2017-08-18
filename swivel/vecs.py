@@ -15,7 +15,12 @@
 import mmap
 import numpy as np
 import os
-import struct
+
+try:
+    basestring        # Python 2
+except NameError:
+    basestring = str  # Python 3
+
 
 class Vecs(object):
   def __init__(self, vocab_filename, rows_filename, cols_filename=None):
@@ -41,8 +46,8 @@ class Vecs(object):
       rows = np.matrix(
           np.frombuffer(rows_mm, dtype=np.float32).reshape(n, dim))
 
-      # If column vectors were specified, then open them and add them to the row
-      # vectors.
+      # If column vectors were specified, then open them and add them to the
+      # row vectors.
       if cols_filename:
         with open(cols_filename, 'r') as cols_fh:
           cols_mm = mmap.mmap(cols_fh.fileno(), 0, prot=mmap.PROT_READ)
