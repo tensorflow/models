@@ -17,62 +17,74 @@ Before trying to run the model we highly encourage you to read all the README.
 2. Download the CIFAR-10 dataset.
 
 ```shell
-$ curl -o cifar-10-python.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
-$ tar xzf cifar-10-python.tar.gz
+curl -o cifar-10-python.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
+tar xzf cifar-10-python.tar.gz
 ```
 
 After running the commands above, you should see the following files in the folder where the data was downloaded.
 
 ``` shell
-$ ls -R cifar-10-batches-py
+ls -R cifar-10-batches-py
+```
 
+The output should be:
+
+
+```
 batches.meta  data_batch_1  data_batch_2  data_batch_3
 data_batch_4  data_batch_5  readme.html  test_batch
 ```
 
 3. Generate TFRecord files.
+This will generate a tf record for the training and test data available at the input_dir.
+You can see more details in `generate_cifar10_tf_records.py`
+
 ```shell
-# This will generate a tf record for the training and test data available at the input_dir.
-# You can see more details in generate_cifar10_tf_records.py
-$ python generate_cifar10_tfrecords.py --input-dir=/prefix/to/downloaded/data/cifar-10-batches-py \
-                                       --output-dir=/prefix/to/downloaded/data/cifar-10-batches-py
+python generate_cifar10_tfrecords.py --input-dir=${PWD}/cifar-10-batches-py \
+                                     --output-dir=${PWD}/cifar-10-batches-py
 ```
 
 After running the command above, you should see the following new files in the output_dir.
 
 ``` shell
-$ ls -R cifar-10-batches-py
+ls -R cifar-10-batches-py
+```
 
+```
 train.tfrecords validation.tfrecords eval.tfrecords
 ```
 
 ## How to run on local mode
 
+Run the model on CPU only. After training, it runs the evaluation.
+
+```
+python cifar10_main.py --data-dir=${PWD}/cifar-10-batches-py \
+                       --job-dir=/tmp/cifar10 \
+                       --num-gpus=0 \
+                       --train-steps=1000
 ```
 
-# Run the model on CPU only. After training, it runs the evaluation.
-$ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-py \
-                         --job-dir=/tmp/cifar10 \
-                         --num-gpus=0 \
-                         --train-steps=1000
-
-# Run the model on 2 GPUs using CPU as parameter server. After training, it runs the evaluation.
-$ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-py \
-                         --job-dir=/tmp/cifar10 \
-                         --num-gpus=2 \
-                         --train-steps=1000
-
-# Run the model on 2 GPUs using GPU as parameter server.
-# It will run an experiment, which for local setting basically means it will run stop training
-# a couple of times to perform evaluation.
-$ python cifar10_main.py --data-dir=/prefix/to/downloaded/data/cifar-10-batches-bin \
-                         --job-dir=/tmp/cifar10 \
-                         --variable-strategy GPU \
-                         --num-gpus=2 \
-
-
-# There are more command line flags to play with; check cifar10_main.py for details.
+Run the model on 2 GPUs using CPU as parameter server. After training, it runs the evaluation.
 ```
+python cifar10_main.py --data-dir=${PWD}/cifar-10-batches-py \
+                       --job-dir=/tmp/cifar10 \
+                       --num-gpus=2 \
+                       --train-steps=1000
+```
+
+Run the model on 2 GPUs using GPU as parameter server.
+It will run an experiment, which for local setting basically means it will run stop training
+a couple of times to perform evaluation.
+
+```
+python cifar10_main.py --data-dir=${PWD}/cifar-10-batches-bin \
+                       --job-dir=/tmp/cifar10 \
+                       --variable-strategy GPU \
+                       --num-gpus=2 \
+```
+
+There are more command line flags to play with; run `python cifar10_main.py --help` for details.
 
 ## How to run on distributed mode
 
@@ -86,7 +98,7 @@ You'll also need a Google Cloud Storage bucket for the data. If you followed the
 
 ```
 MY_BUCKET=gs://<my-bucket-name>
-gsutil cp -r cifar-10-batches-py $MY_BUCKET/
+gsutil cp -r ${PWD}/cifar-10-batches-py $MY_BUCKET/
 ```
 
 Then run the following command from the `tutorials/image` directory of this repository (the parent directory of this README):
@@ -172,18 +184,19 @@ By the default environment is *local*, for a distributed setting we need to chan
 Once you have a `TF_CONFIG` configured properly on each host you're ready to run on distributed settings.
 
 #### Master
+Run this on master:
+Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for 40000 steps.
+It will run evaluation a couple of times during training.
+The num_workers arugument is used only to update the learning rate correctly.
+Make sure the model_dir is the same as defined on the TF_CONFIG.
+
 ```shell
-# Run this on master:
-# Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for 40000 steps.
-# It will run evaluation a couple of times during training.
-# The num_workers arugument is used only to update the learning rate correctly.
-# Make sure the model_dir is the same as defined on the TF_CONFIG.
-$ python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
-                         --job-dir=gs://path/model_dir/ \
-                         --num-gpus=4 \
-                         --train-steps=40000 \
-                         --sync \
-                         --num-workers=2
+python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
+                       --job-dir=gs://path/model_dir/ \
+                       --num-gpus=4 \
+                       --train-steps=40000 \
+                       --sync \
+                       --num-workers=2
 ```
 
 *Output:*
@@ -313,16 +326,17 @@ INFO:tensorflow:Saving dict for global step 1: accuracy = 0.0994, global_step = 
 
 #### Worker
 
+Run this on worker:
+Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for 40000 steps.
+It will run evaluation a couple of times during training.
+Make sure the model_dir is the same as defined on the TF_CONFIG.
+
 ```shell
-# Run this on worker:
-# Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for 40000 steps.
-# It will run evaluation a couple of times during training.
-# Make sure the model_dir is the same as defined on the TF_CONFIG.
-$ python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
-                         --job-dir=gs://path/model_dir/ \
-                         --num-gpus=4 \
-                         --train-steps=40000 \
-                         --sync
+python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
+                       --job-dir=gs://path/model_dir/ \
+                       --num-gpus=4 \
+                       --train-steps=40000 \
+                       --sync
 ```
 
 *Output:*
@@ -428,12 +442,11 @@ INFO:tensorflow:loss = 27.8453, step = 179 (18.893 sec)
 
 #### PS
 
-```shell
-# Run this on ps:
-# The ps will not do training so most of the arguments won't affect the execution
-$ python cifar10_main.py --job-dir=gs://path/model_dir/
+Run this on ps:
+The ps will not do training so most of the arguments won't affect the execution
 
-# There are more command line flags to play with; check cifar10_main.py for details.
+```shell
+python cifar10_main.py --job-dir=gs://path/model_dir/
 ```
 
 *Output:*
@@ -460,11 +473,12 @@ When using Estimators you can also visualize your data in TensorBoard, with no c
 
 You'll see something similar to this if you "point" TensorBoard to the `model_dir` you used to train or evaluate your model.
 
+Check TensorBoard during training or after it.
+Just point TensorBoard to the model_dir you chose on the previous step
+by default the model_dir is "sentiment_analysis_output"
+
 ```shell
-# Check TensorBoard during training or after it.
-# Just point TensorBoard to the model_dir you chose on the previous step
-# by default the model_dir is "sentiment_analysis_output"
-$ tensorboard --log-dir="sentiment_analysis_output"
+tensorboard --log-dir="sentiment_analysis_output"
 ```
 
 ## Warnings
