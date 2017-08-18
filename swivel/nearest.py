@@ -73,4 +73,4 @@ while True:
   for word, sim in res[:20]:
     print('%0.4f: %s' % (sim, word))
 
-  print('')
+  print()
