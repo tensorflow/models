@@ -5,5 +5,4 @@ bazel-out
 bazel-genfiles
 bazel-ptn
 bazel-testlogs
-WORKSPACE
 *.pyc
