@@ -20,7 +20,6 @@ Example box operations that are supported:
   * IOU: pairwise intersection-over-union scores
 """
 
-from six.moves import range
 import numpy as np
 
 from object_detection.utils import np_box_list
