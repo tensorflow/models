@@ -1,7 +1,8 @@
+import collections
 import six
+import tensorflow as tf
 
 from tensorflow.python.platform import tf_logging as logging
-
 from tensorflow.core.framework import node_def_pb2
 from tensorflow.python.framework import device as pydev
 from tensorflow.python.training import basic_session_run_hooks
