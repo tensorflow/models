@@ -29,6 +29,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import collections
 import functools
 import itertools
 import os
@@ -352,7 +353,7 @@ def get_experiment_fn(data_dir, num_gpus, is_gpu_ps,
         eval_input_fn=eval_input_fn,
         train_steps=train_steps,
         eval_steps=eval_steps)
-    # Adding hooks to be used by the estimator on training mode.
+    # Adding hooks to be used by the estimator on training modes
     experiment.extend_train_hooks(hooks)
     return experiment
   return _experiment_fn
@@ -379,7 +380,7 @@ def main(job_dir,
       )
   )
 
-  config = tf.contrib.learn.RunConfig(
+  config = cifar10_utils.RunConfig(
       session_config=sess_config,
       model_dir=job_dir)
   tf.contrib.learn.learn_runner.run(
