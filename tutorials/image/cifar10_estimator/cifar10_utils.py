@@ -8,6 +8,43 @@ from tensorflow.python.training import basic_session_run_hooks
 from tensorflow.python.training import session_run_hook
 from tensorflow.python.training import training_util
 from tensorflow.python.training import device_setter
+from tensorflow.contrib.learn.python.learn import run_config
+
+
+# TODO(b/64848083) Remove once uid bug is fixed
+class RunConfig(tf.contrib.learn.RunConfig): 
+  def uid(self, whitelist=None):
+    """Generates a 'Unique Identifier' based on all internal fields.
+    Caller should use the uid string to check `RunConfig` instance integrity
+    in one session use, but should not rely on the implementation details, which
+    is subject to change.
+    Args:
+      whitelist: A list of the string names of the properties uid should not
+        include. If `None`, defaults to `_DEFAULT_UID_WHITE_LIST`, which
+        includes most properties user allowes to change.
+    Returns:
+      A uid string.
+    """
+    if whitelist is None:
+      whitelist = run_config._DEFAULT_UID_WHITE_LIST
+
+    state = {k: v for k, v in self.__dict__.items() if not k.startswith('__')}
+    # Pop out the keys in whitelist.
+    for k in whitelist:
+      state.pop('_' + k, None)
+
+    ordered_state = collections.OrderedDict(
+        sorted(state.items(), key=lambda t: t[0]))
+    # For class instance without __repr__, some special cares are required.
+    # Otherwise, the object address will be used.
+    if '_cluster_spec' in ordered_state:
+      ordered_state['_cluster_spec'] = collections.OrderedDict(
+         sorted(ordered_state['_cluster_spec'].as_dict().items(),
+                key=lambda t: t[0])
+      )
+    return ', '.join(
+        '%s=%r' % (k, v) for (k, v) in six.iteritems(ordered_state)) 
+
 
 class ExamplesPerSecondHook(session_run_hook.SessionRunHook):
   """Hook to print out examples per second.
