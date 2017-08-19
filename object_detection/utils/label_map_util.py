@@ -138,3 +138,20 @@ def get_label_map_dict(label_map_path):
   for item in label_map.item:
     label_map_dict[item.name] = item.id
   return label_map_dict
+
+
+def save_label_map_dict(path, label_map_dict):
+  """Saves label map proto from a dictionary of label names to id.
+
+  Args:
+    path: path to save StringIntLabelMap proto text file.
+    label_map_dict: dictionary of label names to id.
+  """
+  label_map = string_int_label_map_pb2.StringIntLabelMap()
+  for name, item_id in sorted(label_map_dict.items(), key=lambda x: x[1]):
+    label_map.item.add(name=name, id=item_id)
+
+  _validate_label_map(label_map)
+  label_map_string = text_format.MessageToString(label_map)
+  with tf.gfile.GFile(path, 'wb') as fid:
+    fid.write(label_map_string)
