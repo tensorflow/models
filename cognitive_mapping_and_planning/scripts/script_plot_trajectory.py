@@ -47,6 +47,7 @@ import src.file_utils as fu
 from src import graph_utils
 from src import utils
 matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa This line must come after matplotlib.use("Agg")
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('out_dir', 'vis', 'Directory where to store the output')
