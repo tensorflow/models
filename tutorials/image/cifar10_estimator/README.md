@@ -14,40 +14,18 @@ Before trying to run the model we highly encourage you to read all the README.
 1. Install TensorFlow version 1.2.1 or later with GPU support.
    You can see how to do it [here](https://www.tensorflow.org/install/).
 
-2. Download the CIFAR-10 dataset.
-
-```shell
-curl -o cifar-10-python.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
-tar xzf cifar-10-python.tar.gz
-```
-
-After running the commands above, you should see the following files in the folder where the data was downloaded.
-
-``` shell
-ls -R cifar-10-batches-py
-```
-
-The output should be:
-
-
-```
-batches.meta  data_batch_1  data_batch_2  data_batch_3
-data_batch_4  data_batch_5  readme.html  test_batch
-```
-
-3. Generate TFRecord files.
+2. Generate TFRecord files.
 This will generate a tf record for the training and test data available at the input_dir.
 You can see more details in `generate_cifar10_tf_records.py`
 
 ```shell
-python generate_cifar10_tfrecords.py --input-dir=${PWD}/cifar-10-batches-py \
-                                     --output-dir=${PWD}/cifar-10-batches-py
+python generate_cifar10_tfrecords.py --data-dir=${PWD}/cifar-10-data
 ```
 
 After running the command above, you should see the following new files in the output_dir.
 
 ``` shell
-ls -R cifar-10-batches-py
+ls -R cifar-10-data
 ```
 
 ```
@@ -59,7 +37,7 @@ train.tfrecords validation.tfrecords eval.tfrecords
 Run the model on CPU only. After training, it runs the evaluation.
 
 ```
-python cifar10_main.py --data-dir=${PWD}/cifar-10-batches-py \
+python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
                        --job-dir=/tmp/cifar10 \
                        --num-gpus=0 \
                        --train-steps=1000
@@ -67,7 +45,7 @@ python cifar10_main.py --data-dir=${PWD}/cifar-10-batches-py \
 
 Run the model on 2 GPUs using CPU as parameter server. After training, it runs the evaluation.
 ```
-python cifar10_main.py --data-dir=${PWD}/cifar-10-batches-py \
+python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
                        --job-dir=/tmp/cifar10 \
                        --num-gpus=2 \
                        --train-steps=1000
@@ -78,7 +56,7 @@ It will run an experiment, which for local setting basically means it will run s
 a couple of times to perform evaluation.
 
 ```
-python cifar10_main.py --data-dir=${PWD}/cifar-10-batches-bin \
+python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
                        --job-dir=/tmp/cifar10 \
                        --variable-strategy GPU \
                        --num-gpus=2 \
@@ -98,7 +76,7 @@ You'll also need a Google Cloud Storage bucket for the data. If you followed the
 
 ```
 MY_BUCKET=gs://<my-bucket-name>
-gsutil cp -r ${PWD}/cifar-10-batches-py $MY_BUCKET/
+gsutil cp -r ${PWD}/cifar-10-data $MY_BUCKET/
 ```
 
 Then run the following command from the `tutorials/image` directory of this repository (the parent directory of this README):
@@ -111,7 +89,7 @@ gcloud ml-engine jobs submit training cifarmultigpu \
     --package-path cifar10_estimator/ \
     --module-name cifar10_estimator.cifar10_main \
     -- \
-    --data-dir=$MY_BUCKET/cifar-10-batches-py \
+    --data-dir=$MY_BUCKET/cifar-10-data \
     --num-gpus=4 \
     --train-steps=1000
 ```
@@ -191,7 +169,7 @@ The num_workers arugument is used only to update the learning rate correctly.
 Make sure the model_dir is the same as defined on the TF_CONFIG.
 
 ```shell
-python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
+python cifar10_main.py --data-dir=gs://path/cifar-10-data \
                        --job-dir=gs://path/model_dir/ \
                        --num-gpus=4 \
                        --train-steps=40000 \
@@ -332,7 +310,7 @@ It will run evaluation a couple of times during training.
 Make sure the model_dir is the same as defined on the TF_CONFIG.
 
 ```shell
-python cifar10_main.py --data-dir=gs://path/cifar-10-batches-py \
+python cifar10_main.py --data-dir=gs://path/cifar-10-data \
                        --job-dir=gs://path/model_dir/ \
                        --num-gpus=4 \
                        --train-steps=40000 \
