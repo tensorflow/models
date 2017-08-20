@@ -55,7 +55,7 @@ python prediction_train.py
 ```
 
 There are several flags which can control the model that is trained, which are
-exeplified below:
+exemplified below:
 ```shell
 python prediction_train.py \
   --data_dir=push/push_train \ # path to the training set.
