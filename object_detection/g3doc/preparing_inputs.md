@@ -34,10 +34,9 @@ The label map for the PASCAL VOC data set can be found at
 
 ## Generating the Oxford-IIIT Pet TFRecord files.
 
-The Oxford-IIIT Pet data set is located on
-[their website](http://www.robots.ox.ac.uk/~vgg/data/pets/).
-To download, extract and convert it to TFRecrods, run the following commands
-below:
+The Oxford-IIIT Pet data set is located
+[here](http://www.robots.ox.ac.uk/~vgg/data/pets/). To download, extract and
+convert it to TFRecrods, run the following commands below:
 
 ```bash
 # From tensorflow/models

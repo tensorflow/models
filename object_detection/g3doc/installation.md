@@ -74,6 +74,6 @@ to avoid running this manually, you can add it as a new line to the end of your
 You can test that you have correctly installed the Tensorflow Object Detection\
 API by running the following command:
 
-``` bash
+```bash
 python object_detection/builders/model_builder_test.py
 ```

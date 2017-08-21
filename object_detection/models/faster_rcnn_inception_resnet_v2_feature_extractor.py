@@ -25,7 +25,6 @@ Huang et al. (https://arxiv.org/abs/1611.10012)
 import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
-from object_detection.utils import variables_helper
 from nets import inception_resnet_v2
 
 slim = tf.contrib.slim
@@ -168,30 +167,30 @@ class FasterRCNNInceptionResnetV2FeatureExtractor(
 
   def restore_from_classification_checkpoint_fn(
       self,
-      checkpoint_path,
       first_stage_feature_extractor_scope,
       second_stage_feature_extractor_scope):
-    """Returns callable for loading a checkpoint into the tensorflow graph.
+    """Returns a map of variables to load from a foreign checkpoint.
 
     Note that this overrides the default implementation in
     faster_rcnn_meta_arch.FasterRCNNFeatureExtractor which does not work for
     InceptionResnetV2 checkpoints.
 
-    TODO: revisit whether it's possible to force the `Repeat` namescope as
-    created in `_extract_box_classifier_features` to start counting at 2 (e.g.
-    `Repeat_2`) so that the default restore_fn can be used.
+    TODO: revisit whether it's possible to force the
+    `Repeat` namescope as created in `_extract_box_classifier_features` to
+    start counting at 2 (e.g. `Repeat_2`) so that the default restore_fn can
+    be used.
 
     Args:
-      checkpoint_path: Path to checkpoint to restore.
       first_stage_feature_extractor_scope: A scope name for the first stage
         feature extractor.
       second_stage_feature_extractor_scope: A scope name for the second stage
         feature extractor.
 
     Returns:
-      a callable which takes a tf.Session as input and loads a checkpoint when
-        run.
+      A dict mapping variable names (to load from a checkpoint) to variables in
+      the model graph.
     """
+
     variables_to_restore = {}
     for variable in tf.global_variables():
       if variable.op.name.startswith(
@@ -207,10 +206,4 @@ class FasterRCNNInceptionResnetV2FeatureExtractor(
         var_name = var_name.replace(
             second_stage_feature_extractor_scope + '/', '')
         variables_to_restore[var_name] = variable
-    variables_to_restore = (
-        variables_helper.get_variables_available_in_checkpoint(
-            variables_to_restore, checkpoint_path))
-    saver = tf.train.Saver(variables_to_restore)
-    def restore(sess):
-      saver.restore(sess, checkpoint_path)
-    return restore
+    return variables_to_restore

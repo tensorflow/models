@@ -14,6 +14,7 @@ running TensorFlow 0.12 or earlier, please
 - [adversarial_crypto](adversarial_crypto): protecting communications with adversarial neural cryptography.
 - [adversarial_text](adversarial_text): semi-supervised sequence learning with adversarial training.
 - [attention_ocr](attention_ocr): a model for real-world image text extraction.
+- [audioset](audioset): Models and supporting code for use with [AudioSet](http://g.co.audioset).
 - [autoencoder](autoencoder): various autoencoders.
 - [cognitive_mapping_and_planning](cognitive_mapping_and_planning): implementation of a spatial memory based mapping and planning architecture for visual navigation.
 - [compression](compression): compressing and decompressing images using a pre-trained Residual GRU network.
@@ -29,6 +30,9 @@ running TensorFlow 0.12 or earlier, please
 - [neural_programmer](neural_programmer): neural network augmented with logic and mathematic operations.
 - [next_frame_prediction](next_frame_prediction): probabilistic future frame synthesis via cross convolutional networks.
 - [object_detection](object_detection): localizing and identifying multiple objects in a single image.
+- [pcl_rl](pcl_rl): code for several reinforcement learning algorithms, including Path Consistency Learning.
+- [ptn](ptn): perspective transformer nets for 3D object reconstruction.
+- [qa_kg](qa_kg): module networks for question answering on knowledge graphs.
 - [real_nvp](real_nvp): density estimation using real-valued non-volume preserving (real NVP) transformations.
 - [rebar](rebar): low-variance, unbiased gradient estimates for discrete latent variable models.
 - [resnet](resnet): deep and wide residual networks.

@@ -13,12 +13,11 @@ py_library(
     srcs = ["ssd_meta_arch.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:box_coder",
         "//tensorflow_models/object_detection/core:box_list",
         "//tensorflow_models/object_detection/core:box_predictor",
         "//tensorflow_models/object_detection/core:model",
         "//tensorflow_models/object_detection/core:target_assigner",
-        "//tensorflow_models/object_detection/utils:variables_helper",
+        "//tensorflow_models/object_detection/utils:shape_utils",
     ],
 )
 
@@ -56,7 +55,7 @@ py_library(
         "//tensorflow_models/object_detection/core:standard_fields",
         "//tensorflow_models/object_detection/core:target_assigner",
         "//tensorflow_models/object_detection/utils:ops",
-        "//tensorflow_models/object_detection/utils:variables_helper",
+        "//tensorflow_models/object_detection/utils:shape_utils",
     ],
 )
 
