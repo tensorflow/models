@@ -9,7 +9,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 
 from autoencoder_models.DenoisingAutoencoder import MaskingNoiseAutoencoder
 
-mnist = input_data.read_data_sets('MNIST_data', one_hot = True)
+mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
 
 def standard_scale(X_train, X_test):
@@ -32,11 +32,11 @@ batch_size = 128
 display_step = 1
 
 autoencoder = MaskingNoiseAutoencoder(
-    n_input = 784,
-    n_hidden = 200,
-    transfer_function = tf.nn.softplus,
-    optimizer = tf.train.AdamOptimizer(learning_rate = 0.001),
-    dropout_probability = 0.95)
+    n_input=784,
+    n_hidden=200,
+    transfer_function=tf.nn.softplus,
+    optimizer=tf.train.AdamOptimizer(learning_rate=0.001),
+    dropout_probability=0.95)
 
 for epoch in range(training_epochs):
     avg_cost = 0.
