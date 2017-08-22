@@ -36,7 +36,7 @@ class DictToTFExampleTest(tf.test.TestCase):
     proto_list = [p for p in proto_field]
     self.assertListEqual(proto_list, expectation)
 
-  def test_dict_to_tf_example(self):
+  def test_dict_to_tf_example_one_class(self):
     image_file_name = 'tmp_image.jpg'
     image_data = np.random.rand(256, 256, 3)
     save_path = os.path.join(self.get_temp_dir(), image_file_name)
@@ -80,12 +80,12 @@ class DictToTFExampleTest(tf.test.TestCase):
         example.features.feature['image/width'].int64_list.value, [256])
     self._assertProtoEqual(
         example.features.feature['image/filename'].bytes_list.value,
-        [image_file_name])
+        [image_file_name.encode('utf-8')])
     self._assertProtoEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        [image_file_name])
+        [image_file_name.encode('utf-8')])
     self._assertProtoEqual(
-        example.features.feature['image/format'].bytes_list.value, ['jpeg'])
+        example.features.feature['image/format'].bytes_list.value, [b'jpeg'])
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/xmin'].float_list.value,
         [0.25])
@@ -100,7 +100,7 @@ class DictToTFExampleTest(tf.test.TestCase):
         [0.75])
     self._assertProtoEqual(
         example.features.feature['image/object/class/text'].bytes_list.value,
-        ['person'])
+        [b'person'])
     self._assertProtoEqual(
         example.features.feature['image/object/class/label'].int64_list.value,
         [1])
@@ -111,7 +111,97 @@ class DictToTFExampleTest(tf.test.TestCase):
         example.features.feature['image/object/truncated'].int64_list.value,
         [0])
     self._assertProtoEqual(
-        example.features.feature['image/object/view'].bytes_list.value, [''])
+        example.features.feature['image/object/view'].bytes_list.value, [b''])
+
+
+  def test_dict_to_tf_example_multiple_classes(self):
+    image_file_name = 'tmp_image.jpg'
+    image_data = np.random.rand(256, 256, 3)
+    save_path = os.path.join(self.get_temp_dir(), image_file_name)
+    image = PIL.Image.fromarray(image_data, 'RGB')
+    image.save(save_path)
+
+    data = {
+        'folder': '',
+        'filename': image_file_name,
+        'size': {
+            'height': 256,
+            'width': 256,
+        },
+        'object': [
+            {
+                'difficult': 1,
+                'bndbox': {
+                    'xmin': 64,
+                    'ymin': 64,
+                    'xmax': 192,
+                    'ymax': 192,
+                },
+                'name': 'person',
+                'truncated': 0,
+                'pose': '',
+            },
+            {
+                'difficult': 1,
+                'bndbox': {
+                    'xmin': 96,
+                    'ymin': 96,
+                    'xmax': 128,
+                    'ymax': 128,
+                },
+                'name': 'notperson',
+                'truncated': 0,
+                'pose': '',
+            },
+        ],
+    }
+
+    label_map_dict = {
+        'background': 0,
+        'person': 1,
+        'notperson': 2,
+    }
+
+    example = create_pascal_tf_record.dict_to_tf_example(
+        data, self.get_temp_dir(), label_map_dict, image_subdirectory='')
+    self._assertProtoEqual(
+        example.features.feature['image/height'].int64_list.value, [256])
+    self._assertProtoEqual(
+        example.features.feature['image/width'].int64_list.value, [256])
+    self._assertProtoEqual(
+        example.features.feature['image/filename'].bytes_list.value,
+        [image_file_name.encode('utf-8')])
+    self._assertProtoEqual(
+        example.features.feature['image/source_id'].bytes_list.value,
+        [image_file_name.encode('utf-8')])
+    self._assertProtoEqual(
+        example.features.feature['image/format'].bytes_list.value, [b'jpeg'])
+    self._assertProtoEqual(
+        example.features.feature['image/object/bbox/xmin'].float_list.value,
+        [0.25, 0.375])
+    self._assertProtoEqual(
+        example.features.feature['image/object/bbox/ymin'].float_list.value,
+        [0.25, 0.375])
+    self._assertProtoEqual(
+        example.features.feature['image/object/bbox/xmax'].float_list.value,
+        [0.75, 0.5])
+    self._assertProtoEqual(
+        example.features.feature['image/object/bbox/ymax'].float_list.value,
+        [0.75, 0.5])
+    self._assertProtoEqual(
+        example.features.feature['image/object/class/text'].bytes_list.value,
+        [b'person', b'notperson'])
+    self._assertProtoEqual(
+        example.features.feature['image/object/class/label'].int64_list.value,
+        [1, 2])
+    self._assertProtoEqual(
+        example.features.feature['image/object/difficult'].int64_list.value,
+        [1, 1])
+    self._assertProtoEqual(
+        example.features.feature['image/object/truncated'].int64_list.value,
+        [0, 0])
+    self._assertProtoEqual(
+        example.features.feature['image/object/view'].bytes_list.value, [b'', b''])
 
 
 if __name__ == '__main__':
