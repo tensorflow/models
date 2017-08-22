@@ -67,7 +67,7 @@ export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
 
 Note: This command needs to run from every new terminal you start. If you wish
 to avoid running this manually, you can add it as a new line to the end of your
-~/.bashrc file.
+~/.bashrc file. Then, if you do not want to restart, execute the command: source ~/.bashrc
 
 # Testing the Installation
 
