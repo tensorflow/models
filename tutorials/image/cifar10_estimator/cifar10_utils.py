@@ -1,4 +1,7 @@
+import collections
 import six
+
+import tensorflow as tf
 
 from tensorflow.python.platform import tf_logging as logging
 
