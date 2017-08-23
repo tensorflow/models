@@ -158,7 +158,7 @@ def LogisticClassifier(inputs, labels, scope=None, reuse=None):
 def BatchNormClassifier(inputs, labels, scope=None, reuse=None):
   with tf.variable_scope(scope, 'BatchNormClassifier', [inputs, labels],
                          reuse=reuse):
-    inputs = slim.batch_norm(inputs, decay=0.1, fused=None)
+    inputs = slim.batch_norm(inputs, decay=0.1, fused=True)
     predictions = slim.fully_connected(inputs, 1,
                                        activation_fn=tf.sigmoid,
                                        scope='fully_connected')
