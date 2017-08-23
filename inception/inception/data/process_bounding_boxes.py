@@ -102,7 +102,9 @@ def GetItem(name, root, index=0):
 
 
 def GetInt(name, root, index=0):
-  return int(GetItem(name, root, index))
+  # In some XML annotation files, the point values are not integers, but floats.
+  # So we add a float function to avoid ValueError.
+  return int(float(GetItem(name, root, index)))
 
 
 def FindNumberBoundingBoxes(root):
@@ -128,7 +130,7 @@ def ProcessXMLAnnotation(xml_file):
   num_boxes = FindNumberBoundingBoxes(root)
   boxes = []
 
-  for index in xrange(num_boxes):
+  for index in range(num_boxes):
     box = BoundingBox()
     # Grab the 'index' annotation.
     box.xmin = GetInt('xmin', root, index)

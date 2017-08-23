@@ -42,8 +42,8 @@ def sequence_loss_by_example(inputs, targets, weights, loss_function,
   if len(targets) != len(inputs) or len(weights) != len(inputs):
     raise ValueError('Lengths of logits, weights, and targets must be the same '
                      '%d, %d, %d.' % (len(inputs), len(weights), len(targets)))
-  with tf.op_scope(inputs + targets + weights, name,
-                   'sequence_loss_by_example'):
+  with tf.name_scope(values=inputs + targets + weights, name=name,
+                     default_name='sequence_loss_by_example'):
     log_perp_list = []
     for inp, target, weight in zip(inputs, targets, weights):
       crossent = loss_function(inp, target)
@@ -77,7 +77,8 @@ def sampled_sequence_loss(inputs, targets, weights, loss_function,
   Raises:
     ValueError: If len(inputs) is different from len(targets) or len(weights).
   """
-  with tf.op_scope(inputs + targets + weights, name, 'sampled_sequence_loss'):
+  with tf.name_scope(values=inputs + targets + weights, name=name,
+                     default_name='sampled_sequence_loss'):
     cost = tf.reduce_sum(sequence_loss_by_example(
         inputs, targets, weights, loss_function,
         average_across_timesteps=average_across_timesteps))
@@ -127,7 +128,7 @@ def linear(args, output_size, bias, bias_start=0.0, scope=None):
     if len(args) == 1:
       res = tf.matmul(args[0], matrix)
     else:
-      res = tf.matmul(tf.concat(1, args), matrix)
+      res = tf.matmul(tf.concat(axis=1, values=args), matrix)
     if not bias:
       return res
     bias_term = tf.get_variable(

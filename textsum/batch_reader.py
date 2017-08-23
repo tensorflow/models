@@ -16,12 +16,14 @@
 """Batch reader to seq2seq attention model, with bucketing support."""
 
 from collections import namedtuple
-import Queue
 from random import shuffle
 from threading import Thread
 import time
 
 import numpy as np
+import six
+from six.moves import queue as Queue
+from six.moves import xrange
 import tensorflow as tf
 
 import data
@@ -132,7 +134,7 @@ class Batcher(object):
     pad_id = self._vocab.WordToId(data.PAD_TOKEN)
     input_gen = self._TextGenerator(data.ExampleGen(self._data_path))
     while True:
-      (article, abstract) = input_gen.next()
+      (article, abstract) = six.next(input_gen)
       article_sentences = [sent.strip() for sent in
                            data.ToSentences(article, include_token=False)]
       abstract_sentences = [sent.strip() for sent in
@@ -241,7 +243,7 @@ class Batcher(object):
   def _TextGenerator(self, example_gen):
     """Generates article and abstract text from tf.Example."""
     while True:
-      e = example_gen.next()
+      e = six.next(example_gen)
       try:
         article_text = self._GetExFeatureText(e, self._article_key)
         abstract_text = self._GetExFeatureText(e, self._abstract_key)

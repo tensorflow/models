@@ -16,6 +16,7 @@
 """ResNet Train/Eval module.
 """
 import time
+import six
 import sys
 
 import cifar_input
@@ -70,8 +71,8 @@ def train(hps):
   summary_hook = tf.train.SummarySaverHook(
       save_steps=100,
       output_dir=FLAGS.train_dir,
-      summary_op=[model.summaries,
-                  tf.summary.scalar('Precision', precision)])
+      summary_op=tf.summary.merge([model.summaries,
+                                   tf.summary.scalar('Precision', precision)]))
 
   logging_hook = tf.train.LoggingTensorHook(
       tensors={'step': model.global_step,
@@ -127,7 +128,6 @@ def evaluate(hps):
 
   best_precision = 0.0
   while True:
-    time.sleep(60)
     try:
       ckpt_state = tf.train.get_checkpoint_state(FLAGS.log_root)
     except tf.errors.OutOfRangeError as e:
@@ -140,7 +140,7 @@ def evaluate(hps):
     saver.restore(sess, ckpt_state.model_checkpoint_path)
 
     total_prediction, correct_prediction = 0, 0
-    for _ in xrange(FLAGS.eval_batch_count):
+    for _ in six.moves.range(FLAGS.eval_batch_count):
       (summaries, loss, predictions, truth, train_step) = sess.run(
           [model.summaries, model.cost, model.predictions,
            model.labels, model.global_step])
@@ -162,12 +162,14 @@ def evaluate(hps):
         tag='Best Precision', simple_value=best_precision)
     summary_writer.add_summary(best_precision_summ, train_step)
     summary_writer.add_summary(summaries, train_step)
-    tf.logging.info('loss: %.3f, precision: %.3f, best precision: %.3f\n' %
+    tf.logging.info('loss: %.3f, precision: %.3f, best precision: %.3f' %
                     (loss, precision, best_precision))
     summary_writer.flush()
 
     if FLAGS.eval_once:
       break
+
+    time.sleep(60)
 
 
 def main(_):
@@ -206,4 +208,5 @@ def main(_):
 
 
 if __name__ == '__main__':
+  tf.logging.set_verbosity(tf.logging.INFO)
   tf.app.run()

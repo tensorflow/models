@@ -25,7 +25,7 @@ import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-from tensorflow.models.rnn.translate import data_utils
+import data_utils
 
 
 class Seq2SeqModel(object):
@@ -100,13 +100,13 @@ class Seq2SeqModel(object):
       b = tf.get_variable("proj_b", [self.target_vocab_size], dtype=dtype)
       output_projection = (w, b)
 
-      def sampled_loss(labels, inputs):
+      def sampled_loss(labels, logits):
         labels = tf.reshape(labels, [-1, 1])
         # We need to compute the sampled_softmax_loss using 32bit floats to
         # avoid numerical instabilities.
         local_w_t = tf.cast(w_t, tf.float32)
         local_b = tf.cast(b, tf.float32)
-        local_inputs = tf.cast(inputs, tf.float32)
+        local_inputs = tf.cast(logits, tf.float32)
         return tf.cast(
             tf.nn.sampled_softmax_loss(
                 weights=local_w_t,
@@ -119,12 +119,14 @@ class Seq2SeqModel(object):
       softmax_loss_function = sampled_loss
 
     # Create the internal multi-layer cell for our RNN.
-    single_cell = tf.contrib.rnn.GRUCell(size)
+    def single_cell():
+      return tf.contrib.rnn.GRUCell(size)
     if use_lstm:
-      single_cell = tf.contrib.rnn.BasicLSTMCell(size)
-    cell = single_cell
+      def single_cell():
+        return tf.contrib.rnn.BasicLSTMCell(size)
+    cell = single_cell()
     if num_layers > 1:
-      cell = tf.contrib.rnn.MultiRNNCell([single_cell] * num_layers)
+      cell = tf.contrib.rnn.MultiRNNCell([single_cell() for _ in range(num_layers)])
 
     # The seq2seq function: we use embedding for the input and attention.
     def seq2seq_f(encoder_inputs, decoder_inputs, do_decode):

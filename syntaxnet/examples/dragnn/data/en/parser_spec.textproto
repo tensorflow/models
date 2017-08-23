@@ -1,0 +1,138 @@
+component {
+  name: "char_lstm"
+  transition_system {
+    registered_name: "char-shift-only"
+    parameters {
+      key: "left_to_right"
+      value: "true"
+    }
+  }
+  fixed_feature {
+    name: "chars"
+    fml: "char-input.text-char"
+    embedding_dim: 16
+  }
+  network_unit {
+    registered_name: "wrapped_units.LayerNormBasicLSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "256"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  component_builder {
+    registered_name: "DynamicComponentBuilder"
+  }
+}
+component {
+  name: "lookahead"
+  transition_system {
+    registered_name: "shift-only"
+    parameters {
+      key: "left_to_right"
+      value: "false"
+    }
+  }
+  linked_feature {
+    name: "char_lstm"
+    fml: "input.last-char-focus"
+    embedding_dim: 64
+    source_component: "char_lstm"
+    source_translator: "identity"
+    source_layer: "state_h_0"
+  }
+  network_unit {
+    registered_name: "wrapped_units.LayerNormBasicLSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "256"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  component_builder {
+    registered_name: "DynamicComponentBuilder"
+  }
+}
+component {
+  name: "tagger"
+  transition_system {
+    registered_name: "tagger"
+  }
+  linked_feature {
+    name: "lookahead"
+    fml: "input.focus"
+    embedding_dim: 64
+    source_component: "lookahead"
+    source_translator: "reverse-token"
+    source_layer: "state_h_0"
+  }
+  network_unit {
+    registered_name: "wrapped_units.LayerNormBasicLSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "256"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  component_builder {
+    registered_name: "DynamicComponentBuilder"
+  }
+}
+component {
+  name: "parser"
+  transition_system {
+    registered_name: "arc-standard"
+  }
+  fixed_feature {
+    name: "labels"
+    fml: "stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label stack(1).child(1).label stack(1).child(1).sibling(-1).label stack(1).child(-1).label stack(1).child(-1).sibling(1).label stack.child(2).label stack.child(-2).label stack(1).child(2).label stack(1).child(-2).label"
+    embedding_dim: 16
+  }
+  linked_feature {
+    name: "lookahead"
+    fml: "input.focus"
+    embedding_dim: 64
+    source_component: "lookahead"
+    source_translator: "reverse-token"
+    source_layer: "state_h_0"
+  }
+  linked_feature {
+    name: "tagger"
+    fml: "input.focus stack.focus stack(1).focus"
+    embedding_dim: 64
+    source_component: "tagger"
+    source_translator: "identity"
+    source_layer: "state_h_0"
+  }
+  linked_feature {
+    name: "rnn-stack"
+    fml: "stack.focus stack(1).focus"
+    embedding_dim: 64
+    source_component: "parser"
+    source_translator: "shift-reduce-step"
+    source_layer: "layer_0"
+  }
+  network_unit {
+    registered_name: "FeedForwardNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "256"
+    }
+    parameters {
+      key: "layer_norm_hidden"
+      value: "true"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  component_builder {
+    registered_name: "DynamicComponentBuilder"
+  }
+}

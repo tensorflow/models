@@ -53,6 +53,8 @@ tf.app.flags.DEFINE_integer('max_steps', 1000, #100000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
+tf.app.flags.DEFINE_integer('log_frequency', 10,
+                            """How often to log results to the console.""")
 
 start = time.time()
 
@@ -62,7 +64,10 @@ def train():
     global_step = tf.contrib.framework.get_or_create_global_step()
 
     # Get images and labels for CIFAR-10.
-    images, labels = cifar10.distorted_inputs()
+    # Force input pipeline to CPU:0 to avoid operations sometimes ending up on
+    # GPU and resulting in a slow down.
+    with tf.device('/cpu:0'):
+      images, labels = cifar10.distorted_inputs()
 
     # Build a Graph that computes the logits predictions from the
     # inference model.
@@ -80,10 +85,10 @@ def train():
 
       def begin(self):
         self._step = -1
+        self._start_time = time.time()
 
       def before_run(self, run_context):
         self._step += 1
-        self._start_time = time.time()
         return tf.train.SessionRunArgs(loss)  # Asks for loss value.
 
       def after_run(self, run_context, run_values):

@@ -36,7 +36,7 @@ a sharded data set consisting of 1024 and 128 TFRecord files, respectively.
   train_directory/train-00000-of-01024
   train_directory/train-00001-of-01024
   ...
-  train_directory/train-00127-of-01024
+  train_directory/train-01023-of-01024
 
 and
 
@@ -54,7 +54,7 @@ serialized Example proto. The Example proto contains the following fields:
   image/width: integer, image width in pixels
   image/colorspace: string, specifying the colorspace, always 'RGB'
   image/channels: integer, specifying the number of channels, always 3
-  image/format: string, specifying the format, always'JPEG'
+  image/format: string, specifying the format, always 'JPEG'
 
   image/filename: string containing the basename of the image file
             e.g. 'n01440764_10026.JPEG' or 'ILSVRC2012_val_00000293.JPEG'
@@ -80,7 +80,7 @@ serialized Example proto. The Example proto contains the following fields:
 Note that the length of xmin is identical to the length of xmax, ymin and ymax
 for each example.
 
-Running this script using 16 threads may take around ~2.5 hours on a HP Z420.
+Running this script using 16 threads may take around ~2.5 hours on an HP Z420.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -91,7 +91,6 @@ import os
 import random
 import sys
 import threading
-
 
 import numpy as np
 import tensorflow as tf
@@ -370,7 +369,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
   num_files_in_thread = ranges[thread_index][1] - ranges[thread_index][0]
 
   counter = 0
-  for s in xrange(num_shards_per_batch):
+  for s in range(num_shards_per_batch):
     # Generate a sharded version of the file name, e.g. 'train-00002-of-00010'
     shard = thread_index * num_shards_per_batch + s
     output_filename = '%s-%.5d-of-%.5d' % (name, shard, num_shards)
@@ -434,8 +433,8 @@ def _process_image_files(name, filenames, synsets, labels, humans,
   spacing = np.linspace(0, len(filenames), FLAGS.num_threads + 1).astype(np.int)
   ranges = []
   threads = []
-  for i in xrange(len(spacing) - 1):
-    ranges.append([spacing[i], spacing[i+1]])
+  for i in range(len(spacing) - 1):
+    ranges.append([spacing[i], spacing[i + 1]])
 
   # Launch a thread for each batch.
   print('Launching %d threads for spacings: %s' % (FLAGS.num_threads, ranges))
@@ -448,7 +447,7 @@ def _process_image_files(name, filenames, synsets, labels, humans,
   coder = ImageCoder()
 
   threads = []
-  for thread_index in xrange(len(ranges)):
+  for thread_index in range(len(ranges)):
     args = (coder, thread_index, ranges, name, filenames,
             synsets, labels, humans, bboxes, num_shards)
     t = threading.Thread(target=_process_image_files_batch, args=args)
@@ -524,7 +523,7 @@ def _find_image_files(data_dir, labels_file):
   # Shuffle the ordering of all image files in order to guarantee
   # random ordering of the images with respect to label in the
   # saved TFRecord files. Make the randomization repeatable.
-  shuffled_index = range(len(filenames))
+  shuffled_index = list(range(len(filenames)))
   random.seed(12345)
   random.shuffle(shuffled_index)
 

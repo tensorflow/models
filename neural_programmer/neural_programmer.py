@@ -195,6 +195,9 @@ def master(train_data, dev_data, utility):
     else:
       ckpt = tf.train.get_checkpoint_state(model_dir)
       print "model dir: ", model_dir
+      if (not (tf.gfile.IsDirectory(utility.FLAGS.output_dir))):
+        print "create dir: ", utility.FLAGS.output_dir
+        tf.gfile.MkDir(utility.FLAGS.output_dir)
       if (not (tf.gfile.IsDirectory(model_dir))):
         print "create dir: ", model_dir
         tf.gfile.MkDir(model_dir)

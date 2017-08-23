@@ -22,7 +22,6 @@ limitations under the License.
 #include <vector>
 
 #include "syntaxnet/document_format.h"
-#include "syntaxnet/feature_extractor.pb.h"
 #include "syntaxnet/feature_types.h"
 #include "syntaxnet/registry.h"
 #include "syntaxnet/sentence.pb.h"
@@ -131,7 +130,7 @@ class StdIn : public tensorflow::RandomAccessFile {
                       char *scratch) const {
     memcpy(scratch, buffer_.data(), buffer_.size());
     buffer_ = buffer_.substr(n);
-    result->set(scratch, n);
+    *result = tensorflow::StringPiece(scratch, n);
     expected_offset_ += n;
   }
 
@@ -161,7 +160,7 @@ class TextReader {
   Sentence *Read() {
     // Skips emtpy sentences, e.g., blank lines at the beginning of a file or
     // commented out blocks.
-    vector<Sentence *> sentences;
+    std::vector<Sentence *> sentences;
     string key, value;
     while (sentences.empty() && format_->ReadRecord(buffer_.get(), &value)) {
       key = tensorflow::strings::StrCat(filename_, ":", sentence_count_);
@@ -227,7 +226,7 @@ class TextWriter {
 
   ~TextWriter() {
     if (file_) {
-      file_->Close();
+      TF_CHECK_OK(file_->Close());
     }
   }
 

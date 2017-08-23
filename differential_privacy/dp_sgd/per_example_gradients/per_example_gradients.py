@@ -189,7 +189,7 @@ class MatMulPXG(object):
     z_grads, = z_grads
     x_expanded = tf.expand_dims(x, 2)
     z_grads_expanded = tf.expand_dims(z_grads, 1)
-    return tf.mul(x_expanded, z_grads_expanded)
+    return tf.multiply(x_expanded, z_grads_expanded)
 
 
 pxg_registry.Register("MatMul", MatMulPXG)
@@ -245,7 +245,7 @@ class Conv2DPXG(object):
       num_x = int(conv_x.get_shape()[0])
       assert num_x == 1, num_x
     assert len(conv_px) == batch_size
-    conv = tf.concat(0, conv_px)
+    conv = tf.concat(axis=0, values=conv_px)
     assert int(conv.get_shape()[0]) == batch_size
     return conv, w_px
 
@@ -274,7 +274,7 @@ class Conv2DPXG(object):
                                   self.colocate_gradients_with_ops,
                                   gate_gradients=self.gate_gradients)
 
-    return tf.pack(gradients_list)
+    return tf.stack(gradients_list)
 
 pxg_registry.Register("Conv2D", Conv2DPXG)
 

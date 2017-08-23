@@ -1,7 +1,6 @@
 # Video Prediction with Neural Advection
 
-*A TensorFlow implementation of the models described in [Finn et al. (2016)]
-(http://arxiv.org/abs/1605.07157).*
+*A TensorFlow implementation of the models described in [Unsupervised Learning for Physical Interaction through Video Prediction (Finn et al., 2016)](https://arxiv.org/abs/1605.07157).*
 
 This video prediction model, which is optionally conditioned on actions,
 predictions future video by internally predicting how to transform the last

@@ -37,11 +37,14 @@ class NamignizerModel(object):
         self._weights = tf.placeholder(tf.float32, [batch_size * num_steps])
 
         # lstm for our RNN cell (GRU supported too)
-        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(size, forget_bias=0.0)
-        if is_training and config.keep_prob < 1:
-            lstm_cell = tf.nn.rnn_cell.DropoutWrapper(
-                lstm_cell, output_keep_prob=config.keep_prob)
-        cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * config.num_layers)
+        lstm_cells = []
+        for layer in range(config.num_layers):
+            lstm_cell = tf.contrib.rnn.BasicLSTMCell(size, forget_bias=0.0)
+            if is_training and config.keep_prob < 1:
+                lstm_cell = tf.contrib.rnn.DropoutWrapper(
+                    lstm_cell, output_keep_prob=config.keep_prob)
+            lstm_cells.append(lstm_cell)
+        cell = tf.contrib.rnn.MultiRNNCell(lstm_cells)
 
         self._initial_state = cell.zero_state(batch_size, tf.float32)
 
@@ -61,11 +64,11 @@ class NamignizerModel(object):
                 (cell_output, state) = cell(inputs[:, time_step, :], state)
                 outputs.append(cell_output)
 
-        output = tf.reshape(tf.concat(1, outputs), [-1, size])
+        output = tf.reshape(tf.concat(axis=1, values=outputs), [-1, size])
         softmax_w = tf.get_variable("softmax_w", [size, vocab_size])
         softmax_b = tf.get_variable("softmax_b", [vocab_size])
         logits = tf.matmul(output, softmax_w) + softmax_b
-        loss = tf.nn.seq2seq.sequence_loss_by_example(
+        loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
             [logits],
             [tf.reshape(self._targets, [-1])],
             [self._weights])
@@ -77,7 +80,7 @@ class NamignizerModel(object):
         self._activations = tf.nn.softmax(logits)
 
         # ability to save the model
-        self.saver = tf.train.Saver(tf.all_variables())
+        self.saver = tf.train.Saver(tf.global_variables())
 
         if not is_training:
             return

@@ -164,6 +164,68 @@ class InceptionV2Test(tf.test.TestCase):
     with self.assertRaises(ValueError):
       _ = inception.inception_v2(inputs, num_classes, depth_multiplier=0.0)
 
+  def testBuildEndPointsWithUseSeparableConvolutionFalse(self):
+    batch_size = 5
+    height, width = 224, 224
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    _, end_points = inception.inception_v2_base(inputs)
+
+    endpoint_keys = [
+        key for key in end_points.keys()
+        if key.startswith('Mixed') or key.startswith('Conv')
+    ]
+
+    _, end_points_with_replacement = inception.inception_v2_base(
+        inputs, use_separable_conv=False)
+
+    # The endpoint shapes must be equal to the original shape even when the
+    # separable convolution is replaced with a normal convolution.
+    for key in endpoint_keys:
+      original_shape = end_points[key].get_shape().as_list()
+      self.assertTrue(key in end_points_with_replacement)
+      new_shape = end_points_with_replacement[key].get_shape().as_list()
+      self.assertListEqual(original_shape, new_shape)
+
+  def testBuildEndPointsNCHWDataFormat(self):
+    batch_size = 5
+    height, width = 224, 224
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    _, end_points = inception.inception_v2_base(inputs)
+
+    endpoint_keys = [
+        key for key in end_points.keys()
+        if key.startswith('Mixed') or key.startswith('Conv')
+    ]
+
+    inputs_in_nchw = tf.random_uniform((batch_size, 3, height, width))
+    _, end_points_with_replacement = inception.inception_v2_base(
+        inputs_in_nchw, use_separable_conv=False, data_format='NCHW')
+
+    # With the 'NCHW' data format, all endpoint activations have a transposed
+    # shape from the original shape with the 'NHWC' layout.
+    for key in endpoint_keys:
+      transposed_original_shape = tf.transpose(
+          end_points[key], [0, 3, 1, 2]).get_shape().as_list()
+      self.assertTrue(key in end_points_with_replacement)
+      new_shape = end_points_with_replacement[key].get_shape().as_list()
+      self.assertListEqual(transposed_original_shape, new_shape)
+
+  def testBuildErrorsForDataFormats(self):
+    batch_size = 5
+    height, width = 224, 224
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+
+    # 'NCWH' data format is not supported.
+    with self.assertRaises(ValueError):
+      _ = inception.inception_v2_base(inputs, data_format='NCWH')
+
+    # 'NCHW' data format is not supported for separable convolution.
+    with self.assertRaises(ValueError):
+      _ = inception.inception_v2_base(inputs, data_format='NCHW')
+
   def testHalfSizeImages(self):
     batch_size = 5
     height, width = 112, 112
@@ -192,7 +254,7 @@ class InceptionV2Test(tf.test.TestCase):
                            [batch_size, num_classes])
       pre_pool = end_points['Mixed_5c']
       feed_dict = {inputs: input_np}
-      tf.initialize_all_variables().run()
+      tf.global_variables_initializer().run()
       pre_pool_out = sess.run(pre_pool, feed_dict=feed_dict)
       self.assertListEqual(list(pre_pool_out.shape), [batch_size, 7, 7, 1024])
 
@@ -209,7 +271,7 @@ class InceptionV2Test(tf.test.TestCase):
     images = tf.random_uniform((batch_size, height, width, 3))
 
     with self.test_session() as sess:
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEquals(output.shape, (batch_size, num_classes))
 
@@ -224,7 +286,7 @@ class InceptionV2Test(tf.test.TestCase):
     predictions = tf.argmax(logits, 1)
 
     with self.test_session() as sess:
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (batch_size,))
 
@@ -241,7 +303,7 @@ class InceptionV2Test(tf.test.TestCase):
     predictions = tf.argmax(logits, 1)
 
     with self.test_session() as sess:
-      sess.run(tf.initialize_all_variables())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (eval_batch_size,))
 
@@ -253,7 +315,7 @@ class InceptionV2Test(tf.test.TestCase):
                                        spatial_squeeze=False)
 
     with self.test_session() as sess:
-      tf.initialize_all_variables().run()
+      tf.global_variables_initializer().run()
       logits_out = sess.run(logits)
       self.assertListEqual(list(logits_out.shape), [1, 1, 1, num_classes])
 

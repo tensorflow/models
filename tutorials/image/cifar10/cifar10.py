@@ -35,7 +35,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import gzip
 import os
 import re
 import sys
@@ -44,7 +43,7 @@ import tarfile
 from six.moves import urllib
 import tensorflow as tf
 
-from tensorflow.models.image.cifar10 import cifar10_input
+import cifar10_input
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -91,8 +90,8 @@ def _activation_summary(x):
   # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
   # session. This helps the clarity of presentation on tensorboard.
   tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
-  tf.contrib.deprecated.histogram_summary(tensor_name + '/activations', x)
-  tf.contrib.deprecated.scalar_summary(tensor_name + '/sparsity',
+  tf.summary.histogram(tensor_name + '/activations', x)
+  tf.summary.scalar(tensor_name + '/sparsity',
                                        tf.nn.zero_fraction(x))
 
 
@@ -135,7 +134,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
       shape,
       tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
   if wd is not None:
-    weight_decay = tf.mul(tf.nn.l2_loss(var), wd, name='weight_loss')
+    weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
     tf.add_to_collection('losses', weight_decay)
   return var
 
@@ -287,7 +286,7 @@ def loss(logits, labels):
   # Calculate the average cross entropy loss across the batch.
   labels = tf.cast(labels, tf.int64)
   cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      logits, labels, name='cross_entropy_per_example')
+      labels=labels, logits=logits, name='cross_entropy_per_example')
   cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
   tf.add_to_collection('losses', cross_entropy_mean)
 
@@ -317,8 +316,8 @@ def _add_loss_summaries(total_loss):
   for l in losses + [total_loss]:
     # Name each loss as '(raw)' and name the moving average version of the loss
     # as the original loss name.
-    tf.contrib.deprecated.scalar_summary(l.op.name + ' (raw)', l)
-    tf.contrib.deprecated.scalar_summary(l.op.name, loss_averages.average(l))
+    tf.summary.scalar(l.op.name + ' (raw)', l)
+    tf.summary.scalar(l.op.name, loss_averages.average(l))
 
   return loss_averages_op
 
@@ -346,7 +345,7 @@ def train(total_loss, global_step):
                                   decay_steps,
                                   LEARNING_RATE_DECAY_FACTOR,
                                   staircase=True)
-  tf.contrib.deprecated.scalar_summary('learning_rate', lr)
+  tf.summary.scalar('learning_rate', lr)
 
   # Generate moving averages of all losses and associated summaries.
   loss_averages_op = _add_loss_summaries(total_loss)
@@ -361,12 +360,12 @@ def train(total_loss, global_step):
 
   # Add histograms for trainable variables.
   for var in tf.trainable_variables():
-    tf.contrib.deprecated.histogram_summary(var.op.name, var)
+    tf.summary.histogram(var.op.name, var)
 
   # Add histograms for gradients.
   for grad, var in grads:
     if grad is not None:
-      tf.contrib.deprecated.histogram_summary(var.op.name + '/gradients', grad)
+      tf.summary.histogram(var.op.name + '/gradients', grad)
 
   # Track the moving averages of all trainable variables.
   variable_averages = tf.train.ExponentialMovingAverage(
@@ -394,5 +393,6 @@ def maybe_download_and_extract():
     print()
     statinfo = os.stat(filepath)
     print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
-
-  tarfile.open(filepath, 'r:gz').extractall(dest_directory)
+  extracted_dir_path = os.path.join(dest_directory, 'cifar-10-batches-bin')
+  if not os.path.exists(extracted_dir_path):
+    tarfile.open(filepath, 'r:gz').extractall(dest_directory)

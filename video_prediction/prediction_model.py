@@ -109,7 +109,7 @@ def construct_model(images,
         prev_image = image
 
       # Predicted state is always fed back in
-      state_action = tf.concat(1, [action, current_state])
+      state_action = tf.concat(axis=1, values=[action, current_state])
 
       enc0 = slim.layers.conv2d(
           prev_image,
@@ -144,7 +144,7 @@ def construct_model(images,
       smear = tf.tile(
           smear, [1, int(enc2.get_shape()[1]), int(enc2.get_shape()[2]), 1])
       if use_state:
-        enc2 = tf.concat(3, [enc2, smear])
+        enc2 = tf.concat(axis=3, values=[enc2, smear])
       enc3 = slim.layers.conv2d(
           enc2, hidden4.get_shape()[3], [1, 1], stride=1, scope='conv4')
 
@@ -158,7 +158,7 @@ def construct_model(images,
           enc4, lstm_state6, lstm_size[5], scope='state6')  # 16x16
       hidden6 = tf_layers.layer_norm(hidden6, scope='layer_norm7')
       # Skip connection.
-      hidden6 = tf.concat(3, [hidden6, enc1])  # both 16x16
+      hidden6 = tf.concat(axis=3, values=[hidden6, enc1])  # both 16x16
 
       enc5 = slim.layers.conv2d_transpose(
           hidden6, hidden6.get_shape()[3], 3, stride=2, scope='convt2')
@@ -167,7 +167,7 @@ def construct_model(images,
       hidden7 = tf_layers.layer_norm(hidden7, scope='layer_norm8')
 
       # Skip connection.
-      hidden7 = tf.concat(3, [hidden7, enc0])  # both 32x32
+      hidden7 = tf.concat(axis=3, values=[hidden7, enc0])  # both 32x32
 
       enc6 = slim.layers.conv2d_transpose(
           hidden7,
@@ -207,7 +207,7 @@ def construct_model(images,
       masks = tf.reshape(
           tf.nn.softmax(tf.reshape(masks, [-1, num_masks + 1])),
           [int(batch_size), int(img_height), int(img_width), num_masks + 1])
-      mask_list = tf.split(3, num_masks + 1, masks)
+      mask_list = tf.split(axis=3, num_or_size_splits=num_masks + 1, value=masks)
       output = mask_list[0] * prev_image
       for layer, mask in zip(transformed, mask_list[1:]):
         output += layer * mask
@@ -261,6 +261,8 @@ def cdna_transformation(prev_image, cdna_input, num_masks, color_channels):
     List of images transformed by the predicted CDNA kernels.
   """
   batch_size = int(cdna_input.get_shape()[0])
+  height = int(prev_image.get_shape()[1])
+  width = int(prev_image.get_shape()[2])
 
   # Predict kernels using linear function of last hidden layer.
   cdna_kerns = slim.layers.fully_connected(
@@ -276,20 +278,22 @@ def cdna_transformation(prev_image, cdna_input, num_masks, color_channels):
   norm_factor = tf.reduce_sum(cdna_kerns, [1, 2, 3], keep_dims=True)
   cdna_kerns /= norm_factor
 
-  cdna_kerns = tf.tile(cdna_kerns, [1, 1, 1, color_channels, 1])
-  cdna_kerns = tf.split(0, batch_size, cdna_kerns)
-  prev_images = tf.split(0, batch_size, prev_image)
+  # Treat the color channel dimension as the batch dimension since the same
+  # transformation is applied to each color channel.
+  # Treat the batch dimension as the channel dimension so that
+  # depthwise_conv2d can apply a different transformation to each sample.
+  cdna_kerns = tf.transpose(cdna_kerns, [1, 2, 0, 4, 3])
+  cdna_kerns = tf.reshape(cdna_kerns, [DNA_KERN_SIZE, DNA_KERN_SIZE, batch_size, num_masks])
+  # Swap the batch and channel dimensions.
+  prev_image = tf.transpose(prev_image, [3, 1, 2, 0])
 
   # Transform image.
-  transformed = []
-  for kernel, preimg in zip(cdna_kerns, prev_images):
-    kernel = tf.squeeze(kernel)
-    if len(kernel.get_shape()) == 3:
-      kernel = tf.expand_dims(kernel, -1)
-    transformed.append(
-        tf.nn.depthwise_conv2d(preimg, kernel, [1, 1, 1, 1], 'SAME'))
-  transformed = tf.concat(0, transformed)
-  transformed = tf.split(3, num_masks, transformed)
+  transformed = tf.nn.depthwise_conv2d(prev_image, cdna_kerns, [1, 1, 1, 1], 'SAME')
+
+  # Transpose the dimensions to where they belong.
+  transformed = tf.reshape(transformed, [color_channels, height, width, batch_size, num_masks])
+  transformed = tf.transpose(transformed, [3, 1, 2, 0, 4])
+  transformed = tf.unstack(transformed, axis=-1)
   return transformed
 
 
@@ -314,7 +318,7 @@ def dna_transformation(prev_image, dna_input):
           tf.expand_dims(
               tf.slice(prev_image_pad, [0, xkern, ykern, 0],
                        [-1, image_height, image_width, -1]), [3]))
-  inputs = tf.concat(3, inputs)
+  inputs = tf.concat(axis=3, values=inputs)
 
   # Normalize channels to 1.
   kernel = tf.nn.relu(dna_input - RELU_SHIFT) + RELU_SHIFT

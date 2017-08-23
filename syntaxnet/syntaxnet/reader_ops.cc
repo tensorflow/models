@@ -34,9 +34,11 @@ limitations under the License.
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/io/table.h"
 #include "tensorflow/core/lib/io/table_options.h"
+#include "tensorflow/core/lib/strings/str_util.h"
 #include "tensorflow/core/lib/strings/stringprintf.h"
 #include "tensorflow/core/platform/env.h"
 
@@ -143,7 +145,7 @@ class ParsingReader : public OpKernel {
     }
 
     // Create the outputs for each feature space.
-    vector<Tensor *> feature_outputs(features_->NumEmbeddings());
+    std::vector<Tensor *> feature_outputs(features_->NumEmbeddings());
     for (size_t i = 0; i < feature_outputs.size(); ++i) {
       OP_REQUIRES_OK(context, context->allocate_output(
                                   i, TensorShape({sentence_batch_->size(),
@@ -399,7 +401,7 @@ class DecodedParseReader : public ParsingReader {
     // pull from the back of the docids queue as long as the sentences have been
     // completely processed. If the next document has not been completely
     // processed yet, then the docid will not be found in 'sentence_map_'.
-    vector<Sentence> sentences;
+    std::vector<Sentence> sentences;
     while (!docids_.empty() &&
            sentence_map_.find(docids_.back()) != sentence_map_.end()) {
       sentences.emplace_back(sentence_map_[docids_.back()]);
@@ -427,7 +429,7 @@ class DecodedParseReader : public ParsingReader {
   string scoring_type_;
 
   mutable std::deque<string> docids_;
-  mutable map<string, Sentence> sentence_map_;
+  mutable std::map<string, Sentence> sentence_map_;
 
   TF_DISALLOW_COPY_AND_ASSIGN(DecodedParseReader);
 };
@@ -439,60 +441,144 @@ class WordEmbeddingInitializer : public OpKernel {
  public:
   explicit WordEmbeddingInitializer(OpKernelConstruction *context)
       : OpKernel(context) {
-    string file_path, data;
-    OP_REQUIRES_OK(context, context->GetAttr("task_context", &file_path));
-    OP_REQUIRES_OK(context, ReadFileToString(tensorflow::Env::Default(),
-                                             file_path, &data));
-    OP_REQUIRES(context,
-                TextFormat::ParseFromString(data, task_context_.mutable_spec()),
-                InvalidArgument("Could not parse task context at ", file_path));
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("task_context", &task_context_path_));
+    OP_REQUIRES_OK(context, context->GetAttr("vocabulary", &vocabulary_path_));
+    OP_REQUIRES(
+        context, task_context_path_.empty() != vocabulary_path_.empty(),
+        InvalidArgument(
+            "Exactly one of task_context or vocabulary must be specified"));
     OP_REQUIRES_OK(context, context->GetAttr("vectors", &vectors_path_));
+    OP_REQUIRES_OK(context, context->GetAttr("cache_vectors_locally",
+                                             &cache_vectors_locally_));
+    OP_REQUIRES_OK(context, context->GetAttr("num_special_embeddings",
+                                             &num_special_embeddings_));
     OP_REQUIRES_OK(context,
                    context->GetAttr("embedding_init", &embedding_init_));
+
+    // Convert the seeds into a single 64-bit seed.  NB: seed=0,seed2=0 converts
+    // into seed_=0, which causes Eigen PRNGs to seed non-deterministically.
+    int seed, seed2;
+    OP_REQUIRES_OK(context, context->GetAttr("seed", &seed));
+    OP_REQUIRES_OK(context, context->GetAttr("seed2", &seed2));
+    seed_ = static_cast<uint64>(seed) | static_cast<uint64>(seed2) << 32;
 
     // Sets up number and type of inputs and outputs.
     OP_REQUIRES_OK(context, context->MatchSignature({}, {DT_FLOAT}));
   }
 
   void Compute(OpKernelContext *context) override {
-    // Loads words from vocabulary with mapping to ids.
-    string path = TaskContext::InputFile(*task_context_.GetInput("word-map"));
-    const TermFrequencyMap *word_map =
-        SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(path, 0, 0);
-    unordered_map<string, int64> vocab;
-    for (int i = 0; i < word_map->Size(); ++i) {
-      vocab[word_map->GetTerm(i)] = i;
+    std::unordered_map<string, int64> vocab;
+    OP_REQUIRES_OK(context, LoadVocabulary(&vocab));
+
+    string vectors_path = vectors_path_;
+    if (cache_vectors_locally_) {
+      OP_REQUIRES_OK(context, CopyToTmpPath(vectors_path_, &vectors_path));
     }
+    ProtoRecordReader reader(vectors_path);
 
-    // Creates a reader pointing to a local copy of the vectors recordio.
-    string tmp_vectors_path;
-    OP_REQUIRES_OK(context, CopyToTmpPath(vectors_path_, &tmp_vectors_path));
-    ProtoRecordReader reader(tmp_vectors_path);
-
-    // Loads the embedding vectors into a matrix.
+    // Load the embedding vectors into a matrix.  Since the |embedding_matrix|
+    // output cannot be allocated until the embedding dimension is known, delay
+    // allocation until the first iteration of the loop.
     Tensor *embedding_matrix = nullptr;
     TokenEmbedding embedding;
     while (reader.Read(&embedding) == tensorflow::Status::OK()) {
       if (embedding_matrix == nullptr) {
-        const int embedding_size = embedding.vector().values_size();
-        OP_REQUIRES_OK(
-            context, context->allocate_output(
-                         0, TensorShape({word_map->Size() + 3, embedding_size}),
-                         &embedding_matrix));
-        embedding_matrix->matrix<float>()
-            .setRandom<Eigen::internal::NormalRandomGenerator<float>>();
-        embedding_matrix->matrix<float>() =
-            embedding_matrix->matrix<float>() * static_cast<float>(
-                embedding_init_ / sqrt(embedding_size));
+        OP_REQUIRES_OK(context,
+                       InitRandomEmbeddingMatrix(vocab, embedding, context,
+                                                 &embedding_matrix));
       }
       if (vocab.find(embedding.token()) != vocab.end()) {
         SetNormalizedRow(embedding.vector(), vocab[embedding.token()],
                          embedding_matrix);
       }
     }
+
+    // The vectors file might not contain any embeddings (perhaps due to read
+    // errors), in which case the |embedding_matrix| output is never allocated.
+    // Signal this error early instead of letting downstream ops complain about
+    // a missing input.
+    OP_REQUIRES(
+        context, embedding_matrix != nullptr,
+        InvalidArgument(tensorflow::strings::StrCat(
+            "found no pretrained embeddings in vectors=", vectors_path_,
+            " vocabulary=", vocabulary_path_, " vocab_size=", vocab.size())));
   }
 
  private:
+  // Loads the vocabulary from the task context or vocabulary.
+  tensorflow::Status LoadVocabulary(
+      std::unordered_map<string, int64> *vocabulary) const {
+    if (!task_context_path_.empty()) {
+      return LoadVocabularyFromTaskContext(vocabulary);
+    } else {
+      return LoadVocabularyFromFile(vocabulary);
+    }
+  }
+
+  // Loads the |vocabulary| from the "word-map" input of the task context at
+  // |task_context_path_|, or returns non-OK on error.
+  tensorflow::Status LoadVocabularyFromTaskContext(
+      std::unordered_map<string, int64> *vocabulary) const {
+    vocabulary->clear();
+    string textproto;
+    TF_RETURN_IF_ERROR(ReadFileToString(tensorflow::Env::Default(),
+                                        task_context_path_, &textproto));
+    TaskContext task_context;
+    if (!TextFormat::ParseFromString(textproto, task_context.mutable_spec())) {
+      return InvalidArgument("Could not parse task context at ",
+                             task_context_path_);
+    }
+    const string path =
+        TaskContext::InputFile(*task_context.GetInput("word-map"));
+    const TermFrequencyMap *word_map =
+        SharedStoreUtils::GetWithDefaultName<TermFrequencyMap>(path, 0, 0);
+    for (int i = 0; i < word_map->Size(); ++i) {
+      (*vocabulary)[word_map->GetTerm(i)] = i;
+    }
+    return tensorflow::Status::OK();
+  }
+
+  // Loads the |vocabulary| from the |vocabulary_path_| file, which contains one
+  // word per line in order, or returns non-OK on error.
+  tensorflow::Status LoadVocabularyFromFile(
+      std::unordered_map<string, int64> *vocabulary) const {
+    vocabulary->clear();
+    string text;
+    TF_RETURN_IF_ERROR(
+        ReadFileToString(tensorflow::Env::Default(), vocabulary_path_, &text));
+
+    // Chomp a trailing newline, if any, to avoid producing a spurious empty
+    // term at the end of the vocabulary file.
+    if (!text.empty() && text.back() == '\n') text.pop_back();
+    for (const string &line : tensorflow::str_util::Split(text, "\n")) {
+      if (vocabulary->find(line) != vocabulary->end()) {
+        return InvalidArgument("Vocabulary file at ", vocabulary_path_,
+                               " contains multiple instances of term: ", line);
+      }
+
+      const int64 index = vocabulary->size();
+      (*vocabulary)[line] = index;
+    }
+    return tensorflow::Status::OK();
+  }
+
+  // Allocates the |embedding_matrix| based on the |vocabulary| and |embedding|
+  // and initializes it to random values, or returns non-OK on error.
+  tensorflow::Status InitRandomEmbeddingMatrix(
+      const std::unordered_map<string, int64> &vocabulary,
+      const TokenEmbedding &embedding, OpKernelContext *context,
+      Tensor **embedding_matrix) const {
+    const int rows = vocabulary.size() + num_special_embeddings_;
+    const int columns = embedding.vector().values_size();
+    TF_RETURN_IF_ERROR(context->allocate_output(0, TensorShape({rows, columns}),
+                                                embedding_matrix));
+    auto matrix = (*embedding_matrix)->matrix<float>();
+    Eigen::internal::NormalRandomGenerator<float> prng(seed_);
+    matrix = matrix.random(prng) * (embedding_init_ / sqrtf(columns));
+    return tensorflow::Status::OK();
+  }
+
   // Sets embedding_matrix[row] to a normalized version of the given vector.
   void SetNormalizedRow(const TokenEmbedding::Vector &vector, const int row,
                         Tensor *embedding_matrix) {
@@ -532,7 +618,7 @@ class WordEmbeddingInitializer : public OpKernel {
     for (uint64 offset = 0; s.ok(); offset += kBytesToRead) {
       tensorflow::StringPiece data;
       s.Update(source_file->Read(offset, kBytesToRead, &data, &scratch[0]));
-      target_file->Append(data);
+      TF_RETURN_IF_ERROR(target_file->Append(data));
     }
     if (s.code() == OUT_OF_RANGE) {
       return tensorflow::Status::OK();
@@ -541,8 +627,18 @@ class WordEmbeddingInitializer : public OpKernel {
     }
   }
 
-  // Task context used to configure this op.
-  TaskContext task_context_;
+  // Path to the task context or vocabulary.  Exactly one must be specified.
+  string task_context_path_;
+  string vocabulary_path_;
+
+  // Whether to cache the vectors to a local temp file, to reduce I/O latency.
+  bool cache_vectors_locally_ = true;
+
+  // Number of special embeddings to allocate.
+  int num_special_embeddings_ = 3;
+
+  // Seed for random initialization.
+  uint64 seed_ = 0;
 
   // Embedding vectors that are not found in the input sstable are initialized
   // randomly from a normal distribution with zero mean and

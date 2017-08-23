@@ -50,13 +50,13 @@ void GenericFeatureExtractor::InitializeFeatureTypes() {
     }
   }
 
-  vector<string> types_names;
+  std::vector<string> types_names;
   GetFeatureTypeNames(&types_names);
   CHECK_EQ(feature_types_.size(), types_names.size());
 }
 
 void GenericFeatureExtractor::GetFeatureTypeNames(
-    vector<string> *type_names) const {
+    std::vector<string> *type_names) const {
   for (size_t i = 0; i < feature_types_.size(); ++i) {
     FeatureType *ft = feature_types_[i];
     type_names->push_back(ft->name());
@@ -96,13 +96,23 @@ GenericFeatureFunction::~GenericFeatureFunction() {
 
 int GenericFeatureFunction::GetIntParameter(const string &name,
                                             int default_value) const {
-  string value = GetParameter(name);
+  const string value = GetParameter(name);
   return utils::ParseUsing<int>(value, default_value,
                                 tensorflow::strings::safe_strto32);
 }
 
+bool GenericFeatureFunction::GetBoolParameter(const string &name,
+                                              bool default_value) const {
+  const string value = GetParameter(name);
+  if (value.empty()) return default_value;
+  if (value == "true") return true;
+  if (value == "false") return false;
+  LOG(FATAL) << "Illegal value '" << value << "' for option '" << name << "'";
+  return false;
+}
+
 void GenericFeatureFunction::GetFeatureTypes(
-    vector<FeatureType *> *types) const {
+    std::vector<FeatureType *> *types) const {
   if (feature_type_ != nullptr) types->push_back(feature_type_);
 }
 
@@ -111,7 +121,7 @@ FeatureType *GenericFeatureFunction::GetFeatureType() const {
   if (feature_type_ != nullptr) return feature_type_;
 
   // Get feature types for function.
-  vector<FeatureType *> types;
+  std::vector<FeatureType *> types;
   GetFeatureTypes(&types);
 
   // If there is exactly one feature type return this, else return null.

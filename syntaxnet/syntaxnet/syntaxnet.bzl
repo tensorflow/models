@@ -16,6 +16,7 @@
 load("@protobuf//:protobuf.bzl", "cc_proto_library")
 load("@protobuf//:protobuf.bzl", "py_proto_library")
 
+
 def if_cuda(if_true, if_false = []):
     """Shorthand for select()'ing on whether we're building with CUDA."""
     return select({

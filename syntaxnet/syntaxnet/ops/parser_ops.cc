@@ -161,21 +161,32 @@ documents: parsed documents.
 )doc");
 
 REGISTER_OP("LexiconBuilder")
-    .Attr("task_context: string")
+    .Attr("task_context: string=''")
+    .Attr("task_context_str: string=''")
     .Attr("corpus_name: string='documents'")
     .Attr("lexicon_max_prefix_length: int = 3")
     .Attr("lexicon_max_suffix_length: int = 3")
+    .Attr("lexicon_min_char_ngram_length: int = 1")
+    .Attr("lexicon_max_char_ngram_length: int = 3")
+    .Attr("lexicon_char_ngram_include_terminators: bool = False")
+    .Attr("lexicon_char_ngram_mark_boundaries: bool = False")
     .Doc(R"doc(
 An op that collects term statistics over a corpus and saves a set of term maps.
 
-task_context: file path at which to read the task context.
+task_context: file path at which to read the task context in text format.
+task_context_str: a task context in text format, used if task_context is empty.
 corpus_name: name of the context input to compute lexicons.
 lexicon_max_prefix_length: maximum prefix length for lexicon words.
 lexicon_max_suffix_length: maximum suffix length for lexicon words.
+lexicon_min_char_ngram_length: minimum length of character ngrams.
+lexicon_max_char_ngram_length: maximum length of character ngrams.
+lexicon_char_ngram_include_terminators: Whether to pad with terminator chars.
+lexicon_char_ngram_mark_boundaries: Whether to mark the first and last chars.
 )doc");
 
 REGISTER_OP("FeatureSize")
-    .Attr("task_context: string")
+    .Attr("task_context: string=''")
+    .Attr("task_context_str: string=''")
     .Output("feature_sizes: int32")
     .Output("domain_sizes: int32")
     .Output("embedding_dims: int32")
@@ -185,6 +196,7 @@ REGISTER_OP("FeatureSize")
 An op that returns the number and domain sizes of parser features.
 
 task_context: file path at which to read the task context.
+task_context_str: a task context in text format, used if task_context is empty.
 feature_sizes: number of feature locators in each group of parser features.
 domain_sizes: domain size for each feature group of parser features.
 embedding_dims: embedding dimension for each feature group of parser features.
@@ -192,7 +204,25 @@ num_actions: number of actions a parser can perform.
 arg_prefix: prefix for context parameters.
 )doc");
 
-REGISTER_OP("UnpackSparseFeatures")
+REGISTER_OP("FeatureVocab")
+    .Attr("task_context: string=''")
+    .Attr("task_context_str: string=''")
+    .Attr("arg_prefix: string='brain_parser'")
+    .Attr("embedding_name: string='words'")
+    .Output("vocab: string")
+    .Doc(R"doc(
+Returns the vocabulary of the parser features for a particular named channel.
+For "words" this would would be the entire vocabulary, plus any special tokens
+such as <UNKNOWN> and <OUTSIDE>.
+
+task_context: file path at which to read the task context.
+task_context_str: a task context in text format, used if task_context is empty.
+arg_prefix: prefix for context parameters.
+embedding_name: name of the embedding channel for which to get the vocabulary.
+vocab: vector, mapping from feature id to the string representation of that id.
+)doc");
+
+REGISTER_OP("UnpackSyntaxNetSparseFeatures")
     .Input("sf: string")
     .Output("indices: int32")
     .Output("ids: int64")
@@ -217,21 +247,42 @@ weights: vector of weight extracted from the SparseFeatures proto.
 REGISTER_OP("WordEmbeddingInitializer")
     .Output("word_embeddings: float")
     .Attr("vectors: string")
-    .Attr("task_context: string")
+    .Attr("task_context: string = ''")
+    .Attr("vocabulary: string = ''")
+    .Attr("cache_vectors_locally: bool = true")
+    .Attr("num_special_embeddings: int = 3")
     .Attr("embedding_init: float = 1.0")
+    .Attr("seed: int = 0")
+    .Attr("seed2: int = 0")
     .Doc(R"doc(
 Reads word embeddings from an sstable of dist_belief.TokenEmbedding protos for
 every word specified in a text vocabulary file.
 
-word_embeddings: a tensor containing word embeddings from the specified sstable.
-vectors: path to recordio of word embedding vectors.
-task_context: file path at which to read the task context.
+word_embeddings: a tensor containing word embeddings from the specified table.
+vectors: path to TF record file of word embedding vectors.
+task_context: file path at which to read the task context, for its "word-map"
+  input.  Exactly one of `task_context` or `vocabulary` must be specified.
+vocabulary: path to vocabulary file, which contains one unique word per line, in
+  order.  Exactly one of `task_context` or `vocabulary` must be specified.
+cache_vectors_locally: Whether to cache the vectors file to a local temp file
+  before parsing it.  This greatly reduces initialization time when the vectors
+  are stored remotely, but requires that "/tmp" has sufficient space.
+num_special_embeddings: Number of special embeddings to allocate, in addition to
+  those allocated for real words.
+embedding_init: embedding vectors that are not found in the input sstable are
+  initialized randomly from a normal distribution with zero mean and
+  std dev = embedding_init / sqrt(embedding_size).
+seed: If either `seed` or `seed2` are set to be non-zero, the random number
+  generator is seeded by the given seed.  Otherwise, it is seeded by a random
+  seed.
+seed2: A second seed to avoid seed collision.
 )doc");
 
 REGISTER_OP("DocumentSource")
     .Output("documents: string")
     .Output("last: bool")
-    .Attr("task_context: string")
+    .Attr("task_context: string=''")
+    .Attr("task_context_str: string=''")
     .Attr("corpus_name: string='documents'")
     .Attr("batch_size: int")
     .SetIsStateful()
@@ -240,35 +291,75 @@ Reads documents from documents_path and outputs them.
 
 documents: a vector of documents as serialized protos.
 last: whether this is the last batch of documents from this document path.
+task_context: file path at which to read the task context.
+task_context_str: a task context in text format, used if task_context is empty.
 batch_size: how many documents to read at once.
 )doc");
 
 REGISTER_OP("DocumentSink")
     .Input("documents: string")
-    .Attr("task_context: string")
+    .Attr("task_context: string=''")
+    .Attr("task_context_str: string=''")
     .Attr("corpus_name: string='documents'")
     .Doc(R"doc(
 Write documents to documents_path.
 
 documents: documents to write.
+task_context: file path at which to read the task context.
+task_context_str: a task context in text format, used if task_context is empty.
+)doc");
+
+REGISTER_OP("SegmenterTrainingDataConstructor")
+    .Input("documents: string")
+    .Output("char_doc: string")
+    .Doc(R"doc(
+Constructs segmentation training data from documents with gold segmentation.
+
+documents: a vector of documents as serialized protos.
+char_doc: a vector of documents as serialized protos.
+)doc");
+
+REGISTER_OP("CharTokenGenerator")
+    .Input("documents: string")
+    .Output("char_doc: string")
+    .Doc(R"doc(
+Converts token field of the input documents such that each token in the
+output doc is a utf-8 character from that doc's text.
+
+documents: a vector of documents as serialized protos.
+char_doc: a vector of documents as serialized protos.
 )doc");
 
 REGISTER_OP("WellFormedFilter")
     .Input("documents: string")
     .Output("filtered: string")
-    .Attr("task_context: string")
+    .Attr("task_context: string=''")
+    .Attr("task_context_str: string=''")
     .Attr("corpus_name: string='documents'")
     .Attr("keep_malformed_documents: bool = False")
     .Doc(R"doc(
+Removes sentences with malformed parse trees, i.e. they contain cycles.
+
+documents: a vector of documents as serialized protos.
+filtered: a vector of documents with the malformed ones removed.
+task_context: file path at which to read the task context.
+task_context_str: a task context in text format, used if task_context is empty.
 )doc");
 
 REGISTER_OP("ProjectivizeFilter")
     .Input("documents: string")
     .Output("filtered: string")
-    .Attr("task_context: string")
+    .Attr("task_context: string=''")
+    .Attr("task_context_str: string=''")
     .Attr("corpus_name: string='documents'")
     .Attr("discard_non_projective: bool = False")
     .Doc(R"doc(
+Modifies input parse trees to make them projective.
+
+documents: a vector of documents as serialized protos.
+filtered: a vector of documents with projectivized parse trees.
+task_context: file path at which to read the task context.
+task_context_str: a task context in text format, used if task_context is empty.
 )doc");
 
 }  // namespace syntaxnet
