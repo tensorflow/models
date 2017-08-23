@@ -29,7 +29,7 @@ Network Architecture | Adversarial training | Checkpoint
 Inception v3 | Step L.L. | [adv_inception_v3_2017_08_18.tar.gz](http://download.tensorflow.org/models/adv_inception_v3_2017_08_18.tar.gz)
 Inception v3 | Step L.L. on ensemble of 3 models | [ens3_adv_inception_v3_2017_08_18.tar.gz](http://download.tensorflow.org/models/ens3_adv_inception_v3_2017_08_18.tar.gz)
 Inception v3 | Step L.L. on ensemble of 4 models| [ens4_adv_inception_v3_2017_08_18.tar.gz](http://download.tensorflow.org/models/ens4_adv_inception_v3_2017_08_18.tar.gz)
-Inception ResNet v2 | Step L.L. on ensemble of 3 models | [ens_adv_inception_renset_v2_2017_08_18.tar.gz](http://download.tensorflow.org/models/ens_adv_inception_renset_v2_2017_08_18.tar.gz)
+Inception ResNet v2 | Step L.L. on ensemble of 3 models | [ens_adv_inception_resnet_v2_2017_08_18.tar.gz](http://download.tensorflow.org/models/ens_adv_inception_resnet_v2_2017_08_18.tar.gz)
 
 All checkpoints are compatible with
 [TF-Slim](https://github.com/tensorflow/models/tree/master/slim)
@@ -70,15 +70,15 @@ examples:
 # Download checkpoint
 CHECKPOINT_DIR=/tmp/checkpoints
 mkdir ${CHECKPOINT_DIR}
-wget http://download.tensorflow.org/models/ens_adv_inception_renset_v2_2017_08_18.tar.gz
-tar -xvf ens_adv_inception_renset_v2_2017_08_18.tar.gz
-mv ens_adv_inception_renset_v2.ckpt* ${CHECKPOINT_DIR}
-rm ens_adv_inception_renset_v2_2017_08_18.tar.gz
+wget http://download.tensorflow.org/models/ens_adv_inception_resnet_v2_2017_08_18.tar.gz
+tar -xvf ens_adv_inception_resnet_v2_2017_08_18.tar.gz
+mv ens_adv_inception_resnet_v2.ckpt* ${CHECKPOINT_DIR}
+rm ens_adv_inception_resnet_v2_2017_08_18.tar.gz
 
 # Run evaluation
 python eval_on_adversarial.py \
   --model_name=inception_v3 \
-  --checkpoint_path=${CHECKPOINT_DIR}/ens_adv_inception_renset_v2.ckpt \
+  --checkpoint_path=${CHECKPOINT_DIR}/ens_adv_inception_resnet_v2.ckpt \
   --dataset_dir=${DATASET_DIR} \
   --batch_size=50 \
   --adversarial_method=stepllnoise \
