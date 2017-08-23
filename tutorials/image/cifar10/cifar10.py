@@ -378,7 +378,6 @@ def train(total_loss, global_step):
 
   return train_op
 
-
 def maybe_download_and_extract():
   """Download and extract the tarball from Alex's website."""
   dest_directory = FLAGS.data_dir

@@ -42,17 +42,19 @@ import time
 import tensorflow as tf
 
 from tensorflow.models.image.cifar10 import cifar10
+from local import cifar_dir
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_string('train_dir', '/tmp/cifar10_train',
+tf.app.flags.DEFINE_string('train_dir', cifar_dir('cifar10_train'), #/tmp/cifar10_train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
-tf.app.flags.DEFINE_integer('max_steps', 1000000,
+tf.app.flags.DEFINE_integer('max_steps', 1000, #100000,
                             """Number of batches to run.""")
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
 
+start = time.time()
 
 def train():
   """Train CIFAR-10 for a number of steps."""
@@ -85,17 +87,30 @@ def train():
         return tf.train.SessionRunArgs(loss)  # Asks for loss value.
 
       def after_run(self, run_context, run_values):
-        duration = time.time() - self._start_time
+        global start
+        now = time.time()
+        duration = now - self._start_time
         loss_value = run_values.results
         if self._step % 10 == 0:
           num_examples_per_step = FLAGS.batch_size
           examples_per_sec = num_examples_per_step / duration
           sec_per_batch = float(duration)
+          secs_since_start = now - start
+          if secs_since_start < 1:
+              secs_since_start = 1
+          steps_rate = float(self._step) / float(secs_since_start)
+          if (steps_rate <= 0.0):
+              steps_rate = 0.01
+          steps_left = FLAGS.max_steps - self._step
+          secs_to_max = float(steps_left) / float(steps_rate)
+          #print(secs_since_start, steps_rate, self._step, FLAGS.max_steps, steps_left)
 
+          hours_to_max = secs_to_max / 3600.
+          #hours_to_max = secs_to_max
           format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
-                        'sec/batch)')
+                        'sec/batch; %.1f hours to max)')
           print (format_str % (datetime.now(), self._step, loss_value,
-                               examples_per_sec, sec_per_batch))
+                               examples_per_sec, sec_per_batch, hours_to_max))
 
     with tf.train.MonitoredTrainingSession(
         checkpoint_dir=FLAGS.train_dir,
