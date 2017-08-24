@@ -1,7 +1,7 @@
 # Description:
 # Python support for TensorFlow.
 
-package(default_visibility = ["//third_party/tensorflow:internal"])
+package(default_visibility = ["//tensorflow:internal"])
 
 licenses(["notice"])  # Apache 2.0
 
@@ -22,7 +22,7 @@ py_library(
     name = "reader",
     srcs = ["reader.py"],
     srcs_version = "PY2AND3",
-    deps = ["//third_party/py/tensorflow"],
+    deps = ["//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -32,7 +32,7 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":reader",
-        "//third_party/py/tensorflow",
+        "//tensorflow:tensorflow_py",
     ],
 )
 
@@ -40,7 +40,7 @@ py_library(
     name = "util",
     srcs = ["util.py"],
     srcs_version = "PY2AND3",
-    deps = ["//third_party/py/tensorflow"],
+    deps = ["//tensorflow:tensorflow_py"],
 )
 
 py_binary(
@@ -52,7 +52,7 @@ py_binary(
     deps = [
         ":reader",
         ":util",
-        "//third_party/py/tensorflow",
+        "//tensorflow:tensorflow_py,
     ],
 )
 
@@ -65,5 +65,5 @@ filegroup(
             "**/OWNERS",
         ],
     ),
-    visibility = ["//third_party/tensorflow:__subpackages__"],
+    visibility = ["//tensorflow:__subpackages__"],
 )
