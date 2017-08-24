@@ -99,8 +99,8 @@ def add_volume_iou_metrics(inputs, outputs):
   names_to_updates = dict()
   labels = tf.greater_equal(inputs['voxels'], 0.5)
   predictions = tf.greater_equal(outputs['voxels_1'], 0.5)
-  labels = 2 - tf.to_int32(labels)
-  predictions = 3 - tf.to_int32(predictions) * 2
+  labels = (2 - tf.to_int32(labels)) - 1
+  predictions = (3 - tf.to_int32(predictions) * 2) - 1
   tmp_values, tmp_updates = tf.metrics.mean_iou(
       labels=labels,
       predictions=predictions,
