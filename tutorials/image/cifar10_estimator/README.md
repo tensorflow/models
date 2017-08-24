@@ -4,6 +4,7 @@ http://www.cs.toronto.edu/~kriz/cifar.html
 
 Code in this directory focuses on how to use TensorFlow Estimators to train and 
 evaluate a CIFAR-10 ResNet model on:
+
 * A single host with one CPU;
 * A single host with multiple GPUs;
 * Multiple hosts with CPU or multiple GPUs;
@@ -12,31 +13,29 @@ Before trying to run the model we highly encourage you to read all the README.
 
 ## Prerequisite
 
-1. Install TensorFlow version 1.2.1 or later with GPU support.
-   You can see how to do it [here](https://www.tensorflow.org/install/).
+1. [Install](https://www.tensorflow.org/install/) TensorFlow version 1.2.1 or
+later.
 
-2. Generate TFRecord files.
-This will generate a tf record for the training and test data available at the
-input_dir. You can see more details in `generate_cifar10_tf_records.py`
+2. Download the CIFAR-10 dataset and generate TFRecord files using the provided
+script.  The script and associated command below will download the CIFAR-10
+dataset and then generate a TFRecord for the training, validation, and
+evaluation datasets. 
 
 ```shell
 python generate_cifar10_tfrecords.py --data-dir=${PWD}/cifar-10-data
 ```
 
-After running the command above, you should see the following new files in the
-output_dir.
+After running the command above, you should see the following files in the
+--data-dir (```ls -R cifar-10-data```):
 
-``` shell
-ls -R cifar-10-data
-```
+* train.tfrecords
+* validation.tfrecords
+* eval.tfrecords
 
-```
-train.tfrecords validation.tfrecords eval.tfrecords
-```
 
-## How to run on local mode
+## Training on a single machine with GPUs or CPU
 
-Run the model on CPU only. After training, it runs the evaluation.
+Run the training on CPU only. After training, it runs the evaluation.
 
 ```
 python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
@@ -69,7 +68,7 @@ python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
 There are more command line flags to play with; run
 `python cifar10_main.py --help` for details.
 
-## How to run on distributed mode
+## Run distributed training
 
 ### (Optional) Running on Google Cloud Machine Learning Engine
 
