@@ -17,11 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import google3
 import tensorflow as tf
 
-from google3.third_party.tensorflow.core.framework import variable_pb2
-from google3.third_party.tensorflow.core.protobuf import rewriter_config_pb2
+from tensorflow.core.framework import variable_pb2
+from tensorflow.core.protobuf import rewriter_config_pb2
 
 FLAGS = tf.flags.FLAGS
 

@@ -61,13 +61,13 @@ from __future__ import print_function
 
 import time
 
-import google3
 import numpy as np
 import tensorflow as tf
 
-from google3.third_party.tensorflow_models.tutorials.rnn.ptb import reader
-from google3.third_party.tensorflow_models.tutorials.rnn.ptb import util
-from google3.third_party.tensorflow.python.client import device_lib
+import reader
+import util
+
+from tensorflow.python.client import device_lib
 
 flags = tf.flags
 logging = tf.logging
@@ -434,7 +434,7 @@ def get_config():
     raise ValueError("Invalid model: %s", FLAGS.model)
   if FLAGS.rnn_mode:
     config.rnn_mode = FLAGS.rnn_mode
-  if FLAGS.num_gpus != 1:
+  if FLAGS.num_gpus != 1 or tf.__version__ < "1.3.0" :
     config.rnn_mode = BASIC
   return config
 
