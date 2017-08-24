@@ -26,6 +26,11 @@ import tensorflow.contrib.slim as slim
 from tensorflow.python.ops import init_ops
 import utils as U
 
+try:
+  xrange          # Python 2
+except NameError:
+  xrange = range  # Python 3
+
 FLAGS = tf.flags.FLAGS
 
 Q_COLLECTION = "q_collection"
@@ -293,7 +298,7 @@ class SBN(object):  # REINFORCE
     logQHard = tf.add_n(logQHard)
 
     # REINFORCE
-    learning_signal = tf.stop_gradient(center(reinforce_learning_signal))
+    learning_signal = tf.stop_gradient(U.center(reinforce_learning_signal))
     self.optimizerLoss = -(learning_signal*logQHard +
                            reinforce_model_grad)
     self.lHat = map(tf.reduce_mean, [
