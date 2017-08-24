@@ -2,7 +2,8 @@ CIFAR-10 is a common benchmark in machine learning for image recognition.
 
 http://www.cs.toronto.edu/~kriz/cifar.html
 
-Code in this directory focuses on how to use TensorFlow Estimators to train and evaluate a CIFAR-10 ResNet model on:
+Code in this directory focuses on how to use TensorFlow Estimators to train and 
+evaluate a CIFAR-10 ResNet model on:
 * A single host with one CPU;
 * A single host with multiple GPUs;
 * Multiple hosts with CPU or multiple GPUs;
@@ -15,14 +16,15 @@ Before trying to run the model we highly encourage you to read all the README.
    You can see how to do it [here](https://www.tensorflow.org/install/).
 
 2. Generate TFRecord files.
-This will generate a tf record for the training and test data available at the input_dir.
-You can see more details in `generate_cifar10_tf_records.py`
+This will generate a tf record for the training and test data available at the
+input_dir. You can see more details in `generate_cifar10_tf_records.py`
 
 ```shell
 python generate_cifar10_tfrecords.py --data-dir=${PWD}/cifar-10-data
 ```
 
-After running the command above, you should see the following new files in the output_dir.
+After running the command above, you should see the following new files in the
+output_dir.
 
 ``` shell
 ls -R cifar-10-data
@@ -43,7 +45,8 @@ python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
                        --train-steps=1000
 ```
 
-Run the model on 2 GPUs using CPU as parameter server. After training, it runs the evaluation.
+Run the model on 2 GPUs using CPU as parameter server. After training, it runs
+the evaluation.
 ```
 python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
                        --job-dir=/tmp/cifar10 \
@@ -52,7 +55,8 @@ python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
 ```
 
 Run the model on 2 GPUs using GPU as parameter server.
-It will run an experiment, which for local setting basically means it will run stop training
+It will run an experiment, which for local setting basically means it will run
+stop training
 a couple of times to perform evaluation.
 
 ```
@@ -62,24 +66,30 @@ python cifar10_main.py --data-dir=${PWD}/cifar-10-data \
                        --num-gpus=2 \
 ```
 
-There are more command line flags to play with; run `python cifar10_main.py --help` for details.
+There are more command line flags to play with; run
+`python cifar10_main.py --help` for details.
 
 ## How to run on distributed mode
 
 ### (Optional) Running on Google Cloud Machine Learning Engine
 
-This example can be run on Google Cloud Machine Learning Engine (ML Engine), which will configure the environment and take care of running workers, parameters servers, and masters in a fault tolerant way.
+This example can be run on Google Cloud Machine Learning Engine (ML Engine),
+which will configure the environment and take care of running workers,
+parameters servers, and masters in a fault tolerant way.
 
-To install the command line tool, and set up a project and billing, see the quickstart [here](https://cloud.google.com/ml-engine/docs/quickstarts/command-line).
+To install the command line tool, and set up a project and billing, see the
+quickstart [here](https://cloud.google.com/ml-engine/docs/quickstarts/command-line).
 
-You'll also need a Google Cloud Storage bucket for the data. If you followed the instructions above, you can just run:
+You'll also need a Google Cloud Storage bucket for the data. If you followed the
+instructions above, you can just run:
 
 ```
 MY_BUCKET=gs://<my-bucket-name>
 gsutil cp -r ${PWD}/cifar-10-data $MY_BUCKET/
 ```
 
-Then run the following command from the `tutorials/image` directory of this repository (the parent directory of this README):
+Then run the following command from the `tutorials/image` directory of this
+repository (the parent directory of this README):
 
 ```
 gcloud ml-engine jobs submit training cifarmultigpu \
@@ -97,10 +107,13 @@ gcloud ml-engine jobs submit training cifarmultigpu \
 
 ### Set TF_CONFIG
 
-Considering that you already have multiple hosts configured, all you need is a `TF_CONFIG`
-environment variable on each host. You can set up the hosts manually or check [tensorflow/ecosystem](https://github.com/tensorflow/ecosystem) for instructions about how to set up a Cluster.
+Considering that you already have multiple hosts configured, all you need is a
+`TF_CONFIG` environment variable on each host. You can set up the hosts manually
+or check [tensorflow/ecosystem](https://github.com/tensorflow/ecosystem) for
+instructions about how to set up a Cluster.
 
-The `TF_CONFIG` will be used by the `RunConfig` to know the existing hosts and their task: `master`, `ps` or `worker`.
+The `TF_CONFIG` will be used by the `RunConfig` to know the existing hosts and
+their task: `master`, `ps` or `worker`.
 
 Here's an example of `TF_CONFIG`.
 
@@ -119,21 +132,26 @@ TF_CONFIG = json.dumps(
 
 *Cluster*
 
-A cluster spec, which is basically a dictionary that describes all of the tasks in the cluster. More about it [here](https://www.tensorflow.org/deploy/distributed).
+A cluster spec, which is basically a dictionary that describes all of the tasks
+in the cluster. More about it [here](https://www.tensorflow.org/deploy/distributed).
 
 In this cluster spec we are defining a cluster with 1 master, 1 ps and 1 worker.
 
-* `ps`: saves the parameters among all workers. All workers can read/write/update the parameters for model via ps.
-        As some models are extremely large the parameters are shared among the ps (each ps stores a subset).
+* `ps`: saves the parameters among all workers. All workers can
+   read/write/update the parameters for model via ps. As some models are
+   extremely large the parameters are shared among the ps (each ps stores a
+   subset).
 
 * `worker`: does the training.
 
-* `master`: basically a special worker, it does training, but also restores and saves checkpoints and do evaluation.
+* `master`: basically a special worker, it does training, but also restores and
+   saves checkpoints and do evaluation.
 
 *Task*
 
-The Task defines what is the role of the current node, for this example the node is the master on index 0
-on the cluster spec, the task will be different for each node. An example of the `TF_CONFIG` for a worker would be:
+The Task defines what is the role of the current node, for this example the node
+is the master on index 0 on the cluster spec, the task will be different for
+each node. An example of the `TF_CONFIG` for a worker would be:
 
 ```python
 cluster = {'master': ['master-ip:8000'],
@@ -150,23 +168,26 @@ TF_CONFIG = json.dumps(
 
 *Model_dir*
 
-This is the path where the master will save the checkpoints, graph and TensorBoard files.
-For a multi host environment you may want to use a Distributed File System, Google Storage and DFS are supported.
+This is the path where the master will save the checkpoints, graph and
+TensorBoard files. For a multi host environment you may want to use a
+Distributed File System, Google Storage and DFS are supported.
 
 *Environment*
 
-By the default environment is *local*, for a distributed setting we need to change it to *cloud*.
+By the default environment is *local*, for a distributed setting we need to
+change it to *cloud*.
 
 ### Running script
 
-Once you have a `TF_CONFIG` configured properly on each host you're ready to run on distributed settings.
+Once you have a `TF_CONFIG` configured properly on each host you're ready to run
+on distributed settings.
 
 #### Master
 Run this on master:
-Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for 40000 steps.
-It will run evaluation a couple of times during training.
-The num_workers arugument is used only to update the learning rate correctly.
-Make sure the model_dir is the same as defined on the TF_CONFIG.
+Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for
+40000 steps. It will run evaluation a couple of times during training. The
+num_workers arugument is used only to update the learning rate correctly. Make
+sure the model_dir is the same as defined on the TF_CONFIG.
 
 ```shell
 python cifar10_main.py --data-dir=gs://path/cifar-10-data \
@@ -305,9 +326,9 @@ INFO:tensorflow:Saving dict for global step 1: accuracy = 0.0994, global_step = 
 #### Worker
 
 Run this on worker:
-Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for 40000 steps.
-It will run evaluation a couple of times during training.
-Make sure the model_dir is the same as defined on the TF_CONFIG.
+Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for
+40000 steps. It will run evaluation a couple of times during training. Make sure
+the model_dir is the same as defined on the TF_CONFIG.
 
 ```shell
 python cifar10_main.py --data-dir=gs://path/cifar-10-data \
@@ -447,13 +468,17 @@ allow_soft_placement: true
 
 ## Visualizing results with TensorFlow
 
-When using Estimators you can also visualize your data in TensorBoard, with no changes in your code. You can use TensorBoard to visualize your TensorFlow graph, plot quantitative metrics about the execution of your graph, and show additional data like images that pass through it.
+When using Estimators you can also visualize your data in TensorBoard, with no
+changes in your code. You can use TensorBoard to visualize your TensorFlow
+graph, plot quantitative metrics about the execution of your graph, and show
+additional data like images that pass through it.
 
-You'll see something similar to this if you "point" TensorBoard to the `model_dir` you used to train or evaluate your model.
+You'll see something similar to this if you "point" TensorBoard to the
+`model_dir` you used to train or evaluate your model.
 
-Check TensorBoard during training or after it.
-Just point TensorBoard to the model_dir you chose on the previous step
-by default the model_dir is "sentiment_analysis_output"
+Check TensorBoard during training or after it. Just point TensorBoard to the
+model_dir you chose on the previous step by default the model_dir is
+"sentiment_analysis_output"
 
 ```shell
 tensorboard --log-dir="sentiment_analysis_output"
@@ -461,7 +486,8 @@ tensorboard --log-dir="sentiment_analysis_output"
 
 ## Warnings
 
-When runninng `cifar10_main.py` with `--sync` argument you may see an error similar to:
+When runninng `cifar10_main.py` with `--sync` argument you may see an error
+similar to:
 
 ```python
 File "cifar10_main.py", line 538, in <module>
