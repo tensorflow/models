@@ -29,7 +29,6 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import collections
 import functools
 import itertools
 import os
@@ -47,7 +46,7 @@ import cifar10_utils
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-def get_model_fn(num_gpus, variable_strategy, num_workers):
+def get_model_fn(num_gpus, variable_strategy, num_workers, sync):
   def _resnet_model_fn(features, labels, mode, params):
     """Resnet model body.
 
@@ -61,13 +60,13 @@ def get_model_fn(num_gpus, variable_strategy, num_workers):
       features: a list of tensors, one for each tower
       labels: a list of tensors, one for each tower
       mode: ModeKeys.TRAIN or EVAL
-      params: Dictionary of Hyperparameters suitable for tuning
+      params: Hyperparameters suitable for tuning
     Returns:
       A EstimatorSpec object.
     """
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
-    weight_decay = params['weight_decay']
-    momentum = params['momentum']
+    weight_decay = params.weight_decay
+    momentum = params.momentum
 
     tower_features = features
     tower_labels = labels
@@ -105,9 +104,9 @@ def get_model_fn(num_gpus, variable_strategy, num_workers):
                 tower_features[i],
                 tower_labels[i],
                 (device_type == 'cpu'),
-                params['num_layers'],
-                params['batch_norm_decay'],
-                params['batch_norm_epsilon'])
+                params.num_layers,
+                params.batch_norm_decay,
+                params.batch_norm_epsilon)
             tower_losses.append(loss)
             tower_gradvars.append(gradvars)
             tower_preds.append(preds)
@@ -143,14 +142,13 @@ def get_model_fn(num_gpus, variable_strategy, num_workers):
     with tf.device(consolidation_device):
       # Suggested learning rate scheduling from
       # https://github.com/ppwwyyxx/tensorpack/blob/master/examples/ResNet/cifar10-resnet.py#L155
-      # users could apply other scheduling.
       num_batches_per_epoch = cifar10.Cifar10DataSet.num_examples_per_epoch(
-          'train') // (params['train_batch_size'] * num_workers)
+          'train') // (params.train_batch_size * num_workers)
       boundaries = [
           num_batches_per_epoch * x
           for x in np.array([82, 123, 300], dtype=np.int64)
       ]
-      staged_lr = [params['learning_rate'] * x for x in [1, 0.1, 0.01, 0.002]]
+      staged_lr = [params.learning_rate * x for x in [1, 0.1, 0.01, 0.002]]
 
       learning_rate = tf.train.piecewise_constant(tf.train.get_global_step(),
                                                   boundaries, staged_lr)
@@ -161,7 +159,7 @@ def get_model_fn(num_gpus, variable_strategy, num_workers):
           learning_rate=learning_rate, momentum=momentum)
 
       chief_hooks = []
-      if params['sync']:
+      if sync:
         optimizer = tf.train.SyncReplicasOptimizer(
             optimizer,
             replicas_to_aggregate=num_workers)
@@ -280,7 +278,8 @@ def input_fn(data_dir, subset, num_shards, batch_size,
 
 # create experiment
 def get_experiment_fn(data_dir, num_gpus, is_gpu_ps,
-                      use_distortion_for_training=True):
+                      use_distortion_for_training=True,
+                      sync=True):
   """Returns an Experiment function.
 
   Experiments perform training on several workers in parallel,
@@ -294,6 +293,7 @@ def get_experiment_fn(data_dir, num_gpus, is_gpu_ps,
       num_gpus: int. Number of GPUs on each worker.
       is_gpu_ps: bool. If true, average gradients on GPUs.
       use_distortion_for_training: bool. See cifar10.Cifar10DataSet.
+      sync: bool. If true synchronizes variable updates across workers.
   Returns:
       A function (tf.estimator.RunConfig, tf.contrib.training.HParams) ->
       tf.contrib.learn.Experiment.
@@ -341,9 +341,9 @@ def get_experiment_fn(data_dir, num_gpus, is_gpu_ps,
 
     classifier = tf.estimator.Estimator(
         model_fn=get_model_fn(
-            num_gpus, is_gpu_ps, run_config.num_worker_replicas or 1),
+            num_gpus, is_gpu_ps, run_config.num_worker_replicas or 1, sync),
         config=run_config,
-        params=vars(hparams)
+        params=hparams
     )
 
     # Create experiment.
@@ -366,6 +366,7 @@ def main(job_dir,
          use_distortion_for_training,
          log_device_placement,
          num_intra_threads,
+         sync,
          **hparams):
   # The env variable is on deprecation path, default is set to off.
   os.environ['TF_SYNC_ON_FINISH'] = '0'
@@ -388,7 +389,8 @@ def main(job_dir,
           data_dir,
           num_gpus,
           variable_strategy,
-          use_distortion_for_training
+          use_distortion_for_training,
+          sync
       ),
       run_config=config,
       hparams=tf.contrib.training.HParams(**hparams)
@@ -457,7 +459,7 @@ if __name__ == '__main__':
       type=float,
       default=2e-4,
       help='Weight decay for convolutions.'
-  ) 
+  )
   parser.add_argument(
       '--learning-rate',
       type=float,
@@ -485,13 +487,11 @@ if __name__ == '__main__':
   parser.add_argument(
       '--num-intra-threads',
       type=int,
-      default=1,
+      default=0,
       help="""\
-      Number of threads to use for intra-op parallelism. If set to 0, the
-      system will pick an appropriate number. The default is 1 since in this
-      example CPU only handles the input pipeline and gradient aggregation
-      (when --is-cpu-ps). Ops that could potentially benefit from intra-op
-      parallelism are scheduled to run on GPUs.\
+      Number of threads to use for intra-op parallelism. When training on CPU
+      set to 0 to have the system pick the appropriate number or alternatively
+      set it to the number of physical CPU cores.\
       """
   )
   parser.add_argument(
@@ -525,15 +525,16 @@ if __name__ == '__main__':
 
   if args.num_gpus < 0:
     raise ValueError(
-        'Invalid GPU count: \"num_gpus\" must be 0 or a positive integer.')
+        'Invalid GPU count: \"--num-gpus\" must be 0 or a positive integer.')
   if args.num_gpus == 0 and args.variable_strategy == 'GPU':
     raise ValueError(
-        'No GPU available for use, must use CPU to average gradients.')
+        'num-gpus=0, CPU must be used as parameter server. Set'
+        '--variable-strategy=CPU.')
   if (args.num_layers - 2) % 6 != 0:
-    raise ValueError('Invalid num_layers parameter.')
+    raise ValueError('Invalid --num-layers parameter.')
   if args.num_gpus != 0 and args.train_batch_size % args.num_gpus != 0:
-    raise ValueError('train_batch_size must be multiple of num_gpus.')
+    raise ValueError('--train-batch-size must be multiple of --num-gpus.')
   if args.num_gpus != 0 and args.eval_batch_size % args.num_gpus != 0:
-    raise ValueError('eval_batch_size must be multiple of num_gpus.')
+    raise ValueError('--eval-batch-size must be multiple of --num-gpus.')
 
   main(**vars(args))
