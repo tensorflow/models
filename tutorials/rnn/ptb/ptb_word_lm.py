@@ -137,11 +137,19 @@ class PTBModel(object):
         "softmax_w", [size, vocab_size], dtype=data_type())
     softmax_b = tf.get_variable("softmax_b", [vocab_size], dtype=data_type())
     logits = tf.nn.xw_plus_b(output, softmax_w, softmax_b)
-    loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
-        [logits],
-        [tf.reshape(input_.targets, [-1])],
-        [tf.ones([self.batch_size * self.num_steps], dtype=data_type())])
-    self._cost = cost = tf.reduce_sum(loss) / self.batch_size
+     # Reshape logits to be a 3-D tensor for sequence loss
+    logits = tf.reshape(logits, [self.batch_size, self.num_steps, vocab_size])
+
+    # Use the contrib sequence loss and average over the batches
+    loss = tf.contrib.seq2seq.sequence_loss(
+        logits,
+        input_.targets,
+        tf.ones([self.batch_size, self.num_steps], dtype=data_type()),
+        average_across_timesteps=False,
+        average_across_batch=True)
+
+    # Update the cost
+    self._cost = tf.reduce_sum(loss)
     self._final_state = state
 
     if not is_training:
@@ -149,7 +157,7 @@ class PTBModel(object):
 
     self._lr = tf.Variable(0.0, trainable=False)
     tvars = tf.trainable_variables()
-    grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
+    grads, _ = tf.clip_by_global_norm(tf.gradients(self._cost, tvars),
                                       config.max_grad_norm)
     optimizer = tf.train.GradientDescentOptimizer(self._lr)
     self._train_op = optimizer.apply_gradients(
