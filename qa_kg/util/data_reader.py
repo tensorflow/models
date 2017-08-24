@@ -14,7 +14,10 @@
 # ==============================================================================
 
 from collections import namedtuple
-from Queue import Queue
+try:
+  from queue import Queue  # Python 3
+except ImportError:
+  from Queue import Queue  # Python 2
 import re
 import threading
 import numpy as np
@@ -43,7 +46,7 @@ class SampleBuilder:
 
   def read_kb(self):
     kb_raw = []
-    for line in file(self.config.KB_file):
+    for line in open(self.config.KB_file):
       sub, rel, obj = line.strip().split('|')
       kb_raw.append((sub, rel, obj))
     tf.logging.info('# of KB records: %d' % len(kb_raw))
@@ -55,7 +58,7 @@ class SampleBuilder:
       raw = []
       tf.logging.info(
         'Reading data file {}'.format(self.config.data_files[name]))
-      for line in file(self.config.data_files[name]):
+      for line in open(self.config.data_files[name]):
         question, answers = line.strip().split('\t')
         question = question.replace('],', ']')  # ignore ',' in the template
         raw.append((question, answers))

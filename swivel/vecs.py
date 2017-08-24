@@ -15,7 +15,9 @@
 import mmap
 import numpy as np
 import os
-import struct
+
+from six import string_types
+
 
 class Vecs(object):
   def __init__(self, vocab_filename, rows_filename, cols_filename=None):
@@ -41,8 +43,8 @@ class Vecs(object):
       rows = np.matrix(
           np.frombuffer(rows_mm, dtype=np.float32).reshape(n, dim))
 
-      # If column vectors were specified, then open them and add them to the row
-      # vectors.
+      # If column vectors were specified, then open them and add them to the
+      # row vectors.
       if cols_filename:
         with open(cols_filename, 'r') as cols_fh:
           cols_mm = mmap.mmap(cols_fh.fileno(), 0, prot=mmap.PROT_READ)
@@ -71,7 +73,7 @@ class Vecs(object):
 
   def neighbors(self, query):
     """Returns the nearest neighbors to the query (a word or vector)."""
-    if isinstance(query, basestring):
+    if isinstance(query, string_types):
       idx = self.word_to_idx.get(query)
       if idx is None:
         return None
