@@ -40,6 +40,7 @@ package_group(
         "//research/vale/pose_estimation/...",
         "//research/vision/classomatic/...",
         "//research/vision/couchpotato/...",
+        "//research/vision/creatism/...",
         "//research/vision/enhancement/...",
         "//research/vision/loco/...",
         "//research/vision/npcam/lib_image_quality/nima/...",
