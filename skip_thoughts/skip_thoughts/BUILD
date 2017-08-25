@@ -1,15 +1,8 @@
-package(default_visibility = [":internal"])
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
 exports_files(["LICENSE"])
-
-package_group(
-    name = "internal",
-    packages = [
-        "//skip_thoughts/...",
-    ],
-)
 
 py_library(
     name = "configuration",
