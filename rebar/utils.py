@@ -134,6 +134,3 @@ def logSumExp(t, axis=0, keep_dims = False):
     return tf.expand_dims(res, axis)
   else:
     return res
-
-if __name__ == '__main__':
-  app.run()

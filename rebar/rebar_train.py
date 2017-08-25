@@ -28,6 +28,12 @@ import tensorflow as tf
 import rebar
 import datasets
 import logger as L
+
+try:
+  xrange          # Python 2
+except NameError:
+  xrange = range  # Python 3
+
 gfile = tf.gfile
 
 tf.app.flags.DEFINE_string("working_dir", "/tmp/rebar",
