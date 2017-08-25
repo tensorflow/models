@@ -95,29 +95,28 @@ def train(number_of_steps):
       saver=saver)
 
 def main(unused_argv):
-    print ('OOM solved :DDD')
+    print ('Why OOM? :D')
     tf.logging.set_verbosity(tf.logging.INFO)
-    steps_per_epoch = 18323
-    # TODO: change this later :)
-    min_step = 5000000
+    # steps_per_epoch = 18323
+    steps_per_epoch = 1000
+    min_step=5042000
+
+    # Train a few steps with only coco data
+    # flag=1, crawler waits till training ends.
+    # Crawler starts predicting, flag=1. Crawler starts crawling, flag=0.
+    utils.writeflag(path=flag_file, flag=1, info='Train for a few steps')
+    train(number_of_steps=min_step+100)
+    utils.writeflag(path=flag_file, flag=0, info='Stop train for a few steps')
+    time.sleep(600)
+
     min_step +=steps_per_epoch*1
     steps=[min_step]
-    n_loops = 10
+    n_loops = 100
     i = 0
     while(i<n_loops):
         steps.append(steps[i]+steps_per_epoch)
         i+=1
-    print (steps)
-    # Train a few steps with only coco data
-    # flag=1, crawler waits till training ends. Crawler starts predicting, flag=1. Crawler starts crawling, flag=0.
-    # Train one more epoch ...
-    min_step=5000000
-    min_step+=100
-    utils.writeflag(path=flag_file, flag=1, info='Train for a few steps')
-    train(number_of_steps=min_step)
-    utils.writeflag(path=flag_file, flag=0, info='Stop train for a few steps')
-    time.sleep(600)
-
+    print (steps[:10])
 
     for step in steps:
         while True:

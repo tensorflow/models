@@ -104,7 +104,7 @@ def crawl_images(queries, n_google):
         try:
             counter += 1
             current_dir = current_folder + str(counter)
-            google_crawler = GoogleImageCrawler(parser_threads=4, downloader_threads=4,
+            google_crawler = GoogleImageCrawler(parser_threads=2, downloader_threads=2,
                                                 log_level=logging.ERROR,
                                                 storage={'root_dir':current_dir})
             google_crawler.crawl(keyword=query, offset=0, max_num=n_google,
@@ -119,9 +119,9 @@ def crawl_images(queries, n_google):
             for image in images:
                 captions = [["<S>"]+query+[".","</S>"]]
                 image_metadata.append(ImageMetadata(counter, image, captions))
-            # Save metadata every 100 record :D
-            if not counter%100:
-                utils.save(image_metadata, current_folder+ 'metadata_template_%d.pkl'%counter, '\n')
+            # # Save metadata every 100 record :D
+            # if not counter%100:
+            #     utils.save(image_metadata, current_folder+ 'metadata_template_%d.pkl'%counter, '\n')
         except:
             print ('Abandon folder %s' %current_dir)
     # TODO: this part is very fragile, shall change ---
@@ -158,6 +158,7 @@ def main():
             vocab = vocabulary.Vocabulary(vocab_file)
             seqpath = predict_images(filenames=images_rand, vocab = vocab, n_sentences=n_sentences)
             utils.writeflag(path=flag_file, flag=0, info='finish prediction')
+            utils.readflag(path=flag_file)
             predict_seqs = utils.load(seqpath, 'Predicted seqs are loaded from %s' % seqpath)
             print ('len of predicted_seqs %s' %len(predict_seqs))
             # This part is vulnerable. Shall change
