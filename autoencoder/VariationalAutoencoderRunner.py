@@ -1,13 +1,15 @@
-import numpy as np
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
+import numpy as np
 import sklearn.preprocessing as prep
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
 from autoencoder_models.VariationalAutoencoder import VariationalAutoencoder
 
-mnist = input_data.read_data_sets('MNIST_data', one_hot = True)
-
+mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
 
 def min_max_scale(X_train, X_test):
@@ -29,9 +31,10 @@ training_epochs = 20
 batch_size = 128
 display_step = 1
 
-autoencoder = VariationalAutoencoder(n_input = 784,
-                                     n_hidden = 200,
-                                     optimizer = tf.train.AdamOptimizer(learning_rate = 0.001))
+autoencoder = VariationalAutoencoder(
+    n_input=784,
+    n_hidden=200,
+    optimizer=tf.train.AdamOptimizer(learning_rate = 0.001))
 
 for epoch in range(training_epochs):
     avg_cost = 0.
@@ -47,6 +50,7 @@ for epoch in range(training_epochs):
 
     # Display logs per epoch step
     if epoch % display_step == 0:
-        print("Epoch:", '%04d' % (epoch + 1), "cost=", "{:.9f}".format(avg_cost))
+        print("Epoch:", '%d,' % (epoch + 1),
+              "Cost:", "{:.9f}".format(avg_cost))
 
 print("Total cost: " + str(autoencoder.calc_total_cost(X_test)))
