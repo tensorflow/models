@@ -177,9 +177,9 @@ downloading and converting ImageNet data to TFRecord format. Downloading and
 preprocessing the data may take several hours (up to half a day) depending on
 your network and computer speed. Please be patient.
 
-To begin, you will need to sign up for an account with [ImageNet]
-(http://image-net.org) to gain access to the data. Look for the sign up page,
-create an account and request an access key to download the data.
+To begin, you will need to sign up for an account with
+[ImageNet](http://image-net.org) to gain access to the data. Look for the sign
+up page, create an account and request an access key to download the data.
 
 After you have `USERNAME` and `PASSWORD`, you are ready to run our script. Make
 sure that your hard disk has at least 500 GB of free space for downloading and
