@@ -35,6 +35,7 @@ package_group(
         "//photos/vision/human_sensing/...",
         "//photos/vision/object_net/...",
         "//photos/vision/streams/...",
+        "//research/action_recognition/...",
         "//research/drishti/app/vesper/...",
         "//research/vale/imagination/...",
         "//research/vale/instance_segmentation/...",
