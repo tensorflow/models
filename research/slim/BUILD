@@ -48,6 +48,7 @@ package_group(
         "//research/vision/threedeep/...",
         "//robotics/learning/...",
         "//robotics/reinforcement_learning/evol/...",
+        "//third_party/car/...",
         "//third_party/tensorflow_models/domain_adaptation/datasets/...",
         "//third_party/tensorflow_models/object_detection/...",
         "//vision/face/pittpatt/research/tensorflow/...",
