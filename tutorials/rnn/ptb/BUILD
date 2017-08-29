@@ -36,6 +36,13 @@ py_test(
     ],
 )
 
+py_library(
+    name = "util",
+    srcs = ["util.py"],
+    srcs_version = "PY2AND3",
+    deps = ["//tensorflow:tensorflow_py"],
+)
+
 py_binary(
     name = "ptb_word_lm",
     srcs = [
@@ -44,7 +51,8 @@ py_binary(
     srcs_version = "PY2AND3",
     deps = [
         ":reader",
-        "//tensorflow:tensorflow_py",
+        ":util",
+        "//tensorflow:tensorflow_py,
     ],
 )
 
