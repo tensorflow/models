@@ -126,7 +126,7 @@ from integer labels to class names.
 
 You can use the same script to create the mnist and cifar10 datasets.
 However, for ImageNet, you have to follow the instructions
-[here](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started).
+[here](#an-automated-script-for-processing-imagenet-data).
 Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and could use up to 500GB.
 
