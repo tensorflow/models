@@ -195,6 +195,7 @@ you will not need to interact with the script again.
 DATA_DIR=$HOME/imagenet-data
 
 # build the preprocessing script.
+cd tensorflow-models
 bazel build slim/download_and_preprocess_imagenet
 
 # run it
