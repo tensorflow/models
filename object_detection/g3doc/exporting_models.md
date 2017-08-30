@@ -19,4 +19,4 @@ python object_detection/export_inference_graph \
     --output_directory ${OUTPUT_DIR_FOR_INFERENCE_GRAPH}
 ```
 
-Afterwards, you should see a graph named frozen_inference_graph.pb.
+Afterwards, you should see a graph named ${OUTPUT_DIR_FOR_INFERENCE_GRAPH}/frozen_inference_graph.pb.
