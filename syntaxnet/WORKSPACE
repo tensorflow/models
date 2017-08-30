@@ -23,3 +23,8 @@ tf_workspace(path_prefix="", tf_repo_name="org_tensorflow")
 # Test that Bazel is up-to-date.
 load("@org_tensorflow//tensorflow:workspace.bzl", "check_version")
 check_version("0.4.2")
+
+bind(
+    name = "protobuf",
+    actual = "@protobuf_archive//:protobuf",
+)
