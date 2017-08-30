@@ -110,7 +110,6 @@ cc_library(
     srcs = ["test_main.cc"],
     linkopts = ["-lm"],
     deps = [
-        "//external:gtest",
         "@org_tensorflow//tensorflow/core:lib",
         "@org_tensorflow//tensorflow/core:test",
         "@org_tensorflow//tensorflow/core:testlib",
