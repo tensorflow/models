@@ -16,6 +16,7 @@
 
 """Simple tool for inspecting nearest neighbors and analogies."""
 
+from __future__ import print_function
 import re
 import sys
 from getopt import GetoptError, getopt
@@ -24,8 +25,8 @@ from vecs import Vecs
 
 try:
   opts, args = getopt(sys.argv[1:], 'v:e:', ['vocab=', 'embeddings='])
-except GetoptError, e:
-  print >> sys.stderr, e
+except GetoptError as e:
+  print(e, file=sys.stderr)
   sys.exit(2)
 
 opt_vocab = 'vocab.txt'
@@ -55,21 +56,21 @@ while True:
   elif len(parts) == 3:
     vs = [vecs.lookup(w) for w in parts]
     if any(v is None for v in vs):
-      print 'not in vocabulary: %s' % (
-          ', '.join(tok for tok, v in zip(parts, vs) if v is None))
+      print('not in vocabulary: %s' % (
+            ', '.join(tok for tok, v in zip(parts, vs) if v is None)))
 
       continue
 
     res = vecs.neighbors(vs[2] - vs[0] + vs[1])
 
   else:
-    print 'use a single word to query neighbors, or three words for analogy'
+    print('use a single word to query neighbors, or three words for analogy')
     continue
 
   if not res:
     continue
 
   for word, sim in res[:20]:
-    print '%0.4f: %s' % (sim, word)
+    print('%0.4f: %s' % (sim, word))
 
-  print
+  print()
