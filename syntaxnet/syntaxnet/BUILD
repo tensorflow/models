@@ -79,7 +79,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_googlesource_code_re2//:re2",
-        "@protobuf//:protobuf",
+        "@protobuf_archive//:protobuf",
         "@org_tensorflow//third_party/eigen3",
     ] + select({
         "//conditions:default": [
