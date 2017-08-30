@@ -12,7 +12,7 @@
 # of the model, and the input image size, which can be 224, 192, 160, or 128
 # pixels, and affects the amount of computation needed, and the latency.
 # Here's an example generating a frozen model from pretrained weights:
-# 
+#
 
 set -e
 
@@ -20,7 +20,7 @@ print_usage () {
   echo "Creates a frozen mobilenet model suitable for mobile use"
   echo "Usage:"
   echo "$0 <mobilenet version> <input size> [checkpoint path]"
-} 
+}
 
 MOBILENET_VERSION=$1
 IMAGE_SIZE=$2
