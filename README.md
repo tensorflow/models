@@ -1,47 +1,104 @@
-# TensorFlow Models
+# Tensorflow Object Detection API
+Creating accurate machine learning models capable of localizing and identifying
+multiple objects in a single image remains a core challenge in computer vision.
+The TensorFlow Object Detection API is an open source framework built on top of
+TensorFlow that makes it easy to construct, train and deploy object detection
+models.  At Google we’ve certainly found this codebase to be useful for our
+computer vision needs, and we hope that you will as well.
+<p align="center">
+  <img src="g3doc/img/kites_detections_output.jpg" width=676 height=450>
+</p>
+Contributions to the codebase are welcome and we would love to hear back from
+you if you find this API useful.  Finally if you use the Tensorflow Object
+Detection API for a research publication, please consider citing:
 
-This repository contains machine learning models implemented in
-[TensorFlow](https://tensorflow.org). The models are maintained by their
-respective authors. To propose a model for inclusion, please submit a pull
-request.
+```
+"Speed/accuracy trade-offs for modern convolutional object detectors."
+Huang J, Rathod V, Sun C, Zhu M, Korattikara A, Fathi A, Fischer I, Wojna Z,
+Song Y, Guadarrama S, Murphy K, CVPR 2017
+```
+\[[link](https://arxiv.org/abs/1611.10012)\]\[[bibtex](
+https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.google.com/&output=citation&scisig=AAGBfm0AAAAAWUIIlnPZ_L9jxvPwcC49kDlELtaeIyU-&scisf=4&ct=citation&cd=-1&hl=en&scfhb=1)\]
 
-Currently, the models are compatible with TensorFlow 1.0 or later. If you are
-running TensorFlow 0.12 or earlier, please
-[upgrade your installation](https://www.tensorflow.org/install).
+## Maintainers
+
+* Jonathan Huang, github: [jch1](https://github.com/jch1)
+* Vivek Rathod, github: [tombstone](https://github.com/tombstone)
+* Derek Chow, github: [derekjchow](https://github.com/derekjchow)
+* Chen Sun, github: [jesu9](https://github.com/jesu9)
+* Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
 
 
-## Models
-- [adversarial_crypto](adversarial_crypto): protecting communications with adversarial neural cryptography.
-- [adversarial_text](adversarial_text): semi-supervised sequence learning with adversarial training.
-- [attention_ocr](attention_ocr): a model for real-world image text extraction.
-- [audioset](audioset): Models and supporting code for use with [AudioSet](http://g.co.audioset).
-- [autoencoder](autoencoder): various autoencoders.
-- [cognitive_mapping_and_planning](cognitive_mapping_and_planning): implementation of a spatial memory based mapping and planning architecture for visual navigation.
-- [compression](compression): compressing and decompressing images using a pre-trained Residual GRU network.
-- [differential_privacy](differential_privacy): privacy-preserving student models from multiple teachers.
-- [domain_adaptation](domain_adaptation): domain separation networks.
-- [im2txt](im2txt): image-to-text neural network for image captioning.
-- [inception](inception): deep convolutional networks for computer vision.
-- [learning_to_remember_rare_events](learning_to_remember_rare_events):  a large-scale life-long memory module for use in deep learning.
-- [lfads](lfads): sequential variational autoencoder for analyzing neuroscience data.
-- [lm_1b](lm_1b): language modeling on the one billion word benchmark.
-- [namignizer](namignizer): recognize and generate names.
-- [neural_gpu](neural_gpu): highly parallel neural computer.
-- [neural_programmer](neural_programmer): neural network augmented with logic and mathematic operations.
-- [next_frame_prediction](next_frame_prediction): probabilistic future frame synthesis via cross convolutional networks.
-- [object_detection](object_detection): localizing and identifying multiple objects in a single image.
-- [pcl_rl](pcl_rl): code for several reinforcement learning algorithms, including Path Consistency Learning.
-- [ptn](ptn): perspective transformer nets for 3D object reconstruction.
-- [qa_kg](qa_kg): module networks for question answering on knowledge graphs.
-- [real_nvp](real_nvp): density estimation using real-valued non-volume preserving (real NVP) transformations.
-- [rebar](rebar): low-variance, unbiased gradient estimates for discrete latent variable models.
-- [resnet](resnet): deep and wide residual networks.
-- [skip_thoughts](skip_thoughts): recurrent neural network sentence-to-vector encoder.
-- [slim](slim): image classification models in TF-Slim.
-- [street](street): identify the name of a street (in France) from an image using a Deep RNN.
-- [swivel](swivel): the Swivel algorithm for generating word embeddings.
-- [syntaxnet](syntaxnet): neural models of natural language syntax.
-- [textsum](textsum): sequence-to-sequence with attention model for text summarization.
-- [transformer](transformer): spatial transformer network, which allows the spatial manipulation of data within the network.
-- [tutorials](tutorials): models described in the [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
-- [video_prediction](video_prediction): predicting future video frames with neural advection.
+## Table of contents
+
+Before You Start:
+* <a href='g3doc/installation.md'>Installation</a><br>
+
+Quick Start:
+* <a href='object_detection_tutorial.ipynb'>
+      Quick Start: Jupyter notebook for off-the-shelf inference</a><br>
+* <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
+
+Setup:
+* <a href='g3doc/configuring_jobs.md'>
+      Configuring an object detection pipeline</a><br>
+* <a href='g3doc/preparing_inputs.md'>Preparing inputs</a><br>
+
+Running:
+* <a href='g3doc/running_locally.md'>Running locally</a><br>
+* <a href='g3doc/running_on_cloud.md'>Running on the cloud</a><br>
+
+Extras:
+* <a href='g3doc/detection_model_zoo.md'>Tensorflow detection model zoo</a><br>
+* <a href='g3doc/exporting_models.md'>
+      Exporting a trained model for inference</a><br>
+* <a href='g3doc/defining_your_own_model.md'>
+      Defining your own model architecture</a><br>
+* <a href='g3doc/using_your_own_dataset.md'>
+      Bringing in your own dataset</a><br>
+
+## Getting Help
+
+Please report bugs to the tensorflow/models/ Github
+[issue tracker](https://github.com/tensorflow/models/issues), prefixing the
+issue name with "object_detection". To get help with issues you may encounter
+using the Tensorflow Object Detection API, create a new question on
+[StackOverflow](https://stackoverflow.com/) with the tags "tensorflow" and
+"object-detection".
+
+## Release information
+
+### August 11, 2017
+
+We have released an update to the [Android Detect
+demo](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/android)
+which will now run models trained using the Tensorflow Object
+Detection API on an Android device.  By default, it currently runs a
+frozen SSD w/Mobilenet detector trained on COCO, but we encourage
+you to try out other detection models!
+
+<b>Thanks to contributors</b>: Jonathan Huang, Andrew Harp
+
+### June 15, 2017
+
+In addition to our base Tensorflow detection model definitions, this
+release includes:
+
+* A selection of trainable detection models, including:
+  * Single Shot Multibox Detector (SSD) with MobileNet,
+  * SSD with Inception V2,
+  * Region-Based Fully Convolutional Networks (R-FCN) with Resnet 101,
+  * Faster RCNN with Resnet 101,
+  * Faster RCNN with Inception Resnet v2
+* Frozen weights (trained on the COCO dataset) for each of the above models to
+  be used for out-of-the-box inference purposes.
+* A [Jupyter notebook](object_detection_tutorial.ipynb) for performing
+  out-of-the-box inference with one of our released models
+* Convenient [local training](g3doc/running_locally.md) scripts as well as
+  distributed training and evaluation pipelines via
+  [Google Cloud](g3doc/running_on_cloud.md).
+
+
+<b>Thanks to contributors</b>: Jonathan Huang, Vivek Rathod, Derek Chow,
+Chen Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings,
+Viacheslav Kovalevskyi, Kevin Murphy
