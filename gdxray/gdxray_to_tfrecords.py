@@ -199,14 +199,14 @@ def _get_output_filename(output_dir, train_or_eval, name):
     return '%s/%s_%s.tfrecord' % (output_dir, train_or_eval, name)
 
 
-def _get_test_train_split():
-    train_file = "data/gdxray_test_split.txt"
-    test_file = "data/gdxray_train_split.txt"
+def _get_train_eval_split():
+    eval_file = "data/gdxray_eval_split.txt"
+    train_file = "data/gdxray_train_split.txt"
 
-    with open(train_file) as f1, open(test_file) as f2:
+    with open(train_file) as f1, open(eval_file) as f2:
         train_split = [x.strip() for x in f1] 
-        test_split = [x.strip() for x in f2] 
-    return train_split, test_split
+        eval_split = [x.strip() for x in f2] 
+    return train_split, eval_split
 
 
 def run(output_dir, name='gdxray_train', shuffling=False):
@@ -220,43 +220,25 @@ def run(output_dir, name='gdxray_train', shuffling=False):
     # Process dataset files.
     tf_train_filename = _get_output_filename(output_dir, 'train', name)
     tf_eval_filename = _get_output_filename(output_dir, 'train', name)
-    train_split, eval_split = ([],[])#_get_test_train_split()
+    train_split, eval_split = _get_train_eval_split()
 
     with tf.Session() as sess:
         
         i = 0
         print("Writing train file to", tf_train_filename)
         with python_io.TFRecordWriter(tf_train_filename) as train_writer:
-            train_files = []
-            test_files = []
-
             for image in get_images():
-                print('\r>> Converting image [%i]: %s'%(i, image.filename))
-                #if len(image.bboxes) and image.filename in train_split:
-                #TEMP START
-                if len(image.boxes):
-                    if random.random()<0.8:
-                        train_files.append(image.filename)
-                        _add_to_tfrecord(sess, image, train_writer)
-                        i += 1
-                    else:
-                        test_files.append(image.filename)
-
-
-            with open("data/gdxray_train_split.txt", 'w') as f:
-                print(train_files)
-                f.write('\n'.join(train_files))
-
-            with open("data/gdxray_eval_split.txt", 'w') as f:
-                print(test_files)
-                f.write('\n'.join(test_files))
-
+                if len(image.boxes) and image.filename in train_split:
+                    print('\r>> Adding image [%i]: %s'%(i, image.filename))
+                    _add_to_tfrecord(sess, image, train_writer)
+                    i += 1
+                    
         i = 0
         print("Writing eval file to", tf_eval_filename)
         with python_io.TFRecordWriter(tf_eval_filename) as eval_writer:
             for image in get_images():
-                print('\r>> Converting image [%i]: %s'%(i, image.filename))
                 if image.filename in eval_split:
+                    print('\r>> Adding image [%i]: %s'%(i, image.filename))
                     _add_to_tfrecord(sess, image, eval_writer)
                     i += 1
 
