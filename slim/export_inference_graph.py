@@ -62,6 +62,7 @@ from tensorflow.python.platform import gfile
 from datasets import dataset_factory
 from nets import nets_factory
 
+
 slim = tf.contrib.slim
 
 tf.app.flags.DEFINE_string(
