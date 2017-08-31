@@ -1,0 +1,165 @@
+html { overflow-y: scroll; } /* Always show a scrollbar */
+.shy { display: none ; }
+h1 { font-size: 2em ; }
+h2 { font-size: 1.5em ; }
+h3 { font-size: 1.2em ; }
+a  { color: #00438E ; }
+
+.h1, .h2, .h3, h1, h2, h3 {
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+#logo {
+    height: 40px;
+}
+
+.navbar-default {
+    background-color: #002247
+}
+
+.navbar-default .navbar-nav>.active>a,
+.navbar-default .navbar-nav>.active>a:focus,
+.navbar-default .navbar-nav>.active>a:hover {
+    background-color: #002247;
+    color: #EEE;
+}
+
+.navbar-default .navbar-nav>.disabled>a,
+.navbar-default .navbar-nav>.disabled>a:focus,
+.navbar-default .navbar-nav>.disabled>a:hover {
+  color: #666;
+}
+
+.navbar-default .navbar-nav>.open>a,
+.navbar-default .navbar-nav>.open>a:focus,
+.navbar-default .navbar-nav>.open>a:hover {
+  background-color: #003065;
+  color: #EEE;
+}
+
+.dropdown-menu>.active>a,
+.dropdown-menu>.active>a:focus,
+.dropdown-menu>.active>a:hover {
+  background-color: #003065;
+}
+
+.dropdown-menu>li>a:focus,
+.dropdown-menu>li>a:hover {
+  background-color: #f5f5f5;
+}
+
+.navbar-default .navbar-nav>li>a,
+.navbar-default .navbar-nav>li>a:focus {
+    color: #999;
+}
+
+.navbar-default .navbar-nav>li>a:hover {
+    color: #EEE;
+}
+
+.navbar-brand {
+    padding-top: 5px;
+}
+
+/* Fix the functions list menu */
+
+#Functions .dropdown-menu {
+  color: #000;
+  max-height: 800px;
+  width: 342px;
+}
+
+#Functions .dropdown-menu li {
+  float: left;
+  width: 170px;
+}
+
+.menuicon {
+    display:inline-block;
+    width: 50px;
+    height: 50px;
+    text-align: center ;
+    vertical-align: middle;
+    color: #aaa ;
+}
+
+.menuicon > span {
+    line-height: 50px ;
+}
+
+/* Prevent blockquotes to be giant-sized, restyle */
+blockquote {
+    font-size: inherit ! important ;
+    border: 1px solid gray;
+}
+
+/*
+
+/* Have a space after ul */
+ul ul, ol ul, ul ol, ol ol {
+    margin-bottom: 10px ;
+}
+
+/* Nicer font for code samples */
+code, kbd, pre, samp {
+font-family: "Droid Sans Mono","Lucida Console","Courier New",monospace;
+}
+
+code {
+    color:  #DF5000;
+    background-color: #F5F5F5;
+    padding: 2px;
+    font-size: 93%;
+    /*font-weight: 600;*/
+}
+
+h1 code, h2 code, h3 code {
+    color: #333;
+    font-weight: 600;
+    background-color: #FFF;
+    font-size: 90%;
+}
+
+a code {
+    font-size: 95%;
+    /*font-weight: 600;*/
+    text-decoration: underline;
+}
+
+pre {
+    font-weight: 600;
+}
+
+a .fa, a .fa:visited {
+    color: #AAA;
+    padding-left: 3px;
+}
+
+.hljs {
+  background: #F5F5F5;
+  padding: 0px
+}
+
+/* Solves the problem of jumping to section and being hidden by fixed nav-bar */
+/* https://github.com/twbs/bootstrap/issues/1768 */
+*[id]:before {
+  display: block;
+  content: " ";
+  margin-top: -70px;
+  height: 70px;
+  visibility: hidden;
+}
+
+/* Hides the prev, next and github links when browser width is between 768 and 1200px */
+@media (min-width: 768px) and (max-width: 1199px) {
+	.nav.navbar-nav.navbar-right
+	{
+		display: none;
+	}
+}
+
+canvas {
+  background-color: transparent;
+}
+*/

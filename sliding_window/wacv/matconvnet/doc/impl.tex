@@ -1,0 +1,738 @@
+% ------------------------------------------------------------------
+\chapter{Implementation details}\label{s:impl}
+% ------------------------------------------------------------------
+
+This chapter contains calculations and details.
+
+% ------------------------------------------------------------------
+\section{Convolution}\label{s:impl-convolution}
+% ------------------------------------------------------------------
+
+It is often convenient to express the convolution operation in matrix form. To this end, let $\phi(\bx)$ be the \verb!im2row! operator, extracting all $W' \times H'$ patches from the map $\bx$ and storing them as rows of a $(H''W'') \times (H'W'D)$ matrix. Formally, this operator is given by:
+\[
+   [\phi(\bx)]_{pq} \underset{(i,j,d)=t(p,q)}{=} x_{ijd}
+\]
+where the correspondence between indexes $(i,j,d)$ and $(p,q)$ is given by the map $(i,j,d) = t(p,q)$ where:
+\[
+ i = i''+i'-1, \quad
+ j = j''+j'-1, \quad
+ p = i'' + H'' (j''-1), \quad
+ q = i' + H'(j'-1) + H'W' (d-1).
+\]
+In practice, this map is slightly modified to account for the padding, stride, and dilation factors. It is also useful to define the ``transposed'' operator \verb!row2im!:
+\[
+   [\phi^*(M)]_{ijd}
+   =
+   \sum_{(p,q) \in t^{-1}(i,j,d)}
+   M_{pq}.
+\]
+Note that $\phi$ and $\phi^*$ are linear operators. Both can be expressed by a matrix $H\in\real^{(H''W''H'W'D) \times(HWD)}$ such that
+\[
+  \vv(\phi(\bx)) = H \vv(\bx), \qquad 
+  \vv(\phi^*(M)) = H^\top \vv(M).
+\]
+Hence we obtain the following expression for the vectorized output (see~\cite{kinghorn96integrals}):
+\[
+ \vv\by = 
+ \vv\left(\phi(\bx) F\right)
+ =
+ \begin{cases}
+ (I \otimes \phi(\bx)) \vv F, & \text{or, equivalently,} \\
+ (F^\top \otimes I) \vv \phi(\bx),
+ \end{cases}
+\]
+where $F\in\mathbb{R}^{(H'W'D)\times K}$ is the matrix obtained by reshaping the array $\bff$ and $I$ is an identity matrix of suitable dimensions. This allows obtaining the following formulas for the derivatives:
+\[
+\frac{dz}{d(\vv F)^\top}
+=
+\frac{dz}{d(\vv\by)^\top}
+(I \otimes \phi(\bx))
+= \vv\left[ 
+\phi(\bx)^\top 
+\frac{dz}{dY}
+\right]^\top
+\]
+where $Y\in\real^{(H''W'')\times K}$ is the matrix obtained by reshaping the array $\by$. Likewise:
+\[
+\frac{dz}{d(\vv \bx)^\top}
+=
+\frac{dz}{d(\vv\by)^\top}
+(F^\top \otimes I)
+\frac{d\vv \phi(\bx)}{d(\vv \bx)^\top}
+=
+\vv\left[ 
+\frac{dz}{dY}
+F^\top
+\right]^\top
+H
+\]
+In summary, after reshaping these terms we obtain the formulas:
+\[
+\boxed{
+\vv\by = 
+ \vv\left(\phi(\bx) F\right),
+\qquad
+\frac{dz}{dF}
+=
+\phi(\bx)^\top\frac{d z}{d Y},
+\qquad
+\frac{d z}{d X}
+=
+\phi^*\left(
+\frac{d z}{d Y}F^\top
+\right)
+}
+\]
+where $X\in\real^{(HW)\times D}$ is the matrix obtained by reshaping $\bx$. Notably, these expressions are used to implement the convolutional operator; while this may seem inefficient, it is instead a fast approach when the number of filters is large and it allows leveraging fast BLAS and GPU BLAS implementations.
+
+% ------------------------------------------------------------------
+\section{Convolution transpose}\label{s:impl-convolution-transpose}
+% ------------------------------------------------------------------
+
+In order to understand the definition of convolution transpose, let $\by$ to be obtained from $\bx$ by the convolution operator as defined in \cref{s:convolution} (including padding and downsampling).  Since this is a linear operation, it can be rewritten as $\vv \by = M \vv\bx$ for a suitable matrix $M$; convolution transpose computes instead $\vv \bx = M^\top \vv \by$.  While this is simple to describe in term of matrices, what happens in term of indexes is tricky. In order to derive a formula for the convolution transpose, start from standard convolution (for a 1D signal):
+\[
+   y_{i''} = \sum_{i'=1}^{H'} f_{i'} x_{S (i''-1) + i' - P_h^-}, 
+   \quad
+    1 \leq i'' \leq 1 + \left\lfloor \frac{H - H' + P_h^- + P_h^+}{S} \right\rfloor,
+\]
+where $S$ is the downsampling factor, $P_h^-$ and $P_h^+$ the padding, $H$ the length of the input signal $\bx$ and $H'$ the length of the filter $\bff$. Due to padding, the index of the input data $\bx$ may exceed the range $[1,H]$; we implicitly assume that the signal is zero padded outside this range.
+
+In order to derive an expression of the convolution transpose,  we make use of the identity $\vv \by^\top (M \vv \bx) = (\vv \by^\top M) \vv\bx = \vv\bx^\top (M^\top \vv\by)$. Expanding this in formulas:
+\begin{align*}
+\sum_{i''=1}^b y_{i''} 
+\sum_{i'=1}^{W'} f_{i'} x_{S (i''-1) + i'  -P_h^-}
+&=
+\sum_{i''=-\infty}^{+\infty}
+\sum_{i'=-\infty}^{+\infty} 
+y_{i''}\ f_{i'}\ x_{S (i''-1) + i'  -P_h^-}
+\\
+&=
+\sum_{i''=-\infty}^{+\infty}
+\sum_{k=-\infty}^{+\infty} 
+y_{i''}\ f_{k-S(i'' -1) + P_h^-}\ x_{k}
+\\
+&=
+\sum_{i''=-\infty}^{+\infty}
+\sum_{k=-\infty}^{+\infty} 
+y_{i''}%
+\ %
+f_{%
+(k-1+ P_h^-) \bmod S +
+S \left(1 -i''  + \left\lfloor \frac{k-1+ P_h^-}{S} \right\rfloor\right)+1
+}\ x_{k}
+\\
+&=
+\sum_{k=-\infty}^{+\infty} 
+x_{k}
+\sum_{q=-\infty}^{+\infty}
+y_{\left\lfloor \frac{k-1+ P_h^-}{S} \right\rfloor + 2 - q}
+\ %
+f_{(k-1+ P_h^-)\bmod S +S(q - 1)+1}.
+\end{align*}
+Summation ranges have been extended to infinity by assuming that all signals are zero padded as needed. In order to recover such ranges, note that $k \in [1,H]$ (since this is the range of elements of $\bx$ involved in the original convolution). Furthermore, $q\geq 1$ is the minimum value of $q$ for which the filter $\bff$ is non zero; likewise, $q\leq \lfloor (H'-1)/S\rfloor +1$ is a fairly tight upper bound on the maximum value (although, depending on $k$, there could be an element less). Hence
+\begin{equation}\label{e:convt-step}
+ x_k = 
+ \sum_{q=1}^{1 + \lfloor \frac{H'-1}{S} \rfloor}
+y_{\left\lfloor \frac{k-1+ P_h^-}{S} \right\rfloor + 2 - q}\ %
+f_{(k-1+ P_h^-)\bmod S +S(q - 1)+1},
+\qquad k=1,\dots, H.
+\end{equation}
+Note that the summation extrema in \eqref{e:convt-step} can be refined slightly to account for the finite size of $\by$ and $\bw$:
+\begin{multline*}
+\max\left\{
+1, 
+\left\lfloor \frac{k-1 + P_h^-}{S} \right\rfloor + 2 - H''
+\right\}
+\leq q \\
+\leq
+1 +\min\left\{
+\left\lfloor \frac{H'-1-(k-1+ P_h^-)\bmod S}{S} \right\rfloor, 
+\left\lfloor \frac{k-1 + P_h^-}{S} \right\rfloor
+\right\}.
+\end{multline*}
+The size $H''$ of the output of convolution transpose is obtained in \cref{s:receptive-convolution-transpose}.
+
+% ------------------------------------------------------------------
+\section{Spatial pooling}\label{s:impl-pooling}
+% ------------------------------------------------------------------
+
+Since max pooling simply selects for each output element an input element, the relation can be expressed in matrix form as
+$
+    \vv\by = S(\bx) \vv \bx
+$
+for a suitable selector matrix $S(\bx)\in\{0,1\}^{(H''W''D) \times (HWD)}$. The derivatives can be written as:
+$
+\frac{d z}{d (\vv \bx)^\top}
+=
+\frac{d z}{d (\vv \by)^\top}
+S(\bx),
+$
+for all but a null set of points, where the operator is not differentiable (this usually does not pose problems in optimization by stochastic gradient). For average pooling, similar relations exists with two differences: $S$ does not depend on the input $\bx$ and it is not binary, in order to account for the normalization factors. In summary, we have the expressions:
+\begin{equation}\label{e:max-mat}
+\boxed{
+\vv\by = S(\bx) \vv \bx,
+\qquad
+\frac{d z}{d \vv \bx}
+=
+S(\bx)^\top
+\frac{d z}{d \vv \by}.
+}
+\end{equation}
+
+
+
+% ------------------------------------------------------------------
+\section{Activation functions}\label{s:impl-activation}
+% ------------------------------------------------------------------
+
+% ------------------------------------------------------------------
+\subsection{ReLU}\label{s:impl-relu}
+% ------------------------------------------------------------------
+
+The ReLU operator can be expressed in matrix notation as
+\[
+\vv\by = \diag\bfs \vv \bx,
+\qquad
+\frac{d z}{d \vv \bx}
+=
+\diag\bfs
+\frac{d z}{d \vv \by}
+\]
+where $\bfs = [\vv \bx > 0] \in\{0,1\}^{HWD}$ is an indicator vector.
+
+% ------------------------------------------------------------------
+\subsection{Sigmoid}\label{s:impl-sigmoid}
+% ------------------------------------------------------------------
+
+The derivative of the sigmoid function is given by
+\begin{align*}
+\frac{dz}{dx_{ijd}}
+&= 
+\frac{dz}{d y_{ijd}} 
+\frac{d y_{ijd}}{d x_{ijd}}
+=
+\frac{dz}{d y_{ijd}} 
+\frac{-1}{(1+e^{-x_{ijd}})^2} ( - e^{-x_{ijd}})
+\\
+&=
+\frac{dz}{d y_{ijd}} 
+y_{ijd} (1 - y_{ijd}).
+\end{align*}
+In matrix notation:
+\[
+\frac{dz}{d\bx} = \frac{dz}{d\by} \odot 
+\by \odot 
+(\bone\bone^\top - \by).
+\]
+
+
+% ------------------------------------------------------------------
+\section{Spatial bilinear resampling}\label{s:impl-sampler}
+% ------------------------------------------------------------------
+
+The projected derivative $d\langle \bp, \phi(\bx,\bg)\rangle / d\bx$ of the spatial bilinaer resampler operator with respect to the input image $\bx$ can be found as follows:
+\begin{multline}\label{e:bilinear-back-x}
+  \frac{\partial}{\partial x_{ijc}}
+  \left[
+  \sum_{i''j''c''}
+  p_{i''k''c''}
+  \sum_{i'=1}^H
+  \sum_{j'=1}^W 
+  x_{i'j'c''}
+  \max\{0, 1-|\alpha_v g_{1i''j''} + \beta_v -i'|\}
+  \max\{0, 1-|\alpha_u g_{2i''j''} + \beta_u -j'|\}
+  \right]
+  \\
+=
+  \sum_{i''j''}
+  p_{i''k''c}
+  \max\{0, 1-|\alpha_v g_{1i''j''} + \beta_v -i|\}
+  \max\{0, 1-|\alpha_u g_{2i''j''} + \beta_u -j|\}.
+\end{multline}
+Note that the formula is similar to Eq.~\ref{e:bilinear}, with the difference that summation is on $i''$ rather than $i$.
+
+The projected derivative $d\langle \bp, \phi(\bx,\bg)\rangle / d\bg$ with respect to the grid is similar:
+\begin{multline}\label{e:bilinear-back-g}
+  \frac{\partial}{\partial g_{1i'j'}}
+  \left[
+  \sum_{i''j''c}
+  p_{i''k''c}
+  \sum_{i=1}^H
+  \sum_{j=1}^W 
+  x_{ijc}
+  \max\{0, 1-|\alpha_v g_{1i''j''} + \beta_v -i|\}
+  \max\{0, 1-|\alpha_u g_{2i''j''} + \beta_u -j|\}
+  \right]
+  \\
+=
+  -
+  \sum_c
+  p_{i'j'c}
+  \sum_{i=1}^H
+  \sum_{j=1}^W
+  \alpha_v x_{ijc}
+  \max\{0, 1-|\alpha_v g_{2i'j'} + \beta_v -j|\}
+  \sign(\alpha_v g_{1i'j'} + \beta_v -j)
+  \mathbf{1}_{\{-1 < \alpha_u g_{2i'j'} + \beta_u < 1\}}.
+\end{multline}
+A similar expression holds for $\partial g_{2i'j'}$
+
+% ------------------------------------------------------------------
+\section{Normalization}\label{s:normalization}
+% ------------------------------------------------------------------
+
+% ------------------------------------------------------------------
+\subsection{Local response normalization (LRN)}\label{s:impl-ccnormalization}
+% ------------------------------------------------------------------
+
+The derivative is easily computed as:
+\[
+\frac{dz}{d x_{ijd}}
+=
+\frac{dz}{d y_{ijd}}
+L(i,j,d|\bx)^{-\beta}
+-2\alpha\beta x_{ijd}
+\sum_{k:d\in G(k)}
+\frac{dz}{d y_{ijk}}
+L(i,j,k|\bx)^{-\beta-1} x_{ijk} 
+\]
+where
+\[
+ L(i,j,k|\bx) = \kappa + \alpha \sum_{t\in G(k)} x_{ijt}^2.
+\]
+
+% ------------------------------------------------------------------
+\subsection{Batch normalization}\label{s:impl-bnorm}
+% ------------------------------------------------------------------
+
+The derivative of the network output $z$ with respect to the multipliers $w_k$ and biases $b_k$ is given by
+\begin{align*}
+	\frac{dz}{dw_k} &= \sum_{i''j''k''t''}
+\frac{dz}{d y_{i''j''k''t''}} 
+\frac{d y_{i''j''k''t''}}{d w_k}
+=
+\sum_{i''j''t''}
+\frac{dz}{d y_{i''j''kt''}} 
+\frac{x_{i''j''kt''} - \mu_{k}}{\sqrt{\sigma_k^2 + \epsilon}},
+\\
+\frac{dz}{db_k} &= \sum_{i''j''k''t''}
+\frac{dz}{d y_{i''j''k''t''}} 
+\frac{d y_{i''j''k''t''}}{d w_k}
+=
+\sum_{i''j''t''}
+\frac{dz}{d y_{i''j''kt''}}.
+\end{align*}
+
+The derivative of the network output $z$ with respect to the block input $x$ is computed as follows:
+\[
+\frac{dz}{dx_{ijkt}} = \sum_{i''j''k''t''}
+\frac{dz}{d y_{i''j''k''t''}} 
+\frac{d y_{i''j''k''t''}}{d x_{ijkt}}.
+\]
+Since feature channels are processed independently, all terms with $k''\not=k$ are zero. Hence
+\[
+\frac{dz}{dx_{ijkt}} = \sum_{i''j''t''}
+\frac{dz}{d y_{i''j''kt''}} 
+\frac{d y_{i''j''kt''}}{d x_{ijkt}},
+\]
+where
+\[
+\frac{d y_{i''j''kt''}}{d x_{ijkt}} 
+=
+w_k
+\left(\delta_{i=i'',j=j'',t=t''} - \frac{d \mu_k}{d x_{ijkt}}\right)
+\frac{1}{\sqrt{\sigma^2_k + \epsilon}}
+-
+\frac{w_k}{2}
+\left(x_{i''j''kt''} - \mu_k\right)
+\left(\sigma_k^2 + \epsilon \right)^{-\frac{3}{2}}
+\frac{d \sigma_k^2}{d x_{ijkt}},
+\]
+the derivatives with respect to the mean and variance are computed as follows:
+\begin{align*}
+\frac{d \mu_k}{d x_{ijkt}} &= \frac{1}{HWT},
+\\
+\frac{d \sigma_k^2}{d x_{i'j'kt'}}
+&=
+\frac{2}{HWT}
+\sum_{ijt}
+\left(x_{ijkt} - \mu_k \right)
+\left(\delta_{i=i',j=j',t=t'} - \frac{1}{HWT} \right)
+=
+\frac{2}{HWT} \left(x_{i'j'kt'} - \mu_k \right),
+\end{align*}
+and $\delta_E$ is the indicator function of the event $E$. Hence
+\begin{align*}
+\frac{dz}{dx_{ijkt}}
+&=
+\frac{w_k}{\sqrt{\sigma^2_k + \epsilon}}
+\left(
+\frac{dz}{d y_{ijkt}} 
+-
+\frac{1}{HWT}\sum_{i''j''kt''}
+\frac{dz}{d y_{i''j''kt''}} 
+\right)
+\\
+&-
+\frac{w_k}{2(\sigma^2_k + \epsilon)^{\frac{3}{2}}}
+\sum_{i''j''kt''}
+\frac{dz}{d y_{i''j''kt''}} 
+\left(x_{i''j''kt''} - \mu_k\right)
+\frac{2}{HWT} \left(x_{ijkt} - \mu_k \right)
+\end{align*}
+i.e.
+\begin{align*}
+\frac{dz}{dx_{ijkt}}
+&=
+\frac{w_k}{\sqrt{\sigma^2_k + \epsilon}}
+\left(
+\frac{dz}{d y_{ijkt}} 
+-
+\frac{1}{HWT}\sum_{i''j''kt''}
+\frac{dz}{d y_{i''j''kt''}} 
+\right)
+\\
+&-
+\frac{w_k}{\sqrt{\sigma^2_k + \epsilon}}
+\,
+\frac{x_{ijkt} - \mu_k}{\sqrt{\sigma^2_k + \epsilon}}
+\,
+\frac{1}{HWT}
+\sum_{i''j''kt''}
+\frac{dz}{d y_{i''j''kt''}} 
+\frac{x_{i''j''kt''} - \mu_k}{\sqrt{\sigma^2_k + \epsilon}}.
+\end{align*}
+We can identify some of these terms with the ones computed as derivatives of bnorm with respect to $w_k$ and $\mu_k$:
+\begin{align*}
+\frac{dz}{dx_{ijkt}}
+&=
+\frac{w_k}{\sqrt{\sigma^2_k + \epsilon}}
+\left(
+\frac{dz}{d y_{ijkt}} 
+-
+\frac{1}{HWT}
+\frac{dz}{d b_k} 
+-
+\frac{x_{ijkt} - \mu_k}{\sqrt{\sigma^2_k + \epsilon}}
+\,
+\frac{1}{HWT}
+\frac{dz}{dw_k}
+\right).
+\end{align*}
+
+% ------------------------------------------------------------------
+\subsection{Spatial normalization}\label{s:impl-spnorm}
+% ------------------------------------------------------------------
+
+The neighbourhood norm $n^2_{i''j''d}$ can be computed by applying average pooling to $x_{ijd}^2$ using \verb!vl_nnpool! with a $W'\times H'$ pooling region, top padding $\lfloor \frac{H'-1}{2}\rfloor$, bottom padding $H'-\lfloor \frac{H-1}{2}\rfloor-1$, and similarly for the horizontal padding.
+
+The derivative of spatial normalization can be obtained as follows:
+\begin{align*}
+\frac{dz}{dx_{ijd}} 
+&= \sum_{i''j''}
+\frac{dz}{d y_{i''j''d}} 
+\frac{d y_{i''j''d}}{d x_{ijd}}
+\\
+&=
+\sum_{i''j''}
+\frac{dz}{d y_{i''j''d}} 
+(1 + \alpha n_{i''j''d}^2)^{-\beta}
+\frac{dx_{i''j''d}}{d x_{ijd}} 
+-\alpha\beta
+\frac{dz}{d y_{i''j''d}} 
+(1 + \alpha n_{i''j''d}^2)^{-\beta-1}
+x_{i''j''d}
+\frac{dn_{i''j''d}^2}{d (x^2_{ijd})} 
+\frac{dx^2_{ijd}}{d x_{ijd}}
+\\
+&=
+\frac{dz}{d y_{ijd}} 
+(1 + \alpha n_{ijd}^2)^{-\beta}
+-2\alpha\beta x_{ijd}
+\left[
+\sum_{i''j''}
+\frac{dz}{d y_{i''j''d}} 
+(1 + \alpha n_{i''j''d}^2)^{-\beta-1}
+x_{i''j''d}
+\frac{dn_{i''j''d}^2}{d (x_{ijd}^2)}
+\right]
+\\
+&=
+\frac{dz}{d y_{ijd}} 
+(1 + \alpha n_{ijd}^2)^{-\beta}
+-2\alpha\beta x_{ijd}
+\left[
+\sum_{i''j''}
+\eta_{i''j''d}
+\frac{dn_{i''j''d}^2}{d (x_{ijd}^2)}
+\right],
+\quad
+\eta_{i''j''d}=
+\frac{dz}{d y_{i''j''d}} 
+(1 + \alpha n_{i''j''d}^2)^{-\beta-1}
+x_{i''j''d}
+\end{align*}
+Note that the summation can be computed as the derivative of the
+\verb!vl_nnpool! block.
+
+% ------------------------------------------------------------------
+\subsection{Softmax}\label{s:impl-softmax}
+% ------------------------------------------------------------------
+
+Care must be taken in evaluating the exponential in order to avoid underflow or overflow. The simplest way to do so is to divide the numerator and denominator by the exponential of the maximum value:
+\[
+ y_{ijk} = \frac{e^{x_{ijk} - \max_d x_{ijd}}}{\sum_{t=1}^D e^{x_{ijt}- \max_d x_{ijd}}}.
+\]
+The derivative is given by:
+\[
+\frac{dz}{d x_{ijd}}
+=
+\sum_{k}
+\frac{dz}{d y_{ijk}}
+\left(
+e^{x_{ijd}} L(\bx)^{-1} \delta_{\{k=d\}}
+-
+e^{x_{ijd}}
+e^{x_{ijk}} L(\bx)^{-2}
+\right),
+\quad
+L(\bx) = \sum_{t=1}^D e^{x_{ijt}}.
+\]
+Simplifying:
+\[
+\frac{dz}{d x_{ijd}}
+=
+y_{ijd} 
+\left(
+\frac{dz}{d y_{ijd}}
+-
+\sum_{k=1}^K
+\frac{dz}{d y_{ijk}} y_{ijk}
+\right).
+\]
+In matrix form:
+\[
+  \frac{dz}{dX} = Y \odot \left(\frac{dz}{dY} 
+  - \left(\frac{dz}{dY} \odot Y\right) \bone\bone^\top\right)
+\]
+where $X,Y\in\real^{HW\times D}$ are the matrices obtained by reshaping the arrays
+$\bx$ and $\by$. Note that the numerical implementation of this expression is straightforward once the output $Y$ has been computed with the caveats above.
+
+% ------------------------------------------------------------------
+\section{Categorical losses}\label{s:impl-losses}
+% ------------------------------------------------------------------
+
+This section obtains the projected derivatives of the categorical losses in \cref{s:losses}. Recall that all losses give a scalar output, so the projection tensor $p$ is trivial (a scalar).
+
+% ------------------------------------------------------------------
+\subsection{Classification losses}\label{s:impl-loss-classification}
+% ------------------------------------------------------------------
+
+\paragraph{Top-$K$ classification error.} The derivative is zero a.e.\
+
+\paragraph{Log-loss.} The projected derivative is:
+\[
+\frac{\partial p \ell(\bx,c)}{\partial x_k}
+=
+- p \frac{\partial \log (x_c) }{\partial x_k}
+=
+- p x_c \delta_{k=c}.
+\]
+
+\paragraph{Softmax log-loss.} The projected derivative is given by:
+\[
+\frac{\partial p \ell(\bx,c)}{\partial x_k}
+=
+- p \frac{\partial}{\partial x_k}
+\left(x_c - \log \sum_{t=1}^C e^{x_t}\right)
+=
+- p \left(\delta_{k=c} - \frac{e^{x_c}}{\sum_{t=1}^C e^{x_t}} \right).
+\]
+In brackets, we can recognize the output of the loss itself:
+\[
+ y = \ell(\bx,c) = \frac{e^{x_c}}{\sum_{t=1}^C e^{x_t}}.
+\]
+Hence the loss derivatives rewrites:
+\[
+\frac{\partial p \ell(\bx,c)}{\partial x_k}
+=
+- p \left(\delta_{k=c} - y \right).
+\]
+
+\paragraph{Multi-class hinge loss.} The projected derivative is:
+\[
+\frac{\partial p \ell(\bx,c)}{\partial x_k}
+=
+- p\,\mathbf{1}[x_c < 1]\,\delta_{k=c}.
+\]
+
+\paragraph{Structured multi-class hinge loss.} The projected derivative is:
+\[
+\frac{\partial p \ell(\bx,c)}{\partial x_k}
+=
+- p\,\mathbf{1}[x_c < 1 + \max_{t\not= c} x_t]\,(\delta_{k=c} - \delta_{k=t^*}),
+\qquad
+t^* = \argmax_{t =1,2,\dots,C} x_t.
+\]
+
+% ------------------------------------------------------------------
+\subsection{Attribute losses}\label{s:impl-loss-attribute}
+% ------------------------------------------------------------------
+
+\paragraph{Binary error.} The derivative of the binary error is 0 a.e.
+
+\paragraph{Binary log-loss.} The projected derivative is:
+\[
+\frac{\partial p \ell(x,c)}{\partial x}
+=
+- p \frac{c}{c \left(x - \frac{1}{2}\right) + \frac{1}{2}}.
+\]
+
+\paragraph{Binary logistic loss.} The projected derivative is:
+\[
+\frac{\partial p \ell(x,c)}{\partial x}
+=
+- p \frac{\partial}{\partial x} \log \frac{1}{1+e^{-cx}}
+=
+- p \frac{c e^{-cx}}{1 + e^{-cx}}
+=
+- p \frac{c}{e^{cx} + 1}
+=
+- pc\, \sigma(-cx).
+\]
+
+\paragraph{Binary hinge loss.} The projected derivative is
+\[
+\frac{\partial p \ell(x,c)}{\partial x}
+=
+- pc\,\mathbf{1}[cx < 1].
+\]
+
+% ------------------------------------------------------------------
+\section{Comparisons}\label{s:impl-comparisons}
+% ------------------------------------------------------------------
+
+% ------------------------------------------------------------------
+\subsection{$p$-distance}\label{s:impl-pdistance}
+% ------------------------------------------------------------------
+
+The derivative of the operator without root is given by:
+\begin{align*}
+\frac{dz}{dx_{ijd}}
+&=
+\frac{dz}{dy_{ij}}
+p |x_{ijd} - \bar x_{ijd}|^{p-1} \operatorname{sign} (x_{ijd} - \bar x_{ijd}).
+\end{align*}
+The derivative of the operator with root is given by:
+\begin{align*}
+\frac{dz}{dx_{ijd}}
+&=
+\frac{dz}{dy_{ij}}
+\frac{1}{p}
+\left(\sum_{d'} |x_{ijd'} - \bar x_{ijd'}|^p \right)^{\frac{1}{p}-1}
+p |x_{ijd} - \bar x_{ijd}|^{p-1} \sign(x_{ijd} - \bar x_{ijd})
+\\
+&= 
+\frac{dz}{dy_{ij}}
+\frac{|x_{ijd} - \bar x_{ijd}|^{p-1} \sign(x_{ijd} - \bar x_{ijd})}{y_{ij}^{p-1}}, \\
+\frac{dz}{d\bar x_{ijd}} &= -\frac{dz}{dx_{ijd}}.
+\end{align*}
+The formulas simplify a little for $p=1,2$ which are therefore implemented as special cases.
+
+
+% ------------------------------------------------------------------
+\section{Other implementation details}\label{s:impl-others}
+% ------------------------------------------------------------------
+
+% ------------------------------------------------------------------
+\subsection{Normal sampler}\label{s:impl-normal}
+% ------------------------------------------------------------------
+
+The function \verb!vl::randn()! uses the Ziggurah method~\cite{marsaglia00the-ziggurat} to sample from a Normally-distributed random variable. Let $f(x) = \frac{1}{\sqrt{2\pi}} \exp\left(-\frac{1}{2}x^2\right)$ the standard Normal distribution. The sampler encloses $f(x)$ in a simple shape made of $K-1$ horizontal rectangles and a base composed of a rectangle tapering off in an exponential distribution. These are defined by points $x_1 > x_2 > x_3 > \dots > x_K=0$ such that (for the right half of $f(x)$) the layers of the Ziggurat are given by
+\[
+\forall k=1,\dots,K-1:
+\quad R_k = [f(x_k),f(x_{k+1})] \times [0,x_k].
+\]
+and such that its basis is given by
+\[
+R_0 = ([0,f(x_{1})] \times [0,x_1]) \cup 
+\{ (x,y) : x \geq x_1,\ y \leq f(x_1) \exp(-x_1(x - x_1)) \}
+\]
+Note that, since the last point $x_K=0$, (half of) the distribution is enclosed by the Ziggurat, i.e. $\forall x \geq 0:(x,f(x)) \in \cup_{k=0}^K R_k$.
+
+The first point $x_1$ in the sequence determines the area of the Ziggurat base:
+\[
+A = |R_0| = f(x_1)x_1 + f(x_1)/x_1.
+\]
+The other points are defined recursively such that the area is the same for all rectangles:
+\[
+A = |R_k| = (f(x_{k+1}) - f(x_k))x_k
+\quad\Rightarrow\quad
+x_{k+1} = f^{-1} (A/x_k + f(x_k)).
+\]
+There are two degrees of freedom: the number of subdivisions $K$ and the point $x_1$. Given $K$, the goal is to choose $x_1$ such that the $K$-th points $x_K=0$ lands on zero, enclosing tightly $f(x)$. The required value of $x_1$ is easily found using bisection and, for $K=256$, is $x_1=3.655420419026953$. Given $x_1$, $A$ and all other points in the sequence can be derived easily using the formulas above.
+
+The Ziggurath can be used to quickly sample from the Normal distribution. In order to do so, one first samples a point $(x,y)$ uniformly at random from the Ziggurat $\cup_{k=0}^K R_k$ and then rejects pairs $(x,y)$ that do not belong to the graph of $f(x)$, i.e.\ $y > f(x)$. Specifically:
+\begin{enumerate}
+\item Sample a point $(x,y)$ uniformly from the Ziggurat. To do so, sample uniformly at random an index $k \in\{0,1,\dots,K-1\}$ and two scalars $u,v$ in the interval $[0,1)$. Then, for $k\geq 1$, set $x = u x_k$ and $y = v f(x_{k+1}) + (1-v)f(x_k)$ (for $k=0$ see below). Since all regions $R_k$ have the same area and $(x,y)$ are then drawn uniformly form the selected rectangle, this samples a point $(x,y)$ from the Ziggurat uniformly at random.
+\item If $y \leq f(x)$, accept $x$ as a sample; otherwise, sample again. Note that, when $x \leq x_{k+1}$, the test $y \leq f(x_{k+1}) < f(x)$ is always successful, and the variable $y$ and test can be skipped in the step above.
+\end{enumerate}
+Next, we complete the procedure for $k=0$, when $R_0$ is not just a rectangle but rather the union of a rectangle and an exponential distribution. To sample from $R_0$ uniformly, we either choose the rectangle or the exponential distribution with a probability proportional to their area. Reusing the notation (and corresponding code) above, we can express this as sampling $x = u x_0$ and accepting the latter as a sample from the rectangle component if $ux_0 \leq x_1$; here the pseudo-point $x_0$ is defined such that $x_1 / x_0 = f(x_1)x_1 / A$, i.e.\ $x_0 = A/f(x_1)$. If the test fails, we sample instead from the exponential distribution $x\sim x_1\exp(-x_1(x-x_1)),$ $x\geq x_1$. To do so, let $z= x_1\exp(-x_1(x-x_1))$; then $x = x_1 - (1/x_1) \ln z/x_1$ and $dx = |- (x_1/z)|dz$, where $z\in(0,x_1]$. Since $x_1\exp(-x_1(x-x_1)) dx = (1/x_1) dz$ is uniform, we can implement this by sampling $u$ uniformly in $(0,1]$ and setting $x = x_1 - (1/x_1) \ln u$. Finally, recall that the goal is to sample from the Normal distribution, not the exponential, so the latter sample must be refined by rejection sampling. As before, this requires sampling a pair $(x,y)$ under the exponential distribution graph. Given $x$ sampled from the exponential distribution, we sample the corresponding $y$ uniformly at random in the interval $[0, f(x_1) \exp(-x_1(x-x_1))]$, and write the latter as $y = v f(x_1) \exp(-x_1(x-x_1))$, where $v$ is uniform in $[0,1]$. The latter is then accepted provided that $y$ is below the Normal distribution graph $f(x)$, i.e. $v f(x_1) \exp(-x_1(x-x_1)) \leq f(x).$ A short calculation yields the test:
+\[
+-2\ln v \geq x_1^2 +  x^2 - 2x_1x = (x_1 - x)^2 =
+((1/x_1) \ln u)^2.
+\]
+
+% ------------------------------------------------------------------
+\subsection{Euclid's algorithm}\label{s:impl-euclid}
+% ------------------------------------------------------------------
+
+Euclid's algorithm finds the \emph{greatest common divisor} (GCD) of two non-negative integers $a$ and $b$. Recall that the GCD is the largest integer that divides both $a$ and $b$:
+\[
+    \gcd(a,b) = \max\{ d \in \mathbb{N} : d|a \ \wedge\ d|b \}.
+\]
+
+\begin{lemma}[Euclid's algorithm]
+Let $a,b\in\mathbb{N}$ and let $q\in\mathbb{Z}$ such that $a - qb \geq 0$. Then
+$$
+\gcd(a,b) = \gcd(a-qb,b).
+$$
+\end{lemma}
+\begin{proof}
+Let $d$ be a divisor of both $a$ and $b$. Then $d$ divides $a - qb$ as well because:
+$$
+\frac{a - qb}{d} = 
+\underbrace{\frac{a}{d}}_{\in\mathcal{Z}} - q 
+\underbrace{\frac{b}{d}}_{\in\mathbb{Z}}
+\quad\Rightarrow\quad
+\frac{a - qb}{d} \in \mathbb{Z}.
+$$
+Hence  $\gcd(a,b) \leq \gcd(q-qb,b)$. In the same way, we can show that, if $d$ divides $a - qb$ as well as $b$, then it must divide $a$ too, hence $\gcd(a-qb, b) \leq\gcd(a,b)$.
+\end{proof}
+
+Euclid's algorithm starts with $a > b \geq 1$ and sets $q$ to the quotient of the integer division $a/b$. Due to the lemma above, the GCD of $a$ and $b$ is the same as the GCD of the remainder $r = a - qb = (a \mod b)$ and $b$:
+\[
+   \gcd(a,b) = \gcd(a, a\mod b).
+\]
+Since the remainder $(a\mod b) < b$ is strictly smaller than $b$, now GCD is called with smaller arguments. The recursion terminates when a zero reminder is generated, because
+\[
+   \gcd(a,0) = a.
+\]
+
+We can modify the algorithms to also find two integers  $u,v$, the B\'ezout's coefficients, such that:
+$$
+   a u + bv = \gcd(a,b).
+$$
+To do so, we replace $a = b (a/b) + r$ as above:
+$$
+  ru  +  b v'= \gcd(a,b) = \gcd(r,b), \qquad v' = \frac{a}{b} u + v.
+$$
+The recursion terminates when $r=0$, in which case
+$$
+  b v'= \gcd(0,b) = b \quad\Rightarrow\quad v'=b.
+$$
+
+
+
+
+

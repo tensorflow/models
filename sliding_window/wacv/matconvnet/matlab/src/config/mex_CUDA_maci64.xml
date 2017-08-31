@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Copyright 2013-2014 The MathWorks, Inc. -->
+<config
+    Name="nvcc"
+    ShortName="nvcc"
+    Manufacturer="NVIDIA"
+    Version=""
+    Language="CUDA"
+    Priority="A"
+    Location="$NVCC" >
+    <Details
+        CompilerExecutable="$CXX"
+        CompilerDefines="$DEFINES"
+        CompilerFlags="$CXXFLAGS"
+        OptimizationFlags="$CXXOPTIMFLAGS"
+        DebugFlags="$CXXDEBUGFLAGS"
+        IncludeFlags="$INCLUDE"
+        LinkerLibraries="$LINKLIBS"
+        LinkerOptimizationFlags="$LDOPTIMFLAGS"
+        LinkerDebugFlags="$LDDEBUGFLAGS"
+
+        CompilerDefineFormatter="-D%s"
+        LinkerLibrarySwitchFormatter="-l%s"
+        LinkerPathFormatter="-L%s"
+    />
+    <vars
+          CMDLINE1="$CXX -c $DEFINES $INCLUDE $NVCCFLAGS $CXXFLAGS $OPTIM $SRC -o $OBJ"
+          CMDLINE2="$LDXX $LDFLAGS $LINKOPTIM $LINKEXPORT $OBJS $CXXLIBS $LINKLIBS -o $EXE"
+          CMDLINE3="rm -f $OBJ"
+          
+          CXX="$NVCC"
+          DEFINES="$MATLABMEX"
+          MATLABMEX="-DMATLAB_MEX_FILE"
+          NVCCFLAGS="-gencode=arch=compute_20,code=sm_20 -gencode=arch=compute_30,code=sm_30 -m 64 $NVCC_FLAGS"
+          CXXFLAGS="--compiler-bindir=$CLANG_COMPILER --compiler-options=-fno-common,-arch,$ARCHS,-mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET,-fexceptions,-isysroot,$ISYSROOT"
+          INCLUDE="-I&quot;$MATLABROOT/extern/include&quot; -I&quot;$MATLABROOT/simulink/include&quot; -I&quot;$MATLABROOT/toolbox/distcomp/gpu/extern/include/&quot;" 
+          CXXOPTIMFLAGS="-O2 -DNDEBUG"
+          CXXDEBUGFLAGS="-g"
+          ARCHS="x86_64"
+          
+          LDXX="$XCRUN_DIR/xcrun clang++"
+          LDFLAGS="-stdlib=libstdc++ -Wl,-twolevel_namespace -undefined error -arch $ARCHS -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -Wl,-syslibroot,$ISYSROOT $LDBUNDLE $LINKEXPORT"
+          LDBUNDLE="-bundle"
+          LINKEXPORT="-Wl,-exported_symbols_list,&quot;$MATLABROOT/extern/lib/$ARCH/mexFunction.map&quot;"
+          LINKLIBS="-L&quot;$MATLABROOT/bin/$ARCH&quot; -lmx -lmex -lmat -lm -lmwgpu -lcudart"
+          LDOPTIMFLAGS="-O"
+          LDDEBUGFLAGS="-g"
+          
+          OBJEXT=".o"
+          LDEXT=".mexmaci64"
+          MACOSX_DEPLOYMENT_TARGET='10.9'>
+    </vars>
+    <client>
+    </client>
+    <locationFinder>
+        <NVCC>
+            <or>
+                <and>
+                    <envVarExists name="MW_NVCC_PATH" />
+                    <dirExists name="$$" />
+                    <fileExists name="$$/nvcc" />
+                </and>
+                <cmdReturns name="which nvcc" />
+                <fileExists name="/Developer/NVIDIA/CUDA-6.0/bin/nvcc" /> <!-- Default install location -->
+                <fileExists name="/usr/local/cuda/bin/nvcc" />            <!-- Recent CUDA versions symlink here -->
+            </or>
+        </NVCC>
+        <CLANG_COMPILER>
+            <or>
+                <envVarExists name="MW_XCODE_CLANG_COMPILER" />
+                <and>
+                    <cmdReturns name="xcrun -f clang++" />
+                    <dirExists name="$$" />
+                    <fileExists name="$$/clang++" />
+                </and>
+            </or>
+        </CLANG_COMPILER>
+        <XCRUN_DIR>
+            <and>
+                <cmdReturns name="which xcrun" />
+                <dirExists name="$$" />
+            </and>
+        </XCRUN_DIR>
+        <ISYSROOT>
+          <and>
+              <cmdReturns name="xcrun --show-sdk-path"/>
+              <dirExists name="$$" />
+         </and>
+        </ISYSROOT>
+    </locationFinder>
+</config>

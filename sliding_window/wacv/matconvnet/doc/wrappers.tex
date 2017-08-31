@@ -1,0 +1,155 @@
+% ------------------------------------------------------------------
+\chapter{Wrappers and pre-trained models}\label{s:wrappers}
+% ------------------------------------------------------------------
+
+It is easy enough to combine the computational blocks of \cref{s:blocks} ``manually''. However, it is usually much more convenient to use them through a \emph{wrapper} that can implement CNN architectures given a model specification. The available wrappers are briefly summarised in \cref{s:wrappers-overview}.
+
+\matconvnet also comes with many pre-trained models for image classification (most of which are trained on the ImageNet ILSVRC challenge), image segmentation, text spotting, and face recognition. These are very simple to use, as illustrated in \cref{s:pretrained}.
+
+% ------------------------------------------------------------------
+\section{Wrappers}\label{s:wrappers-overview}
+% ------------------------------------------------------------------
+
+\matconvnet provides two wrappers: SimpleNN for basic chains of blocks (\cref{s:simplenn}) and DagNN for blocks organized in more complex direct acyclic graphs (\cref{s:dagnn}).
+
+% ------------------------------------------------------------------
+\subsection{SimpleNN}\label{s:simplenn}
+% ------------------------------------------------------------------
+
+The SimpleNN wrapper is suitable for networks consisting of linear chains of computational blocks.  It is largely implemented by the \verb!vl_simplenn! function (evaluation of the CNN and of its derivatives), with a few other support functions such as \verb!vl_simplenn_move! (moving the CNN between CPU and GPU) and \verb!vl_simplenn_display! (obtain and/or print information about the CNN).
+
+\verb!vl_simplenn! takes as input a structure \verb!net! representing the CNN as well as input \verb!x! and potentially output derivatives \verb!dzdy!, depending on the mode of operation. Please refer to the inline help of the \verb!vl_simplenn! function for details on the input and output formats. In fact, the implementation of \verb!vl_simplenn! is a good example of how the basic neural net building blocks can be used together and can serve as a basis for more complex implementations.
+
+% ------------------------------------------------------------------
+\subsection{DagNN}\label{s:dagnn}
+% ------------------------------------------------------------------
+
+The DagNN wrapper is more complex than SimpleNN as it has to support arbitrary graph topologies. Its design is object oriented, with one class implementing each layer type. While this adds complexity, and makes the wrapper slightly slower for tiny CNN architectures (e.g. MNIST), it is in practice much more flexible and easier to extend.
+
+DagNN is implemented by the \verb!dagnn.DagNN! class (under the \verb!dagnn! namespace).
+
+% ------------------------------------------------------------------
+\section{Pre-trained models}\label{s:pretrained}
+% ------------------------------------------------------------------
+
+\verb!vl_simplenn! is easy to use with pre-trained models (see the homepage to download some). For example, the following code downloads a model pre-trained on the ImageNet data and applies it to one of MATLAB stock images:
+\begin{lstlisting}[language=Matlab]
+% setup MatConvNet in MATLAB
+run matlab/vl_setupnn
+
+% download a pre-trained CNN from the web
+urlwrite(...
+  'http://www.vlfeat.org/matconvnet/models/imagenet-vgg-f.mat', ...
+  'imagenet-vgg-f.mat') ;
+net = load('imagenet-vgg-f.mat') ;
+
+% obtain and preprocess an image
+im = imread('peppers.png') ;
+im_ = single(im) ; % note: 255 range
+im_ = imresize(im_, net.meta.normalization.imageSize(1:2)) ;
+im_ = im_ - net.meta.normalization.averageImage ;
+\end{lstlisting}
+Note that the image should be preprocessed before running the network. While preprocessing specifics depend on the model, the pre-trained model contains a \verb!net.meta.normalization! field that describes the type of preprocessing that is expected. Note in particular that this network takes images of a fixed size as input and requires removing the mean; also, image intensities are normalized in the range [0,255].
+
+The next step is running the CNN. This will return a \verb!res! structure with the output of the network layers:
+\begin{lstlisting}[language=Matlab]
+% run the CNN
+res = vl_simplenn(net, im_) ;
+\end{lstlisting}
+
+The output of the last layer can be used to classify the image. The class names are contained in the \verb!net! structure for convenience:
+\begin{lstlisting}[language=Matlab]
+% show the classification result
+scores = squeeze(gather(res(end).x)) ;
+[bestScore, best] = max(scores) ;
+figure(1) ; clf ; imagesc(im) ;
+title(sprintf('%s (%d), score %.3f',...
+net.meta.classes.description{best}, best, bestScore)) ;
+\end{lstlisting}
+
+Note that several extensions are possible. First, images can be cropped rather than rescaled. Second, multiple crops can be fed to the network and results averaged, usually for improved results. Third, the output of the network can be used as generic features for image encoding.
+
+% ------------------------------------------------------------------
+\section{Learning models}\label{s:wrappers-learning}
+% ------------------------------------------------------------------
+
+As \matconvnet can compute derivatives of the CNN using backpropagation, it is simple to implement learning algorithms with it. A basic implementation of stochastic gradient descent is therefore straightforward. Example code is provided in \verb!examples/cnn_train!. This code is flexible enough to allow training on NMINST, CIFAR, ImageNet, and probably many other datasets. Corresponding examples are provided in the \verb!examples/! directory.
+
+% ------------------------------------------------------------------
+\section{Running large scale experiments}
+% ------------------------------------------------------------------
+
+For large scale experiments, such as learning a network for ImageNet, a NVIDIA GPU (at least 6GB of memory) and adequate CPU and disk speeds are highly recommended. For example, to train on ImageNet, we suggest the following:
+\begin{itemize}
+\item Download the ImageNet data~\url{http://www.image-net.org/challenges/LSVRC}. Install it somewhere and link to it from \verb!data/imagenet12!
+\item Consider preprocessing the data to convert all images to have a height of 256 pixels. This can be done with the supplied \verb!utils/preprocess-imagenet.sh! script. In this manner, training will not have to resize the images every time. Do not forget to point the training code to the pre-processed data.
+\item Consider copying the dataset into a RAM disk (provided that you have enough memory) for faster access. Do not forget to point the training code to this copy.
+\item Compile \matconvnet with GPU support. See the homepage for instructions.
+\end{itemize}
+
+Once your setup is ready, you should be able to run \verb!examples/cnn_imagenet! (edit the file and change any flag as needed to enable GPU support and image pre-fetching on multiple threads).
+
+If all goes well, you should expect to be able to train with 200-300 images/sec.
+
+
+% ------------------------------------------------------------------
+\section{Reading images}
+% ------------------------------------------------------------------
+
+\matconvnet provides the tool \verb!vl_imreadjpeg! to quickly read images, transform them, and move them to the GPU.
+
+\paragraph{Image cropping and scaling.} Several options in \verb!vl_imreadjpeg! control how images are cropped and rescaled. The procedure is as follows:
+\begin{enumerate}
+	\item Given an input image of size $H \times W$, first the size of the output image $H_o \times W_o$ is determined. The \emph{output size} is either equal the input size ($(H_o,W_o) = (H,W)$), equal to a specified constant size, or obtained by setting the minimum side equal to a specified constant and rescaling the other accordingly ($(H_o,W_o) = s(H,W)$, $s = \max\{H_o/H,W_o/W\}$).
+	\item Next, the \emph{crop size} $H_c \times W_c$ is determined, starting from the \emph{crop anisotropy} $a = (W_o/H_o)/(W_c/H_c)$, i.e.\ the relative change of aspect ratio from the crop to the output: $(H_c,W_c)\propto (H_o/a,aW_o)$. One option is to choose $a=(W/H)/(W_o/H_o)$ such that the crop has the same aspect raio of the input image, which allows to squash a rectangular input into a square output. Another option is to sample it as $a\sim\mathcal{U}([a_-,a_+])$ where $a_-,a_+$ are, respectively, the minimum and maximum anisotropy.	
+	\item The relative \emph{crop scale} is determined by sampling a parameter $\rho \sim U([\rho_-, \rho_+])$ where $\rho_-,\rho_+$ are, respectively, the minimum and maximum relative crop sizes. The absolute maximum size is determined by the size of the input image. Overall, the shape of the crop is given by:
+	\[
+	(H_c,W_c) = \rho(H_o/a,a W_o) \min\{ a H / H_o, W/(aW_o)\}.
+	\]
+	\item Given the crop size $(H_c,W_c)$, the crop is extracted relative to the input image either in the middle (center crop) or randomly shifted.
+	\item Finally, it is also possible to flip a crop left-to-right with a 50\% probability.
+\end{enumerate}
+In the simples case, \verb!vl_imreadjpeg! extract an image as is, without any processing. A a standard center crop of 128 pixels can be obtained by setting $H_o=W_o=128$, (\verb!resize! option), $a_-=a_+=1$ (\verb!CropAnisotropy! option), and $\rho_-=\rho_+=1$ (\verb!CropSize! option). In the input image, this crop is isotropically stretched to fill either its width or height. If the input image is rectangular, such a crop can either slide horizontally or vertically (\verb!CropLocation!), but not both. Setting $\rho_- = \rho_+ = 0.9$ makes the crop slightly smaller, allowing it to shift in both directions. Setting $\rho_- = 0.9$ and $\rho_+ = 1.0$ allows picking differently-sized crops each time. Setting $a_-=0.9$ and $a_+=1.2$ allows the crops to be slightly elongated or widened.
+
+\paragraph{Color post-processing.} \verb!vl_imreadjpeg! supports some basic colour postrpocessing. It allows to subtract from all the pixels a constant shift $\boldsymbol{\mu} \in \mathbb{R}^3$ ( $\boldsymbol{\mu}$ can also be a $H_o \times W_o$ image for fixed-sized crops). It also allows to add a random shift vector (sample independently for each image in a batch), and to also perturb randomly the saturation and contrast of the image. These transformations are discussed in detail next.
+
+The brightness shift is a constant offset $\mathbf{b}$ added to all pixels in the image, similarly to the vector $\boldsymbol{\mu}$, which is however subtracted and constant for all images in the batch. The shift is randomly sampled from a Gaussian distribution with standard deviation $B$. Here, $B\in\mathbb{R}^{3\times 3}$ is the square root of the covariance matrix of the Gaussian, such that:
+\[
+\mathbf{b} \leftarrow B \boldsymbol{\omega},
+\quad
+\boldsymbol{\omega} \sim \mathcal{N}(0,I).
+\]
+If $\mathbf{x}(u,v)\in\mathbb{R}^3$ is an RGB triplet at location $(u,v)$ in the image, average color subtraction and brightness shift results in the transformation:
+\[
+  \bx(u,v) \leftarrow \bx(u,v) + \mathbf{b} - \boldsymbol{\mu}.
+\]
+After this shift is applied, the image contrast is changed as follow:
+\[
+\bx(u,v) \leftarrow \gamma \bx(u,v) + (1-\gamma) \operatornamewithlimits{avg}_{uv}[\bx(u,v)],
+\qquad \gamma \sim \mathcal{U}([1-C,1+C])
+\]
+where the coefficient $\gamma$ is uniformly sampled in the interval $[1-C,1+C]$ where is $C$ is the contrast deviation coefficient. Note that, since $\gamma$ can be larger than one, contrast can also be increased.
+
+The last transformation changes the saturation of the image. This is controlled by the saturation deviation coefficient $S$:
+\[
+\bx(u,v) \leftarrow \sigma \bx(u,v) + \frac{1-\sigma}{3} \mathbf{1}\mathbf{1}^\top \bx(u,v),
+\qquad \sigma \sim \mathcal{U}([1-S,1+S])
+\]
+Overall, pixels are transformed as follows:
+\begin{align*}
+\bx(u,v) 
+&
+\leftarrow 
+\left(\sigma I + \frac{1 - \sigma}{3} \bone\bone^\top\right)
+\left(
+\gamma \bx(u,v)+
+(1 - \gamma) \operatornamewithlimits{avg}_{uv}[\bx(u,v)]
++ B \boldsymbol{\omega} 
+- \boldsymbol{\mu}
+\right\}.
+\end{align*}
+For grayscale images, changing the saturation does not do anything (unless ones applies first a colored shift, which effectively transforms a grayscale image into a color one).
+
+
+
+

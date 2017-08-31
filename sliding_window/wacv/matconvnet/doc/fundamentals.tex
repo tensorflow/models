@@ -1,0 +1,650 @@
+% ------------------------------------------------------------------
+\chapter{Neural Network Computations}\label{s:fundamentals}
+% ------------------------------------------------------------------
+
+This chapter provides a brief introduction to the computational aspects of neural networks, and convolutional neural networks in particular, emphasizing the concepts required to understand and use \matconvnet.
+
+% ------------------------------------------------------------------
+\section{Overview}\label{s:cnn-structure}
+% ------------------------------------------------------------------
+
+A \emph{Neural Network} (NN) is a function $g$ mapping data $\bx$, for example an image, to an output vector $\by$, for example an image label. The function $g=f_L \circ \dots \circ f_1$ is the composition of a sequence of simpler functions $f_l$, which are called \emph{computational blocks} or \emph{layers}. Let $\bx_1,\bx_2,\dots,\bx_L$ be the outputs of each layer in the network, and let $\bx_0=\bx$ denote the network input. Each intermediate output $\bx_l = f_l(\bx_{l-1};\bw_l)$ is computed from the previous output $\bx_{l-1}$  by applying the function $f_l$ with parameters $\bw_l$. 
+
+In a \emph{Convolutional Neural Network} (CNN), the data has a spatial structure: each $\bx_l\in\mathbb{R}^{H_l \times W_l \times C_l}$ is a 3D array or \emph{tensor} where the first two dimensions $H_l$ (height) and $W_l$ (width) are interpreted as spatial dimensions. The third dimension $C_l$ is instead interpreted as the \emph{number of feature channels}. Hence, the tensor $\bx_l$ represents a $H_l \times W_l$ field of $C_l$-dimensional feature vectors, one for each spatial location. A fourth dimension $N_l$ in the tensor spans multiple data samples packed in a single \emph{batch} for efficiency parallel processing. The number of data samples $N_l$ in a batch is called the batch \emph{cardinality}. The network is called \emph{convolutional} because the functions $f_l$ are local and translation invariant operators (i.e.\ non-linear filters) like linear convolution.
+
+It is also possible to conceive CNNs with more than two spatial dimensions, where the additional dimensions may represent volume or time. In fact, there are little \emph{a-priori} restrictions on the format of data in neural networks in general. Many useful NNs contain a mixture of convolutional layers together with layer that process other data types such as text strings, or perform other operations that do not strictly conform  to the CNN assumptions.
+
+\matconvnet includes a variety of layers, contained in the !matlab/! directory, such as !vl_nnconv! (convolution), !vl_nnconvt! (convolution transpose or deconvolution), !vl_nnpool! (max and average pooling), !vl_nnrelu! (ReLU activation), !vl_nnsigmoid! (sigmoid activation), !vl_nnsoftmax! (softmax operator), !vl_nnloss! (classification log-loss), !vl_nnbnorm! (batch normalization), !vl_nnspnorm! (spatial normalization), !vl_nnnormalize! (local response normalization -- LRN), or !vl_nnpdist! ($p$-distance).  There are enough layers to implement many interesting state-of-the-art networks out of the box, or even import them from other toolboxes such as Caffe. 
+
+NNs are often used as classifiers or regressors. In the example of \cref{f:demo}, the output $\hat \by = f(\bx)$ is a vector of probabilities, one for each of a 1,000 possible image labels (dog, cat, trilobite, ...).  If $\by$ is the true label of image $\bx$, we can measure the CNN performance by a loss function $\ell_\by(\hat \by)  \in \mathbb{R}$ which assigns a penalty to classification errors. The CNN parameters can then be tuned or \emph{learned} to minimize this loss averaged over a large dataset of labelled example images.
+
+Learning generally uses a variant of \emph{stochastic gradient descent} (SGD). While this is an efficient method (for this type of problems), networks may contain several million parameters and need to be trained on millions of images; thus, efficiency is a paramount in \matlab design, as further discussed in \cref{s:speed}. SGD also requires to compute the CNN derivatives, as explained in the next section.
+
+% ------------------------------------------------------------------
+\section{Network structures}\label{s:cnn-topology}
+% ------------------------------------------------------------------
+
+In the simplest case, layers in a NN are arranged in a sequence; however, more complex interconnections are possible as well, and in fact very useful in many cases. This section discusses such configurations and introduces a graphical notation to visualize them.
+
+% ------------------------------------------------------------------
+\subsection{Sequences}\label{s:cnn-simple}
+% ------------------------------------------------------------------
+
+Start by considering a computational block $f$ in the network. This can be represented schematically as a box receiving data $\bx$ and parameters $\bw$ as inputs and producing data $\by$ as output:
+\begin{center}
+\begin{tikzpicture}[auto, node distance=2cm]
+\node (x) [data] {$\bx$};
+\node (f) [block,right of=x]{$f$};
+\node (y) [data, right of=f] {$\by$};
+\node (w) [data, below of=f] {$\bw$};
+\draw [to] (x.east) -- (f.west) {};
+\draw [to] (f.east) -- (y.west) {};
+\draw [to] (w.north) -- (f.south) {};
+\end{tikzpicture}
+\end{center}
+As seen above, in the simplest case blocks are chained in a sequence $f_1 \rightarrow f_2\rightarrow\dots\rightarrow f_L$ yielding the structure:
+\begin{center}
+\begin{tikzpicture}[auto, node distance=2cm]
+\node (x0)  [data] {$\bx_0$};
+\node (f1) [block,right of=x0]{$f_1$};
+\node (f2) [block,right of=f1,node distance=3cm]{$f_2$};
+\node (dots) [right of=f2]{...};
+\node (fL) [block,right of=dots]{$f_L$};
+\node (xL)  [data, right of=fL] {$\bx_L$};
+\node (w1) [data, below of=f1] {$\bw_1$};
+\node (w2) [data, below of=f2] {$\bw_2$};
+\node (wL) [data, below of=fL] {$\bw_L$};
+\draw [to] (x0.east) -- (f1.west) {};
+\draw [to] (f1.east) -- node {$\bx_1$} (f2.west);
+\draw [to] (f2.east) -- node {$\bx_2$} (dots.west) {};
+\draw [to] (dots.east) -- node {$\bx_{L-1}$} (fL.west) {};
+\draw [to] (fL.east) -- (xL.west) {};
+\draw [to] (w1.north) -- (f1.south) {};
+\draw [to] (w2.north) -- (f2.south) {};
+\draw [to] (wL.north) -- (fL.south) {};
+\end{tikzpicture}
+\end{center}
+Given an input $\bx_0$, evaluating the network is a simple matter of evaluating all the blocks from left to right, which defines a composite function $\bx_L = f(\bx_0;\bw_1,\dots,\bw_L)$. 
+
+% ------------------------------------------------------------------
+\subsection{Directed acyclic graphs}\label{s:cnn-dag}
+% ------------------------------------------------------------------
+
+\begin{figure}[t]
+\begin{center}
+\begin{tikzpicture}[auto, node distance=0.4cm]
+ \matrix (m) [matrix of math nodes, 
+    column sep=1.2cm,
+    row sep=0.4cm]
+{
+& \node (f1) [block]{f_1}; 
+& \node (x1) [datac]{\bx_1};
+\\
+\node (x0) [datac]{\bx_0};
+&
+&
+& \node (f3) [block]{f_3};
+& \node (x3) [datac]{\bx_3};
+\\
+& \node (f2) [block]{f_2}; 
+& \node (x2) [datac]{\bx_2};
+& &
+& \node (f5) [block]{f_5}; 
+& \node (x7) [datac]{\bx_7}; 
+\\
+& 
+& \node(x5) [datac]{\bx_5};
+\\
+\node (x4) [datac]{\bx_4};
+& \node (f4) [block]{f_4};
+\\
+& 
+& \node(x6) [datac]{\bx_6};
+\\
+};
+\draw[to] (x0) -- (f1);
+\draw[to] (f1) -- (x1);
+\draw[to] (x1) -- (f3);
+\draw[to] (x0) -- (f2);
+\draw[to] (f2) -- (x2);
+\draw[to] (x2) -- (f3);
+\draw[to] (f3) -- (x3);
+\draw[to] (x3) -- (f5);
+\draw[to] (f5) -- (x7);
+\draw[to] (x4) -- (f4);
+\draw[to] (f4) -- (x5);
+\draw[to] (f4) -- (x6);
+\draw[to] (x5) -- (f5);
+\node(w1) [par,below=of f1]{$\bw_1$}; \draw[to] (w1) -- (f1);
+\node(w2) [par,below=of f2]{$\bw_2$}; \draw[to] (w2) -- (f2);
+%\node(w3) [par,below=of f3]{$\bw_3$}; \draw[to] (w3) -- (f3);
+\node(w4) [par,below=of f4]{$\bw_4$}; \draw[to] (w4) -- (f4);
+\draw[to] (w4) to [bend right] (f3);
+\node(w5) [par,below=of f5]{$\bw_5$}; \draw[to] (w5) -- (f5);
+\end{tikzpicture}
+\end{center}
+\vspace{-1em}
+\caption{\textbf{Example DAG.}}\label{f:dag}
+\end{figure}
+
+One is not limited to chaining layers one after another. In fact, the only requirement for evaluating a NN is that, when a layer has to be evaluated, all its input have been evaluated prior to it. This is possible exactly when the interconnections between layers form a \emph{directed acyclic graph}, or DAG for short.
+
+In order to visualize DAGs, it is useful to introduce additional nodes for the network variables, as in the  example of Fig.~\ref{f:dag}. Here boxes denote functions and circles denote variables (parameters are treated as a special kind of variables). In the example, $\bx_0$ and $\bx_4$ are the inputs of the CNN and $\bx_6$ and $\bx_7$ the outputs. Functions can take any number of inputs (e.g. $f_3$ and $f_5$ take two) and have any number of outputs (e.g. $f_4$ has two). There are a few noteworthy properties of this graph:
+
+\begin{enumerate}
+\item The graph is bipartite, in the sense that arrows always go from boxes to circles and from circles to boxes. 
+\item Functions can have any number of inputs or outputs; variables and parameters can have an arbitrary number of outputs (a parameter with more of one output is \emph{shared} between different layers); variables have at most one input and parameters none. 
+\item Variables with no incoming arrows and parameters are not computed by the network, but must be set prior to evaluation, i.e.\ they are \emph{inputs}. Any variable (or even parameter) may be used as output, although these are usually the variables with no outgoing arrows.
+\item Since the graph is acyclic, the CNN can be evaluated by sorting the functions and computing them one after another (in the example, evaluating the functions in the order $f_1,f_2,f_3,f_4,f_5$ would work).
+\end{enumerate}
+
+% ------------------------------------------------------------------
+\section{Computing derivatives with backpropagation}\label{s:back}
+% ------------------------------------------------------------------
+
+Learning a NN requires computing the derivative of the loss with respect to the network parameters. Derivatives are computed using an algorithm called \emph{backpropagation}, which is a memory-efficient implementation of the chain rule for derivatives. First, we discuss the derivatives of a single layer, and then of a whole network.
+
+\subsection{Derivatives of tensor functions}
+
+In a CNN, a layer is a function $\by = f(\bx)$ where both input $\bx \in \mathbb{R}^{H\times W \times C}$ and output $\by \in \mathbb{R}^{H'\times W' \times C'}$ are tensors. The derivative of the function $f$ contains the derivative of each output component $y_{i'j'k'}$ with respect to each input component $x_{ijk}$, for a total of $H'\times W'\times C'\times H\times W\times C$ elements naturally arranged in a 6D tensor. Instead of expressing derivatives as tensors, it is often useful  to switch to a matrix notation by \emph{stacking} the input and output tensors into vectors. This is done by the $\vv$ operator, which visits each element of a tensor in lexicographical order and produces a vector:
+\[
+  \vv \bx
+  =
+  \begin{bmatrix}
+  x_{111} \\
+  x_{211} \\
+  \vdots
+  \\
+  x_{H11} \\
+  x_{121} \\
+  \vdots \\
+  x_{HWC}  	
+  \end{bmatrix}.
+\]
+By stacking both input and output, each layer $f$ can be seen reinterpreted as vector function $\vv f$, whose derivative is the conventional Jacobian matrix:
+\[
+\renewcommand*{\arraystretch}{1.5}
+\frac{d \vv f}{d(\vv \bx)^\top}
+=
+\begin{bmatrix}
+\frac{\partial y_{111}}{\partial x_{111}} & 
+\frac{\partial y_{111}}{\partial x_{211}} &
+\dots &
+\frac{\partial y_{111}}{\partial x_{H11}} &
+\frac{\partial y_{111}}{\partial x_{121}} &
+\dots &
+\frac{\partial y_{111}}{\partial x_{HWC}} \\
+\frac{\partial y_{211}}{\partial x_{111}} & 
+\frac{\partial y_{211}}{\partial x_{211}} &
+\dots &
+\frac{\partial y_{211}}{\partial x_{H11}} &
+\frac{\partial y_{211}}{\partial x_{121}} &
+\dots &
+\frac{\partial y_{211}}{\partial x_{HWC}} \\
+\vdots & \vdots & \dots & \vdots & \vdots & \dots & \vdots \\
+\frac{\partial y_{H'11}}{\partial x_{111}} & 
+\frac{\partial y_{H'11}}{\partial x_{211}} &
+\dots &
+\frac{\partial y_{H'11}}{\partial x_{H11}} &
+\frac{\partial y_{H'11}}{\partial x_{121}} &
+\dots &
+\frac{\partial y_{H'11}}{\partial x_{HWC}} \\
+\frac{\partial y_{121}}{\partial x_{111}} & 
+\frac{\partial y_{121}}{\partial x_{211}} &
+\dots &
+\frac{\partial y_{121}}{\partial x_{H11}} &
+\frac{\partial y_{121}}{\partial x_{121}} &
+\dots &
+\frac{\partial y_{121}}{\partial x_{HWC}} \\
+\vdots & \vdots & \dots & \vdots & \vdots & \dots & \vdots \\
+\frac{\partial y_{H'W'C'}}{\partial x_{111}} & 
+\frac{\partial y_{H'W'C'}}{\partial x_{211}} &
+\dots &
+\frac{\partial y_{H'W'C'}}{\partial x_{H11}} &
+\frac{\partial y_{H'W'C'}}{\partial x_{121}} &
+\dots &
+\frac{\partial y_{H'W'C'}}{\partial x_{HWC}}
+\end{bmatrix}.
+\]
+This notation for the derivatives of tensor functions is taken from~\cite{kinghorn96integrals} and is used throughout this document.
+
+While it is easy to express the derivatives of tensor functions as matrices, these matrices are in general extremely large. Even for moderate data sizes (e.g. $H=H'=W=W'=32$ and $C=C'=128$), there are $H'W'C'HWC \approx 17 \times 10^9$ elements in the Jacobian. Storing that requires 68 GB of space in single precision. The purpose of the backpropagation algorithm is to compute the derivatives required for learning without incurring this huge memory cost.
+
+\subsection{Derivatives of function compositions}
+
+In order to understand backpropagation, consider first a simple CNN terminating in a loss function $f_L = \ell_\by$:
+\begin{center}
+\begin{tikzpicture}[auto, node distance=2cm]
+\node (x0)  [data] {$\bx_0$};
+\node (f1) [block,right of=x0]{$f_1$};
+\node (f2) [block,right of=f1,node distance=3cm]{$f_2$};
+\node (dots) [right of=f2]{...};
+\node (fL) [block,right of=dots]{$f_L$};
+\node (w1) [data, below of=f1] {$\bw_1$};
+\node (w2) [data, below of=f2] {$\bw_2$};
+\node (wL) [data, below of=fL] {$\bw_L$};
+\node (xL) [data, right of=fL] {$x_l\in\real$};
+\draw [to] (x0.east) -- (f1.west) {};
+\draw [to] (f1.east) -- node {$\bx_1$} (f2.west);
+\draw [to] (f2.east) -- node {$\bx_2$} (dots.west) {};
+\draw [to] (dots.east) -- node {$\bx_{L-1}$} (fL.west) {};
+\draw [to] (fL.east) -- (xL.west) {};
+\draw [to] (w1.north) -- (f1.south) {};
+\draw [to] (w2.north) -- (f2.south) {};
+\draw [to] (wL.north) -- (fL.south) {};
+\end{tikzpicture}
+\end{center}
+The goal is to compute the gradient of the loss value $x_L$ (output) with respect to each network parameter $\bw_l$:
+\[
+\frac{df}{d(\vv \bw_l)^\top} = 
+\frac{d}{d(\vv \bw_l)^\top}
+\left[f_L(\cdot;\bw_L) \circ ... \circ 
+f_2(\cdot;\bw_2) \circ f_1(\bx_0;\bw_1)\right].
+\]
+By applying the chain rule and by using the matrix notation introduced above, the derivative can be written as
+\begin{equation}\label{e:chain-rule}
+\frac{df}{d(\vv \bw_l)^\top} 
+= 
+\frac{d\vv f_L(\bx_{L-1};\bw_{L})}{d(\vv\bx_{L-1})^\top}
+\times
+\dots
+\times
+\frac{d\vv f_{l+1}(\bx_{l};\bw_{l+1})}{d(\vv\bx_{l})^\top}
+\times
+\frac{d\vv f_l(\bx_{l-1};\bw_{l})}{d(\vv\bw_l^\top)}
+\end{equation}
+where the derivatives are computed at the working point determined by the input $\bx_0$ and the current value of the parameters. 
+
+Note that, since the network output $x_l$ is a \emph{scalar} quantity, the target derivative $df/d(\vv \bw_l)^\top$ has the same number of elements of the parameter vector $\bw_l$, which is moderate. However, the intermediate Jacobian factors have, as seen above, an unmanageable size. In order to avoid computing these factor explicitly, we can proceed as follows.
+
+Start by multiplying the output of the last layer by a tensor $p_L=1$ (note that this tensor is a scalar just like the variable $x_L$):
+\begin{align*}
+p_L \times \frac{df}{d(\vv \bw_l)^\top} 
+&= 
+\underbrace{p_L \times \frac{d\vv f_L(\bx_{L-1};\bw_{L})}{d(\vv\bx_{L-1})^\top}}_{(\vv \bp_{L-1})^\top}
+\times
+\dots
+\times
+\frac{d\vv f_{l+1}(\bx_{l};\bw_{l+1})}{d(\vv\bx_{l})^\top}
+\times
+\frac{d\vv f_l(\bx_{l-1};\bw_{l})}{d(\vv\bw_l^\top)}
+\\
+&=
+(\vv \bp_{L-1})^\top
+\times
+\dots
+\times
+\frac{d\vv f_{l+1}(\bx_{l};\bw_{l+1})}{d(\vv\bx_{l})^\top}
+\times
+\frac{d\vv f_l(\bx_{l-1};\bw_{l})}{d(\vv\bw_l^\top)}
+\end{align*}
+In the second line the last two factors to the left have been multiplied obtaining a new tensor $\bp_{L-1}$ that has the same size as the variable $\bx_{L-1}$. The factor $\bp_{L-1}$ can therefore be explicitly stored. The construction is then repeated by multiplying pairs of factors from left to right, obtaining a sequence of tensors $\bp_{L-2},\dots,\bp_{l}$ until the desired derivative is obtained. Note that, in doing so, no large tensor is ever stored in memory. This process is known as \emph{backpropagation}.
+
+In general, tensor $\bp_{l}$ is obtained from $\bp_{l+1}$ as the product:
+\[
+(\vv \bp_{l})^\top = (\vv \bp_{l+1})^\top \times \frac{d\vv f_{l+1}(\bx_{l};\bw_{l+1})}{d(\vv\bx_{l})^\top}.
+\]
+The key to implement backpropagation is to be able to compute these products without explicitly computing and storing in memory the second factor, which is a large Jacobian matrix. Since computing the derivative is a linear operation, this product can be interpreted as the \emph{derivative of the layer projected along direction $\bp_{l+1}$}: 
+\begin{equation}\label{e:projected}
+\bp_{l} = 
+\frac{d \langle \bp_{l+1}, f(\bx_l;\bw_l) \rangle}
+{d \bx_{l}}.
+\end{equation}
+Here $\langle \cdot,\cdot \rangle$ denotes the inner product between tensors, which results in a scalar quantity. Hence the derivative \eqref{e:projected} needs not to use the $\vv$ notation, and yields a tensor $\bp_l$ that has the same size as $\bx_l$ as expected.
+
+In order to implement backpropagation, a CNN toolbox provides implementations of each layer $f$ that provide:
+\begin{itemize}
+\item A \textbf{forward mode}, computing the output $\by = f(\bx;\bw)$ of the layer given its input $\bx$ and parameters $\bw$.
+\item A \textbf{backward mode}, computing the projected derivatives
+\[
+\frac{d \langle \bp, f(\bx;\bw) \rangle}
+{d \bx}
+\quad\text{and}\quad
+\frac{d \langle \bp, f(\bx;\bw) \rangle}
+{d \bw},
+\]
+given, in addition to the input $\bx$ and parameters $\bw$, a tensor $\bp$ that the same size as $\by$.
+\end{itemize}
+This is best illustrated with an example. Consider a layer $f$ such as the convolution operator implemented by the \matconvnet\ !vl_nnconv! command. In the ``forward'' mode, one calls the function as !y = vl_nnconv(x,w,[])! to apply the filters !w! to the input !x! and obtain the output !y!. In the ``backward mode'', one calls ![dx, dw] = vl_nnconv(x,w,[],p)!.  As explained above, !dx!, !dw!, and !p! have the same size as !x!, !w!, and !y!, respectively. The computation of large Jacobian is encapsulated in the function call and never carried out explicitly. 
+
+\subsection{Backpropagation networks}\label{s:bpnets}
+
+In this section, we provide a schematic interpretation of backpropagation and show how it can be implemented by ``reversing'' the NN computational graph.
+
+The projected derivative of eq.~\eqref{e:projected} can be seen as the derivative of the following mini-network:
+\begin{center}
+\begin{tikzpicture}[auto, node distance=2cm]
+\node (x) [data] {$\bx$};
+\node (f) [block,right of=x ] {$f$};
+\node (dot)[block,right of=f ] {$\langle \cdot, \cdot \rangle$};
+\node (z) [data, right of=dot] {$z \in \mathbb{R}$};
+\node (w) [data, below of=f ] {$\bw$};
+\node (p) [data, below of=dot] {$\bp$};
+\draw [to] (x.east) -- (f.west) {};
+\draw [to] (f.east) -- node {$\by$}  (dot.west) {};
+\draw [to] (w.north) -- (f.south) {};
+\draw [to] (dot.east) -- (z.west) {};
+\draw [to] (p.north) -- (dot.south) {};
+\end{tikzpicture}
+\end{center}
+In the context of back-propagation, it can be useful to think of the projection $\bp$ as the ``linearization'' of the rest of the network from variable $\by$ down to the loss. The projected derivative can also be though of as a new layer $(d\bx, d\bw) = df(\bx,\bw,\bp)$ that, by computing the derivative of the mini-network, operates in the reverse direction:
+\begin{center}
+\begin{tikzpicture}[auto, node distance=2cm]
+\node (df) [block,right of=x] {$df$};
+\node (dx) [data,left of=df] {$d\bx$};
+\node (dw) [data,below of=df] {$d\bw$};
+\node (w) [data,above of=df,xshift=0.6em] {$\bw$};
+\node (x) [data,above of=df,xshift=-0.6em] {$\bx$};
+\node (p) [data,right of=df] {$\bp$};
+\draw [to] (df.west) -- (dx.east)  {};
+\draw [to] (df.south) -- (dw.north)  {};
+\draw [to] (p.west) -- (f.east) {};
+\draw [to] (w.south) -- ([xshift=0.6em]df.north) {};
+\draw [to] (x.south) -- ([xshift=-0.6em]df.north) {};
+\end{tikzpicture}
+\end{center}
+By construction (see eq.~\eqref{e:projected}), the function $df$ is \emph{linear} in the argument $\bp$.
+
+Using this notation, the forward and backward passes through the original network can be rewritten as evaluating an extended network which contains a BP-reverse of the original one (in blue in the diagram):
+\begin{center}
+\begin{tikzpicture}[auto, node distance=2cm]
+\node (x0) [data] {$\bx_0$};
+%
+\node (f1) [block,right of=x0] {$f_1$};
+\node (x1) [data,right of=f1] {$\bx_{1}$};
+\node (w1) [data,below of=f1] {$\bw_1$};
+%
+\node (f2) [block,right of=x1] {$f_2$};
+\node (x2) [data,right of=f2] {$\bx_{2}$};
+\node (w2) [data,below of=f2] {$\bw_2$};
+%
+\node (f3) [right of=x2] {$\dots$};
+\node (xLm) [right of=f3] {$\bx_{L-1}$};
+%
+\node (fL) [block,right of=xLm] {$f_L$};
+\node (xL) [data,right of=fL] {$\bx_{L}$};
+\node (wL) [data,below of=fL] {$\bw_L$};
+%
+\draw [to] (x0.east) -- (f1.west) {};
+%
+\draw [to] (w1.north) -- (f1.south) {};
+\draw [to] (f1.east) -- (x1.west) {};
+\draw [to] (x1.east) -- (f2.west) {};
+%
+\draw [to] (w2.north) -- (f2.south) {};
+\draw [to] (f2.east) -- (x2.west) {};
+\draw [to] (x2.east) -- (f3.west) {};
+%
+\draw [to] (f3.east) -- (xLm.west) {};
+\draw [to] (xLm.east) -- (fL.west) {};
+%
+\draw [to] (wL.north) -- (fL.south) {};
+\draw [to] (fL.east) -- (xL.west) {};
+%
+\node (dfL) [block,below of=wL,bp] {$df_L$};
+\node (dxL) [data,right of=dfL,bpe] {$d\bp_L$};
+\node (dwL) [data,below of=dfL,bpe] {$d\bw_L$};
+\node (dxLm) [data,left of=dfL,bpe] {$d\bx_{L-1}$};
+%
+\node (df3) [left of=dxLm,bpe] {$\dots$};
+%
+\node (df2) [block,below of=w2,bp] {$df_2$};
+\node (dx2) [data,right of=df2,bpe] {$d\bx_{2}$};
+\node (dw2) [data,below of=df2,bpe] {$d\bw_2$};
+%
+\node (df1) [block,below of=w1,bp] {$df_1$};
+\node (dx1) [data,right of=df1,bpe] {$d\bx_{1}$};
+\node (dw1) [data,below of=df1,bpe] {$d\bw_1$};
+%
+\node (dx0) [data,left of=df1,bpe] {$d\bx_{0}$};
+%
+\draw [to,bp] (wL.south) -- (dfL.north) {};
+\draw [to,bp] (dfL.south) -- (dwL.north) {};
+\draw [to,bp] (dxL.west) -- (dfL.east) {};
+\draw [to,bp] (dfL.west) -- (dxLm.east) {};
+%
+\draw [to,bp] (dxLm.west) -- (df3.east) {};
+\draw [to,bp] (df3.west) -- (dx2.east) {};
+%
+\draw [to,bp] (w2.south) -- (df2.north) {};
+\draw [to,bp] (df2.south) -- (dw2.north) {};
+\draw [to,bp] (dx2.west) -- (df2.east) {};
+\draw [to,bp] (df2.west) -- (dx1.east) {};
+%
+\draw [to,bp] (w1.south) -- (df1.north) {};
+\draw [to,bp] (df1.south) -- (dw1.north) {};
+\draw [to,bp] (dx1.west) -- (df1.east) {};
+%
+\draw [to,bp] (df1.west) -- (dx0.east) {};
+%
+\draw [to,bp] (x0) -- (df1) {} ;
+\draw [to,bp] (x1) -- (df2) {} ;
+\draw [to,bp] (xLm) -- (dfL) {} ;
+\end{tikzpicture}
+\end{center}
+
+% ------------------------------------------------------------------
+\subsection{Backpropagation in DAGs}\label{s:dag}
+% ------------------------------------------------------------------
+
+Assume that the DAG has a single output variable $\bx_L$ and assume, without loss of generality, that all variables are sorted in order of computation $(\bx_0,\bx_1,\dots,\bx_{L-1},\bx_L)$ according to the DAG structure. Furthermore, in order to simplify the notation, assume that this list contains both data and parameter variables, as the distinction is moot for the discussion in this section.
+
+We can cut the DAG at any point in the sequence by fixing $\bx_0, \dots, \bx_{l-1}$ to some arbitrary value and dropping all the DAG layers that feed into them, effectively transforming the first $l$ variables into inputs. Then, the rest of the DAG defines a function $h_l$ that maps these input variables to the output $\bx_L$:
+\[
+ \bx_L = h_l(\bx_0,\bx_1,\dots,\bx_{l-1}).
+\]
+Next, we show that backpropagation in a DAG iteratively computes the projected derivatives of all functions $h_1,\dots,h_L$ with respect to all their parameters.
+
+Backpropagation starts by initializing variables $(d\bx_{0},\dots,d\bx_{l-1})$ to null tensors of the same size as $(\bx_0,\dots,\bx_{l-1})$. Next, it computes the projected derivatives of
+\[
+ \bx_L = h_L(\bx_0,\bx_1,\dots,\bx_{L-1}) =
+ f_{\pi_L}(\bx_0,\bx_1,\dots,\bx_{L-1}).
+\]
+Here $\pi_l$ denotes the index of the layer $f_{\pi_l}$ that computes the value of the variable $\bx_l$. There is at most one such layer, or none if $\bx_l$ is an input or parameter of the original NN. In the first case, the layer may depend on any of the variables prior to $\bx_l$ in the sequence, so that general one has:
+\[
+ \bx_{l} = f_{\pi_l}(\bx_0,\dots,\bx_{l-1}).
+\]
+	At the beginning of backpropagation, since there are no intermediate variables between $\bx_{L-1}$ and $\bx_L$, the function $h_L$ is the same as the last layer $f_{\pi_L}$. Thus the projected derivatives of $h_L$ are the same as the projected derivatives of $f_{\pi_L}$, resulting in the equation
+\[
+\forall t=0,\dots,L-1:\qquad
+d\bx_{t} \leftarrow d\bx_{t}
++ \frac{d\langle \bp_L, f_{\pi_L}(\bx_0,\dots,\bx_{t-1})\rangle}{d\bx_t}.
+\]
+Here, for uniformity with the other iterations, we use the fact that $d\bx_l$ are initialized to zero an\emph{accumulate} the values instead of storing them. In practice, the update operation needs to be carried out only for the variables $\bx_l$ that are actual inputs to $f_{\pi_L}$, which is often a tiny fraction of all the variables in the DAG.
+
+After the update, each $d\bx_t$ contains the projected derivative of function $h_L$ with respect to the corresponding variable:
+\[
+\forall t=0,\dots,L-1:\qquad
+d\bx_t = \frac{d\langle \bp_L, h_L(\bx_0,\dots,\bx_{l-1})\rangle}{d\bx_t}.
+\]
+Given this information, the next iteration of backpropagation updates the variables to contain the projected derivatives of $h_{L-1}$ instead. In general, given the derivatives of $h_{l+1}$, backpropagation computes the derivatives of $h_{l}$ by using the relation
+\[
+ \bx_L
+ = 
+ h_{l}(\bx_0,\bx_1,\dots,\bx_{l-1})
+ =
+ h_{l+1}(\bx_0,\bx_1,\dots,\bx_{l-1},f_{\pi_L}(\bx_0,\dots,\bx_{l-1}))
+\]
+Applying the chain rule to this expression, for all $0\leq t \leq l-1$:
+\[
+\frac{d\langle \bp, h_l \rangle}{d(\vv \bx_t)^\top}
+=
+\frac{d\langle \bp, h_{l+1}\rangle}{d(\vv \bx_t)^\top}
++
+\underbrace{\frac{d\langle \bp_L, h_{l+1}\rangle}{d(\vv \bx_l)^\top}}_{\vv d\bx_l}
+\frac{d \vv f_{\pi_l}}{d(\vv \bx_t)^\top}.
+\]
+This yields the update equation
+\begin{equation}\label{e:bp-update}	
+\forall t=0,\dots,l-1:\qquad
+d\bx_t \leftarrow d\bx_t + \frac{d\langle \bp_l, f_{\pi_l}(\bx_0,\dots,\bx_{l-1})\rangle}{d\bx_t},
+\quad
+\text{where\ }
+\bp_l = d\bx_l.
+\end{equation}
+Once more, the update needs to be explicitly carried out only for the variables $\bx_t$ that are actual inputs of $f_{\pi_l}$. In particular, if $\bx_l$ is a data input or a parameter of the original neural network, then $\bx_l$ does not depend on any other variables or parameters and $f_{\pi_l}$ is a nullary function (i.e.\ a function with no arguments). In this case, the update does not do anything. 
+After iteration $L-l+1$ completes, backpropagation remains with:
+\begin{align*}
+\forall t=0,\dots,l-1:&\qquad
+d\bx_t
+=
+\frac{d\langle \bp_L, h_l(\bx_0,\dots,\bx_{l-1})\rangle}{d\bx_t}.
+\end{align*}
+Note that the derivatives for variables $\bx_t, l \leq t \leq L-1$ are not updated since $h_l$ does not depend on any of those. Thus, after all $L$ iterations are complete, backpropagation terminates with
+\[
+\forall l=1,\dots,L:\qquad
+d\bx_{l-1}
+=
+\frac{d\langle \bp_L, h_{l}(\bx_0,\dots,\bx_{l-1})\rangle}{d\bx_{l-1}}.
+\]
+As seen above, functions $h_{l}$ are obtained from the original network $f$ by transforming variables $\bx_0,\dots,\bx_{l-1}$ into to inputs. If $\bx_{l-1}$ was already an input (data or parameter) of $f$, then the derivative $d\bx_{l-1}$ is applicable to $f$ as well.
+
+Backpropagation can be summarized as follows:
+\begin{center}
+\fbox{\begin{minipage}{0.95\textwidth}
+Given: a DAG neural network $f$ with a single output $\bx_L$, the values of all input variables (including the parameters), and the value of the projection $\bp_L$ (usually $\bx_L$ is a scalar and $\bp_L = p_L = 1$):
+\begin{enumerate}
+    \item Sort all variables by computation order $(\bx_0,\bx_1,\dots,\bx_L)$ according to the DAG.
+    \item Perform a forward pass through the network to compute all the intermediate variable values.
+    \item Initialize $(d\bx_0, \dots, d\bx_{L-1})$ to null tensors with the same size as the corresponding variables.
+    \item For $l=L,L-1,\dots,2,1$:
+  \begin{enumerate}
+  \item Find the index $\pi_l$ of the layer $\bx_{l} = f_{\pi_l}(\bx_0,\dots,\bx_{l-1})$ that evaluates variable $\bx_l$. If there is no such layer (because $\bx_{l}$ is an input or parameter of the network), go to the next iteration.
+  \item Update the variables using the formula:
+   \[
+   \forall t=0,\dots,l-1:\qquad
+d\bx_t \leftarrow d\bx_t + \frac{d\langle d\bx_l, f_{\pi_l}(\bx_0,\dots,\bx_{l-1})\rangle}{d\bx_t}.
+   \]
+   To do so efficiently, use the ``backward mode'' of the layer $f_{\pi_l}$ to compute its derivative projected onto $d\bx_l$ as needed.
+  \end{enumerate}
+  \end{enumerate}
+\end{minipage}}
+\end{center}
+
+% TODO: what to do with multiple outputs
+
+
+\begin{figure}[t]
+\begin{center}
+\begin{tikzpicture}[auto, node distance=0.3cm]
+ \matrix (m) [matrix of math nodes, 
+    column sep=1.2cm,
+    row sep=0.3cm]
+{
+& \node (f1) [block]{f_1}; 
+& \node (x1) [datac]{\bx_1};
+\\
+\node (x0) [datac]{\bx_0};
+&
+&
+& \node (f3) [block]{f_3};
+& \node (x3) [datac]{\bx_3};
+\\
+& \node (f2) [block]{f_2}; 
+& \node (x2) [datac]{\bx_2};
+& &
+& \node (f5) [block]{f_5}; 
+& \node (x7) [datac]{\bx_7}; 
+\\
+& 
+& \node(x5) [datac]{\bx_5};
+\\
+\node (x4) [datac]{\bx_4};
+& \node (f4) [block]{f_4};
+\\
+& 
+& \node(x6) [datac]{\bx_6};
+\\
+% BP
+& \node (df1) [block,bp]{df_1}; 
+& \node (dx1) [datac,bp]{d\bx_1};
+\\
+\node (dx0) [datac,bp]{d\bx_0};
+&
+&
+& \node (df3) [block,bp]{df_3};
+& \node (dx3) [datac,bp]{d\bx_3};
+\\
+& \node (df2) [block,bp]{df_2}; 
+& \node (dx2) [datac,bp]{d\bx_2};
+& &
+& \node (df5) [block,bp]{df_5}; 
+& \node (dx7) [datac,bp]{\bp_7}; 
+\\
+& 
+& \node (dx5) [datac,bp]{d\bx_5};
+\\
+\node (dx4) [datac,bp]{d\bx_4};
+& \node (df4) [block,bp]{df_4};
+\\
+& 
+& \node(dx6) [datac,bp]{\bp_6};
+\\
+};
+\draw[to] (x0) -- (f1);
+\draw[to] (f1) -- (x1);
+\draw[to] (x1) -- (f3);
+\draw[to] (x0) -- (f2);
+\draw[to] (f2) -- (x2);
+\draw[to] (x2) -- (f3);
+\draw[to] (f3) -- (x3);
+\draw[to] (x3) -- (f5);
+\draw[to] (f5) -- (x7);
+\draw[to] (x4) -- (f4);
+\draw[to] (f4) -- (x5);
+\draw[to] (f4) -- (x6);
+\draw[to] (x5) -- (f5);
+\node(w1) [par,below=of f1]{$\bw_1$}; \draw[to] (w1) -- (f1);
+\node(w2) [par,below=of f2]{$\bw_2$}; \draw[to] (w2) -- (f2);
+\node(w4) [par,below=of f4]{$\bw_4$}; \draw[to] (w4) -- (f4);
+\draw[to] (w4) to [bend right] (f3);
+\node(w5) [par,below=of f5]{$\bw_5$}; \draw[to] (w5) -- (f5);
+\node (dx0s) [right of=dx0,xshift=20pt,draw,rectangle,bp]{$\Sigma$};
+\draw[from,bp] (dx0) -- (dx0s);
+\draw[from,bp] (dx0s) -- (df1);
+\draw[from,bp] (df1) -- (dx1);
+\draw[from,bp] (dx1) -- (df3);
+\draw[from,bp] (dx0s) -- (df2);
+\draw[from,bp] (df2) -- (dx2);
+\draw[from,bp] (dx2) -- (df3);
+\draw[from,bp] (df3) -- (dx3);
+\draw[from,bp] (dx3) -- (df5);
+\draw[from,bp] (df5) -- (dx7);
+\draw[from,bp] (dx4) -- (df4);
+\draw[from,bp] (df4) -- (dx5);
+\draw[from,bp] (df4) -- (dx6);
+\draw[from,bp] (dx5) -- (df5);
+\node(dw1) [par,below=of df1,bp]{$d\bw_1$}; \draw[from,bp] (dw1) -- (df1);
+\node(dw2) [par,below=of df2,bp]{$d\bw_2$}; \draw[from,bp] (dw2) -- (df2);
+\node(dw4s) [below of=df4,draw,rectangle,bp,yshift=-25pt]{$\Sigma$}; \draw[from,bp] (dw4s) -- (df4);
+\node(dw4) [par,below=of dw4s,bp]{$d\bw_4$}; \draw[from,bp] (dw4) -- (dw4s);
+\draw[from,bp] (dw4s) to [bend right,bp] (df3);
+\node(dw5) [par,below=of df5,bp]{$d\bw_5$}; \draw[from,bp] (dw5) -- (df5);
+%
+\draw[to,bpl] (x0) -| ([xshift=-0.3cm]x0.west) |- (df1);
+\draw[to,bpl] (x0) -| ([xshift=-0.6cm]x0.west) |- (df2);
+\draw[to,bpl] (x1) -| ([xshift=4cm]x1.west) |- ([yshift=10pt]df3.east);
+\draw[to,bpl] (x2) -| (df3);
+\draw[to,bpl] (x3) -| ([xshift=+5cm]x3.east) |- ([yshift=15pt]df5.east);
+\draw[to,bpl] (x4) to [bend right=75] ([yshift=15pt]df4.west);
+\draw[to,bpl] (x5) to [bend left] (df5);
+\end{tikzpicture}
+\end{center}
+\vspace{-1em}
+\caption{\textbf{Backpropagation network for a DAG.}}\label{f:dagbp}
+\end{figure}
+
+% ------------------------------------------------------------------
+\subsection{DAG backpropagation networks}\label{s:bpnets-dag}
+% ------------------------------------------------------------------
+
+Just like for sequences, backpropagation in DAGs can be implemented as a corresponding BP-reversed DAG. To construct the reversed DAG:
+\begin{enumerate}
+\item For each layer $f_l$, and variable/parameter $\bx_t$ and $\bw_l$, create a corresponding layer $df_l$ and variable/parameter $d\bx_t$ and $d\bw_l$.
+\item If a variable $\bx_t$ (or parameter $\bw_l$) is an input of $f_l$, then it is an input of $df_l$ as well.
+\item If a variable $\bx_t$ (or parameter $\bw_l$) is an input of $f_l$, then the variable $d\bx_t$ (or the parameter $d\bw_l$) is an output $df_l$.
+\item In the previous step, if a variable $\bx_t$ (or parameter $\bw_l$) is input to two or more layers in $f$, then $d\bx_t$ would be the output of two or more layers in the reversed network, which creates a conflict. Resolve these conflicts by inserting a summation layer that adds these contributions (this corresponds to the summation in the BP update equation \eqref{e:bp-update}).
+\end{enumerate}
+The BP network corresponding to the DAG of Fig.~\ref{f:dag} is given in Fig.~\ref{f:dagbp}.
+
+

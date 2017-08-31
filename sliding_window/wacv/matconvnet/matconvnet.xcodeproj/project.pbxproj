@@ -1,0 +1,1031 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2D14F0091B02AB5700A8F33D /* nnbias.cu in Sources */ = {isa = PBXBuildFile; fileRef = 2D14F0071B02AB5700A8F33D /* nnbias.cu */; };
+		2D14F00A1B02AB5700A8F33D /* nnbias.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D14F0081B02AB5700A8F33D /* nnbias.hpp */; };
+		2D14F00C1B02AB9800A8F33D /* nnbias.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D14F00B1B02AB9800A8F33D /* nnbias.cpp */; };
+		2D14F00E1B03A35700A8F33D /* nnbias_blas.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D14F00D1B03A35700A8F33D /* nnbias_blas.hpp */; };
+		2D14F0101B03A6FA00A8F33D /* nnbias_cudnn.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D14F00F1B03A6FA00A8F33D /* nnbias_cudnn.hpp */; };
+		2D16767F1AB5AF6000CC738D /* imread_helpers.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D16767D1AB5AF6000CC738D /* imread_helpers.hpp */; };
+		2D2A74F71A88D73900C372A4 /* copy_cpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D2A74F61A88D73900C372A4 /* copy_cpu.cpp */; };
+		2D47A19E1A88CB0900826D48 /* datacu.cu in Sources */ = {isa = PBXBuildFile; fileRef = 2D47A19C1A88CB0900826D48 /* datacu.cu */; };
+		2D47A19F1A88CB0900826D48 /* datacu.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D47A19D1A88CB0900826D48 /* datacu.hpp */; };
+		2D528BB31A8284FA006EC40A /* nnconv.cu in Sources */ = {isa = PBXBuildFile; fileRef = 2D528BB11A8284FA006EC40A /* nnconv.cu */; };
+		2D528BB41A8284FA006EC40A /* nnconv.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D528BB21A8284FA006EC40A /* nnconv.hpp */; };
+		2D7B112C1A88E5CC00A3D8A0 /* nnconv_blas.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D7B112A1A88E5CC00A3D8A0 /* nnconv_blas.hpp */; };
+		2D7B112F1A88F0FF00A3D8A0 /* nnpooling.cu in Sources */ = {isa = PBXBuildFile; fileRef = 2D7B112D1A88F0FF00A3D8A0 /* nnpooling.cu */; };
+		2D7B11301A88F0FF00A3D8A0 /* nnpooling.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D7B112E1A88F0FF00A3D8A0 /* nnpooling.hpp */; };
+		2D7B11321A88F12000A3D8A0 /* nnpooling.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D7B11311A88F12000A3D8A0 /* nnpooling.cpp */; };
+		2D7B11341A8AC81E00A3D8A0 /* nnfullyconnected.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D7B11331A8AC81E00A3D8A0 /* nnfullyconnected.cpp */; };
+		2D7B11361A8AC85300A3D8A0 /* nnsubsample.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D7B11351A8AC85300A3D8A0 /* nnsubsample.cpp */; };
+		2D7B11381A8AC8A700A3D8A0 /* nnconv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D7B11371A8AC8A700A3D8A0 /* nnconv.cpp */; };
+		2D7B113C1A8BDB3C00A3D8A0 /* nnnormalize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D7B11391A8BDB3C00A3D8A0 /* nnnormalize.cpp */; };
+		2D7B113D1A8BDB3C00A3D8A0 /* nnnormalize.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D7B113B1A8BDB3C00A3D8A0 /* nnnormalize.hpp */; };
+		2D7B11411A8BDB4E00A3D8A0 /* normalize_cpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D7B113E1A8BDB4E00A3D8A0 /* normalize_cpu.cpp */; };
+		2D7B11421A8BDB4E00A3D8A0 /* normalize.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D7B11401A8BDB4E00A3D8A0 /* normalize.hpp */; };
+		2D8DC38D1A8D76FD00D053E6 /* nnpooling_cudnn.cu in Sources */ = {isa = PBXBuildFile; fileRef = 2D8DC38B1A8D76FD00D053E6 /* nnpooling_cudnn.cu */; };
+		2D8DC38E1A8D76FD00D053E6 /* nnpooling_cudnn.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2D8DC38C1A8D76FD00D053E6 /* nnpooling_cudnn.hpp */; };
+		2D9DC1CC1A209EBF0053CB7D /* vl_nnconv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D9DC1CA1A209EBF0053CB7D /* vl_nnconv.cpp */; };
+		2D9DC1D01A209EFD0053CB7D /* vl_nnnormalize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D9DC1CE1A209EFD0053CB7D /* vl_nnnormalize.cpp */; };
+		2D9DC1D11A209EFD0053CB7D /* vl_nnpool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D9DC1CF1A209EFD0053CB7D /* vl_nnpool.cpp */; };
+		2DA349B41A83FC2C0073185F /* nnfullyconnected.cu in Sources */ = {isa = PBXBuildFile; fileRef = 2DA349B21A83FC2C0073185F /* nnfullyconnected.cu */; };
+		2DA349B51A83FC2C0073185F /* nnfullyconnected.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2DA349B31A83FC2C0073185F /* nnfullyconnected.hpp */; };
+		2DA349BC1A86C5210073185F /* nnsubsample.cu in Sources */ = {isa = PBXBuildFile; fileRef = 2DA349BA1A86C5210073185F /* nnsubsample.cu */; };
+		2DA349BD1A86C5210073185F /* nnsubsample.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2DA349BB1A86C5210073185F /* nnsubsample.hpp */; };
+		2DD1770D1D31762300B0A17E /* nnbnorm_cudnn.cu in Sources */ = {isa = PBXBuildFile; fileRef = 2DD1770B1D31762300B0A17E /* nnbnorm_cudnn.cu */; };
+		2DD1770E1D31762300B0A17E /* nnbnorm_cudnn.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 2DD1770C1D31762300B0A17E /* nnbnorm_cudnn.hpp */; };
+		2DE27163197A5531001768CA /* vl_imreadjpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2DE27162197A5531001768CA /* vl_imreadjpeg.cpp */; };
+		2DF07B701AAB7A5C001A3943 /* imread_quartz.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2DF07B6F1AAB7A5C001A3943 /* imread_quartz.cpp */; };
+		2DF07B721AAB9160001A3943 /* imread_libjpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2DF07B711AAB9160001A3943 /* imread_libjpeg.cpp */; };
+		2DF0C6261CB55813005BEF89 /* bilinearsampler_cpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2DF0C6251CB55813005BEF89 /* bilinearsampler_cpu.cpp */; };
+		2DF897C11C4182CE002C7EB9 /* imread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2DF897C01C4182CE002C7EB9 /* imread.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXBuildRule section */
+		2D375DC918A7FE5D008A97EE /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			filePatterns = "*.cu";
+			fileType = pattern.proxy;
+			isEditable = 1;
+			outputFiles = (
+				"$(DERIVED_FILE_DIR)/$(INPUT_FILE_BASE).mex$(MEXARCH)",
+			);
+			script = "#!/bin/bash\n\n${NVCC} -c \\\n-I${MATLABROOT}/extern/include \\\n-I${MATLABROOT}/simulink/include \\\n-DMATLAB_MEX_FILE \\\n-gencode=arch=compute_13,code=sm_13 \\\n-gencode=arch=compute_20,code=sm_20 \\\n-gencode=arch=compute_30,code=\\\"sm_30,compute_30\\\" \\\n-m 64 \\\n-I${MATLABROOT}/toolbox/distcomp/gpu/extern/include \\\n--compiler-options \\\n-fno-common,-fexceptions,-arch,x86_64,-isysroot,${SDKROOT},-mmacosx-version-min=10.8 \\\n-O2 -DNDEBUG \\\n${INPUT_FILE_PATH} -o ${DERIVED_FILE_DIR}/${INPUT_FILE_BASE}.o\n#2> >(sed 's/^\\(.*\\)(\\([0-9][0-9]*\\)): error\\(.*\\)/\\1:\\2: error\\3/g' >&2)";
+		};
+/* End PBXBuildRule section */
+
+/* Begin PBXFileReference section */
+		2D0958DA1C3A938500553C8A /* cudnnhelper.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = cudnnhelper.hpp; path = matlab/src/bits/impl/cudnnhelper.hpp; sourceTree = "<group>"; };
+		2D0FBD441D04116E0081FA19 /* vl_cudatool.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = vl_cudatool.cu; path = matlab/src/vl_cudatool.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D14F0071B02AB5700A8F33D /* nnbias.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = nnbias.cu; path = matlab/src/bits/nnbias.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D14F0081B02AB5700A8F33D /* nnbias.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnbias.hpp; path = matlab/src/bits/nnbias.hpp; sourceTree = "<group>"; };
+		2D14F00B1B02AB9800A8F33D /* nnbias.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nnbias.cpp; path = matlab/src/bits/nnbias.cpp; sourceTree = "<group>"; };
+		2D14F00D1B03A35700A8F33D /* nnbias_blas.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnbias_blas.hpp; path = matlab/src/bits/impl/nnbias_blas.hpp; sourceTree = "<group>"; };
+		2D14F00F1B03A6FA00A8F33D /* nnbias_cudnn.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnbias_cudnn.hpp; path = matlab/src/bits/impl/nnbias_cudnn.hpp; sourceTree = "<group>"; };
+		2D14F0111B03A78A00A8F33D /* nnbias_cudnn.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = nnbias_cudnn.cu; path = matlab/src/bits/impl/nnbias_cudnn.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D16767D1AB5AF6000CC738D /* imread_helpers.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = imread_helpers.hpp; path = matlab/src/bits/impl/imread_helpers.hpp; sourceTree = "<group>"; };
+		2D18CE2F1CCE9C3E00A8A270 /* nnbilinearsampler_cudnn.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = nnbilinearsampler_cudnn.cu; path = matlab/src/bits/impl/nnbilinearsampler_cudnn.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D18CE301CCE9C3E00A8A270 /* nnbilinearsampler_cudnn.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnbilinearsampler_cudnn.hpp; path = matlab/src/bits/impl/nnbilinearsampler_cudnn.hpp; sourceTree = "<group>"; };
+		2D19E6741AB20B2900D4FF0C /* fast_mutex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = fast_mutex.h; path = matlab/src/bits/impl/fast_mutex.h; sourceTree = "<group>"; };
+		2D19E6751AB20B2900D4FF0C /* imread_gdiplus.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = imread_gdiplus.cpp; path = matlab/src/bits/impl/imread_gdiplus.cpp; sourceTree = "<group>"; };
+		2D19E6761AB20B2900D4FF0C /* tinythread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tinythread.cpp; path = matlab/src/bits/impl/tinythread.cpp; sourceTree = "<group>"; };
+		2D19E6771AB20B2900D4FF0C /* tinythread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tinythread.h; path = matlab/src/bits/impl/tinythread.h; sourceTree = "<group>"; };
+		2D19E6781AB2171800D4FF0C /* vl_compilenn.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_compilenn.m; path = matlab/vl_compilenn.m; sourceTree = "<group>"; };
+		2D19E6791AB2171800D4FF0C /* vl_imreadjpeg.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_imreadjpeg.m; path = matlab/vl_imreadjpeg.m; sourceTree = "<group>"; };
+		2D19E67A1AB3031200D4FF0C /* faq.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = faq.md; sourceTree = "<group>"; };
+		2D19E67B1AB3031200D4FF0C /* install-alt.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = "install-alt.md"; sourceTree = "<group>"; };
+		2D1ECF5419CDE63200F4A122 /* vl_argparse.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_argparse.m; path = matlab/vl_argparse.m; sourceTree = "<group>"; };
+		2D1ECF5519CDE63200F4A122 /* vl_nnnormalize.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnnormalize.m; path = matlab/vl_nnnormalize.m; sourceTree = "<group>"; };
+		2D2A74F61A88D73900C372A4 /* copy_cpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = copy_cpu.cpp; path = matlab/src/bits/impl/copy_cpu.cpp; sourceTree = "<group>"; };
+		2D375DBB18A7F790008A97EE /* vl_nnconv.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnconv.m; path = matlab/vl_nnconv.m; sourceTree = "<group>"; };
+		2D375DBC18A7F790008A97EE /* Makefile */ = {isa = PBXFileReference; explicitFileType = sourcecode.make; fileEncoding = 4; indentWidth = 8; path = Makefile; sourceTree = "<group>"; tabWidth = 8; usesTabs = 1; wrapsLines = 0; };
+		2D375DBE18A7F79E008A97EE /* vl_nnconv.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = vl_nnconv.cu; path = matlab/src/vl_nnconv.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D375DC318A7FD1C008A97EE /* libgconv.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libgconv.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		2D38B0071BBDD2D900FC734E /* Crop.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = Crop.m; path = "matlab/+dagnn/Crop.m"; sourceTree = "<group>"; };
+		2D38B0081BBDD2D900FC734E /* Sum.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = Sum.m; path = "matlab/+dagnn/Sum.m"; sourceTree = "<group>"; };
+		2D38B0091BBDD30300FC734E /* vl_nncrop.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = vl_nncrop.m; path = matlab/vl_nncrop.m; sourceTree = "<group>"; };
+		2D4080301CFD7A8C00B85345 /* vl_tmove.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = vl_tmove.cpp; path = matlab/src/vl_tmove.cpp; sourceTree = "<group>"; };
+		2D4080311CFD7A8C00B85345 /* vl_tmove.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = vl_tmove.cu; path = matlab/src/vl_tmove.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D416C731B39E1C60092638E /* vl_nnbnorm.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnbnorm.m; path = matlab/vl_nnbnorm.m; sourceTree = "<group>"; };
+		2D416C741B39E1C60092638E /* vl_nnconvt.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnconvt.m; path = matlab/vl_nnconvt.m; sourceTree = "<group>"; };
+		2D416C751B39E1C60092638E /* vl_nnpdist.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnpdist.m; path = matlab/vl_nnpdist.m; sourceTree = "<group>"; };
+		2D416C761B39E1C60092638E /* vl_nnsigmoid.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnsigmoid.m; path = matlab/vl_nnsigmoid.m; sourceTree = "<group>"; };
+		2D416C771B39E1C60092638E /* vl_nnspnorm.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnspnorm.m; path = matlab/vl_nnspnorm.m; sourceTree = "<group>"; };
+		2D416C791B39E1DD0092638E /* vl_simplenn_diagnose.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_simplenn_diagnose.m; path = matlab/simplenn/vl_simplenn_diagnose.m; sourceTree = "<group>"; };
+		2D416C7A1B39E1DD0092638E /* vl_simplenn_display.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_simplenn_display.m; path = matlab/simplenn/vl_simplenn_display.m; sourceTree = "<group>"; };
+		2D416C7B1B39E1DD0092638E /* vl_simplenn_move.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_simplenn_move.m; path = matlab/simplenn/vl_simplenn_move.m; sourceTree = "<group>"; };
+		2D416C7C1B39E1DD0092638E /* vl_simplenn.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_simplenn.m; path = matlab/simplenn/vl_simplenn.m; sourceTree = "<group>"; };
+		2D433A0D1BAC276700D31E69 /* getVarReceptiveFields.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = getVarReceptiveFields.m; path = "matlab/+dagnn/@DagNN/getVarReceptiveFields.m"; sourceTree = "<group>"; };
+		2D433A0E1BAC276700D31E69 /* getVarSizes.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = getVarSizes.m; path = "matlab/+dagnn/@DagNN/getVarSizes.m"; sourceTree = "<group>"; };
+		2D433A0F1BAC276700D31E69 /* setLayerInputs.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = setLayerInputs.m; path = "matlab/+dagnn/@DagNN/setLayerInputs.m"; sourceTree = "<group>"; };
+		2D433A101BAC276700D31E69 /* setLayerOutputs.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = setLayerOutputs.m; path = "matlab/+dagnn/@DagNN/setLayerOutputs.m"; sourceTree = "<group>"; };
+		2D433A111BAC276700D31E69 /* setLayerParams.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = setLayerParams.m; path = "matlab/+dagnn/@DagNN/setLayerParams.m"; sourceTree = "<group>"; };
+		2D433A121BAC49F100D31E69 /* blocks.tex */ = {isa = PBXFileReference; lastKnownFileType = text; name = blocks.tex; path = doc/blocks.tex; sourceTree = "<group>"; };
+		2D433A131BAC49F100D31E69 /* fundamentals.tex */ = {isa = PBXFileReference; lastKnownFileType = text; name = fundamentals.tex; path = doc/fundamentals.tex; sourceTree = "<group>"; };
+		2D433A141BAC49F100D31E69 /* geometry.tex */ = {isa = PBXFileReference; lastKnownFileType = text; name = geometry.tex; path = doc/geometry.tex; sourceTree = "<group>"; };
+		2D433A151BAC49F100D31E69 /* impl.tex */ = {isa = PBXFileReference; lastKnownFileType = text; name = impl.tex; path = doc/impl.tex; sourceTree = "<group>"; };
+		2D433A161BAC49F100D31E69 /* intro.tex */ = {isa = PBXFileReference; lastKnownFileType = text; name = intro.tex; path = doc/intro.tex; sourceTree = "<group>"; };
+		2D433A171BAC49F100D31E69 /* wrappers.tex */ = {isa = PBXFileReference; lastKnownFileType = text; name = wrappers.tex; path = doc/wrappers.tex; sourceTree = "<group>"; };
+		2D433A181BAC4A6F00D31E69 /* quick.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = quick.md; sourceTree = "<group>"; };
+		2D433A191BAC4A6F00D31E69 /* wrappers.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = wrappers.md; sourceTree = "<group>"; };
+		2D433A1A1BAC4AEC00D31E69 /* vl_nnconcat.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = vl_nnconcat.m; path = matlab/vl_nnconcat.m; sourceTree = SOURCE_ROOT; };
+		2D479D091A88AF4300826D48 /* blashelper.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = blashelper.hpp; path = matlab/src/bits/impl/blashelper.hpp; sourceTree = "<group>"; };
+		2D479D0A1A88AF4300826D48 /* copy_gpu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = copy_gpu.cu; path = matlab/src/bits/impl/copy_gpu.cu; sourceTree = "<group>"; };
+		2D479D0B1A88AF4300826D48 /* copy.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = copy.hpp; path = matlab/src/bits/impl/copy.hpp; sourceTree = "<group>"; };
+		2D479D0C1A88AF4300826D48 /* im2row_gpu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = im2row_gpu.cu; path = matlab/src/bits/impl/im2row_gpu.cu; sourceTree = "<group>"; };
+		2D479D0D1A88AF4300826D48 /* im2row_cpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = im2row_cpu.cpp; path = matlab/src/bits/impl/im2row_cpu.cpp; sourceTree = "<group>"; };
+		2D479D0E1A88AF4300826D48 /* im2row.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = im2row.hpp; path = matlab/src/bits/impl/im2row.hpp; sourceTree = "<group>"; };
+		2D479D0F1A88AF4300826D48 /* nnconv_cudnn.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = nnconv_cudnn.cu; path = matlab/src/bits/impl/nnconv_cudnn.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D479D101A88AF4300826D48 /* nnconv_cudnn.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = nnconv_cudnn.hpp; path = matlab/src/bits/impl/nnconv_cudnn.hpp; sourceTree = "<group>"; };
+		2D479D111A88AF4300826D48 /* subsample_gpu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = subsample_gpu.cu; path = matlab/src/bits/impl/subsample_gpu.cu; sourceTree = "<group>"; };
+		2D479D121A88AF4300826D48 /* subsample_cpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = subsample_cpu.cpp; path = matlab/src/bits/impl/subsample_cpu.cpp; sourceTree = "<group>"; };
+		2D479D131A88AF4300826D48 /* subsample.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = subsample.hpp; path = matlab/src/bits/impl/subsample.hpp; sourceTree = "<group>"; };
+		2D47A19C1A88CB0900826D48 /* datacu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = datacu.cu; path = matlab/src/bits/datacu.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D47A19D1A88CB0900826D48 /* datacu.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = datacu.hpp; path = matlab/src/bits/datacu.hpp; sourceTree = "<group>"; };
+		2D4E88271C37FAB80074DDEE /* sharedmem.cuh */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = sharedmem.cuh; path = matlab/src/bits/impl/sharedmem.cuh; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D528B9A1A8284C6006EC40A /* data.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = data.cpp; path = matlab/src/bits/data.cpp; sourceTree = "<group>"; };
+		2D528B9B1A8284C6006EC40A /* data.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = data.cu; path = matlab/src/bits/data.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D528B9C1A8284C6006EC40A /* data.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; lineEnding = 0; name = data.hpp; path = matlab/src/bits/data.hpp; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D528B9D1A8284C6006EC40A /* datamex.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = datamex.cpp; path = matlab/src/bits/datamex.cpp; sourceTree = "<group>"; };
+		2D528B9E1A8284C6006EC40A /* datamex.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = datamex.cu; path = matlab/src/bits/datamex.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D528B9F1A8284C6006EC40A /* datamex.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = datamex.hpp; path = matlab/src/bits/datamex.hpp; sourceTree = "<group>"; };
+		2D528BA41A8284C6006EC40A /* mexutils.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = mexutils.h; path = matlab/src/bits/mexutils.h; sourceTree = "<group>"; };
+		2D528BA91A8284C6006EC40A /* pooling_cpu.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = pooling_cpu.cpp; path = matlab/src/bits/impl/pooling_cpu.cpp; sourceTree = "<group>"; };
+		2D528BAA1A8284C6006EC40A /* pooling.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = pooling.hpp; path = matlab/src/bits/impl/pooling.hpp; sourceTree = "<group>"; };
+		2D528BAB1A8284C6006EC40A /* pooling_gpu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = pooling_gpu.cu; path = matlab/src/bits/impl/pooling_gpu.cu; sourceTree = "<group>"; };
+		2D528BB11A8284FA006EC40A /* nnconv.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = nnconv.cu; path = matlab/src/bits/nnconv.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D528BB21A8284FA006EC40A /* nnconv.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = nnconv.hpp; path = matlab/src/bits/nnconv.hpp; sourceTree = "<group>"; };
+		2D5C34D519745588002B399E /* vl_nnpool.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnpool.m; path = matlab/vl_nnpool.m; sourceTree = "<group>"; };
+		2D63B5CC1BFB3EC700B356CC /* examples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = examples; sourceTree = "<group>"; };
+		2D63B5CE1BFB403300B356CC /* vl_simplenn_tidy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = vl_simplenn_tidy.m; path = matlab/simplenn/vl_simplenn_tidy.m; sourceTree = "<group>"; };
+		2D67FEB01D1F397B00345CFD /* nndagnn.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = nndagnn.m; path = matlab/xtest/suite/nndagnn.m; sourceTree = "<group>"; };
+		2D67FEB11D1F397B00345CFD /* nnmnist.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = nnmnist.m; path = matlab/xtest/suite/nnmnist.m; sourceTree = "<group>"; };
+		2D67FEB21D1F397B00345CFD /* nnnormalizelp.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = nnnormalizelp.m; path = matlab/xtest/suite/nnnormalizelp.m; sourceTree = "<group>"; };
+		2D67FEB31D1F397B00345CFD /* nnsimplenn.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = nnsimplenn.m; path = matlab/xtest/suite/nnsimplenn.m; sourceTree = "<group>"; };
+		2D67FEB41D1F397B00345CFD /* Scale.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = Scale.m; path = matlab/xtest/suite/Scale.m; sourceTree = "<group>"; };
+		2D67FEB51D1F397B00345CFD /* tmovemex.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = tmovemex.m; path = matlab/xtest/suite/tmovemex.m; sourceTree = "<group>"; };
+		2D6833011B66615F00FA6D98 /* BatchNorm.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = BatchNorm.m; path = "matlab/+dagnn/BatchNorm.m"; sourceTree = "<group>"; };
+		2D6833021B66615F00FA6D98 /* Concat.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = Concat.m; path = "matlab/+dagnn/Concat.m"; sourceTree = "<group>"; };
+		2D6833031B66615F00FA6D98 /* Conv.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = Conv.m; path = "matlab/+dagnn/Conv.m"; sourceTree = "<group>"; };
+		2D6833041B66615F00FA6D98 /* ConvTranspose.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = ConvTranspose.m; path = "matlab/+dagnn/ConvTranspose.m"; sourceTree = "<group>"; };
+		2D6833051B66615F00FA6D98 /* DropOut.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = DropOut.m; path = "matlab/+dagnn/DropOut.m"; sourceTree = "<group>"; };
+		2D6833061B66615F00FA6D98 /* ElementWise.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = ElementWise.m; path = "matlab/+dagnn/ElementWise.m"; sourceTree = "<group>"; };
+		2D6833071B66615F00FA6D98 /* Filter.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = Filter.m; path = "matlab/+dagnn/Filter.m"; sourceTree = "<group>"; };
+		2D6833081B66615F00FA6D98 /* Layer.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = Layer.m; path = "matlab/+dagnn/Layer.m"; sourceTree = "<group>"; };
+		2D6833091B66615F00FA6D98 /* Loss.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = Loss.m; path = "matlab/+dagnn/Loss.m"; sourceTree = "<group>"; };
+		2D68330A1B66615F00FA6D98 /* LRN.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = LRN.m; path = "matlab/+dagnn/LRN.m"; sourceTree = "<group>"; };
+		2D68330B1B66615F00FA6D98 /* NormOffset.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = NormOffset.m; path = "matlab/+dagnn/NormOffset.m"; sourceTree = "<group>"; };
+		2D68330C1B66615F00FA6D98 /* Pooling.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = Pooling.m; path = "matlab/+dagnn/Pooling.m"; sourceTree = "<group>"; };
+		2D68330D1B66615F00FA6D98 /* ReLU.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = ReLU.m; path = "matlab/+dagnn/ReLU.m"; sourceTree = "<group>"; };
+		2D68330E1B66615F00FA6D98 /* Sigmoid.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = Sigmoid.m; path = "matlab/+dagnn/Sigmoid.m"; sourceTree = "<group>"; };
+		2D68330F1B66615F00FA6D98 /* SoftMax.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = SoftMax.m; path = "matlab/+dagnn/SoftMax.m"; sourceTree = "<group>"; };
+		2D6833101B66615F00FA6D98 /* SpatialNorm.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = SpatialNorm.m; path = "matlab/+dagnn/SpatialNorm.m"; sourceTree = "<group>"; };
+		2D6833121B66617100FA6D98 /* addLayer.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = addLayer.m; path = "matlab/+dagnn/@DagNN/addLayer.m"; sourceTree = "<group>"; };
+		2D6833131B66617100FA6D98 /* DagNN.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = DagNN.m; path = "matlab/+dagnn/@DagNN/DagNN.m"; sourceTree = "<group>"; };
+		2D6833141B66617100FA6D98 /* eval.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = eval.m; path = "matlab/+dagnn/@DagNN/eval.m"; sourceTree = "<group>"; };
+		2D6833151B66617100FA6D98 /* fromSimpleNN.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = fromSimpleNN.m; path = "matlab/+dagnn/@DagNN/fromSimpleNN.m"; sourceTree = "<group>"; };
+		2D6833171B66617100FA6D98 /* initParams.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = initParams.m; path = "matlab/+dagnn/@DagNN/initParams.m"; sourceTree = "<group>"; };
+		2D6833181B66617100FA6D98 /* loadobj.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = loadobj.m; path = "matlab/+dagnn/@DagNN/loadobj.m"; sourceTree = "<group>"; };
+		2D6833191B66617100FA6D98 /* move.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = move.m; path = "matlab/+dagnn/@DagNN/move.m"; sourceTree = "<group>"; };
+		2D68331A1B66617100FA6D98 /* print.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = print.m; path = "matlab/+dagnn/@DagNN/print.m"; sourceTree = "<group>"; };
+		2D68331B1B66617100FA6D98 /* rebuild.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = rebuild.m; path = "matlab/+dagnn/@DagNN/rebuild.m"; sourceTree = "<group>"; };
+		2D68331C1B66617100FA6D98 /* removeLayer.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = removeLayer.m; path = "matlab/+dagnn/@DagNN/removeLayer.m"; sourceTree = "<group>"; };
+		2D68331D1B66617100FA6D98 /* reset.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = reset.m; path = "matlab/+dagnn/@DagNN/reset.m"; sourceTree = "<group>"; };
+		2D68331E1B66617100FA6D98 /* saveobj.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = saveobj.m; path = "matlab/+dagnn/@DagNN/saveobj.m"; sourceTree = "<group>"; };
+		2D6833201B66624E00FA6D98 /* nnbnorm.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnbnorm.m; path = matlab/xtest/suite/nnbnorm.m; sourceTree = "<group>"; };
+		2D6833211B66624E00FA6D98 /* nnconcat.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnconcat.m; path = matlab/xtest/suite/nnconcat.m; sourceTree = "<group>"; };
+		2D6833221B66624E00FA6D98 /* nnconv.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnconv.m; path = matlab/xtest/suite/nnconv.m; sourceTree = "<group>"; };
+		2D6833231B66624E00FA6D98 /* nnconvt.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnconvt.m; path = matlab/xtest/suite/nnconvt.m; sourceTree = "<group>"; };
+		2D6833241B66624E00FA6D98 /* nndropout.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nndropout.m; path = matlab/xtest/suite/nndropout.m; sourceTree = "<group>"; };
+		2D6833251B66624E00FA6D98 /* nnloss.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnloss.m; path = matlab/xtest/suite/nnloss.m; sourceTree = "<group>"; };
+		2D6833261B66624E00FA6D98 /* nnnormalize.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnnormalize.m; path = matlab/xtest/suite/nnnormalize.m; sourceTree = "<group>"; };
+		2D6833271B66624E00FA6D98 /* nnoffset.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnoffset.m; path = matlab/xtest/suite/nnoffset.m; sourceTree = "<group>"; };
+		2D6833281B66624E00FA6D98 /* nnpdist.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnpdist.m; path = matlab/xtest/suite/nnpdist.m; sourceTree = "<group>"; };
+		2D6833291B66624E00FA6D98 /* nnpool.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnpool.m; path = matlab/xtest/suite/nnpool.m; sourceTree = "<group>"; };
+		2D68332A1B66624E00FA6D98 /* nnrelu.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnrelu.m; path = matlab/xtest/suite/nnrelu.m; sourceTree = "<group>"; };
+		2D68332B1B66624E00FA6D98 /* nnsigmoid.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnsigmoid.m; path = matlab/xtest/suite/nnsigmoid.m; sourceTree = "<group>"; };
+		2D68332C1B66624E00FA6D98 /* nnsoftmax.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnsoftmax.m; path = matlab/xtest/suite/nnsoftmax.m; sourceTree = "<group>"; };
+		2D68332D1B66624E00FA6D98 /* nnsoftmaxloss.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnsoftmaxloss.m; path = matlab/xtest/suite/nnsoftmaxloss.m; sourceTree = "<group>"; };
+		2D68332E1B66624E00FA6D98 /* nnspnorm.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nnspnorm.m; path = matlab/xtest/suite/nnspnorm.m; sourceTree = "<group>"; };
+		2D68332F1B66624E00FA6D98 /* nntest.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = nntest.m; path = matlab/xtest/suite/nntest.m; sourceTree = "<group>"; };
+		2D6833301B66626B00FA6D98 /* vl_testnn.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_testnn.m; path = matlab/xtest/vl_testnn.m; sourceTree = "<group>"; };
+		2D6D0421196A894A00022E96 /* mex_CUDA_glnxa64.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = mex_CUDA_glnxa64.xml; path = matlab/src/config/mex_CUDA_glnxa64.xml; sourceTree = "<group>"; };
+		2D6D0422196A894A00022E96 /* mex_CUDA_maci64.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = mex_CUDA_maci64.xml; path = matlab/src/config/mex_CUDA_maci64.xml; sourceTree = "<group>"; };
+		2D6D0423196A894A00022E96 /* mex_CUDA_glnxa64.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = mex_CUDA_glnxa64.sh; path = matlab/src/config/mex_CUDA_glnxa64.sh; sourceTree = "<group>"; };
+		2D6D0424196A894A00022E96 /* mex_CUDA_maci64.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = mex_CUDA_maci64.sh; path = matlab/src/config/mex_CUDA_maci64.sh; sourceTree = "<group>"; };
+		2D6D0425196A896300022E96 /* vl_nndropout.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nndropout.m; path = matlab/vl_nndropout.m; sourceTree = "<group>"; };
+		2D6D0426196A896300022E96 /* vl_nnnoffset.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnnoffset.m; path = matlab/vl_nnnoffset.m; sourceTree = "<group>"; };
+		2D6D0427196A896300022E96 /* vl_nnsoftmaxloss.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnsoftmaxloss.m; path = matlab/vl_nnsoftmaxloss.m; sourceTree = "<group>"; };
+		2D6D042D196A896300022E96 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
+		2D708AAA1A52F61A004E7D42 /* about.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = about.md; sourceTree = "<group>"; };
+		2D708AAC1A52F61A004E7D42 /* fixes.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = fixes.css; sourceTree = "<group>"; };
+		2D708AAD1A52F61A004E7D42 /* tables.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = tables.css; sourceTree = "<group>"; };
+		2D708AAE1A52F61A004E7D42 /* developers.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = developers.md; sourceTree = "<group>"; };
+		2D708AAF1A52F61A004E7D42 /* functions.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = functions.md; sourceTree = "<group>"; };
+		2D708AB01A52F61A004E7D42 /* gpu.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = gpu.md; sourceTree = "<group>"; };
+		2D708AB11A52F61A004E7D42 /* index.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = index.md; sourceTree = "<group>"; };
+		2D708AB21A52F61A004E7D42 /* install.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = install.md; sourceTree = "<group>"; };
+		2D708AB41A52F61A004E7D42 /* mathjaxhelper.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = mathjaxhelper.js; sourceTree = "<group>"; };
+		2D708AC81A52F61A004E7D42 /* pretrained.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = pretrained.md; sourceTree = "<group>"; };
+		2D708AC91A52F61A004E7D42 /* training.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = training.md; sourceTree = "<group>"; };
+		2D708ACA1A52F61A004E7D42 /* mkdocs.yml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = mkdocs.yml; path = doc/site/mkdocs.yml; sourceTree = "<group>"; };
+		2D708ACB1A52F65C004E7D42 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; name = Makefile; path = doc/Makefile; sourceTree = "<group>"; };
+		2D708ACC1A52F65C004E7D42 /* matdoc.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; name = matdoc.py; path = doc/matdoc.py; sourceTree = "<group>"; };
+		2D708ACD1A52F65C004E7D42 /* matdocparser.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; name = matdocparser.py; path = doc/matdocparser.py; sourceTree = "<group>"; };
+		2D717F1F19B3A2A50028FE9E /* matconvnet-manual.tex */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = "matconvnet-manual.tex"; path = "doc/matconvnet-manual.tex"; sourceTree = "<group>"; };
+		2D717F2019B3A2A50028FE9E /* references.bib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = references.bib; path = doc/references.bib; sourceTree = "<group>"; };
+		2D7A6F6E1D8C5377008F8B22 /* nnroipooling.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nnroipooling.cpp; path = matlab/src/bits/nnroipooling.cpp; sourceTree = "<group>"; };
+		2D7A6F6F1D8C5377008F8B22 /* nnroipooling.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnroipooling.hpp; path = matlab/src/bits/nnroipooling.hpp; sourceTree = "<group>"; };
+		2D7A6F701D8C5377008F8B22 /* roipooling_cpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = roipooling_cpu.cpp; path = matlab/src/bits/impl/roipooling_cpu.cpp; sourceTree = "<group>"; };
+		2D7A6F711D8C5377008F8B22 /* roipooling.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = roipooling.hpp; path = matlab/src/bits/impl/roipooling.hpp; sourceTree = "<group>"; };
+		2D7A6F721D8C5377008F8B22 /* vl_nnroipool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_nnroipool.cpp; path = matlab/src/vl_nnroipool.cpp; sourceTree = "<group>"; };
+		2D7A6F731D8C5377008F8B22 /* nnbilinearsampler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nnbilinearsampler.cpp; path = matlab/src/bits/nnbilinearsampler.cpp; sourceTree = "<group>"; };
+		2D7A6F741D8C53D0008F8B22 /* nnroipooling.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = nnroipooling.cu; path = matlab/src/bits/nnroipooling.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D7A6F751D8C53D0008F8B22 /* roipooling_gpu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = roipooling_gpu.cu; path = matlab/src/bits/impl/roipooling_gpu.cu; sourceTree = "<group>"; };
+		2D7A6F761D8C53D0008F8B22 /* vl_nnroipool.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = vl_nnroipool.cu; path = matlab/src/vl_nnroipool.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D7A6F771D8C58B4008F8B22 /* vl_nnroipool.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnroipool.m; path = matlab/vl_nnroipool.m; sourceTree = "<group>"; };
+		2D7B112A1A88E5CC00A3D8A0 /* nnconv_blas.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnconv_blas.hpp; path = matlab/src/bits/impl/nnconv_blas.hpp; sourceTree = "<group>"; };
+		2D7B112D1A88F0FF00A3D8A0 /* nnpooling.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = nnpooling.cu; path = matlab/src/bits/nnpooling.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D7B112E1A88F0FF00A3D8A0 /* nnpooling.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnpooling.hpp; path = matlab/src/bits/nnpooling.hpp; sourceTree = "<group>"; };
+		2D7B11311A88F12000A3D8A0 /* nnpooling.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nnpooling.cpp; path = matlab/src/bits/nnpooling.cpp; sourceTree = "<group>"; };
+		2D7B11331A8AC81E00A3D8A0 /* nnfullyconnected.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nnfullyconnected.cpp; path = matlab/src/bits/nnfullyconnected.cpp; sourceTree = "<group>"; };
+		2D7B11351A8AC85300A3D8A0 /* nnsubsample.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nnsubsample.cpp; path = matlab/src/bits/nnsubsample.cpp; sourceTree = "<group>"; };
+		2D7B11371A8AC8A700A3D8A0 /* nnconv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nnconv.cpp; path = matlab/src/bits/nnconv.cpp; sourceTree = "<group>"; };
+		2D7B11391A8BDB3C00A3D8A0 /* nnnormalize.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = nnnormalize.cpp; path = matlab/src/bits/nnnormalize.cpp; sourceTree = "<group>"; };
+		2D7B113A1A8BDB3C00A3D8A0 /* nnnormalize.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = nnnormalize.cu; path = matlab/src/bits/nnnormalize.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D7B113B1A8BDB3C00A3D8A0 /* nnnormalize.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnnormalize.hpp; path = matlab/src/bits/nnnormalize.hpp; sourceTree = "<group>"; };
+		2D7B113E1A8BDB4E00A3D8A0 /* normalize_cpu.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = normalize_cpu.cpp; path = matlab/src/bits/impl/normalize_cpu.cpp; sourceTree = "<group>"; };
+		2D7B113F1A8BDB4E00A3D8A0 /* normalize_gpu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = normalize_gpu.cu; path = matlab/src/bits/impl/normalize_gpu.cu; sourceTree = "<group>"; };
+		2D7B11401A8BDB4E00A3D8A0 /* normalize.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; lineEnding = 0; name = normalize.hpp; path = matlab/src/bits/impl/normalize.hpp; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D80792A1AEF94530040BC14 /* bnorm_cpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = bnorm_cpu.cpp; path = matlab/src/bits/impl/bnorm_cpu.cpp; sourceTree = "<group>"; };
+		2D80792B1AEF94530040BC14 /* bnorm_gpu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = bnorm_gpu.cu; path = matlab/src/bits/impl/bnorm_gpu.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D80792C1AEF94530040BC14 /* bnorm.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; lineEnding = 0; name = bnorm.hpp; path = matlab/src/bits/impl/bnorm.hpp; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D80792D1AEF94650040BC14 /* nnbnorm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nnbnorm.cpp; path = matlab/src/bits/nnbnorm.cpp; sourceTree = "<group>"; };
+		2D80792E1AEF94650040BC14 /* nnbnorm.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = nnbnorm.cu; path = matlab/src/bits/nnbnorm.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D80792F1AEF94650040BC14 /* nnbnorm.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnbnorm.hpp; path = matlab/src/bits/nnbnorm.hpp; sourceTree = "<group>"; };
+		2D8079301AEF94860040BC14 /* vl_nnbnorm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_nnbnorm.cpp; path = matlab/src/vl_nnbnorm.cpp; sourceTree = "<group>"; };
+		2D8079311AEF94860040BC14 /* vl_nnbnorm.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = vl_nnbnorm.cu; path = matlab/src/vl_nnbnorm.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D8DC38B1A8D76FD00D053E6 /* nnpooling_cudnn.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = nnpooling_cudnn.cu; path = matlab/src/bits/impl/nnpooling_cudnn.cu; sourceTree = "<group>"; };
+		2D8DC38C1A8D76FD00D053E6 /* nnpooling_cudnn.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnpooling_cudnn.hpp; path = matlab/src/bits/impl/nnpooling_cudnn.hpp; sourceTree = "<group>"; };
+		2D9BC77C1D0ECDE400EC9F94 /* vl_taccummex.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_taccummex.cpp; path = matlab/src/vl_taccummex.cpp; sourceTree = "<group>"; };
+		2D9BC77D1D0ECDE400EC9F94 /* vl_taccummex.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = vl_taccummex.cu; path = matlab/src/vl_taccummex.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2D9BC77E1D0ECDF200EC9F94 /* vl_taccum.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = vl_taccum.m; path = matlab/vl_taccum.m; sourceTree = "<group>"; };
+		2D9DC1CA1A209EBF0053CB7D /* vl_nnconv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_nnconv.cpp; path = matlab/src/vl_nnconv.cpp; sourceTree = "<group>"; };
+		2D9DC1CE1A209EFD0053CB7D /* vl_nnnormalize.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_nnnormalize.cpp; path = matlab/src/vl_nnnormalize.cpp; sourceTree = "<group>"; };
+		2D9DC1CF1A209EFD0053CB7D /* vl_nnpool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_nnpool.cpp; path = matlab/src/vl_nnpool.cpp; sourceTree = "<group>"; };
+		2DA102451B025A8F000BB9FE /* vl_nnconvt.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_nnconvt.cpp; path = matlab/src/vl_nnconvt.cpp; sourceTree = "<group>"; };
+		2DA102461B025A8F000BB9FE /* vl_nnconvt.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = vl_nnconvt.cu; path = matlab/src/vl_nnconvt.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DA349B21A83FC2C0073185F /* nnfullyconnected.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = nnfullyconnected.cu; path = matlab/src/bits/nnfullyconnected.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DA349B31A83FC2C0073185F /* nnfullyconnected.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = nnfullyconnected.hpp; path = matlab/src/bits/nnfullyconnected.hpp; sourceTree = "<group>"; };
+		2DA349BA1A86C5210073185F /* nnsubsample.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = nnsubsample.cu; path = matlab/src/bits/nnsubsample.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DA349BB1A86C5210073185F /* nnsubsample.hpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; name = nnsubsample.hpp; path = matlab/src/bits/nnsubsample.hpp; sourceTree = "<group>"; };
+		2DA761D61CCD17B600265BD8 /* vl_nnbilinearsampler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_nnbilinearsampler.cpp; path = matlab/src/vl_nnbilinearsampler.cpp; sourceTree = "<group>"; };
+		2DA761D71CCD28BA00265BD8 /* nnbilinearsampler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = nnbilinearsampler.m; path = matlab/xtest/suite/nnbilinearsampler.m; sourceTree = "<group>"; };
+		2DA761D81CCD297400265BD8 /* spatial-transformer.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = "spatial-transformer.md"; sourceTree = "<group>"; };
+		2DADAFF418E63E7800165C90 /* vl_nnnormalize.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = vl_nnnormalize.cu; path = matlab/src/vl_nnnormalize.cu; sourceTree = "<group>"; };
+		2DD177081D31760000B0A17E /* vl_cudatool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_cudatool.cpp; path = matlab/src/vl_cudatool.cpp; sourceTree = "<group>"; };
+		2DD177091D31760000B0A17E /* vl_imreadjpeg_old.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_imreadjpeg_old.cpp; path = matlab/src/vl_imreadjpeg_old.cpp; sourceTree = "<group>"; };
+		2DD1770A1D31760000B0A17E /* vl_imreadjpeg_old.cu */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = vl_imreadjpeg_old.cu; path = matlab/src/vl_imreadjpeg_old.cu; sourceTree = "<group>"; };
+		2DD1770B1D31762300B0A17E /* nnbnorm_cudnn.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = nnbnorm_cudnn.cu; path = matlab/src/bits/impl/nnbnorm_cudnn.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DD1770C1D31762300B0A17E /* nnbnorm_cudnn.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnbnorm_cudnn.hpp; path = matlab/src/bits/impl/nnbnorm_cudnn.hpp; sourceTree = "<group>"; };
+		2DD3FACC18EC0E7B00053032 /* vl_nnloss.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnloss.m; path = matlab/vl_nnloss.m; sourceTree = "<group>"; };
+		2DD3FACD18EC0E7B00053032 /* vl_nnrelu.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnrelu.m; path = matlab/vl_nnrelu.m; sourceTree = "<group>"; };
+		2DD3FACE18EC0E7B00053032 /* vl_nnsoftmax.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_nnsoftmax.m; path = matlab/vl_nnsoftmax.m; sourceTree = "<group>"; };
+		2DD3FADA18EC118700053032 /* vl_rootnn.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_rootnn.m; path = matlab/vl_rootnn.m; sourceTree = "<group>"; };
+		2DD3FADB18EC118700053032 /* vl_setupnn.m */ = {isa = PBXFileReference; explicitFileType = text; fileEncoding = 4; name = vl_setupnn.m; path = matlab/vl_setupnn.m; sourceTree = "<group>"; };
+		2DE27162197A5531001768CA /* vl_imreadjpeg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vl_imreadjpeg.cpp; path = matlab/src/vl_imreadjpeg.cpp; sourceTree = "<group>"; };
+		2DF07B6E1AAA4068001A3943 /* imread.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = imread.hpp; path = matlab/src/bits/imread.hpp; sourceTree = "<group>"; };
+		2DF07B6F1AAB7A5C001A3943 /* imread_quartz.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = imread_quartz.cpp; path = matlab/src/bits/impl/imread_quartz.cpp; sourceTree = "<group>"; };
+		2DF07B711AAB9160001A3943 /* imread_libjpeg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = imread_libjpeg.cpp; path = matlab/src/bits/impl/imread_libjpeg.cpp; sourceTree = "<group>"; };
+		2DF0C61F1CB54C2B005BEF89 /* bilinearsampler_gpu.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = bilinearsampler_gpu.cu; path = matlab/src/bits/impl/bilinearsampler_gpu.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DF0C6201CB54C2B005BEF89 /* bilinearsampler.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = bilinearsampler.hpp; path = matlab/src/bits/impl/bilinearsampler.hpp; sourceTree = "<group>"; };
+		2DF0C6211CB54C3E005BEF89 /* vl_nnbilinearsampler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = vl_nnbilinearsampler.m; path = matlab/vl_nnbilinearsampler.m; sourceTree = "<group>"; };
+		2DF0C6221CB54CA8005BEF89 /* vl_nnbilinearsampler.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = vl_nnbilinearsampler.cu; path = matlab/src/vl_nnbilinearsampler.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DF0C6231CB54CBA005BEF89 /* nnbilinearsampler.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = nnbilinearsampler.cu; path = matlab/src/bits/nnbilinearsampler.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DF0C6241CB54CBA005BEF89 /* nnbilinearsampler.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = nnbilinearsampler.hpp; path = matlab/src/bits/nnbilinearsampler.hpp; sourceTree = "<group>"; };
+		2DF0C6251CB55813005BEF89 /* bilinearsampler_cpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = bilinearsampler_cpu.cpp; path = matlab/src/bits/impl/bilinearsampler_cpu.cpp; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DF145CF18AA61BD00D920BA /* vl_nnpool.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = vl_nnpool.cu; path = matlab/src/vl_nnpool.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DF61A991AB5925900ED9A1F /* vl_imreadjpeg.cu */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = vl_imreadjpeg.cu; path = matlab/src/vl_imreadjpeg.cu; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
+		2DF897C01C4182CE002C7EB9 /* imread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = imread.cpp; path = matlab/src/bits/imread.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2D375DC018A7FD1C008A97EE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2D375DB018A7F064008A97EE = {
+			isa = PBXGroup;
+			children = (
+				2D375DBC18A7F790008A97EE /* Makefile */,
+				2D717F2219B3A2AB0028FE9E /* doc */,
+				2D375DBD18A7F796008A97EE /* src */,
+				2DD3FACA18EC0E4C00053032 /* matlab */,
+				2D63B5CC1BFB3EC700B356CC /* examples */,
+				2D375DC418A7FD1C008A97EE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2D375DBD18A7F796008A97EE /* src */ = {
+			isa = PBXGroup;
+			children = (
+				2D375DCE18A84923008A97EE /* bits */,
+				2D6D0420196A892E00022E96 /* config */,
+				2DD177081D31760000B0A17E /* vl_cudatool.cpp */,
+				2D0FBD441D04116E0081FA19 /* vl_cudatool.cu */,
+				2DD177091D31760000B0A17E /* vl_imreadjpeg_old.cpp */,
+				2DD1770A1D31760000B0A17E /* vl_imreadjpeg_old.cu */,
+				2DE27162197A5531001768CA /* vl_imreadjpeg.cpp */,
+				2DF61A991AB5925900ED9A1F /* vl_imreadjpeg.cu */,
+				2DA761D61CCD17B600265BD8 /* vl_nnbilinearsampler.cpp */,
+				2DF0C6221CB54CA8005BEF89 /* vl_nnbilinearsampler.cu */,
+				2D8079301AEF94860040BC14 /* vl_nnbnorm.cpp */,
+				2D8079311AEF94860040BC14 /* vl_nnbnorm.cu */,
+				2D9DC1CA1A209EBF0053CB7D /* vl_nnconv.cpp */,
+				2D375DBE18A7F79E008A97EE /* vl_nnconv.cu */,
+				2DA102451B025A8F000BB9FE /* vl_nnconvt.cpp */,
+				2DA102461B025A8F000BB9FE /* vl_nnconvt.cu */,
+				2D9DC1CE1A209EFD0053CB7D /* vl_nnnormalize.cpp */,
+				2DADAFF418E63E7800165C90 /* vl_nnnormalize.cu */,
+				2D9DC1CF1A209EFD0053CB7D /* vl_nnpool.cpp */,
+				2DF145CF18AA61BD00D920BA /* vl_nnpool.cu */,
+				2D7A6F721D8C5377008F8B22 /* vl_nnroipool.cpp */,
+				2D7A6F761D8C53D0008F8B22 /* vl_nnroipool.cu */,
+				2D9BC77C1D0ECDE400EC9F94 /* vl_taccummex.cpp */,
+				2D9BC77D1D0ECDE400EC9F94 /* vl_taccummex.cu */,
+				2D4080301CFD7A8C00B85345 /* vl_tmove.cpp */,
+				2D4080311CFD7A8C00B85345 /* vl_tmove.cu */,
+			);
+			name = src;
+			sourceTree = "<group>";
+		};
+		2D375DC418A7FD1C008A97EE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2D375DC318A7FD1C008A97EE /* libgconv.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2D375DCE18A84923008A97EE /* bits */ = {
+			isa = PBXGroup;
+			children = (
+				2D528B9A1A8284C6006EC40A /* data.cpp */,
+				2D528B9B1A8284C6006EC40A /* data.cu */,
+				2D528B9C1A8284C6006EC40A /* data.hpp */,
+				2D47A19C1A88CB0900826D48 /* datacu.cu */,
+				2D47A19D1A88CB0900826D48 /* datacu.hpp */,
+				2D528B9D1A8284C6006EC40A /* datamex.cpp */,
+				2D528B9E1A8284C6006EC40A /* datamex.cu */,
+				2D528B9F1A8284C6006EC40A /* datamex.hpp */,
+				2D479D071A88AE0400826D48 /* impl */,
+				2DF897C01C4182CE002C7EB9 /* imread.cpp */,
+				2DF07B6E1AAA4068001A3943 /* imread.hpp */,
+				2D528BA41A8284C6006EC40A /* mexutils.h */,
+				2D14F00B1B02AB9800A8F33D /* nnbias.cpp */,
+				2D14F0071B02AB5700A8F33D /* nnbias.cu */,
+				2D14F0081B02AB5700A8F33D /* nnbias.hpp */,
+				2D7A6F731D8C5377008F8B22 /* nnbilinearsampler.cpp */,
+				2DF0C6231CB54CBA005BEF89 /* nnbilinearsampler.cu */,
+				2DF0C6241CB54CBA005BEF89 /* nnbilinearsampler.hpp */,
+				2D80792D1AEF94650040BC14 /* nnbnorm.cpp */,
+				2D80792E1AEF94650040BC14 /* nnbnorm.cu */,
+				2D80792F1AEF94650040BC14 /* nnbnorm.hpp */,
+				2D7B11371A8AC8A700A3D8A0 /* nnconv.cpp */,
+				2D528BB11A8284FA006EC40A /* nnconv.cu */,
+				2D528BB21A8284FA006EC40A /* nnconv.hpp */,
+				2D7B11331A8AC81E00A3D8A0 /* nnfullyconnected.cpp */,
+				2DA349B21A83FC2C0073185F /* nnfullyconnected.cu */,
+				2DA349B31A83FC2C0073185F /* nnfullyconnected.hpp */,
+				2D7B11391A8BDB3C00A3D8A0 /* nnnormalize.cpp */,
+				2D7B113A1A8BDB3C00A3D8A0 /* nnnormalize.cu */,
+				2D7B113B1A8BDB3C00A3D8A0 /* nnnormalize.hpp */,
+				2D7B11311A88F12000A3D8A0 /* nnpooling.cpp */,
+				2D7B112D1A88F0FF00A3D8A0 /* nnpooling.cu */,
+				2D7B112E1A88F0FF00A3D8A0 /* nnpooling.hpp */,
+				2D7A6F6E1D8C5377008F8B22 /* nnroipooling.cpp */,
+				2D7A6F741D8C53D0008F8B22 /* nnroipooling.cu */,
+				2D7A6F6F1D8C5377008F8B22 /* nnroipooling.hpp */,
+				2D7B11351A8AC85300A3D8A0 /* nnsubsample.cpp */,
+				2DA349BA1A86C5210073185F /* nnsubsample.cu */,
+				2DA349BB1A86C5210073185F /* nnsubsample.hpp */,
+			);
+			name = bits;
+			sourceTree = "<group>";
+		};
+		2D416C781B39E1D00092638E /* simplenn */ = {
+			isa = PBXGroup;
+			children = (
+				2D416C791B39E1DD0092638E /* vl_simplenn_diagnose.m */,
+				2D416C7A1B39E1DD0092638E /* vl_simplenn_display.m */,
+				2D416C7B1B39E1DD0092638E /* vl_simplenn_move.m */,
+				2D63B5CE1BFB403300B356CC /* vl_simplenn_tidy.m */,
+				2D416C7C1B39E1DD0092638E /* vl_simplenn.m */,
+			);
+			name = simplenn;
+			sourceTree = "<group>";
+		};
+		2D479D071A88AE0400826D48 /* impl */ = {
+			isa = PBXGroup;
+			children = (
+				2DF0C6251CB55813005BEF89 /* bilinearsampler_cpu.cpp */,
+				2DF0C61F1CB54C2B005BEF89 /* bilinearsampler_gpu.cu */,
+				2DF0C6201CB54C2B005BEF89 /* bilinearsampler.hpp */,
+				2D479D091A88AF4300826D48 /* blashelper.hpp */,
+				2D80792A1AEF94530040BC14 /* bnorm_cpu.cpp */,
+				2D80792B1AEF94530040BC14 /* bnorm_gpu.cu */,
+				2D80792C1AEF94530040BC14 /* bnorm.hpp */,
+				2D2A74F61A88D73900C372A4 /* copy_cpu.cpp */,
+				2D479D0A1A88AF4300826D48 /* copy_gpu.cu */,
+				2D479D0B1A88AF4300826D48 /* copy.hpp */,
+				2D0958DA1C3A938500553C8A /* cudnnhelper.hpp */,
+				2D19E6741AB20B2900D4FF0C /* fast_mutex.h */,
+				2D479D0D1A88AF4300826D48 /* im2row_cpu.cpp */,
+				2D479D0C1A88AF4300826D48 /* im2row_gpu.cu */,
+				2D479D0E1A88AF4300826D48 /* im2row.hpp */,
+				2D19E6751AB20B2900D4FF0C /* imread_gdiplus.cpp */,
+				2D16767D1AB5AF6000CC738D /* imread_helpers.hpp */,
+				2DF07B711AAB9160001A3943 /* imread_libjpeg.cpp */,
+				2DF07B6F1AAB7A5C001A3943 /* imread_quartz.cpp */,
+				2D14F00D1B03A35700A8F33D /* nnbias_blas.hpp */,
+				2D14F0111B03A78A00A8F33D /* nnbias_cudnn.cu */,
+				2D14F00F1B03A6FA00A8F33D /* nnbias_cudnn.hpp */,
+				2D18CE2F1CCE9C3E00A8A270 /* nnbilinearsampler_cudnn.cu */,
+				2D18CE301CCE9C3E00A8A270 /* nnbilinearsampler_cudnn.hpp */,
+				2DD1770B1D31762300B0A17E /* nnbnorm_cudnn.cu */,
+				2DD1770C1D31762300B0A17E /* nnbnorm_cudnn.hpp */,
+				2D7B112A1A88E5CC00A3D8A0 /* nnconv_blas.hpp */,
+				2D479D0F1A88AF4300826D48 /* nnconv_cudnn.cu */,
+				2D479D101A88AF4300826D48 /* nnconv_cudnn.hpp */,
+				2D8DC38B1A8D76FD00D053E6 /* nnpooling_cudnn.cu */,
+				2D8DC38C1A8D76FD00D053E6 /* nnpooling_cudnn.hpp */,
+				2D7B113E1A8BDB4E00A3D8A0 /* normalize_cpu.cpp */,
+				2D7B113F1A8BDB4E00A3D8A0 /* normalize_gpu.cu */,
+				2D7B11401A8BDB4E00A3D8A0 /* normalize.hpp */,
+				2D528BA91A8284C6006EC40A /* pooling_cpu.cpp */,
+				2D528BAB1A8284C6006EC40A /* pooling_gpu.cu */,
+				2D528BAA1A8284C6006EC40A /* pooling.hpp */,
+				2D7A6F701D8C5377008F8B22 /* roipooling_cpu.cpp */,
+				2D7A6F751D8C53D0008F8B22 /* roipooling_gpu.cu */,
+				2D7A6F711D8C5377008F8B22 /* roipooling.hpp */,
+				2D4E88271C37FAB80074DDEE /* sharedmem.cuh */,
+				2D479D121A88AF4300826D48 /* subsample_cpu.cpp */,
+				2D479D111A88AF4300826D48 /* subsample_gpu.cu */,
+				2D479D131A88AF4300826D48 /* subsample.hpp */,
+				2D19E6761AB20B2900D4FF0C /* tinythread.cpp */,
+				2D19E6771AB20B2900D4FF0C /* tinythread.h */,
+			);
+			name = impl;
+			sourceTree = "<group>";
+		};
+		2D6833001B66614E00FA6D98 /* +dagnn */ = {
+			isa = PBXGroup;
+			children = (
+				2D6833111B66616300FA6D98 /* @DagNN */,
+				2D6833011B66615F00FA6D98 /* BatchNorm.m */,
+				2D6833021B66615F00FA6D98 /* Concat.m */,
+				2D6833031B66615F00FA6D98 /* Conv.m */,
+				2D6833041B66615F00FA6D98 /* ConvTranspose.m */,
+				2D38B0071BBDD2D900FC734E /* Crop.m */,
+				2D6833051B66615F00FA6D98 /* DropOut.m */,
+				2D6833061B66615F00FA6D98 /* ElementWise.m */,
+				2D6833071B66615F00FA6D98 /* Filter.m */,
+				2D6833081B66615F00FA6D98 /* Layer.m */,
+				2D6833091B66615F00FA6D98 /* Loss.m */,
+				2D68330A1B66615F00FA6D98 /* LRN.m */,
+				2D68330B1B66615F00FA6D98 /* NormOffset.m */,
+				2D68330C1B66615F00FA6D98 /* Pooling.m */,
+				2D68330D1B66615F00FA6D98 /* ReLU.m */,
+				2D68330E1B66615F00FA6D98 /* Sigmoid.m */,
+				2D68330F1B66615F00FA6D98 /* SoftMax.m */,
+				2D6833101B66615F00FA6D98 /* SpatialNorm.m */,
+				2D38B0081BBDD2D900FC734E /* Sum.m */,
+			);
+			name = "+dagnn";
+			sourceTree = "<group>";
+		};
+		2D6833111B66616300FA6D98 /* @DagNN */ = {
+			isa = PBXGroup;
+			children = (
+				2D6833121B66617100FA6D98 /* addLayer.m */,
+				2D6833131B66617100FA6D98 /* DagNN.m */,
+				2D6833141B66617100FA6D98 /* eval.m */,
+				2D6833151B66617100FA6D98 /* fromSimpleNN.m */,
+				2D433A0D1BAC276700D31E69 /* getVarReceptiveFields.m */,
+				2D433A0E1BAC276700D31E69 /* getVarSizes.m */,
+				2D6833171B66617100FA6D98 /* initParams.m */,
+				2D6833181B66617100FA6D98 /* loadobj.m */,
+				2D6833191B66617100FA6D98 /* move.m */,
+				2D68331A1B66617100FA6D98 /* print.m */,
+				2D68331B1B66617100FA6D98 /* rebuild.m */,
+				2D68331C1B66617100FA6D98 /* removeLayer.m */,
+				2D68331D1B66617100FA6D98 /* reset.m */,
+				2D68331E1B66617100FA6D98 /* saveobj.m */,
+				2D433A0F1BAC276700D31E69 /* setLayerInputs.m */,
+				2D433A101BAC276700D31E69 /* setLayerOutputs.m */,
+				2D433A111BAC276700D31E69 /* setLayerParams.m */,
+			);
+			name = "@DagNN";
+			sourceTree = "<group>";
+		};
+		2D68331F1B66623300FA6D98 /* suite */ = {
+			isa = PBXGroup;
+			children = (
+				2DA761D71CCD28BA00265BD8 /* nnbilinearsampler.m */,
+				2D6833201B66624E00FA6D98 /* nnbnorm.m */,
+				2D6833211B66624E00FA6D98 /* nnconcat.m */,
+				2D6833221B66624E00FA6D98 /* nnconv.m */,
+				2D6833231B66624E00FA6D98 /* nnconvt.m */,
+				2D67FEB01D1F397B00345CFD /* nndagnn.m */,
+				2D6833241B66624E00FA6D98 /* nndropout.m */,
+				2D6833251B66624E00FA6D98 /* nnloss.m */,
+				2D67FEB11D1F397B00345CFD /* nnmnist.m */,
+				2D6833261B66624E00FA6D98 /* nnnormalize.m */,
+				2D67FEB21D1F397B00345CFD /* nnnormalizelp.m */,
+				2D6833271B66624E00FA6D98 /* nnoffset.m */,
+				2D6833281B66624E00FA6D98 /* nnpdist.m */,
+				2D6833291B66624E00FA6D98 /* nnpool.m */,
+				2D68332A1B66624E00FA6D98 /* nnrelu.m */,
+				2D68332B1B66624E00FA6D98 /* nnsigmoid.m */,
+				2D67FEB31D1F397B00345CFD /* nnsimplenn.m */,
+				2D68332C1B66624E00FA6D98 /* nnsoftmax.m */,
+				2D68332D1B66624E00FA6D98 /* nnsoftmaxloss.m */,
+				2D68332E1B66624E00FA6D98 /* nnspnorm.m */,
+				2D68332F1B66624E00FA6D98 /* nntest.m */,
+				2D67FEB41D1F397B00345CFD /* Scale.m */,
+				2D67FEB51D1F397B00345CFD /* tmovemex.m */,
+			);
+			name = suite;
+			sourceTree = "<group>";
+		};
+		2D6D0420196A892E00022E96 /* config */ = {
+			isa = PBXGroup;
+			children = (
+				2D6D0421196A894A00022E96 /* mex_CUDA_glnxa64.xml */,
+				2D6D0422196A894A00022E96 /* mex_CUDA_maci64.xml */,
+				2D6D0423196A894A00022E96 /* mex_CUDA_glnxa64.sh */,
+				2D6D0424196A894A00022E96 /* mex_CUDA_maci64.sh */,
+			);
+			name = config;
+			sourceTree = "<group>";
+		};
+		2D708AA81A52F60B004E7D42 /* site */ = {
+			isa = PBXGroup;
+			children = (
+				2D708AA91A52F61A004E7D42 /* docs */,
+				2D708ACB1A52F65C004E7D42 /* Makefile */,
+				2D708ACC1A52F65C004E7D42 /* matdoc.py */,
+				2D708ACD1A52F65C004E7D42 /* matdocparser.py */,
+				2D708ACA1A52F61A004E7D42 /* mkdocs.yml */,
+			);
+			name = site;
+			sourceTree = "<group>";
+		};
+		2D708AA91A52F61A004E7D42 /* docs */ = {
+			isa = PBXGroup;
+			children = (
+				2D708AAB1A52F61A004E7D42 /* css */,
+				2D708AB31A52F61A004E7D42 /* js */,
+				2D708AAA1A52F61A004E7D42 /* about.md */,
+				2D708AAE1A52F61A004E7D42 /* developers.md */,
+				2D19E67A1AB3031200D4FF0C /* faq.md */,
+				2D708AAF1A52F61A004E7D42 /* functions.md */,
+				2D708AB01A52F61A004E7D42 /* gpu.md */,
+				2D708AB11A52F61A004E7D42 /* index.md */,
+				2D19E67B1AB3031200D4FF0C /* install-alt.md */,
+				2D708AB21A52F61A004E7D42 /* install.md */,
+				2D708AC81A52F61A004E7D42 /* pretrained.md */,
+				2D433A181BAC4A6F00D31E69 /* quick.md */,
+				2DA761D81CCD297400265BD8 /* spatial-transformer.md */,
+				2D708AC91A52F61A004E7D42 /* training.md */,
+				2D433A191BAC4A6F00D31E69 /* wrappers.md */,
+			);
+			name = docs;
+			path = doc/site/docs;
+			sourceTree = "<group>";
+		};
+		2D708AAB1A52F61A004E7D42 /* css */ = {
+			isa = PBXGroup;
+			children = (
+				2D708AAC1A52F61A004E7D42 /* fixes.css */,
+				2D708AAD1A52F61A004E7D42 /* tables.css */,
+			);
+			path = css;
+			sourceTree = "<group>";
+		};
+		2D708AB31A52F61A004E7D42 /* js */ = {
+			isa = PBXGroup;
+			children = (
+				2D708AB41A52F61A004E7D42 /* mathjaxhelper.js */,
+			);
+			path = js;
+			sourceTree = "<group>";
+		};
+		2D717F2219B3A2AB0028FE9E /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				2D717F2019B3A2A50028FE9E /* references.bib */,
+				2D6D042D196A896300022E96 /* README.md */,
+				2D433A121BAC49F100D31E69 /* blocks.tex */,
+				2D433A131BAC49F100D31E69 /* fundamentals.tex */,
+				2D433A141BAC49F100D31E69 /* geometry.tex */,
+				2D433A151BAC49F100D31E69 /* impl.tex */,
+				2D433A161BAC49F100D31E69 /* intro.tex */,
+				2D717F1F19B3A2A50028FE9E /* matconvnet-manual.tex */,
+				2D433A171BAC49F100D31E69 /* wrappers.tex */,
+				2D708AA81A52F60B004E7D42 /* site */,
+			);
+			name = doc;
+			sourceTree = "<group>";
+		};
+		2DD3FACA18EC0E4C00053032 /* matlab */ = {
+			isa = PBXGroup;
+			children = (
+				2D6833001B66614E00FA6D98 /* +dagnn */,
+				2D416C781B39E1D00092638E /* simplenn */,
+				2D1ECF5419CDE63200F4A122 /* vl_argparse.m */,
+				2D19E6781AB2171800D4FF0C /* vl_compilenn.m */,
+				2D19E6791AB2171800D4FF0C /* vl_imreadjpeg.m */,
+				2DF0C6211CB54C3E005BEF89 /* vl_nnbilinearsampler.m */,
+				2D416C731B39E1C60092638E /* vl_nnbnorm.m */,
+				2D433A1A1BAC4AEC00D31E69 /* vl_nnconcat.m */,
+				2D375DBB18A7F790008A97EE /* vl_nnconv.m */,
+				2D416C741B39E1C60092638E /* vl_nnconvt.m */,
+				2D38B0091BBDD30300FC734E /* vl_nncrop.m */,
+				2D6D0425196A896300022E96 /* vl_nndropout.m */,
+				2DD3FACC18EC0E7B00053032 /* vl_nnloss.m */,
+				2D6D0426196A896300022E96 /* vl_nnnoffset.m */,
+				2D1ECF5519CDE63200F4A122 /* vl_nnnormalize.m */,
+				2D416C751B39E1C60092638E /* vl_nnpdist.m */,
+				2D5C34D519745588002B399E /* vl_nnpool.m */,
+				2DD3FACD18EC0E7B00053032 /* vl_nnrelu.m */,
+				2D7A6F771D8C58B4008F8B22 /* vl_nnroipool.m */,
+				2D416C761B39E1C60092638E /* vl_nnsigmoid.m */,
+				2DD3FACE18EC0E7B00053032 /* vl_nnsoftmax.m */,
+				2D6D0427196A896300022E96 /* vl_nnsoftmaxloss.m */,
+				2D416C771B39E1C60092638E /* vl_nnspnorm.m */,
+				2DD3FADA18EC118700053032 /* vl_rootnn.m */,
+				2DD3FADB18EC118700053032 /* vl_setupnn.m */,
+				2D9BC77E1D0ECDF200EC9F94 /* vl_taccum.m */,
+				2DD3FAD118EC0E8100053032 /* xtest */,
+			);
+			name = matlab;
+			sourceTree = "<group>";
+		};
+		2DD3FAD118EC0E8100053032 /* xtest */ = {
+			isa = PBXGroup;
+			children = (
+				2D68331F1B66623300FA6D98 /* suite */,
+				2D6833301B66626B00FA6D98 /* vl_testnn.m */,
+			);
+			name = xtest;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		2D375DC118A7FD1C008A97EE /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2D47A19F1A88CB0900826D48 /* datacu.hpp in Headers */,
+				2D7B11301A88F0FF00A3D8A0 /* nnpooling.hpp in Headers */,
+				2D528BB41A8284FA006EC40A /* nnconv.hpp in Headers */,
+				2D14F0101B03A6FA00A8F33D /* nnbias_cudnn.hpp in Headers */,
+				2DA349B51A83FC2C0073185F /* nnfullyconnected.hpp in Headers */,
+				2D16767F1AB5AF6000CC738D /* imread_helpers.hpp in Headers */,
+				2D7B11421A8BDB4E00A3D8A0 /* normalize.hpp in Headers */,
+				2D14F00A1B02AB5700A8F33D /* nnbias.hpp in Headers */,
+				2DD1770E1D31762300B0A17E /* nnbnorm_cudnn.hpp in Headers */,
+				2D8DC38E1A8D76FD00D053E6 /* nnpooling_cudnn.hpp in Headers */,
+				2D7B113D1A8BDB3C00A3D8A0 /* nnnormalize.hpp in Headers */,
+				2D14F00E1B03A35700A8F33D /* nnbias_blas.hpp in Headers */,
+				2DA349BD1A86C5210073185F /* nnsubsample.hpp in Headers */,
+				2D7B112C1A88E5CC00A3D8A0 /* nnconv_blas.hpp in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXLegacyTarget section */
+		2D1880FA1A7BBD73007C7586 /* matconv cuDNN */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "-j4 ENABLE_GPU=y ENABLE_IMREADJPEG=y ENABLE_CUDNN=y $(ACTION)";
+			buildConfigurationList = 2D1880FB1A7BBD73007C7586 /* Build configuration list for PBXLegacyTarget "matconv cuDNN" */;
+			buildPhases = (
+			);
+			buildToolPath = /usr/bin/make;
+			buildWorkingDirectory = "";
+			dependencies = (
+			);
+			name = "matconv cuDNN";
+			passBuildSettingsInEnvironment = 1;
+			productName = matconv;
+		};
+		2D375DB518A7F064008A97EE /* matconv GPU */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "-j4 ENABLE_GPU=y ENABLE_IMREADJPEG=y $(ACTION)";
+			buildConfigurationList = 2D375DB818A7F064008A97EE /* Build configuration list for PBXLegacyTarget "matconv GPU" */;
+			buildPhases = (
+			);
+			buildToolPath = /usr/bin/make;
+			buildWorkingDirectory = "";
+			dependencies = (
+			);
+			name = "matconv GPU";
+			passBuildSettingsInEnvironment = 1;
+			productName = matconv;
+		};
+		2D95CDAA18EEB2630076E3A2 /* matconv CPU */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "-j4 ENABLE_IMREADJPEG=y $(ACTION)";
+			buildConfigurationList = 2D95CDAB18EEB2630076E3A2 /* Build configuration list for PBXLegacyTarget "matconv CPU" */;
+			buildPhases = (
+			);
+			buildToolPath = /usr/bin/make;
+			buildWorkingDirectory = "";
+			dependencies = (
+			);
+			name = "matconv CPU";
+			passBuildSettingsInEnvironment = 1;
+			productName = matconv;
+		};
+/* End PBXLegacyTarget section */
+
+/* Begin PBXNativeTarget section */
+		2D375DC218A7FD1C008A97EE /* gconv */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2D375DC518A7FD1C008A97EE /* Build configuration list for PBXNativeTarget "gconv" */;
+			buildPhases = (
+				2D375DBF18A7FD1C008A97EE /* Sources */,
+				2D375DC018A7FD1C008A97EE /* Frameworks */,
+				2D375DC118A7FD1C008A97EE /* Headers */,
+			);
+			buildRules = (
+				2D375DC918A7FE5D008A97EE /* PBXBuildRule */,
+			);
+			dependencies = (
+			);
+			name = gconv;
+			productName = gconv;
+			productReference = 2D375DC318A7FD1C008A97EE /* libgconv.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2D375DB118A7F064008A97EE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0700;
+				ORGANIZATIONNAME = "Andrea Vedaldi";
+			};
+			buildConfigurationList = 2D375DB418A7F064008A97EE /* Build configuration list for PBXProject "matconvnet" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 2D375DB018A7F064008A97EE;
+			productRefGroup = 2D375DC418A7FD1C008A97EE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2D95CDAA18EEB2630076E3A2 /* matconv CPU */,
+				2D375DB518A7F064008A97EE /* matconv GPU */,
+				2D1880FA1A7BBD73007C7586 /* matconv cuDNN */,
+				2D375DC218A7FD1C008A97EE /* gconv */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2D375DBF18A7FD1C008A97EE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2DF07B701AAB7A5C001A3943 /* imread_quartz.cpp in Sources */,
+				2D7B11341A8AC81E00A3D8A0 /* nnfullyconnected.cpp in Sources */,
+				2D7B112F1A88F0FF00A3D8A0 /* nnpooling.cu in Sources */,
+				2DA349BC1A86C5210073185F /* nnsubsample.cu in Sources */,
+				2DA349B41A83FC2C0073185F /* nnfullyconnected.cu in Sources */,
+				2D14F00C1B02AB9800A8F33D /* nnbias.cpp in Sources */,
+				2D7B113C1A8BDB3C00A3D8A0 /* nnnormalize.cpp in Sources */,
+				2DF07B721AAB9160001A3943 /* imread_libjpeg.cpp in Sources */,
+				2DF0C6261CB55813005BEF89 /* bilinearsampler_cpu.cpp in Sources */,
+				2D2A74F71A88D73900C372A4 /* copy_cpu.cpp in Sources */,
+				2DE27163197A5531001768CA /* vl_imreadjpeg.cpp in Sources */,
+				2D9DC1CC1A209EBF0053CB7D /* vl_nnconv.cpp in Sources */,
+				2D528BB31A8284FA006EC40A /* nnconv.cu in Sources */,
+				2D47A19E1A88CB0900826D48 /* datacu.cu in Sources */,
+				2D7B11411A8BDB4E00A3D8A0 /* normalize_cpu.cpp in Sources */,
+				2D7B11381A8AC8A700A3D8A0 /* nnconv.cpp in Sources */,
+				2DF897C11C4182CE002C7EB9 /* imread.cpp in Sources */,
+				2D14F0091B02AB5700A8F33D /* nnbias.cu in Sources */,
+				2D9DC1D11A209EFD0053CB7D /* vl_nnpool.cpp in Sources */,
+				2D9DC1D01A209EFD0053CB7D /* vl_nnnormalize.cpp in Sources */,
+				2D7B11361A8AC85300A3D8A0 /* nnsubsample.cpp in Sources */,
+				2DD1770D1D31762300B0A17E /* nnbnorm_cudnn.cu in Sources */,
+				2D8DC38D1A8D76FD00D053E6 /* nnpooling_cudnn.cu in Sources */,
+				2D7B11321A88F12000A3D8A0 /* nnpooling.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2D1880FC1A7BBD73007C7586 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ENABLE_GPU = YES;
+			};
+			name = Debug;
+		};
+		2D1880FD1A7BBD73007C7586 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ENABLE_GPU = YES;
+			};
+			name = Release;
+		};
+		2D375DB618A7F064008A97EE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CUDAROOT = "/Developer/NVIDIA/CUDA-7.5";
+				CUDNNROOT = "$(HOME)/share/cudnn-v5.0-rc";
+				DEBUG = YES;
+				ENABLE_CUDNN = "";
+				ENABLE_GPU = "";
+				ENABLE_TESTABILITY = YES;
+				EXPORTED_SYMBOLS_FILE = "$(MATLABROOT)/extern/lib/maci64/mexFunction.map";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MATLABROOT = /Applications/MATLAB_R2015b.app;
+				MEX = "$(MATLABROOT)/bin/mex";
+				MEXEXT = "$(MATLABROOT)/bin/mexext";
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		2D375DB718A7F064008A97EE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				CUDAROOT = "/Developer/NVIDIA/CUDA-7.5";
+				CUDNNROOT = "$(HOME)/share/cudnn-v5.0-rc";
+				DEBUG = "";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_CUDNN = "";
+				ENABLE_GPU = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				EXPORTED_SYMBOLS_FILE = "$(MATLABROOT)/extern/lib/maci64/mexFunction.map";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MATLABROOT = /Applications/MATLAB_R2015b.app;
+				MEX = "$(MATLABROOT)/bin/mex";
+				MEXEXT = "$(MATLABROOT)/bin/mexext";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		2D375DB918A7F064008A97EE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ENABLE_GPU = YES;
+			};
+			name = Debug;
+		};
+		2D375DBA18A7F064008A97EE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ENABLE_GPU = YES;
+			};
+			name = Release;
+		};
+		2D375DC618A7FD1C008A97EE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_PREFIX = lib;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		2D375DC718A7FD1C008A97EE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_PREFIX = lib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		2D95CDAC18EEB2630076E3A2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		2D95CDAD18EEB2630076E3A2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2D1880FB1A7BBD73007C7586 /* Build configuration list for PBXLegacyTarget "matconv cuDNN" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D1880FC1A7BBD73007C7586 /* Debug */,
+				2D1880FD1A7BBD73007C7586 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2D375DB418A7F064008A97EE /* Build configuration list for PBXProject "matconvnet" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D375DB618A7F064008A97EE /* Debug */,
+				2D375DB718A7F064008A97EE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2D375DB818A7F064008A97EE /* Build configuration list for PBXLegacyTarget "matconv GPU" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D375DB918A7F064008A97EE /* Debug */,
+				2D375DBA18A7F064008A97EE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2D375DC518A7FD1C008A97EE /* Build configuration list for PBXNativeTarget "gconv" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D375DC618A7FD1C008A97EE /* Debug */,
+				2D375DC718A7FD1C008A97EE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2D95CDAB18EEB2630076E3A2 /* Build configuration list for PBXLegacyTarget "matconv CPU" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2D95CDAC18EEB2630076E3A2 /* Debug */,
+				2D95CDAD18EEB2630076E3A2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2D375DB118A7F064008A97EE /* Project object */;
+}

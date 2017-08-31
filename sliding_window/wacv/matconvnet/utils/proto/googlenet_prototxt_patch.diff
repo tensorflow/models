@@ -1,0 +1,136 @@
+--- train_val_googlenet_patched.prototxt.orig	2015-10-03 12:37:43.299697610 +0100
++++ train_val_googlenet_patched.prototxt	2015-10-03 13:05:39.343696311 +0100
+@@ -1,38 +1,11 @@
+ name: "GoogLeNet"
+-layers {
+-  name: "data"
+-  type: DATA
+-  top: "data"
+-  top: "label"
+-  data_param {
+-    source: "train_lmdb"
+-    backend: LMDB
+-    batch_size: 128 
+-  }
+-  transform_param {
+-    crop_size: 224
+-    mean_file: "imagenet_mean.binaryproto"
+-    mirror: true
+-  }
+-  include: { phase: TRAIN }
+-}
+-layers {
+-  name: "data"
+-  type: DATA
+-  top: "data"
+-  top: "label"
+-  data_param {
+-    source: "test_lmdb"
+-    backend: LMDB
+-    batch_size: 32
+-  }
+-  transform_param {
+-    crop_size: 224
+-    mean_file: "imagenet_mean.binaryproto"
+-    mirror: false
+-  }
+-  include: { phase: TEST }
+-}
++
++input: 'data'
++input_dim: 1
++input_dim: 3
++input_dim: 224
++input_dim: 224
++
+ layers {
+   name: "conv1"
+   type: CONVOLUTION
+@@ -853,7 +826,7 @@
+   weight_decay: 1
+   weight_decay: 0
+   inner_product_param {
+-    num_output: 205
++    num_output: 1000
+     weight_filler {
+       type: "gaussian"
+       std: 0.01
+@@ -864,14 +837,6 @@
+     }
+   }
+ }
+-layers {
+-  name: "loss1"
+-  type: SOFTMAX_LOSS
+-  bottom: "cls1_fc2"
+-  bottom: "label"
+-  top: "loss1"
+-  loss_weight: 1
+-}
+ 
+ # Inception module 4 ***************
+ layers {
+@@ -1546,7 +1511,7 @@
+   weight_decay: 1
+   weight_decay: 0
+   inner_product_param {
+-    num_output: 205
++    num_output: 1000
+     weight_filler {
+       type: "gaussian"
+       std: 0.01
+@@ -1557,14 +1522,6 @@
+     }
+   }
+ }
+-layers {
+-  name: "loss2"
+-  type: SOFTMAX_LOSS
+-  bottom: "cls2_fc2"
+-  bottom: "label"
+-  top: "loss2"
+-  loss_weight: 1
+-}
+ 
+ # Inception module 7 ***************
+ layers {
+@@ -2195,7 +2152,7 @@
+   weight_decay: 1
+   weight_decay: 0
+   inner_product_param {
+-    num_output: 205
++    num_output: 1000
+     weight_filler {
+       type: "gaussian"
+       std: 0.01
+@@ -2206,30 +2163,3 @@
+     }
+   }
+ }
+-layers {
+-  name: "loss3"
+-  type: SOFTMAX_LOSS
+-  bottom: "cls3_fc"
+-  bottom: "label"
+-  top: "loss3"
+-  loss_weight: 1
+-}
+-layers {
+-  name: "accuracy1"
+-  type: ACCURACY
+-  bottom: "cls3_fc"
+-  bottom: "label"
+-  top: "accuracy1"
+-  include: { phase: TEST }
+-}
+-layers {
+-  name: "accuracy5"
+-  type: ACCURACY
+-  bottom: "cls3_fc"
+-  bottom: "label"
+-  top: "accuracy5"
+-  include: { phase: TEST }
+-  accuracy_param {
+-    top_k: 5
+-  }
+-}

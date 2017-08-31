@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Copyright 2013 The MathWorks, Inc. -->
+<config
+    Name="nvcc"
+    ShortName="nvcc"
+    Manufacturer="NVIDIA"
+    Version=""
+    Language="CUDA"
+    Priority="A"
+    Location="$NVCC" >
+    <Details
+        CompilerExecutable="$CXX"
+        CompilerDefines="$DEFINES"
+        CompilerFlags="$CXXFLAGS"
+        OptimizationFlags="$CXXOPTIMFLAGS"
+        DebugFlags="$CXXDEBUGFLAGS"
+        IncludeFlags="$INCLUDE"
+        LinkerLibraries="$LINKLIBS"
+        LinkerOptimizationFlags="$LDOPTIMFLAGS"
+        LinkerDebugFlags="$LDDEBUGFLAGS"
+
+        CompilerDefineFormatter="-D%s"
+        LinkerLibrarySwitchFormatter="-l%s"
+        LinkerPathFormatter="-L%s"
+    />
+    <vars
+          CMDLINE1="$CXX -c $DEFINES $INCLUDE $NVCCFLAGS $CXXFLAGS $OPTIM $SRC -o $OBJ"
+          CMDLINE2="$LDXX $LDFLAGS $LDTYPE $LINKOPTIM $LINKEXPORT $OBJS $CXXLIBS $LINKLIBS -o $EXE"
+          CMDLINE3="rm -f $OBJ"
+
+          CXX="$NVCC"
+          DEFINES="--compiler-options=-D_GNU_SOURCE,$MATLABMEX"
+          MATLABMEX="-DMATLAB_MEX_FILE"
+          NVCCFLAGS="-D_FORCE_INLINES -gencode=arch=compute_20,code=sm_20 -gencode=arch=compute_30,code=&#92;&quot;sm_30,compute_30&#92;&quot; $NVCC_FLAGS"
+          CXXFLAGS="--compiler-options=-ansi,-fexceptions,-fPIC,-fno-omit-frame-pointer,-pthread"
+          INCLUDE="-I&quot;$MATLABROOT/extern/include&quot; -I&quot;$MATLABROOT/simulink/include&quot; -I&quot;$MATLABROOT/toolbox/distcomp/gpu/extern/include/&quot;"
+          CXXOPTIMFLAGS="-O -DNDEBUG"
+          CXXDEBUGFLAGS="-g"
+
+          LDXX="$GCC"
+          LDFLAGS="-pthread -Wl,--no-undefined "
+          LDTYPE="-shared"
+          LINKEXPORT="-Wl,--version-script,&quot;$MATLABROOT/extern/lib/$ARCH/mexFunction.map&quot;"
+          LINKLIBS="-Wl,-rpath-link,$MATLABROOT/bin/$ARCH -L&quot;$MATLABROOT/bin/$ARCH&quot; -lmx -lmex -lmat -lm -lmwgpu $MATLABROOT/bin/$ARCH/libcudart.so.[0-9].[0-9]"
+          LDOPTIMFLAGS="-O"
+          LDDEBUGFLAGS="-g"
+
+          OBJEXT=".o"
+          LDEXT=".mexa64">
+    </vars>
+    <client>
+    </client>
+    <locationFinder>
+        <NVCC>
+            <or>
+                <and>
+                    <envVarExists name="MW_NVCC_PATH" />
+                    <dirExists name="$$" />
+                    <fileExists name="$$/nvcc" />
+                </and>
+                <cmdReturns name="which nvcc" />
+                <fileExists name="/usr/local/cuda-5.5/bin/nvcc" />
+            </or>
+        </NVCC>
+        <GCC>
+            <cmdReturns name="which g++" />
+        </GCC>
+        <CPPLIB_DIR>
+            <cmdReturns name="g++ -print-file-name=libstdc++.so"
+                        diagnostic="GCC appears to be installed, but supporting C++ libraries were not found.  You must first install the gcc-c++ package, or similiar, to complete this action."/>
+        </CPPLIB_DIR>
+    </locationFinder>
+</config>

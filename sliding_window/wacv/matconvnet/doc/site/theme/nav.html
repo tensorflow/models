@@ -1,0 +1,71 @@
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="{{ homepage_url }}">
+                <img src="{{ base_url }}/matconvnet-blue.svg" alt="{{ site_name }}" id="logo">
+            </a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            {% for nav_item in nav %}
+            {% if nav_item.children %}
+                <li id="{{ nav_item.title }}" class="dropdown{% if nav_item.active %} active{% endif %}">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">{{ nav_item.title }} <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                    {% for nav_item in nav_item.children %}
+                        <li {% if nav_item.active %}class="active"{% endif %}>
+                            <a href="{{ nav_item.url }}">{{ nav_item.title }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </li>
+            {% else %}
+                <li id="{{ nav_item.title }}" {% if nav_item.active %}class="active"{% endif %}>
+                    <a href="{{ nav_item.url }}">{{ nav_item.title }}</a>
+                </li>
+            {% endif %}
+            {% endfor %}
+            </ul>
+
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                <li {% if not previous_page %}class="disabled"{% endif %}>
+                    <a rel="next" {% if previous_page %}href="{{ previous_page.url }}"{% endif %}>
+                        <i class="fa fa-arrow-left"></i> Previous
+                    </a>
+                </li>
+                <li {% if not next_page %}class="disabled"{% endif %}>
+                    <a rel="prev" {% if next_page %}href="{{ next_page.url }}"{% endif %}>
+                        Next <i class="fa fa-arrow-right"></i>
+                    </a>
+                </li>
+                {% if repo_url %}
+                <li>
+                    <a href="{{ repo_url }}">
+                        {% if repo_name == 'GitHub' %}
+                            <i class="fa fa-github"></i>
+                        {% elif repo_name == 'Bitbucket' %}
+                            <i class="fa fa-bitbucket"></i>
+                        {% endif %}
+                        {{ repo_name }}
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>

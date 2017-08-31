@@ -1,0 +1,307 @@
+% ------------------------------------------------------------------
+\chapter{Geometry}\label{s:geometry}
+% ------------------------------------------------------------------
+
+This chapter looks at the geometry of the CNN input-output mapping.
+
+% ------------------------------------------------------------------
+\section{Preliminaries}\label{s:preliminaries}
+% ------------------------------------------------------------------
+
+In this section we are interested in understanding how components in a CNN depend on components in the layers before it, and in particular on components of the input.  Since CNNs can incorporate blocks that perform complex operations, such as for example cropping their inputs based on data-dependent terms (e.g. Fast R-CNN), this information is generally available only at ``run time'' and cannot be uniquely determined given only the structure of the network. Furthermore, blocks can implement complex operations that are difficult to characterise in simple terms. Therefore, the analysis will be necessarily limited in scope.
+
+We consider blocks such as convolutions for which one can deterministically establish dependency chains between network components. We also assume that all the inputs $\bx$ and outputs $\by$ are in the usual form of spatial maps, and therefore indexed as $x_{i,j,d,k}$ where $i,j$ are spatial coordinates.
+
+Consider a layer $\by = f(\bx)$. We are interested in establishing which components of $\bx$ influence which components of $\by$. We also assume that this relation can be expressed in terms of a sliding rectangular window field, called \emph{receptive field}. This means that the output component  $y_{i'', j''}$ depends only on the input components $x_{i,j}$ where $(i,j) \in \Omega(i'', j'') $ (note that feature channels are implicitly coalesced in this discussion). The set $\Omega(i'',j'')$ is a rectangle defined as follows:
+\begin{align}\label{e:receptive}
+     i &\in \alpha_h (i'' -1) + \beta_h + \left[- \frac{\Delta_h-1}{2}, \frac{\Delta_h-1}{2}\right] \\
+     j &\in \alpha_v (j'' -1) + \beta_v + \left[- \frac{\Delta_v-1}{2}, \frac{\Delta_v-1}{2}\right]
+\end{align}
+where $(\alpha_h,\alpha_v)$ is the \emph{stride}, $(\beta_h,\beta_v)$ the offset, and $(\Delta_h, \Delta_v)$ the \emph{receptive field size}.
+
+% ------------------------------------------------------------------
+\section{Simple filters}\label{s:receptive-simple-filters}
+% ------------------------------------------------------------------
+
+We now compute the receptive field geometry $(\alpha_h,\alpha_v,\beta_h,\beta_v,\Delta_h,\Delta_v)$ for the most common operators, namely filters. We consider in particular \emph{simple filters} that are characterised by an integer size, stride, and padding.
+
+It suffices to reason in 1D.  Let $H'$ bet the vertical filter dimension, $S_h$ the subampling stride, and $P_h^-$ and $P_h^+$ the amount of zero padding applied to the top and the bottom of the input $\bx$. Here the value $y_{i''}$ depends on the samples:
+\begin{align*}
+ x_i : i
+ &\in
+ [1, H'] + S_h (i'' - 1) - P_h^-
+=
+\left[-\frac{H'-1}{2}, \frac{H'-1}{2}\right] + S_h (i''-1) - P_h^- + \frac{H'+1}{2}.
+\end{align*}
+Hence
+\[
+\alpha_h = S_h,
+\qquad
+\beta _h = \frac{H'+1}{2} - P_h^-,
+\qquad
+\Delta_h = H'.
+\]
+A similar relation holds for the horizontal direction.
+
+Note that many blocks (e.g. max pooling, LNR, ReLU, most loss functions etc.) have a filter-like receptive field geometry. For example, ReLU can be considered a $1 \times 1$ filter, such that $H'=S_h=1$ and $P_h^-=P_h^+ =0$. Note that in this case $\alpha_h=1$, $\beta_h=1$ and $\Delta_h=1$.
+
+In addition to computing the receptive field geometry, we are often interested in determining the sizes of the arrays $\bx$ and $\by$ throughout the architecture. In the case of filters, and once more reasoning for a 1D slice, we notice that $y_i''$ can be obtained for $i''=1,2,\dots,H''$ where $H''$ is the largest value of $i''$ before the receptive fields falls outside $\bx$ (including padding). If $H$ is the height of the input array $\bx$, we get the condition
+\[
+   H' + S_h (H'' - 1) - P_h^- \leq H + P_h^+.
+\]
+Hence
+\begin{equation}\label{e:filtered-height}
+   H'' = \left\lfloor \frac{H - H' + P_h^- + P_h^+}{S_h} \right\rfloor + 1.	
+\end{equation}
+
+% ------------------------------------------------------------------
+\subsection{Pooling in Caffe}
+% ------------------------------------------------------------------
+
+MatConvNet treats pooling operators like filters, using the rules above. In the library Caffe, this is done slightly differently, creating some incompatibilities. In their case, the pooling window is allowed to shift enough such that the last application always includes the last pixel of the input. If the stride is greater than one, this means that the last application of the pooling window can be partially outside the input boundaries even if padding is ``officially'' zero.
+
+More formally, if $H'$ is the pool size and $H$ the size of the signal, the last application of the pooling window has index $i'' = H''$ such that
+\[
+  S_h(i''-1) + H' \big|_{i''= H''} \geq H
+  \qquad
+  \Leftrightarrow
+  \qquad
+  H'' = \left\lceil 
+  \frac{H - H'}{S_h}
+  \right\rceil
+  + 1.
+\]
+If there is padding, the same logic applies after padding the input image, such that the output has height:
+\[
+H'' = \left\lceil 
+  \frac{H - H' + P_h^- + P_h^+}{S_h}
+  \right\rceil
+  + 1.
+\]
+This is the same formula as for above filters, but with the ceil instead of floor operator. Note that in practice $P_h^- = P_h^+ = P_h$ since Caffe does not support asymmetric padding. 
+
+Unfortunately, it gets more complicated. Using the formula above, it can happen that the last padding application is completely outside the input image and Caffe tries to avoid it. This requires
+\begin{equation}\label{e:pooling-caffe-constr}
+  S_h(i'' - 1) - P_h^- + 1 \big|_{i''= H''} \leq H
+  \qquad
+  \Leftrightarrow
+  \qquad
+  H'' \leq \frac{H - 1 + P_h^-}{S_h} + 1.	
+\end{equation}
+
+Using the fact that for integers $a,b$, one has $\lceil a/b \rceil = \lfloor (a+b-1)/b \rfloor$, we can rewrite the expression for $H''$ as follows
+\begin{align*}
+H'' = \left\lceil 
+  \frac{H - H' + P_h^- + P_h^+}{S_h}
+  \right\rceil
+  + 1
+  =
+  \left\lfloor
+  \frac{H - 1 +P_h^-}{S_h}
+  +
+  \frac{P^+_h + S_h - H'}{S_h}
+  \right\rfloor
+  +1.
+ \end{align*}
+Hence if $P_h^+ +  S_h \leq H' $ then the second term is less than zero and \eqref{e:pooling-caffe-constr} is satisfied. In practice, Caffe assumes that $P_h^+, P_h^- \leq H' -1$, as otherwise the first filter application falls entirely in the padded region.  Hence, we can upper bound the second term:
+\[
+\frac{P^+_h + S_h - H'}{S_h}
+\leq
+\frac{S_h - 1}{S_h}
+\leq
+1.
+\]
+We conclude that, for any choices of $P_h^+$ and $S_h$ allowed by Caffe, the formula above may violate constraint \eqref{e:pooling-caffe-constr} by at most one unit. Caffe has a special provision for that and lowers $H''$ by one when needed. Furthermore, we see that if $P_h^+=0$ \emph{and} $S_h \leq H'$ (which is often the case and may be assumed by Caffe), then the equation is also satisfied and Caffe skips the check.
+
+Next, we find MatConvNet equivalents for these parameters. Assume that Caffe applies a symmetric padding $P_h$. Then in MatConvNet $P_h^-=P_h$ to align the top part of the output signal. To match Caffe, the last sample of the last filter application has to be on or to the right of the last Caffe-padded pixel:
+\[
+\underbrace{
+S_h
+\left(
+\underbrace
+{
+\left\lfloor
+\frac{H - H' + P_h^- + P_h^+}{S_h}  + 1 
+\right\rfloor
+}_{\text{MatConvNet rightmost pooling index}}
+- 1
+\right)
++ H'
+}_{\text{MatConvNet rightmost pooled input sample}}
+\geq
+\underbrace{
+H + 2P_h^-
+}_{\text{Caffe rightmost input sample with padding}}.
+\]
+Rearranging
+\[
+\left\lfloor
+\frac{H - H' + P_h^- + P_h^+}{S_h}
+\right\rfloor
+\geq
+\frac{H - H' + 2P_h^{-}}{S_h}
+\]
+Using $\lfloor a/b \rfloor = \lceil (a - b + 1)/b\rceil$ we get the \emph{equivalent} condition:
+\[
+\left\lceil 
+\frac{H - H' + 2P_h^-}{S_h} + \frac{P_h^+ - P_h^- - S_h + 1}{S_h}
+\right\rceil
+\geq
+\frac{H - H' + 2P_h^-}{S_h} 
+\]
+Removing the ceil operator lower bounds the left-hand side of the equation and produces the \emph{sufficient} condition
+\[
+ P_h^+ \geq P_h^- + S_h - 1.
+\]
+As before, this may still be too much padding, causing the last pool window application to be entirely in the rightmost padded area. MatConvNet places the restriction $P_h^+ \leq H' -1$, so that
+\[
+  P_h^+ = \min\{ P_h^- + S_h - 1 , H' - 1\}.
+\]
+For example, a pooling region of width $H'=3$ samples with  a stride of $S_h=1$ samples and null Caffe padding $P_h^-=0$, would result in a right MatConvNet padding of $P_h^+ = 1$.
+
+% ------------------------------------------------------------------
+\section{Convolution transpose}\label{s:receptive-convolution-transpose}
+% ------------------------------------------------------------------
+
+The convolution transpose block is similar to a simple filter, but somewhat more complex. Recall that convolution transpose (\cref{s:impl-convolution-transpose}) is the transpose of the convolution operator, which in turn is a filter. Reasoning for a 1D slice, let $x_i$ be the input to the convolution transpose block and $y_{i''}$ its output. Furthermore let $U_h$, $C_h^-$, $C_h^+$ and $H'$ be the upsampling factor, top and bottom crops, and filter height, respectively.
+
+If we look at the convolution transpose backward, from the output to the input (see also \cref{f:convt}), the data dependencies are the same as for the convolution operator, studied in \cref{s:receptive-simple-filters}. Hence there is an interaction between $x_i$ and $y_{i''}$ only if
+\begin{equation}\label{e:convt-bounds}
+   1 + U_h(i - 1) - C_h^- \leq i'' \leq H' + U_h(i - 1) - C_h^-
+\end{equation}
+where cropping becomes padding and upsampling becomes downsampling. Turning this relation around, we find that
+\[
+ \left\lceil \frac{i'' + C_h^- -H'}{U_h} \right\rceil + 1
+ \leq
+ i
+ \leq
+ \left\lfloor \frac{i'' + C_h^- - 1}{U_h} \right\rfloor + 1 .
+\]
+Note that, due to rounding, it is not possible to express this set tightly in the form outlined above. We can however relax these two relations (hence obtaining a slightly larger receptive field) and conclude that
+\[
+\alpha_h = \frac{1}{U_h},
+\qquad
+\beta_h = \frac{2C_h^- - H' + 1}{2 U_h} + 1,
+\qquad
+\Delta_h = \frac{H' -1}{U_h} + 1.
+\]
+
+Next, we want to determine the height $H''$ of the output $\by$ of convolution transpose as a function of the heigh $H$ of the input $\bx$ and the other parameters. Swapping input and output in  \eqref{e:filtered-height} results in the constraint:
+\[
+H = 1+ \left\lfloor \frac{H'' - H' + C_h^- + C_h^+}{U_h} \right\rfloor.
+\]
+If $H$ is now given as input, it is not possible to recover $H''$ uniquely from this expression; instead, all the following values are possible
+\[
+   U_h (H-1) +H' -  C_h^- - C_h^+ \leq H'' < U_h H +H' -  C_h^- - C_h^+.
+\]
+This is due to the fact that $U_h$ acts as a downsampling factor in the standard convolution direction and some of the samples to the right of the convolution input $\by$ may be ignored by the filter (see also \cref{f:conv} and \cref{f:convt}).
+
+Since the height of $\by$ is then determined up to $S_h$ samples, and since the extra samples would be ignored by the computation and stay zero, we choose the tighter definition and set
+\[
+H'' =  U_h (H-1) +H' -  C_h^- - C_h^+.
+\]
+
+% ------------------------------------------------------------------
+\section{Transposing receptive fields}\label{s:receptive-transposing}
+% ------------------------------------------------------------------
+
+Suppose we have determined that a later $\by = f(\bx)$ has a receptive field transformation $(\alpha_h,\beta_h,\Delta_h)$ (along one spatial slice). Now suppose we are given a block $\bx = g(\by)$ which is the ``transpose'' of $f$, just like the convolution transpose layer is the transpose of the convolution layer. By this, we mean that, if $y_{i''}$ depends on $x_{i}$ due to $f$, then $x_{i}$ depends on $y_{i''}$ due to $g$.
+
+Note that, by definition of receptive fields, $f$ relates the  inputs and outputs index pairs $(i,i'')$ given by \eqref{e:receptive}, which can be rewritten as
+\[
+- \frac{\Delta_h-1}{2} \leq  i - \alpha_h (i'' -1) - \beta_h \leq\frac{\Delta_h-1}{2}.
+\]
+A simple manipulation of this expression results in the equivalent expression:
+\[
+- \frac{(\Delta_h + \alpha_h - 1)/\alpha_h-1}{2} \leq  i'' - \frac{1}{\alpha_h} (i - 1) - \frac{1 + \alpha_h - \beta_h }{\alpha_h} \leq\frac{(\Delta_h + \alpha_h - 1)/\alpha_h-1}{2\alpha_h}.
+\]
+Hence, in the reverse direction, this corresponds to a RF transformation
+\[
+\hat \alpha_h = \frac{1}{\alpha_h},
+\qquad
+\hat \beta_h = \frac{1 + \alpha_h - \beta_h}{\alpha_h},
+\qquad
+\hat \Delta_h = \frac{\Delta_h + \alpha_h -1}{\alpha_h}.
+\]
+
+\begin{example}
+For convolution, we have found the parameters:
+\[
+\alpha_h = S_h,
+\qquad
+\beta_h = \frac{H'+1}{2} - P_h^-,
+\qquad
+\Delta_h = H'.
+\]
+Using the formulas just found, we can obtain the RF transformation for convolution transpose:
+\begin{align*}
+\hat \alpha_h &= \frac{1}{\alpha_h} = \frac{1}{S_h},
+\\
+\hat \beta_h &= \frac{1 + S_h - (H'+1)/2 + P_h^-}{S_h}
+= \frac{P_h^- -H'/2 +1/2}{S_h} + 1
+= \frac{2P_h^- -H' + 1}{S_h} + 1,
+\\
+\hat \Delta_h &= \frac{H' + S_h - 1}{S_h} = \frac{H' -1}{S_h} + 1.
+\end{align*}
+Hence we find again the formulas obtained in \cref{s:receptive-convolution-transpose}.
+\end{example}
+
+
+% ------------------------------------------------------------------
+\section{Composing receptive fields}\label{s:receptive-composing}
+% ------------------------------------------------------------------
+
+Consider now the composition of two layers $h = g \circ f$ with receptive fields $(\alpha_f, \beta_f, \Delta_f)$ and $(\alpha_g, \beta_g, \Delta_g)$ (once again we consider only a 1D slice in the vertical direction, the horizontal one being the same). The goal is to compute the receptive field of $h$.
+
+To do so, pick a sample $i_g$ in the domain of $g$. The first and last sample $i_f$ in the domain of $f$ to affect $i_g$ are given by:
+\[
+  i_f = \alpha_f (i_g- 1) + \beta_f \pm \frac{\Delta_f - 1}{2}.
+\]
+Likewise, the first and last sample $i_g$ to affect a given output sample $i_h$ are given by
+\[
+  i_g = \alpha_g (i_h- 1) + \beta_g \pm \frac{\Delta_g - 1}{2}.
+\]
+Substituting one relation into the other, we see that the first and last sample $i_f$ in the domain of $g \circ f$ to affect $i_h$ are:
+\begin{align*}\
+ i_f &= \alpha_f \left(\alpha_g (i_h- 1) + \beta_g \pm \frac{\Delta_g - 1}{2} - 1\right) + \beta_f \pm \frac{\Delta_f - 1}{2}	
+ \\
+&= \alpha_f\alpha_g (i_h-1)
+ + \alpha_f (\beta_g - 1) + \beta_f
+ \pm \frac{\alpha_f (\Delta_g - 1) + \Delta_f -1}{2}.
+\end{align*}
+We conclude that
+\[
+\alpha_h = \alpha_f \alpha_g,
+\qquad
+\beta_h =  \alpha_f (\beta_g - 1) + \beta_f,
+\qquad
+\Delta_h = \alpha_f (\Delta_g - 1) + \Delta_f.
+\]
+
+% ------------------------------------------------------------------
+\section{Overlaying receptive fields}\label{s:receptive-overlying}
+% ------------------------------------------------------------------
+
+Consider now the combination $h(f(\bx_1), g(\bx_2))$ where the domains of $f$ and $g$ are the same. Given the rule above, it is possible to compute how each output sample $i_h$ depends on each input sample $i_f$ through $f$ and on each input sample $i_g$ through $g$. Suppose that this gives receptive fields $(\alpha_{hf}, \beta_{hf}, \Delta_{hf})$ and $(\alpha_{hg}, \beta_{hg}, \Delta_{hg})$ respectively. Now assume that the domain of $f$ and $g$ coincide, i.e. $\bx = \bx_1 = \bx_2$. The goal is to determine the combined receptive field.
+
+This is only possible if, and only if, $\alpha = \alpha_{hg} = \alpha_{hf}$. Only in this case, in fact, it is possible to find a sliding window receptive field that tightly encloses the receptive field due to $g$ and $f$ at all points according to formulas~\eqref{e:receptive}. We say that these two receptive fields are \emph{compatible}. The range of input samples $i = i_f = i_g$ that affect any output sample $i_h$ is then given by
+\begin{align*}
+	  i_\text{max}&=
+  \alpha (i_h- 1) + a, & a = \min
+  \left\{\beta_{hf}- \frac{\Delta_{hf} - 1}{2}, \beta_{hg} - \frac{\Delta_{hg} - 1}{2}\right\},
+  \\
+  	  i_\text{min} &=
+  \alpha (i_h- 1) + b, & b = \max
+  \left\{\beta_{hf}+ \frac{\Delta_{hf} - 1}{2}, \beta_{hg} + \frac{\Delta_{hg} - 1}{2}\right\}.
+\end{align*}
+We conclude that the combined receptive field is
+\[
+\alpha = \alpha_{hg} = \alpha_{hf},
+\qquad
+\beta = \frac{a+b}{2},
+\qquad
+\Delta = b - a + 1.
+\]
+
+
+

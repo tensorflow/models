@@ -1,0 +1,61 @@
+site_name: MatConvNet
+markdown_extensions: ['extra', 'math', 'toc']
+theme_dir: theme
+
+extra_css: ['css/fixes.css']
+extra_javascript: ['https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML', 'js/mathjaxhelper.js', 'js/toggle.js']
+
+repo_url: https://github.com/vlfeat/matconvnet
+copyright: "Copyright &copy; 2014-16 The MatConvNet Team."
+
+pages:
+- Home: 'index.md'
+- Getting Started:
+  - Quick Start: 'quick.md'
+  - Installing: 'install.md'
+  - CNN Wrappers: 'wrappers.md'
+  - Pretrained CNNs: 'pretrained.md'
+  - Training new CNNs: 'training.md'
+  - Spatial Transformers: 'spatial-transformer.md'
+  - Using a GPU: 'gpu.md'
+  - About: 'about.md'
+  - Frequently-asked questions: 'faq.md'
+
+- Functions:
+  - Index: 'functions.md'
+  - vl_nnbnorm: 'mfiles/vl_nnbnorm.md'
+  - vl_nnbilinearsampler: 'mfiles/vl_nnbilinearsampler.md'
+  - vl_nnconcat: 'mfiles/vl_nnconcat.md'
+  - vl_nnspnorm: 'mfiles/vl_nnspnorm.md'
+  - vl_nnpdist: 'mfiles/vl_nnpdist.md'
+  - vl_nnconv: 'mfiles/vl_nnconv.md'
+  - vl_nnconvt: 'mfiles/vl_nnconvt.md'
+  - vl_nncrop: 'mfiles/vl_nncrop.md'
+  - vl_nndropout: 'mfiles/vl_nndropout.md'
+  - vl_nnloss: 'mfiles/vl_nnloss.md'
+  - vl_nnnoffset: 'mfiles/vl_nnnoffset.md'
+  - vl_nnnormalize: 'mfiles/vl_nnnormalize.md'
+  - vl_nnpool: 'mfiles/vl_nnpool.md'
+  - vl_nnrelu: 'mfiles/vl_nnrelu.md'
+  - vl_nnroipool: 'mfiles/vl_nnroipool.md'
+  - vl_nnsigmoid: 'mfiles/vl_nnsigmoid.md'
+  - vl_nnsoftmax: 'mfiles/vl_nnsoftmax.md'
+  - vl_nnsoftmaxloss: 'mfiles/vl_nnsoftmaxloss.md'
+  - DagNN wrapper: 'mfiles/+dagnn/@DagNN/DagNN.md'
+  - vl_simplenn: 'mfiles/simplenn/vl_simplenn.md'
+  - vl_simplenn_tidy: 'mfiles/simplenn/vl_simplenn_tidy.md'
+  - vl_simplenn_diagnose: 'mfiles/simplenn/vl_simplenn_diagnose.md'
+  - vl_simplenn_display: 'mfiles/simplenn/vl_simplenn_display.md'
+  - vl_simplenn_move: 'mfiles/simplenn/vl_simplenn_move.md'
+  - vl_argparse: 'mfiles/vl_argparse.md'
+  - vl_compilenn: 'mfiles/vl_compilenn.md'
+  - vl_rootnn: 'mfiles/vl_rootnn.md'
+  - vl_setupnn: 'mfiles/vl_setupnn.md'
+  - vl_imreadjpeg: 'mfiles/vl_imreadjpeg.md'
+  - vl_taccum: 'mfiles/vl_taccum.md'
+  - vl_tmove: 'mfiles/vl_tmove.md'
+  - vl_tshow: 'mfiles/vl_tshow.md'
+
+- Contributing:
+  - Developers notes: 'developers.md'
+  - Compiling from the command line: 'install-alt.md'

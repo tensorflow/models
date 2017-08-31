@@ -1,0 +1,140 @@
+\documentclass[12pt]{memoir}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{url}
+\usepackage{xspace}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc,matrix,arrows}
+\usepackage{pgfplots}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{textcomp}
+\usepackage{fancyvrb}
+\usepackage{array}
+\usepackage[colorlinks]{hyperref}
+\usepackage{cleveref}
+
+\newtheorem{example}{Example}
+\newtheorem{lemma}{Lemma}
+
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\vv}{\operatorname{vec}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\matconvnet}{\textsc{MatConvNet}\xspace}
+\newcommand{\matlab}{\textsc{MATLAB}\xspace}
+\newcommand{\cpp}{C{}\texttt{++}~}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\bc}{\mathbf{c}}
+\newcommand{\bz}{\mathbf{z}}
+\newcommand{\bff}{\mathbf{f}}
+\newcommand{\bg}{\mathbf{g}}
+\newcommand{\br}{\mathbf{r}}
+\newcommand{\bw}{\mathbf{w}}
+\newcommand{\bp}{\mathbf{p}}
+\newcommand{\bfs}{\mathbf{s}}
+\newcommand{\bfe}{\mathbf{e}}
+\newcommand{\bone}{\mathbf{1}}
+\newcommand{\argmin}{\operatornamewithlimits{argmin}}
+\newcommand{\argmax}{\operatornamewithlimits{argmax}}
+\newcommand{\sign}{\operatornamewithlimits{sign}}
+
+\tikzstyle{block} = [draw, rectangle, minimum height=3em, minimum width=3em]
+\tikzstyle{data} = []
+\tikzstyle{datac} = [draw, circle, minimum height=2.5em, minimum width=2.5em,inner sep=3pt,font=\footnotesize]
+\tikzstyle{par} = [draw, circle, minimum height=2.5em, minimum width=2.5em,fill=black!20,inner sep=3pt,font=\footnotesize]
+\tikzstyle{pinstyle} = [pin edge={to-,thin,black}]
+\tikzstyle{to} = [->,>=stealth',shorten >=1pt,semithick]
+\tikzstyle{from} = [<-,>=stealth',shorten >=1pt,semithick]
+\tikzstyle{bp} = [draw=blue,text=blue]
+\tikzstyle{bpl} = [draw=blue!40]
+\tikzstyle{bpe} = [text=blue,draw=none]
+
+\VerbatimFootnotes
+
+\setsecnumdepth{subsection}
+\settocdepth{subsection}
+
+\definecolor{listinggray}{gray}{0.9}
+\definecolor{lbcolor}{rgb}{0.8,0.8,0.8}
+\lstset{
+	%backgroundcolor=\color{lbcolor},
+	tabsize=4,
+	rulecolor=,
+	language=matlab,
+	basicstyle=\small,
+	upquote=true,
+	columns=fullflexible,
+	showstringspaces=false,
+	extendedchars=true,
+	breaklines=false,
+	prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+	%frame=single,
+	showtabs=false,
+	showspaces=false,
+	showstringspaces=false,
+	identifierstyle=\ttfamily,
+	keywordstyle=\color[rgb]{0,0,1},
+	commentstyle=\itshape\color[rgb]{0.133,0.545,0.133},
+	stringstyle=\color[rgb]{0.627,0.126,0.941},
+}
+\lstMakeShortInline[columns=fullflexible, breaklines = true,
+ breakatwhitespace = true]!
+
+\title{MatConvNet \\
+\Large
+Convolutional Neural Networks for MATLAB}
+\author{
+Andrea Vedaldi
+\and
+Karel Lenc
+\and
+Ankush Gupta
+}
+\date{}
+
+\hypersetup{
+  pdfinfo={
+    Title={MatConvNet: Convolutional Neural Networks for MATLAB},
+    Author={Andrea Vedaldi, Karel Lenc and Ankush Gupta},
+		Subject={Reference Manual},
+    Keywords={computer vision, convolutional neural networks, deep learning, image understanding, machine learning}
+  }
+}
+
+\sloppy
+
+% ------------------------------------------------------------------
+\begin{document}
+% ------------------------------------------------------------------
+
+%\end{document}
+
+\frontmatter
+\maketitle{}
+\clearpage
+
+\begin{abstract}
+\matconvnet is an implementation of Convolutional Neural Networks (CNNs) for MATLAB. The toolbox is designed with an emphasis on simplicity and flexibility. It exposes the building blocks of CNNs as easy-to-use MATLAB functions, providing routines for computing linear convolutions with filter banks, feature pooling, and many more. In this manner, \matconvnet allows fast prototyping of new CNN architectures; at the same time, it supports efficient computation on CPU and GPU allowing to train complex models on large datasets such as ImageNet ILSVRC. This document provides an overview of CNNs and how they are implemented in \matconvnet and gives the technical details of each computational block in the toolbox.
+\end{abstract}
+\clearpage
+
+\tableofcontents*
+\clearpage
+
+\mainmatter
+\input{intro}
+\input{fundamentals}
+\input{wrappers}
+\input{blocks}
+\input{geometry}
+\input{impl}
+\clearpage
+
+% ------------------------------------------------------------------
+\bibliographystyle{plain}
+\bibliography{references,/Users/vedaldi/src/bibliography/vedaldi}
+\end{document}
+% ------------------------------------------------------------------
