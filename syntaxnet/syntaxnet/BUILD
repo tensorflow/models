@@ -79,7 +79,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_googlesource_code_re2//:re2",
-        "@protobuf//:protobuf",
+        "@protobuf_archive//:protobuf",
         "@org_tensorflow//third_party/eigen3",
     ] + select({
         "//conditions:default": [
@@ -110,7 +110,6 @@ cc_library(
     srcs = ["test_main.cc"],
     linkopts = ["-lm"],
     deps = [
-        "//external:gtest",
         "@org_tensorflow//tensorflow/core:lib",
         "@org_tensorflow//tensorflow/core:test",
         "@org_tensorflow//tensorflow/core:testlib",

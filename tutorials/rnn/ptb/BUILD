@@ -52,7 +52,7 @@ py_binary(
     deps = [
         ":reader",
         ":util",
-        "//tensorflow:tensorflow_py,
+        "//tensorflow:tensorflow_py",
     ],
 )
 
