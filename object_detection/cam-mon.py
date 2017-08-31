@@ -80,8 +80,6 @@ frame = 0
 with detection_graph.as_default():
     with tf.Session(graph=detection_graph) as sess:
         while True:
-            print(': {}'.format(frame))
-            frame += 1
             ret, image_np = cap.read()
 
             # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
@@ -99,8 +97,6 @@ with detection_graph.as_default():
                 [boxes, scores, classes, num_detections],
                 feed_dict={image_tensor: image_np_expanded})
             # Visualization of the results of a detection.
-            # print(type(classes))
-            # print(classes.shape)
             vis_util.visualize_boxes_and_labels_on_image_array(
                 image_np,
                 np.squeeze(boxes),
@@ -111,18 +107,16 @@ with detection_graph.as_default():
                 line_thickness=8)
             min_score_thresh = .5
             labels = []
-            # print(scores.shape)
-            # print('n', boxes.shape[0])
-            # for i in range(boxes.shape[0]):
-            #  print('score', i, scores[i])
-            #  boxscore = scores[i]
-            #  if scores is None or scores[i] > min_score_thresh:
-            #      #box = tuple(boxes[i].tolist())
-            #      labels.append(category_index[classes[i]]['name'])
-            # print(labels)
-            # plt.figure(figsize=IMAGE_SIZE)
-            # plt.imshow(image_np)
-            # 800, 600
+            s = np.squeeze(scores)
+            b = np.squeeze(boxes)
+            c = np.squeeze(classes).astype(np.int32)
+            for i in range(b.shape[0]):
+                if s is None or s[i] > min_score_thresh:
+                    labels.append(category_index[c[i]]['name'])
+            print('{} : {}'.format(' '.join(labels), frame))
+            frame += 1
+
+            # mag = 1 # for small display
             mag = 6
             cv2.imshow('R2K9', cv2.resize(image_np, (160 * mag, 90 * mag)))
             if cv2.waitKey(25) & 0xFF == ord('q'):
