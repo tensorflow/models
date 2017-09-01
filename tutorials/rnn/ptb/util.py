@@ -86,7 +86,7 @@ class UpdateCollection(object):
 
 
 def auto_parallel(metagraph, model):
-  from google3.third_party.tensorflow.python.grappler import tf_optimizer
+  from tensorflow.python.grappler import tf_optimizer
   rewriter_config = rewriter_config_pb2.RewriterConfig()
   rewriter_config.optimizers.append("autoparallel")
   rewriter_config.auto_parallel.enable = True
