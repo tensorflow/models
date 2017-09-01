@@ -225,6 +225,7 @@ def run(output_dir, name='gdxray_train', shuffling=False):
     with tf.Session() as sess:
         
         i = 0
+        b = 0
         print("Writing train file to", tf_train_filename)
         with python_io.TFRecordWriter(tf_train_filename) as train_writer:
             for image in get_images():
@@ -232,8 +233,12 @@ def run(output_dir, name='gdxray_train', shuffling=False):
                     print('\r>> Adding image [%i]: %s'%(i, image.filename))
                     _add_to_tfrecord(sess, image, train_writer)
                     i += 1
-                    
+                    b += len(image.boxes)
+
+        print("Added {0} images with {1} bounding boxes".format(i,b))
+              
         i = 0
+        b = 0
         print("Writing eval file to", tf_eval_filename)
         with python_io.TFRecordWriter(tf_eval_filename) as eval_writer:
             for image in get_images():
@@ -241,6 +246,10 @@ def run(output_dir, name='gdxray_train', shuffling=False):
                     print('\r>> Adding image [%i]: %s'%(i, image.filename))
                     _add_to_tfrecord(sess, image, eval_writer)
                     i += 1
+                    b += len(image.boxes)
+
+        print("Added {0} images with {1} bounding boxes".format(i,b))
+
 
     print('\nFinished converting the GDXray Dataset!')
 
