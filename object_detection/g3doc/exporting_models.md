@@ -12,11 +12,17 @@ command from tensorflow/models/object_detection:
 
 ``` bash
 # From tensorflow/models
-python object_detection/export_inference_graph \
+python object_detection/export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path ${PIPELINE_CONFIG_PATH} \
-    --checkpoint_path model.ckpt-${CHECKPOINT_NUMBER} \
-    --inference_graph_path output_inference_graph.pb
+    --trained_checkpoint_prefix model.ckpt-${CHECKPOINT_NUMBER} \
+    --output_directory exported_model
 ```
 
-Afterwards, you should see a graph named output_inference_graph.pb.
+The expected output would be in the directory exported_model (which is created if it does not exist) with contents:
+ - graph.pbtxt
+ - model.ckpt.data-00000-of-00001
+ - model.ckpt.info
+ - model.ckpt.meta
+ - frozen_inference_graph.pb
+ + saved_model (a directory)
