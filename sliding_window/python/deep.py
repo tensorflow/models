@@ -86,7 +86,7 @@ model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=o
 
 while True:
 	#model.fit(x_train, y_train, batch_size=128, epochs=1)
-	x_train_noise = x_test + np.random.normal(loc=0.0, scale=0.02, size=x_test.shape)
+	x_train_noise = x_test + np.random.normal(loc=0.0, scale=0.001, size=x_test.shape)
 	model.fit(x_train_noise, y_test_c, batch_size=128, epochs=1)
 	y_pred = model.predict(x_test, batch_size=32)
 	y_pred = np.argmax(y_pred, axis=1)
