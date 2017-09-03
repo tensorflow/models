@@ -15,8 +15,8 @@ command from tensorflow/models/object_detection:
 python object_detection/export_inference_graph \
     --input_type image_tensor \
     --pipeline_config_path ${PIPELINE_CONFIG_PATH} \
-    --checkpoint_path model.ckpt-${CHECKPOINT_NUMBER} \
-    --inference_graph_path output_inference_graph.pb
+    --trained_checkpoint_prefix ${TRAIN_PATH} \
+    --output_directory output_inference_graph.pb
 ```
 
 Afterwards, you should see a graph named output_inference_graph.pb.
