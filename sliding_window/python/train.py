@@ -1,6 +1,7 @@
 import scipy.io
 import keras
 import numpy as np
+from sklearn.metrics import confusion_matrix
 
 TRAIN = 1
 TEST = 3
@@ -51,40 +52,41 @@ from keras.callbacks import ReduceLROnPlateau, CSVLogger, EarlyStopping
 import numpy as np
 import resnet
 
-batch_size = 32
+batch_size = 128
 nb_classes = 2
 nb_epoch = 200
 data_augmentation = False
 
 # input image dimensions
 img_rows, img_cols = 32, 32
-# The CIFAR10 images are RGB.
+
+# The GDXRay images are Grayscale.
 img_channels = 1
 
 # Convert class vectors to binary class matrices.
-y_train = np_utils.to_categorical(y_train, nb_classes)
-y_test = np_utils.to_categorical(y_test, nb_classes)
-
-# subtract mean and normalize
-mean_image = np.mean(x_train, axis=0)
-x_train -= mean_image
-x_test -= mean_image
+y_train_c = np_utils.to_categorical(y_train, num_classes=nb_classes)
+y_val_c = np_utils.to_categorical(y_val, num_classes=nb_classes)
+y_test_c = np_utils.to_categorical(y_test, num_classes=nb_classes)
 
 model = resnet.ResnetBuilder.build_resnet_18((img_channels, img_rows, img_cols), nb_classes)
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy'])
 
+
 while True:
     print('Not using data augmentation.')
-    model.fit(x_train, y_train,
+    model.fit(x_train, y_train_c,
               batch_size=batch_size,
               epochs=1,
-              validation_data=(x_test, y_test),
+              validation_data=(x_test, y_test_c),
               shuffle=True
     )
 
     y_pred = model.predict(x_test, batch_size=32)
+    print(y_pred.shape)
     y_pred = np.argmax(y_pred, axis=1)
+    print(y_pred.shape)
+    print(y_pred)
     print(confusion_matrix(y_test, y_pred))
 
