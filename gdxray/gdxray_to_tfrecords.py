@@ -219,7 +219,7 @@ def run(output_dir, name='gdxray_train', shuffling=False):
 
     # Process dataset files.
     tf_train_filename = _get_output_filename(output_dir, 'train', name)
-    tf_eval_filename = _get_output_filename(output_dir, 'train', name)
+    tf_eval_filename = _get_output_filename(output_dir, 'eval', name)
     train_split, eval_split = _get_train_eval_split()
 
     with tf.Session() as sess:
@@ -249,7 +249,6 @@ def run(output_dir, name='gdxray_train', shuffling=False):
                     b += len(image.boxes)
 
         print("Added {0} images with {1} bounding boxes".format(i,b))
-
 
     print('\nFinished converting the GDXray Dataset!')
 
