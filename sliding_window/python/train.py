@@ -1,11 +1,7 @@
 import scipy.io
 import keras
 import numpy as np
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D
-from keras.optimizers import Adam
-from keras.utils.np_utils import to_categorical
+from sklearn.metrics import confusion_matrix
 
 TRAIN = 1
 TEST = 3
@@ -45,39 +41,52 @@ print("Loaded {0} testing samples".format(len(y_test)))
 #x_test = np.random.random((20, 100, 100, 3))
 #y_test = keras.utils.to_categorical(np.random.randint(10, size=(20, 1)), num_classes=10)
 
-model = Sequential()
 
-# input: 100x100 images with 3 channels -> (100, 100, 3) tensors.
-# this applies 32 convolution filters of size 3x3 each.
-model.add(Conv2D(32, (7, 7), input_shape=INPUT_SHAPE))
-model.add(MaxPooling2D(pool_size=(2, 2)))
 
-model.add(Conv2D(64, (5, 5)))
-model.add(MaxPooling2D(pool_size=(2, 2)))
 
-model.add(Conv2D(128, (3, 3), activation='relu'))
-model.add(Dropout(0.25))
+from keras.datasets import cifar10
+from keras.preprocessing.image import ImageDataGenerator
+from keras.utils import np_utils
+from keras.callbacks import ReduceLROnPlateau, CSVLogger, EarlyStopping
 
-#model.add(Conv2D(64, (2, 2)))
-#model.add(Conv2D(2, (1, 1)))
-#model.add(Flatten())
-#model.add(Dense(2, activation='softmax'))
+import numpy as np
+import resnet
 
-model.add(Flatten())
-model.add(Dense(64, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(2, activation='softmax'))
+batch_size = 128
+nb_classes = 2
+nb_epoch = 200
+data_augmentation = False
 
-# encode to one hot
-y_train = to_categorical(y_train, num_classes=2)
-y_test = to_categorical(y_test, num_classes=2)
+# input image dimensions
+img_rows, img_cols = 32, 32
 
-optimizer = Adam(lr=0.001, decay=1e-6)
-#model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=optimizer)
-model.compile(loss='binary_crossentropy', metrics=['accuracy'], optimizer=optimizer)
+# The GDXRay images are Grayscale.
+img_channels = 1
+
+# Convert class vectors to binary class matrices.
+y_train_c = np_utils.to_categorical(y_train, num_classes=nb_classes)
+y_val_c = np_utils.to_categorical(y_val, num_classes=nb_classes)
+y_test_c = np_utils.to_categorical(y_test, num_classes=nb_classes)
+
+model = resnet.ResnetBuilder.build_resnet_18((img_channels, img_rows, img_cols), nb_classes)
+model.compile(loss='categorical_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+
 
 while True:
-	model.fit(x_train, y_train, batch_size=128, epochs=1)
-	score = model.evaluate(x_test, y_test, batch_size=32)
-	print("score",score)
+    print('Not using data augmentation.')
+    model.fit(x_train, y_train_c,
+              batch_size=batch_size,
+              epochs=1,
+              validation_data=(x_test, y_test_c),
+              shuffle=True
+    )
+
+    y_pred = model.predict(x_test, batch_size=32)
+    print(y_pred.shape)
+    y_pred = np.argmax(y_pred, axis=1)
+    print(y_pred.shape)
+    print(y_pred)
+    print(confusion_matrix(y_test, y_pred))
 

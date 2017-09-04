@@ -92,3 +92,5 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+*.h5
