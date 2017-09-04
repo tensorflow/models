@@ -61,4 +61,7 @@ message TrainConfig {
 
   // Maximum capacity of the queue used to prefetch assembled batches.
   optional int32 prefetch_queue_capacity = 16 [default=10];
+
+  // Maximum fraction of GPU memory which may be allocated.
+  optional float per_process_gpu_memory_fraction = 17 [default=0];
 }
