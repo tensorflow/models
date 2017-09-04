@@ -749,8 +749,7 @@ field, some great references are:
 
 *   Y Bengio, [Practical recommendations for gradient-based training of deep
     architectures](http://arxiv.org/abs/1206.5533)
-*   I Goodfellow, Y Bengio and A Courville, [Deep Learning]
-    (http://www.deeplearningbook.org/)
+*   I Goodfellow, Y Bengio and A Courville, [Deep Learning](http://www.deeplearningbook.org/)
 
 What follows is a summary of some general advice for identifying appropriate
 model hyper-parameters in the context of this particular model training setup.
