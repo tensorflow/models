@@ -55,7 +55,7 @@ def get_class_name_from_filename(file_name):
                ie. "american_pit_bull_terrier_105.jpg"
 
   Returns:
-    example: The converted tf.Example.
+    A string of the class name.
   """
   match = re.match(r'([A-Za-z_]+)(_[0-9]+\.jpg)', file_name, re.I)
   return match.groups()[0]
