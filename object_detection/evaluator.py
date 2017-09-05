@@ -18,6 +18,7 @@
 This file provides a generic evaluation method that can be used to evaluate a
 DetectionModel.
 """
+import time
 import logging
 import tensorflow as tf
 
@@ -28,6 +29,7 @@ from object_detection.core import prefetcher
 from object_detection.core import standard_fields as fields
 from object_detection.utils import ops
 
+start = time.time()
 slim = tf.contrib.slim
 
 EVAL_METRICS_FN_DICT = {
@@ -152,7 +154,9 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
     Returns:
       result_dict: a dictionary of numpy arrays
     """
-    print(batch_index)
+    duration = time.time()-start
+    print(batch_index, ": %.1f"%duration)
+
     if batch_index >= eval_config.num_visualizations:
       if 'original_image' in tensor_dict:
         tensor_dict = {k: v for (k, v) in tensor_dict.items()
