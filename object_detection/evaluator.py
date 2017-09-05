@@ -152,6 +152,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
     Returns:
       result_dict: a dictionary of numpy arrays
     """
+    print(batch_index)
     if batch_index >= eval_config.num_visualizations:
       if 'original_image' in tensor_dict:
         tensor_dict = {k: v for (k, v) in tensor_dict.items()

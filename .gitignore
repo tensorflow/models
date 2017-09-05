@@ -10,6 +10,7 @@ __pycache__/
 pretrained/*
 train/*
 data/*
+eval/*
 
 # Distribution / packaging
 .Python
@@ -94,5 +95,3 @@ ENV/
 .ropeproject
 
 *.h5
-
-notebooks/data/local/run_rfcn_resnet10.csv
