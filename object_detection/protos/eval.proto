@@ -44,4 +44,7 @@ message EvalConfig {
 
   // Whether to evaluate instance masks.
   optional bool eval_instance_masks = 12 [default=false];
+
+  // Maximum fraction of GPU memory which may be allocated.
+  optional float per_process_gpu_memory_fraction = 13 [default=0];
 }
