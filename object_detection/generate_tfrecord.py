@@ -81,14 +81,14 @@ def create_tf_example(group, path):
     return tf_example
 
 
-def generate_from_images(record_file, data_feed, data_set, image_dir, classlist):
+def generate_from_images(record_file, data_frame, data_set, image_dir, classlist):
     global CLASSLIST
     CLASSLIST = classlist
     dog = 'dog:angelo'
     print(dog, class_text_to_int(dog))
     writer = tf.python_io.TFRecordWriter(record_file)
     #examples = pd.read_csv(FLAGS.csv_input)
-    grouped = split(data_feed, 'filename')
+    grouped = split(data_frame, 'filename')
     for group in grouped:
         tf_example = create_tf_example(group, image_dir)
         writer.write(tf_example.SerializeToString())
