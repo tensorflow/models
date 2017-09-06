@@ -10,6 +10,7 @@ differential_privacy/* @panyx0718
 domain_adaptation/* @bousmalis @ddohan
 im2txt/* @cshallue
 inception/* @shlens @vincentvanhoucke
+learned_optimizer/* @olganw @nirum
 learning_to_remember_rare_events/* @lukaszkaiser @ofirnachum
 lfads/* @jazcollins @susillo
 lm_1b/* @oriolvinyals @panyx0718
