@@ -85,7 +85,7 @@ def batch_of_random_bools(batch_size, n):
   """
 
   as_int = tf.random_uniform(
-      [batch_size, n], minval=0, maxval=2, dtype=tf.int32)
+      [batch_size, n], minval=0, maxval=3, dtype=tf.int32)
   expanded_range = (as_int * 2) - 1
   return tf.cast(expanded_range, tf.float32)
 
