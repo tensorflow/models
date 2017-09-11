@@ -226,7 +226,7 @@ class SSDMetaArch(model.DetectionModel):
 
     Returns:
       prediction_dict: a dictionary holding "raw" prediction tensors:
-        1) box_encodings: 4-D float tensor of shape [batch_size, num_anchors,
+        1) box_encodings: 3-D float tensor of shape [batch_size, num_anchors,
           box_code_dimension] containing predicted boxes.
         2) class_predictions_with_background: 3-D float tensor of shape
           [batch_size, num_anchors, num_classes+1] containing class predictions
@@ -258,9 +258,9 @@ class SSDMetaArch(model.DetectionModel):
         [batch, height_i, width_i, depth_i]
 
     Returns:
-      box_encodings: 4-D float tensor of shape [batch_size, num_anchors,
+      box_encodings: 3-D float tensor of shape [batch_size, num_anchors,
           box_code_dimension] containing predicted boxes.
-      class_predictions_with_background: 2-D float tensor of shape
+      class_predictions_with_background: 3-D float tensor of shape
           [batch_size, num_anchors, num_classes+1] containing class predictions
           (logits) for each of the anchors.  Note that this tensor *includes*
           background class predictions (at class index 0).
@@ -342,9 +342,9 @@ class SSDMetaArch(model.DetectionModel):
 
     Args:
       prediction_dict: a dictionary holding prediction tensors with
-        1) box_encodings: 4-D float tensor of shape [batch_size, num_anchors,
+        1) box_encodings: 3-D float tensor of shape [batch_size, num_anchors,
           box_code_dimension] containing predicted boxes.
-        2) class_predictions_with_background: 2-D float tensor of shape
+        2) class_predictions_with_background: 3-D float tensor of shape
           [batch_size, num_anchors, num_classes+1] containing class predictions
           (logits) for each of the anchors.  Note that this tensor *includes*
           background class predictions.
@@ -391,9 +391,9 @@ class SSDMetaArch(model.DetectionModel):
 
     Args:
       prediction_dict: a dictionary holding prediction tensors with
-        1) box_encodings: 4-D float tensor of shape [batch_size, num_anchors,
+        1) box_encodings: 3-D float tensor of shape [batch_size, num_anchors,
           box_code_dimension] containing predicted boxes.
-        2) class_predictions_with_background: 2-D float tensor of shape
+        2) class_predictions_with_background: 3-D float tensor of shape
           [batch_size, num_anchors, num_classes+1] containing class predictions
           (logits) for each of the anchors.  Note that this tensor *includes*
           background class predictions.
@@ -527,9 +527,9 @@ class SSDMetaArch(model.DetectionModel):
       cls_losses: Float tensor of shape [batch_size, num_anchors]
         representing anchorwise classification losses.
       prediction_dict: p a dictionary holding prediction tensors with
-        1) box_encodings: 4-D float tensor of shape [batch_size, num_anchors,
+        1) box_encodings: 3-D float tensor of shape [batch_size, num_anchors,
           box_code_dimension] containing predicted boxes.
-        2) class_predictions_with_background: 2-D float tensor of shape
+        2) class_predictions_with_background: 3-D float tensor of shape
           [batch_size, num_anchors, num_classes+1] containing class predictions
           (logits) for each of the anchors.  Note that this tensor *includes*
           background class predictions.
