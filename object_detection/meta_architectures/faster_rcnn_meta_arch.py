@@ -491,7 +491,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
           [total_num_proposals, num_classes, 4] representing predicted
           (final) refined box encodings, where
           total_num_proposals=batch_size*self._max_num_proposals
-        8) class_predictions_with_background: a 3-D tensor with shape
+        8) class_predictions_with_background: a 2-D tensor with shape
           [total_num_proposals, num_classes + 1] containing class
           predictions (logits) for each of the anchors, where
           total_num_proposals=batch_size*self._max_num_proposals.
@@ -553,10 +553,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
     """Predicts the output tensors from second stage of Faster R-CNN.
 
     Args:
-      rpn_box_encodings: 4-D float tensor of shape
+      rpn_box_encodings: 3-D float tensor of shape
         [batch_size, num_valid_anchors, self._box_coder.code_size] containing
         predicted boxes.
-      rpn_objectness_predictions_with_background: 2-D float tensor of shape
+      rpn_objectness_predictions_with_background: 3-D float tensor of shape
         [batch_size, num_valid_anchors, 2] containing class
         predictions (logits) for each of the anchors.  Note that this
         tensor *includes* background class predictions (at class index 0).
@@ -573,7 +573,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
           [total_num_proposals, num_classes, 4] representing predicted
           (final) refined box encodings, where
           total_num_proposals=batch_size*self._max_num_proposals
-        2) class_predictions_with_background: a 3-D tensor with shape
+        2) class_predictions_with_background: a 2-D tensor with shape
           [total_num_proposals, num_classes + 1] containing class
           predictions (logits) for each of the anchors, where
           total_num_proposals=batch_size*self._max_num_proposals.
@@ -729,10 +729,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
         extent of the window to clip/prune to.
 
     Returns:
-      box_encodings: 4-D float tensor of shape
+      box_encodings: 3-D float tensor of shape
         [batch_size, num_valid_anchors, self._box_coder.code_size] containing
         predicted boxes, where num_valid_anchors <= num_anchors
-      objectness_predictions_with_background: 2-D float tensor of shape
+      objectness_predictions_with_background: 3-D float tensor of shape
         [batch_size, num_valid_anchors, 2] containing class
         predictions (logits) for each of the anchors, where
         num_valid_anchors <= num_anchors.  Note that this
@@ -1182,7 +1182,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     """Decode tensor of refined box encodings.
 
     Args:
-      refined_box_encodings: a 3-D tensor with shape
+      refined_box_encodings: a 4-D tensor with shape
         [batch_size, max_num_proposals, num_classes, self._box_coder.code_size]
         representing predicted (final) refined box encodings.
       proposal_boxes: [batch_size, self.max_num_proposals, 4] representing
@@ -1278,10 +1278,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
     participate in the loss computation, and returns the RPN losses.
 
     Args:
-      rpn_box_encodings: A 4-D float tensor of shape
+      rpn_box_encodings: A 3-D float tensor of shape
         [batch_size, num_anchors, self._box_coder.code_size] containing
         predicted proposal box encodings.
-      rpn_objectness_predictions_with_background: A 2-D float tensor of shape
+      rpn_objectness_predictions_with_background: A 3-D float tensor of shape
         [batch_size, num_anchors, 2] containing objectness predictions
         (logits) for each of the anchors with 0 corresponding to background
         and 1 corresponding to object.
@@ -1363,7 +1363,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       refined_box_encodings: a 3-D tensor with shape
         [total_num_proposals, num_classes, box_coder.code_size] representing
         predicted (final) refined box encodings.
-      class_predictions_with_background: a 3-D tensor with shape
+      class_predictions_with_background: a 2-D tensor with shape
         [total_num_proposals, num_classes + 1] containing class
         predictions (logits) for each of the anchors.  Note that this tensor
         *includes* background class predictions (at class index 0).

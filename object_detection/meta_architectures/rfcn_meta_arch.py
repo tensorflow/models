@@ -198,10 +198,10 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     """Predicts the output tensors from 2nd stage of FasterRCNN.
 
     Args:
-      rpn_box_encodings: 4-D float tensor of shape
+      rpn_box_encodings: 3-D float tensor of shape
         [batch_size, num_valid_anchors, self._box_coder.code_size] containing
         predicted boxes.
-      rpn_objectness_predictions_with_background: 2-D float tensor of shape
+      rpn_objectness_predictions_with_background: 3-D float tensor of shape
         [batch_size, num_valid_anchors, 2] containing class
         predictions (logits) for each of the anchors.  Note that this
         tensor *includes* background class predictions (at class index 0).
