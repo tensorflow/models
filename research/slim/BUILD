@@ -14,6 +14,7 @@ package_group(
         "//cloud/ml/applications/vision/...",
         "//geo/gt/fusion/...",
         "//googlex/proxy/learning/...",
+        "//hardware/gchips/paintbox/research/vision/npcam/lib_image_quality/nima/...",
         "//i18n/input/font/...",
         "//image/understanding/object_detection/...",
         "//knowledge/cerebra/imresearch/deep_upsampling/...",
