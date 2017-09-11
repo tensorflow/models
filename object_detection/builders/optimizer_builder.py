@@ -108,5 +108,5 @@ def _create_learning_rate(learning_rate_config, global_summaries):
   if learning_rate is None:
     raise ValueError('Learning_rate %s not supported.' % learning_rate_type)
 
-  global_summaries.add(tf.summary.scalar('Learning Rate', learning_rate))
+  global_summaries.add(tf.summary.scalar('Learning_Rate', learning_rate))
   return learning_rate
