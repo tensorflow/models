@@ -76,7 +76,7 @@ tf.app.flags.DEFINE_float(
 FLAGS = tf.app.flags.FLAGS
 
 
-IMAGE_SIZE = 299
+IMAGE_SIZE = 310
 NUM_CLASSES = 1001
 
 
