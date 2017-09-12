@@ -125,7 +125,7 @@ def bottleneck(inputs,
       output = tf.nn.relu(shortcut + residual)
 
     return slim.utils.collect_named_outputs(outputs_collections,
-                                            sc.original_name_scope,
+                                            sc.name,
                                             output)
 
 
@@ -200,7 +200,7 @@ def resnet_v1(inputs,
     ValueError: If the target output_stride is not valid.
   """
   with tf.variable_scope(scope, 'resnet_v1', [inputs], reuse=reuse) as sc:
-    end_points_collection = sc.name + '_end_points'
+    end_points_collection = sc.original_name_scope + '_end_points'
     with slim.arg_scope([slim.conv2d, bottleneck,
                          resnet_utils.stack_blocks_dense],
                         outputs_collections=end_points_collection):
