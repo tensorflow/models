@@ -1,4 +1,4 @@
-# TensorFlow-Slim image classification library
+# TensorFlow-Slim image classification model library
 
 [TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
 is a new lightweight high-level API of TensorFlow (`tensorflow.contrib.slim`)
@@ -15,6 +15,7 @@ data reading and queueing utilities. You can easily train any model on any of
 these datasets, as we demonstrate below. We've also included a
 [jupyter notebook](https://github.com/tensorflow/models/blob/master/slim/slim_walkthrough.ipynb),
 which provides working examples of how to use TF-Slim for image classification.
+For developing or modifying your own models, see also the [main TF-Slim page](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim).
 
 ## Contacts
 
@@ -392,6 +393,7 @@ $ python eval_image_classifier.py \
     --model_name=inception_v3
 ```
 
+See the [evaluation module example](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim#evaluation-loop) for an example of how to evaluate a model at multiple checkpoints during or after the training.
 
 # Exporting the Inference Graph
 <a id='Export'></a>
