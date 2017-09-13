@@ -52,11 +52,6 @@ def main():
     print('Number of layers', len(layers))
     print('Total number of feature channels:', sum(feature_nums))
 
-    #####HELPER FUNCTIONS. I didn't go over these in the video for times sake. They are mostly just formatting functions. Scroll
-    #to the bottom #########################################################################################################
-    ########################################################################################################################
-    ############################################################
-
     # Helper functions for TF Graph visualization
     #pylint: disable=unused-variable
     def strip_consts(graph_def, max_const_size=32):
@@ -140,14 +135,6 @@ def main():
                 grad[y:y+sz,x:x+sz] = g
         return np.roll(np.roll(grad, -sx, 1), -sy, 0)
 
-    #BACK TO CODE IN THE VIDEO###########################################################################################
-    ########################################################################################################
-    ##############################################################################
-
-    #CHALLENGE - Write a function that outputs a deep dream video
-    #def render_deepdreamvideo():
-
-
     def render_deepdream(t_obj, img0=img_noise,
                          iter_n=10, step=1.5, octave_n=4, octave_scale=1.4):
         t_score = tf.reduce_mean(t_obj) # defining the optimization objective
@@ -193,19 +180,11 @@ def main():
             height, width = img.shape[:2]
             print('cam', height, width)
 
-            ar = width / height
-
             scale = 0.3
             newh = int(scale*height)
             neww = int(scale*width)
 
             img_scaled = cv2.resize(img, (neww, newh))
-            #print(ar)
-            #print(newh, neww)
-            #img0 = PIL.Image.open('steve-nassau.jpg')
-            #img0 = np.float32(img0)
-            #height, width = img0.shape[:2]
-            #print('ref', height, width)
 
             print('render static image')
             render_deepdream(t_obj, img_scaled)
@@ -215,19 +194,10 @@ def main():
 
         cv2.destroyAllWindows()
 
-    #Step 3 - Pick a layer to enhance our image
+    # Pick a layer to enhance our video
     layer = 'mixed4d_3x3_bottleneck_pre_relu'
-    #channel = 139 # picking some feature channel to visualize
     channel = 4200 # picking some feature channel to visualize
 
-    #open image
-    #img0 = PIL.Image.open('steve-nassau.jpg')
-    #img0 = np.float32(img0)
-
-    #Step 4 - Apply gradient ascent to that layer
-    #render_deepdream(tf.square(T('mixed4c')), img0)
-    channel = 4200 # picking some feature channel to visualize
-    #render_deepdream_live_video(tf.square(T('mixed4c')), CAMERA_ID, channel, iter_n=2, octave_n=2)
     render_deepdream_live_video(tf.square(T('mixed4c')), CAMERA_ID, channel)
 
 if __name__ == '__main__':
