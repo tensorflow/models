@@ -24,7 +24,7 @@
 # The final output of this script appears as such:
 #
 #   data_dir/train-00000-of-01024
-#   data_dir/train-00001-of-01024
+.#   data_dir/train-00001-of-01024
 #    ...
 #   data_dir/train-01023-of-01024
 #
@@ -58,7 +58,7 @@ DATA_DIR="${1%/}"
 SCRATCH_DIR="${DATA_DIR}/raw-data/"
 mkdir -p "${DATA_DIR}"
 mkdir -p "${SCRATCH_DIR}"
-WORK_DIR="."
+WORK_DIR=".."
 
 # Download the ImageNet data.
 LABELS_FILE="${WORK_DIR}/data/imagenet_lsvrc_2015_synsets.txt"
