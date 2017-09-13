@@ -24,7 +24,7 @@
 # The final output of this script appears as such:
 #
 #   data_dir/train-00000-of-01024
-.#   data_dir/train-00001-of-01024
+#   data_dir/train-00001-of-01024
 #    ...
 #   data_dir/train-01023-of-01024
 #
