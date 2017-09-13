@@ -10,8 +10,9 @@ from utils import visualization_utils as vis_util
 from object_detection.protos import string_int_label_map_pb2
 from optparse import OptionParser
 
-
 import cv2
+
+CAMERA_ID = 0
 
 # What model to download.
 MODEL_NAME = 'ssd_mobilenet_v1_coco_11_06_2017'
@@ -36,7 +37,7 @@ def load_image_into_numpy_array(image):
         (im_height, im_width, 3)).astype(np.uint8)
 
 def classify_live_image(callback, savedir=None, freq=10, displayoff=False):
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(CAMERA_ID)
 
     # ## Download Model
     if not os.path.isfile(MODEL_FILE):
