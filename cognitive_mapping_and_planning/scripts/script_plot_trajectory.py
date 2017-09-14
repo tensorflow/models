@@ -24,6 +24,7 @@ to plot the view points.
       --imset test --alsologtostderr --base_dir output --out_dir vis
 
 """
+from __future__ import print_function
 import os, sys, numpy as np, copy
 import matplotlib
 matplotlib.use("Agg")
@@ -220,7 +221,7 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
       t.set_bbox(dict(color='white', alpha=0.85, pad=-0.1))
       
       # Action to take.
-      action_latex = ['$\odot$ ', '$\curvearrowright$ ', '$\curvearrowleft$ ', '$\Uparrow$ ']
+      action_latex = ['$\odot$ ', '$\curvearrowright$ ', '$\curvearrowleft$ ', r'$\Uparrow$ ']
       t = ax.text(0.99, 0.99, action_latex[actions[step_number]],
           horizontalalignment='right',
           verticalalignment='top',
@@ -265,7 +266,7 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
     tmp_file_name = 'tmp.mp4'
     line_ani.save(tmp_file_name, writer=writer, savefig_kwargs={'facecolor':'black'})
     out_file_name = os.path.join(out_dir, 'vis_{:04d}.mp4'.format(i))
-    print out_file_name
+    print(out_file_name)
 
     if fu.exists(out_file_name):
       gfile.Remove(out_file_name)
@@ -318,7 +319,7 @@ def plot_trajectory(dt, hardness, orig_maps, out_dir):
     ax.set_ylim([xy1[1], xy2[1]])
     
     file_name = os.path.join(out_dir, 'trajectory_{:04d}.png'.format(i))
-    print file_name
+    print(file_name)
     with fu.fopen(file_name, 'w') as f: 
       plt.savefig(f)
     plt.close(fig)

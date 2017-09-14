@@ -17,6 +17,7 @@
 
 from __future__ import division
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import math
 import os
@@ -24,7 +25,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-import blocks_std
+from . import blocks_std
 
 
 def _NumpyConv2D(x, f, strides, padding, rate=1):

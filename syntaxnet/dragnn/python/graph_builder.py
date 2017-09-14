@@ -28,7 +28,7 @@ from syntaxnet.util import check
 
 try:
   tf.NotDifferentiable('ExtractFixedFeatures')
-except KeyError, e:
+except KeyError as e:
   logging.info(str(e))
 
 

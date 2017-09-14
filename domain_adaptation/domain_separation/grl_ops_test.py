@@ -14,13 +14,14 @@
 # ==============================================================================
 
 """Tests for grl_ops."""
+from __future__ import absolute_import
 
 #from models.domain_adaptation.domain_separation import grl_op_grads  # pylint: disable=unused-import
 #from models.domain_adaptation.domain_separation import grl_op_shapes  # pylint: disable=unused-import
 import tensorflow as tf
 
-import grl_op_grads
-import grl_ops
+from . import grl_op_grads
+from . import grl_ops
 
 FLAGS = tf.app.flags.FLAGS
 

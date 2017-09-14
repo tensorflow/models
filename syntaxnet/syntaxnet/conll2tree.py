@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """A program to generate ASCII trees from conll files."""
+from __future__ import print_function
 
 import collections
 import re
@@ -88,12 +89,12 @@ def main(unused_argv):
         sentence.ParseFromString(d)
         tr = asciitree.LeftAligned()
         d = to_dict(sentence)
-        print 'Input: %s' % sentence.text
-        print 'Parse:'
+        print('Input: %s' % sentence.text)
+        print('Parse:')
         tr_str = tr(d)
         pat = re.compile(r'\s*@\d+$')
         for tr_ln in tr_str.splitlines():
-          print pat.sub('', tr_ln)
+          print(pat.sub('', tr_ln))
 
       if finished:
         break

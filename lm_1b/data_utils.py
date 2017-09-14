@@ -185,7 +185,7 @@ def get_batch(generator, batch_size, num_steps, max_word_length, pad=False):
       while cur_pos < num_steps:
         if cur_stream[i] is None or len(cur_stream[i][0]) <= 1:
           try:
-            cur_stream[i] = list(generator.next())
+            cur_stream[i] = list(next(generator))
           except StopIteration:
             # No more data, exhaust current streams and quit
             no_more_data = True

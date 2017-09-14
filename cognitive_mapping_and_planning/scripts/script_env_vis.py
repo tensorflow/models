@@ -17,6 +17,7 @@
 PYTHONPATH='.' PYOPENGL_PLATFORM=egl python scripts/script_env_vis.py \
   --dataset_name sbpd --building_name area3
 """
+from __future__ import print_function
 import sys
 import numpy as np
 import matplotlib
@@ -90,7 +91,7 @@ def walk_through(b):
 
   root = tk.Tk()
   image = b.render_nodes(b.task.nodes[[current_node],:])[0]
-  print image.shape
+  print(image.shape)
   image = image.astype(np.uint8)
   im = Image.fromarray(image)
   im = ImageTk.PhotoImage(im)
