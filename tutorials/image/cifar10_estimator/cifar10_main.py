@@ -344,11 +344,10 @@ def get_experiment_fn(data_dir,
 
     train_steps = hparams.train_steps
     eval_steps = num_eval_examples // hparams.eval_batch_size
-
-    num_workers = run_config.num_worker_replicas
-    
+ 
     classifier = tf.estimator.Estimator(
-        model_fn=get_model_fn(num_gpus, variable_strategy, num_workers),
+        model_fn=get_model_fn(num_gpus, variable_strategy,
+                              run_config.num_worker_replicas or 1),
         config=run_config,
         params=hparams)
 
