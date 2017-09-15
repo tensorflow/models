@@ -345,11 +345,8 @@ def get_experiment_fn(data_dir,
     train_steps = hparams.train_steps
     eval_steps = num_eval_examples // hparams.eval_batch_size
 
-    if run_config.num_worker_replicas:
-      num_workers = run_config.num_worker_replicas + 1
-    else:
-      num_workers = 1
-
+    num_workers = run_config.num_worker_replicas
+    
     classifier = tf.estimator.Estimator(
         model_fn=get_model_fn(num_gpus, variable_strategy, num_workers),
         config=run_config,
