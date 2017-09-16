@@ -69,8 +69,7 @@ class EncoderManager(object):
     tf.logging.info("Loading embedding matrix from %s", embedding_matrix_file)
     # Note: tf.gfile.GFile doesn't work here because np.load() calls f.seek()
     # with 3 arguments.
-    with open(embedding_matrix_file, "r") as f:
-      embedding_matrix = np.load(f)
+    embedding_matrix = np.load(embedding_matrix_file)
     tf.logging.info("Loaded embedding matrix with shape %s",
                     embedding_matrix.shape)
 
