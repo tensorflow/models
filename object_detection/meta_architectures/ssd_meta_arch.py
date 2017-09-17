@@ -604,7 +604,7 @@ class SSDMetaArch(model.DetectionModel):
       the model graph.
     """
     variables_to_restore = {}
-    for variable in tf.all_variables():
+    for variable in tf.global_variables():
       if variable.op.name.startswith(self._extract_features_scope):
         var_name = variable.op.name
         if not from_detection_checkpoint:
