@@ -30,7 +30,7 @@ Example usage:
         --pipeline_config_path=pipeline_config.pbtxt
 
 2) Three configuration files may be provided: a model_pb2.DetectionModel
-configuration file to define what type of DetectionModel is being evaulated, an
+configuration file to define what type of DetectionModel is being evaluated, an
 input_reader_pb2.InputReader file to specify what data the model is evaluating
 and an eval_pb2.EvalConfig file to configure evaluation parameters.
 
