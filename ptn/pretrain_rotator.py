@@ -42,7 +42,7 @@ flags.DEFINE_integer('fc_dim', 1024, '')
 flags.DEFINE_integer('num_views', 24, 'Num of viewpoints in the input data.')
 flags.DEFINE_integer('image_size', 64,
                      'Input images dimension (pixels) - width & height.')
-flags.DEFINE_integer('step_size', 1, 'Steps to take for rotation in pretraining.')
+flags.DEFINE_integer('step_size', 6, 'Steps to take for rotation in pretraining.')
 flags.DEFINE_integer('batch_size', 32, 'Batch size for training.')
 flags.DEFINE_string('encoder_name', 'ptn_encoder',
                     'Name of the encoder network being used.')
