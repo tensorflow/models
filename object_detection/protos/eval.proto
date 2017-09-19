@@ -44,4 +44,10 @@ message EvalConfig {
 
   // Whether to evaluate instance masks.
   optional bool eval_instance_masks = 12 [default=false];
+
+  // Minimum score threshold for a box to be visualized
+  optional float min_score_thresh = 13 [default = 0.5];
+
+  // Maximum number of detections to visualize
+  optional uint32 max_num_predictions = 14 [default=20];
 }

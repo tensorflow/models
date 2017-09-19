@@ -170,7 +170,9 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
           result_dict, tag, global_step, categories=categories,
           summary_dir=eval_dir,
           export_dir=eval_config.visualization_export_dir,
-          show_groundtruth=eval_config.visualization_export_dir)
+          show_groundtruth=eval_config.visualization_export_dir,
+          min_score_thresh=eval_config.min_score_thresh,
+          max_num_predictions=eval_config.max_num_predictions)
     return result_dict
 
   def _process_aggregated_results(result_lists):
