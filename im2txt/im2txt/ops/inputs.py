@@ -137,7 +137,7 @@ def batch_with_dynamic_pad(images_and_captions,
   Example:
     Actual captions in the batch ('-' denotes padded character):
       [
-        [ 1 2 5 4 5 ],
+        [ 1 2 3 4 5 ],
         [ 1 2 3 4 - ],
         [ 1 2 3 - - ],
       ]

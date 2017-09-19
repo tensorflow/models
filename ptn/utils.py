@@ -76,7 +76,7 @@ def visualize_voxel_spectral(points, vis_size=128):
   points = np.rint(points)
   points = np.swapaxes(points, 0, 2)
   fig = p.figure(figsize=(1, 1), dpi=vis_size)
-  verts, faces = measure.marching_cubes(points, 0, spacing=(0.1, 0.1, 0.1))
+  verts, faces = measure.marching_cubes_classic(points, 0, spacing=(0.1, 0.1, 0.1))
   ax = fig.add_subplot(111, projection='3d')
   ax.plot_trisurf(
       verts[:, 0], verts[:, 1], faces, verts[:, 2], cmap='Spectral_r', lw=0.1)

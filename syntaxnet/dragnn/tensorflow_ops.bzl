@@ -659,7 +659,7 @@ def cc_header_only_library(name, deps=[], **kwargs):
 
 def tf_custom_op_library_additional_deps():
   return [
-      "@protobuf//:protobuf",
+      "@protobuf_archive//:protobuf",
       "//third_party/eigen3",
       "@org_tensorflow//tensorflow/core:framework_headers_lib",
   ]

@@ -117,6 +117,8 @@ tf.app.flags.DEFINE_float(
     'momentum', 0.9,
     'The momentum for the MomentumOptimizer and RMSPropOptimizer.')
 
+tf.app.flags.DEFINE_float('rmsprop_momentum', 0.9, 'Momentum.')
+
 tf.app.flags.DEFINE_float('rmsprop_decay', 0.9, 'Decay term for RMSProp.')
 
 #######################
@@ -301,13 +303,14 @@ def _configure_optimizer(learning_rate):
     optimizer = tf.train.RMSPropOptimizer(
         learning_rate,
         decay=FLAGS.rmsprop_decay,
-        momentum=FLAGS.momentum,
+        momentum=FLAGS.rmsprop_momentum,
         epsilon=FLAGS.opt_epsilon)
   elif FLAGS.optimizer == 'sgd':
     optimizer = tf.train.GradientDescentOptimizer(learning_rate)
   else:
     raise ValueError('Optimizer [%s] was not recognized', FLAGS.optimizer)
   return optimizer
+
 
 def _get_init_fn():
   """Returns a function run by the chief worker to warm-start the training.
@@ -450,20 +453,19 @@ def main(_):
     ####################
     def clone_fn(batch_queue):
       """Allows data parallelism by creating multiple clones of network_fn."""
-      with tf.device(deploy_config.inputs_device()):
-        images, labels = batch_queue.dequeue()
+      images, labels = batch_queue.dequeue()
       logits, end_points = network_fn(images)
 
       #############################
       # Specify the loss function #
       #############################
       if 'AuxLogits' in end_points:
-        tf.losses.softmax_cross_entropy(
-            logits=end_points['AuxLogits'], onehot_labels=labels,
-            label_smoothing=FLAGS.label_smoothing, weights=0.4, scope='aux_loss')
-      tf.losses.softmax_cross_entropy(
-          logits=logits, onehot_labels=labels,
-          label_smoothing=FLAGS.label_smoothing, weights=1.0)
+        slim.losses.softmax_cross_entropy(
+            end_points['AuxLogits'], labels,
+            label_smoothing=FLAGS.label_smoothing, weights=0.4,
+            scope='aux_loss')
+      slim.losses.softmax_cross_entropy(
+          logits, labels, label_smoothing=FLAGS.label_smoothing, weights=1.0)
       return end_points
 
     # Gather initial summaries.
@@ -515,10 +517,9 @@ def main(_):
       optimizer = tf.train.SyncReplicasOptimizer(
           opt=optimizer,
           replicas_to_aggregate=FLAGS.replicas_to_aggregate,
+          total_num_replicas=FLAGS.worker_replicas,
           variable_averages=variable_averages,
-          variables_to_average=moving_average_variables,
-          replica_id=tf.constant(FLAGS.task, tf.int32, shape=()),
-          total_num_replicas=FLAGS.worker_replicas)
+          variables_to_average=moving_average_variables)
     elif FLAGS.moving_average_decay:
       # Update ops executed locally by trainer.
       update_ops.append(variable_averages.apply(moving_average_variables))

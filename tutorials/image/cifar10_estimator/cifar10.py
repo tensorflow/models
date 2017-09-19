@@ -74,8 +74,8 @@ class Cifar10DataSet(object):
     dataset = tf.contrib.data.TFRecordDataset(filenames).repeat()
 
     # Parse records.
-    dataset = dataset.map(self.parser, num_threads=batch_size,
-                          output_buffer_size=2 * batch_size)
+    dataset = dataset.map(
+        self.parser, num_threads=batch_size, output_buffer_size=2 * batch_size)
 
     # Potentially shuffle records.
     if self.subset == 'train':

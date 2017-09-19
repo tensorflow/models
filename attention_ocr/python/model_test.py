@@ -73,9 +73,10 @@ class ModelTest(tf.test.TestCase):
             high=self.num_char_classes,
             size=(self.batch_size, self.seq_length)).astype('int64'))
 
-  def create_model(self):
+  def create_model(self, charset=None):
     return model.Model(
-        self.num_char_classes, self.seq_length, num_views=4, null_code=62)
+        self.num_char_classes, self.seq_length, num_views=4, null_code=62,
+        charset=charset)
 
   def test_char_related_shapes(self):
     ocr_model = self.create_model()
@@ -243,6 +244,21 @@ class ModelTest(tf.test.TestCase):
           [conv_w_coords_tf, conv_w_coords_alt_tf])
 
     self.assertAllEqual(conv_w_coords_tf, conv_w_coords_alt_tf)
+
+  def test_predicted_text_has_correct_shape_w_charset(self):
+    charset = create_fake_charset(self.num_char_classes)
+    ocr_model = self.create_model(charset=charset)
+
+    with self.test_session() as sess:
+      endpoints_tf = ocr_model.create_base(
+          images=self.fake_images, labels_one_hot=None)
+
+      sess.run(tf.global_variables_initializer())
+      tf.tables_initializer().run()
+      endpoints = sess.run(endpoints_tf)
+
+      self.assertEqual(endpoints.predicted_text.shape, (self.batch_size,))
+      self.assertEqual(len(endpoints.predicted_text[0]), self.seq_length)
 
 
 class CharsetMapperTest(tf.test.TestCase):

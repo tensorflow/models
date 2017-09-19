@@ -1,5 +1,6 @@
 adversarial_crypto/* @dave-andersen
 adversarial_text/* @rsepassi
+adv_imagenet_models/* @AlexeyKurakin
 attention_ocr/* @alexgorban
 audioset/* @plakal @dpwe
 autoencoders/* @snurkabill
@@ -9,6 +10,7 @@ differential_privacy/* @panyx0718
 domain_adaptation/* @bousmalis @ddohan
 im2txt/* @cshallue
 inception/* @shlens @vincentvanhoucke
+learned_optimizer/* @olganw @nirum
 learning_to_remember_rare_events/* @lukaszkaiser @ofirnachum
 lfads/* @jazcollins @susillo
 lm_1b/* @oriolvinyals @panyx0718
