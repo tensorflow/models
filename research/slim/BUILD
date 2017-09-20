@@ -240,6 +240,7 @@ py_library(
     deps = [
         ":alexnet",
         ":cifarnet",
+        ":cyclegan",
         ":inception",
         ":lenet",
         ":mobilenet_v1",
@@ -271,6 +272,26 @@ py_library(
     name = "cifarnet",
     srcs = ["nets/cifarnet.py"],
     deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "cyclegan",
+    srcs = ["nets/cyclegan.py"],
+    deps = [
+        # "//numpy",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "cyclegan_test",
+    srcs = ["nets/cyclegan_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":cyclegan",
         "//tensorflow",
     ],
 )
