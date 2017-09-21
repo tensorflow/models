@@ -13,7 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Converts MNIST data to TFRecords file format with Example protos."""
+"""Converts MNIST data to TFRecords file format with Example protos.
+
+To read about optimizations that can be applied to the input preprocessing
+stage, see: https://www.tensorflow.org/performance/performance_guide#input_pipeline_optimization.
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
