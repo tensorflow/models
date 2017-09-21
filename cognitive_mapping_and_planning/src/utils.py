@@ -16,9 +16,12 @@
 r"""Generaly Utilities.
 """
 
-import numpy as np, cPickle, os, time
+import numpy as np
+import cPickle
+import time
 import src.file_utils as fu
 import logging
+from six.moves import range
 
 class Timer():
   def __init__(self):
@@ -60,7 +63,7 @@ class Foo(object):
     str_ = ''
     for v in vars(self).keys():
       a = getattr(self, v)
-      if True: #isinstance(v, object):
+      if True:  # isinstance(v, object):
         str__ = str(a)
         str__ = str__.replace('\n', '\n  ')
       else:
@@ -93,24 +96,25 @@ def tic_toc_print(interval, string):
   global tic_toc_print_time_old
   if 'tic_toc_print_time_old' not in globals():
     tic_toc_print_time_old = time.time()
-    print string
+    print(string)
   else:
     new_time = time.time()
     if new_time - tic_toc_print_time_old > interval:
-      tic_toc_print_time_old = new_time;
-      print string
+      tic_toc_print_time_old = new_time
+      print(string)
 
 def mkdir_if_missing(output_dir):
   if not fu.exists(output_dir):
     fu.makedirs(output_dir)
 
 def save_variables(pickle_file_name, var, info, overwrite = False):
-  if fu.exists(pickle_file_name) and overwrite == False:
+  if fu.exists(pickle_file_name) and overwrite is False:
     raise Exception('{:s} exists and over write is false.'.format(pickle_file_name))
   # Construct the dictionary
-  assert(type(var) == list); assert(type(info) == list);
+  assert(type(var) == list)
+  assert(type(info) == list)
   d = {}
-  for i in xrange(len(var)):
+  for i in range(len(var)):
     d[info[i]] = var[i]
   with fu.fopen(pickle_file_name, 'w') as f:
     cPickle.dump(d, f, cPickle.HIGHEST_PROTOCOL)
@@ -133,10 +137,10 @@ def voc_ap(rec, prec):
   for i in range(len(mpre)-2, -1, -1):
     mpre[i] = max(mpre[i], mpre[i+1])
 
-  I = np.where(mrec[1:] != mrec[0:-1])[0]+1;
-  ap = 0;
+  I = np.where(mrec[1:] != mrec[0:-1])[0]+1
+  ap = 0
   for i in I:
-    ap = ap + (mrec[i] - mrec[i-1])*mpre[i];
+    ap = ap + (mrec[i] - mrec[i-1])*mpre[i]
   return ap
 
 def tight_imshow_figure(plt, figsize=None):
@@ -165,4 +169,3 @@ def calc_pr(gt, out, wt=None):
 
   ap = voc_ap(rec, prec)
   return ap, rec, prec
-
