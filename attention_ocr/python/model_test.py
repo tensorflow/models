@@ -23,13 +23,12 @@ from tensorflow.contrib.tfprof import model_analyzer
 
 import model
 import data_provider
+from six.moves import range
 
 
 def create_fake_charset(num_char_classes):
-  charset = {}
-  for i in xrange(num_char_classes):
-    charset[i] = string.printable[i % len(string.printable)]
-  return charset
+  return {i: string.printable[i % len(string.printable)]
+          for i in range(num_char_classes)}
 
 
 class ModelTest(tf.test.TestCase):
@@ -179,13 +178,13 @@ class ModelTest(tf.test.TestCase):
           tf.reshape(
               tf.contrib.layers.one_hot_encoding(
                   tf.constant([i]), num_classes=h), [h, 1]), [1, w])
-      for i in xrange(h)
+      for i in range(h)
     ]
     h_loc = tf.concat([tf.expand_dims(t, 2) for t in h_loc], 2)
     w_loc = [
       tf.tile(
           tf.contrib.layers.one_hot_encoding(tf.constant([i]), num_classes=w),
-          [h, 1]) for i in xrange(w)
+          [h, 1]) for i in range(w)
     ]
     w_loc = tf.concat([tf.expand_dims(t, 2) for t in w_loc], 2)
     loc = tf.concat([h_loc, w_loc], 2)
