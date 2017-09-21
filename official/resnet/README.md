@@ -35,7 +35,7 @@ Use `--data_dir` to specify the location of the CIFAR-10 data used in the previo
 ## ImageNet
 
 ### Setup
-To begin, you will need to download the ImageNet dataset and convert it to TFRecord format. Follow along with the [Inception guide](https://github.com/tensorflow/models/tree/master/inception#getting-started) in order to prepare the dataset.
+To begin, you will need to download the ImageNet dataset and convert it to TFRecord format. Follow along with the [Inception guide](https://github.com/tensorflow/models/tree/master/research/inception#getting-started) in order to prepare the dataset.
 
 Once your dataset is ready, you can begin training the model as follows:
 
