@@ -22,6 +22,7 @@ columns.
 lookup answer (or matrix) is also split into number and word lookup matrix
 Author: aneelakantan (Arvind Neelakantan)
 """
+from __future__ import print_function
 import math
 import os
 import re
@@ -56,7 +57,7 @@ def correct_unicode(string):
   #string = re.sub("[â€œâ€Â«Â»]", "\"", string)
   #string = re.sub("[â€¢â€ â€¡]", "", string)
   #string = re.sub("[â€â€‘â€“â€”]", "-", string)
-  string = re.sub(ur'[\u2E00-\uFFFF]', "", string)
+  string = re.sub(u'[\u2E00-\uFFFF]', "", string)
   string = re.sub("\\s+", " ", string).strip()
   return string
 
@@ -78,7 +79,7 @@ def full_normalize(string):
   # Remove trailing info in brackets
   string = re.sub("\[[^\]]*\]", "", string)
   # Remove most unicode characters in other languages
-  string = re.sub(ur'[\u007F-\uFFFF]', "", string.strip())
+  string = re.sub(u'[\u007F-\uFFFF]', "", string.strip())
   # Remove trailing info in parenthesis
   string = re.sub("\([^)]*\)$", "", string.strip())
   string = final_normalize(string)
@@ -207,7 +208,7 @@ class WikiQuestionGenerator(object):
     self.dev_loader = WikiQuestionLoader(dev_name, root_folder)
     self.test_loader = WikiQuestionLoader(test_name, root_folder)
     self.bad_examples = 0
-    self.root_folder = root_folder   
+    self.root_folder = root_folder
     self.data_folder = os.path.join(self.root_folder, "annotated/data")
     self.annotated_examples = {}
     self.annotated_tables = {}
@@ -269,12 +270,12 @@ class WikiQuestionGenerator(object):
           word = "score"
       if (is_number(word)):
         word = float(word)
-      if (not (self.annotated_word_reject.has_key(word))):
+      if (not (word in self.annotated_word_reject)):
         if (is_number(word) or is_date(word) or self.is_money(word)):
           sentence.append(word)
         else:
           word = full_normalize(word)
-          if (not (self.annotated_word_reject.has_key(word)) and
+          if (not (word in self.annotated_word_reject) and
               bool(re.search("[a-z0-9]", word, re.IGNORECASE))):
             m = re.search(",", word)
             sentence.append(word.replace(",", ""))
@@ -298,7 +299,7 @@ class WikiQuestionGenerator(object):
             question_id, question, target_canon, context)
         self.annotated_tables[context] = []
       counter += 1
-    print "Annotated examples loaded ", len(self.annotated_examples)
+    print("Annotated examples loaded ", len(self.annotated_examples))
     f.close()
 
   def is_number_column(self, a):
@@ -423,7 +424,7 @@ class WikiQuestionGenerator(object):
       lines = f.readlines()
       for line in lines:
         line = line.strip()
-        if (not (self.annotated_examples.has_key(line.split("\t")[0]))):
+        if (not (line.split("\t")[0] in self.annotated_examples)):
           continue
         if (len(line.split("\t")) == 4):
           line = line + "\t" * (5 - len(line.split("\t")))
@@ -431,7 +432,7 @@ class WikiQuestionGenerator(object):
             ice_bad_questions += 1
         (example_id, ans_index, ans_raw, process_answer,
          matched_cells) = line.split("\t")
-        if (ice.has_key(example_id)):
+        if (example_id in ice):
           ice[example_id].append(line.split("\t"))
         else:
           ice[example_id] = [line.split("\t")]
