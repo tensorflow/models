@@ -1,9 +1,9 @@
 """A script to run inference on a set of image files.
 
-NOTE #1: The Attention OCR model was trained only using FSNS train dataset and 
-it will work only for images which look more or less similar to french street 
-names. In order to apply it to images from a different distribution you need 
-to retrain (or at least fine-tune) it using images from that distribution. 
+NOTE #1: The Attention OCR model was trained only using FSNS train dataset and
+it will work only for images which look more or less similar to french street
+names. In order to apply it to images from a different distribution you need
+to retrain (or at least fine-tune) it using images from that distribution.
 
 NOTE #2: This script exists for demo purposes only. It is highly recommended
 to use tools and mechanisms provided by the TensorFlow Serving system to run
@@ -22,6 +22,7 @@ from tensorflow.python.platform import flags
 
 import common_flags
 import datasets
+import data_provider
 import model as attention_ocr
 
 FLAGS = flags.FLAGS
@@ -61,9 +62,11 @@ def load_model(checkpoint, batch_size, dataset_name):
       num_views=dataset.num_of_views,
       null_code=dataset.null_code,
       charset=dataset.charset)
-  images_placeholder = tf.placeholder(tf.float32,
+  images_placeholder = tf.placeholder(tf.uint8,
                                       shape=[batch_size, height, width, 3])
-  endpoints = model.create_base(images_placeholder, labels_one_hot=None)
+  input_images = data_provider.preprocess_image(image=images_placeholder, \
+                                                num_towers=dataset.num_of_views)
+  endpoints = model.create_base(input_images, labels_one_hot=None)
   init_fn = model.create_init_fn_to_restore(checkpoint)
   return images_placeholder, endpoints, init_fn
 
