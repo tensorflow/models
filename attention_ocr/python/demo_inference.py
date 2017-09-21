@@ -14,6 +14,7 @@ Usage:
 python demo_inference.py --batch_size=32 \
   --image_path_pattern=./datasets/data/fsns/temp/fsns_train_%02d.png
 """
+from __future__ import print_function
 import numpy as np
 import PIL.Image
 

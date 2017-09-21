@@ -20,10 +20,11 @@ model.
 - private encoder (default_encoder)
 - decoder (large_decoder, gtsrb_decoder, small_decoder)
 """
+from __future__ import absolute_import
 import tensorflow as tf
 
 #from models.domain_adaptation.domain_separation
-import utils
+from . import utils
 
 slim = tf.contrib.slim
 

@@ -27,15 +27,16 @@ http://www.cs.toronto.edu/~kriz/cifar.html
 """
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 
 import argparse
 import functools
 import itertools
 import os
 
-import cifar10
-import cifar10_model
-import cifar10_utils
+from . import cifar10
+from . import cifar10_model
+from . import cifar10_utils
 import numpy as np
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin

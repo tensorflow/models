@@ -500,8 +500,10 @@ class NeuralGPU(object):
             return tf.reduce_sum(encoder_outputs * tf.expand_dims(mask, 2), 1)
 
           with tf.variable_scope("decoder"):
-            def decoder_loop_fn((state, prev_cell_out, _), (cell_inp, cur_tgt)):
+            def decoder_loop_fn(xxx_todo_changeme, xxx_todo_changeme1):
               """Decoder loop function."""
+              (state, prev_cell_out, _) = xxx_todo_changeme
+              (cell_inp, cur_tgt) = xxx_todo_changeme1
               attn_q = tf.layers.dense(prev_cell_out, height * nmaps,
                                        name="attn_query")
               attn_res = attention_query(attn_q, tf.get_variable(

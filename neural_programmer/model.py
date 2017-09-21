@@ -14,6 +14,7 @@
 # ==============================================================================
 """Author: aneelakantan (Arvind Neelakantan)
 """
+from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
@@ -545,7 +546,7 @@ class Graph():
     self.batch_log_prob = tf.zeros([self.batch_size], dtype=self.data_type)
     #Perform max_passes and at each  pass select operation and column
     for curr_pass in range(max_passes):
-      print "step: ", curr_pass
+      print("step: ", curr_pass)
       output, select, softmax, soft_softmax, column_softmax, soft_column_softmax = self.one_pass(
           select, question_embedding, hidden_vectors, hprev, prev_select_1,
           curr_pass)
@@ -636,7 +637,7 @@ class Graph():
     self.total_cost = self.compute_error() 
     optimize_params = self.params.values()
     optimize_names = self.params.keys()
-    print "optimize params ", optimize_names
+    print("optimize params ", optimize_names)
     if (self.utility.FLAGS.l2_regularizer > 0.0):
       reg_cost = 0.0
       for ind_param in self.params.keys():
@@ -645,7 +646,7 @@ class Graph():
     grads = tf.gradients(self.total_cost, optimize_params, name="gradients")
     grad_norm = 0.0
     for p, name in zip(grads, optimize_names):
-      print "grads: ", p, name
+      print("grads: ", p, name)
       if isinstance(p, tf.IndexedSlices):
         grad_norm += tf.reduce_sum(p.values * p.values)
       elif not (p == None):

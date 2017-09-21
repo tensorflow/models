@@ -14,11 +14,13 @@
 # ==============================================================================
 
 """Basic test of all registered models."""
+from __future__ import print_function
+from __future__ import absolute_import
 
 import tensorflow as tf
 
 # pylint: disable=unused-import
-import all_models
+from . import all_models
 # pylint: enable=unused-import
 from entropy_coder.model import model_factory
 

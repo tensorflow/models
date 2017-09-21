@@ -17,13 +17,14 @@
 
 from __future__ import division
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import math
 
 import numpy as np
 import tensorflow as tf
 
-import blocks_entropy_coding
+from . import blocks_entropy_coding
 
 
 class BlocksEntropyCodingTest(tf.test.TestCase):

@@ -26,6 +26,7 @@ blaze build --define=ION_GFX_OGLES20=1 -c opt --copt=-mavx --config=cuda_clang \
   --config_name 'v0+train' --gfs_user robot-intelligence-gpu
 
 """
+from __future__ import print_function
 import sys, os, numpy as np
 import copy
 import argparse, pprint

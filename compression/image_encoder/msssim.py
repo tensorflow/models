@@ -21,6 +21,7 @@ Usage:
 
 python msssim.py --original_image=original.png --compared_image=distorted.png
 """
+from __future__ import print_function
 import numpy as np
 from scipy import signal
 from scipy.ndimage.filters import convolve
