@@ -15,6 +15,7 @@
 
 """Define some typical masked 2D convolutions."""
 
+from six.moves import range
 import numpy as np
 import tensorflow as tf
 
@@ -96,7 +97,7 @@ class DepthOrderConv2D(blocks_std.Conv2DBase):
 
     mask = np.ones(shape[2:], dtype=dtype.as_numpy_dtype)
     depth_output = shape[3]
-    for d in xrange(depth_output):
+    for d in range(depth_output):
       if self._strict_order:
         mask[d:, d] = 0
       else:
@@ -176,7 +177,7 @@ class GroupRasterScanConv2D(blocks_std.Conv2DBase):
 
     # Adjust the mask for the current position (the center position).
     depth_output = shape[3]
-    for d in xrange(output_group_count):
+    for d in range(output_group_count):
       mask[center[0], center[1], d + 1:, :, d:d + 1, :] = 0
       if self._strict_order:
         mask[center[0], center[1], d, :, d:d + 1, :] = 0

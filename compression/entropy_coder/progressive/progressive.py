@@ -17,6 +17,8 @@
 
 import json
 
+from six.moves import range
+
 import tensorflow as tf
 
 from entropy_coder.lib import blocks
@@ -86,14 +88,14 @@ class LayerPrediction(blocks.BlockBase):
     with self._BlockScope():
       # Layers used to do the conditional code prediction.
       self._brnn_predictors = []
-      for _ in xrange(layer_count):
+      for _ in range(layer_count):
         self._brnn_predictors.append(BrnnPredictor(code_depth))
 
       # Layers used to generate the input of the LSTM operating on the
       # iteration/depth domain.
       hidden_depth = 2 * code_depth
       self._state_blocks = []
-      for _ in xrange(layer_count):
+      for _ in range(layer_count):
         self._state_blocks.append(blocks.CompositionOperator([
             blocks.Conv2D(
                 hidden_depth, [3, 3], [1, 1], 'SAME',
@@ -192,7 +194,7 @@ class ProgressiveModel(entropy_coder_model.EntropyCoderModel):
     code_length = []
     code_layers = tf.split(
         value=input_codes, num_or_size_splits=code_layer_count, axis=3)
-    for k in xrange(code_layer_count):
+    for k in range(code_layer_count):
       x = code_layers[k]
       predicted_x = layer_prediction(x)
       # Saturate the prediction to avoid infinite code length.
@@ -210,7 +212,7 @@ class ProgressiveModel(entropy_coder_model.EntropyCoderModel):
     # Loop over all the remaining layers just to make sure they are
     # instantiated. Otherwise, loading model params could fail.
     dummy_x = tf.zeros_like(code_layers[0])
-    for _ in xrange(layer_count - code_layer_count):
+    for _ in range(layer_count - code_layer_count):
       dummy_predicted_x = layer_prediction(dummy_x)
 
     # Average bitrate over total_line_count.

@@ -16,7 +16,6 @@
 """Compute the additional compression ratio after entropy coding."""
 
 import io
-import os
 
 import numpy as np
 import tensorflow as tf
@@ -46,9 +45,9 @@ FLAGS = tf.flags.FLAGS
 
 def main(_):
   if (FLAGS.input_codes is None or FLAGS.model is None):
-    print ('\nUsage: python entropy_coder_single.py --model=progressive '
-           '--model_config=model_config.json'
-           '--iteration=15\n\n')
+    print('\nUsage: python entropy_coder_single.py --model=progressive '
+          '--model_config=model_config.json'
+          '--iteration=15\n\n')
     return
 
   #if FLAGS.iteration < -1 or FLAGS.iteration > 15:
@@ -58,7 +57,7 @@ def main(_):
   #iteration = FLAGS.iteration
 
   if not tf.gfile.Exists(FLAGS.input_codes):
-    print '\nInput codes not found.\n'
+    print('\nInput codes not found.\n')
     return
 
   with tf.gfile.FastGFile(FLAGS.input_codes, 'rb') as code_file:
@@ -82,7 +81,6 @@ def main(_):
 
   with tf.Graph().as_default() as graph:
     # TF tensor to hold the binary codes to losslessly compress.
-    batch_size = 1
     codes = tf.placeholder(tf.float32, shape=numpy_codes.shape)
 
     # Create the entropy coder model.
