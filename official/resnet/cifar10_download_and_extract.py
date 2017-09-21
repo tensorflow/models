@@ -13,7 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Converts MNIST data to TFRecords file format with Example protos."""
+"""Downloads and extracts the binary version of the CIFAR-10 dataset."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

@@ -27,6 +27,9 @@ For each synset, there are on average 150 images with bounding boxes."
 
 WARNING: Don't use for object detection, in this case all the bounding boxes
 of the image belong to just one class.
+
+To read about optimizations that can be applied to the input preprocessing
+stage, see: https://www.tensorflow.org/performance/performance_guide#input_pipeline_optimization.
 """
 
 from __future__ import absolute_import

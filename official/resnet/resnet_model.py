@@ -41,6 +41,7 @@ _BATCH_NORM_EPSILON = 1e-5
 def batch_norm_relu(inputs, is_training, data_format):
   """Performs a batch normalization followed by a ReLU."""
   # We set fused=True for a significant performance boost.
+  # See https://www.tensorflow.org/performance/performance_guide#common_fused_ops
   inputs = tf.layers.batch_normalization(
       inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
       momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
@@ -240,6 +241,7 @@ def cifar10_resnet_v2_generator(resnet_size, num_classes, data_format=None):
     if data_format == 'channels_first':
       # Convert from channels_last (NHWC) to channels_first (NCHW). This
       # provides a large performance boost on GPU.
+      # See https://www.tensorflow.org/performance/performance_guide#data_formats
       inputs = tf.transpose(inputs, [0, 3, 1, 2])
 
     inputs = conv2d_fixed_padding(
@@ -261,14 +263,12 @@ def cifar10_resnet_v2_generator(resnet_size, num_classes, data_format=None):
         data_format=data_format)
 
     inputs = batch_norm_relu(inputs, is_training, data_format)
-
     inputs = tf.layers.average_pooling2d(
         inputs=inputs, pool_size=8, strides=1, padding='VALID',
         data_format=data_format)
     inputs = tf.identity(inputs, 'final_avg_pool')
     inputs = tf.reshape(inputs, [-1, 64])
-    inputs = tf.layers.dense(
-        inputs=inputs, units=num_classes)
+    inputs = tf.layers.dense(inputs=inputs, units=num_classes)
     inputs = tf.identity(inputs, 'final_dense')
     return inputs
 
