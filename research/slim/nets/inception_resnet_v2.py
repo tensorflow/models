@@ -45,7 +45,12 @@ def block35(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
     mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_1, tower_conv2_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
-    net += scale * up
+    scaled_up = up * scale
+    if activation_fn == tf.nn.relu6:
+      # Use clip_by_value to simulate bandpass activation.
+      scaled_up = tf.clip_by_value(scaled_up, -6.0, 6.0)
+
+    net += scaled_up
     if activation_fn:
       net = activation_fn(net)
   return net
@@ -65,7 +70,13 @@ def block17(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
     mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
-    net += scale * up
+
+    scaled_up = up * scale
+    if activation_fn == tf.nn.relu6:
+      # Use clip_by_value to simulate bandpass activation.
+      scaled_up = tf.clip_by_value(scaled_up, -6.0, 6.0)
+
+    net += scaled_up
     if activation_fn:
       net = activation_fn(net)
   return net
@@ -85,7 +96,13 @@ def block8(net, scale=1.0, activation_fn=tf.nn.relu, scope=None, reuse=None):
     mixed = tf.concat(axis=3, values=[tower_conv, tower_conv1_2])
     up = slim.conv2d(mixed, net.get_shape()[3], 1, normalizer_fn=None,
                      activation_fn=None, scope='Conv2d_1x1')
-    net += scale * up
+
+    scaled_up = up * scale
+    if activation_fn == tf.nn.relu6:
+      # Use clip_by_value to simulate bandpass activation.
+      scaled_up = tf.clip_by_value(scaled_up, -6.0, 6.0)
+
+    net += scaled_up
     if activation_fn:
       net = activation_fn(net)
   return net
