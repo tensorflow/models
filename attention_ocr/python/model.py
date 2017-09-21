@@ -28,6 +28,7 @@ import collections
 import logging
 import tensorflow as tf
 from tensorflow.contrib import slim
+from tensorflow.contrib.layers.python.layers import layers as layers_lib
 from tensorflow.contrib.slim.nets import inception
 
 import metrics
@@ -145,7 +146,7 @@ class Model(object):
         utf8 strings. If specified the OutputEndpoints.predicted_text will
         utf8 encoded strings corresponding to the character ids returned by
         OutputEndpoints.predicted_chars (by default the predicted_text contains
-        an empty vector). 
+        an empty vector).
         NOTE: Make sure you call tf.tables_initializer().run() if the charset
         specified.
     """
@@ -202,8 +203,10 @@ class Model(object):
       if reuse:
         tf.get_variable_scope().reuse_variables()
       with slim.arg_scope(inception.inception_v3_arg_scope()):
-        net, _ = inception.inception_v3_base(
-            images, final_endpoint=mparams.final_endpoint)
+        with slim.arg_scope([layers_lib.batch_norm, layers_lib.dropout], \
+                            is_training=is_training):
+          net, _ = inception.inception_v3_base(
+              images, final_endpoint=mparams.final_endpoint)
       return net
 
   def _create_lstm_inputs(self, net):
