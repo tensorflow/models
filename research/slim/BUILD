@@ -245,6 +245,7 @@ py_library(
         ":lenet",
         ":mobilenet_v1",
         ":overfeat",
+        ":pix2pix",
         ":resnet_v1",
         ":resnet_v2",
         ":vgg",
@@ -456,6 +457,23 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":overfeat",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "pix2pix",
+    srcs = ["nets/pix2pix.py"],
+    srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
+)
+
+py_test(
+    name = "pix2pix_test",
+    srcs = ["nets/pix2pix_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":pix2pix",
         "//tensorflow",
     ],
 )
