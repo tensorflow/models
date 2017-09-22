@@ -27,7 +27,7 @@ packaged (along with it's TF-Slim dependency). The required packages can be
 created with the following command
 
 ``` bash
-# From tensorflow/models/
+# From tensorflow/models/research/
 python setup.py sdist
 (cd slim && python setup.py sdist)
 ```
@@ -69,7 +69,7 @@ been written, a user can start a training job on Cloud ML Engine using the
 following command:
 
 ``` bash
-# From tensorflow/models/
+# From tensorflow/models/research/
 gcloud ml-engine jobs submit training object_detection_`date +%s` \
     --job-dir=gs://${TRAIN_DIR} \
     --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz \

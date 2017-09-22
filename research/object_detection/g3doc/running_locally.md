@@ -33,7 +33,7 @@ Oxford-IIIT Pet dataset.
 A local training job can be run with the following command:
 
 ```bash
-# From the tensorflow/models/ directory
+# From the tensorflow/models/research/ directory
 python object_detection/train.py \
     --logtostderr \
     --pipeline_config_path=${PATH_TO_YOUR_PIPELINE_CONFIG} \
@@ -52,7 +52,7 @@ train directory for new checkpoints and evaluate them on a test dataset. The
 job can be run using the following command:
 
 ```bash
-# From the tensorflow/models/ directory
+# From the tensorflow/models/research/ directory
 python object_detection/eval.py \
     --logtostderr \
     --pipeline_config_path=${PATH_TO_YOUR_PIPELINE_CONFIG} \
