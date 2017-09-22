@@ -13,7 +13,7 @@ To download, extract and convert it to TFRecords, run the following commands
 below:
 
 ```bash
-# From tensorflow/models
+# From tensorflow/models/research/
 wget http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar
 tar -xvf VOCtrainval_11-May-2012.tar
 python object_detection/create_pascal_tf_record.py \
@@ -27,7 +27,7 @@ python object_detection/create_pascal_tf_record.py \
 ```
 
 You should end up with two TFRecord files named `pascal_train.record` and
-`pascal_val.record` in the `tensorflow/models` directory.
+`pascal_val.record` in the `tensorflow/models/research/` directory.
 
 The label map for the PASCAL VOC data set can be found at
 `object_detection/data/pascal_label_map.pbtxt`.
@@ -39,7 +39,7 @@ The Oxford-IIIT Pet data set is located
 convert it to TFRecrods, run the following commands below:
 
 ```bash
-# From tensorflow/models
+# From tensorflow/models/research/
 wget http://www.robots.ox.ac.uk/~vgg/data/pets/data/images.tar.gz
 wget http://www.robots.ox.ac.uk/~vgg/data/pets/data/annotations.tar.gz
 tar -xvf annotations.tar.gz
@@ -51,7 +51,7 @@ python object_detection/create_pet_tf_record.py \
 ```
 
 You should end up with two TFRecord files named `pet_train.record` and
-`pet_val.record` in the `tensorflow/models` directory.
+`pet_val.record` in the `tensorflow/models/research/` directory.
 
 The label map for the Pet dataset can be found at
 `object_detection/data/pet_label_map.pbtxt`.
