@@ -3,10 +3,10 @@
 If you'd like to hit the ground running and run detection on a few example
 images right out of the box, we recommend trying out the Jupyter notebook demo.
 To run the Jupyter notebook, run the following command from
-`tensorflow/models/object_detection`:
+`tensorflow/models/research/object_detection`:
 
 ```
-# From tensorflow/models/object_detection
+# From tensorflow/models/research/object_detection
 jupyter notebook
 ```
 

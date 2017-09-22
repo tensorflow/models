@@ -94,7 +94,7 @@ definition as one example. Some remarks:
 
 * We typically initialize the weights of this feature extractor
   using those from the
-  [Slim Resnet-101 classification checkpoint](https://github.com/tensorflow/models/tree/master/slim#pre-trained-models),
+  [Slim Resnet-101 classification checkpoint](https://github.com/tensorflow/models/tree/master/research/slim#pre-trained-models),
   and we know
   that images were preprocessed when training this checkpoint
   by subtracting a channel mean from each input
