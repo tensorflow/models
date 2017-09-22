@@ -79,11 +79,11 @@ def create_readable_names_for_imagenet_labels():
   (since 0 is reserved for the background class).
 
   Code is based on
-  https://github.com/tensorflow/models/blob/master/inception/inception/data/build_imagenet_data.py#L463
+  https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_imagenet_data.py#L463
   """
 
   # pylint: disable=g-line-too-long
-  base_url = 'https://raw.githubusercontent.com/tensorflow/models/master/inception/inception/data/'
+  base_url = 'https://raw.githubusercontent.com/tensorflow/models/master/research/inception/inception/data/'
   synset_url = '{}/imagenet_lsvrc_2015_synsets.txt'.format(base_url)
   synset_to_human_url = '{}/imagenet_metadata.txt'.format(base_url)
 
