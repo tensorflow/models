@@ -49,9 +49,14 @@ import cifar10_input
 parser = argparse.ArgumentParser()
 
 # Basic model parameters.
-parser.add_argument('--batch_size', type=int, default=128, help='Number of images to process in a batch.')
-parser.add_argument('--data_dir', type=str, default='/tmp/cifar10_data', help='Path to the CIFAR-10 data directory.')
-parser.add_argument('--use_fp16', type=bool, default=False, help='Train the model using fp16.')
+parser.add_argument('--batch_size', type=int, default=128,
+                    help='Number of images to process in a batch.')
+
+parser.add_argument('--data_dir', type=str, default='/tmp/cifar10_data',
+                    help='Path to the CIFAR-10 data directory.')
+
+parser.add_argument('--use_fp16', type=bool, default=False,
+                    help='Train the model using fp16.')
 
 FLAGS = parser.parse_args()
 # Global constants describing the CIFAR-10 data set.
