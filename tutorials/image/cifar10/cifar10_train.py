@@ -99,7 +99,6 @@ def train():
           self._start_time = current_time
 
           loss_value = run_values.results
-          # error on next line
           examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
           sec_per_batch = float(duration / FLAGS.log_frequency)
 
