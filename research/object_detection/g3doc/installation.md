@@ -45,11 +45,11 @@ sudo pip install matplotlib
 The Tensorflow Object Detection API uses Protobufs to configure model and
 training parameters. Before the framework can be used, the Protobuf libraries
 must be compiled. This should be done by running the following command from
-the tensorflow/models directory:
+the tensorflow/models/research directory:
 
 
 ``` bash
-# From tensorflow/models/
+# From tensorflow/models/research
 protoc object_detection/protos/*.proto --python_out=.
 ```
 
