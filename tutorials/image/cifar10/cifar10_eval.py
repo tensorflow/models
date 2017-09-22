@@ -44,7 +44,7 @@ import tensorflow as tf
 
 import cifar10
 
-parser = argparse.ArgumentParser()
+parser = cifar10.parser
 
 parser.add_argument('--eval_dir', type=str, default='/tmp/cifar10_eval', help='Directory where to write event logs.')
 

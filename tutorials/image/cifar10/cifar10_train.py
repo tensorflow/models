@@ -43,7 +43,6 @@ import time
 import tensorflow as tf
 
 import cifar10
-from cifar10 import FLAGS
 
 parser = cifar10.parser
 

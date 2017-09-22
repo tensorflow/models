@@ -50,7 +50,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 import cifar10
 
-parser = argparse.ArgumentParser()
+parser = cifar10.parser
 
 parser.add_argument('--train_dir', type=str, default='/tmp/cifar10_train', help='Directory where to write event logs and checkpoint.')
 
