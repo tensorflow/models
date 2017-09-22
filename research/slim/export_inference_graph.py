@@ -16,8 +16,8 @@ r"""Saves out a GraphDef containing the architecture of the model.
 
 To use it, run something like this, with a model name defined by slim:
 
-bazel build tensorflow_models/slim:export_inference_graph
-bazel-bin/tensorflow_models/slim/export_inference_graph \
+bazel build tensorflow_models/research/slim:export_inference_graph
+bazel-bin/tensorflow_models/research/slim/export_inference_graph \
 --model_name=inception_v3 --output_file=/tmp/inception_v3_inf_graph.pb
 
 If you then want to use the resulting model with your own or pretrained

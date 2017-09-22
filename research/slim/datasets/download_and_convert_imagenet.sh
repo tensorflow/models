@@ -58,7 +58,7 @@ DATA_DIR="${1%/}"
 SCRATCH_DIR="${DATA_DIR}/raw-data/"
 mkdir -p "${DATA_DIR}"
 mkdir -p "${SCRATCH_DIR}"
-WORK_DIR="$0.runfiles/third_party/tensorflow_models/slim"
+WORK_DIR="$0.runfiles/third_party/tensorflow_models/research/slim"
 
 # Download the ImageNet data.
 LABELS_FILE="${WORK_DIR}/datasets/imagenet_lsvrc_2015_synsets.txt"

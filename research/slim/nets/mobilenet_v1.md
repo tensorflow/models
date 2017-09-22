@@ -42,6 +42,6 @@ $ tar -xvf mobilenet_v1_1.0_224_2017_06_14.tar.gz
 $ mv mobilenet_v1_1.0_224.ckpt.* ${CHECKPOINT_DIR}
 $ rm mobilenet_v1_1.0_224_2017_06_14.tar.gz
 ```
-More information on integrating MobileNets into your project can be found at the [TF-Slim Image Classification Library](https://github.com/tensorflow/models/blob/master/slim/README.md).
+More information on integrating MobileNets into your project can be found at the [TF-Slim Image Classification Library](https://github.com/tensorflow/models/blob/master/research/slim/README.md).
 
 To get started running models on-device go to [TensorFlow Mobile](https://www.tensorflow.org/mobile/).
