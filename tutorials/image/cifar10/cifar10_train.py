@@ -43,8 +43,9 @@ import time
 import tensorflow as tf
 
 import cifar10
+from cifar10 import FLAGS
 
-parser = argparse.ArgumentParser()
+parser = cifar10.parser
 
 parser.add_argument('--train_dir', type=str, default='/tmp/cifar10_train', help='Directory where to write event logs and checkpoint.')
 
@@ -95,6 +96,7 @@ def train():
           self._start_time = current_time
 
           loss_value = run_values.results
+          # error on next line
           examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
           sec_per_batch = float(duration / FLAGS.log_frequency)
 
@@ -124,4 +126,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 if __name__ == '__main__':
   FLAGS = parser.parse_args()
+  # for arg in vars(FLAGS):
+  #    print(arg, getattr(FLAGS, arg))
   tf.app.run()
