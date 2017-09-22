@@ -45,7 +45,7 @@ class Dataset(object):
 
   def __init__(self, name, subset):
     """Initialize dataset using a subset and the path to the data."""
-    assert subset in self.available_subsets(), self.available_subsets()
+    assert subset in self.available_subsets()
     self.name = name
     self.subset = subset
 
