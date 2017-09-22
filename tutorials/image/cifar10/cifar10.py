@@ -35,12 +35,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import os
 import re
 import sys
 import tarfile
 
-import argparse
 from six.moves import urllib
 import tensorflow as tf
 
@@ -59,6 +59,7 @@ parser.add_argument('--use_fp16', type=bool, default=False,
                     help='Train the model using fp16.')
 
 FLAGS = parser.parse_args()
+
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
 NUM_CLASSES = cifar10_input.NUM_CLASSES
