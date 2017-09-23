@@ -67,7 +67,7 @@ git clone https://github.com/tensorflow/models/
 
 This will put the TF-Slim image models library in `$HOME/workspace/models/research/slim`.
 (It will also create a directory called
-[models/inception](https://github.com/tensorflow/models/tree/master/inception),
+[models/inception](https://github.com/tensorflow/models/tree/master/research/inception),
 which contains an older version of slim; you can safely ignore this.)
 
 To verify that this has worked, execute the following commands; it should run
@@ -127,7 +127,7 @@ from integer labels to class names.
 
 You can use the same script to create the mnist and cifar10 datasets.
 However, for ImageNet, you have to follow the instructions
-[here](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started).
+[here](https://github.com/tensorflow/models/blob/master/research/inception/README.md#getting-started).
 Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and could use up to 500GB.
 
@@ -464,17 +464,17 @@ bazel-bin/tensorflow/examples/label_image/label_image \
 #### The model runs out of CPU memory.
 
 See
-[Model Runs out of CPU memory](https://github.com/tensorflow/models/tree/master/inception#the-model-runs-out-of-cpu-memory).
+[Model Runs out of CPU memory](https://github.com/tensorflow/models/tree/master/research/inception#the-model-runs-out-of-cpu-memory).
 
 #### The model runs out of GPU memory.
 
 See
-[Adjusting Memory Demands](https://github.com/tensorflow/models/tree/master/inception#adjusting-memory-demands).
+[Adjusting Memory Demands](https://github.com/tensorflow/models/tree/master/research/inception#adjusting-memory-demands).
 
 #### The model training results in NaN's.
 
 See
-[Model Resulting in NaNs](https://github.com/tensorflow/models/tree/master/inception#the-model-training-results-in-nans).
+[Model Resulting in NaNs](https://github.com/tensorflow/models/tree/master/research/inception#the-model-training-results-in-nans).
 
 #### The ResNet and VGG Models have 1000 classes but the ImageNet dataset has 1001
 
@@ -509,4 +509,4 @@ image_preprocessing_fn = preprocessing_factory.get_preprocessing(
 #### What hardware specification are these hyper-parameters targeted for?
 
 See
-[Hardware Specifications](https://github.com/tensorflow/models/tree/master/inception#what-hardware-specification-are-these-hyper-parameters-targeted-for).
+[Hardware Specifications](https://github.com/tensorflow/models/tree/master/research/inception#what-hardware-specification-are-these-hyper-parameters-targeted-for).

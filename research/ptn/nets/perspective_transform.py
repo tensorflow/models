@@ -26,7 +26,7 @@ https://papers.nips.cc/paper/6206-perspective-transformer-nets-learning-single-v
 (2) Official implementation in Torch: https://github.com/xcyan/ptnbhwd
 
 (3) 2D Transformer implementation in TF:
-github.com/tensorflow/models/tree/master/transformer
+github.com/tensorflow/models/tree/master/research/transformer
 
 """
 

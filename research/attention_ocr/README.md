@@ -43,7 +43,7 @@ cd ..
 4. `train.py` works with both CPU and GPU, though using GPU is preferable. It has been tested with a Titan X and with a GTX980.
 
 [TF]: https://www.tensorflow.org/install/
-[FSNS]: https://github.com/tensorflow/models/tree/master/street
+[FSNS]: https://github.com/tensorflow/models/tree/master/research/street
 
 ## How to use this code
 
@@ -81,7 +81,7 @@ python train.py --checkpoint=model.ckpt-399731
 You need to define a new dataset. There are two options:
 
 1. Store data in the same format as the FSNS dataset and just reuse the
-[python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/datasets/fsns.py)
+[python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/datasets/fsns.py)
 module. E.g., create a file datasets/newtextdataset.py:
 ```
 import fsns
@@ -151,8 +151,8 @@ To learn how to store a data in the FSNS
 - labels: ground truth label ids,  shape=[batch_size x seq_length];
 - labels_one_hot: labels in one-hot encoding,  shape [batch_size x seq_length x num_char_classes];
 
-Refer to [python/data_provider.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/data_provider.py#L33)
-for more details. You can use [python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/attention_ocr/python/datasets/fsns.py)
+Refer to [python/data_provider.py](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/data_provider.py#L33)
+for more details. You can use [python/datasets/fsns.py](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/datasets/fsns.py)
 as the example.
 
 ## How to use a pre-trained model
@@ -164,14 +164,14 @@ The recommended way is to use the [Serving infrastructure][serving].
 
 Alternatively you can:
 1. define a placeholder for images (or use directly an numpy array)
-2. [create a graph ](https://github.com/tensorflow/models/blob/master/attention_ocr/python/eval.py#L60)
+2. [create a graph ](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/eval.py#L60)
 ```
 endpoints = model.create_base(images_placeholder, labels_one_hot=None)
 ```
-3. [load a pretrained model](https://github.com/tensorflow/models/blob/master/attention_ocr/python/model.py#L494)
+3. [load a pretrained model](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/model.py#L494)
 4. run computations through the graph:
 ```
-predictions = sess.run(endpoints.predicted_chars, 
+predictions = sess.run(endpoints.predicted_chars,
                        feed_dict={images_placeholder:images_actual_data})
 ```
 5. Convert character IDs (predictions) to UTF8 using the provided charset file.

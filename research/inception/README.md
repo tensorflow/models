@@ -1,4 +1,4 @@
-**NOTE**: For the most part, you will find a newer version of this code at [models/slim](https://github.com/tensorflow/models/tree/master/slim). In particular:
+**NOTE**: For the most part, you will find a newer version of this code at [models/research/slim](https://github.com/tensorflow/models/tree/master/research/slim). In particular:
 
 *   `inception_train.py` and `imagenet_train.py` should no longer be used. The slim editions for running on multiple GPUs are the current best examples.
 *   `inception_distributed_train.py` and `imagenet_distributed_train.py` are still valid examples of distributed training.
