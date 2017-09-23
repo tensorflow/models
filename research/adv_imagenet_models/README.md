@@ -17,7 +17,7 @@ Ensure that you have installed TensorFlow 1.1 or greater
 
 You also need copy of ImageNet dataset if you want to run provided example.
 Follow
-[Preparing the dataset](https://github.com/tensorflow/models/tree/master/slim#Data)
+[Preparing the dataset](https://github.com/tensorflow/models/tree/master/research/slim#Data)
 instructions in TF-Slim library to get and preprocess ImageNet data.
 
 ## Available models
@@ -32,7 +32,7 @@ Inception v3 | Step L.L. on ensemble of 4 models| [ens4_adv_inception_v3_2017_08
 Inception ResNet v2 | Step L.L. on ensemble of 3 models | [ens_adv_inception_resnet_v2_2017_08_18.tar.gz](http://download.tensorflow.org/models/ens_adv_inception_resnet_v2_2017_08_18.tar.gz)
 
 All checkpoints are compatible with
-[TF-Slim](https://github.com/tensorflow/models/tree/master/slim)
+[TF-Slim](https://github.com/tensorflow/models/tree/master/research/slim)
 implementation of Inception v3 and Inception Resnet v2.
 
 ## How to evaluate models on ImageNet test data

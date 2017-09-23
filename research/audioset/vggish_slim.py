@@ -27,7 +27,7 @@ hyperparameter values (in vggish_params.py) that were used to train this model
 internally.
 
 For comparison, here is TF-Slim's VGG definition:
-https://github.com/tensorflow/models/blob/master/slim/nets/vgg.py
+https://github.com/tensorflow/models/blob/master/research/slim/nets/vgg.py
 """
 
 import tensorflow as tf

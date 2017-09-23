@@ -19,7 +19,7 @@ languages.
 This repository is largely divided into two sub-packages:
 
 1.  **DRAGNN:
-    [code](https://github.com/tensorflow/models/tree/master/syntaxnet/dragnn),
+    [code](https://github.com/tensorflow/models/tree/master/research/syntaxnet/dragnn),
     [documentation](g3doc/DRAGNN.md),
     [paper](https://arxiv.org/pdf/1703.04474.pdf)** implements Dynamic Recurrent
     Acyclic Graphical Neural Networks (DRAGNN), a framework for building
@@ -31,7 +31,7 @@ This repository is largely divided into two sub-packages:
     easier to use than the original SyntaxNet implementation.*
 
 1.  **SyntaxNet:
-    [code](https://github.com/tensorflow/models/tree/master/syntaxnet/syntaxnet),
+    [code](https://github.com/tensorflow/models/tree/master/research/syntaxnet/syntaxnet),
     [documentation](g3doc/syntaxnet-tutorial.md)** is a transition-based
     framework for natural language processing, with core functionality for
     feature extraction, representing annotated data, and evaluation. As of the
@@ -95,7 +95,7 @@ following commands:
 
 ```shell
   git clone --recursive https://github.com/tensorflow/models.git
-  cd models/syntaxnet/tensorflow
+  cd models/research/syntaxnet/tensorflow
   ./configure
   cd ..
   bazel test ...
