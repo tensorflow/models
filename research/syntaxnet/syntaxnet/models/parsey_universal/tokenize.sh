@@ -9,7 +9,7 @@
 # Models can be downloaded from
 #  http://download.tensorflow.org/models/parsey_universal/<language>.zip
 # for the languages listed at
-#  https://github.com/tensorflow/models/blob/master/syntaxnet/universal.md
+#  https://github.com/tensorflow/models/blob/master/research/syntaxnet/universal.md
 #
 
 PARSER_EVAL=bazel-bin/syntaxnet/parser_eval

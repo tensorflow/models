@@ -168,10 +168,10 @@ The *Show and Tell* model requires a pretrained *Inception v3* checkpoint file
 to initialize the parameters of its image encoder submodel.
 
 This checkpoint file is provided by the
-[TensorFlow-Slim image classification library](https://github.com/tensorflow/models/tree/master/slim#tensorflow-slim-image-classification-library)
+[TensorFlow-Slim image classification library](https://github.com/tensorflow/models/tree/master/research/slim#tensorflow-slim-image-classification-library)
 which provides a suite of pre-trained image classification models. You can read
 more about the models provided by the library
-[here](https://github.com/tensorflow/models/tree/master/slim#pre-trained-models).
+[here](https://github.com/tensorflow/models/tree/master/research/slim#pre-trained-models).
 
 
 Run the following commands to download the *Inception v3* checkpoint.
