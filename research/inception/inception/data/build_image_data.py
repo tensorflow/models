@@ -183,7 +183,7 @@ def _is_png(filename):
   Returns:
     boolean indicating if the image is a PNG.
   """
-  return '.png' in filename
+  return filename.endswith('.png')
 
 
 def _process_image(filename, coder):
