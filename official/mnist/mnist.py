@@ -65,7 +65,7 @@ def input_fn(mode, batch_size=1):
     tfrecords_file = os.path.join(FLAGS.data_dir, 'test.tfrecords')
 
   assert tf.gfile.Exists(tfrecords_file), ('Run convert_to_records.py first to '
-  'convert the MNIST data to TFRecord file format.')
+      'convert the MNIST data to TFRecord file format.')
 
   dataset = tf.contrib.data.TFRecordDataset([tfrecords_file])
 
