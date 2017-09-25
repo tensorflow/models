@@ -64,8 +64,8 @@ def input_fn(mode, batch_size=1):
     assert mode == tf.estimator.ModeKeys.EVAL, 'invalid mode'
     tfrecords_file = os.path.join(FLAGS.data_dir, 'test.tfrecords')
 
-  assert os.path.exists(tfrecords_file), ('Run convert_to_records.py first to '
-  'convert the MNIST data to TFRecord file format.')
+  assert tf.gfile.Exists(tfrecords_file), ('Run convert_to_records.py first to '
+      'convert the MNIST data to TFRecord file format.')
 
   dataset = tf.contrib.data.TFRecordDataset([tfrecords_file])
 
