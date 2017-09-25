@@ -19,6 +19,7 @@ package_group(
         "//image/understanding/object_detection/...",
         "//knowledge/cerebra/imresearch/deep_upsampling/...",
         "//knowledge/cerebra/sense/im2query/...",
+        "//knowledge/cerebra/spacepark/...",
         "//learning/biotensorflow/...",
         "//learning/brain/contrib/hub/examples/slim_nets/...",
         "//learning/brain/contrib/slim/...",
