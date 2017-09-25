@@ -119,7 +119,7 @@ class ResNet(object):
 
     with tf.variable_scope('costs'):
       xent = tf.nn.softmax_cross_entropy_with_logits(
-          logits=logits, labels=self.labels)
+          logits=self.predictions, labels=self.labels)
       self.cost = tf.reduce_mean(xent, name='xent')
       self.cost += self._decay()
 
