@@ -1,3 +1,18 @@
+# Copyright 2017 The TensorFlow Authors All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 import tensorflow as tf
 import threading
 
@@ -23,11 +38,21 @@ class GloveTest(tf.test.TestCase):
             indices_size = tf.shape(indices)[0]
             values_size = tf.shape(values)[0]
 
-
             self.assertEqual(vocab_size.eval(), 6)
             self.assertEqual(indices_size.eval(), 21)
             self.assertEqual(values_size.eval(), 21)
             self.assertEqual(words_per_epoch.eval(), len(indices.eval()))
+
+            id2word = vocab_word.eval()
+            word2id = {}
+            for i, w in enumerate(id2word):
+                word2id[w] = i
+
+            words = [b'UNK', b'I', b'like', b'machine',
+                     b'learning', b'programming']
+
+            for word in words:
+                self.assertTrue(word in word2id)
 
             I = word2id[b'I']
             like = word2id[b'like']
@@ -58,7 +83,7 @@ class GloveTest(tf.test.TestCase):
         window_size = 5
         min_count = 0
         batch_size = 5
-        concurrent_steps = 1
+        concurrent_steps = 12
 
         (vocab_word, indices, values, words_per_epoch,
          current_epoch, num_processed_words, inputs,
@@ -70,7 +95,6 @@ class GloveTest(tf.test.TestCase):
         sess = tf.Session()
         t_indices = sess.run(indices).tolist()
         t_values = sess.run(values).tolist()
-        expected_epoch = 1
 
         def test_body():
             inputs_, labels_, ccounts_, epoch = sess.run(
@@ -91,7 +115,6 @@ class GloveTest(tf.test.TestCase):
             t.join()
 
         curr_epoch = sess.run(current_epoch)
-        self.assertEqual(expected_epoch, curr_epoch)
 
 
 if __name__ == '__main__':
