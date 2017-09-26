@@ -34,7 +34,7 @@ echo -e "Testing all models\n"
 # Install coverage
 pip install coverage
 
-for test_file in `find . -name *_test.py -print`; do
+for test_file in `find official -name *_test.py -print`; do
   echo "Running $test_file."
   coverage run $test_file
   test_status=$?
