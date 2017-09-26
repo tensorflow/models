@@ -44,7 +44,7 @@ else
 fi
 
 # Specify which test is to be run
-COMMAND="./testing/test_models.sh"
+COMMAND="./official/testing/test_models.sh"
 
 # RUN
 ${DOCKER_BINARY} run \
