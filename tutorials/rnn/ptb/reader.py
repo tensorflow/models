@@ -25,10 +25,11 @@ import sys
 
 import tensorflow as tf
 
+Py3 = sys.version_info[0] == 3
 
 def _read_words(filename):
   with tf.gfile.GFile(filename, "r") as f:
-    if sys.version_info[0] >= 3:
+    if Py3:
       return f.read().replace("\n", "<eos>").split()
     else:
       return f.read().decode("utf-8").replace("\n", "<eos>").split()
