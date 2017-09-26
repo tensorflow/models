@@ -305,6 +305,25 @@ py_test(
 )
 
 py_library(
+    name = "dcgan",
+    srcs = ["nets/dcgan.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "dcgan_test",
+    srcs = ["nets/dcgan_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":dcgan",
+        "//tensorflow",
+    ],
+)
+
+py_library(
     name = "inception",
     srcs = ["nets/inception.py"],
     srcs_version = "PY2AND3",
