@@ -87,7 +87,6 @@ class GloveModelOp : public WordEmbeddingModel {
     ctx->set_output(8, ccounts);
   }
 
-
   private:
    struct Example {
      int32 input;
@@ -98,11 +97,11 @@ class GloveModelOp : public WordEmbeddingModel {
    Tensor indices_;
    Tensor values_;
 
-   typedef std::pair<int32, int32> CooccurIndices;
+   typedef std::pair<int32, int32> CoOccurIndex;
 
    uint64 example_pos_ GUARDED_BY(mu_) = 0;
    int precalc_index_ GUARDED_BY(mu_);
-   std::vector<CooccurIndices> valid_indices GUARDED_BY(mu_);
+   std::vector<CoOccurIndex> valid_indices GUARDED_BY(mu_);
    std::vector<float> valid_values GUARDED_BY(mu_);
    std::vector<Example> precalc_examples_ GUARDED_BY(mu_);
 
@@ -131,8 +130,8 @@ class GloveModelOp : public WordEmbeddingModel {
 
    }
 
-   void CreateCoocurrences() {
-    std::unordered_map<uint64, float> coocurrences_;
+   void CreateCoOcurrences() {
+    std::unordered_map<uint64, float> co_ocurrences_;
     uint64 center_word, context_word, start_index, end_index, dist;
     uint64 index = 0;
     uint64 size = static_cast<uint64>(corpus_.size());
@@ -149,14 +148,14 @@ class GloveModelOp : public WordEmbeddingModel {
         context_word = corpus_[j];
         index = static_cast<uint64>(center_word * vocab_size_ + context_word);
         dist = (j - i) > 0? (j - i) : (j - i) * -1;
-        auto actual_value = coocurrences_.find(index);
+        auto actual_value = co_ocurrences_.find(index);
 
-        if (actual_value == coocurrences_.end()) {
-          valid_indices.push_back(CooccurIndices(corpus_[i], corpus_[j]));
-          coocurrences_[index] = 0;
+        if (actual_value == co_ocurrences_.end()) {
+          valid_indices.push_back(CoOccurIndex(corpus_[i], corpus_[j]));
+          co_ocurrences_[index] = 0;
         }
 
-        coocurrences_[index] += (1.0 / dist);
+        co_ocurrences_[index] += (1.0 / dist);
 
       }
 
@@ -173,8 +172,8 @@ class GloveModelOp : public WordEmbeddingModel {
 
       indices.matrix<int64>()(i, 0) = center_word;
       indices.matrix<int64>()(i, 1) = context_word;
-      values.flat<float>()(i) = coocurrences_[index];
-      valid_values.push_back(coocurrences_[index]);
+      values.flat<float>()(i) = co_ocurrences_[index];
+      valid_values.push_back(co_ocurrences_[index]);
     }
 
     indices_ = indices;
@@ -184,7 +183,7 @@ class GloveModelOp : public WordEmbeddingModel {
 
    Status Init(Env *env, const string& filename) {
     WordEmbeddingModel::Init(env, filename);
-    CreateCoocurrences();
+    CreateCoOcurrences();
     precalc_examples_.resize(num_precalc_examples);
 
     return Status::OK();

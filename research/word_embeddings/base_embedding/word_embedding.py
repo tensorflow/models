@@ -27,6 +27,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import numpy as np
 import tensorflow as tf
 
+
 flags = tf.app.flags
 
 flags.DEFINE_string("save_path", None, "Directory to write the model and "
@@ -124,7 +125,38 @@ class Options(object):
 
 
 class WordEmbedding(object):
-    """WordEmbedding model (Skipgram)."""
+    """
+    This class provides a base class for Word Embedding models. It has methods
+    to read question words to evaluate the model, an evaluation graph to run the
+    evaluations for the model and a train method, used to concurrently train the
+    model.
+
+    This class is based on the implementation of the SkipGram Word2Vec model
+    found on tutorials/embeddings/word2vec.py.
+
+    Every model that extends this class must implement the methods:
+
+    def forward(self, examples, labels, **kwargs)
+
+        Defines the forward pass for your model.
+
+    def loss(self, **kwargs):
+
+        Defines the loss function for your model.
+        This function also needs to set the self._loss variable with the output
+        of the loss function.
+
+    def optimize(self, loss):
+
+        Defines the training strategy for your model.
+        This function also needs to set the self._train and self._lr variables with the
+        function used to optimize the loss function and the learning rate.
+
+    def build_graph(self):
+        Create the computation graph of the model
+
+    For an example of how this class is used, you can look at glove/glove.py file.
+    """
 
     def __init__(self, options, session):
         self._options = options
@@ -343,7 +375,7 @@ class WordEmbedding(object):
     def forward(self, examples, labels, **kwargs):
         raise NotImplementedError
 
-    def loss(self):
+    def loss(self, **kwargs):
         raise NotImplementedError
 
     def optimize(self, loss):

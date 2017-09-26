@@ -20,12 +20,12 @@ limitations under the License.
 #include "tensorflow/core/lib/gtl/map_util.h"
 
 /*
- * This class add basic functions for other word embedding implementations. It
+ * This class adds basic functions for parsing a text corpus. It
  * is based on the implementation of the SkipGram Word2Vec model found on the
  * tutorials/embeddings/word2vec_kernels.cc.
  *
- * This class has the methods to create the vocabulary, word frequencies and
- * word2id dictionary.
+ * This class has the methods to create the vocabulary, word frequencies count and
+ * to create an word to id dictionary.
  */
 
 namespace tensorflow {

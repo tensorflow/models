@@ -26,7 +26,7 @@ REGISTER_OP("GloveModel")
     .Output("total_words_processed: int64")
     .Output("examples: int32")
     .Output("labels: int32")
-    .Output("ccount: float")
+    .Output("ccounts: float")
     .SetIsStateful()
     .Attr("filename: string")
     .Attr("batch_size: int")
@@ -34,13 +34,25 @@ REGISTER_OP("GloveModel")
     .Attr("min_count: int = 0")
     .Doc(R"doc(
 Parses a text file and creates the coocurrence matrix and batches
-of examples necessary to train a GloVe model.
+of examples necessary to train the GloVe model.
 
 vocab_words: A vector of words in the corpus.
-indices: A vector of non zero indices that contain a coocurrence for
-the corpus.
+indices: A vector of indices that contain a coocurrence for
+    the corpus.
 values: A vector of values for each index in indices, indicating the coocurrence
-value between two words.
+    value between two words.
+words_per_epoch: Number of words per epoch in the data file.
+current_epoch: The current epoch.
+total_words_processed: The total number of words processed so far.
+examples: A vector of word ids.
+labels: A vector of word ids.
+ccounts: A vector of co-ocurrence values between each word pair
+    in examples and labels.
+filename: The corpus's text file name.
+batch_size: The size of produced batch.
+window_size: The number of words to predict to the left and right of the target.
+min_count: The minimum number of word occurrences for it to be included in the
+    vocabulary.
 )doc");
 
 } // end namespace tensorflow

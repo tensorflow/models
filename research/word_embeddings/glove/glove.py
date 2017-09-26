@@ -17,7 +17,7 @@ import os
 import sys
 
 # Allow for base embeddings to be imported
-sys.path.insert(0, '../')
+sys.path.insert(0, '../')  # noqa
 
 import tensorflow as tf
 from base_embedding.word_embedding import WordEmbedding, flags, run_model, Options
@@ -40,7 +40,7 @@ class GloVeOptions(Options):
         # Exponent term for weighting function
         self.alpha = user_flags.alpha
 
-        super().__init__(user_flags)
+        super(GloVeOptions, self).__init__(user_flags)
 
 
 class GloVe(WordEmbedding):
