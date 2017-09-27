@@ -23,7 +23,7 @@
 #                  will be used.
 #
 
-
+# TESTING THE CI SETUP
 # SETUP
 # Default exit status
 EXIT=0
