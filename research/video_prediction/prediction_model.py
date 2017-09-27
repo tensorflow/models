@@ -19,14 +19,116 @@ import numpy as np
 import tensorflow as tf
 
 import tensorflow.contrib.slim as slim
+from tensorflow.python.platform import flags
 from tensorflow.contrib.layers.python import layers as tf_layers
 from lstm_ops import basic_conv_lstm_cell
+
+FLAGS = flags.FLAGS
 
 # Amount to use when lower bounding tensors
 RELU_SHIFT = 1e-12
 
 # kernel size for DNA and CDNA.
 DNA_KERN_SIZE = 5
+
+
+def kl_divergence(mu, log_sigma):
+  """KL divergence of diagonal gaussian N(mu,exp(log_sigma)) and N(0,1).
+
+  Args:
+    mu: mu parameter of the distribution.
+    log_sigma: log(sigma) parameter of the distribution.
+  Returns:
+    the KL loss.
+  """
+
+  return -.5 * tf.reduce_sum(1. + log_sigma - tf.square(mu) - tf.exp(log_sigma),
+                             axis=1)
+
+
+def construct_latent_tower(images):
+  """Builds convolutional latent tower for stochastic model.
+
+  At training time this tower generates a latent distribution (mean and std)
+  conditioned on the entire video. This latent variable will be fed to the
+  main tower as an extra variable to be used for future frames prediction.
+  At inference time, the tower is disabled and only returns latents sampled
+  from N(0,1).
+  If the multi_latent flag is on, a different latent for every timestep would
+  be generated.
+
+  Args:
+    images: tensor of ground truth image sequences
+  Returns:
+    latent_mean: predicted latent mean
+    latent_std: predicted latent standard deviation
+    latent_loss: loss of the latent twoer
+    samples: random samples sampled from standard guassian
+  """
+
+  with slim.arg_scope([slim.conv2d], reuse=False):
+    stacked_images = tf.concat(images, 3)
+
+    latent_enc1 = slim.conv2d(
+        stacked_images,
+        32, [3, 3],
+        stride=2,
+        scope='latent_conv1',
+        normalizer_fn=tf_layers.layer_norm,
+        normalizer_params={'scope': 'latent_norm1'})
+
+    latent_enc2 = slim.conv2d(
+        latent_enc1,
+        64, [3, 3],
+        stride=2,
+        scope='latent_conv2',
+        normalizer_fn=tf_layers.layer_norm,
+        normalizer_params={'scope': 'latent_norm2'})
+
+    latent_enc3 = slim.conv2d(
+        latent_enc2,
+        64, [3, 3],
+        stride=1,
+        scope='latent_conv3',
+        normalizer_fn=tf_layers.layer_norm,
+        normalizer_params={'scope': 'latent_norm3'})
+
+    latent_mean = slim.conv2d(
+        latent_enc3,
+        FLAGS.latent_channels, [3, 3],
+        stride=2,
+        activation_fn=None,
+        scope='latent_mean',
+        normalizer_fn=tf_layers.layer_norm,
+        normalizer_params={'scope': 'latent_norm_mean'})
+
+    latent_std = slim.conv2d(
+        latent_enc3,
+        FLAGS.latent_channels, [3, 3],
+        stride=2,
+        scope='latent_std',
+        normalizer_fn=tf_layers.layer_norm,
+        normalizer_params={'scope': 'latent_std_norm'})
+
+    latent_std += FLAGS.latent_std_min
+
+    divergence = kl_divergence(latent_mean, latent_std)
+    latent_loss = tf.reduce_mean(divergence)
+
+  if FLAGS.multi_latent:
+    # timestep x batch_size x latent_size
+    samples = tf.random_normal(
+        [FLAGS.sequence_length-1] + latent_mean.shape, 0, 1,
+        dtype=tf.float32)
+  else:
+    # batch_size x latent_size
+    samples = tf.random_normal(latent_mean.shape, 0, 1, dtype=tf.float32)
+
+  if FLAGS.inference_time:
+    # No latent tower at inference time, just standard gaussian.
+    return None, None, None, samples
+  else:
+    return latent_mean, latent_std, latent_loss, samples
 
 
 def construct_model(images,
@@ -87,6 +189,13 @@ def construct_model(images,
   lstm_state1, lstm_state2, lstm_state3, lstm_state4 = None, None, None, None
   lstm_state5, lstm_state6, lstm_state7 = None, None, None
 
+  # Latent tower
+  latent_loss = 0.0
+  if FLAGS.stochastic_model:
+    latent_tower_outputs = construct_latent_tower(images)
+    latent_mean, latent_std, latent_loss, samples = latent_tower_outputs
+
+  # Main tower    
   for image, action in zip(images[:-1], actions[:-1]):
     # Reuse variables after the first timestep.
     reuse = bool(gen_images)
@@ -145,6 +254,17 @@ def construct_model(images,
           smear, [1, int(enc2.get_shape()[1]), int(enc2.get_shape()[2]), 1])
       if use_state:
         enc2 = tf.concat(axis=3, values=[enc2, smear])
+        
+      # Setup latent
+      if FLAGS.stochastic_model:
+        latent = samples
+        if FLAGS.multi_latent:
+          latent = samples[timestep]
+        if not FLAGS.inference_time:
+          latent = latent_mean + tf.exp(latent_std / 2.0) * latent
+        with tf.control_dependencies([latent]):
+          enc2 = tf.concat([enc2, latent], 3)
+        
       enc3 = slim.layers.conv2d(
           enc2, hidden4.get_shape()[3], [1, 1], stride=1, scope='conv4')
 
@@ -220,7 +340,7 @@ def construct_model(images,
           activation_fn=None)
       gen_states.append(current_state)
 
-  return gen_images, gen_states
+  return gen_images, gen_states, latent_loss
 
 
 ## Utility functions

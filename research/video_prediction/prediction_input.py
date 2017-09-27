@@ -26,24 +26,101 @@ from tensorflow.python.platform import gfile
 
 FLAGS = flags.FLAGS
 
-# Original image dimensions
-ORIGINAL_WIDTH = 640
-ORIGINAL_HEIGHT = 512
-COLOR_CHAN = 3
-
 # Default image dimensions.
+COLOR_CHAN = 3
 IMG_WIDTH = 64
 IMG_HEIGHT = 64
 
-# Dimension of the state and action.
-STATE_DIM = 5
+
+def decode_raw_image(image):
+  """Docodes raw images.
+
+  Args:
+    image: image to decode. A Tensor of type string that includes image Bytes.
+  Returns:
+    decoded image.
+  """
+
+  image = tf.decode_raw(image, tf.uint8)
+  image = tf.reshape(image, [IMG_HEIGHT, IMG_WIDTH, COLOR_CHAN])
+  return image
 
 
-def build_tfrecord_input(training=True):
+def decode_jpeg_image(image):
+  """Docodes jpeg images.
+
+  Args:
+    image: image to decode. A Tensor of type string that includes image Bytes.
+  Returns:
+    decoded image.
+  """
+
+  image_buffer = tf.reshape(image, shape=[])
+  image = tf.image.decode_jpeg(image_buffer, channels=COLOR_CHAN)
+  return image
+
+
+def get_google_format():
+  """Creates a configuration for images saved in Google format.
+
+  Returns:
+    the configuration.
+  """
+  config = {}
+  config['image_name'] = 'move/{}/image/encoded'
+  config['state_name'] = 'move/{}/endeffector/vec_pitch_yaw'
+  config['action_name'] = 'move/{}/commanded_pose/vec_pitch_yaw'
+  config['state_dim'] = 5
+  config['action_dim'] = 5
+  config['original_width'] = 640
+  config['original_height'] = 512
+  config['original_channel'] = 3
+  config['image_decoder'] = decode_jpeg_image
+  return config
+
+
+def get_berkeley_format():
+  """Creates a configuration for images saved in Berkeley format.
+
+  Returns:
+    the configuration.
+  """
+  config = {}
+  config['image_name'] = '{}/image_aux1/encoded'
+  config['state_name'] = '{}/endeffector_pos'
+  config['action_name'] = '{}/action'
+  config['state_dim'] = 3
+  config['action_dim'] = 4
+  config['original_width'] = 64
+  config['original_height'] = 64
+  config['original_channel'] = 3
+  config['image_decoder'] = decode_raw_image
+  return config
+
+
+def get_tfrecord_format(tfrecord_format):
+  """Returns the correct config for TF records.
+
+  Args:
+    tfrecord_format: ID of the tfrecord format.
+  Returns:
+    TFRecord format.
+  Raises:
+    RuntimeError: if the format ID is unknown.
+  """
+  if tfrecord_format == 0:
+    return get_google_format()
+  if tfrecord_format == 1:
+    return get_berkeley_format()
+  raise RuntimeError('Unknown TFRecored format.')
+
+
+def build_tfrecord_input(training=True, tfrecord_format=0):
   """Create input tfrecord tensors.
 
   Args:
     training: training or validation data.
+    tfrecord_format: the format of the data.
   Returns:
     list of tensors corresponding to images, actions, and states. The images
     tensor is 5D, batch x time x height x width x channels. The state and
@@ -65,36 +142,47 @@ def build_tfrecord_input(training=True):
 
   image_seq, state_seq, action_seq = [], [], []
 
+  # get data format
+  df = get_tfrecord_format(tfrecord_format)
+
   for i in range(FLAGS.sequence_length):
-    image_name = 'move/' + str(i) + '/image/encoded'
-    action_name = 'move/' + str(i) + '/commanded_pose/vec_pitch_yaw'
-    state_name = 'move/' + str(i) + '/endeffector/vec_pitch_yaw'
+    image_name = df['image_name'].format(i)
+    action_name = df['action_name'].format(i)
+    state_name = df['state_name'].format(i)
     if FLAGS.use_state:
-      features = {image_name: tf.FixedLenFeature([1], tf.string),
-                  action_name: tf.FixedLenFeature([STATE_DIM], tf.float32),
-                  state_name: tf.FixedLenFeature([STATE_DIM], tf.float32)}
+      features = {
+          image_name: tf.FixedLenFeature([1], tf.string),
+          action_name: tf.FixedLenFeature([df['action_dim']], tf.float32),
+          state_name: tf.FixedLenFeature([df['state_dim']], tf.float32)
+      }
     else:
       features = {image_name: tf.FixedLenFeature([1], tf.string)}
     features = tf.parse_single_example(serialized_example, features=features)
 
-    image_buffer = tf.reshape(features[image_name], shape=[])
-    image = tf.image.decode_jpeg(image_buffer, channels=COLOR_CHAN)
-    image.set_shape([ORIGINAL_HEIGHT, ORIGINAL_WIDTH, COLOR_CHAN])
+    image = df['image_decoder'](features[image_name])
+    image.set_shape(
+        [df['original_height'], df['original_width'], df['original_channel']])
 
-    if IMG_HEIGHT != IMG_WIDTH:
+    if IMG_HEIGHT != IMG_WIDTH:		
       raise ValueError('Unequal height and width unsupported')
 
-    crop_size = min(ORIGINAL_HEIGHT, ORIGINAL_WIDTH)
-    image = tf.image.resize_image_with_crop_or_pad(image, crop_size, crop_size)
-    image = tf.reshape(image, [1, crop_size, crop_size, COLOR_CHAN])
-    image = tf.image.resize_bicubic(image, [IMG_HEIGHT, IMG_WIDTH])
+    image = tf.image.central_crop(image, float(IMG_WIDTH) / IMG_HEIGHT)
+    image = tf.image.resize_images(image, (IMG_HEIGHT, IMG_WIDTH),
+                                   method=tf.image.ResizeMethod.BICUBIC)
     image = tf.cast(image, tf.float32) / 255.0
+
+    image = tf.reshape(image, [1, IMG_HEIGHT, IMG_WIDTH, COLOR_CHAN])
     image_seq.append(image)
 
     if FLAGS.use_state:
-      state = tf.reshape(features[state_name], shape=[1, STATE_DIM])
+      state = tf.reshape(features[state_name], shape=[1, df['state_dim']])
+      action = tf.reshape(features[action_name], shape=[1, df['action_dim']])
+      # Pad actions and states to the same size
+      if df['action_dim'] > df['state_dim']:
+        state = tf.pad(state, [[0, 0], [1, df['action_dim']-df['state_dim']]])
+      elif df['action_dim'] < df['state_dim']:
+        state = tf.pad(state, [[0, 0], [1, df['state_dim']-df['action_dim']]])
       state_seq.append(state)
-      action = tf.reshape(features[action_name], shape=[1, STATE_DIM])
       action_seq.append(action)
 
   image_seq = tf.concat(axis=0, values=image_seq)
@@ -114,6 +202,6 @@ def build_tfrecord_input(training=True):
         FLAGS.batch_size,
         num_threads=FLAGS.batch_size,
         capacity=100 * FLAGS.batch_size)
-    zeros_batch = tf.zeros([FLAGS.batch_size, FLAGS.sequence_length, STATE_DIM])
+    zeros_batch = tf.zeros(
+        [FLAGS.batch_size, FLAGS.sequence_length, df['state_dim']])
     return image_batch, zeros_batch, zeros_batch
-

@@ -17,6 +17,7 @@
 
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
@@ -69,6 +70,23 @@ flags.DEFINE_float('train_val_split', 0.95,
 flags.DEFINE_integer('batch_size', 32, 'batch size for training')
 flags.DEFINE_float('learning_rate', 0.001,
                    'the base learning rate of the generator')
+
+# Stochastic model flags
+flags.DEFINE_bool('stochastic_model', False,
+                  'Whether or not to use stochastic arcitecture.')
+flags.DEFINE_bool('inference_time', False,
+                  'Whether or not to construct the latent tower.')
+flags.DEFINE_bool('multi_latent', False,
+                  'Whether or not to sample the latent every timestep.')
+flags.DEFINE_float('latent_std_min', -5.0,
+                   'Minimum for log(std) of latent distribution.')
+flags.DEFINE_float('latent_loss_multiplier', 1e-5,
+                   'Multiplier of KL-loss.')
+flags.DEFINE_integer('latent_noloss_iterations', 100000,
+                     'Number of iterations without KL loss.')
+flags.DEFINE_integer('latent_channels', 1,
+                     'Number of channels in latent tensor.')
+flags.DEFINE_integer('tfrecord_format', 0, '0 for google, 1 for berkeley')
 
 
 ## Helper functions
@@ -124,7 +142,7 @@ class Model(object):
     images = [tf.squeeze(img) for img in images]
 
     if reuse_scope is None:
-      gen_images, gen_states = construct_model(
+      gen_images, gen_states, latent_loss = construct_model(
           images,
           actions,
           states,
@@ -138,7 +156,7 @@ class Model(object):
           context_frames=FLAGS.context_frames)
     else:  # If it's a validation or test model.
       with tf.variable_scope(reuse_scope, reuse=True):
-        gen_images, gen_states = construct_model(
+        gen_images, gen_states, latent_loss = construct_model(
             images,
             actions,
             states,
@@ -174,9 +192,24 @@ class Model(object):
     summaries.append(tf.summary.scalar(prefix + '_psnr_all', psnr_all))
     self.psnr_all = psnr_all
 
-    self.loss = loss = loss / np.float32(len(images) - FLAGS.context_frames)
+    loss_mse = loss / np.float32(len(images) - FLAGS.context_frames)
+    loss = loss_mse
+    if FLAGS.stochastic_model:
+      values = [0.0, FLAGS.latent_loss_multiplier]
+      boundaries = [FLAGS.latent_noloss_iterations]
+      latent_multiplier = tf.train.piecewise_constant(
+          tf.cast(slim.get_or_create_global_step(), tf.int32),
+          boundaries, values)
+      loss += latent_multiplier * latent_loss
+    
+    self.loss = loss
 
-    summaries.append(tf.summary.scalar(prefix + '_loss', loss))
+    self.images = images
+    self.gen_images = gen_images
+
+    tf.summary.scalar('loss', loss)
+    tf.summary.scalar('loss_mse', loss_mse)
+    tf.summary.scalar('loss_latent', latent_loss)
 
     self.lr = tf.placeholder_with_default(FLAGS.learning_rate, ())
 
