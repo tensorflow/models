@@ -102,4 +102,4 @@ while read SYNSET; do
   rm -f "${SYNSET}.tar"
 
   echo "Finished processing: ${SYNSET}"
-done < "${SYNSETS_FILE}"
+done < "${CURRENT_DIR}/${SYNSETS_FILE}"
