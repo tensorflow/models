@@ -127,10 +127,10 @@ class BaseTest(tf.test.TestCase):
 
   def input_fn(self):
     """Provides random features and labels."""
-    features = tf.random_uniform([FLAGS.train_batch_size, 224, 224, 3])
+    features = tf.random_uniform([FLAGS.batch_size, 224, 224, 3])
     labels = tf.one_hot(
         tf.random_uniform(
-            [FLAGS.train_batch_size], maxval=_LABEL_CLASSES - 1,
+            [FLAGS.batch_size], maxval=_LABEL_CLASSES - 1,
             dtype=tf.int32),
         _LABEL_CLASSES)
 
@@ -145,9 +145,9 @@ class BaseTest(tf.test.TestCase):
 
     predictions = spec.predictions
     self.assertAllEqual(predictions['probabilities'].shape,
-                        (FLAGS.train_batch_size, _LABEL_CLASSES))
+                        (FLAGS.batch_size, _LABEL_CLASSES))
     self.assertEqual(predictions['probabilities'].dtype, tf.float32)
-    self.assertAllEqual(predictions['classes'].shape, (FLAGS.train_batch_size,))
+    self.assertAllEqual(predictions['classes'].shape, (FLAGS.batch_size,))
     self.assertEqual(predictions['classes'].dtype, tf.int64)
 
     if mode != tf.estimator.ModeKeys.PREDICT:

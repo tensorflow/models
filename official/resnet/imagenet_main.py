@@ -22,7 +22,6 @@ import os
 
 import tensorflow as tf
 
-import imagenet
 import resnet_model
 import vgg_preprocessing
 
@@ -49,11 +48,12 @@ parser.add_argument(
     help='The number of training steps to run between evaluations.')
 
 parser.add_argument(
-    '--train_batch_size', type=int, default=32, help='Batch size for training.')
+    '--batch_size', type=int, default=32,
+    help='Batch size for training and evaluation.')
 
 parser.add_argument(
-    '--eval_batch_size', type=int, default=100,
-    help='Batch size for evaluation.')
+    '--map_threads', type=int, default=5,
+    help='The number of threads for dataset.map.')
 
 parser.add_argument(
     '--first_cycle_steps', type=int, default=None,
@@ -61,51 +61,104 @@ parser.add_argument(
     'you have stopped partway through a training cycle.')
 
 FLAGS = parser.parse_args()
-_EVAL_STEPS = 50000 // FLAGS.eval_batch_size
 
 # Scale the learning rate linearly with the batch size. When the batch size is
 # 256, the learning rate should be 0.1.
-_INITIAL_LEARNING_RATE = 0.1 * FLAGS.train_batch_size / 256
+_INITIAL_LEARNING_RATE = 0.1 * FLAGS.batch_size / 256
+
+_NUM_CHANNELS = 3
+_LABEL_CLASSES = 1001
 
 _MOMENTUM = 0.9
 _WEIGHT_DECAY = 1e-4
 
-train_dataset = imagenet.get_split('train', FLAGS.data_dir)
-eval_dataset = imagenet.get_split('validation', FLAGS.data_dir)
+_NUM_IMAGES = {
+    'train': 1281167,
+    'validation': 50000,
+}
 
 image_preprocessing_fn = vgg_preprocessing.preprocess_image
 network = resnet_model.resnet_v2(
-    resnet_size=FLAGS.resnet_size, num_classes=train_dataset.num_classes)
+    resnet_size=FLAGS.resnet_size, num_classes=_LABEL_CLASSES)
 
-batches_per_epoch = train_dataset.num_samples / FLAGS.train_batch_size
+batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
+
+
+def filenames(is_training):
+  """Return filenames for dataset."""
+  if is_training:
+    return [
+        os.path.join(FLAGS.data_dir, 'train-%05d-of-01024' % i)
+        for i in xrange(0, 1024)]
+  else:
+    return [
+        os.path.join(FLAGS.data_dir, 'validation-%05d-of-00128' % i)
+        for i in xrange(0, 128)]
+
+
+def dataset_parser(value, is_training):
+  """Parse an Imagenet record from value."""
+  keys_to_features = {
+      'image/encoded':
+          tf.FixedLenFeature((), tf.string, default_value=''),
+      'image/format':
+          tf.FixedLenFeature((), tf.string, default_value='jpeg'),
+      'image/class/label':
+          tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+      'image/class/text':
+          tf.FixedLenFeature([], dtype=tf.string, default_value=''),
+      'image/object/bbox/xmin':
+          tf.VarLenFeature(dtype=tf.float32),
+      'image/object/bbox/ymin':
+          tf.VarLenFeature(dtype=tf.float32),
+      'image/object/bbox/xmax':
+          tf.VarLenFeature(dtype=tf.float32),
+      'image/object/bbox/ymax':
+          tf.VarLenFeature(dtype=tf.float32),
+      'image/object/class/label':
+          tf.VarLenFeature(dtype=tf.int64),
+  }
+
+  parsed = tf.parse_single_example(value, keys_to_features)
+
+  image = tf.image.decode_image(
+      tf.reshape(parsed['image/encoded'], shape=[]),
+      _NUM_CHANNELS)
+  image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+
+  image = image_preprocessing_fn(
+      image=image,
+      output_height=network.default_image_size,
+      output_width=network.default_image_size,
+      is_training=is_training)
+
+  label = tf.cast(
+      tf.reshape(parsed['image/class/label'], shape=[]),
+      dtype=tf.int32)
+
+  return image, tf.one_hot(label, _LABEL_CLASSES)
 
 
 def input_fn(is_training):
   """Input function which provides a single batch for train or eval."""
-  batch_size = FLAGS.train_batch_size if is_training else FLAGS.eval_batch_size
-  dataset = train_dataset if is_training else eval_dataset
-  capacity_multiplier = 20 if is_training else 2
-  min_multiplier = 10 if is_training else 1
+  dataset = tf.contrib.data.Dataset.from_tensor_slices(filenames(is_training))
+  if is_training:
+    dataset = dataset.shuffle(buffer_size=1024)
+  dataset = dataset.flat_map(tf.contrib.data.TFRecordDataset)
 
-  provider = tf.contrib.slim.dataset_data_provider.DatasetDataProvider(
-      dataset=dataset,
-      num_readers=4,
-      common_queue_capacity=capacity_multiplier * batch_size,
-      common_queue_min=min_multiplier * batch_size)
+  if is_training:
+    dataset = dataset.repeat()
 
-  image, label = provider.get(['image', 'label'])
+  dataset = dataset.map(lambda value: dataset_parser(value, is_training),
+                        num_threads=FLAGS.map_threads,
+                        output_buffer_size=FLAGS.batch_size)
 
-  image = image_preprocessing_fn(image=image,
-                                 output_height=network.default_image_size,
-                                 output_width=network.default_image_size,
-                                 is_training=is_training)
+  if is_training:
+    buffer_size = 1250 + 2 * FLAGS.batch_size
+    dataset = dataset.shuffle(buffer_size=buffer_size)
 
-  images, labels = tf.train.batch(tensors=[image, label],
-                                  batch_size=batch_size,
-                                  num_threads=4,
-                                  capacity=5 * batch_size)
-
-  labels = tf.one_hot(labels, imagenet._NUM_CLASSES)
+  iterator = dataset.batch(FLAGS.batch_size).make_one_shot_iterator()
+  images, labels = iterator.get_next()
   return images, labels
 
 
@@ -204,8 +257,7 @@ def main(unused_argv):
     FLAGS.first_cycle_steps = None
 
     print('Starting to evaluate.')
-    eval_results = resnet_classifier.evaluate(
-      input_fn=lambda: input_fn(False), steps=_EVAL_STEPS)
+    eval_results = resnet_classifier.evaluate(input_fn=lambda: input_fn(False))
     print(eval_results)
 
 
