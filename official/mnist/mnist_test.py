@@ -50,7 +50,7 @@ class BaseTest(tf.test.TestCase):
     if mode == tf.estimator.ModeKeys.EVAL:
       eval_metric_ops = spec.eval_metric_ops
       self.assertAllEqual(eval_metric_ops['accuracy'][0].shape, ())
-      self.assertAllEqual(eval_metric_ops['accuracy'][1].shape, ())
+      self.assertAllEqual(eval_metric_ops['accuracy'][1].shape, (2))
       self.assertEqual(eval_metric_ops['accuracy'][0].dtype, tf.float32)
       self.assertEqual(eval_metric_ops['accuracy'][1].dtype, tf.float32)
 
