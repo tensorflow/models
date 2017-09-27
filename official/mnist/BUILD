@@ -1,5 +1,5 @@
 # Description:
-# Benchmarking a model
+# Benchmarking mnist model
 
 load(
     "//tensorflow/tools/test:performance.bzl",
