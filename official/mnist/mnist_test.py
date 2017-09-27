@@ -25,6 +25,19 @@ import mnist
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 
+class ClassifierBenchmark(tf.test.Benchmark):
+  def benchmarkFit(self):
+    train_data = np.asarray(np.random.uniform(size=(1000, 784)), dtype=np.float32)
+    train_labels = np.asarray(np.random.uniform(size=(1000), high=9), dtype=np.int32)
+    classifier = tf.estimator.Estimator(model_fn=mnist.mnist_model_fn, model_dir='')
+    train_input_fn = tf.estimator.inputs.numpy_input_fn(
+      {'images': train_data}, y=train_labels,
+      batch_size=100, num_epochs=None, shuffle=True)
+    start = time.time()
+    classifier.train(input_fn=train_input_fn, steps=1)
+    wall_time = time.time() - start
+    self.report_benchmark(name="classifier", wall_time=wall_time)
+
 class BaseTest(tf.test.TestCase):
   def input_fn(self):
     features = tf.random_uniform([55000, 784])
