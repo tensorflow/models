@@ -31,6 +31,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 class BaseTest(tf.test.TestCase):
+
   def test_dataset_input_fn(self):
     fake_data = bytearray()
     fake_data.append(7)
