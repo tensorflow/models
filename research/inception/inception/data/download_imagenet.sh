@@ -39,7 +39,7 @@ END
 fi
 
 OUTDIR="${1:-./imagenet-data}"
-SYNSETS_FILE="${2:-./synsets.txt}"
+SYNSETS_FILE="$PWD/${2:-./synsets.txt}"
 
 echo "Saving downloaded files to $OUTDIR"
 mkdir -p "${OUTDIR}"
