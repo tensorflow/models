@@ -69,7 +69,8 @@ if __name__ == '__main__':
   # Make all sub-directories in the validation data dir.
   for label in unique_labels:
     labeled_data_dir = os.path.join(data_dir, label)
-    os.makedirs(labeled_data_dir)
+    if not os.path.exists(labeled_data_dir):
+      os.makedirs(labeled_data_dir)
 
   # Move all of the image to the appropriate sub-directory.
   for i in range(len(labels)):
