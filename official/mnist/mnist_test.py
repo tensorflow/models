@@ -26,6 +26,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 class BaseTest(tf.test.TestCase):
+
   def input_fn(self):
     features = tf.random_uniform([55000, 784])
     labels = tf.random_uniform([55000], maxval=9, dtype=tf.int32)
