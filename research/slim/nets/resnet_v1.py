@@ -168,7 +168,7 @@ def resnet_v1(inputs,
       is a resnet_utils.Block object describing the units in the block.
     num_classes: Number of predicted classes for classification tasks. If None
       we return the features before the logit layer.
-    is_training: whether is training or not.
+    is_training: whether batch_norm layers are in training mode.
     global_pool: If True, we perform global average pooling before computing the
       logits. Set to True for image classification, False for dense prediction.
     output_stride: If None, then the output will be computed at the nominal
