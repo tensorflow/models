@@ -38,6 +38,7 @@ package_group(
         "//photos/vision/object_net/...",
         "//photos/vision/streams/...",
         "//research/action_recognition/...",
+        "//research/bigml/tensorflow/...",
         "//research/drishti/app/vesper/...",
         "//research/vale/imagination/...",
         "//research/vale/instance_segmentation/...",
