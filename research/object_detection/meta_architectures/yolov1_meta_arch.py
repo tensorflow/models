@@ -18,8 +18,12 @@ slim = tf.contrib.slim
 class YOLOFeatureExtractor(object):
   """YOLO Feature Extractor definition"""
 
-  def __init__(self,):
+  def __init__(self,
+               is_training,
+               reuse_weights,):
     # TODO : find out the parameters
+    self.is_training = is_training
+    self.reuse_weights = reuse_weights
     pass
   
   @abstractmethod
