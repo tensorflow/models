@@ -21,7 +21,7 @@ from object_detection.meta_architectures import yolo_meta_arch
 
 slim = tf.contrib.slim
 
-class YOLOFeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
+class YOLOv1FeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
   """
     YOLO Feature Extractor
     Written with reference to Darknet and YoloTensorFlow229
