@@ -34,11 +34,9 @@ class BaseTest(tf.test.TestCase):
   def tensor_shapes_helper(self, resnet_size, with_gpu=False):
     """Checks the tensor shapes after each phase of the ResNet model."""
     def reshape(shape):
-      """Returns the expected dimensions depending on if gpu is being used.
-
-      If a GPU is used for the test, the shape is returned (already in NCHW
-      form). When GPU is not used, the shape is converted to NHWC.
-      """
+      """Returns the expected dimensions depending on if a GPU is being used."""
+      # If a GPU is used for the test, the shape is returned (already in NCHW
+      # form). When GPU is not used, the shape is converted to NHWC.
       if with_gpu:
         return shape
       return shape[0], shape[2], shape[3], shape[1]

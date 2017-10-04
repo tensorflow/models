@@ -17,9 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-import sys
-from tempfile import mkdtemp
 from tempfile import mkstemp
 
 import numpy as np
@@ -36,13 +33,13 @@ class BaseTest(tf.test.TestCase):
     fake_data = bytearray()
     fake_data.append(7)
     for i in xrange(3):
-      for j in xrange(1024):
+      for _ in xrange(1024):
         fake_data.append(i)
 
     _, filename = mkstemp(dir=self.get_temp_dir())
-    file = open(filename, 'wb')
-    file.write(fake_data)
-    file.close()
+    data_file = open(filename, 'wb')
+    data_file.write(fake_data)
+    data_file.close()
 
     fake_dataset = cifar10_main.record_dataset(filename)
     fake_dataset = fake_dataset.map(cifar10_main.dataset_parser)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Runs a ResNet model on the ImageNet dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -163,7 +164,7 @@ def input_fn(is_training):
 
 
 def resnet_model_fn(features, labels, mode):
-  """ Our model_fn for ResNet to be used with our Estimator."""
+  """Our model_fn for ResNet to be used with our Estimator."""
   tf.summary.image('images', features, max_outputs=6)
 
   logits = network(
@@ -239,7 +240,7 @@ def main(unused_argv):
   resnet_classifier = tf.estimator.Estimator(
       model_fn=resnet_model_fn, model_dir=FLAGS.model_dir)
 
-  for cycle in range(FLAGS.train_steps // FLAGS.steps_per_eval):
+  for _ in range(FLAGS.train_steps // FLAGS.steps_per_eval):
     tensors_to_log = {
         'learning_rate': 'learning_rate',
         'cross_entropy': 'cross_entropy',

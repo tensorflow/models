@@ -46,8 +46,8 @@ def main(unused_argv):
 
   if not os.path.exists(filepath):
     def _progress(count, block_size, total_size):
-      sys.stdout.write('\r>> Downloading %s %.1f%%' % (filename,
-          100.0 * count * block_size / total_size))
+      sys.stdout.write('\r>> Downloading %s %.1f%%' % (
+          filename, 100.0 * count * block_size / total_size))
       sys.stdout.flush()
 
     filepath, _ = urllib.request.urlretrieve(DATA_URL, filepath, _progress)

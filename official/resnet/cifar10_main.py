@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Runs a ResNet model on the CIFAR-10 dataset."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,9 +20,7 @@ from __future__ import print_function
 
 import argparse
 import os
-import sys
 
-import numpy as np
 import tensorflow as tf
 
 import resnet_model
@@ -75,12 +74,13 @@ def record_dataset(filenames):
   return tf.contrib.data.FixedLengthRecordDataset(filenames, record_bytes)
 
 
-def filenames(mode):
+def get_filenames(mode):
   """Returns a list of filenames based on 'mode'."""
   data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
 
-  assert os.path.exists(data_dir), ('Run cifar10_download_and_extract.py first '
-      'to download and extract the CIFAR-10 data.')
+  assert os.path.exists(data_dir), (
+      'Run cifar10_download_and_extract.py first to download and extract the '
+      'CIFAR-10 data.')
 
   if mode == tf.estimator.ModeKeys.TRAIN:
     return [
@@ -137,10 +137,13 @@ def input_fn(mode, batch_size):
   """Input_fn using the contrib.data input pipeline for CIFAR-10 dataset.
 
   Args:
-    mode: Standard names for model modes (tf.estimators.ModeKeys).
+    mode: Standard names for model modes from tf.estimator.ModeKeys.
     batch_size: The number of samples per batch of input requested.
+
+  Returns:
+    A tuple of images and labels.
   """
-  dataset = record_dataset(filenames(mode))
+  dataset = record_dataset(get_filenames(mode))
 
   # For training repeat forever.
   if mode == tf.estimator.ModeKeys.TRAIN:
@@ -227,7 +230,7 @@ def cifar10_model_fn(features, labels, mode):
   else:
     train_op = None
 
-  accuracy= tf.metrics.accuracy(
+  accuracy = tf.metrics.accuracy(
       tf.argmax(labels, axis=1), predictions['classes'])
   metrics = {'accuracy': accuracy}
 
@@ -250,7 +253,7 @@ def main(unused_argv):
   cifar_classifier = tf.estimator.Estimator(
       model_fn=cifar10_model_fn, model_dir=FLAGS.model_dir)
 
-  for cycle in range(FLAGS.train_steps // FLAGS.steps_per_eval):
+  for _ in range(FLAGS.train_steps // FLAGS.steps_per_eval):
     tensors_to_log = {
         'learning_rate': 'learning_rate',
         'cross_entropy': 'cross_entropy',
