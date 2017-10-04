@@ -90,11 +90,11 @@ def filenames(is_training):
   if is_training:
     return [
         os.path.join(FLAGS.data_dir, 'train-%05d-of-01024' % i)
-        for i in xrange(0, 1024)]
+        for i in range(0, 1024)]
   else:
     return [
         os.path.join(FLAGS.data_dir, 'validation-%05d-of-00128' % i)
-        for i in xrange(0, 128)]
+        for i in range(0, 128)]
 
 
 def dataset_parser(value, is_training):
