@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""YOLOFeatureExtractor for YOLO v1"""
+"""YOLOv1FeatureExtractor for YOLO v1 models"""
 
 import tensorflow as tf
 
@@ -31,8 +31,7 @@ class YOLOv1FeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
                is_training,
                reuse_weights=None):
     # TODO : find out the parameters
-    super(YOLOFeatureExtractor, self).__init__(
-      is_training, reuse_weights)
+    super(YOLOv1FeatureExtractor, self).__init__(is_training, reuse_weights)
 
 
   def preprocess(self, resized_inputs):
@@ -46,7 +45,7 @@ class YOLOv1FeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
       preprocessed_inputs: a [batch, height, width, channels] float tensor
         representing a batch of images.
     """
-    pass
+    return (2.0 / 255.0) * resized_inputs - 1.0
 
 
   def extract_features(self, preprocessed_inputs):
@@ -57,7 +56,7 @@ class YOLOv1FeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
 
     Args:
       preprocessed_inputs: a [batch, height, width, channels] float tensor
-        representing a batch of images.
+        representing a batch of images. height = width = 448, channels = 3
 
     Returns:
       feature_maps: a tensor where the tensor has shape
@@ -67,70 +66,65 @@ class YOLOv1FeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
       raise ValueError('`preprocessed_inputs` must be 4 dimensional, got a '
                        'tensor of shape %s' % preprocessed_inputs.get_shape())
 
-    with tf.variable_scope("YOLOv1", reuse=self.reuse_weights) as scope:
-      conv0 = self._create_conv_layer(preprocessed_inputs, 7, 64, 2, "conv0")
-      maxpool1 = self._create_max_pool_layer(conv0, 2, 2)
-      conv2 = self._create_conv_layer(maxpool1, 3, 192, 1, "conv2")
-      maxpool3 = self._create_max_pool_layer(conv2, 2, 2)
-      conv4 = self._create_conv_layer(maxpool3, 1, 128, 1, "conv4")
-      conv5 = self._create_conv_layer(conv4, 3, 256, 1, "conv5")
-      conv6 = self._create_conv_layer(conv5, 1, 256, 1, "conv6")
-      conv7 = self._create_conv_layer(conv6, 3, 512, 1, "conv7")
-      maxpool8 = self.create_maxpool_layer(conv7, 2, 2)
-      conv9 = self.create_conv(maxpool8, 1, 256, 1, 'conv9')
-      conv10 = self.create_conv_layer(conv9, 3, 512, 1, 'conv10')
-      conv11 = self.create_conv_layer(conv10, 1, 256, 1, 'conv11')
-      conv12 = self.create_conv_layer(conv11, 3, 512, 1, 'conv12')
-      conv13 = self.create_conv_layer(conv12, 1, 256, 1, 'conv13')
-      conv14 = self.create_conv_layer(conv13, 3, 512, 1, 'conv14')
-      conv15 = self.create_conv_layer(conv14, 1, 256, 1, 'conv15')
-      conv16 = self.create_conv_layer(conv15, 3, 512, 1, 'conv16')
-      conv17 = self.create_conv_layer(conv16, 1, 512, 1, 'conv17')
-      conv18 = self.create_conv_layer(conv17, 3, 1024, 1, 'conv18')
-      maxpool19 = self.create_maxpool_layer(conv18, 2, 2)
-      conv20 = self.create_conv(maxpool19, 1, 512, 1, 'conv20')
-      conv21 = self.create_conv_layer(conv20, 3, 1024, 1, 'conv21')
-      conv22 = self.create_conv_layer(conv21, 1, 512, 1, 'conv22')
-      conv23 = self.create_conv_layer(conv22, 3, 1024, 1, 'conv23')
-      conv24 = self.create_conv_layer(conv23, 3, 1024, 1, 'conv24')
-      conv25 = self.create_conv_layer(conv24, 3, 1024, 2, 'conv25')
-      conv26 = self.create_conv_layer(conv25, 3, 1024, 1, 'conv26')
-      conv27 = self.create_conv_layer(conv26, 3, 1024, 1, 'conv27')
-      # flatten layer for connection to fully connected layer
-      conv27_flatten_dim = int(reduce(lambda a, b: a * b, conv27.get_shape()[1:]))
-      conv27_flatten = tf.reshape(tf.transpose(conv27, (0, 3, 1, 2)), [-1, conv27_flatten_dim])
-      fc28 = self.create_connected_layer(conv27_flatten, 512, True, 'fc28')
-      fc29 = self.create_connected_layer(fc28, 4096, True, 'fc29')
+    with tf.variable_scope("YOLOv1FeatureExtractor", reuse=self.reuse_weights):
+      with slim.arg_scope([slim.conv2d], padding='SAME', activation_fn=self._leaky_RELU):
+        conv0 = slim.conv2d(preprocessed_inputs, 64, 7, 2, scope='Conv2d_0_7x7x64-s-2')
+        maxpool1 = slim.max_pool2d(conv0, 2, 2, padding='SAME', scope='MaxPool_1_2x2-s-2')
+        conv2 = slim.conv2d(maxpool1, 192, 3, 1, scope='Conv2d_2_3x3x192-s-1')
+        maxpool3 = slim.max_pool2d(conv2, 2, 2, padding='SAME', scope='MaxPool_3_2x2-s-2')
 
-      dropout30 = self.create_dropout_layer(fc29, self.dropout_prob)
-      fc31 = self.create_connected_layer(dropout30, 1470, False, 'fc31')
-      self.feature_map = fc31
+        conv4 = slim.conv2d(maxpool3, 128, 1, 1, scope='Conv2d_4_1x1x128-s-1')
+        conv5 = slim.conv2d(conv4, 256, 3, 1, scope='Conv2d_5_3x3x256-s-1')
+        conv6 = slim.conv2d(conv5, 256, 1, 1, scope='Conv2d_6_1x1x256-s-1')
+        conv7 = slim.conv2d(conv6, 512, 3, 1, scope='Conv2d_7_3x3x512-s-1')
 
-    return self.feature_map
+        maxpool8 = slim.max_pool2d(conv7, 2, 2, padding='SAME', scope='MaxPool_8_2x2-s-2')
 
-  # TODO change the functions below and understand padding
-  # TODO go through YoloTensorFlow229
-  def _create_conv_layer(self, input_layer, size, filters, stride, name):
-    channels = int(input_layer.get_shape()[3])
-    weight_shape = [size, size, channels, filters]
-    bias_shape = [filters]
-    with tf.variable_scope(name + '_conv_weights'):
-      weight = tf.get_variable('w_%s' % (name), weight_shape, initializer=tf.contrib.layers.xavier_initializer_conv2d())
-      bias = tf.get_variable('b_%s' % (name), bias_shape, initializer=tf.constant_initializer(0.0))
+        conv9 = slim.conv2d(maxpool8, 256, 1, 1, scope='Conv2d_9_1x1x256-s-1')
+        conv10 = slim.conv2d(conv9, 512, 3, 1, scope='Conv2d_10_3x3x512-s-1')
+        conv11 = slim.conv2d(conv10, 256, 1, 1, scope='Conv2d_11_1x1x256-s-1')
+        conv12 = slim.conv2d(conv11, 512, 3, 1, scope='Conv2d_12_3x3x512-s-1')
+        conv13 = slim.conv2d(conv12, 256, 1, 1, scope='Conv2d_13_1x1x256-s-1')
+        conv14 = slim.conv2d(conv13, 512, 3, 1, scope='Conv2d_14_3x3x512-s-1')
+        conv15 = slim.conv2d(conv14, 256, 1, 1, scope='Conv2d_15_1x1x256-s-1')
+        conv16 = slim.conv2d(conv15, 512, 3, 1, scope='Conv2d_16_3x3x512-s-1')
+        conv17 = slim.conv2d(conv16, 512, 1, 1, scope='Conv2d_17_1x1x512-s-1')
+        conv18 = slim.conv2d(conv17, 1024, 3, 1, scope='Conv2d_18_3x3x1024-s-1')
 
-    pad = int(size / 2)
-    input_layer_padded = tf.pad(input_layer, paddings=[[0, 0], [pad, pad], [pad, pad], [0, 0]])
-    convolution = tf.nn.conv2d(input=input_layer_padded, filter=weight, strides=[1, stride, stride, 1], padding='VALID')
-    convolution_bias = tf.add(convolution, bias)
-    return self._leaky_RELU(convolution_bias)
+        maxpool19 = slim.max_pool2d(conv18, 2, 2, padding='SAME', scope='MaxPool_19_2x2-s-2')
+
+        conv20 = slim.conv2d(maxpool19, 512, 1, 1, scope='Conv2d_20_1x1x512-s-1')
+        conv21 = slim.conv2d(conv20, 1024, 3, 1, scope='Conv2d_21_3x3x1024-s-1')
+        conv22 = slim.conv2d(conv21, 512, 1, 1, scope='Conv2d_22_1x1x512-s-1')
+        conv23 = slim.conv2d(conv22, 1024, 3, 1, scope='Conv2d_23_3x3x1024-s-1')
+        conv24 = slim.conv2d(conv23, 1024, 3, 1, scope='Conv2d_24_3x3x1024-s-1')
+        conv25 = slim.conv2d(conv24, 1024, 3, 2, scope='Conv2d_25_3x3x1024-s-2')
+
+        conv26 = slim.conv2d(conv25, 1024, 3, 1, scope='Conv2d_26_3x3x1024-s-1')
+        conv27 = slim.conv2d(conv26, 1024, 3, 1, scope='Conv2d_27_3x3x1024-s-1')
+
+        # flatten layer for connection to fully connected layer
+        conv27_flatten_dim = int(reduce(lambda a, b: a * b, conv27.get_shape()[1:]))
+        conv27_flatten = tf.reshape(tf.transpose(conv27, (0, 3, 1, 2)),
+                                    [-1, conv27_flatten_dim])
+        fc28 = self.create_fc_layer(conv27_flatten, 512, True, 'fc28')
+        fc29 = self.create_fc_layer(fc28, 4096, True, 'fc29')
+
+        dropout30 = self.create_dropout_layer(fc29, self.dropout_prob)
+        fc31 = self.create_fc_layer(dropout30, 1470, False, 'fc31')
+        self._feature_map = fc31
+
+    return self._feature_map
 
   def _create_fc_layer(self, input_layer, size, name):
     weight_shape = [int(input_layer.get_shape()[1]), size]
     bias_shape = [size]
 
     with tf.variable_scope(name + '_fully_connected_weights'):
-      weight = tf.get_variable('w_%s' % (name), weight_shape, initializer=tf.contrib.layers.xavier_initializer())
-      bias = tf.get_variable('b_%s' % (name), bias_shape, initializer=tf.constant_initializer(0.0))
+      weight = tf.get_variable('w_%s' % (name), weight_shape,
+                               initializer=tf.contrib.layers.xavier_initializer())
+      bias = tf.get_variable('b_%s' % (name), bias_shape,
+                             initializer=tf.constant_initializer(0.0))
 
     return self._leaky_RELU(tf.add(tf.matmul(input_layer, weight), bias))
 
@@ -141,5 +135,5 @@ class YOLOv1FeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
   def _create_dropout_layer(self, input_layer, probability):
     return tf.nn.dropout(input_layer,probability)
 
-  def _leaky_RELU(self, input_layer):
-    return tf.maximum(input_layer, tf.scalar_mul(0.1, input_layer))
+  def _leaky_RELU(self, inputs):
+    return tf.maximum(inputs, tf.scalar_mul(0.1, inputs))

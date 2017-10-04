@@ -188,10 +188,16 @@ class YOLOMetaArch(model.DetectionModel):
     Args:
       preprocessed_inputs: a [batch, height, width, channels] image tensor.
     Returns:
-      prediction_dict: a dictionary holding "raw" prediction tensors:
-        1) box_class_encodings: 4-D float tensor of shape [batch_size, grid_size,
-          grid_size, num_box_per_cell * 5 + num_classes] containing predicted boxes
-          for each grid and cell and conditional class probabilities for each cell.
+      prediction_dict: a dictionary holding prediction tensors with
+        1) class_predictions : 4-D float tensor of shape [batch_size,
+          grid_size * grid_size * boxes_per_cell, 1, num_classes] containing
+           the conditional class probabilities for each grid cell
+        2) box_scores : 4-D float tensor of shape [batch_size,
+           grid_size * grid_size * boxes_per_cell, 2, 1] containing the confidence scores
+           of each predicted box
+        3) detection_boxes : 4-D float tensor of shape [batch_size,
+          grid_size * grid_size * boxes_per_cell, 1, 4] containing the co-ordinates of
+          the predicted bounding boxes
     """
     with tf.variable_scope(None, self._extract_features_scope,
                            [preprocessed_inputs]):
