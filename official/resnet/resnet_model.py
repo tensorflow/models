@@ -40,8 +40,8 @@ _BATCH_NORM_EPSILON = 1e-5
 
 def batch_norm_relu(inputs, is_training, data_format):
   """Performs a batch normalization followed by a ReLU."""
-  # We set fused=True for a significant performance boost.
-  # See https://www.tensorflow.org/performance/performance_guide#common_fused_ops
+  # We set fused=True for a significant performance boost. See
+  # https://www.tensorflow.org/performance/performance_guide#common_fused_ops
   inputs = tf.layers.batch_normalization(
       inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
       momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
@@ -78,11 +78,9 @@ def fixed_padding(inputs, kernel_size, data_format):
 
 
 def conv2d_fixed_padding(inputs, filters, kernel_size, strides, data_format):
-  """Strided 2-D convolution with explicit padding.
-
-  The padding is consistent and is based only on `kernel_size`, not on the
-  dimensions of `inputs` (as opposed to using `tf.layers.conv2d` alone).
-  """
+  """Strided 2-D convolution with explicit padding."""
+  # The padding is consistent and is based only on `kernel_size`, not on the
+  # dimensions of `inputs` (as opposed to using `tf.layers.conv2d` alone).
   if strides > 1:
     inputs = fixed_padding(inputs, kernel_size, data_format)
 
@@ -210,7 +208,7 @@ def block_layer(inputs, filters, block_fn, blocks, strides, is_training, name,
   inputs = block_fn(inputs, filters, is_training, projection_shortcut, strides,
                     data_format)
 
-  for i in range(1, blocks):
+  for _ in range(1, blocks):
     inputs = block_fn(inputs, filters, is_training, None, 1, data_format)
 
   return tf.identity(inputs, name)
@@ -228,6 +226,9 @@ def cifar10_resnet_v2_generator(resnet_size, num_classes, data_format=None):
   Returns:
     The model function that takes in `inputs` and `is_training` and
     returns the output tensor of the ResNet model.
+
+  Raises:
+    ValueError: If `resnet_size` is invalid.
   """
   if resnet_size % 6 != 2:
     raise ValueError('resnet_size must be 6n + 2:', resnet_size)
@@ -235,13 +236,15 @@ def cifar10_resnet_v2_generator(resnet_size, num_classes, data_format=None):
   num_blocks = (resnet_size - 2) // 6
 
   if data_format is None:
-    data_format = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
+    data_format = (
+        'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
 
   def model(inputs, is_training):
+    """Constructs the ResNet model given the inputs."""
     if data_format == 'channels_first':
       # Convert from channels_last (NHWC) to channels_first (NCHW). This
-      # provides a large performance boost on GPU.
-      # See https://www.tensorflow.org/performance/performance_guide#data_formats
+      # provides a large performance boost on GPU. See
+      # https://www.tensorflow.org/performance/performance_guide#data_formats
       inputs = tf.transpose(inputs, [0, 3, 1, 2])
 
     inputs = conv2d_fixed_padding(
@@ -294,9 +297,11 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
     returns the output tensor of the ResNet model.
   """
   if data_format is None:
-    data_format = 'channels_first' if tf.test.is_built_with_cuda() else 'channels_last'
+    data_format = (
+        'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
 
   def model(inputs, is_training):
+    """Constructs the ResNet model given the inputs."""
     if data_format == 'channels_first':
       # Convert from channels_last (NHWC) to channels_first (NCHW). This
       # provides a large performance boost on GPU.

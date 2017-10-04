@@ -19,8 +19,8 @@ from __future__ import print_function
 
 import argparse
 import os
+import sys
 
-import numpy as np
 import tensorflow as tf
 
 parser = argparse.ArgumentParser()
@@ -42,7 +42,7 @@ parser.add_argument('--steps', type=int, default=20000,
 def input_fn(mode, batch_size=1):
   """A simple input_fn using the contrib.data input pipeline."""
 
-  def parser(serialized_example):
+  def example_parser(serialized_example):
     """Parses a single tf.Example into image and label tensors."""
     features = tf.parse_single_example(
         serialized_example,
@@ -64,8 +64,9 @@ def input_fn(mode, batch_size=1):
     assert mode == tf.estimator.ModeKeys.EVAL, 'invalid mode'
     tfrecords_file = os.path.join(FLAGS.data_dir, 'test.tfrecords')
 
-  assert tf.gfile.Exists(tfrecords_file), ('Run convert_to_records.py first to '
-      'convert the MNIST data to TFRecord file format.')
+  assert tf.gfile.Exists(tfrecords_file), (
+      'Run convert_to_records.py first to convert the MNIST data to TFRecord '
+      'file format.')
 
   dataset = tf.contrib.data.TFRecordDataset([tfrecords_file])
 
@@ -73,8 +74,9 @@ def input_fn(mode, batch_size=1):
   if mode == tf.estimator.ModeKeys.TRAIN:
     dataset = dataset.repeat()
 
-  # Map the parser over dataset, and batch results by up to batch_size
-  dataset = dataset.map(parser, num_threads=1, output_buffer_size=batch_size)
+  # Map example_parser over dataset, and batch results by up to batch_size
+  dataset = dataset.map(
+      example_parser, num_threads=1, output_buffer_size=batch_size)
   dataset = dataset.batch(batch_size)
   images, labels = dataset.make_one_shot_iterator().get_next()
 
@@ -223,5 +225,5 @@ def main(unused_argv):
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  FLAGS = parser.parse_args()
-  tf.app.run()
+  FLAGS, unparsed = parser.parse_known_args()
+  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
