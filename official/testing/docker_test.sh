@@ -34,7 +34,7 @@ EXIT=0
 # Get current directory path to mount
 export WORKSPACE=${PWD}
 
-if [ "$PYTHON_VERSION" == "PYTHON3" ]; then
+if [ "$PYTHON_VERSION" = "PYTHON3" ]; then
   DOCKER_IMG_NAME="tensorflow/tensorflow:1.3.0-py3"
 else
   DOCKER_IMG_NAME="tensorflow/tensorflow:1.3.0"
