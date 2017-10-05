@@ -12,6 +12,7 @@ package_group(
     packages = [
         "//cityblock/bestview/...",
         "//cloud/ml/applications/vision/...",
+        "//cloud/ml/research/...",
         "//geo/gt/fusion/...",
         "//googlex/proxy/learning/...",
         "//hardware/gchips/paintbox/research/vision/npcam/lib_image_quality/nima/...",
