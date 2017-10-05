@@ -22,6 +22,9 @@
 #                  --docker-image flag), the default latest tensorflow docker
 #                  will be used.
 #
+# The script obeys the following required environment variables unless superceded by 
+# the docker image flag:
+# PYTHON_VERSION:   (PYTHON2 | PYTHON3)
 
 
 # SETUP
@@ -31,6 +34,16 @@ EXIT=0
 # Get current directory path to mount
 export WORKSPACE=${PWD}
 
+if [ "$PYTHON_VERSION" = "PYTHON3" ]; then
+  DOCKER_IMG_NAME="tensorflow/tensorflow:1.3.0-py3"
+else
+  DOCKER_IMG_NAME="tensorflow/tensorflow:1.3.0"
+  if [ "$PYTHON_VERSION" != "PYTHON2" ]; then
+    echo "WARNING: Python version was not specified. Using Python2 by default."
+    sleep 5
+  fi
+fi
+
 DOCKER_BINARY="docker"
 
 # Decide docker image and tag
@@ -38,9 +51,6 @@ if [[ "$1" == "--docker-image" ]]; then
   DOCKER_IMG_NAME="$2"
   echo "Using specified docker tensorflow image and tag: ${DOCKER_IMG_NAME}"
   shift 2
-else
-  DOCKER_IMG_NAME="tensorflow/tensorflow:1.3.0"
-  echo "Using the default docker tensorflow image and tag: ${DOCKER_IMG_NAME}"
 fi
 
 # Specify which test is to be run
