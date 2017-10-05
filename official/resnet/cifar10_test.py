@@ -32,8 +32,8 @@ class BaseTest(tf.test.TestCase):
   def test_dataset_input_fn(self):
     fake_data = bytearray()
     fake_data.append(7)
-    for i in xrange(3):
-      for _ in xrange(1024):
+    for i in range(3):
+      for _ in range(1024):
         fake_data.append(i)
 
     _, filename = mkstemp(dir=self.get_temp_dir())
