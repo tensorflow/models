@@ -21,5 +21,5 @@ py_test(
 
 tf_py_logged_benchmark(
     name = "mnist_logged_benchmark",
-    target = "//tensorflow/models/official/mnist:mnist_test",
+    target = "//models/official/mnist:mnist_test",
 )
