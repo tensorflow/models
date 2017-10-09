@@ -26,6 +26,7 @@ import tensorflow as tf
 
 LABELS_FILENAME = 'labels.txt'
 
+METADATA_FILENAME = 'metadata.txt'
 
 def int64_feature(values):
   """Returns a TF-Feature of int64s.
@@ -148,3 +149,41 @@ def read_label_file(dataset_dir, filename=LABELS_FILENAME):
     index = line.index(':')
     labels_to_class_names[int(line[:index])] = line[index+1:]
   return labels_to_class_names
+
+def write_metadata_file(dataset_metadata, dataset_dir, filename=METADATA_FILENAME):
+  """Writes a file with the metadata about the dataset.
+
+  Args:
+    dataset_metadata: A map of metadata.
+    dataset_dir: The directory in which the metadata file should be written.
+    filename: The filename where the metadata is written.
+  """
+  metadata_filename = os.path.join(dataset_dir, filename)
+  with tf.gfile.Open(metadata_filename, 'w') as f:
+    for data in dataset_metadata.keys():
+      value = dataset_metadata[data]
+      f.write('%s:%d\n' % (data, value))
+
+def read_metadata_file(dataset_dir, filename=METADATA_FILENAME):
+  """Reads the metadata file and returns a mapping.
+
+  Args:
+    dataset_dir: The directory in which the metadata file is found.
+    filename: The filename where the metadata is written.
+
+  Returns:
+    A map for the metadata.
+  """
+  metadata_filename = os.path.join(dataset_dir, filename)
+  with tf.gfile.Open(metadata_filename, 'rb') as f:
+    lines = f.read().decode()
+  lines = lines.split('\n')
+  lines = filter(None, lines)
+
+  dataset_metadata = {}
+  for line in lines:
+    fields = line.split(':')
+    data = str(fields[0])
+    value = int(fields[1])
+    dataset_metadata[data] = value
+  return(dataset_metadata)
