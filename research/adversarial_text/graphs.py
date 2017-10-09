@@ -24,9 +24,9 @@ import os
 
 import tensorflow as tf
 
-import adversarial_losses as adv_lib
-import inputs as inputs_lib
-import layers as layers_lib
+from adversarial_text import adversarial_losses as adv_lib
+from adversarial_text import inputs as inputs_lib
+from adversarial_text import layers as layers_lib
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -116,7 +116,7 @@ class VatxtModel(object):
   """
 
   def __init__(self, cl_logits_input_dim=None):
-    self.global_step = tf.train.get_or_create_global_step()
+    self.global_step = tf.contrib.framework.get_or_create_global_step()
     self.vocab_freqs = _get_vocab_freqs()
 
     # Cache VatxtInput objects
