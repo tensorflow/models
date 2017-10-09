@@ -60,6 +60,7 @@ from __future__ import division
 from __future__ import print_function
 
 import time
+from functools import partial
 
 import numpy as np
 import tensorflow as tf
@@ -200,12 +201,12 @@ class PTBModel(object):
 
   def _get_lstm_cell(self, config, is_training):
     if config.rnn_mode == BASIC:
-      return tf.contrib.rnn.BasicLSTMCell(
-          config.hidden_size, forget_bias=0.0, state_is_tuple=True,
-          reuse=not is_training)
+      return partial(tf.contrib.rnn.BasicLSTMCell,
+                     num_units=config.hidden_size, forget_bias=0.0,
+                     state_is_tuple=True, reuse=not is_training)
     if config.rnn_mode == BLOCK:
-      return tf.contrib.rnn.LSTMBlockCell(
-          config.hidden_size, forget_bias=0.0)
+      return partial(tf.contrib.rnn.LSTMBlockCell,
+                     num_units=config.hidden_size, forget_bias=0.0)
     raise ValueError("rnn_mode %s not supported" % config.rnn_mode)
 
   def _build_rnn_graph_lstm(self, inputs, config, is_training):
@@ -215,11 +216,11 @@ class PTBModel(object):
     # different than reported in the paper.
     cell = self._get_lstm_cell(config, is_training)
     if is_training and config.keep_prob < 1:
-      cell = tf.contrib.rnn.DropoutWrapper(
-          cell, output_keep_prob=config.keep_prob)
+      cell = lambda: tf.contrib.rnn.DropoutWrapper(
+          cell(), output_keep_prob=config.keep_prob)
 
     cell = tf.contrib.rnn.MultiRNNCell(
-        [cell for _ in range(config.num_layers)], state_is_tuple=True)
+        [cell() for _ in range(config.num_layers)], state_is_tuple=True)
 
     self._initial_state = cell.zero_state(config.batch_size, data_type())
     state = self._initial_state
