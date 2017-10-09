@@ -44,8 +44,11 @@ _VALIDATION_PERCENTAGE = 10.0
 # Seed for repeatability.
 _RANDOM_SEED = 0
 
+# The number of samples per shard for a given dataset split.
+_NUM_PER_SHARD = 4096
+
 # The number of shards per dataset split.
-_NUM_SHARDS = 5
+_NUM_SHARDS = 0
 
 class ImageReader(object):
   """Helper class that provides TensorFlow image coding utilities."""
@@ -114,8 +117,6 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
   """
   assert split_name in ['train', 'validation']
 
-  num_per_shard = int(math.ceil(len(filenames) / float(_NUM_SHARDS)))
-
   with tf.Graph().as_default():
     image_reader = ImageReader()
 
@@ -126,8 +127,8 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
             dataset_dir, split_name, shard_id)
 
         with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
-          start_ndx = shard_id * num_per_shard
-          end_ndx = min((shard_id+1) * num_per_shard, len(filenames))
+          start_ndx = shard_id * _NUM_PER_SHARD
+          end_ndx = min((shard_id+1) * _NUM_PER_SHARD, len(filenames))
           for i in range(start_ndx, end_ndx):
             sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
                 i+1, len(filenames), shard_id))
@@ -191,11 +192,14 @@ def run(source_dir, dataset_dir):
   if not tf.gfile.Exists(dataset_dir):
     tf.gfile.MakeDirs(dataset_dir)
 
+  photo_filenames, class_names = _get_filenames_and_classes(source_dir, dataset_dir)
+
+  global _NUM_SHARDS  
+  _NUM_SHARDS = int(math.ceil(len(photo_filenames) / float(_NUM_PER_SHARD)))
+
   if _dataset_exists(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
-
-  photo_filenames, class_names = _get_filenames_and_classes(source_dir, dataset_dir)
 
   if(not create_metadata_file(photo_filenames, class_names, dataset_dir)):
     print('Error creating the metadata file.')
