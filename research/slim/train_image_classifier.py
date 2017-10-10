@@ -466,6 +466,13 @@ def main(_):
             scope='aux_loss')
       slim.losses.softmax_cross_entropy(
           logits, labels, label_smoothing=FLAGS.label_smoothing, weights=1.0)
+
+      #############################
+      ## Calculation of accuracy ##
+      #############################
+      accuracy = slim.metrics.accuracy(tf.argmax(logits, 1), tf.argmax(labels, 1))
+      tf.add_to_collection('accuracy', accuracy)
+
       return end_points
 
     # Gather initial summaries.
@@ -492,6 +499,19 @@ def main(_):
     # Add summaries for variables.
     for variable in slim.get_model_variables():
       summaries.add(tf.summary.histogram(variable.op.name, variable))
+
+    #########################################################
+    ## Calculation of the averaged accuracy for all clones ##
+    #########################################################
+
+    # Accuracy for all clones.
+    accuracy = tf.get_collection('accuracy')
+
+    # Stack and take the mean.
+    accuracy = tf.reduce_mean(tf.stack(accuracy, axis=0))
+
+    # Add summaries for accuracy.
+    summaries.add(tf.summary.scalar('accuracy/training', accuracy))
 
     #################################
     # Configure the moving averages #

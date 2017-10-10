@@ -45,7 +45,10 @@ _VALIDATION_PERCENTAGE = 10.0
 _RANDOM_SEED = 0
 
 # The number of samples per shard for a given dataset split.
-_NUM_PER_SHARD = 4096
+_NUM_PER_SHARD = 40960
+
+# Minimum number of shards per dataset split.
+_MIN_NUM_SHARDS = 4
 
 # The number of shards per dataset split.
 _NUM_SHARDS = 0
@@ -195,7 +198,12 @@ def run(source_dir, dataset_dir):
   photo_filenames, class_names = _get_filenames_and_classes(source_dir, dataset_dir)
 
   global _NUM_SHARDS  
+  global _NUM_PER_SHARD
+
   _NUM_SHARDS = int(math.ceil(len(photo_filenames) / float(_NUM_PER_SHARD)))
+  _NUM_SHARDS = max(_NUM_SHARDS, _MIN_NUM_SHARDS)
+
+  _NUM_PER_SHARD = int(math.ceil(len(photo_filenames) / float(_NUM_SHARDS)))
 
   if _dataset_exists(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
