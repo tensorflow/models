@@ -28,6 +28,7 @@ package_group(
         "//learning/brain/google/xla/benchmarks/...",
         "//learning/brain/models/image/imagenet_multigpu/...",
         "//learning/brain/models/image/imagenet_opensource/...",
+        "//learning/brain/research/codistillation/...",
         "//learning/brain/research/image_stylization/...",
         "//learning/brain/research/meta_architect/...",
         "//learning/brain/research/red_team/...",
