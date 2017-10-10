@@ -256,7 +256,7 @@ tensorboard --logdir=gs://${YOUR_GCS_BUCKET}
 ```
 
 Once Tensorboard is running, navigate to `localhost:6006` from your favourite
-web browser. You should something similar see the following:
+web browser. You should see something similar to the following:
 
 ![](img/tensorboard.png)
 
