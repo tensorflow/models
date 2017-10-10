@@ -442,7 +442,7 @@ class VGSLImageModel(object):
       ctc_input = tf.transpose(logits, [1, 0, 2])
       # Compute the widths of each batch element from the input widths.
       widths = self.layers.GetLengths(dim=2, factor=height_in)
-      cross_entropy = tf.nn.ctc_loss(ctc_input, self.sparse_labels, widths)
+      cross_entropy = tf.nn.ctc_loss(self.sparse_labels, ctc_input, widths)
     elif out_func == 's':
       if out_dims == 2:
         self.labels = _PadLabels3d(logits, self.labels)
