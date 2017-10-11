@@ -93,6 +93,31 @@ arg_scopes_map = {'alexnet_v2': alexnet.alexnet_v2_arg_scope,
                   'nasnet_large': nasnet.nasnet_large_arg_scope,
                  }
 
+model_name_map = {'alexnet_v2': 'alexnet_v2',
+                  'cifarnet': 'CifarNet',
+                  'overfeat': 'overfeat',
+                  'vgg_a': 'vgg_a',
+                  'vgg_16': 'vgg_16',
+                  'vgg_19': 'vgg_19',
+                  'inception_v1': 'InceptionV1',
+                  'inception_v2': 'InceptionV2',
+                  'inception_v3': 'InceptionV3',
+                  'inception_v4': 'InceptionV4',
+                  'inception_resnet_v2': 'InceptionResnetV2',
+                  'lenet': 'LeNet',
+                  'resnet_v1_50': 'resnet_v1_50',
+                  'resnet_v1_101': 'resnet_v1_101',
+                  'resnet_v1_152': 'resnet_v1_152',
+                  'resnet_v1_200': 'resnet_v1_200',
+                  'resnet_v2_50': 'resnet_v2_50',
+                  'resnet_v2_101': 'resnet_v2_101',
+                  'resnet_v2_152': 'resnet_v2_152',
+                  'resnet_v2_200': 'resnet_v2_200',
+                  'mobilenet_v1': 'MobilenetV1',
+                  'mobilenet_v1_075': 'MobilenetV1',
+                  'mobilenet_v1_050': 'MobilenetV1',
+                  'mobilenet_v1_025': 'MobilenetV1',
+                 }
 
 def get_network_fn(name, num_classes, weight_decay=0.0, is_training=False):
   """Returns a network_fn such as `logits, end_points = network_fn(images)`.
