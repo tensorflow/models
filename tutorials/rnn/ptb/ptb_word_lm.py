@@ -59,7 +59,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import time
+import sys
 from functools import partial
 
 import numpy as np
@@ -70,31 +72,34 @@ import util
 
 from tensorflow.python.client import device_lib
 
-flags = tf.flags
-logging = tf.logging
-
-flags.DEFINE_string(
-    "model", "small",
-    "A type of model. Possible options are: small, medium, large.")
-flags.DEFINE_string("data_path", None,
-                    "Where the training/test data is stored.")
-flags.DEFINE_string("save_path", None,
-                    "Model output directory.")
-flags.DEFINE_bool("use_fp16", False,
-                  "Train using 16-bit floats instead of 32bit floats")
-flags.DEFINE_integer("num_gpus", 1,
-                     "If larger than 1, Grappler AutoParallel optimizer "
-                     "will create multiple training replicas with each GPU "
-                     "running one replica.")
-flags.DEFINE_string("rnn_mode", None,
-                    "The low level implementation of lstm cell: one of CUDNN, "
-                    "BASIC, and BLOCK, representing cudnn_lstm, basic_lstm, "
-                    "and lstm_block_cell classes.")
-FLAGS = flags.FLAGS
+# Parse command line arguments
+Py3 = sys.version_info[0] == 3
+str_type = str if Py3 else unicode
 BASIC = "basic"
 CUDNN = "cudnn"
 BLOCK = "block"
 
+parser = argparse.ArgumentParser()
+parser.formatter_class = argparse.ArgumentDefaultsHelpFormatter
+
+parser.add_argument('--model', type=str_type.lower, default='small',
+                    choices={'small', 'medium', 'large', 'test'},
+                    help='A type of model. Possible options are: small, '
+                         'medium, large, test.')
+parser.add_argument('--data_path', type=str_type, default=None, required=True,
+                    help='Where the training/test data is stored.')
+parser.add_argument('--save_path', type=str_type, default=None,
+                    help='Model output directory.')
+parser.add_argument('--use_fp16', type=bool, default=False,
+                    help='Train using 16-bit floats instead of 32bit floats.')
+parser.add_argument('--num_gpus', type=int, default=1,
+                    help='If larger than 1, Grappler AutoParallel optimizer '
+                         'will create multiple training replicas with each '
+                         'GPU running one replica.')
+parser.add_argument('--rnn_mode', type=str_type.lower, default=None, choices={CUDNN, BASIC, BLOCK},
+                    help='The low level implementation of lstm cell: one of '
+                         'CUDNN, BASIC, and BLOCK, representing cudnn_lstm, '
+                         'basic_lstm, and lstm_block_cell classes.')
 
 def data_type():
   return tf.float16 if FLAGS.use_fp16 else tf.float32
@@ -422,7 +427,6 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
 def get_config():
   """Get model config."""
-  config = None
   if FLAGS.model == "small":
     config = SmallConfig()
   elif FLAGS.model == "medium":
@@ -433,25 +437,14 @@ def get_config():
     config = TestConfig()
   else:
     raise ValueError("Invalid model: %s", FLAGS.model)
-  if FLAGS.rnn_mode:
-    config.rnn_mode = FLAGS.rnn_mode
   if FLAGS.num_gpus != 1 or tf.__version__ < "1.3.0" :
     config.rnn_mode = BASIC
+  elif FLAGS.rnn_mode:
+    config.rnn_mode = FLAGS.rnn_mode
   return config
 
 
 def main(_):
-  if not FLAGS.data_path:
-    raise ValueError("Must set --data_path to PTB data directory")
-  gpus = [
-      x.name for x in device_lib.list_local_devices() if x.device_type == "GPU"
-  ]
-  if FLAGS.num_gpus > len(gpus):
-    raise ValueError(
-        "Your machine has only %d gpus "
-        "which is less than the requested --num_gpus=%d."
-        % (len(gpus), FLAGS.num_gpus))
-
   raw_data = reader.ptb_raw_data(FLAGS.data_path)
   train_data, valid_data, test_data, _ = raw_data
 
@@ -488,9 +481,6 @@ def main(_):
     for name, model in models.items():
       model.export_ops(name)
     metagraph = tf.train.export_meta_graph()
-    if tf.__version__ < "1.1.0" and FLAGS.num_gpus > 1:
-      raise ValueError("num_gpus > 1 is not supported for TensorFlow versions "
-                       "below 1.1.0")
     soft_placement = False
     if FLAGS.num_gpus > 1:
       soft_placement = True
@@ -523,4 +513,16 @@ def main(_):
 
 
 if __name__ == "__main__":
+  FLAGS = parser.parse_args()
+  gpus = [
+      x.name for x in device_lib.list_local_devices() if x.device_type == "GPU"
+  ]
+  if FLAGS.num_gpus > len(gpus):
+    raise ValueError(
+        "Your machine has only %d gpus "
+        "which is less than the requested --num_gpus=%d."
+        % (len(gpus), FLAGS.num_gpus))
+  if tf.__version__ < "1.1.0" and FLAGS.num_gpus > 1:
+    raise ValueError("num_gpus > 1 is not supported for TensorFlow versions "
+                     "below 1.1.0")
   tf.app.run()
