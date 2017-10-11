@@ -2,12 +2,12 @@ syntax = "proto2";
 
 package object_detection.protos;
 
-import "object_detection/protos/anchor_generator.proto";
-import "object_detection/protos/box_predictor.proto";
-import "object_detection/protos/hyperparams.proto";
-import "object_detection/protos/image_resizer.proto";
-import "object_detection/protos/losses.proto";
-import "object_detection/protos/post_processing.proto";
+import "research/object_detection/protos/anchor_generator.proto";
+import "research/object_detection/protos/box_predictor.proto";
+import "research/object_detection/protos/hyperparams.proto";
+import "research/object_detection/protos/image_resizer.proto";
+import "research/object_detection/protos/losses.proto";
+import "research/object_detection/protos/post_processing.proto";
 
 // Configuration for Faster R-CNN models.
 // See meta_architectures/faster_rcnn_meta_arch.py and models/model_builder.py

@@ -2,10 +2,10 @@ syntax = "proto2";
 
 package object_detection.protos;
 
-import "object_detection/protos/eval.proto";
-import "object_detection/protos/input_reader.proto";
-import "object_detection/protos/model.proto";
-import "object_detection/protos/train.proto";
+import "research/object_detection/protos/eval.proto";
+import "research/object_detection/protos/input_reader.proto";
+import "research/object_detection/protos/model.proto";
+import "research/object_detection/protos/train.proto";
 
 // Convenience message for configuring a training and eval pipeline. Allows all
 // of the pipeline parameters to be configured from one file.
