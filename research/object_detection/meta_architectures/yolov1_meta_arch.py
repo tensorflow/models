@@ -267,6 +267,9 @@ class YOLOMetaArch(model.DetectionModel):
       box_scores = prediction_dict['box_scores']
       detection_boxes = prediction_dict['detection_boxes']
 
+      combined_shape = shape_utils.combined_static_and_dynamic_shape(class_predictions)
+      batch_size = combined_shape[0]
+
       # multiply class conditional probabilities with box confidences
       class_predictions = tf.multiply(box_scores, class_predictions)
       # reshape class probabilities as required by non-max suppression
@@ -291,7 +294,6 @@ class YOLOMetaArch(model.DetectionModel):
 
     Args:
       prediction_dict: a dictionary holding prediction tensors with
-        prediction_dict: a dictionary holding prediction tensors with
         1) class_predictions : 4-D float tensor of shape [batch_size,
           grid_size * grid_size * boxes_per_cell, 1, num_classes] containing the conditional class
           probabilities for each grid cell
@@ -386,7 +388,7 @@ class YOLOMetaArch(model.DetectionModel):
           relative to the image window with y_min <= y_max and x_min <= x_max.
       groundtruth_classes_list: a list of 2-D one-hot (or k-hot) tensors of
         shape [num_boxes, num_classes] containing the class targets with the 0th
-        index assumed to map to the first non-background class.\
+        index assumed to map to the first non-background class.
       detection_boxes: 4-D float tensor of shape [batch_size,
         grid_size * grid_size * boxes_per_cell, 1, 4] containing the co-ordinates of
         the predicted bounding boxes
