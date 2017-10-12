@@ -113,7 +113,7 @@ class YOLOv1FeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
         fc29 = slim.fully_connected(fc28, 4096,
                                     activation_fn=self._leaky_RELU, scope='Conn_29_4096')
 
-        dropout30 = slim.dropout(fc29, self.dropout_prob, scope='Dropout_30')
+        dropout30 = slim.dropout(fc29, 0.5, scope='Dropout_30')
         fc31 = slim.fully_connected(dropout30,
                                     activation_fn=self._leaky_RELU, scope='Conn_31_1470')
 
