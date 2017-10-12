@@ -103,37 +103,23 @@ class YOLOv1FeatureExtractor(yolo_meta_arch.YOLOFeatureExtractor):
         conv26 = slim.conv2d(conv25, 1024, 3, 1, scope='Conv2d_26_3x3x1024-s-1')
         conv27 = slim.conv2d(conv26, 1024, 3, 1, scope='Conv2d_27_3x3x1024-s-1')
 
-        # flatten layer for connection to fully connected layer
+        # flatten layer before connecting it to a fully connected layer
         conv27_flatten_dim = int(reduce(lambda a, b: a * b, conv27.get_shape()[1:]))
         conv27_flatten = tf.reshape(tf.transpose(conv27, (0, 3, 1, 2)),
                                     [-1, conv27_flatten_dim])
-        fc28 = self.create_fc_layer(conv27_flatten, 512, True, 'fc28')
-        fc29 = self.create_fc_layer(fc28, 4096, True, 'fc29')
 
-        dropout30 = self.create_dropout_layer(fc29, self.dropout_prob)
-        fc31 = self.create_fc_layer(dropout30, 1470, False, 'fc31')
+        fc28 = slim.fully_connected(conv27_flatten, 512,
+                                    activation_fn=self._leaky_RELU, scope='Conn_28_512')
+        fc29 = slim.fully_connected(fc28, 4096,
+                                    activation_fn=self._leaky_RELU, scope='Conn_29_4096')
+
+        dropout30 = slim.dropout(fc29, self.dropout_prob, scope='Dropout_30')
+        fc31 = slim.fully_connected(dropout30,
+                                    activation_fn=self._leaky_RELU, scope='Conn_31_1470')
+
         self._feature_map = fc31
 
     return self._feature_map
-
-  def _create_fc_layer(self, input_layer, size, name):
-    weight_shape = [int(input_layer.get_shape()[1]), size]
-    bias_shape = [size]
-
-    with tf.variable_scope(name + '_fully_connected_weights'):
-      weight = tf.get_variable('w_%s' % (name), weight_shape,
-                               initializer=tf.contrib.layers.xavier_initializer())
-      bias = tf.get_variable('b_%s' % (name), bias_shape,
-                             initializer=tf.constant_initializer(0.0))
-
-    return self._leaky_RELU(tf.add(tf.matmul(input_layer, weight), bias))
-
-  def _create_max_pool_layer(self, input_layer, size, stride):
-    return tf.nn.max_pool(input_layer, ksize=[1, size, size, 1],
-                          strides=[1, stride, stride, 1], padding='SAME')
-
-  def _create_dropout_layer(self, input_layer, probability):
-    return tf.nn.dropout(input_layer,probability)
 
   def _leaky_RELU(self, inputs):
     return tf.maximum(inputs, tf.scalar_mul(0.1, inputs))
