@@ -15,7 +15,7 @@
 """Provides data for the flowers dataset.
 
 The dataset scripts used to create the dataset can be found at:
-tensorflow/models/research/slim/datasets/download_and_convert_flowers.py
+tensorflow/models/slim/datasets/download_and_convert_flowers.py
 """
 
 from __future__ import absolute_import

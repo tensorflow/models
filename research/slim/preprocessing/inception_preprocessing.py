@@ -155,7 +155,8 @@ def distorted_bounding_box_crop(image,
 
 def preprocess_for_train(image, height, width, bbox,
                          fast_mode=True,
-                         scope=None):
+                         scope=None,
+                         add_image_summaries=True):
   """Distort one image for training a network.
 
   Distorting images provides a useful technique for augmenting the data
@@ -178,6 +179,7 @@ def preprocess_for_train(image, height, width, bbox,
     fast_mode: Optional boolean, if True avoids slower transformations (i.e.
       bi-cubic resizing, random_hue or random_contrast).
     scope: Optional scope for name_scope.
+    add_image_summaries: Enable image summaries.
   Returns:
     3-D float Tensor of distorted image used for training with range [-1, 1].
   """
@@ -192,7 +194,8 @@ def preprocess_for_train(image, height, width, bbox,
     # the coordinates are ordered [ymin, xmin, ymax, xmax].
     image_with_box = tf.image.draw_bounding_boxes(tf.expand_dims(image, 0),
                                                   bbox)
-    tf.summary.image('image_with_bounding_boxes', image_with_box)
+    if add_image_summaries:
+      tf.summary.image('image_with_bounding_boxes', image_with_box)
 
     distorted_image, distorted_bbox = distorted_bounding_box_crop(image, bbox)
     # Restore the shape since the dynamic slice based upon the bbox_size loses
@@ -200,8 +203,9 @@ def preprocess_for_train(image, height, width, bbox,
     distorted_image.set_shape([None, None, 3])
     image_with_distorted_box = tf.image.draw_bounding_boxes(
         tf.expand_dims(image, 0), distorted_bbox)
-    tf.summary.image('images_with_distorted_bounding_box',
-                     image_with_distorted_box)
+    if add_image_summaries:
+      tf.summary.image('images_with_distorted_bounding_box',
+                       image_with_distorted_box)
 
     # This resizing operation may distort the images because the aspect
     # ratio is not respected. We select a resize method in a round robin
@@ -215,8 +219,9 @@ def preprocess_for_train(image, height, width, bbox,
         lambda x, method: tf.image.resize_images(x, [height, width], method),
         num_cases=num_resize_cases)
 
-    tf.summary.image('cropped_resized_image',
-                     tf.expand_dims(distorted_image, 0))
+    if add_image_summaries:
+      tf.summary.image('cropped_resized_image',
+                       tf.expand_dims(distorted_image, 0))
 
     # Randomly flip the image horizontally.
     distorted_image = tf.image.random_flip_left_right(distorted_image)
@@ -227,8 +232,9 @@ def preprocess_for_train(image, height, width, bbox,
         lambda x, ordering: distort_color(x, ordering, fast_mode),
         num_cases=4)
 
-    tf.summary.image('final_distorted_image',
-                     tf.expand_dims(distorted_image, 0))
+    if add_image_summaries:
+      tf.summary.image('final_distorted_image',
+                       tf.expand_dims(distorted_image, 0))
     distorted_image = tf.subtract(distorted_image, 0.5)
     distorted_image = tf.multiply(distorted_image, 2.0)
     return distorted_image
@@ -278,7 +284,8 @@ def preprocess_for_eval(image, height, width,
 def preprocess_image(image, height, width,
                      is_training=False,
                      bbox=None,
-                     fast_mode=True):
+                     fast_mode=True,
+                     add_image_summaries=True):
   """Pre-process one image for training or evaluation.
 
   Args:
@@ -295,6 +302,7 @@ def preprocess_image(image, height, width,
       where each coordinate is [0, 1) and the coordinates are arranged as
       [ymin, xmin, ymax, xmax].
     fast_mode: Optional boolean, if True avoids slower transformations.
+    add_image_summaries: Enable image summaries.
 
   Returns:
     3-D float Tensor containing an appropriately scaled image
@@ -303,6 +311,7 @@ def preprocess_image(image, height, width,
     ValueError: if user does not provide bounding box
   """
   if is_training:
-    return preprocess_for_train(image, height, width, bbox, fast_mode)
+    return preprocess_for_train(image, height, width, bbox, fast_mode,
+                                add_image_summaries=add_image_summaries)
   else:
     return preprocess_for_eval(image, height, width)

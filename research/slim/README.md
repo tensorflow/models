@@ -1,4 +1,4 @@
-# TensorFlow-Slim image classification model library
+# TensorFlow-Slim image classification library
 
 [TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
 is a new lightweight high-level API of TensorFlow (`tensorflow.contrib.slim`)
@@ -15,7 +15,6 @@ data reading and queueing utilities. You can easily train any model on any of
 these datasets, as we demonstrate below. We've also included a
 [jupyter notebook](https://github.com/tensorflow/models/blob/master/research/slim/slim_walkthrough.ipynb),
 which provides working examples of how to use TF-Slim for image classification.
-For developing or modifying your own models, see also the [main TF-Slim page](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim).
 
 ## Contacts
 
@@ -67,7 +66,7 @@ git clone https://github.com/tensorflow/models/
 
 This will put the TF-Slim image models library in `$HOME/workspace/models/research/slim`.
 (It will also create a directory called
-[models/inception](https://github.com/tensorflow/models/tree/master/research/inception),
+[models/research/inception](https://github.com/tensorflow/models/tree/master/research/inception),
 which contains an older version of slim; you can safely ignore this.)
 
 To verify that this has worked, execute the following commands; it should run
@@ -127,7 +126,7 @@ from integer labels to class names.
 
 You can use the same script to create the mnist and cifar10 datasets.
 However, for ImageNet, you have to follow the instructions
-[here](https://github.com/tensorflow/models/blob/master/research/inception/README.md#getting-started).
+[here](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started).
 Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and could use up to 500GB.
 
@@ -259,11 +258,15 @@ Model | TF-Slim File | Checkpoint | Top-1 Accuracy| Top-5 Accuracy |
 [MobileNet_v1_1.0_224](https://arxiv.org/pdf/1704.04861.pdf)|[Code](https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.py)|[mobilenet_v1_1.0_224_2017_06_14.tar.gz](http://download.tensorflow.org/models/mobilenet_v1_1.0_224_2017_06_14.tar.gz)|70.7|89.5|
 [MobileNet_v1_0.50_160](https://arxiv.org/pdf/1704.04861.pdf)|[Code](https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.py)|[mobilenet_v1_0.50_160_2017_06_14.tar.gz](http://download.tensorflow.org/models/mobilenet_v1_0.50_160_2017_06_14.tar.gz)|59.9|82.5|
 [MobileNet_v1_0.25_128](https://arxiv.org/pdf/1704.04861.pdf)|[Code](https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.py)|[mobilenet_v1_0.25_128_2017_06_14.tar.gz](http://download.tensorflow.org/models/mobilenet_v1_0.25_128_2017_06_14.tar.gz)|41.3|66.2|
+[NASNet-A_Mobile_224](https://arxiv.org/abs/1707.07012)#|[Code](https://github.com/tensorflow/models/blob/master/research/slim/nets/nasnet/nasnet.py)|[nasnet-a_mobile_04_10_2017.tar.gz](https://storage.googleapis.com/download.tensorflow.org/models/nasnet-a_mobile_04_10_2017.tar.gz)|74.0|91.6|
+[NASNet-A_Large_331](https://arxiv.org/abs/1707.07012)#|[Code](https://github.com/tensorflow/models/blob/master/research/slim/nets/nasnet/nasnet.py)|[nasnet-a_large_04_10_2017.tar.gz](https://storage.googleapis.com/download.tensorflow.org/models/nasnet-a_large_04_10_2017.tar.gz)|82.7|96.2|
 
 ^ ResNet V2 models use Inception pre-processing and input image size of 299 (use
 `--preprocessing_name inception --eval_image_size 299` when using
 `eval_image_classifier.py`). Performance numbers for ResNet V2 models are
 reported on the ImageNet validation set.
+
+(#) More information and details about the NASNet architectures are available at this [README](nets/nasnet/README.md)
 
 All 16 MobileNet Models reported in the [MobileNet Paper](https://arxiv.org/abs/1704.04861) can be found [here](https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet_v1.md).
 
@@ -393,7 +396,6 @@ $ python eval_image_classifier.py \
     --model_name=inception_v3
 ```
 
-See the [evaluation module example](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim#evaluation-loop) for an example of how to evaluate a model at multiple checkpoints during or after the training.
 
 # Exporting the Inference Graph
 <a id='Export'></a>

@@ -79,7 +79,7 @@ def create_readable_names_for_imagenet_labels():
   (since 0 is reserved for the background class).
 
   Code is based on
-  https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_imagenet_data.py#L463
+  https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_imagenet_data.py
   """
 
   # pylint: disable=g-line-too-long
