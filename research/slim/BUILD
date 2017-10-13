@@ -254,6 +254,7 @@ py_library(
         ":inception",
         ":lenet",
         ":mobilenet_v1",
+        ":nasnet",
         ":overfeat",
         ":pix2pix",
         ":resnet_v1",
@@ -481,6 +482,47 @@ py_test(
     deps = [
         ":mobilenet_v1",
         # "//numpy",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "nasnet_utils",
+    srcs = ["nets/nasnet/nasnet_utils.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "nasnet",
+    srcs = ["nets/nasnet/nasnet.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet_utils",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "nasnet_utils_test",
+    size = "medium",
+    srcs = ["nets/nasnet/nasnet_utils_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet_utils",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "nasnet_test",
+    size = "medium",
+    srcs = ["nets/nasnet/nasnet_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet",
         "//tensorflow",
     ],
 )
