@@ -125,10 +125,9 @@ class LSTM(object):
       lstm_out, next_state = tf.contrib.rnn.static_rnn(
           cell, x, initial_state=initial_state, sequence_length=seq_length)
 
-      # Merge time and batch dimensions
-      # shape(lstm_out) = timesteps * (batch_size, cell_size)
-      lstm_out = tf.concat(lstm_out, 0)
-      # shape(lstm_out) = (timesteps*batch_size, cell_size)
+      lstm_out = tf.stack(lstm_out)
+      # shape(lstm_out) = (timesteps, batch_size, cell_size)
+      lstm_out = tf.transpose(lstm_out, [1, 0, 2])
 
       if self.keep_prob < 1.:
         lstm_out = tf.nn.dropout(lstm_out, self.keep_prob)
@@ -172,23 +171,28 @@ class SoftmaxLoss(K.layers.Layer):
     x, labels, weights = inputs
     if self.num_candidate_samples > -1:
       assert self.vocab_freqs is not None
-      labels = tf.expand_dims(labels, -1)
+      labels_reshaped = tf.reshape(labels, [-1])
+      labels_reshaped = tf.expand_dims(labels_reshaped, -1)
       sampled = tf.nn.fixed_unigram_candidate_sampler(
-          true_classes=labels,
+          true_classes=labels_reshaped,
           num_true=1,
           num_sampled=self.num_candidate_samples,
           unique=True,
           range_max=self.vocab_size,
           unigrams=self.vocab_freqs)
+      inputs_reshaped = tf.reshape(x, [-1, int(x.get_shape()[2])])
 
       lm_loss = tf.nn.sampled_softmax_loss(
           weights=tf.transpose(self.lin_w),
           biases=self.lin_b,
-          labels=labels,
-          inputs=x,
+          labels=labels_reshaped,
+          inputs=inputs_reshaped,
           num_sampled=self.num_candidate_samples,
           num_classes=self.vocab_size,
           sampled_values=sampled)
+      lm_loss = tf.reshape(
+          lm_loss,
+          [int(x.get_shape()[0]), int(x.get_shape()[1])])
     else:
       logits = tf.matmul(x, self.lin_w) + self.lin_b
       lm_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
