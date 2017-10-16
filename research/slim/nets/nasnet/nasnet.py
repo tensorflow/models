@@ -321,8 +321,9 @@ def build_nasnet_cifar(
 build_nasnet_cifar.default_image_size = 32
 
 
-def build_nasnet_mobile(
-    images, num_classes, is_training=True):
+def build_nasnet_mobile(images, num_classes,
+                        is_training=True, is_batchnorm_training=True,
+                        final_endpoint=None):
   """Build NASNet Mobile model for the ImageNet Dataset."""
   hparams = _mobile_imagenet_config()
 
@@ -345,30 +346,33 @@ def build_nasnet_mobile(
   reduction_cell = nasnet_utils.NasNetAReductionCell(
       hparams.num_conv_filters, hparams.drop_path_keep_prob,
       total_num_cells, hparams.total_training_steps)
-  with arg_scope([slim.dropout, nasnet_utils.drop_path, slim.batch_norm],
+  with arg_scope([slim.dropout, nasnet_utils.drop_path],
                  is_training=is_training):
-    with arg_scope([slim.avg_pool2d,
-                    slim.max_pool2d,
-                    slim.conv2d,
-                    slim.batch_norm,
-                    slim.separable_conv2d,
-                    nasnet_utils.factorized_reduction,
-                    nasnet_utils.global_avg_pool,
-                    nasnet_utils.get_channel_index,
-                    nasnet_utils.get_channel_dim],
-                   data_format=hparams.data_format):
-      return _build_nasnet_base(images,
-                                normal_cell=normal_cell,
-                                reduction_cell=reduction_cell,
-                                num_classes=num_classes,
-                                hparams=hparams,
-                                is_training=is_training,
-                                stem_type='imagenet')
+    with arg_scope([slim.batch_norm], is_training=is_batchnorm_training):
+      with arg_scope([slim.avg_pool2d,
+                      slim.max_pool2d,
+                      slim.conv2d,
+                      slim.batch_norm,
+                      slim.separable_conv2d,
+                      nasnet_utils.factorized_reduction,
+                      nasnet_utils.global_avg_pool,
+                      nasnet_utils.get_channel_index,
+                      nasnet_utils.get_channel_dim],
+                     data_format=hparams.data_format):
+        return _build_nasnet_base(images,
+                                  normal_cell=normal_cell,
+                                  reduction_cell=reduction_cell,
+                                  num_classes=num_classes,
+                                  hparams=hparams,
+                                  is_training=is_training,
+                                  stem_type='imagenet',
+                                  final_endpoint=final_endpoint)
 build_nasnet_mobile.default_image_size = 224
 
 
-def build_nasnet_large(
-    images, num_classes, is_training=True):
+def build_nasnet_large(images, num_classes,
+                       is_training=True, is_batchnorm_training=True,
+                       final_endpoint=None):
   """Build NASNet Large model for the ImageNet Dataset."""
   hparams = _large_imagenet_config()
 
@@ -391,25 +395,27 @@ def build_nasnet_large(
   reduction_cell = nasnet_utils.NasNetAReductionCell(
       hparams.num_conv_filters, hparams.drop_path_keep_prob,
       total_num_cells, hparams.total_training_steps)
-  with arg_scope([slim.dropout, nasnet_utils.drop_path, slim.batch_norm],
+  with arg_scope([slim.dropout, nasnet_utils.drop_path],
                  is_training=is_training):
-    with arg_scope([slim.avg_pool2d,
-                    slim.max_pool2d,
-                    slim.conv2d,
-                    slim.batch_norm,
-                    slim.separable_conv2d,
-                    nasnet_utils.factorized_reduction,
-                    nasnet_utils.global_avg_pool,
-                    nasnet_utils.get_channel_index,
-                    nasnet_utils.get_channel_dim],
-                   data_format=hparams.data_format):
-      return _build_nasnet_base(images,
-                                normal_cell=normal_cell,
-                                reduction_cell=reduction_cell,
-                                num_classes=num_classes,
-                                hparams=hparams,
-                                is_training=is_training,
-                                stem_type='imagenet')
+    with arg_scope([slim.batch_norm], is_training=is_batchnorm_training):
+      with arg_scope([slim.avg_pool2d,
+                      slim.max_pool2d,
+                      slim.conv2d,
+                      slim.batch_norm,
+                      slim.separable_conv2d,
+                      nasnet_utils.factorized_reduction,
+                      nasnet_utils.global_avg_pool,
+                      nasnet_utils.get_channel_index,
+                      nasnet_utils.get_channel_dim],
+                     data_format=hparams.data_format):
+        return _build_nasnet_base(images,
+                                  normal_cell=normal_cell,
+                                  reduction_cell=reduction_cell,
+                                  num_classes=num_classes,
+                                  hparams=hparams,
+                                  is_training=is_training,
+                                  stem_type='imagenet',
+                                  final_endpoint=final_endpoint)
 build_nasnet_large.default_image_size = 331
 
 
@@ -419,10 +425,14 @@ def _build_nasnet_base(images,
                        num_classes,
                        hparams,
                        is_training,
-                       stem_type):
+                       stem_type,
+                       final_endpoint=None):
   """Constructs a NASNet image model."""
 
   end_points = {}
+  def add_and_check_endpoint(endpoint_name, net):
+    end_points[endpoint_name] = net
+    return final_endpoint and (endpoint_name == final_endpoint)
 
   # Find where to place the reduction cells or stride normal cells
   reduction_indices = nasnet_utils.calc_reduction_layers(
@@ -436,7 +446,7 @@ def _build_nasnet_base(images,
   else:
     raise ValueError('Unknown stem_type: ', stem_type)
   net, cell_outputs = stem()
-  end_points['Stem'] = net
+  if add_and_check_endpoint('Stem', net): return net, end_points
 
   # Setup for building in the auxiliary head.
   aux_head_cell_idxes = []
@@ -460,8 +470,9 @@ def _build_nasnet_base(images,
           stride=2,
           prev_layer=cell_outputs[-2],
           cell_num=true_cell_num)
-      end_points['Reduction_Cell_{}'.format(
-          reduction_indices.index(cell_num))] = net
+      if add_and_check_endpoint(
+          'Reduction_Cell_{}'.format(reduction_indices.index(cell_num)), net):
+        return net, end_points
       true_cell_num += 1
       cell_outputs.append(net)
     if not hparams.skip_reduction_layer_input:
@@ -473,7 +484,9 @@ def _build_nasnet_base(images,
         stride=stride,
         prev_layer=prev_layer,
         cell_num=true_cell_num)
-    end_points['Cell_{}'.format(cell_num)] = net
+
+    if add_and_check_endpoint('Cell_{}'.format(cell_num), net):
+      return net, end_points
     true_cell_num += 1
     if hparams.use_aux_head and cell_num in aux_head_cell_idxes and is_training:
       aux_net = tf.nn.relu(net)
@@ -487,6 +500,11 @@ def _build_nasnet_base(images,
     net = nasnet_utils.global_avg_pool(net)
     net = slim.dropout(net, hparams.dense_dropout_keep_prob, scope='dropout')
     logits = slim.fully_connected(net, num_classes)
-    end_points['Logits'] = logits
-    end_points['Predictions'] = tf.nn.softmax(logits, name='predictions')
+
+    if add_and_check_endpoint('Logits', logits):
+      return net, end_points
+
+    predictions = tf.nn.softmax(logits, name='predictions')
+    if add_and_check_endpoint('Predictions', predictions):
+      return net, end_points
   return logits, end_points
