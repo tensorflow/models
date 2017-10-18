@@ -189,11 +189,10 @@ class VatxtModel(object):
     tf.summary.scalar('adversarial_loss', adv_loss)
 
     total_loss = loss + adv_loss
-    tf.summary.scalar('total_classification_loss', total_loss)
 
     with tf.control_dependencies([inputs.save_state(next_state)]):
       total_loss = tf.identity(total_loss)
-
+      tf.summary.scalar('total_classification_loss', total_loss)
     return total_loss
 
   def language_model_graph(self, compute_loss=True):
@@ -419,12 +418,12 @@ class VatxtBidirModel(VatxtModel):
     tf.summary.scalar('adversarial_loss', adv_loss)
 
     total_loss = loss + adv_loss
-    tf.summary.scalar('total_classification_loss', total_loss)
+
 
     saves = [inp.save_state(state) for (inp, state) in zip(inputs, next_states)]
     with tf.control_dependencies(saves):
       total_loss = tf.identity(total_loss)
-
+      tf.summary.scalar('total_classification_loss', total_loss)
     return total_loss
 
   def language_model_graph(self, compute_loss=True):
