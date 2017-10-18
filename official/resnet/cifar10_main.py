@@ -45,10 +45,10 @@ parser.add_argument('--model_dir', type=str, default='/tmp/cifar10_model',
 parser.add_argument('--resnet_size', type=int, default=32,
                     help='The size of the ResNet model to use.')
 
-parser.add_argument('--train_steps', type=int, default=100000,
-                    help='The number of batches to train.')
+parser.add_argument('--train_epochs', type=int, default=250,
+                    help='The number of epochs to train.')
 
-parser.add_argument('--steps_per_eval', type=int, default=4000,
+parser.add_argument('--epochs_per_eval', type=int, default=10,
                     help='The number of batches to run in between evaluations.')
 
 parser.add_argument('--batch_size', type=int, default=128,
@@ -74,23 +74,21 @@ def record_dataset(filenames):
   return tf.contrib.data.FixedLengthRecordDataset(filenames, record_bytes)
 
 
-def get_filenames(mode):
-  """Returns a list of filenames based on 'mode'."""
+def get_filenames(is_training):
+  """Returns a list of filenames."""
   data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
 
   assert os.path.exists(data_dir), (
       'Run cifar10_download_and_extract.py first to download and extract the '
       'CIFAR-10 data.')
 
-  if mode == tf.estimator.ModeKeys.TRAIN:
+  if is_training:
     return [
         os.path.join(data_dir, 'data_batch_%d.bin' % i)
         for i in range(1, NUM_DATA_BATCHES + 1)
     ]
-  elif mode == tf.estimator.ModeKeys.EVAL:
-    return [os.path.join(data_dir, 'test_batch.bin')]
   else:
-    raise ValueError('Invalid mode: %s' % mode)
+    return [os.path.join(data_dir, 'test_batch.bin')]
 
 
 def dataset_parser(value):
@@ -133,44 +131,41 @@ def train_preprocess_fn(image, label):
   return image, label
 
 
-def input_fn(mode, batch_size):
+def input_fn(is_training, num_epochs=1):
   """Input_fn using the contrib.data input pipeline for CIFAR-10 dataset.
 
   Args:
-    mode: Standard names for model modes from tf.estimator.ModeKeys.
-    batch_size: The number of samples per batch of input requested.
+    is_training: A boolean denoting whether the input is for training.
+    num_epochs: The number of epochs to repeat the dataset.
 
   Returns:
     A tuple of images and labels.
   """
-  dataset = record_dataset(get_filenames(mode))
-
-  # For training repeat forever.
-  if mode == tf.estimator.ModeKeys.TRAIN:
-    dataset = dataset.repeat()
-
+  dataset = record_dataset(get_filenames(is_training))
   dataset = dataset.map(dataset_parser, num_threads=1,
-                        output_buffer_size=2 * batch_size)
+                        output_buffer_size=2 * FLAGS.batch_size)
 
   # For training, preprocess the image and shuffle.
-  if mode == tf.estimator.ModeKeys.TRAIN:
+  if is_training:
     dataset = dataset.map(train_preprocess_fn, num_threads=1,
-                          output_buffer_size=2 * batch_size)
+                          output_buffer_size=2 * FLAGS.batch_size)
 
     # Ensure that the capacity is sufficiently large to provide good random
     # shuffling.
-    buffer_size = int(NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN * 0.4) + 3 * batch_size
+    buffer_size = int(0.4 * NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
     dataset = dataset.shuffle(buffer_size=buffer_size)
 
   # Subtract off the mean and divide by the variance of the pixels.
   dataset = dataset.map(
       lambda image, label: (tf.image.per_image_standardization(image), label),
       num_threads=1,
-      output_buffer_size=2 * batch_size)
+      output_buffer_size=2 * FLAGS.batch_size)
+
+  dataset = dataset.repeat(num_epochs)
 
   # Batch results by up to batch_size, and then fetch the tuple from the
   # iterator.
-  iterator = dataset.batch(batch_size).make_one_shot_iterator()
+  iterator = dataset.batch(FLAGS.batch_size).make_one_shot_iterator()
   images, labels = iterator.get_next()
 
   return images, labels
@@ -253,7 +248,7 @@ def main(unused_argv):
   cifar_classifier = tf.estimator.Estimator(
       model_fn=cifar10_model_fn, model_dir=FLAGS.model_dir)
 
-  for _ in range(FLAGS.train_steps // FLAGS.steps_per_eval):
+  for _ in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
     tensors_to_log = {
         'learning_rate': 'learning_rate',
         'cross_entropy': 'cross_entropy',
@@ -264,15 +259,13 @@ def main(unused_argv):
         tensors=tensors_to_log, every_n_iter=100)
 
     cifar_classifier.train(
-        input_fn=lambda: input_fn(tf.estimator.ModeKeys.TRAIN,
-                                  batch_size=FLAGS.batch_size),
-        steps=FLAGS.steps_per_eval,
+        input_fn=lambda: input_fn(
+            is_training=True, num_epochs=FLAGS.epochs_per_eval),
         hooks=[logging_hook])
 
     # Evaluate the model and print results
     eval_results = cifar_classifier.evaluate(
-        input_fn=lambda: input_fn(tf.estimator.ModeKeys.EVAL,
-                                  batch_size=FLAGS.batch_size))
+        input_fn=lambda: input_fn(is_training=False))
     print(eval_results)
 
 
