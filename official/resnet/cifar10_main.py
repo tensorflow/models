@@ -25,14 +25,6 @@ import tensorflow as tf
 
 import resnet_model
 
-HEIGHT = 32
-WIDTH = 32
-DEPTH = 3
-NUM_CLASSES = 10
-NUM_DATA_BATCHES = 5
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 10000 * NUM_DATA_BATCHES
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
-
 parser = argparse.ArgumentParser()
 
 # Basic model parameters.
@@ -56,6 +48,17 @@ parser.add_argument('--batch_size', type=int, default=128,
 
 FLAGS = parser.parse_args()
 
+_HEIGHT = 32
+_WIDTH = 32
+_DEPTH = 3
+_NUM_CLASSES = 10
+_NUM_DATA_FILES = 5
+
+_NUM_IMAGES = {
+    'train': 50000,
+    'validation': 10000,
+}
+
 # Scale the learning rate linearly with the batch size. When the batch size is
 # 128, the learning rate should be 0.1.
 _INITIAL_LEARNING_RATE = 0.1 * FLAGS.batch_size / 128
@@ -65,12 +68,12 @@ _MOMENTUM = 0.9
 # was originally suggested.
 _WEIGHT_DECAY = 2e-4
 
-_BATCHES_PER_EPOCH = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / FLAGS.batch_size
+_BATCHES_PER_EPOCH = _NUM_IMAGES['train'] / FLAGS.batch_size
 
 
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
-  record_bytes = HEIGHT * WIDTH * DEPTH + 1
+  record_bytes = _HEIGHT * _WIDTH * _DEPTH + 1
   return tf.contrib.data.FixedLengthRecordDataset(filenames, record_bytes)
 
 
@@ -85,7 +88,7 @@ def get_filenames(is_training):
   if is_training:
     return [
         os.path.join(data_dir, 'data_batch_%d.bin' % i)
-        for i in range(1, NUM_DATA_BATCHES + 1)
+        for i in range(1, _NUM_DATA_FILES + 1)
     ]
   else:
     return [os.path.join(data_dir, 'test_batch.bin')]
@@ -96,7 +99,7 @@ def dataset_parser(value):
   # Every record consists of a label followed by the image, with a fixed number
   # of bytes for each.
   label_bytes = 1
-  image_bytes = HEIGHT * WIDTH * DEPTH
+  image_bytes = _HEIGHT * _WIDTH * _DEPTH
   record_bytes = label_bytes + image_bytes
 
   # Convert from a string to a vector of uint8 that is record_bytes long.
@@ -108,22 +111,22 @@ def dataset_parser(value):
   # The remaining bytes after the label represent the image, which we reshape
   # from [depth * height * width] to [depth, height, width].
   depth_major = tf.reshape(raw_record[label_bytes:record_bytes],
-                           [DEPTH, HEIGHT, WIDTH])
+                           [_DEPTH, _HEIGHT, _WIDTH])
 
   # Convert from [depth, height, width] to [height, width, depth], and cast as
   # float32.
   image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
 
-  return image, tf.one_hot(label, NUM_CLASSES)
+  return image, tf.one_hot(label, _NUM_CLASSES)
 
 
 def train_preprocess_fn(image, label):
   """Preprocess a single training image of layout [height, width, depth]."""
   # Resize the image to add four extra pixels on each side.
-  image = tf.image.resize_image_with_crop_or_pad(image, HEIGHT + 8, WIDTH + 8)
+  image = tf.image.resize_image_with_crop_or_pad(image, _HEIGHT + 8, _WIDTH + 8)
 
-  # Randomly crop a [HEIGHT, WIDTH] section of the image.
-  image = tf.random_crop(image, [HEIGHT, WIDTH, DEPTH])
+  # Randomly crop a [_HEIGHT, _WIDTH] section of the image.
+  image = tf.random_crop(image, [_HEIGHT, _WIDTH, _DEPTH])
 
   # Randomly flip the image horizontally.
   image = tf.image.random_flip_left_right(image)
@@ -152,7 +155,7 @@ def input_fn(is_training, num_epochs=1):
 
     # Ensure that the capacity is sufficiently large to provide good random
     # shuffling.
-    buffer_size = int(0.4 * NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
+    buffer_size = int(0.4 * _NUM_IMAGES['train'])
     dataset = dataset.shuffle(buffer_size=buffer_size)
 
   # Subtract off the mean and divide by the variance of the pixels.
@@ -176,9 +179,9 @@ def cifar10_model_fn(features, labels, mode):
   tf.summary.image('images', features, max_outputs=6)
 
   network = resnet_model.cifar10_resnet_v2_generator(
-      FLAGS.resnet_size, NUM_CLASSES)
+      FLAGS.resnet_size, _NUM_CLASSES)
 
-  inputs = tf.reshape(features, [-1, HEIGHT, WIDTH, DEPTH])
+  inputs = tf.reshape(features, [-1, _HEIGHT, _WIDTH, _DEPTH])
   logits = network(inputs, mode == tf.estimator.ModeKeys.TRAIN)
 
   predictions = {
