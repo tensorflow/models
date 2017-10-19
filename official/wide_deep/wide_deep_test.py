@@ -57,7 +57,19 @@ class BaseTest(tf.test.TestCase):
     features, labels = wide_deep.input_fn(self.input_csv, 1, False, 1)()
     with tf.Session() as sess:
       features, labels = sess.run((features, labels))
-      self.assertDictContainsSubset(TEST_INPUT_VALUES, features)
+
+      # Compare the two features dictionaries.
+      for key in TEST_INPUT_VALUES:
+        self.assertTrue(key in features)
+        self.assertEqual(len(features[key]), 1)
+        feature_value = features[key][0]
+
+        # Convert from bytes to string for Python 3.
+        if isinstance(feature_value, bytes):
+          feature_value = feature_value.decode()
+
+        self.assertEqual(TEST_INPUT_VALUES[key], feature_value)
+
       self.assertFalse(labels)
 
   def build_and_test_estimator(self, model_type):
