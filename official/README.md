@@ -8,6 +8,8 @@ Below is the list of models contained in the garden:
 
 [resnet](resnet): A deep residual network that can be used to classify both CIFAR-10 and ImageNet's dataset of 1000 classes.
 
+[wide_deep](wide_deep): A model that combines a wide model and deep network to classify census income data.
+
 More models to come!
 
 If you would like to make any fixes or improvements to the models, please [submit a pull request](https://github.com/tensorflow/models/compare).
