@@ -115,8 +115,8 @@ def read_and_decode(filename_queue):
         'image/object/bbox/xmax': tf.FixedLenFeature([], tf.float32),
         'image/object/bbox/ymin': tf.FixedLenFeature([], tf.float32),
         'image/object/bbox/ymax': tf.FixedLenFeature([], tf.float32),
-        'image/object/class/text': tf.FixedLenFeature([], tf.float32),
-        'image/object/class/label': tf.FixedLenFeature([], tf.float32),
+        'image/object/class/text': tf.FixedLenFeature([], tf.string),
+        'image/object/class/label': tf.FixedLenFeature([], tf.int64),
     })
     # 将字符串解析成图像对应的像素数组
     image = tf.decode_raw(features['image/encoded'], tf.uint8)
@@ -156,12 +156,10 @@ def read_and_decode(filename_queue):
 #
 #     return images, labels
 
-
-def main(_):
-    # iamges, labels = input("train", 10, 0)
-    file = FLAGS.output_path
+def extract():
+    file = r"E:\data_mining\temp\train\train.record"
     with tf.name_scope('input') as scope:
-        filename_queue = tf.train.string_input_producer([file], num_epochs=1)
+        filename_queue = tf.train.string_input_producer([file])
         image, label = read_and_decode(filename_queue)
 
     with tf.Session() as sess:  # 开始一个会话
@@ -172,12 +170,16 @@ def main(_):
         for i in range(20):
             example, l = sess.run([image, label])  # 在会话中取出image和label
             img = Image.fromarray(example, 'RGB')  # 这里Image是之前提到的
-            save_path = os.path.join(FLAGS.input_path, str(i) + '_''Label_' + l + '.jpg')
+            save_path = os.path.join(FLAGS.input_path, str(i) + '_Label_' + str(l) + '.jpg')
             img.save(save_path)  # 存下图片
             print(example, l)
         coord.request_stop()
         coord.join(threads)
 
+
+def main(_):
+    # create_tfrecord()
+    extract()
 
 if __name__ == '__main__':
     tf.app.run()
