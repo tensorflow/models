@@ -48,12 +48,15 @@ def create_tf_example(dir, filename, label_map_dict):
     class_name = os.path.basename(dir)
     img_path = os.path.join(dir, filename)
 
-    img = np.array(Image.open(img_path))
-    img_raw = img.tostring()
+    img = Image.open(img_path)
+    height = img.height
+    width = img.width
+    img = img.resize((width, height))
+    img = img.tobytes()  # 将图片转化为二进制格式
+    # img = np.array(img)
+    # img_raw = img.tostring()
     # print("width = ",img.width,",height = ",img.height)
 
-    height = img.shape[0]
-    width = img.shape[1]
 
     xmins = [100 / width]  # List of normalized left x coordinates in bounding box (1 per box)
     xmaxs = [100 / width]  # List of normalized right x coordinates in bounding box
@@ -72,7 +75,7 @@ def create_tf_example(dir, filename, label_map_dict):
         'image/width': dataset_util.int64_feature(width),
         'image/filename': dataset_util.bytes_feature(filename.encode('utf8')),
         'image/source_id': dataset_util.bytes_feature(filename.encode('utf8')),
-        'image/encoded': dataset_util.bytes_feature(img_raw),
+        'image/encoded': dataset_util.bytes_feature(img),
         'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
         'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
         'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
@@ -125,7 +128,7 @@ def read_and_decode(filename_queue):
     label = tf.cast(features['image/object/class/text'], tf.string)
 
     image = tf.reshape(image, [height, width, 3])
-    image = tf.cast(image, tf.float32) * (1. / 255) - 0.5  # ????
+    # image = tf.cast(image, tf.float32) * (1. / 255) - 0.5  # ????
 
     return image, label
 
@@ -163,7 +166,7 @@ def extract():
         image, label = read_and_decode(filename_queue)
 
     with tf.Session() as sess:  # 开始一个会话
-        init_op = tf.initialize_all_variables()
+        init_op = tf.global_variables_initializer()
         sess.run(init_op)
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
@@ -180,6 +183,7 @@ def extract():
 def main(_):
     # create_tfrecord()
     extract()
+
 
 if __name__ == '__main__':
     tf.app.run()
