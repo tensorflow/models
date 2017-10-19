@@ -173,7 +173,7 @@ def extract():
         for i in range(20):
             example, l = sess.run([image, label])  # 在会话中取出image和label
             img = Image.fromarray(example, 'RGB')  # 这里Image是之前提到的
-            save_path = os.path.join(FLAGS.input_path, str(i) + '_Label_' + str(l) + '.jpg')
+            save_path = os.path.join(FLAGS.input_path, str(i) + '_Label_' + l.decode() + '.jpg')
             img.save(save_path)  # 存下图片
             print(example, l)
         coord.request_stop()
