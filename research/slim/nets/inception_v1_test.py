@@ -114,7 +114,7 @@ class InceptionV1Test(tf.test.TestCase):
       inception.inception_v1_base(inputs)
     total_params, _ = slim.model_analyzer.analyze_vars(
         slim.get_model_variables())
-    self.assertAlmostEqual(5607184, total_params)
+    self.assertAlmostEqual(5988112, total_params)
 
   def testHalfSizeImages(self):
     batch_size = 5
