@@ -67,7 +67,7 @@ types = collections.OrderedDict((key, type(value[0]))
 
 
 def _get_imports85():
-  path = tf.contrib.keras.utils.get_file(URL.split("/")[-1], URL)
+  path = tf.keras.utils.get_file(URL.split("/")[-1], URL)
   return path
 
 
@@ -131,7 +131,7 @@ def dataset(y_name="price", train_fraction=0.7):
     # booleans but we are dealing with symbolic tensors.
     return ~in_training_set(line)
 
-  base_dataset = (tf.contrib.data
+  base_dataset = (tf.data
                   # Get the lines from the file.
                   .TextLineDataset(path)
                   # drop lines with question marks.

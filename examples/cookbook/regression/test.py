@@ -18,28 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
-
 import pandas as pd
-
+import tensorflow as tf
 from six.moves import StringIO
 
-import tensorflow.examples.get_started.regression.imports85 as imports85
+import imports85 as imports85
 
-sys.modules["imports85"] = imports85
-
-# pylint: disable=g-bad-import-order,g-import-not-at-top
-import tensorflow.contrib.data as data
-
-import tensorflow.examples.get_started.regression.dnn_regression as dnn_regression
-import tensorflow.examples.get_started.regression.linear_regression as linear_regression
-import tensorflow.examples.get_started.regression.linear_regression_categorical as linear_regression_categorical
-import tensorflow.examples.get_started.regression.custom_regression as custom_regression
-
-from tensorflow.python.platform import googletest
-from tensorflow.python.platform import test
-# pylint: disable=g-bad-import-order,g-import-not-at-top
-
+import dnn_regression
+import linear_regression
+import linear_regression_categorical
+import custom_regression
 
 # pylint: disable=line-too-long
 FOUR_LINES = "\n".join([
@@ -47,9 +35,9 @@ FOUR_LINES = "\n".join([
     "2,164,audi,gas,std,four,sedan,fwd,front,99.80,176.60,66.20,54.30,2337,ohc,four,109,mpfi,3.19,3.40,10.00,102,5500,24,30,13950",
     "2,164,audi,gas,std,four,sedan,4wd,front,99.40,176.60,66.40,54.30,2824,ohc,five,136,mpfi,3.19,3.40,8.00,115,5500,18,22,17450",
     "2,?,audi,gas,std,two,sedan,fwd,front,99.80,177.30,66.30,53.10,2507,ohc,five,136,mpfi,3.19,3.40,8.50,110,5500,19,25,15250",])
-
 # pylint: enable=line-too-long
 
+mock = tf.test.mock
 
 def four_lines_dataframe():
   text = StringIO(FOUR_LINES)
@@ -60,39 +48,39 @@ def four_lines_dataframe():
 
 def four_lines_dataset(*args, **kwargs):
   del args, kwargs
-  return data.Dataset.from_tensor_slices(FOUR_LINES.split("\n"))
+  return tf.data.Dataset.from_tensor_slices(FOUR_LINES.split("\n"))
 
 
-class RegressionTest(googletest.TestCase):
+class RegressionTest(tf.test.TestCase):
   """Test the regression examples in this directory."""
 
-  @test.mock.patch.dict(data.__dict__,
+  @mock.patch.dict(tf.data.__dict__,
                         {"TextLineDataset": four_lines_dataset})
-  @test.mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
-  @test.mock.patch.dict(linear_regression.__dict__, {"STEPS": 1})
+  @mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
+  @mock.patch.dict(linear_regression.__dict__, {"STEPS": 1})
   def test_linear_regression(self):
     linear_regression.main([""])
 
-  @test.mock.patch.dict(data.__dict__,
+  @mock.patch.dict(tf.data.__dict__,
                         {"TextLineDataset": four_lines_dataset})
-  @test.mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
-  @test.mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
+  @mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
+  @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_linear_regression_categorical(self):
     linear_regression_categorical.main([""])
 
-  @test.mock.patch.dict(data.__dict__,
+  @mock.patch.dict(tf.data.__dict__,
                         {"TextLineDataset": four_lines_dataset})
-  @test.mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
-  @test.mock.patch.dict(dnn_regression.__dict__, {"STEPS": 1})
+  @mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
+  @mock.patch.dict(dnn_regression.__dict__, {"STEPS": 1})
   def test_dnn_regression(self):
     dnn_regression.main([""])
 
-  @test.mock.patch.dict(data.__dict__, {"TextLineDataset": four_lines_dataset})
-  @test.mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
-  @test.mock.patch.dict(custom_regression.__dict__, {"STEPS": 1})
+  @mock.patch.dict(tf.data.__dict__, {"TextLineDataset": four_lines_dataset})
+  @mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
+  @mock.patch.dict(custom_regression.__dict__, {"STEPS": 1})
   def test_custom_regression(self):
     custom_regression.main([""])
 
 
 if __name__ == "__main__":
-  googletest.main()
+  tf.test.main()
