@@ -35,10 +35,11 @@ slim = tf.contrib.slim
 # cosine (single period) learning rate decay
 # auxiliary head loss weighting: 0.4
 # clip global norm of all gradients by 5
-def _cifar_config():
+def _cifar_config(is_training=True):
+  drop_path_keep_prob = 1.0 if not is_training else 0.6
   return tf.contrib.training.HParams(
       stem_multiplier=3.0,
-      drop_path_keep_prob=0.6,
+      drop_path_keep_prob=drop_path_keep_prob,
       num_cells=18,
       use_aux_head=1,
       num_conv_filters=32,
@@ -64,14 +65,15 @@ def _cifar_config():
 # auxiliary head loss weighting: 0.4
 # label smoothing: 0.1
 # clip global norm of all gradients by 10
-def _large_imagenet_config():
+def _large_imagenet_config(is_training=True):
+  drop_path_keep_prob = 1.0 if not is_training else 0.7
   return tf.contrib.training.HParams(
       stem_multiplier=3.0,
       dense_dropout_keep_prob=0.5,
       num_cells=18,
       filter_scaling_rate=2.0,
       num_conv_filters=168,
-      drop_path_keep_prob=0.7,
+      drop_path_keep_prob=drop_path_keep_prob,
       use_aux_head=1,
       num_reduction_layers=2,
       data_format='NHWC',
@@ -280,7 +282,7 @@ def _cifar_stem(inputs, hparams):
 def build_nasnet_cifar(
     images, num_classes, is_training=True):
   """Build NASNet model for the Cifar Dataset."""
-  hparams = _cifar_config()
+  hparams = _cifar_config(is_training=is_training)
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
     tf.logging.info('A GPU is available on the machine, consider using NCHW '
@@ -374,7 +376,7 @@ def build_nasnet_large(images, num_classes,
                        is_training=True, is_batchnorm_training=True,
                        final_endpoint=None):
   """Build NASNet Large model for the ImageNet Dataset."""
-  hparams = _large_imagenet_config()
+  hparams = _large_imagenet_config(is_training=is_training)
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
     tf.logging.info('A GPU is available on the machine, consider using NCHW '
