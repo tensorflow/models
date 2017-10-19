@@ -229,7 +229,7 @@ def main(unused_argv):
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
   # Set up a RunConfig to only save checkpoints once per training cycle.
-  run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=None)
+  run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
   resnet_classifier = tf.estimator.Estimator(
       model_fn=resnet_model_fn, model_dir=FLAGS.model_dir, config=run_config)
 
