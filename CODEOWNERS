@@ -7,6 +7,7 @@ research/audioset/* @plakal @dpwe
 research/autoencoders/* @snurkabill
 research/cognitive_mapping_and_planning/* @s-gupta
 research/compression/* @nmjohn
+research/delf/* @andrefaraujo
 research/differential_privacy/* @panyx0718
 research/domain_adaptation/* @bousmalis @ddohan
 research/im2txt/* @cshallue
