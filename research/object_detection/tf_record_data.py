@@ -4,7 +4,7 @@ from object_detection.utils import dataset_util
 import os
 from PIL import Image
 from object_detection.utils import label_map_util
-import numpy as np
+import io
 
 r"""Convert the Oxford pet dataset to TFRecord for object_detection.
 
@@ -18,7 +18,8 @@ Example usage:
         --output_path=/home/user/pet/output
 """
 flags = tf.app.flags
-flags.DEFINE_string('train_path', r'E:\data_mining\data\east_ic_logo\train', 'Path to output TFRecord')
+# flags.DEFINE_string('train_path', r'E:\data_mining\data\east_ic_logo\train', 'Path to output TFRecord')
+flags.DEFINE_string('train_path', r'E:\data_mining\temp\train', 'Path to output TFRecord')
 flags.DEFINE_string('label_map_path', 'data/logo_label_map.pbtxt', 'Path to label map proto')
 FLAGS = flags.FLAGS
 
@@ -47,14 +48,18 @@ def create_tf_example(dir, filename, label_map_dict):
     class_name = os.path.basename(dir)
     img_path = os.path.join(dir, filename)
 
-    img = Image.open(img_path)
-    img_height = img.height
-    img_width = img.width
-    img = img.resize((img_width, img_height))
-    img = img.tobytes()  # 将图片转化为二进制格式
-    # img = np.array(img)
-    # img_raw = img.tostring()
-    # print("width = ",img.width,",height = ",img.height)
+    # image = Image.open(img_path)
+    # encoded_jpg = image.tobytes()  # 将图片转化为二进制格式
+    # img = Image.open(img_path)
+    with tf.gfile.GFile(img_path, 'rb') as fid:
+        encoded_jpg = fid.read()
+    encoded_jpg_io = io.BytesIO(encoded_jpg)
+    image = Image.open(encoded_jpg_io)
+    if image.format != 'JPEG':
+        raise ValueError('Image format not JPEG')
+    img_height = image.height
+    img_width = image.width
+    print("width = ", img_width, ",height = ", img_height)
     logo_width = 0
     logo_height = 0
     x_padding = 0
@@ -70,11 +75,11 @@ def create_tf_example(dir, filename, label_map_dict):
         x_padding = 10
         y_padding = 10
 
-    print("logo_width = ", logo_width)
-    xmins = [img_width - logo_width - x_padding / img_width]
-    xmaxs = [img_width - x_padding / img_width]
+    xmins = [(img_width - logo_width - x_padding) / img_width]
+    xmaxs = [(img_width - x_padding) / img_width]
     ymins = [y_padding / img_height]  # List of normalized top y coordinates in bounding box (1 per box)
-    ymaxs = [y_padding + logo_height / img_height]  # List of normalized bottom y coordinates in bounding box
+    ymaxs = [(y_padding + logo_height) / img_height]  # List of normalized bottom y coordinates in bounding box
+    print("xmins = ", xmins)
     # (1 per box)
     classes_text = []  # List of string class name of bounding box (1 per box)
     classes = []  # List of integer class id of bounding box (1 per box)
@@ -87,7 +92,7 @@ def create_tf_example(dir, filename, label_map_dict):
         'image/width': dataset_util.int64_feature(img_width),
         'image/filename': dataset_util.bytes_feature(filename.encode('utf8')),
         'image/source_id': dataset_util.bytes_feature(filename.encode('utf8')),
-        'image/encoded': dataset_util.bytes_feature(img),
+        'image/encoded': dataset_util.bytes_feature(encoded_jpg),
         'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
         'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
         'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
@@ -135,15 +140,18 @@ def read_and_decode(filename_queue):
         'image/object/class/label': tf.FixedLenFeature([], tf.int64),
     })
     # 将字符串解析成图像对应的像素数组
-    image = tf.decode_raw(features['image/encoded'], tf.uint8)
     width = tf.cast(features['image/width'], tf.int32)
     height = tf.cast(features['image/height'], tf.int32)
+    image = tf.decode_raw(features['image/encoded'], tf.uint8)
+
     label = tf.cast(features['image/object/class/text'], tf.string)
 
-    image = tf.reshape(image, [height, width, 3])
+    # image = tf.reshape(image, [height, width, 3])
+    # raw_img = tf.cast(raw_img, tf.float32) * (1. / 255) - 0.5
+
     # image = tf.cast(image, tf.float32) * (1. / 255) - 0.5  # ????
 
-    return image, label
+    return image, label, width, height
 
 
 # # 用于获取一个batch_size的图像和label
@@ -176,7 +184,7 @@ def extract():
     file = r"E:\data_mining\temp\train\train.record"
     with tf.name_scope('input') as scope:
         filename_queue = tf.train.string_input_producer([file])
-        image, label = read_and_decode(filename_queue)
+        image, label, width, height = read_and_decode(filename_queue)
 
     with tf.Session() as sess:  # 开始一个会话
         init_op = tf.global_variables_initializer()
@@ -184,11 +192,12 @@ def extract():
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
         for i in range(20):
-            example, l = sess.run([image, label])  # 在会话中取出image和label
-            img = Image.fromarray(example, 'RGB')  # 这里Image是之前提到的
-            save_path = os.path.join(FLAGS.train_path, str(i) + '_Label_' + l.decode() + '.jpg')
+            r_image, r_label, r_width, r_height = sess.run([image, label, width, height])  # 在会话中取出image和label
+
+            r_image.resize(r_height,r_width, 3)
+            img = Image.fromarray(r_image, 'RGB')  # 这里Image是之前提到的
+            save_path = os.path.join(FLAGS.train_path, str(i) + '_Label_' + r_label.decode() + '.jpg')
             img.save(save_path)  # 存下图片
-            print(example, l)
         coord.request_stop()
         coord.join(threads)
 
