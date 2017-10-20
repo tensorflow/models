@@ -54,24 +54,20 @@ class RegressionTest(tf.test.TestCase):
   """Test the regression examples in this directory."""
 
   @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
-  @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_linear_regression(self):
-    linear_regression.main([""])
+    linear_regression.main([None, "--train_steps=1"])
 
   @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
-  @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_linear_regression_categorical(self):
-    linear_regression_categorical.main([""])
+    linear_regression_categorical.main([None, "--train_steps=1"])
 
   @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
-  @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_dnn_regression(self):
-    dnn_regression.main([""])
+    dnn_regression.main([None, "--train_steps=1"])
 
   @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
-  @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_custom_regression(self):
-    custom_regression.main([""])
+    custom_regression.main([None, "--train_steps=1"])
 
 if __name__ == "__main__":
   tf.test.main()

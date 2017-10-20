@@ -50,7 +50,7 @@ COLUMN_TYPES = collections.OrderedDict([
     ("engine-type", str),
     ("num-of-cylinders", str),
     ("engine-size", float),
-    ("fuel-system", str),
+    ("fuel-system", str),use
     ("bore", float),
     ("stroke", float),
     ("compression-ratio", float),

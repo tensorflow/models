@@ -18,12 +18,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import tensorflow as tf
 
 import imports85
 
-STEPS = 5000
-PRICE_NORM_FACTOR = 1000
+parser = argparse.ArgumentParser()
+parser.add_argument('--batch_size', default=100, type=int, help='batch size')
+parser.add_argument('--train_steps', default=5000, type=int,
+                    help='number of training steps')
+parser.add_argument('--price_norm_factor', default=1000., type=float,
+                    help='price normalization factor')
 
 
 def from_dataset(ds):
@@ -32,47 +37,43 @@ def from_dataset(ds):
 
 def main(argv):
   """Builds, trains, and evaluates the model."""
-  assert len(argv) == 1
+  args = parser.parse_args(argv[1:])
+
   (train_x,train_y), (test_x, test_y) = imports85.load_data()
 
-  train_y /= PRICE_NORM_FACTOR
-  test_y /= PRICE_NORM_FACTOR
+  train_y /= args.price_norm_factor
+  test_y /= args.price_norm_factor
 
   # Build the training dataset.
   train = (
       imports85.make_dataset(train_x, train_y)
       # Shuffling with a buffer larger than the data set ensures
       # that the examples are well mixed.
-      .shuffle(1000).batch(128)
+      .shuffle(1000).batch(args.batch_size)
       # Repeat forever
       .repeat())
 
   # Build the validation dataset.
-  test = imports85.make_dataset(test_x, test_y).batch(128)
+  test = imports85.make_dataset(test_x, test_y).batch(args.batch_size)
 
-  # The first way assigns a unique weight to each category. To do this you must
-  # specify the category's vocabulary (values outside this specification will
-  # receive a weight of zero). Here we specify the vocabulary using a list of
-  # options. The vocabulary can also be specified with a vocabulary file (using
-  # `categorical_column_with_vocabulary_file`). For features covering a
-  # range of positive integers use `categorical_column_with_identity`.
+  # Use the same categorical columns as in `linear_regression_categorical`
   body_style_vocab = ["hardtop", "wagon", "sedan", "hatchback", "convertible"]
-  body_style = tf.feature_column.categorical_column_with_vocabulary_list(
+  body_style_column = tf.feature_column.categorical_column_with_vocabulary_list(
       key="body-style", vocabulary_list=body_style_vocab)
-  make = tf.feature_column.categorical_column_with_hash_bucket(
+  make_column = tf.feature_column.categorical_column_with_hash_bucket(
       key="make", hash_bucket_size=50)
 
   feature_columns = [
       tf.feature_column.numeric_column(key="curb-weight"),
       tf.feature_column.numeric_column(key="highway-mpg"),
-      # Since this is a DNN model, convert categorical columns from sparse
-      # to dense.
+      # Since this is a DNN model, categorical columns must be converted from
+      # sparse to dense.
       # Wrap them in an `indicator_column` to create a
       # one-hot vector from the input.
-      tf.feature_column.indicator_column(body_style),
+      tf.feature_column.indicator_column(body_style_column),
       # Or use an `embedding_column` to create a trainable vector for each
       # index.
-      tf.feature_column.embedding_column(make, dimension=3),
+      tf.feature_column.embedding_column(make_column, dimension=3),
   ]
 
   # Build a DNNRegressor, with 2x20-unit hidden layers, with the feature columns
@@ -81,7 +82,8 @@ def main(argv):
       hidden_units=[20, 20], feature_columns=feature_columns)
 
   # Train the model.
-  model.train(input_fn=from_dataset(train), steps=STEPS)
+  # By default, the Estimators log output every 100 steps.
+  model.train(input_fn=from_dataset(train), steps=args.train_steps)
 
   # Evaluate how the model performs on data it has not yet seen.
   eval_result = model.evaluate(input_fn=from_dataset(test))
@@ -93,7 +95,7 @@ def main(argv):
   # Convert MSE to Root Mean Square Error (RMSE).
   print("\n" + 80 * "*")
   print("\nRMS error for the test set: ${:.0f}"
-        .format(PRICE_NORM_FACTOR * average_loss**0.5))
+        .format(args.price_norm_factor * average_loss**0.5))
 
   print()
 

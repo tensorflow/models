@@ -18,13 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import numpy as np
 import tensorflow as tf
 
 import imports85
 
-STEPS = 1000
-PRICE_NORM_FACTOR = 1000
+parser = argparse.ArgumentParser()
+parser.add_argument('--batch_size', default=100, type=int, help='batch size')
+parser.add_argument('--train_steps', default=1000, type=int,
+                    help='number of training steps')
+parser.add_argument('--price_norm_factor', default=1000., type=float,
+                    help='price normalization factor')
 
 
 def from_dataset(ds):
@@ -33,23 +38,24 @@ def from_dataset(ds):
 
 def main(argv):
   """Builds, trains, and evaluates the model."""
-  assert len(argv) == 1
+  args = parser.parse_args(argv[1:])
+
   (train_x,train_y), (test_x, test_y) = imports85.load_data()
 
-  train_y /= PRICE_NORM_FACTOR
-  test_y /= PRICE_NORM_FACTOR
+  train_y /= args.price_norm_factor
+  test_y /= args.price_norm_factor
 
   # Build the training dataset.
   train = (
       imports85.make_dataset(train_x, train_y)
       # Shuffling with a buffer larger than the data set ensures
       # that the examples are well mixed.
-      .shuffle(1000).batch(128)
+      .shuffle(1000).batch(args.batch_size)
       # Repeat forever
       .repeat())
 
   # Build the validation dataset.
-  test = imports85.make_dataset(test_x, test_y).batch(128)
+  test = imports85.make_dataset(test_x, test_y).batch(args.batch_size)
 
   feature_columns = [
       # "curb-weight" and "highway-mpg" are numeric columns.
@@ -62,7 +68,7 @@ def main(argv):
 
   # Train the model.
   # By default, the Estimators log output every 100 steps.
-  model.train(input_fn=from_dataset(train), steps=STEPS)
+  model.train(input_fn=from_dataset(train), steps=args.train_steps)
 
   # Evaluate how the model performs on data it has not yet seen.
   eval_result = model.evaluate(input_fn=from_dataset(test))
@@ -74,7 +80,7 @@ def main(argv):
   # Convert MSE to Root Mean Square Error (RMSE).
   print("\n" + 80 * "*")
   print("\nRMS error for the test set: ${:.0f}"
-        .format(PRICE_NORM_FACTOR * average_loss**0.5))
+        .format(args.price_norm_factor * average_loss**0.5))
 
   # Run the model in prediction mode.
   input_dict = {
@@ -91,7 +97,7 @@ def main(argv):
            "Highway: {: 0d}mpg, "
            "Prediction: ${: 9.2f}")
     msg = msg.format(input_dict["curb-weight"][i], input_dict["highway-mpg"][i],
-                     PRICE_NORM_FACTOR * prediction["predictions"][0])
+                     args.price_norm_factor * prediction["predictions"][0])
 
     print("    " + msg)
   print()
