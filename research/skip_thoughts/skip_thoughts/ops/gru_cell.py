@@ -128,7 +128,7 @@ class LayerNormGRUCell(tf.contrib.rnn.RNNCell):
             "w", [input_dim, num_units], initializer=self._w_initializer)
         u = tf.get_variable(
             "u", [num_units, num_units], initializer=self._u_initializer)
-        h_hat = (r * _layer_norm(tf.matmul(state, u), scope="layer_norm/u") +
+        h_hat = ( _layer_norm(tf.matmul(r * state, u), scope="layer_norm/u") +
                  _layer_norm(tf.matmul(inputs, w), scope="layer_norm/w"))
       new_h = (1 - z) * state + z * self._activation(h_hat)
     return new_h, new_h
