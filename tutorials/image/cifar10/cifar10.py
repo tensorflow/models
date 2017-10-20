@@ -46,19 +46,17 @@ import tensorflow as tf
 
 import cifar10_input
 
-parser = argparse.ArgumentParser()
+#parser = argparse.ArgumentParser()
 
 # Basic model parameters.
-parser.add_argument('--batch_size', type=int, default=128,
+tf.flags._global_parser.add_argument('--batch_size', type=int, default=128,
                     help='Number of images to process in a batch.')
 
-parser.add_argument('--data_dir', type=str, default='/tmp/cifar10_data',
+tf.flags._global_parser.add_argument('--data_dir', type=str, default='/tmp/cifar10_data',
                     help='Path to the CIFAR-10 data directory.')
 
-parser.add_argument('--use_fp16', type=bool, default=False,
+tf.flags._global_parser.add_argument('--use_fp16', type=bool, default=False,
                     help='Train the model using fp16.')
-
-FLAGS = parser.parse_args()
 
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
@@ -112,7 +110,7 @@ def _variable_on_cpu(name, shape, initializer):
     Variable Tensor
   """
   with tf.device('/cpu:0'):
-    dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
+    dtype = tf.float16 if tf.app.flags.FLAGS.use_fp16 else tf.float32
     var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
   return var
 
@@ -133,7 +131,11 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   Returns:
     Variable Tensor
   """
-  dtype = tf.float16 if FLAGS.use_fp16 else tf.float32
+  # global FLAGS
+  # if FLAGS is None:
+  #   FLAGS = parser.parse_args()
+
+  dtype = tf.float16 if tf.app.flags.FLAGS.use_fp16 else tf.float32
   var = _variable_on_cpu(
       name,
       shape,
@@ -154,12 +156,18 @@ def distorted_inputs():
   Raises:
     ValueError: If no data_dir
   """
-  if not FLAGS.data_dir:
+  # global FLAGS
+  # if FLAGS is None:
+  #   FLAGS = parser.parse_args()
+
+
+  if not tf.app.flags.FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
-  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
+
+  data_dir = os.path.join(tf.app.flags.FLAGS.data_dir, 'cifar-10-batches-bin')
   images, labels = cifar10_input.distorted_inputs(data_dir=data_dir,
-                                                  batch_size=FLAGS.batch_size)
-  if FLAGS.use_fp16:
+                                                  batch_size=tf.app.flags.FLAGS.batch_size)
+  if tf.app.flags.FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
     labels = tf.cast(labels, tf.float16)
   return images, labels
@@ -178,13 +186,17 @@ def inputs(eval_data):
   Raises:
     ValueError: If no data_dir
   """
-  if not FLAGS.data_dir:
+  # global FLAGS
+  # if FLAGS is None:
+  #   FLAGS = parser.parse_args()
+
+  if not tf.app.flags.FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
-  data_dir = os.path.join(FLAGS.data_dir, 'cifar-10-batches-bin')
+  data_dir = os.path.join(tf.app.flags.FLAGS.data_dir, 'cifar-10-batches-bin')
   images, labels = cifar10_input.inputs(eval_data=eval_data,
                                         data_dir=data_dir,
-                                        batch_size=FLAGS.batch_size)
-  if FLAGS.use_fp16:
+                                        batch_size=tf.app.flags.FLAGS.batch_size)
+  if tf.app.flags.FLAGS.use_fp16:
     images = tf.cast(images, tf.float16)
     labels = tf.cast(labels, tf.float16)
   return images, labels
@@ -245,7 +257,7 @@ def inference(images):
   # local3
   with tf.variable_scope('local3') as scope:
     # Move everything into depth so we can perform a single matrix multiply.
-    reshape = tf.reshape(pool2, [FLAGS.batch_size, -1])
+    reshape = tf.reshape(pool2, [tf.app.flags.FLAGS.batch_size, -1])
     dim = reshape.get_shape()[1].value
     weights = _variable_with_weight_decay('weights', shape=[dim, 384],
                                           stddev=0.04, wd=0.004)
@@ -341,7 +353,7 @@ def train(total_loss, global_step):
     train_op: op for training.
   """
   # Variables that affect learning rate.
-  num_batches_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / FLAGS.batch_size
+  num_batches_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / tf.app.flags.FLAGS.batch_size
   decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
 
   # Decay the learning rate exponentially based on the number of steps.
@@ -385,7 +397,11 @@ def train(total_loss, global_step):
 
 def maybe_download_and_extract():
   """Download and extract the tarball from Alex's website."""
-  dest_directory = FLAGS.data_dir
+  # global FLAGS
+  # if FLAGS is None:
+  #   FLAGS = parser.parse_args()
+
+  dest_directory = tf.app.flags.FLAGS.data_dir
   if not os.path.exists(dest_directory):
     os.makedirs(dest_directory)
   filename = DATA_URL.split('/')[-1]
