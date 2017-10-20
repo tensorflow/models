@@ -19,7 +19,6 @@ import numpy as np
 import string
 import tensorflow as tf
 from tensorflow.contrib import slim
-from tensorflow.contrib.tfprof import model_analyzer
 
 import model
 import data_provider
@@ -127,9 +126,9 @@ class ModelTest(tf.test.TestCase):
     ocr_model = self.create_model()
     ocr_model.create_base(images=self.fake_images, labels_one_hot=None)
     with self.test_session() as sess:
-      tfprof_root = model_analyzer.print_model_analysis(
+      tfprof_root = tf.profiler.profile(
           sess.graph,
-          tfprof_options=model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+          options=tf.profiler.ProfileOptionBuilder.trainable_variables_parameter())
 
       model_size_bytes = 4 * tfprof_root.total_parameters
       self.assertLess(model_size_bytes, 1 * 2**30)

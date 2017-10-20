@@ -34,7 +34,7 @@ pip install --upgrade tensorflow-gpu
 2. At least 158GB of free disk space to download the FSNS dataset:
 
 ```
-cd models/attention_ocr/python/datasets
+cd research/attention_ocr/python/datasets
 aria2c -c -j 20 -i ../../../street/python/fsns_urls.txt
 cd ..
 ```
@@ -50,7 +50,7 @@ cd ..
 To run all unit tests:
 
 ```
-cd models/attention_ocr/python
+cd research/attention_ocr/python
 python -m unittest discover -p  '*_test.py'
 ```
 

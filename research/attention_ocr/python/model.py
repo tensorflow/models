@@ -299,7 +299,7 @@ class Model(object):
           with shape [batch_size x seq_length].
     """
     log_prob = utils.logits_to_log_prob(chars_logit)
-    ids = tf.to_int32(tf.argmax(log_prob, dimension=2), name='predicted_chars')
+    ids = tf.to_int32(tf.argmax(log_prob, axis=2), name='predicted_chars')
     mask = tf.cast(
         slim.one_hot_encoding(ids, self._params.num_char_classes), tf.bool)
     all_scores = tf.nn.softmax(chars_logit)
