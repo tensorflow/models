@@ -18,8 +18,7 @@ Example usage:
         --output_path=/home/user/pet/output
 """
 flags = tf.app.flags
-flags.DEFINE_string('output_path', r'E:\data_mining\temp\train\train.record', 'Path to output TFRecord')
-flags.DEFINE_string('input_path', r'E:\data_mining\temp\train', 'Path to output TFRecord')
+flags.DEFINE_string('train_path', r'E:\data_mining\data\east_ic_logo\train', 'Path to output TFRecord')
 flags.DEFINE_string('label_map_path', 'data/logo_label_map.pbtxt', 'Path to label map proto')
 FLAGS = flags.FLAGS
 
@@ -49,20 +48,33 @@ def create_tf_example(dir, filename, label_map_dict):
     img_path = os.path.join(dir, filename)
 
     img = Image.open(img_path)
-    height = img.height
-    width = img.width
-    img = img.resize((width, height))
+    img_height = img.height
+    img_width = img.width
+    img = img.resize((img_width, img_height))
     img = img.tobytes()  # 将图片转化为二进制格式
     # img = np.array(img)
     # img_raw = img.tostring()
     # print("width = ",img.width,",height = ",img.height)
+    logo_width = 0
+    logo_height = 0
+    x_padding = 0
+    y_padding = 0
+    if class_name == "BigLogo":
+        logo_width = 160
+        logo_height = 75
+        x_padding = 20
+        y_padding = 16
+    elif class_name == "SmallLogo":
+        logo_width = 92
+        logo_height = 44
+        x_padding = 10
+        y_padding = 10
 
-
-    xmins = [100 / width]  # List of normalized left x coordinates in bounding box (1 per box)
-    xmaxs = [100 / width]  # List of normalized right x coordinates in bounding box
-    # (1 per box)
-    ymins = [100 / height]  # List of normalized top y coordinates in bounding box (1 per box)
-    ymaxs = [100 / height]  # List of normalized bottom y coordinates in bounding box
+    print("logo_width = ", logo_width)
+    xmins = [img_width - logo_width - x_padding / img_width]
+    xmaxs = [img_width - x_padding / img_width]
+    ymins = [y_padding / img_height]  # List of normalized top y coordinates in bounding box (1 per box)
+    ymaxs = [y_padding + logo_height / img_height]  # List of normalized bottom y coordinates in bounding box
     # (1 per box)
     classes_text = []  # List of string class name of bounding box (1 per box)
     classes = []  # List of integer class id of bounding box (1 per box)
@@ -71,8 +83,8 @@ def create_tf_example(dir, filename, label_map_dict):
     classes.append(label_map_dict[class_name])
 
     tf_example = tf.train.Example(features=tf.train.Features(feature={
-        'image/height': dataset_util.int64_feature(height),
-        'image/width': dataset_util.int64_feature(width),
+        'image/height': dataset_util.int64_feature(img_height),
+        'image/width': dataset_util.int64_feature(img_width),
         'image/filename': dataset_util.bytes_feature(filename.encode('utf8')),
         'image/source_id': dataset_util.bytes_feature(filename.encode('utf8')),
         'image/encoded': dataset_util.bytes_feature(img),
@@ -88,10 +100,11 @@ def create_tf_example(dir, filename, label_map_dict):
 
 
 def create_tfrecord():
-    writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+    record_path = os.path.join(FLAGS.train_path, "train.record")
+    writer = tf.python_io.TFRecordWriter(record_path)
     label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
-    for class_dir_name in os.listdir(FLAGS.input_path):
-        class_dir_path = os.path.join(FLAGS.input_path, class_dir_name)
+    for class_dir_name in os.listdir(FLAGS.train_path):
+        class_dir_path = os.path.join(FLAGS.train_path, class_dir_name)
         if os.path.isdir(class_dir_path):
             print("class_dir_path = " + class_dir_path)
             for img_name in os.listdir(class_dir_path):
@@ -173,7 +186,7 @@ def extract():
         for i in range(20):
             example, l = sess.run([image, label])  # 在会话中取出image和label
             img = Image.fromarray(example, 'RGB')  # 这里Image是之前提到的
-            save_path = os.path.join(FLAGS.input_path, str(i) + '_Label_' + l.decode() + '.jpg')
+            save_path = os.path.join(FLAGS.train_path, str(i) + '_Label_' + l.decode() + '.jpg')
             img.save(save_path)  # 存下图片
             print(example, l)
         coord.request_stop()
@@ -181,8 +194,8 @@ def extract():
 
 
 def main(_):
-    # create_tfrecord()
-    extract()
+    create_tfrecord()
+    # extract()
 
 
 if __name__ == '__main__':
