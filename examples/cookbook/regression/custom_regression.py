@@ -20,10 +20,14 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import imports85  # pylint: disable=g-bad-import-order
+import imports85
 
 STEPS = 1000
 PRICE_NORM_FACTOR = 1000
+
+
+def from_dataset(ds):
+    return lambda: ds.make_one_shot_iterator().get_next()
 
 
 def my_dnn_regression_fn(features, labels, mode, params):
@@ -69,6 +73,8 @@ def my_dnn_regression_fn(features, labels, mode, params):
   assert mode == tf.estimator.ModeKeys.EVAL
 
   # Calculate root mean squared error
+  print(labels)
+  print(predictions)
   rmse = tf.metrics.root_mean_squared_error(labels, predictions)
 
   # Add the rmse to the collection of evaluation metrics.
@@ -84,28 +90,22 @@ def my_dnn_regression_fn(features, labels, mode, params):
 def main(argv):
   """Builds, trains, and evaluates the model."""
   assert len(argv) == 1
-  (train, test) = imports85.dataset()
+  (train_x,train_y), (test_x, test_y) = imports85.load_data()
 
-  # Switch the labels to units of thousands for better convergence.
-  def normalize_price(features, labels):
-    return features, labels / PRICE_NORM_FACTOR
+  train_y /= PRICE_NORM_FACTOR
+  test_y /= PRICE_NORM_FACTOR
 
-  train = train.map(normalize_price)
-  test = test.map(normalize_price)
+  # Build the training dataset.
+  train = (
+      imports85.make_dataset(train_x, train_y)
+      # Shuffling with a buffer larger than the data set ensures
+      # that the examples are well mixed.
+      .shuffle(1000).batch(128)
+      # Repeat forever
+      .repeat())
 
-  # Build the training input_fn.
-  def input_train():
-    return (
-        # Shuffling with a buffer larger than the data set ensures
-        # that the examples are well mixed.
-        train.shuffle(1000).batch(128)
-        # Repeat forever
-        .repeat().make_one_shot_iterator().get_next())
-
-  # Build the validation input_fn.
-  def input_test():
-    return (test.shuffle(1000).batch(128)
-            .make_one_shot_iterator().get_next())
+  # Build the validation dataset.
+  test = imports85.make_dataset(test_x, test_y).batch(128)
 
   # The first way assigns a unique weight to each category. To do this you must
   # specify the category's vocabulary (values outside this specification will
@@ -144,10 +144,10 @@ def main(argv):
       })
 
   # Train the model.
-  model.train(input_fn=input_train, steps=STEPS)
+  model.train(input_fn=from_dataset(train), steps=STEPS)
 
   # Evaluate how the model performs on data it has not yet seen.
-  eval_result = model.evaluate(input_fn=input_test)
+  eval_result = model.evaluate(input_fn=from_dataset(test))
 
   # Print the Root Mean Square Error (RMSE).
   print("\n" + 80 * "*")

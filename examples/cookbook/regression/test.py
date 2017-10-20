@@ -41,9 +41,8 @@ mock = tf.test.mock
 
 def four_lines_dataframe():
   text = StringIO(FOUR_LINES)
-
-  return pd.read_csv(text, names=imports85.types.keys(),
-                     dtype=imports85.types, na_values="?")
+  return pd.read_csv(text, names=imports85.COLUMN_TYPES.keys(),
+                     dtype=imports85.COLUMN_TYPES, na_values="?")
 
 
 def four_lines_dataset(*args, **kwargs):
@@ -54,33 +53,25 @@ def four_lines_dataset(*args, **kwargs):
 class RegressionTest(tf.test.TestCase):
   """Test the regression examples in this directory."""
 
-  @mock.patch.dict(tf.data.__dict__,
-                        {"TextLineDataset": four_lines_dataset})
-  @mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
-  @mock.patch.dict(linear_regression.__dict__, {"STEPS": 1})
+  @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
+  @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_linear_regression(self):
     linear_regression.main([""])
 
-  @mock.patch.dict(tf.data.__dict__,
-                        {"TextLineDataset": four_lines_dataset})
-  @mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
+  @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
   @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_linear_regression_categorical(self):
     linear_regression_categorical.main([""])
 
-  @mock.patch.dict(tf.data.__dict__,
-                        {"TextLineDataset": four_lines_dataset})
-  @mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
-  @mock.patch.dict(dnn_regression.__dict__, {"STEPS": 1})
+  @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
+  @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_dnn_regression(self):
     dnn_regression.main([""])
 
-  @mock.patch.dict(tf.data.__dict__, {"TextLineDataset": four_lines_dataset})
-  @mock.patch.dict(imports85.__dict__, {"_get_imports85": (lambda: None)})
-  @mock.patch.dict(custom_regression.__dict__, {"STEPS": 1})
+  @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
+  @mock.patch.dict(linear_regression_categorical.__dict__, {"STEPS": 1})
   def test_custom_regression(self):
     custom_regression.main([""])
-
 
 if __name__ == "__main__":
   tf.test.main()
