@@ -45,11 +45,11 @@
 # downloading the raw images.
 #
 # usage:
-#  ./download_and_preprocess_imagenet.sh [data-dir]
+#  ./download_and_convert_imagenet.sh [data-dir]
 set -e
 
 if [ -z "$1" ]; then
-  echo "usage download_and_preprocess_imagenet.sh [data dir]"
+  echo "usage download_and_convert_imagenet.sh [data dir]"
   exit
 fi
 
