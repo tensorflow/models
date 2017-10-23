@@ -40,17 +40,16 @@ from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
 flags = tf.app.flags
-flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic_logo\train', 'Root directory to raw pet dataset.')
-flags.DEFINE_string('output_dir', r'E:\data_mining\data\east_ic_logo\train', 'Path to directory to output TFRecords.')
+flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic_logo', 'Root directory to raw pet dataset.')
+flags.DEFINE_string('output_dir', r'E:\data_mining\data\east_ic_logo', 'Path to directory to output TFRecords.')
 flags.DEFINE_string('label_map_path', r'D:\WorkSpace\models\research\object_detection\data\logo_label_map.pbtxt',
                     'Path to label map proto')
 FLAGS = flags.FLAGS
 
 
-def dict_to_tf_example(filename,
+def dict_to_tf_example(img_path,
                        label_map_dict,
-                       image_subdirectory,
-                       ignore_difficult_instances=False):
+                       class_name):
     """Convert XML derived dict to tf.Example proto.
 
     Notice that this function normalizes the bounding box coordinates provided
@@ -71,7 +70,9 @@ def dict_to_tf_example(filename,
     Raises:
       ValueError: if the image pointed to by data['filename'] is not a valid JPEG
     """
-    img_path = os.path.join(image_subdirectory, filename)
+
+    print("img_path = " + img_path + ",class_name = " + class_name)
+
     with tf.gfile.GFile(img_path, 'rb') as fid:
         encoded_jpg = fid.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
@@ -83,41 +84,19 @@ def dict_to_tf_example(filename,
     img_width = image.width
     img_height = image.height
 
+    filename = os.path.basename(img_path)
 
-    # for obj in data['object']:
-    #     difficult = bool(int(obj['difficult']))
-    #     if ignore_difficult_instances and difficult:
-    #         continue
-    #
-    #     difficult_obj.append(int(difficult))
-    #
-    #     xmin.append(float(obj['bndbox']['xmin']) / width)
-    #     ymin.append(float(obj['bndbox']['ymin']) / height)
-    #     xmax.append(float(obj['bndbox']['xmax']) / width)
-    #     ymax.append(float(obj['bndbox']['ymax']) / height)
-    #     class_name = get_class_name_from_filename(data['filename'])
-    #     classes_text.append(class_name.encode('utf8'))
-    #     classes.append(label_map_dict[class_name])
-    #     truncated.append(int(obj['truncated']))
-    #     poses.append(obj['pose'].encode('utf8'))
-
-
-    logo_width = 0
-    logo_height = 0
-    x_padding = 0
-    y_padding = 0
     classes = []
     classes_text = []
 
-    class_name = os.path.basename(image_subdirectory)
     if class_name == "BigLogo":
         logo_width = 160
         logo_height = 76
         x_padding = 20
         y_padding = 16
-        print("big logo = "+class_name)
+        print("big logo = " + class_name)
     else:
-        print("small logo = "+class_name)
+        print("small logo = " + class_name)
         logo_width = 96
         logo_height = 44
         x_padding = 10
@@ -155,16 +134,42 @@ def main(_):
 
     logging.info('Reading from Logo dataset.')
 
-    train_output_path = os.path.join(FLAGS.output_dir, 'logo_train.record')
-    writer = tf.python_io.TFRecordWriter(train_output_path)
+
+    examples_list = []
 
     for class_dir_name in os.listdir(FLAGS.data_dir):
         class_dir_path = os.path.join(FLAGS.data_dir, class_dir_name)
         if os.path.isdir(class_dir_path):
             print("class_dir_path = " + class_dir_path)
             for filename in os.listdir(class_dir_path):
-                tf_example = dict_to_tf_example(filename, label_map_dict, class_dir_path)
-                writer.write(tf_example.SerializeToString())
+                img_path = os.path.join(class_dir_path, filename)
+
+                examples_list.append(img_path)
+
+    random.seed(42)
+    random.shuffle(examples_list)
+    num_examples = len(examples_list)
+    num_train = int(0.7 * num_examples)
+    train_examples = examples_list[:num_train]
+    val_examples = examples_list[num_train:]
+    print('%d training and %d validation examples.', len(train_examples), len(val_examples))
+
+    eval_output_path = os.path.join(FLAGS.output_dir, 'logo_train.record')
+    writer = tf.python_io.TFRecordWriter(eval_output_path)
+    for train_path in train_examples:
+        head, tail = os.path.split(train_path)
+        class_name = os.path.basename(head)
+        tf_example = dict_to_tf_example(train_path, label_map_dict, class_name)
+        writer.write(tf_example.SerializeToString())
+    writer.close()
+
+    eval_output_path = os.path.join(FLAGS.output_dir, 'logo_eval.record')
+    writer = tf.python_io.TFRecordWriter(eval_output_path)
+    for eval_path in val_examples:
+        head, tail = os.path.split(eval_path)
+        class_name = os.path.basename(head)
+        tf_example = dict_to_tf_example(eval_path, label_map_dict, class_name)
+        writer.write(tf_example.SerializeToString())
 
     writer.close()
 
