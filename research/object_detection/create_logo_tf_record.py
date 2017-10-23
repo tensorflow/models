@@ -40,8 +40,8 @@ from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
 flags = tf.app.flags
-flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic_logo', 'Root directory to raw pet dataset.')
-flags.DEFINE_string('output_dir', r'E:\data_mining\data\east_ic_logo', 'Path to directory to output TFRecords.')
+flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic_logo\train', 'Root directory to raw pet dataset.')
+flags.DEFINE_string('output_dir', r'E:\data_mining\data\east_ic_logo\train', 'Path to directory to output TFRecords.')
 flags.DEFINE_string('label_map_path', r'D:\WorkSpace\models\research\object_detection\data\logo_label_map.pbtxt',
                     'Path to label map proto')
 FLAGS = flags.FLAGS
@@ -49,7 +49,7 @@ FLAGS = flags.FLAGS
 
 def dict_to_tf_example(img_path,
                        label_map_dict,
-                       class_name):
+                       class_name, is_eval):
     """Convert XML derived dict to tf.Example proto.
 
     Notice that this function normalizes the bounding box coordinates provided
@@ -71,12 +71,12 @@ def dict_to_tf_example(img_path,
       ValueError: if the image pointed to by data['filename'] is not a valid JPEG
     """
 
-    print("img_path = " + img_path + ",class_name = " + class_name)
+    # print("img_path = " + img_path + ",class_name = " + class_name)
 
     with tf.gfile.GFile(img_path, 'rb') as fid:
         encoded_jpg = fid.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
-    image = PIL.Image.open(encoded_jpg_io)
+    image = PIL.Image.open(img_path)
     if image.format != 'JPEG':
         raise ValueError('Image format not JPEG')
     key = hashlib.sha256(encoded_jpg).hexdigest()
@@ -94,13 +94,18 @@ def dict_to_tf_example(img_path,
         logo_height = 76
         x_padding = 20
         y_padding = 16
-        print("big logo = " + class_name)
+        # print("big logo = " + class_name)
     else:
-        print("small logo = " + class_name)
+        # print("small logo = " + class_name)
         logo_width = 96
         logo_height = 44
         x_padding = 10
         y_padding = 10
+
+    if is_eval:
+        eval_dir = os.path.join(r"E:\data_mining\data\east_ic_logo\eval", class_name)
+        eval_path = os.path.join(eval_dir, filename)
+        image.save(eval_path)
 
     classes_text.append(class_name.encode('utf8'))
     classes.append(label_map_dict[class_name])
@@ -134,7 +139,6 @@ def main(_):
 
     logging.info('Reading from Logo dataset.')
 
-
     examples_list = []
 
     for class_dir_name in os.listdir(FLAGS.data_dir):
@@ -154,23 +158,24 @@ def main(_):
     val_examples = examples_list[num_train:]
     print('%d training and %d validation examples.', len(train_examples), len(val_examples))
 
-    eval_output_path = os.path.join(FLAGS.output_dir, 'logo_train.record')
-    writer = tf.python_io.TFRecordWriter(eval_output_path)
+    train_output_path = os.path.join(FLAGS.output_dir, 'logo_train.record')
+    print(train_output_path)
+    writer = tf.python_io.TFRecordWriter(train_output_path)
     for train_path in train_examples:
         head, tail = os.path.split(train_path)
         class_name = os.path.basename(head)
-        tf_example = dict_to_tf_example(train_path, label_map_dict, class_name)
+        tf_example = dict_to_tf_example(train_path, label_map_dict, class_name, False)
         writer.write(tf_example.SerializeToString())
     writer.close()
 
     eval_output_path = os.path.join(FLAGS.output_dir, 'logo_eval.record')
+    print(eval_output_path)
     writer = tf.python_io.TFRecordWriter(eval_output_path)
     for eval_path in val_examples:
         head, tail = os.path.split(eval_path)
         class_name = os.path.basename(head)
-        tf_example = dict_to_tf_example(eval_path, label_map_dict, class_name)
+        tf_example = dict_to_tf_example(eval_path, label_map_dict, class_name, True)
         writer.write(tf_example.SerializeToString())
-
     writer.close()
 
 
