@@ -82,8 +82,23 @@ def dict_to_tf_example(filename,
 
     img_width = image.width
     img_height = image.height
+    # print("width = ", img_width, ",height = ", img_height)
+    if img_height > 1024 or img_height < 600:
+        print("错误图片：height img_path = " + img_path)
+        os.remove(img_path)
 
-
+    if img_width > 1024 or img_width < 600:
+        print("错误图片：img_width img_path = " + img_path)
+        os.remove(img_path)
+    xmin = []
+    ymin = []
+    xmax = []
+    ymax = []
+    classes = []
+    classes_text = []
+    truncated = []
+    poses = []
+    difficult_obj = []
     # for obj in data['object']:
     #     difficult = bool(int(obj['difficult']))
     #     if ignore_difficult_instances and difficult:
@@ -102,50 +117,43 @@ def dict_to_tf_example(filename,
     #     poses.append(obj['pose'].encode('utf8'))
 
 
-    logo_width = 0
-    logo_height = 0
-    x_padding = 0
-    y_padding = 0
-    classes = []
-    classes_text = []
-
-    class_name = os.path.basename(image_subdirectory)
-    if class_name == "BigLogo":
-        logo_width = 160
-        logo_height = 76
-        x_padding = 20
-        y_padding = 16
-        print("big logo = "+class_name)
-    else:
-        print("small logo = "+class_name)
-        logo_width = 96
-        logo_height = 44
-        x_padding = 10
-        y_padding = 10
-
-    classes_text.append(class_name.encode('utf8'))
-    classes.append(label_map_dict[class_name])
-    xmin = [(img_width - logo_width - x_padding) / img_width]
-    xmax = [(img_width - x_padding) / img_width]
-    ymin = [y_padding / img_height]  # List of normalized top y coordinates in bounding box (1 per box)
-    ymax = [(y_padding + logo_height) / img_height]  # List of normalized bottom y coordinates in bounding box
-
-    example = tf.train.Example(features=tf.train.Features(feature={
-        'image/height': dataset_util.int64_feature(img_height),
-        'image/width': dataset_util.int64_feature(img_width),
-        'image/filename': dataset_util.bytes_feature(filename.encode('utf8')),
-        'image/source_id': dataset_util.bytes_feature(filename.encode('utf8')),
-        'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
-        'image/encoded': dataset_util.bytes_feature(encoded_jpg),
-        'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
-        'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
-        'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
-        'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
-        'image/object/bbox/ymax': dataset_util.float_list_feature(ymax),
-        'image/object/class/text': dataset_util.bytes_list_feature(classes_text),
-        'image/object/class/label': dataset_util.int64_list_feature(classes),
-    }))
-    return example
+    # logo_width = 0
+    # logo_height = 0
+    # x_padding = 0
+    # y_padding = 0
+    # class_name = os.path.basename(image_subdirectory)
+    # if class_name == "BigLogo":
+    #     logo_width = 160
+    #     logo_height = 76
+    #     x_padding = 20
+    #     y_padding = 16
+    # elif class_name == "SmallLogo":
+    #     logo_width = 96
+    #     logo_height = 44
+    #     x_padding = 10
+    #     y_padding = 10
+    #
+    # xmin = [(img_width - logo_width - x_padding) / img_width]
+    # xmax = [(img_width - x_padding) / img_width]
+    # ymin = [y_padding / img_height]  # List of normalized top y coordinates in bounding box (1 per box)
+    # ymax = [(y_padding + logo_height) / img_height]  # List of normalized bottom y coordinates in bounding box
+    #
+    # example = tf.train.Example(features=tf.train.Features(feature={
+    #     'image/height': dataset_util.int64_feature(img_height),
+    #     'image/width': dataset_util.int64_feature(img_width),
+    #     'image/filename': dataset_util.bytes_feature(filename.encode('utf8')),
+    #     'image/source_id': dataset_util.bytes_feature(filename.encode('utf8')),
+    #     'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
+    #     'image/encoded': dataset_util.bytes_feature(encoded_jpg),
+    #     'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
+    #     'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
+    #     'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
+    #     'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
+    #     'image/object/bbox/ymax': dataset_util.float_list_feature(ymax),
+    #     'image/object/class/text': dataset_util.bytes_list_feature(classes_text),
+    #     'image/object/class/label': dataset_util.int64_list_feature(classes),
+    # }))
+    # return example
 
 
 # TODO: Add test for pet/PASCAL main files.
@@ -156,17 +164,17 @@ def main(_):
     logging.info('Reading from Logo dataset.')
 
     train_output_path = os.path.join(FLAGS.output_dir, 'logo_train.record')
-    writer = tf.python_io.TFRecordWriter(train_output_path)
+    # writer = tf.python_io.TFRecordWriter(train_output_path)
 
     for class_dir_name in os.listdir(FLAGS.data_dir):
         class_dir_path = os.path.join(FLAGS.data_dir, class_dir_name)
         if os.path.isdir(class_dir_path):
             print("class_dir_path = " + class_dir_path)
             for filename in os.listdir(class_dir_path):
-                tf_example = dict_to_tf_example(filename, label_map_dict, class_dir_path)
-                writer.write(tf_example.SerializeToString())
+                dict_to_tf_example(filename, label_map_dict, class_dir_path)
+                # writer.write(tf_example.SerializeToString())
 
-    writer.close()
+                # writer.close()
 
 
 if __name__ == '__main__':
