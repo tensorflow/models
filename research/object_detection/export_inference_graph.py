@@ -77,13 +77,13 @@ flags = tf.app.flags
 flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '
                     'one of [`image_tensor`, `encoded_image_string_tensor`, '
                     '`tf_example`]')
-flags.DEFINE_string('pipeline_config_path', None,
+flags.DEFINE_string('pipeline_config_path', r"models\east_ic_model\east_ic_logo.config",
                     'Path to a pipeline_pb2.TrainEvalPipelineConfig config '
                     'file.')
-flags.DEFINE_string('trained_checkpoint_prefix', None,
+flags.DEFINE_string('trained_checkpoint_prefix', r"models\east_ic_model\train\model.ckpt-10124",
                     'Path to trained checkpoint, typically of the form '
                     'path/to/model.ckpt')
-flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
+flags.DEFINE_string('output_directory', "east_ic_graph", 'Path to write outputs.')
 
 FLAGS = flags.FLAGS
 

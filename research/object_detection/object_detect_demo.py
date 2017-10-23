@@ -23,10 +23,10 @@ from utils import visualization_utils as vis_util
 # DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = r'east_ic_graph_model\frozen_inference_graph.pb'
+PATH_TO_CKPT = r'east_ic_graph\frozen_inference_graph.pb'
 
 # List of the strings that is used to add correct label for each box.
-PATH_TO_LABELS = r"D:\WorkSpace\models\research\object_detection\data\logo_label_map.pbtxt"
+PATH_TO_LABELS = r"data\logo_label_map.pbtxt"
 
 NUM_CLASSES = 2
 
@@ -72,8 +72,7 @@ def load_image_into_numpy_array(image):
 # image1.jpg
 # image2.jpg
 # If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
-PATH_TO_TEST_IMAGES_DIR = 'test_images'
-TEST_IMAGE_PATHS = [os.path.join(PATH_TO_TEST_IMAGES_DIR, '*.jpg') for i in range(1, 13)]
+PATH_TO_TEST_IMAGES_DIR = 'E:\data_mining\data\east_ic_logo\predict'
 
 # Size, in inches, of the output images.
 IMAGE_SIZE = (12, 8)
@@ -90,28 +89,42 @@ with detection_graph.as_default():
         detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
         num_detections = detection_graph.get_tensor_by_name('num_detections:0')
         for image_path in os.listdir(PATH_TO_TEST_IMAGES_DIR):
-            image_path = os.path.join(PATH_TO_TEST_IMAGES_DIR, image_path)
-            if image_path.endswith(".jpg"):
-                print("image path = " + image_path)
-                image = Image.open(image_path)
-                # the array based representation of the image will be used later in order to prepare the
-                # result image with boxes and labels on it.
-                image_np = load_image_into_numpy_array(image)
-                # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-                image_np_expanded = np.expand_dims(image_np, axis=0)
-                # Actual detection.
-                (boxes, scores, classes, num) = sess.run(
-                    [detection_boxes, detection_scores, detection_classes, num_detections],
-                    feed_dict={image_tensor: image_np_expanded})
-                # Visualization of the results of a detection.
-                vis_util.visualize_boxes_and_labels_on_image_array(
-                    image_np,
-                    np.squeeze(boxes),
-                    np.squeeze(classes).astype(np.int32),
-                    np.squeeze(scores),
-                    category_index,
-                    use_normalized_coordinates=True,
-                    line_thickness=8)
-                plt.figure(figsize=IMAGE_SIZE)
-                plt.imshow(image_np)
-                plt.show()
+            image_dir = os.path.join(PATH_TO_TEST_IMAGES_DIR, image_path)
+            for image_path in os.listdir(image_dir):
+                image_path = os.path.join(image_dir, image_path)
+                if image_path.endswith(".jpg"):
+                    image = Image.open(image_path)
+                    # the array based representation of the image will be used later in order to prepare the
+                    # result image with boxes and labels on it.
+                    image_np = load_image_into_numpy_array(image)
+                    # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+                    image_np_expanded = np.expand_dims(image_np, axis=0)
+                    # Actual detection.
+                    (boxes, scores, classes, num) = sess.run(
+                        [detection_boxes, detection_scores, detection_classes, num_detections],
+                        feed_dict={image_tensor: image_np_expanded})
+                    # Visualization of the results of a detection.
+                    classes_result =  vis_util.getClassesResult(
+                        image_np,
+                        np.squeeze(boxes),
+                        np.squeeze(classes).astype(np.int32),
+                        np.squeeze(scores),
+                        category_index,
+                        use_normalized_coordinates=True,
+                        line_thickness=8)
+                    if classes_result is None:
+                        print("image path = " + image_path)
+                        print("classes_result = ",classes_result)
+
+                    # vis_util.visualize_boxes_and_labels_on_image_array(
+                    #     image_np,
+                    #     np.squeeze(boxes),
+                    #     np.squeeze(classes).astype(np.int32),
+                    #     np.squeeze(scores),
+                    #     category_index,
+                    #     use_normalized_coordinates=True,
+                    #     line_thickness=8)
+
+                    # plt.figure(figsize=IMAGE_SIZE)
+                    # plt.imshow(image_np)
+                    # plt.show()
