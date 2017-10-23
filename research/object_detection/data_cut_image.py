@@ -17,8 +17,8 @@ def cutImage(srcPath, dstPath, logo_width=None, logo_height=None, x_padding=0, y
             # 拼接完整的文件或文件夹路径
         srcFile = os.path.join(srcPath, filename)
         dstFile = os.path.join(dstPath, filename)
-        print(srcFile)
-        print(dstFile)
+        # print(srcFile)
+        # print(dstFile)
 
         # 如果是文件就处理
         if os.path.isfile(srcFile):
@@ -64,8 +64,8 @@ def compressImage(srcPath, dstPath):
 
 if __name__ == '__main__':
     # gain_train_data()
-    srcPath = r"E:\data_mining\data\east_ic_logo\tain\SmallLogo"
-    dstPath = r"E:\data_mining\data\east_ic_logo\tain\SmallLogo_cut"
+    srcPath = r"E:\data_mining\data\east_ic_logo\train\SmallLogo"
+    dstPath = r"E:\data_mining\data\east_ic_logo\train\SmallLogo_cut"
 
     class_name = os.path.basename(srcPath)
     if class_name == "BigLogo":

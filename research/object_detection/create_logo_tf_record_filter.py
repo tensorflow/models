@@ -83,11 +83,11 @@ def dict_to_tf_example(filename,
     img_width = image.width
     img_height = image.height
     # print("width = ", img_width, ",height = ", img_height)
-    if img_height > 1024 or img_height < 600:
+    if img_height > 1024 or img_height < 400:
         print("错误图片：height img_path = " + img_path)
         os.remove(img_path)
 
-    if img_width > 1024 or img_width < 600:
+    if img_width > 1024 or img_width < 400:
         print("错误图片：img_width img_path = " + img_path)
         os.remove(img_path)
     xmin = []
