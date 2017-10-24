@@ -53,15 +53,15 @@ _DEPTH = 3
 _NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
-_NUM_IMAGES = {
-    'train': 50000,
-    'validation': 10000,
-}
-
 # We use a weight decay of 0.0002, which performs better than the 0.0001 that
 # was originally suggested.
 _WEIGHT_DECAY = 2e-4
 _MOMENTUM = 0.9
+
+_NUM_IMAGES = {
+    'train': 50000,
+    'validation': 10000,
+}
 
 
 def record_dataset(filenames):
@@ -198,8 +198,8 @@ def cifar10_model_fn(features, labels, mode):
       [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
-    # Scale the learning rate linearly with the batch size. When the batch size is
-    # 128, the learning rate should be 0.1.
+    # Scale the learning rate linearly with the batch size. When the batch size
+    # is 128, the learning rate should be 0.1.
     initial_learning_rate = 0.1 * FLAGS.batch_size / 128
     batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
     global_step = tf.train.get_or_create_global_step()

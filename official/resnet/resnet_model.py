@@ -275,7 +275,6 @@ def cifar10_resnet_v2_generator(resnet_size, num_classes, data_format=None):
     inputs = tf.identity(inputs, 'final_dense')
     return inputs
 
-  model.default_image_size = 32
   return model
 
 
@@ -344,7 +343,6 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
     inputs = tf.identity(inputs, 'final_dense')
     return inputs
 
-  model.default_image_size = 224
   return model
 
 
