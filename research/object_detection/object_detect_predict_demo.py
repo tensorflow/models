@@ -60,7 +60,7 @@ def load_image_into_numpy_array(image):
 # image1.jpg
 # image2.jpg
 # If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
-PATH_TO_TEST_IMAGES_DIR = r'E:\data_mining\data\east_ic_logo\eval'
+PATH_TO_TEST_IMAGES_DIR = r'F:\picture\2014-7-11'
 
 print(PATH_TO_TEST_IMAGES_DIR)
 # Size, in inches, of the output images.
@@ -81,49 +81,34 @@ with detection_graph.as_default():
         num_detections = detection_graph.get_tensor_by_name('num_detections:0')
         total_count = 0
         error_count = 0
-        for image_path in os.listdir(PATH_TO_TEST_IMAGES_DIR):
-            image_dir = os.path.join(PATH_TO_TEST_IMAGES_DIR, image_path)
-            for image_path in os.listdir(image_dir):
-                image_path = os.path.join(image_dir, image_path)
-                if image_path.endswith(".jpg"):
-                    with Image.open(image_path) as image:
-                        total_count = total_count + 1
-                        # the array based representation of the image will be used later in order to prepare the
-                        # result image with boxes and labels on it.
-                        image_np = load_image_into_numpy_array(image)
-                        # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-                        image_np_expanded = np.expand_dims(image_np, axis=0)
-                        # Actual detection.
-                        (boxes, scores, classes, num) = sess.run(
-                            [detection_boxes, detection_scores, detection_classes, num_detections],
-                            feed_dict={image_tensor: image_np_expanded})
-                        # Visualization of the results of a detection.
-                        classes_result = vis_util.getClassesResult(
-                            image_np,
-                            np.squeeze(boxes),
-                            np.squeeze(classes).astype(np.int32),
-                            np.squeeze(scores),
-                            category_index,
-                            use_normalized_coordinates=True,
-                            line_thickness=8)
-                        print("image path = " + image_path + ",classes_result = ", classes_result,",total_count = ",total_count)
-                        if classes_result is None:
-                            error_count = error_count + 1
-                            filename = os.path.basename(image_path)
-                            image.save(os.path.join("E:\data_mining\data\east_ic_logo\eval\error", filename))
-
-                            # vis_util.visualize_boxes_and_labels_on_image_array(
-                            #     image_np,
-                            #     np.squeeze(boxes),
-                            #     np.squeeze(classes).astype(np.int32),
-                            #     np.squeeze(scores),
-                            #     category_index,
-                            #     use_normalized_coordinates=True,
-                            #     line_thickness=8)
-
-                            # plt.figure(figsize=IMAGE_SIZE)
-                            # plt.imshow(image_np)
-                            # plt.show()
-        print(" total_count= ", total_count)
-        print(" error_count= ", error_count)
-        print(" used time = ", (time.time() - start_time))
+        for file_name in os.listdir(PATH_TO_TEST_IMAGES_DIR):
+            image_path = os.path.join(PATH_TO_TEST_IMAGES_DIR, file_name)
+            if image_path.endswith(".JPG"):
+                with Image.open(image_path) as image:
+                    total_count = total_count + 1
+                    # the array based representation of the image will be used later in order to prepare the
+                    # result image with boxes and labels on it.
+                    image_np = load_image_into_numpy_array(image)
+                    # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+                    image_np_expanded = np.expand_dims(image_np, axis=0)
+                    # Actual detection.
+                    (boxes, scores, classes, num) = sess.run(
+                        [detection_boxes, detection_scores, detection_classes, num_detections],
+                        feed_dict={image_tensor: image_np_expanded})
+                    # Visualization of the results of a detection.
+                    classes_result = vis_util.getClassesResult(
+                        image_np,
+                        np.squeeze(boxes),
+                        np.squeeze(classes).astype(np.int32),
+                        np.squeeze(scores),
+                        category_index,
+                        use_normalized_coordinates=True,
+                        line_thickness=8)
+                    print("image path = " + image_path + ",classes_result = ", classes_result, ",total_count = ",
+                          total_count)
+                    if classes_result is not None:
+                        image.save(os.path.join("E:\data_mining\data\east_ic_logo\eval\error", file_name))
+                        error_count = error_count +1
+    print(" total_count= ", total_count)
+    print(" error_count= ", error_count)
+    print(" used time = ", (time.time() - start_time))

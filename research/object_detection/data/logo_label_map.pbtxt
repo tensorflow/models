@@ -1,9 +1,4 @@
 item {
   id: 1
-  name: 'BigLogo'
-}
-
-item {
-  id: 2
-  name: 'SmallLogo'
+  name: 'EastICLogo'
 }

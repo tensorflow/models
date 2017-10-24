@@ -107,8 +107,8 @@ def dict_to_tf_example(img_path,
         eval_path = os.path.join(eval_dir, filename)
         image.save(eval_path)
 
-    classes_text.append(class_name.encode('utf8'))
-    classes.append(label_map_dict[class_name])
+    classes_text.append("EastICLogo".encode('utf8'))
+    classes.append(label_map_dict["EastICLogo"])
     xmin = [(img_width - logo_width - x_padding) / img_width]
     xmax = [(img_width - x_padding) / img_width]
     ymin = [y_padding / img_height]  # List of normalized top y coordinates in bounding box (1 per box)
@@ -147,7 +147,6 @@ def main(_):
             print("class_dir_path = " + class_dir_path)
             for filename in os.listdir(class_dir_path):
                 img_path = os.path.join(class_dir_path, filename)
-
                 examples_list.append(img_path)
 
     random.seed(42)

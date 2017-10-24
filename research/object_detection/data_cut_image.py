@@ -64,8 +64,8 @@ def compressImage(srcPath, dstPath):
 
 if __name__ == '__main__':
     # gain_train_data()
-    srcPath = r"E:\data_mining\data\east_ic_logo\train\SmallLogo"
-    dstPath = r"E:\data_mining\data\east_ic_logo\train\SmallLogo_cut"
+    srcPath = r"E:\data_mining\data\east_ic_logo\train\BigLogo"
+    dstPath = r"E:\data_mining\data\east_ic_logo\train\BigLogo_cut"
 
     class_name = os.path.basename(srcPath)
     if class_name == "BigLogo":
