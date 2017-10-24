@@ -81,3 +81,18 @@ python -c 'import delf'
 
 should just return without complaints. This indicates that the DELF package is
 loaded successfully.
+
+### Troubleshooting
+
+#### Python version
+
+Installation issues may happen if multiple python versions are mixed. The
+instructions above assume python2.7 version is used; if using python3.X, be sure
+to use `pip3` instead of `pip`, and all should work.
+
+#### `pip install`
+
+Issues might be observed if using `pip install` with `-e` option (editable
+mode). You may try out to simply remove the `-e` from the commands above. Also,
+depending on your machine setup, you might need to run the `pip install` command
+without `sudo` at the beginning.
