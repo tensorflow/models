@@ -217,7 +217,7 @@ def classification_loss(logits, labels, weights):
     # Logistic loss
     if inner_dim == 1:
       loss = tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=tf.squeeze(logits), labels=tf.cast(labels, tf.float32))
+          logits=tf.squeeze(logits, -1), labels=tf.cast(labels, tf.float32))
     # Softmax loss
     else:
       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -252,7 +252,7 @@ def predictions(logits):
   with tf.name_scope('predictions'):
     # For binary classification
     if inner_dim == 1:
-      pred = tf.cast(tf.greater(tf.squeeze(logits), 0.5), tf.int64)
+      pred = tf.cast(tf.greater(tf.squeeze(logits, -1), 0.5), tf.int64)
     # For multi-class classification
     else:
       pred = tf.argmax(logits, 1)
