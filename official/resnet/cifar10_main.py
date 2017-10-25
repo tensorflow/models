@@ -42,10 +42,18 @@ parser.add_argument('--train_epochs', type=int, default=250,
                     help='The number of epochs to train.')
 
 parser.add_argument('--epochs_per_eval', type=int, default=10,
-                    help='The number of batches to run in between evaluations.')
+                    help='The number of epochs to run in between evaluations.')
 
 parser.add_argument('--batch_size', type=int, default=128,
                     help='The number of images per batch.')
+
+parser.add_argument(
+    '--data_format', type=str, default=None,
+    choices=['channels_first', 'channels_last'],
+    help='A flag to override the data format used in the model. channels_first '
+         'provides a performance boost on GPU but is not always compatible '
+         'with CPU. If left unspecified, the data format will be chosen '
+         'automatically based on whether TensorFlow was built for CPU or GPU.')
 
 _HEIGHT = 32
 _WIDTH = 32
@@ -172,7 +180,7 @@ def cifar10_model_fn(features, labels, mode):
   tf.summary.image('images', features, max_outputs=6)
 
   network = resnet_model.cifar10_resnet_v2_generator(
-      FLAGS.resnet_size, _NUM_CLASSES)
+      FLAGS.resnet_size, _NUM_CLASSES, FLAGS.data_format)
 
   inputs = tf.reshape(features, [-1, _HEIGHT, _WIDTH, _DEPTH])
   logits = network(inputs, mode == tf.estimator.ModeKeys.TRAIN)

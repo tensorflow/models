@@ -35,8 +35,21 @@ parser.add_argument('--data_dir', type=str, default='/tmp/mnist_data',
 parser.add_argument('--model_dir', type=str, default='/tmp/mnist_model',
                     help='The directory where the model will be stored.')
 
-parser.add_argument('--steps', type=int, default=20000,
-                    help='Number of steps to train.')
+parser.add_argument('--train_epochs', type=int, default=40,
+                    help='Number of epochs to train.')
+
+parser.add_argument(
+    '--data_format', type=str, default=None,
+    choices=['channels_first', 'channels_last'],
+    help='A flag to override the data format used in the model. channels_first '
+         'provides a performance boost on GPU but is not always compatible '
+         'with CPU. If left unspecified, the data format will be chosen '
+         'automatically based on whether TensorFlow was built for CPU or GPU.')
+
+_NUM_IMAGES = {
+    'train': 50000,
+    'validation': 10000,
+}
 
 
 def input_fn(mode, batch_size=1):
@@ -89,13 +102,16 @@ def mnist_model(inputs, mode):
   # Reshape X to 4-D tensor: [batch_size, width, height, channels]
   # MNIST images are 28x28 pixels, and have one color channel
   inputs = tf.reshape(inputs, [-1, 28, 28, 1])
-  data_format = 'channels_last'
+  data_format = FLAGS.data_format
 
-  if tf.test.is_built_with_cuda():
+  if data_format is None:
     # When running on GPU, transpose the data from channels_last (NHWC) to
     # channels_first (NCHW) to improve performance.
     # See https://www.tensorflow.org/performance/performance_guide#data_formats
-    data_format = 'channels_first'
+    data_format = ('channels_first' if tf.test.is_built_with_cuda() else
+                   'channels_last')
+
+  if data_format == 'channels_first':
     inputs = tf.transpose(inputs, [0, 3, 1, 2])
 
   # Convolutional Layer #1
@@ -211,9 +227,11 @@ def main(unused_argv):
   logging_hook = tf.train.LoggingTensorHook(
       tensors=tensors_to_log, every_n_iter=100)
 
+  batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
+
   mnist_classifier.train(
       input_fn=lambda: input_fn(tf.estimator.ModeKeys.TRAIN, FLAGS.batch_size),
-      steps=FLAGS.steps,
+      steps=FLAGS.train_epochs * batches_per_epoch,
       hooks=[logging_hook])
 
   # Evaluate the model and print results

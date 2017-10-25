@@ -65,4 +65,5 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
+  mnist.FLAGS = mnist.parser.parse_args()
   tf.test.main()
