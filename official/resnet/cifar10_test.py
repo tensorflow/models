@@ -97,6 +97,6 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  FLAGS = cifar10_main.parser.parse_args()
-  cifar10_main.FLAGS = FLAGS
+  cifar10_main.FLAGS = cifar10_main.parser.parse_args()
+  FLAGS = cifar10_main.FLAGS
   tf.test.main()
