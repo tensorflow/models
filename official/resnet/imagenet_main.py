@@ -56,8 +56,10 @@ parser.add_argument(
 parser.add_argument(
     '--data_format', type=str, default=None,
     choices=['channels_first', 'channels_last'],
-    help='The data format to use in the model. channels_first provides a '
-         'performance boost on GPU but is not always compatible with CPU.')
+    help='A flag to override the data format used in the model. channels_first '
+         'provides a performance boost on GPU but is not always compatible '
+         'with CPU. If left unspecified, the data format will be chosen '
+         'automatically based on whether TensorFlow was built for CPU or GPU.')
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
