@@ -171,5 +171,6 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
+  imagenet_main.FLAGS = imagenet_main.parser.parse_args()
   FLAGS = imagenet_main.FLAGS
   tf.test.main()

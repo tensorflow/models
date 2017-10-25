@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import sys
 
 import tensorflow as tf
 
@@ -52,12 +53,7 @@ parser.add_argument(
     '--batch_size', type=int, default=32,
     help='Batch size for training and evaluation.')
 
-FLAGS = parser.parse_args()
-
-# Scale the learning rate linearly with the batch size. When the batch size is
-# 256, the learning rate should be 0.1.
-_INITIAL_LEARNING_RATE = 0.1 * FLAGS.batch_size / 256
-
+_DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
 _LABEL_CLASSES = 1001
 
@@ -68,12 +64,6 @@ _NUM_IMAGES = {
     'train': 1281167,
     'validation': 50000,
 }
-
-image_preprocessing_fn = vgg_preprocessing.preprocess_image
-network = resnet_model.resnet_v2(
-    resnet_size=FLAGS.resnet_size, num_classes=_LABEL_CLASSES)
-
-batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
 
 
 def filenames(is_training):
@@ -118,10 +108,10 @@ def dataset_parser(value, is_training):
       _NUM_CHANNELS)
   image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
-  image = image_preprocessing_fn(
+  image = vgg_preprocessing.preprocess_image(
       image=image,
-      output_height=network.default_image_size,
-      output_width=network.default_image_size,
+      output_height=_DEFAULT_IMAGE_SIZE,
+      output_width=_DEFAULT_IMAGE_SIZE,
       is_training=is_training)
 
   label = tf.cast(
@@ -158,6 +148,8 @@ def resnet_model_fn(features, labels, mode):
   """Our model_fn for ResNet to be used with our Estimator."""
   tf.summary.image('images', features, max_outputs=6)
 
+  network = resnet_model.resnet_v2(
+      resnet_size=FLAGS.resnet_size, num_classes=_LABEL_CLASSES)
   logits = network(
       inputs=features, is_training=(mode == tf.estimator.ModeKeys.TRAIN))
 
@@ -183,13 +175,17 @@ def resnet_model_fn(features, labels, mode):
       [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
+    # Scale the learning rate linearly with the batch size. When the batch size is
+    # 256, the learning rate should be 0.1.
+    initial_learning_rate = 0.1 * FLAGS.batch_size / 256
+    batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
     global_step = tf.train.get_or_create_global_step()
 
     # Multiply the learning rate by 0.1 at 30, 60, 80, and 90 epochs.
     boundaries = [
         int(batches_per_epoch * epoch) for epoch in [30, 60, 80, 90]]
     values = [
-        _INITIAL_LEARNING_RATE * decay for decay in [1, 0.1, 0.01, 1e-3, 1e-4]]
+        initial_learning_rate * decay for decay in [1, 0.1, 0.01, 1e-3, 1e-4]]
     learning_rate = tf.train.piecewise_constant(
         tf.cast(global_step, tf.int32), boundaries, values)
 
@@ -257,4 +253,5 @@ def main(unused_argv):
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  tf.app.run()
+  FLAGS, unparsed = parser.parse_known_args()
+  tf.app.run(argv=[sys.argv[0]] + unparsed)

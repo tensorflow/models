@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import sys
 
 import tensorflow as tf
 
@@ -46,29 +47,21 @@ parser.add_argument('--epochs_per_eval', type=int, default=10,
 parser.add_argument('--batch_size', type=int, default=128,
                     help='The number of images per batch.')
 
-FLAGS = parser.parse_args()
-
 _HEIGHT = 32
 _WIDTH = 32
 _DEPTH = 3
 _NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
+# We use a weight decay of 0.0002, which performs better than the 0.0001 that
+# was originally suggested.
+_WEIGHT_DECAY = 2e-4
+_MOMENTUM = 0.9
+
 _NUM_IMAGES = {
     'train': 50000,
     'validation': 10000,
 }
-
-# Scale the learning rate linearly with the batch size. When the batch size is
-# 128, the learning rate should be 0.1.
-_INITIAL_LEARNING_RATE = 0.1 * FLAGS.batch_size / 128
-_MOMENTUM = 0.9
-
-# We use a weight decay of 0.0002, which performs better than the 0.0001 that
-# was originally suggested.
-_WEIGHT_DECAY = 2e-4
-
-_BATCHES_PER_EPOCH = _NUM_IMAGES['train'] / FLAGS.batch_size
 
 
 def record_dataset(filenames):
@@ -205,11 +198,15 @@ def cifar10_model_fn(features, labels, mode):
       [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
+    # Scale the learning rate linearly with the batch size. When the batch size
+    # is 128, the learning rate should be 0.1.
+    initial_learning_rate = 0.1 * FLAGS.batch_size / 128
+    batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
     global_step = tf.train.get_or_create_global_step()
 
     # Multiply the learning rate by 0.1 at 100, 150, and 200 epochs.
-    boundaries = [int(_BATCHES_PER_EPOCH * epoch) for epoch in [100, 150, 200]]
-    values = [_INITIAL_LEARNING_RATE * decay for decay in [1, 0.1, 0.01, 0.001]]
+    boundaries = [int(batches_per_epoch * epoch) for epoch in [100, 150, 200]]
+    values = [initial_learning_rate * decay for decay in [1, 0.1, 0.01, 0.001]]
     learning_rate = tf.train.piecewise_constant(
         tf.cast(global_step, tf.int32), boundaries, values)
 
@@ -276,4 +273,5 @@ def main(unused_argv):
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  tf.app.run()
+  FLAGS, unparsed = parser.parse_known_args()
+  tf.app.run(argv=[sys.argv[0]] + unparsed)
