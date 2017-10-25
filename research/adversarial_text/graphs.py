@@ -185,8 +185,8 @@ class VatxtModel(object):
 
     if FLAGS.single_label:
       indices = tf.stack([tf.range(FLAGS.batch_size), inputs.length - 1], 1)
-      labels = tf.gather_nd(inputs.labels, indices)
-      weights = tf.gather_nd(inputs.weights, indices)
+      labels = tf.expand_dims(tf.gather_nd(inputs.labels, indices), 1)
+      weights = tf.expand_dims(tf.gather_nd(inputs.weights, indices), 1)
     else:
       labels = inputs.labels
       weights = inputs.weights
@@ -259,8 +259,8 @@ class VatxtModel(object):
 
     if FLAGS.single_label:
       indices = tf.stack([tf.range(FLAGS.batch_size), inputs.length - 1], 1)
-      labels = tf.gather_nd(inputs.labels, indices)
-      weights = tf.gather_nd(inputs.weights, indices)
+      labels = tf.expand_dims(tf.gather_nd(inputs.labels, indices), 1)
+      weights = tf.expand_dims(tf.gather_nd(inputs.weights, indices), 1)
     else:
       labels = inputs.labels
       weights = inputs.weights
@@ -303,9 +303,9 @@ class VatxtModel(object):
                                                inputs.length)
     if FLAGS.single_label:
       indices = tf.stack([tf.range(FLAGS.batch_size), inputs.length - 1], 1)
-      lstm_out = tf.gather_nd(lstm_out, indices)
-      labels = tf.gather_nd(inputs.labels, indices)
-      weights = tf.gather_nd(inputs.weights, indices)
+      lstm_out = tf.expand_dims(tf.gather_nd(lstm_out, indices), 1)
+      labels = tf.expand_dims(tf.gather_nd(inputs.labels, indices), 1)
+      weights = tf.expand_dims(tf.gather_nd(inputs.weights, indices), 1)
     else:
       labels = inputs.labels
       weights = inputs.weights
