@@ -83,7 +83,7 @@ with detection_graph.as_default():
         error_count = 0
         for image_path in os.listdir(PATH_TO_TEST_IMAGES_DIR):
             image_path = os.path.join(PATH_TO_TEST_IMAGES_DIR, image_path)
-            if image_path.endswith(".jpg"):
+            if image_path.lower().endswith(".jpg"):
                 with Image.open(image_path) as image:
                     total_count = total_count + 1
                     # the array based representation of the image will be used later in order to prepare the

@@ -80,7 +80,7 @@ flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '
 flags.DEFINE_string('pipeline_config_path', r"models\east_ic_model\east_ic_logo.config",
                     'Path to a pipeline_pb2.TrainEvalPipelineConfig config '
                     'file.')
-flags.DEFINE_string('trained_checkpoint_prefix', r"models\east_ic_model\train\model.ckpt-14319",
+flags.DEFINE_string('trained_checkpoint_prefix', r"models\east_ic_model\train\model.ckpt-50000",
                     'Path to trained checkpoint, typically of the form '
                     'path/to/model.ckpt')
 flags.DEFINE_string('output_directory', "east_ic_graph", 'Path to write outputs.')

@@ -94,21 +94,22 @@ def dict_to_tf_example(img_path,
         logo_height = 76
         x_padding = 20
         y_padding = 16
-        # print("big logo = " + class_name)
     else:
-        # print("small logo = " + class_name)
         logo_width = 96
         logo_height = 44
         x_padding = 10
         y_padding = 10
+    print("img_path = "+img_path+", Logo = "+class_name)
 
     if is_eval:
         eval_dir = os.path.join(r"E:\data_mining\data\east_ic_logo\eval", class_name)
         eval_path = os.path.join(eval_dir, filename)
         image.save(eval_path)
 
-    classes_text.append("EastICLogo".encode('utf8'))
-    classes.append(label_map_dict["EastICLogo"])
+    label_text = "EastICLogo"
+
+    classes_text.append(label_text.encode('utf8'))
+    classes.append(label_map_dict[label_text])
     xmin = [(img_width - logo_width - x_padding) / img_width]
     xmax = [(img_width - x_padding) / img_width]
     ymin = [y_padding / img_height]  # List of normalized top y coordinates in bounding box (1 per box)
@@ -134,7 +135,6 @@ def dict_to_tf_example(img_path,
 
 # TODO: Add test for pet/PASCAL main files.
 def main(_):
-    data_dir = FLAGS.data_dir
     label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
 
     logging.info('Reading from Logo dataset.')
