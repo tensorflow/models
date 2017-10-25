@@ -346,7 +346,7 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
   return model
 
 
-def resnet_v2(resnet_size, num_classes, data_format=None):
+def imagenet_resnet_v2(resnet_size, num_classes, data_format=None):
   """Returns the ResNet model for a given size and number of output classes."""
   model_params = {
       18: {'block': building_block, 'layers': [2, 2, 2, 2]},

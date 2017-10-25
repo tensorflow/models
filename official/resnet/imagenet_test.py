@@ -45,7 +45,7 @@ class BaseTest(tf.test.TestCase):
 
     with graph.as_default(), self.test_session(
         use_gpu=with_gpu, force_gpu=with_gpu):
-      model = resnet_model.resnet_v2(
+      model = resnet_model.imagenet_resnet_v2(
           resnet_size, 456,
           data_format='channels_first' if with_gpu else 'channels_last')
       inputs = tf.random_uniform([1, 224, 224, 3])
