@@ -53,6 +53,14 @@ parser.add_argument(
     '--batch_size', type=int, default=32,
     help='Batch size for training and evaluation.')
 
+parser.add_argument(
+    '--data_format', type=str, default=None,
+    choices=['channels_first', 'channels_last'],
+    help='A flag to override the data format used in the model. channels_first '
+         'provides a performance boost on GPU but is not always compatible '
+         'with CPU. If left unspecified, the data format will be chosen '
+         'automatically based on whether TensorFlow was built for CPU or GPU.')
+
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
 _LABEL_CLASSES = 1001
@@ -148,8 +156,8 @@ def resnet_model_fn(features, labels, mode):
   """Our model_fn for ResNet to be used with our Estimator."""
   tf.summary.image('images', features, max_outputs=6)
 
-  network = resnet_model.resnet_v2(
-      resnet_size=FLAGS.resnet_size, num_classes=_LABEL_CLASSES)
+  network = resnet_model.imagenet_resnet_v2(
+      FLAGS.resnet_size, _LABEL_CLASSES, FLAGS.data_format)
   logits = network(
       inputs=features, is_training=(mode == tf.estimator.ModeKeys.TRAIN))
 
