@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import sys
 
 from six.moves import urllib
 import tensorflow as tf
@@ -31,6 +32,7 @@ EVAL_FILE = 'adult.test'
 EVAL_URL = '%s/%s' % (DATA_URL, EVAL_FILE)
 
 parser = argparse.ArgumentParser()
+
 parser.add_argument(
     '--data_dir', type=str, default='/tmp/census_data',
     help='Directory to download census data')
@@ -65,5 +67,5 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
-  FLAGS = parser.parse_args()
-  tf.app.run()
+  FLAGS, unparsed = parser.parse_known_args()
+  tf.app.run(argv=[sys.argv[0]] + unparsed)
