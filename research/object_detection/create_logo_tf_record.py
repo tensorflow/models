@@ -42,6 +42,7 @@ from object_detection.utils import label_map_util
 flags = tf.app.flags
 flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic_logo\train', 'Root directory to raw pet dataset.')
 flags.DEFINE_string('output_dir', r'E:\data_mining\data\east_ic_logo\train', 'Path to directory to output TFRecords.')
+flags.DEFINE_string('eval_dir', r'E:\data_mining\data\east_ic_logo\eval', 'Path to directory to output TFRecords.')
 flags.DEFINE_string('label_map_path', r'D:\WorkSpace\models\research\object_detection\data\logo_label_map.pbtxt',
                     'Path to label map proto')
 FLAGS = flags.FLAGS
@@ -99,10 +100,10 @@ def dict_to_tf_example(img_path,
         logo_height = 44
         x_padding = 10
         y_padding = 10
-    print("img_path = "+img_path+", Logo = "+class_name)
+    # print("img_path = " + img_path + ", Logo = " + class_name)
 
     if is_eval:
-        eval_dir = os.path.join(r"E:\data_mining\data\east_ic_logo\eval", class_name)
+        eval_dir = os.path.join(FLAGS.eval_dir, class_name)
         eval_path = os.path.join(eval_dir, filename)
         image.save(eval_path)
 
@@ -135,12 +136,16 @@ def dict_to_tf_example(img_path,
 
 # TODO: Add test for pet/PASCAL main files.
 def main(_):
-    label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
-
-    logging.info('Reading from Logo dataset.')
+    logging.info("删除eval文件夹下的图片")
+    for file_name in os.listdir(FLAGS.eval_dir):
+        if file_name == "BigLogo" or file_name == "SmallLogo":
+            eval_dir = os.path.join(FLAGS.eval_dir, file_name)
+            print("删除eval文件夹下的图片 eval_dir = " + eval_dir)
+            for eval_file_name in os.listdir(eval_dir):
+                image_path = os.path.join(eval_dir, eval_file_name)
+                os.remove(image_path)
 
     examples_list = []
-
     for class_dir_name in os.listdir(FLAGS.data_dir):
         class_dir_path = os.path.join(FLAGS.data_dir, class_dir_name)
         if os.path.isdir(class_dir_path):
@@ -152,11 +157,12 @@ def main(_):
     random.seed(42)
     random.shuffle(examples_list)
     num_examples = len(examples_list)
-    num_train = int(0.7 * num_examples)
+    num_train = int(0.9 * num_examples)
     train_examples = examples_list[:num_train]
     val_examples = examples_list[num_train:]
     print('%d training and %d validation examples.', len(train_examples), len(val_examples))
 
+    label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
     train_output_path = os.path.join(FLAGS.output_dir, 'logo_train.record')
     print(train_output_path)
     writer = tf.python_io.TFRecordWriter(train_output_path)

@@ -41,48 +41,28 @@ from object_detection.utils import label_map_util
 
 flags = tf.app.flags
 flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic原始数据\RawBigLogo', 'Root directory to raw pet dataset.')
+flags.DEFINE_string('output_dir', r'E:\data_mining\temp\train\BigLogo', 'Path to directory to output TFRecords.')
 FLAGS = flags.FLAGS
-
-
-def dict_to_tf_example(filename,
-                       image_subdirectory,
-                       ):
-    img_path = os.path.join(image_subdirectory, filename)
-    with tf.gfile.GFile(img_path, 'rb') as fid:
-        encoded_jpg = fid.read()
-    encoded_jpg_io = io.BytesIO(encoded_jpg)
-    image = PIL.Image.open(encoded_jpg_io)
-    if image.format != 'JPEG':
-        raise ValueError('Image format not JPEG')
-    key = hashlib.sha256(encoded_jpg).hexdigest()
-
-    img_width = image.width
-    img_height = image.height
-    # print("width = ", img_width, ",height = ", img_height)
-    if img_height > 1024 or img_height < 400:
-        print("错误图片：height img_path = " + img_path)
-        os.remove(img_path)
-
-    if img_width > 1024 or img_width < 400:
-        print("错误图片：img_width img_path = " + img_path)
-        os.remove(img_path)
 
 
 # TODO: Add test for pet/PASCAL main files.
 def main(_):
-    data_dir = FLAGS.data_dir
+    examples_list = []
+    for filename in os.listdir(FLAGS.data_dir):
+        img_path = os.path.join(FLAGS.data_dir, filename)
+        examples_list.append(img_path)
 
-    logging.info('Reading from Logo dataset.')
+    random.seed(42)
+    random.shuffle(examples_list)
+    train_examples = examples_list[:5000]
+    print('count = ', len(train_examples))
 
-    for class_dir_name in os.listdir(FLAGS.data_dir):
-        class_dir_path = os.path.join(FLAGS.data_dir, class_dir_name)
-        if os.path.isdir(class_dir_path):
-            print("class_dir_path = " + class_dir_path)
-            for filename in os.listdir(class_dir_path):
-                dict_to_tf_example(filename,class_dir_path)
-                # writer.write(tf_example.SerializeToString())
-
-                # writer.close()
+    for img_path in train_examples:
+        print("image_path = " + img_path)
+        with PIL.Image.open(img_path) as image:
+            filename = os.path.basename(img_path)
+            new_img_path = os.path.join(FLAGS.output_dir, filename)
+            image.save(new_img_path)
 
 
 if __name__ == '__main__':
