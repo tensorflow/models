@@ -59,5 +59,5 @@ def main(unused_argv):
 
 
 if __name__ == '__main__':
-  FLAGS = parser.parse_args()
-  tf.app.run()
+  FLAGS, unparsed = parser.parse_known_args()
+  tf.app.run(argv=[sys.argv[0]] + unparsed)
