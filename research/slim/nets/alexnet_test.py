@@ -48,6 +48,18 @@ class AlexnetV2Test(tf.test.TestCase):
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, 4, 7, num_classes])
 
+  def testGlobalPool(self):
+    batch_size = 1
+    height, width = 300, 400
+    num_classes = 1000
+    with self.test_session():
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      logits, _ = alexnet.alexnet_v2(inputs, num_classes, spatial_squeeze=False,
+                                     global_pool=True)
+      self.assertEquals(logits.op.name, 'alexnet_v2/fc8/BiasAdd')
+      self.assertListEqual(logits.get_shape().as_list(),
+                           [batch_size, 1, 1, num_classes])
+
   def testEndPoints(self):
     batch_size = 5
     height, width = 224, 224
@@ -68,6 +80,29 @@ class AlexnetV2Test(tf.test.TestCase):
                         'alexnet_v2/fc8'
                        ]
       self.assertSetEqual(set(end_points.keys()), set(expected_names))
+
+  def testNoClasses(self):
+    batch_size = 5
+    height, width = 224, 224
+    num_classes = None
+    with self.test_session():
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      net, end_points = alexnet.alexnet_v2(inputs, num_classes)
+      expected_names = ['alexnet_v2/conv1',
+                        'alexnet_v2/pool1',
+                        'alexnet_v2/conv2',
+                        'alexnet_v2/pool2',
+                        'alexnet_v2/conv3',
+                        'alexnet_v2/conv4',
+                        'alexnet_v2/conv5',
+                        'alexnet_v2/pool5',
+                        'alexnet_v2/fc6',
+                        'alexnet_v2/fc7'
+                       ]
+      self.assertSetEqual(set(end_points.keys()), set(expected_names))
+      self.assertTrue(net.op.name.startswith('alexnet_v2/fc7'))
+      self.assertListEqual(net.get_shape().as_list(),
+                           [batch_size, 1, 1, 4096])
 
   def testModelVariables(self):
     batch_size = 5

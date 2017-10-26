@@ -298,7 +298,11 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
 
   Args:
     inputs: a 4-D tensor of size [batch_size, height, width, 3].
-    num_classes: number of predicted classes.
+      Dimension batch_size may be undefined. If create_aux_logits is false,
+      also height and width may be undefined.
+    num_classes: number of predicted classes. If 0 or None, the logits layer
+      is omitted and the input features to the logits layer (before  dropout)
+      are returned instead.
     is_training: whether is training or not.
     dropout_keep_prob: float, the fraction to keep before final layer.
     reuse: whether or not the network and its variables should be reused. To be
@@ -308,12 +312,14 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
     activation_fn: Activation function for conv2d.
 
   Returns:
-    logits: the logits outputs of the model.
+    net: the output of the logits layer (if num_classes is a non-zero integer),
+      or the non-dropped-out input to the logits layer (if num_classes is 0 or
+      None).
     end_points: the set of end_points from the inception model.
   """
   end_points = {}
 
-  with tf.variable_scope(scope, 'InceptionResnetV2', [inputs, num_classes],
+  with tf.variable_scope(scope, 'InceptionResnetV2', [inputs],
                          reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
@@ -321,7 +327,7 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
       net, end_points = inception_resnet_v2_base(inputs, scope=scope,
                                                  activation_fn=activation_fn)
 
-      if create_aux_logits:
+      if create_aux_logits and num_classes:
         with tf.variable_scope('AuxLogits'):
           aux = end_points['PreAuxLogits']
           aux = slim.avg_pool2d(aux, 5, stride=3, padding='VALID',
@@ -335,13 +341,20 @@ def inception_resnet_v2(inputs, num_classes=1001, is_training=True,
           end_points['AuxLogits'] = aux
 
       with tf.variable_scope('Logits'):
-        net = slim.avg_pool2d(net, net.get_shape()[1:3], padding='VALID',
-                              scope='AvgPool_1a_8x8')
+        # TODO(sguada,arnoegw): Consider adding a parameter global_pool which
+        # can be set to False to disable pooling here (as in resnet_*()).
+        kernel_size = net.get_shape()[1:3]
+        if kernel_size.is_fully_defined():
+          net = slim.avg_pool2d(net, kernel_size, padding='VALID',
+                                scope='AvgPool_1a_8x8')
+        else:
+          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+        end_points['global_pool'] = net
+        if not num_classes:
+          return net, end_points
         net = slim.flatten(net)
-
         net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                            scope='Dropout')
-
         end_points['PreLogitsFlatten'] = net
         logits = slim.fully_connected(net, num_classes, activation_fn=None,
                                       scope='Logits')

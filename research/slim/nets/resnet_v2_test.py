@@ -285,6 +285,31 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
     self.assertTrue('predictions' in end_points)
     self.assertListEqual(end_points['predictions'].get_shape().as_list(),
                          [2, 1, 1, num_classes])
+    self.assertTrue('global_pool' in end_points)
+    self.assertListEqual(end_points['global_pool'].get_shape().as_list(),
+                         [2, 1, 1, 32])
+
+  def testEndpointNames(self):
+    # Like ResnetUtilsTest.testEndPointsV2(), but for the public API.
+    global_pool = True
+    num_classes = 10
+    inputs = create_test_input(2, 224, 224, 3)
+    with slim.arg_scope(resnet_utils.resnet_arg_scope()):
+      _, end_points = self._resnet_small(inputs, num_classes,
+                                         global_pool=global_pool,
+                                         scope='resnet')
+    expected = ['resnet/conv1']
+    for block in range(1, 5):
+      for unit in range(1, 4 if block < 4 else 3):
+        for conv in range(1, 4):
+          expected.append('resnet/block%d/unit_%d/bottleneck_v2/conv%d' %
+                          (block, unit, conv))
+        expected.append('resnet/block%d/unit_%d/bottleneck_v2' % (block, unit))
+      expected.append('resnet/block%d/unit_1/bottleneck_v2/shortcut' % block)
+      expected.append('resnet/block%d' % block)
+    expected.extend(['global_pool', 'resnet/logits', 'resnet/spatial_squeeze',
+                     'predictions'])
+    self.assertItemsEqual(end_points.keys(), expected)
 
   def testClassificationShapes(self):
     global_pool = True

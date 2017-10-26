@@ -490,7 +490,8 @@ def _build_nasnet_base(images,
     if add_and_check_endpoint('Cell_{}'.format(cell_num), net):
       return net, end_points
     true_cell_num += 1
-    if hparams.use_aux_head and cell_num in aux_head_cell_idxes and is_training:
+    if (hparams.use_aux_head and cell_num in aux_head_cell_idxes and
+        num_classes and is_training):
       aux_net = tf.nn.relu(net)
       _build_aux_head(aux_net, end_points, num_classes, hparams,
                       scope='aux_{}'.format(cell_num))
@@ -500,6 +501,8 @@ def _build_nasnet_base(images,
   with tf.variable_scope('final_layer'):
     net = tf.nn.relu(net)
     net = nasnet_utils.global_avg_pool(net)
+    if add_and_check_endpoint('global_pool', net) or num_classes is None:
+      return net, end_points
     net = slim.dropout(net, hparams.dense_dropout_keep_prob, scope='dropout')
     logits = slim.fully_connected(net, num_classes)
 

@@ -31,7 +31,7 @@ class NASNetTest(tf.test.TestCase):
     height, width = 32, 32
     num_classes = 10
     inputs = tf.random_uniform((batch_size, height, width, 3))
-    tf.contrib.framework.create_global_step()
+    tf.train.create_global_step()
     with slim.arg_scope(nasnet.nasnet_cifar_arg_scope()):
       logits, end_points = nasnet.build_nasnet_cifar(inputs, num_classes)
     auxlogits = end_points['AuxLogits']
@@ -48,7 +48,7 @@ class NASNetTest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     inputs = tf.random_uniform((batch_size, height, width, 3))
-    tf.contrib.framework.create_global_step()
+    tf.train.create_global_step()
     with slim.arg_scope(nasnet.nasnet_mobile_arg_scope()):
       logits, end_points = nasnet.build_nasnet_mobile(inputs, num_classes)
     auxlogits = end_points['AuxLogits']
@@ -65,7 +65,7 @@ class NASNetTest(tf.test.TestCase):
     height, width = 331, 331
     num_classes = 1000
     inputs = tf.random_uniform((batch_size, height, width, 3))
-    tf.contrib.framework.create_global_step()
+    tf.train.create_global_step()
     with slim.arg_scope(nasnet.nasnet_large_arg_scope()):
       logits, end_points = nasnet.build_nasnet_large(inputs, num_classes)
     auxlogits = end_points['AuxLogits']
@@ -77,12 +77,51 @@ class NASNetTest(tf.test.TestCase):
     self.assertListEqual(predictions.get_shape().as_list(),
                          [batch_size, num_classes])
 
+  def testBuildPreLogitsCifarModel(self):
+    batch_size = 5
+    height, width = 32, 32
+    num_classes = None
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    tf.train.create_global_step()
+    with slim.arg_scope(nasnet.nasnet_cifar_arg_scope()):
+      net, end_points = nasnet.build_nasnet_cifar(inputs, num_classes)
+    self.assertFalse('AuxLogits' in end_points)
+    self.assertFalse('Predictions' in end_points)
+    self.assertTrue(net.op.name.startswith('final_layer/Mean'))
+    self.assertListEqual(net.get_shape().as_list(), [batch_size, 768])
+
+  def testBuildPreLogitsMobileModel(self):
+    batch_size = 5
+    height, width = 224, 224
+    num_classes = None
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    tf.train.create_global_step()
+    with slim.arg_scope(nasnet.nasnet_mobile_arg_scope()):
+      net, end_points = nasnet.build_nasnet_mobile(inputs, num_classes)
+    self.assertFalse('AuxLogits' in end_points)
+    self.assertFalse('Predictions' in end_points)
+    self.assertTrue(net.op.name.startswith('final_layer/Mean'))
+    self.assertListEqual(net.get_shape().as_list(), [batch_size, 1056])
+
+  def testBuildPreLogitsLargeModel(self):
+    batch_size = 5
+    height, width = 331, 331
+    num_classes = None
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    tf.train.create_global_step()
+    with slim.arg_scope(nasnet.nasnet_large_arg_scope()):
+      net, end_points = nasnet.build_nasnet_large(inputs, num_classes)
+    self.assertFalse('AuxLogits' in end_points)
+    self.assertFalse('Predictions' in end_points)
+    self.assertTrue(net.op.name.startswith('final_layer/Mean'))
+    self.assertListEqual(net.get_shape().as_list(), [batch_size, 4032])
+
   def testAllEndPointsShapesCifarModel(self):
     batch_size = 5
     height, width = 32, 32
     num_classes = 10
     inputs = tf.random_uniform((batch_size, height, width, 3))
-    tf.contrib.framework.create_global_step()
+    tf.train.create_global_step()
     with slim.arg_scope(nasnet.nasnet_cifar_arg_scope()):
       _, end_points = nasnet.build_nasnet_cifar(inputs, num_classes)
     endpoints_shapes = {'Stem': [batch_size, 32, 32, 96],
@@ -106,6 +145,7 @@ class NASNetTest(tf.test.TestCase):
                         'Cell_17': [batch_size, 8, 8, 768],
                         'Reduction_Cell_0': [batch_size, 16, 16, 256],
                         'Reduction_Cell_1': [batch_size, 8, 8, 512],
+                        'global_pool': [batch_size, 768],
                         # Logits and predictions
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
@@ -123,7 +163,7 @@ class NASNetTest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     inputs = tf.random_uniform((batch_size, height, width, 3))
-    tf.contrib.framework.create_global_step()
+    tf.train.create_global_step()
     with slim.arg_scope(nasnet.nasnet_mobile_arg_scope()):
       _, end_points = nasnet.build_nasnet_mobile(inputs, num_classes)
     endpoints_shapes = {'Stem': [batch_size, 28, 28, 88],
@@ -141,6 +181,7 @@ class NASNetTest(tf.test.TestCase):
                         'Cell_11': [batch_size, 7, 7, 1056],
                         'Reduction_Cell_0': [batch_size, 14, 14, 352],
                         'Reduction_Cell_1': [batch_size, 7, 7, 704],
+                        'global_pool': [batch_size, 1056],
                         # Logits and predictions
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
@@ -158,7 +199,7 @@ class NASNetTest(tf.test.TestCase):
     height, width = 331, 331
     num_classes = 1000
     inputs = tf.random_uniform((batch_size, height, width, 3))
-    tf.contrib.framework.create_global_step()
+    tf.train.create_global_step()
     with slim.arg_scope(nasnet.nasnet_large_arg_scope()):
       _, end_points = nasnet.build_nasnet_large(inputs, num_classes)
     endpoints_shapes = {'Stem': [batch_size, 42, 42, 336],
@@ -182,6 +223,7 @@ class NASNetTest(tf.test.TestCase):
                         'Cell_17': [batch_size, 11, 11, 4032],
                         'Reduction_Cell_0': [batch_size, 21, 21, 1344],
                         'Reduction_Cell_1': [batch_size, 11, 11, 2688],
+                        'global_pool': [batch_size, 4032],
                         # Logits and predictions
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
@@ -199,7 +241,7 @@ class NASNetTest(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
     inputs = tf.random_uniform((batch_size, height, width, 3))
-    tf.contrib.framework.create_global_step()
+    tf.train.create_global_step()
     # Force all Variables to reside on the device.
     with tf.variable_scope('on_cpu'), tf.device('/cpu:0'):
       with slim.arg_scope(nasnet.nasnet_mobile_arg_scope()):
