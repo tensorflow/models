@@ -54,6 +54,8 @@ def get_preprocessing(name, is_training=False):
       'inception_resnet_v2': inception_preprocessing,
       'lenet': lenet_preprocessing,
       'mobilenet_v1': inception_preprocessing,
+      'nasnet_mobile': inception_preprocessing,
+      'nasnet_large': inception_preprocessing,
       'resnet_v1_50': vgg_preprocessing,
       'resnet_v1_101': vgg_preprocessing,
       'resnet_v1_152': vgg_preprocessing,

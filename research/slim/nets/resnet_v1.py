@@ -125,7 +125,7 @@ def bottleneck(inputs,
       output = tf.nn.relu(shortcut + residual)
 
     return slim.utils.collect_named_outputs(outputs_collections,
-                                            sc.original_name_scope,
+                                            sc.name,
                                             output)
 
 
@@ -168,7 +168,7 @@ def resnet_v1(inputs,
       is a resnet_utils.Block object describing the units in the block.
     num_classes: Number of predicted classes for classification tasks. If None
       we return the features before the logit layer.
-    is_training: whether is training or not.
+    is_training: whether batch_norm layers are in training mode.
     global_pool: If True, we perform global average pooling before computing the
       logits. Set to True for image classification, False for dense prediction.
     output_stride: If None, then the output will be computed at the nominal
@@ -200,7 +200,7 @@ def resnet_v1(inputs,
     ValueError: If the target output_stride is not valid.
   """
   with tf.variable_scope(scope, 'resnet_v1', [inputs], reuse=reuse) as sc:
-    end_points_collection = sc.name + '_end_points'
+    end_points_collection = sc.original_name_scope + '_end_points'
     with slim.arg_scope([slim.conv2d, bottleneck,
                          resnet_utils.stack_blocks_dense],
                         outputs_collections=end_points_collection):
