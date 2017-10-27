@@ -74,6 +74,22 @@ class LearningRateBuilderTest(tf.test.TestCase):
         learning_rate_proto, global_summaries)
     self.assertTrue(isinstance(learning_rate, tf.Tensor))
 
+  def testBuildCosineDecayLearningRate(self):
+    learning_rate_text_proto = """
+      cosine_decay_learning_rate {
+        learning_rate_base: 0.002
+        total_steps: 20000
+        warmup_learning_rate: 0.0001
+        warmup_steps: 1000
+      }
+    """
+    global_summaries = set([])
+    learning_rate_proto = optimizer_pb2.LearningRate()
+    text_format.Merge(learning_rate_text_proto, learning_rate_proto)
+    learning_rate = optimizer_builder._create_learning_rate(
+        learning_rate_proto, global_summaries)
+    self.assertTrue(isinstance(learning_rate, tf.Tensor))
+
   def testRaiseErrorOnEmptyLearningRate(self):
     learning_rate_text_proto = """
     """
@@ -180,7 +196,7 @@ class OptimizerBuilderTest(tf.test.TestCase):
     optimizer = optimizer_builder.build(optimizer_proto, global_summaries)
     self.assertTrue(
         isinstance(optimizer, tf.contrib.opt.MovingAverageOptimizer))
-    # TODO: Find a way to not depend on the private members.
+    # TODO(rathodv): Find a way to not depend on the private members.
     self.assertAlmostEqual(optimizer._ema._decay, 0.2)
 
   def testBuildEmptyOptimizer(self):
