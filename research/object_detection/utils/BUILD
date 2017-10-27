@@ -18,7 +18,6 @@ py_library(
     name = "config_util",
     srcs = ["config_util.py"],
     deps = [
-        "//pyglib/logging",
         "//tensorflow",
         "//tensorflow_models/object_detection/protos:eval_py_pb2",
         "//tensorflow_models/object_detection/protos:input_reader_py_pb2",
@@ -320,7 +319,6 @@ py_test(
     ],
     deps = [
         ":visualization_utils",
-        "//pyglib/flags",
         "//third_party/py/PIL:pil",
     ],
 )
