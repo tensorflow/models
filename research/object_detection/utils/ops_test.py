@@ -602,6 +602,64 @@ class RetainGroundTruthWithPositiveClasses(tf.test.TestCase):
         self.assertAllEqual(expected_tensors[key], output_tensors[key])
 
 
+class ReplaceNaNGroundtruthLabelScoresWithOnes(tf.test.TestCase):
+
+  def test_replace_nan_groundtruth_label_scores_with_ones(self):
+    label_scores = tf.constant([np.nan, 1.0, np.nan])
+    output_tensor = ops.replace_nan_groundtruth_label_scores_with_ones(
+        label_scores)
+    expected_tensor = [1.0, 1.0, 1.0]
+    with self.test_session():
+      output_tensor = output_tensor.eval()
+      self.assertAllClose(expected_tensor, output_tensor)
+
+  def test_input_equals_output_when_no_nans(self):
+    input_label_scores = [0.5, 1.0, 1.0]
+    label_scores_tensor = tf.constant(input_label_scores)
+    output_label_scores = ops.replace_nan_groundtruth_label_scores_with_ones(
+        label_scores_tensor)
+    with self.test_session():
+      output_label_scores = output_label_scores.eval()
+      self.assertAllClose(input_label_scores, output_label_scores)
+
+
+class GroundtruthFilterWithCrowdBoxesTest(tf.test.TestCase):
+
+  def test_filter_groundtruth_with_crowd_boxes(self):
+    input_tensors = {
+        fields.InputDataFields.groundtruth_boxes:
+        [[0.1, 0.2, 0.6, 0.8], [0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes:
+        [1, 2],
+        fields.InputDataFields.groundtruth_is_crowd:
+        [True, False],
+        fields.InputDataFields.groundtruth_area:
+        [100.0, 238.7]
+    }
+
+    expected_tensors = {
+        fields.InputDataFields.groundtruth_boxes:
+        [[0.2, 0.4, 0.1, 0.8]],
+        fields.InputDataFields.groundtruth_classes:
+        [2],
+        fields.InputDataFields.groundtruth_is_crowd:
+        [False],
+        fields.InputDataFields.groundtruth_area:
+        [238.7]
+    }
+
+    output_tensors = ops.filter_groundtruth_with_crowd_boxes(
+        input_tensors)
+    with self.test_session() as sess:
+      output_tensors = sess.run(output_tensors)
+      for key in [fields.InputDataFields.groundtruth_boxes,
+                  fields.InputDataFields.groundtruth_area]:
+        self.assertAllClose(expected_tensors[key], output_tensors[key])
+      for key in [fields.InputDataFields.groundtruth_classes,
+                  fields.InputDataFields.groundtruth_is_crowd]:
+        self.assertAllEqual(expected_tensors[key], output_tensors[key])
+
+
 class GroundtruthFilterWithNanBoxTest(tf.test.TestCase):
 
   def test_filter_groundtruth_with_nan_box_coordinates(self):
@@ -1027,6 +1085,47 @@ class ReframeBoxMasksToImageMasksTest(tf.test.TestCase):
     with self.test_session() as sess:
       np_image_masks = sess.run(image_masks)
       self.assertAllClose(np_image_masks, np_expected_image_masks)
+
+
+class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
+
+  def testMergeBoxesWithMultipleLabels(self):
+    boxes = tf.constant(
+        [[0.25, 0.25, 0.75, 0.75], [0.0, 0.0, 0.5, 0.75],
+         [0.25, 0.25, 0.75, 0.75]],
+        dtype=tf.float32)
+    class_indices = tf.constant([0, 4, 2], dtype=tf.int32)
+    num_classes = 5
+    merged_boxes, merged_classes, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    expected_merged_boxes = np.array(
+        [[0.25, 0.25, 0.75, 0.75], [0.0, 0.0, 0.5, 0.75]], dtype=np.float32)
+    expected_merged_classes = np.array(
+        [[1, 0, 1, 0, 0], [0, 0, 0, 0, 1]], dtype=np.int32)
+    expected_merged_box_indices = np.array([0, 1], dtype=np.int32)
+    with self.test_session() as sess:
+      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
+          [merged_boxes, merged_classes, merged_box_indices])
+      if np_merged_classes[0, 0] != 1:
+        expected_merged_boxes = expected_merged_boxes[::-1, :]
+        expected_merged_classes = expected_merged_classes[::-1, :]
+        expected_merged_box_indices = expected_merged_box_indices[::-1, :]
+      self.assertAllClose(np_merged_boxes, expected_merged_boxes)
+      self.assertAllClose(np_merged_classes, expected_merged_classes)
+      self.assertAllClose(np_merged_box_indices, expected_merged_box_indices)
+
+  def testMergeBoxesWithEmptyInputs(self):
+    boxes = tf.constant([[]])
+    class_indices = tf.constant([])
+    num_classes = 5
+    merged_boxes, merged_classes, merged_box_indices = (
+        ops.merge_boxes_with_multiple_labels(boxes, class_indices, num_classes))
+    with self.test_session() as sess:
+      np_merged_boxes, np_merged_classes, np_merged_box_indices = sess.run(
+          [merged_boxes, merged_classes, merged_box_indices])
+      self.assertAllEqual(np_merged_boxes.shape, [0, 4])
+      self.assertAllEqual(np_merged_classes.shape, [0, 5])
+      self.assertAllEqual(np_merged_box_indices.shape, [0])
 
 
 if __name__ == '__main__':
