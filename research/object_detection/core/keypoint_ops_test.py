@@ -163,6 +163,38 @@ class KeypointOpsTest(tf.test.TestCase):
       output_, expected_keypoints_ = sess.run([output, expected_keypoints])
       self.assertAllClose(output_, expected_keypoints_)
 
+  def test_flip_vertical(self):
+    keypoints = tf.constant([
+        [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+        [[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]]
+    ])
+    flip_permutation = [0, 2, 1]
+
+    expected_keypoints = tf.constant([
+        [[0.9, 0.1], [0.7, 0.3], [0.8, 0.2]],
+        [[0.6, 0.4], [0.4, 0.6], [0.5, 0.5]],
+    ])
+    output = keypoint_ops.flip_vertical(keypoints, 0.5, flip_permutation)
+
+    with self.test_session() as sess:
+      output_, expected_keypoints_ = sess.run([output, expected_keypoints])
+      self.assertAllClose(output_, expected_keypoints_)
+
+  def test_rot90(self):
+    keypoints = tf.constant([
+        [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+        [[0.4, 0.6], [0.5, 0.6], [0.6, 0.7]]
+    ])
+    expected_keypoints = tf.constant([
+        [[0.9, 0.1], [0.8, 0.2], [0.7, 0.3]],
+        [[0.4, 0.4], [0.4, 0.5], [0.3, 0.6]],
+    ])
+    output = keypoint_ops.rot90(keypoints)
+
+    with self.test_session() as sess:
+      output_, expected_keypoints_ = sess.run([output, expected_keypoints])
+      self.assertAllClose(output_, expected_keypoints_)
+
 
 if __name__ == '__main__':
   tf.test.main()
