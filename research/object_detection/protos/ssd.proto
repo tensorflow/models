@@ -62,4 +62,24 @@ message SsdFeatureExtractor {
 
   // Hyperparameters for the feature extractor.
   optional Hyperparams conv_hyperparams = 4;
+
+  // The nearest multiple to zero-pad the input height and width dimensions to.
+  // For example, if pad_to_multiple = 2, input dimensions are zero-padded
+  // until the resulting dimensions are even.
+  optional int32 pad_to_multiple = 5 [default = 1];
+
+  // Whether to update batch norm parameters during training or not.
+  // When training with a relative small batch size (e.g. 1), it is
+  // desirable to disable batch norm update and use pretrained batch norm
+  // params.
+  //
+  // Note: Some feature extractors are used with canned arg_scopes
+  // (e.g resnet arg scopes).  In these cases training behavior of batch norm
+  // variables may depend on both values of `batch_norm_trainable` and
+  // `is_training`.
+  //
+  // When canned arg_scopes are used with feature extractors `conv_hyperparams`
+  // will apply only to the additional layers that are added and are outside the
+  // canned arg_scope.
+  optional bool batch_norm_trainable = 6 [default=true];
 }
