@@ -584,7 +584,8 @@ def sort_by_field(boxlist, field, order=SortOrder.descend, scope=None):
         ['Incorrect field size: actual vs expected.', num_entries, num_boxes])
 
     with tf.control_dependencies([length_assert]):
-      # TODO: Remove with tf.device when top_k operation runs correctly on GPU.
+      # TODO: Remove with tf.device when top_k operation runs
+      # correctly on GPU.
       with tf.device('/cpu:0'):
         _, sorted_indices = tf.nn.top_k(field_to_sort, num_boxes, sorted=True)
 
@@ -655,7 +656,7 @@ def filter_greater_than(boxlist, thresh, scope=None):
   This op keeps the collection of boxes whose corresponding scores are
   greater than the input threshold.
 
-  TODO: Change function name to FilterScoresGreaterThan
+  TODO: Change function name to filter_scores_greater_than
 
   Args:
     boxlist: BoxList holding N boxes.  Must contain a 'scores' field
@@ -772,18 +773,25 @@ def to_normalized_coordinates(boxlist, height, width,
     return scale(boxlist, 1 / height, 1 / width)
 
 
-def to_absolute_coordinates(boxlist, height, width,
-                            check_range=True, scope=None):
+def to_absolute_coordinates(boxlist,
+                            height,
+                            width,
+                            check_range=True,
+                            maximum_normalized_coordinate=1.01,
+                            scope=None):
   """Converts normalized box coordinates to absolute pixel coordinates.
 
   This function raises an assertion failed error when the maximum box coordinate
-  value is larger than 1.01 (in which case coordinates are already absolute).
+  value is larger than maximum_normalized_coordinate (in which case coordinates
+  are already absolute).
 
   Args:
     boxlist: BoxList with coordinates in range [0, 1].
     height: Maximum value for height of absolute box coordinates.
     width: Maximum value for width of absolute box coordinates.
     check_range: If True, checks if the coordinates are normalized or not.
+    maximum_normalized_coordinate: Maximum coordinate value to be considered
+      as normalized, default to 1.01.
     scope: name scope.
 
   Returns:
@@ -797,9 +805,10 @@ def to_absolute_coordinates(boxlist, height, width,
     # Ensure range of input boxes is correct.
     if check_range:
       box_maximum = tf.reduce_max(boxlist.get())
-      max_assert = tf.Assert(tf.greater_equal(1.01, box_maximum),
-                             ['maximum box coordinate value is larger '
-                              'than 1.01: ', box_maximum])
+      max_assert = tf.Assert(
+          tf.greater_equal(maximum_normalized_coordinate, box_maximum),
+          ['maximum box coordinate value is larger '
+           'than %f: ' % maximum_normalized_coordinate, box_maximum])
       with tf.control_dependencies([max_assert]):
         width = tf.identity(width)
 
@@ -927,9 +936,9 @@ def box_voting(selected_boxes, pool_boxes, iou_thresh=0.5):
   iou_ = iou(selected_boxes, pool_boxes)
   match_indicator = tf.to_float(tf.greater(iou_, iou_thresh))
   num_matches = tf.reduce_sum(match_indicator, 1)
-  # TODO: Handle the case where some boxes in selected_boxes do not match to any
-  # boxes in pool_boxes. For such boxes without any matches, we should return
-  # the original boxes without voting.
+  # TODO: Handle the case where some boxes in selected_boxes do not
+  # match to any boxes in pool_boxes. For such boxes without any matches, we
+  # should return the original boxes without voting.
   match_assert = tf.Assert(
       tf.reduce_all(tf.greater(num_matches, 0)),
       ['Each box in selected_boxes must match with at least one box '

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Abstract detection model.
 
 This file defines a generic base class for detection models.  Programs that are
@@ -87,6 +86,18 @@ class DetectionModel(object):
       raise RuntimeError('Groundtruth tensor %s has not been provided', field)
     return self._groundtruth_lists[field]
 
+  def groundtruth_has_field(self, field):
+    """Determines whether the groundtruth includes the given field.
+
+    Args:
+      field: a string key, options are
+        fields.BoxListFields.{boxes,classes,masks,keypoints}
+
+    Returns:
+      True if the groundtruth includes the given field, False otherwise.
+    """
+    return field in self._groundtruth_lists
+
   @abstractmethod
   def preprocess(self, inputs):
     """Input preprocessing.
@@ -148,7 +159,8 @@ class DetectionModel(object):
 
     Outputs adhere to the following conventions:
     * Classes are integers in [0, num_classes); background classes are removed
-      and the first non-background class is mapped to 0.
+      and the first non-background class is mapped to 0. If the model produces
+      class-agnostic detections, then no output is produced for classes.
     * Boxes are to be interpreted as being in [y_min, x_min, y_max, x_max]
       format and normalized relative to the image window.
     * `num_detections` is provided for settings where detections are padded to a
@@ -168,6 +180,8 @@ class DetectionModel(object):
         detection_boxes: [batch, max_detections, 4]
         detection_scores: [batch, max_detections]
         detection_classes: [batch, max_detections]
+          (If a model is producing class-agnostic detections, this field may be
+          missing)
         instance_masks: [batch, max_detections, image_height, image_width]
           (optional)
         keypoints: [batch, max_detections, num_keypoints, 2] (optional)
@@ -207,13 +221,13 @@ class DetectionModel(object):
       groundtruth_classes_list: a list of 2-D tf.float32 one-hot (or k-hot)
         tensors of shape [num_boxes, num_classes] containing the class targets
         with the 0th index assumed to map to the first non-background class.
-      groundtruth_masks_list: a list of 2-D tf.float32 tensors of
-        shape [max_detections, height_in, width_in] containing instance
+      groundtruth_masks_list: a list of 3-D tf.float32 tensors of
+        shape [num_boxes, height_in, width_in] containing instance
         masks with values in {0, 1}.  If None, no masks are provided.
         Mask resolution `height_in`x`width_in` must agree with the resolution
         of the input image tensor provided to the `preprocess` function.
-      groundtruth_keypoints_list: a list of 2-D tf.float32 tensors of
-        shape [batch, max_detections, num_keypoints, 2] containing keypoints.
+      groundtruth_keypoints_list: a list of 3-D tf.float32 tensors of
+        shape [num_boxes, num_keypoints, 2] containing keypoints.
         Keypoints are assumed to be provided in normalized coordinates and
         missing keypoints should be encoded as NaN.
     """
