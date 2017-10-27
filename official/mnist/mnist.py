@@ -46,13 +46,8 @@ parser.add_argument(
          'with CPU. If left unspecified, the data format will be chosen '
          'automatically based on whether TensorFlow was built for CPU or GPU.')
 
-_NUM_IMAGES = {
-    'train': 50000,
-    'validation': 10000,
-}
 
-
-def input_fn(is_training, data_dir, batch_size=1):
+def input_fn(filename, batch_size=1, num_epochs=1):
   """A simple input_fn using the contrib.data input pipeline."""
 
   def example_parser(serialized_example):
@@ -71,20 +66,8 @@ def input_fn(is_training, data_dir, batch_size=1):
     label = tf.cast(features['label'], tf.int32)
     return image, tf.one_hot(label, 10)
 
-  if is_training:
-    tfrecords_file = os.path.join(data_dir, 'train.tfrecords')
-  else:
-    tfrecords_file = os.path.join(data_dir, 'test.tfrecords')
-
-  assert tf.gfile.Exists(tfrecords_file), (
-      'Run convert_to_records.py first to convert the MNIST data to TFRecord '
-      'file format.')
-
-  dataset = tf.contrib.data.TFRecordDataset([tfrecords_file])
-
-  # For training, repeat the dataset forever
-  if is_training:
-    dataset = dataset.repeat()
+  dataset = tf.contrib.data.TFRecordDataset([filename])
+  dataset = dataset.repeat(num_epochs)
 
   # Map example_parser over dataset, and batch results by up to batch_size
   dataset = dataset.map(
@@ -213,31 +196,36 @@ def mnist_model_fn(features, labels, mode, params):
 
 
 def main(unused_argv):
+  # Make sure that training and testing data have been converted.
+  train_file = os.path.join(FLAGS.data_dir, 'train.tfrecords')
+  test_file = os.path.join(FLAGS.data_dir, 'test.tfrecords')
+  assert (tf.gfile.Exists(train_file) and tf.gfile.Exists(test_file)), (
+      'Run convert_to_records.py first to convert the MNIST data to TFRecord '
+      'file format.')
+
   # Create the Estimator
   mnist_classifier = tf.estimator.Estimator(
       model_fn=mnist_model_fn, model_dir=FLAGS.model_dir,
       params={'data_format': FLAGS.data_format})
 
-  # Train the model
+  # Set up training hook that logs the training accuracy every 100 steps.
   tensors_to_log = {
       'train_accuracy': 'train_accuracy'
   }
-
   logging_hook = tf.train.LoggingTensorHook(
       tensors=tensors_to_log, every_n_iter=100)
 
-  batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
-
+  # Train the model
   mnist_classifier.train(
-      input_fn=lambda: input_fn(True, FLAGS.data_dir, FLAGS.batch_size),
-      steps=FLAGS.train_epochs * batches_per_epoch,
+      input_fn=lambda: input_fn(train_file, FLAGS.batch_size,
+                                FLAGS.train_epochs),
       hooks=[logging_hook])
 
   # Evaluate the model and print results
   eval_results = mnist_classifier.evaluate(
-      input_fn=lambda: input_fn(False, FLAGS.data_dir))
+      input_fn=lambda: input_fn(test_file))
   print()
-  print('Evaluation results:\n    %s' % eval_results)
+  print('Evaluation results:\n\t%s' % eval_results)
 
 
 if __name__ == '__main__':
