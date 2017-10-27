@@ -28,6 +28,7 @@ import cPickle
 import os
 
 import tarfile
+import tempfile
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
@@ -87,9 +88,10 @@ def convert_to_tfrecord(input_files, output_file):
 
 def main(data_dir):
   print('Download from {} and extract.'.format(CIFAR_DOWNLOAD_URL))
-  download_and_extract(data_dir)
+  download_dir = tempfile.mkdtemp(prefix='tmpCifarData')
+  download_and_extract(download_dir)
   file_names = _get_file_names()
-  input_dir = os.path.join(data_dir, CIFAR_LOCAL_FOLDER)
+  input_dir = os.path.join(download_dir, CIFAR_LOCAL_FOLDER)
   for mode, files in file_names.items():
     input_files = [os.path.join(input_dir, f) for f in files]
     output_file = os.path.join(data_dir, mode + '.tfrecords')
@@ -108,7 +110,7 @@ if __name__ == '__main__':
       '--data-dir',
       type=str,
       default='',
-      help='Directory to download and extract CIFAR-10 to.')
+      help='Directory to extract CIFAR-10 to.')
 
   args = parser.parse_args()
   main(args.data_dir)
