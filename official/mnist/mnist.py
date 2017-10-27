@@ -52,7 +52,7 @@ _NUM_IMAGES = {
 }
 
 
-def input_fn(mode, batch_size=1):
+def input_fn(is_training, filename, batch_size=1, num_epochs=1):
   """A simple input_fn using the contrib.data input pipeline."""
 
   def example_parser(serialized_example):
@@ -71,21 +71,15 @@ def input_fn(mode, batch_size=1):
     label = tf.cast(features['label'], tf.int32)
     return image, tf.one_hot(label, 10)
 
-  if mode == tf.estimator.ModeKeys.TRAIN:
-    tfrecords_file = os.path.join(FLAGS.data_dir, 'train.tfrecords')
-  else:
-    assert mode == tf.estimator.ModeKeys.EVAL, 'invalid mode'
-    tfrecords_file = os.path.join(FLAGS.data_dir, 'test.tfrecords')
+  dataset = tf.contrib.data.TFRecordDataset([filename])
 
-  assert tf.gfile.Exists(tfrecords_file), (
-      'Run convert_to_records.py first to convert the MNIST data to TFRecord '
-      'file format.')
+  if is_training:
+    # When choosing shuffle buffer sizes, larger sizes result in better
+    # randomness, while smaller sizes have better performance. Because MNIST is
+    # a small dataset, we can easily shuffle the full epoch.
+    dataset = dataset.shuffle(buffer_size=_NUM_IMAGES['train'])
 
-  dataset = tf.contrib.data.TFRecordDataset([tfrecords_file])
-
-  # For training, repeat the dataset forever
-  if mode == tf.estimator.ModeKeys.TRAIN:
-    dataset = dataset.repeat()
+  dataset = dataset.repeat(num_epochs)
 
   # Map example_parser over dataset, and batch results by up to batch_size
   dataset = dataset.map(
@@ -96,13 +90,12 @@ def input_fn(mode, batch_size=1):
   return images, labels
 
 
-def mnist_model(inputs, mode):
+def mnist_model(inputs, mode, data_format):
   """Takes the MNIST inputs and mode and outputs a tensor of logits."""
   # Input Layer
   # Reshape X to 4-D tensor: [batch_size, width, height, channels]
   # MNIST images are 28x28 pixels, and have one color channel
   inputs = tf.reshape(inputs, [-1, 28, 28, 1])
-  data_format = FLAGS.data_format
 
   if data_format is None:
     # When running on GPU, transpose the data from channels_last (NHWC) to
@@ -177,9 +170,9 @@ def mnist_model(inputs, mode):
   return logits
 
 
-def mnist_model_fn(features, labels, mode):
+def mnist_model_fn(features, labels, mode, params):
   """Model function for MNIST."""
-  logits = mnist_model(features, mode)
+  logits = mnist_model(features, mode, params['data_format'])
 
   predictions = {
       'classes': tf.argmax(input=logits, axis=1),
@@ -215,30 +208,36 @@ def mnist_model_fn(features, labels, mode):
 
 
 def main(unused_argv):
+  # Make sure that training and testing data have been converted.
+  train_file = os.path.join(FLAGS.data_dir, 'train.tfrecords')
+  test_file = os.path.join(FLAGS.data_dir, 'test.tfrecords')
+  assert (tf.gfile.Exists(train_file) and tf.gfile.Exists(test_file)), (
+      'Run convert_to_records.py first to convert the MNIST data to TFRecord '
+      'file format.')
+
   # Create the Estimator
   mnist_classifier = tf.estimator.Estimator(
-      model_fn=mnist_model_fn, model_dir=FLAGS.model_dir)
+      model_fn=mnist_model_fn, model_dir=FLAGS.model_dir,
+      params={'data_format': FLAGS.data_format})
 
-  # Train the model
+  # Set up training hook that logs the training accuracy every 100 steps.
   tensors_to_log = {
       'train_accuracy': 'train_accuracy'
   }
-
   logging_hook = tf.train.LoggingTensorHook(
       tensors=tensors_to_log, every_n_iter=100)
 
-  batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
-
+  # Train the model
   mnist_classifier.train(
-      input_fn=lambda: input_fn(tf.estimator.ModeKeys.TRAIN, FLAGS.batch_size),
-      steps=FLAGS.train_epochs * batches_per_epoch,
+      input_fn=lambda: input_fn(
+          True, train_file, FLAGS.batch_size, FLAGS.train_epochs),
       hooks=[logging_hook])
 
   # Evaluate the model and print results
   eval_results = mnist_classifier.evaluate(
-      input_fn=lambda: input_fn(tf.estimator.ModeKeys.EVAL))
+      input_fn=lambda: input_fn(False, test_file, FLAGS.batch_size))
   print()
-  print('Evaluation results:\n    %s' % eval_results)
+  print('Evaluation results:\n\t%s' % eval_results)
 
 
 if __name__ == '__main__':

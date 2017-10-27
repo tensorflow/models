@@ -34,7 +34,8 @@ class BaseTest(tf.test.TestCase):
   def mnist_model_fn_helper(self, mode):
     features, labels = self.input_fn()
     image_count = features.shape[0]
-    spec = mnist.mnist_model_fn(features, labels, mode)
+    spec = mnist.mnist_model_fn(
+        features, labels, mode, {'data_format': 'channels_last'})
 
     predictions = spec.predictions
     self.assertAllEqual(predictions['probabilities'].shape, (image_count, 10))
@@ -65,5 +66,4 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  mnist.FLAGS = mnist.parser.parse_args()
   tf.test.main()
