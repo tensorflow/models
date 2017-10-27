@@ -73,6 +73,8 @@ _NUM_IMAGES = {
     'validation': 50000,
 }
 
+_SHUFFLE_BUFFER = 1500
+
 
 def filenames(is_training, data_dir):
   """Return filenames for dataset."""
@@ -146,8 +148,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
                         output_buffer_size=batch_size)
 
   if is_training:
-    buffer_size = 1250 + 2 * batch_size
-    dataset = dataset.shuffle(buffer_size=buffer_size)
+    # When choosing shuffle buffer sizes, larger sizes result in better
+    # randomness, while smaller sizes have better performance.
+    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
   iterator = dataset.batch(batch_size).make_one_shot_iterator()
   images, labels = iterator.get_next()

@@ -46,8 +46,13 @@ parser.add_argument(
          'with CPU. If left unspecified, the data format will be chosen '
          'automatically based on whether TensorFlow was built for CPU or GPU.')
 
+_NUM_IMAGES = {
+    'train': 50000,
+    'validation': 10000,
+}
 
-def input_fn(filename, batch_size=1, num_epochs=1):
+
+def input_fn(is_training, filename, batch_size=1, num_epochs=1):
   """A simple input_fn using the contrib.data input pipeline."""
 
   def example_parser(serialized_example):
@@ -67,6 +72,13 @@ def input_fn(filename, batch_size=1, num_epochs=1):
     return image, tf.one_hot(label, 10)
 
   dataset = tf.contrib.data.TFRecordDataset([filename])
+
+  if is_training:
+    # When choosing shuffle buffer sizes, larger sizes result in better
+    # randomness, while smaller sizes have better performance. Because MNIST is
+    # a small dataset, we can easily shuffle the full epoch.
+    dataset = dataset.shuffle(buffer_size=_NUM_IMAGES['train'])
+
   dataset = dataset.repeat(num_epochs)
 
   # Map example_parser over dataset, and batch results by up to batch_size
@@ -217,13 +229,13 @@ def main(unused_argv):
 
   # Train the model
   mnist_classifier.train(
-      input_fn=lambda: input_fn(train_file, FLAGS.batch_size,
-                                FLAGS.train_epochs),
+      input_fn=lambda: input_fn(
+          True, train_file, FLAGS.batch_size, FLAGS.train_epochs),
       hooks=[logging_hook])
 
   # Evaluate the model and print results
   eval_results = mnist_classifier.evaluate(
-      input_fn=lambda: input_fn(test_file, FLAGS.batch_size))
+      input_fn=lambda: input_fn(False, test_file, FLAGS.batch_size))
   print()
   print('Evaluation results:\n\t%s' % eval_results)
 

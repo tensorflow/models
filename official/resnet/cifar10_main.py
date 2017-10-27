@@ -71,6 +71,8 @@ _NUM_IMAGES = {
     'validation': 10000,
 }
 
+_SHUFFLE_BUFFER = 20000
+
 
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
@@ -154,10 +156,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     dataset = dataset.map(train_preprocess_fn, num_threads=1,
                           output_buffer_size=2 * batch_size)
 
-    # Ensure that the capacity is sufficiently large to provide good random
-    # shuffling.
-    buffer_size = int(0.4 * _NUM_IMAGES['train'])
-    dataset = dataset.shuffle(buffer_size=buffer_size)
+    # When choosing shuffle buffer sizes, larger sizes result in better
+    # randomness, while smaller sizes have better performance.
+    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
   # Subtract off the mean and divide by the variance of the pixels.
   dataset = dataset.map(
