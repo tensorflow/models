@@ -15,6 +15,19 @@ py_library(
 )
 
 py_library(
+    name = "config_util",
+    srcs = ["config_util.py"],
+    deps = [
+        "//tensorflow",
+        "//tensorflow_models/object_detection/protos:eval_py_pb2",
+        "//tensorflow_models/object_detection/protos:input_reader_py_pb2",
+        "//tensorflow_models/object_detection/protos:model_py_pb2",
+        "//tensorflow_models/object_detection/protos:pipeline_py_pb2",
+        "//tensorflow_models/object_detection/protos:train_py_pb2",
+    ],
+)
+
+py_library(
     name = "dataset_util",
     srcs = ["dataset_util.py"],
     deps = [
@@ -35,7 +48,9 @@ py_library(
 py_library(
     name = "learning_schedules",
     srcs = ["learning_schedules.py"],
-    deps = ["//tensorflow"],
+    deps = [
+        "//tensorflow",
+    ],
 )
 
 py_library(
@@ -70,9 +85,11 @@ py_library(
     name = "object_detection_evaluation",
     srcs = ["object_detection_evaluation.py"],
     deps = [
+        ":label_map_util",
         ":metrics",
         ":per_image_evaluation",
         "//tensorflow",
+        "//tensorflow_models/object_detection/core:standard_fields",
     ],
 )
 
@@ -120,7 +137,7 @@ py_library(
         "//tensorflow_models/object_detection/core:box_list",
         "//tensorflow_models/object_detection/core:box_predictor",
         "//tensorflow_models/object_detection/core:matcher",
-        "//tensorflow_models/object_detection/utils:shape_utils"
+        "//tensorflow_models/object_detection/utils:shape_utils",
     ],
 )
 
@@ -137,6 +154,8 @@ py_library(
     srcs = ["visualization_utils.py"],
     deps = [
         "//third_party/py/PIL:pil",
+        "//third_party/py/matplotlib",
+        "//third_party/py/six",
         "//tensorflow",
     ],
 )
@@ -147,6 +166,19 @@ py_test(
     deps = [
         ":category_util",
         "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "config_util_test",
+    srcs = ["config_util_test.py"],
+    deps = [
+        ":config_util",
+        "//tensorflow:tensorflow_google",
+        "//tensorflow_models/object_detection/protos:input_reader_py_pb2",
+        "//tensorflow_models/object_detection/protos:model_py_pb2",
+        "//tensorflow_models/object_detection/protos:pipeline_py_pb2",
+        "//tensorflow_models/object_detection/protos:train_py_pb2",
     ],
 )
 
@@ -220,6 +252,7 @@ py_test(
     deps = [
         ":object_detection_evaluation",
         "//tensorflow",
+        "//tensorflow_models/object_detection/core:standard_fields",
     ],
 )
 
@@ -281,6 +314,9 @@ py_test(
 py_test(
     name = "visualization_utils_test",
     srcs = ["visualization_utils_test.py"],
+    data = [
+        "//tensorflow_models/object_detection/test_images:image1.jpg",
+    ],
     deps = [
         ":visualization_utils",
         "//third_party/py/PIL:pil",
