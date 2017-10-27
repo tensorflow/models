@@ -1,13 +1,13 @@
 # Description:
 #   Contains files for loading, training and evaluating TF-Slim-based models.
 
-package(default_visibility = ["//visibility:public"])
+package(
+    default_visibility = ["//visibility:public"],
+)
 
 licenses(["notice"])  # Apache 2.0
 
 exports_files(["LICENSE"])
-
-package_group(name = "internal")
 
 py_library(
     name = "dataset_utils",
@@ -36,6 +36,7 @@ py_binary(
     srcs = ["datasets/build_imagenet_data.py"],
     deps = [
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -45,6 +46,7 @@ py_library(
     deps = [
         ":dataset_utils",
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -63,6 +65,7 @@ py_library(
     deps = [
         ":dataset_utils",
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -73,6 +76,7 @@ py_binary(
         ":download_and_convert_cifar10",
         ":download_and_convert_flowers",
         ":download_and_convert_mnist",
+        "//tensorflow",
     ],
 )
 
@@ -138,6 +142,7 @@ py_test(
     deps = [
         ":model_deploy",
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -154,6 +159,7 @@ py_library(
     srcs = ["preprocessing/inception_preprocessing.py"],
     deps = [
         "//tensorflow",
+        "//third_party/tensorflow/python:control_flow_ops",
     ],
 )
 
@@ -192,10 +198,13 @@ py_library(
     deps = [
         ":alexnet",
         ":cifarnet",
+        ":cyclegan",
         ":inception",
         ":lenet",
         ":mobilenet_v1",
+        ":nasnet",
         ":overfeat",
+        ":pix2pix",
         ":resnet_v1",
         ":resnet_v2",
         ":vgg",
@@ -206,6 +215,7 @@ py_library(
     name = "alexnet",
     srcs = ["nets/alexnet.py"],
     srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
 )
 
 py_test(
@@ -228,6 +238,45 @@ py_library(
 )
 
 py_library(
+    name = "cyclegan",
+    srcs = ["nets/cyclegan.py"],
+    deps = [
+        "//tensorflow",
+        "//third_party/py/numpy",
+    ],
+)
+
+py_test(
+    name = "cyclegan_test",
+    srcs = ["nets/cyclegan_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":cyclegan",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "dcgan",
+    srcs = ["nets/dcgan.py"],
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "dcgan_test",
+    srcs = ["nets/dcgan_test.py"],
+    shard_count = 3,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":dcgan",
+        "//tensorflow",
+    ],
+)
+
+py_library(
     name = "inception",
     srcs = ["nets/inception.py"],
     srcs_version = "PY2AND3",
@@ -244,6 +293,7 @@ py_library(
     name = "inception_utils",
     srcs = ["nets/inception_utils.py"],
     srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
 )
 
 py_library(
@@ -252,6 +302,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":inception_utils",
+        "//tensorflow",
     ],
 )
 
@@ -261,6 +312,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":inception_utils",
+        "//tensorflow",
     ],
 )
 
@@ -270,6 +322,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":inception_utils",
+        "//tensorflow",
     ],
 )
 
@@ -279,6 +332,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":inception_utils",
+        "//tensorflow",
     ],
 )
 
@@ -286,6 +340,7 @@ py_library(
     name = "inception_resnet_v2",
     srcs = ["nets/inception_resnet_v2.py"],
     srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
 )
 
 py_test(
@@ -297,6 +352,7 @@ py_test(
     deps = [
         ":inception",
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -309,6 +365,7 @@ py_test(
     deps = [
         ":inception",
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -321,6 +378,7 @@ py_test(
     deps = [
         ":inception",
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -360,6 +418,7 @@ py_library(
     name = "mobilenet_v1",
     srcs = ["nets/mobilenet_v1.py"],
     srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
 )
 
 py_test(
@@ -371,6 +430,49 @@ py_test(
     deps = [
         ":mobilenet_v1",
         "//tensorflow",
+        "//third_party/py/numpy",
+    ],
+)
+
+py_library(
+    name = "nasnet_utils",
+    srcs = ["nets/nasnet/nasnet_utils.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "nasnet",
+    srcs = ["nets/nasnet/nasnet.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet_utils",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "nasnet_utils_test",
+    size = "medium",
+    srcs = ["nets/nasnet/nasnet_utils_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet_utils",
+        "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "nasnet_test",
+    size = "large",
+    srcs = ["nets/nasnet/nasnet_test.py"],
+    shard_count = 10,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet",
+        "//tensorflow",
     ],
 )
 
@@ -378,6 +480,7 @@ py_library(
     name = "overfeat",
     srcs = ["nets/overfeat.py"],
     srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
 )
 
 py_test(
@@ -392,9 +495,27 @@ py_test(
 )
 
 py_library(
+    name = "pix2pix",
+    srcs = ["nets/pix2pix.py"],
+    srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
+)
+
+py_test(
+    name = "pix2pix_test",
+    srcs = ["nets/pix2pix_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":pix2pix",
+        "//tensorflow",
+    ],
+)
+
+py_library(
     name = "resnet_utils",
     srcs = ["nets/resnet_utils.py"],
     srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
 )
 
 py_library(
@@ -403,6 +524,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":resnet_utils",
+        "//tensorflow",
     ],
 )
 
@@ -413,8 +535,10 @@ py_test(
     shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
+        ":resnet_utils",
         ":resnet_v1",
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -424,6 +548,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":resnet_utils",
+        "//tensorflow",
     ],
 )
 
@@ -434,8 +559,10 @@ py_test(
     shard_count = 2,
     srcs_version = "PY2AND3",
     deps = [
+        ":resnet_utils",
         ":resnet_v2",
         "//tensorflow",
+        "//third_party/py/numpy",
     ],
 )
 
@@ -443,6 +570,7 @@ py_library(
     name = "vgg",
     srcs = ["nets/vgg.py"],
     srcs_version = "PY2AND3",
+    deps = ["//tensorflow"],
 )
 
 py_test(
@@ -494,7 +622,6 @@ py_binary(
     srcs = ["eval_image_classifier.py"],
     deps = [
         ":dataset_factory",
-        ":model_deploy",
         ":nets_factory",
         ":preprocessing_factory",
         "//tensorflow",
@@ -508,6 +635,7 @@ py_binary(
         ":dataset_factory",
         ":nets_factory",
         "//tensorflow",
+        "//third_party/tensorflow/python:platform",
     ],
 )
 
@@ -518,10 +646,11 @@ py_test(
     srcs_version = "PY2AND3",
     tags = [
         "manual",
+        "notap",  # imagenet.py pulls from an external URL and so fails in TAP.
     ],
     deps = [
         ":export_inference_graph",
-        ":nets_factory",
         "//tensorflow",
+        "//third_party/tensorflow/python:platform",
     ],
 )

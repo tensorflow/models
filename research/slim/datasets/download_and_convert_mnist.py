@@ -37,7 +37,8 @@ import tensorflow as tf
 from datasets import dataset_utils
 
 # The URLs where the MNIST data can be downloaded.
-_DATA_URL = 'http://yann.lecun.com/exdb/mnist/'
+# CVDF mirror of http://yann.lecun.com/exdb/mnist/
+_DATA_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/'
 _TRAIN_DATA_FILENAME = 'train-images-idx3-ubyte.gz'
 _TRAIN_LABELS_FILENAME = 'train-labels-idx1-ubyte.gz'
 _TEST_DATA_FILENAME = 't10k-images-idx3-ubyte.gz'

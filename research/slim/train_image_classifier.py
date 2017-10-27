@@ -21,9 +21,9 @@ from __future__ import print_function
 import tensorflow as tf
 
 from datasets import dataset_factory
-from deployment import model_deploy
-from nets import nets_factory
-from preprocessing import preprocessing_factory
+from google3.third_party.tensorflow_models.slim.deployment import model_deploy
+from google3.third_party.tensorflow_models.slim.nets import nets_factory
+from google3.third_party.tensorflow_models.slim.preprocessing import preprocessing_factory
 
 slim = tf.contrib.slim
 

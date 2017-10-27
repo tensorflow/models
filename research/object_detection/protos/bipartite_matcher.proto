@@ -1,8 +1,0 @@
-syntax = "proto2";
-
-package object_detection.protos;
-
-// Configuration proto for bipartite matcher. See
-// matchers/bipartite_matcher.py for details.
-message BipartiteMatcher {
-}

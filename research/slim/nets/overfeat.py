@@ -52,7 +52,8 @@ def overfeat(inputs,
              is_training=True,
              dropout_keep_prob=0.5,
              spatial_squeeze=True,
-             scope='overfeat'):
+             scope='overfeat',
+             global_pool=False):
   """Contains the model definition for the OverFeat network.
 
   The definition for the network was obtained from:
@@ -68,20 +69,26 @@ def overfeat(inputs,
 
   Args:
     inputs: a tensor of size [batch_size, height, width, channels].
-    num_classes: number of predicted classes.
+    num_classes: number of predicted classes. If 0 or None, the logits layer is
+      omitted and the input features to the logits layer are returned instead.
     is_training: whether or not the model is being trained.
     dropout_keep_prob: the probability that activations are kept in the dropout
       layers during training.
     spatial_squeeze: whether or not should squeeze the spatial dimensions of the
       outputs. Useful to remove unnecessary dimensions for classification.
     scope: Optional scope for the variables.
+    global_pool: Optional boolean flag. If True, the input to the classification
+      layer is avgpooled to size 1x1, for any input size. (This is not part
+      of the original OverFeat.)
 
   Returns:
-    the last op containing the log predictions and end_points dict.
-
+    net: the output of the logits layer (if num_classes is a non-zero integer),
+      or the non-dropped-out input to the logits layer (if num_classes is 0 or
+      None).
+    end_points: a dict of tensors with intermediate activations.
   """
   with tf.variable_scope(scope, 'overfeat', [inputs]) as sc:
-    end_points_collection = sc.name + '_end_points'
+    end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d
     with slim.arg_scope([slim.conv2d, slim.fully_connected, slim.max_pool2d],
                         outputs_collections=end_points_collection):
@@ -94,25 +101,31 @@ def overfeat(inputs,
       net = slim.conv2d(net, 1024, [3, 3], scope='conv4')
       net = slim.conv2d(net, 1024, [3, 3], scope='conv5')
       net = slim.max_pool2d(net, [2, 2], scope='pool5')
+
+      # Use conv2d instead of fully_connected layers.
       with slim.arg_scope([slim.conv2d],
                           weights_initializer=trunc_normal(0.005),
                           biases_initializer=tf.constant_initializer(0.1)):
-        # Use conv2d instead of fully_connected layers.
         net = slim.conv2d(net, 3072, [6, 6], padding='VALID', scope='fc6')
         net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                            scope='dropout6')
         net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
-        net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
-                           scope='dropout7')
-        net = slim.conv2d(net, num_classes, [1, 1],
-                          activation_fn=None,
-                          normalizer_fn=None,
-                          biases_initializer=tf.zeros_initializer(),
-                          scope='fc8')
-      # Convert end_points_collection into a end_point dict.
-      end_points = slim.utils.convert_collection_to_dict(end_points_collection)
-      if spatial_squeeze:
-        net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
-        end_points[sc.name + '/fc8'] = net
+        # Convert end_points_collection into a end_point dict.
+        end_points = slim.utils.convert_collection_to_dict(
+            end_points_collection)
+        if global_pool:
+          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+          end_points['global_pool'] = net
+        if num_classes:
+          net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
+                             scope='dropout7')
+          net = slim.conv2d(net, num_classes, [1, 1],
+                            activation_fn=None,
+                            normalizer_fn=None,
+                            biases_initializer=tf.zeros_initializer(),
+                            scope='fc8')
+          if spatial_squeeze:
+            net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
+          end_points[sc.name + '/fc8'] = net
       return net, end_points
 overfeat.default_image_size = 231
