@@ -52,7 +52,7 @@ _NUM_IMAGES = {
 }
 
 
-def input_fn(mode, batch_size=1):
+def input_fn(is_training, data_dir, batch_size=1):
   """A simple input_fn using the contrib.data input pipeline."""
 
   def example_parser(serialized_example):
@@ -71,11 +71,10 @@ def input_fn(mode, batch_size=1):
     label = tf.cast(features['label'], tf.int32)
     return image, tf.one_hot(label, 10)
 
-  if mode == tf.estimator.ModeKeys.TRAIN:
-    tfrecords_file = os.path.join(FLAGS.data_dir, 'train.tfrecords')
+  if is_training:
+    tfrecords_file = os.path.join(data_dir, 'train.tfrecords')
   else:
-    assert mode == tf.estimator.ModeKeys.EVAL, 'invalid mode'
-    tfrecords_file = os.path.join(FLAGS.data_dir, 'test.tfrecords')
+    tfrecords_file = os.path.join(data_dir, 'test.tfrecords')
 
   assert tf.gfile.Exists(tfrecords_file), (
       'Run convert_to_records.py first to convert the MNIST data to TFRecord '
@@ -84,7 +83,7 @@ def input_fn(mode, batch_size=1):
   dataset = tf.contrib.data.TFRecordDataset([tfrecords_file])
 
   # For training, repeat the dataset forever
-  if mode == tf.estimator.ModeKeys.TRAIN:
+  if is_training:
     dataset = dataset.repeat()
 
   # Map example_parser over dataset, and batch results by up to batch_size
@@ -96,13 +95,12 @@ def input_fn(mode, batch_size=1):
   return images, labels
 
 
-def mnist_model(inputs, mode):
+def mnist_model(inputs, mode, data_format):
   """Takes the MNIST inputs and mode and outputs a tensor of logits."""
   # Input Layer
   # Reshape X to 4-D tensor: [batch_size, width, height, channels]
   # MNIST images are 28x28 pixels, and have one color channel
   inputs = tf.reshape(inputs, [-1, 28, 28, 1])
-  data_format = FLAGS.data_format
 
   if data_format is None:
     # When running on GPU, transpose the data from channels_last (NHWC) to
@@ -177,9 +175,9 @@ def mnist_model(inputs, mode):
   return logits
 
 
-def mnist_model_fn(features, labels, mode):
+def mnist_model_fn(features, labels, mode, params):
   """Model function for MNIST."""
-  logits = mnist_model(features, mode)
+  logits = mnist_model(features, mode, params['data_format'])
 
   predictions = {
       'classes': tf.argmax(input=logits, axis=1),
@@ -217,7 +215,8 @@ def mnist_model_fn(features, labels, mode):
 def main(unused_argv):
   # Create the Estimator
   mnist_classifier = tf.estimator.Estimator(
-      model_fn=mnist_model_fn, model_dir=FLAGS.model_dir)
+      model_fn=mnist_model_fn, model_dir=FLAGS.model_dir,
+      params={'data_format': FLAGS.data_format})
 
   # Train the model
   tensors_to_log = {
@@ -230,13 +229,13 @@ def main(unused_argv):
   batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
 
   mnist_classifier.train(
-      input_fn=lambda: input_fn(tf.estimator.ModeKeys.TRAIN, FLAGS.batch_size),
+      input_fn=lambda: input_fn(True, FLAGS.data_dir, FLAGS.batch_size),
       steps=FLAGS.train_epochs * batches_per_epoch,
       hooks=[logging_hook])
 
   # Evaluate the model and print results
   eval_results = mnist_classifier.evaluate(
-      input_fn=lambda: input_fn(tf.estimator.ModeKeys.EVAL))
+      input_fn=lambda: input_fn(False, FLAGS.data_dir))
   print()
   print('Evaluation results:\n    %s' % eval_results)
 

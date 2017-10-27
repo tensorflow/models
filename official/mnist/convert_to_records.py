@@ -50,7 +50,7 @@ def _bytes_feature(value):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def convert_to(data_set, name):
+def convert_to(data_set, name, directory):
   """Converts a dataset to TFRecords."""
   images = data_set.images
   labels = data_set.labels
@@ -63,7 +63,7 @@ def convert_to(data_set, name):
   cols = images.shape[2]
   depth = images.shape[3]
 
-  filename = os.path.join(FLAGS.directory, name + '.tfrecords')
+  filename = os.path.join(directory, name + '.tfrecords')
   print('Writing', filename)
   writer = tf.python_io.TFRecordWriter(filename)
   for index in range(num_examples):
@@ -86,9 +86,9 @@ def main(unused_argv):
                                    validation_size=FLAGS.validation_size)
 
   # Convert to Examples and write the result to TFRecords.
-  convert_to(data_sets.train, 'train')
-  convert_to(data_sets.validation, 'validation')
-  convert_to(data_sets.test, 'test')
+  convert_to(data_sets.train, 'train', FLAGS.directory)
+  convert_to(data_sets.validation, 'validation', FLAGS.directory)
+  convert_to(data_sets.test, 'test', FLAGS.directory)
 
 
 if __name__ == '__main__':
