@@ -48,6 +48,8 @@ message ConvolutionalBoxPredictor {
   // Whether to apply sigmoid to the output of class predictions.
   // TODO: Do we need this since we have a post processing module.?
   optional bool apply_sigmoid_to_scores = 9 [default = false];
+
+  optional float class_prediction_bias_init = 10 [default = 0.0];
 }
 
 message MaskRCNNBoxPredictor {
