@@ -1,4 +1,4 @@
-# TensorFlow-Slim image classification library
+# TensorFlow-Slim image classification model library
 
 [TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
 is a new lightweight high-level API of TensorFlow (`tensorflow.contrib.slim`)
@@ -15,6 +15,7 @@ data reading and queueing utilities. You can easily train any model on any of
 these datasets, as we demonstrate below. We've also included a
 [jupyter notebook](https://github.com/tensorflow/models/blob/master/research/slim/slim_walkthrough.ipynb),
 which provides working examples of how to use TF-Slim for image classification.
+For developing or modifying your own models, see also the [main TF-Slim page](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim).
 
 ## Contacts
 
@@ -66,7 +67,7 @@ git clone https://github.com/tensorflow/models/
 
 This will put the TF-Slim image models library in `$HOME/workspace/models/research/slim`.
 (It will also create a directory called
-[models/research/inception](https://github.com/tensorflow/models/tree/master/research/inception),
+[models/inception](https://github.com/tensorflow/models/tree/master/research/inception),
 which contains an older version of slim; you can safely ignore this.)
 
 To verify that this has worked, execute the following commands; it should run
@@ -126,7 +127,7 @@ from integer labels to class names.
 
 You can use the same script to create the mnist and cifar10 datasets.
 However, for ImageNet, you have to follow the instructions
-[here](https://github.com/tensorflow/models/blob/master/inception/README.md#getting-started).
+[here](https://github.com/tensorflow/models/blob/master/research/inception/README.md#getting-started).
 Note that you first have to sign up for an account at image-net.org.
 Also, the download can take several hours, and could use up to 500GB.
 
