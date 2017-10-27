@@ -18,6 +18,7 @@
 
 Specifies:
   InputDataFields: standard fields used by reader/preprocessor/batcher.
+  DetectionResultFields: standard fields returned by object detector.
   BoxListFields: standard field used by BoxList
   TfExampleFields: standard fields for tf-example data format (go/tf-example).
 """
@@ -41,12 +42,17 @@ class InputDataFields(object):
     groundtruth_boxes: coordinates of the ground truth boxes in the image.
     groundtruth_classes: box-level class labels.
     groundtruth_label_types: box-level label types (e.g. explicit negative).
-    groundtruth_is_crowd: is the groundtruth a single object or a crowd.
+    groundtruth_is_crowd: [DEPRECATED, use groundtruth_group_of instead]
+      is the groundtruth a single object or a crowd.
     groundtruth_area: area of a groundtruth segment.
     groundtruth_difficult: is a `difficult` object
+    groundtruth_group_of: is a `group_of` objects, e.g. multiple objects of the
+      same class, forming a connected group, where instances are heavily
+      occluding each other.
     proposal_boxes: coordinates of object proposal boxes.
     proposal_objectness: objectness score of each proposal.
     groundtruth_instance_masks: ground truth instance masks.
+    groundtruth_instance_boundaries: ground truth instance boundaries.
     groundtruth_instance_classes: instance mask-level class labels.
     groundtruth_keypoints: ground truth keypoints.
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
@@ -64,13 +70,41 @@ class InputDataFields(object):
   groundtruth_is_crowd = 'groundtruth_is_crowd'
   groundtruth_area = 'groundtruth_area'
   groundtruth_difficult = 'groundtruth_difficult'
+  groundtruth_group_of = 'groundtruth_group_of'
   proposal_boxes = 'proposal_boxes'
   proposal_objectness = 'proposal_objectness'
   groundtruth_instance_masks = 'groundtruth_instance_masks'
+  groundtruth_instance_boundaries = 'groundtruth_instance_boundaries'
   groundtruth_instance_classes = 'groundtruth_instance_classes'
   groundtruth_keypoints = 'groundtruth_keypoints'
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
   groundtruth_label_scores = 'groundtruth_label_scores'
+
+
+class DetectionResultFields(object):
+  """Naming converntions for storing the output of the detector.
+
+  Attributes:
+    source_id: source of the original image.
+    key: unique key corresponding to image.
+    detection_boxes: coordinates of the detection boxes in the image.
+    detection_scores: detection scores for the detection boxes in the image.
+    detection_classes: detection-level class labels.
+    detection_masks: contains a segmentation mask for each detection box.
+    detection_boundaries: contains an object boundary for each detection box.
+    detection_keypoints: contains detection keypoints for each detection box.
+    num_detections: number of detections in the batch.
+  """
+
+  source_id = 'source_id'
+  key = 'key'
+  detection_boxes = 'detection_boxes'
+  detection_scores = 'detection_scores'
+  detection_classes = 'detection_classes'
+  detection_masks = 'detection_masks'
+  detection_boundaries = 'detection_boundaries'
+  detection_keypoints = 'detection_keypoints'
+  num_detections = 'num_detections'
 
 
 class BoxListFields(object):
@@ -83,6 +117,7 @@ class BoxListFields(object):
     weights: sample weights per bounding box.
     objectness: objectness score per bounding box.
     masks: masks per bounding box.
+    boundaries: boundaries per bounding box.
     keypoints: keypoints per bounding box.
     keypoint_heatmaps: keypoint heatmaps per bounding box.
   """
@@ -92,6 +127,7 @@ class BoxListFields(object):
   weights = 'weights'
   objectness = 'objectness'
   masks = 'masks'
+  boundaries = 'boundaries'
   keypoints = 'keypoints'
   keypoint_heatmaps = 'keypoint_heatmaps'
 
@@ -112,7 +148,7 @@ class TfExampleFields(object):
     width: width of image in pixels, e.g. 581
     source_id: original source of the image
     object_class_text: labels in text format, e.g. ["person", "cat"]
-    object_class_text: labels in numbers, e.g. [16, 8]
+    object_class_label: labels in numbers, e.g. [16, 8]
     object_bbox_xmin: xmin coordinates of groundtruth box, e.g. 10, 30
     object_bbox_xmax: xmax coordinates of groundtruth box, e.g. 50, 40
     object_bbox_ymin: ymin coordinates of groundtruth box, e.g. 40, 50
@@ -121,10 +157,20 @@ class TfExampleFields(object):
     object_truncated: is object truncated, e.g. [true, false]
     object_occluded: is object occluded, e.g. [true, false]
     object_difficult: is object difficult, e.g. [true, false]
-    object_is_crowd: is the object a single object or a crowd
+    object_group_of: is object a single object or a group of objects
+    object_depiction: is object a depiction
+    object_is_crowd: [DEPRECATED, use object_group_of instead]
+      is the object a single object or a crowd
     object_segment_area: the area of the segment.
     instance_masks: instance segmentation masks.
+    instance_boundaries: instance boundaries.
     instance_classes: Classes for each instance segmentation mask.
+    detection_class_label: class label in numbers.
+    detection_bbox_ymin: ymin coordinates of a detection box.
+    detection_bbox_xmin: xmin coordinates of a detection box.
+    detection_bbox_ymax: ymax coordinates of a detection box.
+    detection_bbox_xmax: xmax coordinates of a detection box.
+    detection_score: detection score for the class label and box.
   """
   image_encoded = 'image/encoded'
   image_format = 'image/format'  # format is reserved keyword
@@ -144,7 +190,16 @@ class TfExampleFields(object):
   object_truncated = 'image/object/truncated'
   object_occluded = 'image/object/occluded'
   object_difficult = 'image/object/difficult'
+  object_group_of = 'image/object/group_of'
+  object_depiction = 'image/object/depiction'
   object_is_crowd = 'image/object/is_crowd'
   object_segment_area = 'image/object/segment/area'
   instance_masks = 'image/segmentation/object'
+  instance_boundaries = 'image/boundaries/object'
   instance_classes = 'image/segmentation/object/class'
+  detection_class_label = 'image/detection/label'
+  detection_bbox_ymin = 'image/detection/bbox/ymin'
+  detection_bbox_xmin = 'image/detection/bbox/xmin'
+  detection_bbox_ymax = 'image/detection/bbox/ymax'
+  detection_bbox_xmax = 'image/detection/bbox/xmax'
+  detection_score = 'image/detection/score'

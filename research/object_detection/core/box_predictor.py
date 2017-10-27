@@ -278,6 +278,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
                box_code_size,
                conv_hyperparams=None,
                predict_instance_masks=False,
+               mask_height=14,
+               mask_width=14,
                mask_prediction_conv_depth=256,
                predict_keypoints=False):
     """Constructor.
@@ -300,6 +302,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
         ops.
       predict_instance_masks: Whether to predict object masks inside detection
         boxes.
+      mask_height: Desired output mask height. The default value is 14.
+      mask_width: Desired output mask width. The default value is 14.
       mask_prediction_conv_depth: The depth for the first conv2d_transpose op
         applied to the image_features in the mask prediciton branch.
       predict_keypoints: Whether to predict keypoints insde detection boxes.
@@ -315,10 +319,10 @@ class MaskRCNNBoxPredictor(BoxPredictor):
     self._dropout_keep_prob = dropout_keep_prob
     self._conv_hyperparams = conv_hyperparams
     self._predict_instance_masks = predict_instance_masks
+    self._mask_height = mask_height
+    self._mask_width = mask_width
     self._mask_prediction_conv_depth = mask_prediction_conv_depth
     self._predict_keypoints = predict_keypoints
-    if self._predict_instance_masks:
-      raise ValueError('Mask prediction is unimplemented.')
     if self._predict_keypoints:
       raise ValueError('Keypoint prediction is unimplemented.')
     if ((self._predict_instance_masks or self._predict_keypoints) and
@@ -338,6 +342,11 @@ class MaskRCNNBoxPredictor(BoxPredictor):
     setting, anchors are not spatially arranged in any way and are assumed to
     have been folded into the batch dimension.  Thus we output 1 for the
     anchors dimension.
+
+    Also optionally predicts instance masks.
+    The mask prediction head is based on the Mask RCNN paper with the following
+    modifications: We replace the deconvolution layer with a bilinear resize
+    and a convolution.
 
     Args:
       image_features: A float tensor of shape [batch_size, height, width,
@@ -397,15 +406,18 @@ class MaskRCNNBoxPredictor(BoxPredictor):
 
     if self._predict_instance_masks:
       with slim.arg_scope(self._conv_hyperparams):
-        upsampled_features = slim.conv2d_transpose(
+        upsampled_features = tf.image.resize_bilinear(
             image_features,
+            [self._mask_height, self._mask_width],
+            align_corners=True)
+        upsampled_features = slim.conv2d(
+            upsampled_features,
             num_outputs=self._mask_prediction_conv_depth,
-            kernel_size=[2, 2],
-            stride=2)
+            kernel_size=[2, 2])
         mask_predictions = slim.conv2d(upsampled_features,
                                        num_outputs=self.num_classes,
                                        activation_fn=None,
-                                       kernel_size=[1, 1])
+                                       kernel_size=[3, 3])
         instance_masks = tf.expand_dims(tf.transpose(mask_predictions,
                                                      perm=[0, 3, 1, 2]),
                                         axis=1,
@@ -437,7 +449,8 @@ class ConvolutionalBoxPredictor(BoxPredictor):
                dropout_keep_prob,
                kernel_size,
                box_code_size,
-               apply_sigmoid_to_scores=False):
+               apply_sigmoid_to_scores=False,
+               class_prediction_bias_init=0.0):
     """Constructor.
 
     Args:
@@ -464,6 +477,8 @@ class ConvolutionalBoxPredictor(BoxPredictor):
       box_code_size: Size of encoding for each box.
       apply_sigmoid_to_scores: if True, apply the sigmoid on the output
         class_predictions.
+      class_prediction_bias_init: constant value to initialize bias of the last
+        conv2d layer before class prediction.
 
     Raises:
       ValueError: if min_depth > max_depth.
@@ -480,6 +495,7 @@ class ConvolutionalBoxPredictor(BoxPredictor):
     self._box_code_size = box_code_size
     self._dropout_keep_prob = dropout_keep_prob
     self._apply_sigmoid_to_scores = apply_sigmoid_to_scores
+    self._class_prediction_bias_init = class_prediction_bias_init
 
   def _predict(self, image_features, num_predictions_per_location):
     """Computes encoded object locations and corresponding confidences.
@@ -499,15 +515,16 @@ class ConvolutionalBoxPredictor(BoxPredictor):
           [batch_size, num_anchors, num_classes + 1] representing the class
           predictions for the proposals.
     """
-    features_depth = static_shape.get_depth(image_features.get_shape())
-    depth = max(min(features_depth, self._max_depth), self._min_depth)
-
     # Add a slot for the background class.
     num_class_slots = self.num_classes + 1
     net = image_features
     with slim.arg_scope(self._conv_hyperparams), \
          slim.arg_scope([slim.dropout], is_training=self._is_training):
-      # Add additional conv layers before the predictor.
+      # Add additional conv layers before the class predictor.
+      features_depth = static_shape.get_depth(image_features.get_shape())
+      depth = max(min(features_depth, self._max_depth), self._min_depth)
+      tf.logging.info('depth of additional conv before box predictor: {}'.
+                      format(depth))
       if depth > 0 and self._num_layers_before_predictor > 0:
         for i in range(self._num_layers_before_predictor):
           net = slim.conv2d(
@@ -522,7 +539,9 @@ class ConvolutionalBoxPredictor(BoxPredictor):
           net = slim.dropout(net, keep_prob=self._dropout_keep_prob)
         class_predictions_with_background = slim.conv2d(
             net, num_predictions_per_location * num_class_slots,
-            [self._kernel_size, self._kernel_size], scope='ClassPredictor')
+            [self._kernel_size, self._kernel_size], scope='ClassPredictor',
+            biases_initializer=tf.constant_initializer(
+                self._class_prediction_bias_init))
         if self._apply_sigmoid_to_scores:
           class_predictions_with_background = tf.sigmoid(
               class_predictions_with_background)
