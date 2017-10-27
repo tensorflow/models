@@ -72,6 +72,7 @@ py_library(
     srcs = ["box_coder_builder.py"],
     deps = [
         "//tensorflow_models/object_detection/box_coders:faster_rcnn_box_coder",
+        "//tensorflow_models/object_detection/box_coders:keypoint_box_coder",
         "//tensorflow_models/object_detection/box_coders:mean_stddev_box_coder",
         "//tensorflow_models/object_detection/box_coders:square_box_coder",
         "//tensorflow_models/object_detection/protos:box_coder_py_pb2",
@@ -85,6 +86,7 @@ py_test(
         ":box_coder_builder",
         "//tensorflow",
         "//tensorflow_models/object_detection/box_coders:faster_rcnn_box_coder",
+        "//tensorflow_models/object_detection/box_coders:keypoint_box_coder",
         "//tensorflow_models/object_detection/box_coders:mean_stddev_box_coder",
         "//tensorflow_models/object_detection/box_coders:square_box_coder",
         "//tensorflow_models/object_detection/protos:box_coder_py_pb2",

@@ -82,6 +82,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         kernel_size: 3
         box_code_size: 3
         apply_sigmoid_to_scores: true
+        class_prediction_bias_init: 4.0
       }
     """
     conv_hyperparams_text_proto = """
@@ -114,6 +115,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertFalse(box_predictor._use_dropout)
     self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.4)
     self.assertTrue(box_predictor._apply_sigmoid_to_scores)
+    self.assertAlmostEqual(box_predictor._class_prediction_bias_init, 4.0)
     self.assertEqual(box_predictor.num_classes, 10)
     self.assertFalse(box_predictor._is_training)
 

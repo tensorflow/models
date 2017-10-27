@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for object_detection.builders.image_resizer_builder."""
+import numpy as np
 import tensorflow as tf
 from google.protobuf import text_format
 from object_detection.builders import image_resizer_builder
@@ -22,13 +22,13 @@ from object_detection.protos import image_resizer_pb2
 
 class ImageResizerBuilderTest(tf.test.TestCase):
 
-  def _shape_of_resized_random_image_given_text_proto(
-      self, input_shape, text_proto):
+  def _shape_of_resized_random_image_given_text_proto(self, input_shape,
+                                                      text_proto):
     image_resizer_config = image_resizer_pb2.ImageResizer()
     text_format.Merge(text_proto, image_resizer_config)
     image_resizer_fn = image_resizer_builder.build(image_resizer_config)
-    images = tf.to_float(tf.random_uniform(
-        input_shape, minval=0, maxval=255, dtype=tf.int32))
+    images = tf.to_float(
+        tf.random_uniform(input_shape, minval=0, maxval=255, dtype=tf.int32))
     resized_images = image_resizer_fn(images)
     with self.test_session() as sess:
       return sess.run(resized_images).shape
@@ -64,7 +64,33 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       image_resizer_builder.build(invalid_input)
 
+  def _resized_image_given_text_proto(self, image, text_proto):
+    image_resizer_config = image_resizer_pb2.ImageResizer()
+    text_format.Merge(text_proto, image_resizer_config)
+    image_resizer_fn = image_resizer_builder.build(image_resizer_config)
+    image_placeholder = tf.placeholder(tf.uint8, [1, None, None, 3])
+    resized_image = image_resizer_fn(image_placeholder)
+    with self.test_session() as sess:
+      return sess.run(resized_image, feed_dict={image_placeholder: image})
+
+  def test_fixed_shape_resizer_nearest_neighbor_method(self):
+    image_resizer_text_proto = """
+      fixed_shape_resizer {
+        height: 1
+        width: 1
+        resize_method: NEAREST_NEIGHBOR
+      }
+    """
+    image = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    image = np.expand_dims(image, axis=2)
+    image = np.tile(image, (1, 1, 3))
+    image = np.expand_dims(image, axis=0)
+    resized_image = self._resized_image_given_text_proto(
+        image, image_resizer_text_proto)
+    vals = np.unique(resized_image).tolist()
+    self.assertEqual(len(vals), 1)
+    self.assertEqual(vals[0], 1)
+
 
 if __name__ == '__main__':
   tf.test.main()
-
