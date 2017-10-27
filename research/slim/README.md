@@ -196,10 +196,10 @@ you will not need to interact with the script again.
 DATA_DIR=$HOME/imagenet-data
 
 # build the preprocessing script.
-bazel build slim/download_and_preprocess_imagenet
+bazel build slim/download_and_convert_imagenet
 
 # run it
-bazel-bin/slim/download_and_preprocess_imagenet "${DATA_DIR}"
+bazel-bin/slim/download_and_convert_imagenet "${DATA_DIR}"
 ```
 
 The final line of the output script should read:
