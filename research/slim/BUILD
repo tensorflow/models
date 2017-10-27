@@ -468,6 +468,7 @@ py_test(
     name = "nasnet_test",
     size = "large",
     srcs = ["nets/nasnet/nasnet_test.py"],
+    shard_count = 10,
     srcs_version = "PY2AND3",
     deps = [
         ":nasnet",
