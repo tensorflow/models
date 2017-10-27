@@ -1,66 +1,13 @@
 # Description:
 #   Contains files for loading, training and evaluating TF-Slim-based models.
 
-package(default_visibility = [":internal"])
+package(
+    default_visibility = ["//visibility:public"],
+)
 
 licenses(["notice"])  # Apache 2.0
 
 exports_files(["LICENSE"])
-
-package_group(
-    name = "internal",
-    packages = [
-        "//cityblock/bestview/...",
-        "//cloud/ml/applications/vision/...",
-        "//cloud/ml/research/...",
-        "//geo/gt/fusion/...",
-        "//googlex/proxy/learning/...",
-        "//hardware/gchips/paintbox/research/vision/npcam/lib_image_quality/nima/...",
-        "//i18n/input/font/...",
-        "//image/understanding/object_detection/...",
-        "//knowledge/cerebra/imresearch/deep_upsampling/...",
-        "//knowledge/cerebra/sense/im2query/...",
-        "//knowledge/cerebra/spacepark/...",
-        "//learning/brain/contrib/hub/examples/slim_nets/...",
-        "//learning/brain/contrib/slim/...",
-        "//learning/brain/contrib/tfgan/...",
-        "//learning/brain/google/xla/benchmarks/...",
-        "//learning/brain/models/image/imagenet_multigpu/...",
-        "//learning/brain/models/image/imagenet_opensource/...",
-        "//learning/brain/research/codistillation/...",
-        "//learning/brain/research/image_stylization/...",
-        "//learning/brain/research/meta_architect/...",
-        "//learning/brain/research/red_team/...",
-        "//learning/deepmind/research/robots/vision/...",
-        "//learning/genomics/...",
-        "//medical/pathology/...",
-        "//nlp/garcon/...",
-        "//nlp/neon/...",
-        "//photos/vision/features/delf/...",
-        "//photos/vision/human_sensing/...",
-        "//photos/vision/object_net/...",
-        "//photos/vision/streams/...",
-        "//research/action_recognition/...",
-        "//research/bigml/tensorflow/...",
-        "//research/drishti/app/vesper/...",
-        "//research/vale/imagination/...",
-        "//research/vale/instance_segmentation/...",
-        "//research/vale/pose_estimation/...",
-        "//research/vision/classomatic/...",
-        "//research/vision/couchpotato/...",
-        "//research/vision/creatism/...",
-        "//research/vision/enhancement/...",
-        "//research/vision/loco/...",
-        "//research/vision/npcam/lib_image_quality/nima/...",
-        "//research/vision/threedeep/...",
-        "//robotics/learning/...",
-        "//robotics/reinforcement_learning/evol/...",
-        "//third_party/blue/...",
-        "//third_party/car/...",
-        "//third_party/tensorflow_models/...",
-        "//vision/face/pittpatt/research/tensorflow/...",
-    ],
-)
 
 py_library(
     name = "dataset_utils",
@@ -519,7 +466,7 @@ py_test(
 
 py_test(
     name = "nasnet_test",
-    size = "medium",
+    size = "large",
     srcs = ["nets/nasnet/nasnet_test.py"],
     srcs_version = "PY2AND3",
     deps = [
