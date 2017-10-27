@@ -49,8 +49,8 @@ message InputReader {
 
 // An input reader that reads TF Example protos from local TFRecord files.
 message TFRecordInputReader {
-  // Path to TFRecordFile.
-  optional string input_path = 1 [default=""];
+  // Path(s) to `TFRecordFile`s.
+  repeated string input_path = 1;
 }
 
 // An externally defined input reader. Users may define an extension to this
