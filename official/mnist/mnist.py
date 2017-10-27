@@ -223,7 +223,7 @@ def main(unused_argv):
 
   # Evaluate the model and print results
   eval_results = mnist_classifier.evaluate(
-      input_fn=lambda: input_fn(test_file))
+      input_fn=lambda: input_fn(test_file, FLAGS.batch_size))
   print()
   print('Evaluation results:\n\t%s' % eval_results)
 
