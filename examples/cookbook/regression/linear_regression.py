@@ -19,10 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+
 import numpy as np
 import tensorflow as tf
 
-import imports85
+import automobile_data
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=100, type=int, help='batch size')
@@ -40,14 +41,14 @@ def main(argv):
   """Builds, trains, and evaluates the model."""
   args = parser.parse_args(argv[1:])
 
-  (train_x,train_y), (test_x, test_y) = imports85.load_data()
+  (train_x,train_y), (test_x, test_y) = automobile_data.load_data()
 
   train_y /= args.price_norm_factor
   test_y /= args.price_norm_factor
 
   # Build the training dataset.
   train = (
-      imports85.make_dataset(train_x, train_y)
+      automobile_data.make_dataset(train_x, train_y)
       # Shuffling with a buffer larger than the data set ensures
       # that the examples are well mixed.
       .shuffle(1000).batch(args.batch_size)
@@ -55,7 +56,7 @@ def main(argv):
       .repeat())
 
   # Build the validation dataset.
-  test = imports85.make_dataset(test_x, test_y).batch(args.batch_size)
+  test = automobile_data.make_dataset(test_x, test_y).batch(args.batch_size)
 
   feature_columns = [
       # "curb-weight" and "highway-mpg" are numeric columns.
@@ -87,7 +88,7 @@ def main(argv):
       "curb-weight": np.array([2000, 3000]),
       "highway-mpg": np.array([30, 40])
   }
-  predict = imports85.make_dataset(input_dict).batch(1)
+  predict = automobile_data.make_dataset(input_dict).batch(1)
   predict_results = model.predict(input_fn=from_dataset(predict))
 
   # Print the prediction results.

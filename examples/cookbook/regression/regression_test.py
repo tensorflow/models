@@ -22,7 +22,7 @@ import pandas as pd
 import tensorflow as tf
 from six.moves import StringIO
 
-import imports85 as imports85
+import automobile_data
 
 import dnn_regression
 import linear_regression
@@ -41,8 +41,8 @@ mock = tf.test.mock
 
 def four_lines_dataframe():
   text = StringIO(FOUR_LINES)
-  return pd.read_csv(text, names=imports85.COLUMN_TYPES.keys(),
-                     dtype=imports85.COLUMN_TYPES, na_values="?")
+  return pd.read_csv(text, names=automobile_data.COLUMN_TYPES.keys(),
+                     dtype=automobile_data.COLUMN_TYPES, na_values="?")
 
 
 def four_lines_dataset(*args, **kwargs):
@@ -53,19 +53,19 @@ def four_lines_dataset(*args, **kwargs):
 class RegressionTest(tf.test.TestCase):
   """Test the regression examples in this directory."""
 
-  @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
+  @mock.patch.dict(automobile_data.__dict__, {"raw_dataframe": four_lines_dataframe})
   def test_linear_regression(self):
     linear_regression.main([None, "--train_steps=1"])
 
-  @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
+  @mock.patch.dict(automobile_data.__dict__, {"raw_dataframe": four_lines_dataframe})
   def test_linear_regression_categorical(self):
     linear_regression_categorical.main([None, "--train_steps=1"])
 
-  @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
+  @mock.patch.dict(automobile_data.__dict__, {"raw_dataframe": four_lines_dataframe})
   def test_dnn_regression(self):
     dnn_regression.main([None, "--train_steps=1"])
 
-  @mock.patch.dict(imports85.__dict__, {"raw_dataframe": four_lines_dataframe})
+  @mock.patch.dict(automobile_data.__dict__, {"raw_dataframe": four_lines_dataframe})
   def test_custom_regression(self):
     custom_regression.main([None, "--train_steps=1"])
 

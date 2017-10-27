@@ -17,13 +17,10 @@
 # https://developers.googleblog.com/2017/09/introducing-tensorflow-datasets.html
 #   (https://goo.gl/Ujm2Ep)
 
-import tensorflow as tf
 import os
-import sys
-if sys.version_info < (3, 0, 0):
-    from urllib import urlopen
-else:
-    from urllib.request import urlopen
+
+import six.moves.urllib.request as request
+import tensorflow as tf
 
 # Check that we have correct TensorFlow version installed
 tf_version = tf.__version__
@@ -45,7 +42,7 @@ def downloadDataset(url, file):
     if not os.path.exists(PATH_DATASET):
         os.makedirs(PATH_DATASET)
     if not os.path.exists(file):
-        data = urlopen(url).read()
+        data = request.urlopen(url).read()
         with open(file, "wb") as f:
             f.write(data)
             f.close()
@@ -74,7 +71,7 @@ def my_input_fn(file_path, perform_shuffle=False, repeat_count=1):
         d = dict(zip(feature_names, features)), label
         return d
 
-    dataset = (tf.contrib.data.TextLineDataset(file_path)  # Read text file
+    dataset = (tf.data.TextLineDataset(file_path)  # Read text file
                .skip(1)  # Skip header row
                .map(decode_csv))  # Transform each elem by applying decode_csv fn
     if perform_shuffle:
@@ -135,7 +132,7 @@ def new_input_fn():
         x = tf.split(x, 4)  # Need to split into our 4 features
         return dict(zip(feature_names, x))  # To build a dict of them
 
-    dataset = tf.contrib.data.Dataset.from_tensor_slices(prediction_input)
+    dataset = tf.data.Dataset.from_tensor_slices(prediction_input)
     dataset = dataset.map(decode)
     iterator = dataset.make_one_shot_iterator()
     next_feature_batch = iterator.get_next()
@@ -145,12 +142,12 @@ def new_input_fn():
 predict_results = classifier.predict(input_fn=new_input_fn)
 
 # Print results
-print("Predictions on memory")
+print("Predictions:")
 for idx, prediction in enumerate(predict_results):
     type = prediction["class_ids"][0]  # Get the predicted class (index)
     if type == 0:
-        print("I think: {}, is Iris Sentosa".format(prediction_input[idx]))
+        print("  I think: {}, is Iris Sentosa".format(prediction_input[idx]))
     elif type == 1:
-        print("I think: {}, is Iris Versicolor".format(prediction_input[idx]))
+        print("  I think: {}, is Iris Versicolor".format(prediction_input[idx]))
     else:
-        print("I think: {}, is Iris Virginica".format(prediction_input[idx]))
+        print("  I think: {}, is Iris Virginica".format(prediction_input[idx]))
