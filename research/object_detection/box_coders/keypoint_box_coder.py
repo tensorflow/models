@@ -23,9 +23,9 @@ to box coordinates):
   th = log(h / ha)
   tw = log(w / wa)
   tky0 = (ky0 - ya) / ha
-  tkx0 = (kx0 - xa) / ha
+  tkx0 = (kx0 - xa) / wa
   tky1 = (ky1 - ya) / ha
-  tkx1 = (kx1 - xa) / ha
+  tkx1 = (kx1 - xa) / wa
   ...
   where x, y, w, h denote the box's center coordinates, width and height
   respectively. Similarly, xa, ya, wa, ha denote the anchor's center
