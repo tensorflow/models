@@ -40,7 +40,9 @@ def lenet(images, num_classes=10, is_training=False,
 
   Args:
     images: A batch of `Tensors` of size [batch_size, height, width, channels].
-    num_classes: the number of classes in the dataset.
+    num_classes: the number of classes in the dataset. If 0 or None, the logits
+      layer is omitted and the input features to the logits layer are returned
+      instead.
     is_training: specifies whether or not we're currently training the model.
       This variable will determine the behaviour of the dropout layer.
     dropout_keep_prob: the percentage of activation values that are retained.
@@ -48,28 +50,30 @@ def lenet(images, num_classes=10, is_training=False,
     scope: Optional variable_scope.
 
   Returns:
-    logits: the pre-softmax activations, a tensor of size
-      [batch_size, `num_classes`]
+     net: a 2D Tensor with the logits (pre-softmax activations) if num_classes
+      is a non-zero integer, or the inon-dropped-out nput to the logits layer
+      if num_classes is 0 or None.
     end_points: a dictionary from components of the network to the corresponding
       activation.
   """
   end_points = {}
 
-  with tf.variable_scope(scope, 'LeNet', [images, num_classes]):
-    net = slim.conv2d(images, 32, [5, 5], scope='conv1')
-    net = slim.max_pool2d(net, [2, 2], 2, scope='pool1')
-    net = slim.conv2d(net, 64, [5, 5], scope='conv2')
-    net = slim.max_pool2d(net, [2, 2], 2, scope='pool2')
+  with tf.variable_scope(scope, 'LeNet', [images]):
+    net = end_points['conv1'] = slim.conv2d(images, 32, [5, 5], scope='conv1')
+    net = end_points['pool1'] = slim.max_pool2d(net, [2, 2], 2, scope='pool1')
+    net = end_points['conv2'] = slim.conv2d(net, 64, [5, 5], scope='conv2')
+    net = end_points['pool2'] = slim.max_pool2d(net, [2, 2], 2, scope='pool2')
     net = slim.flatten(net)
     end_points['Flatten'] = net
 
-    net = slim.fully_connected(net, 1024, scope='fc3')
-    net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
-                       scope='dropout3')
-    logits = slim.fully_connected(net, num_classes, activation_fn=None,
-                                  scope='fc4')
+    net = end_points['fc3'] = slim.fully_connected(net, 1024, scope='fc3')
+    if not num_classes:
+      return net, end_points
+    net = end_points['dropout3'] = slim.dropout(
+        net, dropout_keep_prob, is_training=is_training, scope='dropout3')
+    logits = end_points['Logits'] = slim.fully_connected(
+        net, num_classes, activation_fn=None, scope='fc4')
 
-  end_points['Logits'] = logits
   end_points['Predictions'] = prediction_fn(logits, scope='Predictions')
 
   return logits, end_points
