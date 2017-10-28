@@ -30,7 +30,8 @@ slim = tf.contrib.slim
 def preprocess_for_train(image,
                          output_height,
                          output_width,
-                         padding=_PADDING):
+                         padding=_PADDING,
+                         add_image_summaries=True):
   """Preprocesses the given image for training.
 
   Note that the actual resizing scale is sampled from
@@ -41,11 +42,13 @@ def preprocess_for_train(image,
     output_height: The height of the image after preprocessing.
     output_width: The width of the image after preprocessing.
     padding: The amound of padding before and after each dimension of the image.
+    add_image_summaries: Enable image summaries.
 
   Returns:
     A preprocessed image.
   """
-  tf.summary.image('image', tf.expand_dims(image, 0))
+  if add_image_summaries:
+    tf.summary.image('image', tf.expand_dims(image, 0))
 
   # Transform the image to floats.
   image = tf.to_float(image)
@@ -58,7 +61,8 @@ def preprocess_for_train(image,
   # Randomly flip the image horizontally.
   distorted_image = tf.image.random_flip_left_right(distorted_image)
 
-  tf.summary.image('distorted_image', tf.expand_dims(distorted_image, 0))
+  if add_image_summaries:
+    tf.summary.image('distorted_image', tf.expand_dims(distorted_image, 0))
 
   # Because these operations are not commutative, consider randomizing
   # the order their operation.
@@ -70,18 +74,21 @@ def preprocess_for_train(image,
   return tf.image.per_image_standardization(distorted_image)
 
 
-def preprocess_for_eval(image, output_height, output_width):
+def preprocess_for_eval(image, output_height, output_width,
+                        add_image_summaries=True):
   """Preprocesses the given image for evaluation.
 
   Args:
     image: A `Tensor` representing an image of arbitrary size.
     output_height: The height of the image after preprocessing.
     output_width: The width of the image after preprocessing.
+    add_image_summaries: Enable image summaries.
 
   Returns:
     A preprocessed image.
   """
-  tf.summary.image('image', tf.expand_dims(image, 0))
+  if add_image_summaries:
+    tf.summary.image('image', tf.expand_dims(image, 0))
   # Transform the image to floats.
   image = tf.to_float(image)
 
@@ -89,13 +96,15 @@ def preprocess_for_eval(image, output_height, output_width):
   resized_image = tf.image.resize_image_with_crop_or_pad(image,
                                                          output_width,
                                                          output_height)
-  tf.summary.image('resized_image', tf.expand_dims(resized_image, 0))
+  if add_image_summaries:
+    tf.summary.image('resized_image', tf.expand_dims(resized_image, 0))
 
   # Subtract off the mean and divide by the variance of the pixels.
   return tf.image.per_image_standardization(resized_image)
 
 
-def preprocess_image(image, output_height, output_width, is_training=False):
+def preprocess_image(image, output_height, output_width, is_training=False,
+                     add_image_summaries=True):
   """Preprocesses the given image.
 
   Args:
@@ -104,11 +113,16 @@ def preprocess_image(image, output_height, output_width, is_training=False):
     output_width: The width of the image after preprocessing.
     is_training: `True` if we're preprocessing the image for training and
       `False` otherwise.
+    add_image_summaries: Enable image summaries.
 
   Returns:
     A preprocessed image.
   """
   if is_training:
-    return preprocess_for_train(image, output_height, output_width)
+    return preprocess_for_train(
+        image, output_height, output_width,
+        add_image_summaries=add_image_summaries)
   else:
-    return preprocess_for_eval(image, output_height, output_width)
+    return preprocess_for_eval(
+        image, output_height, output_width,
+        add_image_summaries=add_image_summaries)
