@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
-"""Common functions for repeatedly evaluating a checkpoint.
-"""
-import copy
+"""Common functions for repeatedly evaluating a checkpoint."""
 import logging
 import os
 import time
@@ -23,8 +20,12 @@ import time
 import numpy as np
 import tensorflow as tf
 
+from object_detection.core import box_list
+from object_detection.core import box_list_ops
+from object_detection.core import keypoint_ops
+from object_detection.core import standard_fields as fields
 from object_detection.utils import label_map_util
-from object_detection.utils import object_detection_evaluation
+from object_detection.utils import ops
 from object_detection.utils import visualization_utils as vis_utils
 
 slim = tf.contrib.slim
@@ -48,117 +49,6 @@ def write_metrics(metrics, global_step, summary_dir):
     logging.info('%s: %f', key, metrics[key])
   summary_writer.close()
   logging.info('Metrics written to tf summary.')
-
-
-def evaluate_detection_results_pascal_voc(result_lists,
-                                          categories,
-                                          label_id_offset=0,
-                                          iou_thres=0.5,
-                                          corloc_summary=False):
-  """Computes Pascal VOC detection metrics given groundtruth and detections.
-
-  This function computes Pascal VOC metrics. This function by default
-  takes detections and groundtruth boxes encoded in result_lists and writes
-  evaluation results to tf summaries which can be viewed on tensorboard.
-
-  Args:
-    result_lists: a dictionary holding lists of groundtruth and detection
-      data corresponding to each image being evaluated.  The following keys
-      are required:
-        'image_id': a list of string ids
-        'detection_boxes': a list of float32 numpy arrays of shape [N, 4]
-        'detection_scores': a list of float32 numpy arrays of shape [N]
-        'detection_classes': a list of int32 numpy arrays of shape [N]
-        'groundtruth_boxes': a list of float32 numpy arrays of shape [M, 4]
-        'groundtruth_classes': a list of int32 numpy arrays of shape [M]
-      and the remaining fields below are optional:
-        'difficult': a list of boolean arrays of shape [M] indicating the
-          difficulty of groundtruth boxes. Some datasets like PASCAL VOC provide
-          this information and it is used to remove difficult examples from eval
-          in order to not penalize the models on them.
-      Note that it is okay to have additional fields in result_lists --- they
-      are simply ignored.
-    categories: a list of dictionaries representing all possible categories.
-      Each dict in this list has the following keys:
-          'id': (required) an integer id uniquely identifying this category
-          'name': (required) string representing category name
-            e.g., 'cat', 'dog', 'pizza'
-    label_id_offset: an integer offset for the label space.
-    iou_thres: float determining the IoU threshold at which a box is considered
-        correct. Defaults to the standard 0.5.
-    corloc_summary: boolean. If True, also outputs CorLoc metrics.
-
-  Returns:
-    A dictionary of metric names to scalar values.
-
-  Raises:
-    ValueError: if the set of keys in result_lists is not a superset of the
-      expected list of keys.  Unexpected keys are ignored.
-    ValueError: if the lists in result_lists have inconsistent sizes.
-  """
-  # check for expected keys in result_lists
-  expected_keys = [
-      'detection_boxes', 'detection_scores', 'detection_classes', 'image_id'
-  ]
-  expected_keys += ['groundtruth_boxes', 'groundtruth_classes']
-  if not set(expected_keys).issubset(set(result_lists.keys())):
-    raise ValueError('result_lists does not have expected key set.')
-  num_results = len(result_lists[expected_keys[0]])
-  for key in expected_keys:
-    if len(result_lists[key]) != num_results:
-      raise ValueError('Inconsistent list sizes in result_lists')
-
-  # Pascal VOC evaluator assumes foreground index starts from zero.
-  categories = copy.deepcopy(categories)
-  for idx in range(len(categories)):
-    categories[idx]['id'] -= label_id_offset
-
-  # num_classes (maybe encoded as categories)
-  num_classes = max([cat['id'] for cat in categories]) + 1
-  logging.info('Computing Pascal VOC metrics on results.')
-  if all(image_id.isdigit() for image_id in result_lists['image_id']):
-    image_ids = [int(image_id) for image_id in result_lists['image_id']]
-  else:
-    image_ids = range(num_results)
-
-  evaluator = object_detection_evaluation.ObjectDetectionEvaluation(
-      num_classes, matching_iou_threshold=iou_thres)
-
-  difficult_lists = None
-  if 'difficult' in result_lists and result_lists['difficult']:
-    difficult_lists = result_lists['difficult']
-  for idx, image_id in enumerate(image_ids):
-    difficult = None
-    if difficult_lists is not None and difficult_lists[idx].size:
-      difficult = difficult_lists[idx].astype(np.bool)
-    evaluator.add_single_ground_truth_image_info(
-        image_id, result_lists['groundtruth_boxes'][idx],
-        result_lists['groundtruth_classes'][idx] - label_id_offset,
-        difficult)
-    evaluator.add_single_detected_image_info(
-        image_id, result_lists['detection_boxes'][idx],
-        result_lists['detection_scores'][idx],
-        result_lists['detection_classes'][idx] - label_id_offset)
-  per_class_ap, mean_ap, _, _, per_class_corloc, mean_corloc = (
-      evaluator.evaluate())
-
-  metrics = {'Precision/mAP@{}IOU'.format(iou_thres): mean_ap}
-  category_index = label_map_util.create_category_index(categories)
-  for idx in range(per_class_ap.size):
-    if idx in category_index:
-      display_name = ('PerformanceByCategory/mAP@{}IOU/{}'
-                      .format(iou_thres, category_index[idx]['name']))
-      metrics[display_name] = per_class_ap[idx]
-
-  if corloc_summary:
-    metrics['CorLoc/CorLoc@{}IOU'.format(iou_thres)] = mean_corloc
-    for idx in range(per_class_corloc.size):
-      if idx in category_index:
-        display_name = (
-            'PerformanceByCategory/CorLoc@{}IOU/{}'.format(
-                iou_thres, category_index[idx]['name']))
-        metrics[display_name] = per_class_corloc[idx]
-  return metrics
 
 
 # TODO: Add tests.
@@ -265,9 +155,11 @@ def visualize_detection_results(result_dict,
     vis_utils.save_image_array_as_png(image, export_path)
 
   summary = tf.Summary(value=[
-      tf.Summary.Value(tag=tag, image=tf.Summary.Image(
-          encoded_image_string=vis_utils.encode_image_array_as_png_str(
-              image)))
+      tf.Summary.Value(
+          tag=tag,
+          image=tf.Summary.Image(
+              encoded_image_string=vis_utils.encode_image_array_as_png_str(
+                  image)))
   ])
   summary_writer = tf.summary.FileWriter(summary_dir)
   summary_writer.add_summary(summary, global_step)
@@ -276,57 +168,41 @@ def visualize_detection_results(result_dict,
   logging.info('Detection visualizations written to summary with tag %s.', tag)
 
 
-# TODO: Add tests.
-# TODO: Have an argument called `aggregated_processor_tensor_keys` that contains
-# a whitelist of tensors used by the `aggregated_result_processor` instead of a
-# blacklist. This will prevent us from inadvertently adding any evaluated
-# tensors into the `results_list` data structure that are not needed by
-# `aggregated_result_preprocessor`.
-def run_checkpoint_once(tensor_dict,
-                        update_op,
-                        summary_dir,
-                        aggregated_result_processor=None,
-                        batch_processor=None,
-                        checkpoint_dirs=None,
-                        variables_to_restore=None,
-                        restore_fn=None,
-                        num_batches=1,
-                        master='',
-                        save_graph=False,
-                        save_graph_dir='',
-                        metric_names_to_values=None,
-                        keys_to_exclude_from_results=()):
-  """Evaluates both python metrics and tensorflow slim metrics.
+def _run_checkpoint_once(tensor_dict,
+                         evaluators=None,
+                         batch_processor=None,
+                         checkpoint_dirs=None,
+                         variables_to_restore=None,
+                         restore_fn=None,
+                         num_batches=1,
+                         master='',
+                         save_graph=False,
+                         save_graph_dir=''):
+  """Evaluates metrics defined in evaluators.
 
-  Python metrics are processed in batch by the aggregated_result_processor,
-  while tensorflow slim metrics statistics are computed by running
-  metric_names_to_updates tensors and aggregated using metric_names_to_values
-  tensor.
+  This function loads the latest checkpoint in checkpoint_dirs and evaluates
+  all metrics defined in evaluators. The metrics are processed in batch by the
+  batch_processor.
 
   Args:
     tensor_dict: a dictionary holding tensors representing a batch of detections
       and corresponding groundtruth annotations.
-    update_op: a tensorflow update op that will run for each batch along with
-      the tensors in tensor_dict..
-    summary_dir: a directory to write metrics summaries.
-    aggregated_result_processor: a function taking one arguments:
-      1. result_lists: a dictionary with keys matching those in tensor_dict
-        and corresponding values being the list of results for each tensor
-        in tensor_dict.  The length of each such list is num_batches.
+    evaluators: a list of object of type DetectionEvaluator to be used for
+      evaluation. Note that the metric names produced by different evaluators
+      must be unique.
     batch_processor: a function taking four arguments:
       1. tensor_dict: the same tensor_dict that is passed in as the first
         argument to this function.
       2. sess: a tensorflow session
       3. batch_index: an integer representing the index of the batch amongst
         all batches
-      4. update_op: a tensorflow update op that will run for each batch.
-      and returns result_dict, a dictionary of results for that batch.
       By default, batch_processor is None, which defaults to running:
         return sess.run(tensor_dict)
       To skip an image, it suffices to return an empty dictionary in place of
       result_dict.
     checkpoint_dirs: list of directories to load into an EnsembleModel. If it
-      has only one directory, EnsembleModel will not be used -- a DetectionModel
+      has only one directory, EnsembleModel will not be used --
+        a DetectionModel
       will be instantiated directly. Not used if restore_fn is set.
     variables_to_restore: None, or a dictionary mapping variable names found in
       a checkpoint to model variables. The dictionary would normally be
@@ -340,14 +216,10 @@ def run_checkpoint_once(tensor_dict,
     save_graph: whether or not the Tensorflow graph is stored as a pbtxt file.
     save_graph_dir: where to store the Tensorflow graph on disk. If save_graph
       is True this must be non-empty.
-    metric_names_to_values: A dictionary containing metric names to tensors
-      which will be evaluated after processing all batches
-      of [tensor_dict, update_op]. If any metrics depend on statistics computed
-      during each batch ensure that `update_op` tensor has a control dependency
-      on the update ops that compute the statistics.
-    keys_to_exclude_from_results: keys in tensor_dict that will be excluded
-      from results_list. Note that the tensors corresponding to these keys will
-      still be evaluated for each batch, but won't be added to results_list.
+
+  Returns:
+    global_step: the count of global steps.
+    all_evaluator_metrics: A dictionary containing metric names and values.
 
   Raises:
     ValueError: if restore_fn is None and checkpoint_dirs doesn't have at least
@@ -359,6 +231,7 @@ def run_checkpoint_once(tensor_dict,
   sess = tf.Session(master, graph=tf.get_default_graph())
   sess.run(tf.global_variables_initializer())
   sess.run(tf.local_variables_initializer())
+  sess.run(tf.tables_initializer())
   if restore_fn:
     restore_fn(sess)
   else:
@@ -371,10 +244,7 @@ def run_checkpoint_once(tensor_dict,
   if save_graph:
     tf.train.write_graph(sess.graph_def, save_graph_dir, 'eval.pbtxt')
 
-  valid_keys = list(set(tensor_dict.keys()) - set(keys_to_exclude_from_results))
-  result_lists = {key: [] for key in valid_keys}
   counters = {'skipped': 0, 'success': 0}
-  other_metrics = None
   with tf.contrib.slim.queues.QueueRunners(sess):
     try:
       for batch in range(int(num_batches)):
@@ -382,40 +252,46 @@ def run_checkpoint_once(tensor_dict,
           logging.info('Running eval ops batch %d/%d', batch + 1, num_batches)
         if not batch_processor:
           try:
-            (result_dict, _) = sess.run([tensor_dict, update_op])
+            result_dict = sess.run(tensor_dict)
             counters['success'] += 1
           except tf.errors.InvalidArgumentError:
             logging.info('Skipping image')
             counters['skipped'] += 1
             result_dict = {}
         else:
-          result_dict = batch_processor(
-              tensor_dict, sess, batch, counters, update_op)
-        for key in result_dict:
-          if key in valid_keys:
-            result_lists[key].append(result_dict[key])
-      if metric_names_to_values is not None:
-        other_metrics = sess.run(metric_names_to_values)
+          result_dict = batch_processor(tensor_dict, sess, batch, counters)
+        for evaluator in evaluators:
+          # TODO: Use image_id tensor once we fix the input data
+          # decoders to return correct image_id.
+          # TODO: result_dict contains batches of images, while
+          # add_single_ground_truth_image_info expects a single image. Fix
+          evaluator.add_single_ground_truth_image_info(
+              image_id=batch, groundtruth_dict=result_dict)
+          evaluator.add_single_detected_image_info(
+              image_id=batch, detections_dict=result_dict)
       logging.info('Running eval batches done.')
     except tf.errors.OutOfRangeError:
       logging.info('Done evaluating -- epoch limit reached')
     finally:
       # When done, ask the threads to stop.
-      metrics = aggregated_result_processor(result_lists)
-      if other_metrics is not None:
-        metrics.update(other_metrics)
-      global_step = tf.train.global_step(sess, slim.get_global_step())
-      write_metrics(metrics, global_step, summary_dir)
       logging.info('# success: %d', counters['success'])
       logging.info('# skipped: %d', counters['skipped'])
+      all_evaluator_metrics = {}
+      for evaluator in evaluators:
+        metrics = evaluator.evaluate()
+        evaluator.clear()
+        if any(key in all_evaluator_metrics for key in metrics):
+          raise ValueError('Metric names between evaluators must not collide.')
+        all_evaluator_metrics.update(metrics)
+      global_step = tf.train.global_step(sess, tf.train.get_global_step())
   sess.close()
+  return (global_step, all_evaluator_metrics)
 
 
 # TODO: Add tests.
 def repeated_checkpoint_run(tensor_dict,
-                            update_op,
                             summary_dir,
-                            aggregated_result_processor=None,
+                            evaluators,
                             batch_processor=None,
                             checkpoint_dirs=None,
                             variables_to_restore=None,
@@ -425,9 +301,7 @@ def repeated_checkpoint_run(tensor_dict,
                             max_number_of_evaluations=None,
                             master='',
                             save_graph=False,
-                            save_graph_dir='',
-                            metric_names_to_values=None,
-                            keys_to_exclude_from_results=()):
+                            save_graph_dir=''):
   """Periodically evaluates desired tensors using checkpoint_dirs or restore_fn.
 
   This function repeatedly loads a checkpoint and evaluates a desired
@@ -438,21 +312,16 @@ def repeated_checkpoint_run(tensor_dict,
   Args:
     tensor_dict: a dictionary holding tensors representing a batch of detections
       and corresponding groundtruth annotations.
-    update_op: a tensorflow update op that will run for each batch along with
-      the tensors in tensor_dict.
     summary_dir: a directory to write metrics summaries.
-    aggregated_result_processor: a function taking one argument:
-      1. result_lists: a dictionary with keys matching those in tensor_dict
-        and corresponding values being the list of results for each tensor
-        in tensor_dict.  The length of each such list is num_batches.
+    evaluators: a list of object of type DetectionEvaluator to be used for
+      evaluation. Note that the metric names produced by different evaluators
+      must be unique.
     batch_processor: a function taking three arguments:
       1. tensor_dict: the same tensor_dict that is passed in as the first
         argument to this function.
       2. sess: a tensorflow session
       3. batch_index: an integer representing the index of the batch amongst
         all batches
-      4. update_op: a tensorflow update op that will run for each batch.
-      and returns result_dict, a dictionary of results for that batch.
       By default, batch_processor is None, which defaults to running:
         return sess.run(tensor_dict)
     checkpoint_dirs: list of directories to load into a DetectionModel or an
@@ -472,14 +341,10 @@ def repeated_checkpoint_run(tensor_dict,
     save_graph: whether or not the Tensorflow graph is saved as a pbtxt file.
     save_graph_dir: where to save on disk the Tensorflow graph. If store_graph
       is True this must be non-empty.
-    metric_names_to_values: A dictionary containing metric names to tensors
-      which will be evaluated after processing all batches
-      of [tensor_dict, update_op]. If any metrics depend on statistics computed
-      during each batch ensure that `update_op` tensor has a control dependency
-      on the update ops that compute the statistics.
-    keys_to_exclude_from_results: keys in tensor_dict that will be excluded
-      from results_list. Note that the tensors corresponding to these keys will
-      still be evaluated for each batch, but won't be added to results_list.
+
+  Returns:
+    metrics: A dictionary containing metric names and values in the latest
+      evaluation.
 
   Raises:
     ValueError: if max_num_of_evaluations is not None or a positive number.
@@ -496,8 +361,8 @@ def repeated_checkpoint_run(tensor_dict,
   number_of_evaluations = 0
   while True:
     start = time.time()
-    logging.info('Starting evaluation at ' + time.strftime('%Y-%m-%d-%H:%M:%S',
-                                                           time.gmtime()))
+    logging.info('Starting evaluation at ' + time.strftime(
+        '%Y-%m-%d-%H:%M:%S', time.gmtime()))
     model_path = tf.train.latest_checkpoint(checkpoint_dirs[0])
     if not model_path:
       logging.info('No model found in %s. Will try again in %d seconds',
@@ -507,12 +372,14 @@ def repeated_checkpoint_run(tensor_dict,
                    'seconds', eval_interval_secs)
     else:
       last_evaluated_model_path = model_path
-      run_checkpoint_once(tensor_dict, update_op, summary_dir,
-                          aggregated_result_processor,
-                          batch_processor, checkpoint_dirs,
-                          variables_to_restore, restore_fn, num_batches, master,
-                          save_graph, save_graph_dir, metric_names_to_values,
-                          keys_to_exclude_from_results)
+      global_step, metrics = _run_checkpoint_once(tensor_dict, evaluators,
+                                                  batch_processor,
+                                                  checkpoint_dirs,
+                                                  variables_to_restore,
+                                                  restore_fn, num_batches,
+                                                  master, save_graph,
+                                                  save_graph_dir)
+      write_metrics(metrics, global_step, summary_dir)
     number_of_evaluations += 1
 
     if (max_number_of_evaluations and
@@ -522,3 +389,128 @@ def repeated_checkpoint_run(tensor_dict,
     time_to_next_eval = start + eval_interval_secs - time.time()
     if time_to_next_eval > 0:
       time.sleep(time_to_next_eval)
+
+  return metrics
+
+
+def result_dict_for_single_example(image,
+                                   key,
+                                   detections,
+                                   groundtruth=None,
+                                   class_agnostic=False,
+                                   scale_to_absolute=False):
+  """Merges all detection and groundtruth information for a single example.
+
+  Note that evaluation tools require classes that are 1-indexed, and so this
+  function performs the offset. If `class_agnostic` is True, all output classes
+  have label 1.
+
+  Args:
+    image: A single 4D image tensor of shape [1, H, W, C].
+    key: A single string tensor identifying the image.
+    detections: A dictionary of detections, returned from
+      DetectionModel.postprocess().
+    groundtruth: (Optional) Dictionary of groundtruth items, with fields:
+      'groundtruth_boxes': [num_boxes, 4] float32 tensor of boxes, in
+        normalized coordinates.
+      'groundtruth_classes': [num_boxes] int64 tensor of 1-indexed classes.
+      'groundtruth_area': [num_boxes] float32 tensor of bbox area. (Optional)
+      'groundtruth_is_crowd': [num_boxes] int64 tensor. (Optional)
+      'groundtruth_difficult': [num_boxes] int64 tensor. (Optional)
+      'groundtruth_group_of': [num_boxes] int64 tensor. (Optional)
+      'groundtruth_instance_masks': 3D int64 tensor of instance masks
+        (Optional).
+    class_agnostic: Boolean indicating whether the detections are class-agnostic
+      (i.e. binary). Default False.
+    scale_to_absolute: Boolean indicating whether boxes, masks, keypoints should
+      be scaled to absolute coordinates. Note that for IoU based evaluations,
+      it does not matter whether boxes are expressed in absolute or relative
+      coordinates. Default False.
+
+  Returns:
+    A dictionary with:
+    'original_image': A [1, H, W, C] uint8 image tensor.
+    'key': A string tensor with image identifier.
+    'detection_boxes': [max_detections, 4] float32 tensor of boxes, in
+      normalized or absolute coordinates, depending on the value of
+      `scale_to_absolute`.
+    'detection_scores': [max_detections] float32 tensor of scores.
+    'detection_classes': [max_detections] int64 tensor of 1-indexed classes.
+    'detection_masks': [max_detections, None, None] float32 tensor of binarized
+      masks. (Only present if available in `detections`)
+    'groundtruth_boxes': [num_boxes, 4] float32 tensor of boxes, in
+      normalized or absolute coordinates, depending on the value of
+      `scale_to_absolute`. (Optional)
+    'groundtruth_classes': [num_boxes] int64 tensor of 1-indexed classes.
+      (Optional)
+    'groundtruth_area': [num_boxes] float32 tensor of bbox area. (Optional)
+    'groundtruth_is_crowd': [num_boxes] int64 tensor. (Optional)
+    'groundtruth_difficult': [num_boxes] int64 tensor. (Optional)
+    'groundtruth_group_of': [num_boxes] int64 tensor. (Optional)
+    'groundtruth_instance_masks': 3D int64 tensor of instance masks
+      (Optional).
+
+  """
+  label_id_offset = 1  # Applying label id offset (b/63711816)
+
+  input_data_fields = fields.InputDataFields()
+  output_dict = {
+      input_data_fields.original_image: image,
+      input_data_fields.key: key,
+  }
+
+  detection_fields = fields.DetectionResultFields
+  detection_boxes = detections[detection_fields.detection_boxes][0]
+  output_dict[detection_fields.detection_boxes] = detection_boxes
+  image_shape = tf.shape(image)
+  if scale_to_absolute:
+    absolute_detection_boxlist = box_list_ops.to_absolute_coordinates(
+        box_list.BoxList(detection_boxes), image_shape[1], image_shape[2])
+    output_dict[detection_fields.detection_boxes] = (
+        absolute_detection_boxlist.get())
+  detection_scores = detections[detection_fields.detection_scores][0]
+  output_dict[detection_fields.detection_scores] = detection_scores
+
+  if class_agnostic:
+    detection_classes = tf.ones_like(detection_scores, dtype=tf.int64)
+  else:
+    detection_classes = (
+        tf.to_int64(detections[detection_fields.detection_classes][0]) +
+        label_id_offset)
+  output_dict[detection_fields.detection_classes] = detection_classes
+
+  if detection_fields.detection_masks in detections:
+    detection_masks = detections[detection_fields.detection_masks][0]
+    output_dict[detection_fields.detection_masks] = detection_masks
+    if scale_to_absolute:
+      # TODO: This should be done in model's postprocess
+      # function ideally.
+      detection_masks_reframed = ops.reframe_box_masks_to_image_masks(
+          detection_masks, detection_boxes, image_shape[1], image_shape[2])
+      detection_masks_reframed = tf.to_float(
+          tf.greater(detection_masks_reframed, 0.5))
+      output_dict[detection_fields.detection_masks] = detection_masks_reframed
+  if detection_fields.detection_keypoints in detections:
+    detection_keypoints = detections[detection_fields.detection_keypoints][0]
+    output_dict[detection_fields.detection_keypoints] = detection_keypoints
+    if scale_to_absolute:
+      absolute_detection_keypoints = keypoint_ops.scale(
+          detection_keypoints, image_shape[1], image_shape[2])
+      output_dict[detection_fields.detection_keypoints] = (
+          absolute_detection_keypoints)
+
+  if groundtruth:
+    output_dict.update(groundtruth)
+    if scale_to_absolute:
+      groundtruth_boxes = groundtruth[input_data_fields.groundtruth_boxes]
+      absolute_gt_boxlist = box_list_ops.to_absolute_coordinates(
+          box_list.BoxList(groundtruth_boxes), image_shape[1], image_shape[2])
+      output_dict[input_data_fields.groundtruth_boxes] = (
+          absolute_gt_boxlist.get())
+    # For class-agnostic models, groundtruth classes all become 1.
+    if class_agnostic:
+      groundtruth_classes = groundtruth[input_data_fields.groundtruth_classes]
+      groundtruth_classes = tf.ones_like(groundtruth_classes, dtype=tf.int64)
+      output_dict[input_data_fields.groundtruth_classes] = groundtruth_classes
+
+  return output_dict
