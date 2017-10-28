@@ -37,6 +37,7 @@ class FasterRcnnResnetV1FeatureExtractorTest(tf.test.TestCase):
     return feature_extractor_map[architecture](
         is_training=False,
         first_stage_features_stride=first_stage_features_stride,
+        batch_norm_trainable=False,
         reuse_weights=None,
         weight_decay=0.0)
 
