@@ -458,7 +458,8 @@ def inception_v2(inputs,
                  prediction_fn=slim.softmax,
                  spatial_squeeze=True,
                  reuse=None,
-                 scope='InceptionV2'):
+                 scope='InceptionV2',
+                 global_pool=False):
   """Inception v2 model for classification.
 
   Constructs an Inception v2 network for classification as described in
@@ -468,7 +469,9 @@ def inception_v2(inputs,
 
   Args:
     inputs: a tensor of shape [batch_size, height, width, channels].
-    num_classes: number of predicted classes.
+    num_classes: number of predicted classes. If 0 or None, the logits layer
+      is omitted and the input features to the logits layer (before dropout)
+      are returned instead.
     is_training: whether is training or not.
     dropout_keep_prob: the percentage of activation values that are retained.
     min_depth: Minimum depth value (number of channels) for all convolution ops.
@@ -484,10 +487,15 @@ def inception_v2(inputs,
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
+    global_pool: Optional boolean flag to control the avgpooling before the
+      logits layer. If false or unset, pooling is done with a fixed window
+      that reduces default-sized inputs to 1x1, while larger inputs lead to
+      larger outputs. If true, any input size is pooled down to 1x1.
 
   Returns:
-    logits: the pre-softmax activations, a tensor of size
-      [batch_size, num_classes]
+    net: a Tensor with the logits (pre-softmax activations) if num_classes
+      is a non-zero integer, or the non-dropped-out input to the logits layer
+      if num_classes is 0 or None.
     end_points: a dictionary from components of the network to the corresponding
       activation.
 
@@ -499,17 +507,25 @@ def inception_v2(inputs,
     raise ValueError('depth_multiplier is not greater than zero.')
 
   # Final pooling and prediction
-  with tf.variable_scope(scope, 'InceptionV2', [inputs, num_classes],
-                         reuse=reuse) as scope:
+  with tf.variable_scope(scope, 'InceptionV2', [inputs], reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
       net, end_points = inception_v2_base(
           inputs, scope=scope, min_depth=min_depth,
           depth_multiplier=depth_multiplier)
       with tf.variable_scope('Logits'):
-        kernel_size = _reduced_kernel_size_for_small_input(net, [7, 7])
-        net = slim.avg_pool2d(net, kernel_size, padding='VALID',
-                              scope='AvgPool_1a_{}x{}'.format(*kernel_size))
+        if global_pool:
+          # Global average pooling.
+          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+          end_points['global_pool'] = net
+        else:
+          # Pooling with a fixed kernel size.
+          kernel_size = _reduced_kernel_size_for_small_input(net, [7, 7])
+          net = slim.avg_pool2d(net, kernel_size, padding='VALID',
+                                scope='AvgPool_1a_{}x{}'.format(*kernel_size))
+          end_points['AvgPool_1a'] = net
+        if not num_classes:
+          return net, end_points
         # 1 x 1 x 1024
         net = slim.dropout(net, keep_prob=dropout_keep_prob, scope='Dropout_1b')
         logits = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,

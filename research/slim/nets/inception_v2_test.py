@@ -35,12 +35,25 @@ class InceptionV2Test(tf.test.TestCase):
 
     inputs = tf.random_uniform((batch_size, height, width, 3))
     logits, end_points = inception.inception_v2(inputs, num_classes)
-    self.assertTrue(logits.op.name.startswith('InceptionV2/Logits'))
+    self.assertTrue(logits.op.name.startswith(
+        'InceptionV2/Logits/SpatialSqueeze'))
     self.assertListEqual(logits.get_shape().as_list(),
                          [batch_size, num_classes])
     self.assertTrue('Predictions' in end_points)
     self.assertListEqual(end_points['Predictions'].get_shape().as_list(),
                          [batch_size, num_classes])
+
+  def testBuildPreLogitsNetwork(self):
+    batch_size = 5
+    height, width = 224, 224
+    num_classes = None
+
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    net, end_points = inception.inception_v2(inputs, num_classes)
+    self.assertTrue(net.op.name.startswith('InceptionV2/Logits/AvgPool'))
+    self.assertListEqual(net.get_shape().as_list(), [batch_size, 1, 1, 1024])
+    self.assertFalse('Logits' in end_points)
+    self.assertFalse('Predictions' in end_points)
 
   def testBuildBaseNetwork(self):
     batch_size = 5
@@ -257,6 +270,25 @@ class InceptionV2Test(tf.test.TestCase):
       tf.global_variables_initializer().run()
       pre_pool_out = sess.run(pre_pool, feed_dict=feed_dict)
       self.assertListEqual(list(pre_pool_out.shape), [batch_size, 7, 7, 1024])
+
+  def testGlobalPoolUnknownImageShape(self):
+    tf.reset_default_graph()
+    batch_size = 2
+    height, width = 300, 400
+    num_classes = 1000
+    input_np = np.random.uniform(0, 1, (batch_size, height, width, 3))
+    with self.test_session() as sess:
+      inputs = tf.placeholder(tf.float32, shape=(batch_size, None, None, 3))
+      logits, end_points = inception.inception_v2(inputs, num_classes,
+                                                  global_pool=True)
+      self.assertTrue(logits.op.name.startswith('InceptionV2/Logits'))
+      self.assertListEqual(logits.get_shape().as_list(),
+                           [batch_size, num_classes])
+      pre_pool = end_points['Mixed_5c']
+      feed_dict = {inputs: input_np}
+      tf.global_variables_initializer().run()
+      pre_pool_out = sess.run(pre_pool, feed_dict=feed_dict)
+      self.assertListEqual(list(pre_pool_out.shape), [batch_size, 10, 13, 1024])
 
   def testUnknowBatchSize(self):
     batch_size = 1
