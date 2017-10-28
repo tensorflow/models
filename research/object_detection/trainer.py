@@ -35,9 +35,9 @@ from deployment import model_deploy
 slim = tf.contrib.slim
 
 
-def _create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
-                        batch_queue_capacity, num_batch_queue_threads,
-                        prefetch_queue_capacity, data_augmentation_options):
+def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
+                       batch_queue_capacity, num_batch_queue_threads,
+                       prefetch_queue_capacity, data_augmentation_options):
   """Sets up reader, prefetcher and returns input queue.
 
   Args:
@@ -65,9 +65,16 @@ def _create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
   float_images = tf.to_float(images)
   tensor_dict[fields.InputDataFields.image] = float_images
 
+  include_instance_masks = (fields.InputDataFields.groundtruth_instance_masks
+                            in tensor_dict)
+  include_keypoints = (fields.InputDataFields.groundtruth_keypoints
+                       in tensor_dict)
   if data_augmentation_options:
-    tensor_dict = preprocessor.preprocess(tensor_dict,
-                                          data_augmentation_options)
+    tensor_dict = preprocessor.preprocess(
+        tensor_dict, data_augmentation_options,
+        func_arg_map=preprocessor.get_default_func_arg_map(
+            include_instance_masks=include_instance_masks,
+            include_keypoints=include_keypoints))
 
   input_queue = batcher.BatchQueue(
       tensor_dict,
@@ -78,56 +85,83 @@ def _create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
   return input_queue
 
 
-def _get_inputs(input_queue, num_classes):
-  """Dequeue batch and construct inputs to object detection model.
+def get_inputs(input_queue, num_classes, merge_multiple_label_boxes=False):
+  """Dequeues batch and constructs inputs to object detection model.
 
   Args:
     input_queue: BatchQueue object holding enqueued tensor_dicts.
     num_classes: Number of classes.
+    merge_multiple_label_boxes: Whether to merge boxes with multiple labels
+      or not. Defaults to false. Merged boxes are represented with a single
+      box and a k-hot encoding of the multiple labels associated with the
+      boxes.
 
   Returns:
     images: a list of 3-D float tensor of images.
+    image_keys: a list of string keys for the images.
     locations_list: a list of tensors of shape [num_boxes, 4]
       containing the corners of the groundtruth boxes.
     classes_list: a list of padded one-hot tensors containing target classes.
     masks_list: a list of 3-D float tensors of shape [num_boxes, image_height,
       image_width] containing instance masks for objects if present in the
       input_queue. Else returns None.
+    keypoints_list: a list of 3-D float tensors of shape [num_boxes,
+      num_keypoints, 2] containing keypoints for objects if present in the
+      input queue. Else returns None.
   """
   read_data_list = input_queue.dequeue()
   label_id_offset = 1
   def extract_images_and_targets(read_data):
+    """Extract images and targets from the input dict."""
     image = read_data[fields.InputDataFields.image]
+    key = ''
+    if fields.InputDataFields.source_id in read_data:
+      key = read_data[fields.InputDataFields.source_id]
     location_gt = read_data[fields.InputDataFields.groundtruth_boxes]
     classes_gt = tf.cast(read_data[fields.InputDataFields.groundtruth_classes],
                          tf.int32)
     classes_gt -= label_id_offset
-    classes_gt = util_ops.padded_one_hot_encoding(indices=classes_gt,
-                                                  depth=num_classes, left_pad=0)
+    if merge_multiple_label_boxes:
+      location_gt, classes_gt, _ = util_ops.merge_boxes_with_multiple_labels(
+          location_gt, classes_gt, num_classes)
+    else:
+      classes_gt = util_ops.padded_one_hot_encoding(
+          indices=classes_gt, depth=num_classes, left_pad=0)
     masks_gt = read_data.get(fields.InputDataFields.groundtruth_instance_masks)
-    return image, location_gt, classes_gt, masks_gt
+    keypoints_gt = read_data.get(fields.InputDataFields.groundtruth_keypoints)
+    if (merge_multiple_label_boxes and (
+        masks_gt is not None or keypoints_gt is not None)):
+      raise NotImplementedError('Multi-label support is only for boxes.')
+    return image, key, location_gt, classes_gt, masks_gt, keypoints_gt
+
   return zip(*map(extract_images_and_targets, read_data_list))
 
 
-def _create_losses(input_queue, create_model_fn):
+def _create_losses(input_queue, create_model_fn, train_config):
   """Creates loss function for a DetectionModel.
 
   Args:
     input_queue: BatchQueue object holding enqueued tensor_dicts.
     create_model_fn: A function to create the DetectionModel.
+    train_config: a train_pb2.TrainConfig protobuf.
   """
   detection_model = create_model_fn()
-  (images, groundtruth_boxes_list, groundtruth_classes_list,
-   groundtruth_masks_list
-  ) = _get_inputs(input_queue, detection_model.num_classes)
+  (images, _, groundtruth_boxes_list, groundtruth_classes_list,
+   groundtruth_masks_list, groundtruth_keypoints_list) = get_inputs(
+       input_queue,
+       detection_model.num_classes,
+       train_config.merge_multiple_label_boxes)
   images = [detection_model.preprocess(image) for image in images]
   images = tf.concat(images, 0)
   if any(mask is None for mask in groundtruth_masks_list):
     groundtruth_masks_list = None
+  if any(keypoints is None for keypoints in groundtruth_keypoints_list):
+    groundtruth_keypoints_list = None
 
   detection_model.provide_groundtruth(groundtruth_boxes_list,
                                       groundtruth_classes_list,
-                                      groundtruth_masks_list)
+                                      groundtruth_masks_list,
+                                      groundtruth_keypoints_list)
   prediction_dict = detection_model.predict(images)
 
   losses_dict = detection_model.loss(prediction_dict)
@@ -176,19 +210,21 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
       global_step = slim.create_global_step()
 
     with tf.device(deploy_config.inputs_device()):
-      input_queue = _create_input_queue(train_config.batch_size // num_clones,
-                                        create_tensor_dict_fn,
-                                        train_config.batch_queue_capacity,
-                                        train_config.num_batch_queue_threads,
-                                        train_config.prefetch_queue_capacity,
-                                        data_augmentation_options)
+      input_queue = create_input_queue(
+          train_config.batch_size // num_clones, create_tensor_dict_fn,
+          train_config.batch_queue_capacity,
+          train_config.num_batch_queue_threads,
+          train_config.prefetch_queue_capacity, data_augmentation_options)
 
     # Gather initial summaries.
+    # TODO(rathodv): See if summaries can be added/extracted from global tf
+    # collections so that they don't have to be passed around.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
     global_summaries = set([])
 
     model_fn = functools.partial(_create_losses,
-                                 create_model_fn=create_model_fn)
+                                 create_model_fn=create_model_fn,
+                                 train_config=train_config)
     clones = model_deploy.create_clones(deploy_config, model_fn, [input_queue])
     first_clone_scope = clones[0].scope
 
