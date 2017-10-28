@@ -135,6 +135,29 @@ py_test(
     ],
 )
 
+py_test(
+    name = "faster_rcnn_nas_feature_extractor_test",
+    srcs = [
+        "faster_rcnn_nas_feature_extractor_test.py",
+    ],
+    deps = [
+        ":faster_rcnn_nas_feature_extractor",
+        "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "faster_rcnn_nas_feature_extractor",
+    srcs = [
+        "faster_rcnn_nas_feature_extractor.py",
+    ],
+    deps = [
+        "//tensorflow",
+        "//tensorflow_models/object_detection/meta_architectures:faster_rcnn_meta_arch",
+        "//tensorflow_models/slim:nasnet",
+    ],
+)
+
 py_library(
     name = "faster_rcnn_inception_resnet_v2_feature_extractor",
     srcs = [

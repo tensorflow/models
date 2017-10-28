@@ -47,6 +47,8 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
 
 # A map of names to Faster R-CNN feature extractors.
 FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
+    'faster_rcnn_nas':
+    frcnn_nas.FasterRCNNNASFeatureExtractor,
     'faster_rcnn_inception_resnet_v2':
     frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor,
     'faster_rcnn_inception_v2':
