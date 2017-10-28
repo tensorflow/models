@@ -62,7 +62,6 @@ py_library(
         "//tensorflow_models/object_detection/core:keypoint_ops",
         "//tensorflow_models/object_detection/core:standard_fields",
         "//tensorflow_models/object_detection/utils:label_map_util",
-        "//tensorflow_models/object_detection/utils:object_detection_evaluation",
         "//tensorflow_models/object_detection/utils:ops",
         "//tensorflow_models/object_detection/utils:visualization_utils",
     ],
