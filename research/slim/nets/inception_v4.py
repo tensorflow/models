@@ -263,7 +263,9 @@ def inception_v4(inputs, num_classes=1001, is_training=True,
 
   Args:
     inputs: a 4-D tensor of size [batch_size, height, width, 3].
-    num_classes: number of predicted classes.
+    num_classes: number of predicted classes. If 0 or None, the logits layer
+      is omitted and the input features to the logits layer (before dropout)
+      are returned instead.
     is_training: whether is training or not.
     dropout_keep_prob: float, the fraction to keep before final layer.
     reuse: whether or not the network and its variables should be reused. To be
@@ -272,7 +274,9 @@ def inception_v4(inputs, num_classes=1001, is_training=True,
     create_aux_logits: Whether to include the auxiliary logits.
 
   Returns:
-    logits: the logits outputs of the model.
+    net: a Tensor with the logits (pre-softmax activations) if num_classes
+      is a non-zero integer, or the non-dropped input to the logits layer
+      if num_classes is 0 or None.
     end_points: the set of end_points from the inception model.
   """
   end_points = {}
@@ -284,7 +288,7 @@ def inception_v4(inputs, num_classes=1001, is_training=True,
       with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],
                           stride=1, padding='SAME'):
         # Auxiliary Head logits
-        if create_aux_logits:
+        if create_aux_logits and num_classes:
           with tf.variable_scope('AuxLogits'):
             # 17 x 17 x 1024
             aux_logits = end_points['Mixed_6h']
@@ -303,10 +307,20 @@ def inception_v4(inputs, num_classes=1001, is_training=True,
             end_points['AuxLogits'] = aux_logits
 
         # Final pooling and prediction
+        # TODO(sguada,arnoegw): Consider adding a parameter global_pool which
+        # can be set to False to disable pooling here (as in resnet_*()).
         with tf.variable_scope('Logits'):
           # 8 x 8 x 1536
-          net = slim.avg_pool2d(net, net.get_shape()[1:3], padding='VALID',
-                                scope='AvgPool_1a')
+          kernel_size = net.get_shape()[1:3]
+          if kernel_size.is_fully_defined():
+            net = slim.avg_pool2d(net, kernel_size, padding='VALID',
+                                  scope='AvgPool_1a')
+          else:
+            net = tf.reduce_mean(net, [1, 2], keep_dims=True,
+                                 name='global_pool')
+          end_points['global_pool'] = net
+          if not num_classes:
+            return net, end_points
           # 1 x 1 x 1536
           net = slim.dropout(net, dropout_keep_prob, scope='Dropout_1b')
           net = slim.flatten(net, scope='PreLogitsFlatten')
