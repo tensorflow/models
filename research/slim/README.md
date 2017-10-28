@@ -397,6 +397,8 @@ $ python eval_image_classifier.py \
     --model_name=inception_v3
 ```
 
+See the [evaluation module example](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim#evaluation-loop)
+for an example of how to evaluate a model at multiple checkpoints during or after the training.
 
 # Exporting the Inference Graph
 <a id='Export'></a>
