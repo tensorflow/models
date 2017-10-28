@@ -62,8 +62,6 @@ Following the API (see model.DetectionModel definition), our outputs after
 postprocessing operations are always normalized boxes however, internally, we
 sometimes convert to absolute --- e.g. for loss computation.  In particular,
 anchors and proposal_boxes are both represented as absolute coordinates.
-
-TODO: Support TPU implementations.
 """
 from abc import abstractmethod
 from functools import partial
