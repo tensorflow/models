@@ -51,6 +51,15 @@ class RFCNMetaArchTest(
     return rfcn_meta_arch.RFCNMetaArch(
         second_stage_rfcn_box_predictor=box_predictor, **common_kwargs)
 
+  def _get_box_classifier_features_shape(self,
+                                         image_size,
+                                         batch_size,
+                                         max_num_proposals,
+                                         initial_crop_size,
+                                         maxpool_stride,
+                                         num_features):
+    return (batch_size, image_size, image_size, num_features)
+
 
 if __name__ == '__main__':
   tf.test.main()
