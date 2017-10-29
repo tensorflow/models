@@ -13,22 +13,20 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for ssd_mobilenet_v1_feature_extractor."""
+"""Tests for object_detection.models.ssd_inception_v3_feature_extractor."""
 import numpy as np
 import tensorflow as tf
 
 from object_detection.models import ssd_feature_extractor_test
-from object_detection.models import ssd_mobilenet_v1_feature_extractor
-
-slim = tf.contrib.slim
+from object_detection.models import ssd_inception_v3_feature_extractor
 
 
-class SsdMobilenetV1FeatureExtractorTest(
+class SsdInceptionV3FeatureExtractorTest(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase, tf.test.TestCase):
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
                                 is_training=True, batch_norm_trainable=True):
-    """Constructs a new feature extractor.
+    """Constructs a SsdInceptionV3FeatureExtractor.
 
     Args:
       depth_multiplier: float depth multiplier for feature extractor
@@ -36,14 +34,13 @@ class SsdMobilenetV1FeatureExtractorTest(
         width dimensions to.
       is_training: whether the network is in training mode.
       batch_norm_trainable: Whether to update batch norm parameters during
-        training or not.
+        training or not
     Returns:
-      an ssd_meta_arch.SSDFeatureExtractor object.
+      an ssd_inception_v3_feature_extractor.SsdInceptionV3FeatureExtractor.
     """
     min_depth = 32
-    with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm) as sc:
-      conv_hyperparams = sc
-    return ssd_mobilenet_v1_feature_extractor.SSDMobileNetV1FeatureExtractor(
+    conv_hyperparams = {}
+    return ssd_inception_v3_feature_extractor.SSDInceptionV3FeatureExtractor(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, batch_norm_trainable)
 
@@ -52,8 +49,8 @@ class SsdMobilenetV1FeatureExtractorTest(
     image_width = 128
     depth_multiplier = 1.0
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 8, 8, 512), (4, 4, 4, 1024),
-                                  (4, 2, 2, 512), (4, 1, 1, 256),
+    expected_feature_map_shape = [(4, 13, 13, 288), (4, 6, 6, 768),
+                                  (4, 2, 2, 2048), (4, 1, 1, 512),
                                   (4, 1, 1, 256), (4, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
         image_height, image_width, depth_multiplier, pad_to_multiple,
@@ -64,8 +61,8 @@ class SsdMobilenetV1FeatureExtractorTest(
     image_width = 299
     depth_multiplier = 1.0
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 19, 19, 512), (4, 10, 10, 1024),
-                                  (4, 5, 5, 512), (4, 3, 3, 256),
+    expected_feature_map_shape = [(4, 35, 35, 288), (4, 17, 17, 768),
+                                  (4, 8, 8, 2048), (4, 4, 4, 512),
                                   (4, 2, 2, 256), (4, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
         image_height, image_width, depth_multiplier, pad_to_multiple,
@@ -76,8 +73,8 @@ class SsdMobilenetV1FeatureExtractorTest(
     image_width = 299
     depth_multiplier = 0.5**12
     pad_to_multiple = 1
-    expected_feature_map_shape = [(4, 19, 19, 32), (4, 10, 10, 32),
-                                  (4, 5, 5, 32), (4, 3, 3, 32),
+    expected_feature_map_shape = [(4, 35, 35, 128), (4, 17, 17, 128),
+                                  (4, 8, 8, 192), (4, 4, 4, 32),
                                   (4, 2, 2, 32), (4, 1, 1, 32)]
     self.check_extract_features_returns_correct_shape(
         image_height, image_width, depth_multiplier, pad_to_multiple,
@@ -88,8 +85,8 @@ class SsdMobilenetV1FeatureExtractorTest(
     image_width = 299
     depth_multiplier = 1.0
     pad_to_multiple = 32
-    expected_feature_map_shape = [(4, 20, 20, 512), (4, 10, 10, 1024),
-                                  (4, 5, 5, 512), (4, 3, 3, 256),
+    expected_feature_map_shape = [(4, 37, 37, 288), (4, 18, 18, 768),
+                                  (4, 8, 8, 2048), (4, 4, 4, 512),
                                   (4, 2, 2, 256), (4, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
         image_height, image_width, depth_multiplier, pad_to_multiple,
@@ -117,23 +114,10 @@ class SsdMobilenetV1FeatureExtractorTest(
   def test_variables_only_created_in_scope(self):
     depth_multiplier = 1
     pad_to_multiple = 1
-    scope_name = 'MobilenetV1'
+    scope_name = 'InceptionV3'
     self.check_feature_extractor_variables_under_scope(
         depth_multiplier, pad_to_multiple, scope_name)
 
-  def test_nofused_batchnorm(self):
-    image_height = 40
-    image_width = 40
-    depth_multiplier = 1
-    pad_to_multiple = 1
-    image_placeholder = tf.placeholder(tf.float32,
-                                       [1, image_height, image_width, 3])
-    feature_extractor = self._create_feature_extractor(depth_multiplier,
-                                                       pad_to_multiple)
-    preprocessed_image = feature_extractor.preprocess(image_placeholder)
-    _ = feature_extractor.extract_features(preprocessed_image)
-    self.assertFalse(any(op.type == 'FusedBatchNorm'
-                         for op in tf.get_default_graph().get_operations()))
 
 if __name__ == '__main__':
   tf.test.main()

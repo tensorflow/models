@@ -28,27 +28,37 @@ from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
+from object_detection.models import faster_rcnn_inception_v2_feature_extractor as frcnn_inc_v2
+from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
+from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
 from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
+from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
 from object_detection.protos import model_pb2
 
 # A map of names to SSD feature extractors.
 SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_inception_v2': SSDInceptionV2FeatureExtractor,
+    'ssd_inception_v3': SSDInceptionV3FeatureExtractor,
     'ssd_mobilenet_v1': SSDMobileNetV1FeatureExtractor,
+    'embedded_ssd_mobilenet_v1': EmbeddedSSDMobileNetV1FeatureExtractor,
 }
 
 # A map of names to Faster R-CNN feature extractors.
 FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
+    'faster_rcnn_nas':
+    frcnn_nas.FasterRCNNNASFeatureExtractor,
+    'faster_rcnn_inception_resnet_v2':
+    frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor,
+    'faster_rcnn_inception_v2':
+    frcnn_inc_v2.FasterRCNNInceptionV2FeatureExtractor,
     'faster_rcnn_resnet50':
     frcnn_resnet_v1.FasterRCNNResnet50FeatureExtractor,
     'faster_rcnn_resnet101':
     frcnn_resnet_v1.FasterRCNNResnet101FeatureExtractor,
     'faster_rcnn_resnet152':
     frcnn_resnet_v1.FasterRCNNResnet152FeatureExtractor,
-    'faster_rcnn_inception_resnet_v2':
-    frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor
 }
 
 
@@ -94,6 +104,8 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   feature_type = feature_extractor_config.type
   depth_multiplier = feature_extractor_config.depth_multiplier
   min_depth = feature_extractor_config.min_depth
+  pad_to_multiple = feature_extractor_config.pad_to_multiple
+  batch_norm_trainable = feature_extractor_config.batch_norm_trainable
   conv_hyperparams = hyperparams_builder.build(
       feature_extractor_config.conv_hyperparams, is_training)
 
@@ -101,8 +113,9 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
     raise ValueError('Unknown ssd feature_extractor: {}'.format(feature_type))
 
   feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
-  return feature_extractor_class(depth_multiplier, min_depth, conv_hyperparams,
-                                 reuse_weights)
+  return feature_extractor_class(is_training, depth_multiplier, min_depth,
+                                 pad_to_multiple, conv_hyperparams,
+                                 batch_norm_trainable, reuse_weights)
 
 
 def _build_ssd_model(ssd_config, is_training):
@@ -180,6 +193,7 @@ def _build_faster_rcnn_feature_extractor(
   feature_type = feature_extractor_config.type
   first_stage_features_stride = (
       feature_extractor_config.first_stage_features_stride)
+  batch_norm_trainable = feature_extractor_config.batch_norm_trainable
 
   if feature_type not in FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP:
     raise ValueError('Unknown Faster R-CNN feature_extractor: {}'.format(
@@ -187,7 +201,8 @@ def _build_faster_rcnn_feature_extractor(
   feature_extractor_class = FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP[
       feature_type]
   return feature_extractor_class(
-      is_training, first_stage_features_stride, reuse_weights)
+      is_training, first_stage_features_stride,
+      batch_norm_trainable, reuse_weights)
 
 
 def _build_faster_rcnn_model(frcnn_config, is_training):
@@ -248,8 +263,13 @@ def _build_faster_rcnn_model(frcnn_config, is_training):
   ) = post_processing_builder.build(frcnn_config.second_stage_post_processing)
   second_stage_localization_loss_weight = (
       frcnn_config.second_stage_localization_loss_weight)
+  second_stage_classification_loss = (
+      losses_builder.build_faster_rcnn_classification_loss(
+          frcnn_config.second_stage_classification_loss))
   second_stage_classification_loss_weight = (
       frcnn_config.second_stage_classification_loss_weight)
+  second_stage_mask_prediction_loss_weight = (
+      frcnn_config.second_stage_mask_prediction_loss_weight)
 
   hard_example_miner = None
   if frcnn_config.HasField('hard_example_miner'):
@@ -286,6 +306,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training):
       'second_stage_score_conversion_fn': second_stage_score_conversion_fn,
       'second_stage_localization_loss_weight':
       second_stage_localization_loss_weight,
+      'second_stage_classification_loss':
+      second_stage_classification_loss,
       'second_stage_classification_loss_weight':
       second_stage_classification_loss_weight,
       'hard_example_miner': hard_example_miner}
@@ -300,4 +322,6 @@ def _build_faster_rcnn_model(frcnn_config, is_training):
         maxpool_kernel_size=maxpool_kernel_size,
         maxpool_stride=maxpool_stride,
         second_stage_mask_rcnn_box_predictor=second_stage_box_predictor,
+        second_stage_mask_prediction_loss_weight=(
+            second_stage_mask_prediction_loss_weight),
         **common_kwargs)

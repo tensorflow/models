@@ -13,17 +13,17 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for models.faster_rcnn_inception_resnet_v2_feature_extractor."""
+"""Tests for models.faster_rcnn_nas_feature_extractor."""
 
 import tensorflow as tf
 
-from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
+from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
 
 
-class FasterRcnnInceptionResnetV2FeatureExtractorTest(tf.test.TestCase):
+class FasterRcnnNASFeatureExtractorTest(tf.test.TestCase):
 
   def _build_feature_extractor(self, first_stage_features_stride):
-    return frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor(
+    return frcnn_nas.FasterRCNNNASFeatureExtractor(
         is_training=False,
         first_stage_features_stride=first_stage_features_stride,
         batch_norm_trainable=False,
@@ -43,11 +43,11 @@ class FasterRcnnInceptionResnetV2FeatureExtractorTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       features_shape_out = sess.run(features_shape)
-      self.assertAllEqual(features_shape_out, [1, 19, 19, 1088])
+      self.assertAllEqual(features_shape_out, [1, 19, 19, 4032])
 
-  def test_extract_proposal_features_stride_eight(self):
+  def test_extract_proposal_features_input_size_224(self):
     feature_extractor = self._build_feature_extractor(
-        first_stage_features_stride=8)
+        first_stage_features_stride=16)
     preprocessed_inputs = tf.random_uniform(
         [1, 224, 224, 3], maxval=255, dtype=tf.float32)
     rpn_feature_map = feature_extractor.extract_proposal_features(
@@ -58,9 +58,9 @@ class FasterRcnnInceptionResnetV2FeatureExtractorTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       features_shape_out = sess.run(features_shape)
-      self.assertAllEqual(features_shape_out, [1, 28, 28, 1088])
+      self.assertAllEqual(features_shape_out, [1, 14, 14, 4032])
 
-  def test_extract_proposal_features_half_size_input(self):
+  def test_extract_proposal_features_input_size_112(self):
     feature_extractor = self._build_feature_extractor(
         first_stage_features_stride=16)
     preprocessed_inputs = tf.random_uniform(
@@ -73,7 +73,7 @@ class FasterRcnnInceptionResnetV2FeatureExtractorTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       features_shape_out = sess.run(features_shape)
-      self.assertAllEqual(features_shape_out, [1, 7, 7, 1088])
+      self.assertAllEqual(features_shape_out, [1, 7, 7, 4032])
 
   def test_extract_proposal_features_dies_on_invalid_stride(self):
     with self.assertRaises(ValueError):
@@ -102,7 +102,7 @@ class FasterRcnnInceptionResnetV2FeatureExtractorTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       features_shape_out = sess.run(features_shape)
-      self.assertAllEqual(features_shape_out, [2, 8, 8, 1536])
+      self.assertAllEqual(features_shape_out, [2, 9, 9, 4032])
 
 
 if __name__ == '__main__':
