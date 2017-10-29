@@ -13,20 +13,19 @@
 # limitations under the License.
 # ==============================================================================
 
-"""SSDFeatureExtractor for MobilenetV1 features."""
-
+"""SSDFeatureExtractor for InceptionV3 features."""
 import tensorflow as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
 from object_detection.utils import ops
-from nets import mobilenet_v1
+from nets import inception_v3
 
 slim = tf.contrib.slim
 
 
-class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
-  """SSD Feature Extractor using MobilenetV1 features."""
+class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
+  """SSD Feature Extractor using InceptionV3 features."""
 
   def __init__(self,
                is_training,
@@ -36,7 +35,7 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                conv_hyperparams,
                batch_norm_trainable=True,
                reuse_weights=None):
-    """MobileNetV1 Feature Extractor for SSD Models.
+    """InceptionV3 Feature Extractor for SSD Models.
 
     Args:
       is_training: whether the network is in training mode.
@@ -51,7 +50,7 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         pretrained batch norm params.
       reuse_weights: Whether to reuse variables. Default is None.
     """
-    super(SSDMobileNetV1FeatureExtractor, self).__init__(
+    super(SSDInceptionV3FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, batch_norm_trainable, reuse_weights)
 
@@ -88,27 +87,25 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         ['image size must at least be 33 in both height and width.'])
 
     feature_map_layout = {
-        'from_layer': ['Conv2d_11_pointwise', 'Conv2d_13_pointwise', '', '',
-                       '', ''],
-        'layer_depth': [-1, -1, 512, 256, 256, 128],
+        'from_layer': ['Mixed_5d', 'Mixed_6e', 'Mixed_7c', '', '', ''],
+        'layer_depth': [-1, -1, -1, 512, 256, 128],
     }
 
     with tf.control_dependencies([shape_assert]):
       with slim.arg_scope(self._conv_hyperparams):
-        with slim.arg_scope([slim.batch_norm], fused=False):
-          with tf.variable_scope('MobilenetV1',
-                                 reuse=self._reuse_weights) as scope:
-            _, image_features = mobilenet_v1.mobilenet_v1_base(
-                ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
-                final_endpoint='Conv2d_13_pointwise',
-                min_depth=self._min_depth,
-                depth_multiplier=self._depth_multiplier,
-                scope=scope)
-            feature_maps = feature_map_generators.multi_resolution_feature_maps(
-                feature_map_layout=feature_map_layout,
-                depth_multiplier=self._depth_multiplier,
-                min_depth=self._min_depth,
-                insert_1x1_conv=True,
-                image_features=image_features)
+        with tf.variable_scope('InceptionV3',
+                               reuse=self._reuse_weights) as scope:
+          _, image_features = inception_v3.inception_v3_base(
+              ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
+              final_endpoint='Mixed_7c',
+              min_depth=self._min_depth,
+              depth_multiplier=self._depth_multiplier,
+              scope=scope)
+          feature_maps = feature_map_generators.multi_resolution_feature_maps(
+              feature_map_layout=feature_map_layout,
+              depth_multiplier=self._depth_multiplier,
+              min_depth=self._min_depth,
+              insert_1x1_conv=True,
+              image_features=image_features)
 
     return feature_maps.values()
