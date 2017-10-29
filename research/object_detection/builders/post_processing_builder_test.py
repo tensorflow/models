@@ -48,7 +48,31 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     post_processing_config = post_processing_pb2.PostProcessing()
     text_format.Merge(post_processing_text_proto, post_processing_config)
     _, score_converter = post_processing_builder.build(post_processing_config)
-    self.assertEqual(score_converter, tf.identity)
+    self.assertEqual(score_converter.__name__, 'identity_with_logit_scale')
+
+    inputs = tf.constant([1, 1], tf.float32)
+    outputs = score_converter(inputs)
+    with self.test_session() as sess:
+      converted_scores = sess.run(outputs)
+      expected_converted_scores = sess.run(inputs)
+      self.assertAllClose(converted_scores, expected_converted_scores)
+
+  def test_build_identity_score_converter_with_logit_scale(self):
+    post_processing_text_proto = """
+      score_converter: IDENTITY
+      logit_scale: 2.0
+    """
+    post_processing_config = post_processing_pb2.PostProcessing()
+    text_format.Merge(post_processing_text_proto, post_processing_config)
+    _, score_converter = post_processing_builder.build(post_processing_config)
+    self.assertEqual(score_converter.__name__, 'identity_with_logit_scale')
+
+    inputs = tf.constant([1, 1], tf.float32)
+    outputs = score_converter(inputs)
+    with self.test_session() as sess:
+      converted_scores = sess.run(outputs)
+      expected_converted_scores = sess.run(tf.constant([.5, .5], tf.float32))
+      self.assertAllClose(converted_scores, expected_converted_scores)
 
   def test_build_sigmoid_score_converter(self):
     post_processing_text_proto = """
@@ -57,7 +81,7 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     post_processing_config = post_processing_pb2.PostProcessing()
     text_format.Merge(post_processing_text_proto, post_processing_config)
     _, score_converter = post_processing_builder.build(post_processing_config)
-    self.assertEqual(score_converter, tf.sigmoid)
+    self.assertEqual(score_converter.__name__, 'sigmoid_with_logit_scale')
 
   def test_build_softmax_score_converter(self):
     post_processing_text_proto = """
@@ -66,7 +90,17 @@ class PostProcessingBuilderTest(tf.test.TestCase):
     post_processing_config = post_processing_pb2.PostProcessing()
     text_format.Merge(post_processing_text_proto, post_processing_config)
     _, score_converter = post_processing_builder.build(post_processing_config)
-    self.assertEqual(score_converter, tf.nn.softmax)
+    self.assertEqual(score_converter.__name__, 'softmax_with_logit_scale')
+
+  def test_build_softmax_score_converter_with_temperature(self):
+    post_processing_text_proto = """
+      score_converter: SOFTMAX
+      logit_scale: 2.0
+    """
+    post_processing_config = post_processing_pb2.PostProcessing()
+    text_format.Merge(post_processing_text_proto, post_processing_config)
+    _, score_converter = post_processing_builder.build(post_processing_config)
+    self.assertEqual(score_converter.__name__, 'softmax_with_logit_scale')
 
 
 if __name__ == '__main__':
