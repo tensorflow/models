@@ -28,8 +28,8 @@ def build(post_processing_config):
   configuration.
 
   Non-max suppression callable takes `boxes`, `scores`, and optionally
-  `clip_window`, `parallel_iterations` and `scope` as inputs. It returns
-  `nms_boxes`, `nms_scores`, `nms_nms_classes` and `num_detections`. See
+  `clip_window`, `parallel_iterations` `masks, and `scope` as inputs. It returns
+  `nms_boxes`, `nms_scores`, `nms_classes` `nms_masks` and `num_detections`. See
   post_processing.batch_multiclass_non_max_suppression for the type and shape
   of these tensors.
 
@@ -55,7 +55,8 @@ def build(post_processing_config):
   non_max_suppressor_fn = _build_non_max_suppressor(
       post_processing_config.batch_non_max_suppression)
   score_converter_fn = _build_score_converter(
-      post_processing_config.score_converter)
+      post_processing_config.score_converter,
+      post_processing_config.logit_scale)
   return non_max_suppressor_fn, score_converter_fn
 
 
@@ -87,7 +88,17 @@ def _build_non_max_suppressor(nms_config):
   return non_max_suppressor_fn
 
 
-def _build_score_converter(score_converter_config):
+def _score_converter_fn_with_logit_scale(tf_score_converter_fn, logit_scale):
+  """Create a function to scale logits then apply a Tensorflow function."""
+  def score_converter_fn(logits):
+    scaled_logits = tf.divide(logits, logit_scale, name='scale_logits')
+    return tf_score_converter_fn(scaled_logits, name='convert_scores')
+  score_converter_fn.__name__ = '%s_with_logit_scale' % (
+      tf_score_converter_fn.__name__)
+  return score_converter_fn
+
+
+def _build_score_converter(score_converter_config, logit_scale):
   """Builds score converter based on the config.
 
   Builds one of [tf.identity, tf.sigmoid, tf.softmax] score converters based on
@@ -95,6 +106,7 @@ def _build_score_converter(score_converter_config):
 
   Args:
     score_converter_config: post_processing_pb2.PostProcessing.score_converter.
+    logit_scale: temperature to use for SOFTMAX score_converter.
 
   Returns:
     Callable score converter op.
@@ -103,9 +115,9 @@ def _build_score_converter(score_converter_config):
     ValueError: On unknown score converter.
   """
   if score_converter_config == post_processing_pb2.PostProcessing.IDENTITY:
-    return tf.identity
+    return _score_converter_fn_with_logit_scale(tf.identity, logit_scale)
   if score_converter_config == post_processing_pb2.PostProcessing.SIGMOID:
-    return tf.sigmoid
+    return _score_converter_fn_with_logit_scale(tf.sigmoid, logit_scale)
   if score_converter_config == post_processing_pb2.PostProcessing.SOFTMAX:
-    return tf.nn.softmax
+    return _score_converter_fn_with_logit_scale(tf.nn.softmax, logit_scale)
   raise ValueError('Unknown score converter.')

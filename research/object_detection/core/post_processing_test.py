@@ -497,11 +497,13 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
     exp_nms_classes = [[0, 0, 1, 0]]
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
-     num_detections) = post_processing.batch_multiclass_non_max_suppression(
-         boxes, scores, score_thresh, iou_thresh,
-         max_size_per_class=max_output_size, max_total_size=max_output_size)
+     nmsed_additional_fields, num_detections
+    ) = post_processing.batch_multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size)
 
     self.assertIsNone(nmsed_masks)
+    self.assertIsNone(nmsed_additional_fields)
 
     with self.test_session() as sess:
       (nmsed_boxes, nmsed_scores, nmsed_classes,
@@ -544,11 +546,13 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
                                 [1, 0, 0, 0]])
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
-     num_detections) = post_processing.batch_multiclass_non_max_suppression(
-         boxes, scores, score_thresh, iou_thresh,
-         max_size_per_class=max_output_size, max_total_size=max_output_size)
+     nmsed_additional_fields, num_detections
+    ) = post_processing.batch_multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size)
 
     self.assertIsNone(nmsed_masks)
+    self.assertIsNone(nmsed_additional_fields)
     # Check static shapes
     self.assertAllEqual(nmsed_boxes.shape.as_list(),
                         exp_nms_corners.shape)
@@ -616,11 +620,13 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
                                [[0, 0], [0, 0]]]])
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
-     num_detections) = post_processing.batch_multiclass_non_max_suppression(
-         boxes, scores, score_thresh, iou_thresh,
-         max_size_per_class=max_output_size, max_total_size=max_output_size,
-         masks=masks)
+     nmsed_additional_fields, num_detections
+    ) = post_processing.batch_multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size,
+        masks=masks)
 
+    self.assertIsNone(nmsed_additional_fields)
     # Check static shapes
     self.assertAllEqual(nmsed_boxes.shape.as_list(), exp_nms_corners.shape)
     self.assertAllEqual(nmsed_scores.shape.as_list(), exp_nms_scores.shape)
@@ -638,6 +644,91 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
       self.assertAllClose(nmsed_classes, exp_nms_classes)
       self.assertAllClose(num_detections, [2, 3])
       self.assertAllClose(nmsed_masks, exp_nms_masks)
+
+  def test_batch_multiclass_nms_with_additional_fields(self):
+    boxes = tf.constant([[[[0, 0, 1, 1], [0, 0, 4, 5]],
+                          [[0, 0.1, 1, 1.1], [0, 0.1, 2, 1.1]],
+                          [[0, -0.1, 1, 0.9], [0, -0.1, 1, 0.9]],
+                          [[0, 10, 1, 11], [0, 10, 1, 11]]],
+                         [[[0, 10.1, 1, 11.1], [0, 10.1, 1, 11.1]],
+                          [[0, 100, 1, 101], [0, 100, 1, 101]],
+                          [[0, 1000, 1, 1002], [0, 999, 2, 1004]],
+                          [[0, 1000, 1, 1002.1], [0, 999, 2, 1002.7]]]],
+                        tf.float32)
+    scores = tf.constant([[[.9, 0.01], [.75, 0.05],
+                           [.6, 0.01], [.95, 0]],
+                          [[.5, 0.01], [.3, 0.01],
+                           [.01, .85], [.01, .5]]])
+    additional_fields = {
+        'keypoints': tf.constant(
+            [[[[6, 7], [8, 9]],
+              [[0, 1], [2, 3]],
+              [[0, 0], [0, 0]],
+              [[0, 0], [0, 0]]],
+             [[[13, 14], [15, 16]],
+              [[8, 9], [10, 11]],
+              [[10, 11], [12, 13]],
+              [[0, 0], [0, 0]]]],
+            tf.float32)
+    }
+    score_thresh = 0.1
+    iou_thresh = .5
+    max_output_size = 4
+
+    exp_nms_corners = np.array([[[0, 10, 1, 11],
+                                 [0, 0, 1, 1],
+                                 [0, 0, 0, 0],
+                                 [0, 0, 0, 0]],
+                                [[0, 999, 2, 1004],
+                                 [0, 10.1, 1, 11.1],
+                                 [0, 100, 1, 101],
+                                 [0, 0, 0, 0]]])
+    exp_nms_scores = np.array([[.95, .9, 0, 0],
+                               [.85, .5, .3, 0]])
+    exp_nms_classes = np.array([[0, 0, 0, 0],
+                                [1, 0, 0, 0]])
+    exp_nms_additional_fields = {
+        'keypoints': np.array([[[[0, 0], [0, 0]],
+                                [[6, 7], [8, 9]],
+                                [[0, 0], [0, 0]],
+                                [[0, 0], [0, 0]]],
+                               [[[10, 11], [12, 13]],
+                                [[13, 14], [15, 16]],
+                                [[8, 9], [10, 11]],
+                                [[0, 0], [0, 0]]]])
+    }
+
+    (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
+     nmsed_additional_fields, num_detections
+    ) = post_processing.batch_multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size,
+        additional_fields=additional_fields)
+
+    self.assertIsNone(nmsed_masks)
+    # Check static shapes
+    self.assertAllEqual(nmsed_boxes.shape.as_list(), exp_nms_corners.shape)
+    self.assertAllEqual(nmsed_scores.shape.as_list(), exp_nms_scores.shape)
+    self.assertAllEqual(nmsed_classes.shape.as_list(), exp_nms_classes.shape)
+    self.assertEqual(len(nmsed_additional_fields),
+                     len(exp_nms_additional_fields))
+    for key in exp_nms_additional_fields:
+      self.assertAllEqual(nmsed_additional_fields[key].shape.as_list(),
+                          exp_nms_additional_fields[key].shape)
+    self.assertEqual(num_detections.shape.as_list(), [2])
+
+    with self.test_session() as sess:
+      (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_additional_fields,
+       num_detections) = sess.run([nmsed_boxes, nmsed_scores, nmsed_classes,
+                                   nmsed_additional_fields, num_detections])
+
+      self.assertAllClose(nmsed_boxes, exp_nms_corners)
+      self.assertAllClose(nmsed_scores, exp_nms_scores)
+      self.assertAllClose(nmsed_classes, exp_nms_classes)
+      for key in exp_nms_additional_fields:
+        self.assertAllClose(nmsed_additional_fields[key],
+                            exp_nms_additional_fields[key])
+      self.assertAllClose(num_detections, [2, 3])
 
   def test_batch_multiclass_nms_with_dynamic_batch_size(self):
     boxes_placeholder = tf.placeholder(tf.float32, shape=(None, None, 2, 4))
@@ -690,11 +781,13 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
                                [[0, 0], [0, 0]]]])
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
-     num_detections) = post_processing.batch_multiclass_non_max_suppression(
-         boxes_placeholder, scores_placeholder, score_thresh, iou_thresh,
-         max_size_per_class=max_output_size, max_total_size=max_output_size,
-         masks=masks_placeholder)
+     nmsed_additional_fields, num_detections
+    ) = post_processing.batch_multiclass_non_max_suppression(
+        boxes_placeholder, scores_placeholder, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size,
+        masks=masks_placeholder)
 
+    self.assertIsNone(nmsed_additional_fields)
     # Check static shapes
     self.assertAllEqual(nmsed_boxes.shape.as_list(), [None, 4, 4])
     self.assertAllEqual(nmsed_scores.shape.as_list(), [None, 4])
@@ -765,10 +858,13 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
                       [[0, 0], [0, 0]]]]
 
     (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
-     num_detections) = post_processing.batch_multiclass_non_max_suppression(
-         boxes, scores, score_thresh, iou_thresh,
-         max_size_per_class=max_output_size, max_total_size=max_output_size,
-         num_valid_boxes=num_valid_boxes, masks=masks)
+     nmsed_additional_fields, num_detections
+    ) = post_processing.batch_multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size,
+        num_valid_boxes=num_valid_boxes, masks=masks)
+
+    self.assertIsNone(nmsed_additional_fields)
 
     with self.test_session() as sess:
       (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
@@ -779,6 +875,84 @@ class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
       self.assertAllClose(nmsed_classes, exp_nms_classes)
       self.assertAllClose(num_detections, [1, 1])
       self.assertAllClose(nmsed_masks, exp_nms_masks)
+
+  def test_batch_multiclass_nms_with_additional_fields_and_num_valid_boxes(
+      self):
+    boxes = tf.constant([[[[0, 0, 1, 1], [0, 0, 4, 5]],
+                          [[0, 0.1, 1, 1.1], [0, 0.1, 2, 1.1]],
+                          [[0, -0.1, 1, 0.9], [0, -0.1, 1, 0.9]],
+                          [[0, 10, 1, 11], [0, 10, 1, 11]]],
+                         [[[0, 10.1, 1, 11.1], [0, 10.1, 1, 11.1]],
+                          [[0, 100, 1, 101], [0, 100, 1, 101]],
+                          [[0, 1000, 1, 1002], [0, 999, 2, 1004]],
+                          [[0, 1000, 1, 1002.1], [0, 999, 2, 1002.7]]]],
+                        tf.float32)
+    scores = tf.constant([[[.9, 0.01], [.75, 0.05],
+                           [.6, 0.01], [.95, 0]],
+                          [[.5, 0.01], [.3, 0.01],
+                           [.01, .85], [.01, .5]]])
+    additional_fields = {
+        'keypoints': tf.constant(
+            [[[[6, 7], [8, 9]],
+              [[0, 1], [2, 3]],
+              [[0, 0], [0, 0]],
+              [[0, 0], [0, 0]]],
+             [[[13, 14], [15, 16]],
+              [[8, 9], [10, 11]],
+              [[10, 11], [12, 13]],
+              [[0, 0], [0, 0]]]],
+            tf.float32)
+    }
+    num_valid_boxes = tf.constant([1, 1], tf.int32)
+    score_thresh = 0.1
+    iou_thresh = .5
+    max_output_size = 4
+
+    exp_nms_corners = [[[0, 0, 1, 1],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0]],
+                       [[0, 10.1, 1, 11.1],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0]]]
+    exp_nms_scores = [[.9, 0, 0, 0],
+                      [.5, 0, 0, 0]]
+    exp_nms_classes = [[0, 0, 0, 0],
+                       [0, 0, 0, 0]]
+    exp_nms_additional_fields = {
+        'keypoints': np.array([[[[6, 7], [8, 9]],
+                                [[0, 0], [0, 0]],
+                                [[0, 0], [0, 0]],
+                                [[0, 0], [0, 0]]],
+                               [[[13, 14], [15, 16]],
+                                [[0, 0], [0, 0]],
+                                [[0, 0], [0, 0]],
+                                [[0, 0], [0, 0]]]])
+    }
+
+    (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
+     nmsed_additional_fields, num_detections
+    ) = post_processing.batch_multiclass_non_max_suppression(
+        boxes, scores, score_thresh, iou_thresh,
+        max_size_per_class=max_output_size, max_total_size=max_output_size,
+        num_valid_boxes=num_valid_boxes,
+        additional_fields=additional_fields)
+
+    self.assertIsNone(nmsed_masks)
+
+    with self.test_session() as sess:
+      (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_additional_fields,
+       num_detections) = sess.run([nmsed_boxes, nmsed_scores, nmsed_classes,
+                                   nmsed_additional_fields, num_detections])
+
+      self.assertAllClose(nmsed_boxes, exp_nms_corners)
+      self.assertAllClose(nmsed_scores, exp_nms_scores)
+      self.assertAllClose(nmsed_classes, exp_nms_classes)
+      for key in exp_nms_additional_fields:
+        self.assertAllClose(nmsed_additional_fields[key],
+                            exp_nms_additional_fields[key])
+      self.assertAllClose(num_detections, [1, 1])
 
 
 if __name__ == '__main__':
