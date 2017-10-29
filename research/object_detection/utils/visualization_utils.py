@@ -289,8 +289,9 @@ def draw_bounding_boxes_on_image_tensors(images,
       agnostic_mode=False,
       line_thickness=4)
 
-  def draw_boxes((image, boxes, classes, scores)):
+  def draw_boxes(image_boxes_classes_scores):
     """Draws boxes on image."""
+    (image, boxes, classes, scores) = image_boxes_classes_scores
     image_with_boxes = tf.py_func(visualize_boxes_fn,
                                   [image, boxes, classes, scores], tf.uint8)
     return image_with_boxes
