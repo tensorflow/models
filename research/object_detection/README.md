@@ -31,42 +31,57 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 ## Table of contents
 
-Before You Start:
-* <a href='g3doc/installation.md'>Installation</a><br>
-
 Quick Start:
-* <a href='object_detection_tutorial.ipynb'>
+
+  * <a href='object_detection_tutorial.ipynb'>
       Quick Start: Jupyter notebook for off-the-shelf inference</a><br>
-* <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
+  * <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
 
 Setup:
-* <a href='g3doc/configuring_jobs.md'>
+
+  * <a href='g3doc/installation.md'>Installation</a><br>
+  * <a href='g3doc/configuring_jobs.md'>
       Configuring an object detection pipeline</a><br>
-* <a href='g3doc/preparing_inputs.md'>Preparing inputs</a><br>
+  * <a href='g3doc/preparing_inputs.md'>Preparing inputs</a><br>
 
 Running:
-* <a href='g3doc/running_locally.md'>Running locally</a><br>
-* <a href='g3doc/running_on_cloud.md'>Running on the cloud</a><br>
+
+  * <a href='g3doc/running_locally.md'>Running locally</a><br>
+  * <a href='g3doc/running_on_cloud.md'>Running on the cloud</a><br>
 
 Extras:
-* <a href='g3doc/detection_model_zoo.md'>Tensorflow detection model zoo</a><br>
-* <a href='g3doc/exporting_models.md'>
+
+  * <a href='g3doc/detection_model_zoo.md'>Tensorflow detection model zoo</a><br>
+  * <a href='g3doc/exporting_models.md'>
       Exporting a trained model for inference</a><br>
-* <a href='g3doc/defining_your_own_model.md'>
+  * <a href='g3doc/defining_your_own_model.md'>
       Defining your own model architecture</a><br>
-* <a href='g3doc/using_your_own_dataset.md'>
+  * <a href='g3doc/using_your_own_dataset.md'>
       Bringing in your own dataset</a><br>
 
 ## Getting Help
 
-Please report bugs to the tensorflow/models/ Github
+To get help with issues you may encounter using the Tensorflow Object Detection
+API, create a new question on [StackOverflow](https://stackoverflow.com/) with
+the tags "tensorflow" and "object-detection".
+
+Please report bugs (actually broken code, not usage questions) to the
+tensorflow/models Github
 [issue tracker](https://github.com/tensorflow/models/issues), prefixing the
-issue name with "object_detection". To get help with issues you may encounter
-using the Tensorflow Object Detection API, create a new question on
-[StackOverflow](https://stackoverflow.com/) with the tags "tensorflow" and
-"object-detection".
+issue name with "object_detection".
 
 ## Release information
+
+### October 31, 2017
+
+We have released a new state-of-the-art model for object detection using
+the Faster-RCNN with the
+[NASNet-A image featurization](https://arxiv.org/abs/1707.07012). This
+model achieves mAP of 43.1% on the test-dev validation dataset for COCO,
+improving on the best available model in the zoo by 6% in terms
+of absolute mAP.
+
+<b>Thanks to contributors</b>: Barret Zoph, Vijay Vasudevan, Jonathon Shlens, Quoc Le
 
 ### August 11, 2017
 
