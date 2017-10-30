@@ -14,6 +14,7 @@ py_library(
         "//tensorflow",
         "//tensorflow_models/object_detection/core:data_decoder",
         "//tensorflow_models/object_detection/core:standard_fields",
+        "//tensorflow_models/object_detection/utils:label_map_util",
     ],
 )
 
