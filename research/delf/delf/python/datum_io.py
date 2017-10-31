@@ -93,7 +93,7 @@ def ReadFromFile(file_path):
   Returns:
     data: Numpy array.
   """
-  with tf.gfile.FastGFile(file_path, 'r') as f:
+  with tf.gfile.FastGFile(file_path, 'rb') as f:
     return ParseFromString(f.read())
 
 

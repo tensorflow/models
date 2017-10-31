@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import xrange
 from delf import feature_pb2
 from delf import datum_io
 import numpy as np
@@ -168,7 +169,7 @@ def ReadFromFile(file_path):
     attention: [N] float array with attention scores.
     orientations: [N] float array with orientations.
   """
-  with tf.gfile.FastGFile(file_path, 'r') as f:
+  with tf.gfile.FastGFile(file_path, 'rb') as f:
     return ParseFromString(f.read())
 
 
