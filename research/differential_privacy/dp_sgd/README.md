@@ -23,29 +23,26 @@ paper: https://arxiv.org/abs/1607.00133
 
 <b>Requirements:</b>
 
-1. Tensorflow 0.10.0 (master branch)
+1. Tensorflow 1.4.0 (master branch)
 
-Note: r0.11 might experience some problems
-
-2. Bazel 0.3.1
+2. Bazel 0.5.4
 
 3. Download MNIST data
-
-TODO(xpan): Complete the link:
-[train](http://download.tensorflow.org/models/)
-[test](http://download.tensorflow.org/models/)
-
-Alternatively, download the tfrecord format MNIST from:
-https://github.com/panyx0718/models/tree/master/slim
 
 <b>How to run:</b>
 
 ```shell
-# Clone the codes under differential_privacy.
-# Create an empty WORKSPACE file.
-# Download the data to the data/ directory.
+# Clone the code
+# Create an empty WORKSPACE file, eg.
+$ cd models/research
+$ touch WORKSPACE
 
-# List the codes.
+# Download the data to the data/ directory.
+$ cd models/research/slim/
+$ DATA_DIR=models/research/data
+$ python download_and_convert_data.py --dataset_name=mnist --dataset_dir="${DATA_DIR}"
+
+# From models/research, list the codes.
 $ ls -R differential_privacy/
 differential_privacy/:
 dp_sgd  __init__.py  privacy_accountant  README.md
