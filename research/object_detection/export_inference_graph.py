@@ -77,13 +77,14 @@ flags = tf.app.flags
 flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '
                     'one of [`image_tensor`, `encoded_image_string_tensor`, '
                     '`tf_example`]')
-flags.DEFINE_list('input_shape', None,
-                  'If input_type is `image_tensor`, this can explicitly set '
-                  'the shape of this input tensor to a fixed size. The '
-                  'dimensions are to be provided as a comma-separated list of '
-                  'integers. A value of -1 can be used for unknown dimensions. '
-                  'If not specified, for an `image_tensor, the default shape '
-                  'will be partially specified as `[None, None, None, 3]`.')
+flags.DEFINE_string('input_shape', None,
+                    'If input_type is `image_tensor`, this can explicitly set '
+                    'the shape of this input tensor to a fixed size. The '
+                    'dimensions are to be provided as a comma-separated list '
+                    'of integers. A value of -1 can be used for unknown '
+                    'dimensions. If not specified, for an `image_tensor, the '
+                    'default shape will be partially specified as '
+                    '`[None, None, None, 3]`.')
 flags.DEFINE_string('pipeline_config_path', None,
                     'Path to a pipeline_pb2.TrainEvalPipelineConfig config '
                     'file.')
@@ -104,7 +105,8 @@ def main(_):
     text_format.Merge(f.read(), pipeline_config)
   if FLAGS.input_shape:
     input_shape = [
-        int(dim) if dim != '-1' else None for dim in FLAGS.input_shape
+        int(dim) if dim != '-1' else None
+        for dim in FLAGS.input_shape.split(',')
     ]
   else:
     input_shape = None
