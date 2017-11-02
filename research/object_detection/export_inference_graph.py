@@ -70,6 +70,7 @@ import tensorflow as tf
 from google.protobuf import text_format
 from object_detection import exporter
 from object_detection.protos import pipeline_pb2
+import re
 
 slim = tf.contrib.slim
 flags = tf.app.flags
@@ -104,10 +105,25 @@ def main(_):
   with tf.gfile.GFile(FLAGS.pipeline_config_path, 'r') as f:
     text_format.Merge(f.read(), pipeline_config)
   if FLAGS.input_shape:
-    input_shape = [
-        int(dim) if dim != '-1' else None
-        for dim in FLAGS.input_shape.split(',')
-    ]
+    import pdb; pdb.set_trace()
+    is_input_shape_ok = False
+    input_shape = re.findall(r"\[\s*(-?[0-9]+)\s*,\s*(-?[0-9]+)\s*,\s*(-?[0-9]+)\s*,\s*(-?[0-9]+)\s*\]", FLAGS.input_shape)
+    #check if input_shape is correct
+    try:
+        if input_shape:
+            input_shape = input_shape[0]
+            # transform to int
+            input_shape = [int(i) for i in input_shape]
+            # check if rank is correct
+            if len(input_shape) == 4:
+                is_input_shape_valid = [i for i in input_shape if (i>=0)or(i<0 and i==-1) ]
+                if len(is_input_shape_valid) == 4:
+                    is_input_shape_ok = True
+    except:
+      pass
+
+    if not is_input_shape_ok:
+      raise ValueError("input shape should have this format: [3, 100, 200, 3], you can input -1 for unknown dimension")
   else:
     input_shape = None
   exporter.export_inference_graph(FLAGS.input_type, pipeline_config,
