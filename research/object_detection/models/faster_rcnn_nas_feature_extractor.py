@@ -30,6 +30,23 @@ arg_scope = tf.contrib.framework.arg_scope
 slim = tf.contrib.slim
 
 
+def nasnet_large_arg_scope_for_detection(is_batch_norm_training=False):
+  """Defines the default arg scope for the NASNet-A Large for object detection.
+
+  This provides a small edit to switch batch norm training on and off.
+
+  Args:
+    is_batch_norm_training: Boolean indicating whether to train with batch norm.
+
+  Returns:
+    An `arg_scope` to use for the NASNet Large Model.
+  """
+  imagenet_scope = nasnet.nasnet_large_arg_scope()
+  with arg_scope(imagenet_scope):
+    with arg_scope([slim.batch_norm], is_training=is_batch_norm_training) as sc:
+      return sc
+
+
 # Note: This is largely a copy of _build_nasnet_base inside nasnet.py but
 # with special edits to remove instantiation of the stem and the special
 # ability to receive as input a pair of hidden states.
@@ -163,11 +180,11 @@ class FasterRCNNNASFeatureExtractor(
       raise ValueError('`preprocessed_inputs` must be 4 dimensional, got a '
                        'tensor of shape %s' % preprocessed_inputs.get_shape())
 
-    with slim.arg_scope(nasnet.nasnet_large_arg_scope()):
+    with slim.arg_scope(nasnet_large_arg_scope_for_detection(
+        is_batch_norm_training=self._train_batch_norm)):
       _, end_points = nasnet.build_nasnet_large(
           preprocessed_inputs, num_classes=None,
           is_training=self._is_training,
-          is_batchnorm_training=self._train_batch_norm,
           final_endpoint='Cell_11')
 
     # Note that both 'Cell_10' and 'Cell_11' have equal depth = 2016.
