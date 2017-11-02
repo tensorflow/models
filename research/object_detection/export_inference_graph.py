@@ -105,7 +105,6 @@ def main(_):
   with tf.gfile.GFile(FLAGS.pipeline_config_path, 'r') as f:
     text_format.Merge(f.read(), pipeline_config)
   if FLAGS.input_shape:
-    import pdb; pdb.set_trace()
     is_input_shape_ok = False
     input_shape = re.findall(r"\[\s*(-?[0-9]+)\s*,\s*(-?[0-9]+)\s*,\s*(-?[0-9]+)\s*,\s*(-?[0-9]+)\s*\]", FLAGS.input_shape)
     #check if input_shape is correct
