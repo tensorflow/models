@@ -134,17 +134,16 @@ def dataset_parser(value, is_training):
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   """Input function which provides batches for train or eval."""
-  dataset = tf.contrib.data.Dataset.from_tensor_slices(
+  dataset = tf.data.Dataset.from_tensor_slices(
       filenames(is_training, data_dir))
 
   if is_training:
     dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
 
-  dataset = dataset.flat_map(tf.contrib.data.TFRecordDataset)
+  dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
   dataset = dataset.map(lambda value: dataset_parser(value, is_training),
-                        num_threads=5,
-                        output_buffer_size=batch_size)
+                        num_parallel_calls=5)
 
   if is_training:
     # When choosing shuffle buffer sizes, larger sizes result in better

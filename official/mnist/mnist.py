@@ -53,7 +53,7 @@ _NUM_IMAGES = {
 
 
 def input_fn(is_training, filename, batch_size=1, num_epochs=1):
-  """A simple input_fn using the contrib.data input pipeline."""
+  """A simple input_fn using the tf.data input pipeline."""
 
   def example_parser(serialized_example):
     """Parses a single tf.Example into image and label tensors."""
@@ -71,8 +71,12 @@ def input_fn(is_training, filename, batch_size=1, num_epochs=1):
     label = tf.cast(features['label'], tf.int32)
     return image, tf.one_hot(label, 10)
 
-  dataset = tf.contrib.data.TFRecordDataset([filename])
+  dataset = tf.data.TFRecordDataset([filename])
 
+  # Parse each example in the dataset
+  dataset = dataset.map(example_parser)
+
+  # Apply dataset transformations
   if is_training:
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes have better performance. Because MNIST is
