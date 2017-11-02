@@ -111,7 +111,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    kwargs_1, kwargs_2, kwargs_3 = scope.values()
+    kwargs_1, kwargs_2, kwargs_3 = list(scope.values())
     self.assertDictEqual(kwargs_1, kwargs_2)
     self.assertDictEqual(kwargs_1, kwargs_3)
 
@@ -130,7 +130,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     regularizer = conv_scope_arguments['weights_regularizer']
     weights = np.array([1., -1, 4., 2.])
     with self.test_session() as sess:
@@ -152,7 +152,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
 
     regularizer = conv_scope_arguments['weights_regularizer']
     weights = np.array([1., -1, 4., 2.])
@@ -181,7 +181,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     self.assertEqual(conv_scope_arguments['normalizer_fn'], slim.batch_norm)
     batch_norm_params = conv_scope_arguments['normalizer_params']
     self.assertAlmostEqual(batch_norm_params['decay'], 0.7)
@@ -211,7 +211,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=False)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     self.assertEqual(conv_scope_arguments['normalizer_fn'], slim.batch_norm)
     batch_norm_params = conv_scope_arguments['normalizer_params']
     self.assertAlmostEqual(batch_norm_params['decay'], 0.7)
@@ -241,7 +241,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     self.assertEqual(conv_scope_arguments['normalizer_fn'], slim.batch_norm)
     batch_norm_params = conv_scope_arguments['normalizer_params']
     self.assertAlmostEqual(batch_norm_params['decay'], 0.7)
@@ -264,7 +264,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     self.assertEqual(conv_scope_arguments['normalizer_fn'], None)
     self.assertEqual(conv_scope_arguments['normalizer_params'], None)
 
@@ -283,7 +283,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     self.assertEqual(conv_scope_arguments['activation_fn'], None)
 
   def test_use_relu_activation(self):
@@ -301,7 +301,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     self.assertEqual(conv_scope_arguments['activation_fn'], tf.nn.relu)
 
   def test_use_relu_6_activation(self):
@@ -319,7 +319,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     self.assertEqual(conv_scope_arguments['activation_fn'], tf.nn.relu6)
 
   def _assert_variance_in_range(self, initializer, shape, variance,
@@ -352,7 +352,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=2. / 100.)
@@ -374,7 +374,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=2. / 40.)
@@ -396,7 +396,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=4. / (100. + 40.))
@@ -418,7 +418,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=2. / 100.)
@@ -439,7 +439,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
     scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=0.49, tol=1e-1)
