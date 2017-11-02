@@ -35,9 +35,9 @@ EXIT=0
 export WORKSPACE=${PWD}
 
 if [ "$PYTHON_VERSION" = "PYTHON3" ]; then
-  DOCKER_IMG_NAME="tensorflow/tensorflow:1.3.0-py3"
+  DOCKER_IMG_NAME="tensorflow/tensorflow:1.4.0-py3"
 else
-  DOCKER_IMG_NAME="tensorflow/tensorflow:1.3.0"
+  DOCKER_IMG_NAME="tensorflow/tensorflow:1.4.0"
   if [ "$PYTHON_VERSION" != "PYTHON2" ]; then
     echo "WARNING: Python version was not specified. Using Python2 by default."
     sleep 5
