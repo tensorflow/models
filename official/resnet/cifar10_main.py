@@ -77,7 +77,7 @@ _SHUFFLE_BUFFER = 20000
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
   record_bytes = _HEIGHT * _WIDTH * _DEPTH + 1
-  return tf.contrib.data.FixedLengthRecordDataset(filenames, record_bytes)
+  return tf.data.FixedLengthRecordDataset(filenames, record_bytes)
 
 
 def get_filenames(is_training, data_dir):
@@ -138,7 +138,7 @@ def train_preprocess_fn(image, label):
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1):
-  """Input_fn using the contrib.data input pipeline for CIFAR-10 dataset.
+  """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
     is_training: A boolean denoting whether the input is for training.
@@ -148,13 +148,11 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     A tuple of images and labels.
   """
   dataset = record_dataset(get_filenames(is_training, data_dir))
-  dataset = dataset.map(dataset_parser, num_threads=1,
-                        output_buffer_size=2 * batch_size)
+  dataset = dataset.map(dataset_parser)
 
   # For training, preprocess the image and shuffle.
   if is_training:
-    dataset = dataset.map(train_preprocess_fn, num_threads=1,
-                          output_buffer_size=2 * batch_size)
+    dataset = dataset.map(train_preprocess_fn)
 
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes have better performance.
@@ -162,9 +160,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
 
   # Subtract off the mean and divide by the variance of the pixels.
   dataset = dataset.map(
-      lambda image, label: (tf.image.per_image_standardization(image), label),
-      num_threads=1,
-      output_buffer_size=2 * batch_size)
+      lambda image, label: (tf.image.per_image_standardization(image), label))
 
   # We call repeat after shuffling, rather than before, to prevent separate
   # epochs from blending together.
