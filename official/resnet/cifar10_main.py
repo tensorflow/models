@@ -142,6 +142,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
 
   Args:
     is_training: A boolean denoting whether the input is for training.
+    data_dir: The directory containing the input data.
+    batch_size: The number samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
 
   Returns:
