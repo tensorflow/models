@@ -41,7 +41,7 @@ from object_detection.utils import label_map_util
 
 flags = tf.app.flags
 flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic原始数据\RawBigLogo', 'Root directory to raw pet dataset.')
-flags.DEFINE_string('output_dir', r'E:\data_mining\temp\train\BigLogo', 'Path to directory to output TFRecords.')
+flags.DEFINE_string('output_dir', r'C:\Users\sunhongzhi\Desktop\random_big_1000', 'Path to directory to output TFRecords.')
 FLAGS = flags.FLAGS
 
 
@@ -54,7 +54,7 @@ def main(_):
 
     random.seed(42)
     random.shuffle(examples_list)
-    train_examples = examples_list[:5000]
+    train_examples = examples_list[:1000]
     print('count = ', len(train_examples))
 
     for img_path in train_examples:

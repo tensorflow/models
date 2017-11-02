@@ -19,7 +19,7 @@ from utils import label_map_util
 from utils import visualization_utils as vis_util
 
 # What model to download.
-# MODEL_NAME = 'faster_rcnn_resnet101_coco_11_06_2017'
+# MODEL_NAME = 'models.faster_rcnn_resnet101_coco_11_06_2017'
 # MODEL_FILE = MODEL_NAME + '.tar.gz'
 # DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
 

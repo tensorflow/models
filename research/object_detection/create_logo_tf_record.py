@@ -107,7 +107,8 @@ def dict_to_tf_example(img_path,
         eval_path = os.path.join(eval_dir, filename)
         image.save(eval_path)
 
-    label_text = "EastICLogo"
+    # label_text = "EastICLogo"
+    label_text = class_name
 
     classes_text.append(label_text.encode('utf8'))
     classes.append(label_map_dict[label_text])
@@ -140,10 +141,10 @@ def main(_):
     for file_name in os.listdir(FLAGS.eval_dir):
         if file_name == "BigLogo" or file_name == "SmallLogo":
             eval_dir = os.path.join(FLAGS.eval_dir, file_name)
-            print("删除eval文件夹下的图片 eval_dir = " + eval_dir)
             for eval_file_name in os.listdir(eval_dir):
                 image_path = os.path.join(eval_dir, eval_file_name)
                 os.remove(image_path)
+                print("删除eval文件夹下的图片 eval_file_name = " + eval_file_name)
 
     examples_list = []
     for class_dir_name in os.listdir(FLAGS.data_dir):

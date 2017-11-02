@@ -19,7 +19,7 @@ from utils import label_map_util
 from utils import visualization_utils as vis_util
 
 # What model to download.
-# MODEL_NAME = 'faster_rcnn_resnet101_coco_11_06_2017'
+# MODEL_NAME = 'models.faster_rcnn_resnet101_coco_11_06_2017'
 # MODEL_FILE = MODEL_NAME + '.tar.gz'
 # DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
 
@@ -60,7 +60,7 @@ def load_image_into_numpy_array(image):
 # image1.jpg
 # image2.jpg
 # If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
-PATH_TO_TEST_IMAGES_DIR = r'E:\data_mining\data\east_ic_logo\eval\error'
+PATH_TO_TEST_IMAGES_DIR = r'C:\Users\sunhongzhi\Desktop\display'
 
 print(PATH_TO_TEST_IMAGES_DIR)
 # Size, in inches, of the output images.

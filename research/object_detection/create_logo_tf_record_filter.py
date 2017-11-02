@@ -40,7 +40,7 @@ from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
 flags = tf.app.flags
-flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic原始数据\RawBigLogo', 'Root directory to raw pet dataset.')
+flags.DEFINE_string('data_dir', r'E:\data_mining\data\east_ic_logo\train', 'Root directory to raw pet dataset.')
 FLAGS = flags.FLAGS
 
 
