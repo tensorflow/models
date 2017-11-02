@@ -113,24 +113,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
               slim_example_decoder.ItemHandlerCallback(
                   ['image/object/mask', 'image/height', 'image/width'],
                   self._reshape_instance_masks))
-    if label_map_proto_file:
-      label_map = label_map_util.get_label_map_dict(label_map_proto_file,
-                                                    use_display_name)
-      # We use a default_value of -1, but we expect all labels to be contained
-      # in the label map.
-      table = tf.contrib.lookup.HashTable(
-          initializer=tf.contrib.lookup.KeyValueTensorInitializer(
-              keys=tf.constant(list(label_map.keys())),
-              values=tf.constant(list(label_map.values()), dtype=tf.int64)),
-          default_value=-1)
-      # If the label_map_proto is provided, try to use it in conjunction with
-      # the class text, and fall back to a materialized ID.
-      label_handler = slim_example_decoder.BackupHandler(
-          slim_example_decoder.LookupTensor(
-              'image/object/class/text', table, default_value=''),
-          slim_example_decoder.Tensor('image/object/class/label'))
-    else:
-      label_handler = slim_example_decoder.Tensor('image/object/class/label')
+    # TODO: Add label_handler that decodes from 'image/object/class/text'
+    # primarily after the recent tf.contrib.slim changes make into a release
+    # supported by cloudml.
+    label_handler = slim_example_decoder.Tensor('image/object/class/label')
     self.items_to_handlers[
         fields.InputDataFields.groundtruth_classes] = label_handler
 
