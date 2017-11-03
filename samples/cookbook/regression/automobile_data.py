@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A dataset loader for imports85.data."""
+"""Utility functions for loading the automobile data set."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,13 +21,8 @@ from __future__ import print_function
 import collections
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
-
-try:
-  import pandas as pd  # pylint: disable=g-import-not-at-top
-except ImportError:
-  pass
-
 
 URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data"
 
@@ -63,11 +58,11 @@ COLUMN_TYPES = collections.OrderedDict([
 
 
 def raw_dataframe():
-  """Load the imports85 data as a pd.DataFrame."""
+  """Load the automobile data set as a pd.DataFrame."""
   # Download and cache the data
   path = tf.keras.utils.get_file(URL.split("/")[-1], URL)
 
-  # Load it into a pandas dataframe
+  # Load it into a pandas DataFrame
   df = pd.read_csv(path, names=COLUMN_TYPES.keys(),
                    dtype=COLUMN_TYPES, na_values="?")
 
@@ -75,7 +70,7 @@ def raw_dataframe():
 
 
 def load_data(y_name="price", train_fraction=0.7, seed=None):
-  """Get the imports85 data set.
+  """Load the automobile data set and split it train/test and features/label.
 
   A description of the data is available at:
     https://archive.ics.uci.edu/ml/datasets/automobile
@@ -85,13 +80,13 @@ def load_data(y_name="price", train_fraction=0.7, seed=None):
 
   Args:
     y_name: the column to return as the label.
-    train_fraction: the fraction of the dataset to use for training.
+    train_fraction: the fraction of the data set to use for training.
     seed: The random seed to use when shuffling the data. `None` generates a
       unique shuffle every run.
   Returns:
     a pair of pairs where the first pair is the training data, and the second
     is the test data:
-    `(x_train, y_train), (x_test, y_test) = get_imports85_dataset(...)`
+    `(x_train, y_train), (x_test, y_test) = load_data(...)`
     `x` contains a pandas DataFrame of features, while `y` contains the label
     array.
   """
@@ -108,14 +103,14 @@ def load_data(y_name="price", train_fraction=0.7, seed=None):
   x_train = data.sample(frac=train_fraction, random_state=seed)
   x_test = data.drop(x_train.index)
 
-  # Extract the label from the features dataframe.
+  # Extract the label from the features DataFrame.
   y_train = x_train.pop(y_name)
   y_test = x_test.pop(y_name)
 
   return (x_train, y_train), (x_test, y_test)
 
 def make_dataset(x, y=None):
-    """Create a slice dataset from a pandas DataFrame and labels"""
+    """Create a slice Dataset from a pandas DataFrame and labels"""
     # TODO(markdaooust): simplify this after the 1.4 cut.
     # Convert the DataFrame to a dict
     x = dict(x)
