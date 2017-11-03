@@ -6,4 +6,6 @@ The [official models](official) are a collection of example models that use Tens
 
 The [research models](research) are a large collection of models implemented in TensorFlow by researchers. It is up to the individual researchers to maintain the models and/or provide support on issues and pull requests.
 
-The [tutorial models](tutorials) are models described in the [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
+The [samples](samples) folder contains snippets and smaller models that demonstrate various features of TensorFlow, as well as code snippets presented in various blog posts.
+
+The [tutorials](tutorials) folder is a collection of models described in the [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
