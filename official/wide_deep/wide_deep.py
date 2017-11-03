@@ -175,21 +175,18 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
     return features, tf.equal(labels, '>50K')
 
   # Extract lines from input files using the Dataset API.
-  dataset = tf.contrib.data.TextLineDataset(data_file)
-  dataset = dataset.map(parse_csv, num_threads=5)
+  dataset = tf.data.TextLineDataset(data_file)
+  dataset = dataset.map(parse_csv, num_parallel_calls=5)
 
   # Apply transformations to the Dataset
+  if shuffle:
+      dataset = dataset.shuffle(100000)
   dataset = dataset.batch(batch_size)
   dataset = dataset.repeat(num_epochs)
 
   # Input function that is called by the Estimator
   def _input_fn():
-    if shuffle:
-      # Apply shuffle transformation to re-shuffle the dataset in each call.
-      shuffled_dataset = dataset.shuffle(buffer_size=100000)
-      iterator = shuffled_dataset.make_one_shot_iterator()
-    else:
-      iterator = dataset.make_one_shot_iterator()
+    iterator = dataset.make_one_shot_iterator()
     features, labels = iterator.get_next()
     return features, labels
   return _input_fn
