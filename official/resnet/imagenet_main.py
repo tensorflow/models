@@ -192,8 +192,8 @@ def resnet_model_fn(features, labels, mode, params):
       [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
-    # Scale the learning rate linearly with the batch size. When the batch size is
-    # 256, the learning rate should be 0.1.
+    # Scale the learning rate linearly with the batch size. When the batch size
+    # is 256, the learning rate should be 0.1.
     initial_learning_rate = 0.1 * params['batch_size'] / 256
     batches_per_epoch = _NUM_IMAGES['train'] / params['batch_size']
     global_step = tf.train.get_or_create_global_step()
