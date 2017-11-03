@@ -185,6 +185,7 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
   # Apply transformations to the Dataset
+  # We repeat after shuffling to prevent separate epochs from blending together.
   dataset = dataset.batch(batch_size)
   dataset = dataset.repeat(num_epochs)
 

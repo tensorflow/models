@@ -151,6 +151,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     # randomness, while smaller sizes have better performance.
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
+  # We repeat after shuffling to prevent separate epochs from blending together.
   dataset = dataset.repeat(num_epochs)
   dataset = dataset.batch(batch_size)
 
