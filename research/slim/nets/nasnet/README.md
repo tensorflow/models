@@ -44,8 +44,7 @@ python tensorflow_models/research/slim/eval_image_classifier \
 --dataset_name=imagenet \
 --dataset_split_name=validation \
 --model_name=nasnet_mobile \
---eval_image_size=224 \
---moving_average_decay=0.9999
+--eval_image_size=224
 ```
 
 Run eval with the NASNet-A large ImageNet model
@@ -61,6 +60,5 @@ python tensorflow_models/research/slim/eval_image_classifier \
 --dataset_name=imagenet \
 --dataset_split_name=validation \
 --model_name=nasnet_large \
---eval_image_size=331 \
---moving_average_decay=0.9999
+--eval_image_size=331
 ```
