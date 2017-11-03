@@ -79,7 +79,8 @@ def input_fn(is_training, filename, batch_size=1, num_epochs=1):
     # a small dataset, we can easily shuffle the full epoch.
     dataset = dataset.shuffle(buffer_size=_NUM_IMAGES['train'])
 
-  # We repeat after shuffling to prevent separate epochs from blending together.
+  # We call repeat after shuffling, rather than before, to prevent separate
+  # epochs from blending together.
   dataset = dataset.repeat(num_epochs)
 
   # Map example_parser over dataset, and batch results by up to batch_size
