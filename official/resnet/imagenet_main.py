@@ -73,6 +73,7 @@ _NUM_IMAGES = {
     'validation': 50000,
 }
 
+_FILE_SHUFFLE_BUFFER = 1024
 _SHUFFLE_BUFFER = 1500
 
 
@@ -81,11 +82,11 @@ def filenames(is_training, data_dir):
   if is_training:
     return [
         os.path.join(data_dir, 'train-%05d-of-01024' % i)
-        for i in range(0, 1024)]
+        for i in range(1024)]
   else:
     return [
         os.path.join(data_dir, 'validation-%05d-of-00128' % i)
-        for i in range(0, 128)]
+        for i in range(128)]
 
 
 def dataset_parser(value, is_training):
@@ -137,11 +138,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
       filenames(is_training, data_dir))
 
   if is_training:
-    dataset = dataset.shuffle(buffer_size=1024)
-  dataset = dataset.flat_map(tf.contrib.data.TFRecordDataset)
+    dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
 
-  if is_training:
-    dataset = dataset.repeat(num_epochs)
+  dataset = dataset.flat_map(tf.contrib.data.TFRecordDataset)
 
   dataset = dataset.map(lambda value: dataset_parser(value, is_training),
                         num_threads=5,
@@ -152,7 +151,10 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     # randomness, while smaller sizes have better performance.
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
-  iterator = dataset.batch(batch_size).make_one_shot_iterator()
+  dataset = dataset.repeat(num_epochs)
+  dataset = dataset.batch(batch_size)
+
+  iterator = dataset.make_one_shot_iterator()
   images, labels = iterator.get_next()
   return images, labels
 
