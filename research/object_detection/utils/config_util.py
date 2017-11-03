@@ -195,7 +195,7 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
 
   if hparams:
     kwargs.update(hparams.values())
-  for key, value in kwargs.iteritems():
+  for key, value in kwargs.items():
     if key == "learning_rate":
       _update_initial_learning_rate(configs, value)
       tf.logging.info("Overwriting learning rate: %f", value)
