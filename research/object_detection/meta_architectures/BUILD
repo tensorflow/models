@@ -18,6 +18,7 @@ py_library(
         "//tensorflow_models/object_detection/core:model",
         "//tensorflow_models/object_detection/core:target_assigner",
         "//tensorflow_models/object_detection/utils:shape_utils",
+        "//tensorflow_models/object_detection/utils:visualization_utils",
     ],
 )
 

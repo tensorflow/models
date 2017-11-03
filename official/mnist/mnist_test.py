@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
 import tensorflow as tf
 
 import mnist
@@ -26,6 +25,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 class BaseTest(tf.test.TestCase):
+
   def input_fn(self):
     features = tf.random_uniform([55000, 784])
     labels = tf.random_uniform([55000], maxval=9, dtype=tf.int32)
@@ -34,7 +34,8 @@ class BaseTest(tf.test.TestCase):
   def mnist_model_fn_helper(self, mode):
     features, labels = self.input_fn()
     image_count = features.shape[0]
-    spec = mnist.mnist_model_fn(features, labels, mode)
+    spec = mnist.mnist_model_fn(
+        features, labels, mode, {'data_format': 'channels_last'})
 
     predictions = spec.predictions
     self.assertAllEqual(predictions['probabilities'].shape, (image_count, 10))

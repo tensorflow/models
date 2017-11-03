@@ -38,10 +38,10 @@ message EvalConfig {
   optional bool ignore_groundtruth = 10 [default=false];
 
   // Use exponential moving averages of variables for evaluation.
-  // TODO: When this is false make sure the model is constructed
-  // without moving averages in restore_fn.
   optional bool use_moving_averages = 11 [default=false];
 
   // Whether to evaluate instance masks.
+  // Note that since there is no evaluation code currently for instance
+  // segmenation this option is unused.
   optional bool eval_instance_masks = 12 [default=false];
 }

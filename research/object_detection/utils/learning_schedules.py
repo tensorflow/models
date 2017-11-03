@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Library of common learning rate schedules."""
 
+import numpy as np
 import tensorflow as tf
 
 
@@ -59,6 +59,54 @@ def exponential_decay_with_burnin(global_step,
       lambda: post_burnin_learning_rate)
 
 
+def cosine_decay_with_warmup(global_step,
+                             learning_rate_base,
+                             total_steps,
+                             warmup_learning_rate=0.0,
+                             warmup_steps=0):
+  """Cosine decay schedule with warm up period.
+
+  Cosine annealing learning rate as described in:
+    Loshchilov and Hutter, SGDR: Stochastic Gradient Descent with Warm Restarts.
+    ICLR 2017. https://arxiv.org/abs/1608.03983
+  In this schedule, the learning rate grows linearly from warmup_learning_rate
+  to learning_rate_base for warmup_steps, then transitions to a cosine decay
+  schedule.
+
+  Args:
+    global_step: int64 (scalar) tensor representing global step.
+    learning_rate_base: base learning rate.
+    total_steps: total number of training steps.
+    warmup_learning_rate: initial learning rate for warm up.
+    warmup_steps: number of warmup steps.
+
+  Returns:
+    a (scalar) float tensor representing learning rate.
+
+  Raises:
+    ValueError: if warmup_learning_rate is larger than learning_rate_base,
+      or if warmup_steps is larger than total_steps.
+  """
+  if learning_rate_base < warmup_learning_rate:
+    raise ValueError('learning_rate_base must be larger '
+                     'or equal to warmup_learning_rate.')
+  if total_steps < warmup_steps:
+    raise ValueError('total_steps must be larger or equal to '
+                     'warmup_steps.')
+  learning_rate = 0.5 * learning_rate_base * (
+      1 + tf.cos(np.pi * tf.cast(
+          global_step - warmup_steps, tf.float32
+      ) / float(total_steps - warmup_steps)))
+  if warmup_steps > 0:
+    slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
+    pre_cosine_learning_rate = slope * tf.cast(
+        global_step, tf.float32) + warmup_learning_rate
+    learning_rate = tf.cond(
+        tf.less(global_step, warmup_steps), lambda: pre_cosine_learning_rate,
+        lambda: learning_rate)
+  return learning_rate
+
+
 def manual_stepping(global_step, boundaries, rates):
   """Manually stepped learning rate schedule.
 
@@ -96,8 +144,8 @@ def manual_stepping(global_step, boundaries, rates):
                      'number of boundary points by exactly 1.')
   step_boundaries = tf.constant(boundaries, tf.int64)
   learning_rates = tf.constant(rates, tf.float32)
-  unreached_boundaries = tf.reshape(tf.where(
-      tf.greater(step_boundaries, global_step)), [-1])
+  unreached_boundaries = tf.reshape(
+      tf.where(tf.greater(step_boundaries, global_step)), [-1])
   unreached_boundaries = tf.concat([unreached_boundaries, [len(boundaries)]], 0)
   index = tf.reshape(tf.reduce_min(unreached_boundaries), [1])
   return tf.reshape(tf.slice(learning_rates, index, [1]), [])

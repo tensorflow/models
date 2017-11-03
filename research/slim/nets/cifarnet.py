@@ -42,7 +42,9 @@ def cifarnet(images, num_classes=10, is_training=False,
 
   Args:
     images: A batch of `Tensors` of size [batch_size, height, width, channels].
-    num_classes: the number of classes in the dataset.
+    num_classes: the number of classes in the dataset. If 0 or None, the logits
+      layer is omitted and the input features to the logits layer are returned
+      instead.
     is_training: specifies whether or not we're currently training the model.
       This variable will determine the behaviour of the dropout layer.
     dropout_keep_prob: the percentage of activation values that are retained.
@@ -50,14 +52,15 @@ def cifarnet(images, num_classes=10, is_training=False,
     scope: Optional variable_scope.
 
   Returns:
-    logits: the pre-softmax activations, a tensor of size
-      [batch_size, `num_classes`]
+    net: a 2D Tensor with the logits (pre-softmax activations) if num_classes
+      is a non-zero integer, or the input to the logits layer if num_classes
+      is 0 or None.
     end_points: a dictionary from components of the network to the corresponding
       activation.
   """
   end_points = {}
 
-  with tf.variable_scope(scope, 'CifarNet', [images, num_classes]):
+  with tf.variable_scope(scope, 'CifarNet', [images]):
     net = slim.conv2d(images, 64, [5, 5], scope='conv1')
     end_points['conv1'] = net
     net = slim.max_pool2d(net, [2, 2], 2, scope='pool1')
@@ -76,6 +79,8 @@ def cifarnet(images, num_classes=10, is_training=False,
                        scope='dropout3')
     net = slim.fully_connected(net, 192, scope='fc4')
     end_points['fc4'] = net
+    if not num_classes:
+      return net, end_points
     logits = slim.fully_connected(net, num_classes,
                                   biases_initializer=tf.zeros_initializer(),
                                   weights_initializer=trunc_normal(1/192.0),

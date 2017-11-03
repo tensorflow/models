@@ -50,7 +50,7 @@ class TargetAssigner(object):
   def __init__(self, similarity_calc, matcher, box_coder,
                positive_class_weight=1.0, negative_class_weight=1.0,
                unmatched_cls_target=None):
-    """Construct Multibox Target Assigner.
+    """Construct Object Detection Target Assigner.
 
     Args:
       similarity_calc: a RegionSimilarityCalculator
@@ -108,7 +108,7 @@ class TargetAssigner(object):
     Args:
       anchors: a BoxList representing N anchors
       groundtruth_boxes: a BoxList representing M groundtruth boxes
-      groundtruth_labels:  a tensor of shape [num_gt_boxes, d_1, ... d_k]
+      groundtruth_labels:  a tensor of shape [M, d_1, ... d_k]
         with labels for each of the ground_truth boxes. The subshape
         [d_1, ... d_k] can be empty (corresponding to scalar inputs).  When set
         to None, groundtruth_labels assumes a binary problem where all
@@ -140,10 +140,16 @@ class TargetAssigner(object):
       groundtruth_labels = tf.ones(tf.expand_dims(groundtruth_boxes.num_boxes(),
                                                   0))
       groundtruth_labels = tf.expand_dims(groundtruth_labels, -1)
-    shape_assert = tf.assert_equal(tf.shape(groundtruth_labels)[1:],
-                                   tf.shape(self._unmatched_cls_target))
+    unmatched_shape_assert = tf.assert_equal(
+        tf.shape(groundtruth_labels)[1:], tf.shape(self._unmatched_cls_target),
+        message='Unmatched class target shape incompatible '
+        'with groundtruth labels shape!')
+    labels_and_box_shapes_assert = tf.assert_equal(
+        tf.shape(groundtruth_labels)[0], groundtruth_boxes.num_boxes(),
+        message='Groundtruth boxes and labels have incompatible shapes!')
 
-    with tf.control_dependencies([shape_assert]):
+    with tf.control_dependencies(
+        [unmatched_shape_assert, labels_and_box_shapes_assert]):
       match_quality_matrix = self._similarity_calc.compare(groundtruth_boxes,
                                                            anchors)
       match = self._matcher.match(match_quality_matrix, **params)
@@ -316,8 +322,8 @@ class TargetAssigner(object):
     return self._box_coder
 
 
-# TODO: This method pulls in all the implementation dependencies into core.
-# Therefore its best to have this factory method outside of core.
+# TODO: This method pulls in all the implementation dependencies into
+# core. Therefore its best to have this factory method outside of core.
 def create_target_assigner(reference, stage=None,
                            positive_class_weight=1.0,
                            negative_class_weight=1.0,

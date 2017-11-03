@@ -256,7 +256,7 @@ tensorboard --logdir=gs://${YOUR_GCS_BUCKET}
 ```
 
 Once Tensorboard is running, navigate to `localhost:6006` from your favourite
-web browser. You should something similar see the following:
+web browser. You should see something similar to the following:
 
 ![](img/tensorboard.png)
 
@@ -298,10 +298,11 @@ python object_detection/export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path object_detection/samples/configs/faster_rcnn_resnet101_pets.config \
     --trained_checkpoint_prefix model.ckpt-${CHECKPOINT_NUMBER} \
-    --output_directory output_inference_graph.pb
+    --output_directory exported_graphs
 ```
 
-Afterwards, you should see a graph named `output_inference_graph.pb`.
+Afterwards, you should see a directory named `exported_graphs` containing the
+SavedModel and frozen graph.
 
 ## What's Next
 

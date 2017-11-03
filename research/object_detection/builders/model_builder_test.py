@@ -23,8 +23,11 @@ from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
+from object_detection.models import faster_rcnn_inception_v2_feature_extractor as frcnn_inc_v2
+from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
 from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
+from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
 from object_detection.protos import model_pb2
 
@@ -123,11 +126,11 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertIsInstance(model._feature_extractor,
                           SSDInceptionV2FeatureExtractor)
 
-  def test_create_ssd_mobilenet_v1_model_from_config(self):
+  def test_create_ssd_inception_v3_model_from_config(self):
     model_text_proto = """
       ssd {
         feature_extractor {
-          type: 'ssd_mobilenet_v1'
+          type: 'ssd_inception_v3'
           conv_hyperparams {
             regularizer {
                 l2_regularizer {
@@ -192,7 +195,80 @@ class ModelBuilderTest(tf.test.TestCase):
     model = self.create_model(model_proto)
     self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
     self.assertIsInstance(model._feature_extractor,
+                          SSDInceptionV3FeatureExtractor)
+
+  def test_create_ssd_mobilenet_v1_model_from_config(self):
+    model_text_proto = """
+      ssd {
+        feature_extractor {
+          type: 'ssd_mobilenet_v1'
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+          batch_norm_trainable: true
+        }
+        box_coder {
+          faster_rcnn_box_coder {
+          }
+        }
+        matcher {
+          argmax_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          convolutional_box_predictor {
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_smooth_l1 {
+            }
+          }
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = self.create_model(model_proto)
+    self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
+    self.assertIsInstance(model._feature_extractor,
                           SSDMobileNetV1FeatureExtractor)
+    self.assertTrue(model._feature_extractor._batch_norm_trainable)
 
   def test_create_faster_rcnn_resnet_v1_models_from_config(self):
     model_text_proto = """
@@ -261,6 +337,149 @@ class ModelBuilderTest(tf.test.TestCase):
       self.assertIsInstance(model, faster_rcnn_meta_arch.FasterRCNNMetaArch)
       self.assertIsInstance(model._feature_extractor, extractor_class)
 
+  def test_create_faster_rcnn_resnet101_with_mask_prediction_enabled(self):
+    model_text_proto = """
+      faster_rcnn {
+        num_classes: 3
+        image_resizer {
+          keep_aspect_ratio_resizer {
+            min_dimension: 600
+            max_dimension: 1024
+          }
+        }
+        feature_extractor {
+          type: 'faster_rcnn_resnet101'
+        }
+        first_stage_anchor_generator {
+          grid_anchor_generator {
+            scales: [0.25, 0.5, 1.0, 2.0]
+            aspect_ratios: [0.5, 1.0, 2.0]
+            height_stride: 16
+            width_stride: 16
+          }
+        }
+        first_stage_box_predictor_conv_hyperparams {
+          regularizer {
+            l2_regularizer {
+            }
+          }
+          initializer {
+            truncated_normal_initializer {
+            }
+          }
+        }
+        initial_crop_size: 14
+        maxpool_kernel_size: 2
+        maxpool_stride: 2
+        second_stage_box_predictor {
+          mask_rcnn_box_predictor {
+            fc_hyperparams {
+              op: FC
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+            predict_instance_masks: true
+          }
+        }
+        second_stage_mask_prediction_loss_weight: 3.0
+        second_stage_post_processing {
+          batch_non_max_suppression {
+            score_threshold: 0.01
+            iou_threshold: 0.6
+            max_detections_per_class: 100
+            max_total_detections: 300
+          }
+          score_converter: SOFTMAX
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = model_builder.build(model_proto, is_training=True)
+    self.assertAlmostEqual(model._second_stage_mask_loss_weight, 3.0)
+
+  def test_create_faster_rcnn_nas_model_from_config(self):
+    model_text_proto = """
+      faster_rcnn {
+        num_classes: 3
+        image_resizer {
+          keep_aspect_ratio_resizer {
+            min_dimension: 600
+            max_dimension: 1024
+          }
+        }
+        feature_extractor {
+          type: 'faster_rcnn_nas'
+        }
+        first_stage_anchor_generator {
+          grid_anchor_generator {
+            scales: [0.25, 0.5, 1.0, 2.0]
+            aspect_ratios: [0.5, 1.0, 2.0]
+            height_stride: 16
+            width_stride: 16
+          }
+        }
+        first_stage_box_predictor_conv_hyperparams {
+          regularizer {
+            l2_regularizer {
+            }
+          }
+          initializer {
+            truncated_normal_initializer {
+            }
+          }
+        }
+        initial_crop_size: 17
+        maxpool_kernel_size: 1
+        maxpool_stride: 1
+        second_stage_box_predictor {
+          mask_rcnn_box_predictor {
+            fc_hyperparams {
+              op: FC
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        second_stage_post_processing {
+          batch_non_max_suppression {
+            score_threshold: 0.01
+            iou_threshold: 0.6
+            max_detections_per_class: 100
+            max_total_detections: 300
+          }
+          score_converter: SOFTMAX
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = model_builder.build(model_proto, is_training=True)
+    self.assertIsInstance(model, faster_rcnn_meta_arch.FasterRCNNMetaArch)
+    self.assertIsInstance(
+        model._feature_extractor,
+        frcnn_nas.FasterRCNNNASFeatureExtractor)
+
   def test_create_faster_rcnn_inception_resnet_v2_model_from_config(self):
     model_text_proto = """
       faster_rcnn {
@@ -327,6 +546,72 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertIsInstance(
         model._feature_extractor,
         frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor)
+
+  def test_create_faster_rcnn_inception_v2_model_from_config(self):
+    model_text_proto = """
+      faster_rcnn {
+        num_classes: 3
+        image_resizer {
+          keep_aspect_ratio_resizer {
+            min_dimension: 600
+            max_dimension: 1024
+          }
+        }
+        feature_extractor {
+          type: 'faster_rcnn_inception_v2'
+        }
+        first_stage_anchor_generator {
+          grid_anchor_generator {
+            scales: [0.25, 0.5, 1.0, 2.0]
+            aspect_ratios: [0.5, 1.0, 2.0]
+            height_stride: 16
+            width_stride: 16
+          }
+        }
+        first_stage_box_predictor_conv_hyperparams {
+          regularizer {
+            l2_regularizer {
+            }
+          }
+          initializer {
+            truncated_normal_initializer {
+            }
+          }
+        }
+        initial_crop_size: 14
+        maxpool_kernel_size: 2
+        maxpool_stride: 2
+        second_stage_box_predictor {
+          mask_rcnn_box_predictor {
+            fc_hyperparams {
+              op: FC
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        second_stage_post_processing {
+          batch_non_max_suppression {
+            score_threshold: 0.01
+            iou_threshold: 0.6
+            max_detections_per_class: 100
+            max_total_detections: 300
+          }
+          score_converter: SOFTMAX
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = model_builder.build(model_proto, is_training=True)
+    self.assertIsInstance(model, faster_rcnn_meta_arch.FasterRCNNMetaArch)
+    self.assertIsInstance(model._feature_extractor,
+                          frcnn_inc_v2.FasterRCNNInceptionV2FeatureExtractor)
 
   def test_create_faster_rcnn_model_from_config_with_example_miner(self):
     model_text_proto = """

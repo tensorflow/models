@@ -183,7 +183,7 @@ def _is_png(filename):
   Returns:
     boolean indicating if the image is a PNG.
   """
-  return '.png' in filename
+  return filename.endswith('.png')
 
 
 def _process_image(filename, coder):
@@ -264,7 +264,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
         image_buffer, height, width = _process_image(filename, coder)
       except Exception as e:
         print(e)
-        print('SKIPPED: Unexpected eror while decoding %s.' % filename)
+        print('SKIPPED: Unexpected error while decoding %s.' % filename)
         continue
 
       example = _convert_to_example(filename, image_buffer, label,

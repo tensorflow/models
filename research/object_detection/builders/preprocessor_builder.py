@@ -72,7 +72,6 @@ def _get_dict_from_proto(config):
 # with _get_dict_from_proto.
 PREPROCESSING_FUNCTION_MAP = {
     'normalize_image': preprocessor.normalize_image,
-    'random_horizontal_flip': preprocessor.random_horizontal_flip,
     'random_pixel_value_scale': preprocessor.random_pixel_value_scale,
     'random_image_scale': preprocessor.random_image_scale,
     'random_rgb_to_gray': preprocessor.random_rgb_to_gray,
@@ -122,6 +121,25 @@ def build(preprocessor_step_config):
                                               step_type)
     function_args = _get_dict_from_proto(step_config)
     return (preprocessing_function, function_args)
+
+  if step_type == 'random_horizontal_flip':
+    config = preprocessor_step_config.random_horizontal_flip
+    return (preprocessor.random_horizontal_flip,
+            {
+                'keypoint_flip_permutation': tuple(
+                    config.keypoint_flip_permutation),
+            })
+
+  if step_type == 'random_vertical_flip':
+    config = preprocessor_step_config.random_vertical_flip
+    return (preprocessor.random_vertical_flip,
+            {
+                'keypoint_flip_permutation': tuple(
+                    config.keypoint_flip_permutation),
+            })
+
+  if step_type == 'random_rotation90':
+    return (preprocessor.random_rotation90, {})
 
   if step_type == 'random_crop_image':
     config = preprocessor_step_config.random_crop_image
@@ -273,5 +291,33 @@ def build(preprocessor_step_config):
                   'random_coef': random_coef,
               })
     return (preprocessor.ssd_random_crop_fixed_aspect_ratio, {})
+
+  if step_type == 'ssd_random_crop_pad_fixed_aspect_ratio':
+    config = preprocessor_step_config.ssd_random_crop_pad_fixed_aspect_ratio
+    if config.operations:
+      min_object_covered = [op.min_object_covered for op in config.operations]
+      aspect_ratio_range = [(op.min_aspect_ratio, op.max_aspect_ratio)
+                            for op in config.operations]
+      area_range = [(op.min_area, op.max_area) for op in config.operations]
+      overlap_thresh = [op.overlap_thresh for op in config.operations]
+      random_coef = [op.random_coef for op in config.operations]
+      min_padded_size_ratio = [
+          (op.min_padded_size_ratio[0], op.min_padded_size_ratio[1])
+          for op in config.operations]
+      max_padded_size_ratio = [
+          (op.max_padded_size_ratio[0], op.max_padded_size_ratio[1])
+          for op in config.operations]
+      return (preprocessor.ssd_random_crop_pad_fixed_aspect_ratio,
+              {
+                  'min_object_covered': min_object_covered,
+                  'aspect_ratio': config.aspect_ratio,
+                  'aspect_ratio_range': aspect_ratio_range,
+                  'area_range': area_range,
+                  'overlap_thresh': overlap_thresh,
+                  'random_coef': random_coef,
+                  'min_padded_size_ratio': min_padded_size_ratio,
+                  'max_padded_size_ratio': max_padded_size_ratio,
+              })
+    return (preprocessor.ssd_random_crop_pad_fixed_aspect_ratio, {})
 
   raise ValueError('Unknown preprocessing step.')

@@ -158,7 +158,7 @@ def LogisticClassifier(inputs, labels, scope=None, reuse=None):
 def BatchNormClassifier(inputs, labels, scope=None, reuse=None):
   with tf.variable_scope(scope, 'BatchNormClassifier', [inputs, labels],
                          reuse=reuse):
-    inputs = slim.batch_norm(inputs, decay=0.1)
+    inputs = slim.batch_norm(inputs, decay=0.1, fused=True)
     predictions = slim.fully_connected(inputs, 1,
                                        activation_fn=tf.sigmoid,
                                        scope='fully_connected')
@@ -476,6 +476,11 @@ class DeployTest(tf.test.TestCase):
       j = int(2 * self._labels[i] + np.random.randint(0, 2))
       self._inputs[i, j] = 1
 
+  def _addBesselsCorrection(self, sample_size, expected_var):
+    correction_factor = sample_size / (sample_size - 1)
+    expected_var *= correction_factor
+    return expected_var
+
   def testLocalTrainOp(self):
     g = tf.Graph()
     with g.as_default():
@@ -519,9 +524,11 @@ class DeployTest(tf.test.TestCase):
 
         final_mean, final_variance = sess.run([moving_mean,
                                                moving_variance])
-        self.assertAllClose(final_mean, [0.125, 0.25, 0.375, 0.25])
-        self.assertAllClose(final_variance, [0.109375, 0.1875,
-                                             0.234375, 0.1875])
+        expected_mean = np.array([0.125, 0.25, 0.375, 0.25])
+        expected_var = np.array([0.109375, 0.1875, 0.234375, 0.1875])
+        expected_var = self._addBesselsCorrection(16, expected_var)
+        self.assertAllClose(final_mean, expected_mean)
+        self.assertAllClose(final_variance, expected_var)
 
   def testNoSummariesOnGPU(self):
     with tf.Graph().as_default():

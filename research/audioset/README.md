@@ -84,18 +84,19 @@ Here's a sample installation and test session:
 #   $ source vggish/bin/activate  # Assuming you use bash
 # Leave the virtual environment at the end of the session by running
 #   $ deactivate
+# Within the virtual environment, do not use 'sudo'.
 
 # Upgrade pip first.
-$ python -m pip install --upgrade pip
+$ sudo python -m pip install --upgrade pip
 
 # Install dependences. Resampy needs to be installed after NumPy and SciPy
 # are already installed.
-$ pip install numpy scipy
-$ pip install resampy tensorflow six
+$ sudo pip install numpy scipy
+$ sudo pip install resampy tensorflow six
 
 # Clone TensorFlow models repo into a 'models' directory.
 $ git clone https://github.com/tensorflow/models.git
-$ cd models/audioset
+$ cd models/research/audioset
 # Download data files into same directory as code.
 $ curl -O https://storage.googleapis.com/audioset/vggish_model.ckpt
 $ curl -O https://storage.googleapis.com/audioset/vggish_pca_params.npz

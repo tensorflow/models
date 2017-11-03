@@ -39,4 +39,8 @@ message PostProcessing {
 
   // Score converter to use.
   optional ScoreConverter score_converter = 2 [default = IDENTITY];
+  // Scale logit (input) value before conversion in post-processing step.
+  // Typically used for softmax distillation, though can be used to scale for
+  // other reasons.
+  optional float logit_scale = 3 [default = 1.0];
 }
