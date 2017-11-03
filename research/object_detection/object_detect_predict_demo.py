@@ -60,7 +60,7 @@ def load_image_into_numpy_array(image):
 # image1.jpg
 # image2.jpg
 # If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
-PATH_TO_TEST_IMAGES_DIR = r'C:\Users\sunhongzhi\Desktop\random_big_1000'
+PATH_TO_TEST_IMAGES_DIR = r'C:\Users\sunhongzhi\Desktop\deep32'
 
 print(PATH_TO_TEST_IMAGES_DIR)
 # Size, in inches, of the output images.
@@ -88,6 +88,7 @@ with detection_graph.as_default():
                     total_count = total_count + 1
                     # the array based representation of the image will be used later in order to prepare the
                     # result image with boxes and labels on it.
+                    print("path = " + image_path)
                     image_np = load_image_into_numpy_array(image)
                     # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                     image_np_expanded = np.expand_dims(image_np, axis=0)
@@ -107,8 +108,8 @@ with detection_graph.as_default():
                     print("image path = " + image_path + ",classes_result = ", classes_result, ",total_count = ",
                           total_count)
                     if classes_result is None:
-                        image.save(os.path.join("E:\data_mining\data\east_ic_logo\eval\error", file_name))
-                        error_count = error_count +1
+                        image.save(os.path.join(r'C:\Users\sunhongzhi\Desktop\test_error', file_name))
+                        error_count = error_count + 1
     print(" total_count= ", total_count)
     print(" error_count= ", error_count)
     print(" used time = ", (time.time() - start_time))

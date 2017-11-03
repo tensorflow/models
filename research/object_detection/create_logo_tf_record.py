@@ -31,7 +31,7 @@ import logging
 import os
 import random
 import re
-
+import sys
 from lxml import etree
 import PIL.Image
 import tensorflow as tf
@@ -76,16 +76,23 @@ def dict_to_tf_example(img_path,
 
     with tf.gfile.GFile(img_path, 'rb') as fid:
         encoded_jpg = fid.read()
-    encoded_jpg_io = io.BytesIO(encoded_jpg)
-    image = PIL.Image.open(img_path)
-    if image.format != 'JPEG':
-        raise ValueError('Image format not JPEG')
-    key = hashlib.sha256(encoded_jpg).hexdigest()
-
-    img_width = image.width
-    img_height = image.height
-
     filename = os.path.basename(img_path)
+
+    with PIL.Image.open(img_path) as image:
+        if image.mode == "RGBA":
+            return None
+        if image.format != 'JPEG':
+            raise ValueError('Image format not JPEG')
+        if is_eval:
+            eval_dir = os.path.join(FLAGS.eval_dir, class_name)
+            eval_path = os.path.join(eval_dir, filename)
+            image.save(eval_path)
+        img_width = image.width
+        img_height = image.height
+
+    print("img_height = d% ", img_height)
+
+    key = hashlib.sha256(encoded_jpg).hexdigest()
 
     classes = []
     classes_text = []
@@ -102,10 +109,7 @@ def dict_to_tf_example(img_path,
         y_padding = 10
     # print("img_path = " + img_path + ", Logo = " + class_name)
 
-    if is_eval:
-        eval_dir = os.path.join(FLAGS.eval_dir, class_name)
-        eval_path = os.path.join(eval_dir, filename)
-        image.save(eval_path)
+
 
     # label_text = "EastICLogo"
     label_text = class_name
@@ -133,6 +137,29 @@ def dict_to_tf_example(img_path,
         'image/object/class/label': dataset_util.int64_list_feature(classes),
     }))
     return example
+
+
+def convert_tf(train_examples, label_map_dict, file_name):
+    """
+    'logo_train.record'
+    :param train_examples:
+    :param label_map_dict:
+    :param file_name:
+    :return:
+    """
+    count = 0
+    train_output_path = os.path.join(FLAGS.output_dir, file_name)
+    print(train_output_path)
+    writer = tf.python_io.TFRecordWriter(train_output_path)
+    for train_path in train_examples:
+        head, tail = os.path.split(train_path)
+        class_name = os.path.basename(head)
+        tf_example = dict_to_tf_example(train_path, label_map_dict, class_name, False)
+        if tf_example is not None:
+            writer.write(tf_example.SerializeToString())
+            sys.stdout.write('\r>> Converting image %d/%d' % (count, len(train_examples)))
+            sys.stdout.flush()
+    writer.close()
 
 
 # TODO: Add test for pet/PASCAL main files.
@@ -164,25 +191,10 @@ def main(_):
     print('%d training and %d validation examples.', len(train_examples), len(val_examples))
 
     label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
-    train_output_path = os.path.join(FLAGS.output_dir, 'logo_train.record')
-    print(train_output_path)
-    writer = tf.python_io.TFRecordWriter(train_output_path)
-    for train_path in train_examples:
-        head, tail = os.path.split(train_path)
-        class_name = os.path.basename(head)
-        tf_example = dict_to_tf_example(train_path, label_map_dict, class_name, False)
-        writer.write(tf_example.SerializeToString())
-    writer.close()
 
-    eval_output_path = os.path.join(FLAGS.output_dir, 'logo_eval.record')
-    print(eval_output_path)
-    writer = tf.python_io.TFRecordWriter(eval_output_path)
-    for eval_path in val_examples:
-        head, tail = os.path.split(eval_path)
-        class_name = os.path.basename(head)
-        tf_example = dict_to_tf_example(eval_path, label_map_dict, class_name, True)
-        writer.write(tf_example.SerializeToString())
-    writer.close()
+    convert_tf(train_examples, label_map_dict, "logo_train.record")
+    convert_tf(train_examples, label_map_dict, "logo_eval.record")
+    print("======== over =============")
 
 
 if __name__ == '__main__':
