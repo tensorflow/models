@@ -16,7 +16,7 @@
 """Tests for object_detection.models.model_builder."""
 
 import tensorflow as tf
-import sys
+
 from google.protobuf import text_format
 from object_detection.builders import model_builder
 from object_detection.meta_architectures import faster_rcnn_meta_arch
@@ -40,11 +40,7 @@ FEATURE_EXTRACTOR_MAPS = {
     frcnn_resnet_v1.FasterRCNNResnet152FeatureExtractor
 }
 
-if sys.version_info[0] == (3):
-	FEATURE_EXTRACTOR_MAPS_ITEMS= FEATURE_EXTRACTOR_MAPS.items()
-if sys.version_info[0] == (2):
-	FEATURE_EXTRACTOR_MAPS_ITEMS= FEATURE_EXTRACTOR_MAPS.iteritems()
-	
+
 class ModelBuilderTest(tf.test.TestCase):
 
   def create_model(self, model_config):
@@ -335,9 +331,7 @@ class ModelBuilderTest(tf.test.TestCase):
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
-	
-
-    for extractor_type, extractor_class in FEATURE_EXTRACTOR_MAPS_ITEMS:
+    for extractor_type, extractor_class in FEATURE_EXTRACTOR_MAPS.items():
       model_proto.faster_rcnn.feature_extractor.type = extractor_type
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, faster_rcnn_meta_arch.FasterRCNNMetaArch)
@@ -736,8 +730,7 @@ class ModelBuilderTest(tf.test.TestCase):
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
-
-    for extractor_type, extractor_class in FEATURE_EXTRACTOR_MAPS_ITEMS:
+    for extractor_type, extractor_class in FEATURE_EXTRACTOR_MAPS.items():
       model_proto.faster_rcnn.feature_extractor.type = extractor_type
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, rfcn_meta_arch.RFCNMetaArch)
