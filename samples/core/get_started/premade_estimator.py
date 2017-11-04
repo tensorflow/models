@@ -27,8 +27,14 @@ parser.add_argument('--train_steps', default=200, type=int,
 
 TRAIN_URL = "http://download.tensorflow.org/data/iris_training.csv"
 TEST_URL = "http://download.tensorflow.org/data/iris_test.csv"
-
-COLUMNS = ['SepalLength', 'SepalWidth', 'PetalLength', 'PetalWidth', 'Species']
+data={
+        'SepalLength': [6.4, 5.8],
+        'SepalWidth': [3.2, 3.1],
+        'PetalLength': [4.5, 5.0],
+        'PetalWidth': [1.5, 1.7]
+    }
+COLUMNS = list(data)
+COLUMNS.append( 'Species')#
 SPECIES = ['Sentosa', 'Versicolor', 'Virginica']
 
 
@@ -85,12 +91,7 @@ def main(argv):
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
     # Generate predictions from the model
-    predict_input = make_dataset({
-        'SepalLength': [6.4, 5.8],
-        'SepalWidth': [3.2, 3.1],
-        'PetalLength': [4.5, 5.0],
-        'PetalWidth': [1.5, 1.7],
-    }).batch(args.batch_size)
+    predict_input = make_dataset(data).batch(args.batch_size)
 
     for p in classifier.predict(input_fn=from_dataset(predict_input)):
         template = ('Prediction is "{}" ({:.1f}%)')
