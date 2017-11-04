@@ -19,7 +19,7 @@ from __future__ import print_function
 import argparse
 import pandas as pd
 import tensorflow as tf
-
+import keras
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=100, type=int, help='batch size')
 parser.add_argument('--train_steps', default=200, type=int,
@@ -34,11 +34,11 @@ SPECIES = ['Sentosa', 'Versicolor', 'Virginica']
 
 def load_data(train_fraction=0.8, seed=0, y_name='Species'):
     """Returns the iris dataset as (train_x, train_y), (test_x, test_y)."""
-    train_path = tf.keras.utils.get_file(TRAIN_URL.split('/')[-1], TRAIN_URL)
+    train_path = keras.utils.get_file(TRAIN_URL.split('/')[-1], TRAIN_URL)
     train = pd.read_csv(train_path, names=COLUMNS, header=0)
     train_x, train_y = train, train.pop(y_name)
 
-    test_path = tf.keras.utils.get_file(TEST_URL.split('/')[-1], TEST_URL)
+    test_path = keras.utils.get_file(TEST_URL.split('/')[-1], TEST_URL)
     test = pd.read_csv(test_path, names=COLUMNS, header=0)
     test_x, test_y = test, test.pop(y_name)
 
@@ -46,7 +46,7 @@ def load_data(train_fraction=0.8, seed=0, y_name='Species'):
 
 
 def make_dataset(*inputs):
-    return tf.data.Dataset.from_tensor_slices(inputs)
+    return tf.contrib.data.Dataset.from_tensor_slices(inputs)
 
 
 def from_dataset(ds):
