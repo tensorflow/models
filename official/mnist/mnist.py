@@ -73,9 +73,6 @@ def input_fn(is_training, filename, batch_size=1, num_epochs=1):
 
   dataset = tf.data.TFRecordDataset([filename])
 
-  # Parse each example in the dataset
-  dataset = dataset.map(example_parser)
-
   # Apply dataset transformations
   if is_training:
     # When choosing shuffle buffer sizes, larger sizes result in better
@@ -88,8 +85,7 @@ def input_fn(is_training, filename, batch_size=1, num_epochs=1):
   dataset = dataset.repeat(num_epochs)
 
   # Map example_parser over dataset, and batch results by up to batch_size
-  dataset = dataset.map(
-      example_parser, num_threads=1, output_buffer_size=batch_size)
+  dataset = dataset.map(example_parser).prefetch(batch_size)
   dataset = dataset.batch(batch_size)
   iterator = dataset.make_one_shot_iterator()
   images, labels = iterator.get_next()
