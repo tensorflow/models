@@ -184,11 +184,10 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   if shuffle:
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
-  # Apply transformations to the Dataset
   # We call repeat after shuffling, rather than before, to prevent separate
   # epochs from blending together.
-  dataset = dataset.batch(batch_size)
   dataset = dataset.repeat(num_epochs)
+  dataset = dataset.batch(batch_size)
 
   iterator = dataset.make_one_shot_iterator()
   features, labels = iterator.get_next()
