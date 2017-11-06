@@ -54,7 +54,7 @@ class BaseTest(tf.test.TestCase):
       temp_csv.write(TEST_INPUT)
 
   def test_input_fn(self):
-    features, labels = wide_deep.input_fn(self.input_csv, 1, False, 1)()
+    features, labels = wide_deep.input_fn(self.input_csv, 1, False, 1)
     with tf.Session() as sess:
       features, labels = sess.run((features, labels))
 
@@ -78,20 +78,20 @@ class BaseTest(tf.test.TestCase):
 
     # Train for 1 step to initialize model and evaluate initial loss
     model.train(
-        input_fn=wide_deep.input_fn(
+        input_fn=lambda: wide_deep.input_fn(
             TEST_CSV, num_epochs=1, shuffle=True, batch_size=1),
         steps=1)
     initial_results = model.evaluate(
-        input_fn=wide_deep.input_fn(
+        input_fn=lambda: wide_deep.input_fn(
             TEST_CSV, num_epochs=1, shuffle=False, batch_size=1))
 
     # Train for 40 steps at batch size 2 and evaluate final loss
     model.train(
-        input_fn=wide_deep.input_fn(
+        input_fn=lambda: wide_deep.input_fn(
             TEST_CSV, num_epochs=None, shuffle=True, batch_size=2),
         steps=40)
     final_results = model.evaluate(
-        input_fn=wide_deep.input_fn(
+        input_fn=lambda: wide_deep.input_fn(
             TEST_CSV, num_epochs=1, shuffle=False, batch_size=1))
 
     print('%s initial results:' % model_type, initial_results)

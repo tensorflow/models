@@ -166,11 +166,14 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
       num_threads=1,
       output_buffer_size=2 * batch_size)
 
+  # We call repeat after shuffling, rather than before, to prevent separate
+  # epochs from blending together.
   dataset = dataset.repeat(num_epochs)
 
   # Batch results by up to batch_size, and then fetch the tuple from the
   # iterator.
-  iterator = dataset.batch(batch_size).make_one_shot_iterator()
+  dataset = dataset.batch(batch_size)
+  iterator = dataset.make_one_shot_iterator()
   images, labels = iterator.get_next()
 
   return images, labels
