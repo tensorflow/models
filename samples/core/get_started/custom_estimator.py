@@ -58,10 +58,8 @@ def my_model(features, labels, mode, params):
     # Create three fully connected layers each layer having a dropout
     # probability of 0.1.
     net = tf.feature_column.input_layer(features, params['feature_columns'])
-    for units in params.get('hidden_units', [10, 20, 10]):
+    for units in params['hidden_units']:
         net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
-        net = tf.layers.dropout(net, rate=0.1,
-                                training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Compute logits (1 per class).
     logits = tf.layers.dense(net, params['n_classes'], activation=None)
@@ -119,7 +117,7 @@ def main(argv):
         model_fn=my_model,
         params={
             'feature_columns': feature_columns,
-            'hidden_units': [10, 20, 10],
+            'hidden_units': [10, 10],
             'n_classes': 3,
         })
 
