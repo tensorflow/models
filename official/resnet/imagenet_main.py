@@ -143,7 +143,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
   dataset = dataset.map(lambda value: dataset_parser(value, is_training),
-                        num_parallel_calls=5)
+                        num_parallel_calls=5).prefetch(batch_size)
 
   if is_training:
     # When choosing shuffle buffer sizes, larger sizes result in better
