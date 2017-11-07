@@ -178,11 +178,12 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
     return features, tf.equal(labels, '>50K')
 
   # Extract lines from input files using the Dataset API.
-  dataset = tf.contrib.data.TextLineDataset(data_file)
-  dataset = dataset.map(parse_csv, num_threads=5)
+  dataset = tf.data.TextLineDataset(data_file)
 
   if shuffle:
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
+
+  dataset = dataset.map(parse_csv, num_parallel_calls=5)
 
   # We call repeat after shuffling, rather than before, to prevent separate
   # epochs from blending together.

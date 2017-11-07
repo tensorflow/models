@@ -71,13 +71,11 @@ _NUM_IMAGES = {
     'validation': 10000,
 }
 
-_SHUFFLE_BUFFER = 20000
-
 
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
   record_bytes = _HEIGHT * _WIDTH * _DEPTH + 1
-  return tf.contrib.data.FixedLengthRecordDataset(filenames, record_bytes)
+  return tf.data.FixedLengthRecordDataset(filenames, record_bytes)
 
 
 def get_filenames(is_training, data_dir):
@@ -97,74 +95,77 @@ def get_filenames(is_training, data_dir):
     return [os.path.join(data_dir, 'test_batch.bin')]
 
 
-def dataset_parser(value):
-  """Parse a CIFAR-10 record from value."""
+def parse_record(raw_record):
+  """Parse CIFAR-10 image and label from a raw record."""
   # Every record consists of a label followed by the image, with a fixed number
   # of bytes for each.
   label_bytes = 1
   image_bytes = _HEIGHT * _WIDTH * _DEPTH
   record_bytes = label_bytes + image_bytes
 
-  # Convert from a string to a vector of uint8 that is record_bytes long.
-  raw_record = tf.decode_raw(value, tf.uint8)
+  # Convert bytes to a vector of uint8 that is record_bytes long.
+  record_vector = tf.decode_raw(raw_record, tf.uint8)
 
-  # The first byte represents the label, which we convert from uint8 to int32.
-  label = tf.cast(raw_record[0], tf.int32)
+  # The first byte represents the label, which we convert from uint8 to int32
+  # and then to one-hot.
+  label = tf.cast(record_vector[0], tf.int32)
+  label = tf.one_hot(label, _NUM_CLASSES)
 
   # The remaining bytes after the label represent the image, which we reshape
   # from [depth * height * width] to [depth, height, width].
-  depth_major = tf.reshape(raw_record[label_bytes:record_bytes],
-                           [_DEPTH, _HEIGHT, _WIDTH])
+  depth_major = tf.reshape(
+      record_vector[label_bytes:record_bytes], [_DEPTH, _HEIGHT, _WIDTH])
 
   # Convert from [depth, height, width] to [height, width, depth], and cast as
   # float32.
   image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
 
-  return image, tf.one_hot(label, _NUM_CLASSES)
-
-
-def train_preprocess_fn(image, label):
-  """Preprocess a single training image of layout [height, width, depth]."""
-  # Resize the image to add four extra pixels on each side.
-  image = tf.image.resize_image_with_crop_or_pad(image, _HEIGHT + 8, _WIDTH + 8)
-
-  # Randomly crop a [_HEIGHT, _WIDTH] section of the image.
-  image = tf.random_crop(image, [_HEIGHT, _WIDTH, _DEPTH])
-
-  # Randomly flip the image horizontally.
-  image = tf.image.random_flip_left_right(image)
-
   return image, label
 
 
+def preprocess_image(image, is_training):
+  """Preprocess a single image of layout [height, width, depth]."""
+  if is_training:
+    # Resize the image to add four extra pixels on each side.
+    image = tf.image.resize_image_with_crop_or_pad(
+        image, _HEIGHT + 8, _WIDTH + 8)
+
+    # Randomly crop a [_HEIGHT, _WIDTH] section of the image.
+    image = tf.random_crop(image, [_HEIGHT, _WIDTH, _DEPTH])
+
+    # Randomly flip the image horizontally.
+    image = tf.image.random_flip_left_right(image)
+
+  # Subtract off the mean and divide by the variance of the pixels.
+  image = tf.image.per_image_standardization(image)
+  return image
+
+
 def input_fn(is_training, data_dir, batch_size, num_epochs=1):
-  """Input_fn using the contrib.data input pipeline for CIFAR-10 dataset.
+  """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
     is_training: A boolean denoting whether the input is for training.
+    data_dir: The directory containing the input data.
+    batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
 
   Returns:
     A tuple of images and labels.
   """
   dataset = record_dataset(get_filenames(is_training, data_dir))
-  dataset = dataset.map(dataset_parser, num_threads=1,
-                        output_buffer_size=2 * batch_size)
 
-  # For training, preprocess the image and shuffle.
   if is_training:
-    dataset = dataset.map(train_preprocess_fn, num_threads=1,
-                          output_buffer_size=2 * batch_size)
-
     # When choosing shuffle buffer sizes, larger sizes result in better
-    # randomness, while smaller sizes have better performance.
-    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
+    # randomness, while smaller sizes have better performance. Because CIFAR-10
+    # is a relatively small dataset, we choose to shuffle the full epoch.
+    dataset = dataset.shuffle(buffer_size=_NUM_IMAGES['train'])
 
-  # Subtract off the mean and divide by the variance of the pixels.
+  dataset = dataset.map(parse_record)
   dataset = dataset.map(
-      lambda image, label: (tf.image.per_image_standardization(image), label),
-      num_threads=1,
-      output_buffer_size=2 * batch_size)
+      lambda image, label: (preprocess_image(image, is_training), label))
+
+  dataset = dataset.prefetch(2 * batch_size)
 
   # We call repeat after shuffling, rather than before, to prevent separate
   # epochs from blending together.
