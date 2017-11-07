@@ -71,7 +71,7 @@ ENV PYTHON_BIN_PATH=/usr/bin/python
 # source. This makes it more convenient to re-compile DRAGNN / SyntaxNet for
 # development (though not as convenient as the docker-devel scripts).
 RUN cd $SYNTAXNETDIR/syntaxnet/tensorflow \
-    && ./configured CPU \
+    && ./configure CPU \
     && cd $SYNTAXNETDIR/syntaxnet \
     && bazel build -c opt @org_tensorflow//tensorflow:tensorflow_py
 
