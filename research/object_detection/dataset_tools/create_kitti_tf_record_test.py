@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Test for create_pascal_tf_record.py."""
+"""Test for create_kitti_tf_record.py."""
 
 import os
 
@@ -21,7 +21,7 @@ import numpy as np
 import PIL.Image
 import tensorflow as tf
 
-from object_detection import create_pascal_tf_record
+from object_detection.dataset_tools import create_kitti_tf_record
 
 
 class DictToTFExampleTest(tf.test.TestCase):
@@ -43,49 +43,44 @@ class DictToTFExampleTest(tf.test.TestCase):
     image = PIL.Image.fromarray(image_data, 'RGB')
     image.save(save_path)
 
-    data = {
-        'folder': '',
-        'filename': image_file_name,
-        'size': {
-            'height': 256,
-            'width': 256,
-        },
-        'object': [
-            {
-                'difficult': 1,
-                'bndbox': {
-                    'xmin': 64,
-                    'ymin': 64,
-                    'xmax': 192,
-                    'ymax': 192,
-                },
-                'name': 'person',
-                'truncated': 0,
-                'pose': '',
-            },
-        ],
-    }
+    annotations = {}
+    annotations['2d_bbox_left'] = np.array([64])
+    annotations['2d_bbox_top'] = np.array([64])
+    annotations['2d_bbox_right'] = np.array([192])
+    annotations['2d_bbox_bottom'] = np.array([192])
+    annotations['type'] = ['car']
+    annotations['truncated'] = np.array([1])
+    annotations['alpha'] = np.array([2])
+    annotations['3d_bbox_height'] = np.array([10])
+    annotations['3d_bbox_width'] = np.array([11])
+    annotations['3d_bbox_length'] = np.array([12])
+    annotations['3d_bbox_x'] = np.array([13])
+    annotations['3d_bbox_y'] = np.array([14])
+    annotations['3d_bbox_z'] = np.array([15])
+    annotations['3d_bbox_rot_y'] = np.array([4])
 
     label_map_dict = {
         'background': 0,
-        'person': 1,
-        'notperson': 2,
+        'car': 1,
     }
 
-    example = create_pascal_tf_record.dict_to_tf_example(
-        data, self.get_temp_dir(), label_map_dict, image_subdirectory='')
+    example = create_kitti_tf_record.prepare_example(
+        save_path,
+        annotations,
+        label_map_dict)
+
     self._assertProtoEqual(
         example.features.feature['image/height'].int64_list.value, [256])
     self._assertProtoEqual(
         example.features.feature['image/width'].int64_list.value, [256])
     self._assertProtoEqual(
         example.features.feature['image/filename'].bytes_list.value,
-        [image_file_name])
+        [save_path])
     self._assertProtoEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        [image_file_name])
+        [save_path])
     self._assertProtoEqual(
-        example.features.feature['image/format'].bytes_list.value, ['jpeg'])
+        example.features.feature['image/format'].bytes_list.value, ['png'])
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/xmin'].float_list.value,
         [0.25])
@@ -100,18 +95,35 @@ class DictToTFExampleTest(tf.test.TestCase):
         [0.75])
     self._assertProtoEqual(
         example.features.feature['image/object/class/text'].bytes_list.value,
-        ['person'])
+        ['car'])
     self._assertProtoEqual(
         example.features.feature['image/object/class/label'].int64_list.value,
         [1])
     self._assertProtoEqual(
-        example.features.feature['image/object/difficult'].int64_list.value,
+        example.features.feature['image/object/truncated'].float_list.value,
         [1])
     self._assertProtoEqual(
-        example.features.feature['image/object/truncated'].int64_list.value,
-        [0])
+        example.features.feature['image/object/alpha'].float_list.value,
+        [2])
+    self._assertProtoEqual(example.features.feature[
+        'image/object/3d_bbox/height'].float_list.value, [10])
     self._assertProtoEqual(
-        example.features.feature['image/object/view'].bytes_list.value, [''])
+        example.features.feature['image/object/3d_bbox/width'].float_list.value,
+        [11])
+    self._assertProtoEqual(example.features.feature[
+        'image/object/3d_bbox/length'].float_list.value, [12])
+    self._assertProtoEqual(
+        example.features.feature['image/object/3d_bbox/x'].float_list.value,
+        [13])
+    self._assertProtoEqual(
+        example.features.feature['image/object/3d_bbox/y'].float_list.value,
+        [14])
+    self._assertProtoEqual(
+        example.features.feature['image/object/3d_bbox/z'].float_list.value,
+        [15])
+    self._assertProtoEqual(
+        example.features.feature['image/object/3d_bbox/rot_y'].float_list.value,
+        [4])
 
 
 if __name__ == '__main__':
