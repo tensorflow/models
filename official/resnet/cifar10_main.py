@@ -71,8 +71,6 @@ _NUM_IMAGES = {
     'validation': 10000,
 }
 
-_SHUFFLE_BUFFER = 20000
-
 
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
@@ -158,8 +156,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
 
   if is_training:
     # When choosing shuffle buffer sizes, larger sizes result in better
-    # randomness, while smaller sizes have better performance.
-    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
+    # randomness, while smaller sizes have better performance. Because CIFAR-10
+    # is a relatively small dataset, we choose to shuffle the full epoch.
+    dataset = dataset.shuffle(buffer_size=_NUM_IMAGES['train'])
 
   dataset = dataset.map(parse_record)
   dataset = dataset.map(
