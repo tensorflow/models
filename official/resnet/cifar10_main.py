@@ -97,8 +97,8 @@ def get_filenames(is_training, data_dir):
     return [os.path.join(data_dir, 'test_batch.bin')]
 
 
-def parse_and_preprocess_record(raw_record, is_training):
-  """Parse and preprocess a CIFAR-10 image and label from a raw record."""
+def parse_record(raw_record):
+  """Parse CIFAR-10 image and label from a raw record."""
   # Every record consists of a label followed by the image, with a fixed number
   # of bytes for each.
   label_bytes = 1
@@ -120,12 +120,6 @@ def parse_and_preprocess_record(raw_record, is_training):
   # float32.
   image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
 
-  if is_training:
-    image = train_preprocess_fn(image)
-
-  # Subtract off the mean and divide by the variance of the pixels.
-  image = tf.image.per_image_standardization(image)
-
   return image, tf.one_hot(label, _NUM_CLASSES)
 
 
@@ -141,6 +135,18 @@ def train_preprocess_fn(image):
   image = tf.image.random_flip_left_right(image)
 
   return image
+
+
+def parse_and_preprocess(record, is_training):
+  """Parse and preprocess records in the CIFAR-10 dataset."""
+  image, label = parse_record(record)
+
+  if is_training:
+    image = train_preprocess_fn(image)
+
+  # Subtract off the mean and divide by the variance of the pixels.
+  image = tf.image.per_image_standardization(image)
+  return image, label
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1):
@@ -163,7 +169,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
   dataset = dataset.map(
-      lambda record: parse_and_preprocess_record(record, is_training))
+      lambda record: parse_and_preprocess(record, is_training))
   dataset = dataset.prefetch(2 * batch_size)
 
   # We call repeat after shuffling, rather than before, to prevent separate
