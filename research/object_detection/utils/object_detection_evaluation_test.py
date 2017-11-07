@@ -46,7 +46,9 @@ class OpenImagesV2EvaluationTest(tf.test.TestCase):
         standard_fields.InputDataFields.groundtruth_boxes:
             groundtruth_boxes1,
         standard_fields.InputDataFields.groundtruth_classes:
-            groundtruth_class_labels1
+            groundtruth_class_labels1,
+        standard_fields.InputDataFields.groundtruth_group_of:
+            np.array([], dtype=bool)
     })
     image_key2 = 'img2'
     groundtruth_boxes2 = np.array(
@@ -115,7 +117,9 @@ class PascalEvaluationTest(tf.test.TestCase):
         image_key1,
         {standard_fields.InputDataFields.groundtruth_boxes: groundtruth_boxes1,
          standard_fields.InputDataFields.groundtruth_classes:
-         groundtruth_class_labels1})
+         groundtruth_class_labels1,
+         standard_fields.InputDataFields.groundtruth_difficult:
+         np.array([], dtype=bool)})
     image_key2 = 'img2'
     groundtruth_boxes2 = np.array([[10, 10, 11, 11], [500, 500, 510, 510],
                                    [10, 10, 12, 12]], dtype=float)
