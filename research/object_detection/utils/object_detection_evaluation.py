@@ -166,12 +166,26 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     groundtruth_classes = groundtruth_dict[
         standard_fields.InputDataFields.groundtruth_classes]
     groundtruth_classes -= self._label_id_offset
+    # If the key is not present in the groundtruth_dict or the array is empty
+    # (unless there are no annotations for the groundtruth on this image)
+    # use values from the dictionary or insert None otherwise.
+    if (standard_fields.InputDataFields.groundtruth_difficult in
+        groundtruth_dict.keys() and
+        (groundtruth_dict[standard_fields.InputDataFields.groundtruth_difficult]
+         .size or not groundtruth_classes.size)):
+      groundtruth_difficult = groundtruth_dict[
+          standard_fields.InputDataFields.groundtruth_difficult]
+    else:
+      groundtruth_difficult = None
+      if not len(self._image_ids) % 1000:
+        logging.warn(
+            'image %s does not have groundtruth difficult flag specified',
+            image_id)
     self._evaluation.add_single_ground_truth_image_info(
         image_id,
         groundtruth_dict[standard_fields.InputDataFields.groundtruth_boxes],
         groundtruth_classes,
-        groundtruth_dict.get(
-            standard_fields.InputDataFields.groundtruth_difficult, None))
+        groundtruth_is_difficult_list=groundtruth_difficult)
     self._image_ids.update([image_id])
 
   def add_single_detected_image_info(self, image_id, detections_dict):
@@ -337,14 +351,27 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
     groundtruth_classes = groundtruth_dict[
         standard_fields.InputDataFields.groundtruth_classes]
     groundtruth_classes -= self._label_id_offset
-
+    # If the key is not present in the groundtruth_dict or the array is empty
+    # (unless there are no annotations for the groundtruth on this image)
+    # use values from the dictionary or insert None otherwise.
+    if (standard_fields.InputDataFields.groundtruth_group_of in
+        groundtruth_dict.keys() and
+        (groundtruth_dict[standard_fields.InputDataFields.groundtruth_group_of]
+         .size or not groundtruth_classes.size)):
+      groundtruth_group_of = groundtruth_dict[
+          standard_fields.InputDataFields.groundtruth_group_of]
+    else:
+      groundtruth_group_of = None
+      if not len(self._image_ids) % 1000:
+        logging.warn(
+            'image %s does not have groundtruth group_of flag specified',
+            image_id)
     self._evaluation.add_single_ground_truth_image_info(
         image_id,
         groundtruth_dict[standard_fields.InputDataFields.groundtruth_boxes],
         groundtruth_classes,
         groundtruth_is_difficult_list=None,
-        groundtruth_is_group_of_list=groundtruth_dict.get(
-            standard_fields.InputDataFields.groundtruth_group_of, None))
+        groundtruth_is_group_of_list=groundtruth_group_of)
     self._image_ids.update([image_id])
 
 
