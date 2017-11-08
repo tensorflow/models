@@ -44,7 +44,7 @@ parser.add_argument(
     help="Valid model types: {'wide', 'deep', 'wide_deep'}.")
 
 parser.add_argument(
-    '--train_epochs', type=int, default=20, help='Number of training epochs.')
+    '--train_epochs', type=int, default=40, help='Number of training epochs.')
 
 parser.add_argument(
     '--epochs_per_eval', type=int, default=2,
@@ -213,7 +213,7 @@ def main(unused_argv):
 
     # Display evaluation metrics
     print('Results at epoch', (n + 1) * FLAGS.epochs_per_eval)
-    print('-' * 30)
+    print('-' * 60)
 
     for key in sorted(results):
       print('%s: %s' % (key, results[key]))
