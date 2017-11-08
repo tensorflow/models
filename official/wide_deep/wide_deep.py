@@ -61,7 +61,10 @@ parser.add_argument(
     '--test_data', type=str, default='/tmp/census_data/adult.test',
     help='Path to the test data.')
 
-_SHUFFLE_BUFFER = 100000
+_NUM_EXAMPLES = {
+    'train': 32561,
+    'validation': 16281,
+}
 
 
 def build_model_columns():
@@ -181,7 +184,7 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   dataset = tf.data.TextLineDataset(data_file)
 
   if shuffle:
-    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
+    dataset = dataset.shuffle(buffer_size=_NUM_EXAMPLES['train'])
 
   dataset = dataset.map(parse_csv, num_parallel_calls=5)
 
