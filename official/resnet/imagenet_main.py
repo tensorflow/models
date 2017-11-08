@@ -89,8 +89,8 @@ def filenames(is_training, data_dir):
         for i in range(128)]
 
 
-def dataset_parser(value, is_training):
-  """Parse an Imagenet record from value."""
+def record_parser(value, is_training):
+  """Parse an ImageNet record from `value`."""
   keys_to_features = {
       'image/encoded':
           tf.FixedLenFeature((), tf.string, default_value=''),
@@ -134,22 +134,20 @@ def dataset_parser(value, is_training):
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   """Input function which provides batches for train or eval."""
-  dataset = tf.data.Dataset.from_tensor_slices(
-      filenames(is_training, data_dir))
+  dataset = tf.data.Dataset.from_tensor_slices(filenames(is_training, data_dir))
 
   if is_training:
     dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
 
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
+  dataset = dataset.map(lambda value: record_parser(value, is_training),
+                        num_parallel_calls=5)
+  dataset = dataset.prefetch(batch_size)
 
   if is_training:
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes have better performance.
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
-
-  dataset = dataset.map(lambda value: dataset_parser(value, is_training),
-                        num_parallel_calls=5)
-  dataset = dataset.prefetch(batch_size)
 
   # We call repeat after shuffling, rather than before, to prevent separate
   # epochs from blending together.
