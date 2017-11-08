@@ -14,7 +14,7 @@ Tensorflow Object Detection API depends on the following libraries:
 
 For detailed steps to install Tensorflow, follow the
 [Tensorflow installation instructions](https://www.tensorflow.org/install/).
-A typically user can install Tensorflow using one of the following commands:
+A typical user can install Tensorflow using one of the following commands:
 
 ``` bash
 # For CPU
