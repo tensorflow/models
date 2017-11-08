@@ -90,7 +90,7 @@ def filenames(is_training, data_dir):
 
 
 def record_parser(value, is_training):
-  """Parse an ImageNet record from value."""
+  """Parse an ImageNet record from `value`."""
   keys_to_features = {
       'image/encoded':
           tf.FixedLenFeature((), tf.string, default_value=''),
