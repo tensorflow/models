@@ -134,8 +134,7 @@ def record_parser(value, is_training):
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   """Input function which provides batches for train or eval."""
-  dataset = tf.data.Dataset.from_tensor_slices(
-      filenames(is_training, data_dir))
+  dataset = tf.data.Dataset.from_tensor_slices(filenames(is_training, data_dir))
 
   if is_training:
     dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
