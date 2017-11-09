@@ -184,9 +184,6 @@ def train(args):
     for key in iris_data.COLUMNS[:-1]:
         my_feature_spec[key] = tf.FixedLenFeature((), tf.float32)
 
-    my_receiver = tf.estimator.export.build_parsing_serving_input_receiver_fn(
-        my_feature_spec)
-
     # Build the Saved Model
     savedmodel_path = classifier.export_savedmodel(
         export_dir_base=args.export_dir,
