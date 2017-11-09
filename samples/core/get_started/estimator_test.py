@@ -25,6 +25,8 @@ from six.moves import StringIO
 
 import custom_estimator
 import premade_estimator
+import savedmodel_estimator
+
 import iris_data
 
 FOUR_LINES = "\n".join([
@@ -41,19 +43,22 @@ def four_lines_data(y_name="Species"):
   xy = (df, df.pop(y_name))
   return xy, xy
 
+PATCH = {"load_data": four_lines_data}
 
 class RegressionTest(tf.test.TestCase):
   """Test the regression examples in this directory."""
 
-  @tf.test.mock.patch.dict(iris_data.__dict__,
-                           {"load_data": four_lines_data})
+  @tf.test.mock.patch.dict(iris_data.__dict__, PATCH)
   def test_premade_estimator(self):
     premade_estimator.main([None, "--train_steps=1"])
 
-  @tf.test.mock.patch.dict(iris_data.__dict__,
-                           {"load_data": four_lines_data})
+  @tf.test.mock.patch.dict(iris_data.__dict__, PATCH)
   def test_custom_estimator(self):
     custom_estimator.main([None, "--train_steps=1"])
+
+  @tf.test.mock.patch.dict(iris_data.__dict__, PATCH)
+  def test_savedmodel_estimator(self):
+    savedmodel_estimator.main([None, "train", "--train_steps=1"])
 
 if __name__ == "__main__":
   tf.test.main()
