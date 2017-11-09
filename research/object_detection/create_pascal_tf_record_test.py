@@ -16,6 +16,7 @@
 """Test for create_pascal_tf_record.py."""
 
 import os
+import sys
 
 import numpy as np
 import PIL.Image
@@ -35,6 +36,19 @@ class DictToTFExampleTest(tf.test.TestCase):
     """
     proto_list = [p for p in proto_field]
     self.assertListEqual(proto_list, expectation)
+
+
+  def _cvt_bytes_py3(self, ustr):
+      """Helper function to convert unicode str to bytes,
+        because the value from tfrecord is bytes.
+
+      Args:
+        ustr: possible unicode string to be converted
+      """
+      if sys.version_info > (3,):
+          return bytes(ustr,'utf-8')
+      return ustr
+
 
   def test_dict_to_tf_example(self):
     image_file_name = 'tmp_image.jpg'
@@ -80,12 +94,12 @@ class DictToTFExampleTest(tf.test.TestCase):
         example.features.feature['image/width'].int64_list.value, [256])
     self._assertProtoEqual(
         example.features.feature['image/filename'].bytes_list.value,
-        [image_file_name])
+        [self._cvt_bytes_py3(image_file_name)])
     self._assertProtoEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        [image_file_name])
+        [self._cvt_bytes_py3(image_file_name)])
     self._assertProtoEqual(
-        example.features.feature['image/format'].bytes_list.value, ['jpeg'])
+        example.features.feature['image/format'].bytes_list.value, [self._cvt_bytes_py3('jpeg')])
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/xmin'].float_list.value,
         [0.25])
@@ -100,7 +114,7 @@ class DictToTFExampleTest(tf.test.TestCase):
         [0.75])
     self._assertProtoEqual(
         example.features.feature['image/object/class/text'].bytes_list.value,
-        ['person'])
+        [self._cvt_bytes_py3('person')])
     self._assertProtoEqual(
         example.features.feature['image/object/class/label'].int64_list.value,
         [1])
@@ -111,7 +125,7 @@ class DictToTFExampleTest(tf.test.TestCase):
         example.features.feature['image/object/truncated'].int64_list.value,
         [0])
     self._assertProtoEqual(
-        example.features.feature['image/object/view'].bytes_list.value, [''])
+        example.features.feature['image/object/view'].bytes_list.value, [self._cvt_bytes_py3('')])
 
 
 if __name__ == '__main__':
