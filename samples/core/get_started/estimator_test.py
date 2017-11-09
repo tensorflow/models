@@ -26,6 +26,7 @@ from six.moves import StringIO
 import custom_estimator
 import premade_estimator
 import savedmodel_estimator
+import tempfile
 
 import iris_data
 
@@ -58,7 +59,8 @@ class RegressionTest(tf.test.TestCase):
 
   @tf.test.mock.patch.dict(iris_data.__dict__, PATCH)
   def test_savedmodel_estimator(self):
-    savedmodel_estimator.main([None, "train", "--train_steps=1"])
+    savedmodel_estimator.main([None, "train", "--train_steps=1",
+                               "--export_dir", tempfile.mkdtemp()])
 
 if __name__ == "__main__":
   tf.test.main()

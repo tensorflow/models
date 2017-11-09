@@ -62,14 +62,14 @@ def dataset_input_fn(ds):
     return lambda: ds.make_one_shot_iterator().get_next()
 
 def encode_float_dict(example_dict):
-    """Serialize a {string:float} dict as a tf.train.Example"""
+    """Serialize a {string:float} dict as a tf.train.Example."""
     # Convert each value into tf.train.Feature
     my_feature_dict = {}
     for key, value in example_dict.items():
         value = tf.train.FloatList(value=[value])
         my_feature_dict[key] = tf.train.Feature(float_list=value)
 
-    # Convert the dict to a tf.train.Example
+    # Convert the dict to a tf.train.Example.
     features = tf.train.Features(feature=my_feature_dict)
     example = tf.train.Example(features=features)
 
@@ -77,11 +77,13 @@ def encode_float_dict(example_dict):
     return example.SerializeToString()
 
 def encode_examples(x):
-    """Encode a series of examples as tf.train.Examples"""
+    """Encode a series of examples as tf.train.Examples."""
     for index, row in pd.DataFrame(x).iterrows():
         yield encode_float_dict(dict(row))
 
 def prediction_client(args):
+    """Send the iris test data to the tensorflow_model_server."""
+    # Give clear error messages.
     error_template = (
         "This sub command requires the `{package}` pip package "
         "please install it with: \n"
@@ -98,15 +100,13 @@ def prediction_client(args):
             raise ImportError(
                 error_template.format(package='tensorflow-serving-api'))
 
-    (train, test) = iris_data.load_data()
-    del train
-
-    (test_x, test_y) = test
-    del test_y
+    # Load and encode the data
+    (train_x,train_y), (test_x, test_y) = iris_data.load_data()
+    del train_x, train_y, test_y
 
     encoded_x = list(encode_examples(test_x))
 
-    # Create a stub connected to host:port
+    # Create a stub connected to host:port.
     channel = implementations.insecure_channel(args.host, args.port)
     stub = prediction_service_pb2.beta_create_PredictionService_stub(channel)
 
@@ -143,6 +143,7 @@ def prediction_client(args):
     print(result['probabilities'])
 
 def main(argv):
+    """Parse argv, and dispatch to the apropriate sub-command."""
     args = parser.parse_args(argv[1:])
     if args.sub_command == "train":
         return train(args)
@@ -151,7 +152,8 @@ def main(argv):
         return prediction_client(args)
 
 def train(args):
-    # Fetch the data
+    """Train a simple model and export it as a Saved Model"""
+    # Fetch the datasets
     train_ds, test_ds = iris_data.datasets()
 
     # Feature columns describe the input: all columns are numeric.
@@ -174,7 +176,7 @@ def train(args):
     classifier.train(input_fn=dataset_input_fn(train_input),
                      steps=args.train_steps)
 
-    # Build the receiver function
+    # Build the receiver function.
     my_feature_spec = {}
     for key in iris_data.COLUMNS[:-1]:
         my_feature_spec[key] = tf.FixedLenFeature((), tf.float32)
@@ -182,7 +184,7 @@ def train(args):
     my_receiver = tf.estimator.export.build_parsing_serving_input_receiver_fn(
         my_feature_spec)
 
-    # Build the Saved Model
+    # Build the Saved Model.
     savedmodel_path = classifier.export_savedmodel(
         export_dir_base=args.export_dir,
         serving_input_receiver_fn=my_receiver)
