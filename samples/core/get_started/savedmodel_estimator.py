@@ -77,32 +77,26 @@ def encode_float_dict(example_dict):
     return example.SerializeToString()
 
 def encode_examples(x):
+    """Encode a series of examples as tf.train.Examples"""
     for index, row in pd.DataFrame(x).iterrows():
         yield encode_float_dict(dict(row))
 
-def iter_batches(x, batch_size=10):
-    batch = []
-    for example in x:
-        if len(batch) == batch_size:
-            yield batch
-            batch = []
-
-        batch.append(example)
-
-    if batch:
-        yield batch
-
 def prediction_client(args):
     error_template = (
-        "This sub command requires the `{package}` pip package \n"
+        "This sub command requires the `{package}` pip package "
         "please install it with: \n"
         "    pip install {package}")
 
     if 'implementations' not in globals():
         raise ImportError(error_template.format(package='grpcio'))
     if 'predict_pb2' not in globals():
-        raise ImportError(
-            error_template.format(package='tensorflow-serving-api'))
+        if sys.version_info >= (3,0):
+            raise ImportError(
+                "The tensorflow-serving-api package is not yet available"
+                "for python3")
+        else:
+            raise ImportError(
+                error_template.format(package='tensorflow-serving-api'))
 
     (train, test) = iris_data.load_data()
     del train
@@ -110,7 +104,7 @@ def prediction_client(args):
     (test_x, test_y) = test
     del test_y
 
-    encoded_x = encode_examples(test_x)
+    encoded_x = list(encode_examples(test_x))
 
     # Create a stub connected to host:port
     channel = implementations.insecure_channel(args.host, args.port)
@@ -127,27 +121,26 @@ def prediction_client(args):
     request.output_filter.append('class_ids')
     request.output_filter.append('probabilities')
 
-    for batch in iter_batches(encoded_x):
-        # Attach the batch to the request.
-        request.inputs['examples'].CopyFrom(tf.make_tensor_proto(batch))
+    # Attach the examples to the request.
+    request.inputs['examples'].CopyFrom(tf.make_tensor_proto(encoded_x))
 
-        # Send the request.
-        timeout_seconds = 5.0
-        future = stub.Predict.future(request, timeout_seconds)
+    # Send the request.
+    timeout_seconds = 5.0
+    future = stub.Predict.future(request, timeout_seconds)
 
-        # Wait for the result.
-        result = future.result()
+    # Wait for the result.
+    result = future.result()
 
-        # Convert the result to a dictionary of numpy arrays.
-        result = dict(result.outputs)
-        result = {key: tf.make_ndarray(value) for key, value in result.items()}
+    # Convert the result to a dictionary of numpy arrays.
+    result = dict(result.outputs)
+    result = {key: tf.make_ndarray(value) for key, value in result.items()}
 
-        # Print the results
-        print("\nClass_ids:")
-        print(result['class_ids'])
+    # Print the results
+    print("\nClass_ids:")
+    print(result['class_ids'])
 
-        print("\nProbabilities for each class:")
-        print(result['probabilities'])
+    print("\nProbabilities for each class:")
+    print(result['probabilities'])
 
 def main(argv):
     args = parser.parse_args(argv[1:])
@@ -194,7 +187,7 @@ def train(args):
         export_dir_base=args.export_dir,
         serving_input_receiver_fn=my_receiver)
 
-    print("\nModel exported to:\n    "+savedmodel_path)
+    print(u"\nModel exported to:\n    " + savedmodel_path.decode())
 
 if __name__ == '__main__':
     tf.logging.set_verbosity(tf.logging.INFO)
