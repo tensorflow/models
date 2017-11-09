@@ -177,7 +177,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
           categories=categories,
           summary_dir=eval_dir,
           export_dir=eval_config.visualization_export_dir,
-          show_groundtruth=eval_config.visualization_export_dir)
+          show_groundtruth=true)
     return result_dict
 
   variables_to_restore = tf.global_variables()
