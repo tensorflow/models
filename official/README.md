@@ -6,7 +6,7 @@ Currently the models are compatible with TensorFlow 1.4. If you are on an earlie
 
 ---
 
-Below is the list of the models available.
+Below is a list of the models available.
 
 [mnist](mnist): A basic model to classify digits from the MNIST dataset.
 
