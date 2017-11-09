@@ -20,6 +20,7 @@ import argparse
 import sys
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 try:
@@ -61,7 +62,7 @@ def dataset_input_fn(ds):
     return lambda: ds.make_one_shot_iterator().get_next()
 
 def encode_float_dict(example_dict):
-    """Serialize a {string:float} dict ias a tf.train.Example"""
+    """Serialize a {string:float} dict as a tf.train.Example"""
     # Convert each value into tf.train.Feature
     my_feature_dict = {}
     for key, value in example_dict.items():
@@ -75,14 +76,18 @@ def encode_float_dict(example_dict):
     # Return the example, serialize into a string.
     return example.SerializeToString()
 
-def make_batches(x, batch_size=10):
+def encode_examples(x):
+    for index, row in pd.DataFrame(x).iterrows():
+        yield encode_float_dict(dict(row))
+
+def iter_batches(x, batch_size=10):
     batch = []
-    for index, row in x.iterrows():
+    for example in x:
         if len(batch) == batch_size:
             yield batch
             batch = []
 
-        batch.append(encode_float_dict(dict(row)))
+        batch.append(example)
 
     if batch:
         yield batch
@@ -99,8 +104,13 @@ def prediction_client(args):
         raise ImportError(
             error_template.format(package='tensorflow-serving-api'))
 
-    (_, test) = iris_data.load_data()
-    (test_x, _) = test
+    (train, test) = iris_data.load_data()
+    del train
+
+    (test_x, test_y) = test
+    del test_y
+
+    encoded_x = encode_examples(test_x)
 
     # Create a stub connected to host:port
     channel = implementations.insecure_channel(args.host, args.port)
@@ -117,8 +127,8 @@ def prediction_client(args):
     request.output_filter.append('class_ids')
     request.output_filter.append('probabilities')
 
-    for batch in make_batches(test_x):
-        # attach the batch to the request.
+    for batch in iter_batches(encoded_x):
+        # Attach the batch to the request.
         request.inputs['examples'].CopyFrom(tf.make_tensor_proto(batch))
 
         # Send the request.
@@ -171,7 +181,7 @@ def train(args):
     classifier.train(input_fn=dataset_input_fn(train_input),
                      steps=args.train_steps)
 
-    # Build the reciever function
+    # Build the receiver function
     my_feature_spec = {}
     for key in iris_data.COLUMNS[:-1]:
         my_feature_spec[key] = tf.FixedLenFeature((), tf.float32)
@@ -184,7 +194,7 @@ def train(args):
         export_dir_base=args.export_dir,
         serving_input_receiver_fn=my_receiver)
 
-    print("\nmodel exported to:\n    "+savedmodel_path)
+    print("\nModel exported to:\n    "+savedmodel_path)
 
 if __name__ == '__main__':
     tf.logging.set_verbosity(tf.logging.INFO)
