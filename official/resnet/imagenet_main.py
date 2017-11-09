@@ -184,10 +184,11 @@ def resnet_model_fn(features, labels, mode, params):
   tf.identity(cross_entropy, name='cross_entropy')
   tf.summary.scalar('cross_entropy', cross_entropy)
 
-  # Add weight decay to the loss. We perform weight decay on all trainable
-  # variables, which includes batch norm beta and gamma variables.
+  # Add weight decay to the loss. We exclude the batch norm variables because
+  # doing so leads to a small improvement in accuracy.
   loss = cross_entropy + _WEIGHT_DECAY * tf.add_n(
-      [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
+      [tf.nn.l2_loss(v) for v in tf.trainable_variables()
+       if 'batch_normalization' not in v.name])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
     # Scale the learning rate linearly with the batch size. When the batch size
