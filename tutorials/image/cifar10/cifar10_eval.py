@@ -43,20 +43,25 @@ import tensorflow as tf
 
 import cifar10
 
-FLAGS = tf.app.flags.FLAGS
+parser = cifar10.parser
 
-tf.app.flags.DEFINE_string('eval_dir', '/tmp/cifar10_eval',
-                           """Directory where to write event logs.""")
-tf.app.flags.DEFINE_string('eval_data', 'test',
-                           """Either 'test' or 'train_eval'.""")
-tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/cifar10_train',
-                           """Directory where to read model checkpoints.""")
-tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
-                            """How often to run the eval.""")
-tf.app.flags.DEFINE_integer('num_examples', 10000,
-                            """Number of examples to run.""")
-tf.app.flags.DEFINE_boolean('run_once', False,
-                         """Whether to run eval only once.""")
+parser.add_argument('--eval_dir', type=str, default='/tmp/cifar10_eval',
+                    help='Directory where to write event logs.')
+
+parser.add_argument('--eval_data', type=str, default='test',
+                    help='Either `test` or `train_eval`.')
+
+parser.add_argument('--checkpoint_dir', type=str, default='/tmp/cifar10_train',
+                    help='Directory where to read model checkpoints.')
+
+parser.add_argument('--eval_interval_secs', type=int, default=60*5,
+                    help='How often to run the eval.')
+
+parser.add_argument('--num_examples', type=int, default=10000,
+                    help='Number of examples to run.')
+
+parser.add_argument('--run_once', type=bool, default=False,
+                    help='Whether to run eval only once.')
 
 
 def eval_once(saver, summary_writer, top_k_op, summary_op):
@@ -154,4 +159,5 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 
 if __name__ == '__main__':
+  FLAGS = parser.parse_args()
   tf.app.run()
