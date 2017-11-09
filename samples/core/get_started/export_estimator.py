@@ -60,40 +60,32 @@ predict_parser.add_argument('--port', type=int, default=8500,
 def dataset_input_fn(ds):
     return lambda: ds.make_one_shot_iterator().get_next()
 
-def encode_csv(row):
-    row = row.astype(str)
-    return ','.join(row)
+def encode_float_dict(example_dict):
+    """Serialize a {string:float} dict ias a tf.train.Example"""
+    # Convert each value into tf.train.Feature
+    my_feature_dict = {}
+    for key, value in example_dict.items():
+        value = tf.train.FloatList(value=[value])
+        my_feature_dict[key] = tf.train.Feature(float_list=value)
+
+    # Convert the dict to a tf.train.Example
+    features = tf.train.Features(feature=my_feature_dict)
+    example = tf.train.Example(features=features)
+
+    # Return the example, serialize into a string.
+    return example.SerializeToString()
 
 def make_batches(x, batch_size=10):
-    x = np.array(x)
     batch = []
-    for index, row in enumerate(x):
+    for index, row in x.iterrows():
         if len(batch) == batch_size:
             yield batch
             batch = []
 
-        batch.append(encode_csv(row))
+        batch.append(encode_float_dict(dict(row)))
 
     if batch:
         yield batch
-
-def my_receiver():
-   # The placeholder is where the parent program will write its input.
-   csv_input = tf.placeholder(tf.string, (None,))
-
-   feature_keys = iris_data.COLUMNS[:-1]
-   csv_defaults = [[0.0]]*(len(feature_keys))
-
-   # Build the feature dictionary from the parsed csv string.
-   parsed_fields = tf.decode_csv(csv_input, csv_defaults)
-   my_features = {}
-   for key, field in zip(feature_keys, parsed_fields):
-       my_features[key] = field
-
-   # return the two pipeline ends in a ServingInputReceiver
-   return tf.estimator.export.ServingInputReceiver(
-       my_features, csv_input)
-
 
 def prediction_client(args):
     error_template = (
@@ -127,7 +119,7 @@ def prediction_client(args):
 
     for batch in make_batches(test_x):
         # attach the batch to the request.
-        request.inputs['input'].CopyFrom(tf.make_tensor_proto(batch))
+        request.inputs['examples'].CopyFrom(tf.make_tensor_proto(batch))
 
         # Send the request.
         timeout_seconds = 5.0
@@ -183,6 +175,9 @@ def train(args):
     my_feature_spec = {}
     for key in iris_data.COLUMNS[:-1]:
         my_feature_spec[key] = tf.FixedLenFeature((), tf.float32)
+
+    my_receiver = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+        my_feature_spec)
 
     # Build the Saved Model
     savedmodel_path = classifier.export_savedmodel(
