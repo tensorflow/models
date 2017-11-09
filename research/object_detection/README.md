@@ -1,3 +1,4 @@
+
 # Tensorflow Object Detection API
 Creating accurate machine learning models capable of localizing and identifying
 multiple objects in a single image remains a core challenge in computer vision.
@@ -71,6 +72,18 @@ tensorflow/models Github
 issue name with "object_detection".
 
 ## Release information
+
+
+### November 6, 2017
+
+We have re-released faster versions of our (pre-trained) models in the
+<a href='g3doc/detection_model_zoo.md'>model zoo</a>.  In addition to what
+was available before, we are also adding Faster R-CNN models trained on COCO
+with Inception V2 and Resnet-50 feature extractors, as well as a Faster R-CNN
+with Resnet-101 model trained on the KITTI dataset.
+
+<b>Thanks to contributors</b>: Jonathan Huang, Vivek Rathod, Derek Chow,
+Tal Remez, Chen Sun.
 
 ### October 31, 2017
 
