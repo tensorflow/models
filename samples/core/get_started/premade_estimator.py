@@ -22,7 +22,7 @@ import tensorflow as tf
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=100, type=int, help='batch size')
-parser.add_argument('--train_steps', default=200, type=int,
+parser.add_argument('--train_steps', default=1000, type=int,
                     help='number of training steps')
 
 TRAIN_URL = "http://download.tensorflow.org/data/iris_training.csv"
@@ -65,10 +65,10 @@ def main(argv):
     feature_columns = [tf.feature_column.numeric_column(col_name)
                        for col_name in COLUMNS[:-1]]
 
-    # Build 3 layer DNN with 10, 20, 10 units respectively.
+    # Build 3 layer DNN with 10, 10 units respectively.
     classifier = tf.estimator.DNNClassifier(
         feature_columns=feature_columns,
-        hidden_units=[10, 20, 10],
+        hidden_units=[10, 10],
         n_classes=3)
 
     # Train the Model.
@@ -93,7 +93,7 @@ def main(argv):
     }).batch(args.batch_size)
 
     for p in classifier.predict(input_fn=from_dataset(predict_input)):
-        template = ('Prediction is "{}" ({:.1f}%)')
+        template = ('\nPrediction is "{}" ({:.1f}%)')
 
         class_id = p['class_ids'][0]
         probability = p['probabilities'][class_id]

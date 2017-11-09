@@ -22,7 +22,7 @@ import tensorflow as tf
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=100, type=int, help='batch size')
-parser.add_argument('--train_steps', default=200, type=int,
+parser.add_argument('--train_steps', default=1000, type=int,
                     help='number of training steps')
 
 TRAIN_URL = "http://download.tensorflow.org/data/iris_training.csv"
@@ -58,10 +58,8 @@ def my_model(features, labels, mode, params):
     # Create three fully connected layers each layer having a dropout
     # probability of 0.1.
     net = tf.feature_column.input_layer(features, params['feature_columns'])
-    for units in params.get('hidden_units', [10, 20, 10]):
+    for units in params['hidden_units']:
         net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
-        net = tf.layers.dropout(net, rate=0.1,
-                                training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Compute logits (1 per class).
     logits = tf.layers.dense(net, params['n_classes'], activation=None)
@@ -114,12 +112,12 @@ def main(argv):
     feature_columns = [tf.feature_column.numeric_column(col_name)
                        for col_name in COLUMNS[:-1]]
 
-    # Build 3 layer DNN with 10, 20, 10 units respectively.
+    # Build 3 layer DNN with 10, 10 units respectively.
     classifier = tf.estimator.Estimator(
         model_fn=my_model,
         params={
             'feature_columns': feature_columns,
-            'hidden_units': [10, 20, 10],
+            'hidden_units': [10, 10],
             'n_classes': 3,
         })
 
@@ -145,7 +143,7 @@ def main(argv):
     }).batch(args.batch_size)
 
     for p in classifier.predict(input_fn=from_dataset(predict_input)):
-        template = ('Prediction is "{}" ({:.1f}%)')
+        template = ('\nPrediction is "{}" ({:.1f}%)')
 
         class_id = p['class_ids'][0]
         probability = p['probabilities'][class_id]
