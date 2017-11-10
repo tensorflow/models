@@ -75,7 +75,7 @@ Some remarks on frozen inference graphs:
 | [faster_rcnn_resnet101_lowproposals_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_lowproposals_coco_2017_11_08.tar.gz) | 82 |  | Boxes |
 | [faster_rcnn_inception_resnet_v2_atrous_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_coco_2017_11_08.tar.gz) | 620 | 37 | Boxes |
 | [faster_rcnn_inception_resnet_v2_atrous_lowproposals_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_coco_2017_11_08.tar.gz) | 241 |  | Boxes |
-| [faster_rcnn_nas](http://download.tensorflow.org/models/object_detection/faster_rcnn_nas_lowproposals_coco_2017_11_08.tar.gz) | 1833 | 43 | Boxes |
+| [faster_rcnn_nas](http://download.tensorflow.org/models/object_detection/faster_rcnn_nas_coco_2017_11_08.tar.gz) | 1833 | 43 | Boxes |
 | [faster_rcnn_nas_lowproposals_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_nas_lowproposals_coco_2017_11_08.tar.gz) | 540 |  | Boxes |
 
 
