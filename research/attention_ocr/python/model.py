@@ -201,9 +201,11 @@ class Model(object):
     with tf.variable_scope('conv_tower_fn/INCE'):
       if reuse:
         tf.get_variable_scope().reuse_variables()
-      with slim.arg_scope(inception.inception_v3_arg_scope()):
-        net, _ = inception.inception_v3_base(
-            images, final_endpoint=mparams.final_endpoint)
+      with slim.arg_scope(
+        [slim.batch_norm, slim.dropout], is_training=is_training):  
+          with slim.arg_scope(inception.inception_v3_arg_scope()):
+            net, _ = inception.inception_v3_base(
+                images, final_endpoint=mparams.final_endpoint)
       return net
 
   def _create_lstm_inputs(self, net):
