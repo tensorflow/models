@@ -216,7 +216,7 @@ class SequenceLayerBase(object):
     Returns:
       A tensor with shape [batch_size, num_char_classes]
     """
-    prediction = tf.argmax(logit, dimension=1)
+    prediction = tf.argmax(logit, axis=1)
     return slim.one_hot_encoding(prediction, self._params.num_char_classes)
 
   def get_input(self, prev, i):
