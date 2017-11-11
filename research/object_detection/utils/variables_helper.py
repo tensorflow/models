@@ -42,7 +42,7 @@ def filter_variables(variables, filter_regex_list, invert=False):
     a list of filtered variables.
   """
   kept_vars = []
-  variables_to_ignore_patterns = filter(None, filter_regex_list)
+  variables_to_ignore_patterns = list(filter(None, filter_regex_list))
   for var in variables:
     add = True
     for pattern in variables_to_ignore_patterns:
