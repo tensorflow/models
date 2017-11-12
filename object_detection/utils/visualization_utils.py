@@ -27,6 +27,7 @@ import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import six
 import tensorflow as tf
+import box_label_manager
 
 
 _TITLE_LEFT_MARGIN = 10
@@ -86,7 +87,7 @@ def encode_image_array_as_png_str(image):
   output.close()
   return png_string
 
-
+# Updated by Frederic TOST, add the label manager
 def draw_bounding_box_on_image_array(image,
                                      ymin,
                                      xmin,
@@ -95,7 +96,9 @@ def draw_bounding_box_on_image_array(image,
                                      color='red',
                                      thickness=4,
                                      display_str_list=(),
-                                     use_normalized_coordinates=True):
+                                     use_normalized_coordinates=True,
+                                     box_label_manager = None,
+                                     font_size=24):
   """Adds a bounding box to an image (numpy array).
 
   Args:
@@ -115,10 +118,10 @@ def draw_bounding_box_on_image_array(image,
   image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
   draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,
                              thickness, display_str_list,
-                             use_normalized_coordinates)
+                             use_normalized_coordinates, box_label_manager, font_size)
   np.copyto(image, np.array(image_pil))
 
-
+# Updated by Frederic TOST, add the label manager
 def draw_bounding_box_on_image(image,
                                ymin,
                                xmin,
@@ -127,7 +130,9 @@ def draw_bounding_box_on_image(image,
                                color='red',
                                thickness=4,
                                display_str_list=(),
-                               use_normalized_coordinates=True):
+                               use_normalized_coordinates=True,
+                               box_label_manager=None,
+                               font_size=24):
   """Adds a bounding box to an image.
 
   Each string in display_str_list is displayed on a separate line above the
@@ -149,34 +154,102 @@ def draw_bounding_box_on_image(image,
   """
   draw = ImageDraw.Draw(image)
   im_width, im_height = image.size
+
+  # Frederic TOST
+  # Auto-mode for rectangle line thickness
+  if thickness == 0:
+      thickness = int(round(0.005 * image.height,0))
+
   if use_normalized_coordinates:
     (left, right, top, bottom) = (xmin * im_width, xmax * im_width,
                                   ymin * im_height, ymax * im_height)
   else:
     (left, right, top, bottom) = (xmin, xmax, ymin, ymax)
-  draw.line([(left, top), (left, bottom), (right, bottom),
-             (right, top), (left, top)], width=thickness, fill=color)
+
+  # Draw rectangle
+  if (box_label_manager):
+      if box_label_manager.isDrawRectangle():
+          draw.line([(left, top), (left, bottom), (right, bottom),
+                     (right, top), (left, top)], width=thickness, fill=color)
+  else:
+      draw.line([(left, top), (left, bottom), (right, bottom),
+            (right, top), (left, top)], width=thickness, fill=color)
+
   try:
-    font = ImageFont.truetype('arial.ttf', 24)
+      font = ImageFont.truetype('arial.ttf', font_size)
   except IOError:
-    font = ImageFont.load_default()
+      font = ImageFont.load_default()
+
+  # Frederic TOST
+  # Case where font_size == 0 (auto mode), select the best font size
+  if font_size == 0:
+      fontsize = 1
+      safety_counter = 0
+      # Portion is 2% of image height
+      while font.getsize("O")[0] < 0.02 * image.height:
+          # iterate until the text size is just larger than the criteria
+          fontsize += 1
+          font = ImageFont.truetype("arial.ttf", fontsize)
+          safety_counter = safety_counter + 1
+          if safety_counter > 100:
+              fontsize = 24
+      font_size = fontsize
 
   text_bottom = top
   # Reverse list and print from bottom to top.
   for display_str in display_str_list[::-1]:
     text_width, text_height = font.getsize(display_str)
     margin = np.ceil(0.05 * text_height)
-    draw.rectangle(
-        [(left, text_bottom - text_height - 2 * margin), (left + text_width,
-                                                          text_bottom)],
-        fill=color)
-    draw.text(
-        (left + margin, text_bottom - text_height - margin),
-        display_str,
-        fill='black',
-        font=font)
-    text_bottom -= text_height - 2 * margin
+    # draw.rectangle(
+    #     [(left, text_bottom - text_height - 2 * margin), (left + text_width,
+    #                                                       text_bottom)],
+    #     fill=color)
 
+    # draw.text(
+    #     (left + margin, text_bottom - text_height - margin),
+    #     display_str,
+    #     fill='black',
+    #     font=font)
+    # text_bottom -= text_height - 2 * margin
+
+    # Modified by Frederic TOST
+    # Compute a height ratio, if ratio < 10% put the label at the bottom of rectangle
+
+    # If a box label manage was set
+    if (box_label_manager):
+
+        # Draw label
+        if box_label_manager.isDrawLabel():
+            proposal_box = box_label_manager.addBoundingBoxAndLabelBox([left, top, right, bottom],
+                                                                       text_width, text_height + 2*margin )
+            draw.rectangle(proposal_box, fill=color)
+
+            draw.text((proposal_box[0] + margin, proposal_box[1] + margin), display_str, fill='black', font=font)
+
+    else:
+        # Use a simple algo, label top or botton of the bounding box
+        if (top / im_height < 0.1):
+            draw.rectangle(
+                [(left, bottom + text_height + 2 * margin), (left + text_width,
+                                                             bottom)],
+                fill=color)
+            draw.text(
+                (left + margin, bottom),
+                display_str,
+                fill='black',
+                font=font)
+            text_bottom += text_height + 2 * margin
+        else:
+            draw.rectangle(
+                [(left, text_bottom - text_height - 2 * margin), (left + text_width,
+                                                                  text_bottom)],
+                fill=color)
+            draw.text(
+                (left + margin, text_bottom - text_height - margin),
+                display_str,
+                fill='black',
+                font=font)
+            text_bottom -= text_height - 2 * margin
 
 def draw_bounding_boxes_on_image_array(image,
                                        boxes,
@@ -331,7 +404,8 @@ def visualize_boxes_and_labels_on_image_array(image,
                                               max_boxes_to_draw=20,
                                               min_score_thresh=.5,
                                               agnostic_mode=False,
-                                              line_thickness=4):
+                                              line_thickness=4,
+                                              font_size=24):
   """Overlay labeled boxes on an image with formatted scores and label names.
 
   This function groups boxes that correspond to the same location
@@ -397,8 +471,25 @@ def visualize_boxes_and_labels_on_image_array(image,
           box_to_color_map[box] = STANDARD_COLORS[
               classes[i] % len(STANDARD_COLORS)]
 
+  # Added by Frederic TOST
+  # 12 Nov 2017
+  # Sort the bounding box by they width, from small to large width
+  box_to_color_map_sorted = sorted(six.iteritems(box_to_color_map), key=lambda x: x[0][0] - x[0][2], reverse=True)
+  # np.array(box_to_color_map_sorted)[:,0]
+
+  # The image is an array, get width and height
+  the_box_label_manager = box_label_manager.BoxLabelManager(image.shape[1],image.shape[0])
+
+
+  #
+  # Start writing rectangles
+  #
+  the_box_label_manager.setDrawLabel(False)
+  the_box_label_manager.setDrawRectangle(True)
+
   # Draw all boxes onto image.
-  for box, color in six.iteritems(box_to_color_map):
+  # for box, color in six.iteritems(box_to_color_map):
+  for box, color in box_to_color_map_sorted:
     ymin, xmin, ymax, xmax = box
     if instance_masks is not None:
       draw_mask_on_image_array(
@@ -406,6 +497,8 @@ def visualize_boxes_and_labels_on_image_array(image,
           box_to_instance_masks_map[box],
           color=color
       )
+
+    # Add the bounding box with label
     draw_bounding_box_on_image_array(
         image,
         ymin,
@@ -415,7 +508,10 @@ def visualize_boxes_and_labels_on_image_array(image,
         color=color,
         thickness=line_thickness,
         display_str_list=box_to_display_str_map[box],
-        use_normalized_coordinates=use_normalized_coordinates)
+        use_normalized_coordinates=use_normalized_coordinates,
+        box_label_manager=the_box_label_manager,
+        font_size=font_size)
+
     if keypoints is not None:
       draw_keypoints_on_image_array(
           image,
@@ -423,3 +519,34 @@ def visualize_boxes_and_labels_on_image_array(image,
           color=color,
           radius=line_thickness / 2,
           use_normalized_coordinates=use_normalized_coordinates)
+
+  #
+  # Write labels
+  #
+  the_box_label_manager.setDrawLabel(True)
+  the_box_label_manager.setDrawRectangle(False)
+
+  # Draw all boxes onto image.
+  # for box, color in six.iteritems(box_to_color_map):
+  for box, color in box_to_color_map_sorted:
+      ymin, xmin, ymax, xmax = box
+      if instance_masks is not None:
+          draw_mask_on_image_array(
+              image,
+              box_to_instance_masks_map[box],
+              color=color
+          )
+
+      # Add the bounding box with label
+      draw_bounding_box_on_image_array(
+          image,
+          ymin,
+          xmin,
+          ymax,
+          xmax,
+          color=color,
+          thickness=line_thickness,
+          display_str_list=box_to_display_str_map[box],
+          use_normalized_coordinates=use_normalized_coordinates,
+          box_label_manager=the_box_label_manager,
+          font_size=font_size)
