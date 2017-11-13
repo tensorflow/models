@@ -13,540 +13,169 @@
 # limitations under the License.
 # ==============================================================================
 
-"""A set of functions that are used for visualization.
+"""This class manages the location of labels over an image.
 
-These functions often receive an image, perform some visualization on the image.
-The functions do not return a value, instead they modify the image itself.
-
+The objective is to minimize overlapping. The current algo is pretty simple but covers
+the majority of cases.
 """
-import collections
-import numpy as np
-import PIL.Image as Image
-import PIL.ImageColor as ImageColor
-import PIL.ImageDraw as ImageDraw
-import PIL.ImageFont as ImageFont
-import six
-import tensorflow as tf
-import box_label_manager
+
+# Max overlapping = 20%
+MAX_COVERING = 0.2
+
+class BoxLabelManager:
+
+    label_bounding_boxes = []
+    bounding_boxes       = []
+    image_width  = 0
+    image_height = 0
+    draw_rectangle = False
+    draw_label     = False
+
+    def __init__(self, _image_width, _image_height):
+        self.image_width  = _image_width
+        self.image_height = _image_height
+        self.label_bounding_boxes = []
+        self.bounding_boxes       = []
+
+    def setDrawRectangle(self, _value):
+        self.draw_rectangle = _value;
+
+    def isDrawRectangle(self):
+        return self.draw_rectangle
+
+    def isDrawLabel(self):
+        return self.draw_label
+
+    def setDrawLabel(self, _value):
+        self.draw_label = _value;
+
+    #
+    def addBoundingBoxAndLabelBox(self, _bounding_box, _label_width, _label_height):
+        """" Return the coordinates of the best label box and store it.
+
+                Args:
+                    _bounding_box: first box
+                    _label_width: second box
+                    _label_height:
+
+                Returns:
+                    A bounding box for the label as [left, top, right, bottom]
+
+                """
+
+        # Add the bounding box, for fun ;-)
+        self.bounding_boxes.append(_bounding_box)
+
+        left   = _bounding_box[0]
+        right  = _bounding_box[2]
+        top    = _bounding_box[1]
+        bottom = _bounding_box[3]
+
+        # Keep the initial propose
+        first_proposal = [ left , top - _label_height, left + _label_width , top]
+
+        # The offset will slide the box propose to the right or to the left
+        x_offset = 0
+        while x_offset < (right-left)-_label_width:
+
+            #
+            # Proposal 1
+            #
+            # First label box proposal, top/left
+
+            proposal_label_box =  [ left + x_offset, top - _label_height, left + _label_width + x_offset, top]
 
 
-_TITLE_LEFT_MARGIN = 10
-_TITLE_TOP_MARGIN = 10
-STANDARD_COLORS = [
-    'AliceBlue', 'Chartreuse', 'Aqua', 'Aquamarine', 'Azure', 'Beige', 'Bisque',
-    'BlanchedAlmond', 'BlueViolet', 'BurlyWood', 'CadetBlue', 'AntiqueWhite',
-    'Chocolate', 'Coral', 'CornflowerBlue', 'Cornsilk', 'Crimson', 'Cyan',
-    'DarkCyan', 'DarkGoldenRod', 'DarkGrey', 'DarkKhaki', 'DarkOrange',
-    'DarkOrchid', 'DarkSalmon', 'DarkSeaGreen', 'DarkTurquoise', 'DarkViolet',
-    'DeepPink', 'DeepSkyBlue', 'DodgerBlue', 'FireBrick', 'FloralWhite',
-    'ForestGreen', 'Fuchsia', 'Gainsboro', 'GhostWhite', 'Gold', 'GoldenRod',
-    'Salmon', 'Tan', 'HoneyDew', 'HotPink', 'IndianRed', 'Ivory', 'Khaki',
-    'Lavender', 'LavenderBlush', 'LawnGreen', 'LemonChiffon', 'LightBlue',
-    'LightCoral', 'LightCyan', 'LightGoldenRodYellow', 'LightGray', 'LightGrey',
-    'LightGreen', 'LightPink', 'LightSalmon', 'LightSeaGreen', 'LightSkyBlue',
-    'LightSlateGray', 'LightSlateGrey', 'LightSteelBlue', 'LightYellow', 'Lime',
-    'LimeGreen', 'Linen', 'Magenta', 'MediumAquaMarine', 'MediumOrchid',
-    'MediumPurple', 'MediumSeaGreen', 'MediumSlateBlue', 'MediumSpringGreen',
-    'MediumTurquoise', 'MediumVioletRed', 'MintCream', 'MistyRose', 'Moccasin',
-    'NavajoWhite', 'OldLace', 'Olive', 'OliveDrab', 'Orange', 'OrangeRed',
-    'Orchid', 'PaleGoldenRod', 'PaleGreen', 'PaleTurquoise', 'PaleVioletRed',
-    'PapayaWhip', 'PeachPuff', 'Peru', 'Pink', 'Plum', 'PowderBlue', 'Purple',
-    'Red', 'RosyBrown', 'RoyalBlue', 'SaddleBrown', 'Green', 'SandyBrown',
-    'SeaGreen', 'SeaShell', 'Sienna', 'Silver', 'SkyBlue', 'SlateBlue',
-    'SlateGray', 'SlateGrey', 'Snow', 'SpringGreen', 'SteelBlue', 'GreenYellow',
-    'Teal', 'Thistle', 'Tomato', 'Turquoise', 'Violet', 'Wheat', 'White',
-    'WhiteSmoke', 'Yellow', 'YellowGreen'
-]
+            # Surface if over an existing label box 30% of area
+            if self.isOverALabel(proposal_label_box)< MAX_COVERING:
+                # We are done
+                self.label_bounding_boxes.append(proposal_label_box)
+                return proposal_label_box
+
+            #
+            # Proposal 2
+            #
+            # Second proposal, bottom/left
+            proposal_label_box = [left + x_offset, bottom , left + _label_width + x_offset, bottom + _label_height]
+            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
+                # We are done
+                self.label_bounding_boxes.append(proposal_label_box)
+                return proposal_label_box
+
+            #
+            # Proposal 3
+            #
+            # Third proposal, top/right
+            proposal_label_box = [right-_label_width - x_offset, top - _label_height, right - x_offset, top]
+            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
+                # We are done
+                self.label_bounding_boxes.append(proposal_label_box)
+                return proposal_label_box
+
+            #
+            # Proposal 4
+            #
+            # Third proposal, bottom/right
+            proposal_label_box = [right-_label_width - x_offset, bottom , right - x_offset, bottom + _label_height]
+            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
+                # We are done
+                self.label_bounding_boxes.append(proposal_label_box)
+                return proposal_label_box
+
+            x_offset = x_offset + 20
 
 
-def save_image_array_as_png(image, output_path):
-  """Saves an image (represented as a numpy array) to PNG.
+        # Last chance
+        # Rectangle is as height as the image (95%)
+        if (bottom - top) > (0.95 * self.image_height):
+            # Inside the rectangle
+            first_proposal = [left, top, left + _label_width, top + _label_height]
 
-  Args:
-    image: a numpy array with shape [height, width, 3].
-    output_path: path to which image should be written.
-  """
-  image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
-  with tf.gfile.Open(output_path, 'w') as fid:
-    image_pil.save(fid, 'PNG')
+        return first_proposal
 
+    # Does the box proposal over an existing label ?
+    def isOverALabel(self, _label_box):
+        iou = 0
+        if (_label_box[0] < 0) or (_label_box[2]>self.image_width) or \
+            (_label_box[1] < 0) or (_label_box[3] > self.image_height):
+            return 1
 
-def encode_image_array_as_png_str(image):
-  """Encodes a numpy array into a PNG string.
+        # Take the worst situation
+        for current_box in self.label_bounding_boxes:
+            current_iou = self.get_intersection_over_union_v2(_label_box, current_box)
+            if current_iou > iou:
+                iou = current_iou
+        return iou
 
-  Args:
-    image: a numpy array with shape [height, width, 3].
+    def get_intersection_over_union_v2(self, boxA, boxB):
+        """" Just compute the intersection over union of 2 boxes, the result is in [0,1].
+        Args:
+            boxA: first box
+            boxB: second box
 
-  Returns:
-    PNG encoded image string.
-  """
-  image_pil = Image.fromarray(np.uint8(image))
-  output = six.BytesIO()
-  image_pil.save(output, format='PNG')
-  png_string = output.getvalue()
-  output.close()
-  return png_string
+        Returns:
+            The value of IOU as a float
 
-# Updated by Frederic TOST, add the label manager
-def draw_bounding_box_on_image_array(image,
-                                     ymin,
-                                     xmin,
-                                     ymax,
-                                     xmax,
-                                     color='red',
-                                     thickness=4,
-                                     display_str_list=(),
-                                     use_normalized_coordinates=True,
-                                     box_label_manager = None,
-                                     font_size=24):
-  """Adds a bounding box to an image (numpy array).
+        """
 
-  Args:
-    image: a numpy array with shape [height, width, 3].
-    ymin: ymin of bounding box in normalized coordinates (same below).
-    xmin: xmin of bounding box.
-    ymax: ymax of bounding box.
-    xmax: xmax of bounding box.
-    color: color to draw bounding box. Default is red.
-    thickness: line thickness. Default value is 4.
-    display_str_list: list of strings to display in box
-                      (each to be shown on its own line).
-    use_normalized_coordinates: If True (default), treat coordinates
-      ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
-      coordinates as absolute.
-  """
-  image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
-  draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,
-                             thickness, display_str_list,
-                             use_normalized_coordinates, box_label_manager, font_size)
-  np.copyto(image, np.array(image_pil))
+        # determine the (x, y)-coordinates of the intersection rectangle
+        xA = max(boxA[0], boxB[0])
+        yA = max(boxA[1], boxB[1])
+        xB = min(boxA[2], boxB[2])
+        yB = min(boxA[3], boxB[3])
 
-# Updated by Frederic TOST, add the label manager
-def draw_bounding_box_on_image(image,
-                               ymin,
-                               xmin,
-                               ymax,
-                               xmax,
-                               color='red',
-                               thickness=4,
-                               display_str_list=(),
-                               use_normalized_coordinates=True,
-                               box_label_manager=None,
-                               font_size=24):
-  """Adds a bounding box to an image.
+        # compute the area of intersection rectangle
+        interArea = (xB - xA + 1) * (yB - yA + 1)
 
-  Each string in display_str_list is displayed on a separate line above the
-  bounding box in black text on a rectangle filled with the input 'color'.
+        # compute the area of both the prediction and ground-truth
+        # rectangles
+        boxAArea = (boxA[2] - boxA[0] + 1) * (boxA[3] - boxA[1] + 1)
+        boxBArea = (boxB[2] - boxB[0] + 1) * (boxB[3] - boxB[1] + 1)
 
-  Args:
-    image: a PIL.Image object.
-    ymin: ymin of bounding box.
-    xmin: xmin of bounding box.
-    ymax: ymax of bounding box.
-    xmax: xmax of bounding box.
-    color: color to draw bounding box. Default is red.
-    thickness: line thickness. Default value is 4.
-    display_str_list: list of strings to display in box
-                      (each to be shown on its own line).
-    use_normalized_coordinates: If True (default), treat coordinates
-      ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
-      coordinates as absolute.
-  """
-  draw = ImageDraw.Draw(image)
-  im_width, im_height = image.size
+        # compute the intersection over union by taking the intersection
+        # area and dividing it by the sum of prediction + ground-truth
+        # areas - the interesection area
+        iou = interArea / float(boxAArea + boxBArea - interArea)
 
-  # Frederic TOST
-  # Auto-mode for rectangle line thickness
-  if thickness == 0:
-      thickness = int(round(0.005 * image.height,0))
-
-  if use_normalized_coordinates:
-    (left, right, top, bottom) = (xmin * im_width, xmax * im_width,
-                                  ymin * im_height, ymax * im_height)
-  else:
-    (left, right, top, bottom) = (xmin, xmax, ymin, ymax)
-
-  # Draw rectangle
-  if (box_label_manager):
-      if box_label_manager.isDrawRectangle():
-          draw.line([(left, top), (left, bottom), (right, bottom),
-                     (right, top), (left, top)], width=thickness, fill=color)
-  else:
-      draw.line([(left, top), (left, bottom), (right, bottom),
-            (right, top), (left, top)], width=thickness, fill=color)
-
-  try:
-      font = ImageFont.truetype('arial.ttf', font_size)
-  except IOError:
-      font = ImageFont.load_default()
-
-  # Frederic TOST
-  # Case where font_size == 0 (auto mode), select the best font size
-  if font_size == 0:
-      fontsize = 1
-      safety_counter = 0
-      # Portion is 2% of image height
-      while font.getsize("O")[0] < 0.02 * image.height:
-          # iterate until the text size is just larger than the criteria
-          fontsize += 1
-          font = ImageFont.truetype("arial.ttf", fontsize)
-          safety_counter = safety_counter + 1
-          if safety_counter > 100:
-              fontsize = 24
-      font_size = fontsize
-
-  text_bottom = top
-  # Reverse list and print from bottom to top.
-  for display_str in display_str_list[::-1]:
-    text_width, text_height = font.getsize(display_str)
-    margin = np.ceil(0.05 * text_height)
-    # draw.rectangle(
-    #     [(left, text_bottom - text_height - 2 * margin), (left + text_width,
-    #                                                       text_bottom)],
-    #     fill=color)
-
-    # draw.text(
-    #     (left + margin, text_bottom - text_height - margin),
-    #     display_str,
-    #     fill='black',
-    #     font=font)
-    # text_bottom -= text_height - 2 * margin
-
-    # Modified by Frederic TOST
-    # Compute a height ratio, if ratio < 10% put the label at the bottom of rectangle
-
-    # If a box label manage was set
-    if (box_label_manager):
-
-        # Draw label
-        if box_label_manager.isDrawLabel():
-            proposal_box = box_label_manager.addBoundingBoxAndLabelBox([left, top, right, bottom],
-                                                                       text_width, text_height + 2*margin )
-            draw.rectangle(proposal_box, fill=color)
-
-            draw.text((proposal_box[0] + margin, proposal_box[1] + margin), display_str, fill='black', font=font)
-
-    else:
-        # Use a simple algo, label top or botton of the bounding box
-        if (top / im_height < 0.1):
-            draw.rectangle(
-                [(left, bottom + text_height + 2 * margin), (left + text_width,
-                                                             bottom)],
-                fill=color)
-            draw.text(
-                (left + margin, bottom),
-                display_str,
-                fill='black',
-                font=font)
-            text_bottom += text_height + 2 * margin
-        else:
-            draw.rectangle(
-                [(left, text_bottom - text_height - 2 * margin), (left + text_width,
-                                                                  text_bottom)],
-                fill=color)
-            draw.text(
-                (left + margin, text_bottom - text_height - margin),
-                display_str,
-                fill='black',
-                font=font)
-            text_bottom -= text_height - 2 * margin
-
-def draw_bounding_boxes_on_image_array(image,
-                                       boxes,
-                                       color='red',
-                                       thickness=4,
-                                       display_str_list_list=()):
-  """Draws bounding boxes on image (numpy array).
-
-  Args:
-    image: a numpy array object.
-    boxes: a 2 dimensional numpy array of [N, 4]: (ymin, xmin, ymax, xmax).
-           The coordinates are in normalized format between [0, 1].
-    color: color to draw bounding box. Default is red.
-    thickness: line thickness. Default value is 4.
-    display_str_list_list: list of list of strings.
-                           a list of strings for each bounding box.
-                           The reason to pass a list of strings for a
-                           bounding box is that it might contain
-                           multiple labels.
-
-  Raises:
-    ValueError: if boxes is not a [N, 4] array
-  """
-  image_pil = Image.fromarray(image)
-  draw_bounding_boxes_on_image(image_pil, boxes, color, thickness,
-                               display_str_list_list)
-  np.copyto(image, np.array(image_pil))
-
-
-def draw_bounding_boxes_on_image(image,
-                                 boxes,
-                                 color='red',
-                                 thickness=4,
-                                 display_str_list_list=()):
-  """Draws bounding boxes on image.
-
-  Args:
-    image: a PIL.Image object.
-    boxes: a 2 dimensional numpy array of [N, 4]: (ymin, xmin, ymax, xmax).
-           The coordinates are in normalized format between [0, 1].
-    color: color to draw bounding box. Default is red.
-    thickness: line thickness. Default value is 4.
-    display_str_list_list: list of list of strings.
-                           a list of strings for each bounding box.
-                           The reason to pass a list of strings for a
-                           bounding box is that it might contain
-                           multiple labels.
-
-  Raises:
-    ValueError: if boxes is not a [N, 4] array
-  """
-  boxes_shape = boxes.shape
-  if not boxes_shape:
-    return
-  if len(boxes_shape) != 2 or boxes_shape[1] != 4:
-    raise ValueError('Input must be of size [N, 4]')
-  for i in range(boxes_shape[0]):
-    display_str_list = ()
-    if display_str_list_list:
-      display_str_list = display_str_list_list[i]
-    draw_bounding_box_on_image(image, boxes[i, 0], boxes[i, 1], boxes[i, 2],
-                               boxes[i, 3], color, thickness, display_str_list)
-
-
-def draw_keypoints_on_image_array(image,
-                                  keypoints,
-                                  color='red',
-                                  radius=2,
-                                  use_normalized_coordinates=True):
-  """Draws keypoints on an image (numpy array).
-
-  Args:
-    image: a numpy array with shape [height, width, 3].
-    keypoints: a numpy array with shape [num_keypoints, 2].
-    color: color to draw the keypoints with. Default is red.
-    radius: keypoint radius. Default value is 2.
-    use_normalized_coordinates: if True (default), treat keypoint values as
-      relative to the image.  Otherwise treat them as absolute.
-  """
-  image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
-  draw_keypoints_on_image(image_pil, keypoints, color, radius,
-                          use_normalized_coordinates)
-  np.copyto(image, np.array(image_pil))
-
-
-def draw_keypoints_on_image(image,
-                            keypoints,
-                            color='red',
-                            radius=2,
-                            use_normalized_coordinates=True):
-  """Draws keypoints on an image.
-
-  Args:
-    image: a PIL.Image object.
-    keypoints: a numpy array with shape [num_keypoints, 2].
-    color: color to draw the keypoints with. Default is red.
-    radius: keypoint radius. Default value is 2.
-    use_normalized_coordinates: if True (default), treat keypoint values as
-      relative to the image.  Otherwise treat them as absolute.
-  """
-  draw = ImageDraw.Draw(image)
-  im_width, im_height = image.size
-  keypoints_x = [k[1] for k in keypoints]
-  keypoints_y = [k[0] for k in keypoints]
-  if use_normalized_coordinates:
-    keypoints_x = tuple([im_width * x for x in keypoints_x])
-    keypoints_y = tuple([im_height * y for y in keypoints_y])
-  for keypoint_x, keypoint_y in zip(keypoints_x, keypoints_y):
-    draw.ellipse([(keypoint_x - radius, keypoint_y - radius),
-                  (keypoint_x + radius, keypoint_y + radius)],
-                 outline=color, fill=color)
-
-
-def draw_mask_on_image_array(image, mask, color='red', alpha=0.7):
-  """Draws mask on an image.
-
-  Args:
-    image: uint8 numpy array with shape (img_height, img_height, 3)
-    mask: a float numpy array of shape (img_height, img_height) with
-      values between 0 and 1
-    color: color to draw the keypoints with. Default is red.
-    alpha: transparency value between 0 and 1. (default: 0.7)
-
-  Raises:
-    ValueError: On incorrect data type for image or masks.
-  """
-  if image.dtype != np.uint8:
-    raise ValueError('`image` not of type np.uint8')
-  if mask.dtype != np.float32:
-    raise ValueError('`mask` not of type np.float32')
-  if np.any(np.logical_or(mask > 1.0, mask < 0.0)):
-    raise ValueError('`mask` elements should be in [0, 1]')
-  rgb = ImageColor.getrgb(color)
-  pil_image = Image.fromarray(image)
-
-  solid_color = np.expand_dims(
-      np.ones_like(mask), axis=2) * np.reshape(list(rgb), [1, 1, 3])
-  pil_solid_color = Image.fromarray(np.uint8(solid_color)).convert('RGBA')
-  pil_mask = Image.fromarray(np.uint8(255.0*alpha*mask)).convert('L')
-  pil_image = Image.composite(pil_solid_color, pil_image, pil_mask)
-  np.copyto(image, np.array(pil_image.convert('RGB')))
-
-
-def visualize_boxes_and_labels_on_image_array(image,
-                                              boxes,
-                                              classes,
-                                              scores,
-                                              category_index,
-                                              instance_masks=None,
-                                              keypoints=None,
-                                              use_normalized_coordinates=False,
-                                              max_boxes_to_draw=20,
-                                              min_score_thresh=.5,
-                                              agnostic_mode=False,
-                                              line_thickness=4,
-                                              font_size=24):
-  """Overlay labeled boxes on an image with formatted scores and label names.
-
-  This function groups boxes that correspond to the same location
-  and creates a display string for each detection and overlays these
-  on the image.  Note that this function modifies the image array in-place
-  and does not return anything.
-
-  Args:
-    image: uint8 numpy array with shape (img_height, img_width, 3)
-    boxes: a numpy array of shape [N, 4]
-    classes: a numpy array of shape [N]
-    scores: a numpy array of shape [N] or None.  If scores=None, then
-      this function assumes that the boxes to be plotted are groundtruth
-      boxes and plot all boxes as black with no classes or scores.
-    category_index: a dict containing category dictionaries (each holding
-      category index `id` and category name `name`) keyed by category indices.
-    instance_masks: a numpy array of shape [N, image_height, image_width], can
-      be None
-    keypoints: a numpy array of shape [N, num_keypoints, 2], can
-      be None
-    use_normalized_coordinates: whether boxes is to be interpreted as
-      normalized coordinates or not.
-    max_boxes_to_draw: maximum number of boxes to visualize.  If None, draw
-      all boxes.
-    min_score_thresh: minimum score threshold for a box to be visualized
-    agnostic_mode: boolean (default: False) controlling whether to evaluate in
-      class-agnostic mode or not.  This mode will display scores but ignore
-      classes.
-    line_thickness: integer (default: 4) controlling line width of the boxes.
-  """
-  # Create a display string (and color) for every box location, group any boxes
-  # that correspond to the same location.
-  box_to_display_str_map = collections.defaultdict(list)
-  box_to_color_map = collections.defaultdict(str)
-  box_to_instance_masks_map = {}
-  box_to_keypoints_map = collections.defaultdict(list)
-  if not max_boxes_to_draw:
-    max_boxes_to_draw = boxes.shape[0]
-  for i in range(min(max_boxes_to_draw, boxes.shape[0])):
-    if scores is None or scores[i] > min_score_thresh:
-      box = tuple(boxes[i].tolist())
-      if instance_masks is not None:
-        box_to_instance_masks_map[box] = instance_masks[i]
-      if keypoints is not None:
-        box_to_keypoints_map[box].extend(keypoints[i])
-      if scores is None:
-        box_to_color_map[box] = 'black'
-      else:
-        if not agnostic_mode:
-          if classes[i] in category_index.keys():
-            class_name = category_index[classes[i]]['name']
-          else:
-            class_name = 'N/A'
-          display_str = '{}: {}%'.format(
-              class_name,
-              int(100*scores[i]))
-        else:
-          display_str = 'score: {}%'.format(int(100 * scores[i]))
-        box_to_display_str_map[box].append(display_str)
-        if agnostic_mode:
-          box_to_color_map[box] = 'DarkOrange'
-        else:
-          box_to_color_map[box] = STANDARD_COLORS[
-              classes[i] % len(STANDARD_COLORS)]
-
-  # Added by Frederic TOST
-  # 12 Nov 2017
-  # Sort the bounding box by they width, from small to large width
-  box_to_color_map_sorted = sorted(six.iteritems(box_to_color_map), key=lambda x: x[0][0] - x[0][2], reverse=True)
-  # np.array(box_to_color_map_sorted)[:,0]
-
-  # The image is an array, get width and height
-  the_box_label_manager = box_label_manager.BoxLabelManager(image.shape[1],image.shape[0])
-
-
-  #
-  # Start writing rectangles
-  #
-  the_box_label_manager.setDrawLabel(False)
-  the_box_label_manager.setDrawRectangle(True)
-
-  # Draw all boxes onto image.
-  # for box, color in six.iteritems(box_to_color_map):
-  for box, color in box_to_color_map_sorted:
-    ymin, xmin, ymax, xmax = box
-    if instance_masks is not None:
-      draw_mask_on_image_array(
-          image,
-          box_to_instance_masks_map[box],
-          color=color
-      )
-
-    # Add the bounding box with label
-    draw_bounding_box_on_image_array(
-        image,
-        ymin,
-        xmin,
-        ymax,
-        xmax,
-        color=color,
-        thickness=line_thickness,
-        display_str_list=box_to_display_str_map[box],
-        use_normalized_coordinates=use_normalized_coordinates,
-        box_label_manager=the_box_label_manager,
-        font_size=font_size)
-
-    if keypoints is not None:
-      draw_keypoints_on_image_array(
-          image,
-          box_to_keypoints_map[box],
-          color=color,
-          radius=line_thickness / 2,
-          use_normalized_coordinates=use_normalized_coordinates)
-
-  #
-  # Write labels
-  #
-  the_box_label_manager.setDrawLabel(True)
-  the_box_label_manager.setDrawRectangle(False)
-
-  # Draw all boxes onto image.
-  # for box, color in six.iteritems(box_to_color_map):
-  for box, color in box_to_color_map_sorted:
-      ymin, xmin, ymax, xmax = box
-      if instance_masks is not None:
-          draw_mask_on_image_array(
-              image,
-              box_to_instance_masks_map[box],
-              color=color
-          )
-
-      # Add the bounding box with label
-      draw_bounding_box_on_image_array(
-          image,
-          ymin,
-          xmin,
-          ymax,
-          xmax,
-          color=color,
-          thickness=line_thickness,
-          display_str_list=box_to_display_str_map[box],
-          use_normalized_coordinates=use_normalized_coordinates,
-          box_label_manager=the_box_label_manager,
-          font_size=font_size)
+        # return the intersection over union value
+        return iou
