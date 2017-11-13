@@ -68,7 +68,8 @@ class HeadTransitionSystemTest : public ::testing::Test {
 
 TEST_F(HeadTransitionSystemTest, Characteristics) {
   EXPECT_EQ(1, transition_system_->NumActionTypes());
-  EXPECT_EQ(1, transition_system_->NumActions(10));
+  EXPECT_EQ(ParserTransitionSystem::kDynamicNumActions,
+            transition_system_->NumActions(10));
 }
 
 TEST_F(HeadTransitionSystemTest, GoldParsesCorrectly) {

@@ -27,13 +27,14 @@ from dragnn.python import spec_builder
 
 from syntaxnet import parser_trainer
 
-import syntaxnet.load_parser_ops
-
 FLAGS = tf.app.flags.FLAGS
-if not hasattr(FLAGS, 'test_srcdir'):
-  FLAGS.test_srcdir = ''
-if not hasattr(FLAGS, 'test_tmpdir'):
-  FLAGS.test_tmpdir = tf.test.get_temp_dir()
+
+
+def setUpModule():
+  if not hasattr(FLAGS, 'test_srcdir'):
+    FLAGS.test_srcdir = ''
+  if not hasattr(FLAGS, 'test_tmpdir'):
+    FLAGS.test_tmpdir = tf.test.get_temp_dir()
 
 
 class SpecBuilderTest(tf.test.TestCase):

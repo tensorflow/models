@@ -80,6 +80,38 @@ pad_to_batch: If set, the op will pad/truncate to this number of elements.
 pad_to_steps: If set, the op will pad/truncate to this number of steps.
 )doc");
 
+REGISTER_OP("BulkEmbedFixedFeatures")
+    .Input("handle: string")
+    .Input("embedding_matrix: num_channels * float")
+    .Output("output_handle: string")
+    .Output("embedding_vectors: float")
+    .Output("num_steps: int32")
+    .Attr("component: string")
+    .Attr("num_channels: int")
+    .Attr("pad_to_batch: int")
+    .Attr("pad_to_steps: int")
+    .SetIsStateful()
+    .Doc(R"doc(
+This op is a more efficient version of BulkFixedFeatures.
+
+It is intended to be run with large batch sizes at inference time. The op takes
+a handle to ComputeSession and embedding matrices as tensor inputs, and directly
+outputs concatenated embedding vectors. It calls the BulkEmbedFixedFeatures
+method on the underlying component directly, so it requires a padding vector
+to be passed.
+
+handle: A handle to ComputeSession.
+embedding_matrix: Embedding matrices.
+output_handle: A handle to the same ComputeSession after advancement.
+embedding_vectors: (matrix of float) Concatenated embeddings,
+  shaped as (batch * beam * token) x sum_channel(embedding_dim[channel]).
+num_steps: The batch was unrolled for these many steps.
+component: The name of a Component instance, matching the ComponentSpec.name.
+num_channels: The number of FixedFeature channels.
+pad_to_batch: The op will pad/truncate to this number of elements.
+pad_to_steps: The op will pad/truncate to this number of steps.
+)doc");
+
 REGISTER_OP("BulkAdvanceFromOracle")
     .Input("handle: string")
     .Output("output_handle: string")

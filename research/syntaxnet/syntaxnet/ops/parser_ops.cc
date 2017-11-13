@@ -258,7 +258,7 @@ REGISTER_OP("WordEmbeddingInitializer")
 Reads word embeddings from an sstable of dist_belief.TokenEmbedding protos for
 every word specified in a text vocabulary file.
 
-word_embeddings: a tensor containing word embeddings from the specified table.
+word_embeddings: a tensor containing word embeddings from the specified sstable.
 vectors: path to TF record file of word embedding vectors.
 task_context: file path at which to read the task context, for its "word-map"
   input.  Exactly one of `task_context` or `vocabulary` must be specified.

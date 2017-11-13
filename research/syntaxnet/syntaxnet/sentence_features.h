@@ -663,6 +663,10 @@ typedef FeatureExtractor<Sentence, int> SentenceExtractor;
 #define REGISTER_SENTENCE_IDX_FEATURE(name, type) \
   REGISTER_SYNTAXNET_FEATURE_FUNCTION(SentenceFeature, name, type)
 
+// Registry for the Sentence + token index feature functions.
+DECLARE_SYNTAXNET_CLASS_REGISTRY("sentence+index feature function",
+                                 SentenceFeature);
+
 }  // namespace syntaxnet
 
 #endif  // SYNTAXNET_SENTENCE_FEATURES_H_

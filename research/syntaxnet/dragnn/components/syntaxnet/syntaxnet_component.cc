@@ -28,6 +28,7 @@
 #include "syntaxnet/sparse.pb.h"
 #include "syntaxnet/task_spec.pb.h"
 #include "syntaxnet/utils.h"
+#include "tensorflow/core/lib/strings/str_util.h"
 #include "tensorflow/core/platform/logging.h"
 
 namespace syntaxnet {
@@ -105,7 +106,7 @@ void SyntaxNetComponent::InitializeComponent(const ComponentSpec &spec) {
     dims.push_back(StrCat(channel.embedding_dim()));
   }
 
-  context.SetParameter("neurosis_feature_syntax_version", "2");
+
   context.SetParameter("brain_parser_embedding_dims", utils::Join(dims, ";"));
   context.SetParameter("brain_parser_predicate_maps",
                        utils::Join(predicate_maps, ";"));
@@ -187,8 +188,9 @@ std::unique_ptr<Beam<SyntaxNetTransitionState>> SyntaxNetComponent::CreateBeam(
     return this->IsFinal(state);
   };
   auto oracle_function = [this](SyntaxNetTransitionState *state) {
-    VLOG(2) << "oracle_function action:" << this->GetOracleLabel(state);
-    return this->GetOracleLabel(state);
+    VLOG(2) << "oracle_function action:"
+            << tensorflow::str_util::Join(this->GetOracleVector(state), ", ");
+    return this->GetOracleVector(state);
   };
   auto beam_ptr = beam.get();
   auto advance_function = [this, beam_ptr](SyntaxNetTransitionState *state,
@@ -335,25 +337,32 @@ std::function<int(int, int, int)> SyntaxNetComponent::GetStepLookupFunction(
   }
 }
 
-void SyntaxNetComponent::AdvanceFromPrediction(const float transition_matrix[],
-                                               int transition_matrix_length) {
-  VLOG(2) << "Advancing from prediction.";
-  int matrix_index = 0;
-  int num_labels = transition_system_->NumActions(label_map_->Size());
-  for (int i = 0; i < batch_.size(); ++i) {
-    int max_beam_size = batch_.at(i)->max_size();
-    int matrix_size = num_labels * max_beam_size;
-    CHECK_LE(matrix_index + matrix_size, transition_matrix_length);
-    if (!batch_.at(i)->IsTerminal()) {
-      batch_.at(i)->AdvanceFromPrediction(&transition_matrix[matrix_index],
-                                          matrix_size, num_labels);
-    }
-    matrix_index += num_labels * max_beam_size;
+bool SyntaxNetComponent::AdvanceFromPrediction(const float *transition_matrix,
+                                               int num_items, int num_actions) {
+  VLOG(2) << "Advancing from prediction, component = " << spec_.name();
+  const int num_static_actions =
+      transition_system_->NumActions(label_map_->Size());
+  if (num_static_actions != ParserTransitionSystem::kDynamicNumActions) {
+    CHECK_EQ(num_static_actions, num_actions)
+        << "[" << spec_.name()
+        << "] static action set does not match transition matrix";
   }
+  for (int i = 0; i < batch_.size(); ++i) {
+    const int size = num_actions * batch_[i]->max_size();
+    if (!batch_[i]->IsTerminal()) {
+      bool success = batch_[i]->AdvanceFromPrediction(transition_matrix, size,
+                                                      num_actions);
+      if (!success) {
+        return false;
+      }
+    }
+    transition_matrix += size;
+  }
+  return true;
 }
 
 void SyntaxNetComponent::AdvanceFromOracle() {
-  VLOG(2) << "Advancing from oracle.";
+  VLOG(2) << "Advancing from oracle, component = " << spec_.name();
   for (auto &beam : batch_) {
     beam->AdvanceFromOracle();
   }
@@ -404,8 +413,18 @@ int SyntaxNetComponent::GetFixedFeatures(
         features.emplace_back(f);
         if (do_tracing_) {
           FixedFeatures fixed_features;
-          for (const string &name : f.description()) {
-            fixed_features.add_value_name(name);
+          CHECK_EQ(f.description_size(), f.id_size());
+          CHECK(f.weight_size() == 0 || f.weight_size() == f.id_size());
+          const bool has_weights = f.weight_size() != 0;
+          for (int i = 0; i < f.description_size(); ++i) {
+            if (has_weights) {
+              fixed_features.add_value_name(StrCat("id: ", f.id(i),
+                                                   " name: ", f.description(i),
+                                                   " weight: ", f.weight(i)));
+            } else {
+              fixed_features.add_value_name(
+                  StrCat("id: ", f.id(i), " name: ", f.description(i)));
+            }
           }
           fixed_features.set_feature_name("");
           auto *trace = GetLastStepInTrace(state->mutable_trace());
@@ -522,8 +541,8 @@ int SyntaxNetComponent::BulkGetFixedFeatures(
   // This would be a good place to add threading.
   for (int channel_id = 0; channel_id < num_channels; ++channel_id) {
     int feature_count = feature_counts[channel_id];
-    LOG(INFO) << "Feature count is " << feature_count << " for channel "
-              << channel_id;
+    VLOG(2) << "Feature count is " << feature_count << " for channel "
+            << channel_id;
     int32 *indices_tensor =
         extractor.AllocateIndexMemory(channel_id, feature_count);
     int64 *ids_tensor = extractor.AllocateIdMemory(channel_id, feature_count);
@@ -603,7 +622,9 @@ std::vector<std::vector<int>> SyntaxNetComponent::GetOracleLabels() const {
     for (int beam_idx = 0; beam_idx < beam->size(); ++beam_idx) {
       // Get the raw link features from the linked feature extractor.
       auto state = beam->beam_state(beam_idx);
-      oracle_labels.back().push_back(GetOracleLabel(state));
+
+      // Arbitrarily choose the first vector element.
+      oracle_labels.back().push_back(GetOracleVector(state).front());
     }
   }
   return oracle_labels;
@@ -661,13 +682,17 @@ bool SyntaxNetComponent::IsFinal(SyntaxNetTransitionState *state) const {
   return transition_system_->IsFinalState(*(state->parser_state()));
 }
 
-int SyntaxNetComponent::GetOracleLabel(SyntaxNetTransitionState *state) const {
+std::vector<int> SyntaxNetComponent::GetOracleVector(
+    SyntaxNetTransitionState *state) const {
   if (IsFinal(state)) {
     // It is not permitted to request an oracle label from a sentence that is
     // in a final state.
-    return -1;
+    return {-1};
   } else {
-    return transition_system_->GetNextGoldAction(*(state->parser_state()));
+    // TODO(googleuser): This should use the 'ParserAction' typedef.
+    std::vector<int> golds;
+    transition_system_->GetAllNextGoldActions(*(state->parser_state()), &golds);
+    return golds;
   }
 }
 

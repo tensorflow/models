@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Basic network units used in assembling DRAGNN graphs."""
 
 from __future__ import absolute_import
@@ -21,6 +20,8 @@ from __future__ import print_function
 
 import abc
 
+
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import nn
 from tensorflow.python.ops import tensor_array_ops as ta
@@ -141,17 +142,22 @@ def add_embeddings(channel_id, feature_spec, seed=None):
     embeddings = syntaxnet_ops.word_embedding_initializer(
         vectors=feature_spec.pretrained_embedding_matrix.part[0].file_pattern,
         vocabulary=feature_spec.vocab.part[0].file_pattern,
+
         num_special_embeddings=1,
         embedding_init=1.0,
         seed=seed1,
         seed2=seed2)
-    return tf.get_variable(name, initializer=tf.reshape(embeddings, shape))
+    return tf.get_variable(
+        name,
+        initializer=tf.reshape(embeddings, shape),
+        trainable=not feature_spec.is_constant)
   else:
     return tf.get_variable(
         name,
         shape,
         initializer=tf.random_normal_initializer(
-            stddev=1.0 / feature_spec.embedding_dim**.5, seed=seed))
+            stddev=1.0 / feature_spec.embedding_dim**.5, seed=seed),
+        trainable=not feature_spec.is_constant)
 
 
 def embedding_lookup(embedding_matrix, indices, ids, weights, size):
@@ -183,7 +189,7 @@ def fixed_feature_lookup(component, state, channel_id, stride):
 
   Args:
     component: Component object in which to look up the fixed features.
-    state: MasterState object for the live nlp_saft::dragnn::MasterState.
+    state: MasterState object for the live ComputeSession.
     channel_id: int id of the fixed feature to look up.
     stride: int Tensor of current batch * beam size.
 
@@ -226,6 +232,100 @@ def get_input_tensor(fixed_embeddings, linked_embeddings):
   # Concat_v2 takes care of optimizing away the concatenation
   # operation in the case when there is exactly one embedding input.
   return tf.concat([e.tensor for e in embeddings], 1)
+
+
+def add_var_initialized(name, shape, init_type, divisor=1.0, stddev=1e-4):
+  """Creates a tf.Variable with the given shape and initialization.
+
+  Args:
+    name: variable name
+    shape: variable shape
+    init_type: type of initialization (random, xavier, identity, varscale)
+    divisor: numerator for identity initialization where in_dim != out_dim,
+      should divide both in_dim and out_dim
+    stddev: standard deviation for random normal initialization
+
+  Returns:
+    tf.Variable object with the given shape and initialization
+
+  Raises:
+    ValueError: if identity initialization is specified for a tensor of rank < 4
+    NotImplementedError: if an unimplemented type of initialization is specified
+  """
+  if init_type == 'random':
+    # Random normal initialization
+    return tf.get_variable(
+        name,
+        shape=shape,
+        initializer=tf.random_normal_initializer(stddev=stddev),
+        dtype=tf.float32)
+  if init_type == 'xavier':
+    # Xavier normal initialization (Glorot and Bengio, 2010):
+    # http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
+    return tf.get_variable(
+        name,
+        shape=shape,
+        initializer=tf.contrib.layers.xavier_initializer(),
+        dtype=tf.float32)
+  if init_type == 'varscale':
+    # Variance scaling initialization (He at al. 2015):
+    # https://arxiv.org/abs/1502.01852
+    return tf.get_variable(
+        name,
+        shape=shape,
+        initializer=tf.contrib.layers.variance_scaling_initializer(),
+        dtype=tf.float32)
+  if init_type == 'identity':
+    # "Identity initialization" described in Yu and Koltun (2015):
+    # https://arxiv.org/abs/1511.07122v3 eqns. (4) and (5)
+    rank = len(shape)
+    square = shape[-1] == shape[-2]
+    if rank < 2:
+      raise ValueError(
+          'Identity initialization requires a tensor with rank >= 2. The given '
+          'shape has rank ' + str(rank))
+
+    if shape[-1] % divisor != 0 or shape[-2] % divisor != 0:
+      raise ValueError('Divisor must divide both shape[-1]=' + str(shape[-1]) +
+                       ' and shape[-2]=' + str(shape[-2]) + '. Divisor is: ' +
+                       str(divisor))
+
+    # If the desired shape is > 2 dimensions, we only want to set the values
+    # in the middle along the last two dims.
+    middle_indices = [int(s / 2) for s in shape]
+    middle_indices = middle_indices[:-2]
+
+    base_array = NotImplemented
+    if square:
+      if rank == 2:
+        base_array = np.eye(shape[-1])
+      else:
+        base_array = np.zeros(shape, dtype=np.float32)
+        base_array[[[i] for i in middle_indices]] = np.eye(shape[-1])
+    else:
+      # NOTE(strubell): We use NumPy's RNG here and not TensorFlow's because
+      # constructing this matrix with tf ops is tedious and harder to read.
+      base_array = np.random.normal(
+          size=shape, loc=0, scale=stddev).astype(np.float32)
+      m = divisor / shape[-1]
+
+      identity = np.eye(int(divisor))
+      x_stretch = int(shape[-1] / divisor)
+      y_stretch = int(shape[-2] / divisor)
+      x_stretched_ident = np.repeat(identity, x_stretch, 1)
+      xy_stretched_ident = np.repeat(x_stretched_ident, y_stretch, 0)
+      indices = np.where(xy_stretched_ident == 1.0)
+
+      if rank == 2:
+        base_array[indices[0], indices[1]] = m
+      else:
+        arr = base_array[[[i] for i in middle_indices]][0]
+        arr[indices[0], indices[1]] = m
+        base_array[[[i] for i in middle_indices]] = arr
+    return tf.get_variable(name, initializer=base_array)
+
+  raise NotImplementedError('Initialization type ' + init_type +
+                            ' is not implemented.')
 
 
 def get_input_tensor_with_stride(fixed_embeddings, linked_embeddings, stride):
@@ -304,8 +404,8 @@ def lookup_named_tensor(name, named_tensors):
   for named_tensor in named_tensors:
     if named_tensor.name == name:
       return named_tensor
-  raise KeyError('Name "%s" not found in named tensors: %s' %
-                 (name, named_tensors))
+  raise KeyError('Name "%s" not found in named tensors: %s' % (name,
+                                                               named_tensors))
 
 
 def activation_lookup_recurrent(component, state, channel_id, source_array,
@@ -317,7 +417,7 @@ def activation_lookup_recurrent(component, state, channel_id, source_array,
 
   Args:
     component: Component object in which to look up the fixed features.
-    state: MasterState object for the live nlp_saft::dragnn::MasterState.
+    state: MasterState object for the live ComputeSession.
     channel_id: int id of the fixed feature to look up.
     source_array: TensorArray from which to fetch feature vectors, expected to
         have size [steps + 1] elements of shape [stride, D] each.
@@ -381,7 +481,7 @@ def activation_lookup_other(component, state, channel_id, source_tensor,
 
   Args:
     component: Component object in which to look up the fixed features.
-    state: MasterState object for the live nlp_saft::dragnn::MasterState.
+    state: MasterState object for the live ComputeSession.
     channel_id: int id of the fixed feature to look up.
     source_tensor: Tensor from which to fetch feature vectors. Expected to have
         have shape [steps + 1, stride, D].
@@ -494,8 +594,8 @@ class LayerNorm(object):
 
       # Compute layer normalization using the batch_normalization function.
       variance_epsilon = 1E-12
-      outputs = nn.batch_normalization(
-          inputs, mean, variance, beta, gamma, variance_epsilon)
+      outputs = nn.batch_normalization(inputs, mean, variance, beta, gamma,
+                                       variance_epsilon)
       outputs.set_shape(inputs_shape)
       return outputs
 
@@ -529,12 +629,13 @@ class Layer(object):
       TensorArray object
     """
     check.Gt(self.dim, 0, 'Cannot create array when dimension is dynamic')
-    tensor_array = ta.TensorArray(dtype=tf.float32,
-                                  size=0,
-                                  dynamic_size=True,
-                                  clear_after_read=False,
-                                  infer_shape=False,
-                                  name='%s_array' % self.name)
+    tensor_array = ta.TensorArray(
+        dtype=tf.float32,
+        size=0,
+        dynamic_size=True,
+        clear_after_read=False,
+        infer_shape=False,
+        name='%s_array' % self.name)
 
     # Start each array with all zeros. Special values will still be learned via
     # the extra embedding dimension stored for each linked feature channel.
@@ -588,15 +689,17 @@ def maybe_apply_dropout(inputs, keep_prob, per_sequence, stride=None):
     shape of |inputs|, containing the masked or original inputs, depending on
     whether dropout was actually performed.
   """
-  check.Ge(inputs.get_shape().ndims, 2, 'inputs must be rank 2 or 3')
-  check.Le(inputs.get_shape().ndims, 3, 'inputs must be rank 2 or 3')
-  flat = (inputs.get_shape().ndims == 2)
 
   if keep_prob >= 1.0:
     return inputs
 
   if not per_sequence:
     return tf.nn.dropout(inputs, keep_prob)
+
+  # We only check the dims if we are applying per-sequence dropout
+  check.Ge(inputs.get_shape().ndims, 2, 'inputs must be rank 2 or 3')
+  check.Le(inputs.get_shape().ndims, 3, 'inputs must be rank 2 or 3')
+  flat = (inputs.get_shape().ndims == 2)
 
   check.NotNone(stride, 'per-sequence dropout requires stride')
   dim = inputs.get_shape().as_list()[-1]
@@ -629,7 +732,7 @@ class NetworkUnitInterface(object):
     layers (list): List of Layer objects to track network layers that should
       be written to Tensors during training and inference.
   """
-  __metaclass__ = abc.ABCMeta  # required for @abstractmethod
+  __metaclass__ = abc.ABCMeta  # required for @abc.abstractmethod
 
   def __init__(self, component, init_layers=None, init_context_layers=None):
     """Initializes parameters for embedding matrices.
@@ -692,8 +795,8 @@ class NetworkUnitInterface(object):
 
     # Compute the cumulative dimension of all inputs.  If any input has dynamic
     # dimension, then the result is -1.
-    input_dims = (self._fixed_feature_dims.values() +
-                  self._linked_feature_dims.values())
+    input_dims = (
+        self._fixed_feature_dims.values() + self._linked_feature_dims.values())
     if any(x < 0 for x in input_dims):
       self._concatenated_input_dim = -1
     else:
@@ -844,8 +947,7 @@ class NetworkUnitInterface(object):
         tf.reduce_sum(
             tf.multiply(
                 h_tensor, tf.reshape(p_vec, [-1, 1]), name='time_together2'),
-            0),
-        0)
+            0), 0)
     return tf.matmul(
         r_vec,
         self._component.get_variable('attention_weights_pu'),
@@ -908,6 +1010,7 @@ class FeedForwardNetwork(NetworkUnitInterface):
     Parameters used to construct the network:
       hidden_layer_sizes: comma-separated list of ints, indicating the
         number of hidden units in each hidden layer.
+      omit_logits (False): Whether to elide the logits layer.
       layer_norm_input (False): Whether or not to apply layer normalization
         on the concatenated input to the network.
       layer_norm_hidden (False): Whether or not to apply layer normalization
@@ -928,21 +1031,24 @@ class FeedForwardNetwork(NetworkUnitInterface):
           when the |dropout_keep_prob| parameter is negative.
     """
     self._attrs = get_attrs_with_defaults(
-        component.spec.network_unit.parameters, defaults={
+        component.spec.network_unit.parameters,
+        defaults={
             'hidden_layer_sizes': '',
+            'omit_logits': False,
             'layer_norm_input': False,
             'layer_norm_hidden': False,
             'nonlinearity': 'relu',
             'dropout_keep_prob': -1.0,
             'dropout_per_sequence': False,
-            'dropout_all_layers': False})
+            'dropout_all_layers': False
+        })
 
     # Initialize the hidden layer sizes before running the base initializer, as
-    # the base initializer may need to know the size of of the hidden layer for
+    # the base initializer may need to know the size of the hidden layer for
     # recurrent connections.
-    self._hidden_layer_sizes = (
-        map(int, self._attrs['hidden_layer_sizes'].split(','))
-        if self._attrs['hidden_layer_sizes'] else [])
+    self._hidden_layer_sizes = (map(
+        int, self._attrs['hidden_layer_sizes'].split(','))
+                                if self._attrs['hidden_layer_sizes'] else [])
     super(FeedForwardNetwork, self).__init__(component)
 
     # Infer dropout rate from network parameters and grid hyperparameters.
@@ -960,9 +1066,8 @@ class FeedForwardNetwork(NetworkUnitInterface):
       self._params.extend(self._layer_norm_input.params)
 
     if self._attrs['layer_norm_hidden']:
-      self._layer_norm_hidden = LayerNorm(self._component, 'layer_0',
-                                          self._hidden_layer_sizes[0],
-                                          tf.float32)
+      self._layer_norm_hidden = LayerNorm(
+          self._component, 'layer_0', self._hidden_layer_sizes[0], tf.float32)
       self._params.extend(self._layer_norm_hidden.params)
 
     # Extract nonlinearity from |tf.nn|.
@@ -984,13 +1089,11 @@ class FeedForwardNetwork(NetworkUnitInterface):
         self._params.append(
             tf.get_variable(
                 'bias_%d' % index, [hidden_layer_size],
-                initializer=tf.constant_initializer(
-                    0.2, dtype=tf.float32)))
+                initializer=tf.constant_initializer(0.2, dtype=tf.float32)))
 
       self._weights.append(weights)
       self._layers.append(
-          Layer(
-              component, name='layer_%d' % index, dim=hidden_layer_size))
+          Layer(component, name='layer_%d' % index, dim=hidden_layer_size))
       last_layer_dim = hidden_layer_size
 
     # Add a convenience alias for the last hidden layer, if any.
@@ -1000,7 +1103,7 @@ class FeedForwardNetwork(NetworkUnitInterface):
     # By default, regularize only the weights.
     self._regularized_weights.extend(self._weights)
 
-    if component.num_actions:
+    if component.num_actions and not self._attrs['omit_logits']:
       self._params.append(
           tf.get_variable(
               'weights_softmax', [last_layer_dim, component.num_actions],
@@ -1010,8 +1113,7 @@ class FeedForwardNetwork(NetworkUnitInterface):
               'bias_softmax', [component.num_actions],
               initializer=tf.zeros_initializer()))
       self._layers.append(
-          Layer(
-              component, name='logits', dim=component.num_actions))
+          Layer(component, name='logits', dim=component.num_actions))
 
   def create(self,
              fixed_embeddings,
@@ -1078,10 +1180,8 @@ class FeedForwardNetwork(NetworkUnitInterface):
       return self._hidden_layer_sizes[-1]
 
     if not layer_name.startswith('layer_'):
-      logging.fatal(
-          'Invalid layer name: "%s" Can only retrieve from "logits", '
-          '"last_layer", and "layer_*".',
-          layer_name)
+      logging.fatal('Invalid layer name: "%s" Can only retrieve from "logits", '
+                    '"last_layer", and "layer_*".', layer_name)
 
     # NOTE(danielandor): Since get_layer_size is called before the
     # model has been built, we compute the layer size directly from
@@ -1157,7 +1257,8 @@ class LSTMNetwork(NetworkUnitInterface):
 
     self._params.extend([
         self._x2i, self._h2i, self._c2i, self._bi, self._x2o, self._h2o,
-        self._c2o, self._bo, self._x2c, self._h2c, self._bc])
+        self._c2o, self._bo, self._x2c, self._h2c, self._bc
+    ])
 
     lstm_h_layer = Layer(component, name='lstm_h', dim=self._hidden_layer_sizes)
     lstm_c_layer = Layer(component, name='lstm_c', dim=self._hidden_layer_sizes)
@@ -1168,20 +1269,20 @@ class LSTMNetwork(NetworkUnitInterface):
     self._layers.extend(self._context_layers)
 
     self._layers.append(
-        Layer(
-            component, name='layer_0', dim=self._hidden_layer_sizes))
+        Layer(component, name='layer_0', dim=self._hidden_layer_sizes))
 
-    self.params.append(tf.get_variable(
-        'weights_softmax', [self._hidden_layer_sizes, component.num_actions],
-        initializer=tf.random_normal_initializer(stddev=1e-4)))
+    self.params.append(
+        tf.get_variable(
+            'weights_softmax',
+            [self._hidden_layer_sizes, component.num_actions],
+            initializer=tf.random_normal_initializer(stddev=1e-4)))
     self.params.append(
         tf.get_variable(
             'bias_softmax', [component.num_actions],
             initializer=tf.zeros_initializer()))
 
     self._layers.append(
-        Layer(
-            component, name='logits', dim=component.num_actions))
+        Layer(component, name='logits', dim=component.num_actions))
 
   def create(self,
              fixed_embeddings,
@@ -1214,6 +1315,13 @@ class LSTMNetwork(NetworkUnitInterface):
     # i_h_tm1, i_c_tm1 = h_{t-1}, c_{t-1}
     i_h_tm1 = context_tensor_arrays[0].read(length - 1)
     i_c_tm1 = context_tensor_arrays[1].read(length - 1)
+
+    # label c and h inputs
+    i_c_tm1 = tf.identity(i_c_tm1, name='lstm_c_in')
+    i_h_tm1 = tf.identity(i_h_tm1, name='lstm_h_in')
+
+    # label the feature input (for debugging purposes)
+    input_tensor = tf.identity(input_tensor, name='input_tensor')
 
     # apply dropout according to http://arxiv.org/pdf/1409.2329v5.pdf
     if during_training and self._input_dropout_rate < 1:
@@ -1251,7 +1359,8 @@ class LSTMNetwork(NetworkUnitInterface):
 
     h = tf.identity(ht, name='layer_0')
 
-    logits = tf.nn.xw_plus_b(ht, tf.get_variable('weights_softmax'),
+    logits = tf.nn.xw_plus_b(ht,
+                             tf.get_variable('weights_softmax'),
                              tf.get_variable('bias_softmax'))
 
     if self._component.spec.attention_component:
@@ -1284,7 +1393,7 @@ class ConvNetwork(NetworkUnitInterface):
       widths: comma separated list of ints, number of steps input to the
               convolutional kernel at every layer.
       depths: comma separated list of ints, number of channels input to the
-              convolutional kernel at every layer.
+              convolutional kernel at every layer except the first.
       output_embedding_dim: int, number of output channels for the convolutional
               kernel of the last layer, which receives no ReLU activation and
               therefore can be used in a softmax output. If zero, this final
@@ -1298,6 +1407,13 @@ class ConvNetwork(NetworkUnitInterface):
         sequence, instead of once per step.  See Gal and Ghahramani
         (https://arxiv.org/abs/1512.05287).
 
+    Raises:
+      RuntimeError: if the number of widths is not equal to the number of
+          depths - 1.
+
+    The input depth of the first layer is inferred from the total concatenated
+    size of the input features.
+
     Hyperparameters used:
       dropout_rate: The probability that an input is not dropped.  Only used
           when the |dropout_keep_prob| parameter is negative.
@@ -1305,21 +1421,34 @@ class ConvNetwork(NetworkUnitInterface):
 
     super(ConvNetwork, self).__init__(component)
     self._attrs = get_attrs_with_defaults(
-        component.spec.network_unit.parameters, defaults={
+        component.spec.network_unit.parameters,
+        defaults={
             'widths': '',
             'depths': '',
             'output_embedding_dim': 0,
             'nonlinearity': 'relu',
             'dropout_keep_prob': -1.0,
-            'dropout_per_sequence': False})
+            'dropout_per_sequence': False
+        })
 
     self._weights = []
     self._biases = []
     self._widths = map(int, self._attrs['widths'].split(','))
-    self._depths = map(int, self._attrs['depths'].split(','))
+    self._depths = [self._concatenated_input_dim]
+
+    # Since we infer the input dimension, depths could be empty
+    if self._attrs['depths']:
+      self._depths.extend(map(int, self._attrs['depths'].split(',')))
+
     self._output_dim = self._attrs['output_embedding_dim']
     if self._output_dim:
       self._depths.append(self._output_dim)
+
+    if len(self._widths) != len(self._depths) - 1:
+      raise RuntimeError(
+          'Unmatched widths/depths: %d/%d (depths should equal widths + 1)' %
+          (len(self._widths), len(self._depths)))
+
     self.kernel_shapes = []
     for i in range(len(self._depths) - 1):
       self.kernel_shapes.append(
@@ -1350,10 +1479,9 @@ class ConvNetwork(NetworkUnitInterface):
 
     self._params.extend(self._weights + self._biases)
     self._layers.append(
-        Layer(
-            component, name='conv_output', dim=self._depths[-1]))
-    self._regularized_weights.extend(self._weights[:-1] if self._output_dim else
-                                     self._weights)
+        Layer(component, name='conv_output', dim=self._depths[-1]))
+    self._regularized_weights.extend(self._weights[:-1]
+                                     if self._output_dim else self._weights)
 
   def create(self,
              fixed_embeddings,
@@ -1365,7 +1493,7 @@ class ConvNetwork(NetworkUnitInterface):
     """Requires |stride|; otherwise see base class."""
     if stride is None:
       raise RuntimeError("ConvNetwork needs 'stride' and must be called in the "
-                         "bulk feature extractor component.")
+                         'bulk feature extractor component.')
     input_tensor = get_input_tensor_with_stride(fixed_embeddings,
                                                 linked_embeddings, stride)
 
@@ -1388,8 +1516,253 @@ class ConvNetwork(NetworkUnitInterface):
         if i < (len(self._weights) - 1) or not self._output_dim:
           conv = self._nonlinearity(conv, name=scope.name)
     return [
+        tf.reshape(conv, [-1, self._depths[-1]], name='reshape_activations')
+    ]
+
+  def _maybe_apply_dropout(self, inputs, stride):
+    # The |inputs| are rank 4 (one 1xN "image" per sequence).  Squeeze out and
+    # restore the singleton image height, so dropout is applied to the normal
+    # rank 3 batched input tensor.
+    inputs = tf.squeeze(inputs, [1])
+    inputs = maybe_apply_dropout(inputs, self._dropout_rate,
+                                 self._attrs['dropout_per_sequence'], stride)
+    inputs = tf.expand_dims(inputs, 1)
+    return inputs
+
+
+class ConvMultiNetwork(NetworkUnitInterface):
+  """Implementation of a convolutional feed forward net with a side tower."""
+
+  def __init__(self, component):
+    """Initializes kernels and biases for this convolutional net.
+
+    Args:
+      component: parent ComponentBuilderBase object.
+
+    Parameters used to construct the network:
+      widths: comma separated list of ints, number of steps input to the
+              convolutional kernel at every layer.
+      depths: comma separated list of ints, number of channels input to the
+              convolutional kernel at every layer except the first.
+      output_embedding_dim: int, number of output channels for the convolutional
+              kernel of the last layer, which receives no ReLU activation and
+              therefore can be used in a softmax output. If zero, this final
+              layer is disabled entirely.
+      side_tower_index: An int representing the layer of the tower that the
+              side tower will start from. 0 is the input data and 'num_layers'
+              is the output.
+      side_tower_widths: comma separated list of ints, number of steps input to
+              the convolutional kernel at every layer of the side tower.
+      side_tower_depths: comma separated list of ints, number of channels input
+              to the convolutional kernel at every layer of the side tower save
+              the first.
+      side_tower_output_embedding_dim: int, number of output channels for the
+              kernel of the last layer, which receives no ReLU activation and
+              therefore can be used in a softmax output. If zero, this final
+              layer is disabled entirely.
+      nonlinearity ('relu'): Name of function from module "tf.nn" to apply to
+        each hidden layer; e.g., "relu" or "elu".
+      dropout_keep_prob (-1.0): The probability that an input is not dropped.
+        If >= 1.0, disables dropout.  If < 0.0, uses the global |dropout_rate|
+        hyperparameter.
+      dropout_per_sequence (False): If true, sample the dropout mask once per
+        sequence, instead of once per step.  See Gal and Ghahramani
+        (https://arxiv.org/abs/1512.05287).
+
+    Raises:
+      RuntimeError: if the number of widths is not equal to the number of
+          depths - 1.
+
+    The input depth of the first layer is inferred from the total concatenated
+    size of the input features.
+
+    Hyperparameters used:
+      dropout_rate: The probability that an input is not dropped.  Only used
+          when the |dropout_keep_prob| parameter is negative.
+    """
+
+    super(ConvMultiNetwork, self).__init__(component)
+    self._attrs = get_attrs_with_defaults(
+        component.spec.network_unit.parameters,
+        defaults={
+            'widths': '',
+            'depths': '',
+            'output_embedding_dim': 0,
+            'side_tower_index': 0,
+            'side_tower_widths': '',
+            'side_tower_depths': '',
+            'side_tower_output_embedding_dim': 0,
+            'nonlinearity': 'relu',
+            'dropout_keep_prob': -1.0,
+            'dropout_per_sequence': False
+        })
+
+    # Examine the widths and depths for the primary tower.
+    self._weights = []
+    self._biases = []
+    self._widths = map(int, self._attrs['widths'].split(','))
+    self._depths = [self._concatenated_input_dim]
+
+    # Since we infer the input dimension, depths could be empty.
+    if self._attrs['depths']:
+      self._depths.extend(map(int, self._attrs['depths'].split(',')))
+
+    self._output_dim = self._attrs['output_embedding_dim']
+    if self._output_dim:
+      self._depths.append(self._output_dim)
+
+    if len(self._widths) != len(self._depths) - 1:
+      raise RuntimeError(
+          'Unmatched widths/depths: %d/%d (depths should equal widths + 1)' %
+          (len(self._widths), len(self._depths)))
+
+    # Create the kernels for the primary tower.
+    self.kernel_shapes = []
+    for i in range(len(self._depths) - 1):
+      self.kernel_shapes.append(
+          [1, self._widths[i], self._depths[i], self._depths[i + 1]])
+    for i in range(len(self._depths) - 1):
+      with tf.variable_scope('conv%d' % i):
+        self._weights.append(
+            tf.get_variable(
+                'weights',
+                self.kernel_shapes[i],
+                initializer=tf.random_normal_initializer(stddev=1e-4),
+                dtype=tf.float32))
+        bias_init = 0.0 if (i == len(self._widths) - 1) else 0.2
+        self._biases.append(
+            tf.get_variable(
+                'biases',
+                self.kernel_shapes[i][-1],
+                initializer=tf.constant_initializer(bias_init),
+                dtype=tf.float32))
+
+    # Examine the widths and depths for the side tower.
+    self._side_index = self._attrs['side_tower_index']
+    self._side_weights = []
+    self._side_biases = []
+    self._side_widths = map(int, self._attrs['side_tower_widths'].split(','))
+    self._side_depths = [self._depths[self._side_index]]
+
+    # Since we infer the input dimension, depths could be empty.
+    if self._attrs['side_tower_depths']:
+      self._side_depths.extend(
+          map(int, self._attrs['side_tower_depths'].split(',')))
+
+    self._side_output_dim = self._attrs['side_tower_output_embedding_dim']
+    if self._side_output_dim:
+      self._depths.append(self._side_output_dim)
+
+    if len(self._side_widths) != len(self._side_depths) - 1:
+      raise RuntimeError(
+          'Unmatched widths/depths: %d/%d (depths should equal widths + 1)' %
+          (len(self._side_widths), len(self._side_depths)))
+
+    # Create the kernels for the side tower, if there is more than one layer.
+    self.side_kernel_shapes = []
+    for i in range(len(self._side_depths) - 1):
+      self.side_kernel_shapes.append([
+          1, self._side_widths[i], self._side_depths[i], self._side_depths[i
+                                                                           + 1]
+      ])
+    for i in range(len(self._side_depths) - 1):
+      with tf.variable_scope('side_conv%d' % i):
+        self._side_weights.append(
+            tf.get_variable(
+                'weights',
+                self.side_kernel_shapes[i],
+                initializer=tf.random_normal_initializer(stddev=1e-4),
+                dtype=tf.float32))
+        bias_init = 0.0 if (i == len(self._side_widths) - 1) else 0.2
+        self._side_biases.append(
+            tf.get_variable(
+                'biases',
+                self.side_kernel_shapes[i][-1],
+                initializer=tf.constant_initializer(bias_init),
+                dtype=tf.float32))
+
+    # Extract nonlinearity from |tf.nn|.
+    self._nonlinearity = getattr(tf.nn, self._attrs['nonlinearity'])
+
+    # Infer dropout rate from network parameters and grid hyperparameters.
+    self._dropout_rate = self._attrs['dropout_keep_prob']
+    if self._dropout_rate < 0.0:
+      self._dropout_rate = component.master.hyperparams.dropout_rate
+
+    self._params.extend(self._weights + self._biases + self._side_weights +
+                        self._side_biases)
+
+    # Append primary tower layers to the data structure.
+    self._layers.append(
+        Layer(component, name='conv_output', dim=self._depths[-1]))
+    if self._output_dim:
+      self._regularized_weights.extend(self._weights[:-1])
+    else:
+      self._regularized_weights.extend(self._weights)
+
+    # Append side tower layers to the data structure.
+    self._layers.append(
+        Layer(component, name='conv_side_output', dim=self._side_depths[-1]))
+    if self._side_output_dim:
+      self._regularized_weights.extend(self._side_weights[:-1])
+    else:
+      self._regularized_weights.extend(self._side_weights)
+
+  def create(self,
+             fixed_embeddings,
+             linked_embeddings,
+             context_tensor_arrays,
+             attention_tensor,
+             during_training,
+             stride=None):
+    """Requires |stride|; otherwise see base class."""
+    if stride is None:
+      raise RuntimeError("ConvNetwork needs 'stride' and must be called in the "
+                         'bulk feature extractor component.')
+    input_tensor = get_input_tensor_with_stride(fixed_embeddings,
+                                                linked_embeddings, stride)
+
+    # TODO(googleuser): Add context and attention.
+    del context_tensor_arrays, attention_tensor
+
+    # On CPU, add a dimension so that the 'image' has shape
+    # [stride, 1, num_steps, D].
+    conv = tf.expand_dims(input_tensor, 1)
+    for i in range(len(self._depths) - 1):
+      if i == self._side_index:
+        logging.info('Creating side tower at index %d', i)
+        side_conv = conv
+        for j in range(len(self._side_depths) - 1):
+          with tf.variable_scope('side_conv%d' % j, reuse=True) as scope:
+            if during_training:
+              side_conv.set_shape([None, 1, None, self._side_depths[j]])
+              side_conv = self._maybe_apply_dropout(side_conv, stride)
+            side_conv = tf.nn.conv2d(
+                side_conv,
+                self._component.get_variable('weights'), [1, 1, 1, 1],
+                padding='SAME')
+            side_conv = tf.nn.bias_add(side_conv,
+                                       self._component.get_variable('biases'))
+            if j < (len(self._side_weights) - 1) or not self._side_output_dim:
+              side_conv = self._nonlinearity(side_conv, name=scope.name)
+
+      with tf.variable_scope('conv%d' % i, reuse=True) as scope:
+        if during_training:
+          conv.set_shape([None, 1, None, self._depths[i]])
+          conv = self._maybe_apply_dropout(conv, stride)
+        conv = tf.nn.conv2d(
+            conv,
+            self._component.get_variable('weights'), [1, 1, 1, 1],
+            padding='SAME')
+        conv = tf.nn.bias_add(conv, self._component.get_variable('biases'))
+        if i < (len(self._weights) - 1) or not self._output_dim:
+          conv = self._nonlinearity(conv, name=scope.name)
+
+    return [
+        tf.reshape(conv, [-1, self._depths[-1]], name='reshape_activations'),
         tf.reshape(
-            conv, [-1, self._depths[-1]], name='reshape_activations')
+            side_conv, [-1, self._side_depths[-1]],
+            name='reshape_side_activations'),
     ]
 
   def _maybe_apply_dropout(self, inputs, stride):
@@ -1406,20 +1779,17 @@ class ConvNetwork(NetworkUnitInterface):
 class PairwiseConvNetwork(NetworkUnitInterface):
   """Implementation of a pairwise 2D convolutional feed forward network.
 
-  For a sequence of N tokens, all N^2 pairs of concatenated input features are
-  constructed. If each input vector is of length D, then the sequence is
-  represented by an image of dimensions [N, N] with 2*D channels per pixel.
-  I.e. pixel [i, j] has a representation that is the concatenation of the
-  representations of the tokens at i and at j.
+  For two sequences of representations of N tokens, all N^2 pairs of
+  concatenated input features are constructed. If each input vector is of
+  length D, then the sequence is represented by an image of dimensions [N, N]
+  with 2*D channels per pixel. I.e. pixel [i, j] has a representation that is
+  the concatenation of the representations of the tokens at i and at j.
 
-  To use this network for graph edge scoring, for instance by using the "heads"
-  transition system, the output layer needs to have dimensions [N, N] and only
-  a single channel. The network takes care of outputting an [N, N] sized layer,
-  but the user needs to ensure that the output depth equals 1.
-
-  TODO(googleuser): Like Dozat and Manning, we will need an
-  additional network to label the edges, and the ability to read head
-  and modifier representations from different inputs.
+  To use this network for graph edge scoring, for instance by using the
+  "heads_labels" transition system, the output layer needs to have dimensions
+  [N, N*num_labels]. The network takes care of outputting an [N, N*last_dim]
+  sized layer, but the user needs to ensure that the output depth equals the
+  desired number of output labels.
   """
 
   def __init__(self, component):
@@ -1430,62 +1800,98 @@ class PairwiseConvNetwork(NetworkUnitInterface):
           convolutional kernel at every layer.
       widths: comma separated list of ints, number of steps input to the
           convolutional kernel at every layer.
-      relu_layers: comma separate list of ints, the id of layers after which
-          to apply a relu activation. *By default, all but the final layer will
-          have a relu activation applied.*
+      dropout: comma separated list of floats, dropout keep probability for each
+          layer.
+      bias_init: comma separated list of floats, constant bias initializer for
+          each layer.
+      initialization: comma separated list of strings, initialization for each
+          layer. See add_var_initialized() for available initialization schemes.
+      activation_layers: comma separated list of ints, the id of layers after
+          which to apply an activation. *By default, all but the final layer
+          will have an activation applied.*
+      activation: anything defined in tf.nn.
 
-    To generate a network with M layers, both 'depths' and 'widths' must be of
-    length M. The input depth of the first layer is inferred from the total
-    concatenated size of the input features.
+    To generate a network with M layers, 'depths', 'widths', 'dropout',
+    'bias_init' and 'initialization' must be of length M. The input depth of the
+    first layer is inferred from the total concatenated size of the input
+    features.
 
     Args:
       component: parent ComponentBuilderBase object.
 
     Raises:
-      RuntimeError: if the number of depths and weights are not equal.
-      ValueError: if the final depth is not equal to 1.
+      RuntimeError: if the lists of dropout, bias_init, initialization, and
+          widths do not have equal length, or the number of widths is not
+          equal to the number of depths - 1.
     """
     parameters = component.spec.network_unit.parameters
     super(PairwiseConvNetwork, self).__init__(component)
 
+    self._source_dim = self._linked_feature_dims['sources']
+    self._target_dim = self._linked_feature_dims['targets']
+
     # Each input pixel will comprise the concatenation of two tokens, so the
     # input depth is double that for a single token.
-    self._depths = [self._concatenated_input_dim * 2]
-    self._depths.extend(map(int, parameters['depths'].split(',')))
+    self._depths = [self._source_dim + self._target_dim]
     self._widths = map(int, parameters['widths'].split(','))
     self._num_layers = len(self._widths)
-    if len(self._depths) != self._num_layers + 1:
-      raise RuntimeError('Unmatched depths/weights %s/%s' %
-                         (parameters['depths'], parameters['weights']))
-    if self._depths[-1] != 1:
-      raise ValueError('Final depth is not equal to 1 in %s' %
-                       parameters['depths'])
+    self._dropout = map(float, parameters['dropout'].split(',')) if parameters[
+        'dropout'] else [1.0] * self._num_layers
+    self._bias_init = map(float, parameters['bias_init'].split(
+        ',')) if parameters['bias_init'] else [0.01] * self._num_layers
+    self._initialization = parameters['initialization'].split(
+        ',') if parameters['initialization'] else ['xavier'] * self._num_layers
+    param_lengths = map(len, [
+        self._widths, self._dropout, self._bias_init, self._initialization
+    ])
+    if not all(param_lengths[0] == param_len for param_len in param_lengths):
+      raise RuntimeError(
+          'Unmatched widths/dropout/bias_init/initialization: ' +
+          '%d/%d/%d/%d' % (param_lengths[0], param_lengths[1],
+                           param_lengths[2], param_lengths[3]))
+
+    self._depths.extend(map(int, parameters['depths'].split(',')))
+    if len(self._depths) != len(self._widths) + 1:
+      raise RuntimeError(
+          'Unmatched widths/depths: %d/%d (depths should equal widths + 1)' %
+          (len(self._widths), len(self._depths)))
+
+    if parameters['activation']:
+      self._activation = parameters['activation']
+    else:
+      self._activation = 'relu'
+    self._activation_fn = getattr(tf.nn, self._activation)
+
+    self._num_labels = self._depths[-1]
+
+    if parameters['activation_layers']:
+      self._activation_layers = set(map(int,
+                                        parameters['activation_layers'].split(
+                                            ',')))
+    else:
+      self._activation_layers = set(range(self._num_layers - 1))
 
     self._kernel_shapes = []
     for i, width in enumerate(self._widths):
-      self._kernel_shapes.append(
-          [width, width, self._depths[i], self._depths[i + 1]])
-    if parameters['relu_layers']:
-      self._relu_layers = set(map(int, parameters['relu_layers'].split(',')))
-    else:
-      self._relu_layers = set(range(self._num_layers - 1))
+      if self._activation == 'glu' and i in self._activation_layers:
+        self._kernel_shapes.append(
+            [width, width, self._depths[i], 2*self._depths[i + 1]])
+      else:
+        self._kernel_shapes.append(
+            [width, width, self._depths[i], self._depths[i + 1]])
 
     self._weights = []
     self._biases = []
     for i, kernel_shape in enumerate(self._kernel_shapes):
       with tf.variable_scope('conv%d' % i):
         self._weights.append(
-            tf.get_variable(
-                'weights',
-                kernel_shape,
-                initializer=tf.random_normal_initializer(stddev=1e-4),
-                dtype=tf.float32))
-        bias_init = 0.0 if i in self._relu_layers else 0.2
+            add_var_initialized('weights', kernel_shape, self._initialization[
+                i]))
         self._biases.append(
             tf.get_variable(
                 'biases',
                 kernel_shape[-1],
-                initializer=tf.constant_initializer(bias_init),
+                initializer=tf.constant_initializer(self._bias_init[i]),
                 dtype=tf.float32))
 
     self._params.extend(self._weights + self._biases)
@@ -1500,34 +1906,46 @@ class PairwiseConvNetwork(NetworkUnitInterface):
              during_training,
              stride=None):
     """Requires |stride|; otherwise see base class."""
+    del context_tensor_arrays, attention_tensor  # Unused.
     # TODO(googleuser): Normalize the arguments to create(). 'stride'
     # is unused by the recurrent network units, while 'context_tensor_arrays'
     # and 'attenion_tensor_array' is unused by bulk network units. b/33587044
     if stride is None:
       raise ValueError("PairwiseConvNetwork needs 'stride'")
 
-    input_tensor = get_input_tensor_with_stride(fixed_embeddings,
-                                                linked_embeddings, stride)
+    sources = lookup_named_tensor('sources', linked_embeddings).tensor
+    targets = lookup_named_tensor('targets', linked_embeddings).tensor
 
-    # TODO(googleuser): Add dropout.
-    del context_tensor_arrays, attention_tensor, during_training  # Unused.
+    source_tokens = tf.reshape(sources, [stride, -1, 1, self._source_dim])
+    target_tokens = tf.reshape(targets, [stride, 1, -1, self._target_dim])
 
-    num_steps = tf.shape(input_tensor)[1]
-    arg1 = tf.expand_dims(input_tensor, 1)
-    arg1 = tf.tile(arg1, tf.stack([1, num_steps, 1, 1]))
-    arg2 = tf.expand_dims(input_tensor, 2)
-    arg2 = tf.tile(arg2, tf.stack([1, 1, num_steps, 1]))
+    # sources and targets should have shapes [b, n, 1, s] and [b, 1, n, t],
+    # respectively. Since we just reshaped them, we can check that all dims are
+    # as expected by checking the one unknown dim, i.e. their num_steps (n) dim.
+    sources_shape = tf.shape(source_tokens)
+    targets_shape = tf.shape(target_tokens)
+    num_steps = sources_shape[1]
+    with tf.control_dependencies([tf.assert_equal(num_steps, targets_shape[2],
+                                                  name='num_steps_mismatch')]):
+      arg1 = tf.tile(source_tokens, tf.stack([1, 1, num_steps, 1]))
+      arg2 = tf.tile(target_tokens, tf.stack([1, num_steps, 1, 1]))
     conv = tf.concat([arg1, arg2], 3)
     for i in xrange(self._num_layers):
       with tf.variable_scope('conv%d' % i, reuse=True) as scope:
-        conv = tf.nn.conv2d(
-            conv,
-            self._component.get_variable('weights'), [1, 1, 1, 1],
-            padding='SAME')
+        if during_training:
+          conv = maybe_apply_dropout(conv, self._dropout[i], False)
+        conv = tf.nn.conv2d(conv,
+                            self._component.get_variable('weights'),
+                            [1, 1, 1, 1],
+                            padding='SAME')
         conv = tf.nn.bias_add(conv, self._component.get_variable('biases'))
-        if i in self._relu_layers:
-          conv = tf.nn.relu(conv, name=scope.name)
-    return [tf.reshape(conv, [-1, num_steps], name='reshape_activations')]
+        if i in self._activation_layers:
+          conv = self._activation_fn(conv, name=scope.name)
+    return [
+        tf.reshape(
+            conv, [-1, num_steps * self._num_labels],
+            name='reshape_activations')
+    ]
 
 
 class ExportFixedFeaturesNetwork(NetworkUnitInterface):
@@ -1593,7 +2011,7 @@ class SplitNetwork(NetworkUnitInterface):
 
     for slice_index in xrange(self._num_slices):
       self._layers.append(
-          Layer(self, 'slice_%s' % slice_index, self._slice_dim))
+          Layer(component, 'slice_%s' % slice_index, self._slice_dim))
 
   def create(self,
              fixed_embeddings,
@@ -1602,5 +2020,103 @@ class SplitNetwork(NetworkUnitInterface):
              attention_tensor,
              during_training,
              stride=None):
+    """See base class."""
     input_bnxd = get_input_tensor(fixed_embeddings, linked_embeddings)
     return tf.split(input_bnxd, self._num_slices, axis=1)
+
+
+class GatherNetwork(NetworkUnitInterface):
+  """Network unit that gathers input according to specified step indices.
+
+  This can be used to implement a non-trivial linked feature (i.e., where the
+  link mapping is more complex than 'input.focus').  Extract the step indices
+  using a BulkFeatureIdExtractorComponentBuilder, and then gather activations
+  using this network.
+
+  Note that the step index -1 is special: gathering it will retrieve a padding
+  vector, which can be constant (zeros) or trainable.
+
+  Parameters:
+    trainable_padding (False): Whether the padding vector is trainable.
+
+  Features:
+    indices: [B * N, 1] The step indices to gather, local to each batch item.
+      These are local in the sense that, for each batch item, the step indices
+      are in the range [-1,N).
+    All other features are concatenated into a [B * N, D] matrix.
+
+  Layers:
+    outputs: [B * N, D] The first slice of the input.
+  """
+
+  def __init__(self, component):
+    """Initializes weights and layers.
+
+    Args:
+      component: Parent ComponentBuilderBase object.
+    """
+    super(GatherNetwork, self).__init__(component)
+    self._attrs = get_attrs_with_defaults(
+        component.spec.network_unit.parameters, {'trainable_padding': False})
+
+    check.In('indices', self._linked_feature_dims,
+             'Missing required linked feature')
+    check.Eq(self._linked_feature_dims['indices'], 1,
+             'Wrong dimension for "indices" feature')
+    self._dim = self._concatenated_input_dim - 1  # exclude 'indices'
+    self._layers.append(Layer(component, 'outputs', self._dim))
+
+    if self._attrs['trainable_padding']:
+      self._params.append(
+          tf.get_variable(
+              'pre_padding', [1, 1, self._dim],
+              initializer=tf.random_normal_initializer(stddev=1e-4),
+              dtype=tf.float32))
+
+  def create(self,
+             fixed_embeddings,
+             linked_embeddings,
+             context_tensor_arrays,
+             attention_tensor,
+             during_training,
+             stride=None):
+    """Requires |stride|; otherwise see base class."""
+    check.NotNone(stride,
+                  'BulkBiLSTMNetwork requires "stride" and must be called '
+                  'in the bulk feature extractor component.')
+
+    # Extract the batched local step indices.
+    local_indices = lookup_named_tensor('indices', linked_embeddings)
+    local_indices_bxn = tf.reshape(local_indices.tensor, [stride, -1])
+    local_indices_bxn = tf.to_int32(local_indices_bxn)
+    num_steps = tf.shape(local_indices_bxn)[1]
+
+    # Collect all other inputs as a batched tensor.
+    linked_embeddings = [
+        named_tensor for named_tensor in linked_embeddings
+        if named_tensor.name != 'indices'
+    ]
+    inputs_bnxd = get_input_tensor(fixed_embeddings, linked_embeddings)
+
+    # Prepend the padding vector, which may be trainable or constant.
+    inputs_bxnxd = tf.reshape(inputs_bnxd, [stride, -1, self._dim])
+    if self._attrs['trainable_padding']:
+      padding_1x1xd = self._component.get_variable('pre_padding')
+      padding_bx1xd = tf.tile(padding_1x1xd, [stride, 1, 1])
+    else:
+      padding_bx1xd = tf.zeros([stride, 1, self._dim], tf.float32)
+    inputs_bxnxd = tf.concat([padding_bx1xd, inputs_bxnxd], 1)
+    inputs_bnxd = tf.reshape(inputs_bxnxd, [-1, self._dim])
+
+    # As mentioned above, for each batch item the local step indices are in the
+    # range [-1,N).  To compensate for batching and padding, the local indices
+    # must be progressively offset into "global" indices such that batch item b
+    # is in the range [b*(N+1),(b+1)*(N+1)).
+    batch_indices_b = tf.range(stride)
+    batch_indices_bx1 = tf.expand_dims(batch_indices_b, 1)
+    local_to_global_offsets_bx1 = batch_indices_bx1 * (num_steps + 1) + 1
+    global_indices_bxn = local_indices_bxn + local_to_global_offsets_bx1
+    global_indices_bn = tf.reshape(global_indices_bxn, [-1])
+
+    outputs_bnxd = tf.gather(inputs_bnxd, global_indices_bn)
+    return [outputs_bnxd]

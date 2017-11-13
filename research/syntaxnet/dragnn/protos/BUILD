@@ -26,6 +26,12 @@ tf_proto_library(
     srcs = ["spec.proto"],
 )
 
+tf_proto_library(
+    name = "runtime_proto",
+    srcs = ["runtime.proto"],
+    deps = [":spec_proto"],
+)
+
 tf_proto_library_py(
     name = "data_py_pb2",
     srcs = ["data.proto"],

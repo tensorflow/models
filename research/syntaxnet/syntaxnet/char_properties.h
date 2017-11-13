@@ -357,6 +357,8 @@ DECLARE_CHAR_PROPERTY(directional_formatting_code);
 // just those listed in our code. See the definitions in char_properties.cc.
 DECLARE_CHAR_PROPERTY(punctuation_or_symbol);
 
+DECLARE_SYNTAXNET_CLASS_REGISTRY("char property wrapper", CharPropertyWrapper);
+
 }  // namespace syntaxnet
 
 #endif  // SYNTAXNET_CHAR_PROPERTIES_H_

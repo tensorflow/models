@@ -16,6 +16,11 @@ cc_binary(
     ],
 )
 
+filegroup(
+    name = "testdata",
+    data = glob(["testdata/**"]),
+)
+
 py_library(
     name = "load_dragnn_cc_impl_py",
     srcs = ["load_dragnn_cc_impl.py"],
@@ -64,7 +69,51 @@ py_library(
 py_library(
     name = "dragnn_ops",
     srcs = ["dragnn_ops.py"],
-    deps = [],
+    deps = [
+        ":load_dragnn_cc_impl_py",
+        "//dragnn/core:dragnn_bulk_ops",
+        "//dragnn/core:dragnn_ops",
+        "//syntaxnet:load_parser_ops_py",
+    ],
+)
+
+py_library(
+    name = "dragnn_model_saver_lib",
+    srcs = ["dragnn_model_saver_lib.py"],
+    deps = [
+        ":dragnn_ops",
+        ":graph_builder",
+        ":load_dragnn_cc_impl_py",
+        ":network_units",
+        "//dragnn/protos:spec_py_pb2",
+        "//syntaxnet:load_parser_ops_py",
+        "//syntaxnet:sentence_py_pb2",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)
+
+py_test(
+    name = "dragnn_model_saver_lib_test",
+    srcs = ["dragnn_model_saver_lib_test.py"],
+    data = [":testdata"],
+    deps = [
+        ":dragnn_model_saver_lib",
+        "//dragnn/protos:spec_py_pb2",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_binary(
+    name = "dragnn_model_saver",
+    srcs = ["dragnn_model_saver.py"],
+    deps = [
+        ":dragnn_model_saver_lib",
+        ":spec_builder",
+        "//dragnn/protos:spec_py_pb2",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
 )
 
 py_library(
@@ -76,6 +125,7 @@ py_library(
         ":composite_optimizer",
         ":dragnn_ops",
         ":network_units",
+        ":transformer_units",
         ":wrapped_units",
         "//dragnn/protos:spec_py_pb2",
         "//syntaxnet/util:check",
@@ -184,10 +234,7 @@ py_test(
         ":bulk_component",
         ":components",
         ":dragnn_ops",
-        ":load_dragnn_cc_impl_py",
         ":network_units",
-        "//dragnn/core:dragnn_bulk_ops",
-        "//dragnn/core:dragnn_ops",
         "//dragnn/protos:spec_py_pb2",
         "//syntaxnet:load_parser_ops_py",
         "//syntaxnet:sentence_py_pb2",
@@ -201,7 +248,6 @@ py_test(
     srcs = ["composite_optimizer_test.py"],
     deps = [
         ":composite_optimizer",
-        ":load_dragnn_cc_impl_py",
         "//dragnn/core:dragnn_bulk_ops",
         "//dragnn/core:dragnn_ops",
         "//syntaxnet:load_parser_ops_py",
@@ -217,15 +263,13 @@ py_test(
     data = [
         "//dragnn/core:testdata",
     ],
+    shard_count = 5,
     tags = [
         "notsan",
     ],
     deps = [
         ":dragnn_ops",
         ":graph_builder",
-        ":load_dragnn_cc_impl_py",
-        "//dragnn/core:dragnn_bulk_ops",
-        "//dragnn/core:dragnn_ops",
         "//dragnn/protos:spec_py_pb2",
         "//dragnn/protos:trace_py_pb2",
         "//syntaxnet:load_parser_ops_py",
@@ -240,7 +284,6 @@ py_test(
     size = "small",
     srcs = ["network_units_test.py"],
     deps = [
-        ":load_dragnn_cc_impl_py",
         ":network_units",
         "//dragnn/core:dragnn_bulk_ops",
         "//dragnn/core:dragnn_ops",
@@ -256,6 +299,7 @@ py_test(
     srcs = ["sentence_io_test.py"],
     data = ["//syntaxnet:testdata"],
     deps = [
+        ":dragnn_ops",
         ":sentence_io",
         "//syntaxnet:load_parser_ops_py",
         "//syntaxnet:parser_ops",
@@ -373,3 +417,30 @@ py_library(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "transformer_units",
+    srcs = ["transformer_units.py"],
+    deps = [
+        ":network_units",
+        "//syntaxnet/util:check",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "transformer_units_test",
+    size = "small",
+    srcs = ["transformer_units_test.py"],
+    deps = [
+        ":network_units",
+        ":transformer_units",
+        "//dragnn/core:dragnn_bulk_ops",
+        "//dragnn/core:dragnn_ops",
+        "//dragnn/protos:spec_py_pb2",
+        "//syntaxnet:load_parser_ops_py",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)
+
