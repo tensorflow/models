@@ -1,11 +1,27 @@
+# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
-# Created by Frederic TOST - November 2017
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 
-#
-# This class manages the location of labels over an image
-# Objective is to minimize overlapping
-#
+"""This class manages the location of labels over an image.
+
+The objective is to minimize overlapping. The current algo is pretty simple but covers
+the majority of cases.
+"""
+
+# Max overlapping = 20%
+MAX_COVERING = 0.2
+
 class BoxLabelManager:
 
     label_bounding_boxes = []
@@ -18,6 +34,8 @@ class BoxLabelManager:
     def __init__(self, _image_width, _image_height):
         self.image_width  = _image_width
         self.image_height = _image_height
+        self.label_bounding_boxes = []
+        self.bounding_boxes       = []
 
     def setDrawRectangle(self, _value):
         self.draw_rectangle = _value;
@@ -31,8 +49,20 @@ class BoxLabelManager:
     def setDrawLabel(self, _value):
         self.draw_label = _value;
 
-    # Return the coordinates of the best label box and store it
+    #
     def addBoundingBoxAndLabelBox(self, _bounding_box, _label_width, _label_height):
+        """" Return the coordinates of the best label box and store it.
+
+                Args:
+                    _bounding_box: first box
+                    _label_width: second box
+                    _label_height:
+
+                Returns:
+                    A bounding box for the label as [left, top, right, bottom]
+
+                """
+
         # Add the bounding box, for fun ;-)
         self.bounding_boxes.append(_bounding_box)
 
@@ -57,7 +87,7 @@ class BoxLabelManager:
 
 
             # Surface if over an existing label box 30% of area
-            if self.isOverALabel(proposal_label_box)<0.3:
+            if self.isOverALabel(proposal_label_box)< MAX_COVERING:
                 # We are done
                 self.label_bounding_boxes.append(proposal_label_box)
                 return proposal_label_box
@@ -67,7 +97,7 @@ class BoxLabelManager:
             #
             # Second proposal, bottom/left
             proposal_label_box = [left + x_offset, bottom , left + _label_width + x_offset, bottom + _label_height]
-            if self.isOverALabel(proposal_label_box) < 0.3:
+            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
                 # We are done
                 self.label_bounding_boxes.append(proposal_label_box)
                 return proposal_label_box
@@ -77,7 +107,7 @@ class BoxLabelManager:
             #
             # Third proposal, top/right
             proposal_label_box = [right-_label_width - x_offset, top - _label_height, right - x_offset, top]
-            if self.isOverALabel(proposal_label_box) < 0.3:
+            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
                 # We are done
                 self.label_bounding_boxes.append(proposal_label_box)
                 return proposal_label_box
@@ -86,8 +116,8 @@ class BoxLabelManager:
             # Proposal 4
             #
             # Third proposal, bottom/right
-            proposal_label_box = [right-_label_width - x_offset, bottom - _label_height, right - x_offset, bottom + _label_height]
-            if self.isOverALabel(proposal_label_box) < 0.3:
+            proposal_label_box = [right-_label_width - x_offset, bottom , right - x_offset, bottom + _label_height]
+            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
                 # We are done
                 self.label_bounding_boxes.append(proposal_label_box)
                 return proposal_label_box
@@ -110,13 +140,24 @@ class BoxLabelManager:
             (_label_box[1] < 0) or (_label_box[3] > self.image_height):
             return 1
 
+        # Take the worst situation
         for current_box in self.label_bounding_boxes:
-            iou = self.get_intersection_over_union_v2(_label_box, current_box)
+            current_iou = self.get_intersection_over_union_v2(_label_box, current_box)
+            if current_iou > iou:
+                iou = current_iou
         return iou
 
-    # Just compute the intersection over union of 2 boxes,
-    # the result is in [0,1]
     def get_intersection_over_union_v2(self, boxA, boxB):
+        """" Just compute the intersection over union of 2 boxes, the result is in [0,1].
+        Args:
+            boxA: first box
+            boxB: second box
+
+        Returns:
+            The value of IOU as a float
+
+        """
+
         # determine the (x, y)-coordinates of the intersection rectangle
         xA = max(boxA[0], boxB[0])
         yA = max(boxA[1], boxB[1])
