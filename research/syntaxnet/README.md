@@ -122,7 +122,7 @@ following commands:
 
 ```shell
   git clone --recursive https://github.com/tensorflow/models.git
-  cd models/syntaxnet/tensorflow
+  cd models/research/syntaxnet/tensorflow
   ./configure
   cd ..
   bazel test ...
