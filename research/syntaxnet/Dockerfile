@@ -57,10 +57,10 @@ RUN python -m pip install \
     && rm -rf /root/.cache/pip /tmp/pip*
 
 # Installs Bazel.
-RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.5.3/bazel-0.5.3-installer-linux-x86_64.sh \
-    && chmod +x bazel-0.5.3-installer-linux-x86_64.sh \
-    && JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/ ./bazel-0.5.3-installer-linux-x86_64.sh \
-    && rm ./bazel-0.5.3-installer-linux-x86_64.sh
+RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.5.4/bazel-0.5.4-installer-linux-x86_64.sh \
+    && chmod +x bazel-0.5.4-installer-linux-x86_64.sh \
+    && ./bazel-0.5.4-installer-linux-x86_64.sh \
+    && rm ./bazel-0.5.4-installer-linux-x86_64.sh
 
 COPY WORKSPACE $SYNTAXNETDIR/syntaxnet/WORKSPACE
 COPY tools/bazel.rc $SYNTAXNETDIR/syntaxnet/tools/bazel.rc
