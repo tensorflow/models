@@ -284,11 +284,15 @@ def _write_saved_model(saved_model_path,
 
       builder = tf.saved_model.builder.SavedModelBuilder(saved_model_path)
 
+      key_placeholder = tf.placeholder(dtype=tf.string, shape=(None,))
+
       tensor_info_inputs = {
+          'key': tf.saved_model.utils.build_tensor_info(key_placeholder),
           'inputs': tf.saved_model.utils.build_tensor_info(inputs)}
       tensor_info_outputs = {}
       for k, v in outputs.items():
         tensor_info_outputs[k] = tf.saved_model.utils.build_tensor_info(v)
+      tensor_info_outputs['key'] = tf.saved_model.utils.build_tensor_info(tf.identity(key_placeholder))
 
       detection_signature = (
           tf.saved_model.signature_def_utils.build_signature_def(
