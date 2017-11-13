@@ -19,8 +19,9 @@ RUN mkdir -p $SYNTAXNETDIR \
           libgraphviz-dev \
           liblapack-dev \
           libopenblas-dev \
-          libpng12-dev \
+          libpng-dev \
           libxft-dev \
+          patch \
           python-dev \
           python-mock \
           python-pip \
@@ -55,20 +56,22 @@ RUN python -m pip install \
     && rm -rf /root/.cache/pip /tmp/pip*
 
 # Installs the latest version of Bazel.
-RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.4.3/bazel-0.4.3-installer-linux-x86_64.sh \
-    && chmod +x bazel-0.4.3-installer-linux-x86_64.sh \
-    && ./bazel-0.4.3-installer-linux-x86_64.sh \
-    && rm ./bazel-0.4.3-installer-linux-x86_64.sh
+RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.5.4/bazel-0.5.4-installer-linux-x86_64.sh \
+    && chmod +x bazel-0.5.4-installer-linux-x86_64.sh \
+    && ./bazel-0.5.4-installer-linux-x86_64.sh \
+    && rm ./bazel-0.5.4-installer-linux-x86_64.sh
 
 COPY WORKSPACE $SYNTAXNETDIR/syntaxnet/WORKSPACE
 COPY tools/bazel.rc $SYNTAXNETDIR/syntaxnet/tools/bazel.rc
 COPY tensorflow $SYNTAXNETDIR/syntaxnet/tensorflow
 
+# Workaround solving the PYTHON_BIN_PATH not found problem
+ENV PYTHON_BIN_PATH=/usr/bin/python
 # Compile common TensorFlow targets, which don't depend on DRAGNN / SyntaxNet
 # source. This makes it more convenient to re-compile DRAGNN / SyntaxNet for
 # development (though not as convenient as the docker-devel scripts).
 RUN cd $SYNTAXNETDIR/syntaxnet/tensorflow \
-    && tensorflow/tools/ci_build/builds/configured CPU \
+    && ./configure CPU \
     && cd $SYNTAXNETDIR/syntaxnet \
     && bazel build -c opt @org_tensorflow//tensorflow:tensorflow_py
 
