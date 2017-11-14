@@ -162,10 +162,14 @@ class BoxLabelManager:
 
         """
 
+        # Is there an intersection
         if (max (boxA[0], boxA[2]) < min((boxB[0], boxB[2]))):
             return 0
-
         if (max (boxB[0], boxB[2]) < min((boxA[0], boxA[2]))):
+            return 0
+        if (max (boxA[1], boxA[3]) < min((boxB[1], boxB[3]))):
+            return 0
+        if (max (boxB[1], boxB[3]) < min((boxA[1], boxA[3]))):
             return 0
 
         # determine the (x, y)-coordinates of the intersection rectangle
