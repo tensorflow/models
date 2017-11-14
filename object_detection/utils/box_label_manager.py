@@ -76,7 +76,8 @@ class BoxLabelManager:
 
         # The offset will slide the box propose to the right or to the left
         x_offset = 0
-        while x_offset < (right-left)-_label_width:
+        stay_in_the_loop =  True
+        while stay_in_the_loop:
 
             #
             # Proposal 1
@@ -123,7 +124,10 @@ class BoxLabelManager:
                 return proposal_label_box
 
             x_offset = x_offset + 20
+            if x_offset < (right - left) - _label_width:
+                stay_in_the_loop = False
 
+        # End of the while
 
         # Last chance
         # Rectangle is as height as the image (95%)
@@ -157,6 +161,12 @@ class BoxLabelManager:
             The value of IOU as a float
 
         """
+
+        if (max (boxA[0], boxA[2]) < min((boxB[0], boxB[2]))):
+            return 0
+
+        if (max (boxB[0], boxB[2]) < min((boxA[0], boxA[2]))):
+            return 0
 
         # determine the (x, y)-coordinates of the intersection rectangle
         xA = max(boxA[0], boxB[0])
