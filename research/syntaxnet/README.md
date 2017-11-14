@@ -111,6 +111,8 @@ source. You'll need to install:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
+*   autograd 1.1.13, for automatic differentiation (not yet compatible with autograd v1.2 rewrite):
+    *   `pip install autograd==1.1.13`
 *   pygraphviz to visualize traces and parse trees:
     *   `apt-get install -y graphviz libgraphviz-dev`
     *   `pip install pygraphviz
