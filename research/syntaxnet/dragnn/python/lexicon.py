@@ -28,7 +28,8 @@ def create_lexicon_context(path):
   context = task_spec_pb2.TaskSpec()
   for name in [
       'word-map', 'tag-map', 'tag-to-category', 'lcword-map', 'category-map',
-      'char-map', 'char-ngram-map', 'label-map', 'prefix-table', 'suffix-table'
+      'char-map', 'char-ngram-map', 'label-map', 'prefix-table', 'suffix-table',
+      'known-word-map'
   ]:
     context.input.add(name=name).part.add(file_pattern=os.path.join(path, name))
   return context

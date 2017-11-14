@@ -118,6 +118,7 @@ class CharShiftTransitionTest : public ::testing::Test {
  protected:
   string MultiFeatureString(const FeatureVector &result) {
     std::vector<string> values;
+    values.reserve(result.size());
     for (int i = 0; i < result.size(); ++i) {
       values.push_back(result.type(i)->GetFeatureValueName(result.value(i)));
     }

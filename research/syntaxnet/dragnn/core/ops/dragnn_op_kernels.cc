@@ -30,6 +30,7 @@
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/core/threadpool.h"
+#include "tensorflow/core/lib/io/path.h"
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/mutex.h"
 
@@ -40,6 +41,8 @@ using tensorflow::DT_INT32;
 using tensorflow::DT_INT64;
 using tensorflow::DT_STRING;
 using tensorflow::DataType;
+using tensorflow::io::Dirname;
+using tensorflow::io::JoinPath;
 using tensorflow::OpKernel;
 using tensorflow::OpKernelConstruction;
 using tensorflow::OpKernelContext;
@@ -53,6 +56,59 @@ namespace dragnn {
 
 typedef ResourceContainer<ComputeSession> ComputeSessionResource;
 typedef ResourceContainer<ComputeSessionPool> ComputeSessionPoolResource;
+typedef ResourceContainer<string> StringResource;
+
+namespace {
+
+const char kGlobalContainer[] = "__reserved_global_container";
+const char kBasePathTag[] = "__reserved_asset_base_path";
+const char kUnmanagedAssetDirectory[] = "assets.extra";
+
+// When restoring a graph from a SavedModel, this op will rewrite the MasterSpec
+// to point the DRAGNN components to the new resource locations. It will then
+// add a string resource to the resource manager, which will be used to
+// rebuild the masterspec before it is acquired in the GetComputeSession op.
+class SetAssetDirectory : public OpKernel {
+ public:
+  explicit SetAssetDirectory(OpKernelConstruction *context)
+      : OpKernel(context) {
+    OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, {DT_STRING}));
+  }
+
+  void Compute(OpKernelContext *context) override {
+    ResourceMgr *rmgr = context->resource_manager();
+    const string asset_path = context->input(0).scalar<string>()();
+
+    // TODO(googleuser): Get this data in a way that isn't fragile as all hell.
+    // "I've done stuff I ain't proud of... and the stuff I am proud of is
+    // disgusting." -- Moe
+    auto extra_asset_dir =
+        JoinPath(Dirname(Dirname(asset_path)), kUnmanagedAssetDirectory);
+    LOG(INFO) << "Found extra assets path at:" << extra_asset_dir;
+
+    // Rather than attempt to rewrite the MasterSpec here, we save off a
+    // StringResource containing the new asset path. It will be used in
+    // the GetSession op, if it exists.
+    std::unique_ptr<string> asset_path_ptr(new string(extra_asset_dir));
+
+    OP_REQUIRES_OK(context, rmgr->Create<StringResource>(
+                                kGlobalContainer, kBasePathTag,
+                                new StringResource(std::move(asset_path_ptr))));
+
+    // This isn't used anywhere - it just allows us to have an output so that
+    // it's easier to reason about Tensorflow's graph execution.
+    Tensor *output;
+    OP_REQUIRES_OK(context,
+                   context->allocate_output(0, TensorShape({1}), &output));
+    output->vec<string>()(0) = asset_path;
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(SetAssetDirectory);
+};
+
+REGISTER_KERNEL_BUILDER(Name("SetAssetDirectory").Device(DEVICE_CPU),
+                        SetAssetDirectory);
 
 // Given a MasterSpec proto, outputs a handle to a ComputeSession.
 class GetSession : public OpKernel {
@@ -66,6 +122,7 @@ class GetSession : public OpKernel {
     CHECK(master_spec_.ParseFromString(master_spec_str));
     CHECK(grid_point_.ParseFromString(grid_point_spec_str));
     OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, {DT_STRING}));
+    has_overwritten_spec_ = false;
   }
 
   void Compute(OpKernelContext *context) override {
@@ -74,10 +131,32 @@ class GetSession : public OpKernel {
 
     // Create the pool for this container, or re-use one that was allocated in a
     // previous call.
-    auto create_pool = [this,
+    auto create_pool = [this, &rmgr,
                         &container](ComputeSessionPoolResource **resource) {
-      LOG(INFO) << "Creating new ComputeSessionPool in container handle: "
-      << container;
+      if (has_overwritten_spec_) {
+        // TODO(googleuser): Figure out a way to test this.
+        // If there's already an overwritten spec, use that.
+        LOG(INFO) << "Creating new ComputeSessionPool in container handle: "
+                  << container << " with previously overwritten master spec.";
+      } else {
+        // If not, try to find the resource base.
+        StringResource *resource_base;
+        auto resource_base_lookup = rmgr->Lookup<StringResource>(
+            kGlobalContainer, kBasePathTag, &resource_base);
+        if (resource_base_lookup.ok()) {
+          // If that exists, the spec must be rewritten.
+          string resource_base_path = *resource_base->get();
+          LOG(INFO) << "Creating new ComputeSessionPool in container handle: "
+                    << container << " using resource directory base "
+                    << resource_base_path;
+          RewriteMasterSpec(resource_base_path);
+          resource_base->Unref();
+        } else {
+          // If not, just use the spec as is.
+          LOG(INFO) << "Creating new ComputeSessionPool in container handle: "
+                    << container << " without editing master spec.";
+        }
+      }
       std::unique_ptr<ComputeSessionPool> pool(
           new ComputeSessionPool(master_spec_, grid_point_));
       *resource = new ComputeSessionPoolResource(std::move(pool));
@@ -120,6 +199,23 @@ class GetSession : public OpKernel {
   }
 
  private:
+  // Rewrites this op's saved MasterSpec, appending the new base directory.
+  void RewriteMasterSpec(const string &new_base) {
+    for (auto &component_spec : *master_spec_.mutable_component()) {
+      for (auto &resource_def : *component_spec.mutable_resource()) {
+        for (auto &part_def : *resource_def.mutable_part()) {
+          part_def.set_file_pattern(
+              JoinPath(new_base, part_def.file_pattern()));
+          VLOG(2) << "New path: " << part_def.file_pattern();
+        }
+      }
+    }
+
+    VLOG(3) << "Rewritten spec: " << master_spec_.DebugString();
+    has_overwritten_spec_ = true;
+  }
+
+  bool has_overwritten_spec_;
   MasterSpec master_spec_;
   GridPoint grid_point_;
 
@@ -141,7 +237,6 @@ REGISTER_KERNEL_BUILDER(Name("GetSession").Device(DEVICE_CPU), GetSession);
 class ReleaseSession : public OpKernel {
  public:
   explicit ReleaseSession(OpKernelConstruction *context) : OpKernel(context) {
-    string master_spec_str;
     OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, {}));
   }
 
@@ -188,6 +283,53 @@ class ReleaseSession : public OpKernel {
 REGISTER_KERNEL_BUILDER(Name("ReleaseSession").Device(DEVICE_CPU),
                         ReleaseSession);
 
+// Returns statistics about session loads to the graph. This op returns the
+// total number of created Session objects and the number of those objects
+// that are currently being used in the ComputeSessionPool.
+class GetSessionCounts : public OpKernel {
+ public:
+  explicit GetSessionCounts(OpKernelConstruction *context) : OpKernel(context) {
+    OP_REQUIRES_OK(context, context->MatchSignature({DT_STRING}, {DT_INT64}));
+  }
+
+  void Compute(OpKernelContext *context) override {
+    const string container = context->input(0).scalar<string>()();
+    VLOG(1) << "Getting stats for container: " << container;
+    ResourceMgr *rmgr = context->resource_manager();
+
+    // Allocate the output tensors.
+    Tensor *output;
+    OP_REQUIRES_OK(context,
+                   context->allocate_output(0, TensorShape({2}), &output));
+
+    // Get the pool for this container.
+    ComputeSessionPoolResource *pool_resource;
+    auto result = rmgr->Lookup<ComputeSessionPoolResource>(container, "pool",
+                                                           &pool_resource);
+    if (!result.ok()) {
+      // If there's no ComputeSessionPoolResource, report 0 sessions created
+      // and 0 available.
+      output->vec<int64>()(0) = 0;
+      output->vec<int64>()(1) = 0;
+      return;
+    }
+
+    auto *pool = pool_resource->get();
+    CHECK(pool != nullptr);
+
+    output->vec<int64>()(0) = pool->num_unique_sessions();
+    output->vec<int64>()(1) = pool->num_outstanding_sessions();
+
+    pool_resource->Unref();
+  }
+
+ private:
+  TF_DISALLOW_COPY_AND_ASSIGN(GetSessionCounts);
+};
+
+REGISTER_KERNEL_BUILDER(Name("GetSessionCounts").Device(DEVICE_CPU),
+                        GetSessionCounts);
+
 /*******************************************************************************
  *                   ComputeSessionOps below here.
  ******************************************************************************/
@@ -233,9 +375,17 @@ class AdvanceFromPrediction : public ComputeSessionOp {
   void ComputeWithState(OpKernelContext *context,
                         ComputeSession *session) override {
     const Tensor &scores = context->input(1);
-    session->AdvanceFromPrediction(component_name(),
-                                   scores.tensor<float, 2>().data(),
-                                   scores.NumElements());
+    const int num_items = scores.shape().dim_size(0);
+    const int num_actions = scores.shape().dim_size(1);
+    bool success = session->AdvanceFromPrediction(
+        component_name(), scores.tensor<float, 2>().data(), num_items,
+        num_actions);
+    if (success) {
+      VLOG(2) << "Score: " << scores.tensor<float, 2>();
+    }
+    OP_REQUIRES(
+        context, success,
+        tensorflow::errors::Internal("Unable to advance from prediction."));
   }
 
  private:
@@ -247,13 +397,12 @@ REGISTER_KERNEL_BUILDER(Name("AdvanceFromPrediction").Device(DEVICE_CPU),
 
 // Given a handle to a ComputeSession and a channel index, outputs fixed
 // features.
-// Fixed features are returned as 3 vectors or equal length:
+// Fixed features are returned as 3 vectors of equal length:
 //   - ids: specifies which rows should be looked up in the embedding
 //   matrix,
 //   - weights: specifies a scale for each embedding vector,
 //   - indices: sorted vector that assigns the same index to embedding
-//   vectors
-//       that should be summed together.
+//   vectors that should be summed together.
 //
 // For example if we have 3 features, for a given channel, we might have:
 //   feature a: (5, 1)
@@ -300,7 +449,10 @@ class ExtractFixedFeatures : public ComputeSessionOp {
     int num_features = session->GetInputFeatures(
         component_name(), indices_allocator, ids_allocator, weights_allocator,
         channel_id_);
-    VLOG(2) << "Extracted " << num_features;
+    VLOG(2) << "Extracted features (" << num_features << "): "
+            << " ids="     << context->mutable_output(1)->vec<int64>()
+            << " weights=" <<  context->mutable_output(2)->vec<float>()
+            << " indices=" << context->mutable_output(0)->vec<int32>();
   }
 
  private:
@@ -524,6 +676,7 @@ class AttachDataReader : public ComputeSessionOp {
     auto input_data(context->input(1).vec<string>());
 
     std::vector<string> data;
+    data.reserve(input_data.size());
     for (int i = 0; i < input_data.size(); ++i) {
       data.push_back(input_data(i));
     }
@@ -642,5 +795,6 @@ class GetComponentTrace : public ComputeSessionOp {
 REGISTER_KERNEL_BUILDER(Name("GetComponentTrace").Device(DEVICE_CPU),
                         GetComponentTrace);
 
+}  // namespace
 }  // namespace dragnn
 }  // namespace syntaxnet

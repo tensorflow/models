@@ -16,6 +16,7 @@ message MasterSpec {
   // Whether to extract debug traces.
   optional bool debug_tracing = 4 [default = false];
 
+  extensions 1000 to max;
   reserved 2, 3, 5;
 }
 
@@ -28,8 +29,7 @@ message ComponentSpec {
   // TransitionSystem to use.
   optional RegisteredModuleSpec transition_system = 2;
 
-  // Resources that this component depends on. These are copied to TaskInputs
-  // when calling SAFT code.
+  // Resources that this component depends on.
   repeated Resource resource = 3;
 
   // Feature space configurations.
@@ -58,6 +58,8 @@ message ComponentSpec {
 
   // Default max number of active states for beam inference.
   optional int32 inference_beam_size = 12 [default = 1];
+
+  extensions 1000 to max;
 }
 
 // Super generic container for any registered sub-piece of DRAGNN.
@@ -65,14 +67,11 @@ message RegisteredModuleSpec {
   // Name of the registered class.
   optional string registered_name = 1;
 
-  // Parameters to set while initializing this system; these are copied to
-  // Parameters in a TaskSpec when calling SAFT code, or via kwargs in TF Python
-  // code.
+  // Parameters to set while initializing this system.
   map<string, string> parameters = 2;
 }
 
-// Fixed resources that will be converted into TaskInput's when calling SAFT
-// code.
+// Fixed resource.
 message Resource {
   optional string name = 1;
   repeated Part part = 2;
@@ -218,6 +217,9 @@ message GridPoint {
   optional double gradient_clip_norm = 11 [default = 0.0];
 
   // A spec for using multiple optimization methods.
+  //
+  // This is not guaranteed to work for recursively-defined composite
+  // optimizers.
   message CompositeOptimizerSpec {
     // First optimizer.
     optional GridPoint method1 = 1;
@@ -227,6 +229,11 @@ message GridPoint {
 
     // After this number of steps, switch from first to second.
     optional int32 switch_after_steps = 3;
+
+    // Whether to reset the learning rate (which normally decays) after
+    // switching optimizers. Limitations: It will only reset to the initial
+    // learning rate, and won't work for recursively-defined optimizers.
+    optional bool reset_learning_rate = 4 [default = false];
   }
   optional CompositeOptimizerSpec composite_optimizer_spec = 12;
 
@@ -247,6 +254,7 @@ message GridPoint {
   // place. Typically a single component.
   optional string self_norm_components_filter = 21;
 
+  extensions 1000 to max;
   reserved 5, 6;
 }
 

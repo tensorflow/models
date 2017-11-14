@@ -15,7 +15,6 @@
 
 """Tests for reader_ops."""
 
-# pylint: disable=no-name-in-module,unused-import,g-bad-import-order,maybe-no-member,no-member,g-importing-member
 
 import os.path
 import numpy as np
@@ -29,6 +28,7 @@ from syntaxnet import dictionary_pb2
 from syntaxnet import graph_builder
 from syntaxnet import sparse_pb2
 from syntaxnet.ops import gen_parser_ops
+
 
 FLAGS = tf.app.flags.FLAGS
 if not hasattr(FLAGS, 'test_srcdir'):

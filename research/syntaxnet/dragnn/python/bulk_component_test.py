@@ -41,9 +41,6 @@ from dragnn.python import dragnn_ops
 from dragnn.python import network_units
 from syntaxnet import sentence_pb2
 
-import dragnn.python.load_dragnn_cc_impl
-import syntaxnet.load_parser_ops
-
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -473,6 +470,17 @@ class BulkComponentTest(test_util.TensorFlowTestCase):
              [2], [-1], [-1], [-1],
              [2], [3], [-1], [-1]])
 
+  def testBuildLossFailsOnNoExamples(self):
+    with tf.Graph().as_default():
+      logits = tf.constant([[0.5], [-0.5], [0.5], [-0.5]])
+      gold = tf.constant([-1, -1, -1, -1])
+      result = bulk_component.build_cross_entropy_loss(logits, gold)
+
+      # Expect loss computation to generate a runtime error due to the gold
+      # tensor containing no valid examples.
+      with self.test_session() as sess:
+        with self.assertRaises(tf.errors.InvalidArgumentError):
+          sess.run(result)
 
 if __name__ == '__main__':
   googletest.main()

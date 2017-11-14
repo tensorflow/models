@@ -1,13 +1,28 @@
-"""A component registry, similar to nlp_saft::RegisteredClass<>.
+# Copyright 2017 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 
-Like nlp_saft::RegisteredClass<>, one does not need to explicitly import the
-module containing each subclass.  It is sufficient to add subclasses as build
+"""A component registry, similar to RegisterableClass<>.
+
+Like RegisterableClass<>, one does not need to explicitly import the module
+containing each subclass.  It is sufficient to add subclasses as build
 dependencies.
 
-Unlike nlp_saft::RegisteredClass<>, which allows subclasses to be registered
-under arbitrary names, subclasses must be looked up based on their type name.
-This restriction allows the registry to dynamically import the module containing
-the desired subclass.
+Unlike RegisterableClass<>, which allows subclasses to be registered under
+arbitrary names, subclasses must be looked up based on their type name.  This
+restriction allows the registry to dynamically import the module containing the
+desired subclass.
 
 Example usage:
 
@@ -82,7 +97,7 @@ def _GetClass(name):
 
   # Need at least "module.Class".
   if len(elements) < 2:
-    logging.debug('Malformed type: "%s"', name)
+    logging.info('Malformed type: "%s"', name)
     return None
   module_path = '.'.join(elements[:-1])
   class_name = elements[-1]
@@ -91,20 +106,19 @@ def _GetClass(name):
   try:
     __import__(module_path)
   except ImportError as e:
-    logging.debug('Unable to find module "%s": "%s"', module_path, e)
+    logging.info('Unable to find module "%s": "%s"', module_path, e)
     return None
   module = sys.modules[module_path]
 
   # Look up the class.
   if not hasattr(module, class_name):
-    logging.debug('Name "%s" not found in module: "%s"', class_name,
-                  module_path)
+    logging.info('Name "%s" not found in module: "%s"', class_name, module_path)
     return None
   class_obj = getattr(module, class_name)
 
   # Check that it is actually a class.
   if not inspect.isclass(class_obj):
-    logging.debug('Name does not refer to a class: "%s"', name)
+    logging.info('Name does not refer to a class: "%s"', name)
     return None
   return class_obj
 
@@ -125,8 +139,8 @@ def _Create(baseclass, subclass_name, *args, **kwargs):
   if subclass is None:
     return None  # _GetClass() already logged an error
   if not issubclass(subclass, baseclass):
-    logging.debug('Class "%s" is not a subclass of "%s"', subclass_name,
-                  baseclass.__name__)
+    logging.info('Class "%s" is not a subclass of "%s"', subclass_name,
+                 baseclass.__name__)
     return None
   return subclass(*args, **kwargs)
 
@@ -135,13 +149,13 @@ def _ResolveAndCreate(baseclass, path, subclass_name, *args, **kwargs):
   """Resolves the name of a subclass and creates an instance of it.
 
   The subclass is resolved with respect to a package path in an inside-out
-  manner.  For example, if |path| is 'google3.foo.bar' and |subclass_name| is
+  manner.  For example, if |path| is 'syntaxnet.foo.bar' and |subclass_name| is
   'baz.ClassName', then attempts are made to create instances of the following
   fully-qualified class names:
 
-    'google3.foo.bar.baz.ClassName'
-    'google3.foo.baz.ClassName'
-    'google3.baz.ClassName'
+    'syntaxnet.foo.bar.baz.ClassName'
+    'syntaxnet.foo.baz.ClassName'
+    'syntaxnet.baz.ClassName'
     'baz.ClassName'
 
   An instance corresponding to the first successful attempt is returned.
@@ -163,9 +177,12 @@ def _ResolveAndCreate(baseclass, path, subclass_name, *args, **kwargs):
   elements = path.split('.')
   while True:
     resolved_subclass_name = '.'.join(elements + [subclass_name])
+    logging.info('Attempting to instantiate "%s"', resolved_subclass_name)
     subclass = _Create(baseclass, resolved_subclass_name, *args, **kwargs)
-    if subclass: return subclass  # success
-    if not elements: break  # no more paths to try
+    if subclass:
+      return subclass  # success
+    if not elements:
+      break  # no more paths to try
     elements.pop()  # try resolving against the next-outer path
   raise ValueError(
       'Failed to create subclass "%s" of base class %s using path %s' %

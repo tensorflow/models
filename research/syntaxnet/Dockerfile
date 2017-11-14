@@ -1,5 +1,4 @@
-# Java baseimage, for Bazel.
-FROM openjdk:8
+FROM ubuntu:16.10
 
 ENV SYNTAXNETDIR=/opt/tensorflow PATH=$PATH:/root/bin
 
@@ -21,13 +20,15 @@ RUN mkdir -p $SYNTAXNETDIR \
           libopenblas-dev \
           libpng-dev \
           libxft-dev \
-          patch \
+          openjdk-8-jdk \
           python-dev \
           python-mock \
           python-pip \
           python2.7 \
           swig \
+          unzip \
           vim \
+          wget \
           zlib1g-dev \
     && apt-get clean \
     && (rm -f /var/cache/apt/archives/*.deb \
@@ -55,7 +56,7 @@ RUN python -m pip install \
           --py --sys-prefix widgetsnbextension \
     && rm -rf /root/.cache/pip /tmp/pip*
 
-# Installs the latest version of Bazel.
+# Installs Bazel.
 RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.5.4/bazel-0.5.4-installer-linux-x86_64.sh \
     && chmod +x bazel-0.5.4-installer-linux-x86_64.sh \
     && ./bazel-0.5.4-installer-linux-x86_64.sh \
@@ -65,13 +66,11 @@ COPY WORKSPACE $SYNTAXNETDIR/syntaxnet/WORKSPACE
 COPY tools/bazel.rc $SYNTAXNETDIR/syntaxnet/tools/bazel.rc
 COPY tensorflow $SYNTAXNETDIR/syntaxnet/tensorflow
 
-# Workaround solving the PYTHON_BIN_PATH not found problem
-ENV PYTHON_BIN_PATH=/usr/bin/python
 # Compile common TensorFlow targets, which don't depend on DRAGNN / SyntaxNet
 # source. This makes it more convenient to re-compile DRAGNN / SyntaxNet for
 # development (though not as convenient as the docker-devel scripts).
 RUN cd $SYNTAXNETDIR/syntaxnet/tensorflow \
-    && ./configure CPU \
+    && tensorflow/tools/ci_build/builds/configured CPU \
     && cd $SYNTAXNETDIR/syntaxnet \
     && bazel build -c opt @org_tensorflow//tensorflow:tensorflow_py
 
@@ -92,4 +91,4 @@ EXPOSE 8888
 COPY examples $SYNTAXNETDIR/syntaxnet/examples
 # Todo: Move this earlier in the file (don't want to invalidate caches for now).
 
-CMD /bin/bash -c "bazel-bin/dragnn/tools/oss_notebook_launcher notebook --debug --notebook-dir=/opt/tensorflow/syntaxnet/examples --allow-root"
+CMD /bin/bash -c "bazel-bin/dragnn/tools/oss_notebook_launcher notebook --debug --notebook-dir=/opt/tensorflow/syntaxnet/examples"
