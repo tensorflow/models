@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_IO_SENTENCE_INPUT_BATCH_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_IO_SENTENCE_INPUT_BATCH_H_
+#ifndef DRAGNN_IO_SENTENCE_INPUT_BATCH_H_
+#define DRAGNN_IO_SENTENCE_INPUT_BATCH_H_
 
 #include <string>
 #include <vector>
@@ -35,6 +35,9 @@ class SentenceInputBatch : public InputBatch {
   void SetData(
       const std::vector<string> &stringified_sentence_protos) override;
 
+  // Returns the size of the batch.
+  int GetSize() const override { return data_.size(); }
+
   // Translates to a vector of stringified Sentence protos.
   const std::vector<string> GetSerializedData() const override;
 
@@ -49,4 +52,4 @@ class SentenceInputBatch : public InputBatch {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_IO_SENTENCE_INPUT_BATCH_H_
+#endif  // DRAGNN_IO_SENTENCE_INPUT_BATCH_H_

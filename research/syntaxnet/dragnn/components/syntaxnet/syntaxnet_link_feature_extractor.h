@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_LINK_FEATURE_EXTRACTOR_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_LINK_FEATURE_EXTRACTOR_H_
+#ifndef DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_LINK_FEATURE_EXTRACTOR_H_
+#define DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_LINK_FEATURE_EXTRACTOR_H_
 
 #include <string>
 #include <vector>
@@ -29,12 +29,8 @@ namespace syntaxnet {
 namespace dragnn {
 
 // Provides feature extraction for linked features in the
-// WrapperParserComponent. This re-ues the EmbeddingFeatureExtractor
-// architecture to get another set of feature extractors. Note that we should
-// ignore predicate maps here, and we don't care about the vocabulary size
-// because all the feature values will be used for translation, but this means
-// we can configure the extractor from the GCL using the standard
-// neurosis-lib.wf syntax.
+// WrapperParserComponent. This re-uses the EmbeddingFeatureExtractor
+// architecture to get another set of feature extractors.
 //
 // Because it uses a different prefix, it can be executed in the same wf.stage
 // as the regular fixed extractor.
@@ -67,4 +63,4 @@ class SyntaxNetLinkFeatureExtractor : public ParserEmbeddingFeatureExtractor {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_LINK_FEATURE_EXTRACTOR_H_
+#endif  // DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_LINK_FEATURE_EXTRACTOR_H_

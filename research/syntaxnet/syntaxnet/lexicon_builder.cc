@@ -26,6 +26,7 @@ limitations under the License.
 #include "syntaxnet/utils.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/strings/str_util.h"
 #include "tensorflow/core/platform/env.h"
 
 // A task that collects term statistics over a corpus and saves a set of

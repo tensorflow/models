@@ -485,6 +485,7 @@ class GreedyParser(object):
           vectors=embeddings_path,
           task_context=task_context,
           embedding_init=self._embedding_init,
+          cache_vectors_locally=False,
           seed=seed1,
           seed2=seed2)
 

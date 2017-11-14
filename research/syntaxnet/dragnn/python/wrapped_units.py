@@ -27,6 +27,60 @@ from dragnn.python import network_units as dragnn
 from syntaxnet.util import check
 
 
+def capture_variables(function, scope_name):
+  """Captures and returns variables created by a function.
+
+  Runs |function| in a scope of name |scope_name| and returns the list of
+  variables created by |function|.
+
+  Args:
+    function: Function whose variables should be captured.  The function should
+        take one argument, its enclosing variable scope.
+    scope_name: Variable scope in which the |function| is evaluated.
+
+  Returns:
+    List of created variables.
+  """
+  # Use a dict to dedupe captured variables.
+  created_vars = {}
+
+  def _custom_getter(getter, *args, **kwargs):
+    """Calls the real getter and captures its result in |created_vars|."""
+    real_variable = getter(*args, **kwargs)
+    created_vars[real_variable.name] = real_variable
+    return real_variable
+
+  with tf.variable_scope(
+      scope_name, reuse=None, custom_getter=_custom_getter) as scope:
+    function(scope)
+  return created_vars.values()
+
+
+def apply_with_captured_variables(function, scope_name, component):
+  """Applies a function using previously-captured variables.
+
+  The counterpart to capture_variables(); invokes |function| in a scope of name
+  |scope_name|, extracting captured variables from the |component|.
+
+  Args:
+    function: Function to apply using captured variables.  The function should
+        take one argument, its enclosing variable scope.
+    scope_name: Variable scope in which the |function| is evaluated.  Must match
+        the scope passed to capture_variables().
+    component: Component from which to extract captured variables.
+
+  Returns:
+    Results of function application.
+  """
+  def _custom_getter(getter, *args, **kwargs):
+    """Retrieves the normal or moving-average variables."""
+    return component.get_variable(var_params=getter(*args, **kwargs))
+
+  with tf.variable_scope(
+      scope_name, reuse=True, custom_getter=_custom_getter) as scope:
+    return function(scope)
+
+
 class BaseLSTMNetwork(dragnn.NetworkUnitInterface):
   """Base class for wrapped LSTM networks.
 
@@ -179,43 +233,12 @@ class BaseLSTMNetwork(dragnn.NetworkUnitInterface):
     ]
 
   def _capture_variables_as_params(self, function):
-    """Captures variables created by a function in |self._params|.
-
-    Args:
-      function: Function whose variables should be captured.  The function
-          should take one argument, its enclosing variable scope.
-    """
-    created_vars = {}
-
-    def _custom_getter(getter, *args, **kwargs):
-      """Calls the real getter and captures its result in |created_vars|."""
-      real_variable = getter(*args, **kwargs)
-      created_vars[real_variable.name] = real_variable
-      return real_variable
-
-    with tf.variable_scope(
-        'cell', reuse=None, custom_getter=_custom_getter) as scope:
-      function(scope)
-    self._params.extend(created_vars.values())
+    """Captures variables created by a function in |self._params|."""
+    self._params.extend(capture_variables(function, 'cell'))
 
   def _apply_with_captured_variables(self, function):
-    """Applies a function using previously-captured variables.
-
-    Args:
-      function: Function to apply using captured variables.  The function
-          should take one argument, its enclosing variable scope.
-
-    Returns:
-      Results of function application.
-    """
-
-    def _custom_getter(getter, *args, **kwargs):
-      """Retrieves the normal or moving-average variables."""
-      return self._component.get_variable(var_params=getter(*args, **kwargs))
-
-    with tf.variable_scope(
-        'cell', reuse=True, custom_getter=_custom_getter) as scope:
-      return function(scope)
+    """Applies a function using previously-captured variables."""
+    return apply_with_captured_variables(function, 'cell', self._component)
 
 
 class LayerNormBasicLSTMNetwork(BaseLSTMNetwork):

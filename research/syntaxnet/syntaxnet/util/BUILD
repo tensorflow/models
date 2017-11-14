@@ -17,6 +17,14 @@ py_library(
 )
 
 py_library(
+    name = "resources",
+    srcs = ["resources.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+    ],
+)
+
+py_library(
     name = "pyregistry_test_base",
     testonly = 1,
     srcs = ["registry_test_base.py"],
@@ -54,5 +62,17 @@ py_test(
         "//syntaxnet:load_parser_ops_py",
         "@org_tensorflow//tensorflow:tensorflow_py",
         "@org_tensorflow//tensorflow/core:protos_all_py",
+    ],
+)
+
+py_test(
+    name = "resources_test",
+    srcs = ["resources_test.py"],
+    data = [
+        "//syntaxnet:testdata/hello.txt",
+    ],
+    deps = [
+        ":resources",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

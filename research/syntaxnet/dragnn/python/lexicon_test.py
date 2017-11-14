@@ -28,13 +28,7 @@ from dragnn.python import lexicon
 from syntaxnet import parser_trainer
 from syntaxnet import task_spec_pb2
 
-import syntaxnet.load_parser_ops
-
 FLAGS = tf.app.flags.FLAGS
-if not hasattr(FLAGS, 'test_srcdir'):
-  FLAGS.test_srcdir = ''
-if not hasattr(FLAGS, 'test_tmpdir'):
-  FLAGS.test_tmpdir = tf.test.get_temp_dir()
 
 
 _EXPECTED_CONTEXT = r"""
@@ -48,7 +42,15 @@ input { name: "char-ngram-map" Part { file_pattern: "/tmp/char-ngram-map" } }
 input { name: "label-map" Part { file_pattern: "/tmp/label-map" } }
 input { name: "prefix-table" Part { file_pattern: "/tmp/prefix-table" } }
 input { name: "suffix-table" Part { file_pattern: "/tmp/suffix-table" } }
+input { name: "known-word-map" Part { file_pattern: "/tmp/known-word-map" } }
 """
+
+
+def setUpModule():
+  if not hasattr(FLAGS, 'test_srcdir'):
+    FLAGS.test_srcdir = ''
+  if not hasattr(FLAGS, 'test_tmpdir'):
+    FLAGS.test_tmpdir = tf.test.get_temp_dir()
 
 
 class LexiconTest(tf.test.TestCase):

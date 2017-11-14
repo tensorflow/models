@@ -17,6 +17,7 @@
 #include <memory>
 #include <vector>
 
+#include "dragnn/core/component_registry.h"
 #include "dragnn/core/compute_session.h"
 #include "dragnn/core/compute_session_pool.h"
 #include "dragnn/core/resource_container.h"
@@ -66,6 +67,87 @@ using testing::Return;
 
 typedef ResourceContainer<ComputeSession> ComputeSessionResource;
 typedef ResourceContainer<ComputeSessionPool> ComputeSessionPoolResource;
+typedef ResourceContainer<string> StringResource;
+
+namespace {
+const char kGlobalContainer[] = "__reserved_global_container";
+const char kBasePathTag[] = "__reserved_asset_base_path";
+const char kUnmanagedAssetDirectory[] = "assets.extra";
+}  // namespace
+
+// Define a test component to validate registered construction.
+class TestComponent : public Component {
+ public:
+  TestComponent() {}
+  void InitializeComponent(const ComponentSpec &spec) override {
+    name_ = spec.name();
+  }
+  void InitializeData(
+      const std::vector<std::vector<const TransitionState *>> &states,
+      int max_beam_size, InputBatchCache *input_data) override {}
+  void InitializeTracing() override {}
+  void DisableTracing() override {}
+  bool IsReady() const override { return true; }
+  string Name() const override { return name_; }
+  int BeamSize() const override { return 3; }
+  int BatchSize() const override { return 1; }
+  int StepsTaken(int batch_index) const override { return 0; }
+  int GetBeamIndexAtStep(int step, int current_index,
+                         int batch) const override {
+    return 0;
+  }
+  int GetSourceBeamIndex(int current_index, int batch) const override {
+    return 0;
+  }
+  bool AdvanceFromPrediction(const float *score_matrix, int num_items,
+                             int num_actions) override {
+    return true;
+  }
+  void AdvanceFromOracle() override {}
+  bool IsTerminal() const override { return true; }
+  std::function<int(int, int, int)> GetStepLookupFunction(
+      const string &method) override {
+    return nullptr;
+  }
+  std::vector<std::vector<const TransitionState *>> GetBeam() override {
+    std::vector<std::vector<const TransitionState *>> states;
+    return states;
+  }
+  int GetFixedFeatures(std::function<int32 *(int)> allocate_indices,
+                       std::function<int64 *(int)> allocate_ids,
+                       std::function<float *(int)> allocate_weights,
+                       int channel_id) const override {
+    return 0;
+  }
+  int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override {
+    return 0;
+  }
+  void BulkEmbedFixedFeatures(
+      int batch_size_padding, int num_steps_padding, int output_array_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_matrix) override {}
+  std::vector<LinkFeatures> GetRawLinkFeatures(int channel_id) const override {
+    std::vector<LinkFeatures> ret;
+    return ret;
+  }
+  std::vector<std::vector<int>> GetOracleLabels() const override {
+    std::vector<std::vector<int>> ret;
+    return ret;
+  }
+  void FinalizeData() override {}
+  void ResetComponent() override {}
+
+  std::vector<std::vector<ComponentTrace>> GetTraceProtos() const override {
+    std::vector<std::vector<ComponentTrace>> ret;
+    return ret;
+  }
+  void AddTranslatedLinkFeaturesToTrace(
+      const std::vector<LinkFeatures> &features, int channel_id) override {}
+
+  string name_;
+};
+
+REGISTER_DRAGNN_COMPONENT(TestComponent);
 
 class DragnnOpKernelsTest : public tensorflow::OpsTestBase {
  public:
@@ -104,6 +186,42 @@ LinkFeatures MakeFeatures(int batch_index, int beam_index, int step) {
   features.set_beam_idx(beam_index);
   features.set_step_idx(step);
   return features;
+}
+
+// The SetAssetDirectory op should
+// 1. When given an asset path (foo/bar/baz/asset/thing), strip the path to
+//    foo/bar/baz and add 'assets.extra' to it.
+// 2. Store that path in the resource manager.
+TEST_F(DragnnOpKernelsTest, SetAssetDirectoryTest) {
+  // Create a MasterSpec and GridPoint string to pass into the attrs for this
+  // op.
+  const string new_asset_path = "new/directory/path/asset/master_spec";
+  const string expected_asset_path =
+      StrCat("new/directory/path/", kUnmanagedAssetDirectory);
+
+  // Create and initialize the kernel under test.
+  TF_ASSERT_OK(NodeDefBuilder("set_asset_directory", "SetAssetDirectory")
+                   .Input(FakeInput(DT_STRING))  // The new asset path.
+                   .Finalize(node_def()));
+  TF_ASSERT_OK(InitOp());
+
+  // Set the input data.
+  AddInputFromList<string>(TensorShape({1}), {new_asset_path});
+
+  // Reset the test context to ensure it's clean.
+  ResetOpKernelContext();
+
+  // Run the kernel.
+  TF_EXPECT_OK(RunOpKernelWithContext());
+
+  // Expect that the ResourceMgr contains a the correct string.
+  StringResource *resource;
+  TF_EXPECT_OK(resource_mgr()->Lookup<StringResource>(kGlobalContainer,
+                                                      kBasePathTag, &resource));
+
+  EXPECT_EQ(*resource->get(), expected_asset_path);
+
+  resource->Unref();
 }
 
 // The GetSessionOp should
@@ -164,6 +282,103 @@ TEST_F(DragnnOpKernelsTest, GetSessionOpTest) {
   pool_resource->Unref();
 }
 
+// If an asset_base_path resource exists, the GetSession op should prepend
+// that path to all paths in the MasterSpec before creating a session.
+TEST_F(DragnnOpKernelsTest, GetSessionWithAssetBasePathTest) {
+  // Create a MasterSpec and GridPoint string to pass into the attrs for this
+  // op.
+  const string new_asset_path = "new/base";
+  MasterSpec spec;
+
+  // The first component in the MasterSpec has one resource with one part.
+  auto component_one = spec.add_component();
+  auto backend_one = component_one->mutable_backend();
+  backend_one->set_registered_name("TestComponent");
+  component_one->add_resource()->add_part()->set_file_pattern(
+      "path/to/an/asset.txt");
+  const string expected_component_one_asset = "new/base/path/to/an/asset.txt";
+
+  auto component_two = spec.add_component();
+  auto backend_two = component_two->mutable_backend();
+  backend_two->set_registered_name("TestComponent");
+
+  // The second component's first resource has no assets.
+  component_two->add_resource();
+
+  // The second component's second resource has one part.
+  vector<string> expected_component_two_assets;
+  component_two->add_resource()->add_part()->set_file_pattern(
+      "another/dir/with/an/asset.txt");
+  expected_component_two_assets.push_back(
+      "new/base/another/dir/with/an/asset.txt");
+
+  // The second component's third resource has two parts.
+  auto third_resource = component_two->add_resource();
+  third_resource->add_part()->set_file_pattern(
+      "another/dir/with/an/asset3.jif");
+  expected_component_two_assets.push_back(
+      "new/base/another/dir/with/an/asset3.jif");
+  third_resource->add_part()->set_file_pattern(
+      "another/dir/with/an/asset4.jif");
+  expected_component_two_assets.push_back(
+      "new/base/another/dir/with/an/asset4.jif");
+
+  LOG(INFO) << spec.DebugString();
+
+  string master_spec_str;
+  spec.SerializeToString(&master_spec_str);
+
+  GridPoint hyperparams;
+  string hyperparams_str;
+  hyperparams.SerializeToString(&hyperparams_str);
+
+  // Create and initialize the kernel under test.
+  TF_ASSERT_OK(
+      NodeDefBuilder("get_session", "GetSession")
+          .Attr("master_spec", master_spec_str)
+          .Attr("grid_point", hyperparams_str)
+          .Input(FakeInput(DT_STRING))  // The handle for the ComputeSession.
+          .Finalize(node_def()));
+  TF_ASSERT_OK(InitOp());
+
+  // Set the input data.
+  const string container_string = "container_str";
+  AddInputFromList<string>(TensorShape({1}), {container_string});
+
+  // Reset the test context to ensure it's clean.
+  ResetOpKernelContext();
+
+  // Create the string in the resource manager.
+  std::unique_ptr<string> asset_path_ptr(new string(new_asset_path));
+
+  TF_EXPECT_OK(resource_mgr()->Create<StringResource>(
+      kGlobalContainer, kBasePathTag,
+      new StringResource(std::move(asset_path_ptr))));
+
+  // Run the kernel.
+  TF_EXPECT_OK(RunOpKernelWithContext());
+
+  // Expect that the ResourceMgr contains a ComputeSessionPoolResource.
+  const string pool_id_str = "pool";
+  ComputeSessionPoolResource *pool_resource;
+  TF_EXPECT_OK(resource_mgr()->Lookup<ComputeSessionPoolResource>(
+      container_string, pool_id_str, &pool_resource));
+
+  // Validate that the master spec held by the pool has the new directory names.
+  auto rewritten_spec = pool_resource->get()->GetSpec();
+  EXPECT_EQ(rewritten_spec.component(0).resource(0).part(0).file_pattern(),
+            expected_component_one_asset);
+  EXPECT_EQ(rewritten_spec.component(1).resource(1).part(0).file_pattern(),
+            expected_component_two_assets.at(0));
+  EXPECT_EQ(rewritten_spec.component(1).resource(2).part(0).file_pattern(),
+            expected_component_two_assets.at(1));
+  EXPECT_EQ(rewritten_spec.component(1).resource(2).part(1).file_pattern(),
+            expected_component_two_assets.at(2));
+
+  // Unref the managed resources so they get destroyed properly.
+  pool_resource->Unref();
+}
+
 // The GetSessionOp should take a session stored in the resource manager
 // and return it to the ComputeSessionPool.
 TEST_F(DragnnOpKernelsTest, ReleaseSessionOpTest) {
@@ -215,6 +430,56 @@ TEST_F(DragnnOpKernelsTest, ReleaseSessionOpTest) {
       container_string, id_string, &null_resource);
   EXPECT_NE(Status::OK(), result);
   EXPECT_EQ(null_resource, nullptr);
+}
+
+// The GetSessionCounts op should report the number of sessions created and
+// free.
+TEST_F(DragnnOpKernelsTest, GetSessionCountsOpTest) {
+  // Create and initialize the kernel under test.
+  TF_ASSERT_OK(
+      NodeDefBuilder("get_session_counts", "GetSessionCounts")
+          .Input(FakeInput(DT_STRING))  // The handle for the ComputeSession.
+          .Finalize(node_def()));
+  TF_ASSERT_OK(InitOp());
+
+  // Set the input data.
+  const string container_string = "container_str";
+  AddInputFromList<string>(TensorShape({1}), {container_string});
+
+  // Reset the test context to ensure it's clean.
+  ResetOpKernelContext();
+
+  // Create a ComputeSessionPool.
+  MasterSpec spec;
+  GridPoint hyperparams;
+  std::unique_ptr<ComputeSessionPool> pool(
+      new ComputeSessionPool(spec, hyperparams));
+
+  // Get an unowned pointer to the ComputeSessionPool before moving
+  // the pool to the resource manager.
+  ComputeSessionPool *pool_ptr = pool.get();
+  TF_ASSERT_OK(resource_mgr()->Create<ComputeSessionPoolResource>(
+      container_string, "pool",
+      new ComputeSessionPoolResource(std::move(pool))));
+
+  // Create two ComputeSessions.
+  auto session_one = pool_ptr->GetSession();
+  auto session_two = pool_ptr->GetSession();
+
+  // Retun one of them.
+  pool_ptr->ReturnSession(std::move(session_two));
+
+  // At this point, the pool should report that it has one outstanding session
+  // and two sessions total.
+  EXPECT_EQ(1, pool_ptr->num_outstanding_sessions());
+  EXPECT_EQ(2, pool_ptr->num_unique_sessions());
+
+  // Run the kernel.
+  TF_EXPECT_OK(RunOpKernelWithContext());
+
+  EXPECT_EQ(pool_ptr->num_unique_sessions(), GetOutput(0)->vec<int64>()(0));
+  EXPECT_EQ(pool_ptr->num_outstanding_sessions(),
+            GetOutput(0)->vec<int64>()(1));
 }
 
 // The AdvanceFromOracle op should call AdvanceFromOracle on the specified
@@ -287,14 +552,65 @@ TEST_F(DragnnOpKernelsTest, AdvanceFromPredictionOpTest) {
 
   // Set expectations on the mock session.
   auto validator_function = [weights](const string &component_name,
-                                      const float score_matrix[],
-                                      int score_matrix_length) {
-    EXPECT_EQ(weights.size(), score_matrix_length);
+                                      const float *score_matrix, int num_items,
+                                      int num_actions) {
+    EXPECT_EQ(weights.size(), num_items * num_actions);
     for (int i = 0; i < weights.size(); ++i) {
       EXPECT_EQ(weights[i], score_matrix[i]);
     }
+    return true;
   };
-  EXPECT_CALL(*mock_session_ptr, AdvanceFromPrediction(component_name, _, _))
+  EXPECT_CALL(*mock_session_ptr, AdvanceFromPrediction(component_name, _, _, _))
+      .WillOnce(Invoke(validator_function));
+
+  // Run the kernel.
+  TF_EXPECT_OK(RunOpKernelWithContext());
+}
+
+// The AdvanceFromPredicton op should call AdvanceFromPrediction on the
+// specified component with the passed scores. If it returns false, the op
+// should not return OK.
+TEST_F(DragnnOpKernelsTest, AdvanceFromPredictionFailureTest) {
+  // Create and initialize the kernel under test.
+  const string component_name = "TESTING_COMPONENT_NAME";
+  TF_ASSERT_OK(
+      NodeDefBuilder("advance_from_prediction", "AdvanceFromPrediction")
+          .Attr("component", component_name)
+          .Input(FakeInput(DT_STRING))  // The handle for the ComputeSession.
+          .Input(FakeInput(DT_FLOAT))   // The prediction tensor.
+          .Finalize(node_def()));
+  TF_ASSERT_OK(InitOp());
+
+  // Set the input data.
+  const string container_string = "container_str";
+  const string id_string = "id_str";
+  AddInputFromList<string>(TensorShape({2}), {container_string, id_string});
+  const std::vector<float> weights = {1.1, 2.2, 3.3, 4.4};
+  AddInputFromArray<float>(TensorShape({2, 2}), weights);
+
+  // Reset the test context to ensure it's clean.
+  ResetOpKernelContext();
+
+  // Create a MockComputeSession and set expectations.
+  std::unique_ptr<MockComputeSession> mock_session(new MockComputeSession());
+  MockComputeSession *mock_session_ptr = mock_session.get();
+
+  // Wrap the ComputeSessionResource and put it into the resource manager.
+  TF_ASSERT_OK(resource_mgr()->Create<ComputeSessionResource>(
+      container_string, id_string,
+      new ComputeSessionResource(std::move(mock_session))));
+
+  // Set expectations on the mock session.
+  auto validator_function = [weights](const string &component_name,
+                                      const float *score_matrix, int num_items,
+                                      int num_actions) {
+    EXPECT_EQ(weights.size(), num_items * num_actions);
+    for (int i = 0; i < weights.size(); ++i) {
+      EXPECT_EQ(weights[i], score_matrix[i]);
+    }
+    return true;
+  };
+  EXPECT_CALL(*mock_session_ptr, AdvanceFromPrediction(component_name, _, _, _))
       .WillOnce(Invoke(validator_function));
 
   // Run the kernel.

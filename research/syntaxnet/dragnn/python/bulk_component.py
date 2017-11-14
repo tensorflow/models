@@ -216,9 +216,11 @@ def build_cross_entropy_loss(logits, gold):
   logits = tf.gather(logits, valid)
   correct = tf.reduce_sum(tf.to_int32(tf.nn.in_top_k(logits, gold, 1)))
   total = tf.size(gold)
-  cost = tf.reduce_sum(
-      tf.contrib.nn.deprecated_flipped_sparse_softmax_cross_entropy_with_logits(
-          logits, tf.cast(gold, tf.int64))) / tf.cast(total, tf.float32)
+  with tf.control_dependencies([tf.assert_positive(total)]):
+    cost = tf.reduce_sum(
+        tf.nn.sparse_softmax_cross_entropy_with_logits(
+            labels=tf.cast(gold, tf.int64), logits=logits)) / tf.cast(
+                total, tf.float32)
   return cost, correct, total
 
 
@@ -266,6 +268,22 @@ class BulkFeatureExtractorComponentBuilder(component.ComponentBuilderBase):
 
     correct, total = tf.constant(0), tf.constant(0)
     return state.handle, cost, correct, total
+
+  def build_post_restore_hook(self):
+    """Builds a graph that should be executed after the restore op.
+
+    This graph is intended to be run once, before the inference pipeline is
+    run.
+
+    Returns:
+      setup_op - An op that, when run, guarantees all setup ops will run.
+    """
+    logging.info('Building restore hook for component: %s', self.spec.name)
+    with tf.variable_scope(self.name):
+      if callable(getattr(self.network, 'build_post_restore_hook', None)):
+        return [self.network.build_post_restore_hook()]
+      else:
+        return []
 
   def build_greedy_inference(self, state, network_states,
                              during_training=False):

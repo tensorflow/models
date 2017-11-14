@@ -28,7 +28,7 @@ from dragnn.python import spec_builder
 def _make_basic_master_spec():
   """Constructs a simple spec.
 
-  Modified version of nlp/saft/opensource/dragnn/tools/parser_trainer.py
+  Modified version of dragnn/tools/parser_trainer.py
 
   Returns:
     spec_pb2.MasterSpec instance.

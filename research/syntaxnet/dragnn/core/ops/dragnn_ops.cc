@@ -18,6 +18,20 @@
 namespace syntaxnet {
 namespace dragnn {
 
+REGISTER_OP("SetAssetDirectory")
+    .Input("asset_directory: string")
+    .Output("asset_directory_out: string")
+    .SetIsStateful()
+    .Doc(R"doc(
+Override the paths to assets specified in the MasterSpec with the given
+asset_directory. This op must be called before any calls to GetSession, as it
+will create a new session pool with the overridden master spec.
+
+asset_directory: The directory containing all the assets. Note that all assets
+    must be in a single flat directory.
+asset_directory_out: The input, just as an output.
+)doc");
+
 REGISTER_OP("GetSession")
     .Input("container: string")
     .Attr("master_spec: string")
@@ -40,6 +54,18 @@ Given a ComputeSession, return it to the ComputeSession pool.
 This ComputeSession will no longer be available after this op returns.
 
 handle: A handle to a ComputeSession that will be returned to the backing pool.
+)doc");
+
+REGISTER_OP("GetSessionCounts")
+    .Input("container: string")
+    .Output("stats: int64")
+    .SetIsStateful()
+    .Doc(R"doc(
+Given a container string, output session counts for that ComputeSessionPool.
+
+container: A unique identifier for the ComputeSessionPool to analyze.
+stats: A vector of stats. [0] is the total number of created sessions. [1] is
+the number of sessions that are currently not in the pool.
 )doc");
 
 REGISTER_OP("InitComponentData")
@@ -121,28 +147,6 @@ handle: A handle to a ComputeSession.
 scores: A tensor of scores, ordered by {batch_size, beam_size, num_actions}.
 component: The name of a Component instance, matching the ComponentSpec.name.
 output_handle: A handle to the same ComputeSession after advancement.
-)doc");
-
-REGISTER_OP("DragnnEmbeddingInitializer")
-    .Output("embeddings: float")
-    .Attr("embedding_input: string")
-    .Attr("vocab: string")
-    .Attr("scaling_coefficient: float = 1.0")
-    .Attr("seed: int = 0")
-    .Attr("seed2: int = 0")
-    .Doc(R"doc(
-*** PLACEHOLDER OP - FUNCTIONALITY NOT YET IMPLEMENTED ***
-
-Read embeddings from an an input for every key specified in a text vocab file.
-
-embeddings: A tensor containing embeddings from the specified sstable.
-embedding_input: Path to location with embedding vectors.
-vocab: Path to list of keys corresponding to the input.
-scaling_coefficient: A scaling coefficient for the embedding matrix.
-seed: If either `seed` or `seed2` are set to be non-zero, the random number
-      generator is seeded by the given seed.  Otherwise, it is seeded by a
-      random seed.
-seed2: A second seed to avoid seed collision.
 )doc");
 
 REGISTER_OP("ExtractFixedFeatures")

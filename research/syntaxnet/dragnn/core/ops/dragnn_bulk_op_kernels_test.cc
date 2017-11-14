@@ -375,6 +375,114 @@ TEST_F(DragnnBulkOpKernelsTest, BulkFixedEmbeddings) {
   EXPECT_EQ(kNumSteps, GetOutput(2)->scalar<int32>()());
 }
 
+TEST_F(DragnnBulkOpKernelsTest, BulkEmbedFixedFeatures) {
+  // Create and initialize the kernel under test.
+  constexpr int kBatchPad = 7;
+  constexpr int kStepPad = 5;
+  constexpr int kMaxBeamSize = 3;
+  TF_ASSERT_OK(
+      NodeDefBuilder("BulkEmbedFixedFeatures", "BulkEmbedFixedFeatures")
+          .Attr("component", kComponentName)
+          .Attr("num_channels", kNumChannels)
+          .Attr("pad_to_batch", kBatchPad)
+          .Attr("pad_to_steps", kStepPad)
+          .Input(FakeInput(DT_STRING))  // The handle for the ComputeSession.
+          .Input(FakeInput(DT_FLOAT))   // Embedding matrices.
+          .Finalize(node_def()));
+  MockComputeSession *mock_session = GetMockSession();
+  ComponentSpec spec;
+  spec.set_name(kComponentName);
+  auto chan0_spec = spec.add_fixed_feature();
+  constexpr int kChan0FeatureCount = 2;
+  chan0_spec->set_size(kChan0FeatureCount);
+  auto chan1_spec = spec.add_fixed_feature();
+  constexpr int kChan1FeatureCount = 1;
+  chan1_spec->set_size(kChan1FeatureCount);
+  EXPECT_CALL(*mock_session, Spec(kComponentName))
+      .WillOnce(testing::ReturnRef(spec));
+  EXPECT_CALL(*mock_session, BeamSize(kComponentName))
+      .WillOnce(testing::Return(kMaxBeamSize));
+
+  // Embedding matrices as additional inputs.
+  // For channel 0, the embeddings are [id, id, id].
+  // For channel 1, the embeddings are [id^2, id^2, id^2, ... ,id^2].
+  vector<float> embedding_matrix_0;
+  constexpr int kEmbedding0Size = 3;
+  vector<float> embedding_matrix_1;
+  constexpr int kEmbedding1Size = 9;
+  for (int id = 0; id < kNumIds; ++id) {
+    for (int i = 0; i < kEmbedding0Size; ++i) {
+      embedding_matrix_0.push_back(id);
+      LOG(INFO) << embedding_matrix_0.back();
+    }
+    for (int i = 0; i < kEmbedding1Size; ++i) {
+      embedding_matrix_1.push_back(id * id);
+      LOG(INFO) << embedding_matrix_0.back();
+    }
+  }
+
+  AddInputFromArray<float>(TensorShape({kNumIds, kEmbedding0Size}),
+                           embedding_matrix_0);
+  AddInputFromArray<float>(TensorShape({kNumIds, kEmbedding1Size}),
+                           embedding_matrix_1);
+
+  constexpr int kExpectedEmbeddingSize = kChan0FeatureCount * kEmbedding0Size +
+                                         kChan1FeatureCount * kEmbedding1Size;
+  constexpr int kExpectedOutputSize =
+      kExpectedEmbeddingSize * kBatchPad * kStepPad * kMaxBeamSize;
+
+  // This function takes the allocator functions passed into GetBulkFF, uses
+  // them to allocate a tensor, then fills that tensor based on channel.
+  auto eval_function = [=](const string &component_name, int batch_size_padding,
+                           int num_steps_padding, int output_array_size,
+                           const vector<const float *> &per_channel_embeddings,
+                           float *embedding_output) {
+    // Validate the control variables.
+    EXPECT_EQ(batch_size_padding, kBatchPad);
+    EXPECT_EQ(num_steps_padding, kStepPad);
+    EXPECT_EQ(output_array_size, kExpectedOutputSize);
+
+    // Validate the passed embeddings.
+    for (int i = 0; i < kNumIds; ++i) {
+      for (int j = 0; j < kEmbedding0Size; ++j) {
+        float ch0_embedding =
+            per_channel_embeddings.at(0)[i * kEmbedding0Size + j];
+        EXPECT_FLOAT_EQ(ch0_embedding, i)
+            << "Failed match at " << i << "," << j;
+      }
+      for (int j = 0; j < kEmbedding1Size; ++j) {
+        float ch1_embedding =
+            per_channel_embeddings.at(1)[i * kEmbedding1Size + j];
+        EXPECT_FLOAT_EQ(ch1_embedding, i * i)
+            << "Failed match at " << i << "," << j;
+      }
+    }
+
+    // Fill the output matrix to the expected size. This will trigger msan
+    // if the allocation wasn't big enough.
+    for (int i = 0; i < kExpectedOutputSize; ++i) {
+      embedding_output[i] = i;
+    }
+  };
+
+  EXPECT_CALL(*mock_session,
+              BulkEmbedFixedFeatures(kComponentName, _, _, _, _, _))
+      .WillOnce(testing::Invoke(eval_function));
+
+  // Run the kernel.
+  TF_EXPECT_OK(RunOpKernelWithContext());
+
+  // Validate outputs.
+  EXPECT_EQ(kBatchPad * kStepPad * kMaxBeamSize,
+            GetOutput(1)->shape().dim_size(0));
+  EXPECT_EQ(kExpectedEmbeddingSize, GetOutput(1)->shape().dim_size(1));
+  auto output_data = GetOutput(1)->flat<float>();
+  for (int i = 0; i < kExpectedOutputSize; ++i) {
+    EXPECT_FLOAT_EQ(i, output_data(i));
+  }
+  EXPECT_EQ(kStepPad, GetOutput(2)->scalar<int32>()());
+}
+
 TEST_F(DragnnBulkOpKernelsTest, BulkFixedEmbeddingsWithPadding) {
   // Create and initialize the kernel under test.
   constexpr int kPaddedNumSteps = 5;
@@ -592,11 +700,53 @@ TEST_F(DragnnBulkOpKernelsTest, BulkAdvanceFromPrediction) {
   EXPECT_CALL(*mock_session,
               AdvanceFromPrediction(kComponentName,
                                     CheckScoresAreConsecutiveIntegersDivTen(),
-                                    kNumItems * kNumActions))
-      .Times(kNumSteps);
+                                    kNumItems, kNumActions))
+      .Times(kNumSteps)
+      .WillRepeatedly(Return(true));
 
   // Run the kernel.
   TF_EXPECT_OK(RunOpKernelWithContext());
+}
+
+TEST_F(DragnnBulkOpKernelsTest, BulkAdvanceFromPredictionFailsIfAdvanceFails) {
+  // Create and initialize the kernel under test.
+  TF_ASSERT_OK(
+      NodeDefBuilder("BulkAdvanceFromPrediction", "BulkAdvanceFromPrediction")
+          .Attr("component", kComponentName)
+          .Input(FakeInput(DT_STRING))  // The handle for the ComputeSession.
+          .Input(FakeInput(DT_FLOAT))   // Prediction scores for advancing.
+          .Finalize(node_def()));
+  MockComputeSession *mock_session = GetMockSession();
+
+  // Creates an input tensor such that each step will see a list of consecutive
+  // integers divided by 10 as scores.
+  vector<float> scores(kNumItems * kNumSteps * kNumActions);
+  for (int step(0), cnt(0); step < kNumSteps; ++step) {
+    for (int item = 0; item < kNumItems; ++item) {
+      for (int action = 0; action < kNumActions; ++action, ++cnt) {
+        scores[action + kNumActions * (step + item * kNumSteps)] = cnt / 10.0f;
+      }
+    }
+  }
+  AddInputFromArray<float>(TensorShape({kNumItems * kNumSteps, kNumActions}),
+                           scores);
+
+  EXPECT_CALL(*mock_session, BeamSize(kComponentName)).WillOnce(Return(1));
+  EXPECT_CALL(*mock_session, BatchSize(kComponentName))
+      .WillOnce(Return(kNumItems));
+  EXPECT_CALL(*mock_session, IsTerminal(kComponentName))
+      .Times(2)
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_session,
+              AdvanceFromPrediction(kComponentName,
+                                    CheckScoresAreConsecutiveIntegersDivTen(),
+                                    kNumItems, kNumActions))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+
+  // Run the kernel.
+  auto result = RunOpKernelWithContext();
+  EXPECT_FALSE(result.ok());
 }
 
 }  // namespace dragnn

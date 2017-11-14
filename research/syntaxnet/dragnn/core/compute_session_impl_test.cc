@@ -22,7 +22,9 @@
 #include "dragnn/core/component_registry.h"
 #include "dragnn/core/compute_session.h"
 #include "dragnn/core/compute_session_pool.h"
+#include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/component.h"
+#include "dragnn/core/interfaces/input_batch.h"
 #include "dragnn/core/test/generic.h"
 #include "dragnn/core/test/mock_component.h"
 #include "dragnn/core/test/mock_transition_state.h"
@@ -65,8 +67,10 @@ class TestComponentType1 : public Component {
   int GetSourceBeamIndex(int current_index, int batch) const override {
     return 0;
   }
-  void AdvanceFromPrediction(const float transition_matrix[],
-                             int matrix_length) override {}
+  bool AdvanceFromPrediction(const float *score_matrix, int num_items,
+                             int num_actions) override {
+    return true;
+  }
   void AdvanceFromOracle() override {}
   bool IsTerminal() const override { return true; }
   std::function<int(int, int, int)> GetStepLookupFunction(
@@ -83,6 +87,10 @@ class TestComponentType1 : public Component {
                        int channel_id) const override {
     return 0;
   }
+  void BulkEmbedFixedFeatures(
+      int batch_size_padding, int num_steps_padding, int embedding_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output) override {}
   int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override {
     return 0;
   }
@@ -133,8 +141,10 @@ class TestComponentType2 : public Component {
   int GetSourceBeamIndex(int current_index, int batch) const override {
     return 0;
   }
-  void AdvanceFromPrediction(const float transition_matrix[],
-                             int matrix_length) override {}
+  bool AdvanceFromPrediction(const float *score_matrix, int num_items,
+                             int num_actions) override {
+    return true;
+  }
   void AdvanceFromOracle() override {}
   bool IsTerminal() const override { return true; }
   std::function<int(int, int, int)> GetStepLookupFunction(
@@ -151,6 +161,10 @@ class TestComponentType2 : public Component {
                        int channel_id) const override {
     return 0;
   }
+  void BulkEmbedFixedFeatures(
+      int batch_size_padding, int num_steps_padding, int embedding_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output) override {}
   int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override {
     return 0;
   }
@@ -201,8 +215,14 @@ class UnreadyComponent : public Component {
   int GetSourceBeamIndex(int current_index, int batch) const override {
     return 0;
   }
-  void AdvanceFromPrediction(const float transition_matrix[],
-                             int matrix_length) override {}
+  bool AdvanceFromPrediction(const float *score_matrix, int num_items,
+                             int num_actions) override {
+    return true;
+  }
+  void BulkEmbedFixedFeatures(
+      int batch_size_padding, int num_steps_padding, int embedding_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output) override {}
   void AdvanceFromOracle() override {}
   bool IsTerminal() const override { return false; }
   std::function<int(int, int, int)> GetStepLookupFunction(
@@ -252,6 +272,18 @@ class ComputeSessionImplTestPoolAccessor {
           component_builder_function) {
     pool->SetComponentBuilder(std::move(component_builder_function));
   }
+};
+
+// An InputBatch that uses the serialized data directly.
+class IdentityBatch : public InputBatch {
+ public:
+  // Implements InputBatch.
+  void SetData(const std::vector<string> &data) override { data_ = data; }
+  int GetSize() const override { return data_.size(); }
+  const std::vector<string> GetSerializedData() const override { return data_; }
+
+ private:
+  std::vector<string> data_;  // the batch data
 };
 
 // *****************************************************************************
@@ -739,7 +771,7 @@ TEST(ComputeSessionImplTest, InitializesComponentWithSource) {
   EXPECT_CALL(*mock_components["component_one"], GetBeam())
       .WillOnce(Return(beam));
 
-  // Expect that the second component will recieve that beam.
+  // Expect that the second component will receive that beam.
   EXPECT_CALL(*mock_components["component_two"],
               InitializeData(beam, kMaxBeamSize, NotNull()));
 
@@ -899,7 +931,7 @@ TEST(ComputeSessionImplTest, SetTracingPropagatesToAllComponents) {
   EXPECT_CALL(*mock_components["component_one"], GetBeam())
       .WillOnce(Return(beam));
 
-  // Expect that the second component will recieve that beam, and then its
+  // Expect that the second component will receive that beam, and then its
   // tracing will be initialized.
   EXPECT_CALL(*mock_components["component_two"],
               InitializeData(beam, kMaxBeamSize, NotNull()));
@@ -1084,12 +1116,12 @@ TEST(ComputeSessionImplTest, InterfacePassesThrough) {
   session->AdvanceFromOracle("component_one");
 
   // AdvanceFromPrediction()
-  constexpr int kScoreMatrixLength = 3;
-  const float score_matrix[kScoreMatrixLength] = {1.0, 2.3, 4.5};
+  const int kNumActions = 1;
+  const float score_matrix[] = {1.0, 2.3, 4.5};
   EXPECT_CALL(*mock_components["component_one"],
-              AdvanceFromPrediction(score_matrix, kScoreMatrixLength));
-  session->AdvanceFromPrediction("component_one", score_matrix,
-                                 kScoreMatrixLength);
+              AdvanceFromPrediction(score_matrix, batch_size, kNumActions));
+  session->AdvanceFromPrediction("component_one", score_matrix, batch_size,
+                                 kNumActions);
 
   // GetFixedFeatures
   auto allocate_indices = [](int size) -> int32 * { return nullptr; };
@@ -1108,6 +1140,11 @@ TEST(ComputeSessionImplTest, InterfacePassesThrough) {
   EXPECT_CALL(*mock_components["component_one"], BulkGetFixedFeatures(_))
       .WillOnce(Return(0));
   EXPECT_EQ(0, session->BulkGetInputFeatures("component_one", extractor));
+
+  // BulkEmbedFixedFeatures
+  EXPECT_CALL(*mock_components["component_one"],
+              BulkEmbedFixedFeatures(1, 2, 3, _, _));
+  session->BulkEmbedFixedFeatures("component_one", 1, 2, 3, {nullptr}, nullptr);
 
   // EmitOracleLabels()
   std::vector<std::vector<int>> oracle_labels = {{0, 1}, {2, 3}};
@@ -1154,7 +1191,7 @@ TEST(ComputeSessionImplTest, InterfaceRequiresReady) {
   constexpr int kScoreMatrixLength = 3;
   const float score_matrix[kScoreMatrixLength] = {1.0, 2.3, 4.5};
   EXPECT_DEATH(session->AdvanceFromPrediction("component_one", score_matrix,
-                                              kScoreMatrixLength),
+                                              kScoreMatrixLength, 1),
                "without first initializing it");
   constexpr int kArbitraryChannelId = 3;
   EXPECT_DEATH(session->GetInputFeatures("component_one", nullptr, nullptr,
@@ -1163,9 +1200,31 @@ TEST(ComputeSessionImplTest, InterfaceRequiresReady) {
   BulkFeatureExtractor extractor(nullptr, nullptr, nullptr, false, 0, 0);
   EXPECT_DEATH(session->BulkGetInputFeatures("component_one", extractor),
                "without first initializing it");
+  EXPECT_DEATH(session->BulkEmbedFixedFeatures("component_one", 0, 0, 0,
+                                               {nullptr}, nullptr),
+               "without first initializing it");
   EXPECT_DEATH(
       session->GetTranslatedLinkFeatures("component_one", kArbitraryChannelId),
       "without first initializing it");
+}
+
+TEST(ComputeSessionImplTest, SetInputBatchCache) {
+  // Use empty protos since we won't interact with components.
+  MasterSpec spec;
+  GridPoint hyperparams;
+  ComputeSessionPool pool(spec, hyperparams);
+  auto session = pool.GetSession();
+
+  // Initialize a cached IdentityBatch.
+  const std::vector<string> data = {"foo", "bar", "baz"};
+  std::unique_ptr<InputBatchCache> input_batch_cache(new InputBatchCache(data));
+  input_batch_cache->GetAs<IdentityBatch>();
+
+  // Inject the cache into the session.
+  session->SetInputBatchCache(std::move(input_batch_cache));
+
+  // Check that the injected batch can be retrieved.
+  EXPECT_EQ(session->GetSerializedPredictions(), data);
 }
 
 }  // namespace dragnn
