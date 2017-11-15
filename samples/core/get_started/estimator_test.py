@@ -25,6 +25,10 @@ from six.moves import StringIO
 
 import custom_estimator
 import premade_estimator
+import savedmodel_estimator
+import tempfile
+
+import iris_data
 
 FOUR_LINES = "\n".join([
     "1,52.40, 2823,152,2",
@@ -32,27 +36,31 @@ FOUR_LINES = "\n".join([
     "176,2824, 136,3.19,0",
     "2,177.30,66.30, 53.10,1",])
 
-def four_lines_data():
+def four_lines_data(y_name="Species"):
   text = StringIO(FOUR_LINES)
 
-  df = pd.read_csv(text, names=premade_estimator.COLUMNS)
+  df = pd.read_csv(text, names=iris_data.COLUMNS)
 
-  xy = (df, df.pop("Species"))
+  xy = (df, df.pop(y_name))
   return xy, xy
 
+PATCH = {"load_data": four_lines_data}
 
 class RegressionTest(tf.test.TestCase):
   """Test the regression examples in this directory."""
 
-  @tf.test.mock.patch.dict(premade_estimator.__dict__,
-                           {"load_data": four_lines_data})
+  @tf.test.mock.patch.dict(iris_data.__dict__, PATCH)
   def test_premade_estimator(self):
     premade_estimator.main([None, "--train_steps=1"])
 
-  @tf.test.mock.patch.dict(custom_estimator.__dict__,
-                           {"load_data": four_lines_data})
+  @tf.test.mock.patch.dict(iris_data.__dict__, PATCH)
   def test_custom_estimator(self):
     custom_estimator.main([None, "--train_steps=1"])
+
+  @tf.test.mock.patch.dict(iris_data.__dict__, PATCH)
+  def test_savedmodel_estimator(self):
+    savedmodel_estimator.main([None, "train", "--train_steps=1",
+                               "--export_dir", tempfile.mkdtemp()])
 
 if __name__ == "__main__":
   tf.test.main()
