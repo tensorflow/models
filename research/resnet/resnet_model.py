@@ -56,7 +56,7 @@ class ResNet(object):
 
   def build_graph(self):
     """Build a whole graph for the model."""
-    self.global_step = tf.contrib.framework.get_or_create_global_step()
+    self.global_step = tf.train.get_or_create_global_step()
     self._build_model()
     if self.mode == 'train':
       self._build_train_op()
