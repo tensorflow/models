@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Utilities for generating program synthesis and evaluation data."""
+from __future__ import print_function
 
 import contextlib
 import sys
@@ -177,7 +178,7 @@ def evaluate(program_str, input_names_to_vals, default="ERROR"):
   with stdoutIO() as s:
     # pylint: disable=bare-except
     try:
-      exec exec_str + " print(out)"
+      exec(exec_str + " print(out)")
       return s.getvalue()[:-1]
     except:
       return default
@@ -290,7 +291,7 @@ class Program(object):
 
     with stdoutIO() as s:
       # pylint: disable=exec-used
-      exec inp_str + self.body + "; print(out)"
+      exec(inp_str + self.body + "; print(out)")
       # pylint: enable=exec-used
     return s.getvalue()[:-1]
 
@@ -412,11 +413,11 @@ def gen(max_len, how_many):
     else:
       outcomes_to_programs[outcome_str] = t.flat_str()
     if counter % 5000 == 0:
-      print "== proggen: tried: " + str(counter)
-      print "== proggen: kept:  " + str(len(outcomes_to_programs))
+      print("== proggen: tried: " + str(counter))
+      print("== proggen: kept:  " + str(len(outcomes_to_programs)))
 
     if counter % 250000 == 0 and save_prefix is not None:
-      print "saving..."
+      print("saving...")
       save_counter = 0
       progfilename = os.path.join(save_prefix, "prog_" + str(counter) + ".txt")
       iofilename = os.path.join(save_prefix, "io_" + str(counter) + ".txt")
@@ -431,7 +432,7 @@ def gen(max_len, how_many):
         for (o, p) in outcomes_to_programs.iteritems():
           save_counter += 1
           if save_counter % 500 == 0:
-            print "saving %d of %d" % (save_counter, len(outcomes_to_programs))
+            print("saving %d of %d" % (save_counter, len(outcomes_to_programs)))
           fp.write(p+"\n")
           fi.write(o+"\n")
           ftp.write(str(tokenize(p, tokens))+"\n")

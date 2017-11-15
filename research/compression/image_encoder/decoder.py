@@ -21,6 +21,7 @@ Example usage:
 python decoder.py --input_codes=output_codes.pkl --iteration=15 \
 --output_directory=/tmp/compression_output/ --model=residual_gru.pb
 """
+from __future__ import print_function
 import io
 import os
 

@@ -22,6 +22,8 @@ $ python real_nvp_multiscale_dataset.py \
 --dataset imnet \
 --data_path [DATA_PATH]
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 import time
 from datetime import datetime
@@ -32,7 +34,7 @@ import tensorflow as tf
 
 from tensorflow import gfile
 
-from real_nvp_utils import (
+from .real_nvp_utils import (
     batch_norm, batch_norm_log_diff, conv_layer,
     squeeze_2x2, squeeze_2x2_ordered, standard_normal_ll,
     standard_normal_sample, unsqueeze_2x2, variable_on_cpu)
@@ -1435,10 +1437,10 @@ class RealNVP(object):
             n_equal = int(n_equal)
             n_dash = bar_len - n_equal
             progress_bar = "[" + "=" * n_equal + "-" * n_dash + "]\r"
-            print progress_bar,
+            print(progress_bar, end=' ')
             cost = self.bit_per_dim.eval()
             eval_costs.append(cost)
-        print ""
+        print("")
         return float(numpy.mean(eval_costs))
 
 
@@ -1467,7 +1469,7 @@ def train_model(hps, logdir):
 
             ckpt_state = tf.train.get_checkpoint_state(logdir)
             if ckpt_state and ckpt_state.model_checkpoint_path:
-                print "Loading file %s" % ckpt_state.model_checkpoint_path
+                print("Loading file %s" % ckpt_state.model_checkpoint_path)
                 saver.restore(sess, ckpt_state.model_checkpoint_path)
 
             # Start the queue runners.
@@ -1499,8 +1501,8 @@ def train_model(hps, logdir):
                     format_str = ('%s: step %d, loss = %.2f '
                                   '(%.1f examples/sec; %.3f '
                                   'sec/batch)')
-                    print format_str % (datetime.now(), global_step_val, loss,
-                                        examples_per_sec, duration)
+                    print(format_str % (datetime.now(), global_step_val, loss,
+                                        examples_per_sec, duration))
 
                 if should_eval_summaries:
                     summary_str = outputs[-1]
@@ -1542,24 +1544,24 @@ def evaluate(hps, logdir, traindir, subset="valid", return_val=False):
                 while True:
                     ckpt_state = tf.train.get_checkpoint_state(traindir)
                     if not (ckpt_state and ckpt_state.model_checkpoint_path):
-                        print "No model to eval yet at %s" % traindir
+                        print("No model to eval yet at %s" % traindir)
                         time.sleep(30)
                         continue
-                    print "Loading file %s" % ckpt_state.model_checkpoint_path
+                    print("Loading file %s" % ckpt_state.model_checkpoint_path)
                     saver.restore(sess, ckpt_state.model_checkpoint_path)
 
                     current_step = tf.train.global_step(sess, eval_model.step)
                     if current_step == previous_global_step:
-                        print "Waiting for the checkpoint to be updated."
+                        print("Waiting for the checkpoint to be updated.")
                         time.sleep(30)
                         continue
                     previous_global_step = current_step
 
-                    print "Evaluating..."
+                    print("Evaluating...")
                     bit_per_dim = eval_model.eval_epoch(hps)
                     print ("Epoch: %d, %s -> %.3f bits/dim"
                            % (current_step, subset, bit_per_dim))
-                    print "Writing summary..."
+                    print("Writing summary...")
                     summary = tf.Summary()
                     summary.value.extend(
                         [tf.Summary.Value(
@@ -1597,7 +1599,7 @@ def sample_from_model(hps, logdir, traindir):
                     ckpt_state = tf.train.get_checkpoint_state(traindir)
                     if not (ckpt_state and ckpt_state.model_checkpoint_path):
                         if not initialized:
-                            print "No model to eval yet at %s" % traindir
+                            print("No model to eval yet at %s" % traindir)
                             time.sleep(30)
                             continue
                     else:
@@ -1607,7 +1609,7 @@ def sample_from_model(hps, logdir, traindir):
 
                     current_step = tf.train.global_step(sess, eval_model.step)
                     if current_step == previous_global_step:
-                        print "Waiting for the checkpoint to be updated."
+                        print("Waiting for the checkpoint to be updated.")
                         time.sleep(30)
                         continue
                     previous_global_step = current_step

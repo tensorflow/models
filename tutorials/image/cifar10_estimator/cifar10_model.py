@@ -15,10 +15,11 @@
 """Model class for Cifar10 Dataset."""
 from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
 
 import tensorflow as tf
 
-import model_base
+from . import model_base
 
 
 class ResNetCifar10(model_base.ResNet):

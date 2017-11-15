@@ -23,6 +23,7 @@ Example usage:
 python encoder.py --input_image=/your/image/here.png \
 --output_codes=output_codes.pkl --iteration=15 --model=residual_gru.pb
 """
+from __future__ import print_function
 import io
 import os
 

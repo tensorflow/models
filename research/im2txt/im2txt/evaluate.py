@@ -143,7 +143,7 @@ def run_once(model, saver, summary_writer, summary_op):
           global_step=global_step,
           summary_writer=summary_writer,
           summary_op=summary_op)
-    except Exception, e:  # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except
       tf.logging.error("Evaluation failed.")
       coord.request_stop(e)
 

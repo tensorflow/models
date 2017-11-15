@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """Compute the additional compression ratio after entropy coding."""
+from __future__ import print_function
 
 import io
 import os
@@ -58,7 +59,7 @@ def main(_):
   #iteration = FLAGS.iteration
 
   if not tf.gfile.Exists(FLAGS.input_codes):
-    print '\nInput codes not found.\n'
+    print('\nInput codes not found.\n')
     return
 
   with tf.gfile.FastGFile(FLAGS.input_codes, 'rb') as code_file:

@@ -15,11 +15,12 @@
 
 """Training for Domain Separation Networks (DSNs)."""
 from __future__ import division
+from __future__ import absolute_import
 
 import tensorflow as tf
 
 from domain_adaptation.datasets import dataset_factory
-import dsn
+from . import dsn
 
 slim = tf.contrib.slim
 FLAGS = tf.app.flags.FLAGS

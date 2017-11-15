@@ -14,6 +14,7 @@
 # ==============================================================================
 """Author: aneelakantan (Arvind Neelakantan)
 """
+from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
@@ -59,7 +60,7 @@ class Parameters:
       #Biases for the gates and cell
       for bias in ["i", "f", "c", "o"]:
         if (bias == "f"):
-          print "forget gate bias"
+          print("forget gate bias")
           params[key + "_" + bias] = tf.Variable(
               tf.random_uniform([embedding_dims], 1.0, 1.1, self.utility.
                                 tf_data_type[self.utility.FLAGS.data_type]))
