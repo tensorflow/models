@@ -41,6 +41,9 @@ for test_file in `find official -name *_test.py -print`; do
   if [ ${test_status} -eq 0 ]; then
     coverage report
     echo -e "TEST PASSED\n"
+    pip install flake8
+    echo -e "Looking for Python syntax errors\n"
+    flake8 . --count --select=E999 --show-source --statistics
   else
     EXIT=${test_status}
     echo -e "TEST FAILED\n"
