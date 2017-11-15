@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import google3
 import numpy as np
+from six.moves import xrange
 
 import tensorflow as tf
 
@@ -223,7 +224,7 @@ def cyclegan_generator_resnet(images,
           stride=1,
           activation_fn=tf.nn.relu,
           padding='VALID'):
-        for block_id in range(num_resnet_blocks):
+        for block_id in xrange(num_resnet_blocks):
           with tf.variable_scope('block_{}'.format(block_id)):
             res_net = tf.pad(net, paddings, 'REFLECT')
             res_net = layers.conv2d(res_net, num_filters * 4)
