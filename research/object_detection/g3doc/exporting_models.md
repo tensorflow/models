@@ -11,8 +11,8 @@ After you've identified a candidate checkpoint to export, run the following
 command from tensorflow/models/research/object_detection:
 
 ``` bash
-# From tensorflow/models/research/
-python object_detection/export_inference_graph.py \
+# From tensorflow/models/research/object_detection/
+python export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path ${PIPELINE_CONFIG_PATH} \
     --trained_checkpoint_prefix ${TRAIN_PATH} \
