@@ -380,7 +380,7 @@ class YOLOMetaArch(model.DetectionModel):
               else:
                 break
 
-      #TODO: compute the losses
+
 
 
       # create a tensor of shape [grid size * grid size, 1] -> I^{obj}_i
