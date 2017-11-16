@@ -35,7 +35,7 @@ FOUR_LINES = "\n".join([
 def four_lines_data():
   text = StringIO(FOUR_LINES)
 
-  df = pd.read_csv(text, names=premade_estimator.COLUMNS)
+  df = pd.read_csv(text, names=premade_estimator.CSV_COLUMN_NAMES)
 
   xy = (df, df.pop("Species"))
   return xy, xy

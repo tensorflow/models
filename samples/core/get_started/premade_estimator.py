@@ -28,29 +28,35 @@ parser.add_argument('--train_steps', default=1000, type=int,
 TRAIN_URL = "http://download.tensorflow.org/data/iris_training.csv"
 TEST_URL = "http://download.tensorflow.org/data/iris_test.csv"
 
-COLUMNS = ['SepalLength', 'SepalWidth', 'PetalLength', 'PetalWidth', 'Species']
+CSV_COLUMN_NAMES = ['SepalLength', 'SepalWidth',
+                    'PetalLength', 'PetalWidth', 'Species']
 SPECIES = ['Sentosa', 'Versicolor', 'Virginica']
 
 
-def load_data(train_fraction=0.8, seed=0, y_name='Species'):
+def load_data(y_name='Species'):
     """Returns the iris dataset as (train_x, train_y), (test_x, test_y)."""
     train_path = tf.keras.utils.get_file(TRAIN_URL.split('/')[-1], TRAIN_URL)
-    train = pd.read_csv(train_path, names=COLUMNS, header=0)
+    train = pd.read_csv(train_path, names=CSV_COLUMN_NAMES, header=0)
     train_x, train_y = train, train.pop(y_name)
 
     test_path = tf.keras.utils.get_file(TEST_URL.split('/')[-1], TEST_URL)
-    test = pd.read_csv(test_path, names=COLUMNS, header=0)
+    test = pd.read_csv(test_path, names=CSV_COLUMN_NAMES, header=0)
     test_x, test_y = test, test.pop(y_name)
 
     return (train_x, train_y), (test_x, test_y)
 
 
 def make_dataset(*inputs):
+    # Create a Dataset by slicing across the first dimension of each array.
     return tf.data.Dataset.from_tensor_slices(inputs)
 
 
-def from_dataset(ds):
-    return lambda: ds.make_one_shot_iterator().get_next()
+def dataset_input_fn(ds):
+    def my_input_fn():
+        # Convert the `Dataset` to tensorflow operations, and return them.
+        return ds.make_one_shot_iterator().get_next()
+
+    return my_input_fn
 
 
 def main(argv):
@@ -62,42 +68,53 @@ def main(argv):
     test_x = dict(test_x)
 
     # Feature columns describe the input: all columns are numeric.
-    feature_columns = [tf.feature_column.numeric_column(col_name)
-                       for col_name in COLUMNS[:-1]]
+    my_feature_columns = [
+        tf.feature_column.numeric_column(key='SepalLength'),
+        tf.feature_column.numeric_column(key='SepalWidth'),
+        tf.feature_column.numeric_column(key='PetalLength'),
+        tf.feature_column.numeric_column(key='PetalWidth'),
+    ]
 
-    # Build 3 layer DNN with 10, 10 units respectively.
+    # Build 2 hidden layer DNN with 10, 10 units respectively.
     classifier = tf.estimator.DNNClassifier(
-        feature_columns=feature_columns,
+        feature_columns=my_feature_columns,
+        # Two hidden layers of 10 nodes each.
         hidden_units=[10, 10],
+        # The model must choose between 3 classes.
         n_classes=3)
 
     # Train the Model.
-    train = (
+    train_ds = (
         make_dataset(train_x, train_y)
         .repeat()
         .shuffle(1000)
         .batch(args.batch_size))
-    classifier.train(input_fn=from_dataset(train), steps=args.train_steps)
+
+    classifier.train(input_fn=dataset_input_fn(train_ds),
+                     steps=args.train_steps)
 
     # Evaluate the model.
-    test = make_dataset(test_x, test_y).batch(args.batch_size)
-    eval_result = classifier.evaluate(input_fn=from_dataset(test))
+    test_ds = make_dataset(test_x, test_y).batch(args.batch_size)
+
+    eval_result = classifier.evaluate(input_fn=dataset_input_fn(test_ds))
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
     # Generate predictions from the model
-    predict_input = make_dataset({
-        'SepalLength': [6.4, 5.8],
-        'SepalWidth': [3.2, 3.1],
-        'PetalLength': [4.5, 5.0],
-        'PetalWidth': [1.5, 1.7],
+    expected = ['Setosa', 'Versicolor', 'Virginica']
+    predict_ds = make_dataset({
+        'SepalLength': [5.1, 5.9, 6.9],
+        'SepalWidth': [3.3, 3.0, 3.1],
+        'PetalLength': [1.7, 4.2, 5.4],
+        'PetalWidth': [0.5, 1.5, 2.1],
     }).batch(args.batch_size)
 
-    for p in classifier.predict(input_fn=from_dataset(predict_input)):
-        template = ('\nPrediction is "{}" ({:.1f}%)')
+    predictions = classifier.predict(input_fn=dataset_input_fn(predict_ds))
+    for pred_dict, expec in zip(predictions, expected):
+        template = ('\nPrediction is "{}" ({:.1f}%), expected "{}"')
 
-        class_id = p['class_ids'][0]
-        probability = p['probabilities'][class_id]
-        print(template.format(SPECIES[class_id], 100 * probability))
+        class_id = pred_dict['class_ids'][0]
+        probability = pred_dict['probabilities'][class_id]
+        print(template.format(SPECIES[class_id], 100 * probability, expec))
 
 
 if __name__ == '__main__':
