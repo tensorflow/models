@@ -8,6 +8,7 @@ import re
 import tensorflow as tf
 
 from object_detection.core import box_list
+from object_detection.core import box_list_ops
 from object_detection.core import model
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
@@ -324,7 +325,6 @@ class YOLOMetaArch(model.DetectionModel):
 
     # TODO TODO boxlist.py get_center_coordinates_and_sizes()
 
-    # TODO find 1^{obj}_i    -> using TF tensor manipulation
     # TODO find 1^{obj}_{ij} -> using matcher.py
     # TODO For every (i,j), we also need to know which ground truth was assigned to it
     # TODO Doing so will give us x_i, y_i, w_i, h_i
@@ -332,6 +332,7 @@ class YOLOMetaArch(model.DetectionModel):
     # List of 2D tensors containing call the y centers and x centers of each groundtruth list
     #yc_list = []
     #xc_list = []
+    batch_num = 0
     for groundtruth_data in self.groundtruth_lists[fields.BoxListFields.boxes]:
       ymins = groundtruth_data[:, 0]
       xmins = groundtruth_data[:, 1]
@@ -348,13 +349,39 @@ class YOLOMetaArch(model.DetectionModel):
 
       responsible_grid_indices = tf.reshape(tf.add(tf.multiply(xc, 7), yc), [-1])
 
-      tmp = tf.get_variable('YOLOv1Ind_Obj_i', [tf.size(responsible_grid_indices)])
-      assign_op = tf.assign(tmp, [0] * tf.size(responsible_grid_indices))
+      #TODO: instead of 49, use grid size
+      tmp = tf.get_variable('YOLOv1Ind_Obj_i', [49], tf.int32)
+      assign_op = tf.assign(tmp, [0] * 49)
 
-      tf.scatter_update(assign_op, responsible_grid_indices,
-                        tf.ones(tf.size(responsible_grid_indices)))
+      self.ind_obj_i = tf.scatter_update(assign_op, responsible_grid_indices,
+                        tf.ones(tf.size(responsible_grid_indices).eval(), tf.int32))
 
-      self.ind_obj_i = assign_op
+      tmp2 = tf.get_variable('YOLOv1Ind_Obj_ij', [98], tf.int32) #
+
+      # ind_obj_ij is not a 0/1 vector. if not matching gt, then the value is 0.
+      # But if there is a matching ground truth, then the value is the
+      # location of the ground truth in groundtruth_data
+      self.ind_obj_ij = tf.assign(tmp, [0]*98) #[[0]*2]*49
+
+      for i in range(49):
+        if(self.ind_obj_i[i]):
+          for k in range(tf.cast(tf.divide(tf.size(groundtruth_data).eval(), 4), tf.int32).eval()):
+            responsible_grid_index = xc[k]*7 + yc[k]
+            if(responsible_grid_index == 1):
+              gtbox_list = [box_list.BoxList(groundtruth_data[k])]
+              bbox1 = prediction_dict['detection_boxes'][batch_num][i*2]
+              bbox2 = prediction_dict['detection_boxes'][batch_num][i*2+1]
+              bbox_list = [box_list.BoxList(bbox1), box_list.BoxList(bbox2)]
+              iou_vals = box_list_ops.iou(gtbox_list, bbox_list)
+              if (iou_vals[0] > iou_vals[1] and not self.ind_obj_ij[i*2]):
+                self.ind_obj_ij = tf.scatter_update(self.ind_obj_ij, [i*2], [k+1], tf.int32)
+              elif(not self.ind_obj_ij[i*2+1]):
+                self.ind_obj_ij = tf.scatter_update(self.ind_obj_ij, [i*2+1], [k+1], tf.int32)
+              else:
+                break
+
+
+
 
       # create a tensor of shape [grid size * grid size, 1] -> I^{obj}_i
       # this is created by checking where the center of each ground truth is
@@ -362,9 +389,10 @@ class YOLOMetaArch(model.DetectionModel):
       gt_heights = tf.subtract(ymaxs, ymins)
       gt_widths = tf.subtract(xmaxs, xmins)
 
+
       #yc_list.append(yc)
       #xc_list.append(xc)
-
+      batch_num += 1
 
 
     class_predictions = prediction_dict['class_predictions']
