@@ -46,17 +46,26 @@ def load_data(y_name='Species'):
     return (train_x, train_y), (test_x, test_y)
 
 
-def make_dataset(*inputs):
-    # Create a Dataset by slicing across the first dimension of each array.
-    return tf.data.Dataset.from_tensor_slices(inputs)
+def train_input_fn(features, labels, batch_size):
+    dataset = tf.data.Dataset.from_tensor_slices((features, labels))
+
+    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
+
+    return dataset.make_one_shot_iterator().get_next()
 
 
-def dataset_input_fn(ds):
-    def my_input_fn():
-        # Convert the `Dataset` to tensorflow operations, and return them.
-        return ds.make_one_shot_iterator().get_next()
+def eval_input_fn(features, labels=None, batch_size=None):
+    if labels is None:
+        inputs = features
+    else:
+        inputs = (features, labels)
 
-    return my_input_fn
+    dataset = tf.data.Dataset.from_tensor_slices(inputs)
+
+    assert batch_size is not None, "batch_size must not be None"
+    dataset = dataset.batch(batch_size)
+
+    return dataset.make_one_shot_iterator().get_next()
 
 
 def main(argv):
@@ -81,31 +90,27 @@ def main(argv):
         n_classes=3)
 
     # Train the Model.
-    train_ds = (
-        make_dataset(train_x, train_y)
-        .repeat()
-        .shuffle(1000)
-        .batch(args.batch_size))
-
-    classifier.train(input_fn=dataset_input_fn(train_ds),
-                     steps=args.train_steps)
+    classifier.train(
+        input_fn=lambda:train_input_fn(train_x, train_y, args.batch_size),
+        steps=args.train_steps)
 
     # Evaluate the model.
-    test_ds = make_dataset(test_x, test_y).batch(args.batch_size)
-
-    eval_result = classifier.evaluate(input_fn=dataset_input_fn(test_ds))
+    eval_result = classifier.evaluate(
+        input_fn=lambda:eval_input_fn(test_x, test_y, args.batch_size))
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
     # Generate predictions from the model
     expected = ['Setosa', 'Versicolor', 'Virginica']
-    predict_ds = make_dataset({
+    predict_x = {
         'SepalLength': [5.1, 5.9, 6.9],
         'SepalWidth': [3.3, 3.0, 3.1],
         'PetalLength': [1.7, 4.2, 5.4],
         'PetalWidth': [0.5, 1.5, 2.1],
-    }).batch(args.batch_size)
+    }
 
-    predictions = classifier.predict(input_fn=dataset_input_fn(predict_ds))
+    predictions = classifier.predict(
+        input_fn=lambda:eval_input_fn(predict_x, batch_size=args.batch_size))
+
     for pred_dict, expec in zip(predictions, expected):
         template = ('\nPrediction is "{}" ({:.1f}%), expected "{}"')
 
