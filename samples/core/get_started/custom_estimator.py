@@ -46,25 +46,35 @@ def load_data(y_name='Species'):
     return (train_x, train_y), (test_x, test_y)
 
 
+
 def train_input_fn(features, labels, batch_size):
+    """An input function for training"""
+    # Convert the inputs to a Dataset.
     dataset = tf.data.Dataset.from_tensor_slices((features, labels))
 
+    # Shuffle, repeat, and batch the examples.
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
 
+    # Return the read end of the pipeline.
     return dataset.make_one_shot_iterator().get_next()
 
 
 def eval_input_fn(features, labels=None, batch_size=None):
+    """An input function for evaluation or prediction"""
     if labels is None:
+        # No labels, use only features.
         inputs = features
     else:
         inputs = (features, labels)
 
+    # Convert the inputs to a Dataset.
     dataset = tf.data.Dataset.from_tensor_slices(inputs)
 
+    # Batch the examples
     assert batch_size is not None, "batch_size must not be None"
     dataset = dataset.batch(batch_size)
 
+    # Return the read end of the pipeline.
     return dataset.make_one_shot_iterator().get_next()
 
 
@@ -147,6 +157,7 @@ def main(argv):
     # Evaluate the model.
     eval_result = classifier.evaluate(
         input_fn=lambda:eval_input_fn(test_x, test_y, args.batch_size))
+
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
     # Generate predictions from the model
