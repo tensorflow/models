@@ -11,7 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Example of DNNClassifier for Iris plant dataset."""
+"""An Example of a custom Estimator for the Iris dataset."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -113,13 +113,10 @@ def main(argv):
     train_x = dict(train_x)
     test_x = dict(test_x)
 
-    # Feature columns describe the input: all columns are numeric.
-    my_feature_columns = [
-        tf.feature_column.numeric_column(key='SepalLength'),
-        tf.feature_column.numeric_column(key='SepalWidth'),
-        tf.feature_column.numeric_column(key='PetalLength'),
-        tf.feature_column.numeric_column(key='PetalWidth'),
-    ]
+    # Feature columns describe how to use the input.
+    my_feature_columns = []
+    for key in train_x.keys():
+        my_feature_columns.append(tf.feature_column.numeric_column(key=key))
 
     # Build 2 hidden layer DNN with 10, 10 units respectively.
     classifier = tf.estimator.Estimator(
