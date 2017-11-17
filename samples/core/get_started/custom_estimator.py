@@ -11,7 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Example of DNNClassifier for Iris plant dataset."""
+"""An Example of a custom Estimator for the Iris dataset."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -22,35 +22,60 @@ import tensorflow as tf
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=100, type=int, help='batch size')
-parser.add_argument('--train_steps', default=200, type=int,
+parser.add_argument('--train_steps', default=1000, type=int,
                     help='number of training steps')
 
 TRAIN_URL = "http://download.tensorflow.org/data/iris_training.csv"
 TEST_URL = "http://download.tensorflow.org/data/iris_test.csv"
 
-COLUMNS = ['SepalLength', 'SepalWidth', 'PetalLength', 'PetalWidth', 'Species']
+CSV_COLUMN_NAMES = ['SepalLength', 'SepalWidth',
+                    'PetalLength', 'PetalWidth', 'Species']
 SPECIES = ['Sentosa', 'Versicolor', 'Virginica']
 
 
-def load_data(train_fraction=0.8, seed=0, y_name='Species'):
+def load_data(y_name='Species'):
     """Returns the iris dataset as (train_x, train_y), (test_x, test_y)."""
     train_path = tf.keras.utils.get_file(TRAIN_URL.split('/')[-1], TRAIN_URL)
-    train = pd.read_csv(train_path, names=COLUMNS, header=0)
+    train = pd.read_csv(train_path, names=CSV_COLUMN_NAMES, header=0)
     train_x, train_y = train, train.pop(y_name)
 
     test_path = tf.keras.utils.get_file(TEST_URL.split('/')[-1], TEST_URL)
-    test = pd.read_csv(test_path, names=COLUMNS, header=0)
+    test = pd.read_csv(test_path, names=CSV_COLUMN_NAMES, header=0)
     test_x, test_y = test, test.pop(y_name)
 
     return (train_x, train_y), (test_x, test_y)
 
 
-def make_dataset(*inputs):
-    return tf.data.Dataset.from_tensor_slices(inputs)
+
+def train_input_fn(features, labels, batch_size):
+    """An input function for training"""
+    # Convert the inputs to a Dataset.
+    dataset = tf.data.Dataset.from_tensor_slices((features, labels))
+
+    # Shuffle, repeat, and batch the examples.
+    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
+
+    # Return the read end of the pipeline.
+    return dataset.make_one_shot_iterator().get_next()
 
 
-def from_dataset(ds):
-    return lambda: ds.make_one_shot_iterator().get_next()
+def eval_input_fn(features, labels=None, batch_size=None):
+    """An input function for evaluation or prediction"""
+    if labels is None:
+        # No labels, use only features.
+        inputs = features
+    else:
+        inputs = (features, labels)
+
+    # Convert the inputs to a Dataset.
+    dataset = tf.data.Dataset.from_tensor_slices(inputs)
+
+    # Batch the examples
+    assert batch_size is not None, "batch_size must not be None"
+    dataset = dataset.batch(batch_size)
+
+    # Return the read end of the pipeline.
+    return dataset.make_one_shot_iterator().get_next()
 
 
 def my_model(features, labels, mode, params):
@@ -58,10 +83,8 @@ def my_model(features, labels, mode, params):
     # Create three fully connected layers each layer having a dropout
     # probability of 0.1.
     net = tf.feature_column.input_layer(features, params['feature_columns'])
-    for units in params.get('hidden_units', [10, 20, 10]):
+    for units in params['hidden_units']:
         net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
-        net = tf.layers.dropout(net, rate=0.1,
-                                training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Compute logits (1 per class).
     logits = tf.layers.dense(net, params['n_classes'], activation=None)
@@ -110,46 +133,51 @@ def main(argv):
     train_x = dict(train_x)
     test_x = dict(test_x)
 
-    # Feature columns describe the input: all columns are numeric.
-    feature_columns = [tf.feature_column.numeric_column(col_name)
-                       for col_name in COLUMNS[:-1]]
+    # Feature columns describe how to use the input.
+    my_feature_columns = []
+    for key in train_x.keys():
+        my_feature_columns.append(tf.feature_column.numeric_column(key=key))
 
-    # Build 3 layer DNN with 10, 20, 10 units respectively.
+    # Build 2 hidden layer DNN with 10, 10 units respectively.
     classifier = tf.estimator.Estimator(
         model_fn=my_model,
         params={
-            'feature_columns': feature_columns,
-            'hidden_units': [10, 20, 10],
+            'feature_columns': my_feature_columns,
+            # Two hidden layers of 10 nodes each.
+            'hidden_units': [10, 10],
+            # The model must choose between 3 classes.
             'n_classes': 3,
         })
 
     # Train the Model.
-    train = (
-        make_dataset(train_x, train_y)
-        .repeat()
-        .shuffle(1000)
-        .batch(args.batch_size))
-    classifier.train(input_fn=from_dataset(train), steps=args.train_steps)
+    classifier.train(
+        input_fn=lambda:train_input_fn(train_x, train_y, args.batch_size),
+        steps=args.train_steps)
 
     # Evaluate the model.
-    test = make_dataset(test_x, test_y).batch(args.batch_size)
-    eval_result = classifier.evaluate(input_fn=from_dataset(test))
+    eval_result = classifier.evaluate(
+        input_fn=lambda:eval_input_fn(test_x, test_y, args.batch_size))
+
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
     # Generate predictions from the model
-    predict_input = make_dataset({
-        'SepalLength': [6.4, 5.8],
-        'SepalWidth': [3.2, 3.1],
-        'PetalLength': [4.5, 5.0],
-        'PetalWidth': [1.5, 1.7],
-    }).batch(args.batch_size)
+    expected = ['Setosa', 'Versicolor', 'Virginica']
+    predict_x = {
+        'SepalLength': [5.1, 5.9, 6.9],
+        'SepalWidth': [3.3, 3.0, 3.1],
+        'PetalLength': [1.7, 4.2, 5.4],
+        'PetalWidth': [0.5, 1.5, 2.1],
+    }
 
-    for p in classifier.predict(input_fn=from_dataset(predict_input)):
-        template = ('Prediction is "{}" ({:.1f}%)')
+    predictions = classifier.predict(
+        input_fn=lambda:eval_input_fn(predict_x, batch_size=args.batch_size))
 
-        class_id = p['class_ids'][0]
-        probability = p['probabilities'][class_id]
-        print(template.format(SPECIES[class_id], 100 * probability))
+    for pred_dict, expec in zip(predictions, expected):
+        template = ('\nPrediction is "{}" ({:.1f}%), expected "{}"')
+
+        class_id = pred_dict['class_ids'][0]
+        probability = pred_dict['probabilities'][class_id]
+        print(template.format(SPECIES[class_id], 100 * probability, expec))
 
 
 if __name__ == '__main__':
