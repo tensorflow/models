@@ -82,3 +82,26 @@ py_library(
         "//tensorflow_models/object_detection/utils:dataset_util",
     ],
 )
+
+py_test(
+    name = "oid_tfrecord_creation_test",
+    srcs = ["oid_tfrecord_creation_test.py"],
+    deps = [
+        ":oid_tfrecord_creation",
+        "//third_party/py/contextlib2",
+        "//third_party/py/pandas",
+        "//third_party/py/tensorflow",
+    ],
+)
+
+py_binary(
+    name = "create_oid_tf_record",
+    srcs = ["create_oid_tf_record.py"],
+    deps = [
+        ":oid_tfrecord_creation",
+        "//third_party/py/contextlib2",
+        "//third_party/py/pandas",
+        "//tensorflow",
+        "//tensorflow_models/object_detection/utils:label_map_util",
+    ],
+)
