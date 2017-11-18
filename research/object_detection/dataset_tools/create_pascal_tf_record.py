@@ -16,7 +16,8 @@
 r"""Convert raw PASCAL dataset to TFRecord for object_detection.
 
 Example usage:
-    ./create_pascal_tf_record --data_dir=/home/user/VOCdevkit \
+    python object_detection/dataset_tools/create_pascal_tf_record.py \
+        --data_dir=/home/user/VOCdevkit \
         --year=VOC2012 \
         --output_path=/home/user/pascal.record
 """

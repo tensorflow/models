@@ -30,10 +30,10 @@ class OfflineEvalMapCorlocTest(tf.test.TestCase):
     result = offline_eval._generate_sharded_filenames(test_filename)
     self.assertEqual(result, [test_filename])
 
-    result = offline_eval._generate_sharded_filenames('/path/to/@3.sst')
+    result = offline_eval._generate_sharded_filenames('/path/to/@3.record')
     self.assertEqual(result, [
-        '/path/to/-00000-of-00003.sst', '/path/to/-00001-of-00003.sst',
-        '/path/to/-00002-of-00003.sst'
+        '/path/to/-00000-of-00003.record', '/path/to/-00001-of-00003.record',
+        '/path/to/-00002-of-00003.record'
     ])
 
     result = offline_eval._generate_sharded_filenames('/path/to/abc@3')
@@ -46,11 +46,11 @@ class OfflineEvalMapCorlocTest(tf.test.TestCase):
     self.assertEqual(result, ['/path/to/-00000-of-00001'])
 
   def test_generateFilenames(self):
-    test_filenames = ['/path/to/file', '/path/to/@3.sst']
+    test_filenames = ['/path/to/file', '/path/to/@3.record']
     result = offline_eval._generate_filenames(test_filenames)
     self.assertEqual(result, [
-        '/path/to/file', '/path/to/-00000-of-00003.sst',
-        '/path/to/-00001-of-00003.sst', '/path/to/-00002-of-00003.sst'
+        '/path/to/file', '/path/to/-00000-of-00003.record',
+        '/path/to/-00001-of-00003.record', '/path/to/-00002-of-00003.record'
     ])
 
 
