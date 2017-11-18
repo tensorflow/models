@@ -21,7 +21,8 @@ See: O. M. Parkhi, A. Vedaldi, A. Zisserman, C. V. Jawahar
      http://www.robots.ox.ac.uk/~vgg/data/pets/
 
 Example usage:
-    ./create_pet_tf_record --data_dir=/home/user/pet \
+    python object_detection/dataset_tools/create_pet_tf_record.py \
+        --data_dir=/home/user/pet \
         --output_dir=/home/user/pet/output
 """
 

@@ -63,10 +63,10 @@ Extras:
       Defining your own model architecture</a><br>
   * <a href='g3doc/using_your_own_dataset.md'>
       Bringing in your own dataset</a><br>
-  * <a href='g3doc/oid_inference_and_evaluation.md'>
-      Inference and evaluation on the Open Images dataset</a><br>
   * <a href='g3doc/evaluation_protocols.md'>
       Supported object detection evaluation protocols</a><br>
+  * <a href='g3doc/oid_inference_and_evaluation.md'>
+      Inference and evaluation on the Open Images dataset</a><br>
 
 ## Getting Help
 
