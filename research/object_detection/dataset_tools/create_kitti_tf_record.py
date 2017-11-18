@@ -27,7 +27,7 @@ Converts KITTI detection dataset to TFRecords with a standard format allowing
   This can be altered using the flags, see details below.
 
 Example usage:
-    python create_kitti_tf_record.py \
+    python object_detection/dataset_tools/create_kitti_tf_record.py \
         --data_dir=/home/user/kitti \
         --output_path=/home/user/kitti.record
 """
