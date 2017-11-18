@@ -15,7 +15,7 @@
 r"""Creates TFRecords of Open Images dataset for object detection.
 
 Example usage:
-  ./create_oid_tf_record \
+  python object_detection/dataset_tools/create_oid_tf_record.py \
     --input_annotations_csv=/path/to/input/annotations-human-bbox.csv \
     --input_images_directory=/path/to/input/image_pixels_directory \
     --input_label_map=/path/to/input/labels_bbox_545.labelmap \
