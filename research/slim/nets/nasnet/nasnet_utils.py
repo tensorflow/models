@@ -413,7 +413,6 @@ class NasNetABaseCell(object):
       # Decrease the keep probability over time
       current_step = tf.cast(tf.train.get_or_create_global_step(),
                              tf.float32)
-      print("HERE")
       drop_path_burn_in_steps = self._total_training_steps
       current_ratio = (
           current_step / drop_path_burn_in_steps)
