@@ -79,7 +79,7 @@ def eval_input_fn(features, labels=None, batch_size=None):
 
 
 def my_model(features, labels, mode, params):
-    """A DNN `model_fn`
+    """A DNN `model_fn`.
     
     Args:
       features: The features dictionary from the input_fn.
