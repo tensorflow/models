@@ -25,7 +25,8 @@ Maintainers of TFGAN:
 
 1. [Image compression (coming soon)](#compression)
 
-## MNIST {#mnist}
+## MNIST
+<a id='mnist'></a>
 
 We train a simple generator to produce [MNIST digits](http://yann.lecun.com/exdb/mnist/).
 The unconditional case maps noise to MNIST digits. The conditional case maps
@@ -44,14 +45,16 @@ We use a classifier trained on MNIST digit classification for evaluation.
 ### InfoGAN MNIST
 ![InfoGAN](g3doc/mnist_infogan.png "InfoGAN")
 
-## MNIST with GANEstimator {#mnist_estimator}
+## MNIST with GANEstimator
+<a id='mnist_estimator'></a>
 
 This setup is exactly the same as in the [unconditional MNIST example](#mnist), but
 uses the `tf.Learn` `GANEstimator`.
 
 ![Unconditional GAN](g3doc/mnist_estimator_unconditional_gan.png "unconditional GAN")
 
-## CIFAR10 {#cifar10}
+## CIFAR10
+<a id='cifar10'></a>
 
 We train a [DCGAN generator](https://arxiv.org/abs/1511.06434) to produce [CIFAR10 images](https://www.cs.toronto.edu/~kriz/cifar.html).
 The unconditional case maps noise to CIFAR10 images. The conditional case maps
@@ -66,7 +69,8 @@ We use the [Inception Score](https://arxiv.org/abs/1606.03498) to evaluate the i
 ### Conditional CIFAR10
 ![Unconditional GAN](g3doc/cifar_conditional_gan.png "unconditional GAN"){width="330"}
 
-## Image compression {#compression}
+## Image compression
+<a id='compression'></a>
 
 In neural image compression, we attempt to reduce an image to a smaller representation
 such that we can recreate the original image as closely as possible. See [`Full Resolution Image Compression with Recurrent Neural Networks`](https://arxiv.org/abs/1608.05148) for more details on using neural networks
