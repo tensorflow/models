@@ -16,6 +16,7 @@
 """Tests for the model."""
 
 import numpy as np
+from six.moves import xrange
 import string
 import tensorflow as tf
 from tensorflow.contrib import slim
