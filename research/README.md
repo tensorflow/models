@@ -29,6 +29,7 @@ installation](https://www.tensorflow.org/install).
 -   [differential_privacy](differential_privacy): privacy-preserving student
     models from multiple teachers.
 -   [domain_adaptation](domain_adaptation): domain separation networks.
+-   [gan](gan): generative adversarial networks.
 -   [im2txt](im2txt): image-to-text neural network for image captioning.
 -   [inception](inception): deep convolutional networks for computer vision.
 -   [learning_to_remember_rare_events](learning_to_remember_rare_events): a
