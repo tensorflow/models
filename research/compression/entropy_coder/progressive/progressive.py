@@ -18,7 +18,6 @@
 import json
 
 from six.moves import xrange
-
 import tensorflow as tf
 
 from entropy_coder.lib import blocks
