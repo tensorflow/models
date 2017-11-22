@@ -441,7 +441,7 @@ def get_config():
 
 def main(_):
   if not FLAGS.data_path:
-    raise ValueError("Must set --data_path to PTB data directory")
+    raise ValueError("/home/fy2015/simple-examples/")
   gpus = [
       x.name for x in device_lib.list_local_devices() if x.device_type == "GPU"
   ]
