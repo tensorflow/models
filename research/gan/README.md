@@ -37,13 +37,13 @@ network architectures are defined [here](https://github.com/tensorflow/models/tr
 We use a classifier trained on MNIST digit classification for evaluation.
 
 ### Unconditional MNIST
-![Unconditional GAN](g3doc/mnist_unconditional_gan.png "unconditional GAN")
+<img src="g3doc/mnist_unconditional_gan.png" title="Unconditional GAN" width="330" />
 
 ### Conditional MNIST
-![Conditional GAN](g3doc/mnist_conditional_gan.png "conditional GAN")
+<img src="g3doc/mnist_conditional_gan.png" title="Conditional GAN" width="330" />
 
 ### InfoGAN MNIST
-![InfoGAN](g3doc/mnist_infogan.png "InfoGAN")
+<img src="g3doc/mnist_infogan.png" title="InfoGAN" width="330" />
 
 ## MNIST with GANEstimator
 <a id='mnist_estimator'></a>
@@ -67,7 +67,7 @@ We use the [Inception Score](https://arxiv.org/abs/1606.03498) to evaluate the i
 ![Unconditional GAN](g3doc/cifar_unconditional_gan.png "unconditional GAN")
 
 ### Conditional CIFAR10
-![Unconditional GAN](g3doc/cifar_conditional_gan.png "unconditional GAN"){width="330"}
+<img src="g3doc/cifar_conditional_gan.png" title="Conditional GAN" width="330" />
 
 ## Image compression
 <a id='compression'></a>
@@ -97,12 +97,10 @@ Some other notes on the problem:
 ### Results
 
 #### No adversarial loss
-
-![compresson_no_adversarial](g3doc/compression_wf0.png "no adversarial loss")
+<img src="g3doc/compression_wf0.png" title="No adversarial loss" width="500" />
 
 #### Adversarial loss
-
-![compresson_no_adversarial](g3doc/compression_wf10000.png "with adversarial loss")
+<img src="g3doc/compression_wf10000.png" title="With adversarial loss" width="500" />
 
 ### Architectures
 
