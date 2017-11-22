@@ -213,13 +213,21 @@ class PTBModel(object):
     # Slightly better results can be obtained with forget gate biases
     # initialized to 1 but the hyperparameters of the model would need to be
     # different than reported in the paper.
-    cell = self._get_lstm_cell(config, is_training)
+    def get_unwrapped_single_cell():
+      return self._get_lstm_cell(config, is_training)
+    def get_wrapped_single_cell():
+      return tf.contrib.rnn.DropoutWrapper(
+          get_unwrapped_single_cell(), output_keep_prob=config.keep_prob)
     if is_training and config.keep_prob < 1:
-      cell = tf.contrib.rnn.DropoutWrapper(
-          cell, output_keep_prob=config.keep_prob)
+      def get_single_cell():
+        return get_wrapped_single_cell()
+    else:
+      def get_single_cell():
+        return get_unwrapped_single_cell()
 
     cell = tf.contrib.rnn.MultiRNNCell(
-        [cell for _ in range(config.num_layers)], state_is_tuple=True)
+        [get_single_cell() for _ in range(config.num_layers)],
+        state_is_tuple=True)
 
     self._initial_state = cell.zero_state(config.batch_size, data_type())
     state = self._initial_state
