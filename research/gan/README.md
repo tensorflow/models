@@ -51,7 +51,7 @@ We use a classifier trained on MNIST digit classification for evaluation.
 This setup is exactly the same as in the [unconditional MNIST example](#mnist), but
 uses the `tf.Learn` `GANEstimator`.
 
-![Unconditional GAN](g3doc/mnist_estimator_unconditional_gan.png "unconditional GAN")
+<img src="g3doc/mnist_estimator_unconditional_gan.png" title="Unconditional GAN" width="330" />
 
 ## CIFAR10
 <a id='cifar10'></a>
@@ -64,7 +64,7 @@ network architectures are defined [here](https://github.com/tensorflow/models/tr
 We use the [Inception Score](https://arxiv.org/abs/1606.03498) to evaluate the images.
 
 ### Unconditional CIFAR10
-![Unconditional GAN](g3doc/cifar_unconditional_gan.png "unconditional GAN")
+<img src="g3doc/cifar_unconditional_gan.png" title="Unconditional GAN" width="330" />
 
 ### Conditional CIFAR10
 <img src="g3doc/cifar_conditional_gan.png" title="Conditional GAN" width="330" />
