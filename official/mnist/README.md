@@ -2,7 +2,7 @@
 
 This directory builds a convolutional neural net to classify the [MNIST
 dataset](http://yann.lecun.com/exdb/mnist/) using the
-[tf.contrib.data](https://www.tensorflow.org/api_docs/python/tf/contrib/data),
+[tf.data](https://www.tensorflow.org/api_docs/python/tf/data),
 [tf.estimator.Estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator),
 and
 [tf.layers](https://www.tensorflow.org/api_docs/python/tf/layers)
