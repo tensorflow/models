@@ -91,6 +91,8 @@ def my_model(features, labels, mode, params):
     """
     # Use `input_layer` to apply the feature columns.
     net = tf.feature_column.input_layer(features, params['feature_columns'])
+    
+    # Build the hidden layers, sized according to the 'hidden_units' param.
     for units in params['hidden_units']:
         net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
 
