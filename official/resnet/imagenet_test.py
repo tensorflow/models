@@ -26,6 +26,7 @@ import resnet_model
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
+_BATCH_SIZE = 32
 _LABEL_CLASSES = 1001
 
 
@@ -45,7 +46,7 @@ class BaseTest(tf.test.TestCase):
 
     with graph.as_default(), self.test_session(
         use_gpu=with_gpu, force_gpu=with_gpu):
-      model = resnet_model.resnet_v2(
+      model = resnet_model.imagenet_resnet_v2(
           resnet_size, 456,
           data_format='channels_first' if with_gpu else 'channels_last')
       inputs = tf.random_uniform([1, 224, 224, 3])
@@ -125,10 +126,10 @@ class BaseTest(tf.test.TestCase):
 
   def input_fn(self):
     """Provides random features and labels."""
-    features = tf.random_uniform([FLAGS.batch_size, 224, 224, 3])
+    features = tf.random_uniform([_BATCH_SIZE, 224, 224, 3])
     labels = tf.one_hot(
         tf.random_uniform(
-            [FLAGS.batch_size], maxval=_LABEL_CLASSES - 1,
+            [_BATCH_SIZE], maxval=_LABEL_CLASSES - 1,
             dtype=tf.int32),
         _LABEL_CLASSES)
 
@@ -139,13 +140,18 @@ class BaseTest(tf.test.TestCase):
     tf.train.create_global_step()
 
     features, labels = self.input_fn()
-    spec = imagenet_main.resnet_model_fn(features, labels, mode)
+    spec = imagenet_main.resnet_model_fn(
+        features, labels, mode, {
+            'resnet_size': 50,
+            'data_format': 'channels_last',
+            'batch_size': _BATCH_SIZE,
+        })
 
     predictions = spec.predictions
     self.assertAllEqual(predictions['probabilities'].shape,
-                        (FLAGS.batch_size, _LABEL_CLASSES))
+                        (_BATCH_SIZE, _LABEL_CLASSES))
     self.assertEqual(predictions['probabilities'].dtype, tf.float32)
-    self.assertAllEqual(predictions['classes'].shape, (FLAGS.batch_size,))
+    self.assertAllEqual(predictions['classes'].shape, (_BATCH_SIZE,))
     self.assertEqual(predictions['classes'].dtype, tf.int64)
 
     if mode != tf.estimator.ModeKeys.PREDICT:
@@ -171,5 +177,4 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  FLAGS = imagenet_main.FLAGS
   tf.test.main()

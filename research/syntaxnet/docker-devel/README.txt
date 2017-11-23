@@ -43,11 +43,11 @@ Step 3: Building the development image
 
 First, ensure you have the file
 
-  syntaxnet_with_tensorflow-0.2-cp27-none-linux_x86_64.whl
+  syntaxnet_with_tensorflow-0.2-cp27-cp27mu-linux_x86_64.whl
 
 in your working directory, from step 2. Then run,
 
-  docker build -t dragnn-oss:latest-minimal -f docker-devel/Dockerfile.min
+  docker build -t dragnn-oss:latest-minimal -f docker-devel/Dockerfile.min .
 
 If the filename changes (e.g. you are on a different architecture), just update
 Dockerfile.min.

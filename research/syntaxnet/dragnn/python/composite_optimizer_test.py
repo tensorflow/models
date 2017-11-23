@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for CompositeOptimizer."""
 
 
@@ -99,8 +98,8 @@ class CompositeOptimizerTest(test_util.TensorFlowTestCase):
       optimizer1 = MockAdamOptimizer(0.05)
       optimizer2 = MockMomentumOptimizer(0.05, 0.5)
       switch = tf.less(step, 100)
-      optimizer = composite_optimizer.CompositeOptimizer(optimizer1, optimizer2,
-                                                         switch)
+      optimizer = composite_optimizer.CompositeOptimizer(
+          optimizer1, optimizer2, switch)
       train_op = optimizer.minimize(loss)
 
       sess.run(tf.global_variables_initializer())
@@ -111,16 +110,19 @@ class CompositeOptimizerTest(test_util.TensorFlowTestCase):
         sess.run(train_op)
         sess.run(tf.assign_add(step, 1))
         slot_names = optimizer.get_slot_names()
-        self.assertItemsEqual(
-            slot_names,
-            ["m", "v", "momentum", "adam_counter", "momentum_counter"])
-        adam_counter = sess.run(optimizer.get_slot(w, "adam_counter"))
-        momentum_counter = sess.run(optimizer.get_slot(w, "momentum_counter"))
+        adam_slots = ["c1-m", "c1-v", "c1-adam_counter"]
+        momentum_slots = ["c2-momentum", "c2-momentum_counter"]
+        self.assertItemsEqual(slot_names, adam_slots + momentum_slots)
+        adam_counter = sess.run(optimizer.get_slot(w, "c1-adam_counter"))
+        momentum_counter = sess.run(
+            optimizer.get_slot(w, "c2-momentum_counter"))
         self.assertEqual(adam_counter, min(iteration + 1, 100))
         self.assertEqual(momentum_counter, max(iteration - 99, 0))
         if iteration % 20 == 0:
-          logging.info("%d %s %d %d", iteration, sess.run([switch, step, w, b]),
-                       adam_counter, momentum_counter)
+          logging.info("%d %s %d %d", iteration,
+                       sess.run([switch, step, w, b]), adam_counter,
+                       momentum_counter)
+
 
 if __name__ == "__main__":
   googletest.main()

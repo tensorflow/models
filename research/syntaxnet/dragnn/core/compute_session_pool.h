@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
+#ifndef DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
+#define DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
 
 #include <memory>
 
@@ -29,14 +29,14 @@ namespace dragnn {
 
 class ComputeSessionPool {
  public:
-  // Create a ComputeSessionPool that creates ComputeSessions for the given
+  // Creates a ComputeSessionPool that creates ComputeSessions for the given
   // MasterSpec and hyperparameters.
   ComputeSessionPool(const MasterSpec &master_spec,
                      const GridPoint &hyperparams);
 
   virtual ~ComputeSessionPool();
 
-  // Get a ComputeSession. This function will attempt to use an already-created
+  // Gets a ComputeSession. This function will attempt to use an already-created
   // ComputeSession, but if none are available a new one will be created.
   std::unique_ptr<ComputeSession> GetSession();
 
@@ -48,6 +48,12 @@ class ComputeSessionPool {
     tensorflow::mutex_lock lock(lock_);
     return num_unique_sessions_ - sessions_.size();
   }
+
+  // Returns the number of unique sessions that have been created.
+  int num_unique_sessions() { return num_unique_sessions_; }
+
+  // Returns a reference to the underlying spec for this pool.
+  const MasterSpec &GetSpec() const { return master_spec_; }
 
  private:
   friend class ComputeSessionImplTestPoolAccessor;
@@ -99,4 +105,4 @@ class ComputeSessionPool {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_POOL_H_
+#endif  // DRAGNN_CORE_COMPUTE_SESSION_POOL_H_

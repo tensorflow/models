@@ -161,11 +161,11 @@ void ComputeSessionImpl::AdvanceFromOracle(const string &component_name) {
   GetReadiedComponent(component_name)->AdvanceFromOracle();
 }
 
-void ComputeSessionImpl::AdvanceFromPrediction(const string &component_name,
-                                               const float score_matrix[],
-                                               int score_matrix_length) {
-  GetReadiedComponent(component_name)
-      ->AdvanceFromPrediction(score_matrix, score_matrix_length);
+bool ComputeSessionImpl::AdvanceFromPrediction(const string &component_name,
+                                               const float *score_matrix,
+                                               int num_items, int num_actions) {
+  return GetReadiedComponent(component_name)
+      ->AdvanceFromPrediction(score_matrix, num_items, num_actions);
 }
 
 int ComputeSessionImpl::GetInputFeatures(
@@ -180,6 +180,16 @@ int ComputeSessionImpl::GetInputFeatures(
 int ComputeSessionImpl::BulkGetInputFeatures(
     const string &component_name, const BulkFeatureExtractor &extractor) {
   return GetReadiedComponent(component_name)->BulkGetFixedFeatures(extractor);
+}
+
+void ComputeSessionImpl::BulkEmbedFixedFeatures(
+    const string &component_name, int batch_size_padding, int num_steps_padding,
+    int output_array_size, const vector<const float *> &per_channel_embeddings,
+    float *embedding_output) {
+  return GetReadiedComponent(component_name)
+      ->BulkEmbedFixedFeatures(batch_size_padding, num_steps_padding,
+                               output_array_size, per_channel_embeddings,
+                               embedding_output);
 }
 
 std::vector<LinkFeatures> ComputeSessionImpl::GetTranslatedLinkFeatures(
@@ -288,6 +298,11 @@ void ComputeSessionImpl::SetInputData(const std::vector<string> &data) {
   input_data_.reset(new InputBatchCache(data));
 }
 
+void ComputeSessionImpl::SetInputBatchCache(
+    std::unique_ptr<InputBatchCache> batch) {
+  input_data_ = std::move(batch);
+}
+
 void ComputeSessionImpl::ResetSession() {
   // Reset all component states.
   for (auto &component_pair : components_) {
@@ -308,6 +323,7 @@ const std::vector<const IndexTranslator *> ComputeSessionImpl::Translators(
     const string &component_name) const {
   auto translators = GetTranslators(component_name);
   std::vector<const IndexTranslator *> const_translators;
+  const_translators.reserve(translators.size());
   for (const auto &translator : translators) {
     const_translators.push_back(translator);
   }

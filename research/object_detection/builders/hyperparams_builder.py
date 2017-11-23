@@ -163,7 +163,6 @@ def _build_batch_norm_params(batch_norm, is_training):
       'center': batch_norm.center,
       'scale': batch_norm.scale,
       'epsilon': batch_norm.epsilon,
-      'fused': True,
       'is_training': is_training and batch_norm.train,
   }
   return batch_norm_params

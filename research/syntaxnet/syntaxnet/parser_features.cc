@@ -17,8 +17,10 @@ limitations under the License.
 
 #include <string>
 
+#include "syntaxnet/generic_features.h"
 #include "syntaxnet/registry.h"
 #include "syntaxnet/sentence_features.h"
+#include "syntaxnet/whole_sentence_features.h"
 #include "syntaxnet/workspace.h"
 
 namespace syntaxnet {
@@ -346,5 +348,9 @@ class Constant : public ParserFeatureFunction {
 };
 
 REGISTER_PARSER_FEATURE_FUNCTION("constant", Constant);
+
+// Register the generic parser features.
+typedef GenericFeatures<ParserState> GenericParserFeature;
+REGISTER_SYNTAXNET_GENERIC_FEATURES(GenericParserFeature);
 
 }  // namespace syntaxnet

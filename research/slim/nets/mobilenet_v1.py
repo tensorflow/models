@@ -154,7 +154,7 @@ def mobilenet_v1_base(inputs,
     inputs: a tensor of shape [batch_size, height, width, channels].
     final_endpoint: specifies the endpoint to construct the network up to. It
       can be one of ['Conv2d_0', 'Conv2d_1_pointwise', 'Conv2d_2_pointwise',
-      'Conv2d_3_pointwise', 'Conv2d_4_pointwise', 'Conv2d_5_pointwise',
+      'Conv2d_3_pointwise', 'Conv2d_4_pointwise', 'Conv2d_5'_pointwise,
       'Conv2d_6_pointwise', 'Conv2d_7_pointwise', 'Conv2d_8_pointwise',
       'Conv2d_9_pointwise', 'Conv2d_10_pointwise', 'Conv2d_11_pointwise',
       'Conv2d_12_pointwise', 'Conv2d_13_pointwise'].
@@ -276,12 +276,15 @@ def mobilenet_v1(inputs,
                  prediction_fn=tf.contrib.layers.softmax,
                  spatial_squeeze=True,
                  reuse=None,
-                 scope='MobilenetV1'):
+                 scope='MobilenetV1',
+                 global_pool=False):
   """Mobilenet v1 model for classification.
 
   Args:
     inputs: a tensor of shape [batch_size, height, width, channels].
-    num_classes: number of predicted classes.
+    num_classes: number of predicted classes. If 0 or None, the logits layer
+      is omitted and the input features to the logits layer (before dropout)
+      are returned instead.
     dropout_keep_prob: the percentage of activation values that are retained.
     is_training: whether is training or not.
     min_depth: Minimum depth value (number of channels) for all convolution ops.
@@ -298,10 +301,15 @@ def mobilenet_v1(inputs,
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
+    global_pool: Optional boolean flag to control the avgpooling before the
+      logits layer. If false or unset, pooling is done with a fixed window
+      that reduces default-sized inputs to 1x1, while larger inputs lead to
+      larger outputs. If true, any input size is pooled down to 1x1.
 
   Returns:
-    logits: the pre-softmax activations, a tensor of size
-      [batch_size, num_classes]
+    net: a 2D Tensor with the logits (pre-softmax activations) if num_classes
+      is a non-zero integer, or the non-dropped-out input to the logits layer
+      if num_classes is 0 or None.
     end_points: a dictionary from components of the network to the corresponding
       activation.
 
@@ -313,8 +321,7 @@ def mobilenet_v1(inputs,
     raise ValueError('Invalid input tensor rank, expected 4, was: %d' %
                      len(input_shape))
 
-  with tf.variable_scope(scope, 'MobilenetV1', [inputs, num_classes],
-                         reuse=reuse) as scope:
+  with tf.variable_scope(scope, 'MobilenetV1', [inputs], reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
       net, end_points = mobilenet_v1_base(inputs, scope=scope,
@@ -322,10 +329,18 @@ def mobilenet_v1(inputs,
                                           depth_multiplier=depth_multiplier,
                                           conv_defs=conv_defs)
       with tf.variable_scope('Logits'):
-        kernel_size = _reduced_kernel_size_for_small_input(net, [7, 7])
-        net = slim.avg_pool2d(net, kernel_size, padding='VALID',
-                              scope='AvgPool_1a')
-        end_points['AvgPool_1a'] = net
+        if global_pool:
+          # Global average pooling.
+          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+          end_points['global_pool'] = net
+        else:
+          # Pooling with a fixed kernel size.
+          kernel_size = _reduced_kernel_size_for_small_input(net, [7, 7])
+          net = slim.avg_pool2d(net, kernel_size, padding='VALID',
+                                scope='AvgPool_1a')
+          end_points['AvgPool_1a'] = net
+        if not num_classes:
+          return net, end_points
         # 1 x 1 x 1024
         net = slim.dropout(net, keep_prob=dropout_keep_prob, scope='Dropout_1b')
         logits = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,

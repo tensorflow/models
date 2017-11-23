@@ -327,6 +327,41 @@ class TargetAssignerTest(tf.test.TestCase):
       self.assertEquals(reg_weights_out.dtype, np.float32)
       self.assertEquals(matching_anchors_out.dtype, np.int32)
 
+  def test_raises_error_on_incompatible_groundtruth_boxes_and_labels(self):
+    similarity_calc = region_similarity_calculator.NegSqDistSimilarity()
+    matcher = bipartite_matcher.GreedyBipartiteMatcher()
+    box_coder = mean_stddev_box_coder.MeanStddevBoxCoder()
+    unmatched_cls_target = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
+    target_assigner = targetassigner.TargetAssigner(
+        similarity_calc, matcher, box_coder,
+        unmatched_cls_target=unmatched_cls_target)
+
+    prior_means = tf.constant([[0.0, 0.0, 0.5, 0.5],
+                               [0.5, 0.5, 1.0, 0.8],
+                               [0, 0.5, .5, 1.0],
+                               [.75, 0, 1.0, .25]])
+    prior_stddevs = tf.constant(4 * [4 * [.1]])
+    priors = box_list.BoxList(prior_means)
+    priors.add_field('stddev', prior_stddevs)
+
+    box_corners = [[0.0, 0.0, 0.5, 0.5],
+                   [0.0, 0.0, 0.5, 0.8],
+                   [0.5, 0.5, 0.9, 0.9],
+                   [.75, 0, .95, .27]]
+    boxes = box_list.BoxList(tf.constant(box_corners))
+
+    groundtruth_labels = tf.constant([[0, 1, 0, 0, 0, 0, 0],
+                                      [0, 0, 0, 0, 0, 1, 0],
+                                      [0, 0, 0, 1, 0, 0, 0]], tf.float32)
+    result = target_assigner.assign(priors, boxes, groundtruth_labels,
+                                    num_valid_rows=3)
+    (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
+    with self.test_session() as sess:
+      with self.assertRaisesWithPredicateMatch(
+          tf.errors.InvalidArgumentError,
+          'Groundtruth boxes and labels have incompatible shapes!'):
+        sess.run([cls_targets, cls_weights, reg_targets, reg_weights])
+
   def test_raises_error_on_invalid_groundtruth_labels(self):
     similarity_calc = region_similarity_calculator.NegSqDistSimilarity()
     matcher = bipartite_matcher.GreedyBipartiteMatcher()

@@ -95,7 +95,7 @@ class BiaffineDigraphNetwork(network_units.NetworkUnitInterface):
     self._regularized_weights.extend(self._weights)
 
     # Negative Layer.dim indicates that the dimension is dynamic.
-    self._layers.append(network_units.Layer(self, 'adjacency', -1))
+    self._layers.append(network_units.Layer(component, 'adjacency', -1))
 
   def create(self,
              fixed_embeddings,
@@ -209,7 +209,8 @@ class BiaffineLabelNetwork(network_units.NetworkUnitInterface):
     self._params.extend(self._weights + self._biases)
     self._regularized_weights.extend(self._weights)
 
-    self._layers.append(network_units.Layer(self, 'labels', self._num_labels))
+    self._layers.append(
+        network_units.Layer(component, 'labels', self._num_labels))
 
   def create(self,
              fixed_embeddings,

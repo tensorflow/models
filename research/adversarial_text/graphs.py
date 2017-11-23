@@ -116,7 +116,7 @@ class VatxtModel(object):
   """
 
   def __init__(self, cl_logits_input_dim=None):
-    self.global_step = tf.contrib.framework.get_or_create_global_step()
+    self.global_step = tf.train.get_or_create_global_step()
     self.vocab_freqs = _get_vocab_freqs()
 
     # Cache VatxtInput objects

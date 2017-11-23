@@ -53,6 +53,7 @@ message ClassificationLoss {
     WeightedSigmoidClassificationLoss weighted_sigmoid = 1;
     WeightedSoftmaxClassificationLoss weighted_softmax = 2;
     BootstrappedSigmoidClassificationLoss bootstrapped_sigmoid = 3;
+    SigmoidFocalClassificationLoss weighted_sigmoid_focal = 4;
   }
 }
 
@@ -62,10 +63,23 @@ message WeightedSigmoidClassificationLoss {
   optional bool anchorwise_output = 1 [default=false];
 }
 
+// Sigmoid Focal cross entropy loss as described in
+// https://arxiv.org/abs/1708.02002
+message SigmoidFocalClassificationLoss {
+  optional bool anchorwise_output = 1 [default = false];
+  // modulating factor for the loss.
+  optional float gamma = 2 [default = 2.0];
+  // alpha weighting factor for the loss.
+  optional float alpha = 3;
+}
+
 // Classification loss using a softmax function over class predictions.
 message WeightedSoftmaxClassificationLoss {
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
+  // Scale logit (input) value before calculating softmax classification loss.
+  // Typically used for softmax distillation.
+  optional float logit_scale = 2 [default = 1.0];
 }
 
 // Classification loss using a sigmoid function over the class prediction with

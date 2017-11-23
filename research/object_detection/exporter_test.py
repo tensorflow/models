@@ -28,6 +28,8 @@ if six.PY2:
 else:
   from unittest import mock  # pylint: disable=g-import-not-at-top
 
+slim = tf.contrib.slim
+
 
 class FakeModel(model.DetectionModel):
 
@@ -78,6 +80,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       mock_model.postprocess(predictions)
       if use_moving_averages:
         tf.train.ExponentialMovingAverage(0.0).apply()
+      slim.get_or_create_global_step()
       saver = tf.train.Saver()
       init = tf.global_variables_initializer()
       with self.test_session() as sess:
@@ -122,6 +125,41 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
+      self.assertTrue(os.path.exists(os.path.join(
+          output_directory, 'saved_model', 'saved_model.pb')))
+
+  def test_export_graph_with_fixed_size_image_tensor_input(self):
+    input_shape = [1, 320, 320, 3]
+
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(
+        trained_checkpoint_prefix, use_moving_averages=False)
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      output_directory = os.path.join(tmp_dir, 'output')
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      pipeline_config.eval_config.use_moving_averages = False
+      exporter.export_inference_graph(
+          input_type='image_tensor',
+          pipeline_config=pipeline_config,
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory,
+          input_shape=input_shape)
+      saved_model_path = os.path.join(output_directory, 'saved_model')
+      self.assertTrue(
+          os.path.exists(os.path.join(saved_model_path, 'saved_model.pb')))
+
+    with tf.Graph().as_default() as od_graph:
+      with self.test_session(graph=od_graph) as sess:
+        meta_graph = tf.saved_model.loader.load(
+            sess, [tf.saved_model.tag_constants.SERVING], saved_model_path)
+        signature = meta_graph.signature_def['serving_default']
+        input_tensor_name = signature.inputs['inputs'].name
+        image_tensor = od_graph.get_tensor_by_name(input_tensor_name)
+        self.assertSequenceEqual(image_tensor.get_shape().as_list(),
+                                 input_shape)
 
   def test_export_graph_with_tf_example_input(self):
     tmp_dir = self.get_temp_dir()
@@ -139,6 +177,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
+      self.assertTrue(os.path.exists(os.path.join(
+          output_directory, 'saved_model', 'saved_model.pb')))
 
   def test_export_graph_with_encoded_image_string_input(self):
     tmp_dir = self.get_temp_dir()
@@ -156,6 +196,44 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
+      self.assertTrue(os.path.exists(os.path.join(
+          output_directory, 'saved_model', 'saved_model.pb')))
+
+  def _get_variables_in_checkpoint(self, checkpoint_file):
+    return set([
+        var_name
+        for var_name, _ in tf.train.list_variables(checkpoint_file)])
+
+  def test_replace_variable_values_with_moving_averages(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    new_checkpoint_prefix = os.path.join(tmp_dir, 'new.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=True)
+    graph = tf.Graph()
+    with graph.as_default():
+      fake_model = FakeModel()
+      preprocessed_inputs = fake_model.preprocess(
+          tf.placeholder(dtype=tf.float32, shape=[None, None, None, 3]))
+      predictions = fake_model.predict(preprocessed_inputs)
+      fake_model.postprocess(predictions)
+      exporter.replace_variable_values_with_moving_averages(
+          graph, trained_checkpoint_prefix, new_checkpoint_prefix)
+
+    expected_variables = set(['conv2d/bias', 'conv2d/kernel'])
+    variables_in_old_ckpt = self._get_variables_in_checkpoint(
+        trained_checkpoint_prefix)
+    self.assertIn('conv2d/bias/ExponentialMovingAverage',
+                  variables_in_old_ckpt)
+    self.assertIn('conv2d/kernel/ExponentialMovingAverage',
+                  variables_in_old_ckpt)
+    variables_in_new_ckpt = self._get_variables_in_checkpoint(
+        new_checkpoint_prefix)
+    self.assertTrue(expected_variables.issubset(variables_in_new_ckpt))
+    self.assertNotIn('conv2d/bias/ExponentialMovingAverage',
+                     variables_in_new_ckpt)
+    self.assertNotIn('conv2d/kernel/ExponentialMovingAverage',
+                     variables_in_new_ckpt)
 
   def test_export_graph_with_moving_averages(self):
     tmp_dir = self.get_temp_dir()
@@ -173,6 +251,12 @@ class ExportInferenceGraphTest(tf.test.TestCase):
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
+      self.assertTrue(os.path.exists(os.path.join(
+          output_directory, 'saved_model', 'saved_model.pb')))
+    expected_variables = set(['conv2d/bias', 'conv2d/kernel', 'global_step'])
+    actual_variables = set(
+        [var_name for var_name, _ in tf.train.list_variables(output_directory)])
+    self.assertTrue(expected_variables.issubset(actual_variables))
 
   def test_export_model_with_all_output_nodes(self):
     tmp_dir = self.get_temp_dir()
@@ -434,14 +518,24 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         np.ones((4, 4, 3)).astype(np.uint8))] * 2)
     with tf.Graph().as_default() as od_graph:
       with self.test_session(graph=od_graph) as sess:
-        tf.saved_model.loader.load(
+        meta_graph = tf.saved_model.loader.load(
             sess, [tf.saved_model.tag_constants.SERVING], saved_model_path)
-        tf_example = od_graph.get_tensor_by_name('tf_example:0')
-        boxes = od_graph.get_tensor_by_name('detection_boxes:0')
-        scores = od_graph.get_tensor_by_name('detection_scores:0')
-        classes = od_graph.get_tensor_by_name('detection_classes:0')
-        masks = od_graph.get_tensor_by_name('detection_masks:0')
-        num_detections = od_graph.get_tensor_by_name('num_detections:0')
+
+        signature = meta_graph.signature_def['serving_default']
+        input_tensor_name = signature.inputs['inputs'].name
+        tf_example = od_graph.get_tensor_by_name(input_tensor_name)
+
+        boxes = od_graph.get_tensor_by_name(
+            signature.outputs['detection_boxes'].name)
+        scores = od_graph.get_tensor_by_name(
+            signature.outputs['detection_scores'].name)
+        classes = od_graph.get_tensor_by_name(
+            signature.outputs['detection_classes'].name)
+        masks = od_graph.get_tensor_by_name(
+            signature.outputs['detection_masks'].name)
+        num_detections = od_graph.get_tensor_by_name(
+            signature.outputs['num_detections'].name)
+
         (boxes_np, scores_np, classes_np, masks_np,
          num_detections_np) = sess.run(
              [boxes, scores, classes, masks, num_detections],

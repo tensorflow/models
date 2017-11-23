@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Builds a DRAGNN graph for local training."""
 
-
+import collections
 import tensorflow as tf
+
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.platform import tf_logging as logging
 
@@ -32,6 +32,37 @@ except KeyError, e:
   logging.info(str(e))
 
 
+def _validate_grid_point(hyperparams, is_sub_optimizer=False):
+  """Validates that a grid point's configuration is reasonable.
+
+  Args:
+    hyperparams (spec_pb2.GridPoint): Grid point to validate.
+    is_sub_optimizer (bool): Whether this optimizer is a sub-optimizer of
+      a composite optimizer.
+
+  Raises:
+    ValueError: If the grid point is not valid.
+  """
+  valid_methods = ('gradient_descent', 'adam', 'lazyadam', 'momentum',
+                   'composite')
+  if hyperparams.learning_method not in valid_methods:
+    raise ValueError('Unknown learning method (optimizer)')
+
+  if is_sub_optimizer:
+    for base_only_field in ('decay_steps', 'decay_base', 'decay_staircase'):
+      if hyperparams.HasField(base_only_field):
+        raise ValueError('Field {} is not valid for sub-optimizers of a '
+                         'composite optimizer.'.format(base_only_field))
+
+  if hyperparams.learning_method == 'composite':
+    spec = hyperparams.composite_optimizer_spec
+    if spec.switch_after_steps < 1:
+      raise ValueError('switch_after_steps {} not valid for composite '
+                       'optimizer!'.format(spec.switch_after_steps))
+    for sub_optimizer in (spec.method1, spec.method2):
+      _validate_grid_point(sub_optimizer, is_sub_optimizer=True)
+
+
 def _create_learning_rate(hyperparams, step_var):
   """Creates learning rate var, with decay and switching for CompositeOptimizer.
 
@@ -40,21 +71,31 @@ def _create_learning_rate(hyperparams, step_var):
       learning_method to determine optimizer class to use.
     step_var: tf.Variable, global training step.
 
+  Raises:
+    ValueError: If the composite optimizer is set, but not correctly configured.
+
   Returns:
     a scalar `Tensor`, the learning rate based on current step and hyperparams.
   """
   if hyperparams.learning_method != 'composite':
     base_rate = hyperparams.learning_rate
+    adjusted_steps = step_var
   else:
     spec = hyperparams.composite_optimizer_spec
     switch = tf.less(step_var, spec.switch_after_steps)
     base_rate = tf.cond(switch, lambda: tf.constant(spec.method1.learning_rate),
                         lambda: tf.constant(spec.method2.learning_rate))
+    if spec.reset_learning_rate:
+      adjusted_steps = tf.cond(switch, lambda: step_var,
+                               lambda: step_var - spec.switch_after_steps)
+    else:
+      adjusted_steps = step_var
+
   return tf.train.exponential_decay(
-      base_rate,
-      step_var,
-      hyperparams.decay_steps,
-      hyperparams.decay_base,
+      learning_rate=base_rate,
+      global_step=adjusted_steps,
+      decay_steps=hyperparams.decay_steps,
+      decay_rate=hyperparams.decay_base,
       staircase=hyperparams.decay_staircase)
 
 
@@ -158,6 +199,7 @@ class MasterBuilder(object):
     self.spec = master_spec
     self.hyperparams = (spec_pb2.GridPoint()
                         if hyperparam_config is None else hyperparam_config)
+    _validate_grid_point(self.hyperparams)
     self.pool_scope = pool_scope
 
     # Set the graph-level random seed before creating the Components so the ops
@@ -259,6 +301,25 @@ class MasterBuilder(object):
     # Common, for instance, with training.
     all_nodes['run'] = run_op
     return all_nodes
+
+  def build_warmup_graph(self, asset_dir):
+    """Builds a warmup graph.
+
+    This graph performs a MasterSpec asset location rewrite via
+    SetAssetDirectory, then grabs a ComputeSession and immediately returns it.
+    By grabbing a session, we cause the underlying transition systems to cache
+    their static data reads.
+
+    Args:
+      asset_dir: The base directory to append to all resources.
+
+    Returns:
+      A single op suitable for passing to the legacy_init_op of the ModelSaver.
+    """
+    with tf.control_dependencies([dragnn_ops.set_asset_directory(asset_dir)]):
+      session = self._get_compute_session()
+      release_op = dragnn_ops.release_session(session)
+    return tf.group(release_op, name='run')
 
   def build_training(self,
                      handle,
@@ -408,6 +469,8 @@ class MasterBuilder(object):
     # Restore that subsequent builds don't use average by default.
     self.read_from_avg = False
 
+    cost = tf.check_numerics(cost, message='Cost is not finite.')
+
     # Returns named access to common outputs.
     outputs = {
         'cost': cost,
@@ -447,8 +510,14 @@ class MasterBuilder(object):
     Returns:
       setup_op - An op that, when run, guarantees all setup ops will run.
     """
-    with tf.control_dependencies(
-        [comp.build_post_restore_hook() for comp in self.components]):
+    control_ops = []
+    for comp in self.components:
+      hook = comp.build_post_restore_hook()
+      if isinstance(hook, collections.Iterable):
+        control_ops.extend(hook)
+      else:
+        control_ops.append(hook)
+    with tf.control_dependencies(control_ops):
       return tf.no_op(name='post_restore_hook_master')
 
   def build_inference(self, handle, use_moving_average=False):
@@ -597,10 +666,8 @@ class MasterBuilder(object):
 
   def add_saver(self):
     """Adds a Saver for all variables in the graph."""
-    logging.info('Saving non-quantized variables:\n\t%s', '\n\t'.join(
-        [x.name for x in tf.global_variables() if 'quantized' not in x.name]))
+    logging.info('Saving variables:\n\t%s',
+                 '\n\t'.join([x.name for x in tf.global_variables()]))
     self.saver = tf.train.Saver(
-        var_list=[
-            x for x in tf.global_variables() if 'quantized' not in x.name
-        ],
+        var_list=[x for x in tf.global_variables()],
         write_version=saver_pb2.SaverDef.V1)

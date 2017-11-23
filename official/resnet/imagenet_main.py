@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import sys
 
 import tensorflow as tf
 
@@ -41,32 +42,26 @@ parser.add_argument(
     help='The size of the ResNet model to use.')
 
 parser.add_argument(
-    '--train_steps', type=int, default=6400000,
-    help='The number of steps to use for training.')
+    '--train_epochs', type=int, default=100,
+    help='The number of epochs to use for training.')
 
 parser.add_argument(
-    '--steps_per_eval', type=int, default=40000,
-    help='The number of training steps to run between evaluations.')
+    '--epochs_per_eval', type=int, default=1,
+    help='The number of training epochs to run between evaluations.')
 
 parser.add_argument(
     '--batch_size', type=int, default=32,
     help='Batch size for training and evaluation.')
 
 parser.add_argument(
-    '--map_threads', type=int, default=5,
-    help='The number of threads for dataset.map.')
+    '--data_format', type=str, default=None,
+    choices=['channels_first', 'channels_last'],
+    help='A flag to override the data format used in the model. channels_first '
+         'provides a performance boost on GPU but is not always compatible '
+         'with CPU. If left unspecified, the data format will be chosen '
+         'automatically based on whether TensorFlow was built for CPU or GPU.')
 
-parser.add_argument(
-    '--first_cycle_steps', type=int, default=None,
-    help='The number of steps to run before the first evaluation. Useful if '
-    'you have stopped partway through a training cycle.')
-
-FLAGS = parser.parse_args()
-
-# Scale the learning rate linearly with the batch size. When the batch size is
-# 256, the learning rate should be 0.1.
-_INITIAL_LEARNING_RATE = 0.1 * FLAGS.batch_size / 256
-
+_DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
 _LABEL_CLASSES = 1001
 
@@ -78,27 +73,24 @@ _NUM_IMAGES = {
     'validation': 50000,
 }
 
-image_preprocessing_fn = vgg_preprocessing.preprocess_image
-network = resnet_model.resnet_v2(
-    resnet_size=FLAGS.resnet_size, num_classes=_LABEL_CLASSES)
-
-batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
+_FILE_SHUFFLE_BUFFER = 1024
+_SHUFFLE_BUFFER = 1500
 
 
-def filenames(is_training):
+def filenames(is_training, data_dir):
   """Return filenames for dataset."""
   if is_training:
     return [
-        os.path.join(FLAGS.data_dir, 'train-%05d-of-01024' % i)
-        for i in range(0, 1024)]
+        os.path.join(data_dir, 'train-%05d-of-01024' % i)
+        for i in range(1024)]
   else:
     return [
-        os.path.join(FLAGS.data_dir, 'validation-%05d-of-00128' % i)
-        for i in range(0, 128)]
+        os.path.join(data_dir, 'validation-%05d-of-00128' % i)
+        for i in range(128)]
 
 
-def dataset_parser(value, is_training):
-  """Parse an Imagenet record from value."""
+def record_parser(value, is_training):
+  """Parse an ImageNet record from `value`."""
   keys_to_features = {
       'image/encoded':
           tf.FixedLenFeature((), tf.string, default_value=''),
@@ -127,10 +119,10 @@ def dataset_parser(value, is_training):
       _NUM_CHANNELS)
   image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
-  image = image_preprocessing_fn(
+  image = vgg_preprocessing.preprocess_image(
       image=image,
-      output_height=network.default_image_size,
-      output_width=network.default_image_size,
+      output_height=_DEFAULT_IMAGE_SIZE,
+      output_width=_DEFAULT_IMAGE_SIZE,
       is_training=is_training)
 
   label = tf.cast(
@@ -140,33 +132,39 @@ def dataset_parser(value, is_training):
   return image, tf.one_hot(label, _LABEL_CLASSES)
 
 
-def input_fn(is_training):
-  """Input function which provides a single batch for train or eval."""
-  dataset = tf.contrib.data.Dataset.from_tensor_slices(filenames(is_training))
-  if is_training:
-    dataset = dataset.shuffle(buffer_size=1024)
-  dataset = dataset.flat_map(tf.contrib.data.TFRecordDataset)
+def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+  """Input function which provides batches for train or eval."""
+  dataset = tf.data.Dataset.from_tensor_slices(filenames(is_training, data_dir))
 
   if is_training:
-    dataset = dataset.repeat()
+    dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
 
-  dataset = dataset.map(lambda value: dataset_parser(value, is_training),
-                        num_threads=FLAGS.map_threads,
-                        output_buffer_size=FLAGS.batch_size)
+  dataset = dataset.flat_map(tf.data.TFRecordDataset)
+  dataset = dataset.map(lambda value: record_parser(value, is_training),
+                        num_parallel_calls=5)
+  dataset = dataset.prefetch(batch_size)
 
   if is_training:
-    buffer_size = 1250 + 2 * FLAGS.batch_size
-    dataset = dataset.shuffle(buffer_size=buffer_size)
+    # When choosing shuffle buffer sizes, larger sizes result in better
+    # randomness, while smaller sizes have better performance.
+    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
-  iterator = dataset.batch(FLAGS.batch_size).make_one_shot_iterator()
+  # We call repeat after shuffling, rather than before, to prevent separate
+  # epochs from blending together.
+  dataset = dataset.repeat(num_epochs)
+  dataset = dataset.batch(batch_size)
+
+  iterator = dataset.make_one_shot_iterator()
   images, labels = iterator.get_next()
   return images, labels
 
 
-def resnet_model_fn(features, labels, mode):
+def resnet_model_fn(features, labels, mode, params):
   """Our model_fn for ResNet to be used with our Estimator."""
   tf.summary.image('images', features, max_outputs=6)
 
+  network = resnet_model.imagenet_resnet_v2(
+      params['resnet_size'], _LABEL_CLASSES, params['data_format'])
   logits = network(
       inputs=features, is_training=(mode == tf.estimator.ModeKeys.TRAIN))
 
@@ -186,19 +184,24 @@ def resnet_model_fn(features, labels, mode):
   tf.identity(cross_entropy, name='cross_entropy')
   tf.summary.scalar('cross_entropy', cross_entropy)
 
-  # Add weight decay to the loss. We perform weight decay on all trainable
-  # variables, which includes batch norm beta and gamma variables.
+  # Add weight decay to the loss. We exclude the batch norm variables because
+  # doing so leads to a small improvement in accuracy.
   loss = cross_entropy + _WEIGHT_DECAY * tf.add_n(
-      [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
+      [tf.nn.l2_loss(v) for v in tf.trainable_variables()
+       if 'batch_normalization' not in v.name])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
+    # Scale the learning rate linearly with the batch size. When the batch size
+    # is 256, the learning rate should be 0.1.
+    initial_learning_rate = 0.1 * params['batch_size'] / 256
+    batches_per_epoch = _NUM_IMAGES['train'] / params['batch_size']
     global_step = tf.train.get_or_create_global_step()
 
-    # Multiply the learning rate by 0.1 at 30, 60, 120, and 150 epochs.
+    # Multiply the learning rate by 0.1 at 30, 60, 80, and 90 epochs.
     boundaries = [
-        int(batches_per_epoch * epoch) for epoch in [30, 60, 120, 150]]
+        int(batches_per_epoch * epoch) for epoch in [30, 60, 80, 90]]
     values = [
-        _INITIAL_LEARNING_RATE * decay for decay in [1, 0.1, 0.01, 1e-3, 1e-4]]
+        initial_learning_rate * decay for decay in [1, 0.1, 0.01, 1e-3, 1e-4]]
     learning_rate = tf.train.piecewise_constant(
         tf.cast(global_step, tf.int32), boundaries, values)
 
@@ -237,10 +240,17 @@ def main(unused_argv):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
+  # Set up a RunConfig to only save checkpoints once per training cycle.
+  run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
   resnet_classifier = tf.estimator.Estimator(
-      model_fn=resnet_model_fn, model_dir=FLAGS.model_dir)
+      model_fn=resnet_model_fn, model_dir=FLAGS.model_dir, config=run_config,
+      params={
+          'resnet_size': FLAGS.resnet_size,
+          'data_format': FLAGS.data_format,
+          'batch_size': FLAGS.batch_size,
+      })
 
-  for _ in range(FLAGS.train_steps // FLAGS.steps_per_eval):
+  for _ in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
     tensors_to_log = {
         'learning_rate': 'learning_rate',
         'cross_entropy': 'cross_entropy',
@@ -252,16 +262,17 @@ def main(unused_argv):
 
     print('Starting a training cycle.')
     resnet_classifier.train(
-        input_fn=lambda: input_fn(True),
-        steps=FLAGS.first_cycle_steps or FLAGS.steps_per_eval,
+        input_fn=lambda: input_fn(
+            True, FLAGS.data_dir, FLAGS.batch_size, FLAGS.epochs_per_eval),
         hooks=[logging_hook])
-    FLAGS.first_cycle_steps = None
 
     print('Starting to evaluate.')
-    eval_results = resnet_classifier.evaluate(input_fn=lambda: input_fn(False))
+    eval_results = resnet_classifier.evaluate(
+        input_fn=lambda: input_fn(False, FLAGS.data_dir, FLAGS.batch_size))
     print(eval_results)
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  tf.app.run()
+  FLAGS, unparsed = parser.parse_known_args()
+  tf.app.run(argv=[sys.argv[0]] + unparsed)

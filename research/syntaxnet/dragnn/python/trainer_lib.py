@@ -152,8 +152,9 @@ def run_training(sess, trainers, annotator, evaluator, pretrain_steps,
       for label, metric in summaries.iteritems():
         write_summary(summary_writer, label, metric, actual_step + step)
       eval_metric = summaries['eval_metric']
+      tf.logging.info('Current eval metric: %.2f', eval_metric)
       if best_eval_metric < eval_metric:
-        tf.logging.info('Updating best eval to %.2f%%, saving checkpoint.',
+        tf.logging.info('Updating best eval to %.2f, saving checkpoint.',
                         eval_metric)
         best_eval_metric = eval_metric
         saver.save(sess, checkpoint_filename)

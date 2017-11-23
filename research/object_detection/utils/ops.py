@@ -15,6 +15,7 @@
 
 """A module for helper tensorflow ops."""
 import math
+import numpy as np
 import six
 
 import tensorflow as tf
@@ -156,6 +157,10 @@ def pad_to_multiple(tensor, multiple):
     padded_tensor_width = int(
         math.ceil(float(tensor_width) / multiple) * multiple)
 
+  if (padded_tensor_height == tensor_height and
+      padded_tensor_width == tensor_width):
+    return tensor
+
   if tensor_depth is None:
     tensor_depth = tf.shape(tensor)[3]
 
@@ -285,6 +290,7 @@ def retain_groundtruth(tensor_dict, valid_indices):
   Args:
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
+      fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_classes
       fields.InputDataFields.groundtruth_is_crowd
       fields.InputDataFields.groundtruth_area
@@ -312,7 +318,8 @@ def retain_groundtruth(tensor_dict, valid_indices):
         tensor_dict[fields.InputDataFields.groundtruth_boxes])[0], 1)
     for key in tensor_dict:
       if key in [fields.InputDataFields.groundtruth_boxes,
-                 fields.InputDataFields.groundtruth_classes]:
+                 fields.InputDataFields.groundtruth_classes,
+                 fields.InputDataFields.groundtruth_instance_masks]:
         valid_dict[key] = tf.gather(tensor_dict[key], valid_indices)
       # Input decoder returns empty tensor when these fields are not provided.
       # Needs to reshape into [num_boxes, -1] for tf.gather() to work.
@@ -358,12 +365,49 @@ def retain_groundtruth_with_positive_classes(tensor_dict):
   return retain_groundtruth(tensor_dict, keep_indices)
 
 
+def replace_nan_groundtruth_label_scores_with_ones(label_scores):
+  """Replaces nan label scores with 1.0.
+
+  Args:
+    label_scores: a tensor containing object annoation label scores.
+
+  Returns:
+    a tensor where NaN label scores have been replaced by ones.
+  """
+  return tf.where(
+      tf.is_nan(label_scores), tf.ones(tf.shape(label_scores)), label_scores)
+
+
+def filter_groundtruth_with_crowd_boxes(tensor_dict):
+  """Filters out groundtruth with boxes corresponding to crowd.
+
+  Args:
+    tensor_dict: a dictionary of following groundtruth tensors -
+      fields.InputDataFields.groundtruth_boxes
+      fields.InputDataFields.groundtruth_classes
+      fields.InputDataFields.groundtruth_is_crowd
+      fields.InputDataFields.groundtruth_area
+      fields.InputDataFields.groundtruth_label_types
+
+  Returns:
+    a dictionary of tensors containing only the groundtruth that have bounding
+    boxes.
+  """
+  if fields.InputDataFields.groundtruth_is_crowd in tensor_dict:
+    is_crowd = tensor_dict[fields.InputDataFields.groundtruth_is_crowd]
+    is_not_crowd = tf.logical_not(is_crowd)
+    is_not_crowd_indices = tf.where(is_not_crowd)
+    tensor_dict = retain_groundtruth(tensor_dict, is_not_crowd_indices)
+  return tensor_dict
+
+
 def filter_groundtruth_with_nan_box_coordinates(tensor_dict):
   """Filters out groundtruth with no bounding boxes.
 
   Args:
     tensor_dict: a dictionary of following groundtruth tensors -
       fields.InputDataFields.groundtruth_boxes
+      fields.InputDataFields.groundtruth_instance_masks
       fields.InputDataFields.groundtruth_classes
       fields.InputDataFields.groundtruth_is_crowd
       fields.InputDataFields.groundtruth_area
@@ -649,3 +693,49 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
                                          crop_size=[image_height, image_width],
                                          extrapolation_value=0.0)
   return tf.squeeze(image_masks, axis=3)
+
+
+def merge_boxes_with_multiple_labels(boxes, classes, num_classes):
+  """Merges boxes with same coordinates and returns K-hot encoded classes.
+
+  Args:
+    boxes: A tf.float32 tensor with shape [N, 4] holding N boxes.
+    classes: A tf.int32 tensor with shape [N] holding class indices.
+      The class index starts at 0.
+    num_classes: total number of classes to use for K-hot encoding.
+
+  Returns:
+    merged_boxes: A tf.float32 tensor with shape [N', 4] holding boxes,
+      where N' <= N.
+    class_encodings: A tf.int32 tensor with shape [N', num_classes] holding
+      k-hot encodings for the merged boxes.
+    merged_box_indices: A tf.int32 tensor with shape [N'] holding original
+      indices of the boxes.
+  """
+  def merge_numpy_boxes(boxes, classes, num_classes):
+    """Python function to merge numpy boxes."""
+    if boxes.size < 1:
+      return (np.zeros([0, 4], dtype=np.float32),
+              np.zeros([0, num_classes], dtype=np.int32),
+              np.zeros([0], dtype=np.int32))
+    box_to_class_indices = {}
+    for box_index in range(boxes.shape[0]):
+      box = tuple(boxes[box_index, :].tolist())
+      class_index = classes[box_index]
+      if box not in box_to_class_indices:
+        box_to_class_indices[box] = [box_index, np.zeros([num_classes])]
+      box_to_class_indices[box][1][class_index] = 1
+    merged_boxes = np.vstack(box_to_class_indices.keys()).astype(np.float32)
+    class_encodings = [item[1] for item in box_to_class_indices.values()]
+    class_encodings = np.vstack(class_encodings).astype(np.int32)
+    merged_box_indices = [item[0] for item in box_to_class_indices.values()]
+    merged_box_indices = np.array(merged_box_indices).astype(np.int32)
+    return merged_boxes, class_encodings, merged_box_indices
+
+  merged_boxes, class_encodings, merged_box_indices = tf.py_func(
+      merge_numpy_boxes, [boxes, classes, num_classes],
+      [tf.float32, tf.int32, tf.int32])
+  merged_boxes = tf.reshape(merged_boxes, [-1, 4])
+  class_encodings = tf.reshape(class_encodings, [-1, num_classes])
+  merged_box_indices = tf.reshape(merged_box_indices, [-1])
+  return merged_boxes, class_encodings, merged_box_indices

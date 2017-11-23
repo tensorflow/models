@@ -1,4 +1,4 @@
-official/* @nealwu @jhseu @itsmeolivia
+official/* @nealwu @k-w-w
 research/adversarial_crypto/* @dave-andersen
 research/adversarial_text/* @rsepassi
 research/adv_imagenet_models/* @AlexeyKurakin
@@ -7,6 +7,7 @@ research/audioset/* @plakal @dpwe
 research/autoencoders/* @snurkabill
 research/cognitive_mapping_and_planning/* @s-gupta
 research/compression/* @nmjohn
+research/delf/* @andrefaraujo
 research/differential_privacy/* @panyx0718
 research/domain_adaptation/* @bousmalis @ddohan
 research/im2txt/* @cshallue
@@ -33,6 +34,7 @@ research/syntaxnet/* @calberti @andorardo @bogatyy @markomernick
 research/textsum/* @panyx0718 @peterjliu
 research/transformer/* @daviddao
 research/video_prediction/* @cbfinn
+samples/* @MarkDaoust
 tutorials/embedding/* @zffchen78 @a-dai
 tutorials/image/* @sherrym @shlens
 tutorials/rnn/* @lukaszkaiser @ebrevdo

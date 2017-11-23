@@ -364,7 +364,7 @@ class Trainer(object):
 
     if FLAGS.supervisor:
       with tf.device(tf.ReplicaDeviceSetter(FLAGS.ps_tasks, merge_devices=True)):
-        self.global_step = tf.contrib.framework.get_or_create_global_step()
+        self.global_step = tf.train.get_or_create_global_step()
         tf.set_random_seed(FLAGS.tf_seed)
         self.controller = self.get_controller()
         self.model = self.controller.model
@@ -382,7 +382,7 @@ class Trainer(object):
         sess = sv.PrepareSession(FLAGS.master)
     else:
       tf.set_random_seed(FLAGS.tf_seed)
-      self.global_step = tf.contrib.framework.get_or_create_global_step()
+      self.global_step = tf.train.get_or_create_global_step()
       self.controller = self.get_controller()
       self.model = self.controller.model
       self.controller.setup()

@@ -43,6 +43,17 @@ class InceptionTest(tf.test.TestCase):
     self.assertListEqual(predictions.get_shape().as_list(),
                          [batch_size, num_classes])
 
+  def testBuildPreLogitsNetwork(self):
+    batch_size = 5
+    height, width = 299, 299
+    num_classes = None
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    net, end_points = inception.inception_v4(inputs, num_classes)
+    self.assertTrue(net.op.name.startswith('InceptionV4/Logits/AvgPool'))
+    self.assertListEqual(net.get_shape().as_list(), [batch_size, 1, 1, 1536])
+    self.assertFalse('Logits' in end_points)
+    self.assertFalse('Predictions' in end_points)
+
   def testBuildWithoutAuxLogits(self):
     batch_size = 5
     height, width = 299, 299
@@ -90,6 +101,7 @@ class InceptionTest(tf.test.TestCase):
                         'Mixed_7d': [batch_size, 8, 8, 1536],
                         # Logits and predictions
                         'AuxLogits': [batch_size, num_classes],
+                        'global_pool': [batch_size, 1, 1, 1536],
                         'PreLogitsFlatten': [batch_size, 1536],
                         'Logits': [batch_size, num_classes],
                         'Predictions': [batch_size, num_classes]}
@@ -163,6 +175,38 @@ class InceptionTest(tf.test.TestCase):
     pre_pool = end_points['Mixed_7d']
     self.assertListEqual(pre_pool.get_shape().as_list(),
                          [batch_size, 3, 3, 1536])
+
+  def testGlobalPool(self):
+    batch_size = 2
+    height, width = 400, 600
+    num_classes = 1000
+    inputs = tf.random_uniform((batch_size, height, width, 3))
+    logits, end_points = inception.inception_v4(inputs, num_classes)
+    self.assertTrue(logits.op.name.startswith('InceptionV4/Logits'))
+    self.assertListEqual(logits.get_shape().as_list(),
+                         [batch_size, num_classes])
+    pre_pool = end_points['Mixed_7d']
+    self.assertListEqual(pre_pool.get_shape().as_list(),
+                         [batch_size, 11, 17, 1536])
+
+  def testGlobalPoolUnknownImageShape(self):
+    batch_size = 2
+    height, width = 400, 600
+    num_classes = 1000
+    with self.test_session() as sess:
+      inputs = tf.placeholder(tf.float32, (batch_size, None, None, 3))
+      logits, end_points = inception.inception_v4(
+          inputs, num_classes, create_aux_logits=False)
+      self.assertTrue(logits.op.name.startswith('InceptionV4/Logits'))
+      self.assertListEqual(logits.get_shape().as_list(),
+                           [batch_size, num_classes])
+      pre_pool = end_points['Mixed_7d']
+      images = tf.random_uniform((batch_size, height, width, 3))
+      sess.run(tf.global_variables_initializer())
+      logits_out, pre_pool_out = sess.run([logits, pre_pool],
+                                          {inputs: images.eval()})
+      self.assertTupleEqual(logits_out.shape, (batch_size, num_classes))
+      self.assertTupleEqual(pre_pool_out.shape, (batch_size, 11, 17, 1536))
 
   def testUnknownBatchSize(self):
     batch_size = 1

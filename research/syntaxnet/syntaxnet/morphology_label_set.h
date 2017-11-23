@@ -43,8 +43,7 @@ class MorphologyLabelSet {
   int Add(const TokenMorphology &morph);
 
   // Look up an existing TokenMorphology. If it is not present, return -1.
-  // Note: This is slow, and should not be called outside of training workflow
-  // or init.
+  // Note: This is slow, and should not be called outside of training or init.
   int LookupExisting(const TokenMorphology &morph) const;
 
   // Return the TokenMorphology at position i. The input i should be in the

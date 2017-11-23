@@ -146,6 +146,14 @@ class BasicParserSentenceFeatureFunction :
   }
 };
 
+// Registry for the parser feature functions.
+DECLARE_SYNTAXNET_CLASS_REGISTRY("parser feature function",
+                                 ParserFeatureFunction);
+
+// Registry for the parser state + token index feature functions.
+DECLARE_SYNTAXNET_CLASS_REGISTRY("parser+index feature function",
+                                 ParserIndexFeatureFunction);
+
 }  // namespace syntaxnet
 
 #endif  // SYNTAXNET_PARSER_FEATURES_H_

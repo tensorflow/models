@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_INPUT_BATCH_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_INPUT_BATCH_H_
+#ifndef DRAGNN_CORE_INTERFACES_INPUT_BATCH_H_
+#define DRAGNN_CORE_INTERFACES_INPUT_BATCH_H_
 
 #include <string>
 #include <vector>
@@ -32,14 +32,17 @@ class InputBatch {
  public:
   virtual ~InputBatch() {}
 
-  // Set the data to translate to the subclass' data type.
+  // Sets the data to translate to the subclass' data type.  Call at most once.
   virtual void SetData(const std::vector<string> &data) = 0;
 
-  // Translate the underlying data back to a vector of strings, as appropriate.
+  // Returns the size of the batch.
+  virtual int GetSize() const = 0;
+
+  // Translates the underlying data back to a vector of strings, as appropriate.
   virtual const std::vector<string> GetSerializedData() const = 0;
 };
 
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_INPUT_BATCH_H_
+#endif  // DRAGNN_CORE_INTERFACES_INPUT_BATCH_H_

@@ -26,6 +26,8 @@ import cifar10_main
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
+_BATCH_SIZE = 128
+
 
 class BaseTest(tf.test.TestCase):
 
@@ -42,7 +44,7 @@ class BaseTest(tf.test.TestCase):
     data_file.close()
 
     fake_dataset = cifar10_main.record_dataset(filename)
-    fake_dataset = fake_dataset.map(cifar10_main.dataset_parser)
+    fake_dataset = fake_dataset.map(cifar10_main.parse_record)
     image, label = fake_dataset.make_one_shot_iterator().get_next()
 
     self.assertEqual(label.get_shape().as_list(), [10])
@@ -58,20 +60,25 @@ class BaseTest(tf.test.TestCase):
           self.assertAllEqual(pixel, np.array([0, 1, 2]))
 
   def input_fn(self):
-    features = tf.random_uniform([FLAGS.batch_size, 32, 32, 3])
+    features = tf.random_uniform([_BATCH_SIZE, 32, 32, 3])
     labels = tf.random_uniform(
-        [FLAGS.batch_size], maxval=9, dtype=tf.int32)
+        [_BATCH_SIZE], maxval=9, dtype=tf.int32)
     return features, tf.one_hot(labels, 10)
 
   def cifar10_model_fn_helper(self, mode):
     features, labels = self.input_fn()
-    spec = cifar10_main.cifar10_model_fn(features, labels, mode)
+    spec = cifar10_main.cifar10_model_fn(
+        features, labels, mode, {
+            'resnet_size': 32,
+            'data_format': 'channels_last',
+            'batch_size': _BATCH_SIZE,
+        })
 
     predictions = spec.predictions
     self.assertAllEqual(predictions['probabilities'].shape,
-                        (FLAGS.batch_size, 10))
+                        (_BATCH_SIZE, 10))
     self.assertEqual(predictions['probabilities'].dtype, tf.float32)
-    self.assertAllEqual(predictions['classes'].shape, (FLAGS.batch_size,))
+    self.assertAllEqual(predictions['classes'].shape, (_BATCH_SIZE,))
     self.assertEqual(predictions['classes'].dtype, tf.int64)
 
     if mode != tf.estimator.ModeKeys.PREDICT:
@@ -97,6 +104,4 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  FLAGS = cifar10_main.parser.parse_args()
-  cifar10_main.FLAGS = FLAGS
   tf.test.main()

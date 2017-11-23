@@ -45,9 +45,6 @@ from dragnn.python import trainer_lib
 
 from syntaxnet.util import check
 
-import dragnn.python.load_dragnn_cc_impl
-import syntaxnet.load_parser_ops
-
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
