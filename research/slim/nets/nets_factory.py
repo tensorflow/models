@@ -117,6 +117,9 @@ model_name_map = {'alexnet_v2': 'alexnet_v2',
                   'mobilenet_v1_075': 'MobilenetV1',
                   'mobilenet_v1_050': 'MobilenetV1',
                   'mobilenet_v1_025': 'MobilenetV1',
+                  #'nasnet_cifar': 'nasnet_cifar',
+                  'nasnet_mobile': 'nasnet_mobile',
+                  'nasnet_large': 'nasnet_large',
                  }
 
 def get_network_fn(name, num_classes, weight_decay=0.0, is_training=False):
