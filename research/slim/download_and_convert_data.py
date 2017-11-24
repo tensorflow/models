@@ -28,6 +28,11 @@ $ python download_and_convert_data.py \
 $ python download_and_convert_data.py \
     --dataset_name=flowers \
     --dataset_dir=/tmp/flowers
+
+$ python download_and_convert_data.py \
+    --dataset_name=generic \
+    --source_dir=/dataset/flowers \
+    --dataset_dir=/dataset/tensorflow/flowers
 ```
 """
 from __future__ import absolute_import
@@ -39,6 +44,7 @@ import tensorflow as tf
 from datasets import download_and_convert_cifar10
 from datasets import download_and_convert_flowers
 from datasets import download_and_convert_mnist
+from datasets import convert_generic
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -46,6 +52,11 @@ tf.app.flags.DEFINE_string(
     'dataset_name',
     None,
     'The name of the dataset to convert, one of "cifar10", "flowers", "mnist".')
+
+tf.app.flags.DEFINE_string(
+    'source_dir',
+    None,
+    'The directory from where input data is read for creating the output TFRecords.')
 
 tf.app.flags.DEFINE_string(
     'dataset_dir',
@@ -58,6 +69,8 @@ def main(_):
     raise ValueError('You must supply the dataset name with --dataset_name')
   if not FLAGS.dataset_dir:
     raise ValueError('You must supply the dataset directory with --dataset_dir')
+  if (FLAGS.dataset_name == 'generic') and (not FLAGS.source_dir):
+    raise ValueError('You must supply the input source directory with --source_dir')
 
   if FLAGS.dataset_name == 'cifar10':
     download_and_convert_cifar10.run(FLAGS.dataset_dir)
@@ -65,6 +78,8 @@ def main(_):
     download_and_convert_flowers.run(FLAGS.dataset_dir)
   elif FLAGS.dataset_name == 'mnist':
     download_and_convert_mnist.run(FLAGS.dataset_dir)
+  elif FLAGS.dataset_name == 'generic':
+    convert_generic.run(FLAGS.source_dir, FLAGS.dataset_dir)
   else:
     raise ValueError(
         'dataset_name [%s] was not recognized.' % FLAGS.dataset_name)
