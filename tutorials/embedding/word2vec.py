@@ -41,6 +41,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib.tensorboard.plugins import projector
 
 word2vec = tf.load_op_library(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'word2vec_ops.so'))
 
@@ -48,6 +49,9 @@ flags = tf.app.flags
 
 flags.DEFINE_string("save_path", None, "Directory to write the model and "
                     "training summaries.")
+flags.DEFINE_string("checkpoint", None, "Checkpoint to restore a model. "
+                    "If set to latest, it will load the checkpoint from the last training iteration."
+                    "Otherwise a path to a specific checkpoint can be set.")
 flags.DEFINE_string("train_data", None, "Training text file. "
                     "E.g., unzipped file http://mattmahoney.net/dc/text8.zip.")
 flags.DEFINE_string(
@@ -83,6 +87,10 @@ flags.DEFINE_boolean(
     "If true, enters an IPython interactive session to play with the trained "
     "model. E.g., try model.analogy(b'france', b'paris', b'russia') and "
     "model.nearby([b'proton', b'elephant', b'maxwell'])")
+flags.DEFINE_boolean(
+    "training", True,
+    "If true, will start training the model. This is the default case. "
+    "Set it to False if you want only to restore a checkpoint and do evaluation. ")
 flags.DEFINE_integer("statistics_interval", 5,
                      "Print statistics every n seconds.")
 flags.DEFINE_integer("summary_interval", 5,
@@ -108,6 +116,10 @@ class Options(object):
     # The training text file.
     self.train_data = FLAGS.train_data
 
+    # If a checkpoint is specified, the model will be restored from the checkpoint
+    # to continue training or do inference
+    self.checkpoint = FLAGS.checkpoint
+    
     # Number of negative samples per example.
     self.num_samples = FLAGS.num_neg_samples
 
@@ -369,18 +381,28 @@ class Word2Vec(object):
     self._loss = loss
     self.optimize(loss)
 
-    # Properly initialize all variables.
-    tf.global_variables_initializer().run()
-
     self.saver = tf.train.Saver()
+
+    if not opts.checkpoint:
+      # Properly initialize all variables.
+      tf.global_variables_initializer().run()
+    else:
+      if opts.checkpoint == 'latest':
+        checkpoint = tf.train.latest_checkpoint(FLAGS.save_path)
+      else:
+        checkpoint = tf.train.load_checkpoint(opts.checkpoint)
+      print("Restoring checkpoint: ", checkpoint)
+      self.saver.restore(self._session, checkpoint)
+
 
   def save_vocab(self):
     """Save the vocabulary to a file so the model can be reloaded."""
     opts = self._options
     with open(os.path.join(opts.save_path, "vocab.txt"), "w") as f:
+      f.write("Word\tFrequency\n")
       for i in xrange(opts.vocab_size):
-        vocab_word = tf.compat.as_text(opts.vocab_words[i]).encode("utf-8")
-        f.write("%s %d\n" % (vocab_word,
+        vocab_word = tf.compat.as_text(opts.vocab_words[i])
+        f.write("%s\t%d\n" % (vocab_word,
                              opts.vocab_counts[i]))
 
   def _train_thread_body(self):
@@ -398,6 +420,13 @@ class Word2Vec(object):
 
     summary_op = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(opts.save_path, self._session.graph)
+
+    visualize_config = projector.ProjectorConfig()
+    visualize_embedding = visualize_config.embeddings.add()
+    visualize_embedding.tensor_name = self._emb.name
+    visualize_embedding.metadata_path = os.path.join(opts.save_path, 'vocab.txt') 
+    projector.visualize_embeddings(summary_writer, visualize_config)
+
     workers = []
     for _ in xrange(opts.concurrent_steps):
       t = threading.Thread(target=self._train_thread_body)
@@ -511,24 +540,32 @@ def main(_):
   if not FLAGS.train_data or not FLAGS.eval_data or not FLAGS.save_path:
     print("--train_data --eval_data and --save_path must be specified.")
     sys.exit(1)
+  
   opts = Options()
   with tf.Graph().as_default(), tf.Session() as session:
     with tf.device("/cpu:0"):
       model = Word2Vec(opts, session)
-      model.read_analogies() # Read analogy questions
-    for _ in xrange(opts.epochs_to_train):
-      model.train()  # Process one epoch
-      model.eval()  # Eval analogies.
-    # Perform a final save.
-    model.saver.save(session,
-                     os.path.join(opts.save_path, "model.ckpt"),
-                     global_step=model.global_step)
-    if FLAGS.interactive:
-      # E.g.,
-      # [0]: model.analogy(b'france', b'paris', b'russia')
-      # [1]: model.nearby([b'proton', b'elephant', b'maxwell'])
-      _start_shell(locals())
-
+      model.read_analogies()  # Read analogy questions
+    
+      if FLAGS.training:
+        for _ in xrange(opts.epochs_to_train):
+          model.train()  # Process one epoch
+          model.eval()  # Eval analogies.
+        
+        # Perform a final save.
+        model.saver.save(session,
+                         os.path.join(opts.save_path, "model.ckpt"),
+                         global_step=model.global_step)
+      else:
+          # If we don't do the training, at least we check the evaluation of 
+          # a loaded model
+          model.eval()
+          
+      if FLAGS.interactive:
+        print("Interactive mode: Please enter commands like...")
+        print("[0]: model.analogy(b'france', b'paris', b'russia')")
+        print("[1]: model.nearby([b'proton', b'elephant', b'maxwell'])")
+        _start_shell(locals())
 
 if __name__ == "__main__":
   tf.app.run()

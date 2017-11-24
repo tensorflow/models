@@ -46,6 +46,9 @@ word2vec = tf.load_op_library(os.path.join(os.path.dirname(os.path.realpath(__fi
 flags = tf.app.flags
 
 flags.DEFINE_string("save_path", None, "Directory to write the model.")
+flags.DEFINE_string("checkpoint", None, "Checkpoint to restore a model. "
+                    "If set to latest, it will load the checkpoint from the last training iteration."
+                    "Otherwise a path to a specific checkpoint can be set.")
 flags.DEFINE_string(
     "train_data", None,
     "Training data. E.g., unzipped file http://mattmahoney.net/dc/text8.zip.")
@@ -76,6 +79,10 @@ flags.DEFINE_float("subsample", 1e-3,
                    "with higher frequency will be randomly down-sampled. Set "
                    "to 0 to disable.")
 flags.DEFINE_boolean(
+    "training", True,
+    "If true, will start training the model. This is the default case. "
+    "Set it to False if you want only to restore a checkpoint and do evaluation. ")
+flags.DEFINE_boolean(
     "interactive", False,
     "If true, enters an IPython interactive session to play with the trained "
     "model. E.g., try model.analogy(b'france', b'paris', b'russia') and "
@@ -94,10 +101,13 @@ class Options(object):
     self.emb_dim = FLAGS.embedding_size
 
     # Training options.
-
     # The training text file.
     self.train_data = FLAGS.train_data
 
+    # If a checkpoint is specified, the model will be restored from the checkpoint
+    # to continue training or do inference
+    self.checkpoint = FLAGS.checkpoint
+    
     # Number of negative samples per example.
     self.num_samples = FLAGS.num_neg_samples
 
@@ -130,7 +140,6 @@ class Options(object):
       os.makedirs(self.save_path)
 
     # Eval options.
-
     # The text file for eval.
     self.eval_data = FLAGS.eval_data
 
@@ -238,10 +247,12 @@ class Word2Vec(object):
     """Save the vocabulary to a file so the model can be reloaded."""
     opts = self._options
     with open(os.path.join(opts.save_path, "vocab.txt"), "w") as f:
+      f.write("Word\tFrequency\n")
       for i in xrange(opts.vocab_size):
-        vocab_word = tf.compat.as_text(opts.vocab_words[i]).encode("utf-8")
-        f.write("%s %d\n" % (vocab_word,
+        vocab_word = tf.compat.as_text(opts.vocab_words[i])
+        f.write("%s\t%d\n" % (vocab_word,
                              opts.vocab_counts[i]))
+
 
   def build_eval_graph(self):
     """Build the evaluation graph."""
@@ -297,10 +308,18 @@ class Word2Vec(object):
     self._nearby_val = nearby_val
     self._nearby_idx = nearby_idx
 
-    # Properly initialize all variables.
-    tf.global_variables_initializer().run()
-
     self.saver = tf.train.Saver()
+
+    if not opts.checkpoint:
+      # Properly initialize all variables.
+      tf.global_variables_initializer().run()
+    else:
+      if opts.checkpoint == 'latest':
+        checkpoint = tf.train.latest_checkpoint(FLAGS.save_path)
+      else:
+        checkpoint = tf.train.load_checkpoint(opts.checkpoint)
+      print("Restoring checkpoint: ", checkpoint)
+      self.saver.restore(self._session, checkpoint)
 
   def _train_thread_body(self):
     initial_epoch, = self._session.run([self._epoch])
@@ -422,16 +441,25 @@ def main(_):
     with tf.device("/cpu:0"):
       model = Word2Vec(opts, session)
       model.read_analogies() # Read analogy questions
-    for _ in xrange(opts.epochs_to_train):
-      model.train()  # Process one epoch
-      model.eval()  # Eval analogies.
-    # Perform a final save.
-    model.saver.save(session, os.path.join(opts.save_path, "model.ckpt"),
-                     global_step=model.global_step)
+
+    if FLAGS.training:
+      for _ in xrange(opts.epochs_to_train):
+        model.train()  # Process one epoch
+        model.eval()  # Eval analogies.
+        
+        # Perform a final save.
+        model.saver.save(session,
+                         os.path.join(opts.save_path, "model.ckpt"),
+                         global_step=model.global_step)
+    else:
+        # If we don't do the training, at least we check the evaluation of 
+        # a loaded model
+        model.eval()
+        
     if FLAGS.interactive:
-      # E.g.,
-      # [0]: model.analogy(b'france', b'paris', b'russia')
-      # [1]: model.nearby([b'proton', b'elephant', b'maxwell'])
+      print("Interactive mode: Please enter commands like...")
+      print("[0]: model.analogy(b'france', b'paris', b'russia')")
+      print("[1]: model.nearby([b'proton', b'elephant', b'maxwell'])")
       _start_shell(locals())
 
 

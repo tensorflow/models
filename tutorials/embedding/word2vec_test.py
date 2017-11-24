@@ -56,6 +56,9 @@ class Word2VecTest(tf.test.TestCase):
     FLAGS.epochs_to_train = 1
     FLAGS.min_count = 0
     word2vec.main([])
+    FLAGS.checkpoint = 'latest'
+    FLAGS.training = False
+    word2vec.main([])
 
 
 if __name__ == "__main__":

@@ -38,11 +38,40 @@ python word2vec_optimized.py \
   --save_path=/tmp/
 ```
 
+If you want to restore the latest trained model and evaluate it and enter an interactive session you can enter:
+```shell
+python word2vec_optimized.py \
+  --train_data=text8 \
+  --eval_data=questions-words.txt \
+  --checkpoint=latest \
+  --training=False \
+  --interactive=True \
+  --save_path=/tmp/
+```
+
+If you want to understand more details about embeddings and bring a little bit more time, you should check out the non optimized version which has Tensorboard support. 
+
+```shell
+python word2vec.py \
+  --train_data=text8 \
+  --eval_data=questions-words.txt \
+  --save_path=/tmp/
+```
+
+While or after training the model you can visualize the embeddings using Tensorboard by calling:
+
+`tensorboard --logdir=/tmp/`
+
+And then opening Tensorboard in your browser with:
+
+`http://0.0.0.0:6006`
+
+
 Here is a short overview of what is in this directory.
 
 File | What's in it?
 --- | ---
-`word2vec.py` | A version of word2vec implemented using TensorFlow ops and minibatching.
+`word2vec.py` | A version of word2vec implemented using TensorFlow ops and minibatching with Tensorboard support.
 `word2vec_test.py` | Integration test for word2vec.
 `word2vec_optimized.py` | A version of word2vec implemented using C ops that does no minibatching.
 `word2vec_optimized_test.py` | Integration test for word2vec_optimized.
