@@ -40,7 +40,7 @@ mysql_host = '119.18.193.226'
 mysql_user = 'bfsportsdt'
 mysql_pass = '85iwx|qttHsrlxPeyldb'
 user_set_last_deal_id = 500000
-news_image_table = 'news_image'
+news_image_table = 'news_image_im2text'
 
 FLAGS = tf.flags.FLAGS
 
@@ -54,7 +54,7 @@ tf.logging.set_verbosity(tf.logging.INFO)
 
 def _gain_image_info(conn):
     cur = conn.cursor()
-    sql = 'select max(original_id) from ai_image.{}'.format('news_image_im2text')
+    sql = 'select max(original_id) from ai_image.{}'.format(news_image_table)
     cur.execute(sql)
     data = cur.fetchone()
     if data is not None and len(data) != 0 and data[0] is not None:
@@ -92,6 +92,19 @@ def load_image_into_numpy_array(image):
         (im_height, im_width, 3)).astype(np.uint8)
 
 
+def myCommit(conn, sql, commitList):
+    index = 0
+    cur = conn.cursor()
+    while index < len(commitList):
+        l = commitList[index:index + 100]
+        index += len(l)
+        print("myCommit: sql = ", sql)
+        print("myCommit: l = ", l)
+        cur.executemany(sql, l)
+        conn.commit()
+    cur.close()
+
+
 def main(_):
     # Build the inference graph.
     g = tf.Graph()
@@ -120,6 +133,10 @@ def main(_):
 
         count = 0
         if True:
+
+            commit_sql = 'replace into ai_image.{} (image_md5, original_id, text1, text2,text3) ' \
+                         'values (%s, %s, %s, %s,%s)'.format(news_image_table)
+
             conn = get_mysql_conn()
             info_list = _gain_image_info(conn)
             conn.close()
@@ -143,11 +160,28 @@ def main(_):
 
                     captions = generator.beam_search(sess, image_data)
                     print("Captions for image %s:" % os.path.basename(image_path))
+                    sentence_map = {}
                     for i, caption in enumerate(captions):
                         # Ignore begin and end words.
                         sentence = [vocab.id_to_word(w) for w in caption.sentence[1:-1]]
                         sentence = " ".join(sentence)
                         print("  %d) %s (p=%f)" % (i, sentence, math.exp(caption.logprob)))
+                        text = "p=%f : %s " % (math.exp(caption.logprob), sentence)
+                        sentence_map.setdefault(i, text)
+
+                    image_md5 = os.path.basename(image_path)
+                    save_info.append(
+                        (image_md5, original_id, sentence_map.get(0), sentence_map.get(1), sentence_map.get(2)))
+                    if len(save_info) > 10:
+                        conn = get_mysql_conn()
+                        myCommit(conn, commit_sql, save_info)
+                        conn.close()
+                        save_info = []
+                else:
+                    conn = get_mysql_conn()
+                    myCommit(conn, commit_sql, save_info)
+                    conn.close()
+                    save_info = []
 
 
 if __name__ == "__main__":
