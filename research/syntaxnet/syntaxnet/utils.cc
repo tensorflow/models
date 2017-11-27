@@ -169,6 +169,21 @@ size_t RemoveWhitespaceContext(tensorflow::StringPiece *text) {
   return RemoveLeadingWhitespace(text) + RemoveTrailingWhitespace(text);
 }
 
+void RemoveLeadingWhitespaceStr(std::string &text) {
+    text.erase(text.begin(), std::find_if(text.begin(), text.end(),
+            std::not1(std::ptr_fun<int, int>(std::isspace))));
+}
+
+void RemoveTrailingWhitespaceStr(std::string &text) {
+    text.erase(std::find_if(text.rbegin(), text.rend(),
+            std::not1(std::ptr_fun<int, int>(std::isspace))).base(), text.end());
+}
+
+void RemoveWhitespaceContextStr(std::string &text) {
+  RemoveTrailingWhitespaceStr(text);
+  RemoveLeadingWhitespaceStr(text);
+}
+
 namespace {
 // Lower-level versions of Get... that read directly from a character buffer
 // without any bounds checking.

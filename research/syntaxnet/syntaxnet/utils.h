@@ -75,6 +75,12 @@ size_t RemoveTrailingWhitespace(tensorflow::StringPiece *text);
 
 size_t RemoveWhitespaceContext(tensorflow::StringPiece *text);
 
+void RemoveLeadingWhitespaceStr(std::string &text);
+
+void RemoveTrailingWhitespaceStr(std::string &text);
+
+void RemoveWhitespaceContextStr(std::string &text);
+
 uint32 Hash32(const char *data, size_t n, uint32 seed);
 
 // Deletes all the elements in an STL container and clears the container. This

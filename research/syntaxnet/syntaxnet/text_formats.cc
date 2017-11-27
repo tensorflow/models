@@ -41,6 +41,7 @@ bool DoubleNewlineReadRecord(tensorflow::io::BufferedInputStream *buffer,
   while (!line.empty() && status.ok()) {
     tensorflow::strings::StrAppend(record, line, "\n");
     status = buffer->ReadLine(&line);
+    utils::RemoveWhitespaceContextStr(line);
   }
   return status.ok() || !record->empty();
 }
@@ -114,7 +115,9 @@ class CoNLLSyntaxFormat : public DocumentFormat {
     for (size_t i = 0; i < lines.size(); ++i) {
       // Split line into tab-separated fields.
       fields.clear();
-      fields = utils::Split(lines[i], '\t');
+      std::string line = lines[i];
+      utils::RemoveWhitespaceContextStr(line);
+      fields = utils::Split(line, '\t');
       if (fields.empty()) continue;
 
       // Skip comment lines.
@@ -141,6 +144,7 @@ class CoNLLSyntaxFormat : public DocumentFormat {
       // Check that the ids follow the expected format.
       const int id = utils::ParseUsing<int>(fields[0], 0, utils::ParseInt32);
       CHECK_EQ(expected_id++, id)
+          << "(Line " << i+1 << ": |" << line << "|) "
           << "Token ids start at 1 for each new sentence and increase by 1 "
           << "on each new token. Sentences are separated by an empty line.";
 
