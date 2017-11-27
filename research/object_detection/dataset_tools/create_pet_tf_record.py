@@ -160,8 +160,8 @@ def dict_to_tf_example(data,
     if not faces_only:
       mask_remapped = mask_np != 2
       masks.append(mask_remapped)
-    mask_stack = np.stack(masks).astype(np.float32)
-    masks_flattened = np.reshape(mask_stack, [-1])
+      mask_stack = np.stack(masks).astype(np.float32)
+      masks_flattened = np.reshape(mask_stack, [-1])
 
   feature_dict = {
       'image/height': dataset_util.int64_feature(height),
@@ -256,7 +256,7 @@ def main(_):
 
   train_output_path = os.path.join(FLAGS.output_dir, 'pet_train.record')
   val_output_path = os.path.join(FLAGS.output_dir, 'pet_val.record')
-  if FLAGS.faces_only:
+  if not FLAGS.faces_only:
     train_output_path = os.path.join(FLAGS.output_dir,
                                      'pet_train_with_masks.record')
     val_output_path = os.path.join(FLAGS.output_dir,
