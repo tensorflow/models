@@ -57,12 +57,11 @@ Banner () {
   echo -e "${green}${text}${nc}"
 }
 
-# Download the dataset. You will be asked for an ImageNet username and password.
-# To get one, register at http://www.image-net.org/.
+# Download the dataset.
 bazel build "${git_repo}/research/slim:download_and_convert_imagenet"
 "./bazel-bin/download_and_convert_imagenet" ${DATASET_DIR}
 
-# Run the compression model.
+# Run the pix2pix model.
 NUM_STEPS=10000
 MODEL_TRAIN_DIR="${TRAIN_DIR}/wt${weight_factor}"
 Banner "Starting training an image compression model for ${NUM_STEPS} steps..."
@@ -72,14 +71,4 @@ python "${git_repo}/research/gan/image_compression/train.py" \
   --max_number_of_steps=${NUM_STEPS} \
   --weight_factor=${weight_factor} \
   --alsologtostderr
-Banner "Finished training image compression model ${NUM_STEPS} steps."
-
-# Run evaluation.
-MODEL_EVAL_DIR="${TRAIN_DIR}/eval/wt${weight_factor}"
-Banner "Starting evaluation of image compression model..."
-python "${git_repo}/research/gan/image_compression/eval.py" \
-  --checkpoint_dir=${MODEL_TRAIN_DIR} \
-  --eval_dir=${MODEL_EVAL_DIR} \
-  --dataset_dir=${DATASET_DIR} \
-  --max_number_of_evaluation=1
-Banner "Finished evaluation. See ${MODEL_EVAL_DIR} for output images."
+Banner "Finished training pix2pix model ${NUM_STEPS} steps."
