@@ -21,7 +21,7 @@ from __future__ import print_function
 
 
 import tensorflow as tf
-from google3.third_party.tensorflow_models.gan.mnist  import eval  # pylint:disable=redefined-builtin
+import eval  # pylint:disable=redefined-builtin
 
 
 class EvalTest(tf.test.TestCase):
