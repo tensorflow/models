@@ -90,3 +90,5 @@ ENV/
 
 # PyCharm
 .idea/
+research/object_detection/protos/*.py
+!research/object_detection/protos/__init__.py
