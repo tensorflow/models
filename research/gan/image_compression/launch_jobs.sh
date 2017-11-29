@@ -58,7 +58,8 @@ Banner () {
 }
 
 # Download the dataset.
-"${git_repo}/research/slim/datasets/download_and_convert_imagenet.sh" ${DATASET_DIR}
+bazel build "${git_repo}/research/slim:download_and_convert_imagenet" 
+"./bazel-bin/download_and_convert_imagenet" ${DATASET_DIR}
 
 # Run the compression model.
 NUM_STEPS=10000
