@@ -45,7 +45,9 @@
 # downloading the raw images.
 #
 # usage:
-#  ./download_and_convert_imagenet.sh [data-dir]
+#  cd research/slim
+#  bazel build :download_and_convert_imagenet
+#  ./bazel-bin/download_and_convert_imagenet.sh [data-dir]
 set -e
 
 if [ -z "$1" ]; then
