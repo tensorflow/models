@@ -35,6 +35,7 @@ research/syntaxnet/* @calberti @andorardo @bogatyy @markomernick
 research/textsum/* @panyx0718 @peterjliu
 research/transformer/* @daviddao
 research/video_prediction/* @cbfinn
+research/fivo/* @dieterichlawson
 samples/* @MarkDaoust
 tutorials/embedding/* @zffchen78 @a-dai
 tutorials/image/* @sherrym @shlens
