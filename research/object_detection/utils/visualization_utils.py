@@ -20,6 +20,8 @@ The functions do not return a value, instead they modify the image itself.
 
 """
 import collections
+import functools
+import matplotlib.pyplot as plt
 import numpy as np
 import PIL.Image as Image
 import PIL.ImageColor as ImageColor
@@ -132,6 +134,8 @@ def draw_bounding_box_on_image(image,
 
   Each string in display_str_list is displayed on a separate line above the
   bounding box in black text on a rectangle filled with the input 'color'.
+  If the top of the bounding box extends to the edge of the image, the strings
+  are displayed below the bounding box.
 
   Args:
     image: a PIL.Image object.
@@ -161,7 +165,17 @@ def draw_bounding_box_on_image(image,
   except IOError:
     font = ImageFont.load_default()
 
-  text_bottom = top
+  # If the total height of the display strings added to the top of the bounding
+  # box exceeds the top of the image, stack the strings below the bounding box
+  # instead of above.
+  display_str_heights = [font.getsize(ds)[1] for ds in display_str_list]
+  # Each display_str has a top and bottom margin of 0.05x.
+  total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
+
+  if top > total_display_str_height:
+    text_bottom = top
+  else:
+    text_bottom = bottom + total_display_str_height
   # Reverse list and print from bottom to top.
   for display_str in display_str_list[::-1]:
     text_width, text_height = font.getsize(display_str)
@@ -241,6 +255,54 @@ def draw_bounding_boxes_on_image(image,
                                boxes[i, 3], color, thickness, display_str_list)
 
 
+def draw_bounding_boxes_on_image_tensors(images,
+                                         boxes,
+                                         classes,
+                                         scores,
+                                         category_index,
+                                         max_boxes_to_draw=20,
+                                         min_score_thresh=0.2):
+  """Draws bounding boxes on batch of image tensors.
+
+  Args:
+    images: A 4D uint8 image tensor of shape [N, H, W, C].
+    boxes: [N, max_detections, 4] float32 tensor of detection boxes.
+    classes: [N, max_detections] int tensor of detection classes. Note that
+      classes are 1-indexed.
+    scores: [N, max_detections] float32 tensor of detection scores.
+    category_index: a dict that maps integer ids to category dicts. e.g.
+      {1: {1: 'dog'}, 2: {2: 'cat'}, ...}
+    max_boxes_to_draw: Maximum number of boxes to draw on an image. Default 20.
+    min_score_thresh: Minimum score threshold for visualization. Default 0.2.
+
+  Returns:
+    4D image tensor of type uint8, with boxes drawn on top.
+  """
+  visualize_boxes_fn = functools.partial(
+      visualize_boxes_and_labels_on_image_array,
+      category_index=category_index,
+      instance_masks=None,
+      keypoints=None,
+      use_normalized_coordinates=True,
+      max_boxes_to_draw=max_boxes_to_draw,
+      min_score_thresh=min_score_thresh,
+      agnostic_mode=False,
+      line_thickness=4)
+
+  def draw_boxes(image_boxes_classes_scores):
+    """Draws boxes on image."""
+    (image, boxes, classes, scores) = image_boxes_classes_scores
+    image_with_boxes = tf.py_func(visualize_boxes_fn,
+                                  [image, boxes, classes, scores], tf.uint8)
+    return image_with_boxes
+
+  images = tf.map_fn(
+      draw_boxes, (images, boxes, classes, scores),
+      dtype=tf.uint8,
+      back_prop=False)
+  return images
+
+
 def draw_keypoints_on_image_array(image,
                                   keypoints,
                                   color='red',
@@ -295,8 +357,8 @@ def draw_mask_on_image_array(image, mask, color='red', alpha=0.7):
 
   Args:
     image: uint8 numpy array with shape (img_height, img_height, 3)
-    mask: a float numpy array of shape (img_height, img_height) with
-      values between 0 and 1
+    mask: a uint8 numpy array of shape (img_height, img_height) with
+      values between either 0 or 1.
     color: color to draw the keypoints with. Default is red.
     alpha: transparency value between 0 and 1. (default: 0.7)
 
@@ -305,9 +367,9 @@ def draw_mask_on_image_array(image, mask, color='red', alpha=0.7):
   """
   if image.dtype != np.uint8:
     raise ValueError('`image` not of type np.uint8')
-  if mask.dtype != np.float32:
-    raise ValueError('`mask` not of type np.float32')
-  if np.any(np.logical_or(mask > 1.0, mask < 0.0)):
+  if mask.dtype != np.uint8:
+    raise ValueError('`mask` not of type np.uint8')
+  if np.any(np.logical_and(mask != 1, mask != 0)):
     raise ValueError('`mask` elements should be in [0, 1]')
   rgb = ImageColor.getrgb(color)
   pil_image = Image.fromarray(image)
@@ -336,13 +398,14 @@ def visualize_boxes_and_labels_on_image_array(image,
 
   This function groups boxes that correspond to the same location
   and creates a display string for each detection and overlays these
-  on the image.  Note that this function modifies the image array in-place
-  and does not return anything.
+  on the image. Note that this function modifies the image in place, and returns
+  that same image.
 
   Args:
     image: uint8 numpy array with shape (img_height, img_width, 3)
     boxes: a numpy array of shape [N, 4]
-    classes: a numpy array of shape [N]
+    classes: a numpy array of shape [N]. Note that class indices are 1-based,
+      and match the keys in the label map.
     scores: a numpy array of shape [N] or None.  If scores=None, then
       this function assumes that the boxes to be plotted are groundtruth
       boxes and plot all boxes as black with no classes or scores.
@@ -361,6 +424,9 @@ def visualize_boxes_and_labels_on_image_array(image,
       class-agnostic mode or not.  This mode will display scores but ignore
       classes.
     line_thickness: integer (default: 4) controlling line width of the boxes.
+
+  Returns:
+    uint8 numpy array with shape (img_height, img_width, 3) with overlaid boxes.
   """
   # Create a display string (and color) for every box location, group any boxes
   # that correspond to the same location.
@@ -423,3 +489,36 @@ def visualize_boxes_and_labels_on_image_array(image,
           color=color,
           radius=line_thickness / 2,
           use_normalized_coordinates=use_normalized_coordinates)
+
+  return image
+
+
+def add_cdf_image_summary(values, name):
+  """Adds a tf.summary.image for a CDF plot of the values.
+
+  Normalizes `values` such that they sum to 1, plots the cumulative distribution
+  function and creates a tf image summary.
+
+  Args:
+    values: a 1-D float32 tensor containing the values.
+    name: name for the image summary.
+  """
+  def cdf_plot(values):
+    """Numpy function to plot CDF."""
+    normalized_values = values / np.sum(values)
+    sorted_values = np.sort(normalized_values)
+    cumulative_values = np.cumsum(sorted_values)
+    fraction_of_examples = (np.arange(cumulative_values.size, dtype=np.float32)
+                            / cumulative_values.size)
+    fig = plt.figure(frameon=False)
+    ax = fig.add_subplot('111')
+    ax.plot(fraction_of_examples, cumulative_values)
+    ax.set_ylabel('cumulative normalized values')
+    ax.set_xlabel('fraction of examples')
+    fig.canvas.draw()
+    width, height = fig.get_size_inches() * fig.get_dpi()
+    image = np.fromstring(fig.canvas.tostring_rgb(), dtype='uint8').reshape(
+        1, height, width, 3)
+    return image
+  cdf_plot = tf.py_func(cdf_plot, [values], tf.uint8)
+  tf.summary.image(name, cdf_plot)

@@ -29,6 +29,9 @@ message PreprocessingStep {
     SSDRandomCrop ssd_random_crop = 21;
     SSDRandomCropPad ssd_random_crop_pad = 22;
     SSDRandomCropFixedAspectRatio ssd_random_crop_fixed_aspect_ratio = 23;
+    SSDRandomCropPadFixedAspectRatio ssd_random_crop_pad_fixed_aspect_ratio = 24;
+    RandomVerticalFlip random_vertical_flip = 25;
+    RandomRotation90 random_rotation90 = 26;
   }
 }
 
@@ -42,9 +45,43 @@ message NormalizeImage {
   optional float target_maxval = 4 [default=1];
 }
 
-// Randomly horizontally mirrors the image and detections 50% of the time.
+// Randomly horizontally flips the image and detections 50% of the time.
 message RandomHorizontalFlip {
+  // Specifies a mapping from the original keypoint indices to horizontally
+  // flipped indices. This is used in the event that keypoints are specified,
+  // in which case when the image is horizontally flipped the keypoints will
+  // need to be permuted. E.g. for keypoints representing left_eye, right_eye,
+  // nose_tip, mouth, left_ear, right_ear (in that order), one might specify
+  // the keypoint_flip_permutation below:
+  // keypoint_flip_permutation: 1
+  // keypoint_flip_permutation: 0
+  // keypoint_flip_permutation: 2
+  // keypoint_flip_permutation: 3
+  // keypoint_flip_permutation: 5
+  // keypoint_flip_permutation: 4
+  repeated int32 keypoint_flip_permutation = 1;
 }
+
+// Randomly vertically flips the image and detections 50% of the time.
+message RandomVerticalFlip {
+  // Specifies a mapping from the original keypoint indices to vertically
+  // flipped indices. This is used in the event that keypoints are specified,
+  // in which case when the image is vertically flipped the keypoints will
+  // need to be permuted. E.g. for keypoints representing left_eye, right_eye,
+  // nose_tip, mouth, left_ear, right_ear (in that order), one might specify
+  // the keypoint_flip_permutation below:
+  // keypoint_flip_permutation: 1
+  // keypoint_flip_permutation: 0
+  // keypoint_flip_permutation: 2
+  // keypoint_flip_permutation: 3
+  // keypoint_flip_permutation: 5
+  // keypoint_flip_permutation: 4
+  repeated int32 keypoint_flip_permutation = 1;
+}
+
+// Randomly rotates the image and detections by 90 degrees counter-clockwise
+// 50% of the time.
+message RandomRotation90 {}
 
 // Randomly scales the values of all pixels in the image by some constant value
 // between [minval, maxval], then clip the value to a range between [0, 1.0].
@@ -322,5 +359,47 @@ message SSDRandomCropFixedAspectRatio {
   repeated SSDRandomCropFixedAspectRatioOperation operations = 1;
 
   // Aspect ratio to crop to. This value is used for all crop operations.
+  optional float aspect_ratio = 2 [default=1.0];
+}
+
+message SSDRandomCropPadFixedAspectRatioOperation {
+  // Cropped image must cover at least this fraction of one original bounding
+  // box.
+  optional float min_object_covered = 1;
+
+  // The aspect ratio of the cropped image must be within the range of
+  // [min_aspect_ratio, max_aspect_ratio].
+  optional float min_aspect_ratio = 2;
+  optional float max_aspect_ratio = 3;
+
+  // The area of the cropped image must be within the range of
+  // [min_area, max_area].
+  optional float min_area = 4;
+  optional float max_area = 5;
+
+  // Cropped box area ratio must be above this threhold to be kept.
+  optional float overlap_thresh = 6;
+
+  // Probability a crop operation is skipped.
+  optional float random_coef = 7;
+
+  // Min ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float min_padded_size_ratio = 8;
+
+  // Max ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float max_padded_size_ratio = 9;
+}
+
+// Randomly crops and pads an image to a fixed aspect ratio according to:
+//     Liu et al., SSD: Single shot multibox detector.
+// Multiple SSDRandomCropPadFixedAspectRatioOperations are defined by this
+// preprocessing step. Only one operation (chosen at random) is actually
+// performed on an image.
+message SSDRandomCropPadFixedAspectRatio {
+  repeated SSDRandomCropPadFixedAspectRatioOperation operations = 1;
+
+  // Aspect ratio to pad to. This value is used for all crop and pad operations.
   optional float aspect_ratio = 2 [default=1.0];
 }

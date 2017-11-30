@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_TRANSITION_STATE_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_TRANSITION_STATE_H_
+#ifndef DRAGNN_CORE_INTERFACES_TRANSITION_STATE_H_
+#define DRAGNN_CORE_INTERFACES_TRANSITION_STATE_H_
 
 #include <memory>
 #include <vector>
@@ -44,19 +44,25 @@ class TransitionState {
 
   // Return the beam index of the state passed into the initializer of this
   // TransitionState.
-  virtual const int ParentBeamIndex() const = 0;
+  virtual int ParentBeamIndex() const = 0;
 
-  // Get the current beam index for this state.
-  virtual const int GetBeamIndex() const = 0;
+  // Gets the current beam index for this state.
+  virtual int GetBeamIndex() const = 0;
 
-  // Set the current beam index for this state.
-  virtual void SetBeamIndex(const int index) = 0;
+  // Sets the current beam index for this state.
+  virtual void SetBeamIndex(int index) = 0;
 
-  // Get the score associated with this transition state.
-  virtual const float GetScore() const = 0;
+  // Gets the score associated with this transition state.
+  virtual float GetScore() const = 0;
 
-  // Set the score associated with this transition state.
-  virtual void SetScore(const float score) = 0;
+  // Sets the score associated with this transition state.
+  virtual void SetScore(float score) = 0;
+
+  // Gets the gold-ness of this state (whether it is on the oracle path)
+  virtual bool IsGold() const = 0;
+
+  // Sets the gold-ness of this state.
+  virtual void SetGold(bool is_gold) = 0;
 
   // Depicts this state as an HTML-language string.
   virtual string HTMLRepresentation() const = 0;
@@ -65,4 +71,4 @@ class TransitionState {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_TRANSITION_STATE_H_
+#endif  // DRAGNN_CORE_INTERFACES_TRANSITION_STATE_H_

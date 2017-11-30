@@ -57,7 +57,8 @@ def alexnet_v2(inputs,
                is_training=True,
                dropout_keep_prob=0.5,
                spatial_squeeze=True,
-               scope='alexnet_v2'):
+               scope='alexnet_v2',
+               global_pool=False):
   """AlexNet version 2.
 
   Described in: http://arxiv.org/pdf/1404.5997v2.pdf
@@ -66,26 +67,34 @@ def alexnet_v2(inputs,
   layers-imagenet-1gpu.cfg
 
   Note: All the fully_connected layers have been transformed to conv2d layers.
-        To use in classification mode, resize input to 224x224. To use in fully
-        convolutional mode, set spatial_squeeze to false.
+        To use in classification mode, resize input to 224x224 or set
+        global_pool=True. To use in fully convolutional mode, set
+        spatial_squeeze to false.
         The LRN layers have been removed and change the initializers from
         random_normal_initializer to xavier_initializer.
 
   Args:
     inputs: a tensor of size [batch_size, height, width, channels].
-    num_classes: number of predicted classes.
+    num_classes: the number of predicted classes. If 0 or None, the logits layer
+    is omitted and the input features to the logits layer are returned instead.
     is_training: whether or not the model is being trained.
     dropout_keep_prob: the probability that activations are kept in the dropout
       layers during training.
     spatial_squeeze: whether or not should squeeze the spatial dimensions of the
-      outputs. Useful to remove unnecessary dimensions for classification.
+      logits. Useful to remove unnecessary dimensions for classification.
     scope: Optional scope for the variables.
+    global_pool: Optional boolean flag. If True, the input to the classification
+      layer is avgpooled to size 1x1, for any input size. (This is not part
+      of the original AlexNet.)
 
   Returns:
-    the last op containing the log predictions and end_points dict.
+    net: the output of the logits layer (if num_classes is a non-zero integer),
+      or the non-dropped-out input to the logits layer (if num_classes is 0
+      or None).
+    end_points: a dict of tensors with intermediate activations.
   """
   with tf.variable_scope(scope, 'alexnet_v2', [inputs]) as sc:
-    end_points_collection = sc.name + '_end_points'
+    end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d.
     with slim.arg_scope([slim.conv2d, slim.fully_connected, slim.max_pool2d],
                         outputs_collections=[end_points_collection]):
@@ -108,18 +117,22 @@ def alexnet_v2(inputs,
         net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                            scope='dropout6')
         net = slim.conv2d(net, 4096, [1, 1], scope='fc7')
-        net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
-                           scope='dropout7')
-        net = slim.conv2d(net, num_classes, [1, 1],
-                          activation_fn=None,
-                          normalizer_fn=None,
-                          biases_initializer=tf.zeros_initializer(),
-                          scope='fc8')
-
-      # Convert end_points_collection into a end_point dict.
-      end_points = slim.utils.convert_collection_to_dict(end_points_collection)
-      if spatial_squeeze:
-        net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
-        end_points[sc.name + '/fc8'] = net
+        # Convert end_points_collection into a end_point dict.
+        end_points = slim.utils.convert_collection_to_dict(
+            end_points_collection)
+        if global_pool:
+          net = tf.reduce_mean(net, [1, 2], keep_dims=True, name='global_pool')
+          end_points['global_pool'] = net
+        if num_classes:
+          net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
+                             scope='dropout7')
+          net = slim.conv2d(net, num_classes, [1, 1],
+                            activation_fn=None,
+                            normalizer_fn=None,
+                            biases_initializer=tf.zeros_initializer(),
+                            scope='fc8')
+          if spatial_squeeze:
+            net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
+          end_points[sc.name + '/fc8'] = net
       return net, end_points
 alexnet_v2.default_image_size = 224

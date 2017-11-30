@@ -54,11 +54,16 @@ message TrainConfig {
   optional int32 replicas_to_aggregate = 13 [default=1];
 
   // Maximum number of elements to store within a queue.
-  optional int32 batch_queue_capacity = 14 [default=600];
+  optional int32 batch_queue_capacity = 14 [default=150];
 
   // Number of threads to use for batching.
   optional int32 num_batch_queue_threads = 15 [default=8];
 
   // Maximum capacity of the queue used to prefetch assembled batches.
-  optional int32 prefetch_queue_capacity = 16 [default=10];
+  optional int32 prefetch_queue_capacity = 16 [default=5];
+
+  // If true, boxes with the same coordinates will be merged together.
+  // This is useful when each box can have multiple labels.
+  // Note that only Sigmoid classification losses should be used.
+  optional bool merge_multiple_label_boxes = 17 [default=false];
 }

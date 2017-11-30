@@ -44,7 +44,7 @@ parser.add_argument(
     help="Valid model types: {'wide', 'deep', 'wide_deep'}.")
 
 parser.add_argument(
-    '--train_epochs', type=int, default=20, help='Number of training epochs.')
+    '--train_epochs', type=int, default=40, help='Number of training epochs.')
 
 parser.add_argument(
     '--epochs_per_eval', type=int, default=2,
@@ -60,6 +60,11 @@ parser.add_argument(
 parser.add_argument(
     '--test_data', type=str, default='/tmp/census_data/adult.test',
     help='Path to the test data.')
+
+_NUM_EXAMPLES = {
+    'train': 32561,
+    'validation': 16281,
+}
 
 
 def build_model_columns():
@@ -167,6 +172,7 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   assert tf.gfile.Exists(data_file), (
       '%s not found. Please make sure you have either run data_download.py or '
       'set both arguments --train_data and --test_data.' % data_file)
+
   def parse_csv(value):
     print('Parsing', data_file)
     columns = tf.decode_csv(value, record_defaults=_CSV_COLUMN_DEFAULTS)
@@ -175,52 +181,40 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
     return features, tf.equal(labels, '>50K')
 
   # Extract lines from input files using the Dataset API.
-  dataset = tf.contrib.data.TextLineDataset(data_file)
-  dataset = dataset.map(parse_csv, num_threads=5)
+  dataset = tf.data.TextLineDataset(data_file)
 
-  # Apply transformations to the Dataset
-  dataset = dataset.batch(batch_size)
+  if shuffle:
+    dataset = dataset.shuffle(buffer_size=_NUM_EXAMPLES['train'])
+
+  dataset = dataset.map(parse_csv, num_parallel_calls=5)
+
+  # We call repeat after shuffling, rather than before, to prevent separate
+  # epochs from blending together.
   dataset = dataset.repeat(num_epochs)
+  dataset = dataset.batch(batch_size)
 
-  # Input function that is called by the Estimator
-  def _input_fn():
-    if shuffle:
-      # Apply shuffle transformation to re-shuffle the dataset in each call.
-      shuffled_dataset = dataset.shuffle(buffer_size=100000)
-      iterator = shuffled_dataset.make_one_shot_iterator()
-    else:
-      iterator = dataset.make_one_shot_iterator()
-    features, labels = iterator.get_next()
-    return features, labels
-  return _input_fn
+  iterator = dataset.make_one_shot_iterator()
+  features, labels = iterator.get_next()
+  return features, labels
 
 
 def main(unused_argv):
   # Clean up the model directory if present
   shutil.rmtree(FLAGS.model_dir, ignore_errors=True)
-
   model = build_estimator(FLAGS.model_dir, FLAGS.model_type)
-
-  # Set up input function generators for the train and test data files.
-  train_input_fn = input_fn(
-      data_file=FLAGS.train_data,
-      num_epochs=FLAGS.epochs_per_eval,
-      shuffle=True,
-      batch_size=FLAGS.batch_size)
-  eval_input_fn = input_fn(
-      data_file=FLAGS.test_data,
-      num_epochs=1,
-      shuffle=False,
-      batch_size=FLAGS.batch_size)
 
   # Train and evaluate the model every `FLAGS.epochs_per_eval` epochs.
   for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
-    model.train(input_fn=train_input_fn)
-    results = model.evaluate(input_fn=eval_input_fn)
+    model.train(input_fn=lambda: input_fn(
+        FLAGS.train_data, FLAGS.epochs_per_eval, True, FLAGS.batch_size))
+
+    results = model.evaluate(input_fn=lambda: input_fn(
+        FLAGS.test_data, 1, False, FLAGS.batch_size))
 
     # Display evaluation metrics
     print('Results at epoch', (n + 1) * FLAGS.epochs_per_eval)
-    print('-' * 30)
+    print('-' * 60)
+
     for key in sorted(results):
       print('%s: %s' % (key, results[key]))
 

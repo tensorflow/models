@@ -15,6 +15,7 @@
 
 """Tests for object_detection.data_decoders.tf_example_decoder."""
 
+import os
 import numpy as np
 import tensorflow as tf
 
@@ -51,6 +52,8 @@ class TfExampleDecoderTest(tf.test.TestCase):
     return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
   def _BytesFeature(self, value):
+    if isinstance(value, list):
+      return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
   def testDecodeJpegImage(self):
@@ -232,6 +235,30 @@ class TfExampleDecoderTest(tf.test.TestCase):
                         tensor_dict[
                             fields.InputDataFields.groundtruth_difficult])
 
+  def testDecodeObjectGroupOf(self):
+    image_tensor = np.random.randint(255, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    object_group_of = [0, 1]
+    example = tf.train.Example(features=tf.train.Features(
+        feature={
+            'image/encoded': self._BytesFeature(encoded_jpeg),
+            'image/format': self._BytesFeature('jpeg'),
+            'image/object/group_of': self._Int64Feature(object_group_of),
+        })).SerializeToString()
+
+    example_decoder = tf_example_decoder.TfExampleDecoder()
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+
+    self.assertAllEqual((tensor_dict[
+        fields.InputDataFields.groundtruth_group_of].get_shape().as_list()),
+                        [None])
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+
+    self.assertAllEqual(
+        [bool(item) for item in object_group_of],
+        tensor_dict[fields.InputDataFields.groundtruth_group_of])
+
   def testDecodeInstanceSegmentation(self):
     num_instances = 4
     image_height = 5
@@ -244,13 +271,14 @@ class TfExampleDecoderTest(tf.test.TestCase):
     encoded_jpeg = self._EncodeImage(image_tensor)
 
     # Randomly generate instance segmentation masks.
-    instance_segmentation = (
+    instance_masks = (
         np.random.randint(2, size=(num_instances,
                                    image_height,
-                                   image_width)).astype(np.int64))
+                                   image_width)).astype(np.float32))
+    instance_masks_flattened = np.reshape(instance_masks, [-1])
 
     # Randomly generate class labels for each instance.
-    instance_segmentation_classes = np.random.randint(
+    object_classes = np.random.randint(
         100, size=(num_instances)).astype(np.int64)
 
     example = tf.train.Example(features=tf.train.Features(feature={
@@ -258,11 +286,11 @@ class TfExampleDecoderTest(tf.test.TestCase):
         'image/format': self._BytesFeature('jpeg'),
         'image/height': self._Int64Feature([image_height]),
         'image/width': self._Int64Feature([image_width]),
-        'image/segmentation/object': self._Int64Feature(
-            instance_segmentation.flatten()),
-        'image/segmentation/object/class': self._Int64Feature(
-            instance_segmentation_classes)})).SerializeToString()
-    example_decoder = tf_example_decoder.TfExampleDecoder()
+        'image/object/mask': self._FloatFeature(instance_masks_flattened),
+        'image/object/class/label': self._Int64Feature(
+            object_classes)})).SerializeToString()
+    example_decoder = tf_example_decoder.TfExampleDecoder(
+        load_instance_masks=True)
     tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
 
     self.assertAllEqual((
@@ -270,18 +298,52 @@ class TfExampleDecoderTest(tf.test.TestCase):
         get_shape().as_list()), [None, None, None])
 
     self.assertAllEqual((
-        tensor_dict[fields.InputDataFields.groundtruth_instance_classes].
+        tensor_dict[fields.InputDataFields.groundtruth_classes].
         get_shape().as_list()), [None])
 
     with self.test_session() as sess:
       tensor_dict = sess.run(tensor_dict)
 
     self.assertAllEqual(
-        instance_segmentation.astype(np.bool),
+        instance_masks.astype(np.float32),
         tensor_dict[fields.InputDataFields.groundtruth_instance_masks])
     self.assertAllEqual(
-        instance_segmentation_classes,
-        tensor_dict[fields.InputDataFields.groundtruth_instance_classes])
+        object_classes,
+        tensor_dict[fields.InputDataFields.groundtruth_classes])
+
+  def testInstancesNotAvailableByDefault(self):
+    num_instances = 4
+    image_height = 5
+    image_width = 3
+    # Randomly generate image.
+    image_tensor = np.random.randint(255, size=(image_height,
+                                                image_width,
+                                                3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+
+    # Randomly generate instance segmentation masks.
+    instance_masks = (
+        np.random.randint(2, size=(num_instances,
+                                   image_height,
+                                   image_width)).astype(np.float32))
+    instance_masks_flattened = np.reshape(instance_masks, [-1])
+
+    # Randomly generate class labels for each instance.
+    object_classes = np.random.randint(
+        100, size=(num_instances)).astype(np.int64)
+
+    example = tf.train.Example(features=tf.train.Features(feature={
+        'image/encoded': self._BytesFeature(encoded_jpeg),
+        'image/format': self._BytesFeature('jpeg'),
+        'image/height': self._Int64Feature([image_height]),
+        'image/width': self._Int64Feature([image_width]),
+        'image/object/mask': self._FloatFeature(instance_masks_flattened),
+        'image/object/class/label': self._Int64Feature(
+            object_classes)})).SerializeToString()
+    example_decoder = tf_example_decoder.TfExampleDecoder()
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+    self.assertTrue(fields.InputDataFields.groundtruth_instance_masks
+                    not in tensor_dict)
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@
 
 """Tests for object_detection.meta_architectures.faster_rcnn_meta_arch."""
 
+import numpy as np
 import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch_test_lib
@@ -46,19 +47,19 @@ class FasterRCNNMetaArchTest(
 
     mask_height = 2
     mask_width = 2
-    mask_predictions = .6 * tf.ones(
+    mask_predictions = 30. * tf.ones(
         [total_num_padded_proposals, model.num_classes,
          mask_height, mask_width], dtype=tf.float32)
-    exp_detection_masks = [[[[1, 1], [1, 1]],
-                            [[1, 1], [1, 1]],
-                            [[1, 1], [1, 1]],
-                            [[1, 1], [1, 1]],
-                            [[1, 1], [1, 1]]],
-                           [[[1, 1], [1, 1]],
-                            [[1, 1], [1, 1]],
-                            [[1, 1], [1, 1]],
-                            [[1, 1], [1, 1]],
-                            [[0, 0], [0, 0]]]]
+    exp_detection_masks = np.array([[[[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]]],
+                                    [[[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]],
+                                     [[0, 0], [0, 0]]]])
 
     detections = model.postprocess({
         'refined_box_encodings': refined_box_encodings,
@@ -79,6 +80,17 @@ class FasterRCNNMetaArchTest(
       self.assertAllClose(detections_out['detection_masks'],
                           exp_detection_masks)
 
+  def _get_box_classifier_features_shape(self,
+                                         image_size,
+                                         batch_size,
+                                         max_num_proposals,
+                                         initial_crop_size,
+                                         maxpool_stride,
+                                         num_features):
+    return (batch_size * max_num_proposals,
+            initial_crop_size/maxpool_stride,
+            initial_crop_size/maxpool_stride,
+            num_features)
 
 if __name__ == '__main__':
   tf.test.main()

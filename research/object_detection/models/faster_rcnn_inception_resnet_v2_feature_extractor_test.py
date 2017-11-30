@@ -26,6 +26,7 @@ class FasterRcnnInceptionResnetV2FeatureExtractorTest(tf.test.TestCase):
     return frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor(
         is_training=False,
         first_stage_features_stride=first_stage_features_stride,
+        batch_norm_trainable=False,
         reuse_weights=None,
         weight_decay=0.0)
 

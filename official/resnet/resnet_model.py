@@ -242,8 +242,8 @@ def cifar10_resnet_v2_generator(resnet_size, num_classes, data_format=None):
   def model(inputs, is_training):
     """Constructs the ResNet model given the inputs."""
     if data_format == 'channels_first':
-      # Convert from channels_last (NHWC) to channels_first (NCHW). This
-      # provides a large performance boost on GPU. See
+      # Convert the inputs from channels_last (NHWC) to channels_first (NCHW).
+      # This provides a large performance boost on GPU. See
       # https://www.tensorflow.org/performance/performance_guide#data_formats
       inputs = tf.transpose(inputs, [0, 3, 1, 2])
 
@@ -302,8 +302,9 @@ def imagenet_resnet_v2_generator(block_fn, layers, num_classes,
   def model(inputs, is_training):
     """Constructs the ResNet model given the inputs."""
     if data_format == 'channels_first':
-      # Convert from channels_last (NHWC) to channels_first (NCHW). This
-      # provides a large performance boost on GPU.
+      # Convert the inputs from channels_last (NHWC) to channels_first (NCHW).
+      # This provides a large performance boost on GPU. See
+      # https://www.tensorflow.org/performance/performance_guide#data_formats
       inputs = tf.transpose(inputs, [0, 3, 1, 2])
 
     inputs = conv2d_fixed_padding(

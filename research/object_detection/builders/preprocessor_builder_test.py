@@ -59,12 +59,45 @@ class PreprocessorBuilderTest(tf.test.TestCase):
   def test_build_random_horizontal_flip(self):
     preprocessor_text_proto = """
     random_horizontal_flip {
+      keypoint_flip_permutation: 1
+      keypoint_flip_permutation: 0
+      keypoint_flip_permutation: 2
+      keypoint_flip_permutation: 3
+      keypoint_flip_permutation: 5
+      keypoint_flip_permutation: 4
     }
     """
     preprocessor_proto = preprocessor_pb2.PreprocessingStep()
     text_format.Merge(preprocessor_text_proto, preprocessor_proto)
     function, args = preprocessor_builder.build(preprocessor_proto)
     self.assertEqual(function, preprocessor.random_horizontal_flip)
+    self.assertEqual(args, {'keypoint_flip_permutation': (1, 0, 2, 3, 5, 4)})
+
+  def test_build_random_vertical_flip(self):
+    preprocessor_text_proto = """
+    random_vertical_flip {
+      keypoint_flip_permutation: 1
+      keypoint_flip_permutation: 0
+      keypoint_flip_permutation: 2
+      keypoint_flip_permutation: 3
+      keypoint_flip_permutation: 5
+      keypoint_flip_permutation: 4
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Merge(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.random_vertical_flip)
+    self.assertEqual(args, {'keypoint_flip_permutation': (1, 0, 2, 3, 5, 4)})
+
+  def test_build_random_rotation90(self):
+    preprocessor_text_proto = """
+    random_rotation90 {}
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Merge(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.random_rotation90)
     self.assertEqual(args, {})
 
   def test_build_random_pixel_value_scale(self):
@@ -241,9 +274,40 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         'area_range': (0.25, 0.875),
         'overlap_thresh': 0.5,
         'random_coef': 0.125,
-        'min_padded_size_ratio': None,
-        'max_padded_size_ratio': None,
-        'pad_color': None,
+    })
+
+  def test_build_random_crop_pad_image_with_optional_parameters(self):
+    preprocessor_text_proto = """
+    random_crop_pad_image {
+      min_object_covered: 0.75
+      min_aspect_ratio: 0.75
+      max_aspect_ratio: 1.5
+      min_area: 0.25
+      max_area: 0.875
+      overlap_thresh: 0.5
+      random_coef: 0.125
+      min_padded_size_ratio: 0.5
+      min_padded_size_ratio: 0.75
+      max_padded_size_ratio: 0.5
+      max_padded_size_ratio: 0.75
+      pad_color: 0.5
+      pad_color: 0.5
+      pad_color: 1.0
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Merge(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.random_crop_pad_image)
+    self.assertEqual(args, {
+        'min_object_covered': 0.75,
+        'aspect_ratio_range': (0.75, 1.5),
+        'area_range': (0.25, 0.875),
+        'overlap_thresh': 0.5,
+        'random_coef': 0.125,
+        'min_padded_size_ratio': (0.5, 0.75),
+        'max_padded_size_ratio': (0.5, 0.75),
+        'pad_color': (0.5, 0.5, 1.0)
     })
 
   def test_build_random_crop_to_aspect_ratio(self):
@@ -382,7 +446,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         max_area: 1.0
         overlap_thresh: 0.0
         random_coef: 0.375
-        min_padded_size_ratio: [0.0, 0.0]
+        min_padded_size_ratio: [1.0, 1.0]
         max_padded_size_ratio: [2.0, 2.0]
         pad_color_r: 0.5
         pad_color_g: 0.5
@@ -396,7 +460,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         max_area: 1.0
         overlap_thresh: 0.25
         random_coef: 0.375
-        min_padded_size_ratio: [0.0, 0.0]
+        min_padded_size_ratio: [1.0, 1.0]
         max_padded_size_ratio: [2.0, 2.0]
         pad_color_r: 0.5
         pad_color_g: 0.5
@@ -413,7 +477,7 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                             'area_range': [(0.5, 1.0), (0.5, 1.0)],
                             'overlap_thresh': [0.0, 0.25],
                             'random_coef': [0.375, 0.375],
-                            'min_padded_size_ratio': [(0.0, 0.0), (0.0, 0.0)],
+                            'min_padded_size_ratio': [(1.0, 1.0), (1.0, 1.0)],
                             'max_padded_size_ratio': [(2.0, 2.0), (2.0, 2.0)],
                             'pad_color': [(0.5, 0.5, 0.5), (0.5, 0.5, 0.5)]})
 
@@ -446,6 +510,48 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                             'area_range': [(0.5, 1.0), (0.5, 1.0)],
                             'overlap_thresh': [0.0, 0.25],
                             'random_coef': [0.375, 0.375]})
+
+  def test_build_ssd_random_crop_pad_fixed_aspect_ratio(self):
+    preprocessor_text_proto = """
+    ssd_random_crop_pad_fixed_aspect_ratio {
+      operations {
+        min_object_covered: 0.0
+        min_aspect_ratio: 0.875
+        max_aspect_ratio: 1.125
+        min_area: 0.5
+        max_area: 1.0
+        overlap_thresh: 0.0
+        random_coef: 0.375
+        min_padded_size_ratio: [1.0, 1.0]
+        max_padded_size_ratio: [2.0, 2.0]
+      }
+      operations {
+        min_object_covered: 0.25
+        min_aspect_ratio: 0.75
+        max_aspect_ratio: 1.5
+        min_area: 0.5
+        max_area: 1.0
+        overlap_thresh: 0.25
+        random_coef: 0.375
+        min_padded_size_ratio: [1.0, 1.0]
+        max_padded_size_ratio: [2.0, 2.0]
+      }
+      aspect_ratio: 0.875
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Merge(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function,
+                     preprocessor.ssd_random_crop_pad_fixed_aspect_ratio)
+    self.assertEqual(args, {'min_object_covered': [0.0, 0.25],
+                            'aspect_ratio': 0.875,
+                            'aspect_ratio_range': [(0.875, 1.125), (0.75, 1.5)],
+                            'area_range': [(0.5, 1.0), (0.5, 1.0)],
+                            'overlap_thresh': [0.0, 0.25],
+                            'random_coef': [0.375, 0.375],
+                            'min_padded_size_ratio': [(1.0, 1.0), (1.0, 1.0)],
+                            'max_padded_size_ratio': [(2.0, 2.0), (2.0, 2.0)]})
 
 
 if __name__ == '__main__':

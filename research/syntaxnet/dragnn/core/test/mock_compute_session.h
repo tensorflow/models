@@ -13,16 +13,18 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_COMPUTE_SESSION_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_COMPUTE_SESSION_H_
+#ifndef DRAGNN_CORE_TEST_MOCK_COMPUTE_SESSION_H_
+#define DRAGNN_CORE_TEST_MOCK_COMPUTE_SESSION_H_
 
-#include <gmock/gmock.h>
+#include <memory>
 
 #include "dragnn/components/util/bulk_feature_extractor.h"
 #include "dragnn/core/compute_session.h"
+#include "dragnn/core/input_batch_cache.h"
 #include "dragnn/protos/data.pb.h"
 #include "dragnn/protos/spec.pb.h"
 #include "syntaxnet/base.h"
+#include <gmock/gmock.h>
 #include "tensorflow/core/platform/test.h"
 
 namespace syntaxnet {
@@ -40,9 +42,9 @@ class MockComputeSession : public ComputeSession {
   MOCK_METHOD2(SourceComponentBeamSize,
                int(const string &component_name, int channel_id));
   MOCK_METHOD1(AdvanceFromOracle, void(const string &component_name));
-  MOCK_METHOD3(AdvanceFromPrediction,
-               void(const string &component_name, const float score_matrix[],
-                    int score_matrix_length));
+  MOCK_METHOD4(AdvanceFromPrediction,
+               bool(const string &component_name, const float *score_matrix,
+                    int num_items, int num_actions));
   MOCK_CONST_METHOD5(GetInputFeatures,
                      int(const string &component_name,
                          std::function<int32 *(int)> allocate_indices,
@@ -52,6 +54,11 @@ class MockComputeSession : public ComputeSession {
   MOCK_METHOD2(BulkGetInputFeatures,
                int(const string &component_name,
                    const BulkFeatureExtractor &extractor));
+  MOCK_METHOD6(BulkEmbedFixedFeatures,
+               void(const string &component_name, int batch_size_padding,
+                    int num_steps_padding, int output_array_size,
+                    const vector<const float *> &per_channel_embedding,
+                    float *embedding_output));
   MOCK_METHOD2(GetTranslatedLinkFeatures,
                std::vector<LinkFeatures>(const string &component_name,
                                          int channel_id));
@@ -68,9 +75,17 @@ class MockComputeSession : public ComputeSession {
   MOCK_CONST_METHOD1(GetDescription, string(const string &component_name));
   MOCK_CONST_METHOD1(Translators, const std::vector<const IndexTranslator *>(
                                       const string &component_name));
+  MOCK_CONST_METHOD1(GetReadiedComponent, Component *(const string &name));
+
+  // TODO(googleuser): Upgrade gMock to a version that supports mocking methods
+  // with move-only types, then remove this workaround.
+  MOCK_METHOD1(DoSetInputBatchCache, void(InputBatchCache *batch));
+  void SetInputBatchCache(std::unique_ptr<InputBatchCache> batch) override {
+    DoSetInputBatchCache(batch.get());
+  }
 };
 
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_MOCK_COMPUTE_SESSION_H_
+#endif  // DRAGNN_CORE_TEST_MOCK_COMPUTE_SESSION_H_

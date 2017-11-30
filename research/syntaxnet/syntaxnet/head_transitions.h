@@ -30,17 +30,14 @@ namespace syntaxnet {
 //   Action A == i  : Add a root arc to token i.
 //   Action A != i  : Add an arc A -> i.
 //
-// Note that in nlp_saft.Document, root arcs are token.head() == -1, whereas
+// Note that in the Sentence proto, root arcs are token.head() == -1, whereas
 // here, we use a self-loop to represent roots.
 class HeadTransitionSystem : public ParserTransitionSystem {
  public:
   class State;  // defined in the .cc file
 
-  // Returns 1 for number of actions. This is because each action should be
-  // scored separately; e.g. instead of a fixed output set, we have a single
-  // scoring function.
   int NumActionTypes() const override { return 1; }
-  int NumActions(int num_labels) const override { return 1; }
+  int NumActions(int num_labels) const override { return kDynamicNumActions; }
 
   // Returns the default action, which is to assign itself as root.
   ParserAction GetDefaultAction(const ParserState &state) const override;

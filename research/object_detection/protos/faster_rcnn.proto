@@ -116,16 +116,34 @@ message FasterRcnn {
   // Second stage classification loss weight
   optional float second_stage_classification_loss_weight = 26 [default=1.0];
 
-  // If not left to default, applies hard example mining.
-  optional HardExampleMiner hard_example_miner = 27;
+  // Second stage instance mask loss weight. Note that this is only applicable
+  // when `MaskRCNNBoxPredictor` is selected for second stage and configured to
+  // predict instance masks.
+  optional float second_stage_mask_prediction_loss_weight = 27 [default=1.0];
+
+  // If not left to default, applies hard example mining only to classification
+  // and localization loss..
+  optional HardExampleMiner hard_example_miner = 28;
+
+  // Loss for second stage box classifers, supports Softmax and Sigmoid.
+  // Note that score converter must be consistent with loss type.
+  // When there are multiple labels assigned to the same boxes, recommend
+  // to use sigmoid loss and enable merge_multiple_label_boxes.
+  // If not specified, Softmax loss is used as default.
+  optional ClassificationLoss second_stage_classification_loss = 29;
 }
 
 
 message FasterRcnnFeatureExtractor {
   // Type of Faster R-CNN model (e.g., 'faster_rcnn_resnet101';
-  // See models/model_builder.py for expected types).
+  // See builders/model_builder.py for expected types).
   optional string type = 1;
 
   // Output stride of extracted RPN feature map.
   optional int32 first_stage_features_stride = 2 [default=16];
+
+  // Whether to update batch norm parameters during training or not.
+  // When training with a relative large batch size (e.g. 8), it could be
+  // desirable to enable batch norm update.
+  optional bool batch_norm_trainable = 3 [default=false];
 }

@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_COMPONENT_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_COMPONENT_H_
+#ifndef DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_COMPONENT_H_
+#define DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_COMPONENT_H_
 
 #include <vector>
 
@@ -81,9 +81,10 @@ class SyntaxNetComponent : public Component {
   std::function<int(int, int, int)> GetStepLookupFunction(
       const string &method) override;
 
-  // Advances this component from the given transition matrix.
-  void AdvanceFromPrediction(const float transition_matrix[],
-                             int transition_matrix_length) override;
+  // Advances this component from the given transition matrix.Returns false
+  // if the component could not be advanced.
+  bool AdvanceFromPrediction(const float *transition_matrix, int num_items,
+                             int num_actions) override;
 
   // Advances this component from the state oracles.
   void AdvanceFromOracle() override;
@@ -104,6 +105,13 @@ class SyntaxNetComponent : public Component {
   // Extracts and populates all FixedFeatures for all channels, advancing this
   // component via the oracle until it is terminal.
   int BulkGetFixedFeatures(const BulkFeatureExtractor &extractor) override;
+
+  void BulkEmbedFixedFeatures(
+      int batch_size_padding, int num_steps_padding, int output_array_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_matrix) override {
+    LOG(FATAL) << "Method not supported";
+  }
 
   // Extracts and returns the vector of LinkFeatures for the specified
   // channel. Note: these are NOT translated.
@@ -145,13 +153,13 @@ class SyntaxNetComponent : public Component {
   bool IsFinal(SyntaxNetTransitionState *state) const;
 
   // Oracle function for this component.
-  int GetOracleLabel(SyntaxNetTransitionState *state) const;
+  std::vector<int> GetOracleVector(SyntaxNetTransitionState *state) const;
 
   // State advance function for this component.
   void Advance(SyntaxNetTransitionState *state, int action,
                Beam<SyntaxNetTransitionState> *beam);
 
-  // Creates a new state for the given nlp_saft::SentenceExample.
+  // Creates a new state for the given example.
   std::unique_ptr<SyntaxNetTransitionState> CreateState(
       SyntaxNetSentence *example);
 
@@ -195,4 +203,4 @@ class SyntaxNetComponent : public Component {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_COMPONENT_H_
+#endif  // DRAGNN_COMPONENTS_SYNTAXNET_SYNTAXNET_COMPONENT_H_

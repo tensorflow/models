@@ -1,3 +1,5 @@
+import %workspace%/tensorflow/.tf_configure.bazelrc
+
 build:cuda --crosstool_top=@local_config_cuda//crosstool:toolchain
 build:cuda --define=using_cuda=true --define=using_cuda_nvcc=true
 build:win-cuda --define=using_cuda=true --define=using_cuda_nvcc=true

@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
+from object_detection.utils import ops
 from nets import inception_v2
 
 slim = tf.contrib.slim
@@ -27,20 +28,31 @@ class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
   """SSD Feature Extractor using InceptionV2 features."""
 
   def __init__(self,
+               is_training,
                depth_multiplier,
                min_depth,
+               pad_to_multiple,
                conv_hyperparams,
+               batch_norm_trainable=True,
                reuse_weights=None):
     """InceptionV2 Feature Extractor for SSD Models.
 
     Args:
+      is_training: whether the network is in training mode.
       depth_multiplier: float depth multiplier for feature extractor.
       min_depth: minimum feature extractor depth.
+      pad_to_multiple: the nearest multiple to zero pad the input height and
+        width dimensions to.
       conv_hyperparams: tf slim arg_scope for conv2d and separable_conv2d ops.
+      batch_norm_trainable: Whether to update batch norm parameters during
+        training or not. When training with a small batch size
+        (e.g. 1), it is desirable to disable batch norm update and use
+        pretrained batch norm params.
       reuse_weights: Whether to reuse variables. Default is None.
     """
     super(SSDInceptionV2FeatureExtractor, self).__init__(
-        depth_multiplier, min_depth, conv_hyperparams, reuse_weights)
+        is_training, depth_multiplier, min_depth, pad_to_multiple,
+        conv_hyperparams, batch_norm_trainable, reuse_weights)
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -84,7 +96,7 @@ class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         with tf.variable_scope('InceptionV2',
                                reuse=self._reuse_weights) as scope:
           _, image_features = inception_v2.inception_v2_base(
-              preprocessed_inputs,
+              ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
               final_endpoint='Mixed_5c',
               min_depth=self._min_depth,
               depth_multiplier=self._depth_multiplier,

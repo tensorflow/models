@@ -60,6 +60,9 @@ class DocumentFormat : public RegisterableClass<DocumentFormat> {
 #define REGISTER_SYNTAXNET_DOCUMENT_FORMAT(type, component) \
   REGISTER_SYNTAXNET_CLASS_COMPONENT(DocumentFormat, type, component)
 
+// Component registry for document formatters.
+DECLARE_SYNTAXNET_CLASS_REGISTRY("document format", DocumentFormat);
+
 }  // namespace syntaxnet
 
 #endif  // SYNTAXNET_DOCUMENT_FORMAT_H__

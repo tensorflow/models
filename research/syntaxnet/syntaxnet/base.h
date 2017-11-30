@@ -21,6 +21,7 @@ limitations under the License.
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/lib/strings/stringprintf.h"
@@ -30,10 +31,13 @@ limitations under the License.
 
 
 
+using tensorflow::int8;
+using tensorflow::int16;
 using tensorflow::int32;
 using tensorflow::int64;
+using tensorflow::uint8;
+using tensorflow::uint16;
 using tensorflow::uint64;
-using tensorflow::uint32;
 using tensorflow::uint32;
 using tensorflow::protobuf::TextFormat;
 using tensorflow::mutex_lock;
@@ -47,6 +51,7 @@ typedef signed int char32;
 
 using tensorflow::StringPiece;
 using std::string;
+
 
   // namespace syntaxnet
 

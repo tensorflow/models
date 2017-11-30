@@ -26,6 +26,7 @@ cc_library(
     deps = [
         "//dragnn/components/util:bulk_feature_extractor",
         "//dragnn/core:compute_session",
+        "//dragnn/core:input_batch_cache",
         "//dragnn/protos:data_proto",
         "//dragnn/protos:spec_proto",
         "//syntaxnet:base",

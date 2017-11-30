@@ -50,11 +50,11 @@ def _bytes_feature(value):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def convert_to(data_set, name):
+def convert_to(dataset, name, directory):
   """Converts a dataset to TFRecords."""
-  images = data_set.images
-  labels = data_set.labels
-  num_examples = data_set.num_examples
+  images = dataset.images
+  labels = dataset.labels
+  num_examples = dataset.num_examples
 
   if images.shape[0] != num_examples:
     raise ValueError('Images size %d does not match label size %d.' %
@@ -63,7 +63,7 @@ def convert_to(data_set, name):
   cols = images.shape[2]
   depth = images.shape[3]
 
-  filename = os.path.join(FLAGS.directory, name + '.tfrecords')
+  filename = os.path.join(directory, name + '.tfrecords')
   print('Writing', filename)
   writer = tf.python_io.TFRecordWriter(filename)
   for index in range(num_examples):
@@ -80,15 +80,15 @@ def convert_to(data_set, name):
 
 def main(unused_argv):
   # Get the data.
-  data_sets = mnist.read_data_sets(FLAGS.directory,
+  datasets = mnist.read_data_sets(FLAGS.directory,
                                    dtype=tf.uint8,
                                    reshape=False,
                                    validation_size=FLAGS.validation_size)
 
   # Convert to Examples and write the result to TFRecords.
-  convert_to(data_sets.train, 'train')
-  convert_to(data_sets.validation, 'validation')
-  convert_to(data_sets.test, 'test')
+  convert_to(datasets.train, 'train', FLAGS.directory)
+  convert_to(datasets.validation, 'validation', FLAGS.directory)
+  convert_to(datasets.test, 'test', FLAGS.directory)
 
 
 if __name__ == '__main__':

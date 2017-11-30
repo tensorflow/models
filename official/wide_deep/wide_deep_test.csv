@@ -18,3 +18,13 @@
 32,Private,186824,HS-grad,9,Never-married,Machine-op-inspct,Unmarried,,,0,0,40,,<=50K
 38,Private,28887,11th,7,Married-civ-spouse,Sales,Husband,,,0,0,50,,<=50K
 43,Self-emp-not-inc,292175,Masters,14,Divorced,Exec-managerial,Unmarried,,,0,0,45,,>50K
+40,Private,193524,Doctorate,16,Married-civ-spouse,Prof-specialty,Husband,,,0,0,60,,>50K
+56,Local-gov,216851,Bachelors,13,Married-civ-spouse,Tech-support,Husband,,,0,0,40,,>50K
+54,?,180211,Some-college,10,Married-civ-spouse,?,Husband,,,0,0,60,,>50K
+22,State-gov,311512,Some-college,10,Married-civ-spouse,Other-service,Husband,,,0,0,15,,<=50K
+31,Private,84154,Some-college,10,Married-civ-spouse,Sales,Husband,,,0,0,38,,>50K
+57,Federal-gov,337895,Bachelors,13,Married-civ-spouse,Prof-specialty,Husband,,,0,0,40,,>50K
+47,Private,51835,Prof-school,15,Married-civ-spouse,Prof-specialty,Wife,,,0,1902,60,,>50K
+50,Federal-gov,251585,Bachelors,13,Divorced,Exec-managerial,Not-in-family,,,0,0,55,,>50K
+25,Private,289980,HS-grad,9,Never-married,Handlers-cleaners,Not-in-family,,,0,0,35,,<=50K
+42,Private,116632,Doctorate,16,Married-civ-spouse,Prof-specialty,Husband,,,0,0,45,,>50K

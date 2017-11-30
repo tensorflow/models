@@ -18,21 +18,26 @@ import tensorflow as tf
 from syntaxnet.ops import gen_parser_ops
 
 
-class ConllSentenceReader(object):
-  """A reader for conll files, with optional projectivizing."""
+class FormatSentenceReader(object):
+  """A reader for formatted files, with optional projectivizing."""
 
-  def __init__(self, filepath, batch_size=32,
-               projectivize=False, morph_to_pos=False):
+  def __init__(self,
+               filepath,
+               record_format,
+               batch_size=32,
+               check_well_formed=False,
+               projectivize=False,
+               morph_to_pos=False):
     self._graph = tf.Graph()
     self._session = tf.Session(graph=self._graph)
     task_context_str = """
           input {
             name: 'documents'
-            record_format: 'conll-sentence'
+            record_format: '%s'
             Part {
              file_pattern: '%s'
             }
-          }""" % filepath
+          }""" % (record_format, filepath)
     if morph_to_pos:
       task_context_str += """
           Parameter {
@@ -51,7 +56,8 @@ class ConllSentenceReader(object):
     with self._graph.as_default():
       self._source, self._is_last = gen_parser_ops.document_source(
           task_context_str=task_context_str, batch_size=batch_size)
-      self._source = gen_parser_ops.well_formed_filter(self._source)
+      if check_well_formed:
+        self._source = gen_parser_ops.well_formed_filter(self._source)
       if projectivize:
         self._source = gen_parser_ops.projectivize_filter(self._source)
 
@@ -77,3 +83,20 @@ class ConllSentenceReader(object):
         break
     tf.logging.info('Read %d sentences.' % len(corpus))
     return corpus
+
+
+class ConllSentenceReader(FormatSentenceReader):
+  """A sentence reader that uses an underlying 'conll-sentence' reader."""
+
+  def __init__(self,
+               filepath,
+               batch_size=32,
+               projectivize=False,
+               morph_to_pos=False):
+    super(ConllSentenceReader, self).__init__(
+        filepath,
+        'conll-sentence',
+        check_well_formed=True,
+        batch_size=batch_size,
+        projectivize=projectivize,
+        morph_to_pos=morph_to_pos)

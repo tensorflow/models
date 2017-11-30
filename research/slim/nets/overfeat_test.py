@@ -48,6 +48,18 @@ class OverFeatTest(tf.test.TestCase):
       self.assertListEqual(logits.get_shape().as_list(),
                            [batch_size, 2, 2, num_classes])
 
+  def testGlobalPool(self):
+    batch_size = 1
+    height, width = 281, 281
+    num_classes = 1000
+    with self.test_session():
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      logits, _ = overfeat.overfeat(inputs, num_classes, spatial_squeeze=False,
+                                    global_pool=True)
+      self.assertEquals(logits.op.name, 'overfeat/fc8/BiasAdd')
+      self.assertListEqual(logits.get_shape().as_list(),
+                           [batch_size, 1, 1, num_classes])
+
   def testEndPoints(self):
     batch_size = 5
     height, width = 231, 231
@@ -68,6 +80,27 @@ class OverFeatTest(tf.test.TestCase):
                         'overfeat/fc8'
                        ]
       self.assertSetEqual(set(end_points.keys()), set(expected_names))
+
+  def testNoClasses(self):
+    batch_size = 5
+    height, width = 231, 231
+    num_classes = None
+    with self.test_session():
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      net, end_points = overfeat.overfeat(inputs, num_classes)
+      expected_names = ['overfeat/conv1',
+                        'overfeat/pool1',
+                        'overfeat/conv2',
+                        'overfeat/pool2',
+                        'overfeat/conv3',
+                        'overfeat/conv4',
+                        'overfeat/conv5',
+                        'overfeat/pool5',
+                        'overfeat/fc6',
+                        'overfeat/fc7'
+                       ]
+      self.assertSetEqual(set(end_points.keys()), set(expected_names))
+      self.assertTrue(net.op.name.startswith('overfeat/fc7'))
 
   def testModelVariables(self):
     batch_size = 5

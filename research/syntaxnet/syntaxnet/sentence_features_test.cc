@@ -51,7 +51,6 @@ class SentenceFeaturesTest : public ::testing::Test {
   // anything in info_ field into the LexiFuse repository.
   virtual void PrepareFeature(const string &fml) {
     context_.mutable_spec()->mutable_input()->Clear();
-    context_.mutable_spec()->mutable_output()->Clear();
     extractor_.reset(new SentenceExtractor());
     extractor_->Parse(fml);
     extractor_->Setup(&context_);
@@ -78,6 +77,7 @@ class SentenceFeaturesTest : public ::testing::Test {
     FeatureVector result;
     extractor_->ExtractFeatures(workspaces_, sentence_, index,
                                 &result);
+    values.reserve(result.size());
     for (int i = 0; i < result.size(); ++i) {
       values.push_back(result.type(i)->GetFeatureValueName(result.value(i)));
     }
@@ -99,6 +99,7 @@ class SentenceFeaturesTest : public ::testing::Test {
   void CheckVectorWorkspace(const VectorIntWorkspace &workspace,
                             std::vector<int> target) {
     std::vector<int> src;
+    src.reserve(workspace.size());
     for (int i = 0; i < workspace.size(); ++i) {
       src.push_back(workspace.element(i));
     }

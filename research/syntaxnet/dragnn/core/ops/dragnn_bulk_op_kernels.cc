@@ -304,6 +304,73 @@ REGISTER_KERNEL_BUILDER(Name("BulkFixedEmbeddings").Device(DEVICE_CPU),
                         BulkFixedEmbeddings);
 
 // See docstring in dragnn_bulk_ops.cc.
+class BulkEmbedFixedFeatures : public ComputeSessionOp {
+ public:
+  explicit BulkEmbedFixedFeatures(OpKernelConstruction *context)
+      : ComputeSessionOp(context) {
+    OP_REQUIRES_OK(context, context->GetAttr("num_channels", &num_channels_));
+
+    // The input vector's zeroth element is the state handle, and the remaining
+    // num_channels_ elements are tensors of float embeddings, one per channel.
+    vector<DataType> input_types(num_channels_ + 1, DT_FLOAT);
+    input_types[0] = DT_STRING;
+    const vector<DataType> output_types = {DT_STRING, DT_FLOAT, DT_INT32};
+    OP_REQUIRES_OK(context, context->MatchSignature(input_types, output_types));
+    OP_REQUIRES_OK(context, context->GetAttr("pad_to_batch", &pad_to_batch_));
+    OP_REQUIRES_OK(context, context->GetAttr("pad_to_steps", &pad_to_steps_));
+  }
+
+  bool OutputsHandle() const override { return true; }
+  bool RequiresComponentName() const override { return true; }
+
+  void ComputeWithState(OpKernelContext *context,
+                        ComputeSession *session) override {
+    const auto &spec = session->Spec(component_name());
+    int embedding_size = 0;
+    std::vector<const float *> embeddings(num_channels_);
+    for (int channel = 0; channel < num_channels_; ++channel) {
+      const int embeddings_index = channel + 1;
+      embedding_size += context->input(embeddings_index).shape().dim_size(1) *
+                        spec.fixed_feature(channel).size();
+      embeddings[channel] =
+          context->input(embeddings_index).flat<float>().data();
+    }
+    Tensor *embedding_vectors;
+    OP_REQUIRES_OK(context,
+                   context->allocate_output(
+                       1,
+                       TensorShape({pad_to_steps_ * pad_to_batch_ *
+                                        session->BeamSize(component_name()),
+                                    embedding_size}),
+                       &embedding_vectors));
+    Tensor *num_steps_tensor;
+    OP_REQUIRES_OK(context, context->allocate_output(2, TensorShape({}),
+                                                     &num_steps_tensor));
+    embedding_vectors->flat<float>().setZero();
+    int output_size = embedding_vectors->NumElements();
+    session->BulkEmbedFixedFeatures(component_name(), pad_to_batch_,
+                                    pad_to_steps_, output_size, embeddings,
+                                    embedding_vectors->flat<float>().data());
+    num_steps_tensor->scalar<int32>()() = pad_to_steps_;
+  }
+
+ private:
+  // Number of fixed feature channels.
+  int num_channels_;
+
+  // Will pad output to this many batch elements.
+  int pad_to_batch_;
+
+  // Will pad output to this many steps.
+  int pad_to_steps_;
+
+  TF_DISALLOW_COPY_AND_ASSIGN(BulkEmbedFixedFeatures);
+};
+
+REGISTER_KERNEL_BUILDER(Name("BulkEmbedFixedFeatures").Device(DEVICE_CPU),
+                        BulkEmbedFixedFeatures);
+
+// See docstring in dragnn_bulk_ops.cc.
 class BulkAdvanceFromOracle : public ComputeSessionOp {
  public:
   explicit BulkAdvanceFromOracle(OpKernelConstruction *context)
@@ -387,8 +454,11 @@ class BulkAdvanceFromPrediction : public ComputeSessionOp {
         }
       }
       if (!session->IsTerminal(component_name())) {
-        session->AdvanceFromPrediction(component_name(), scores_per_step.data(),
-                                       scores_per_step.size());
+        bool success = session->AdvanceFromPrediction(
+            component_name(), scores_per_step.data(), num_items, num_actions);
+        OP_REQUIRES(
+            context, success,
+            tensorflow::errors::Internal("Unable to advance from prediction."));
       }
     }
   }

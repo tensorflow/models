@@ -16,10 +16,11 @@ limitations under the License.
 // Features for whole Sentence objects.  Contrast with SentenceFeature, which
 // operates on tokens within Sentences.
 
-#include "syntaxnet/feature_extractor.h"
-
 #ifndef SYNTAXNET_WHOLE_SENTENCE_FEATURES_H_
 #define SYNTAXNET_WHOLE_SENTENCE_FEATURES_H_
+
+#include "syntaxnet/feature_extractor.h"
+#include "syntaxnet/registry.h"
 
 namespace syntaxnet {
 
@@ -29,6 +30,9 @@ typedef FeatureFunction<Sentence> WholeSentenceFeatureFunction;
 // Utilities to register the two types of parser features.
 #define REGISTER_WHOLE_SENTENCE_FEATURE_FUNCTION(name, type) \
   REGISTER_SYNTAXNET_FEATURE_FUNCTION(WholeSentenceFeatureFunction, name, type)
+
+DECLARE_SYNTAXNET_CLASS_REGISTRY("whole sentence feature function",
+                                 WholeSentenceFeatureFunction);
 
 }  // namespace syntaxnet
 

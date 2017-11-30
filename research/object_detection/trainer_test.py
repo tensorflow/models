@@ -32,6 +32,7 @@ NUMBER_OF_CLASSES = 2
 def get_input_function():
   """A function to get test inputs. Returns an image with one box."""
   image = tf.random_uniform([32, 32, 3], dtype=tf.float32)
+  key = tf.constant('image_000000')
   class_label = tf.random_uniform(
       [1], minval=0, maxval=NUMBER_OF_CLASSES, dtype=tf.int32)
   box_label = tf.random_uniform(
@@ -39,6 +40,7 @@ def get_input_function():
 
   return {
       fields.InputDataFields.image: image,
+      fields.InputDataFields.key: key,
       fields.InputDataFields.groundtruth_classes: class_label,
       fields.InputDataFields.groundtruth_boxes: box_label
   }

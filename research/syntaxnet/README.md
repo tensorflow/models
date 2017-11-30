@@ -23,8 +23,8 @@ This repository is largely divided into two sub-packages:
     [documentation](g3doc/DRAGNN.md),
     [paper](https://arxiv.org/pdf/1703.04474.pdf)** implements Dynamic Recurrent
     Acyclic Graphical Neural Networks (DRAGNN), a framework for building
-    multi-task, fully dynamically constructed computation graphs. Practically, we
-    use DRAGNN to extend our prior work from [Andor et al.
+    multi-task, fully dynamically constructed computation graphs. Practically,
+    we use DRAGNN to extend our prior work from [Andor et al.
     (2016)](http://arxiv.org/abs/1603.06042) with end-to-end, deep recurrent
     models and to provide a much easier to use interface to SyntaxNet. *DRAGNN
     is designed first and foremost as a Python library, and therefore much
@@ -54,20 +54,47 @@ There are three ways to use SyntaxNet:
 
 ### Docker installation
 
+_This process takes ~10 minutes._
+
 The simplest way to get started with DRAGNN is by loading our Docker container.
 [Here](g3doc/CLOUD.md) is a tutorial for running the DRAGNN container on
 [GCP](https://cloud.google.com) (just as applicable to your own computer).
 
+### Ubuntu 16.10+ binary installation
+
+_This process takes ~5 minutes, but is only compatible with Linux using GNU libc
+3.4.22 and above (e.g. Ubuntu 16.10)._
+
+Binary wheel packages are provided for TensorFlow and SyntaxNet. If you do not
+need to write new binary TensorFlow ops, these should suffice.
+
+*   `apt-get install -y graphviz libgraphviz-dev libopenblas-base libpng16-16
+    libxft2 python-pip python-mock`
+*   `pip install pygraphviz
+    --install-option="--include-path=/usr/include/graphviz"
+    --install-option="--library-path=/usr/lib/graphviz/"`
+*   `pip install 'ipython<6.0' protobuf numpy scipy jupyter
+    syntaxnet-with-tensorflow`
+*   `python -m jupyter_core.command nbextension enable --py --sys-prefix
+    widgetsnbextension`
+
+You can test that binary modules can be successfully imported by running,
+
+*   `python -c 'import dragnn.python.load_dragnn_cc_impl,
+    syntaxnet.load_parser_ops'`
+
 ### Manual installation
+
+_This process takes 1-2 hours._
 
 Running and training SyntaxNet/DRAGNN models requires building this package from
 source. You'll need to install:
 
 *   python 2.7:
     *   Python 3 support is not available yet
-*   bazel:
+*   bazel 0.5.4:
     *   Follow the instructions [here](http://bazel.build/docs/install.html)
-    *   Alternately, Download bazel <.deb> from
+    *   Alternately, Download bazel 0.5.4 <.deb> from
         [https://github.com/bazelbuild/bazel/releases](https://github.com/bazelbuild/bazel/releases)
         for your system configuration.
     *   Install it using the command: sudo dpkg -i <.deb file>
@@ -84,6 +111,8 @@ source. You'll need to install:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
+*   autograd 1.1.13, for automatic differentiation (not yet compatible with autograd v1.2 rewrite):
+    *   `pip install autograd==1.1.13`
 *   pygraphviz to visualize traces and parse trees:
     *   `apt-get install -y graphviz libgraphviz-dev`
     *   `pip install pygraphviz
@@ -103,9 +132,12 @@ following commands:
   bazel test --linkopt=-headerpad_max_install_names \
     dragnn/... syntaxnet/... util/utf8/...
 ```
+
 Bazel should complete reporting all tests passed.
 
-Now you can install the SyntaxNet and DRAGNN Python modules with the following commands:
+Now you can install the SyntaxNet and DRAGNN Python modules with the following
+commands:
+
 ```shell
   mkdir /tmp/syntaxnet_pkg
   bazel-bin/dragnn/tools/build_pip_package --output-dir=/tmp/syntaxnet_pkg
@@ -115,8 +147,6 @@ Now you can install the SyntaxNet and DRAGNN Python modules with the following c
 
 To build SyntaxNet with GPU support please refer to the instructions in
 [issues/248](https://github.com/tensorflow/models/issues/248).
-
-
 
 **Note:** If you are running Docker on OSX, make sure that you have enough
 memory allocated for your Docker VM.

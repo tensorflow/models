@@ -33,8 +33,9 @@ cc_library(
     name = "compute_session",
     hdrs = ["compute_session.h"],
     deps = [
+        ":index_translator",
+        ":input_batch_cache",
         "//dragnn/components/util:bulk_feature_extractor",
-        "//dragnn/core:index_translator",
         "//dragnn/core/interfaces:component",
         "//dragnn/protos:spec_proto",
         "//dragnn/protos:trace_proto",
@@ -120,8 +121,10 @@ cc_test(
         ":compute_session",
         ":compute_session_impl",
         ":compute_session_pool",
+        ":input_batch_cache",
         "//dragnn/components/util:bulk_feature_extractor",
         "//dragnn/core/interfaces:component",
+        "//dragnn/core/interfaces:input_batch",
         "//dragnn/core/test:generic",
         "//dragnn/core/test:mock_component",
         "//dragnn/core/test:mock_transition_state",
@@ -248,6 +251,7 @@ cc_library(
         "//syntaxnet:base",
         "@org_tensorflow//third_party/eigen3",
     ],
+    alwayslink = 1,
 )
 
 # Tensorflow kernel libraries, for use with unit tests.

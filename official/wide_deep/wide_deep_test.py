@@ -54,7 +54,7 @@ class BaseTest(tf.test.TestCase):
       temp_csv.write(TEST_INPUT)
 
   def test_input_fn(self):
-    features, labels = wide_deep.input_fn(self.input_csv, 1, False, 1)()
+    features, labels = wide_deep.input_fn(self.input_csv, 1, False, 1)
     with tf.Session() as sess:
       features, labels = sess.run((features, labels))
 
@@ -78,25 +78,30 @@ class BaseTest(tf.test.TestCase):
 
     # Train for 1 step to initialize model and evaluate initial loss
     model.train(
-        input_fn=wide_deep.input_fn(
+        input_fn=lambda: wide_deep.input_fn(
             TEST_CSV, num_epochs=1, shuffle=True, batch_size=1),
         steps=1)
     initial_results = model.evaluate(
-        input_fn=wide_deep.input_fn(
+        input_fn=lambda: wide_deep.input_fn(
             TEST_CSV, num_epochs=1, shuffle=False, batch_size=1))
 
-    # Train for 40 steps at batch size 2 and evaluate final loss
+    # Train for 100 epochs at batch size 3 and evaluate final loss
     model.train(
-        input_fn=wide_deep.input_fn(
-            TEST_CSV, num_epochs=None, shuffle=True, batch_size=2),
-        steps=40)
+        input_fn=lambda: wide_deep.input_fn(
+            TEST_CSV, num_epochs=100, shuffle=True, batch_size=3))
     final_results = model.evaluate(
-        input_fn=wide_deep.input_fn(
+        input_fn=lambda: wide_deep.input_fn(
             TEST_CSV, num_epochs=1, shuffle=False, batch_size=1))
 
     print('%s initial results:' % model_type, initial_results)
     print('%s final results:' % model_type, final_results)
+
+    # Ensure loss has decreased, while accuracy and both AUCs have increased.
     self.assertLess(final_results['loss'], initial_results['loss'])
+    self.assertGreater(final_results['auc'], initial_results['auc'])
+    self.assertGreater(final_results['auc_precision_recall'],
+                       initial_results['auc_precision_recall'])
+    self.assertGreater(final_results['accuracy'], initial_results['accuracy'])
 
   def test_wide_deep_estimator_training(self):
     self.build_and_test_estimator('wide_deep')

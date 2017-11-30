@@ -225,6 +225,286 @@ class WeightedSigmoidClassificationLossTest(tf.test.TestCase):
       self.assertAllClose(loss_output, exp_loss)
 
 
+def _logit(probability):
+  return math.log(probability / (1. - probability))
+
+
+class SigmoidFocalClassificationLossTest(tf.test.TestCase):
+
+  def testEasyExamplesProduceSmallLossComparedToSigmoidXEntropy(self):
+    prediction_tensor = tf.constant([[[_logit(0.97)],
+                                      [_logit(0.90)],
+                                      [_logit(0.73)],
+                                      [_logit(0.27)],
+                                      [_logit(0.09)],
+                                      [_logit(0.03)]]], tf.float32)
+    target_tensor = tf.constant([[[1],
+                                  [1],
+                                  [1],
+                                  [0],
+                                  [0],
+                                  [0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1, 1, 1]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=True, gamma=2.0, alpha=None)
+    sigmoid_loss_op = losses.WeightedSigmoidClassificationLoss(
+        anchorwise_output=True)
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    sigmoid_loss = sigmoid_loss_op(prediction_tensor, target_tensor,
+                                   weights=weights)
+
+    with self.test_session() as sess:
+      sigmoid_loss, focal_loss = sess.run([sigmoid_loss, focal_loss])
+      order_of_ratio = np.power(10,
+                                np.floor(np.log10(sigmoid_loss / focal_loss)))
+      self.assertAllClose(order_of_ratio, [[1000, 100, 10, 10, 100, 1000]])
+
+  def testHardExamplesProduceLossComparableToSigmoidXEntropy(self):
+    prediction_tensor = tf.constant([[[_logit(0.55)],
+                                      [_logit(0.52)],
+                                      [_logit(0.50)],
+                                      [_logit(0.48)],
+                                      [_logit(0.45)]]], tf.float32)
+    target_tensor = tf.constant([[[1],
+                                  [1],
+                                  [1],
+                                  [0],
+                                  [0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1, 1]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=True, gamma=2.0, alpha=None)
+    sigmoid_loss_op = losses.WeightedSigmoidClassificationLoss(
+        anchorwise_output=True)
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    sigmoid_loss = sigmoid_loss_op(prediction_tensor, target_tensor,
+                                   weights=weights)
+
+    with self.test_session() as sess:
+      sigmoid_loss, focal_loss = sess.run([sigmoid_loss, focal_loss])
+      order_of_ratio = np.power(10,
+                                np.floor(np.log10(sigmoid_loss / focal_loss)))
+      self.assertAllClose(order_of_ratio, [[1., 1., 1., 1., 1.]])
+
+  def testNonAnchorWiseOutputComparableToSigmoidXEntropy(self):
+    prediction_tensor = tf.constant([[[_logit(0.55)],
+                                      [_logit(0.52)],
+                                      [_logit(0.50)],
+                                      [_logit(0.48)],
+                                      [_logit(0.45)]]], tf.float32)
+    target_tensor = tf.constant([[[1],
+                                  [1],
+                                  [1],
+                                  [0],
+                                  [0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1, 1]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=False, gamma=2.0, alpha=None)
+    sigmoid_loss_op = losses.WeightedSigmoidClassificationLoss(
+        anchorwise_output=False)
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    sigmoid_loss = sigmoid_loss_op(prediction_tensor, target_tensor,
+                                   weights=weights)
+
+    with self.test_session() as sess:
+      sigmoid_loss, focal_loss = sess.run([sigmoid_loss, focal_loss])
+      order_of_ratio = np.power(10,
+                                np.floor(np.log10(sigmoid_loss / focal_loss)))
+      self.assertAlmostEqual(order_of_ratio, 1.)
+
+  def testIgnoreNegativeExampleLossViaAlphaMultiplier(self):
+    prediction_tensor = tf.constant([[[_logit(0.55)],
+                                      [_logit(0.52)],
+                                      [_logit(0.50)],
+                                      [_logit(0.48)],
+                                      [_logit(0.45)]]], tf.float32)
+    target_tensor = tf.constant([[[1],
+                                  [1],
+                                  [1],
+                                  [0],
+                                  [0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1, 1]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=True, gamma=2.0, alpha=1.0)
+    sigmoid_loss_op = losses.WeightedSigmoidClassificationLoss(
+        anchorwise_output=True)
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    sigmoid_loss = sigmoid_loss_op(prediction_tensor, target_tensor,
+                                   weights=weights)
+
+    with self.test_session() as sess:
+      sigmoid_loss, focal_loss = sess.run([sigmoid_loss, focal_loss])
+      self.assertAllClose(focal_loss[0][3:], [0., 0.])
+      order_of_ratio = np.power(10,
+                                np.floor(np.log10(sigmoid_loss[0][:3] /
+                                                  focal_loss[0][:3])))
+      self.assertAllClose(order_of_ratio, [1., 1., 1.])
+
+  def testIgnorePositiveExampleLossViaAlphaMultiplier(self):
+    prediction_tensor = tf.constant([[[_logit(0.55)],
+                                      [_logit(0.52)],
+                                      [_logit(0.50)],
+                                      [_logit(0.48)],
+                                      [_logit(0.45)]]], tf.float32)
+    target_tensor = tf.constant([[[1],
+                                  [1],
+                                  [1],
+                                  [0],
+                                  [0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1, 1]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=True, gamma=2.0, alpha=0.0)
+    sigmoid_loss_op = losses.WeightedSigmoidClassificationLoss(
+        anchorwise_output=True)
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    sigmoid_loss = sigmoid_loss_op(prediction_tensor, target_tensor,
+                                   weights=weights)
+
+    with self.test_session() as sess:
+      sigmoid_loss, focal_loss = sess.run([sigmoid_loss, focal_loss])
+      self.assertAllClose(focal_loss[0][:3], [0., 0., 0.])
+      order_of_ratio = np.power(10,
+                                np.floor(np.log10(sigmoid_loss[0][3:] /
+                                                  focal_loss[0][3:])))
+      self.assertAllClose(order_of_ratio, [1., 1.])
+
+  def testSimilarToSigmoidXEntropyWithHalfAlphaAndZeroGammaUpToAScale(self):
+    prediction_tensor = tf.constant([[[-100, 100, -100],
+                                      [100, -100, -100],
+                                      [100, 0, -100],
+                                      [-100, -100, 100]],
+                                     [[-100, 0, 100],
+                                      [-100, 100, -100],
+                                      [100, 100, 100],
+                                      [0, 0, -1]]], tf.float32)
+    target_tensor = tf.constant([[[0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [0, 0, 1]],
+                                 [[0, 0, 1],
+                                  [0, 1, 0],
+                                  [1, 1, 1],
+                                  [1, 0, 0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1],
+                           [1, 1, 1, 0]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=True, alpha=0.5, gamma=0.0)
+    sigmoid_loss_op = losses.WeightedSigmoidClassificationLoss(
+        anchorwise_output=True)
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    sigmoid_loss = sigmoid_loss_op(prediction_tensor, target_tensor,
+                                   weights=weights)
+
+    with self.test_session() as sess:
+      sigmoid_loss, focal_loss = sess.run([sigmoid_loss, focal_loss])
+      self.assertAllClose(sigmoid_loss, focal_loss * 2)
+
+  def testSameAsSigmoidXEntropyWithNoAlphaAndZeroGamma(self):
+    prediction_tensor = tf.constant([[[-100, 100, -100],
+                                      [100, -100, -100],
+                                      [100, 0, -100],
+                                      [-100, -100, 100]],
+                                     [[-100, 0, 100],
+                                      [-100, 100, -100],
+                                      [100, 100, 100],
+                                      [0, 0, -1]]], tf.float32)
+    target_tensor = tf.constant([[[0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [0, 0, 1]],
+                                 [[0, 0, 1],
+                                  [0, 1, 0],
+                                  [1, 1, 1],
+                                  [1, 0, 0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1],
+                           [1, 1, 1, 0]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=True, alpha=None, gamma=0.0)
+    sigmoid_loss_op = losses.WeightedSigmoidClassificationLoss(
+        anchorwise_output=True)
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    sigmoid_loss = sigmoid_loss_op(prediction_tensor, target_tensor,
+                                   weights=weights)
+
+    with self.test_session() as sess:
+      sigmoid_loss, focal_loss = sess.run([sigmoid_loss, focal_loss])
+      self.assertAllClose(sigmoid_loss, focal_loss)
+
+  def testExpectedLossWithAlphaOneAndZeroGamma(self):
+    # All zeros correspond to 0.5 probability.
+    prediction_tensor = tf.constant([[[0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0]],
+                                     [[0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0]]], tf.float32)
+    target_tensor = tf.constant([[[0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [0, 0, 1]],
+                                 [[0, 0, 1],
+                                  [0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1],
+                           [1, 1, 1, 1]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=False, alpha=1.0, gamma=0.0)
+
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    with self.test_session() as sess:
+      focal_loss = sess.run(focal_loss)
+      self.assertAllClose(
+          (-math.log(.5) *  # x-entropy per class per anchor
+           1.0 *            # alpha
+           8),              # positives from 8 anchors
+          focal_loss)
+
+  def testExpectedLossWithAlpha75AndZeroGamma(self):
+    # All zeros correspond to 0.5 probability.
+    prediction_tensor = tf.constant([[[0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0]],
+                                     [[0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0],
+                                      [0, 0, 0]]], tf.float32)
+    target_tensor = tf.constant([[[0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [0, 0, 1]],
+                                 [[0, 0, 1],
+                                  [0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1],
+                           [1, 1, 1, 1]], tf.float32)
+    focal_loss_op = losses.SigmoidFocalClassificationLoss(
+        anchorwise_output=False, alpha=0.75, gamma=0.0)
+
+    focal_loss = focal_loss_op(prediction_tensor, target_tensor,
+                               weights=weights)
+    with self.test_session() as sess:
+      focal_loss = sess.run(focal_loss)
+      self.assertAllClose(
+          (-math.log(.5) *  # x-entropy per class per anchor.
+           ((0.75 *         # alpha for positives.
+             8) +           # positives from 8 anchors.
+            (0.25 *         # alpha for negatives.
+             8 * 2))),      # negatives from 8 anchors for two classes.
+          focal_loss)
+
+
 class WeightedSoftmaxClassificationLossTest(tf.test.TestCase):
 
   def testReturnsCorrectLoss(self):
@@ -278,6 +558,39 @@ class WeightedSoftmaxClassificationLossTest(tf.test.TestCase):
 
     exp_loss = np.matrix([[0, 0, - 0.5 * math.log(.5), 0],
                           [-math.log(.5), 0, 0, 0]])
+    with self.test_session() as sess:
+      loss_output = sess.run(loss)
+      self.assertAllClose(loss_output, exp_loss)
+
+  def testReturnsCorrectAnchorWiseLossWithHighLogitScaleSetting(self):
+    """At very high logit_scale, all predictions will be ~0.33."""
+    # TODO(yonib): Also test logit_scale with anchorwise=False.
+    logit_scale = 10e16
+    prediction_tensor = tf.constant([[[-100, 100, -100],
+                                      [100, -100, -100],
+                                      [0, 0, -100],
+                                      [-100, -100, 100]],
+                                     [[-100, 0, 0],
+                                      [-100, 100, -100],
+                                      [-100, 100, -100],
+                                      [100, -100, -100]]], tf.float32)
+    target_tensor = tf.constant([[[0, 1, 0],
+                                  [1, 0, 0],
+                                  [1, 0, 0],
+                                  [0, 0, 1]],
+                                 [[0, 0, 1],
+                                  [0, 1, 0],
+                                  [0, 1, 0],
+                                  [1, 0, 0]]], tf.float32)
+    weights = tf.constant([[1, 1, 1, 1],
+                           [1, 1, 1, 1]], tf.float32)
+    loss_op = losses.WeightedSoftmaxClassificationLoss(
+        anchorwise_output=True, logit_scale=logit_scale)
+    loss = loss_op(prediction_tensor, target_tensor, weights=weights)
+
+    uniform_distribution_loss = - math.log(.33333333333)
+    exp_loss = np.matrix([[uniform_distribution_loss] * 4,
+                          [uniform_distribution_loss] * 4])
     with self.test_session() as sess:
       loss_output = sess.run(loss)
       self.assertAllClose(loss_output, exp_loss)

@@ -73,21 +73,24 @@ _NUM_IMAGES = {
     'validation': 50000,
 }
 
+_FILE_SHUFFLE_BUFFER = 1024
+_SHUFFLE_BUFFER = 1500
 
-def filenames(is_training):
+
+def filenames(is_training, data_dir):
   """Return filenames for dataset."""
   if is_training:
     return [
-        os.path.join(FLAGS.data_dir, 'train-%05d-of-01024' % i)
-        for i in range(0, 1024)]
+        os.path.join(data_dir, 'train-%05d-of-01024' % i)
+        for i in range(1024)]
   else:
     return [
-        os.path.join(FLAGS.data_dir, 'validation-%05d-of-00128' % i)
-        for i in range(0, 128)]
+        os.path.join(data_dir, 'validation-%05d-of-00128' % i)
+        for i in range(128)]
 
 
-def dataset_parser(value, is_training):
-  """Parse an Imagenet record from value."""
+def record_parser(value, is_training):
+  """Parse an ImageNet record from `value`."""
   keys_to_features = {
       'image/encoded':
           tf.FixedLenFeature((), tf.string, default_value=''),
@@ -129,35 +132,39 @@ def dataset_parser(value, is_training):
   return image, tf.one_hot(label, _LABEL_CLASSES)
 
 
-def input_fn(is_training, num_epochs=1):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   """Input function which provides batches for train or eval."""
-  dataset = tf.contrib.data.Dataset.from_tensor_slices(filenames(is_training))
-  if is_training:
-    dataset = dataset.shuffle(buffer_size=1024)
-  dataset = dataset.flat_map(tf.contrib.data.TFRecordDataset)
+  dataset = tf.data.Dataset.from_tensor_slices(filenames(is_training, data_dir))
 
   if is_training:
-    dataset = dataset.repeat(num_epochs)
+    dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
 
-  dataset = dataset.map(lambda value: dataset_parser(value, is_training),
-                        num_threads=5,
-                        output_buffer_size=FLAGS.batch_size)
+  dataset = dataset.flat_map(tf.data.TFRecordDataset)
+  dataset = dataset.map(lambda value: record_parser(value, is_training),
+                        num_parallel_calls=5)
+  dataset = dataset.prefetch(batch_size)
 
   if is_training:
-    buffer_size = 1250 + 2 * FLAGS.batch_size
-    dataset = dataset.shuffle(buffer_size=buffer_size)
+    # When choosing shuffle buffer sizes, larger sizes result in better
+    # randomness, while smaller sizes have better performance.
+    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
 
-  iterator = dataset.batch(FLAGS.batch_size).make_one_shot_iterator()
+  # We call repeat after shuffling, rather than before, to prevent separate
+  # epochs from blending together.
+  dataset = dataset.repeat(num_epochs)
+  dataset = dataset.batch(batch_size)
+
+  iterator = dataset.make_one_shot_iterator()
   images, labels = iterator.get_next()
   return images, labels
 
 
-def resnet_model_fn(features, labels, mode):
+def resnet_model_fn(features, labels, mode, params):
   """Our model_fn for ResNet to be used with our Estimator."""
   tf.summary.image('images', features, max_outputs=6)
 
   network = resnet_model.imagenet_resnet_v2(
-      FLAGS.resnet_size, _LABEL_CLASSES, FLAGS.data_format)
+      params['resnet_size'], _LABEL_CLASSES, params['data_format'])
   logits = network(
       inputs=features, is_training=(mode == tf.estimator.ModeKeys.TRAIN))
 
@@ -177,16 +184,17 @@ def resnet_model_fn(features, labels, mode):
   tf.identity(cross_entropy, name='cross_entropy')
   tf.summary.scalar('cross_entropy', cross_entropy)
 
-  # Add weight decay to the loss. We perform weight decay on all trainable
-  # variables, which includes batch norm beta and gamma variables.
+  # Add weight decay to the loss. We exclude the batch norm variables because
+  # doing so leads to a small improvement in accuracy.
   loss = cross_entropy + _WEIGHT_DECAY * tf.add_n(
-      [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
+      [tf.nn.l2_loss(v) for v in tf.trainable_variables()
+       if 'batch_normalization' not in v.name])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
-    # Scale the learning rate linearly with the batch size. When the batch size is
-    # 256, the learning rate should be 0.1.
-    initial_learning_rate = 0.1 * FLAGS.batch_size / 256
-    batches_per_epoch = _NUM_IMAGES['train'] / FLAGS.batch_size
+    # Scale the learning rate linearly with the batch size. When the batch size
+    # is 256, the learning rate should be 0.1.
+    initial_learning_rate = 0.1 * params['batch_size'] / 256
+    batches_per_epoch = _NUM_IMAGES['train'] / params['batch_size']
     global_step = tf.train.get_or_create_global_step()
 
     # Multiply the learning rate by 0.1 at 30, 60, 80, and 90 epochs.
@@ -235,7 +243,12 @@ def main(unused_argv):
   # Set up a RunConfig to only save checkpoints once per training cycle.
   run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
   resnet_classifier = tf.estimator.Estimator(
-      model_fn=resnet_model_fn, model_dir=FLAGS.model_dir, config=run_config)
+      model_fn=resnet_model_fn, model_dir=FLAGS.model_dir, config=run_config,
+      params={
+          'resnet_size': FLAGS.resnet_size,
+          'data_format': FLAGS.data_format,
+          'batch_size': FLAGS.batch_size,
+      })
 
   for _ in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
     tensors_to_log = {
@@ -250,12 +263,12 @@ def main(unused_argv):
     print('Starting a training cycle.')
     resnet_classifier.train(
         input_fn=lambda: input_fn(
-            is_training=True, num_epochs=FLAGS.epochs_per_eval),
+            True, FLAGS.data_dir, FLAGS.batch_size, FLAGS.epochs_per_eval),
         hooks=[logging_hook])
 
     print('Starting to evaluate.')
     eval_results = resnet_classifier.evaluate(
-        input_fn=lambda: input_fn(is_training=False))
+        input_fn=lambda: input_fn(False, FLAGS.data_dir, FLAGS.batch_size))
     print(eval_results)
 
 

@@ -229,3 +229,54 @@ def flip_horizontal(keypoints, flip_point, flip_permutation, scope=None):
     new_keypoints = tf.concat([v, u], 2)
     new_keypoints = tf.transpose(new_keypoints, [1, 0, 2])
     return new_keypoints
+
+
+def flip_vertical(keypoints, flip_point, flip_permutation, scope=None):
+  """Flips the keypoints vertically around the flip_point.
+
+  This operation flips the y coordinate for each keypoint around the flip_point
+  and also permutes the keypoints in a manner specified by flip_permutation.
+
+  Args:
+    keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+    flip_point:  (float) scalar tensor representing the y coordinate to flip the
+      keypoints around.
+    flip_permutation: rank 1 int32 tensor containing the keypoint flip
+      permutation. This specifies the mapping from original keypoint indices
+      to the flipped keypoint indices. This is used primarily for keypoints
+      that are not reflection invariant. E.g. Suppose there are 3 keypoints
+      representing ['head', 'right_eye', 'left_eye'], then a logical choice for
+      flip_permutation might be [0, 2, 1] since we want to swap the 'left_eye'
+      and 'right_eye' after a horizontal flip.
+    scope: name scope.
+
+  Returns:
+    new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+  """
+  with tf.name_scope(scope, 'FlipVertical'):
+    keypoints = tf.transpose(keypoints, [1, 0, 2])
+    keypoints = tf.gather(keypoints, flip_permutation)
+    v, u = tf.split(value=keypoints, num_or_size_splits=2, axis=2)
+    v = flip_point * 2.0 - v
+    new_keypoints = tf.concat([v, u], 2)
+    new_keypoints = tf.transpose(new_keypoints, [1, 0, 2])
+    return new_keypoints
+
+
+def rot90(keypoints, scope=None):
+  """Rotates the keypoints counter-clockwise by 90 degrees.
+
+  Args:
+    keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+    scope: name scope.
+
+  Returns:
+    new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+  """
+  with tf.name_scope(scope, 'Rot90'):
+    keypoints = tf.transpose(keypoints, [1, 0, 2])
+    v, u = tf.split(value=keypoints[:, :, ::-1], num_or_size_splits=2, axis=2)
+    v = 1.0 - v
+    new_keypoints = tf.concat([v, u], 2)
+    new_keypoints = tf.transpose(new_keypoints, [1, 0, 2])
+    return new_keypoints

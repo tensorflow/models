@@ -55,6 +55,17 @@ py_proto_library(
 )
 
 proto_library(
+    name = "keypoint_box_coder_proto",
+    srcs = ["keypoint_box_coder.proto"],
+)
+
+py_proto_library(
+    name = "keypoint_box_coder_py_pb2",
+    api_version = 2,
+    deps = [":keypoint_box_coder_proto"],
+)
+
+proto_library(
     name = "mean_stddev_box_coder_proto",
     srcs = ["mean_stddev_box_coder.proto"],
 )
@@ -81,6 +92,7 @@ proto_library(
     srcs = ["box_coder.proto"],
     deps = [
         ":faster_rcnn_box_coder_proto",
+        ":keypoint_box_coder_proto",
         ":mean_stddev_box_coder_proto",
         ":square_box_coder_proto",
     ],

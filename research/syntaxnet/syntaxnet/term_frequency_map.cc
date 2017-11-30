@@ -68,7 +68,8 @@ void TermFrequencyMap::Load(const string &filename, int min_frequency,
   string line;
   TF_CHECK_OK(buffer.ReadLine(&line));
   int32 total = -1;
-  CHECK(utils::ParseInt32(line.c_str(), &total));
+  CHECK(utils::ParseInt32(line.c_str(), &total))
+      << "Unable to parse from " << filename;
   CHECK_GE(total, 0);
 
   // Read the mapping.

@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_CLONEABLE_TRANSITION_STATE_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_CLONEABLE_TRANSITION_STATE_H_
+#ifndef DRAGNN_CORE_INTERFACES_CLONEABLE_TRANSITION_STATE_H_
+#define DRAGNN_CORE_INTERFACES_CLONEABLE_TRANSITION_STATE_H_
 
 #include <memory>
 #include <vector>
@@ -33,26 +33,32 @@ class CloneableTransitionState : public TransitionState {
  public:
   ~CloneableTransitionState<T>() override {}
 
-  // Initialize this TransitionState from a previous TransitionState. The
+  // Initializes this TransitionState from a previous TransitionState. The
   // ParentBeamIndex is the location of that previous TransitionState in the
   // provided beam.
   void Init(const TransitionState &parent) override = 0;
 
-  // Return the beam index of the state passed into the initializer of this
+  // Returns the beam index of the state passed into the initializer of this
   // TransitionState.
-  const int ParentBeamIndex() const override = 0;
+  int ParentBeamIndex() const override = 0;
 
-  // Get the current beam index for this state.
-  const int GetBeamIndex() const override = 0;
+  // Gets the current beam index for this state.
+  int GetBeamIndex() const override = 0;
 
-  // Set the current beam index for this state.
-  void SetBeamIndex(const int index) override = 0;
+  // Sets the current beam index for this state.
+  void SetBeamIndex(int index) override = 0;
 
-  // Get the score associated with this transition state.
-  const float GetScore() const override = 0;
+  // Gets the score associated with this transition state.
+  float GetScore() const override = 0;
 
-  // Set the score associated with this transition state.
-  void SetScore(const float score) override = 0;
+  // Sets the score associated with this transition state.
+  void SetScore(float score) override = 0;
+
+  // Gets the gold-ness of this state (whether it is on the oracle path)
+  bool IsGold() const override = 0;
+
+  // Sets the gold-ness of this state.
+  void SetGold(bool is_gold) override = 0;
 
   // Depicts this state as an HTML-language string.
   string HTMLRepresentation() const override = 0;
@@ -64,4 +70,4 @@ class CloneableTransitionState : public TransitionState {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INTERFACES_CLONEABLE_TRANSITION_STATE_H_
+#endif  // DRAGNN_CORE_INTERFACES_CLONEABLE_TRANSITION_STATE_H_
