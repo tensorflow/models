@@ -331,7 +331,7 @@ class SmallConfig(object):
   lr_decay = 0.5
   batch_size = 20
   vocab_size = 10000
-  rnn_mode = CUDNN
+  rnn_mode = BLOCK
 
 
 class MediumConfig(object):

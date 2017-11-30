@@ -9,7 +9,8 @@ research/cognitive_mapping_and_planning/* @s-gupta
 research/compression/* @nmjohn
 research/delf/* @andrefaraujo
 research/differential_privacy/* @panyx0718
-research/domain_adaptation/* @bousmalis @ddohan
+research/domain_adaptation/* @bousmalis @dmrd
+research/gan/* @joel-shor
 research/im2txt/* @cshallue
 research/inception/* @shlens @vincentvanhoucke
 research/learned_optimizer/* @olganw @nirum
