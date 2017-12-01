@@ -199,23 +199,24 @@ def run(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
 
-  _download_dataset(dataset_dir)
+  temp_dir = tempfile.mkdtemp(prefix='tmpMnistData')
+  _download_dataset(temp_dir)
 
   # First, process the training data:
   with tf.python_io.TFRecordWriter(training_filename) as tfrecord_writer:
-    data_filename = os.path.join(dataset_dir, _TRAIN_DATA_FILENAME)
-    labels_filename = os.path.join(dataset_dir, _TRAIN_LABELS_FILENAME)
+    data_filename = os.path.join(temp_dir, _TRAIN_DATA_FILENAME)
+    labels_filename = os.path.join(temp_dir, _TRAIN_LABELS_FILENAME)
     _add_to_tfrecord(data_filename, labels_filename, 60000, tfrecord_writer)
 
   # Next, process the testing data:
   with tf.python_io.TFRecordWriter(testing_filename) as tfrecord_writer:
-    data_filename = os.path.join(dataset_dir, _TEST_DATA_FILENAME)
-    labels_filename = os.path.join(dataset_dir, _TEST_LABELS_FILENAME)
+    data_filename = os.path.join(temp_dir, _TEST_DATA_FILENAME)
+    labels_filename = os.path.join(temp_dir, _TEST_LABELS_FILENAME)
     _add_to_tfrecord(data_filename, labels_filename, 10000, tfrecord_writer)
 
   # Finally, write the labels file:
   labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(dataset_dir)
+  _clean_up_temporary_files(temp_dir)
   print('\nFinished converting the MNIST dataset!')
