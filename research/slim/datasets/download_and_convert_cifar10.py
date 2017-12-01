@@ -172,20 +172,21 @@ def run(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
 
-  dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
+  temp_dir = tempfile.mkdtemp(prefix='tmpCifar10Data')
+  dataset_utils.download_and_uncompress_tarball(_DATA_URL, temp_dir)
 
   # First, process the training data:
   with tf.python_io.TFRecordWriter(training_filename) as tfrecord_writer:
     offset = 0
     for i in range(_NUM_TRAIN_FILES):
-      filename = os.path.join(dataset_dir,
+      filename = os.path.join(temp_dir,
                               'cifar-10-batches-py',
                               'data_batch_%d' % (i + 1))  # 1-indexed.
       offset = _add_to_tfrecord(filename, tfrecord_writer, offset)
 
   # Next, process the testing data:
   with tf.python_io.TFRecordWriter(testing_filename) as tfrecord_writer:
-    filename = os.path.join(dataset_dir,
+    filename = os.path.join(temp_dir,
                             'cifar-10-batches-py',
                             'test_batch')
     _add_to_tfrecord(filename, tfrecord_writer)
@@ -194,5 +195,5 @@ def run(dataset_dir):
   labels_to_class_names = dict(zip(range(len(_CLASS_NAMES)), _CLASS_NAMES))
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(dataset_dir)
+  _clean_up_temporary_files(temp_dir)
   print('\nFinished converting the Cifar10 dataset!')

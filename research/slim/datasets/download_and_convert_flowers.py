@@ -31,6 +31,7 @@ import math
 import os
 import random
 import sys
+import tempfile
 
 import tensorflow as tf
 
@@ -181,14 +182,16 @@ def run(dataset_dir):
     dataset_dir: The dataset directory where the dataset is stored.
   """
   if not tf.gfile.Exists(dataset_dir):
-    tf.gfile.MakeDirs(dataset_dir)
+    if not dataset_dir.startswith("gs://"):
+      tf.gfile.MakeDirs(dataset_dir)
 
   if _dataset_exists(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
 
-  dataset_utils.download_and_uncompress_tarball(_DATA_URL, dataset_dir)
-  photo_filenames, class_names = _get_filenames_and_classes(dataset_dir)
+  temp_dir = tempfile.mkdtemp(prefix='tmpFlowersData')
+  dataset_utils.download_and_uncompress_tarball(_DATA_URL, temp_dir)
+  photo_filenames, class_names = _get_filenames_and_classes(temp_dir)
   class_names_to_ids = dict(zip(class_names, range(len(class_names))))
 
   # Divide into train and test:
@@ -207,5 +210,5 @@ def run(dataset_dir):
   labels_to_class_names = dict(zip(range(len(class_names)), class_names))
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
-  _clean_up_temporary_files(dataset_dir)
+  _clean_up_temporary_files(temp_dir)
   print('\nFinished converting the Flowers dataset!')
