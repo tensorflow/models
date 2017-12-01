@@ -274,7 +274,7 @@ def _write_saved_model(saved_model_path,
   Args:
     saved_model_path: Path to write SavedModel.
     frozen_graph_def: tf.GraphDef holding frozen graph.
-    inputs: The input image tensor to use for detection.
+    inputs: A tensor dictionary containing the inputs placeholders for detection.
     outputs: A tensor dictionary containing the outputs of a DetectionModel.
   """
   with tf.Graph().as_default():
@@ -286,13 +286,12 @@ def _write_saved_model(saved_model_path,
 
       key_placeholder = tf.placeholder(dtype=tf.string, shape=(None,))
 
-      tensor_info_inputs = {
-          'key': tf.saved_model.utils.build_tensor_info(key_placeholder),
-          'inputs': tf.saved_model.utils.build_tensor_info(inputs)}
+      tensor_info_inputs = {}
+      for k, v in inputs.items():
+        tensor_info_inputs[k] = tf.saved_model.utils.build_tensor_info(v)
       tensor_info_outputs = {}
       for k, v in outputs.items():
         tensor_info_outputs[k] = tf.saved_model.utils.build_tensor_info(v)
-      tensor_info_outputs['key'] = tf.saved_model.utils.build_tensor_info(tf.identity(key_placeholder))
 
       detection_signature = (
           tf.saved_model.signature_def_utils.build_signature_def(
@@ -333,7 +332,8 @@ def _export_inference_graph(input_type,
                             additional_output_tensor_names=None,
                             input_shape=None,
                             optimize_graph=True,
-                            output_collection_name='inference_op'):
+                            output_collection_name='inference_op',
+                            instance_key_type=None):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
   frozen_graph_path = os.path.join(output_directory,
@@ -351,12 +351,25 @@ def _export_inference_graph(input_type,
     placeholder_args['input_shape'] = input_shape
   placeholder_tensor, input_tensors = input_placeholder_fn_map[input_type](
       **placeholder_args)
+  placeholder_tensors = { "inputs": placeholder_tensor }
   inputs = tf.to_float(input_tensors)
   preprocessed_inputs = detection_model.preprocess(inputs)
   output_tensors = detection_model.predict(preprocessed_inputs)
   postprocessed_tensors = detection_model.postprocess(output_tensors)
   outputs = _add_output_tensor_nodes(postprocessed_tensors,
                                      output_collection_name)
+  if instance_key_type is not None:
+    if instance_key_type == "int32":
+      key_placeholder = tf.placeholder(dtype=tf.int32, shape=(None,))
+    elif instance_key_type == "int64":
+      key_placeholder = tf.placeholder(dtype=tf.int64, shape=(None,))
+    elif instance_key_type == "string":
+      key_placeholder = tf.placeholder(dtype=tf.string, shape=(None,))
+    else:
+      raise ValueError('Unknown instance key type: {}'.format(instance_key_type))
+    placeholder_tensors["key"] = key_placeholder
+    outputs["key"] = tf.identity(key_placeholder, name="key")
+
   # Add global step to the graph.
   slim.get_or_create_global_step()
 
@@ -395,7 +408,7 @@ def _export_inference_graph(input_type,
       initializer_nodes='')
   _write_frozen_graph(frozen_graph_path, frozen_graph_def)
   _write_saved_model(saved_model_path, frozen_graph_def,
-                     placeholder_tensor, outputs)
+                     placeholder_tensors, outputs)
 
 
 def export_inference_graph(input_type,
@@ -405,7 +418,8 @@ def export_inference_graph(input_type,
                            input_shape=None,
                            optimize_graph=True,
                            output_collection_name='inference_op',
-                           additional_output_tensor_names=None):
+                           additional_output_tensor_names=None,
+                           instance_key_type=None):
   """Exports inference graph for the model specified in the pipeline config.
 
   Args:
@@ -428,4 +442,5 @@ def export_inference_graph(input_type,
                           pipeline_config.eval_config.use_moving_averages,
                           trained_checkpoint_prefix,
                           output_directory, additional_output_tensor_names,
-                          input_shape, optimize_graph, output_collection_name)
+                          input_shape, optimize_graph, output_collection_name,
+                          instance_key_type)
