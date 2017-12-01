@@ -553,14 +553,73 @@ def main(_):
     summary_op = tf.summary.merge(list(summaries), name='summary_op')
 
 
+    tf_config = os.environ.get('TF_CONFIG')
+    for name in ['master']:
+      if getattr(FLAGS, name) and tf_config:
+        raise ValueError(
+            'Either the flag --%s or the environment variable TF_CONFIG can be'
+            ' set but not both.' % name)
+
+    # If TF_CONFIG is not available we are either running locally in Cloud
+    # or distributed inside Google. On Cloud the default values of
+    # FLAGS.master and FLAGS.task correspond to running training locally.
+    # Inside Google they will be set as needed to configure local or distributed
+    # training. Inside Google we don't need to explicitly set worker_device
+    # in replica_device_setter becaue this will be set automatically based
+    # on various flags.
+    if not tf_config:
+      raise NotImplementedError("Need to add support for local training.")
+      #device_fn = tf.train.replica_device_setter(FLAGS.ps_tasks)
+      #return run(FLAGS.master, FLAGS.task == 0, device_fn=device_fn)
+
+    tf_config_json = json.loads(tf_config)
+    cluster = tf_config_json.get('cluster')
+    job_name = tf_config_json.get('task', {}).get('type')
+    task_index = tf_config_json.get('task', {}).get('index')
+    # If cluster information is empty run local
+    if job_name is None or task_index is None:
+      raise NotImplementedError("Need to add support for local training.")
+      #device_fn = tf.train.replica_device_setter(0)
+      #return run('', True, device_fn=device_fn)
+
+    ps = cluster.get('ps', [])
+    num_ps = len(ps)
+
+    if num_ps != FLAGS.num_ps_tasks:
+      raise ValueError("--num_ps_tasks={0} but TF_CONFIG specifies {1} ps".format(
+        FLAGS.num_ps_tasks, num_ps))
+
+    num_workers = len(cluster.get('worker', []))
+    if num_workers != FLAGS.num_worker_replicas:
+      raise ValueError("--num_work_replicas={0} but TF_CONFIG specifies {1} workers".format(
+        FLAGS.num_worker_replicas, num_workers))
+
+    cluster_spec = tf.train.ClusterSpec(cluster)
+    server = tf.train.Server(
+        cluster_spec, job_name=job_name, task_index=task_index)
+
+    if job_name == 'ps':
+      server.join()
+      return
+    # TODO(jlewi): I don't think we need a device_setter anymore
+    # because DeploymentConfig will return the device name to assign things
+    # to.
+    #elif job_name in ['master', 'worker']:
+      #device_fn = tf.train.replica_device_setter(
+          #num_ps,
+          #worker_device='/job:%s/task:%d' % (job_name, task_index),
+          #cluster=cluster_spec)
+      #return run(server.target, job_name == 'master', device_fn=device_fn)
+
     ###########################
     # Kicks off the training. #
     ###########################
+    is_chief = job_name == 'master'
     slim.learning.train(
         train_tensor,
         logdir=FLAGS.train_dir,
-        master=FLAGS.master,
-        is_chief=(FLAGS.task == 0),
+        master=server.target,
+        is_chief=is_chief,
         init_fn=_get_init_fn(),
         summary_op=summary_op,
         number_of_steps=FLAGS.max_number_of_steps,
