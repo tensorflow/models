@@ -116,7 +116,7 @@ def make_dataset(x, y=None):
 
     items = [x]
     if y is not None:
-        items.append(y)
+        items.append(np.array(y, dtype=np.float32))
 
     # Create a Dataset of slices
     return tf.data.Dataset.from_tensor_slices(tuple(items))
