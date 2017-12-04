@@ -17,7 +17,6 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import pandas as pd
 import tensorflow as tf
 
 import iris_data
