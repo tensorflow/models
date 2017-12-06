@@ -20,3 +20,10 @@ python mnist.py
 
 The model will begin training and will automatically evaluate itself on the
 validation data.
+
+Then you can export the model into Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format by running:
+
+```
+python mnist.py --skip_training --export_dir /tmp/mnist_saved_model
+```
+
