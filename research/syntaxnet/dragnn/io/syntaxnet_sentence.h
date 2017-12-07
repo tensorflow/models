@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_IO_SYNTAXNET_SENTENCE_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_IO_SYNTAXNET_SENTENCE_H_
+#ifndef DRAGNN_IO_SYNTAXNET_SENTENCE_H_
+#define DRAGNN_IO_SYNTAXNET_SENTENCE_H_
 
 #include "syntaxnet/sentence.pb.h"
 #include "syntaxnet/workspace.h"
@@ -39,4 +39,4 @@ class SyntaxNetSentence {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_IO_SYNTAXNET_SENTENCE_H_
+#endif  // DRAGNN_IO_SYNTAXNET_SENTENCE_H_

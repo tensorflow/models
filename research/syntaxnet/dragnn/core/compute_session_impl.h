@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
+#ifndef DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
+#define DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
 
 #include <memory>
 
@@ -55,9 +55,9 @@ class ComputeSessionImpl : public ComputeSession {
 
   void AdvanceFromOracle(const string &component_name) override;
 
-  void AdvanceFromPrediction(const string &component_name,
-                             const float score_matrix[],
-                             int score_matrix_length) override;
+  bool AdvanceFromPrediction(const string &component_name,
+                             const float *score_matrix, int num_items,
+                             int num_actions) override;
 
   int GetInputFeatures(const string &component_name,
                        std::function<int32 *(int)> allocate_indices,
@@ -67,6 +67,12 @@ class ComputeSessionImpl : public ComputeSession {
 
   int BulkGetInputFeatures(const string &component_name,
                            const BulkFeatureExtractor &extractor) override;
+
+  void BulkEmbedFixedFeatures(
+      const string &component_name, int batch_size_padding,
+      int num_steps_padding, int output_array_size,
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output) override;
 
   std::vector<LinkFeatures> GetTranslatedLinkFeatures(
       const string &component_name, int channel_id) override;
@@ -84,6 +90,8 @@ class ComputeSessionImpl : public ComputeSession {
 
   void SetInputData(const std::vector<string> &data) override;
 
+  void SetInputBatchCache(std::unique_ptr<InputBatchCache> batch) override;
+
   void ResetSession() override;
 
   void SetTracing(bool tracing_on) override;
@@ -95,13 +103,13 @@ class ComputeSessionImpl : public ComputeSession {
   const std::vector<const IndexTranslator *> Translators(
       const string &component_name) const override;
 
+  // Get a given component. CHECK-fail if the component's IsReady method
+  // returns false.
+  Component *GetReadiedComponent(const string &component_name) const override;
+
  private:
   // Get a given component. Fails if the component is not found.
   Component *GetComponent(const string &component_name) const;
-
-  // Get a given component. CHECK-fail if the component's IsReady method
-  // returns false.
-  Component *GetReadiedComponent(const string &component_name) const;
 
   // Get the index translators for the given component.
   const std::vector<IndexTranslator *> &GetTranslators(
@@ -154,4 +162,4 @@ class ComputeSessionImpl : public ComputeSession {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_
+#endif  // DRAGNN_CORE_COMPUTE_SESSION_IMPL_H_

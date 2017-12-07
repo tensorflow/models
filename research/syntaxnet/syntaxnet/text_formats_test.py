@@ -113,13 +113,13 @@ class TextFormatsTest(test_util.TensorFlowTestCase):
     # This test sentence includes a multiword token and an empty node,
     # both of which are to be ignored.
     test_sentence = """
-1-2	We've	_
-1	We	we	PRON	PRP	Case=Nom	3	nsubj	_	SpaceAfter=No
-2	've	have	AUX	VBP	Mood=Ind	3	aux	_	_
-3	moved	move	VERB	VBN	Tense=Past	0	root	_	_
-4	on	on	ADV	RB	_	3	advmod	_	SpaceAfter=No
-4.1	ignored	ignore	VERB	VBN	Tense=Past	0	_	_	_
-5	.	.	PUNCT	.	_	3	punct	_	_
+1-2\tWe've\t_
+1\tWe\twe\tPRON\tPRP\tCase=Nom\t3\tnsubj\t_\tSpaceAfter=No
+2\t've\thave\tAUX\tVBP\tMood=Ind\t3\taux\t_\t_
+3\tmoved\tmove\tVERB\tVBN\tTense=Past\t0\troot\t_\t_
+4\ton\ton\tADV\tRB\t_\t3\tadvmod\t_\tSpaceAfter=No|foobar=baz
+4.1\tignored\tignore\tVERB\tVBN\tTense=Past\t0\t_\t_\t_
+5\t.\t.\tPUNCT\t.\t_\t3\tpunct\t_\t_
 """
 
     # Prepare test sentence.
@@ -191,13 +191,13 @@ token {
       self.assertEqual(expected_ends, [t.end for t in sentence_doc.token])
 
   def testSegmentationTrainingData(self):
-    doc1_lines = ['测试	NO_SPACE\n', '的	NO_SPACE\n', '句子	NO_SPACE']
+    doc1_lines = ['测试\tNO_SPACE\n', '的\tNO_SPACE\n', '句子\tNO_SPACE']
     doc1_text = '测试的句子'
     doc1_tokens = ['测', '试', '的', '句', '子']
     doc1_break_levles = [1, 0, 1, 1, 0]
     doc2_lines = [
-        'That	NO_SPACE\n', '\'s	SPACE\n', 'a	SPACE\n', 'good	SPACE\n',
-        'point	NO_SPACE\n', '.	NO_SPACE'
+        'That\tNO_SPACE\n', '\'s\tSPACE\n', 'a\tSPACE\n', 'good\tSPACE\n',
+        'point\tNO_SPACE\n', '.\tNO_SPACE'
     ]
     doc2_text = 'That\'s a good point.'
     doc2_tokens = [

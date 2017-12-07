@@ -40,9 +40,14 @@ class FeatureType {
  public:
   // Initializes a feature type.
   explicit FeatureType(const string &name)
-      : name_(name), base_(0) {}
+      : name_(name),
+        base_(0),
+        is_continuous_(name.find("continuous") != string::npos) {
+    // TODO(googleuser): Switch to explicitly setting is_continuous.
+    VLOG(2) << "Feature: " << name << ":" << is_continuous_;
+  }
 
-  virtual ~FeatureType() {}
+  virtual ~FeatureType() = default;
 
   // Converts a feature value to a name.
   virtual string GetFeatureValueName(FeatureValue value) const = 0;
@@ -56,12 +61,21 @@ class FeatureType {
   Predicate base() const { return base_; }
   void set_base(Predicate base) { base_ = base; }
 
+  // True if the underlying feature is continuous.
+  bool is_continuous() const { return is_continuous_; }
+
+  // Sets whenther the underlying feature should be represented as continuous.
+  void set_is_continuous(bool is_continuous) { is_continuous_ = is_continuous; }
+
  private:
   // Feature type name.
   string name_;
 
   // "Base" feature value: i.e. a "slot" in a global ordering of features.
   Predicate base_;
+
+  // True if this feature is continuous.
+  bool is_continuous_;
 };
 
 // Templated generic resource based feature type. This feature type delegates
@@ -73,7 +87,7 @@ class FeatureType {
 // successfully for values ONLY in the range [0, Resource->NumValues()) Any
 // feature value not in the extra value map and not in the above range of
 // Resource will result in a ERROR and return of "<INVALID>".
-template<class Resource>
+template <class Resource>
 class ResourceBasedFeatureType : public FeatureType {
  public:
   // Creates a new type with given name, resource object, and a mapping of
@@ -85,8 +99,8 @@ class ResourceBasedFeatureType : public FeatureType {
       : FeatureType(name), resource_(resource), values_(values) {
     max_value_ = resource->NumValues() - 1;
     for (const auto &pair : values) {
-      CHECK_GE(pair.first, resource->NumValues()) << "Invalid extra value: "
-               << pair.first << "," << pair.second;
+      CHECK_GE(pair.first, resource->NumValues())
+          << "Invalid extra value: " << pair.first << "," << pair.second;
       max_value_ = pair.first > max_value_ ? pair.first : max_value_;
     }
   }
@@ -152,8 +166,7 @@ class EnumFeatureType : public FeatureType {
   string GetFeatureValueName(FeatureValue value) const override {
     auto it = value_names_.find(value);
     if (it == value_names_.end()) {
-      LOG(ERROR)
-          << "Invalid feature value " << value << " for " << name();
+      LOG(ERROR) << "Invalid feature value " << value << " for " << name();
       return "<INVALID>";
     }
     return it->second;

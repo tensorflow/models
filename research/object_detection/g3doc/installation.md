@@ -12,9 +12,9 @@ Tensorflow Object Detection API depends on the following libraries:
 * Matplotlib
 * Tensorflow
 
-For detailed steps to install Tensorflow, follow the
-[Tensorflow installation instructions](https://www.tensorflow.org/install/).
-A typical user can install Tensorflow using one of the following commands:
+For detailed steps to install Tensorflow, follow the [Tensorflow installation
+instructions](https://www.tensorflow.org/install/). A typical user can install
+Tensorflow using one of the following commands:
 
 ``` bash
 # For CPU

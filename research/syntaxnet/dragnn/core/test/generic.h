@@ -13,8 +13,8 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_GENERIC_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_GENERIC_H_
+#ifndef DRAGNN_CORE_TEST_GENERIC_H_
+#define DRAGNN_CORE_TEST_GENERIC_H_
 
 #include <utility>
 
@@ -31,10 +31,18 @@ MATCHER_P(EqualsProto, a, "Protos are not equivalent:") {
   return a.DebugString() == arg.DebugString();
 }
 
+// Matches an error status whose message matches |substr|.
+MATCHER_P(IsErrorWithSubstr, substr,
+          string(negation ? "isn't" : "is") +
+          " an error Status whose message matches the substring '" +
+          ::testing::PrintToString(substr) + "'") {
+  return !arg.ok() && arg.error_message().find(substr) != string::npos;
+}
+
 // Returns the prefix for where the test data is stored.
 string GetTestDataPrefix();
 
 }  // namespace test
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_TEST_GENERIC_H_
+#endif  // DRAGNN_CORE_TEST_GENERIC_H_

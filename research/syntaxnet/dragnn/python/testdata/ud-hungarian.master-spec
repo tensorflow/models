@@ -1,0 +1,213 @@
+component {
+  name: "rl_rnn"
+  transition_system {
+    registered_name: "shift-only"
+    parameters {
+      key: "left-to-right"
+      value: "false"
+    }
+    parameters {
+      key: "parser_skip_deterministic"
+      value: "false"
+    }
+  }
+  resource {
+    name: "char-ngram-map"
+    part {
+      file_pattern: "TOPDIR/testdata/ud-hungarian.char-ngram-map"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "word-map"
+    part {
+      file_pattern: "TOPDIR/testdata/ud-hungarian.word-map"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_pattern: "TOPDIR/testdata/ud-hungarian.label-map"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  fixed_feature {
+    name: "char_ngram"
+    fml: "input.token.char-ngram"
+    embedding_dim: 16
+    vocabulary_size: 9943
+    size: 1
+  }
+  fixed_feature {
+    name: "other"
+    fml: "input.token {digit hyphen punctuation-amount quote }"
+    embedding_dim: 8
+    vocabulary_size: 5
+    size: 4
+  }
+  fixed_feature {
+    name: "words"
+    fml: "input.word"
+    embedding_dim: 64
+    vocabulary_size: 11090
+    size: 1
+  }
+  network_unit {
+    registered_name: "wrapped_units.LayerNormBasicLSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "256"
+    }
+  }
+  component_builder {
+    registered_name: 'DynamicComponentBuilder'
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 1
+  attention_component: ""
+}
+component {
+  name: "tagger"
+  transition_system {
+    registered_name: "tagger"
+    parameters {
+      key: "join_category_to_pos"
+      value: "true"
+    }
+    parameters {
+      key: "parser_skip_deterministic"
+      value: "false"
+    }
+  }
+  resource {
+    name: "tag-map"
+    part {
+      file_pattern: "TOPDIR/testdata/ud-hungarian.tag-map"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_pattern: "TOPDIR/testdata/ud-hungarian.label-map"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  fixed_feature {
+    name: "action"
+    fml: "last-action"
+    embedding_dim: 32
+    vocabulary_size: 100
+    size: 1
+  }
+  linked_feature {
+    name: "encoder"
+    fml: "input.focus"
+    embedding_dim: 64
+    size: 1
+    source_component: "rl_rnn"
+    source_translator: "reverse-token"
+    source_layer: "state_h_0"
+  }
+  network_unit {
+    registered_name: "wrapped_units.LayerNormBasicLSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "256"
+    }
+  }
+  component_builder {
+    registered_name: 'DynamicComponentBuilder'
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 642
+  attention_component: ""
+}
+component {
+  name: "parser"
+  transition_system {
+    registered_name: "arc-standard"
+    parameters {
+      key: "parser_skip_deterministic"
+      value: "false"
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_pattern: "TOPDIR/testdata/ud-hungarian.label-map"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  fixed_feature {
+    name: "action"
+    fml: "last-action"
+    embedding_dim: 32
+    vocabulary_size: 100
+    size: 1
+  }
+  fixed_feature {
+    name: "labels"
+    fml: "stack.child(1).label stack.child(1).sibling(-1).label stack.child(-1).label stack.child(-1).sibling(1).label stack(1).child(1).label stack(1).child(1).sibling(-1).label stack(1).child(-1).label stack(1).child(-1).sibling(1).label stack.child(2).label stack.child(-2).label stack(1).child(2).label stack(1).child(-2).label"
+    embedding_dim: 16
+    vocabulary_size: 57
+    size: 12
+  }
+  linked_feature {
+    name: "encoder"
+    fml: "input.focus"
+    embedding_dim: 64
+    size: 1
+    source_component: "rl_rnn"
+    source_translator: "reverse-token"
+    source_layer: "state_h_0"
+  }
+  linked_feature {
+    name: "parser-rnn"
+    fml: "stack.focus stack(1).focus"
+    embedding_dim: 64
+    size: 2
+    source_component: "parser"
+    source_translator: "shift-reduce-step"
+    source_layer: "layer_0"
+  }
+  linked_feature {
+    name: "tagger"
+    fml: "input.focus stack.focus stack(1).focus"
+    embedding_dim: 64
+    size: 3
+    source_component: "tagger"
+    source_translator: "identity"
+    source_layer: "state_h_0"
+  }
+  network_unit {
+    registered_name: 'FeedForwardNetwork'
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "256,256"
+    }
+    parameters {
+      key: "layer_norm_hidden"
+      value: "True"
+    }
+  }
+  component_builder {
+    registered_name: 'DynamicComponentBuilder'
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 109
+  attention_component: ""
+}

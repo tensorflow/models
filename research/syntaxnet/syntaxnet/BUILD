@@ -331,6 +331,8 @@ cc_library(
         "binary_segment_state.cc",
         "binary_segment_transitions.cc",
         "char_shift_transitions.cc",
+        "head_label_transitions.cc",
+        "head_label_transitions.h",
         "head_transitions.cc",
         "head_transitions.h",
         "label_transitions.cc",
@@ -353,6 +355,7 @@ cc_library(
     deps = [
         ":base",
         ":feature_extractor",
+        ":generic_features",
         ":morphology_label_set",
         ":registry",
         ":segmenter_utils",
@@ -396,6 +399,16 @@ cc_library(
         ":task_context",
         ":utils",
         ":workspace",
+    ],
+)
+
+cc_library(
+    name = "generic_features",
+    srcs = ["generic_features.cc"],
+    hdrs = ["generic_features.h"],
+    deps = [
+        ":feature_extractor",
+        ":registry",
     ],
 )
 
@@ -510,6 +523,7 @@ filegroup(
     srcs = [
         "testdata/context.pbtxt",
         "testdata/document",
+        "testdata/hello.txt",
         "testdata/mini-training-set",
     ],
 )
@@ -568,6 +582,17 @@ cc_test(
         ":base",
         ":segmenter_utils",
         ":sentence_proto",
+        ":test_main",
+    ],
+)
+
+cc_test(
+    name = "generic_features_test",
+    srcs = ["generic_features_test.cc"],
+    deps = [
+        ":generic_features",
+        ":registry",
+        ":task_context",
         ":test_main",
     ],
 )
@@ -713,6 +738,20 @@ cc_test(
 )
 
 cc_test(
+    name = "head_label_transitions_test",
+    size = "small",
+    srcs = ["head_label_transitions_test.cc"],
+    deps = [
+        ":base",
+        ":parser_transitions",
+        ":sentence_proto",
+        ":task_context",
+        ":term_frequency_map",
+        ":test_main",
+    ],
+)
+
+cc_test(
     name = "parser_features_test",
     size = "small",
     srcs = ["parser_features_test.cc"],
@@ -750,8 +789,8 @@ py_library(
     name = "syntaxnet_ops",
     srcs = ["syntaxnet_ops.py"],
     deps = [
-        ":parser_ops",
         ":load_parser_ops_py",
+        ":parser_ops",
     ],
 )
 

@@ -13,12 +13,15 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INPUT_BATCH_CACHE_H_
-#define NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INPUT_BATCH_CACHE_H_
+#ifndef DRAGNN_CORE_INPUT_BATCH_CACHE_H_
+#define DRAGNN_CORE_INPUT_BATCH_CACHE_H_
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <typeindex>
+#include <typeinfo>
+#include <utility>
 
 #include "dragnn/core/interfaces/input_batch.h"
 #include "tensorflow/core/platform/logging.h"
@@ -42,6 +45,18 @@ class InputBatchCache {
   explicit InputBatchCache(const std::vector<string> &data)
       : stored_type_(std::type_index(typeid(void))), source_data_(data) {}
 
+  // Creates a InputBatchCache from the |batch|.  InputBatchSubclass must be a
+  // strict subclass of InputBatch, and |batch| must be non-null.  All calls to
+  // GetAs must match InputBatchSubclass.
+  template <class InputBatchSubclass>
+  explicit InputBatchCache(std::unique_ptr<InputBatchSubclass> batch)
+      : stored_type_(std::type_index(typeid(InputBatchSubclass))),
+        converted_data_(std::move(batch)) {
+    static_assert(IsStrictInputBatchSubclass<InputBatchSubclass>(),
+                  "InputBatchCache requires a strict subclass of InputBatch");
+    CHECK(converted_data_) << "Cannot initialize from a null InputBatch";
+  }
+
   // Adds a single string to the cache. Only useable before GetAs() has been
   // called.
   void AddData(const string &data) {
@@ -52,10 +67,14 @@ class InputBatchCache {
   }
 
   // Converts the stored strings into protos and return them in a specific
-  // InputBatch subclass. T should always be of type InputBatch. After this
-  // method is called once, all further calls must be of the same data type.
+  // InputBatch subclass. T should always be a strict subclass of InputBatch.
+  // After this method is called once, all further calls must be of the same
+  // data type.
   template <class T>
   T *GetAs() {
+    static_assert(
+        IsStrictInputBatchSubclass<T>(),
+        "GetAs<T>() requires that T is a strict subclass of InputBatch");
     if (!converted_data_) {
       stored_type_ = std::type_index(typeid(T));
       converted_data_.reset(new T());
@@ -69,14 +88,27 @@ class InputBatchCache {
     return dynamic_cast<T *>(converted_data_.get());
   }
 
+  // Returns the size of the batch.  Requires that GetAs() has been called.
+  int Size() const {
+    CHECK(converted_data_) << "Cannot return batch size without data.";
+    return converted_data_->GetSize();
+  }
+
   // Returns the serialized representation of the data held in the input batch
-  // object within this cache.
+  // object within this cache.  Requires that GetAs() has been called.
   const std::vector<string> SerializedData() const {
     CHECK(converted_data_) << "Cannot return batch without data.";
     return converted_data_->GetSerializedData();
   }
 
  private:
+  // Returns true if InputBatchSubclass is a strict subclass of InputBatch.
+  template <class InputBatchSubclass>
+  static constexpr bool IsStrictInputBatchSubclass() {
+    return std::is_base_of<InputBatch, InputBatchSubclass>::value &&
+           !std::is_same<InputBatch, InputBatchSubclass>::value;
+  }
+
   // The typeid of the stored data.
   std::type_index stored_type_;
 
@@ -90,4 +122,4 @@ class InputBatchCache {
 }  // namespace dragnn
 }  // namespace syntaxnet
 
-#endif  // NLP_SAFT_OPENSOURCE_DRAGNN_CORE_INPUT_BATCH_CACHE_H_
+#endif  // DRAGNN_CORE_INPUT_BATCH_CACHE_H_

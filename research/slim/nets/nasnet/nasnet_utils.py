@@ -411,7 +411,7 @@ class NasNetABaseCell(object):
         tf.summary.scalar('layer_ratio', layer_ratio)
       drop_path_keep_prob = 1 - layer_ratio * (1 - drop_path_keep_prob)
       # Decrease the keep probability over time
-      current_step = tf.cast(tf.contrib.framework.get_or_create_global_step(),
+      current_step = tf.cast(tf.train.get_or_create_global_step(),
                              tf.float32)
       drop_path_burn_in_steps = self._total_training_steps
       current_ratio = (

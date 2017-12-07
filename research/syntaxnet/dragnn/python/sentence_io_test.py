@@ -19,16 +19,19 @@ import tensorflow as tf
 from tensorflow.python.framework import test_util
 from tensorflow.python.platform import googletest
 
+from dragnn.python import dragnn_ops
+
 from dragnn.python import sentence_io
 from syntaxnet import sentence_pb2
 
-import syntaxnet.load_parser_ops
-
 FLAGS = tf.app.flags.FLAGS
-if not hasattr(FLAGS, 'test_srcdir'):
-  FLAGS.test_srcdir = ''
-if not hasattr(FLAGS, 'test_tmpdir'):
-  FLAGS.test_tmpdir = tf.test.get_temp_dir()
+
+
+def setUpModule():
+  if not hasattr(FLAGS, 'test_srcdir'):
+    FLAGS.test_srcdir = ''
+  if not hasattr(FLAGS, 'test_tmpdir'):
+    FLAGS.test_tmpdir = tf.test.get_temp_dir()
 
 
 class ConllSentenceReaderTest(test_util.TensorFlowTestCase):

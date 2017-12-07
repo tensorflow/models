@@ -21,6 +21,10 @@ Song Y, Guadarrama S, Murphy K, CVPR 2017
 \[[link](https://arxiv.org/abs/1611.10012)\]\[[bibtex](
 https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.google.com/&output=citation&scisig=AAGBfm0AAAAAWUIIlnPZ_L9jxvPwcC49kDlELtaeIyU-&scisf=4&ct=citation&cd=-1&hl=en&scfhb=1)\]
 
+<p align="center">
+  <img src="g3doc/img/tf-od-api-logo.png" width=140 height=195>
+</p>
+
 ## Maintainers
 
 * Jonathan Huang, github: [jch1](https://github.com/jch1)
@@ -59,6 +63,10 @@ Extras:
       Defining your own model architecture</a><br>
   * <a href='g3doc/using_your_own_dataset.md'>
       Bringing in your own dataset</a><br>
+  * <a href='g3doc/evaluation_protocols.md'>
+      Supported object detection evaluation protocols</a><br>
+  * <a href='g3doc/oid_inference_and_evaluation.md'>
+      Inference and evaluation on the Open Images dataset</a><br>
 
 ## Getting Help
 
@@ -71,8 +79,21 @@ tensorflow/models Github
 [issue tracker](https://github.com/tensorflow/models/issues), prefixing the
 issue name with "object_detection".
 
+
+
 ## Release information
 
+### November 17, 2017
+
+As a part of the Open Images V3 release we have released:
+
+* An implementation of the Open Images evaluation metric and the [protocol](g3doc/evaluation_protocols.md#open-images).
+* Additional tools to separate inference of detection and evaluation (see [this tutorial](g3doc/oid_inference_and_evaluation.md)).
+* A new detection model trained on the Open Images V2 data release (see [Open Images model](g3doc/detection_model_zoo.md#open-images-models)).
+
+See more information on the [Open Images website](https://github.com/openimages/dataset)!
+
+<b>Thanks to contributors</b>: Stefan Popov, Alina Kuznetsova
 
 ### November 6, 2017
 
@@ -107,6 +128,7 @@ you to try out other detection models!
 
 <b>Thanks to contributors</b>: Jonathan Huang, Andrew Harp
 
+
 ### June 15, 2017
 
 In addition to our base Tensorflow detection model definitions, this
@@ -130,3 +152,4 @@ release includes:
 <b>Thanks to contributors</b>: Jonathan Huang, Vivek Rathod, Derek Chow,
 Chen Sun, Menglong Zhu, Matthew Tang, Anoop Korattikara, Alireza Fathi, Ian Fischer, Zbigniew Wojna, Yang Song, Sergio Guadarrama, Jasper Uijlings,
 Viacheslav Kovalevskyi, Kevin Murphy
+

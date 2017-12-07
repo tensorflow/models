@@ -80,6 +80,42 @@ class FeatureVector {
   // Returns the number of elements in the feature vector.
   int size() const { return features_.size(); }
 
+  // Truncates the feature vector.  Requires that new_size <= size().
+  void Truncate(int new_size) {
+    DCHECK_GE(new_size, 0);
+    DCHECK_LE(new_size, size());
+    features_.resize(new_size);
+  }
+
+  // Returns string representation of feature vector.
+  string ToString() const {
+    string str;
+
+    str.append("[");
+    for (int i = 0; i < size(); ++i) {
+      if (i > 0) str.append(",");
+      if (!type(i)->name().empty()) {
+        // Get the name and erase any quotation characters.
+        string name_str = type(i)->name();
+        auto it = name_str.begin();
+        while (it != name_str.end()) {
+          if (*it == '"') {
+            it = name_str.erase(it);
+          } else {
+            ++it;
+          }
+        }
+        str.append(name_str);
+        str.append("=");
+      }
+      str.append(type(i)->GetFeatureValueName(value(i)));
+    }
+
+    str.append("]");
+
+    return str;
+  }
+
   // Reserves space in the underlying feature vector.
   void reserve(int n) { features_.reserve(n); }
 

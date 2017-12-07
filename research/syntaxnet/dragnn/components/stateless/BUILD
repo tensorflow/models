@@ -10,7 +10,6 @@ cc_library(
         "//dragnn/core:component_registry",
         "//dragnn/core/interfaces:component",
         "//dragnn/core/interfaces:transition_state",
-        "//dragnn/io:sentence_input_batch",
         "//dragnn/protos:data_proto",
         "//syntaxnet:base",
     ],

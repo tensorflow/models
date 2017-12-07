@@ -16,7 +16,7 @@
 r"""Runs a DRAGNN model on a given set of CoNLL-formatted sentences.
 
 Sample invocation:
-  bazel run -c opt <...>:dragnn_eval -- \
+  bazel run -c opt <...>:evaluator -- \
     --master_spec="/path/to/master-spec" \
     --checkpoint_file="/path/to/model/name.checkpoint" \
     --input_file="/path/to/input/documents/test.connlu"
@@ -38,9 +38,6 @@ from dragnn.python import graph_builder
 from dragnn.python import sentence_io
 from dragnn.python import spec_builder
 from syntaxnet import sentence_pb2
-
-import dragnn.python.load_dragnn_cc_impl
-import syntaxnet.load_parser_ops
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS

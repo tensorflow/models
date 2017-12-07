@@ -229,6 +229,10 @@ class RegisterableInstance {
   classname::Registry RegisterableClass<classname>::registry_ = { \
       type, #classname, __FILE__, __LINE__, NULL}
 
+#define DECLARE_SYNTAXNET_CLASS_REGISTRY(type, classname) \
+  template <>                                             \
+  classname::Registry RegisterableClass<classname>::registry_;
+
 #define REGISTER_SYNTAXNET_INSTANCE_COMPONENT(base, type, component) \
   static base::Registry::Registrar __##component##__##registrar(     \
       base::registry(), type, #component, __FILE__, __LINE__, new component)
@@ -237,6 +241,10 @@ class RegisterableInstance {
   template <>                                                        \
   classname::Registry RegisterableInstance<classname>::registry_ = { \
       type, #classname, __FILE__, __LINE__, NULL}
+
+#define DECLARE_SYNTAXNET_INSTANCE_REGISTRY(type, classname) \
+  template <>                                                \
+  classname::Registry RegisterableInstance<classname>::registry_;
 
 }  // namespace syntaxnet
 

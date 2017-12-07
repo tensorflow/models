@@ -46,9 +46,8 @@ class MasterState(object):
   """Simple utility to encapsulate tensors associated with the master state.
 
   Attributes:
-    handle: string tensor handle to the underlying nlp_saft::dragnn::MasterState
-    current_batch_size: int tensor containing the batch size following the most
-        recent MasterState::Reset().
+    handle: string tensor handle to the underlying ComputeSession.
+    current_batch_size: int tensor containing the current batch size.
   """
 
   def __init__(self, handle, current_batch_size):
@@ -390,7 +389,11 @@ class DynamicComponentBuilder(ComponentBuilderBase):
       correctly predicted actions, and the total number of actions.
     """
     logging.info('Building component: %s', self.spec.name)
-    with tf.control_dependencies([tf.assert_equal(self.training_beam_size, 1)]):
+    # Add 0 to training_beam_size to disable eager static evaluation.
+    # This is possible because tensorflow's constant_value does not
+    # propagate arithmetic operations.
+    with tf.control_dependencies([
+        tf.assert_equal(self.training_beam_size + 0, 1)]):
       stride = state.current_batch_size * self.training_beam_size
 
     cost = tf.constant(0.)
@@ -462,10 +465,10 @@ class DynamicComponentBuilder(ComponentBuilderBase):
 
     # Saves completed arrays and return final state and cost.
     state.handle = output[0]
+    cost = output[1]
     correct = output[2]
     total = output[3]
     arrays = output[4:]
-    cost = output[1]
 
     # Store handles to the final output for use in subsequent tasks.
     network_state = network_states[self.name]
@@ -475,6 +478,9 @@ class DynamicComponentBuilder(ComponentBuilderBase):
             array=arrays[index])
 
     # Normalize the objective by the total # of steps taken.
+    # Note: Total could be zero by a number of reasons, including:
+    #   * Oracle labels not being emitted.
+    #   * No steps being taken if component is terminal at the start of a batch.
     with tf.control_dependencies([tf.assert_greater(total, 0)]):
       cost /= tf.to_float(total)
 
@@ -524,11 +530,14 @@ class DynamicComponentBuilder(ComponentBuilderBase):
             during_training=during_training)
         next_arrays = update_tensor_arrays(network_tensors, arrays)
         with tf.control_dependencies([x.flow for x in next_arrays]):
-          logits = self.network.get_logits(network_tensors)
-          logits = tf.cond(self.locally_normalize,
-                           lambda: tf.nn.log_softmax(logits), lambda: logits)
-          handle = dragnn_ops.advance_from_prediction(
-              handle, logits, component=self.name)
+          if self.num_actions == 1:  # deterministic; take oracle transition
+            handle = dragnn_ops.advance_from_oracle(handle, component=self.name)
+          else:  # predict next transition using network logits
+            logits = self.network.get_logits(network_tensors)
+            logits = tf.cond(self.locally_normalize,
+                             lambda: tf.nn.log_softmax(logits), lambda: logits)
+            handle = dragnn_ops.advance_from_prediction(
+                handle, logits, component=self.name)
         return [handle] + next_arrays
 
     # Create the TensorArray's to store activations for downstream/recurrent
