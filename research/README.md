@@ -61,6 +61,7 @@ installation](https://www.tensorflow.org/install).
     using a Deep RNN.
 -   [swivel](swivel): the Swivel algorithm for generating word embeddings.
 -   [syntaxnet](syntaxnet): neural models of natural language syntax.
+-   [tcn](tcn): Self-supervised representation learning from multi-view video.
 -   [textsum](textsum): sequence-to-sequence with attention model for text
     summarization.
 -   [transformer](transformer): spatial transformer network, which allows the

@@ -32,6 +32,7 @@ research/slim/* @sguada @nathansilberman
 research/street/* @theraysmith
 research/swivel/* @waterson
 research/syntaxnet/* @calberti @andorardo @bogatyy @markomernick
+research/tcn/* @coreylynch @sermanet
 research/textsum/* @panyx0718 @peterjliu
 research/transformer/* @daviddao
 research/video_prediction/* @cbfinn
