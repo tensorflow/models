@@ -450,27 +450,34 @@ class YOLOMetaArch(model.DetectionModel):
 
       responsibility_list_batch.append(grid_cell_responsibilities)
 
-
-    # TODO unstack  predictions using tf.unstack
-    # TODO convert this into a list of box lists
-
-
-    detection_boxes_unstacked = tf.unstack(detection_boxes)
-
     # the final dimension of this list will be [batch_size, S*S, box_list_size]
     prediction_box_list_batch = []
+    detection_boxes_unstacked = tf.unstack(detection_boxes)
+
+    xoffsets = tf.constant([[i * image_size / S]  for i in xrange(S) for j in xrange(S) for k in xrange(2)])
+    yoffsets = tf.constant([[j * image_size / S]  for i in xrange(S) for j in xrange(S) for k in xrange(2)])
 
     for plist in detection_boxes_unstacked:
-      unstacked_plist = tf.unstack(plist)
-      # TODO conver detection_boxes to xmin ymin xmax ymax
+      # x, y = center of predicted box relative to grid cell
+      # w, h  of bounding box are normalized wrt width and height of the image
+      xcenter = detection_boxes[:, :, 0] * 64 + xoffsets
+      ycenter = detection_boxes[:, :, 1] * 64 + yoffsets
+      w = detection_boxes[:, :, 2] * image_size
+      h = detection_boxes[:, :, 3] * image_size
 
+      xmin = xcenter - h * 0.5
+      ymin = ycenter - w * 0.5
+      xmax = xcenter + h * 0.5
+      ymax = ycenter + w * 0.5
+
+      plist = tf.concat([ymin, xmin, ymax, xmax], 1)
+
+      unstacked_plist = tf.unstack(plist)
       prediction_box_list = [box_list.BoxList(boxes) for boxes in unstacked_plist]
       
       assert len(prediction_box_list) == S * S
 
       prediction_box_list_batch.append((prediction_box_list))
-
-    # TODO run matcher.py for each index i of the grid cells
 
     # batch sizes of the two lists should be the same
     assert len(responsibility_list_batch) == len(prediction_box_list_batch)
@@ -479,10 +486,13 @@ class YOLOMetaArch(model.DetectionModel):
 
     # TODO resume here
     I_ij_obj_list_batch = []
+    I_i_obj_list_batch = []
 
-    # TODO run a loop to generate a list corresponding to I_ij^OBJ
+    detection_boxes_ground_truth_batch = []
+
     for batch_num in xrange(num_batches):
       I_ij_obj_list = []
+      I_i_obj_list = []
 
       for i in xrange(S*S):
         list1 = responsibility_list_batch[batch_num][i]
@@ -490,13 +500,18 @@ class YOLOMetaArch(model.DetectionModel):
 
         matchObject = self._matcher(self._region_similarity_calculator(list1, list2))
         I_ij_obj_list.append(matchObject.matched_column_indicator())
+        I_i_obj_list.append(tf.cast(tf.greater(tf.reduce_sum(I_ij_obj_list[-1], 1), 0), tf.int32))
 
         # TODO permute the ground truth data and convert xmin ymin, to xc and yc
 
       I_ij_obj_list_batch.append(I_ij_obj_list)
+      I_i_obj_list_batch.append(I_i_obj_list)
 
 
     # TODO when computing losses, use tf.stack to convert list to a tensor
+
+
+
     # TODO scale the co-ordinates of the bounding boxes appropriately
     # TODO similarly, generate indicator variables for the confidence and I_i^OBJ
     # TODO tada.mpg
