@@ -219,6 +219,8 @@ class YOLOMetaArch(model.DetectionModel):
     box_scores = tf.reshape(box_scores, [batch_size, -1, 2, 1])
     detection_boxes = tf.reshape(detection_boxes, [batch_size, -1, 1, 4])
 
+    # class, confidence scores, bounding box coordinates
+
     predictions_dict = {
         'class_predictions' : class_predictions,
         'box_scores' : box_scores,
@@ -308,65 +310,6 @@ class YOLOMetaArch(model.DetectionModel):
       `object loss` and 'noobj loss`) to scalar tensors representing corresponding
        loss values.
     """
-
-
-    #  If provide_groundtruth() has been called then we also have :
-    #
-    #  groundtruth_boxes_list: a list of 2-D tf.float32 tensors of shape
-    #    [num_boxes, 4] containing coordinates of the groundtruth boxes.
-    #      Groundtruth boxes are provided in [y_min, x_min, y_max, x_max]
-    #      format and assumed to be normalized and clipped
-    #      relative to the image window with y_min <= y_max and x_min <= x_max.
-    #  groundtruth_classes_list: a list of 2-D tf.float32 one-hot (or k-hot)
-    #    tensors of shape [num_boxes, num_classes] containing the class targets
-    #    with the 0th index assumed to map to the first non-background class.
-
-
-    # TODO TODO boxlist.py get_center_coordinates_and_sizes()
-
-    # TODO find 1^{obj}_i    -> using TF tensor manipulation
-    # TODO find 1^{obj}_{ij} -> using matcher.py
-    # TODO For every (i,j), we also need to know which ground truth was assigned to it
-    # TODO Doing so will give us x_i, y_i, w_i, h_i
-
-    # List of 2D tensors containing call the y centers and x centers of each groundtruth list
-    #yc_list = []
-    #xc_list = []
-    for groundtruth_data in self.groundtruth_lists[fields.BoxListFields.boxes]:
-      ymins = groundtruth_data[:, 0]
-      xmins = groundtruth_data[:, 1]
-      ymaxs = groundtruth_data[:, 2]
-      xmaxs = groundtruth_data[:, 3]
-
-      # dimension = [num gt, 1]
-      yc = tf.divide(tf.add(ymins, ymaxs), 2)
-      xc = tf.divide(tf.add(xmins, xmaxs), 2)
-
-      # TODO figure out how to multiply without harcoding the grid size
-      yc = tf.cast(tf.multiply(yc, 7), tf.int32)
-      xc = tf.cast(tf.multiply(xc, 7), tf.int32)
-
-      responsible_grid_indices = tf.reshape(tf.add(tf.multiply(xc, 7), yc), [-1])
-
-      tmp = tf.get_variable('YOLOv1Ind_Obj_i', [tf.size(responsible_grid_indices)])
-      assign_op = tf.assign(tmp, [0] * tf.size(responsible_grid_indices))
-
-      tf.scatter_update(assign_op, responsible_grid_indices,
-                        tf.ones(tf.size(responsible_grid_indices)))
-
-      self.ind_obj_i = assign_op
-
-      # create a tensor of shape [grid size * grid size, 1] -> I^{obj}_i
-      # this is created by checking where the center of each ground truth is
-
-      gt_heights = tf.subtract(ymaxs, ymins)
-      gt_widths = tf.subtract(xmaxs, xmins)
-
-      #yc_list.append(yc)
-      #xc_list.append(xc)
-
-
-
     class_predictions = prediction_dict['class_predictions']
     box_scores = prediction_dict['box_scores']
     detection_boxes = prediction_dict['detection_boxes']
@@ -434,6 +377,7 @@ class YOLOMetaArch(model.DetectionModel):
 
 
   def _assign_yolo_targets(self, groundtruth_boxes_list, groundtruth_classes_list, detection_boxes):
+    # TODO fix returns
     """Assign groundtruth targets.
 
     Used to obtain regression and classification targets.
@@ -450,7 +394,6 @@ class YOLOMetaArch(model.DetectionModel):
       detection_boxes: 4-D float tensor of shape [batch_size,
         grid_size * grid_size * boxes_per_cell, 1, 4] containing the co-ordinates of
         the predicted bounding boxes
-
     Returns:
       batch_cls_targets: a tensor with shape [batch_size, num_anchors,
         num_classes],
@@ -463,19 +406,104 @@ class YOLOMetaArch(model.DetectionModel):
         with rows of the Match objects corresponding to groundtruth boxes
         and columns corresponding to anchors.
     """
-    groundtruth_boxlists = [
-        box_list.BoxList(boxes) for boxes in groundtruth_boxes_list
-    ]
 
-    # create a box list for each image in mini-batch
-    reshaped_detection_boxes = tf.squeeze(detection_boxes, [2])
-    predicted_boxes_boxlists = [box_list.BoxList(tf.convert_to_tensor(boxes))
-                                for boxes in reshaped_detection_boxes.eval()]
+    # list of box lists where each box list contains ground truths for each image in a batch
+    groundtruth_boxlists = [box_list.BoxList(boxes)
+                            for boxes in self.groundtruth_lists(fields.BoxListFields.boxes)]
 
-    # TODO check compatibility of predicted_boxes_boxlists with BoxList operations
-    return target_assigner.batch_assign_targets(
-        self._target_assigner, predicted_boxes_boxlists, groundtruth_boxlists,
-        groundtruth_classes_list)
+    # TODO: avoid hard coding model dimensions in future
+    S = 7  # grid size
+    B = 2  # bounding boxes per grid cell
+    image_size = 448  # image size
+
+    # for each image create a list containing grid_size * grid_size
+    # lists where each inner list is a list of ground truths of that
+    # image in a particular grid cell
+    # the final dimension of this list will be [batch_size, S*S, box_list_size]
+    responsibility_list_batch = []
+
+    for image_boxlist in groundtruth_boxlists:
+      grid_cell_responsibilities = [[] * (S * S)]
+
+      ycenter, xcenter = image_boxlist.get_center_coordinates_and_sizes()[: 2]
+      ycenter /= image_size
+      ycenter *= S
+      ycenter = tf.cast(ycenter, tf.int32)
+
+      xcenter /= image_size
+      xcenter *= S
+      xcenter = tf.cast(xcenter, tf.int32)
+
+      # grid_cell_index[i] is the grid cell in which the i'th ground truth is located
+      grid_cell_index = xcenter * S + ycenter
+
+      # list of tensor objects corresponding to each ground truth box
+      boxes = tf.unstack(image_boxlist.get())
+
+      # push each ground truth into the correct place
+      num_boxes = len(boxes)
+      for i in xrange(num_boxes):
+        grid_cell_responsibilities[grid_cell_index[i]].append(boxes[i])
+
+      for i in xrange(S * S):
+        grid_cell_responsibilities[i] = box_list.BoxList(tf.stack(grid_cell_responsibilities[i]))
+
+      responsibility_list_batch.append(grid_cell_responsibilities)
+
+
+    # TODO unstack  predictions using tf.unstack
+    # TODO convert this into a list of box lists
+
+
+    detection_boxes_unstacked = tf.unstack(detection_boxes)
+
+    # the final dimension of this list will be [batch_size, S*S, box_list_size]
+    prediction_box_list_batch = []
+
+    for plist in detection_boxes_unstacked:
+      unstacked_plist = tf.unstack(plist)
+      # TODO conver detection_boxes to xmin ymin xmax ymax
+
+      prediction_box_list = [box_list.BoxList(boxes) for boxes in unstacked_plist]
+      
+      assert len(prediction_box_list) == S * S
+
+      prediction_box_list_batch.append((prediction_box_list))
+
+    # TODO run matcher.py for each index i of the grid cells
+
+    # batch sizes of the two lists should be the same
+    assert len(responsibility_list_batch) == len(prediction_box_list_batch)
+    num_batches = len(responsibility_list_batch)
+
+
+    # TODO resume here
+    I_ij_obj_list_batch = []
+
+    # TODO run a loop to generate a list corresponding to I_ij^OBJ
+    for batch_num in xrange(num_batches):
+      I_ij_obj_list = []
+
+      for i in xrange(S*S):
+        list1 = responsibility_list_batch[batch_num][i]
+        list2 = prediction_box_list_batch[batch_num][i]
+
+        matchObject = self._matcher(self._region_similarity_calculator(list1, list2))
+        I_ij_obj_list.append(matchObject.matched_column_indicator())
+
+        # TODO permute the ground truth data and convert xmin ymin, to xc and yc
+
+      I_ij_obj_list_batch.append(I_ij_obj_list)
+
+
+    # TODO when computing losses, use tf.stack to convert list to a tensor
+    # TODO scale the co-ordinates of the bounding boxes appropriately
+    # TODO similarly, generate indicator variables for the confidence and I_i^OBJ
+    # TODO tada.mpg
+
+    # TODO Convert predicted bounding boxes to a box list
+    # TODO Compute IOU matrix for every grid cell
+    # TODO Apply matcher for every grid cell and obtain required indicators
 
 
   def restore_map(self, from_detection_checkpoint=True):
