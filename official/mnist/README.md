@@ -12,13 +12,6 @@ APIs.
 ## Setup
 
 To begin, you'll simply need the latest version of TensorFlow installed.
-
-First convert the MNIST data to TFRecord file format by running the following:
-
-```
-python convert_to_records.py
-```
-
 Then to train the model, run the following:
 
 ```
