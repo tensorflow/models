@@ -327,6 +327,9 @@ class YOLOMetaArch(model.DetectionModel):
       #  self._summarize_input(
       #      self.groundtruth_lists(fields.BoxListFields.boxes), match_list)
 
+      detection_boxes = tf.concat([tf.expand_dims(detection_boxes[:, :, :, :2], 4),
+                 tf.expand_dims(tf.sqrt(detection_boxes[:, :, :, 2]), 4),
+                 tf.expand_dims(tf.sqrt(detection_boxes[:, :, :, 3]), 4)], 4)
 
       localization_loss = self._localization_loss_weight * I_ij_obj * tf.reduce_sum(
         tf.squared_difference(detection_boxes, gt_detection_boxes))
@@ -347,7 +350,6 @@ class YOLOMetaArch(model.DetectionModel):
 
 
   def _assign_yolo_targets(self, groundtruth_boxes_list, groundtruth_classes_list, detection_boxes):
-    # TODO fix returns
     """Assign groundtruth targets.
 
     Used to obtain regression and classification targets.
@@ -490,7 +492,7 @@ class YOLOMetaArch(model.DetectionModel):
 
           I_i_obj_list.append(tf.constant([[0]]))
 
-          # now add dummy data to ensure that tensors have the same size
+          # now add dummy data to ensure that tensors have the correct size
           detection_boxes_ground_truth_list.append(tf.constant([[0, 0, 0, 0]]))
           detection_boxes_ground_truth_list.append(tf.constant([[0, 0, 0, 0]]))
 
@@ -515,8 +517,8 @@ class YOLOMetaArch(model.DetectionModel):
 
         xcenter = tf.expand_dims(xcenter, 1)
         ycenter = tf.expand_dims(ycenter, 1)
-        w = tf.expand_dims(w, 1)
-        h = tf.expand_dims(h, 1)
+        w = tf.expand_dims(tf.sqrt(w), 1)
+        h = tf.expand_dims(tf.sqrt(h), 1)
 
         normalized_gt_boxes = tf.concat([xcenter, ycenter, w, h], 1)
 
