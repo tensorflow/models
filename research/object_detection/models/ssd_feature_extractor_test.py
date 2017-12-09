@@ -91,4 +91,4 @@ class SsdFeatureExtractorTestBase(object):
       feature_extractor.extract_features(preprocessed_inputs)
       variables = g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
       for variable in variables:
-self.assertTrue(variable.name.startswith(scope_name))
+        self.assertTrue(variable.name.startswith(scope_name))

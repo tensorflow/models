@@ -20,7 +20,6 @@ from abc import abstractmethod
 import numpy as np
 import tensorflow as tf
 
-
 class YOLOFeatureExtractorTest(tf.test.TestCase):
 
   def _create_feature_extractor(self, depth_multiplier):
@@ -35,6 +34,7 @@ class YOLOFeatureExtractorTest(tf.test.TestCase):
     reuse_weights = None
     return yolov1_feature_extractor.YOLOv1FeatureExtractor(
         is_training , reuse_weights)
+
 
 if __name__ == '__main__':
   tf.test.main()
