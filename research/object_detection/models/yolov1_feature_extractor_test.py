@@ -19,7 +19,7 @@ from abc import abstractmethod
 
 import numpy as np
 import tensorflow as tf
-import yolov1_feature_extractor# import YOLOv1FeatureExtractor
+import yolov1_feature_extractor
 
 class YOLOFeatureExtractorTest(tf.test.TestCase):
 
