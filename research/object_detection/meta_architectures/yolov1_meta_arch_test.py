@@ -16,6 +16,7 @@
 import functools
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 
 from tensorflow.python.training import saver as tf_saver
 from object_detection.core import anchor_generator
@@ -27,7 +28,7 @@ from object_detection.meta_architectures import yolov1_meta_arch
 from object_detection.models import yolov1_feature_extractor
 from object_detection.utils import test_utils
 
-slim = tf.contrib.slim
+#slim = tf.contrib.slim
 
 # All unit test functions start with prefix 'test'
 
