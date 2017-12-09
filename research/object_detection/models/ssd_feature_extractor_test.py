@@ -28,7 +28,6 @@ class SsdFeatureExtractorTestBase(object):
                                preprocessed_inputs,
                                expected_feature_map_shapes):
     """Checks the extracted features are of correct shape.
-
     Args:
       feature_extractor: The feature extractor to test.
       preprocessed_inputs: A [batch, height, width, 3] tensor to extract
@@ -48,7 +47,6 @@ class SsdFeatureExtractorTestBase(object):
   @abstractmethod
   def _create_feature_extractor(self, depth_multiplier):
     """Constructs a new feature extractor.
-
     Args:
       depth_multiplier: float depth multiplier for feature extractor
     Returns:
@@ -93,4 +91,4 @@ class SsdFeatureExtractorTestBase(object):
       feature_extractor.extract_features(preprocessed_inputs)
       variables = g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
       for variable in variables:
-        self.assertTrue(variable.name.startswith(scope_name))
+self.assertTrue(variable.name.startswith(scope_name))
