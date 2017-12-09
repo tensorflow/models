@@ -22,7 +22,7 @@ import tensorflow as tf
 
 class YOLOFeatureExtractorTest(tf.test.TestCase):
 
-  def _create_feature_extractor(self, depth_multiplier):
+  def _create_feature_extractor(self):
     """Constructs a YOLOFeatureExtractor.
 
     Args:
