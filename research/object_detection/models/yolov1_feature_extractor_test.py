@@ -19,7 +19,7 @@ from abc import abstractmethod
 
 import numpy as np
 import tensorflow as tf
-from yolov1_feature_extractor import YOLOv1FeatureExtractor
+import yolov1_feature_extractor# import YOLOv1FeatureExtractor
 
 class YOLOFeatureExtractorTest(tf.test.TestCase):
 
@@ -45,7 +45,6 @@ class YOLOFeatureExtractorTest(tf.test.TestCase):
     feature_extractor = self._create_feature_extractor()
     preprocessed_image = feature_extractor.preprocess(test_image)
     self.assertTrue(np.all(np.less_equal(np.abs(preprocessed_image), 1.0)))
-
 
 if __name__ == '__main__':
   tf.test.main()
