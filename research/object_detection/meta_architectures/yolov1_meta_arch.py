@@ -64,7 +64,6 @@ class YOLOMetaArch(model.DetectionModel):
 
   def __init__(self,
               is_training,
-              #box_coder,
               feature_extractor,
               matcher,
               num_classes,
@@ -72,22 +71,14 @@ class YOLOMetaArch(model.DetectionModel):
               image_resizer_fn,
               non_max_suppression_fn,
               score_conversion_fn,
-              classification_loss,
-              localization_loss,
-              object_loss,
-              noobject_loss,
-              classification_loss_weight,
               localization_loss_weight,
-              object_loss_weight,
               noobject_loss_weight,
-              #hard_example_miner,
               add_summaries=True):
     """YOLOMetaArch Constructor
 
     Args:
       is_training: A boolean indicating whether the training version of the
         computation graph should be constructed.
-      box_coder: a box_coder.BoxCoder object.
       feature_extractor: a YOLOFeatureExtractor object.
       matcher: a matcher.Matcher object.
       region_similarity_calculator: a
@@ -106,13 +97,8 @@ class YOLOMetaArch(model.DetectionModel):
       score_conversion_fn: callable elementwise nonlinearity (that takes tensors
         as inputs and returns tensors).  This is usually used to convert logits
         to probabilities.
-      classification_loss: an object_detection.core.losses.Loss object.
-      localization_loss: a object_detection.core.losses.Loss object.
-      classification_loss_weight: float
       localization_loss_weight: float
-      hard_example_miner: a losses.HardExampleMiner object (can be None)
-      add_summaries: boolean (default: True) controlling whether summary ops
-        should be added to tensorflow graph.
+      noobject_loss_weight: float
       
     """
     super(YOLOMetaArch, self).__init__(num_classes=num_classes)
@@ -137,15 +123,8 @@ class YOLOMetaArch(model.DetectionModel):
     #    negative_class_weight=1.0,
     #    unmatched_cls_target=unmatched_cls_target)
 
-    self._classification_loss = classification_loss
-    self._localization_loss = localization_loss
-    self._object_loss = object_loss
-    self._noobject_loss = noobject_loss
-    self._classification_loss_weight = classification_loss_weight
     self._localization_loss_weight = localization_loss_weight
-    self._object_loss_weight = object_loss_weight
     self._noobject_loss_weight = noobject_loss_weight
-    #self._hard_example_miner = hard_example_miner
 
     self._image_resizer_fn = image_resizer_fn
     self._non_max_suppression_fn = non_max_suppression_fn
