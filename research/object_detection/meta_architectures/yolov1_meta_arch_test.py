@@ -29,10 +29,12 @@ from object_detection.utils import test_utils
 
 slim = tf.contrib.slim
 
+# All unit test functions start with prefix 'test'
+
 class YOLOMetaArchTest(tf.test.TestCase):
   def setUp(self):
-    """Set up mock YOLOv1 model.
-      Here we set up a simple mock YOLOv1
+    """
+       Here we set up a simple mock YOLOv1 model
     """
     is_training = False
     self._num_classes = 20
@@ -50,13 +52,40 @@ class YOLOMetaArchTest(tf.test.TestCase):
       max_size_per_class=5,
       max_total_size=5)
 
-    localization_loss_weight = 1.0
-    noobject_loss_weight = 1.0
+    score_conversion_fn = tf.identity
 
+    localization_loss_weight = 5.0
+    noobject_loss_weight = 0.5
 
     self._model = yolov1_meta_arch.YOLOMetaArch(
+      is_training, feature_extractor, mock_matcher, self._num_classes,
+      region_similarity_calculator, image_resizer_fn, non_max_suppression_fn,
+      score_conversion_fn, localization_loss_weight, noobject_loss_weight)
 
-    )
+  def test_preprocess_preserves_input_shapes(self):
+    image_shapes = [(3, None, None, 3),
+                    (None, 10, 10, 3),
+                    (None, None, None, 3),
+                    (5, 5, 5, 5)]
+    for image_shape in image_shapes:
+      image_placeholder = tf.placeholder(tf.float32, shape=image_shape)
+      preprocessed_inputs = self._model.preprocess(image_placeholder)
+      self.assertAllEqual(preprocessed_inputs.shape.as_list(), image_shape)
 
-
+  def test_predict_results_have_correct_keys_and_shapes(self):
     pass
+
+  def test_postprocess_results_are_correct(self):
+    pass
+
+  def test_loss_results_are_correct(self):
+    pass
+
+  def test_restore_map_for_detection_ckpt(self):
+    pass
+
+  def test_restore_map_for_classification_ckpt(self):
+    pass
+
+if __name__ == '__main__':
+  tf.test.main()
