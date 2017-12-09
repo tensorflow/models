@@ -12,7 +12,6 @@ from object_detection.core import box_list_ops
 from object_detection.core import model
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
-#from object_detection.core import target_assigner
 
 slim = tf.contrib.slim
 
@@ -108,20 +107,9 @@ class YOLOMetaArch(model.DetectionModel):
     # variables do not have the feature extractor scope.
     self._extract_features_scope = 'FeatureExtractor'
 
-    #self._box_coder = box_coder
     self._feature_extractor = feature_extractor
     self._matcher = matcher
     self._region_similarity_calculator = region_similarity_calculator
-
-    #unmatched_cls_target = None
-    #unmatched_cls_target = tf.constant([1] + self.num_classes * [0], tf.float32)
-    #self._target_assigner = target_assigner.TargetAssigner(
-    #    self._region_similarity_calculator,
-    #    self._matcher,
-    #    self._box_coder,
-    #    positive_class_weight=1.0,
-    #    negative_class_weight=1.0,
-    #    unmatched_cls_target=unmatched_cls_target)
 
     self._localization_loss_weight = localization_loss_weight
     self._noobject_loss_weight = noobject_loss_weight
@@ -322,7 +310,6 @@ class YOLOMetaArch(model.DetectionModel):
       }
     return loss_dict
 
-
   def _assign_yolo_targets(self, groundtruth_boxes_list, groundtruth_classes_list, detection_boxes):
     """Assign groundtruth targets.
 
@@ -521,7 +508,6 @@ class YOLOMetaArch(model.DetectionModel):
     class_scores = tf.stack(class_probability_ground_truth_batch)
 
     return I_ij_obj, I_i_obj, detection_boxes, confidence, class_scores
-
 
   def restore_map(self, from_detection_checkpoint=True):
     """Returns a map of variables to load from a foreign checkpoint.
