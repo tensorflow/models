@@ -33,7 +33,6 @@ class YOLOv1FeatureExtractor(yolov1_meta_arch.YOLOFeatureExtractor):
     # TODO : find out the parameters
     super(YOLOv1FeatureExtractor, self).__init__(is_training, reuse_weights)
 
-
   def preprocess(self, resized_inputs):
     """Preprocesses images for feature extraction (minus image resizing).
 
@@ -46,7 +45,6 @@ class YOLOv1FeatureExtractor(yolov1_meta_arch.YOLOFeatureExtractor):
         representing a batch of images.
     """
     return (2.0 / 255.0) * resized_inputs - 1.0
-
 
   def extract_features(self, preprocessed_inputs):
     """Extracts features from preprocessed inputs.
