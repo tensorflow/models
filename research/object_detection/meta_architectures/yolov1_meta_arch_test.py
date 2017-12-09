@@ -72,18 +72,23 @@ class YOLOMetaArchTest(tf.test.TestCase):
       preprocessed_inputs = self._model.preprocess(image_placeholder)
       self.assertAllEqual(preprocessed_inputs.shape.as_list(), image_shape)
 
+  # TODO
   def test_predict_results_have_correct_keys_and_shapes(self):
     pass
 
+  # TODO
   def test_postprocess_results_are_correct(self):
     pass
 
+  # TODO
   def test_loss_results_are_correct(self):
     pass
 
+  # TODO
   def test_restore_map_for_detection_ckpt(self):
     pass
 
+  # TODO
   def test_restore_map_for_classification_ckpt(self):
     pass
 
