@@ -12,7 +12,7 @@ from object_detection.core import box_list_ops
 from object_detection.core import model
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
-from object_detection.core import target_assigner
+#from object_detection.core import target_assigner
 
 slim = tf.contrib.slim
 
@@ -62,11 +62,9 @@ class YOLOFeatureExtractor(object):
 class YOLOMetaArch(model.DetectionModel):
   """YOLO Meta Arch definition"""
 
-  # TODO : Revisit which args are required and which are not
-  # TODO : Add no object and obj loss in these params
   def __init__(self,
               is_training,
-              box_coder,
+              #box_coder,
               feature_extractor,
               matcher,
               num_classes,
@@ -82,7 +80,7 @@ class YOLOMetaArch(model.DetectionModel):
               localization_loss_weight,
               object_loss_weight,
               noobject_loss_weight,
-              hard_example_miner,
+              #hard_example_miner,
               add_summaries=True):
     """YOLOMetaArch Constructor
 
@@ -124,20 +122,20 @@ class YOLOMetaArch(model.DetectionModel):
     # variables do not have the feature extractor scope.
     self._extract_features_scope = 'FeatureExtractor'
 
-    self._box_coder = box_coder
+    #self._box_coder = box_coder
     self._feature_extractor = feature_extractor
     self._matcher = matcher
     self._region_similarity_calculator = region_similarity_calculator
 
-    unmatched_cls_target = None
-    unmatched_cls_target = tf.constant([1] + self.num_classes * [0], tf.float32)
-    self._target_assigner = target_assigner.TargetAssigner(
-        self._region_similarity_calculator,
-        self._matcher,
-        self._box_coder,
-        positive_class_weight=1.0,
-        negative_class_weight=1.0,
-        unmatched_cls_target=unmatched_cls_target)
+    #unmatched_cls_target = None
+    #unmatched_cls_target = tf.constant([1] + self.num_classes * [0], tf.float32)
+    #self._target_assigner = target_assigner.TargetAssigner(
+    #    self._region_similarity_calculator,
+    #    self._matcher,
+    #    self._box_coder,
+    #    positive_class_weight=1.0,
+    #    negative_class_weight=1.0,
+    #    unmatched_cls_target=unmatched_cls_target)
 
     self._classification_loss = classification_loss
     self._localization_loss = localization_loss
@@ -147,7 +145,7 @@ class YOLOMetaArch(model.DetectionModel):
     self._localization_loss_weight = localization_loss_weight
     self._object_loss_weight = object_loss_weight
     self._noobject_loss_weight = noobject_loss_weight
-    self._hard_example_miner = hard_example_miner
+    #self._hard_example_miner = hard_example_miner
 
     self._image_resizer_fn = image_resizer_fn
     self._non_max_suppression_fn = non_max_suppression_fn
@@ -173,8 +171,6 @@ class YOLOMetaArch(model.DetectionModel):
     if inputs.dtype is not tf.float32:
       raise ValueError('`preprocess` expects a tf.float32 tensor')
     with tf.name_scope('Preprocessor'):
-      # TODO: revisit whether to always use batch size as  the number of
-      # parallel iterations vs allow for dynamic batching.
       resized_inputs = tf.map_fn(self._image_resizer_fn,
                                  elems=inputs,
                                  dtype=tf.float32)
@@ -205,28 +201,27 @@ class YOLOMetaArch(model.DetectionModel):
       feature_map = self._feature_extractor.extract_features(
           preprocessed_inputs)
 
-    combined_shape = shape_utils.combined_static_and_dynamic_shape(feature_map)
-    batch_size = combined_shape[0]
-    boxes_per_cell = (combined_shape[-1] - self._num_classes) / 5
+      combined_shape = shape_utils.combined_static_and_dynamic_shape(feature_map)
+      batch_size = combined_shape[0]
+      boxes_per_cell = (combined_shape[-1] - self._num_classes) / 5
 
-    # Extract the required values
-    class_predictions = feature_map[:, :, :, 0 : self._num_classes]
-    box_scores = feature_map[:, :, :, self._num_classes : self._num_classes + boxes_per_cell]
-    detection_boxes = feature_map[:, :, :, self._num_classes + boxes_per_cell :]
+      # Extract the required values
+      class_predictions = feature_map[:, :, :, 0 : self._num_classes]
+      box_scores = feature_map[:, :, :, self._num_classes : self._num_classes + boxes_per_cell]
+      detection_boxes = feature_map[:, :, :, self._num_classes + boxes_per_cell :]
 
-    # These three variables have shapes [batch_size, grid_size, grid_size, X]
-    # Reshape each of these to [batch_size, grid_size * grid_size * boxes_per_cell, X]
-    class_predictions = tf.reshape(class_predictions, [batch_size, -1, 1, self.num_classes])
-    box_scores = tf.reshape(box_scores, [batch_size, -1, 2, 1])
-    detection_boxes = tf.reshape(detection_boxes, [batch_size, -1, 1, 4])
+      # These three variables have shapes [batch_size, grid_size, grid_size, X]
+      # Reshape each of these to [batch_size, grid_size * grid_size * boxes_per_cell, X]
+      class_predictions = tf.reshape(class_predictions, [batch_size, -1, 1, self.num_classes])
+      box_scores = tf.reshape(box_scores, [batch_size, -1, 2, 1])
+      detection_boxes = tf.reshape(detection_boxes, [batch_size, -1, 1, 4])
 
-    # class, confidence scores, bounding box coordinates
-
-    predictions_dict = {
-        'class_predictions' : class_predictions,
-        'box_scores' : box_scores,
-        'detection_boxes' : detection_boxes,
-    }
+      # class, confidence scores, bounding box coordinates
+      predictions_dict = {
+          'class_predictions' : class_predictions,
+          'box_scores' : box_scores,
+          'detection_boxes' : detection_boxes,
+      }
     return predictions_dict
 
   def postprocess(self, prediction_dict):
@@ -381,7 +376,7 @@ class YOLOMetaArch(model.DetectionModel):
 
     # list of box lists where each box list contains ground truths for each image in a batch
     groundtruth_boxlists = [box_list.BoxList(boxes)
-                            for boxes in self.groundtruth_lists(fields.BoxListFields.boxes)]
+                            for boxes in groundtruth_boxes_list]
 
     # TODO: can we not hard code in the future? Yes, in the future
     S = 7  # grid size
@@ -395,6 +390,7 @@ class YOLOMetaArch(model.DetectionModel):
     responsibility_list_batch = []
     responsibility_list_batch_classes = []
 
+    # TODO Move to function 1
     for i in xrange(len(groundtruth_boxlists)):
       image_boxlist = groundtruth_boxlists[i]
       image_classlist = groundtruth_classes_list[i]
@@ -429,7 +425,6 @@ class YOLOMetaArch(model.DetectionModel):
 
       responsibility_list_batch.append(grid_cell_responsibilities)
       responsibility_list_batch_classes.append(grid_cell_responsibilities_classes)
-
     # the final dimension of this list will be [batch_size, S*S, box_list_size]
     prediction_box_list_batch = []
     detection_boxes_unstacked = tf.unstack(detection_boxes)
@@ -439,13 +434,14 @@ class YOLOMetaArch(model.DetectionModel):
     yoffsets = tf.constant([[j * image_size / S]  for i in xrange(S)
                             for j in xrange(S) for k in xrange(2)])
 
+    # TODO Move to function 2
     for plist in detection_boxes_unstacked:
       # x, y = center of predicted box relative to grid cell
       # w, h  of bounding box are normalized wrt width and height of the image
-      xcenter = detection_boxes[:, :, 0] * 64 + xoffsets
-      ycenter = detection_boxes[:, :, 1] * 64 + yoffsets
-      w = detection_boxes[:, :, 2] * image_size
-      h = detection_boxes[:, :, 3] * image_size
+      xcenter = plist[:, :, 0] * 64 + xoffsets
+      ycenter = plist[:, :, 1] * 64 + yoffsets
+      w = plist[:, :, 2] * image_size
+      h = plist[:, :, 3] * image_size
 
       xmin = xcenter - h * 0.5
       ymin = ycenter - w * 0.5
@@ -459,7 +455,7 @@ class YOLOMetaArch(model.DetectionModel):
       
       assert len(prediction_box_list) == S * S
 
-      prediction_box_list_batch.append((prediction_box_list))
+      prediction_box_list_batch.append(prediction_box_list)
 
     # batch sizes of the two lists should be the same
     assert len(responsibility_list_batch) == len(prediction_box_list_batch)
@@ -473,6 +469,7 @@ class YOLOMetaArch(model.DetectionModel):
     confidence_ground_truth_batch = []
     class_probability_ground_truth_batch = []
 
+    # TODO Move to function 3
     for batch_num in xrange(num_batches):
       #[ [[1,2,3,4]]  [[1,2,3,4]]... 98 times  ]
       I_ij_obj_list = []
@@ -529,7 +526,7 @@ class YOLOMetaArch(model.DetectionModel):
           detection_boxes_ground_truth_list.append(gbox)
           confidence_ground_truth_list.append(tf.constant([[1]]))
 
-        class_probability_ground_truth_list.append(tf.expand_dims(tf.gather(one_hots, match_results[0])), 1)
+        class_probability_ground_truth_list.append(tf.expand_dims(tf.gather(one_hots, match_results[0]), 1))
 
       I_ij_obj_list_batch.append(I_ij_obj_list)
       I_i_obj_list_batch.append(I_i_obj_list)
