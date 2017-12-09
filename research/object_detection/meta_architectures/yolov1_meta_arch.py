@@ -12,8 +12,9 @@ from object_detection.core import box_list_ops
 from object_detection.core import model
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
+import tensorflow.contrib.slim as slim
 
-slim = tf.contrib.slim
+#slim = tf.contrib.slim
 
 class YOLOFeatureExtractor(object):
   """YOLO Feature Extractor definition"""
@@ -96,8 +97,8 @@ class YOLOMetaArch(model.DetectionModel):
       score_conversion_fn: callable elementwise nonlinearity (that takes tensors
         as inputs and returns tensors).  This is usually used to convert logits
         to probabilities.
-      localization_loss_weight: float
-      noobject_loss_weight: float
+      localization_loss_weight: float, same as lambda_coord as in the paper
+      noobject_loss_weight: float, same as lambda_noobj as in the paper
       
     """
     super(YOLOMetaArch, self).__init__(num_classes=num_classes)
@@ -239,8 +240,7 @@ class YOLOMetaArch(model.DetectionModel):
       class_predictions = tf.multiply(box_scores, class_predictions)
       # reshape class probabilities as required by non-max suppression
       class_predictions = tf.reshape(class_predictions, [batch_size, -1, self._num_classes])
-      detection_scores = self._score_conversion_fn(
-          class_predictions)
+      detection_scores = self._score_conversion_fn(class_predictions)
       clip_window = tf.constant([0, 0, 1, 1], tf.float32)
       (nmsed_boxes, nmsed_scores, nmsed_classes, _,
        num_detections) = self._non_max_suppression_fn(detection_boxes,
@@ -284,30 +284,40 @@ class YOLOMetaArch(model.DetectionModel):
            self.groundtruth_lists(fields.BoxListFields.classes),
            detection_boxes,)
 
-      # TODO: I don't know what is summarize_input()
+      # TODO: I don't know what is summarize_input(), commenting it for now
       #if self._add_summaries:
       #  self._summarize_input(
       #      self.groundtruth_lists(fields.BoxListFields.boxes), match_list)
 
+      # Take the square root of the widths and heights of the detected_boxes and merge
+      # the tensor back using the concat operator
       detection_boxes = tf.concat([tf.expand_dims(detection_boxes[:, :, :, :2], 4),
                  tf.expand_dims(tf.sqrt(detection_boxes[:, :, :, 2]), 4),
                  tf.expand_dims(tf.sqrt(detection_boxes[:, :, :, 3]), 4)], 4)
 
+      # compute the four individual terms for the loss function
       localization_loss = self._localization_loss_weight * I_ij_obj * tf.reduce_sum(
         tf.squared_difference(detection_boxes, gt_detection_boxes))
+
       object_loss = I_ij_obj * tf.reduce_sum(tf.squared_difference(
         box_scores, confidence))
+
       noobject_loss = self._noobject_loss_weight * (1 - I_ij_obj) * tf.reduce_sum(
         tf.squared_difference(box_scores, confidence))
+
       classification_loss = I_i_obj * tf.reduce_sum(tf.squared_difference(
         class_predictions, class_scores))
 
+
+      # Not sure why we are supposed to return a dictionary
+      # Not sure what the keys mean
       loss_dict = {
           'localization_loss': localization_loss,
           'classification_loss': classification_loss,
           'object_loss': object_loss,
           'noobject_loss':noobject_loss
       }
+
     return loss_dict
 
   def _assign_yolo_targets(self, groundtruth_boxes_list, groundtruth_classes_list, detection_boxes):
@@ -328,17 +338,17 @@ class YOLOMetaArch(model.DetectionModel):
         grid_size * grid_size * boxes_per_cell, 1, 4] containing the co-ordinates of
         the predicted bounding boxes
     Returns:
-      batch_cls_targets: a tensor with shape [batch_size, num_anchors,
-        num_classes],
-      batch_cls_weights: a tensor with shape [batch_size, num_anchors],
-      batch_reg_targets: a tensor with shape [batch_size, num_anchors,
-        box_code_dimension]
-      batch_reg_weights: a tensor with shape [batch_size, num_anchors],
-      match_list: a list of matcher.Match objects encoding the match between
-        anchors and groundtruth boxes for each image of the batch,
-        with rows of the Match objects corresponding to groundtruth boxes
-        and columns corresponding to anchors.
+
+      # TODO check the code below and replace the ? with appropraite values
+
+      I_ij_obj: a tensor with shape [batch_size, ? ? ?]
+      I_i_obj: a tensor with shape [batch_size, ? ? ?]
+      detection_boxes: a tensor with shape [batch_size, ? ? ?]
+      confidence: a tensor with shape [batch_size, ? ? ?]
+      class_scores: a tensor with shape [batch_size, ? ? ?]
     """
+
+    # TODO use tf.name_scope. Look in all the functions above
 
     # list of box lists where each box list contains ground truths for each image in a batch
     groundtruth_boxlists = [box_list.BoxList(boxes)
@@ -356,7 +366,7 @@ class YOLOMetaArch(model.DetectionModel):
     responsibility_list_batch = []
     responsibility_list_batch_classes = []
 
-    # TODO Move to function 1
+    # TODO Consider moving this chunk of a different function?
     for i in xrange(len(groundtruth_boxlists)):
       image_boxlist = groundtruth_boxlists[i]
       image_classlist = groundtruth_classes_list[i]
@@ -364,6 +374,8 @@ class YOLOMetaArch(model.DetectionModel):
       grid_cell_responsibilities = [[] * (S * S)]
       grid_cell_responsibilities_classes = [[] * (S * S)]
 
+      # Find the center of each ground truth bounding box and hence
+      # the grid cell in which the ground truth lies
       ycenter, xcenter = image_boxlist.get_center_coordinates_and_sizes()[: 2]
       ycenter /= image_size
       ycenter *= S
@@ -380,30 +392,46 @@ class YOLOMetaArch(model.DetectionModel):
       boxes = tf.unstack(image_boxlist.get())
       classes = tf.unstack(image_classlist)
 
-      # push each ground truth into the correct place
+      # push each ground truth and its corresponding one-hot encoding
+      # into the correct place positions
       num_boxes = len(boxes)
       for i in xrange(num_boxes):
         grid_cell_responsibilities[grid_cell_index[i]].append(boxes[i])
         grid_cell_responsibilities_classes[grid_cell_index[i]].append(classes[i])
 
+      # convert each list of tensors into a box_list.BoxList
       for i in xrange(S * S):
         grid_cell_responsibilities[i] = box_list.BoxList(tf.stack(grid_cell_responsibilities[i]))
 
+      # append the list for this batch into the final list
       responsibility_list_batch.append(grid_cell_responsibilities)
       responsibility_list_batch_classes.append(grid_cell_responsibilities_classes)
-    # the final dimension of this list will be [batch_size, S*S, box_list_size]
+
+
+    # Create a list similar to responsibility_list but for ground truth boxes
+    # the idea is that for each batch b and for each grid cell i, we will apply
+    # the matcher on the similarity matrix of prediction_box_list_batch[batch_num][i]
+    # and responsibility_list_batch[batch_num][i] and use this to obtain the indicators
+    # I_ij_obj etc
+
+    # the final dimension of this list should be [batch_size, S*S, box_list_size]
     prediction_box_list_batch = []
     detection_boxes_unstacked = tf.unstack(detection_boxes)
 
+    # xoffets and yoffsets correspond to the top left corners of each grid cell
     xoffsets = tf.constant([[i * image_size / S]  for i in xrange(S)
                             for j in xrange(S) for k in xrange(2)])
     yoffsets = tf.constant([[j * image_size / S]  for i in xrange(S)
                             for j in xrange(S) for k in xrange(2)])
 
-    # TODO Move to function 2
+    # TODO Consider moving this chunk to another function?
     for plist in detection_boxes_unstacked:
+      # convert the predicted bounding boxes into the format
+      # [ymin, xmin, ymax, xmax] so that they can be converted into a box_list.BoxList
+
+      # As per the paper the predicted coordaintes have the following interpretation
       # x, y = center of predicted box relative to grid cell
-      # w, h  of bounding box are normalized wrt width and height of the image
+      # w, h of bounding box are normalized wrt width and height of the image
       xcenter = plist[:, :, 0] * 64 + xoffsets
       ycenter = plist[:, :, 1] * 64 + yoffsets
       w = plist[:, :, 2] * image_size
@@ -414,8 +442,10 @@ class YOLOMetaArch(model.DetectionModel):
       xmax = xcenter + h * 0.5
       ymax = ycenter + w * 0.5
 
+      # combine the tensors into a single tensor
       plist = tf.concat([ymin, xmin, ymax, xmax], 1)
 
+      # convert to a BoxList and append to appropriate to prediction_box_list_batch
       unstacked_plist = tf.unstack(plist)
       prediction_box_list = [box_list.BoxList(boxes) for boxes in unstacked_plist]
       
@@ -423,59 +453,84 @@ class YOLOMetaArch(model.DetectionModel):
 
       prediction_box_list_batch.append(prediction_box_list)
 
-    # batch sizes of the two lists should be the same
+    # sanity check, batch sizes of the two lists should be the same
     assert len(responsibility_list_batch) == len(prediction_box_list_batch)
     num_batches = len(responsibility_list_batch)
 
-
-    # The file lists have to be cast into tensors and then returned
+    # These lists will be cast into tensors and then returned as required by the function
     I_ij_obj_list_batch = []
     I_i_obj_list_batch = []
     detection_boxes_ground_truth_batch = []
     confidence_ground_truth_batch = []
     class_probability_ground_truth_batch = []
 
-    # TODO Move to function 3
+    # TODO Consider moving this chunk to another function
     for batch_num in xrange(num_batches):
-      #[ [[1,2,3,4]]  [[1,2,3,4]]... 98 times  ]
+      # create a list of 0s and 1s corresponding to
+      # I_ij_obj etc. for each image in the batch
       I_ij_obj_list = []
       I_i_obj_list = []
       detection_boxes_ground_truth_list = []
       confidence_ground_truth_list = []
       class_probability_ground_truth_list = []
 
+      # compute the similarity matrix for each grid cell
+      # and pass it to the matcher object to match predicted bounding boxes
+      # with the ground truths that must be predicted from this cell
       for i in xrange(S*S):
         list1 = prediction_box_list_batch[batch_num][i]
         list2 = responsibility_list_batch[batch_num][i]
         one_hots = responsibility_list_batch_classes[batch_num][i]
 
+        # corner case, if there is no ground truth in this cell
+        # passing an empty list to the Matcher class will raise an error
         if len(list2) == 0:
+          # By setting these values to 0 we ensure that no matter what the
+          # result of the computation is in X - \hat(X), it will get multiplied by 0
+          # and won't have any contribution in the answer
+
+          # Two values for I_ij_obj, one multiplier for each predicted bounding box
           I_ij_obj_list.append(tf.constant([[0]]))
           I_ij_obj_list.append(tf.constant([[0]]))
 
+          # Only one value is required for I_i_obj
           I_i_obj_list.append(tf.constant([[0]]))
 
-          # now add dummy data to ensure that tensors have the correct size
+          # now add dummy data to ensure that other tensors have the correct size
           detection_boxes_ground_truth_list.append(tf.constant([[0, 0, 0, 0]]))
           detection_boxes_ground_truth_list.append(tf.constant([[0, 0, 0, 0]]))
-
           confidence_ground_truth_list.append(tf.constant([[0]]))
           class_probability_ground_truth_list.append(tf.constant([[0] * self._num_classes]))
           continue
 
-
+        # create the match object using the provided Matcher
         matchObject = self._matcher(self._region_similarity_calculator(list1, list2))
 
+
+        # 0 if no ground truth was matched, 1 otherwise
+        # remember that the columns in the similarity matrix corresponded to the
+        # ground truth bounding boxes
         tmp_columns = tf.unstack(matchObject.matched_column_indicator())
         for col_id in tmp_columns:
           I_ij_obj_list.append(tf.constant([col_id]))
 
+        # if there was at least one ground truth that was matched to some prediction,
+        # then we append 1, else we append 0
         I_i_obj_list.append(tf.constant([[1 if len(tmp_columns) > 0 else 0]]))
 
+        # now we must convert the ground truth coordinates from
+        # ymin ymax xmin xmax to xc, yc, w, h
+        # i.e., center of box relative to grid cell
+        # and width and height scaled by image width and height
+        # we do this because in the computation of the loss function
+        # we intend to do X - X_gt and hence X_gt must be in the same format as X
+        # esentially, we have just followed the paper
         tly = i % S
         tlx = i / S
         window = [tly * 64, tlx * 64, (tly+1) * 64, (tlx+1) * 64]
         h, w = box_list_ops.height_width(list2)
+
+        # TODO pretty long line :/
         ycenter, xcenter = box_list_ops.change_coordinate_frame(list2, tf.constant(window)).get_center_coordinates_and_sizes()[: 2]
 
         xcenter = tf.expand_dims(xcenter, 1)
@@ -483,17 +538,25 @@ class YOLOMetaArch(model.DetectionModel):
         w = tf.expand_dims(tf.sqrt(w), 1)
         h = tf.expand_dims(tf.sqrt(h), 1)
 
+        # this corresponds to the ground truth data after it has been
         normalized_gt_boxes = tf.concat([xcenter, ycenter, w, h], 1)
 
+        # if there was no match for a particular predicted bounding box,
+        # then we can just use the co-ordinates of any gt bounding box
+        # this is because no matter what the value is, I_ij_obj will ensure
+        # that the contribution from this location would sum to 0
         match_results = matchObject.match_results()
         match_results = tf.where(tf.greater(match_results, -1), match_results, tf.zeros_like(match_results))
 
+        # build the X_gt list by placing the coordinates of the matched gt box
+        # at the correct location
         for gbox in tf.unstack(tf.expand_dims(tf.gather(normalized_gt_boxes, match_results), 1)):
           detection_boxes_ground_truth_list.append(gbox)
           confidence_ground_truth_list.append(tf.constant([[1]]))
 
         class_probability_ground_truth_list.append(tf.expand_dims(tf.gather(one_hots, match_results[0]), 1))
 
+      # append all the lists for one image to the lists corresponding to the batches
       I_ij_obj_list_batch.append(I_ij_obj_list)
       I_i_obj_list_batch.append(I_i_obj_list)
       detection_boxes_ground_truth_batch.append(detection_boxes_ground_truth_list)
