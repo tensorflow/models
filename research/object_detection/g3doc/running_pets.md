@@ -81,7 +81,7 @@ Oxford-IIIT Pet dataset into TFRecords. Run the following commands from the
 
 ``` bash
 # From tensorflow/models/research/
-python object_detection/create_pet_tf_record.py \
+python object_detection/dataset_tools/create_pet_tf_record.py \
     --label_map_path=object_detection/data/pet_label_map.pbtxt \
     --data_dir=`pwd` \
     --output_dir=`pwd`
