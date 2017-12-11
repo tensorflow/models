@@ -118,7 +118,16 @@ source. You'll need to install:
     *   `pip install pygraphviz
         --install-option="--include-path=/usr/include/graphviz"
         --install-option="--library-path=/usr/lib/graphviz/"`
+*   nccl (if installing with GPU support)
+```shell
+    git clone https://github.com/NVIDIA/nccl.git
+    cd nccl/
+    make CUDA_HOME=/usr/local/cuda
 
+    sudo make install
+    sudo mkdir -p /usr/local/include/external/nccl_archive/src
+    sudo ln -s /usr/local/include/nccl.h /usr/local/include/external/nccl_archive/src/nccl.h
+```
 Once you completed the above steps, you can build and test SyntaxNet with the
 following commands:
 
