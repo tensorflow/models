@@ -296,26 +296,20 @@ class YOLOMetaArch(model.DetectionModel):
                  tf.expand_dims(tf.sqrt(detection_boxes[:, :, :, 3]), 4)], 4)
 
       # compute the four individual terms for the loss function
-      localization_loss = self._localization_loss_weight * I_ij_obj * tf.reduce_sum(
-        tf.squared_difference(detection_boxes, gt_detection_boxes))
-
-      object_loss = I_ij_obj * tf.reduce_sum(tf.squared_difference(
-        box_scores, confidence))
-
-      noobject_loss = self._noobject_loss_weight * (1 - I_ij_obj) * tf.reduce_sum(
-        tf.squared_difference(box_scores, confidence))
-
-      classification_loss = I_i_obj * tf.reduce_sum(tf.squared_difference(
-        class_predictions, class_scores))
-
-
-      # Not sure why we are supposed to return a dictionary
-      # Not sure what the keys mean
+      location_losses = self._localization_loss(detection_boxes, gt_detection_boxes, weights=I_ij_obj)
+      cls_losses = self._classification_loss(class_predictions, class_scores, weights=I_i_obj)
+      obj_losses = self._object_loss(box_scores, confidence, weights=I_ij_obj)
+      noobj_losses = self._noobj_loss(box_scores, confidence, weights=(1 - I_ij_obj))
+        
       loss_dict = {
-          'localization_loss': localization_loss,
-          'classification_loss': classification_loss,
-          'object_loss': object_loss,
-          'noobject_loss':noobject_loss
+          'localization_loss': (self._localization_loss_weight) *
+                               localization_loss,
+          'classification_loss': (self._classification_loss_weight) * 
+                                classification_loss
+          'object_loss': obj_loss,
+          'noobj_loss': (self._noobject_loss_weight) * 
+                                classification_loss
+        
       }
 
     return loss_dict

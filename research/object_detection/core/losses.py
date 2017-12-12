@@ -336,6 +336,30 @@ class BootstrappedSigmoidClassificationLoss(Loss):
     return tf.reduce_sum(per_entry_cross_ent * tf.expand_dims(weights, 2))
 
 
+class WeightedYOLOLoss(Loss):
+  """IOU localization loss function.
+
+  Sums the IOU for corresponding pairs of predicted/groundtruth boxes
+  and for each pair assign a loss of 1 - IOU.  We then compute a weighted
+  sum over all pairs which is returned as the total loss.
+  """
+
+  def _compute_loss(self, prediction_tensor, target_tensor, weights):
+    """Compute loss function.
+
+    Args:
+      prediction_tensor: A float tensor of shape [batch_size, gridcell*gridcell*bboxes, 1, 4]
+        representing the decoded predicted boxes
+      target_tensor: A float tensor of shape [batch_size, gridcell*gridcell*bboxes, 1, 4]
+        representing the decoded target boxes
+      weights: a float tensor of shape [batch_size, gridcell*gridcell*bboxes, 1]
+
+    Returns:
+      loss: a (scalar) tensor representing the value of the loss function
+    """
+    return tf.reduce_sum(weights * tf.reduce_sum(tf.squared_difference(detection_boxes, gt_detection_boxes), 4))
+
+
 class HardExampleMiner(object):
   """Hard example mining for regions in a list of images.
 
