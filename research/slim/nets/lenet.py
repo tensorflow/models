@@ -51,7 +51,7 @@ def lenet(images, num_classes=10, is_training=False,
 
   Returns:
      net: a 2D Tensor with the logits (pre-softmax activations) if num_classes
-      is a non-zero integer, or the inon-dropped-out nput to the logits layer
+      is a non-zero integer, or the non-dropped-out input to the logits layer
       if num_classes is 0 or None.
     end_points: a dictionary from components of the network to the corresponding
       activation.
