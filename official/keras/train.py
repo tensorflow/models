@@ -3,6 +3,7 @@ import tensorflow as tf
 import keras
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from keras.callbacks import ReduceLROnPlateau
+from keras.optimizers import Adam
 import resnet50_cifar10_model
 import cifar10_dataset
 import argparse
@@ -48,11 +49,18 @@ def lr_schedule(epoch):
   return lr
 
 
-def train(model, iterator_y_train, optimizer, loss_fn):
+def train(resnet50_cifar10_model, train_dataset, test_dataset, optimizer, loss_fn):
+  train_dataset = train_dataset.batch(FLAGS.batch_size)
+  test_dataset = test_dataset.batch(FLAGS.batch_size)
+
+  (train_images, train_labels) = train_dataset.make_one_shot_iterator().get_next()
+  (test_images, test_labels) = test_dataset.make_one_shot_iterator().get_next()
+
+  model = resnet50_model(train_images)
 
   model.compile(loss=loss_fn,
-                optimizer=keras.optimizers.TFOptimizer(optimizer),
-                target_tensors=[iterator_y_train.get_next()],
+                 optimizer=keras.optimizers.TFOptimizer(optimizer),
+                target_tensors=[train_labels],
                 metrics=['accuracy'])
 
   # Prepare model model saving directory.
@@ -80,25 +88,33 @@ def train(model, iterator_y_train, optimizer, loss_fn):
             callbacks=callbacks)
   model.save_weights('saved_wt.h5')
 
-def resnet50_model(iterator_x_train):
+  # Evaluate model
+  test_model = resnet50_model(test_images)
+  test_model.load_weights('saved_wt.h5')
+  test_model.compile(optimizer=keras.optimizers.TFOptimizer(optimizer),
+                     loss=loss_fn,
+                     target_tensors=[test_labels],
+                     metrics=['accuracy'])
+  loss, acc = test_model.evaluate(steps=1, verbose=1)
+
+  # Score trained model.
+  print('Test loss:', loss)
+  print('Test accuracy:', acc)
+
+
+def resnet50_model(train_images_tensors):
   depth = 50
   input_shape = (32, 32, 3)
-  input_vals = keras.layers.Input(tensor=iterator_x_train.get_next())
+  input_vals = keras.layers.Input(tensor=train_images_tensors)
   model = resnet50_cifar10_model.resnet_v1(input_shape=input_shape, depth=depth,
                                            input_tensor=input_vals)
   return model
 
-def main():
-  input_shape, dataset_x_train, dataset_x_test, \
-  dataset_y_train, dataset_y_test= cifar10_dataset.get_train_eval_dataset()
+def main(unparser):
+  input_shape, train_dataset, test_dataset = cifar10_dataset.get_train_eval_dataset()
 
-  iterator_x_train = dataset_x_train.batch(FLAGS.batch_size).\
-    make_one_shot_iterator()
-  iterator_y_train = dataset_y_train.batch(FLAGS.batch_size).\
-    make_one_shot_iterator()
-
-  train(resnet50_model(iterator_x_train), iterator_y_train,
-        tf.train.Adam(lr=lr_schedule(0)), loss='categorical_crossentropy')
+  train(resnet50_cifar10_model, train_dataset, test_dataset,
+        Adam(lr=lr_schedule(0)), loss_fn='categorical_crossentropy')
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)

@@ -1,7 +1,7 @@
 import keras
 from keras.datasets import cifar10
 import numpy as np
-from tensorflow.contrib.data import Dataset
+import tensorflow as tf
 
 def get_train_eval_dataset():
   num_classes = 10
@@ -27,10 +27,6 @@ def get_train_eval_dataset():
   y_train = keras.utils.to_categorical(y_train, num_classes)
   y_test = keras.utils.to_categorical(y_test, num_classes)
 
-  dataset_x_train = Dataset.from_tensor_slices(x_train)
-  dataset_y_train = Dataset.from_tensor_slices(y_train)
-
-  dataset_x_test = Dataset.from_tensor_slices(x_test)
-  dataset_y_test = Dataset.from_tensor_slices(y_test)
-
-  return x_train.shape[1:], dataset_x_train, dataset_x_test, dataset_y_train, dataset_y_test
+  train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+  test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
+  return x_train.shape[1:], train_dataset, test_dataset
