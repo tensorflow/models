@@ -46,3 +46,6 @@ python imagenet_main.py --data_dir=/path/to/imagenet
 The model will begin training and will automatically evaluate itself on the validation data roughly once per epoch.
 
 Note that there are a number of other options you can specify, including `--model_dir` to choose where to store the model and `--resnet_size` to choose the model size (options include ResNet-18 through ResNet-200). See [`imagenet_main.py`](imagenet_main.py) for the full list of options.
+
+### Pre-trained model
+You can download a 190 MB pre-trained version of ResNet-50 achieving 75.3% top-1 single-crop accuracy here: [resnet50_2017_11_30.tar.gz](http://download.tensorflow.org/models/official/resnet50_2017_11_30.tar.gz). Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
