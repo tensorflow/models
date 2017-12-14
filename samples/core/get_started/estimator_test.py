@@ -23,7 +23,6 @@ import pandas as pd
 
 from six.moves import StringIO
 
-import iris_data
 import custom_estimator
 import premade_estimator
 
@@ -36,7 +35,7 @@ FOUR_LINES = "\n".join([
 def four_lines_data():
   text = StringIO(FOUR_LINES)
 
-  df = pd.read_csv(text, names=iris_data.CSV_COLUMN_NAMES)
+  df = pd.read_csv(text, names=premade_estimator.CSV_COLUMN_NAMES)
 
   xy = (df, df.pop("Species"))
   return xy, xy
