@@ -1,12 +1,14 @@
 from __future__ import print_function
-import keras
-from keras.layers import Dense, Conv2D, BatchNormalization, Activation
-from keras.layers import AveragePooling2D, Input, Flatten
-from keras.regularizers import l2
-from keras import backend as K
-from keras.models import Model
-from keras.engine.topology import get_source_inputs
 
+import keras
+from keras import backend as K
+from keras.engine.topology import get_source_inputs
+from keras.layers import AveragePooling2D, Input, Flatten
+from keras.layers import Dense, Conv2D, BatchNormalization, Activation
+from keras.models import Model
+from keras.regularizers import l2
+
+# Model adapted from keras/examples
 # Model parameter
 # ----------------------------------------------------------------------------
 #           |      | 200-epoch | Orig Paper| 200-epoch | Orig Paper| sec/epoch

@@ -1,15 +1,14 @@
 from __future__ import print_function
-import tensorflow as tf
-import keras
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler
-from keras.callbacks import ReduceLROnPlateau
-from keras.optimizers import Adam
-import resnet50_cifar10_model
-import cifar10_dataset
+
 import argparse
-import sys
 import os
-import numpy as np
+import sys
+
+import cifar10_dataset
+import keras
+from keras.callbacks import ModelCheckpoint
+import resnet50_cifar10_model
+import tensorflow as tf
 
 # Training parameters
 parser = argparse.ArgumentParser()
@@ -23,38 +22,19 @@ parser.add_argument(
 parser.add_argument(
     '--epochs',
     type=int,
-    default=200,
+    default=2,
     help='Number of training steps')
-
-
-def lr_schedule(epoch):
-  """Learning Rate Schedule
-  Learning rate is scheduled to be reduced after 80, 120, 160, 180 epochs.
-  Called automatically every epoch as part of callbacks during training.
-  # Arguments
-      epoch (int): The number of epochs
-  # Returns
-      lr (float32): learning rate
-  """
-  lr = 1e-3
-  if epoch > 180:
-    lr *= 0.5e-3
-  elif epoch > 160:
-    lr *= 1e-3
-  elif epoch > 120:
-    lr *= 1e-2
-  elif epoch > 80:
-    lr *= 1e-1
-  print('Learning rate: ', lr)
-  return lr
-
 
 def train(resnet50_cifar10_model, train_dataset, test_dataset, optimizer, loss_fn):
   train_dataset = train_dataset.batch(FLAGS.batch_size)
   test_dataset = test_dataset.batch(FLAGS.batch_size)
 
   (train_images, train_labels) = train_dataset.make_one_shot_iterator().get_next()
+  train_images = tf.cast(train_images, tf.float32)
+  train_labels = tf.cast(train_labels, tf.float32)
   (test_images, test_labels) = test_dataset.make_one_shot_iterator().get_next()
+  test_images = tf.cast(test_images, tf.float32)
+  test_labels = tf.cast(test_labels, tf.float32)
 
   model = resnet50_model(train_images)
 
@@ -70,20 +50,12 @@ def train(resnet50_cifar10_model, train_dataset, test_dataset, optimizer, loss_f
   if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
   filepath = os.path.join(save_dir, model_name)
-  # Prepare callbacks for model saving and for learning rate adjustment.
+  # Prepare callbacks for model saving
   checkpoint = ModelCheckpoint(filepath=filepath,
                                monitor='val_acc',
                                verbose=1,
                                save_best_only=True)
-
-  lr_scheduler = LearningRateScheduler(lr_schedule)
-
-  lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
-                                 cooldown=0,
-                                 patience=5,
-                                 min_lr=0.5e-6)
-
-  callbacks = [checkpoint, lr_reducer, lr_scheduler]
+  callbacks = [checkpoint]
   model.fit(steps_per_epoch=1, epochs=FLAGS.epochs, verbose=1,
             callbacks=callbacks)
   model.save_weights('saved_wt.h5')
@@ -97,7 +69,7 @@ def train(resnet50_cifar10_model, train_dataset, test_dataset, optimizer, loss_f
                      metrics=['accuracy'])
   loss, acc = test_model.evaluate(steps=1, verbose=1)
 
-  # Score trained model.
+  # Print eval results
   print('Test loss:', loss)
   print('Test accuracy:', acc)
 
@@ -114,7 +86,7 @@ def main(unparser):
   input_shape, train_dataset, test_dataset = cifar10_dataset.get_train_eval_dataset()
 
   train(resnet50_cifar10_model, train_dataset, test_dataset,
-        Adam(lr=lr_schedule(0)), loss_fn='categorical_crossentropy')
+        tf.train.AdamOptimizer(learning_rate=0.001), loss_fn='categorical_crossentropy')
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
