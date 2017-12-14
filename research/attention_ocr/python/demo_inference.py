@@ -86,8 +86,9 @@ def run(checkpoint, batch_size, dataset_name, image_path_pattern):
 
 def main(_):
   print("Predicted strings:")
-  for line in run(FLAGS.checkpoint, FLAGS.batch_size, FLAGS.dataset_name,
-                  FLAGS.image_path_pattern):
+  predictions = run(FLAGS.checkpoint, FLAGS.batch_size, FLAGS.dataset_name,
+                  FLAGS.image_path_pattern)
+  for line in predictions:
     print(line)
 
 
