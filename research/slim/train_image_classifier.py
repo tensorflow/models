@@ -186,6 +186,11 @@ tf.app.flags.DEFINE_string(
     'preprocessing_name', None, 'The name of the preprocessing to use. If left '
     'as `None`, then the model_name flag is used.')
 
+tf.app.flags.DEFINE_boolean(
+    'fast_preprocessing', True,
+    'Avoids slower preprocessing ops (random_hue and random_contrast)')
+
+
 tf.app.flags.DEFINE_integer(
     'batch_size', 32, 'The number of samples in each batch.')
 
@@ -436,7 +441,7 @@ def main(_):
 
       train_image_size = FLAGS.train_image_size or network_fn.default_image_size
 
-      image = image_preprocessing_fn(image, train_image_size, train_image_size)
+      image = image_preprocessing_fn(image, train_image_size, train_image_size, fast_mode=FLAGS.fast_preprocessing)
 
       images, labels = tf.train.batch(
           [image, label],
