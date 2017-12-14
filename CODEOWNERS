@@ -9,7 +9,8 @@ research/cognitive_mapping_and_planning/* @s-gupta
 research/compression/* @nmjohn
 research/delf/* @andrefaraujo
 research/differential_privacy/* @panyx0718
-research/domain_adaptation/* @bousmalis @ddohan
+research/domain_adaptation/* @bousmalis @dmrd
+research/gan/* @joel-shor
 research/im2txt/* @cshallue
 research/inception/* @shlens @vincentvanhoucke
 research/learned_optimizer/* @olganw @nirum
@@ -31,9 +32,11 @@ research/slim/* @sguada @nathansilberman
 research/street/* @theraysmith
 research/swivel/* @waterson
 research/syntaxnet/* @calberti @andorardo @bogatyy @markomernick
+research/tcn/* @coreylynch @sermanet
 research/textsum/* @panyx0718 @peterjliu
 research/transformer/* @daviddao
 research/video_prediction/* @cbfinn
+research/fivo/* @dieterichlawson
 samples/* @MarkDaoust
 tutorials/embedding/* @zffchen78 @a-dai
 tutorials/image/* @sherrym @shlens

@@ -162,7 +162,7 @@ class PTBModel(object):
     optimizer = tf.train.GradientDescentOptimizer(self._lr)
     self._train_op = optimizer.apply_gradients(
         zip(grads, tvars),
-        global_step=tf.contrib.framework.get_or_create_global_step())
+        global_step=tf.train.get_or_create_global_step())
 
     self._new_lr = tf.placeholder(
         tf.float32, shape=[], name="new_learning_rate")
@@ -213,13 +213,15 @@ class PTBModel(object):
     # Slightly better results can be obtained with forget gate biases
     # initialized to 1 but the hyperparameters of the model would need to be
     # different than reported in the paper.
-    cell = self._get_lstm_cell(config, is_training)
-    if is_training and config.keep_prob < 1:
-      cell = tf.contrib.rnn.DropoutWrapper(
-          cell, output_keep_prob=config.keep_prob)
+    def make_cell():
+      cell = self._get_lstm_cell(config, is_training)
+      if is_training and config.keep_prob < 1:
+        cell = tf.contrib.rnn.DropoutWrapper(
+            cell, output_keep_prob=config.keep_prob)
+      return cell
 
     cell = tf.contrib.rnn.MultiRNNCell(
-        [cell for _ in range(config.num_layers)], state_is_tuple=True)
+        [make_cell() for _ in range(config.num_layers)], state_is_tuple=True)
 
     self._initial_state = cell.zero_state(config.batch_size, data_type())
     state = self._initial_state
@@ -329,7 +331,7 @@ class SmallConfig(object):
   lr_decay = 0.5
   batch_size = 20
   vocab_size = 10000
-  rnn_mode = CUDNN
+  rnn_mode = BLOCK
 
 
 class MediumConfig(object):
