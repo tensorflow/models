@@ -27,7 +27,7 @@ import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import six
 import tensorflow as tf
-import box_label_manager
+import object_detection.utils.box_label_manager as box_label_manager
 
 
 _TITLE_LEFT_MARGIN = 10
