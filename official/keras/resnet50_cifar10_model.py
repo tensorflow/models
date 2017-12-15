@@ -1,12 +1,7 @@
 from __future__ import print_function
 
 import keras
-from keras import backend as K
-from keras.engine.topology import get_source_inputs
-from keras.layers import AveragePooling2D, Input, Flatten
-from keras.layers import Dense, Conv2D, BatchNormalization, Activation
-from keras.models import Model
-from keras.regularizers import l2
+from keras import layers
 
 # Model adapted from keras/examples
 # Model parameter
@@ -21,25 +16,19 @@ from keras.regularizers import l2
 # ResNet56  |  9   | 92.71     | 93.03     | 92.60     | NA        | 90 (100)
 # ResNet110 |  18  | 92.65     | 93.39     | 93.03     | 93.63     | 165(180)
 # ---------------------------------------------------------------------------
-n = 8
+N = 8
 
 # Model version
 # Orig paper: version = 1 (ResNet v1), Improved ResNet: version = 2 (ResNet v2)
-version = 1
+VERSION = 1
 
 # Computed depth from supplied model parameter n
-depth = n * 6 + 2
+DEPTH = N * 6 + 2
 
-# Model name, depth and version
-model_type = 'ResNet%dv%d' % (depth, version)
-
-def resnet_block(inputs,
-    num_filters=16,
-    kernel_size=3,
-    strides=1,
-    activation='relu',
-    conv_first=True):
+def resnet_block(inputs, num_filters=16, kernel_size=3, strides=1,
+    activation='relu', conv_first=True):
   """2D Convolution-Batch Normalization-Activation stack builder
+
   # Arguments
       inputs (tensor): input tensor from input image or previous layer
       num_filters (int): Conv2D number of filters
@@ -48,34 +37,37 @@ def resnet_block(inputs,
       activation (string): activation name
       conv_first (bool): conv-bn-activation (True) or
           activation-bn-conv (False)
+
   # Returns
       x (tensor): tensor as input to the next layer
   """
   if conv_first:
-    x = Conv2D(num_filters,
-               kernel_size=kernel_size,
-               strides=strides,
-               padding='same',
-               kernel_initializer='he_normal',
-               kernel_regularizer=l2(1e-4))(inputs)
-    x = BatchNormalization()(x)
+    x = layers.Conv2D(num_filters,
+                      kernel_size=kernel_size,
+                      strides=strides,
+                      padding='same',
+                      kernel_initializer='he_normal',
+                      kernel_regularizer=keras.regularizers.l2(1e-4))(inputs)
+    x = layers.BatchNormalization()(x)
     if activation:
-      x = Activation(activation)(x)
+      x = layers.Activation(activation)(x)
     return x
-  x = BatchNormalization()(inputs)
+
+  x = layers.BatchNormalization()(inputs)
   if activation:
-    x = Activation('relu')(x)
-  x = Conv2D(num_filters,
-             kernel_size=kernel_size,
-             strides=strides,
-             padding='same',
-             kernel_initializer='he_normal',
-             kernel_regularizer=l2(1e-4))(x)
+    x = layers.Activation('relu')(x)
+  x = layers.Conv2D(num_filters,
+                    kernel_size=kernel_size,
+                    strides=strides,
+                    padding='same',
+                    kernel_initializer='he_normal',
+                    kernel_regularizer=keras.regularizers.l2(1e-4))(x)
   return x
 
 
-def resnet_v1(input_shape, depth, num_classes=10,input_tensor=None):
+def resnet_v1(input_shape, depth, num_classes=10, input_tensor=None):
   """ResNet Version 1 Model builder [a]
+
   Stacks of 2 x (3 x 3) Conv2D-BN-ReLU
   Last ReLU is after the shortcut connection.
   The number of filters doubles when the feature maps size
@@ -86,10 +78,12 @@ def resnet_v1(input_shape, depth, num_classes=10,input_tensor=None):
   ResNet44 0.66M
   ResNet56 0.85M
   ResNet110 1.7M
+
   # Arguments
       input_shape (tensor): shape of input image tensor
       depth (int): number of core convolutional layers
       num_classes (int): number of classes (CIFAR10 has 10)
+
   # Returns
       model (Model): Keras model instance
   """
@@ -97,10 +91,10 @@ def resnet_v1(input_shape, depth, num_classes=10,input_tensor=None):
     raise ValueError('depth should be 6n+2 (eg 20, 32, 44 in [a])')
   # Start model definition.
   if input_tensor is None:
-    img_input = Input(shape=input_shape)
+    img_input = layers.Input(shape=input_shape)
   else:
-    if not K.is_keras_tensor(input_tensor):
-      img_input = Input(tensor=input_tensor, shape=input_shape)
+    if not keras.backend.is_keras_tensor(input_tensor):
+      img_input = layers.Input(tensor=input_tensor, shape=input_shape)
     else:
       img_input = input_tensor
   num_filters = 16
@@ -127,23 +121,17 @@ def resnet_v1(input_shape, depth, num_classes=10,input_tensor=None):
                          strides=strides,
                          activation=None)
       x = keras.layers.add([x, y])
-      x = Activation('relu')(x)
+      x = layers.Activation('relu')(x)
     num_filters = 2 * num_filters
 
   # Add classifier on top.
   # v1 does not use BN after last shortcut connection-ReLU
-  x = AveragePooling2D(pool_size=8)(x)
-  y = Flatten()(x)
-  outputs = Dense(num_classes,
-                  activation='softmax',
+  x = layers.AveragePooling2D(pool_size=8)(x)
+  y = layers.Flatten()(x)
+  outputs = layers.Dense(num_classes,
+                  activation='softmax_crossentropy',
                   kernel_initializer='he_normal')(y)
 
-  # Ensure that the model takes into account
-  # any potential predecessors of `input_tensor`.
-  if input_tensor is not None:
-    inputs = get_source_inputs(input_tensor)
-  else:
-    inputs = img_input
   # Instantiate model.
-  model = Model(inputs=inputs, outputs=outputs)
+  model = keras.engine.Model(inputs=img_input, outputs=outputs)
   return model

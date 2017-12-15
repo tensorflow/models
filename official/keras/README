@@ -4,4 +4,4 @@ The resnet50_cifar10 keras model has been adapted from keras/examples/cifar10_re
 function uses the cifar10 dataset and keras's function to load and extract data.
 
 This is an initial version of what a Keras model would look like in the garden. This has also
-helped flush out a few details regarding how to use data tensors to train and evaluate models. 
+helped flush out a few details regarding how to use data tensors to train and evaluate models.

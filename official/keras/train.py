@@ -25,11 +25,13 @@ parser.add_argument(
     default=2,
     help='Number of training steps')
 
-def train(resnet50_cifar10_model, train_dataset, test_dataset, optimizer, loss_fn):
+def train(resnet50_cifar10_model, train_dataset, test_dataset, optimizer,
+    loss_fn):
   train_dataset = train_dataset.batch(FLAGS.batch_size)
   test_dataset = test_dataset.batch(FLAGS.batch_size)
 
-  (train_images, train_labels) = train_dataset.make_one_shot_iterator().get_next()
+  (train_images, train_labels) = \
+    train_dataset.make_one_shot_iterator().get_next()
   train_images = tf.cast(train_images, tf.float32)
   train_labels = tf.cast(train_labels, tf.float32)
   (test_images, test_labels) = test_dataset.make_one_shot_iterator().get_next()
@@ -39,7 +41,7 @@ def train(resnet50_cifar10_model, train_dataset, test_dataset, optimizer, loss_f
   model = resnet50_model(train_images)
 
   model.compile(loss=loss_fn,
-                 optimizer=keras.optimizers.TFOptimizer(optimizer),
+                optimizer=optimizer,
                 target_tensors=[train_labels],
                 metrics=['accuracy'])
 
@@ -83,10 +85,14 @@ def resnet50_model(train_images_tensors):
   return model
 
 def main(unparser):
-  input_shape, train_dataset, test_dataset = cifar10_dataset.get_train_eval_dataset()
+  input_shape, train_dataset, test_dataset = \
+    cifar10_dataset.get_train_eval_dataset()
 
-  train(resnet50_cifar10_model, train_dataset, test_dataset,
-        tf.train.AdamOptimizer(learning_rate=0.001), loss_fn='categorical_crossentropy')
+  train(model=resnet50_cifar10_model.resnet_v1,
+        train_dataset=train_dataset,
+        test_dataset=test_dataset,
+        optimizer=tf.train.AdamOptimizer(learning_rate=0.001),
+        loss_fn='categorical_crossentropy')
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
