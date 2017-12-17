@@ -175,10 +175,16 @@ def draw_bounding_box_on_image(image,
       draw.line([(left, top), (left, bottom), (right, bottom),
             (right, top), (left, top)], width=thickness, fill=color)
 
+  b_arial = False
   try:
       font = ImageFont.truetype('arial.ttf', font_size)
+      b_arial = True
   except IOError:
-      font = ImageFont.load_default()
+      try:
+          font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeMono.ttf", font_size)
+      except IOError:
+          font = ImageFont.load_default()
+          font_size = 24
 
   # Frederic TOST
   # Case where font_size == 0 (auto mode), select the best font size
@@ -189,10 +195,14 @@ def draw_bounding_box_on_image(image,
       while font.getsize("O")[0] < 0.02 * image.height:
           # iterate until the text size is just larger than the criteria
           fontsize += 1
-          font = ImageFont.truetype("arial.ttf", fontsize)
+          if b_arial:
+              font = ImageFont.truetype("arial.ttf", fontsize)
+          else:
+              font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeMono.ttf", font_size)
           safety_counter = safety_counter + 1
           if safety_counter > 100:
               fontsize = 24
+              break
       font_size = fontsize
 
   text_bottom = top
