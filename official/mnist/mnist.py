@@ -58,6 +58,10 @@ parser.add_argument(
     'with CPU. If left unspecified, the data format will be chosen '
     'automatically based on whether TensorFlow was built for CPU or GPU.')
 
+parser.add_argument(
+    '--export_dir',
+    type=str,
+    help='The directory where the exported SavedModel will be stored.')
 
 def train_dataset(data_dir):
   """Returns a tf.data.Dataset yielding (image, label) pairs for training."""
@@ -152,6 +156,9 @@ def mnist_model(inputs, mode, data_format):
 
 def mnist_model_fn(features, labels, mode, params):
   """Model function for MNIST."""
+  if mode == tf.estimator.ModeKeys.PREDICT and isinstance(features,dict):
+    features = features['image_raw']
+  
   logits = mnist_model(features, mode, params['data_format'])
 
   predictions = {
@@ -160,7 +167,9 @@ def mnist_model_fn(features, labels, mode, params):
   }
 
   if mode == tf.estimator.ModeKeys.PREDICT:
-    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+    export_outputs={'classify': tf.estimator.export.PredictOutput(predictions)}
+    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions,
+                                      export_outputs=export_outputs)
 
   loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
 
@@ -221,6 +230,13 @@ def main(unused_argv):
   eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
   print()
   print('Evaluation results:\n\t%s' % eval_results)
+
+  # Export the model
+  if FLAGS.export_dir is not None:
+    image = tf.placeholder(tf.float32,[None, 28, 28])
+    serving_input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn(
+        {"image_raw":image})
+    mnist_classifier.export_savedmodel(FLAGS.export_dir, serving_input_fn)
 
 
 if __name__ == '__main__':
