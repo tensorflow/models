@@ -23,9 +23,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN mkdir -p /opt
 
-RUN git clone https://github.com/tensorflow/models.git /opt/tf-models
-# TODO(karmel): Remove this when testing is not on a branch
-RUN cd /opt/tf-models && git checkout feature/kubeflow-testing
-
 COPY hello_tensorflow.py /opt
+RUN git clone https://github.com/tensorflow/models.git /opt/tf-models
+WORKDIR /opt/tf-models
+# TODO(karmel): Remove this when testing is not on a branch
+RUN git checkout feature/kubeflow-testing
+
+CMD ["git update"]
 CMD ["python", "/opt/hello_tensorflow.py"]

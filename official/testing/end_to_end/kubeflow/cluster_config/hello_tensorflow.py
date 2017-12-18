@@ -6,7 +6,7 @@ import tensorflow as tf
 
 def main():
   s = tf.constant("Hello, Tensorflow!")
-  tf.Session().run(s)
+  print(tf.Session().run(s))
 
 
 if __name__ == '__main__':
