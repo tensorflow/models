@@ -47,10 +47,6 @@ parser.add_argument(
 
 parser.add_argument(
     '--train_epochs', type=int, default=40, help='Number of epochs to train.')
-parser.add_argument('--export_dir', type=str, help='The directory where'
-                   'the exported model (in SavedModel format) will be stored.')
-parser.add_argument('--skip_training', action='store_true')
-
 
 parser.add_argument(
     '--data_format',
@@ -62,6 +58,10 @@ parser.add_argument(
     'with CPU. If left unspecified, the data format will be chosen '
     'automatically based on whether TensorFlow was built for CPU or GPU.')
 
+parser.add_argument(
+    '--export_dir',
+    type=str,
+    help='The directory where the exported SavedModel will be stored.')
 
 def train_dataset(data_dir):
   """Returns a tf.data.Dataset yielding (image, label) pairs for training."""
@@ -155,12 +155,10 @@ def mnist_model(inputs, mode, data_format):
 
 
 def mnist_model_fn(features, labels, mode, params):
-  if mode == tf.estimator.ModeKeys.PREDICT and isinstance(features,dict):
-    image = features['image_raw']
-    #Normalize the values of the image from the range [0, 255] to [-0.5, 0.5]
-    image = tf.cast(image, tf.float32) / 255 - 0.5
-    features = image
   """Model function for MNIST."""
+  if mode == tf.estimator.ModeKeys.PREDICT and isinstance(features,dict):
+    features = features['image_raw']
+  
   logits = mnist_model(features, mode, params['data_format'])
 
   predictions = {
@@ -169,8 +167,7 @@ def mnist_model_fn(features, labels, mode, params):
   }
 
   if mode == tf.estimator.ModeKeys.PREDICT:
-    export_outputs={'class': tf.estimator.export.PredictOutput(
-        {'classes':predictions['classes']})}
+    export_outputs={'classify': tf.estimator.export.PredictOutput(predictions)}
     return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions,
                                       export_outputs=export_outputs)
 
@@ -212,19 +209,19 @@ def main(unused_argv):
   tensors_to_log = {'train_accuracy': 'train_accuracy'}
   logging_hook = tf.train.LoggingTensorHook(
       tensors=tensors_to_log, every_n_iter=100)
-  if not FLAGS.skip_training:
-      # Train the model
-      def train_input_fn():
-        # When choosing shuffle buffer sizes, larger sizes result in better
-        # randomness, while smaller sizes use less memory. MNIST is a small
-        # enough dataset that we can easily shuffle the full epoch.
-        dataset = train_dataset(FLAGS.data_dir)
-        dataset = dataset.shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
-            FLAGS.train_epochs)
-        (images, labels) = dataset.make_one_shot_iterator().get_next()
-        return (images, labels)
 
-      mnist_classifier.train(input_fn=train_input_fn, hooks=[logging_hook])
+  # Train the model
+  def train_input_fn():
+    # When choosing shuffle buffer sizes, larger sizes result in better
+    # randomness, while smaller sizes use less memory. MNIST is a small
+    # enough dataset that we can easily shuffle the full epoch.
+    dataset = train_dataset(FLAGS.data_dir)
+    dataset = dataset.shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
+        FLAGS.train_epochs)
+    (images, labels) = dataset.make_one_shot_iterator().get_next()
+    return (images, labels)
+
+  mnist_classifier.train(input_fn=train_input_fn, hooks=[logging_hook])
 
   # Evaluate the model and print results
   def eval_input_fn():
@@ -233,8 +230,10 @@ def main(unused_argv):
   eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
   print()
   print('Evaluation results:\n\t%s' % eval_results)
+
+  # Export the model
   if FLAGS.export_dir is not None:
-    image = tf.placeholder(tf.uint8,[None, 28, 28])
+    image = tf.placeholder(tf.float32,[None, 28, 28])
     serving_input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn(
         {"image_raw":image})
     mnist_classifier.export_savedmodel(FLAGS.export_dir, serving_input_fn)
