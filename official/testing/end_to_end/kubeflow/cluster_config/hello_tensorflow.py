@@ -5,8 +5,8 @@ from __future__ import print_function
 import tensorflow as tf
 
 def main():
-  s = tf.Constant("Hello, Tensorflow!")
-  print(s)
+  s = tf.constant("Hello, Tensorflow!")
+  tf.Session().run(s)
 
 
 if __name__ == '__main__':

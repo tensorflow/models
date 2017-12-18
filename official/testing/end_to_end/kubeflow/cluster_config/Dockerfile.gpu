@@ -14,7 +14,7 @@
 
 # Docker image for running examples in Tensorflow models.
 # base_image depends on whether we are running on GPUs or non-GPUs
-FROM tensorflow/tensorflow:latest-gpu
+FROM tensorflow/tensorflow:latest
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -25,8 +25,7 @@ RUN mkdir -p /opt
 
 RUN git clone https://github.com/tensorflow/models.git /opt/tf-models
 # TODO(karmel): Remove this when testing is not on a branch
-RUN git checkout feature/kubeflow-testing --workdir=/opt/tf-models
+RUN cd /opt/tf-models && git checkout feature/kubeflow-testing
 
-COPY launcher.py /opt
-RUN chmod u+x /opt/*
-ENTRYPOINT ["/opt/launcher.py"]
+COPY hello_tensorflow.py /opt
+CMD ["python", "/opt/hello_tensorflow.py"]
