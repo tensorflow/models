@@ -15,7 +15,7 @@ To begin, you'll simply need the latest version of TensorFlow installed.
 Then to train the model, run the following:
 
 ```
-python mnist.py [--export_dir /tmp/mnist_saved_model]
+python mnist.py
 ```
 
 The model will begin training and will automatically evaluate itself on the
@@ -29,10 +29,10 @@ You can export the model into Tensorflow [SavedModel](https://www.tensorflow.org
 python mnist.py --export_dir /tmp/mnist_saved_model 
 ```
 
-The SavedModel will be saved in a timestamped directory under `/tmp/mnist_saved_model` (such as `/tmp/mnist_saved_model/1513630966/`).
+The SavedModel will be saved in a timestamped directory under `/tmp/mnist_saved_model/` (e.g. `/tmp/mnist_saved_model/1513630966/`).
 
 **Getting predictions with SavedModel**
-Use [`saved_model_cli`](https://www.tensorflow.org/programmers_guide/saved_model#cli_to_inspect_and_execute_savedmodel) to execute the SavedModel.
+Use [`saved_model_cli`](https://www.tensorflow.org/programmers_guide/saved_model#cli_to_inspect_and_execute_savedmodel) to inspect and execute the SavedModel.
 
 ```
 saved_model_cli run --dir /tmp/mnist_saved_model/TIMESTAMP --tag_set serve --signature_def classify --inputs image_raw=examples.npy
