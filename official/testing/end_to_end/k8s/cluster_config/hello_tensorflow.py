@@ -16,7 +16,6 @@ def main():
   print(tf.Session().run(s))
   import os
   print('git repo', os.listdir('/opt/tf-models'))
-  print('cwd', os.cwd())
   print('module dir', os.path.dirname(os.path.realpath(__file__)))
 
 if __name__ == '__main__':
