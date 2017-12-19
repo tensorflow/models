@@ -66,7 +66,7 @@ feature_names = [
 def my_input_fn(file_path, repeat_count=1, shuffle_count=1):
     def decode_csv(line):
         parsed_line = tf.decode_csv(line, [[0.], [0.], [0.], [0.], [0]])
-        label = parsed_line[-1:]  # Last element is the label
+        label = parsed_line[-1]  # Last element is the label
         del parsed_line[-1]  # Delete last element
         features = parsed_line  # Everything but last elements are the features
         d = dict(zip(feature_names, features)), label
@@ -136,9 +136,7 @@ def my_model_fn(
 
     # Evaluation and Training mode
 
-    # To calculate the loss, we need to convert our labels
-    # Our input labels have shape: [batch_size, 1]
-    labels = tf.squeeze(labels, 1)          # Convert to shape [batch_size]
+    # Calculate the loss
     loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
 
     # Calculate the accuracy between the true labels, and our predictions
