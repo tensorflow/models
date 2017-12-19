@@ -16,13 +16,8 @@ def main():
   print(tf.Session().run(s))
   import os
   print('git repo', os.listdir('/opt/tf-models'))
-  print('cuda', os.listdir('/usr/lib/cuda'))
-  print('nvidia', os.listdir('/usr/lib/nvidia'))
-  print('gnu', os.listdir('/usr/lib/x86_64-linux-gnu'))
-  print('ld lib path', os.environ['LD_LIBRARY_PATH'])
-  import time
-  time.sleep(300)
-
+  print('cwd', os.cwd())
+  print('module dir', os.path.dirname(os.path.realpath(__file__)))
 
 if __name__ == '__main__':
   main()
