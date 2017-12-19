@@ -100,7 +100,7 @@ class Model(object):
         64, 5, padding='same', data_format=data_format, activation=tf.nn.relu)
     self.fc1 = tf.layers.Dense(1024, activation=tf.nn.relu)
     self.fc2 = tf.layers.Dense(10)
-    self.dropout = tf.layers.Dropout(0.5)
+    self.dropout = tf.layers.Dropout(0.4)
     self.max_pool2d = tf.layers.MaxPooling2D(
         (2, 2), (2, 2), padding='same', data_format=data_format)
 
