@@ -109,18 +109,15 @@ def my_model_fn(
     # We implement it as a fully-connected layer (tf.layers.dense)
     # Has 10 neurons, and uses ReLU as the activation function
     # Takes input_layer as input
-    # h1 = tf.layers.dense(input_layer, 10, activation=tf.nn.relu)
     h1 = tf.layers.Dense(10, activation=tf.nn.relu)(input_layer)
 
     # Definition of hidden layer: h2 (this is the logits layer)
     # Similar to h1, but takes h1 as input
-    # h2 = tf.layers.dense(h1, 10, activation=tf.nn.relu)
     h2 = tf.layers.Dense(10, activation=tf.nn.relu)(h1)
 
     # Output 'logits' layer is three number = probability distribution
     # between Iris Sentosa, Versicolor, and Viginica
-    # logits = tf.layers.dense(h2, 3)
-    logits = tf.layers.Dense(3, activation=tf.nn.relu)(h2)
+    logits = tf.layers.Dense(3)(h2)
 
     # class_ids will be the model prediction for the class (Iris flower type)
     # The output node with the highest value is our prediction
