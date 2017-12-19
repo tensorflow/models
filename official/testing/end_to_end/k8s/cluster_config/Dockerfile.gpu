@@ -28,6 +28,4 @@ WORKDIR /opt/tf-models/official/testing/end_to_end/kubeflow/cluster_config
 # TODO(karmel): Remove this when testing is not on a branch
 RUN git checkout feature/kubeflow-testing
 
-CMD ["ls"]
-CMD ["git", "pull"]
 CMD ["python", "hello_tensorflow.py"]
