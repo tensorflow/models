@@ -21,10 +21,7 @@ import tensorflow as tf
 import os
 import sys
 
-if sys.version_info < (3, 0, 0):
-    from urllib import urlopen
-else:
-    from urllib.request import urlopen
+import six.moves.urllib.request as request
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -47,7 +44,7 @@ def downloadDataset(url, file):
     if not os.path.exists(PATH_DATASET):
         os.makedirs(PATH_DATASET)
     if not os.path.exists(file):
-        data = urlopen(url).read()
+        data = request.urlopen(url).read()
         with open(file, "wb") as f:
             f.write(data)
             f.close()
