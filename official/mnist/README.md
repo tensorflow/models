@@ -21,6 +21,13 @@ python mnist.py
 The model will begin training and will automatically evaluate itself on the
 validation data.
 
+Illustrative unittests and benchmarks can be run with:
+
+```
+python mnist_test.py
+python mnist_test.py --benchmarks=.
+```
+
 ## Exporting the model
 
 You can export the model into Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format by using the argument `--export_dir`:
