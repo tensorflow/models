@@ -126,64 +126,51 @@ class Model(object):
     return self.fc2(y)
 
 
-def predict_spec(model, image):
-  """EstimatorSpec for predictions."""
-  if isinstance(image, dict):
-    image = image['image']
-  logits = model(image, training=False)
-  predictions = {
-      'classes': tf.argmax(logits, axis=1),
-      'probabilities': tf.nn.softmax(logits),
-  }
-  return tf.estimator.EstimatorSpec(
-      mode=tf.estimator.ModeKeys.PREDICT,
-      predictions=predictions,
-      export_outputs={
-          'classify': tf.estimator.export.PredictOutput(predictions)
-      })
-
-
-def train_spec(model, image, labels):
-  """EstimatorSpec for training."""
-  optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
-  logits = model(image, training=True)
-  loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
-  accuracy = tf.metrics.accuracy(
-      labels=tf.argmax(labels, axis=1), predictions=tf.argmax(logits, axis=1))
-  # Name the accuracy tensor 'train_accuracy' to demonstrate the
-  # LoggingTensorHook.
-  tf.identity(accuracy[1], name='train_accuracy')
-  tf.summary.scalar('train_accuracy', accuracy[1])
-  return tf.estimator.EstimatorSpec(
-      mode=tf.estimator.ModeKeys.TRAIN,
-      loss=loss,
-      train_op=optimizer.minimize(loss, tf.train.get_or_create_global_step()))
-
-
-def eval_spec(model, image, labels):
-  """EstimatorSpec for evaluation."""
-  logits = model(image, training=False)
-  loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
-  return tf.estimator.EstimatorSpec(
-      mode=tf.estimator.ModeKeys.EVAL,
-      loss=loss,
-      eval_metric_ops={
-          'accuracy':
-              tf.metrics.accuracy(
-                  labels=tf.argmax(labels, axis=1),
-                  predictions=tf.argmax(logits, axis=1)),
-      })
-
-
 def model_fn(features, labels, mode, params):
   """The model_fn argument for creating an Estimator."""
   model = Model(params['data_format'])
+  image = features
+  if isinstance(image, dict):
+    image = features['image']
+
   if mode == tf.estimator.ModeKeys.PREDICT:
-    return predict_spec(model, features)
+    logits = model(image, training=False)
+    predictions = {
+        'classes': tf.argmax(logits, axis=1),
+        'probabilities': tf.nn.softmax(logits),
+    }
+    return tf.estimator.EstimatorSpec(
+        mode=tf.estimator.ModeKeys.PREDICT,
+        predictions=predictions,
+        export_outputs={
+            'classify': tf.estimator.export.PredictOutput(predictions)
+        })
   if mode == tf.estimator.ModeKeys.TRAIN:
-    return train_spec(model, features, labels)
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
+    logits = model(image, training=True)
+    loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
+    accuracy = tf.metrics.accuracy(
+        labels=tf.argmax(labels, axis=1), predictions=tf.argmax(logits, axis=1))
+    # Name the accuracy tensor 'train_accuracy' to demonstrate the
+    # LoggingTensorHook.
+    tf.identity(accuracy[1], name='train_accuracy')
+    tf.summary.scalar('train_accuracy', accuracy[1])
+    return tf.estimator.EstimatorSpec(
+        mode=tf.estimator.ModeKeys.TRAIN,
+        loss=loss,
+        train_op=optimizer.minimize(loss, tf.train.get_or_create_global_step()))
   if mode == tf.estimator.ModeKeys.EVAL:
-    return eval_spec(model, features, labels)
+    logits = model(image, training=False)
+    loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
+    return tf.estimator.EstimatorSpec(
+        mode=tf.estimator.ModeKeys.EVAL,
+        loss=loss,
+        eval_metric_ops={
+            'accuracy':
+                tf.metrics.accuracy(
+                    labels=tf.argmax(labels, axis=1),
+                    predictions=tf.argmax(logits, axis=1)),
+        })
 
 
 def main(unused_argv):
@@ -227,7 +214,7 @@ def main(unused_argv):
   if FLAGS.export_dir is not None:
     image = tf.placeholder(tf.float32, [None, 28, 28])
     input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
-        'image': tf.placeholder(tf.float32, [None, 28, 28])
+        'image': image,
     })
     mnist_classifier.export_savedmodel(FLAGS.export_dir, input_fn)
 
