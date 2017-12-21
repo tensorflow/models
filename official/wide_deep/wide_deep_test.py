@@ -101,7 +101,7 @@ class BaseTest(tf.test.TestCase):
     self.assertGreater(final_results['auc'], initial_results['auc'])
     self.assertGreater(final_results['auc_precision_recall'],
                        initial_results['auc_precision_recall'])
-    self.assertGreater(final_results['accuracy'], initial_results['accuracy'])
+    self.assertLess(final_results['accuracy'], initial_results['accuracy'])
 
   def test_wide_deep_estimator_training(self):
     self.build_and_test_estimator('wide_deep')
