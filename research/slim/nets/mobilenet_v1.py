@@ -275,6 +275,7 @@ def mobilenet_v1(inputs,
                  conv_defs=None,
                  prediction_fn=tf.contrib.layers.softmax,
                  spatial_squeeze=True,
+                 tflite_support=False,
                  reuse=None,
                  scope='MobilenetV1',
                  global_pool=False):
@@ -346,7 +347,16 @@ def mobilenet_v1(inputs,
         logits = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
                              normalizer_fn=None, scope='Conv2d_1c_1x1')
         if spatial_squeeze:
-          logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
+          if not tflite_support:
+            logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
+          else:
+            # Get size of nb,nc in [nb,1,1,nc]
+            logits_shape = logits.get_shape().as_list()
+            nb = logits_shape[0]
+            if nb is None:
+                nb = -1
+            nc = logits_shape[3]
+            logits = tf.reshape(logits, [nb, nc], name='SpatialReshape')
       end_points['Logits'] = logits
       if prediction_fn:
         end_points['Predictions'] = prediction_fn(logits, scope='Predictions')
@@ -365,6 +375,10 @@ mobilenet_v1_075 = wrapped_partial(mobilenet_v1, depth_multiplier=0.75)
 mobilenet_v1_050 = wrapped_partial(mobilenet_v1, depth_multiplier=0.50)
 mobilenet_v1_025 = wrapped_partial(mobilenet_v1, depth_multiplier=0.25)
 
+mobilenet_v1_tflite = wrapped_partial(mobilenet_v1, tflite_support=True)
+mobilenet_v1_075_tflite = wrapped_partial(mobilenet_v1, depth_multiplier=0.75, tflite_support=True)
+mobilenet_v1_050_tflite = wrapped_partial(mobilenet_v1, depth_multiplier=0.50, tflite_support=True)
+mobilenet_v1_025_tflite = wrapped_partial(mobilenet_v1, depth_multiplier=0.25, tflite_support=True)
 
 def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
   """Define kernel size which is automatically reduced for small input.
