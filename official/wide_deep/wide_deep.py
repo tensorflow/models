@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Example code for TensorFlow Wide & Deep Tutorial using TF.Learn API."""
+"""Example code for TensorFlow Wide & Deep Tutorial using tf.estimator API."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
