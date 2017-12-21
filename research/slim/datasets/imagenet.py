@@ -33,7 +33,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import urllib2
+from six.moves import urllib
 import tensorflow as tf
 
 from datasets import dataset_utils
@@ -87,13 +87,13 @@ def create_readable_names_for_imagenet_labels():
   synset_url = '{}/imagenet_lsvrc_2015_synsets.txt'.format(base_url)
   synset_to_human_url = '{}/imagenet_metadata.txt'.format(base_url)
 
-  f = urllib2.urlopen(synset_url)
-  synset_list = [s.strip() for s in f.readlines()]
+  filename, _ = urllib.request.urlretrieve(synset_url)
+  synset_list = [s.strip() for s in open(filename).readlines()]
   num_synsets_in_ilsvrc = len(synset_list)
   assert num_synsets_in_ilsvrc == 1000
 
-  f = urllib2.urlopen(synset_to_human_url)
-  synset_to_human_list = f.readlines()
+  filename, _ = urllib.request.urlretrieve(synset_to_human_url)
+  synset_to_human_list = open(filename).readlines()
   num_synsets_in_all_imagenet = len(synset_to_human_list)
   assert num_synsets_in_all_imagenet == 21842
 
