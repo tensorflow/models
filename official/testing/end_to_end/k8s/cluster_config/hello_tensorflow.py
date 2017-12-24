@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from time import gmtime, strftime
+
 import tensorflow as tf
 
 
@@ -17,6 +19,9 @@ def main():
   import os
   print('git repo', os.listdir('/opt/tf-models'))
   print('module dir', os.path.dirname(os.path.realpath(__file__)))
+
+  while True:
+    print(strftime("%Y-%m-%d %H:%M:%S", gmtime()))
 
 if __name__ == '__main__':
   main()
