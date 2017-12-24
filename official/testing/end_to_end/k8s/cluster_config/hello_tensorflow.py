@@ -20,7 +20,8 @@ def main():
   #print(tf.test.main())
 
   while True:
-    sleep(300)
+    print(strftime("%Y-%m-%d %H:%M:%S", gmtime()))
+    sleep(30)
 
 
 if __name__ == '__main__':

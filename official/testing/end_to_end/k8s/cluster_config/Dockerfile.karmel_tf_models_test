@@ -25,11 +25,11 @@ RUN mkdir -p /opt/tf-models
 COPY hello_tensorflow.py /opt/hello_tensorflow.py
 
 RUN git clone https://github.com/tensorflow/models.git /opt/tf-models
+ENV PYTHONPATH $PYTHONPATH:/opt/tf-models
+
 WORKDIR /opt/tf-models/models/official/testing/end_to_end/k8s/cluster_config
 # TODO(karmel): Remove this when testing is not on a branch
 RUN git checkout feature/kubeflow-testing
-
-ENV PYTHONPATH=/opt/tf-models:$PYTHONPATH
 
 # TODO: make this the repo version when done testing
 ENTRYPOINT ["python", "/opt/hello_tensorflow.py"]
