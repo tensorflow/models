@@ -16,7 +16,7 @@ tf.app.flags.DEFINE_string("worker_hosts", None, "Comma-separated list of hostna
 
 def main():
   import sys
-  print(sys.path)
+  print('System path', sys.path)
   #print(tf.test.main())
 
   while True:
