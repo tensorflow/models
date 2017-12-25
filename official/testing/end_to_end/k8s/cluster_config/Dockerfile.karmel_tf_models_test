@@ -31,9 +31,11 @@ WORKDIR /opt/tf-models
 # TODO(karmel): Remove this when testing is not on a branch
 RUN git checkout feature/kubeflow-testing
 
-# TODO(karmel): Placeholder to eat benchmark vars
-ENTYPOINT ["python", "models/official/testing/end_to_end/k8s/cluster_config/hello_tensorflow.py"]
+# TODO(karmel): Working around benchmarking script. Also, 
+# ENTRYPOINT shouldn't be shell style if possible
+COPY hello_tensorflow.py /opt/hello_tensorflow.py
+ENTRYPOINT python /opt/hello_tensorflow.py --data_dir=/opt/tf-test-data
 
 #TODO(karmel): make the data dir configurable
-CMD ["python", "models/official/resnet/cifar10_download_and_extract.py", "--data_dir=/opt/tf-test-data"]
-CMD ["python", "models/official/resnet/cifar10_test.py"]
+#CMD ["python", "models/official/resnet/cifar10_download_and_extract.py", "--data_dir=/opt/tf-test-data"]
+#CMD ["python", "models/official/resnet/cifar10_test.py"]
