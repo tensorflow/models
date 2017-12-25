@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from time import gmtime, sleep, strftime
+import os
 
 import tensorflow as tf
 
@@ -17,11 +17,7 @@ tf.app.flags.DEFINE_string("worker_hosts", None, "Comma-separated list of hostna
 def main():
   import sys
   print('System path', sys.path)
-  print(tf.test.main())
-
-  #while True:
-  #  print(strftime("%Y-%m-%d %H:%M:%S", gmtime()))
-  #  sleep(30)
+  print(os.listdir('/opt/')
 
 
 if __name__ == '__main__':
