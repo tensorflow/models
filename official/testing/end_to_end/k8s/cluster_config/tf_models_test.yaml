@@ -36,12 +36,12 @@
 #   docker_file: "benchmarks/models/Dockerfile.alexnet_distributed_test"
 
 - benchmark_name: "tf_models_test"
-  args:
-   data_format: "NHWC"
-   model: "resnet50"
-   result_storage: "cbuild_benchmark_datastore"
-   num_gpus: 8
-   local_parameter_device: "cpu"
+#  args:
+#   data_format: "NHWC"
+#   model: "resnet50"
+#   result_storage: "cbuild_benchmark_datastore"
+#   num_gpus: 8
+#   local_parameter_device: "cpu"
   worker_count: 2
   ps_count: 2
   #gpus_per_machine: 8

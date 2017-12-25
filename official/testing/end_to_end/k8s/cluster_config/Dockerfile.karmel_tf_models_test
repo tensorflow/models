@@ -22,14 +22,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git
 
 RUN mkdir -p /opt/tf-models
-COPY hello_tensorflow.py /opt/hello_tensorflow.py
+RUN mkdir -p /opt/tf-test-data
+ARG data_dir=/opt/tf-test-data
 
 RUN git clone https://github.com/tensorflow/models.git /opt/tf-models
 ENV PYTHONPATH $PYTHONPATH:/opt/tf-models
 
-WORKDIR /opt/tf-models/models/official/testing/end_to_end/k8s/cluster_config
+WORKDIR /opt/tf-models
 # TODO(karmel): Remove this when testing is not on a branch
 RUN git checkout feature/kubeflow-testing
 
-# TODO: make this the repo version when done testing
-ENTRYPOINT ["python", "/opt/hello_tensorflow.py"]
+# Download data into the ARG data_dir, which can optionally be
+# passed to the Dockerfile with --data_dir
+RUN python models/official/resnet/cifar10_download_and_extract.py --data_dir=$data_dir
+ENTRYPOINT ["python", "models/official/resnet/cifar10_test.py"]
