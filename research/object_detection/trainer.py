@@ -70,11 +70,14 @@ def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
   include_keypoints = (fields.InputDataFields.groundtruth_keypoints
                        in tensor_dict)
   if data_augmentation_options:
+    tf.logging.info("used preprocess augmentation options are: %s", data_augmentation_options)
     tensor_dict = preprocessor.preprocess(
         tensor_dict, data_augmentation_options,
         func_arg_map=preprocessor.get_default_func_arg_map(
             include_instance_masks=include_instance_masks,
             include_keypoints=include_keypoints))
+  else:
+    tf.logging.info("no preprocess augmentation options used")
 
   input_queue = batcher.BatchQueue(
       tensor_dict,
