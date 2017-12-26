@@ -1,0 +1,46 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Configuration proto for non-max-suppression operation on a batch of
+// detections.
+message BatchNonMaxSuppression {
+  // Scalar threshold for score (low scoring boxes are removed).
+  optional float score_threshold = 1 [default = 0.0];
+
+  // Scalar threshold for IOU (boxes that have high IOU overlap
+  // with previously selected boxes are removed).
+  optional float iou_threshold = 2 [default = 0.6];
+
+  // Maximum number of detections to retain per class.
+  optional int32 max_detections_per_class = 3 [default = 100];
+
+  // Maximum number of detections to retain across all classes.
+  optional int32 max_total_detections = 5 [default = 100];
+}
+
+// Configuration proto for post-processing predicted boxes and
+// scores.
+message PostProcessing {
+  // Non max suppression parameters.
+  optional BatchNonMaxSuppression batch_non_max_suppression = 1;
+
+  // Enum to specify how to convert the detection scores.
+  enum ScoreConverter {
+    // Input scores equals output scores.
+    IDENTITY = 0;
+
+    // Applies a sigmoid on input scores.
+    SIGMOID = 1;
+
+    // Applies a softmax on input scores
+    SOFTMAX = 2;
+  }
+
+  // Score converter to use.
+  optional ScoreConverter score_converter = 2 [default = IDENTITY];
+  // Scale logit (input) value before conversion in post-processing step.
+  // Typically used for softmax distillation, though can be used to scale for
+  // other reasons.
+  optional float logit_scale = 3 [default = 1.0];
+}

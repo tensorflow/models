@@ -482,7 +482,7 @@ class Word2Vec(object):
     for c in [self._id2word[i] for i in idx[0, :]]:
       if c not in [w0, w1, w2]:
         print(c)
-        break
+        return
     print("unknown")
 
   def nearby(self, words, num=20):
