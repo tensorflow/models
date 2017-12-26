@@ -22,14 +22,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git
 
 RUN mkdir -p /opt/tf-models
+#TODO(karmel): make the data dir configurable
 RUN mkdir -p /opt/tf-test-data
 
 RUN git clone https://github.com/tensorflow/models.git /opt/tf-models
-ENV PYTHONPATH $PYTHONPATH:/opt/tf-models
 
 WORKDIR /opt/tf-models
 # TODO(karmel): Remove this when testing is not on a branch
 RUN git checkout feature/kubeflow-testing
+
+ENV PYTHONPATH $PYTHONPATH:/opt/tf-models/official/resnet
+RUN python official/resnet/cifar10_download_and_extract.py --data_dir=/opt/tf-test-data
+RUN python official/resnet/cifar10_main.py --data_dir=/opt/tf-test-data
 
 # TODO(karmel): Working around benchmarking script. Also, 
 # ENTRYPOINT shouldn't be shell style if possible
