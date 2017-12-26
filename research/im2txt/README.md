@@ -145,7 +145,7 @@ available space for storing the downloaded and processed data.
 MSCOCO_DIR="${HOME}/im2txt/data/mscoco"
 
 # Build the preprocessing script.
-cd tensorflow-models/im2txt
+cd research/im2txt
 bazel build //im2txt:download_and_preprocess_mscoco
 
 # Run the preprocessing script.
@@ -212,7 +212,7 @@ INCEPTION_CHECKPOINT="${HOME}/im2txt/data/inception_v3.ckpt"
 MODEL_DIR="${HOME}/im2txt/model"
 
 # Build the model.
-cd tensorflow-models/im2txt
+cd research/im2txt
 bazel build -c opt //im2txt/...
 
 # Run the training script.
@@ -306,7 +306,7 @@ VOCAB_FILE="${HOME}/im2txt/data/mscoco/word_counts.txt"
 IMAGE_FILE="${HOME}/im2txt/data/mscoco/raw-data/val2014/COCO_val2014_000000224477.jpg"
 
 # Build the inference binary.
-cd tensorflow-models/im2txt
+cd research/im2txt
 bazel build -c opt //im2txt:run_inference
 
 # Ignore GPU devices (only necessary if your GPU is currently memory
