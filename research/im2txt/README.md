@@ -119,8 +119,8 @@ First ensure that you have installed the following required packages:
 * **NumPy** ([instructions](http://www.scipy.org/install.html))
 * **Natural Language Toolkit (NLTK)**:
     * First install NLTK ([instructions](http://www.nltk.org/install.html))
-    * Then install the NLTK data ([instructions](http://www.nltk.org/data.html))
-
+    * Then install the NLTK data package "punkt" ([instructions](http://www.nltk.org/data.html))
+* **Unzip**
 ### Prepare the Training Data
 
 To train the model you will need to provide training data in native TFRecord
