@@ -1,6 +1,6 @@
 # Tetris
 
-This is a program that uses the Deep Q algorithm to train Tetris ai.
+This is a program that uses the Deep Q algorithm to train Tetris ai. Currently only tested on the mac.
 
 game.py The logic of the game, without UI
 
@@ -55,6 +55,8 @@ play.py -n10000 -m -l0.00008
 
 The back of the steps can be sustained, the test results at any time.
 
-My trained model is saved here
+My training results, you can achieve an average of 70 points or more, up to a maximum of 340 points.
+
+My trained model is saved here, there are also some historical models and training code here.
 
 https://github.com/yaoGreat/tetris
