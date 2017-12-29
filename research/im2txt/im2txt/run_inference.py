@@ -70,7 +70,7 @@ def main(_):
     generator = caption_generator.CaptionGenerator(model, vocab)
 
     for filename in filenames:
-      with tf.gfile.GFile(filename, "r") as f:
+      with tf.gfile.GFile(filename, "rb") as f:
         image = f.read()
       captions = generator.beam_search(sess, image)
       print("Captions for image %s:" % os.path.basename(filename))
