@@ -15,9 +15,9 @@ import argparse
 #tf.app.flags.DEFINE_string("data_dir", None, "Data dir to store data for testing.")
 
 
-def main(args):
+def main():
   print('LD_LIBRARY_PATH', os.environ['LD_LIBRARY_PATH'])
-  #import tensorflow as tf
+  import tensorflow as tf
 
 
 if __name__ == '__main__':
