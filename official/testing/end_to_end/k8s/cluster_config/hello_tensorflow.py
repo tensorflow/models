@@ -16,7 +16,7 @@ tf.app.flags.DEFINE_string("data_dir", None, "Data dir to store data for testing
 
 
 def main(args):
-  print(os.environ['LD_LIBRARY_PATH'])
+  print('LD_LIBRARY_PATH', os.environ['LD_LIBRARY_PATH'])
   import tensorflow as tf
 
 
