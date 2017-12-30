@@ -174,7 +174,7 @@ def play_train(with_ui = False, force_init = False, init_with_gold = False, trai
 		ui = TetrisUI(game, ui_tick)
 	try:
 		if train_count == 0:
-			robot.train(game, ui = ui)
+			robot.train(game, as_master = is_master, ui = ui)
 		else:
 			robot.train(game, train_steps = train_count, as_master = is_master, ui = ui)
 	except KeyboardInterrupt:
