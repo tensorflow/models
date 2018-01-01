@@ -17,6 +17,9 @@ import argparse
 
 def main():
   print('LD_LIBRARY_PATH', os.environ['LD_LIBRARY_PATH'])
+  print('LD_LIBRARY_PATH', os.environ['CUDA_HOME'])
+  print('User home', os.environ['HOME'])
+  print(os.listdir('/usr/local'))
   import tensorflow as tf
 
 
