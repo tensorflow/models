@@ -14,7 +14,7 @@
 
 # Docker image for running examples in Tensorflow models.
 # base_image depends on whether we are running on GPUs or non-GPUs
-FROM tensorflow/tensorflow:nightly-gpu
+FROM tensorflow/tensorflow:latest-gpu
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -32,7 +32,7 @@ WORKDIR /opt/tf-models
 RUN git checkout feature/kubeflow-testing
 
 ENV PYTHONPATH $PYTHONPATH:/opt/tf-models/official/resnet
-ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+#ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 COPY hello_tensorflow.py /opt/hello_tensorflow.py
 ENTRYPOINT python /opt/hello_tensorflow.py
 #ENTRYPOINT python official/resnet/cifar10_download_and_extract.py --data_dir=/opt/tf-test-data

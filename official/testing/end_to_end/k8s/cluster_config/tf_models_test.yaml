@@ -45,4 +45,6 @@
   worker_count: 2
   ps_count: 2
   gpus_per_machine: 8
+  env_vars:
+    LD_LIBRARY_PATH: "/usr/local/cuda/lib64:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu"
   docker_file: "/usr/local/google/home/karmel/Repositories/tensorflow/models/models/official/testing/end_to_end/k8s/cluster_config/Dockerfile.karmel_tf_models_test"
