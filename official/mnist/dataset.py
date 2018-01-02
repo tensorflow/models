@@ -57,7 +57,7 @@ def check_labels_file_header(filename):
 
 
 def maybe_download(directory, filename):
-  """Download a file from the MNIST dataset, if it doesn't already exist."""
+  """Download (and unzip) a file from the MNIST dataset, if it doesn't already exist."""
   if not tf.gfile.Exists(directory):
     tf.gfile.MakeDirs(directory)
   filepath = os.path.join(directory, filename)
