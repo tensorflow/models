@@ -21,6 +21,7 @@ import os
 import shutil
 import gzip
 import numpy as np
+from six.moves import urllib
 import tensorflow as tf
 
 
@@ -56,7 +57,7 @@ def check_labels_file_header(filename):
                                                                      f.name))
 
 
-def maybe_download(directory, filename):
+def download(directory, filename):
   """Download (and unzip) a file from the MNIST dataset, if it doesn't already exist."""
   if not tf.gfile.Exists(directory):
     tf.gfile.MakeDirs(directory)
@@ -65,19 +66,18 @@ def maybe_download(directory, filename):
     return filepath
   # CVDF mirror of http://yann.lecun.com/exdb/mnist/
   url = 'https://storage.googleapis.com/cvdf-datasets/mnist/' + filename + '.gz'
-  zipped_filename = filename + '.gz'
-  zipped_filepath = os.path.join(directory, zipped_filename)
-  tf.contrib.learn.datasets.base.maybe_download(zipped_filename, directory, url)
-  with gzip.open(os.path.join(zipped_filepath), 'rb') as f_in, open(
-      filepath, 'wb') as f_out:
+  zipped_filepath = filepath + '.gz'
+  print('Downloading %s to %s' % (url, zipped_filepath))
+  urllib.request.urlretrieve(url, zipped_filepath)
+  with gzip.open(zipped_filepath, 'rb') as f_in, open(filepath, 'wb') as f_out:
     shutil.copyfileobj(f_in, f_out)
   os.remove(zipped_filepath)
   return filepath
 
 
 def dataset(directory, images_file, labels_file):
-  images_file = maybe_download(directory, images_file)
-  labels_file = maybe_download(directory, labels_file)
+  images_file = download(directory, images_file)
+  labels_file = download(directory, labels_file)
 
   check_image_file_header(images_file)
   check_labels_file_header(labels_file)
