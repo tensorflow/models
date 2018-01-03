@@ -22,19 +22,7 @@ import os
 import sys
 
 import tensorflow as tf
-from tensorflow.examples.tutorials.mnist import input_data
-
-
-def train_dataset(data_dir):
-  """Returns a tf.data.Dataset yielding (image, label) pairs for training."""
-  data = input_data.read_data_sets(data_dir, one_hot=True).train
-  return tf.data.Dataset.from_tensor_slices((data.images, data.labels))
-
-
-def eval_dataset(data_dir):
-  """Returns a tf.data.Dataset yielding (image, label) pairs for evaluation."""
-  data = input_data.read_data_sets(data_dir, one_hot=True).test
-  return tf.data.Dataset.from_tensors((data.images, data.labels))
+import dataset
 
 
 class Model(object):
@@ -151,10 +139,10 @@ def main(unused_argv):
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
-    dataset = train_dataset(FLAGS.data_dir)
-    dataset = dataset.shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
+    ds = dataset.train(FLAGS.data_dir)
+    ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
         FLAGS.train_epochs)
-    (images, labels) = dataset.make_one_shot_iterator().get_next()
+    (images, labels) = ds.make_one_shot_iterator().get_next()
     return (images, labels)
 
   # Set up training hook that logs the training accuracy every 100 steps.
@@ -165,7 +153,8 @@ def main(unused_argv):
 
   # Evaluate the model and print results
   def eval_input_fn():
-    return eval_dataset(FLAGS.data_dir).make_one_shot_iterator().get_next()
+    return dataset.test(FLAGS.data_dir).batch(
+        FLAGS.batch_size).make_one_shot_iterator().get_next()
 
   eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
   print()
