@@ -108,7 +108,9 @@ def get_evaluators(eval_config, categories):
     raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
   return [
       EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](
-          categories=categories)
+          categories=categories,
+          matching_iou_threshold=round(eval_config.matching_iou_threshold, 4)
+      )
   ]
 
 
