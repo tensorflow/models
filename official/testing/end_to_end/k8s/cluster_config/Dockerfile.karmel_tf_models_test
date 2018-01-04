@@ -32,10 +32,9 @@ WORKDIR /opt/tf-models
 RUN git checkout feature/kubeflow-testing
 
 ENV PYTHONPATH $PYTHONPATH:/opt/tf-models/official/resnet
-#ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-COPY hello_tensorflow.py /opt/hello_tensorflow.py
-ENTRYPOINT python /opt/hello_tensorflow.py
-#ENTRYPOINT python official/resnet/cifar10_download_and_extract.py --data_dir=/opt/tf-test-data
+
+# TODO(karmel): Ideally, the entrypoint would be a single script that gets data and runs
+ENTRYPOINT python official/resnet/cifar10_download_and_extract.py --data_dir=/opt/tf-test-data
 # TODO(karmel): Non-shell version of entrypoint is preferred.
 CMD python official/resnet/cifar10_main.py --data_dir=/opt/tf-test-data
 
