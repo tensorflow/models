@@ -36,6 +36,13 @@ sudo apt-get update
 
 # Install nvidia-docker2 and reload the Docker daemon configuration
 sudo apt-get install -y nvidia-docker2
+
+# Make nvidia-docker the default by appending to the daemon.js config
+apt-get install -y jq
+jq '. + {"default-runtime": "nvidia"}' /etc/docker/daemon.json > docker_daemon.json
+mv docker_daemon.json /etc/docker/daemon.json
+
+# Restart dockerd
 sudo pkill -SIGHUP dockerd
 
 
