@@ -29,6 +29,7 @@ from object_detection.utils import ops
 from object_detection.utils import visualization_utils as vis_utils
 
 slim = tf.contrib.slim
+logging.basicConfig(level=logging.INFO)
 
 
 def write_metrics(metrics, global_step, summary_dir):
