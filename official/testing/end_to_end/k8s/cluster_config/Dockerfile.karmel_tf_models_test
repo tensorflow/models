@@ -33,8 +33,6 @@ RUN git checkout feature/kubeflow-testing
 
 ENV PYTHONPATH $PYTHONPATH:/opt/tf-models/official/resnet
 
-# TODO(karmel): Ideally, the entrypoint would be a single script that gets data and runs
-ENTRYPOINT python official/resnet/cifar10_download_and_extract.py --data_dir=/opt/tf-test-data
 # TODO(karmel): Non-shell version of entrypoint is preferred.
-CMD python official/resnet/cifar10_main.py --data_dir=/opt/tf-test-data
-
+ENTRYPOINT python official/testing/run_scripts/run_resnet_cifar10.py \
+  --repo_loc=. --data_dir=/opt/tf-test-data
