@@ -35,7 +35,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 import re
 import sys
@@ -46,19 +45,15 @@ import tensorflow as tf
 
 import cifar10_input
 
-parser = argparse.ArgumentParser()
+FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-parser.add_argument('--batch_size', type=int, default=128,
-                    help='Number of images to process in a batch.')
-
-parser.add_argument('--data_dir', type=str, default='/tmp/cifar10_data',
-                    help='Path to the CIFAR-10 data directory.')
-
-parser.add_argument('--use_fp16', type=bool, default=False,
-                    help='Train the model using fp16.')
-
-FLAGS = parser.parse_args()
+tf.app.flags.DEFINE_integer('batch_size', 128,
+                            """Number of images to process in a batch.""")
+tf.app.flags.DEFINE_string('data_dir', '/tmp/cifar10_data',
+                           """Path to the CIFAR-10 data directory.""")
+tf.app.flags.DEFINE_boolean('use_fp16', False,
+                            """Train the model using fp16.""")
 
 # Global constants describing the CIFAR-10 data set.
 IMAGE_SIZE = cifar10_input.IMAGE_SIZE
