@@ -18,7 +18,7 @@ installation](https://www.tensorflow.org/install).
 -   [attention_ocr](attention_ocr): a model for real-world image text
     extraction.
 -   [audioset](audioset): Models and supporting code for use with
-    [AudioSet](http://g.co.audioset).
+    [AudioSet](http://g.co/audioset).
 -   [autoencoder](autoencoder): various autoencoders.
 -   [cognitive_mapping_and_planning](cognitive_mapping_and_planning):
     implementation of a spatial memory based mapping and planning architecture
@@ -29,6 +29,7 @@ installation](https://www.tensorflow.org/install).
 -   [differential_privacy](differential_privacy): privacy-preserving student
     models from multiple teachers.
 -   [domain_adaptation](domain_adaptation): domain separation networks.
+-   [gan](gan): generative adversarial networks.
 -   [im2txt](im2txt): image-to-text neural network for image captioning.
 -   [inception](inception): deep convolutional networks for computer vision.
 -   [learning_to_remember_rare_events](learning_to_remember_rare_events): a
@@ -60,6 +61,7 @@ installation](https://www.tensorflow.org/install).
     using a Deep RNN.
 -   [swivel](swivel): the Swivel algorithm for generating word embeddings.
 -   [syntaxnet](syntaxnet): neural models of natural language syntax.
+-   [tcn](tcn): Self-supervised representation learning from multi-view video.
 -   [textsum](textsum): sequence-to-sequence with attention model for text
     summarization.
 -   [transformer](transformer): spatial transformer network, which allows the

@@ -117,7 +117,7 @@ $ bazel-bin/textsum/seq2seq_attention \
     --log_root=textsum/log_root \
     --eval_dir=textsum/log_root/eval
 
-# Run the decode. Run it when the most is mostly converged.
+# Run the decode. Run it when the model is mostly converged.
 $ bazel-bin/textsum/seq2seq_attention \
     --mode=decode \
     --article_key=article \
