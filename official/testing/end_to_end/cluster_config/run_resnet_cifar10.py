@@ -15,6 +15,9 @@
 """
 Downloads data and runs ResNet model on the CIFAR-10 dataset.
 
+TODO(karmel): This should not be in cluster_config directory, but for some
+reason, I can't access it from outside when building dockerfile.
+
 TODO(karmel): Clean this up and make reusable.
 
 """

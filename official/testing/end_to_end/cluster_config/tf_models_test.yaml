@@ -48,4 +48,4 @@
   env_vars:
     LD_LIBRARY_PATH: "/usr/local/cuda/lib64:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu"
     CUDA_HOME: "/usr/local/cuda"
-  docker_file: "cluster_config/Dockerfile.karmel_tf_models_test"
+  docker_file: "./Dockerfile.karmel_tf_models_test"
