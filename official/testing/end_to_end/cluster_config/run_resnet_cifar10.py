@@ -52,7 +52,6 @@ if __name__ == "__main__":
   # TODO(karmel): Data dir cleaning and processing?
   data_exec = os.path.join(path, DATA_EXTRACTION_SCRIPT)
   data_cmd = "python {} --data_dir={}".format(data_exec, args.data_dir)
-  print('Calling: {}'.format(data_cmd))
   subprocess.call(data_cmd, shell=True)
 
   # Run
@@ -60,5 +59,4 @@ if __name__ == "__main__":
   unparsed_args = ' '.join(unparsed)
   main_cmd = "python {} --data_dir={} {}".format(
     main_exec, args.data_dir, unparsed_args)
-  print('Calling: {}'.format(main_cmd))
   subprocess.call(main_cmd, shell=True)
