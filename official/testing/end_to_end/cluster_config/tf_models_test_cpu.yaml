@@ -45,4 +45,6 @@
   worker_count: 2
   ps_count: 2
   #gpus_per_machine: 8
-  docker_file: "./Dockerfile.karmel_tf_models_test_cpu"
+  docker_file: "./Dockerfile.karmel_tf_models_test"
+  docker_build_args:
+    base_img: "tensorflow/tensorflow:latest"

@@ -14,7 +14,8 @@
 
 # Docker image for running examples in Tensorflow models.
 # base_image depends on whether we are running on GPUs or non-GPUs
-FROM tensorflow/tensorflow:latest-gpu
+ARG base_img=tensorflow/tensorflow:latest-gpu
+FROM $base_img
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -22,8 +23,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git
 
 RUN mkdir -p /opt/tf-models
-#TODO(karmel): make the data dir configurable
-RUN mkdir -p /opt/tf-test-data
+
+ARG data_dir=/opt/tf-test-data
+RUN mkdir -p $data_dir
 
 RUN git clone https://github.com/tensorflow/models.git /opt/tf-models
 
