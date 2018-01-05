@@ -35,12 +35,6 @@ parser.add_argument(
     '--data_dir', type=str, default='/tmp/cifar10_data',
     help='Directory to download data and extract the tarball')
 
-# TODO(karmel): These are just a workaround for using the benchmark script.
-# Remove when that is generalized.
-tf.app.flags.DEFINE_integer("task_index", None, "Task index, should be >= 0.")
-tf.app.flags.DEFINE_string("job_name", None, "job name: worker or ps")
-tf.app.flags.DEFINE_string("ps_hosts", None, "Comma-separated list of hostname:port pairs")
-tf.app.flags.DEFINE_string("worker_hosts", None, "Comma-separated list of hostname:port pairs")
 
 def main(unused_argv):
   """Download and extract the tarball from Alex's website."""

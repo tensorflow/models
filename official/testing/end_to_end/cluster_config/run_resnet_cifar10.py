@@ -51,12 +51,14 @@ if __name__ == "__main__":
   # Download data.
   # TODO(karmel): Data dir cleaning and processing?
   data_exec = os.path.join(path, DATA_EXTRACTION_SCRIPT)
-  subprocess.call("python {} --data_dir={}".format(data_exec, args.data_dir),
-    shell=True)
+  data_cmd = "python {} --data_dir={}".format(data_exec, args.data_dir)
+  print('Calling: {}'.format(data_cmd))
+  subprocess.call(data_cmd, shell=True)
 
   # Run
   main_exec = os.path.join(path, MODEL_MAIN_SCRIPT)
   unparsed_args = ' '.join(unparsed)
-  subprocess.call("python {} --data_dir={} {}".format(
-    data_exec, args.data_dir, unparsed_args),
-    shell=True)
+  main_cmd = "python {} --data_dir={} {}".format(
+    main_exec, args.data_dir, unparsed_args)
+  print('Calling: {}'.format(main_cmd))
+  subprocess.call(main_cmd, shell=True)
