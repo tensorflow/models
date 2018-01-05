@@ -1,0 +1,29 @@
+#!/bin/bash
+
+KUBE_ROOT=$HOME/kubernetes
+KUBE_GCE_ZONE=europe-west1-d
+NUM_NODES=2
+NODE_SIZE=n1-standard-8
+NODE_DISK_SIZE=200GB
+KUBE_GCE_INSTANCE_PREFIX=tf-models-$$
+
+KUBE_OS_DISTRIBUTION=ubuntu
+KUBE_MASTER_OS_DISTRIBUTION=ubuntu
+KUBE_GCE_MASTER_PROJECT=ubuntu-os-cloud
+KUBE_GCE_MASTER_IMAGE=ubuntu-1604-xenial-v20161130
+KUBE_NODE_OS_DISTRIBUTION=ubuntu
+KUBE_GCE_NODE_PROJECT=ubuntu-os-cloud
+KUBE_GCE_NODE_IMAGE=ubuntu-1604-xenial-v20161130
+KUBE_NODE_EXTRA_METADATA=startup-script=setup_worker.sh
+
+USE_GPU=true
+if [ "$USE_GPU" = true ] ; then
+  # With GPU
+  GPUS_PER_WORKER=8
+  NODE_ACCELERATORS=type=nvidia-tesla-k80,count="${GPUS_PER_WORKER}"
+  KUBE_FEATURE_GATES=Accelerators=true
+else
+  GPUS_PER_WORKER=
+  NODE_ACCELERATORS=
+  KUBE_FEATURE_GATES=
+fi

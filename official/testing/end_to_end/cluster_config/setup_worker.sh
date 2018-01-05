@@ -3,10 +3,6 @@
 set -e
 set -x
 
-# This special Docker setup seems to be required when setting up
-# Kubernetes 1.9 with Ubuntu. It shouldn't be.
-# TODO(karmel): Figure out why this seems to be required.
-
 
 # Install cuda if a CUDA-capable GPU is detected
 if lspci | grep -i nvidia; then
