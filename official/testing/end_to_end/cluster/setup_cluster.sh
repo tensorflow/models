@@ -1,6 +1,10 @@
 #!/bin/bash
+# Loads configuration and runs Kubernetes cluster scripts.
+# For full available set, please see Kubernetes documentation at
+# https://kubernetes.io/docs/getting-started-guides/gce/
 
-CLUSTER_CONFIG=${CLUSTER_CONFIG:-cluster_config.sh}
+export CURR_DIR=`dirname $0`
+CLUSTER_CONFIG=${CLUSTER_CONFIG:-$CURR_DIR/cluster_config.sh}
 set -o allexport
 source $CLUSTER_CONFIG
 set +o allexport

@@ -35,7 +35,7 @@
 #   ps_count: 2
 #   docker_file: "benchmarks/models/Dockerfile.alexnet_distributed_test"
 
-- benchmark_name: "tf_models_test"
+- benchmark_name: "resnet_cifar10_cpu"
 #  args:
 #   data_format: "NHWC"
 #   model: "resnet50"

@@ -17,7 +17,7 @@ KUBE_GCE_MASTER_IMAGE=ubuntu-1604-xenial-v20161130
 KUBE_NODE_OS_DISTRIBUTION=ubuntu
 KUBE_GCE_NODE_PROJECT=ubuntu-os-cloud
 KUBE_GCE_NODE_IMAGE=ubuntu-1604-xenial-v20161130
-KUBE_NODE_EXTRA_METADATA=startup-script=setup_worker.sh
+KUBE_NODE_EXTRA_METADATA=startup-script=$CURR_DIR/setup_worker.sh
 
 USE_GPU=${USE_GPU:-true}
 if [ "$USE_GPU" = true ] ; then
