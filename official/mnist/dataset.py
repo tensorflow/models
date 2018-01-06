@@ -33,7 +33,7 @@ def read32(bytestream):
 
 def check_image_file_header(filename):
   """Validate that filename corresponds to images for the MNIST dataset."""
-  with open(filename) as f:
+  with tf.gfile.Open(filename) as f:
     magic = read32(f)
     num_images = read32(f)
     rows = read32(f)
@@ -49,7 +49,7 @@ def check_image_file_header(filename):
 
 def check_labels_file_header(filename):
   """Validate that filename corresponds to labels for the MNIST dataset."""
-  with open(filename) as f:
+  with tf.gfile.Open(filename) as f:
     magic = read32(f)
     num_items = read32(f)
     if magic != 2049:
