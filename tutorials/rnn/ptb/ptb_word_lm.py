@@ -453,8 +453,7 @@ def main(_):
         "which is less than the requested --num_gpus=%d."
         % (len(gpus), FLAGS.num_gpus))
 
-  raw_data = reader.ptb_raw_data(FLAGS.data_path)
-  train_data, valid_data, test_data, _ = raw_data
+  train_data, valid_data, test_data, _ = reader.ptb_raw_data(FLAGS.data_path)
 
   config = get_config()
   eval_config = get_config()
