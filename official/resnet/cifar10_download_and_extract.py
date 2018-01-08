@@ -50,14 +50,13 @@ def main(unused_argv):
           filename, 100.0 * count * block_size / total_size))
       sys.stdout.flush()
 
-    print(DATA_URL)
-    print(filepath)
+    import time
+    time.sleep(600)
     filepath, _ = urllib.request.urlretrieve(DATA_URL, filepath, _progress)
     print()
     statinfo = os.stat(filepath)
     print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
-    import time
-    time.sleep(600)
+
   tarfile.open(filepath, 'r:gz').extractall(FLAGS.data_dir)
 
 

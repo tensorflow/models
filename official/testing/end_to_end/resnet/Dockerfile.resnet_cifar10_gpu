@@ -7,7 +7,9 @@ RUN mkdir -p /opt/tf-models
 ENV data_dir /opt/tf-test-data
 RUN mkdir -p $data_dir
 
-RUN git clone https://github.com/tensorflow/models.git /opt/tf-models
+# TODO(karmel): git pulling doesn't seem to play will with Docker, as files
+# are unpredictably not updated. Forcing updates with a string echo...
+RUN git clone https://github.com/tensorflow/models.git /opt/tf-models && echo "hi"
 
 WORKDIR /opt/tf-models
 # TODO(karmel): Remove this when testing is not on a branch
