@@ -41,17 +41,15 @@ if __name__ == "__main__":
   parser.add_argument('--data_dir', type=str, default='/tmp/cifar10_data',
     help='The location where data will be downloaded to and accessed.')
 
-
   args, unparsed = parser.parse_known_args()
   path = os.path.join(args.repo_loc, MODEL_DIR)
 
   # Download data.
-  # TODO(karmel): Data dir cleaning and processing?
   data_exec = os.path.join(path, DATA_EXTRACTION_SCRIPT)
   data_cmd = "python {} --data_dir={}".format(data_exec, args.data_dir)
   subprocess.call(data_cmd, shell=True)
 
-  # Run
+  # Run the main training loop
   main_exec = os.path.join(path, MODEL_MAIN_SCRIPT)
   unparsed_args = ' '.join(unparsed)
   main_cmd = "python {} --data_dir={} {}".format(

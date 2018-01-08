@@ -137,6 +137,7 @@ def GenerateConfig(num_workers,
                    request_load_balancer,
                    docker_image,
                    name_prefix,
+                   multi_gpu_args=True,
                    additional_args=None,
                    env_vars=None,
                    volumes=None,
@@ -161,6 +162,8 @@ def GenerateConfig(num_workers,
       to /shared volume if use_shared_volume is True.
     use_shared_volume: whether to add hostPath to /shared directory
       to the kubernetes config.
+    multi_gpu_args: if True, pass worker and ps job details to each pod.
+      if False, omits those arguments from the config.
     use_cluster_spec: if true, pass --cluster_spec to worker and ps jobs.
       If false, pass --worker_hosts and --ps_hosts to worker and ps jobs.
     gpu_limit: Add a requirement to worker jobs for this many gpu's.
@@ -175,8 +178,12 @@ def GenerateConfig(num_workers,
   if additional_args is None:
     additional_args = {}
   config = ''
-  common_args = GetCommonArgs(
+
+  if multi_gpu_args:
+    common_args = GetCommonArgs(
       num_workers, num_param_servers, port, name_prefix, use_cluster_spec)
+  else:
+    common_args = {}
 
   if volumes is None:
     volumes = {}

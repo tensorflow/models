@@ -55,13 +55,6 @@ parser.add_argument(
          'with CPU. If left unspecified, the data format will be chosen '
          'automatically based on whether TensorFlow was built for CPU or GPU.')
 
-# TODO(karmel): These are just a workaround for using the benchmark script.
-# Remove when that is generalized.
-tf.app.flags.DEFINE_integer("task_index", None, "Task index, should be >= 0.")
-tf.app.flags.DEFINE_string("job_name", None, "job name: worker or ps")
-tf.app.flags.DEFINE_string("ps_hosts", None, "Comma-separated list of hostname:port pairs")
-tf.app.flags.DEFINE_string("worker_hosts", None, "Comma-separated list of hostname:port pairs")
-
 _HEIGHT = 32
 _WIDTH = 32
 _DEPTH = 3

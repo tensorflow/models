@@ -32,6 +32,7 @@ import yaml
 _DOCKER_IMAGE_PATTERN = 'gcr.io/tensorflow-testing/tf-models-cluster/%s'
 _OUTPUT_FILE_ENV_VAR = 'TF_DIST_BENCHMARK_RESULTS_FILE'
 _TEST_NAME_ENV_VAR = 'TF_DIST_BENCHMARK_NAME'
+_LD_LIBRARY_PATH = '/usr/lib/cuda:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu'
 _PORT = 5000
 
 
@@ -200,8 +201,7 @@ def main():
     volumes = {}
     if gpu_count > 0:
       volumes = get_gpu_volume_mounts()
-      env_vars['LD_LIBRARY_PATH'] = (
-          '/usr/lib/cuda:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu')
+      env_vars['LD_LIBRARY_PATH'] = FLAGS.ld_library_path or _LD_LIBRARY_PATH
 
     env_vars.update(config.get('env_vars', {}))
     args = config.get('args', {})
@@ -216,6 +216,7 @@ def main():
         env_vars=env_vars,
         volumes=volumes,
         use_shared_volume=False,
+        multi_gpu_args=False,
         use_cluster_spec=False,
         gpu_limit=gpu_count)
 
@@ -270,6 +271,10 @@ if __name__ == '__main__':
   parser.add_argument(
       '--nvidia_lib_dir', type=str, default=None, required=False,
       help='Directory where nvidia library files are located on gcloud node.')
+  parser.add_argument(
+      '--ld_library_path', type=str, default=None, required=False,
+      help='LD_LIBRARY_PATH on node to be passed to the pods. Default: '
+        + _LD_LIBRARY_PATH)
   FLAGS, _ = parser.parse_known_args()
   logging.basicConfig(level=logging.DEBUG)
   main()
