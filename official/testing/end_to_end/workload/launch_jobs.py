@@ -39,19 +39,19 @@ def _ConvertToValidName(name):
   """Converts to name that we can use as a kubernetes job prefix.
 
   Args:
-    name: benchmark name.
+    name: task name.
 
   Returns:
-    Benchmark name that can be used as a kubernetes job prefix.
+    Task name that can be used as a kubernetes job prefix.
   """
   return name.translate(maketrans('/:_', '---'))
 
 
-def _RunBenchmark(name, yaml_file):
-  """Runs a single distributed benchmark.
+def _ExecuteTask(name, yaml_file):
+  """Runs a single task as configured.
 
   Args:
-    name: name of the benchmark to run.
+    name: name of the task to run.
     yaml_file: path to kubernetes config file.
   """
   kubectl_util.DeletePods(name, yaml_file)
@@ -71,7 +71,7 @@ def _BuildAndPushDockerImage(
     docker_file: Dockerfile path.
     docker_image_pattern: URL for docker registry where image will be pushed.
       Should have one `%s` where the image name will go.
-    name: name of the benchmark to build a docker image for.
+    name: name of the task to build a docker image for.
     tag: tag for docker image.
     push_to_gcloud: whether to push the image to google cloud.
     buildargs: optional dict of build arguments to be passed to Docker
@@ -149,7 +149,7 @@ class NoImageFoundError(Exception):
 
 
 def main():
-  config_text = open(FLAGS.benchmark_configs_file, 'r').read()
+  config_text = open(FLAGS.task_config_file, 'r').read()
   configs = yaml.load(config_text)
 
   docker_client = docker.from_env()
@@ -157,18 +157,18 @@ def main():
   # Create directories to store kubernetes yaml configs in.
   if not os.path.isdir(FLAGS.config_output_file_dir):
     os.makedirs(FLAGS.config_output_file_dir)
-  # Keeps track of already built docker images in case multiple benchmarks
+  # Keeps track of already built docker images in case multiple tasks
   # use the same docker image.
-  benchmark_name_to_docker_image = {}
+  name_to_docker_image = {}
 
   # Set docker registry path for use
   docker_image_pattern = FLAGS.docker_image_pattern or _DOCKER_IMAGE_PATTERN
 
-  # TODO(annarev): run benchmarks in parallel instead of sequentially.
+  # TODO(annarev): execute tasks in parallel instead of sequentially.
   for config in configs:
     name = _ConvertToValidName(str(config['task_name']))
-    if name in benchmark_name_to_docker_image:
-      docker_image = benchmark_name_to_docker_image[name]
+    if name in name_to_docker_image:
+      docker_image = name_to_docker_image[name]
     elif FLAGS.build_docker_image:
       docker_image = _BuildAndPushDockerImage(
           docker_client,
@@ -178,7 +178,7 @@ def main():
           time_tag,
           FLAGS.store_docker_image_in_gcloud,
           buildargs=config.get('docker_build_args'))
-      benchmark_name_to_docker_image[name] = docker_image
+      name_to_docker_image[name] = docker_image
     else:
       docker_image = _GetMostRecentDockerImageFromGcloud(
           docker_image_pattern % name)
@@ -187,7 +187,7 @@ def main():
 
     env_vars = {
         _OUTPUT_FILE_ENV_VAR: os.path.join(
-            FLAGS.benchmark_results_dir, name + '.json'),
+            FLAGS.results_dir, name + '.json'),
         _TEST_NAME_ENV_VAR: name
     }
     gpu_count = (0 if 'gpus_per_machine' not in config
@@ -219,7 +219,7 @@ def main():
     with open(kubernetes_config_path, 'w') as output_config_file:
       output_config_file.write(kubernetes_config)
 
-    success = _RunBenchmark(name, kubernetes_config_path)
+    success = _ExecuteTask(name, kubernetes_config_path)
     if not success:
       sys.exit(1)
 
@@ -235,7 +235,7 @@ if __name__ == '__main__':
       '--results_dir', type=str, default=None, required=True,
       help='Directory to store results in.')
   parser.add_argument(
-      '--config_output_file_dir', type=str, default='/tmp', required=False,
+      '--config_output_file_dir', type=str, default='/tmp',
       help='Directory to write generated kubernetes configs to.')
   parser.add_argument(
       '--docker_context_dir', type=str, default='',
