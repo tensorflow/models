@@ -47,7 +47,10 @@ def _ConvertToValidName(name):
   return name.translate(maketrans('/:_', '---'))
 
 
-def _ExecuteTask(name, yaml_file):
+def _ExecuteTask(name,
+  yaml_file,
+  wait_for_completion=False,
+  delete_on_completion=False):
   """Runs a single task as configured.
 
   Args:
@@ -56,9 +59,11 @@ def _ExecuteTask(name, yaml_file):
   """
   kubectl_util.DeletePods(name, yaml_file)
   kubectl_util.CreatePods(name, yaml_file)
-  success = kubectl_util.WaitForCompletion(name)
-  kubectl_util.DeletePods(name, yaml_file)
-  return success
+  if wait_for_completion:
+    success = kubectl_util.WaitForCompletion(name)
+    if delete_on_completion:
+      kubectl_util.DeletePods(name, yaml_file)
+    return success
 
 
 def _BuildAndPushDockerImage(
@@ -250,7 +255,15 @@ if __name__ == '__main__':
       help='Whether to build a new docker image or try to use existing one.')
   parser.add_argument(
       '--store_docker_image_in_gcloud', type='bool', nargs='?', const=True,
-      default=False, help='Push docker images to google cloud.')
+      default=True, help='Push docker images to google cloud.')
+  parser.add_argument(
+      '--wait_for_completion', type='bool', nargs='?', const=True,
+      default=False,
+      help='Wait for each scheduled task to complete before continuing.')
+  parser.add_argument(
+      '--delete_on_completion', type='bool', nargs='?', const=True,
+      default=False,
+      help='Delete created pods upon completion of each task.')
   parser.add_argument(
       '--cuda_lib_dir', type=str, default=None, required=False,
       help='Directory where cuda library files are located on gcloud node.')
