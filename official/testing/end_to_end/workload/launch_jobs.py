@@ -13,9 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Builds docker images and runs benchmarks from benchmark_configs.yml file.
-
-This script should only be run from opensource repository.
+"""Builds docker images and runs training/tests.
 """
 import argparse
 from datetime import datetime
@@ -31,7 +29,7 @@ import kubectl_util
 import yaml
 
 
-_DOCKER_IMAGE_PATTERN = 'gcr.io/tensorflow-testing/benchmarks/%s'
+_DOCKER_IMAGE_PATTERN = 'gcr.io/tensorflow-testing/tf-models-cluster/%s'
 _OUTPUT_FILE_ENV_VAR = 'TF_DIST_BENCHMARK_RESULTS_FILE'
 _TEST_NAME_ENV_VAR = 'TF_DIST_BENCHMARK_NAME'
 _PORT = 5000
@@ -168,7 +166,7 @@ def main():
 
   # TODO(annarev): run benchmarks in parallel instead of sequentially.
   for config in configs:
-    name = _ConvertToValidName(str(config['benchmark_name']))
+    name = _ConvertToValidName(str(config['task_name']))
     if name in benchmark_name_to_docker_image:
       docker_image = benchmark_name_to_docker_image[name]
     elif FLAGS.build_docker_image:
@@ -231,14 +229,14 @@ if __name__ == '__main__':
   parser.register(
       'type', 'bool', lambda v: v.lower() in ('true', 't', 'y', 'yes'))
   parser.add_argument(
-      '--benchmark_configs_file', type=str, default=None, required=True,
-      help='YAML file with benchmark configs.')
+      '--task_config_file', type=str, default=None, required=True,
+      help='YAML file with model training and testing configs.')
   parser.add_argument(
-      '--config_output_file_dir', type=str, default=None, required=True,
+      '--results_dir', type=str, default=None, required=True,
+      help='Directory to store results in.')
+  parser.add_argument(
+      '--config_output_file_dir', type=str, default='/tmp', required=False,
       help='Directory to write generated kubernetes configs to.')
-  parser.add_argument(
-      '--benchmark_results_dir', type=str, default=None, required=True,
-      help='Directory to store benchmark results at.')
   parser.add_argument(
       '--docker_context_dir', type=str, default='',
       help='Directory to use as a docker context. By default, docker context '
