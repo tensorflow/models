@@ -50,8 +50,6 @@ def main(unused_argv):
           filename, 100.0 * count * block_size / total_size))
       sys.stdout.flush()
 
-    import time
-    time.sleep(600)
     filepath, _ = urllib.request.urlretrieve(DATA_URL, filepath, _progress)
     print()
     statinfo = os.stat(filepath)
