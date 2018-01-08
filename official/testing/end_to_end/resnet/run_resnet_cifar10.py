@@ -56,4 +56,4 @@ if __name__ == "__main__":
   unparsed_args = ' '.join(unparsed)
   main_cmd = "python {} --data_dir={} {}".format(
     main_exec, args.data_dir, unparsed_args)
-  subprocess.call(main_cmd, shell=True)
+  #subprocess.call(main_cmd, shell=True)
