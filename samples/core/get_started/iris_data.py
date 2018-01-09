@@ -35,8 +35,8 @@ def train_input_fn(features, labels, batch_size):
     # Shuffle, repeat, and batch the examples.
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
 
-    # Return the read end of the pipeline.
-    return dataset.make_one_shot_iterator().get_next()
+    # Return the dataset.
+    return dataset
 
 
 def eval_input_fn(features, labels, batch_size):
@@ -55,8 +55,8 @@ def eval_input_fn(features, labels, batch_size):
     assert batch_size is not None, "batch_size must not be None"
     dataset = dataset.batch(batch_size)
 
-    # Return the read end of the pipeline.
-    return dataset.make_one_shot_iterator().get_next()
+    # Return the dataset.
+    return dataset
 
 
 # The remainder of this file contains a simple example of a csv parser,
@@ -89,5 +89,5 @@ def csv_input_fn(csv_path, batch_size):
     # Shuffle, repeat, and batch the examples.
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
 
-    # Return the read end of the pipeline.
-    return dataset.make_one_shot_iterator().get_next()
+    # Return the dataset.
+    return dataset
