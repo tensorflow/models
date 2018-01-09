@@ -15,7 +15,9 @@ Want to run your own cluster and tests? Read on!
 
 Note: Throughout this guide, we will assume a working knowledge of [Kubernetes](https://kubernetes.io/) (k8s) and [Google Cloud Platform](https://cloud.google.com) (GCP). If you are new to either, please run through the [appropriate tutorials](https://kubernetes.io/docs/getting-started-guides/gce/) first. (Implied in that: you will need access to a GCP account and project; if you don't have one, [sign up](https://console.cloud.google.com/start).)
 
-You will need [gcloud](https://cloud.google.com/sdk/gcloud/) and [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) installed on your local machine in order to deploy and monitor jobs. Please follow the [Google Cloud SDK installation instructions](https://cloud.google.com/sdk/docs/) and the [kubectl installation instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/). We assume here that you are running Kubernetes v1.9.
+You will need [gcloud](https://cloud.google.com/sdk/gcloud/) and [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) installed on your local machine in order to deploy and monitor jobs. Please follow the [Google Cloud SDK installation instructions](https://cloud.google.com/sdk/docs/) and the [kubectl installation instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/). 
+
+We assume here that you are running Kubernetes v1.9, and that you have sufficient permissions on your GCP account to create and delete instances, register docker containers, and set up firewalls.
 
 After installation, make sure to set gcloud to point to the GCP project you will be using:
 
@@ -100,19 +102,17 @@ kubectl config use-context <cluster-id>
 ```
 (Not sure what your cluster ID is? Run `kubectl config view` and find the name of the cluster you just created, which is probably something like `project-name_tf-models-cluster-###`)
 
-2. TODO(karmel): Set up a Docker registry endpoint for the Docker images that you are about to create.
+2. Create or locate the config directory for the model you are testing. If you are running an existing test, look in end_to_end/models for the model subdirectory of interest. If you are creating a new test, your best bet is to replicate what is done in an existing model test directory, and edit accordingly. For now, we will assume you are running the Resnet tests.
 
-3. Create or locate the config directory for the model you are testing. If you are running an existing test, look in end_to_end/models for the model subdirectory of interest. If you are creating a new test, your best bet is to replicate what is done in an existing model test directory, and edit accordingly. For now, we will assume you are running the Resnet tests.
-
-4. Navigate to the chosen test directory. This is not ideal, but important for now because of my limited understanding of Docker and how to work with directories when building Docker containers.
+3. Navigate to the chosen test directory. This is not ideal, but important for now because of my limited understanding of Docker and how to work with directories when building Docker containers.
 
 ```
 cd end_to_end/models/resnet
 ```
 
-5. Modify the appropriate YAML file to reflect your configuration preferences. Note that the `_cpu` YAML assumes you are running a CPU-only cluster, and `_gpu` assumes you have access to a CUDA- and nvidia-docker-enabled GPU cluster. Right now, these YAML files are mostly for show, as Resnet is not actually running multi-GPU. But you can see where you would change things when the age of multi-GPU is upon us.
+4. Modify the appropriate YAML file to reflect your configuration preferences. Note that the `_cpu` YAML assumes you are running a CPU-only cluster, and `_gpu` assumes you have access to a CUDA- and nvidia-docker-enabled GPU cluster. Right now, these YAML files are mostly for show, as Resnet is not actually running multi-GPU. But you can see where you would change things when the age of multi-GPU is upon us.
 
-6. Launch your jobs!
+5. Launch your jobs!
 
 ```
 USE_GPU=true  # Or false, if you are using a CPU cluster
