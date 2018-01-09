@@ -32,7 +32,7 @@ In any case, if you are using GKE and manually set up a cluster, or if you happe
 ```
 gcloud config set project <project-id>
 gcloud config set region <region-id>
-kubectl config use-context <cluster-auth-id>
+kubectl config use-context <cluster-id>
 ```
 
 #### Option 2: Spin up a cluster
@@ -82,15 +82,47 @@ echo "Done for installing kubernetes files"
 3. Now that the painful part is over, you should be able to spin up a cluster with the `setup_cluster.sh` script:
 
 ```
-cluster/setup_cluster.sh
+end_to_end/cluster/setup_cluster.sh
 ```
 You should see output from k8s indicating status. Note that aqcuiring and setting up GPUs can take several minutes. The final output should indicate that the cluster is up and running, with various API endpoints available; if it doesn't... debug.
 
 
 ### Start your jobs
 
+Now that you have a cluster, we will create pods that run your training and testing jobs. 
 
+1. If you just went through the previous step of creating your cluster, kubectl will likely already be connected to it, but if for whatever reason that's not the case, make sure to point kubectl to your cluster:
+
+```
+kubectl config use-context <cluster-id> 
+```
+(Not sure what your cluster ID is? Run `kubectl config view` and find the name of the cluster you just created, which is probably something like `project-name_tf-models-cluster-###`)
+
+2. TODO(karmel): Set up a Docker registry endpoint for the Docker images that you are about to create.
+
+3. Create or locate the config directory for the model you are testing. If you are running an existing test, look in end_to_end/models for the model subdirectory of interest. If you are creating a new test, your best bet is to replicate what is done in an existing model test directory, and edit accordingly. For now, we will assume you are running the Resnet tests.
+
+4. Navigate to the chosen test directory. This is not ideal, but important for now because of my limited understanding of Docker and how to work with directories when building Docker containers.
+
+```
+cd end_to_end/models/resnet
+```
+
+5. Modify the appropriate YAML file to reflect your configuration preferences. Note that the `_cpu` YAML assumes you are running a CPU-only cluster, and `_gpu` assumes you have access to a CUDA- and nvidia-docker-enabled GPU cluster. Right now, these YAML files are mostly for show, as Resnet is not actually running multi-GPU. But you can see where you would change things when the age of multi-GPU is upon us.
+
+6. Launch your jobs!
+
+```
+USE_GPU=true  # Or false, if you are using a CPU cluster
+python ~/path/to/repo/models/official/testing/end_to_end/cluster/workload/launch_jobs.py --task_config_file=resnet_cifar10_$([ "$USE_GPU" == true ] && echo "gpu" || echo "cpu").yaml --results_dir=/tmp --docker_image_pattern="gcr.io/<you-project-id>/<your-docker-dir>/%s"
+
+```
+Note that the results directory is currently a placeholder, as the Resnet example just runs Resnet and logs to stdout. In any case, hopefully that worked. If it didn't... happy debugging!
 
 ### Monitoring
 
-You can check in on your cluster using the handy k8s UI. At the command line, run `kubectl proxy`, and then navigate to http://localhost:8001/ui in a browser window. You can authorize yourself by pointing the UI to your k8s config, which is likely `$HOME/.kube/config`. Poke around and make sure your nodes, pods, and jobs are all error free. 
+You can check in on your cluster using the handy k8s UI. At the command line, run `kubectl proxy`, and then navigate to http://localhost:8001/ui in a browser window. You can authorize yourself by pointing the UI to your k8s config, which is likely `$HOME/.kube/config`. Poke around and make sure your nodes, pods, and jobs are all error free. You can view the logs from containers directly through the UI, and those should be outputting information about Resnet training. If you are more command-line inclined, you can tail logs from your local machine:
+
+```
+kubectl logs --follow --timestamps=true <container-name>
+```
