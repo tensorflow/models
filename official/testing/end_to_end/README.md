@@ -17,7 +17,7 @@ Before launching any testing jobs, you will need to configure your local environ
 
 #### Install gcloud and kubectl
 
-You will need [gcloud](https://cloud.google.com/sdk/gcloud/) and [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) installed on your local machine in order to deploy and monitor jobs. Please follow the [Google Cloud SDK installation instructions](https://cloud.google.com/sdk/docs/) and the [kubectl installation instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
+You will need [gcloud](https://cloud.google.com/sdk/gcloud/) and [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) installed on your local machine in order to deploy and monitor jobs. Please follow the [Google Cloud SDK installation instructions](https://cloud.google.com/sdk/docs/) and the [kubectl installation instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/). We assume here that you are running Kubernetes v1.9.
 
 After installation, make sure to set gcloud to point to the GCP project you will be using:
 
@@ -41,3 +41,40 @@ If you don't have a cluster already, you can use the scripts in the cluster dire
 
 1. In your local copy of the cluster directory, edit the text file cluster/cluster_config.sh to reflect your desired configuration details. (It may be the case that you don't need to change anything at all. If you installed kubectl in a non-standard location, update `KUBE_ROOT`; if you want to use a different region, update `KUBE_GCE_ZONE`, though note that GPUs are only [available in certain regions](https://cloud.google.com/compute/docs/gpus/); if you don't want to use a GPU cluster, update `USE_GPU`; and if you want a different number of worker nodes, update `NUM_NODES`. Note that you should only change the operating system variables if you know what you are doing, as we do not currently support other variants.)
 
+2. All right, this is the wacky part, and I apologize that this is necessary ahead of time. In order to successfully spin up a cluster running Ubuntu, we had to modify the core k8s scripts. I have an [open question on Stack Overflow](https://stackoverflow.com/questions/48121852/kube-up-sh-fails-to-initialize-ubuntu-master-in-cluster-in-kubernetes-v1-9); please feel free to answer that or fix this if you know how. 
+
+For now, you need to add the following to `$KUBE_ROOT/cluster/gce/gci/configure.sh` (most likely for you, that is `$HOME/kubernetes/cluster/gce/gci/configure.sh`), next to all the other functions:
+
+```
+function special-ubuntu-setup {
+ # Special installation required for ubuntu 16.04, as per Karmel's experience
+ # on 2017-12-29
+ apt-get install python-yaml
+
+ # Install docker
+ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+ add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+ apt-get update
+ apt-cache policy docker-ce
+ apt-get install -y docker-ce
+}
+```
+Then, in "main loop" at the bottom of the same file, call that function before `download-kube-env`. The final main loop should look like this, with the added call to `special-ubuntu-setup` in the middle:
+
+```
+######### Main Function ##########
+echo "Start to install kubernetes files"
+set-broken-motd
+KUBE_HOME="/home/kubernetes"
+KUBE_BIN="${KUBE_HOME}/bin"
+# This is added in by Karmel on 2017-12-29. download-kube-env is 
+# failing for lack of yaml, docker, etc.:
+special-ubuntu-setup
+download-kube-env
+source "${KUBE_HOME}/kube-env"
+if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
+  download-kube-master-certs
+fi
+install-kube-binary-config
+echo "Done for installing kubernetes files"
+```
