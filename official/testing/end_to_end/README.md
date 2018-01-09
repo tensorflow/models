@@ -13,10 +13,6 @@ Want to run your own cluster and tests? Read on!
 
 Note: Throughout this guide, we will assume a working knowledge of [Kubernetes](https://kubernetes.io/) (k8s) and [Google Cloud Platform](https://cloud.google.com) (GCP). If you are new to either, please run through the [appropriate tutorials](https://kubernetes.io/docs/getting-started-guides/gce/) first. (Implied in that: you will need access to a GCP account and project; if you don't have one, [sign up](https://console.cloud.google.com/start).)
 
-Before launching any testing jobs, you will need to configure your local environment so as to be able to access both k8s and GCP. Here, we will briefly walk you through the necessary installation steps, although further documentation should be obtained from k8s and GCP websites directly.
-
-#### Install gcloud and kubectl
-
 You will need [gcloud](https://cloud.google.com/sdk/gcloud/) and [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) installed on your local machine in order to deploy and monitor jobs. Please follow the [Google Cloud SDK installation instructions](https://cloud.google.com/sdk/docs/) and the [kubectl installation instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/). We assume here that you are running Kubernetes v1.9.
 
 After installation, make sure to set gcloud to point to the GCP project you will be using:
@@ -25,7 +21,9 @@ After installation, make sure to set gcloud to point to the GCP project you will
 gcloud config set project <project-id>
 ```
 
-#### Get a Kubernetes cluster
+### Get a Kubernetes cluster
+
+#### Option 1: Bring your own cluster
 
 The tools in the workload directory create pods and jobs on an existing cluster-- which means you need access to a k8s cluster on GCP. The easiest way to do that is to use the [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine/) (GKE), which has a handy UI. However, GKE does not (as of January 2018) support GPU nodes, so the GKE solution will only work if you are running tests on CPU nodes. 
 
@@ -36,6 +34,8 @@ gcloud config set project <project-id>
 gcloud config set region <region-id>
 kubectl config use-context <cluster-auth-id>
 ```
+
+#### Option 2: Spin up a cluster
 
 If you don't have a cluster already, you can use the scripts in the cluster directory to set one up:
 
@@ -78,3 +78,19 @@ fi
 install-kube-binary-config
 echo "Done for installing kubernetes files"
 ```
+
+3. Now that the painful part is over, you should be able to spin up a cluster with the `setup_cluster.sh` script:
+
+```
+cluster/setup_cluster.sh
+```
+You should see output from k8s indicating status. Note that aqcuiring and setting up GPUs can take several minutes. The final output should indicate that the cluster is up and running, with various API endpoints available; if it doesn't... debug.
+
+
+### Start your jobs
+
+
+
+### Monitoring
+
+You can check in on your cluster using the handy k8s UI. At the command line, run `kubectl proxy`, and then navigate to http://localhost:8001/ui in a browser window. You can authorize yourself by pointing the UI to your k8s config, which is likely `$HOME/.kube/config`. Poke around and make sure your nodes, pods, and jobs are all error free. 
