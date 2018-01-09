@@ -71,9 +71,11 @@ echo "Start to install kubernetes files"
 set-broken-motd
 KUBE_HOME="/home/kubernetes"
 KUBE_BIN="${KUBE_HOME}/bin"
-# This is added in by Karmel on 2017-12-29. download-kube-env is 
+
+# This next line is added in by Karmel. download-kube-env is 
 # failing for lack of yaml, docker, etc.:
 special-ubuntu-setup
+
 download-kube-env
 source "${KUBE_HOME}/kube-env"
 if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
@@ -117,7 +119,6 @@ cd end_to_end/models/resnet
 ```
 USE_GPU=true  # Or false, if you are using a CPU cluster
 python ~/path/to/repo/models/official/testing/end_to_end/cluster/workload/launch_jobs.py --task_config_file=resnet_cifar10_$([ "$USE_GPU" == true ] && echo "gpu" || echo "cpu").yaml --results_dir=/tmp --docker_image_pattern="gcr.io/<you-project-id>/<your-docker-dir>/%s"
-
 ```
 Note that the results directory is currently a placeholder, as the Resnet example just runs Resnet and logs to stdout. In any case, hopefully that worked. If it didn't... happy debugging!
 
