@@ -23,6 +23,7 @@
   worker_count: 2
   ps_count: 2
   gpus_per_machine: 2
+  # TODO(karmel): Can this be removed, as it's in the launch jobs script?
   env_vars:
     LD_LIBRARY_PATH: "/usr/local/cuda/lib64:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu"
     CUDA_HOME: "/usr/local/cuda"
