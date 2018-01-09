@@ -15,6 +15,6 @@ Note: Throughout this guide, we will assume a working knowledge of [Kubernetes](
 
 Before launching any testing jobs, you will need to configure your local environment so as to be able to access both k8s and GCP. Here, we will briefly walk you through the necessary installation steps, although further documentation should be obtained from k8s and GCP websites directly.
 
-#### Install kubectl
+#### Install gcloud and kubectl
 
-You will need `kubectl` installed on your local machine in order to deploy and monitor jobs. Please follow the [kubectl installation instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
+You will need [gcloud](https://cloud.google.com/sdk/gcloud/) and [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) installed on your local machine in order to deploy and monitor jobs. Please follow the [Google Cloud SDK installation instructions](https://cloud.google.com/sdk/docs/) and the [kubectl installation instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/).
