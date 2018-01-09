@@ -1,5 +1,7 @@
 ## End-to-End Testing of Official Models
 
+**Note: This is so alpha, we had to wrap around and call it zeta. Consider yourself warned. **
+
 In order to facilitate performance and convergence testing of the official Model Garden models, we provide a set of scripts and tools that can:
 
 1. Spin up a Kubernetes cluster on Google Cloud Platform.
