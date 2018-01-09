@@ -10,6 +10,9 @@ NODE_SIZE=n1-standard-8
 NODE_DISK_SIZE=200GB
 KUBE_GCE_INSTANCE_PREFIX=tf-models-cluster-$$
 
+# Change these OS vars only if you know what you are doing; 
+# if you change one, chances are, you have to modify all,
+# including the setup_worker.sh script.
 KUBE_OS_DISTRIBUTION=ubuntu
 KUBE_MASTER_OS_DISTRIBUTION=ubuntu
 KUBE_GCE_MASTER_PROJECT=ubuntu-os-cloud
