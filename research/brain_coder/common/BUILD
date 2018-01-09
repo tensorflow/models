@@ -88,7 +88,7 @@ py_library(
     name = "utils",
     srcs = ["utils.py"],
     deps = [
-# file dep
+        # file dep
         # absl dep /logging
         # numpy dep
         # tensorflow dep
