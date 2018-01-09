@@ -29,7 +29,7 @@ import kubectl_util
 import yaml
 
 
-_DOCKER_IMAGE_PATTERN = 'gcr.io/tensorflow-testing/tf-models-cluster/%s'
+_DOCKER_IMAGE_PATTERN = 'gcr.io/%s/tf-models-cluster/'
 _OUTPUT_FILE_ENV_VAR = 'TF_DIST_BENCHMARK_RESULTS_FILE'
 _TEST_NAME_ENV_VAR = 'TF_DIST_BENCHMARK_NAME'
 _LD_LIBRARY_PATH = '/usr/lib/cuda:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu'
@@ -87,7 +87,7 @@ def _BuildAndPushDockerImage(
     Docker image identifier.
   """
   local_docker_image_with_tag = '%s:%s' % (name, tag)
-  remote_docker_image = docker_image_pattern % name
+  remote_docker_image = _get_docker_image_pattern(docker_image_pattern) % name
   remote_docker_image_with_tag = '%s:%s' % (remote_docker_image, tag)
   if FLAGS.docker_context_dir:
     docker_context = os.path.join(
@@ -108,6 +108,31 @@ def _BuildAndPushDockerImage(
     subprocess.check_call(
         ['gcloud', 'docker', '--', 'push', remote_docker_image_with_tag])
   return remote_docker_image_with_tag
+
+
+def _get_current_gcp_project():
+  """Get and return the name of the current gcloud project.
+  """
+  proj = subprocess.check_output(['gcloud', 'config', 'get-value', 'project'])
+  return proj.strip()
+
+
+def _get_docker_image_pattern(passed_pattern=''):
+  """Check passed pattern and return if valid. Otherwise, assemble pattern
+  default value.
+  """
+  if passed_pattern:
+    if passed_pattern.count('%s') != 1:
+      raise ValueError('Please ensure your specified Docker image pattern'
+        ' includes exactly one "%s".')
+    return passed_pattern
+  else:
+    proj_name = _get_current_gcp_project()
+    pattern = _DOCKER_IMAGE_PATTERN % proj_name
+    # Add space for the image name
+    pattern = pattern + '%s'
+
+    return pattern
 
 
 def _GetMostRecentDockerImageFromGcloud(docker_image):
@@ -167,10 +192,7 @@ def main():
   # use the same docker image.
   name_to_docker_image = {}
 
-  # Set docker registry path for use
-  docker_image_pattern = FLAGS.docker_image_pattern or _DOCKER_IMAGE_PATTERN
-
-  # TODO(annarev): execute tasks in parallel instead of sequentially.
+  # TODO(karmel): execute tasks in parallel instead of sequentially.
   for config in configs:
     name = _ConvertToValidName(str(config['task_name']))
     if name in name_to_docker_image:
@@ -179,7 +201,7 @@ def main():
       docker_image = _BuildAndPushDockerImage(
           docker_client,
           config['docker_file'],
-          docker_image_pattern,
+          FLAGS.docker_image_pattern,
           name,
           time_tag,
           FLAGS.store_docker_image_in_gcloud,
