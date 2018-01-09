@@ -25,7 +25,7 @@ par_binary(
     deps = [
         ":defaults",
         ":run",
-# file dep
+        # file dep
         # absl dep :app
         # absl dep /flags
         # absl dep /logging
@@ -42,7 +42,7 @@ py_library(
         ":defaults",
         ":ga_lib",
         ":results_lib",
-# file dep
+        # file dep
         # absl dep /flags
         # absl dep /logging
         # numpy dep
@@ -83,7 +83,7 @@ py_library(
         ":defaults",
         ":pg_agent",
         ":results_lib",
-# file dep
+        # file dep
         # absl dep /flags
         # absl dep /logging
         # tensorflow dep
@@ -96,7 +96,7 @@ py_library(
     srcs = ["pg_agent.py"],
     deps = [
         ":misc",
-# file dep
+        # file dep
         # absl dep /logging
         # numpy dep
         # tensorflow dep
@@ -204,7 +204,7 @@ py_library(
     name = "results_lib",
     srcs = ["results_lib.py"],
     deps = [
-# file dep
+        # file dep
         # tensorflow dep
     ],
 )
@@ -224,7 +224,7 @@ par_binary(
     deps = [
         ":misc",
         ":results_lib",
-# file dep
+        # file dep
         # absl dep :app
         # absl dep /flags
         # numpy dep
@@ -236,7 +236,7 @@ par_binary(
     name = "aggregate_tuning_results",
     srcs = ["aggregate_tuning_results.py"],
     deps = [
-# file dep
+        # file dep
         # absl dep :app
         # absl dep /flags
         # tensorflow dep
