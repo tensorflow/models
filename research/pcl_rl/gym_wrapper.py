@@ -92,14 +92,14 @@ class GymWrapper(object):
 
   def step(self, actions):
 
-    def env_step(action):
+    def env_step(env, action):
       action = self.env_spec.convert_action_to_gym(action)
       obs, reward, done, tt = env.step(action)
       obs = self.env_spec.convert_obs_to_list(obs)
       return obs, reward, done, tt
 
     actions = zip(*actions)
-    outputs = [env_step(action)
+    outputs = [env_step(env, action)
                if not done else (self.env_spec.initial_obs(None), 0, True, None)
                for action, env, done in zip(actions, self.envs, self.dones)]
     for i, (_, _, done, _) in enumerate(outputs):
