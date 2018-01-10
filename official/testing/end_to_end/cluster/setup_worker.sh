@@ -3,7 +3,8 @@
 set -e
 set -x
 
-
+# TODO(karmel): Installing CUDA shouldn't be necessary if using nvidia-docker;
+# just need the drivers apt-get install nvidia 387 384
 # Install cuda if a CUDA-capable GPU is detected
 if lspci | grep -i nvidia; then
   echo "Checking for CUDA and installing."
