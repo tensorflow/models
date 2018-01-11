@@ -79,8 +79,6 @@ def my_dnn_regression_fn(features, labels, mode, params):
   assert mode == tf.estimator.ModeKeys.EVAL
 
   # Calculate root mean squared error
-  print(labels)
-  print(predictions)
   rmse = tf.metrics.root_mean_squared_error(labels, predictions)
 
   # Add the rmse to the collection of evaluation metrics.

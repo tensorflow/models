@@ -111,13 +111,8 @@ def load_data(y_name="price", train_fraction=0.7, seed=None):
 
 def make_dataset(x, y=None):
     """Create a slice Dataset from a pandas DataFrame and labels"""
-    # TODO(markdaooust): simplify this after the 1.4 cut.
     # Convert the DataFrame to a dict
     x = dict(x)
-
-    # Convert the pd.Series to np.arrays
-    for key in x:
-        x[key] = np.array(x[key])
 
     items = [x]
     if y is not None:
