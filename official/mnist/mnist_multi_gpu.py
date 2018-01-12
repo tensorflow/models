@@ -20,11 +20,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import flags
-import tensorflow as tf
-import mnist
+import sys
 
-flags.adopt_module_key_flags(mnist)
+import mnist
+import tensorflow as tf
 
 
 def model_fn_with_tower_optimizer(features, labels, mode, params):
