@@ -193,27 +193,27 @@ class MNISTArgParser(argparse.ArgumentParser):
     self._set_args()
 
   def _set_args(self):
-    parser.add_argument(
+    self.add_argument(
         '--batch_size',
         type=int,
         default=100,
         help='Number of images to process in a batch')
-    parser.add_argument(
+    self.add_argument(
         '--data_dir',
         type=str,
         default='/tmp/mnist_data',
         help='Path to directory containing the MNIST dataset')
-    parser.add_argument(
+    self.add_argument(
         '--model_dir',
         type=str,
         default='/tmp/mnist_model',
         help='The directory where the model will be stored.')
-    parser.add_argument(
+    self.add_argument(
         '--train_epochs',
         type=int,
         default=40,
         help='Number of epochs to train.')
-    parser.add_argument(
+    self.add_argument(
         '--data_format',
         type=str,
         default=None,
@@ -223,7 +223,7 @@ class MNISTArgParser(argparse.ArgumentParser):
         'compatible with CPU. If left unspecified, the data format will be '
         'chosen automatically based on whether TensorFlow was built for CPU or '
         'GPU.')
-    parser.add_argument(
+    self.add_argument(
         '--export_dir',
         type=str,
         help='The directory where the exported SavedModel will be stored.')
