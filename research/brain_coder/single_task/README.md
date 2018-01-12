@@ -1,6 +1,6 @@
 # Experiments for ICLR 2018 paper.
 
-[Code Synthesis with Priority Queue Training](https://openreview.net/forum?id=r1AoGNlC-).
+[Neural Program Synthesis with Priority Queue Training](https://arxiv.org/abs/1801.03526).
 
 Runs policy gradient (REINFORCE), priority queue training, genetic algorithm,
 and uniform random search.
