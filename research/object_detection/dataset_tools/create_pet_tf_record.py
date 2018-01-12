@@ -64,6 +64,8 @@ def get_class_name_from_filename(file_name):
     A string of the class name.
   """
   match = re.match(r'([A-Za-z_]+)(_[0-9]+\.jpg)', file_name, re.I)
+  if match is None:
+    raise ValueError('File name does not contain the class name')
   return match.groups()[0]
 
 
