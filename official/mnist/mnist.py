@@ -75,7 +75,21 @@ class Model(object):
     return self.fc2(y)
 
 
-def model_fn(features, labels, mode, params):
+def get_optimizer():
+  """Convenience function for getting an AdamOptimizer with learning rate set.
+  Can be used by other training loops leveraging this module.
+  """
+  return tf.train.AdamOptimizer(learning_rate=1e-4)
+
+
+def model_fn_with_optimizer(features, labels, mode, params):
+  """Wrapper for the model_fn that sets the optimizer as the AdamOptimizer.
+  """
+  optimizer = get_optimizer()
+  return model_fn(features, labels, mode, params, optimizer)
+
+
+def model_fn(features, labels, mode, params, optimizer):
   """The model_fn argument for creating an Estimator."""
   model = Model(params['data_format'])
   image = features
@@ -95,7 +109,6 @@ def model_fn(features, labels, mode, params):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
     logits = model(image, training=True)
     loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
     accuracy = tf.metrics.accuracy(
@@ -122,13 +135,13 @@ def model_fn(features, labels, mode, params):
         })
 
 
-def main(unused_argv):
+def main_with_model_fn(unused_argv, model_function):
   data_format = FLAGS.data_format
   if data_format is None:
     data_format = ('channels_first'
                    if tf.test.is_built_with_cuda() else 'channels_last')
   mnist_classifier = tf.estimator.Estimator(
-      model_fn=model_fn,
+      model_fn=model_function,
       model_dir=FLAGS.model_dir,
       params={
           'data_format': data_format
@@ -169,6 +182,10 @@ def main(unused_argv):
     mnist_classifier.export_savedmodel(FLAGS.export_dir, input_fn)
 
 
+def main(unused_argv):
+  main_with_model_fn(unused_argv, model_fn_with_optimizer)
+
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument(
@@ -193,10 +210,11 @@ if __name__ == '__main__':
       type=str,
       default=None,
       choices=['channels_first', 'channels_last'],
-      help='A flag to override the data format used in the model. channels_first '
-      'provides a performance boost on GPU but is not always compatible '
-      'with CPU. If left unspecified, the data format will be chosen '
-      'automatically based on whether TensorFlow was built for CPU or GPU.')
+      help='A flag to override the data format used in the model. '
+      'channels_first provides a performance boost on GPU but is not always '
+      'compatible with CPU. If left unspecified, the data format will be '
+      'chosen automatically based on whether TensorFlow was built for CPU or '
+      'GPU.')
   parser.add_argument(
       '--export_dir',
       type=str,
