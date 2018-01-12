@@ -44,4 +44,4 @@ if __name__ == '__main__':
   parser = mnist.MNISTArgParser()
   tf.logging.set_verbosity(tf.logging.INFO)
   FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed, config=tf.ConfigProto(log_device_placement=True))
+  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
