@@ -32,7 +32,8 @@ import yaml
 _DOCKER_IMAGE_PATTERN = 'gcr.io/%s/tf-models-cluster/'
 _OUTPUT_FILE_ENV_VAR = 'TF_DIST_BENCHMARK_RESULTS_FILE'
 _TEST_NAME_ENV_VAR = 'TF_DIST_BENCHMARK_NAME'
-_LD_LIBRARY_PATH = '/usr/lib/cuda:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu'
+# TODO(karmel): With nvidia-docker, these should be unnecessary.
+_LD_LIBRARY_PATH = '/usr/local/cuda:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu'
 _CUDA_HOME = '/usr/local/cuda'
 _PORT = 5000
 
