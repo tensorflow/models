@@ -135,14 +135,14 @@ def model_fn(features, labels, mode, params, optimizer):
         })
 
 
-def main_with_model_fn(unused_argv, model_function):
-  data_format = FLAGS.data_format
+def main_with_model_fn(flags, unused_argv, model_function):
+  data_format = flags.data_format
   if data_format is None:
     data_format = ('channels_first'
                    if tf.test.is_built_with_cuda() else 'channels_last')
   mnist_classifier = tf.estimator.Estimator(
       model_fn=model_function,
-      model_dir=FLAGS.model_dir,
+      model_dir=flags.model_dir,
       params={
           'data_format': data_format
       })
@@ -152,9 +152,9 @@ def main_with_model_fn(unused_argv, model_function):
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
-    ds = dataset.train(FLAGS.data_dir)
-    ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
-        FLAGS.train_epochs)
+    ds = dataset.train(flags.data_dir)
+    ds = ds.cache().shuffle(buffer_size=50000).batch(flags.batch_size).repeat(
+        flags.train_epochs)
     (images, labels) = ds.make_one_shot_iterator().get_next()
     return (images, labels)
 
@@ -166,24 +166,24 @@ def main_with_model_fn(unused_argv, model_function):
 
   # Evaluate the model and print results
   def eval_input_fn():
-    return dataset.test(FLAGS.data_dir).batch(
-        FLAGS.batch_size).make_one_shot_iterator().get_next()
+    return dataset.test(flags.data_dir).batch(
+        flags.batch_size).make_one_shot_iterator().get_next()
 
   eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
   print()
   print('Evaluation results:\n\t%s' % eval_results)
 
   # Export the model
-  if FLAGS.export_dir is not None:
+  if flags.export_dir is not None:
     image = tf.placeholder(tf.float32, [None, 28, 28])
     input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
         'image': image,
     })
-    mnist_classifier.export_savedmodel(FLAGS.export_dir, input_fn)
+    mnist_classifier.export_savedmodel(flags.export_dir, input_fn)
 
 
 def main(unused_argv):
-  main_with_model_fn(unused_argv, model_fn_with_optimizer)
+  main_with_model_fn(FLAGS, unused_argv, model_fn_with_optimizer)
 
 
 class MNISTArgParser(argparse.ArgumentParser):
