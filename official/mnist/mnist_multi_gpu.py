@@ -20,8 +20,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import flags
 import tensorflow as tf
 import mnist
+
+flags.adopt_module_key_flags(mnist)
 
 
 def model_fn_with_tower_optimizer(features, labels, mode, params):
@@ -36,3 +39,10 @@ def main(unused_argv):
   replicated_fn = tf.contrib.estimator.replicate_model_fn(
       model_fn_with_tower_optimizer)
   mnist.main_with_model_fn(unused_argv, replicated_fn)
+
+
+if __name__ == '__main__':
+  parser = mnist.MNISTArgParser()
+  tf.logging.set_verbosity(tf.logging.INFO)
+  FLAGS, unparsed = parser.parse_known_args()
+  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
