@@ -26,7 +26,7 @@ import subprocess
 
 
 MODEL_DIR = 'official/mnist'
-MODEL_MAIN_SCRIPT = 'mnist.py'
+MODEL_MAIN_SCRIPT = 'mnist_multi_gpu.py'
 
 
 if __name__ == '__main__':
@@ -35,6 +35,9 @@ if __name__ == '__main__':
   parser.add_argument('-r', '--repo_loc', type=str, default='', required=True,
                       help='Full path to local Models repo.'
                            'Should be parent of `official` dir.')
+  parser.add_argument('--run_file', type=str, default=MODEL_MAIN_SCRIPT,
+                      help='MNIST main file to run. Default: '
+                      + MODEL_MAIN_SCRIPT)
 
   args, unparsed = parser.parse_known_args()
   path = os.path.join(args.repo_loc, MODEL_DIR)
