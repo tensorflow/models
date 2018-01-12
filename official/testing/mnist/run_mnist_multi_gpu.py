@@ -26,7 +26,7 @@ import subprocess
 
 
 MODEL_DIR = 'official/mnist'
-MODEL_MAIN_SCRIPT = 'mnist_multi_gpu.py'
+MODEL_MAIN_SCRIPT = 'mnist.py'
 
 
 if __name__ == '__main__':
