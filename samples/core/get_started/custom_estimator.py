@@ -27,10 +27,20 @@ parser.add_argument('--train_steps', default=1000, type=int,
                     help='number of training steps')
 
 def my_model(features, labels, mode, params):
-    """DNN with three hidden layers, and dropout of 0.1 probability."""
-    # Create three fully connected layers each layer having a dropout
-    # probability of 0.1.
+    """A DNN `model_fn`.
+    
+    Args:
+      features: The features dictionary from the input_fn.
+      labels: The labels from the input_fn.
+      mode: The model mode, set by the Estimator method.
+      params: Configuration for the model. Expected keys are 'feature_columns',
+        'hidden_units', and 'n_classes' with the same meanings as the arguments
+        of tf.estimator.DNNClassifier.
+    """
+    # Use `input_layer` to apply the feature columns.
     net = tf.feature_column.input_layer(features, params['feature_columns'])
+    
+    # Build the hidden layers, sized according to the 'hidden_units' param.
     for units in params['hidden_units']:
         net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
 
