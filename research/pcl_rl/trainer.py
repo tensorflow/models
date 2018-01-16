@@ -92,6 +92,8 @@ flags.DEFINE_bool('update_eps_lambda', False,
                   'Update lambda automatically based on last 100 episodes.')
 flags.DEFINE_float('gamma', 1.0, 'discount')
 flags.DEFINE_integer('rollout', 10, 'rollout')
+flags.DEFINE_bool('use_target_values', False,
+                  'use target network for value estimates')
 flags.DEFINE_bool('fixed_std', True,
                   'fix the std in Gaussian distributions')
 flags.DEFINE_bool('input_prev_actions', True,
@@ -152,6 +154,10 @@ class Trainer(object):
     self.env = gym_wrapper.GymWrapper(self.env_str,
                                       distinct=FLAGS.batch_size // self.num_samples,
                                       count=self.num_samples)
+    self.eval_env = gym_wrapper.GymWrapper(
+        self.env_str,
+        distinct=FLAGS.batch_size // self.num_samples,
+        count=self.num_samples)
     self.env_spec = env_spec.EnvSpec(self.env.get_one())
 
     self.max_step = FLAGS.max_step
@@ -169,7 +175,8 @@ class Trainer(object):
     self.value_opt = FLAGS.value_opt
     assert not self.trust_region_p or self.objective in ['pcl', 'trpo']
     assert self.objective != 'trpo' or self.trust_region_p
-    assert self.value_opt is None or self.critic_weight == 0.0
+    assert self.value_opt is None or self.value_opt == 'None' or \
+        self.critic_weight == 0.0
     self.max_divergence = FLAGS.max_divergence
 
     self.learning_rate = FLAGS.learning_rate
@@ -182,6 +189,7 @@ class Trainer(object):
     self.update_eps_lambda = FLAGS.update_eps_lambda
     self.gamma = FLAGS.gamma
     self.rollout = FLAGS.rollout
+    self.use_target_values = FLAGS.use_target_values
     self.fixed_std = FLAGS.fixed_std
     self.input_prev_actions = FLAGS.input_prev_actions
     self.recurrent = FLAGS.recurrent
@@ -208,8 +216,7 @@ class Trainer(object):
     self.value_hidden_layers = FLAGS.value_hidden_layers
     self.tf_seed = FLAGS.tf_seed
 
-    self.save_trajectories_dir = (
-        FLAGS.save_trajectories_dir or FLAGS.save_dir)
+    self.save_trajectories_dir = FLAGS.save_trajectories_dir
     self.save_trajectories_file = (
         os.path.join(
             self.save_trajectories_dir, self.env_str.replace('-', '_'))
@@ -244,7 +251,8 @@ class Trainer(object):
                  policy_weight=policy_weight,
                  critic_weight=self.critic_weight,
                  tau=tau, gamma=self.gamma, rollout=self.rollout,
-                 eps_lambda=self.eps_lambda, clip_adv=self.clip_adv)
+                 eps_lambda=self.eps_lambda, clip_adv=self.clip_adv,
+                 use_target_values=self.use_target_values)
     elif self.objective in ['reinforce', 'urex']:
       cls = (full_episode_objective.Reinforce
              if self.objective == 'reinforce' else
@@ -322,10 +330,10 @@ class Trainer(object):
         self.num_expert_paths, self.env_str, self.env_spec,
         load_trajectories_file=self.load_trajectories_file)
 
-  def get_controller(self):
+  def get_controller(self, env):
     """Get controller."""
     cls = controller.Controller
-    return cls(self.env, self.env_spec, self.internal_dim,
+    return cls(env, self.env_spec, self.internal_dim,
                use_online_batch=self.use_online_batch,
                batch_by_steps=self.batch_by_steps,
                unify_episodes=self.unify_episodes,
@@ -334,7 +342,7 @@ class Trainer(object):
                cutoff_agent=self.cutoff_agent,
                save_trajectories_file=self.save_trajectories_file,
                use_trust_region=self.trust_region_p,
-               use_value_opt=self.value_opt is not None,
+               use_value_opt=self.value_opt not in [None, 'None'],
                update_eps_lambda=self.update_eps_lambda,
                prioritize_by=self.prioritize_by,
                get_model=self.get_model,
@@ -359,16 +367,19 @@ class Trainer(object):
         saver.restore(sess, ckpt.model_checkpoint_path)
       elif FLAGS.load_path:
         logging.info('restoring from %s', FLAGS.load_path)
-        with gfile.AsUser('distbelief-brain-gpu'):
-          saver.restore(sess, FLAGS.load_path)
+        saver.restore(sess, FLAGS.load_path)
 
     if FLAGS.supervisor:
       with tf.device(tf.ReplicaDeviceSetter(FLAGS.ps_tasks, merge_devices=True)):
-        self.global_step = tf.train.get_or_create_global_step()
+        self.global_step = tf.contrib.framework.get_or_create_global_step()
         tf.set_random_seed(FLAGS.tf_seed)
-        self.controller = self.get_controller()
+        self.controller = self.get_controller(self.env)
         self.model = self.controller.model
         self.controller.setup()
+        with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+          self.eval_controller = self.get_controller(self.eval_env)
+          self.eval_controller.setup(train=False)
+
         saver = tf.train.Saver(max_to_keep=10)
         step = self.model.global_step
         sv = tf.Supervisor(logdir=FLAGS.save_dir,
@@ -382,10 +393,14 @@ class Trainer(object):
         sess = sv.PrepareSession(FLAGS.master)
     else:
       tf.set_random_seed(FLAGS.tf_seed)
-      self.global_step = tf.train.get_or_create_global_step()
-      self.controller = self.get_controller()
+      self.global_step = tf.contrib.framework.get_or_create_global_step()
+      self.controller = self.get_controller(self.env)
       self.model = self.controller.model
       self.controller.setup()
+      with tf.variable_scope(tf.get_variable_scope(), reuse=True):
+        self.eval_controller = self.get_controller(self.eval_env)
+        self.eval_controller.setup(train=False)
+
       saver = tf.train.Saver(max_to_keep=10)
       sess = tf.Session()
       sess.run(tf.initialize_all_variables())
@@ -414,21 +429,25 @@ class Trainer(object):
 
       (loss, summary,
        total_rewards, episode_rewards) = self.controller.train(sess)
+      _, greedy_episode_rewards = self.eval_controller.eval(sess)
+      self.controller.greedy_episode_rewards = greedy_episode_rewards
       losses.append(loss)
       rewards.append(total_rewards)
       all_ep_rewards.extend(episode_rewards)
 
-      if random.random() < 1 and is_chief and sv and sv._summary_writer:
+      if (random.random() < 0.1 and summary and episode_rewards and
+          is_chief and sv and sv._summary_writer):
         sv.summary_computed(sess, summary)
 
       model_step = sess.run(self.model.global_step)
       if is_chief and step % self.validation_frequency == 0:
         logging.info('at training step %d, model step %d: '
                      'avg loss %f, avg reward %f, '
-                     'episode rewards: %f',
+                     'episode rewards: %f, greedy rewards: %f',
                      step, model_step,
                      np.mean(losses), np.mean(rewards),
-                     np.mean(all_ep_rewards))
+                     np.mean(all_ep_rewards),
+                     np.mean(greedy_episode_rewards))
 
         losses = []
         rewards = []
