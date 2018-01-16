@@ -21,8 +21,6 @@ in Java.
    | tar -xz -C models/
    ```
 
-3. Locate the corresponding labels file in the `data/` directory.
-
 3. Have some test images handy. For example:
    ```
    mkdir -p images
