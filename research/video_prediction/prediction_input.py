@@ -60,6 +60,25 @@ def decode_jpeg_image(image):
   return image
 
 
+def get_simple_format():
+  """Creates a configuration for images saved in Google format.
+
+  Returns:
+    the configuration.
+  """
+  config = {}
+  config['image_name'] = 'image_{}'
+  config['state_name'] = 'state_{}'
+  config['action_name'] = 'action_{}'
+  config['state_dim'] = 5
+  config['action_dim'] = 5
+  config['original_width'] = 640
+  config['original_height'] = 512
+  config['original_channel'] = 3
+  config['image_decoder'] = decode_jpeg_image
+  return config
+
+
 def get_google_format():
   """Creates a configuration for images saved in Google format.
 
@@ -112,6 +131,8 @@ def get_tfrecord_format(tfrecord_format):
     return get_google_format()
   if tfrecord_format == 1:
     return get_berkeley_format()
+  if tfrecord_format == 2:
+    return get_simple_format()
   raise RuntimeError('Unknown TFRecored format.')
 
 

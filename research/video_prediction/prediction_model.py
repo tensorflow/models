@@ -166,6 +166,11 @@ def construct_model(images,
     ValueError: if more than one network option specified or more than 1 mask
     specified for DNA model.
   """
+  # Each image is being used twice, in latent tower and main tower.
+  # This is to make sure we are using the *same* image for both, ...
+  # ... given how TF queues work. 
+  images = [tf.identity(image) for image in images]
+
   if stp + cdna + dna != 1:
     raise ValueError('More than one, or no network option specified.')
   batch_size, img_height, img_width, color_channels = images[0].get_shape()[0:4]
@@ -261,7 +266,9 @@ def construct_model(images,
         if FLAGS.multi_latent:
           latent = samples[timestep]
         if not FLAGS.inference_time:
-          latent = latent_mean + tf.exp(latent_std / 2.0) * latent
+          latent = tf.cond(iter_num < FLAGS.num_iterations_1st_stage,
+                           lambda: tf.identity(latent),
+                           lambda: latent_mean + tf.exp(latent_std / 2.0) * latent)
         with tf.control_dependencies([latent]):
           enc2 = tf.concat([enc2, latent], 3)
         
@@ -291,18 +298,18 @@ def construct_model(images,
 
       enc6 = slim.layers.conv2d_transpose(
           hidden7,
-          hidden7.get_shape()[3], 3, stride=2, scope='convt3',
+          hidden7.get_shape()[3], 3, stride=2, scope='convt3', activation_fn=None,
           normalizer_fn=tf_layers.layer_norm,
           normalizer_params={'scope': 'layer_norm9'})
 
       if dna:
         # Using largest hidden state for predicting untied conv kernels.
         enc7 = slim.layers.conv2d_transpose(
-            enc6, DNA_KERN_SIZE**2, 1, stride=1, scope='convt4')
+            enc6, DNA_KERN_SIZE**2, 1, stride=1, scope='convt4', activation_fn=None)
       else:
         # Using largest hidden state for predicting a new image layer.
         enc7 = slim.layers.conv2d_transpose(
-            enc6, color_channels, 1, stride=1, scope='convt4')
+            enc6, color_channels, 1, stride=1, scope='convt4', activation_fn=None)
         # This allows the network to also generate one image from scratch,
         # which is useful when regions of the image become unoccluded.
         transformed = [tf.nn.sigmoid(enc7)]
@@ -323,7 +330,7 @@ def construct_model(images,
         transformed = [dna_transformation(prev_image, enc7)]
 
       masks = slim.layers.conv2d_transpose(
-          enc6, num_masks + 1, 1, stride=1, scope='convt7')
+          enc6, num_masks + 1, 1, stride=1, scope='convt7', activation_fn=None)
       masks = tf.reshape(
           tf.nn.softmax(tf.reshape(masks, [-1, num_masks + 1])),
           [int(batch_size), int(img_height), int(img_width), num_masks + 1])

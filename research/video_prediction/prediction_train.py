@@ -45,7 +45,6 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('data_dir', DATA_DIR, 'directory containing data.')
 flags.DEFINE_string('output_dir', OUT_DIR, 'directory for model checkpoints.')
 flags.DEFINE_string('event_log_dir', OUT_DIR, 'directory for writing summary.')
-flags.DEFINE_integer('num_iterations', 100000, 'number of training iterations.')
 flags.DEFINE_string('pretrained_model', '',
                     'filepath of a pretrained model to initialize from.')
 
@@ -82,11 +81,15 @@ flags.DEFINE_float('latent_std_min', -5.0,
                    'Minimum for log(std) of latent distribution.')
 flags.DEFINE_float('latent_loss_multiplier', 1e-5,
                    'Multiplier of KL-loss.')
-flags.DEFINE_integer('latent_noloss_iterations', 100000,
-                     'Number of iterations without KL loss.')
 flags.DEFINE_integer('latent_channels', 1,
                      'Number of channels in latent tensor.')
 flags.DEFINE_integer('tfrecord_format', 0, '0 for google, 1 for berkeley')
+flags.DEFINE_integer('num_iterations_1st_stage', 100000,
+                     'Number of iterations in first training stage (deterministic).')
+flags.DEFINE_integer('num_iterations_2nd_stage', 50000,
+                     'Number of iterations in second training stage (no KL loss).')
+flags.DEFINE_integer('num_iterations_3rd_stage', 50000,
+                     'Number of iterations in third training stage.')
 
 
 ## Helper functions
@@ -196,20 +199,24 @@ class Model(object):
     loss = loss_mse
     if FLAGS.stochastic_model:
       values = [0.0, FLAGS.latent_loss_multiplier]
-      boundaries = [FLAGS.latent_noloss_iterations]
+      # KL loss is zero till 3rd stage
+      boundaries = [FLAGS.num_iterations_1st_stage + FLAGS.num_iterations_1st_stage]
       latent_multiplier = tf.train.piecewise_constant(
-          tf.cast(slim.get_or_create_global_step(), tf.int32),
+          tf.cast(self.iter_num, tf.int32),
           boundaries, values)
       loss += latent_multiplier * latent_loss
+      summaries.append(tf.summary.scalar(prefix + '_loss_latent', latent_loss))
     
     self.loss = loss
 
     self.images = images
     self.gen_images = gen_images
 
-    tf.summary.scalar('loss', loss)
-    tf.summary.scalar('loss_mse', loss_mse)
-    tf.summary.scalar('loss_latent', latent_loss)
+    summaries.append(tf.summary.scalar(prefix + '_loss', loss))
+    summaries.append(tf.summary.scalar(prefix + '_loss_mse', loss_mse))
+    
+    summaries.append(tf.summary.image(prefix + '_real', images[-1]))
+    summaries.append(tf.summary.image(prefix + '_gen', gen_images[-1]))
 
     self.lr = tf.placeholder_with_default(FLAGS.learning_rate, ())
 
@@ -221,12 +228,12 @@ def main(unused_argv):
 
   print('Constructing models and inputs.')
   with tf.variable_scope('model', reuse=None) as training_scope:
-    images, actions, states = build_tfrecord_input(training=True)
+    images, actions, states = build_tfrecord_input(training=True, tfrecord_format=FLAGS.tfrecord_format)
     model = Model(images, actions, states, FLAGS.sequence_length,
                   prefix='train')
 
   with tf.variable_scope('val_model', reuse=None):
-    val_images, val_actions, val_states = build_tfrecord_input(training=False)
+    val_images, val_actions, val_states = build_tfrecord_input(training=False, tfrecord_format=FLAGS.tfrecord_format)
     val_model = Model(val_images, val_actions, val_states,
                       FLAGS.sequence_length, training_scope, prefix='val')
 
@@ -250,7 +257,8 @@ def main(unused_argv):
   tf.logging.info('iteration number, cost')
 
   # Run training.
-  for itr in range(FLAGS.num_iterations):
+  num_iterations = FLAGS.num_iterations_1st_stage + FLAGS.num_iterations_2nd_stage + FLAGS.num_iterations_3rd_stage
+  for itr in range(num_iterations):
     # Generate new batch of data.
     feed_dict = {model.iter_num: np.float32(itr),
                  model.lr: FLAGS.learning_rate}
