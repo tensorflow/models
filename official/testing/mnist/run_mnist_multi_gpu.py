@@ -35,7 +35,7 @@ if __name__ == '__main__':
   parser.add_argument('-r', '--repo_loc', type=str, default='', required=True,
                       help='Full path to local Models repo.'
                            'Should be parent of `official` dir.')
-  parser.add_argument('--run_file', type=str, default=MODEL_MAIN_SCRIPT,
+  parser.add_argument('--run_file', type=str, default='',
                       help='MNIST main file to run. Default: '
                       + MODEL_MAIN_SCRIPT)
 
@@ -43,6 +43,7 @@ if __name__ == '__main__':
   path = os.path.join(args.repo_loc, MODEL_DIR)
 
   # Run the main training loop
+  run_file = args.run_file or MODEL_MAIN_SCRIPT
   main_exec = os.path.join(path, MODEL_MAIN_SCRIPT)
   unparsed_args = ' '.join(unparsed)
   main_cmd = 'python {} {}'.format(main_exec, unparsed_args)
