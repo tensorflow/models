@@ -72,7 +72,6 @@ if __name__ == '__main__':
 
   # Set default batch size
   batch_size = get_reasonable_batch_size(parser.get_default('batch_size'))
-  print('Batch size', batch_size)
   parser.set_defaults(batch_size=batch_size)
 
   tf.logging.set_verbosity(tf.logging.INFO)
