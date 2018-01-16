@@ -18,8 +18,8 @@ The model is implemented based on [*Recurrent Neural Network Regularization* (Za
 
    Other arguments:
    * `--model`: The model hyperparameters/configuration to use.
-         Options are: small, `medium` (default), and `large`.
-   * `--model_dir`: directory where the model will be saved. The model will be saved to `/tmp/ptb_model` by default.
+         Options are: `small`, `medium` (default), and `large`.
+   * `--model_dir`: directory where the model will be saved. The model will be saved to `/tmp/rnn_ptb_model` by default.
    * `--reset_training`: Whether to clear the model directory before training (default `false`).
 
    **Visualizing training progress with TensorBoard**

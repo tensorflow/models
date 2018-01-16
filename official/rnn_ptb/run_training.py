@@ -44,7 +44,7 @@ parser.add_argument(
 parser.add_argument(
     '--model_dir',
     type=str,
-    default='/tmp/ptb_model',
+    default='/tmp/rnn_ptb_model',
     help='The directory where the model will be saved.')
 parser.add_argument(
     '--reset_training',
@@ -64,62 +64,54 @@ TRAIN_FILE_WORDS = 929589
 
 def input_fn(input_file, vocab_dict, num_epochs=1):
   """Generates batches of data from the input file."""
+  def batch_data(data, batch_size, steps_per_epoch, unrolled_count):
+    """Batch data so that adjacent batches sequentially traverse the data.
+
+    See the README for details."""
+    data = data.reshape([batch_size, steps_per_epoch, unrolled_count])
+    return np.swapaxes(data, 0, 1)
+
+  def input_generator(batch_size, unrolled_count):
+    """Yield batches of input data."""
+    # Read all words from the input file, and append <eos> at every new line.
+    with tf.gfile.GFile(input_file, 'r') as f:
+      data = f.read().replace(util.NEWLINE, util.EOS).split()
+
+    # Convert each word to the corresponding integer id.
+    data = np.array([vocab_dict[word] for word in data])
+
+    # Calculate size that is evenly divisible by batch size and unrolled count
+    total_words = len(data)
+    steps_per_epoch = util.steps_per_epoch(
+        total_words - 1, batch_size, unrolled_count)
+    data_size = steps_per_epoch * unrolled_count * batch_size
+
+    # Truncate and batch data
+    inputs = data[:data_size]
+    inputs = batch_data(inputs, batch_size, steps_per_epoch, unrolled_count)
+
+    labels = data[1:data_size + 1]
+    labels = batch_data(labels, batch_size, steps_per_epoch, unrolled_count)
+
+    # Yield a single batch of data at a time
+    for i in range(steps_per_epoch):
+      reset_state = (i == 0)  # Signal model to reset the state at every epoch
+      yield {'inputs': inputs[i], 'reset_state': reset_state}, labels[i]
+
   def _input_fn(params):
     batch_size, unrolled_count = params.batch_size, params.unrolled_count
 
-    def batch_data(data, steps_per_epoch):
-      """Batch data so that adjacent batches sequentially traverse the data.
-
-      (See the README for more details)
-
-      Args:
-        data: A sequential array of words with length divisible by batch_size,
-            steps_per_epoch, and unrolled_count.
-        steps_per_epoch: The number of steps it take to complete an epoch.
-      """
-      data = data.reshape([batch_size, steps_per_epoch, unrolled_count])
-      return np.swapaxes(data, 0, 1)
-
-    def input_generator():
-      """Yield batches of the input data."""
-      # Read all words from the input file, and append <eos> at every new line.
-      with tf.gfile.GFile(input_file, 'r') as f:
-        data = f.read().replace('\n', '<eos>').split()
-
-      # Convert each word to the corresponding integer id.
-      data = np.array([vocab_dict[word] for word in data])
-
-      # Calculate size that is evenly divisible by batch size and unrolled count
-      total_words = len(data)
-      steps_per_epoch = util.steps_per_epoch(
-          total_words - 1, batch_size, unrolled_count)
-      data_size = steps_per_epoch * unrolled_count * batch_size
-
-      # Truncate and batch data
-      inputs = data[:data_size]
-      inputs = batch_data(inputs, steps_per_epoch)
-
-      labels = data[1:data_size + 1]
-      labels = batch_data(labels, steps_per_epoch)
-
-      # Yield a single batch of data at a time
-      for i in range(steps_per_epoch):
-        reset_state = (i == 0)  # Signal model to reset the state at every epoch
-        yield inputs[i], labels[i], reset_state
-
     dataset = tf.data.Dataset.from_generator(
-        input_generator,
-        (tf.int32, tf.int32, tf.bool),
-        (tf.TensorShape([batch_size, unrolled_count]),
-         tf.TensorShape([batch_size, unrolled_count]),
-         tf.TensorShape([])))
+        lambda: input_generator(batch_size, unrolled_count),
+        ({'inputs': tf.int32, 'reset_state': tf.bool}, tf.int32),
+        ({'inputs': tf.TensorShape([batch_size, unrolled_count]),
+          'reset_state': tf.TensorShape([])},
+         tf.TensorShape([batch_size, unrolled_count])))
 
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.prefetch(15)
 
-    iterator = dataset.make_one_shot_iterator()
-    inputs, labels, reset_state = iterator.get_next()
-    features = {'inputs': inputs, 'reset_state': reset_state}
+    features, labels = dataset.make_one_shot_iterator().get_next()
     return features, labels
   return _input_fn
 

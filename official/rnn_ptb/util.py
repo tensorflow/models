@@ -25,6 +25,8 @@ DS = '$'
 
 SPECIAL_SYMBOLS = [UNK, N, DS, EOS]
 
+NEWLINE = '\n'
+
 
 def build_vocab_id_dict(data_file):
   """Create a dictionary mapping all words in the vocabulary to integer IDs."""
@@ -33,9 +35,8 @@ def build_vocab_id_dict(data_file):
     unique_words = set(f.read().split())
 
     # Remove special symbols from the set.
-    for symbol in SPECIAL_SYMBOLS:
-      if symbol in unique_words:
-        unique_words.remove(symbol)
+    unique_words -= set(SPECIAL_SYMBOLS)
+
     # Create list of unique words with the special symbols at the front.
     unique_words = SPECIAL_SYMBOLS + sorted(list(unique_words))
 
@@ -49,7 +50,10 @@ def build_vocab_id_dict(data_file):
 def build_reverse_vocab_dict(vocab_dict):
   """Build a dictionary of id->word."""
   reverse_dict = {i: word for word, i in vocab_dict.iteritems()}
-  reverse_dict[3] = '.\n'  # Replace '<eos>' with a period with a new line.
+
+  # Replace the word '<eos>' with a new line.
+  eos_id = SPECIAL_SYMBOLS.index(EOS)
+  reverse_dict[eos_id] = NEWLINE
   return reverse_dict
 
 
