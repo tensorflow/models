@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
   # Run the main training loop
   run_file = args.run_file or MODEL_MAIN_SCRIPT
-  main_exec = os.path.join(path, MODEL_MAIN_SCRIPT)
+  main_exec = os.path.join(path, run_file)
   unparsed_args = ' '.join(unparsed)
   main_cmd = 'python {} {}'.format(main_exec, unparsed_args)
   subprocess.call(main_cmd, shell=True)
