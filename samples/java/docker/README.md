@@ -4,7 +4,7 @@ Typical usage:
 
 ```
 docker build -t java-tensorflow .
-docker run -it --rm -v ${PWD}/..:/examples java-tensorflow
+docker run -it --rm -v ${PWD}/..:/examples -w /examples java-tensorflow
 ```
 
 That second command will pop you into a shell which has all
