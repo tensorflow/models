@@ -37,7 +37,8 @@ def model_fn_with_tower_optimizer(features, labels, mode, params):
 
 def main(unused_argv):
   replicated_fn = tf.contrib.estimator.replicate_model_fn(
-      model_fn_with_tower_optimizer)
+      model_fn_with_tower_optimizer,
+      loss_reduction=tf.losses.Reduction.MEAN)
   mnist.main_with_model_fn(FLAGS, unused_argv, replicated_fn)
 
 
