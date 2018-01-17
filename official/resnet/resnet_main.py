@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import os
 
 import tensorflow as tf
@@ -73,6 +74,7 @@ class ResnetArgParser(argparse.ArgumentParser):
   """
   Arguments for configuring and running a Resnet Model.
   """
+
   def __init__(self, resnet_size_choices=None):
     super(ResnetArgParser, self).__init__()
     self._set_args(resnet_size_choices)
