@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-r"""Training executable for detection models.
+"""Training executable for detection models.
 
 This executable is used to train DetectionModels. There are two ways of
 configuring the training job:
