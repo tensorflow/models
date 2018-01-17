@@ -27,39 +27,6 @@ import tensorflow as tf
 import resnet_model
 import vgg_preprocessing
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    '--data_dir', type=str, default='',
-    help='The directory where the ImageNet input data is stored.')
-
-parser.add_argument(
-    '--model_dir', type=str, default='/tmp/resnet_model',
-    help='The directory where the model will be stored.')
-
-parser.add_argument(
-    '--resnet_size', type=int, default=50, choices=[18, 34, 50, 101, 152, 200],
-    help='The size of the ResNet model to use.')
-
-parser.add_argument(
-    '--train_epochs', type=int, default=100,
-    help='The number of epochs to use for training.')
-
-parser.add_argument(
-    '--epochs_per_eval', type=int, default=1,
-    help='The number of training epochs to run between evaluations.')
-
-parser.add_argument(
-    '--batch_size', type=int, default=32,
-    help='Batch size for training and evaluation.')
-
-parser.add_argument(
-    '--data_format', type=str, default=None,
-    choices=['channels_first', 'channels_last'],
-    help='A flag to override the data format used in the model. channels_first '
-         'provides a performance boost on GPU but is not always compatible '
-         'with CPU. If left unspecified, the data format will be chosen '
-         'automatically based on whether TensorFlow was built for CPU or GPU.')
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -159,7 +126,23 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   return images, labels
 
 
-def resnet_model_fn(features, labels, mode, params):
+def get_optimizer(learning_rate, momentum):
+  """Convenience function for getting a MomentumOptimizer with learning rate
+  set. Can be used by other training loops leveraging this module.
+  """
+  optimizer = tf.train.MomentumOptimizer(
+      learning_rate=learning_rate, momentum=momentum)
+
+  return optimizer
+
+
+def model_fn_with_optimizer_fn(features, labels, mode, params):
+  """Wrapper for the model_fn that sets the optimizer.
+  """
+  return resnet_model_fn(features, labels, mode, params, get_optimizer)
+
+
+def resnet_model_fn(features, labels, mode, params, optimizer_fn):
   """Our model_fn for ResNet to be used with our Estimator."""
   tf.summary.image('images', features, max_outputs=6)
 
@@ -209,9 +192,7 @@ def resnet_model_fn(features, labels, mode, params):
     tf.identity(learning_rate, name='learning_rate')
     tf.summary.scalar('learning_rate', learning_rate)
 
-    optimizer = tf.train.MomentumOptimizer(
-        learning_rate=learning_rate,
-        momentum=_MOMENTUM)
+    optimizer = optimizer_fn(learning_rate, _MOMENTUM)
 
     # Batch norm requires update_ops to be added as a train_op dependency.
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -236,21 +217,21 @@ def resnet_model_fn(features, labels, mode, params):
       eval_metric_ops=metrics)
 
 
-def main(unused_argv):
+def main_with_model_fn(flags, unused_argv, model_function):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
   # Set up a RunConfig to only save checkpoints once per training cycle.
   run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
   resnet_classifier = tf.estimator.Estimator(
-      model_fn=resnet_model_fn, model_dir=FLAGS.model_dir, config=run_config,
+      model_fn=model_function, model_dir=flags.model_dir, config=run_config,
       params={
-          'resnet_size': FLAGS.resnet_size,
-          'data_format': FLAGS.data_format,
-          'batch_size': FLAGS.batch_size,
+          'resnet_size': flags.resnet_size,
+          'data_format': flags.data_format,
+          'batch_size': flags.batch_size,
       })
 
-  for _ in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
+  for _ in range(flags.train_epochs // flags.epochs_per_eval):
     tensors_to_log = {
         'learning_rate': 'learning_rate',
         'cross_entropy': 'cross_entropy',
@@ -263,16 +244,62 @@ def main(unused_argv):
     print('Starting a training cycle.')
     resnet_classifier.train(
         input_fn=lambda: input_fn(
-            True, FLAGS.data_dir, FLAGS.batch_size, FLAGS.epochs_per_eval),
+            True, flags.data_dir, flags.batch_size, flags.epochs_per_eval),
         hooks=[logging_hook])
 
     print('Starting to evaluate.')
     eval_results = resnet_classifier.evaluate(
-        input_fn=lambda: input_fn(False, FLAGS.data_dir, FLAGS.batch_size))
+        input_fn=lambda: input_fn(False, flags.data_dir, flags.batch_size))
     print(eval_results)
 
 
+def main(unused_argv):
+  main_with_model_fn(FLAGS, unused_argv, model_fn_with_optimizer_fn)
+
+
+class ResnetArgParser(argparse.ArgumentParser):
+  def __init__(self):
+    super(ResnetArgParser, self).__init__()
+    self._set_args()
+
+  def _set_args(self):
+    self.add_argument(
+        '--data_dir', type=str, default='',
+        help='The directory where the ImageNet input data is stored.')
+
+    self.add_argument(
+        '--model_dir', type=str, default='/tmp/resnet_model',
+        help='The directory where the model will be stored.')
+
+    self.add_argument(
+        '--resnet_size', type=int, default=50,
+        choices=[18, 34, 50, 101, 152, 200],
+        help='The size of the ResNet model to use.')
+
+    self.add_argument(
+        '--train_epochs', type=int, default=100,
+        help='The number of epochs to use for training.')
+
+    self.add_argument(
+        '--epochs_per_eval', type=int, default=1,
+        help='The number of training epochs to run between evaluations.')
+
+    self.add_argument(
+        '--batch_size', type=int, default=32,
+        help='Batch size for training and evaluation.')
+
+    self.add_argument(
+        '--data_format', type=str, default=None,
+        choices=['channels_first', 'channels_last'],
+        help='A flag to override the data format used in the model. '
+             'channels_first provides a performance boost on GPU but '
+             'is not always compatible with CPU. If left unspecified, '
+             'the data format will be chosen automatically based on '
+             'whether TensorFlow was built for CPU or GPU.')
+
+
 if __name__ == '__main__':
+  parser = ResnetArgParser()
   tf.logging.set_verbosity(tf.logging.INFO)
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(argv=[sys.argv[0]] + unparsed)
