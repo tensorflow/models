@@ -200,7 +200,7 @@ class Model(object):
     if FLAGS.stochastic_model:
       values = [0.0, FLAGS.latent_loss_multiplier]
       # KL loss is zero till 3rd stage
-      boundaries = [FLAGS.num_iterations_1st_stage + FLAGS.num_iterations_1st_stage]
+      boundaries = [FLAGS.num_iterations_1st_stage + FLAGS.num_iterations_2nd_stage]
       latent_multiplier = tf.train.piecewise_constant(
           tf.cast(self.iter_num, tf.int32),
           boundaries, values)
