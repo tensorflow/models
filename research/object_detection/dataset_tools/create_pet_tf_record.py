@@ -257,7 +257,7 @@ def main(_):
 
   train_output_path = os.path.join(FLAGS.output_dir, 'pet_train.record')
   val_output_path = os.path.join(FLAGS.output_dir, 'pet_val.record')
-  if FLAGS.faces_only:
+  if not FLAGS.faces_only:
     train_output_path = os.path.join(FLAGS.output_dir,
                                      'pet_train_with_masks.record')
     val_output_path = os.path.join(FLAGS.output_dir,
