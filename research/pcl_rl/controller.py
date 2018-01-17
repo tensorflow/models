@@ -109,13 +109,14 @@ class Controller(object):
     self.episode_running_rewards = np.zeros(len(self.env))
     self.episode_running_lengths = np.zeros(len(self.env))
     self.episode_rewards = []
+    self.greedy_episode_rewards = []
     self.episode_lengths = []
     self.total_rewards = []
 
     self.best_batch_rewards = None
 
-  def setup(self):
-    self.model.setup()
+  def setup(self, train=True):
+    self.model.setup(train=train)
 
   def initial_internal_state(self):
     return np.zeros(self.model.policy.rnn_state_dim)
@@ -187,7 +188,7 @@ class Controller(object):
 
     return initial_state, all_obs, all_act, rewards, all_pad
 
-  def sample_episodes(self, sess):
+  def sample_episodes(self, sess, greedy=False):
     """Sample steps from the environment until we have enough for a batch."""
 
     # check if last batch ended with episode that was not terminated
@@ -200,7 +201,7 @@ class Controller(object):
     while total_steps < self.max_step * len(self.env):
       (initial_state,
        observations, actions, rewards,
-       pads) = self._sample_episodes(sess)
+       pads) = self._sample_episodes(sess, greedy=greedy)
 
       observations = zip(*observations)
       actions = zip(*actions)
@@ -249,19 +250,26 @@ class Controller(object):
              observations, initial_state, actions,
              rewards, terminated, pads):
     """Train model using batch."""
+    avg_episode_reward = np.mean(self.episode_rewards)
+    greedy_episode_reward = (np.mean(self.greedy_episode_rewards)
+                             if self.greedy_episode_rewards else
+                             avg_episode_reward)
+    loss, summary = None, None
     if self.use_trust_region:
       # use trust region to optimize policy
       loss, _, summary = self.model.trust_region_step(
           sess,
           observations, initial_state, actions,
           rewards, terminated, pads,
-          avg_episode_reward=np.mean(self.episode_rewards))
+          avg_episode_reward=avg_episode_reward,
+          greedy_episode_reward=greedy_episode_reward)
     else:  # otherwise use simple gradient descent on policy
       loss, _, summary = self.model.train_step(
           sess,
           observations, initial_state, actions,
           rewards, terminated, pads,
-          avg_episode_reward=np.mean(self.episode_rewards))
+          avg_episode_reward=avg_episode_reward,
+          greedy_episode_reward=greedy_episode_reward)
 
     if self.use_value_opt:  # optionally perform specific value optimization
       self.model.fit_values(
@@ -305,7 +313,8 @@ class Controller(object):
     if self.update_eps_lambda:
       episode_rewards = np.array(self.episode_rewards)
       episode_lengths = np.array(self.episode_lengths)
-      eps_lambda = find_best_eps_lambda(episode_rewards, episode_lengths)
+      eps_lambda = find_best_eps_lambda(
+          episode_rewards[-20:], episode_lengths[-20:])
       sess.run(self.model.objective.assign_eps_lambda,
                feed_dict={self.model.objective.new_eps_lambda: eps_lambda})
 
@@ -328,10 +337,10 @@ class Controller(object):
     """Use greedy sampling."""
     (initial_state,
      observations, actions, rewards,
-     pads) = self._sample_episodes(sess, greedy=True)
+     pads, terminated) = self.sample_episodes(sess, greedy=True)
 
     total_rewards = np.sum(np.array(rewards) * (1 - np.array(pads)), axis=0)
-    return np.mean(total_rewards)
+    return total_rewards, self.episode_rewards
 
   def convert_from_batched_episodes(
       self, initial_state, observations, actions, rewards,
@@ -351,7 +360,7 @@ class Controller(object):
     for i in xrange(num_episodes):
       length = total_length[i]
       ep_initial = initial_state[i]
-      ep_obs = [obs[:length, i, ...] for obs in observations]
+      ep_obs = [obs[:length + 1, i, ...] for obs in observations]
       ep_act = [act[:length + 1, i, ...] for act in actions]
       ep_rewards = rewards[:length, i]
 
