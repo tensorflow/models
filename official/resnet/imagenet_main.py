@@ -23,8 +23,8 @@ import sys
 
 import tensorflow as tf
 
-import resnet_model
 import resnet_main
+import resnet_model
 import vgg_preprocessing
 
 _VALID_SIZES = [18, 34, 50, 101, 152, 200]
