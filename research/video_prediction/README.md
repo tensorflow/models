@@ -34,14 +34,14 @@ Because the model is trained with an l2 objective, it represents uncertainty as
 blur.
 
 ## Stochastic Variational Video Prediction (SV2P)
-* A TensorFlow implementation of [Stochastic Variational Video Prediction (Babaeizadeh et al., 2017)](https://arxiv.org/abs/1710.11252).*
+* A TensorFlow implementation of [Stochastic Variational Video Prediction (Babaeizadeh et al., 2017)](https://arxiv.org/abs/1710.11252).
 
 This model is essentially a stochastic version of the previous model, which improves
 the quality of predicted video in stochastic and unpredictable environments by removing
 the blur mentioned above. The newly added section of the model approximates the posterior
 that will be used by the modified original model to predict the motion.
 
-To view samples of the stochastic version, please check [this website](https://sites.google.com/site/stochasticvideoprediction/).*
+To view samples of the stochastic version, please check [this website](https://sites.google.com/site/stochasticvideoprediction/).
 
 
 ## Requirements
@@ -99,7 +99,7 @@ contain image sequences, not states and actions.
 
 
 the stochastic version of the model exposes a handful of new arguments:
-
+```shell
   --stochastic_model=True \ # to enable the stochastic model
   --inference_time=False \ # to use random latents at inference time
   --multi_latent=False \ # to use time-variant latent
@@ -109,7 +109,7 @@ the stochastic version of the model exposes a handful of new arguments:
   --num_iterations_1st_stage=100000 \ # number of iterations for 1st stage of training
   --num_iterations_2nd_stage=50000 \ # number of iterations for 2nd stage of training
   --num_iterations_3rd_stage=50000 \ # number of iterations for 3rd stage of training
-
+```
 
 ## Contact
 
