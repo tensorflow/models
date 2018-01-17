@@ -209,7 +209,8 @@ def resnet_model_fn(features, labels, mode, params, optimizer_fn):
 
 
 def main(unused_argv):
-  resnet_main.main_with_model_fn(FLAGS, unused_argv, model_fn_with_optimizer_fn)
+  resnet_main.main_with_model_fn(
+      FLAGS, unused_argv, model_fn_with_optimizer_fn, input_fn)
 
 
 if __name__ == '__main__':

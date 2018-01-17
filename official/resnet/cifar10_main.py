@@ -27,23 +27,6 @@ import tensorflow as tf
 import resnet_model
 import resnet_main
 
-parser = argparse.ArgumentParser()
-
-# Basic model parameters.
-parser.add_argument('--data_dir', type=str, default='/tmp/cifar10_data',
-                    help='The path to the CIFAR-10 data directory.')
-
-parser.add_argument('--model_dir', type=str, default='/tmp/cifar10_model',
-                    help='The directory where the model will be stored.')
-
-
-parser.add_argument(
-    '--data_format', type=str, default=None,
-    choices=['channels_first', 'channels_last'],
-    help='A flag to override the data format used in the model. channels_first '
-         'provides a performance boost on GPU but is not always compatible '
-         'with CPU. If left unspecified, the data format will be chosen '
-         'automatically based on whether TensorFlow was built for CPU or GPU.')
 
 _HEIGHT = 32
 _WIDTH = 32
@@ -250,7 +233,8 @@ def cifar10_model_fn(features, labels, mode, params, optimizer_fn):
 
 
 def main(unused_argv):
-  resnet_main.main_with_model_fn(FLAGS, unused_argv, model_fn_with_optimizer_fn)
+  resnet_main.main_with_model_fn(
+      FLAGS, unused_argv, model_fn_with_optimizer_fn, input_fn)
 
 
 if __name__ == '__main__':
