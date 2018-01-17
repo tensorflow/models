@@ -33,7 +33,6 @@ _DOCKER_IMAGE_PATTERN = 'gcr.io/%s/tf-models-cluster/'
 _OUTPUT_FILE_ENV_VAR = 'TF_DIST_BENCHMARK_RESULTS_FILE'
 _TEST_NAME_ENV_VAR = 'TF_DIST_BENCHMARK_NAME'
 # TODO(karmel): With nvidia-docker, these should be unnecessary.
-_LD_LIBRARY_PATH = '/usr/local/cuda:/usr/lib/nvidia:/usr/lib/x86_64-linux-gnu'
 _CUDA_HOME = '/usr/local/cuda'
 _PORT = 5000
 
@@ -226,7 +225,6 @@ def main():
     if gpu_count > 0:
       # TODO(karmel): What are volume mounts used for? Should they be kept?
       volumes = get_gpu_volume_mounts()
-      env_vars['LD_LIBRARY_PATH'] = FLAGS.ld_library_path or _LD_LIBRARY_PATH
       env_vars['CUDA_HOME'] = FLAGS.cuda_lib_dir or _CUDA_HOME
 
     env_vars.update(config.get('env_vars', {}))
@@ -297,10 +295,6 @@ if __name__ == '__main__':
   parser.add_argument(
       '--nvidia_lib_dir', type=str, default=None, required=False,
       help='Directory where nvidia library files are located on gcloud node.')
-  parser.add_argument(
-      '--ld_library_path', type=str, default=None, required=False,
-      help='LD_LIBRARY_PATH on node to be passed to the pods. Default: '
-      + _LD_LIBRARY_PATH)
   FLAGS, _ = parser.parse_known_args()
   logging.basicConfig(level=logging.DEBUG)
   main()
