@@ -32,8 +32,6 @@ import yaml
 _DOCKER_IMAGE_PATTERN = 'gcr.io/%s/tf-models-cluster/'
 _OUTPUT_FILE_ENV_VAR = 'TF_DIST_BENCHMARK_RESULTS_FILE'
 _TEST_NAME_ENV_VAR = 'TF_DIST_BENCHMARK_NAME'
-# TODO(karmel): With nvidia-docker, these should be unnecessary.
-_CUDA_HOME = '/usr/local/cuda'
 _PORT = 5000
 
 
@@ -172,7 +170,7 @@ def get_gpu_volume_mounts():
       lib_name = cuda_library_file.split('.')[0]
       volume_specs['cuda-libraries-%s' % lib_name] = (
           os.path.join(FLAGS.cuda_lib_dir, cuda_library_file),
-          os.path.join('/usr/lib/cuda/', cuda_library_file))
+          os.path.join('/usr/lib/cuda', cuda_library_file))
   return volume_specs
 
 
@@ -225,7 +223,6 @@ def main():
     if gpu_count > 0:
       # TODO(karmel): What are volume mounts used for? Should they be kept?
       volumes = get_gpu_volume_mounts()
-      env_vars['CUDA_HOME'] = FLAGS.cuda_lib_dir or _CUDA_HOME
 
     env_vars.update(config.get('env_vars', {}))
     args = config.get('args', {})
