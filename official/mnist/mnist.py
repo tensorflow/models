@@ -75,7 +75,21 @@ class Model(object):
     return self.fc2(y)
 
 
-def model_fn(features, labels, mode, params):
+def get_optimizer():
+  """Convenience function for getting an AdamOptimizer with learning rate set.
+  Can be used by other training loops leveraging this module.
+  """
+  return tf.train.AdamOptimizer(learning_rate=1e-4)
+
+
+def model_fn_with_optimizer(features, labels, mode, params):
+  """Wrapper for the model_fn that sets the optimizer as the AdamOptimizer.
+  """
+  optimizer = get_optimizer()
+  return model_fn(features, labels, mode, params, optimizer)
+
+
+def model_fn(features, labels, mode, params, optimizer):
   """The model_fn argument for creating an Estimator."""
   model = Model(params['data_format'])
   image = features
@@ -95,7 +109,6 @@ def model_fn(features, labels, mode, params):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
     logits = model(image, training=True)
     loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
     accuracy = tf.metrics.accuracy(
@@ -122,14 +135,14 @@ def model_fn(features, labels, mode, params):
         })
 
 
-def main(unused_argv):
-  data_format = FLAGS.data_format
+def main_with_model_fn(flags, unused_argv, model_function):
+  data_format = flags.data_format
   if data_format is None:
     data_format = ('channels_first'
                    if tf.test.is_built_with_cuda() else 'channels_last')
   mnist_classifier = tf.estimator.Estimator(
-      model_fn=model_fn,
-      model_dir=FLAGS.model_dir,
+      model_fn=model_function,
+      model_dir=flags.model_dir,
       params={
           'data_format': data_format
       })
@@ -139,9 +152,9 @@ def main(unused_argv):
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
-    ds = dataset.train(FLAGS.data_dir)
-    ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
-        FLAGS.train_epochs)
+    ds = dataset.train(flags.data_dir)
+    ds = ds.cache().shuffle(buffer_size=50000).batch(flags.batch_size).repeat(
+        flags.train_epochs)
     (images, labels) = ds.make_one_shot_iterator().get_next()
     return (images, labels)
 
@@ -153,55 +166,71 @@ def main(unused_argv):
 
   # Evaluate the model and print results
   def eval_input_fn():
-    return dataset.test(FLAGS.data_dir).batch(
-        FLAGS.batch_size).make_one_shot_iterator().get_next()
+    return dataset.test(flags.data_dir).batch(
+        flags.batch_size).make_one_shot_iterator().get_next()
 
   eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
   print()
   print('Evaluation results:\n\t%s' % eval_results)
 
   # Export the model
-  if FLAGS.export_dir is not None:
+  if flags.export_dir is not None:
     image = tf.placeholder(tf.float32, [None, 28, 28])
     input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
         'image': image,
     })
-    mnist_classifier.export_savedmodel(FLAGS.export_dir, input_fn)
+    mnist_classifier.export_savedmodel(flags.export_dir, input_fn)
+
+
+def main(unused_argv):
+  main_with_model_fn(FLAGS, unused_argv, model_fn_with_optimizer)
+
+
+class MNISTArgParser(argparse.ArgumentParser):
+
+  def __init__(self):
+    super(MNISTArgParser, self).__init__()
+    self._set_args()
+
+  def _set_args(self):
+    self.add_argument(
+        '--batch_size',
+        type=int,
+        default=100,
+        help='Number of images to process in a batch')
+    self.add_argument(
+        '--data_dir',
+        type=str,
+        default='/tmp/mnist_data',
+        help='Path to directory containing the MNIST dataset')
+    self.add_argument(
+        '--model_dir',
+        type=str,
+        default='/tmp/mnist_model',
+        help='The directory where the model will be stored.')
+    self.add_argument(
+        '--train_epochs',
+        type=int,
+        default=40,
+        help='Number of epochs to train.')
+    self.add_argument(
+        '--data_format',
+        type=str,
+        default=None,
+        choices=['channels_first', 'channels_last'],
+        help='A flag to override the data format used in the model. '
+        'channels_first provides a performance boost on GPU but is not always '
+        'compatible with CPU. If left unspecified, the data format will be '
+        'chosen automatically based on whether TensorFlow was built for CPU or '
+        'GPU.')
+    self.add_argument(
+        '--export_dir',
+        type=str,
+        help='The directory where the exported SavedModel will be stored.')
 
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '--batch_size',
-      type=int,
-      default=100,
-      help='Number of images to process in a batch')
-  parser.add_argument(
-      '--data_dir',
-      type=str,
-      default='/tmp/mnist_data',
-      help='Path to directory containing the MNIST dataset')
-  parser.add_argument(
-      '--model_dir',
-      type=str,
-      default='/tmp/mnist_model',
-      help='The directory where the model will be stored.')
-  parser.add_argument(
-      '--train_epochs', type=int, default=40, help='Number of epochs to train.')
-  parser.add_argument(
-      '--data_format',
-      type=str,
-      default=None,
-      choices=['channels_first', 'channels_last'],
-      help='A flag to override the data format used in the model. channels_first '
-      'provides a performance boost on GPU but is not always compatible '
-      'with CPU. If left unspecified, the data format will be chosen '
-      'automatically based on whether TensorFlow was built for CPU or GPU.')
-  parser.add_argument(
-      '--export_dir',
-      type=str,
-      help='The directory where the exported SavedModel will be stored.')
-
+  parser = MNISTArgParser()
   tf.logging.set_verbosity(tf.logging.INFO)
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
