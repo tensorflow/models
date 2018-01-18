@@ -207,11 +207,10 @@ def get_batch_size_multi(current_size):
   return current_size - remainder
 
 
-# TODO(karmel): Replicated from
-# tf.contrib.estimator.python.estimator.replicate_model_fn . Should not
-# be a copy, but to avoid import problems until this is done by
-# replicate_model_fn itself, including here.
 def _get_num_gpu():
+  """TODO(karmel): This should eventually be handled by replicate_model_fn
+  directly. For now, doing the work here.
+  """
   local_device_protos = device_lib.list_local_devices()
   return sum([1 for _ in local_device_protos if device.device_type == 'GPU'])
 
