@@ -98,7 +98,7 @@ details. If the `--use_state` option is not set, then the data only needs to
 contain image sequences, not states and actions.
 
 
-the stochastic version of the model exposes a handful of new arguments:
+The stochastic version of the model exposes a handful of new arguments:
 ```shell
   --stochastic_model=True \ # to enable the stochastic model
   --inference_time=False \ # to use random latents at inference time
