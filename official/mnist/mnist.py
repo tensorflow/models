@@ -106,6 +106,7 @@ def model_fn(features, labels, mode, params, optimizer_fn):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
+    optimizer = optimizer_fn(learning_rate=LEARNING_RATE)
     logits = model(image, training=True)
     loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
     accuracy = tf.metrics.accuracy(
@@ -114,7 +115,6 @@ def model_fn(features, labels, mode, params, optimizer_fn):
     # LoggingTensorHook.
     tf.identity(accuracy[1], name='train_accuracy')
     tf.summary.scalar('train_accuracy', accuracy[1])
-    optimizer = optimizer_fn(learning_rate=LEARNING_RATE)
     return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.TRAIN,
         loss=loss,
