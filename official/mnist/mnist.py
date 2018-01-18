@@ -189,11 +189,15 @@ def model_fn_multi(features, labels, mode, params):
   There are two key steps: wrap the optimizer, then replicate the model
   function.
   """
-  optimizer = tf.contrib.estimator.TowerOptimizer(tf.train.AdamOptimizer)
-  base_fn = model_fn(features, labels, mode, params, optimizer_fn)
+  base_fn = model_fn(features, labels, mode, params, get_optimizer_multi)
   replicated_fn = tf.contrib.estimator.replicate_model_fn(
       base_fn, loss_reduction=tf.losses.Reduction.MEAN)
   return replicated_fn
+
+
+def get_optimizer_multi(learning_rate):
+  optimizer = tf.train.AdamOptimizer(learning_rate)
+  return tf.contrib.estimator.TowerOptimizer(optimizer)
 
 
 def get_batch_size_multi(current_size):
