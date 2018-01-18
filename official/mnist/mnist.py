@@ -25,6 +25,8 @@ import tensorflow as tf
 import dataset
 
 
+LEARNING_RATE = 1e-4
+
 class Model(object):
   """Class that defines a graph to recognize digits in the MNIST dataset."""
 
@@ -75,21 +77,32 @@ class Model(object):
     return self.fc2(y)
 
 
-def get_optimizer():
+def get_optimizer_fn():
   """Convenience function for getting an AdamOptimizer with learning rate set.
   Can be used by other training loops leveraging this module.
   """
-  return tf.train.AdamOptimizer(learning_rate=1e-4)
+  return tf.train.AdamOptimizer
 
 
 def model_fn_with_optimizer(features, labels, mode, params):
-  """Wrapper for the model_fn that sets the optimizer as the AdamOptimizer.
+  """Wrapper for the model_fn that sets the optimizer for single GPU/CPU.
   """
-  optimizer = get_optimizer()
-  return model_fn(features, labels, mode, params, optimizer)
+  return model_fn(features, labels, mode, params, get_optimizer_fn())
 
 
-def model_fn(features, labels, mode, params, optimizer):
+def model_fn_with_optimizer_multi(features, labels, mode, params):
+  """Wrapper for the model_fn that sets the optimizer for multi-GPU.
+
+  There are two key steps: wrap the optimizer, then replicate the model
+  function.
+  """
+  optimizer = tf.contrib.estimator.TowerOptimizer(get_optimizer_fn())
+  base_fn = model_fn(features, labels, mode, params, optimizer_fn)
+  replicated_fn = tf.contrib.estimator.replicate_model_fn(
+      base_fn, loss_reduction=tf.losses.Reduction.MEAN)
+  return replicated_fn
+
+def model_fn(features, labels, mode, params, optimizer_fn):
   """The model_fn argument for creating an Estimator."""
   model = Model(params['data_format'])
   image = features
@@ -117,6 +130,7 @@ def model_fn(features, labels, mode, params, optimizer):
     # LoggingTensorHook.
     tf.identity(accuracy[1], name='train_accuracy')
     tf.summary.scalar('train_accuracy', accuracy[1])
+    optimizer = optimizer_fn(learning_rate=LEARNING_RATE)
     return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.TRAIN,
         loss=loss,
@@ -183,7 +197,35 @@ def main_with_model_fn(flags, unused_argv, model_function):
 
 
 def main(unused_argv):
-  main_with_model_fn(FLAGS, unused_argv, model_fn_with_optimizer)
+  model_function = model_fn_with_optimizer
+
+  if FLAGS.multi_gpu:
+    # Adjust batch size
+    FLAGS.batch_size = get_batch_size_multi(FLAGS.batch_size)
+    # Use the wrapped model function
+    model_function = model_fn_with_optimizer_multi
+
+  main_with_model_fn(FLAGS, unused_argv, model_function)
+
+
+def get_batch_size_multi(current_size):
+  """For multi-gpu, batch-size must be a multiple of the number of
+  available GPUs.
+
+  TODO(karmel): This should eventually be handled by replicate_model_fn
+  directly. For now, doing the work here.
+  """
+  remainder = current_size % _get_num_gpu()
+  return current_size - remainder
+
+
+# TODO(karmel): Replicated from
+# tf.contrib.estimator.python.estimator.replicate_model_fn . Should not
+# be a copy, but to avoid import problems until this is done by
+# replicate_model_fn itself, including here.
+def _get_num_gpu():
+  local_device_protos = device_lib.list_local_devices()
+  return sum([1 for _ in local_device_protos if device.device_type == 'GPU'])
 
 
 class MNISTArgParser(argparse.ArgumentParser):
@@ -193,6 +235,9 @@ class MNISTArgParser(argparse.ArgumentParser):
     self._set_args()
 
   def _set_args(self):
+    self.add_argument(
+        '--multi_gpu', action='store_true',
+        help='If set, run across all available GPUs.')
     self.add_argument(
         '--batch_size',
         type=int,
