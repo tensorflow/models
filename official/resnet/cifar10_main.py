@@ -18,42 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 import sys
 
 import tensorflow as tf
 
 import resnet_model
+import resnet_main
 
-parser = argparse.ArgumentParser()
-
-# Basic model parameters.
-parser.add_argument('--data_dir', type=str, default='/tmp/cifar10_data',
-                    help='The path to the CIFAR-10 data directory.')
-
-parser.add_argument('--model_dir', type=str, default='/tmp/cifar10_model',
-                    help='The directory where the model will be stored.')
-
-parser.add_argument('--resnet_size', type=int, default=32,
-                    help='The size of the ResNet model to use.')
-
-parser.add_argument('--train_epochs', type=int, default=250,
-                    help='The number of epochs to train.')
-
-parser.add_argument('--epochs_per_eval', type=int, default=10,
-                    help='The number of epochs to run in between evaluations.')
-
-parser.add_argument('--batch_size', type=int, default=128,
-                    help='The number of images per batch.')
-
-parser.add_argument(
-    '--data_format', type=str, default=None,
-    choices=['channels_first', 'channels_last'],
-    help='A flag to override the data format used in the model. channels_first '
-         'provides a performance boost on GPU but is not always compatible '
-         'with CPU. If left unspecified, the data format will be chosen '
-         'automatically based on whether TensorFlow was built for CPU or GPU.')
 
 _HEIGHT = 32
 _WIDTH = 32
@@ -180,7 +152,14 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   return images, labels
 
 
-def cifar10_model_fn(features, labels, mode, params):
+def model_fn_with_optimizer_fn(features, labels, mode, params):
+  """Wrapper for the model_fn that sets the optimizer.
+  """
+  return cifar10_model_fn(
+      features, labels, mode, params, resnet_main.get_optimizer)
+
+
+def cifar10_model_fn(features, labels, mode, params, optimizer_fn):
   """Model function for CIFAR-10."""
   tf.summary.image('images', features, max_outputs=6)
 
@@ -227,9 +206,7 @@ def cifar10_model_fn(features, labels, mode, params):
     tf.identity(learning_rate, name='learning_rate')
     tf.summary.scalar('learning_rate', learning_rate)
 
-    optimizer = tf.train.MomentumOptimizer(
-        learning_rate=learning_rate,
-        momentum=_MOMENTUM)
+    optimizer = optimizer_fn(learning_rate, _MOMENTUM)
 
     # Batch norm requires update ops to be added as a dependency to the train_op
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -255,41 +232,21 @@ def cifar10_model_fn(features, labels, mode, params):
 
 
 def main(unused_argv):
-  # Using the Winograd non-fused algorithms provides a small performance boost.
-  os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
-
-  # Set up a RunConfig to only save checkpoints once per training cycle.
-  run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
-  cifar_classifier = tf.estimator.Estimator(
-      model_fn=cifar10_model_fn, model_dir=FLAGS.model_dir, config=run_config,
-      params={
-          'resnet_size': FLAGS.resnet_size,
-          'data_format': FLAGS.data_format,
-          'batch_size': FLAGS.batch_size,
-      })
-
-  for _ in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
-    tensors_to_log = {
-        'learning_rate': 'learning_rate',
-        'cross_entropy': 'cross_entropy',
-        'train_accuracy': 'train_accuracy'
-    }
-
-    logging_hook = tf.train.LoggingTensorHook(
-        tensors=tensors_to_log, every_n_iter=100)
-
-    cifar_classifier.train(
-        input_fn=lambda: input_fn(
-            True, FLAGS.data_dir, FLAGS.batch_size, FLAGS.epochs_per_eval),
-        hooks=[logging_hook])
-
-    # Evaluate the model and print results
-    eval_results = cifar_classifier.evaluate(
-        input_fn=lambda: input_fn(False, FLAGS.data_dir, FLAGS.batch_size))
-    print(eval_results)
+  resnet_main.main_with_model_fn(
+      FLAGS, unused_argv, model_fn_with_optimizer_fn, input_fn)
 
 
 if __name__ == '__main__':
+  parser = resnet_main.ResnetArgParser()
+
+  # Set defaults that are reasonable for this model.
+  parser.set_defaults(data_dir='/tmp/cifar10_data',
+                      model_dir='/tmp/cifar10_model',
+                      resnet_size=32,
+                      train_epochs=250,
+                      epochs_per_eval=10,
+                      batch_size=128)
+
   tf.logging.set_verbosity(tf.logging.INFO)
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(argv=[sys.argv[0]] + unparsed)

@@ -1,0 +1,23 @@
+FROM tensorflow/tensorflow:latest-gpu
+
+RUN apt-get update && apt-get install -y git
+
+RUN mkdir -p /opt/tf-models
+
+ENV data_dir /opt/tf-test-data
+RUN mkdir -p $data_dir
+
+# TODO(karmel): git pulling doesn't seem to play will with Docker, as files
+# are unpredictably not updated. Forcing updates with a string echo...
+RUN git clone https://github.com/tensorflow/models.git /opt/tf-models && echo "4"
+
+WORKDIR /opt/tf-models
+# TODO(karmel): Remove this when testing is not on a branch
+RUN git checkout feature/kubeflow-testing
+
+ENV PYTHONPATH $PYTHONPATH:/opt/tf-models/official/resnet
+
+# TODO(karmel): For some reason, files created in my branch can't be run
+# directly from the git pull, or so it seems. Copying directly.
+COPY run_resnet_cifar10.py /opt/run_resnet_cifar10.py
+ENTRYPOINT python /opt/run_resnet_cifar10.py --repo_loc=. --data_dir=$data_dir
