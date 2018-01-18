@@ -133,7 +133,8 @@ def main(argv):
   # Note that the number of examples used during evaluation is
   # --eval_steps * --batch_size.
   # So if you change --batch_size then change --eval_steps too.
-  estimator.evaluate(input_fn=eval_input_fn, steps=FLAGS.eval_steps)
+  if FLAGS.eval_steps:
+    estimator.evaluate(input_fn=eval_input_fn, steps=FLAGS.eval_steps)
 
 
 if __name__ == "__main__":
