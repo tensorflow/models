@@ -24,8 +24,8 @@ import sys
 import tensorflow as tf
 import dataset
 
-
 LEARNING_RATE = 1e-4
+
 
 class Model(object):
   """Class that defines a graph to recognize digits in the MNIST dataset."""
@@ -77,30 +77,14 @@ class Model(object):
     return self.fc2(y)
 
 
-def get_optimizer_fn():
-  """Convenience function for getting an AdamOptimizer with learning rate set.
-  Can be used by other training loops leveraging this module.
-  """
-  return tf.train.AdamOptimizer
-
-
+################################################################################
+# Training loop for the model
+################################################################################
 def model_fn_with_optimizer(features, labels, mode, params):
   """Wrapper for the model_fn that sets the optimizer for single GPU/CPU.
   """
-  return model_fn(features, labels, mode, params, get_optimizer_fn())
+  return model_fn(features, labels, mode, params, tf.train.AdamOptimizer)
 
-
-def model_fn_with_optimizer_multi(features, labels, mode, params):
-  """Wrapper for the model_fn that sets the optimizer for multi-GPU.
-
-  There are two key steps: wrap the optimizer, then replicate the model
-  function.
-  """
-  optimizer = tf.contrib.estimator.TowerOptimizer(get_optimizer_fn())
-  base_fn = model_fn(features, labels, mode, params, optimizer_fn)
-  replicated_fn = tf.contrib.estimator.replicate_model_fn(
-      base_fn, loss_reduction=tf.losses.Reduction.MEAN)
-  return replicated_fn
 
 def model_fn(features, labels, mode, params, optimizer_fn):
   """The model_fn argument for creating an Estimator."""
@@ -196,16 +180,20 @@ def main_with_model_fn(flags, unused_argv, model_function):
     mnist_classifier.export_savedmodel(flags.export_dir, input_fn)
 
 
-def main(unused_argv):
-  model_function = model_fn_with_optimizer
+################################################################################
+# Multi-GPU helpers
+################################################################################
+def model_fn_multi(features, labels, mode, params):
+  """Wrapper for the model_fn that sets the optimizer for multi-GPU.
 
-  if FLAGS.multi_gpu:
-    # Adjust batch size
-    FLAGS.batch_size = get_batch_size_multi(FLAGS.batch_size)
-    # Use the wrapped model function
-    model_function = model_fn_with_optimizer_multi
-
-  main_with_model_fn(FLAGS, unused_argv, model_function)
+  There are two key steps: wrap the optimizer, then replicate the model
+  function.
+  """
+  optimizer = tf.contrib.estimator.TowerOptimizer(tf.train.AdamOptimizer)
+  base_fn = model_fn(features, labels, mode, params, optimizer_fn)
+  replicated_fn = tf.contrib.estimator.replicate_model_fn(
+      base_fn, loss_reduction=tf.losses.Reduction.MEAN)
+  return replicated_fn
 
 
 def get_batch_size_multi(current_size):
@@ -226,6 +214,21 @@ def get_batch_size_multi(current_size):
 def _get_num_gpu():
   local_device_protos = device_lib.list_local_devices()
   return sum([1 for _ in local_device_protos if device.device_type == 'GPU'])
+
+
+################################################################################
+# Run this script
+################################################################################
+def main(unused_argv):
+  model_function = model_fn_with_optimizer
+
+  if FLAGS.multi_gpu:
+    # Adjust batch size
+    FLAGS.batch_size = get_batch_size_multi(FLAGS.batch_size)
+    # Use the wrapped model function
+    model_function = model_fn_multi
+
+  main_with_model_fn(FLAGS, unused_argv, model_function)
 
 
 class MNISTArgParser(argparse.ArgumentParser):
