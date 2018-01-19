@@ -22,6 +22,7 @@ import os
 import sys
 
 import tensorflow as tf
+from tensorflow.python.client import device_lib
 import dataset
 
 LEARNING_RATE = 1e-4
