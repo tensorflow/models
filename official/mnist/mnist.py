@@ -190,10 +190,7 @@ def model_fn_multi(features, labels, mode, params):
   There are two key steps: wrap the optimizer, then replicate the model
   function.
   """
-  base_fn = model_fn(features, labels, mode, params, get_optimizer_multi)
-  replicated_fn = tf.contrib.estimator.replicate_model_fn(
-      base_fn, loss_reduction=tf.losses.Reduction.MEAN)
-  return replicated_fn
+  return model_fn(features, labels, mode, params, get_optimizer_multi)
 
 
 def get_optimizer_multi(learning_rate):
@@ -230,7 +227,8 @@ def main(unused_argv):
     # Adjust batch size
     FLAGS.batch_size = get_batch_size_multi(FLAGS.batch_size)
     # Use the wrapped model function
-    model_function = model_fn_multi
+    model_function = tf.contrib.estimator.replicate_model_fn(
+        model_fn_multi, loss_reduction=tf.losses.Reduction.MEAN)
 
   main_with_model_fn(FLAGS, unused_argv, model_function)
 
