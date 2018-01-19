@@ -75,7 +75,7 @@ class Model(object):
     return self.fc2(y)
 
 
-def model_fn(features, labels, mode, params, optimizer_fn):
+def model_fn(features, labels, mode, params):
   """The model_fn argument for creating an Estimator."""
   model = Model(params['data_format'])
   image = features
