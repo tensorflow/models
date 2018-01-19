@@ -22,10 +22,7 @@ import os
 import sys
 
 import tensorflow as tf
-from tensorflow.python.client import device_lib
 import dataset
-
-LEARNING_RATE = 1e-4
 
 
 class Model(object):
@@ -107,7 +104,7 @@ def model_fn(features, labels, mode, params, optimizer_fn):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = optimizer_fn(learning_rate=LEARNING_RATE)
+    optimizer = optimizer_fn(learning_rate=1e-4)
     logits = model(image, training=True)
     loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
     accuracy = tf.metrics.accuracy(
@@ -202,17 +199,19 @@ def get_batch_size_multi(current_size):
   """For multi-gpu, batch-size must be a multiple of the number of
   available GPUs.
 
-  TODO(karmel): This should eventually be handled by replicate_model_fn
-  directly. For now, doing the work here.
+  Note that this should eventually be handled by replicate_model_fn
+  directly. Multi-GPU support is currently experimental, however,
+  so doing the work here until that feature is in place.
   """
-  remainder = current_size % _get_num_gpu()
+  remainder = current_size % num_gpus()
   return current_size - remainder
 
 
-def _get_num_gpu():
-  """TODO(karmel): This should eventually be handled by replicate_model_fn
-  directly. For now, doing the work here.
+def num_gpus():
+  """Get the number of GPUs available for use in multi-GPU mode.
   """
+  from tensorflow.python.client import device_lib
+
   local_device_protos = device_lib.list_local_devices()
   return sum([1 for d in local_device_protos if d.device_type == 'GPU'])
 
