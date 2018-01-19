@@ -46,11 +46,12 @@ class BaseTest(tf.test.TestCase):
 
     with graph.as_default(), self.test_session(
         use_gpu=with_gpu, force_gpu=with_gpu):
-      model = resnet_model.imagenet_resnet_v2(
-          resnet_size, 456,
+      model = imagenet_main.ImagenetModel(
+          resnet_size,
           data_format='channels_first' if with_gpu else 'channels_last')
+      model.params['num_classes'] = 456
       inputs = tf.random_uniform([1, 224, 224, 3])
-      output = model(inputs, is_training=True)
+      output = model(inputs, training=True)
 
       initial_conv = graph.get_tensor_by_name('initial_conv:0')
       max_pool = graph.get_tensor_by_name('initial_max_pool:0')
@@ -140,7 +141,7 @@ class BaseTest(tf.test.TestCase):
     tf.train.create_global_step()
 
     features, labels = self.input_fn()
-    spec = imagenet_main.resnet_model_fn(
+    spec = imagenet_main.imagenet_model_fn(
         features, labels, mode, {
             'resnet_size': 50,
             'data_format': 'channels_last',

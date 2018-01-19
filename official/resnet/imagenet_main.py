@@ -25,48 +25,12 @@ import sys
 import tensorflow as tf
 
 import resnet_model
+import resnet_shared
 import vgg_preprocessing
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    '--data_dir', type=str, default='',
-    help='The directory where the ImageNet input data is stored.')
-
-parser.add_argument(
-    '--model_dir', type=str, default='/tmp/resnet_model',
-    help='The directory where the model will be stored.')
-
-parser.add_argument(
-    '--resnet_size', type=int, default=50, choices=[18, 34, 50, 101, 152, 200],
-    help='The size of the ResNet model to use.')
-
-parser.add_argument(
-    '--train_epochs', type=int, default=100,
-    help='The number of epochs to use for training.')
-
-parser.add_argument(
-    '--epochs_per_eval', type=int, default=1,
-    help='The number of training epochs to run between evaluations.')
-
-parser.add_argument(
-    '--batch_size', type=int, default=32,
-    help='Batch size for training and evaluation.')
-
-parser.add_argument(
-    '--data_format', type=str, default=None,
-    choices=['channels_first', 'channels_last'],
-    help='A flag to override the data format used in the model. channels_first '
-         'provides a performance boost on GPU but is not always compatible '
-         'with CPU. If left unspecified, the data format will be chosen '
-         'automatically based on whether TensorFlow was built for CPU or GPU.')
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
-_LABEL_CLASSES = 1001
-
-_MOMENTUM = 0.9
-_WEIGHT_DECAY = 1e-4
+_NUM_CLASSES = 1001
 
 _NUM_IMAGES = {
     'train': 1281167,
@@ -76,7 +40,17 @@ _NUM_IMAGES = {
 _FILE_SHUFFLE_BUFFER = 1024
 _SHUFFLE_BUFFER = 1500
 
+TRAIN_PARAMS = dict(
+    batch_denom=256,
+    epochs=[30, 60, 80, 90],
+    learning_rates=[1, 0.1, 0.01, 1e-3, 1e-4],
+    weight_decay=1e-4,
+    train_images=_NUM_IMAGES['train'],
+    momentum=0.9)
 
+################################################################################
+# Data processing
+################################################################################
 def filenames(is_training, data_dir):
   """Return filenames for dataset."""
   if is_training:
@@ -89,7 +63,7 @@ def filenames(is_training, data_dir):
         for i in range(128)]
 
 
-def record_parser(value, is_training):
+def parse_record(raw_record, is_training):
   """Parse an ImageNet record from `value`."""
   keys_to_features = {
       'image/encoded':
@@ -112,7 +86,7 @@ def record_parser(value, is_training):
           tf.VarLenFeature(dtype=tf.int64),
   }
 
-  parsed = tf.parse_single_example(value, keys_to_features)
+  parsed = tf.parse_single_example(raw_record, keys_to_features)
 
   image = tf.image.decode_image(
       tf.reshape(parsed['image/encoded'], shape=[]),
@@ -129,7 +103,7 @@ def record_parser(value, is_training):
       tf.reshape(parsed['image/class/label'], shape=[]),
       dtype=tf.int32)
 
-  return image, tf.one_hot(label, _LABEL_CLASSES)
+  return image, tf.one_hot(label, _NUM_CLASSES)
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1):
@@ -140,7 +114,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
 
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
-  dataset = dataset.map(lambda value: record_parser(value, is_training),
+  dataset = dataset.map(lambda value: parse_record(value, is_training),
                         num_parallel_calls=5)
   dataset = dataset.prefetch(batch_size)
 
@@ -159,120 +133,78 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   return images, labels
 
 
-def resnet_model_fn(features, labels, mode, params):
+################################################################################
+# Running the model
+################################################################################
+class ImagenetModel(resnet_model.Model):
+  # >= this value of resnet_size, use more layers and bottleneck blocks.
+  size_threshold = 50
+
+  def get_model_params(self):
+    """These are the parameters that work for Imagenet data.
+    """
+    return dict(
+      num_classes=_NUM_CLASSES,
+      num_filters=64,
+      kernel_size=7,
+      first_pool_size=3,
+      second_pool_size=7,
+      block_fn=self._get_block_fn(),
+      layers=self._get_layers(),
+      stride_sizes=self._get_stride_sizes(),
+      final_size=self._get_final_size()
+    )
+
+  def _get_block_fn(self):
+    if self.resnet_size < self.size_threshold:
+      return resnet_model.building_block
+    else:
+      return resnet_model.bottleneck_block
+
+  def _get_layers(self):
+    choices = {
+      18: [2, 2, 2, 2],
+      34: [3, 4, 6, 3],
+      50: [3, 4, 6, 3],
+      101: [3, 4, 23, 3],
+      152: [3, 8, 36, 3],
+      200: [3, 24, 36, 3]
+    }
+
+    try:
+      return choices[self.resnet_size]
+    except KeyError:
+      err = ('Could not find layers for selected Resnet size.\n'
+          'Size received: {}; sizes allowed: {}.'.format(
+          self.resnet_size, choices.keys()))
+      raise ValueError(err)
+
+  def _get_stride_sizes(self):
+    return [2, 2, 1, 2, 2, 2, 1]
+
+  def _get_final_size(self):
+    if self.resnet_size < self.size_threshold:
+      return 512
+    else:
+      return 2048
+
+
+def imagenet_model_fn(features, labels, mode, params):
   """Our model_fn for ResNet to be used with our Estimator."""
-  tf.summary.image('images', features, max_outputs=6)
+  params.update(TRAIN_PARAMS)
 
-  network = resnet_model.imagenet_resnet_v2(
-      params['resnet_size'], _LABEL_CLASSES, params['data_format'])
-  logits = network(
-      inputs=features, is_training=(mode == tf.estimator.ModeKeys.TRAIN))
-
-  predictions = {
-      'classes': tf.argmax(logits, axis=1),
-      'probabilities': tf.nn.softmax(logits, name='softmax_tensor')
-  }
-
-  if mode == tf.estimator.ModeKeys.PREDICT:
-    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
-
-  # Calculate loss, which includes softmax cross entropy and L2 regularization.
-  cross_entropy = tf.losses.softmax_cross_entropy(
-      logits=logits, onehot_labels=labels)
-
-  # Create a tensor named cross_entropy for logging purposes.
-  tf.identity(cross_entropy, name='cross_entropy')
-  tf.summary.scalar('cross_entropy', cross_entropy)
-
-  # Add weight decay to the loss. We exclude the batch norm variables because
-  # doing so leads to a small improvement in accuracy.
-  loss = cross_entropy + _WEIGHT_DECAY * tf.add_n(
-      [tf.nn.l2_loss(v) for v in tf.trainable_variables()
-       if 'batch_normalization' not in v.name])
-
-  if mode == tf.estimator.ModeKeys.TRAIN:
-    # Scale the learning rate linearly with the batch size. When the batch size
-    # is 256, the learning rate should be 0.1.
-    initial_learning_rate = 0.1 * params['batch_size'] / 256
-    batches_per_epoch = _NUM_IMAGES['train'] / params['batch_size']
-    global_step = tf.train.get_or_create_global_step()
-
-    # Multiply the learning rate by 0.1 at 30, 60, 80, and 90 epochs.
-    boundaries = [
-        int(batches_per_epoch * epoch) for epoch in [30, 60, 80, 90]]
-    values = [
-        initial_learning_rate * decay for decay in [1, 0.1, 0.01, 1e-3, 1e-4]]
-    learning_rate = tf.train.piecewise_constant(
-        tf.cast(global_step, tf.int32), boundaries, values)
-
-    # Create a tensor named learning_rate for logging purposes.
-    tf.identity(learning_rate, name='learning_rate')
-    tf.summary.scalar('learning_rate', learning_rate)
-
-    optimizer = tf.train.MomentumOptimizer(
-        learning_rate=learning_rate,
-        momentum=_MOMENTUM)
-
-    # Batch norm requires update_ops to be added as a train_op dependency.
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-      train_op = optimizer.minimize(loss, global_step)
-  else:
-    train_op = None
-
-  accuracy = tf.metrics.accuracy(
-      tf.argmax(labels, axis=1), predictions['classes'])
-  metrics = {'accuracy': accuracy}
-
-  # Create a tensor named train_accuracy for logging purposes.
-  tf.identity(accuracy[1], name='train_accuracy')
-  tf.summary.scalar('train_accuracy', accuracy[1])
-
-  return tf.estimator.EstimatorSpec(
-      mode=mode,
-      predictions=predictions,
-      loss=loss,
-      train_op=train_op,
-      eval_metric_ops=metrics)
+  return resnet_shared.resnet_model_fn(
+      features, labels, mode, params, ImagenetModel)
 
 
 def main(unused_argv):
-  # Using the Winograd non-fused algorithms provides a small performance boost.
-  os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
-
-  # Set up a RunConfig to only save checkpoints once per training cycle.
-  run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
-  resnet_classifier = tf.estimator.Estimator(
-      model_fn=resnet_model_fn, model_dir=FLAGS.model_dir, config=run_config,
-      params={
-          'resnet_size': FLAGS.resnet_size,
-          'data_format': FLAGS.data_format,
-          'batch_size': FLAGS.batch_size,
-      })
-
-  for _ in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
-    tensors_to_log = {
-        'learning_rate': 'learning_rate',
-        'cross_entropy': 'cross_entropy',
-        'train_accuracy': 'train_accuracy'
-    }
-
-    logging_hook = tf.train.LoggingTensorHook(
-        tensors=tensors_to_log, every_n_iter=100)
-
-    print('Starting a training cycle.')
-    resnet_classifier.train(
-        input_fn=lambda: input_fn(
-            True, FLAGS.data_dir, FLAGS.batch_size, FLAGS.epochs_per_eval),
-        hooks=[logging_hook])
-
-    print('Starting to evaluate.')
-    eval_results = resnet_classifier.evaluate(
-        input_fn=lambda: input_fn(False, FLAGS.data_dir, FLAGS.batch_size))
-    print(eval_results)
+  resnet_shared.resnet_main(FLAGS, imagenet_model_fn, input_fn)
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
+
+  parser = resnet_shared.ResnetArgParser(
+      resnet_size_choices=[18, 34, 50, 101, 152, 200])
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(argv=[sys.argv[0]] + unparsed)
