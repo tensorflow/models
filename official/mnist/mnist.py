@@ -164,7 +164,8 @@ def main(unused_argv):
       model_fn=model_function,
       model_dir=FLAGS.model_dir,
       params={
-          'data_format': data_format
+          'data_format': data_format,
+          'multi_gpu': FLAGS.multi_gpu
       })
 
   # Train the model
