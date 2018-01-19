@@ -36,7 +36,7 @@ def make_estimator():
   if tf.test.is_built_with_cuda():
     data_format = 'channels_first'
   return tf.estimator.Estimator(
-      model_fn=mnist.model_fn, params={
+      model_fn=mnist.model_fn_with_optimizer, params={
           'data_format': data_format
       })
 
