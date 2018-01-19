@@ -217,7 +217,7 @@ def _get_num_gpu():
   directly. For now, doing the work here.
   """
   local_device_protos = device_lib.list_local_devices()
-  return sum([1 for _ in local_device_protos if device.device_type == 'GPU'])
+  return sum([1 for d in local_device_protos if d.device_type == 'GPU'])
 
 
 ################################################################################
