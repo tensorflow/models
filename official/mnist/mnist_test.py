@@ -36,7 +36,7 @@ def make_estimator():
   if tf.test.is_built_with_cuda():
     data_format = 'channels_first'
   return tf.estimator.Estimator(
-      model_fn=mnist.model_fn_with_optimizer, params={
+      model_fn=mnist.model_fn, params={
           'data_format': data_format
       })
 
@@ -65,7 +65,7 @@ class Tests(tf.test.TestCase):
   def mnist_model_fn_helper(self, mode):
     features, labels = dummy_input_fn()
     image_count = features.shape[0]
-    spec = mnist.model_fn_with_optimizer(features, labels, mode, {
+    spec = mnist.model_fn(features, labels, mode, {
         'data_format': 'channels_last'
     })
 

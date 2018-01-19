@@ -75,15 +75,6 @@ class Model(object):
     return self.fc2(y)
 
 
-################################################################################
-# Training loop for the model
-################################################################################
-def model_fn_with_optimizer(features, labels, mode, params):
-  """Wrapper for the model_fn that sets the optimizer for single GPU/CPU.
-  """
-  return model_fn(features, labels, mode, params, tf.train.AdamOptimizer)
-
-
 def model_fn(features, labels, mode, params, optimizer_fn):
   """The model_fn argument for creating an Estimator."""
   model = Model(params['data_format'])
@@ -104,7 +95,12 @@ def model_fn(features, labels, mode, params, optimizer_fn):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = optimizer_fn(learning_rate=1e-4)
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
+
+    # If we are running multi-GPU, we need to wrap the optimizer.
+    if params.multi_gpu:
+      optimizer = tf.contrib.estimator.TowerOptimizer(optimizer)
+
     logits = model(image, training=True)
     loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
     accuracy = tf.metrics.accuracy(
@@ -131,14 +127,42 @@ def model_fn(features, labels, mode, params, optimizer_fn):
         })
 
 
-def main_with_model_fn(flags, unused_argv, model_function):
-  data_format = flags.data_format
+def get_batch_size_multi(current_size):
+  """For multi-gpu, batch-size must be a multiple of the number of
+  available GPUs.
+
+  Note that this should eventually be handled by replicate_model_fn
+  directly. Multi-GPU support is currently experimental, however,
+  so doing the work here until that feature is in place.
+  """
+  from tensorflow.python.client import device_lib
+
+  local_device_protos = device_lib.list_local_devices()
+  num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
+  remainder = current_size % num_gpus
+  return current_size - remainder
+
+
+def main(unused_argv):
+  model_function = model_fn
+
+  if FLAGS.multi_gpu:
+    # Adjust batch size
+    FLAGS.batch_size = get_batch_size_multi(FLAGS.batch_size)
+
+    # There are two steps required if using multi-GPU: (1) wrap the model_fn,
+    # and (2) wrap the optimizer. The first happens here, and (2) happens
+    # in the model_fn itself when the optimizer is defined.
+    model_function = tf.contrib.estimator.replicate_model_fn(
+        model_fn, loss_reduction=tf.losses.Reduction.MEAN)
+
+  data_format = FLAGS.data_format
   if data_format is None:
     data_format = ('channels_first'
                    if tf.test.is_built_with_cuda() else 'channels_last')
   mnist_classifier = tf.estimator.Estimator(
       model_fn=model_function,
-      model_dir=flags.model_dir,
+      model_dir=FLAGS.model_dir,
       params={
           'data_format': data_format
       })
@@ -148,9 +172,9 @@ def main_with_model_fn(flags, unused_argv, model_function):
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
-    ds = dataset.train(flags.data_dir)
-    ds = ds.cache().shuffle(buffer_size=50000).batch(flags.batch_size).repeat(
-        flags.train_epochs)
+    ds = dataset.train(FLAGS.data_dir)
+    ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
+        FLAGS.train_epochs)
     (images, labels) = ds.make_one_shot_iterator().get_next()
     return (images, labels)
 
@@ -162,74 +186,20 @@ def main_with_model_fn(flags, unused_argv, model_function):
 
   # Evaluate the model and print results
   def eval_input_fn():
-    return dataset.test(flags.data_dir).batch(
-        flags.batch_size).make_one_shot_iterator().get_next()
+    return dataset.test(FLAGS.data_dir).batch(
+        FLAGS.batch_size).make_one_shot_iterator().get_next()
 
   eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
   print()
   print('Evaluation results:\n\t%s' % eval_results)
 
   # Export the model
-  if flags.export_dir is not None:
+  if FLAGS.export_dir is not None:
     image = tf.placeholder(tf.float32, [None, 28, 28])
     input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
         'image': image,
     })
-    mnist_classifier.export_savedmodel(flags.export_dir, input_fn)
-
-
-################################################################################
-# Multi-GPU helpers
-################################################################################
-def model_fn_multi(features, labels, mode, params):
-  """Wrapper for the model_fn that sets the optimizer for multi-GPU.
-
-  There are two key steps: wrap the optimizer, then replicate the model
-  function.
-  """
-  return model_fn(features, labels, mode, params, get_optimizer_multi)
-
-
-def get_optimizer_multi(learning_rate):
-  optimizer = tf.train.AdamOptimizer(learning_rate)
-  return tf.contrib.estimator.TowerOptimizer(optimizer)
-
-
-def get_batch_size_multi(current_size):
-  """For multi-gpu, batch-size must be a multiple of the number of
-  available GPUs.
-
-  Note that this should eventually be handled by replicate_model_fn
-  directly. Multi-GPU support is currently experimental, however,
-  so doing the work here until that feature is in place.
-  """
-  remainder = current_size % num_gpus()
-  return current_size - remainder
-
-
-def num_gpus():
-  """Get the number of GPUs available for use in multi-GPU mode.
-  """
-  from tensorflow.python.client import device_lib
-
-  local_device_protos = device_lib.list_local_devices()
-  return sum([1 for d in local_device_protos if d.device_type == 'GPU'])
-
-
-################################################################################
-# Run this script
-################################################################################
-def main(unused_argv):
-  model_function = model_fn_with_optimizer
-
-  if FLAGS.multi_gpu:
-    # Adjust batch size
-    FLAGS.batch_size = get_batch_size_multi(FLAGS.batch_size)
-    # Use the wrapped model function
-    model_function = tf.contrib.estimator.replicate_model_fn(
-        model_fn_multi, loss_reduction=tf.losses.Reduction.MEAN)
-
-  main_with_model_fn(FLAGS, unused_argv, model_function)
+    mnist_classifier.export_savedmodel(FLAGS.export_dir, input_fn)
 
 
 class MNISTArgParser(argparse.ArgumentParser):
