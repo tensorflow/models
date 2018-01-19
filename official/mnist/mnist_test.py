@@ -67,7 +67,7 @@ class Tests(tf.test.TestCase):
     image_count = features.shape[0]
     spec = mnist.model_fn(features, labels, mode, {
         'data_format': 'channels_last',
-        'multi_gpu': False
+        'multi_gpu': multi_gpu
     })
 
     if mode == tf.estimator.ModeKeys.PREDICT:
