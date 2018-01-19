@@ -65,7 +65,7 @@ class Tests(tf.test.TestCase):
   def mnist_model_fn_helper(self, mode):
     features, labels = dummy_input_fn()
     image_count = features.shape[0]
-    spec = mnist.model_fn(features, labels, mode, {
+    spec = mnist.model_fn_with_optimizer(features, labels, mode, {
         'data_format': 'channels_last'
     })
 
