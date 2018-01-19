@@ -37,7 +37,7 @@ def make_estimator():
     data_format = 'channels_first'
   return tf.estimator.Estimator(
       model_fn=mnist.model_fn, params={
-          'data_format': data_format
+          'data_format': data_format,
       })
 
 

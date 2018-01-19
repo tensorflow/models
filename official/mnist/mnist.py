@@ -98,7 +98,7 @@ def model_fn(features, labels, mode, params):
     optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
 
     # If we are running multi-GPU, we need to wrap the optimizer.
-    if params['multi_gpu']:
+    if params.get('multi_gpu'):
       optimizer = tf.contrib.estimator.TowerOptimizer(optimizer)
 
     logits = model(image, training=True)
