@@ -139,6 +139,10 @@ def validate_batch_size_for_multi_gpu(batch_size):
 
   local_device_protos = device_lib.list_local_devices()
   num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
+  if not num_gpus:
+    raise ValueError('Multi-GPU mode was specified, but no GPUs '
+      'were found. To use CPU, run without --multi_gpu.')
+    
   remainder = batch_size % num_gpus
   if remainder:
     err = ('When running with multiple GPUs, batch size '
