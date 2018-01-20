@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 import blocks_masked_conv2d

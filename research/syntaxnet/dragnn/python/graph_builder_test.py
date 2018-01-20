@@ -20,6 +20,7 @@ import os.path
 
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from google.protobuf import text_format
