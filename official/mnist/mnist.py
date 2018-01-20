@@ -127,7 +127,7 @@ def model_fn(features, labels, mode, params):
         })
 
 
-def get_batch_size_multi(current_size):
+def validate_batch_size_for_multi_gpu(batch_size):
   """For multi-gpu, batch-size must be a multiple of the number of
   available GPUs.
 
@@ -139,16 +139,20 @@ def get_batch_size_multi(current_size):
 
   local_device_protos = device_lib.list_local_devices()
   num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
-  remainder = current_size % num_gpus
-  return current_size - remainder
+  remainder = batch_size % num_gpus
+  if remainder:
+    err = ('When running with multiple GPUs, batch size '
+      'must be a multiple of the number of available GPUs. '
+      'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
+      ).format(num_gpus, batch_size, batch_size - remainder)
+    raise ValueError(err)
 
 
 def main(unused_argv):
   model_function = model_fn
 
   if FLAGS.multi_gpu:
-    # Adjust batch size
-    FLAGS.batch_size = get_batch_size_multi(FLAGS.batch_size)
+    validate_batch_size_for_multi_gpu(FLAGS.batch_size)
 
     # There are two steps required if using multi-GPU: (1) wrap the model_fn,
     # and (2) wrap the optimizer. The first happens here, and (2) happens
@@ -207,9 +211,7 @@ class MNISTArgParser(argparse.ArgumentParser):
 
   def __init__(self):
     super(MNISTArgParser, self).__init__()
-    self._set_args()
 
-  def _set_args(self):
     self.add_argument(
         '--multi_gpu', action='store_true',
         help='If set, run across all available GPUs.')
