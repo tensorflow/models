@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 import sys
 
@@ -48,9 +47,10 @@ TRAIN_PARAMS = dict(
     train_images=_NUM_IMAGES['train'],
     momentum=0.9)
 
-################################################################################
+
+###############################################################################
 # Data processing
-################################################################################
+###############################################################################
 def filenames(is_training, data_dir):
   """Return filenames for dataset."""
   if is_training:
@@ -108,7 +108,8 @@ def parse_record(raw_record, is_training):
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   """Input function which provides batches for train or eval."""
-  dataset = tf.data.Dataset.from_tensor_slices(filenames(is_training, data_dir))
+  dataset = tf.data.Dataset.from_tensor_slices(
+      filenames(is_training, data_dir))
 
   if is_training:
     dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
@@ -133,9 +134,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   return images, labels
 
 
-################################################################################
+###############################################################################
 # Running the model
-################################################################################
+###############################################################################
 class ImagenetModel(resnet_model.Model):
   # >= this value of resnet_size, use more layers and bottleneck blocks.
   size_threshold = 50
@@ -175,8 +176,8 @@ class ImagenetModel(resnet_model.Model):
       return choices[self.resnet_size]
     except KeyError:
       err = ('Could not find layers for selected Resnet size.\n'
-          'Size received: {}; sizes allowed: {}.'.format(
-          self.resnet_size, choices.keys()))
+             'Size received: {}; sizes allowed: {}.'.format(
+              self.resnet_size, choices.keys()))
       raise ValueError(err)
 
   def _get_stride_sizes(self):

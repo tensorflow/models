@@ -22,7 +22,6 @@ import unittest
 import tensorflow as tf
 
 import imagenet_main
-import resnet_model
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -35,7 +34,9 @@ class BaseTest(tf.test.TestCase):
   def tensor_shapes_helper(self, resnet_size, with_gpu=False):
     """Checks the tensor shapes after each phase of the ResNet model."""
     def reshape(shape):
-      """Returns the expected dimensions depending on if a GPU is being used."""
+      """Returns the expected dimensions depending on if a
+      GPU is being used.
+      """
       # If a GPU is used for the test, the shape is returned (already in NCHW
       # form). When GPU is not used, the shape is converted to NHWC.
       if with_gpu:
@@ -45,7 +46,7 @@ class BaseTest(tf.test.TestCase):
     graph = tf.Graph()
 
     with graph.as_default(), self.test_session(
-        use_gpu=with_gpu, force_gpu=with_gpu):
+      use_gpu=with_gpu, force_gpu=with_gpu):
       model = imagenet_main.ImagenetModel(
           resnet_size,
           data_format='channels_first' if with_gpu else 'channels_last')

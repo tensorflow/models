@@ -101,8 +101,8 @@ def building_block(inputs, filters, training, projection_shortcut, strides,
     filters: The number of filters for the convolutions.
     training: A Boolean for whether the model is in training or inference
       mode. Needed for batch normalization.
-    projection_shortcut: The function to use for projection shortcuts (typically
-      a 1x1 convolution when downsampling the input).
+    projection_shortcut: The function to use for projection shortcuts
+      (typically a 1x1 convolution when downsampling the input).
     strides: The block's stride. If greater than 1, this block will ultimately
       downsample the input.
     data_format: The input format ('channels_last' or 'channels_first').
@@ -137,12 +137,12 @@ def bottleneck_block(inputs, filters, training, projection_shortcut,
   Args:
     inputs: A tensor of size [batch, channels, height_in, width_in] or
       [batch, height_in, width_in, channels] depending on data_format.
-    filters: The number of filters for the first two convolutions. Note that the
-      third and final convolution will use 4 times as many filters.
+    filters: The number of filters for the first two convolutions. Note
+      that the third and final convolution will use 4 times as many filters.
     training: A Boolean for whether the model is in training or inference
       mode. Needed for batch normalization.
-    projection_shortcut: The function to use for projection shortcuts (typically
-      a 1x1 convolution when downsampling the input).
+    projection_shortcut: The function to use for projection shortcuts
+      (typically a 1x1 convolution when downsampling the input).
     strides: The block's stride. If greater than 1, this block will ultimately
       downsample the input.
     data_format: The input format ('channels_last' or 'channels_first').
@@ -301,5 +301,3 @@ class Model(object):
     inputs = tf.layers.dense(inputs=inputs, units=p['num_classes'])
     inputs = tf.identity(inputs, 'final_dense')
     return inputs
-
-

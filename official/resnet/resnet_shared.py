@@ -62,7 +62,8 @@ def resnet_model_fn(features, labels, mode, params, model_class):
 
     # Multiply the learning rate by 0.1 at 100, 150, and 200 epochs.
     boundaries = [int(batches_per_epoch * epoch) for epoch in params['epochs']]
-    vals = [initial_learning_rate * decay for decay in params['learning_rates']]
+    vals = [initial_learning_rate * decay
+            for decay in params['learning_rates']]
     learning_rate = tf.train.piecewise_constant(
         tf.cast(global_step, tf.int32), boundaries, vals)
 
@@ -74,7 +75,7 @@ def resnet_model_fn(features, labels, mode, params, model_class):
         learning_rate=learning_rate,
         momentum=params['momentum'])
 
-    # Batch norm requires update ops to be added as a dependency to the train_op
+    # Batch norm requires update ops to be added as a dependency to train_op
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
       train_op = optimizer.minimize(loss, global_step)
@@ -98,7 +99,7 @@ def resnet_model_fn(features, labels, mode, params, model_class):
 
 
 def resnet_main(flags, model_function, input_function):
-    # Using the Winograd non-fused algorithms provides a small performance boost.
+  # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
   # Set up a RunConfig to only save checkpoints once per training cycle.
@@ -175,5 +176,3 @@ class ResnetArgParser(argparse.ArgumentParser):
              'is not always compatible with CPU. If left unspecified, '
              'the data format will be chosen automatically based on '
              'whether TensorFlow was built for CPU or GPU.')
-
-

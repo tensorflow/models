@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 import sys
 
@@ -43,15 +42,16 @@ TRAIN_PARAMS = dict(
     batch_denom=128,
     epochs=[100, 150, 200],
     learning_rates=[1, 0.1, 0.01, 1e-3],
-    # We use a weight decay of 0.0002, which performs better than the 0.0001 that
-    # was originally suggested.
+    # We use a weight decay of 0.0002, which performs better
+    # than the 0.0001 that was originally suggested.
     weight_decay=2e-4,
     train_images=_NUM_IMAGES['train'],
     momentum=0.9)
 
-################################################################################
+
+###############################################################################
 # Data processing
-################################################################################
+###############################################################################
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
   record_bytes = _HEIGHT * _WIDTH * _NUM_CHANNELS + 1
@@ -159,9 +159,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   return images, labels
 
 
-################################################################################
+###############################################################################
 # Running the model
-################################################################################
+###############################################################################
 class Cifar10Model(resnet_model.Model):
 
   def get_model_params(self):
@@ -180,7 +180,7 @@ class Cifar10Model(resnet_model.Model):
 
   def _get_layers(self):
     if self.resnet_size % 6 != 2:
-      raise ValueError('resnet_size must be 6n + 2:', resnet_size)
+      raise ValueError('resnet_size must be 6n + 2:', self.resnet_size)
 
     num_blocks = (self.resnet_size - 2) // 6
     return [num_blocks] * 3
