@@ -54,7 +54,7 @@ TRAIN_PARAMS = dict(
 ###############################################################################
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
-  record_bytes = _HEIGHT * _WIDTH * _NUM_CHANNELS + 1
+  record_bytes = _DEFAULT_IMAGE_SIZE + 1
   return tf.data.FixedLengthRecordDataset(filenames, record_bytes)
 
 
@@ -106,8 +106,8 @@ def preprocess_image(image, is_training):
   """Preprocess a single image of layout [height, width, depth]."""
   if is_training:
     # Resize the image to add four extra pixels on each side.
-    image = tf.image.resize_image_with_crop_or_pad(image, _HEIGHT + 8,
-                                                   _WIDTH + 8)
+    image = tf.image.resize_image_with_crop_or_pad(
+        image, _HEIGHT + 8, _WIDTH + 8)
 
     # Randomly crop a [_HEIGHT, _WIDTH] section of the image.
     image = tf.random_crop(image, [_HEIGHT, _WIDTH, _NUM_CHANNELS])
