@@ -87,7 +87,7 @@ def bottleneck(inputs, depth, depth_bottleneck, stride, rate=1,
     depth_in = slim.utils.last_dimension(inputs.get_shape(), min_rank=4)
     preact = slim.batch_norm(inputs, activation_fn=tf.nn.relu, scope='preact')
     if depth == depth_in:
-      shortcut = resnet_utils.subsample(inputs, stride, 'shortcut')
+      shortcut = resnet_utils.subsample(preact, stride, 'shortcut')
     else:
       shortcut = slim.conv2d(preact, depth, [1, 1], stride=stride,
                              normalizer_fn=None, activation_fn=None,
