@@ -140,9 +140,6 @@ class ResnetArgParser(argparse.ArgumentParser):
 
   def __init__(self, resnet_size_choices=None):
     super(ResnetArgParser, self).__init__()
-    self._set_args(resnet_size_choices)
-
-  def _set_args(self, resnet_size_choices=None):
     self.add_argument(
         '--data_dir', type=str, default='/tmp/resnet_data',
         help='The directory where the input data is stored.')
