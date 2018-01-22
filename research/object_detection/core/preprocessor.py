@@ -571,7 +571,6 @@ def random_pixel_value_scale(image, minval=0.9, maxval=1.1, seed=None):
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
     minval: lower ratio of scaling pixel values.
     maxval: upper ratio of scaling pixel values.
     seed: random seed.
@@ -580,6 +579,10 @@ def random_pixel_value_scale(image, minval=0.9, maxval=1.1, seed=None):
     image: image which is the same shape as input image.
   """
   with tf.name_scope('RandomPixelValueScale', values=[image]):
+    image = tf.convert_to_tensor(image, name='image')
+    # Remember original dtype to so we can convert back if needed
+    orig_dtype = image.dtype
+    image = tf.image.convert_image_dtype(image, tf.float32)
     color_coef = tf.random_uniform(
         tf.shape(image),
         minval=minval,
@@ -587,7 +590,7 @@ def random_pixel_value_scale(image, minval=0.9, maxval=1.1, seed=None):
         dtype=tf.float32,
         seed=seed)
     image = tf.multiply(image, color_coef)
-    image = tf.clip_by_value(image, 0.0, 1.0)
+    return tf.image.convert_image_dtype(image, orig_dtype, saturate=True)
 
   return image
 
@@ -641,7 +644,6 @@ def random_rgb_to_gray(image, probability=0.1, seed=None):
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
     probability: the probability of returning a grayscale image.
             The probability should be a number between [0, 1].
     seed: random seed.
@@ -668,11 +670,8 @@ def random_rgb_to_gray(image, probability=0.1, seed=None):
 def random_adjust_brightness(image, max_delta=0.2):
   """Randomly adjusts brightness.
 
-  Makes sure the output image is still between 0 and 1.
-
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
     max_delta: how much to change the brightness. A value between [0, 1).
 
   Returns:
@@ -681,18 +680,14 @@ def random_adjust_brightness(image, max_delta=0.2):
   """
   with tf.name_scope('RandomAdjustBrightness', values=[image]):
     image = tf.image.random_brightness(image, max_delta)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
     return image
 
 
 def random_adjust_contrast(image, min_delta=0.8, max_delta=1.25):
   """Randomly adjusts contrast.
 
-  Makes sure the output image is still between 0 and 1.
-
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
     min_delta: see max_delta.
     max_delta: how much to change the contrast. Contrast will change with a
                value between min_delta and max_delta. This value will be
@@ -703,18 +698,14 @@ def random_adjust_contrast(image, min_delta=0.8, max_delta=1.25):
   """
   with tf.name_scope('RandomAdjustContrast', values=[image]):
     image = tf.image.random_contrast(image, min_delta, max_delta)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
     return image
 
 
 def random_adjust_hue(image, max_delta=0.02):
   """Randomly adjusts hue.
 
-  Makes sure the output image is still between 0 and 1.
-
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
     max_delta: change hue randomly with a value between 0 and max_delta.
 
   Returns:
@@ -722,18 +713,14 @@ def random_adjust_hue(image, max_delta=0.02):
   """
   with tf.name_scope('RandomAdjustHue', values=[image]):
     image = tf.image.random_hue(image, max_delta)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
     return image
 
 
 def random_adjust_saturation(image, min_delta=0.8, max_delta=1.25):
   """Randomly adjusts saturation.
 
-  Makes sure the output image is still between 0 and 1.
-
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
     min_delta: see max_delta.
     max_delta: how much to change the saturation. Saturation will change with a
                value between min_delta and max_delta. This value will be
@@ -744,7 +731,6 @@ def random_adjust_saturation(image, min_delta=0.8, max_delta=1.25):
   """
   with tf.name_scope('RandomAdjustSaturation', values=[image]):
     image = tf.image.random_saturation(image, min_delta, max_delta)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
     return image
 
 
@@ -752,11 +738,10 @@ def random_distort_color(image, color_ordering=0):
   """Randomly distorts color.
 
   Randomly distorts color using a combination of brightness, hue, contrast
-  and saturation changes. Makes sure the output image is still between 0 and 1.
+  and saturation changes.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
     color_ordering: Python int, a type of distortion (valid values: 0, 1).
 
   Returns:
@@ -779,8 +764,6 @@ def random_distort_color(image, color_ordering=0):
     else:
       raise ValueError('color_ordering must be in {0, 1}')
 
-    # The random_* ops do not necessarily clamp.
-    image = tf.clip_by_value(image, 0.0, 1.0)
     return image
 
 
@@ -1958,7 +1941,8 @@ def ssd_random_crop(image,
                     min_object_covered=(0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0),
                     aspect_ratio_range=((0.5, 2.0),) * 7,
                     area_range=((0.1, 1.0),) * 7,
-                    overlap_thresh=(0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0),
+                    #overlap_thresh=(0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0),
+                    overlap_thresh=(0.0, 0.75, 0.75, 0.8, 0.85, 0.9, 1.0),
                     random_coef=(0.15,) * 7,
                     seed=None):
   """Random crop preprocessing with default parameters as in SSD paper.
