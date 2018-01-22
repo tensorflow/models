@@ -42,6 +42,11 @@ import tensorflow as tf
 from object_detection.dataset_tools import oid_tfrecord_creation
 from object_detection.utils import label_map_util
 
+try:
+    long        # Python 2
+except NameError:
+    long = int  # Python 3
+
 tf.flags.DEFINE_string('input_annotations_csv', None,
                        'Path to CSV containing image bounding box annotations')
 tf.flags.DEFINE_string('input_images_directory', None,
