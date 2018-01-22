@@ -19,6 +19,7 @@
 import math
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from domain_adaptation.datasets import dataset_factory
