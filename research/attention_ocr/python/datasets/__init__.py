@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright 2017 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 
-import fsns
-import fsns_test
+from . import fsns
+from . import fsns_test
 
 __all__ = [fsns, fsns_test]

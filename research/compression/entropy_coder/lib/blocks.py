@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright 2017 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +14,12 @@
 # limitations under the License.
 # ==============================================================================
 
-from block_base import *
-from block_util import *
-from blocks_binarizer import *
-from blocks_entropy_coding import *
-from blocks_lstm import *
-from blocks_masked_conv2d import *
-from blocks_masked_conv2d_lstm import *
-from blocks_operator import *
-from blocks_std import *
+from .block_base import *
+from .block_util import *
+from .blocks_binarizer import *
+from .blocks_entropy_coding import *
+from .blocks_lstm import *
+from .blocks_masked_conv2d import *
+from .blocks_masked_conv2d_lstm import *
+from .blocks_operator import *
+from .blocks_std import *

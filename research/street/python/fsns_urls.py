@@ -22,6 +22,7 @@ Aria2c is a powerful download manager which can download multiple files in
 parallel, re-try if encounter an error and continue previously unfinished
 downloads.
 """
+from __future__ import print_function
 
 import os
 

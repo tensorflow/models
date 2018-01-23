@@ -13,13 +13,14 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for DSN losses."""
+from __future__ import absolute_import
 from functools import partial
 
 import numpy as np
 import tensorflow as tf
 
-import losses
-import utils
+from . import losses
+from . import utils
 
 
 def MaximumMeanDiscrepancySlow(x, y, sigmas):

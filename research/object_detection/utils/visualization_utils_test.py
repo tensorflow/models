@@ -19,6 +19,7 @@ Testing with visualization in the following colab:
 https://drive.google.com/a/google.com/file/d/0B5HnKS_hMsNARERpU3MtU3I5RFE/view?usp=sharing
 
 """
+from __future__ import print_function
 
 import os
 
@@ -145,7 +146,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
         for i in range(images_with_boxes_np.shape[0]):
           img_name = 'image_' + str(i) + '.png'
           output_file = os.path.join(self.get_temp_dir(), img_name)
-          print 'Writing output image %d to %s' % (i, output_file)
+          print('Writing output image %d to %s' % (i, output_file))
           image_pil = Image.fromarray(images_with_boxes_np[i, ...])
           image_pil.save(output_file)
 

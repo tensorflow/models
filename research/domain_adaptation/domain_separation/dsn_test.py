@@ -13,11 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for DSN model assembly functions."""
+from __future__ import absolute_import
 
 import numpy as np
 import tensorflow as tf
 
-import dsn
+from . import dsn
 
 
 class HelperFunctionsTest(tf.test.TestCase):

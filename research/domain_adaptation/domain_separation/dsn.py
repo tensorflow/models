@@ -23,13 +23,14 @@ Specifically, in this file we define the:
   - Reconstruction Loss Module
   - Task Loss Module
 """
+from __future__ import absolute_import
 from functools import partial
 
 import tensorflow as tf
 
-import losses
-import models
-import utils
+from . import losses
+from . import models
+from . import utils
 
 slim = tf.contrib.slim
 

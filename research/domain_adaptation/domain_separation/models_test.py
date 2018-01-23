@@ -13,12 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for DSN components."""
+from __future__ import absolute_import
 
 import numpy as np
 import tensorflow as tf
 
 #from models.domain_adaptation.domain_separation
-import models
+from . import models
 
 
 class SharedEncodersTest(tf.test.TestCase):

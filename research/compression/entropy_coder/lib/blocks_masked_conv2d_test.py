@@ -17,12 +17,13 @@
 
 from __future__ import division
 from __future__ import unicode_literals
+from __future__ import absolute_import
 
 import numpy as np
 from six.moves import xrange
 import tensorflow as tf
 
-import blocks_masked_conv2d
+from . import blocks_masked_conv2d
 
 
 class MaskedConv2DTest(tf.test.TestCase):

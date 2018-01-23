@@ -14,14 +14,15 @@
 # ==============================================================================
 
 """Tests for FSNS datasets module."""
+from __future__ import absolute_import
 
 import collections
 import os
 import tensorflow as tf
 from tensorflow.contrib import slim
 
-import fsns
-import unittest_utils
+from . import fsns
+from . import unittest_utils
 
 FLAGS = tf.flags.FLAGS
 

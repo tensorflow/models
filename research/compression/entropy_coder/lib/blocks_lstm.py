@@ -14,13 +14,14 @@
 # ==============================================================================
 
 """Blocks of LSTM and its variants."""
+from __future__ import absolute_import
 
 import numpy as np
 import tensorflow as tf
 
-import block_base
-import block_util
-import blocks_std
+from . import block_base
+from . import block_util
+from . import blocks_std
 
 # pylint does not recognize block_base.BlockBase.__call__().
 # pylint: disable=not-callable
