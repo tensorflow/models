@@ -42,11 +42,6 @@ import tensorflow as tf
 from object_detection.dataset_tools import oid_tfrecord_creation
 from object_detection.utils import label_map_util
 
-try:
-    long        # Python 2
-except NameError:
-    long = int  # Python 3
-
 tf.flags.DEFINE_string('input_annotations_csv', None,
                        'Path to CSV containing image bounding box annotations')
 tf.flags.DEFINE_string('input_images_directory', None,
@@ -101,7 +96,7 @@ def main(_):
       tf_example = oid_tfrecord_creation.tf_example_from_annotations_data_frame(
           image_annotations, label_map, encoded_image)
       if tf_example:
-        shard_idx = long(image_id, 16) % FLAGS.num_shards
+        shard_idx = int(image_id, 16) % FLAGS.num_shards
         output_tfrecords[shard_idx].write(tf_example.SerializeToString())
 
 
