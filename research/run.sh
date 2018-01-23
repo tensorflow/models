@@ -9,8 +9,8 @@ echo current dir is $PWD
 export PYTHONPATH=$PYTHONPATH:$DIR:$DIR/slim:$DIR/object_detection
 
 # 定义各目录
-output_dir=/home/greensroll/DeepLearning/week_8/output  # 训练目录
-dataset_dir=/home/greensroll/DeepLearning/week_8/out # 数据集目录，这里是写死的，记得修改
+output_dir=/data/greensroll/week8-dataset/output  # 训练目录
+dataset_dir=/data/greensroll/week8-dataset # 数据集目录，这里是写死的，记得修改
 
 train_dir=$output_dir/train
 checkpoint_dir=$train_dir
