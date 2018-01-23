@@ -14,6 +14,8 @@
 # ==============================================================================
 """Utilities for downloading data from WMT, tokenizing, vocabularies."""
 
+from __future__ import print_function
+
 import gzip
 import os
 import re
@@ -53,20 +55,20 @@ _WMT_ENFR_DEV_URL = "http://www.statmt.org/wmt15/dev-v2.tgz"
 def maybe_download(directory, filename, url):
   """Download filename from url unless it's already in directory."""
   if not tf.gfile.Exists(directory):
-    print "Creating directory %s" % directory
+    print("Creating directory %s" % directory)
     os.mkdir(directory)
   filepath = os.path.join(directory, filename)
   if not tf.gfile.Exists(filepath):
-    print "Downloading %s to %s" % (url, filepath)
+    print("Downloading %s to %s" % (url, filepath))
     filepath, _ = urllib.request.urlretrieve(url, filepath)
     statinfo = os.stat(filepath)
-    print "Successfully downloaded", filename, statinfo.st_size, "bytes"
+    print("Successfully downloaded", filename, statinfo.st_size, "bytes")
   return filepath
 
 
 def gunzip_file(gz_path, new_path):
   """Unzips from gz_path into new_path."""
-  print "Unpacking %s to %s" % (gz_path, new_path)
+  print("Unpacking %s to %s" % (gz_path, new_path))
   with gzip.open(gz_path, "rb") as gz_file:
     with open(new_path, "wb") as new_file:
       for line in gz_file:
@@ -80,7 +82,7 @@ def get_wmt_enfr_train_set(directory):
           tf.gfile.Exists(train_path +".en")):
     corpus_file = maybe_download(directory, "training-giga-fren.tar",
                                  _WMT_ENFR_TRAIN_URL)
-    print "Extracting tar file %s" % corpus_file
+    print("Extracting tar file %s" % corpus_file)
     with tarfile.open(corpus_file, "r") as corpus_tar:
       corpus_tar.extractall(directory)
     gunzip_file(train_path + ".fr.gz", train_path + ".fr")
@@ -95,7 +97,7 @@ def get_wmt_enfr_dev_set(directory):
   if not (tf.gfile.Exists(dev_path + ".fr") and
           tf.gfile.Exists(dev_path + ".en")):
     dev_file = maybe_download(directory, "dev-v2.tgz", _WMT_ENFR_DEV_URL)
-    print "Extracting tgz file %s" % dev_file
+    print("Extracting tgz file %s" % dev_file)
     with tarfile.open(dev_file, "r:gz") as dev_tar:
       fr_dev_file = dev_tar.getmember("dev/" + dev_name + ".fr")
       en_dev_file = dev_tar.getmember("dev/" + dev_name + ".en")
@@ -206,7 +208,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
     normalize_digits: Boolean; if true, all digits are replaced by 0s.
   """
   if not tf.gfile.Exists(vocabulary_path):
-    print "Creating vocabulary %s from data %s" % (vocabulary_path, data_path)
+    print("Creating vocabulary %s from data %s" % (vocabulary_path, data_path))
     vocab, chars = {}, {}
     for c in _PUNCTUATION:
       chars[c] = 1
@@ -218,7 +220,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
         line = " ".join(line_in.split())
         counter += 1
         if counter % 100000 == 0:
-          print "  processing fr line %d" % counter
+          print("  processing fr line %d" % counter)
         for c in line:
           if c in chars:
             chars[c] += 1
@@ -240,7 +242,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
         line = " ".join(line_in.split())
         counter += 1
         if counter % 100000 == 0:
-          print "  processing en line %d" % counter
+          print("  processing en line %d" % counter)
         for c in line:
           if c in chars:
             chars[c] += 1
@@ -371,7 +373,7 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
     normalize_digits: Boolean; if true, all digits are replaced by 0s.
   """
   if not tf.gfile.Exists(target_path):
-    print "Tokenizing data in %s" % data_path
+    print("Tokenizing data in %s" % data_path)
     vocab, _ = initialize_vocabulary(vocabulary_path)
     with tf.gfile.GFile(data_path, mode="rb") as data_file:
       with tf.gfile.GFile(target_path, mode="w") as tokens_file:
@@ -379,7 +381,7 @@ def data_to_token_ids(data_path, target_path, vocabulary_path,
         for line in data_file:
           counter += 1
           if counter % 100000 == 0:
-            print "  tokenizing line %d" % counter
+            print("  tokenizing line %d" % counter)
           token_ids = sentence_to_token_ids(line, vocab, tokenizer,
                                             normalize_digits)
           tokens_file.write(" ".join([str(tok) for tok in token_ids]) + "\n")
