@@ -220,7 +220,7 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
       t.set_bbox(dict(color='white', alpha=0.85, pad=-0.1))
 
       # Action to take.
-      action_latex = ['$\odot$ ', '$\curvearrowright$ ', '$\curvearrowleft$ ', '$\Uparrow$ ']
+      action_latex = ['$\odot$ ', '$\curvearrowright$ ', '$\curvearrowleft$ ', r'$\Uparrow$ ']
       t = ax.text(0.99, 0.99, action_latex[actions[step_number]],
           horizontalalignment='right',
           verticalalignment='top',
