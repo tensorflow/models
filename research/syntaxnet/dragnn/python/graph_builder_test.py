@@ -246,7 +246,7 @@ class GraphBuilderTest(test_util.TensorFlowTestCase):
     master_spec = spec_pb2.MasterSpec()
     testdata = os.path.join(FLAGS.test_srcdir,
                             'dragnn/core/testdata')
-    with file(os.path.join(testdata, spec_path), 'r') as fin:
+    with open(os.path.join(testdata, spec_path), 'r') as fin:
       text_format.Parse(fin.read().replace('TESTDATA', testdata), master_spec)
       return master_spec
 
