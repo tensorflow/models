@@ -18,6 +18,8 @@ This file calls functions to load & pre-process data, construct the TF graph
 and performs training or evaluation as specified by the flag evaluator_job
 Author: aneelakantan (Arvind Neelakantan)
 """
+from __future__ import print_function
+
 import time
 from random import Random
 import numpy as np
