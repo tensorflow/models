@@ -12,6 +12,8 @@ import random
 
 from absl import logging
 import numpy as np
+import six
+from six.moves import xrange
 import tensorflow as tf
 
 
@@ -137,7 +139,7 @@ def stack_pad(tensors, pad_axes=None, pad_to_lengths=None, dtype=np.float32,
   same_axes = dict(enumerate(max_lengths))
   if pad_axes is None:
     pad_axes = []
-  if isinstance(pad_axes, (int, long)):
+  if isinstance(pad_axes, six.integer_types):
     if pad_to_lengths is not None:
       max_lengths[pad_axes] = pad_to_lengths
     del same_axes[pad_axes]

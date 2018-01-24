@@ -15,6 +15,7 @@ import time
 
 from absl import logging
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from common import rollout as rollout_lib  # brain coder
@@ -1294,4 +1295,3 @@ def process_episodes(
     batch_targets = np.array([], dtype=np.float32)
 
   return (batch_targets, batch_returns)
-
