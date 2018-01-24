@@ -8,6 +8,7 @@ import ast
 from collections import namedtuple
 import os
 import re
+from six.moves import xrange
 import tensorflow as tf
 
 
@@ -152,4 +153,3 @@ class Results(object):
           r for shard_results in results_per_shard for r in shard_results]
 
     return aggregate, shard_stats
-

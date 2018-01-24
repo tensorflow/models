@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 import input_generator
@@ -191,19 +192,19 @@ def get_train_op_for_scope(loss, optimizer, scopes, params):
 
 def get_metrics(inputs, outputs, params):
   """Aggregate the metrics for rotator model.
-  
+
   Args:
     inputs: Input dictionary of the rotator model.
     outputs: Output dictionary returned by the rotator model.
     params: Hyperparameters of the rotator model.
-  
+
   Returns:
     names_to_values: metrics->values (dict).
     names_to_updates: metrics->ops (dict).
   """
   names_to_values = dict()
   names_to_updates = dict()
-  
+
   tmp_values, tmp_updates = metrics.add_image_pred_metrics(
       inputs, outputs, params.num_views, 3*params.image_size**2)
   names_to_values.update(tmp_values)
@@ -217,7 +218,7 @@ def get_metrics(inputs, outputs, params):
   for name, value in names_to_values.iteritems():
     slim.summaries.add_scalar_summary(
         value, name, prefix='eval', print_summary=True)
- 
+
   return names_to_values, names_to_updates
 
 
