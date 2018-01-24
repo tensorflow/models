@@ -42,4 +42,5 @@
 /samples/languages/java/ @asimshankar
 /tutorials/embedding/ @zffchen78 @a-dai
 /tutorials/image/ @sherrym @shlens
+/tutorials/image/cifar10_estimator/ @protoget @tfboyd
 /tutorials/rnn/ @lukaszkaiser @ebrevdo
