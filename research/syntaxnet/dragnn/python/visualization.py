@@ -71,6 +71,8 @@ def parse_trace_json(trace):
       if isinstance(step_trace.caption, str):
         try:
           unicode(step_trace.caption, 'utf-8')
+        except NameError:  # Python 3
+          step_trace.caption = str(step_trace.caption)
         except UnicodeDecodeError:
           step_trace.caption = repr(step_trace.caption)  # Safe encoding.
 
@@ -137,8 +139,10 @@ def trace_html(trace,
       master_spec_json=_optional_master_spec_json(master_spec),
       elt_id=elt_id,
       div_html=div_html)
-  return unicode(as_str, 'utf-8') if convert_to_unicode else as_str
-
+  try:               # Python 2
+    return unicode(as_str, 'utf-8') if convert_to_unicode else as_str
+  except NameError:  # Python 3
+    return as_str
 
 def open_in_new_window(html, notebook_html_fcn=None, temp_file_basename=None):
   """Opens an HTML visualization in a new window.
@@ -158,8 +162,11 @@ def open_in_new_window(html, notebook_html_fcn=None, temp_file_basename=None):
   Returns:
     HTML notebook element, which will trigger the browser to open a new window.
   """
-  if isinstance(html, unicode):
-    html = html.encode('utf-8')
+  try:               # Python 2
+    if isinstance(html, unicode):
+      html = html.encode('utf-8')
+  except NameError:  # Python 3
+    html = str(html)
 
   if notebook_html_fcn is None:
     from IPython import display
@@ -216,7 +223,10 @@ class InteractiveVisualization(object):
     </script>
     """.format(
         script=script, div_html=div_html)
-    return unicode(html, 'utf-8')  # IPython expects unicode.
+    try:               # Python 2
+      return unicode(html, 'utf-8')  # IPython expects unicode.
+    except NameError:  # Python 3
+      return html
 
   def show_trace(self, trace, master_spec=None):
     """Returns a JS script HTML fragment, which will populate the container.
@@ -239,4 +249,7 @@ class InteractiveVisualization(object):
         json=parse_trace_json(trace),
         master_spec_json=_optional_master_spec_json(master_spec),
         elt_id=self.elt_id)
-    return unicode(html, 'utf-8')  # IPython expects unicode.
+    try:               # Python 2
+      return unicode(html, 'utf-8')  # IPython expects unicode.
+    except NameError:  # Python 3
+      return html
