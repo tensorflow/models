@@ -1,4 +1,4 @@
-/official/ @nealwu @k-w-w
+/official/ @nealwu @k-w-w @karmel
 /research/adversarial_crypto/ @dave-andersen
 /research/adversarial_text/ @rsepassi
 /research/adv_imagenet_models/ @AlexeyKurakin
@@ -39,6 +39,8 @@
 /research/video_prediction/ @cbfinn
 /research/fivo/ @dieterichlawson
 /samples/ @MarkDaoust
+/samples/languages/java/ @asimshankar
 /tutorials/embedding/ @zffchen78 @a-dai
 /tutorials/image/ @sherrym @shlens
+/tutorials/image/cifar10_estimator/ @tfboyd @protoget
 /tutorials/rnn/ @lukaszkaiser @ebrevdo

@@ -140,7 +140,7 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
       self.assertTrue(last)
 
   def ValidateTagToCategoryMap(self):
-    with file(os.path.join(FLAGS.test_tmpdir, 'tag-to-category'), 'r') as f:
+    with open(os.path.join(FLAGS.test_tmpdir, 'tag-to-category'), 'r') as f:
       entries = [line.strip().split('\t') for line in f.readlines()]
     for tag, category in entries:
       self.assertIn(tag, TAGS)
@@ -148,7 +148,7 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
 
   def LoadMap(self, map_name):
     loaded_map = {}
-    with file(os.path.join(FLAGS.test_tmpdir, map_name), 'r') as f:
+    with open(os.path.join(FLAGS.test_tmpdir, map_name), 'r') as f:
       for line in f:
         entries = line.strip().split(' ')
         if len(entries) >= 2:
