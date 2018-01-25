@@ -41,6 +41,7 @@ python analysis.py
 import os
 import math
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from differential_privacy.multiple_teachers.input import maybe_download
@@ -139,7 +140,7 @@ def logmgf_exact(q, priv_eps, l):
     try:
       log_t = math.log(t)
     except ValueError:
-      print "Got ValueError in math.log for values :" + str((q, priv_eps, l, t))
+      print("Got ValueError in math.log for values :" + str((q, priv_eps, l, t)))
       log_t = priv_eps * l
   else:
     log_t = priv_eps * l
@@ -171,7 +172,7 @@ def sens_at_k(counts, noise_eps, l, k):
   """
   counts_sorted = sorted(counts, reverse=True)
   if 0.5 * noise_eps * l > 1:
-    print "l too large to compute sensitivity"
+    print("l too large to compute sensitivity")
     return 0
   # Now we can assume that at k, gap remains positive
   # or we have reached the point where logmgf_exact is
@@ -268,8 +269,8 @@ def main(unused_argv):
   # Solving gives eps = (alpha - ln (delta))/l
   eps_list_nm = (total_log_mgf_nm - math.log(delta)) / l_list
 
-  print "Epsilons (Noisy Max): " + str(eps_list_nm)
-  print "Smoothed sensitivities (Noisy Max): " + str(total_ss_nm / l_list)
+  print("Epsilons (Noisy Max): " + str(eps_list_nm))
+  print("Smoothed sensitivities (Noisy Max): " + str(total_ss_nm / l_list))
 
   # If beta < eps / 2 ln (1/delta), then adding noise Lap(1) * 2 SS/eps
   # is eps,delta DP
@@ -280,12 +281,12 @@ def main(unused_argv):
   # Print the first one's scale
   ss_eps = 2.0 * beta * math.log(1/delta)
   ss_scale = 2.0 / ss_eps
-  print "To get an " + str(ss_eps) + "-DP estimate of epsilon, "
-  print "..add noise ~ " + str(ss_scale)
-  print "... times " + str(total_ss_nm / l_list)
-  print "Epsilon = " + str(min(eps_list_nm)) + "."
+  print("To get an " + str(ss_eps) + "-DP estimate of epsilon, ")
+  print("..add noise ~ " + str(ss_scale))
+  print("... times " + str(total_ss_nm / l_list))
+  print("Epsilon = " + str(min(eps_list_nm)) + ".")
   if min(eps_list_nm) == eps_list_nm[-1]:
-    print "Warning: May not have used enough values of l"
+    print("Warning: May not have used enough values of l")
 
   # Data independent bound, as mechanism is
   # 2*noise_eps DP.
@@ -294,7 +295,7 @@ def main(unused_argv):
       [logmgf_exact(1.0, 2.0 * noise_eps, l) for l in l_list])
 
   data_ind_eps_list = (data_ind_log_mgf - math.log(delta)) / l_list
-  print "Data independent bound = " + str(min(data_ind_eps_list)) + "."
+  print("Data independent bound = " + str(min(data_ind_eps_list)) + ".")
 
   return
 
