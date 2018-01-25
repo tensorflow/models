@@ -61,6 +61,7 @@ class Tests(tf.test.TestCase):
       predictions = next(predictions_generator)
       self.assertEqual(predictions['probabilities'].shape, (10,))
       self.assertEqual(predictions['classes'].shape, ())
+    raise ValueError
 
   def mnist_model_fn_helper(self, mode):
     features, labels = dummy_input_fn()
