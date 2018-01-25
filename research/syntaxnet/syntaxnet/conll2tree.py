@@ -88,12 +88,12 @@ def main(unused_argv):
         sentence.ParseFromString(d)
         tr = asciitree.LeftAligned()
         d = to_dict(sentence)
-        print 'Input: %s' % sentence.text
-        print 'Parse:'
+        print('Input: %s' % sentence.text)
+        print('Parse:')
         tr_str = tr(d)
         pat = re.compile(r'\s*@\d+$')
         for tr_ln in tr_str.splitlines():
-          print pat.sub('', tr_ln)
+          print(pat.sub('', tr_ln))
 
       if finished:
         break

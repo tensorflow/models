@@ -18,6 +18,7 @@ from __future__ import print_function
 import h5py
 import numpy as np
 import os
+from six.moves import xrange
 import tensorflow as tf
 
 from utils import write_datasets
@@ -47,12 +48,12 @@ flags.DEFINE_float("max_firing_rate", 30.0,
 flags.DEFINE_float("u_std", 0.25,
                    "Std dev of input to integration to bound model")
 flags.DEFINE_string("checkpoint_path", "SAMPLE_CHECKPOINT",
-                    """Path to directory with checkpoints of model 
+                    """Path to directory with checkpoints of model
                     trained on integration to bound task. Currently this
                     is a placeholder which tells the code to grab the
-                    checkpoint that is provided with the code 
-                    (in /trained_itb/..). If you have your own checkpoint 
-                    you would like to restore, you would point it to 
+                    checkpoint that is provided with the code
+                    (in /trained_itb/..). If you have your own checkpoint
+                    you would like to restore, you would point it to
                     that path.""")
 FLAGS = flags.FLAGS
 
