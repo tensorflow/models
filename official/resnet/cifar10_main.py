@@ -164,11 +164,12 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
 ###############################################################################
 class Cifar10Model(resnet_model.Model):
 
-  def get_model_params(self):
+  def __init__(self, resnet_size, data_format=None):
     """These are the parameters that work for Cifar10 data.
     """
-    return dict(
-        num_classes=10,
+    super(Cifar10Model, self).__init__(
+        resnet_size=resnet_size,
+        num_classes=_NUM_CLASSES,
         num_filters=16,
         kernel_size=3,
         first_pool_size=None,
@@ -176,7 +177,8 @@ class Cifar10Model(resnet_model.Model):
         block_fn=resnet_model.building_block,
         layers=self._get_layers(),
         stride_sizes=self._get_stride_sizes(),
-        final_size=64)
+        final_size=64,
+        data_format=data_format)
 
   def _get_layers(self):
     if self.resnet_size % 6 != 2:

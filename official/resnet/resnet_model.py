@@ -219,16 +219,39 @@ class Model(object):
   """
   resnet_size = None
   num_classes = None
+  num_filters = None
+  kernel_size = None
+  first_pool_size = None
+  second_pool_size = None
+  block_fn = None
+  layers = None
+  stride_sizes = None
+  final_size = None
   data_format = None
   input_shape = None
 
-  params = None
-
-  def __init__(self, resnet_size, data_format=None):
+  def __init__(self, resnet_size, num_classes, num_filters, kernel_size,
+               first_pool_size, second_pool_size, block_fn, layers,
+               stride_sizes, final_size, data_format=None):
     """Creates a model for classifying an image.
 
     Args:
       resnet_size: A single integer for the size of the ResNet model.
+      num_classes: The number of classes used as labels.
+      num_filters: The number of filters to use for the model.
+      kernel_size: The kernel size to use for convolution.
+      first_pool_size: Pool size to be used for the first pooling layer.
+        If none, the first pooling layer is skipped.
+      second_pool_size: Pool size to be used for the second pooling layer.
+      block_fn: Which block layer function should be used? Pass in one of
+        the two functions defined above: building_block or bottleneck_block
+      layers: A list containing n values, where n is the bnumber of block
+        layers desired. Each value should be the number of blocks in the ith
+        layer.
+      stride_sizes: List of integers representing the desired stride size for
+        all layers-- fixed padding; first pool (if applicable); each block
+        layer; and second pool.
+      final_size: The expected size of the model after the second pooling.
       data_format: Input format ('channels_last', 'channels_first', or None).
         If set to None, the format is dependent on whether a GPU is available.
     """
@@ -236,7 +259,7 @@ class Model(object):
 
     if not data_format:
       data_format = (
-        'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
+          'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
 
     if data_format == 'channels_first':
       self.input_shape = [0, 3, 1, 2]
@@ -246,10 +269,15 @@ class Model(object):
 
     self.data_format = data_format
 
-    self.params = self.get_model_params()
-
-  def get_model_params(self):
-    raise NotImplementedError
+    self.num_classes = num_classes
+    self.num_filters = num_filters
+    self.kernel_size = kernel_size
+    self.first_pool_size = first_pool_size
+    self.second_pool_size = second_pool_size
+    self.block_fn = block_fn
+    self.layers = layers
+    self.stride_sizes = stride_sizes
+    self.final_size = final_size
 
   def __call__(self, inputs, training):
     """Add operations to classify a batch of input images.
@@ -262,42 +290,41 @@ class Model(object):
     Returns:
       A logits Tensor with shape [<batch_size>, self.num_classes].
     """
-    p = self.params
 
     # Reshape to match CPU/GPU channel preference
     inputs = tf.transpose(inputs, self.input_shape)
 
     # Get a stack of strides we can pop as we go.
-    stride_stack = p['stride_sizes'][::-1]
+    stride_stack = self.stride_sizes[::-1]
 
     inputs = conv2d_fixed_padding(
-        inputs=inputs, filters=p['num_filters'], kernel_size=p['kernel_size'],
+        inputs=inputs, filters=self.num_filters, kernel_size=self.kernel_size,
         strides=stride_stack.pop(), data_format=self.data_format)
     inputs = tf.identity(inputs, 'initial_conv')
 
-    if p['first_pool_size']:
+    if self.first_pool_size:
       inputs = tf.layers.max_pooling2d(
-        inputs=inputs, pool_size=p['first_pool_size'],
-        strides=stride_stack.pop(), padding='SAME',
-        data_format=self.data_format)
+          inputs=inputs, pool_size=self.first_pool_size,
+          strides=stride_stack.pop(), padding='SAME',
+          data_format=self.data_format)
       inputs = tf.identity(inputs, 'initial_max_pool')
 
-    for i, num_blocks in enumerate(p['layers']):
-      num_filters = p['num_filters'] * (2**i)
+    for i, num_blocks in enumerate(self.layers):
+      num_filters = self.num_filters * (2**i)
       inputs = block_layer(
-          inputs=inputs, filters=num_filters, block_fn=p['block_fn'],
+          inputs=inputs, filters=num_filters, block_fn=self.block_fn,
           blocks=num_blocks, strides=stride_stack.pop(),
           training=training, name='block_layer{}'.format(i + 1),
           data_format=self.data_format)
 
     inputs = batch_norm_relu(inputs, training, self.data_format)
     inputs = tf.layers.average_pooling2d(
-        inputs=inputs, pool_size=p['second_pool_size'],
+        inputs=inputs, pool_size=self.second_pool_size,
         strides=stride_stack.pop(), padding='VALID',
         data_format=self.data_format)
     inputs = tf.identity(inputs, 'final_avg_pool')
 
-    inputs = tf.reshape(inputs, [-1, p['final_size']])
-    inputs = tf.layers.dense(inputs=inputs, units=p['num_classes'])
+    inputs = tf.reshape(inputs, [-1, self.final_size])
+    inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
     inputs = tf.identity(inputs, 'final_dense')
     return inputs

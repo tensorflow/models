@@ -141,20 +141,21 @@ class ImagenetModel(resnet_model.Model):
   # >= this value of resnet_size, use more layers and bottleneck blocks.
   size_threshold = 50
 
-  def get_model_params(self):
+  def __init__(self, resnet_size, data_format=None):
     """These are the parameters that work for Imagenet data.
     """
-    return dict(
-      num_classes=_NUM_CLASSES,
-      num_filters=64,
-      kernel_size=7,
-      first_pool_size=3,
-      second_pool_size=7,
-      block_fn=self._get_block_fn(),
-      layers=self._get_layers(),
-      stride_sizes=self._get_stride_sizes(),
-      final_size=self._get_final_size()
-    )
+    super(ImagenetModel, self).__init__(
+        resnet_size=resnet_size,
+        num_classes=_NUM_CLASSES,
+        num_filters=64,
+        kernel_size=7,
+        first_pool_size=3,
+        second_pool_size=7,
+        block_fn=self._get_block_fn(),
+        layers=self._get_layers(),
+        stride_sizes=self._get_stride_sizes(),
+        final_size=self._get_final_size(),
+        data_format=data_format)
 
   def _get_block_fn(self):
     if self.resnet_size < self.size_threshold:
@@ -164,12 +165,12 @@ class ImagenetModel(resnet_model.Model):
 
   def _get_layers(self):
     choices = {
-      18: [2, 2, 2, 2],
-      34: [3, 4, 6, 3],
-      50: [3, 4, 6, 3],
-      101: [3, 4, 23, 3],
-      152: [3, 8, 36, 3],
-      200: [3, 24, 36, 3]
+        18: [2, 2, 2, 2],
+        34: [3, 4, 6, 3],
+        50: [3, 4, 6, 3],
+        101: [3, 4, 23, 3],
+        152: [3, 8, 36, 3],
+        200: [3, 24, 36, 3]
     }
 
     try:
