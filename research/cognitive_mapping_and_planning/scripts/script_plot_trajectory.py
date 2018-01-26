@@ -17,7 +17,7 @@ r"""
 Code for plotting trajectories in the top view, and also plot first person views
 from saved trajectories. Does not run the network but only loads the mesh data
 to plot the view points.
-  CUDA_VISIBLE_DEVICES=0 LD_LIBRARY_PATH=/opt/cuda-8.0/lib64:/opt/cudnnv51/lib64 
+  CUDA_VISIBLE_DEVICES=0 LD_LIBRARY_PATH=/opt/cuda-8.0/lib64:/opt/cudnnv51/lib64
   PYTHONPATH='.' PYOPENGL_PLATFORM=egl python scripts/script_plot_trajectory.py \
       --first_person --num_steps 40 \
       --config_name cmp.lmap_Msc.clip5.sbpd_d_r2r \
@@ -36,13 +36,13 @@ from tensorflow.contrib import slim
 import cv2
 import logging
 from tensorflow.python.platform import gfile
-from tensorflow.python.platform import app 
-from tensorflow.python.platform import flags 
+from tensorflow.python.platform import app
+from tensorflow.python.platform import flags
 
 from datasets import nav_env
-import scripts.script_nav_agent_release as sna 
+import scripts.script_nav_agent_release as sna
 import src.file_utils as fu
-from src import graph_utils 
+from src import graph_utils
 from src import utils
 FLAGS = flags.FLAGS
 
@@ -95,7 +95,7 @@ def _compute_hardness():
     # Initialize the agent.
     init_env_state = e.reset(rng_data)
 
-    gt_dist_to_goal = [e.episode.dist_to_goal[0][j][s] 
+    gt_dist_to_goal = [e.episode.dist_to_goal[0][j][s]
                        for j, s in enumerate(e.episode.start_node_ids)]
 
     for j in range(args.navtask.task_params.batch_size):
@@ -120,15 +120,15 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
   out_dir = os.path.join(out_dir, FLAGS.config_name+_get_suffix_str(),
                          FLAGS.imset)
   fu.makedirs(out_dir)
-  
+
   # Load the model so that we can render.
   plt.set_cmap('gray')
   samples_per_action = 8; wait_at_action = 0;
-  
+
   Writer = animation.writers['mencoder']
-  writer = Writer(fps=3*(samples_per_action+wait_at_action), 
+  writer = Writer(fps=3*(samples_per_action+wait_at_action),
                   metadata=dict(artist='anonymous'), bitrate=1800)
-  
+
   args = sna.get_args_for_config(FLAGS.config_name + '+bench_'+FLAGS.imset)
   args.navtask.logdir = None
   navtask_ = copy.deepcopy(args.navtask)
@@ -142,10 +142,10 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
   R = lambda: nav_env.get_multiplexer_class(navtask_, 0)
   R = R()
   b = R.buildings[0]
-  
+
   f = [0 for _ in range(wait_at_action)] + \
       [float(_)/samples_per_action for _ in range(samples_per_action)];
-  
+
   # Generate things for it to render.
   inds_to_do = []
   inds_to_do += [1, 4, 10] #1291, 1268, 1273, 1289, 1302, 1426, 1413, 1449, 1399, 1390]
@@ -163,7 +163,7 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
     # axes = [ax]
     for ax in axes:
       ax.set_axis_off()
-    
+
     node_ids = dt['all_node_ids'][i, :, 0]*1
     # Prune so that last node is not repeated more than 3 times?
     if np.all(node_ids[-4:] == node_ids[-1]):
@@ -185,7 +185,7 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
     node_ids_all = np.reshape(node_ids_all[:-1,:], -1)
     perturbs_all = np.reshape(perturbs_all, [-1, 4])
     imgs = b.render_nodes(b.task.nodes[node_ids_all,:], perturb=perturbs_all)
-  
+
     # Get action at each node.
     actions = []
     _, action_to_nodes = b.get_feasible_actions(node_ids)
@@ -193,7 +193,7 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
       action_to_node = action_to_nodes[j]
       node_to_action = dict(zip(action_to_node.values(), action_to_node.keys()))
       actions.append(node_to_action[node_ids[j+1]])
-    
+
     def init_fn():
       return fig,
     gt_dist_to_goal = []
@@ -205,8 +205,8 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
       img = imgs[j]; ax = axes[0]; ax.clear(); ax.set_axis_off();
       img = img.astype(np.uint8); ax.imshow(img);
       tt = ax.set_title(
-          "First Person View\n" + 
-          "Top corners show diagnostics (distance, agents' action) not input to agent.", 
+          "First Person View\n" +
+          "Top corners show diagnostics (distance, agents' action) not input to agent.",
           fontsize=12)
       plt.setp(tt, color='white')
 
@@ -218,9 +218,9 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
           fontsize=20, color='red',
           transform=ax.transAxes, alpha=1.0)
       t.set_bbox(dict(color='white', alpha=0.85, pad=-0.1))
-      
+
       # Action to take.
-      action_latex = ['$\odot$ ', '$\curvearrowright$ ', '$\curvearrowleft$ ', '$\Uparrow$ ']
+      action_latex = ['$\odot$ ', '$\curvearrowright$ ', '$\curvearrowleft$ ', r'$\Uparrow$ ']
       t = ax.text(0.99, 0.99, action_latex[actions[step_number]],
           horizontalalignment='right',
           verticalalignment='top',
@@ -256,7 +256,7 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
       locs = np.expand_dims(locs, axis=0)
       ax.plot(locs[:,0], locs[:,1], 'r.', alpha=1.0, linewidth=0, markersize=4)
       tt = ax.set_title('Trajectory in topview', fontsize=14)
-      plt.setp(tt, color='white') 
+      plt.setp(tt, color='white')
       return fig,
 
     line_ani = animation.FuncAnimation(fig, worker,
@@ -265,7 +265,7 @@ def plot_trajectory_first_person(dt, orig_maps, out_dir):
     tmp_file_name = 'tmp.mp4'
     line_ani.save(tmp_file_name, writer=writer, savefig_kwargs={'facecolor':'black'})
     out_file_name = os.path.join(out_dir, 'vis_{:04d}.mp4'.format(i))
-    print out_file_name
+    print(out_file_name)
 
     if fu.exists(out_file_name):
       gfile.Remove(out_file_name)
@@ -280,12 +280,12 @@ def plot_trajectory(dt, hardness, orig_maps, out_dir):
   out_file = os.path.join(out_dir, 'all_locs_at_t.pkl')
   dt['hardness'] = hardness
   utils.save_variables(out_file, dt.values(), dt.keys(), overwrite=True)
-  
+
   #Plot trajectories onto the maps
   plt.set_cmap('gray')
   for i in range(4000):
     goal_loc = dt['all_goal_locs'][i, :, :]
-    locs = np.concatenate((dt['all_locs'][i,:,:], 
+    locs = np.concatenate((dt['all_locs'][i,:,:],
                            dt['all_locs'][i,:,:]), axis=0)
     xymin = np.minimum(np.min(goal_loc, axis=0), np.min(locs, axis=0))
     xymax = np.maximum(np.max(goal_loc, axis=0), np.max(locs, axis=0))
@@ -305,35 +305,35 @@ def plot_trajectory(dt, hardness, orig_maps, out_dir):
     uniq = np.array(uniq)
     all_locs = all_locs[uniq, :]
 
-    ax.plot(dt['all_locs'][i, 0, 0], 
+    ax.plot(dt['all_locs'][i, 0, 0],
             dt['all_locs'][i, 0, 1], 'b.', markersize=24)
-    ax.plot(dt['all_goal_locs'][i, 0, 0], 
+    ax.plot(dt['all_goal_locs'][i, 0, 0],
             dt['all_goal_locs'][i, 0, 1], 'g*', markersize=19)
     ax.plot(all_locs[:,0], all_locs[:,1], 'r', alpha=0.4, linewidth=2)
     ax.scatter(all_locs[:,0], all_locs[:,1],
-               c=5+np.arange(all_locs.shape[0])*1./all_locs.shape[0], 
+               c=5+np.arange(all_locs.shape[0])*1./all_locs.shape[0],
                cmap='Reds', s=30, linewidth=0)
     ax.imshow(orig_maps, origin='lower', vmin=-1.0, vmax=2.0, aspect='equal')
     ax.set_xlim([xy1[0], xy2[0]])
     ax.set_ylim([xy1[1], xy2[1]])
-    
+
     file_name = os.path.join(out_dir, 'trajectory_{:04d}.png'.format(i))
-    print file_name
-    with fu.fopen(file_name, 'w') as f: 
+    print(file_name)
+    with fu.fopen(file_name, 'w') as f:
       plt.savefig(f)
     plt.close(fig)
-  
+
 
 def main(_):
   a = _load_trajectory()
   h_dists, gt_dists, orig_maps = _compute_hardness()
   hardness = 1.-h_dists*1./ gt_dists
-  
+
   if FLAGS.top_view:
     plot_trajectory(a, hardness, orig_maps, out_dir=FLAGS.out_dir)
 
   if FLAGS.first_person:
     plot_trajectory_first_person(a, orig_maps, out_dir=FLAGS.out_dir)
-  
+
 if __name__ == '__main__':
   app.run()
