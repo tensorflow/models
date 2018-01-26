@@ -39,14 +39,6 @@ _NUM_IMAGES = {
 _FILE_SHUFFLE_BUFFER = 1024
 _SHUFFLE_BUFFER = 1500
 
-TRAIN_PARAMS = dict(
-    batch_denom=256,
-    epochs=[30, 60, 80, 90],
-    learning_rates=[1, 0.1, 0.01, 1e-3, 1e-4],
-    weight_decay=1e-4,
-    train_images=_NUM_IMAGES['train'],
-    momentum=0.9)
-
 
 ###############################################################################
 # Data processing
@@ -193,7 +185,17 @@ class ImagenetModel(resnet_model.Model):
 
 def imagenet_model_fn(features, labels, mode, params):
   """Our model_fn for ResNet to be used with our Estimator."""
-  params.update(TRAIN_PARAMS)
+  learning_rate_fn = resnet_shared.learning_rate_with_decay(
+      batch_size=params['batch_size'], batch_denom=256,
+      train_images=_NUM_IMAGES['train'], epochs=[30, 60, 80, 90],
+      learning_rates=[1, 0.1, 0.01, 1e-3, 1e-4])
+
+  train_params = dict(
+      learning_rate_fn=learning_rate_fn,
+      weight_decay=1e-4,
+      momentum=0.9)
+
+  params.update(train_params)
 
   return resnet_shared.resnet_model_fn(
       features, labels, mode, params, ImagenetModel)

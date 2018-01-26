@@ -24,6 +24,30 @@ import os
 import tensorflow as tf
 
 
+def learning_rate_with_decay(
+    batch_size, batch_denom, train_images, epochs, decay_rates):
+  """Scale the learning rate linearly with the batch size. When the batch size
+  is batch_denom, the learning rate should be 0.1.
+
+  Returns a function that will be called at training time.
+  """
+  initial_learning_rate = 0.1 * batch_size / batch_denom
+  batches_per_epoch = train_images / batch_size
+
+  # Multiply the learning rate by 0.1 at 100, 150, and 200 epochs.
+  boundaries = [int(batches_per_epoch * epoch) for epoch in epochs]
+  vals = [initial_learning_rate * decay for decay in decay_rates]
+
+  def learning_rate_fn():
+    global_step = tf.train.get_or_create_global_step()
+    learning_rate = tf.train.piecewise_constant(
+        tf.cast(global_step, tf.int32), boundaries, vals)
+
+    return learning_rate
+
+  return learning_rate_fn
+
+
 def resnet_model_fn(features, labels, mode, params, model_class):
   """Shared functionality for different resnet model_fns."""
 
@@ -54,18 +78,7 @@ def resnet_model_fn(features, labels, mode, params, model_class):
       [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
-    # Scale the learning rate linearly with the batch size. When the batch size
-    # is 128, the learning rate should be 0.1.
-    initial_learning_rate = 0.1 * params['batch_size'] / params['batch_denom']
-    batches_per_epoch = params['train_images'] / params['batch_size']
-    global_step = tf.train.get_or_create_global_step()
-
-    # Multiply the learning rate by 0.1 at 100, 150, and 200 epochs.
-    boundaries = [int(batches_per_epoch * epoch) for epoch in params['epochs']]
-    vals = [initial_learning_rate * decay
-            for decay in params['learning_rates']]
-    learning_rate = tf.train.piecewise_constant(
-        tf.cast(global_step, tf.int32), boundaries, vals)
+    learning_rate = params['learning_rate_fn']()
 
     # Create a tensor named learning_rate for logging purposes
     tf.identity(learning_rate, name='learning_rate')
@@ -134,8 +147,7 @@ def resnet_main(flags, model_function, input_function):
 
 
 class ResnetArgParser(argparse.ArgumentParser):
-  """
-  Arguments for configuring and running a Resnet Model.
+  """Arguments for configuring and running a Resnet Model.
   """
 
   def __init__(self, resnet_size_choices=None):
