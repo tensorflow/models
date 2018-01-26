@@ -165,14 +165,14 @@ class Cifar10Model(resnet_model.Model):
         first_pool_size=None,
         second_pool_size=8,
         block_fn=resnet_model.building_block,
-        layers=self._get_layers(),
+        layers=self._get_layers(resnet_size),
         stride_sizes=self._get_stride_sizes(),
         final_size=64,
         data_format=data_format)
 
-  def _get_layers(self):
-    if self.resnet_size % 6 != 2:
-      raise ValueError('resnet_size must be 6n + 2:', self.resnet_size)
+  def _get_layers(self, resnet_size):
+    if resnet_size % 6 != 2:
+      raise ValueError('resnet_size must be 6n + 2:', resnet_size)
 
     num_blocks = (self.resnet_size - 2) // 6
     return [num_blocks] * 3

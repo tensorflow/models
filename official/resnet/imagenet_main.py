@@ -143,19 +143,19 @@ class ImagenetModel(resnet_model.Model):
         kernel_size=7,
         first_pool_size=3,
         second_pool_size=7,
-        block_fn=self._get_block_fn(),
-        layers=self._get_layers(),
+        block_fn=self._get_block_fn(resnet_size),
+        layers=self._get_layers(resnet_size),
         stride_sizes=self._get_stride_sizes(),
-        final_size=self._get_final_size(),
+        final_size=self._get_final_size(resnet_size),
         data_format=data_format)
 
-  def _get_block_fn(self):
-    if self.resnet_size < self.size_threshold:
+  def _get_block_fn(self, resnet_size):
+    if resnet_size < self.size_threshold:
       return resnet_model.building_block
     else:
       return resnet_model.bottleneck_block
 
-  def _get_layers(self):
+  def _get_layers(self, resnet_size):
     choices = {
         18: [2, 2, 2, 2],
         34: [3, 4, 6, 3],
@@ -166,18 +166,18 @@ class ImagenetModel(resnet_model.Model):
     }
 
     try:
-      return choices[self.resnet_size]
+      return choices[resnet_size]
     except KeyError:
       err = ('Could not find layers for selected Resnet size.\n'
              'Size received: {}; sizes allowed: {}.'.format(
-                 self.resnet_size, choices.keys()))
+                 resnet_size, choices.keys()))
       raise ValueError(err)
 
   def _get_stride_sizes(self):
     return [2, 2, 1, 2, 2, 2, 1]
 
-  def _get_final_size(self):
-    if self.resnet_size < self.size_threshold:
+  def _get_final_size(self, resnet_size):
+    if resnet_size < self.size_threshold:
       return 512
     else:
       return 2048
