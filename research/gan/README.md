@@ -25,7 +25,8 @@ Maintainers of TFGAN:
 
 1. [Image compression (coming soon)](#compression)
 
-## MNIST {#mnist}
+## MNIST
+<a id='mnist'></a>
 
 We train a simple generator to produce [MNIST digits](http://yann.lecun.com/exdb/mnist/).
 The unconditional case maps noise to MNIST digits. The conditional case maps
@@ -36,22 +37,24 @@ network architectures are defined [here](https://github.com/tensorflow/models/tr
 We use a classifier trained on MNIST digit classification for evaluation.
 
 ### Unconditional MNIST
-![Unconditional GAN](g3doc/mnist_unconditional_gan.png "unconditional GAN")
+<img src="g3doc/mnist_unconditional_gan.png" title="Unconditional GAN" width="330" />
 
 ### Conditional MNIST
-![Conditional GAN](g3doc/mnist_conditional_gan.png "conditional GAN")
+<img src="g3doc/mnist_conditional_gan.png" title="Conditional GAN" width="330" />
 
 ### InfoGAN MNIST
-![InfoGAN](g3doc/mnist_infogan.png "InfoGAN")
+<img src="g3doc/mnist_infogan.png" title="InfoGAN" width="330" />
 
-## MNIST with GANEstimator {#mnist_estimator}
+## MNIST with GANEstimator
+<a id='mnist_estimator'></a>
 
 This setup is exactly the same as in the [unconditional MNIST example](#mnist), but
 uses the `tf.Learn` `GANEstimator`.
 
-![Unconditional GAN](g3doc/mnist_estimator_unconditional_gan.png "unconditional GAN")
+<img src="g3doc/mnist_estimator_unconditional_gan.png" title="Unconditional GAN" width="330" />
 
-## CIFAR10 {#cifar10}
+## CIFAR10
+<a id='cifar10'></a>
 
 We train a [DCGAN generator](https://arxiv.org/abs/1511.06434) to produce [CIFAR10 images](https://www.cs.toronto.edu/~kriz/cifar.html).
 The unconditional case maps noise to CIFAR10 images. The conditional case maps
@@ -61,12 +64,13 @@ network architectures are defined [here](https://github.com/tensorflow/models/tr
 We use the [Inception Score](https://arxiv.org/abs/1606.03498) to evaluate the images.
 
 ### Unconditional CIFAR10
-![Unconditional GAN](g3doc/cifar_unconditional_gan.png "unconditional GAN")
+<img src="g3doc/cifar_unconditional_gan.png" title="Unconditional GAN" width="330" />
 
 ### Conditional CIFAR10
-![Unconditional GAN](g3doc/cifar_conditional_gan.png "unconditional GAN"){width="330"}
+<img src="g3doc/cifar_conditional_gan.png" title="Conditional GAN" width="330" />
 
-## Image compression {#compression}
+## Image compression
+<a id='compression'></a>
 
 In neural image compression, we attempt to reduce an image to a smaller representation
 such that we can recreate the original image as closely as possible. See [`Full Resolution Image Compression with Recurrent Neural Networks`](https://arxiv.org/abs/1608.05148) for more details on using neural networks
@@ -93,12 +97,10 @@ Some other notes on the problem:
 ### Results
 
 #### No adversarial loss
-
-![compresson_no_adversarial](g3doc/compression_wf0.png "no adversarial loss")
+<img src="g3doc/compression_wf0.png" title="No adversarial loss" width="500" />
 
 #### Adversarial loss
-
-![compresson_no_adversarial](g3doc/compression_wf10000.png "with adversarial loss")
+<img src="g3doc/compression_wf10000.png" title="With adversarial loss" width="500" />
 
 ### Architectures
 

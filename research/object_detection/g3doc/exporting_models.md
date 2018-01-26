@@ -8,7 +8,7 @@ graph proto. A checkpoint will typically consist of three files:
 * model.ckpt-${CHECKPOINT_NUMBER}.meta
 
 After you've identified a candidate checkpoint to export, run the following
-command from tensorflow/models/research/object_detection:
+command from tensorflow/models/research/:
 
 ``` bash
 # From tensorflow/models/research/
