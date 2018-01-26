@@ -170,7 +170,7 @@ class ImagenetModel(resnet_model.Model):
     except KeyError:
       err = ('Could not find layers for selected Resnet size.\n'
              'Size received: {}; sizes allowed: {}.'.format(
-              self.resnet_size, choices.keys()))
+                 self.resnet_size, choices.keys()))
       raise ValueError(err)
 
   def _get_stride_sizes(self):
@@ -188,7 +188,7 @@ def imagenet_model_fn(features, labels, mode, params):
   learning_rate_fn = resnet_shared.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=256,
       train_images=_NUM_IMAGES['train'], epochs=[30, 60, 80, 90],
-      learning_rates=[1, 0.1, 0.01, 1e-3, 1e-4])
+      decay_rates=[1, 0.1, 0.01, 1e-3, 1e-4])
 
   train_params = dict(
       learning_rate_fn=learning_rate_fn,
