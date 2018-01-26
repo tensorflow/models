@@ -56,6 +56,9 @@ fi
 # Specify which test is to be run
 COMMAND="./official/testing/test_models.sh"
 
+# Check the recency of the desired image
+${DOCKER_BINARY} pull ${DOCKER_IMG_NAME}
+
 # RUN
 ${DOCKER_BINARY} run \
     -v ${WORKSPACE}:/workspace \
