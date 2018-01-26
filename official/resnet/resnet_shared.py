@@ -38,8 +38,7 @@ def learning_rate_with_decay(
   boundaries = [int(batches_per_epoch * epoch) for epoch in epochs]
   vals = [initial_learning_rate * decay for decay in decay_rates]
 
-  def learning_rate_fn():
-    global_step = tf.train.get_or_create_global_step()
+  def learning_rate_fn(global_step):
     learning_rate = tf.train.piecewise_constant(
         tf.cast(global_step, tf.int32), boundaries, vals)
 
@@ -78,7 +77,9 @@ def resnet_model_fn(features, labels, mode, params, model_class):
       [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
-    learning_rate = params['learning_rate_fn']()
+    global_step = tf.train.get_or_create_global_step()
+
+    learning_rate = params['learning_rate_fn'](global_step)
 
     # Create a tensor named learning_rate for logging purposes
     tf.identity(learning_rate, name='learning_rate')
