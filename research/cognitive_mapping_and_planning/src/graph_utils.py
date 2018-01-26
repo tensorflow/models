@@ -19,6 +19,7 @@ import skimage.morphology
 import numpy as np
 import networkx as nx
 import itertools
+import logging
 import graph_tool as gt
 import graph_tool.topology
 import graph_tool.generation 
