@@ -21,7 +21,7 @@ https://storage.googleapis.com/capsule_toronto/mnist_checkpoints.tar.gz
 
 ```
 python experiment.py --data_dir=$DATA_DIR/mnist_data/ --train=false \
---summary_dir=/tmp/ --checkpoint=$CKPT_DIR/mnist_checkpoints/model.ckpt-1
+--summary_dir=/tmp/ --checkpoint=$CKPT_DIR/mnist_checkpoint/model.ckpt-1
 ```
 
 Quick CIFAR10 ensemble test results:
