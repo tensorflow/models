@@ -49,19 +49,17 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 import cifar10
 
-parser = cifar10.parser
+FLAGS = tf.app.flags.FLAGS
 
-parser.add_argument('--train_dir', type=str, default='/tmp/cifar10_train',
-                    help='Directory where to write event logs and checkpoint.')
-
-parser.add_argument('--max_steps', type=int, default=1000000,
-                    help='Number of batches to run.')
-
-parser.add_argument('--num_gpus', type=int, default=1,
-                    help='How many GPUs to use.')
-
-parser.add_argument('--log_device_placement', type=bool, default=False,
-                    help='Whether to log device placement.')
+tf.app.flags.DEFINE_string('train_dir', '/tmp/cifar10_train',
+                           """Directory where to write event logs """
+                           """and checkpoint.""")
+tf.app.flags.DEFINE_integer('max_steps', 1000000,
+                            """Number of batches to run.""")
+tf.app.flags.DEFINE_integer('num_gpus', 1,
+                            """How many GPUs to use.""")
+tf.app.flags.DEFINE_boolean('log_device_placement', False,
+                            """Whether to log device placement.""")
 
 
 def tower_loss(scope, images, labels):
@@ -276,5 +274,4 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 
 if __name__ == '__main__':
-  FLAGS = parser.parse_args()
   tf.app.run()
