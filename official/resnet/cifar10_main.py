@@ -174,7 +174,7 @@ class Cifar10Model(resnet_model.Model):
     if resnet_size % 6 != 2:
       raise ValueError('resnet_size must be 6n + 2:', resnet_size)
 
-    num_blocks = (self.resnet_size - 2) // 6
+    num_blocks = (resnet_size - 2) // 6
     return [num_blocks] * 3
 
   def _get_stride_sizes(self):
