@@ -503,6 +503,8 @@ if __name__ == '__main__':
       help='Epsilon for batch norm.')
   args = parser.parse_args()
 
+  if args.num_gpus > 0:
+    assert tf.test.is_gpu_available(), "Requested GPUs but none found."
   if args.num_gpus < 0:
     raise ValueError(
         'Invalid GPU count: \"--num-gpus\" must be 0 or a positive integer.')
