@@ -25,6 +25,7 @@ from __future__ import print_function
 from delf import feature_pb2
 from delf import datum_io
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 

@@ -21,6 +21,7 @@ from __future__ import unicode_literals
 import math
 
 import numpy as np
+import six
 import tensorflow as tf
 
 
@@ -39,7 +40,7 @@ class RsqrtInitializer(object):
         1.0 / sqrt(product(shape[dims]))
       **kwargs: Extra keyword arguments to pass to tf.truncated_normal.
     """
-    if isinstance(dims, (int, long)):
+    if isinstance(dims, six.integer_types):
       self._dims = [dims]
     else:
       self._dims = dims
@@ -73,7 +74,7 @@ class RectifierInitializer(object):
         sqrt(scale / product(shape[dims])).
       **kwargs: Extra keyword arguments to pass to tf.truncated_normal.
     """
-    if isinstance(dims, (int, long)):
+    if isinstance(dims, six.integer_types):
       self._dims = [dims]
     else:
       self._dims = dims

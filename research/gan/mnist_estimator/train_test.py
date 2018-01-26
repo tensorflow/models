@@ -31,7 +31,8 @@ mock = tf.test.mock
 
 class TrainTest(tf.test.TestCase):
 
-  def test_full_flow(self):
+  @mock.patch.object(train, 'data_provider', autospec=True)
+  def test_full_flow(self, mock_data_provider):
     FLAGS.eval_dir = self.get_temp_dir()
     FLAGS.batch_size = 16
     FLAGS.max_number_of_steps = 2
@@ -42,10 +43,9 @@ class TrainTest(tf.test.TestCase):
     mock_lbls = np.concatenate(
         (np.ones([FLAGS.batch_size, 1], dtype=np.int32),
          np.zeros([FLAGS.batch_size, 9], dtype=np.int32)), axis=1)
-    with mock.patch.object(train, 'data_provider') as mock_data_provider:
-      mock_data_provider.provide_data.return_value = (
-          mock_imgs, mock_lbls, None)
-      train.main(None)
+    mock_data_provider.provide_data.return_value = (mock_imgs, mock_lbls, None)
+
+    train.main(None)
 
 
 if __name__ == '__main__':

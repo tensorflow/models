@@ -17,6 +17,7 @@ r"""Generaly Utilities.
 """
 
 import numpy as np, cPickle, os, time
+from six.moves import xrange
 import src.file_utils as fu
 import logging
 
@@ -93,12 +94,12 @@ def tic_toc_print(interval, string):
   global tic_toc_print_time_old
   if 'tic_toc_print_time_old' not in globals():
     tic_toc_print_time_old = time.time()
-    print string
+    print(string)
   else:
     new_time = time.time()
     if new_time - tic_toc_print_time_old > interval:
       tic_toc_print_time_old = new_time;
-      print string
+      print(string)
 
 def mkdir_if_missing(output_dir):
   if not fu.exists(output_dir):
@@ -126,7 +127,7 @@ def load_variables(pickle_file_name):
 def voc_ap(rec, prec):
   rec = rec.reshape((-1,1))
   prec = prec.reshape((-1,1))
-  z = np.zeros((1,1)) 
+  z = np.zeros((1,1))
   o = np.ones((1,1))
   mrec = np.vstack((z, rec, o))
   mpre = np.vstack((z, prec, z))
@@ -165,4 +166,3 @@ def calc_pr(gt, out, wt=None):
 
   ap = voc_ap(rec, prec)
   return ap, rec, prec
-
