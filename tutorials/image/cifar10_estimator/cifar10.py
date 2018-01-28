@@ -16,17 +16,14 @@
 
 See http://www.cs.toronto.edu/~kriz/cifar.html.
 """
-import cPickle
 import os
-
-import numpy as np
-from six.moves import xrange  # pylint: disable=redefined-builtin
 
 import tensorflow as tf
 
 HEIGHT = 32
 WIDTH = 32
 DEPTH = 3
+
 
 class Cifar10DataSet(object):
   """Cifar10 data set.
@@ -38,30 +35,48 @@ class Cifar10DataSet(object):
     self.data_dir = data_dir
     self.subset = subset
     self.use_distortion = use_distortion
- 
+
   def get_filenames(self):
-    if self.subset == 'train':
-      return [
-          os.path.join(self.data_dir, 'data_batch_%d.bin' % i)
-          for i in xrange(1, 5)
-      ]
-    elif self.subset == 'validation':
-      return [os.path.join(self.data_dir, 'data_batch_5.bin')]
-    elif self.subset == 'eval':
-      return [os.path.join(self.data_dir, 'test_batch.bin')]
+    if self.subset in ['train', 'validation', 'eval']:
+      return [os.path.join(self.data_dir, self.subset + '.tfrecords')]
     else:
       raise ValueError('Invalid data subset "%s"' % self.subset)
+
+  def parser(self, serialized_example):
+    """Parses a single tf.Example into image and label tensors."""
+    # Dimensions of the images in the CIFAR-10 dataset.
+    # See http://www.cs.toronto.edu/~kriz/cifar.html for a description of the
+    # input format.
+    features = tf.parse_single_example(
+        serialized_example,
+        features={
+            'image': tf.FixedLenFeature([], tf.string),
+            'label': tf.FixedLenFeature([], tf.int64),
+        })
+    image = tf.decode_raw(features['image'], tf.uint8)
+    image.set_shape([DEPTH * HEIGHT * WIDTH])
+
+    # Reshape from [depth * height * width] to [depth, height, width].
+    image = tf.cast(
+        tf.transpose(tf.reshape(image, [DEPTH, HEIGHT, WIDTH]), [1, 2, 0]),
+        tf.float32)
+    label = tf.cast(features['label'], tf.int32)
+
+    # Custom preprocessing.
+    image = self.preprocess(image)
+
+    return image, label
 
   def make_batch(self, batch_size):
     """Read the images and labels from 'filenames'."""
     filenames = self.get_filenames()
-    record_bytes = (32 * 32 * 3) + 1
     # Repeat infinitely.
-    dataset = tf.contrib.data.FixedLengthRecordDataset(filenames,
-                                                       record_bytes).repeat()
+    dataset = tf.contrib.data.TFRecordDataset(filenames).repeat()
+
     # Parse records.
-    dataset = dataset.map(self.parser, num_threads=batch_size,
-      output_buffer_size=2 * batch_size)
+    dataset = dataset.map(
+        self.parser, num_threads=batch_size, output_buffer_size=2 * batch_size)
+
     # Potentially shuffle records.
     if self.subset == 'train':
       min_queue_examples = int(
@@ -69,49 +84,13 @@ class Cifar10DataSet(object):
       # Ensure that the capacity is sufficiently large to provide good random
       # shuffling.
       dataset = dataset.shuffle(buffer_size=min_queue_examples + 3 * batch_size)
+
     # Batch it up.
     dataset = dataset.batch(batch_size)
     iterator = dataset.make_one_shot_iterator()
     image_batch, label_batch = iterator.get_next()
+
     return image_batch, label_batch
-
-  def parser(self, value):
-    """Parse a Cifar10 record from value.
-
-    Output images are in [height, width, depth] layout.
-    """
-    # Dimensions of the images in the CIFAR-10 dataset.
-    # See http://www.cs.toronto.edu/~kriz/cifar.html for a description of the
-    # input format.
-    label_bytes = 1
-    image_bytes = HEIGHT * WIDTH * DEPTH
-    # Every record consists of a label followed by the image, with a
-    # fixed number of bytes for each.
-    record_bytes = label_bytes + image_bytes
-
-    # Convert from a string to a vector of uint8 that is record_bytes long.
-    record_as_bytes = tf.decode_raw(value, tf.uint8)
-
-    # The first bytes represent the label, which we convert from
-    # uint8->int32.
-    label = tf.cast(
-        tf.strided_slice(record_as_bytes, [0], [label_bytes]), tf.int32)
-
-    label.set_shape([1])
-
-    # The remaining bytes after the label represent the image, which
-    # we reshape from [depth * height * width] to [depth, height, width].
-    depth_major = tf.reshape(
-        tf.strided_slice(record_as_bytes, [label_bytes], [record_bytes]),
-        [3, 32, 32])
-    # Convert from [depth, height, width] to [height, width, depth].
-    # This puts data in a compatible layout with TF image preprocessing APIs.
-    image = tf.transpose(depth_major, [1, 2, 0])
-
-    # Do custom preprocessing here.
-    image = self.preprocess(image)
-
-    return image, label
 
   def preprocess(self, image):
     """Preprocess a single image in [height, width, depth] layout."""

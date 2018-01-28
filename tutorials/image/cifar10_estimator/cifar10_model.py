@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Model class for Cifar10 Dataset."""
-from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
@@ -25,8 +24,18 @@ import model_base
 class ResNetCifar10(model_base.ResNet):
   """Cifar10 model with ResNetV1 and basic residual block."""
 
-  def __init__(self, num_layers, is_training, data_format='channels_first'):
-    super(ResNetCifar10, self).__init__(is_training, data_format)
+  def __init__(self,
+               num_layers,
+               is_training,
+               batch_norm_decay,
+               batch_norm_epsilon,
+               data_format='channels_first'):
+    super(ResNetCifar10, self).__init__(
+        is_training,
+        data_format,
+        batch_norm_decay,
+        batch_norm_epsilon
+    )
     self.n = (num_layers - 2) // 6
     # Add one in case label starts with 1. No impact if label starts with 0.
     self.num_classes = 10 + 1
