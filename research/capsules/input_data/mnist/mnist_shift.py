@@ -191,7 +191,8 @@ def shift_write_multi_mnist(input_dataset, file_prefix, shift, pad, max_shard,
     for j, (top_image, top_label) in enumerate(chosen_dataset[:num_pairs]):
       top_shifted = shift_2d(top_image, random_shifts[i, j + 1, :],
                              shift).astype(np.uint8)
-      merged = np.minimum(base_shifted + top_shifted, 255).astype(np.uint8)
+      merged = np.add(base_shifted, top_shifted, dtype=np.int32)
+      merged = np.minimum(merged, 255).astype(np.uint8)
       example = tf.train.Example(
           features=tf.train.Features(
               feature={
