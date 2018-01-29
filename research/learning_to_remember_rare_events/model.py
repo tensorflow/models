@@ -137,7 +137,7 @@ class Model(object):
     self.memory = self.get_memory()
     self.classifier = self.get_classifier()
 
-    self.global_step = tf.contrib.framework.get_or_create_global_step()
+    self.global_step = tf.train.get_or_create_global_step()
 
   def get_embedder(self):
     return LeNet(int(self.input_dim ** 0.5), 1, self.rep_dim)

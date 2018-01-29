@@ -25,6 +25,7 @@ import collections
 import re
 
 import errorcounter as ec
+from six.moves import xrange
 import tensorflow as tf
 
 # Named tuple Part describes a part of a multi (1 or more) part code that

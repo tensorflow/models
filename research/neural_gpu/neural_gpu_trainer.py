@@ -14,6 +14,8 @@
 # ==============================================================================
 """Neural GPU."""
 
+from __future__ import print_function
+
 import math
 import os
 import random
@@ -22,6 +24,7 @@ import threading
 import time
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 import program_utils
@@ -144,7 +147,7 @@ def read_data(source_path, target_path, buckets, max_size=None, print_out=True):
         while source and target and (not max_size or counter < max_size):
           counter += 1
           if counter % 100000 == 0 and print_out:
-            print "  reading data line %d" % counter
+            print("  reading data line %d" % counter)
             sys.stdout.flush()
           source_ids = [int(x) for x in source.split()]
           target_ids = [int(x) for x in target.split()]
@@ -188,7 +191,7 @@ def read_data_into_global(source_path, target_path, buckets,
   global_train_set["wmt"].append(data_set)
   train_total_size = calculate_buckets_scale(data_set, buckets, "wmt")
   if print_out:
-    print "  Finished global data reading (%d)." % train_total_size
+    print("  Finished global data reading (%d)." % train_total_size)
 
 
 def initialize(sess=None):
@@ -552,7 +555,7 @@ def score_beams_prog(beams, target, inp, history, print_out=False,
                 for h in history]
   tgt_set = set(target)
   if print_out:
-    print "target: ", tgt_prog
+    print("target: ", tgt_prog)
   inps, tgt_outs = [], []
   for i in xrange(3):
     ilist = [inp[i + 1, l] for l in xrange(inp.shape[1])]
@@ -566,11 +569,11 @@ def score_beams_prog(beams, target, inp, history, print_out=False,
       if len(olist) == 1:
         tgt_outs.append(olist[0])
       else:
-        print [program_utils.prog_vocab[x] for x in ilist if x > 0]
-        print olist
-        print tgt_prog
-        print program_utils.evaluate(tgt_prog, {"a": inps[-1]})
-        print "AAAAA"
+        print([program_utils.prog_vocab[x] for x in ilist if x > 0])
+        print(olist)
+        print(tgt_prog)
+        print(program_utils.evaluate(tgt_prog, {"a": inps[-1]}))
+        print("AAAAA")
         tgt_outs.append(olist[0])
   if not test_mode:
     for _ in xrange(7):
@@ -602,7 +605,7 @@ def score_beams_prog(beams, target, inp, history, print_out=False,
       best_prog = b_prog
       best_score = score
   if print_out:
-    print "best score: ", best_score, " best prog: ", best_prog
+    print("best score: ", best_score, " best prog: ", best_prog)
   return best, best_score
 
 
@@ -719,7 +722,7 @@ def train():
           inp = new_inp
           # If all results are great, stop (todo: not to wait for all?).
           if FLAGS.nprint > 1:
-            print scores
+            print(scores)
           if sum(scores) / float(len(scores)) >= 10.0:
             break
         # The final step with the true target.
@@ -735,7 +738,7 @@ def train():
         errors, total, seq_err = data.accuracy(
             inp, res, target, batch_size, 0, new_target, scores)
         if FLAGS.nprint > 1:
-          print "seq_err: ", seq_err
+          print("seq_err: ", seq_err)
         acc_total += total
         acc_errors += errors
         acc_seq_err += seq_err
@@ -944,8 +947,8 @@ def interactive():
     for v in tf.trainable_variables():
       shape = v.get_shape().as_list()
       total += mul(shape)
-      print (v.name, shape, mul(shape))
-    print total
+      print(v.name, shape, mul(shape))
+    print(total)
     # Start interactive loop.
     sys.stdout.write("Input to Neural GPU Translation Model.\n")
     sys.stdout.write("> ")
@@ -960,7 +963,7 @@ def interactive():
             normalize_digits=FLAGS.normalize_digits)
       else:
         token_ids = wmt.sentence_to_token_ids(inpt, en_vocab)
-      print [rev_en_vocab[t] for t in token_ids]
+      print([rev_en_vocab[t] for t in token_ids])
       # Which bucket does it belong to?
       buckets = [b for b in xrange(len(data.bins))
                  if data.bins[b] >= max(len(token_ids), len(cures))]
@@ -986,12 +989,12 @@ def interactive():
               loss = loss[0] - (data.bins[bucket_id] * FLAGS.length_norm)
               outputs = [int(np.argmax(logit, axis=1))
                          for logit in output_logits]
-            print [rev_fr_vocab[t] for t in outputs]
-            print loss, data.bins[bucket_id]
-            print linearize(outputs, rev_fr_vocab)
+            print([rev_fr_vocab[t] for t in outputs])
+            print(loss, data.bins[bucket_id])
+            print(linearize(outputs, rev_fr_vocab))
             cures.append(outputs[gen_idx])
-            print cures
-            print linearize(cures, rev_fr_vocab)
+            print(cures)
+            print(linearize(cures, rev_fr_vocab))
           if FLAGS.simple_tokenizer:
             cur_out = outputs
             if wmt.EOS_ID in cur_out:
@@ -1002,11 +1005,11 @@ def interactive():
           if loss < result_cost:
             result = outputs
             result_cost = loss
-        print ("FINAL", result_cost)
-        print [rev_fr_vocab[t] for t in result]
-        print linearize(result, rev_fr_vocab)
+        print("FINAL", result_cost)
+        print([rev_fr_vocab[t] for t in result])
+        print(linearize(result, rev_fr_vocab))
       else:
-        print "TOOO_LONG"
+        print("TOOO_LONG")
       sys.stdout.write("> ")
       sys.stdout.flush()
       inpt = sys.stdin.readline(), ""

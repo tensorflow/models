@@ -97,6 +97,7 @@ import threading
 
 import nltk.tokenize
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 tf.flags.DEFINE_string("train_image_dir", "/tmp/train2014/",

@@ -25,7 +25,7 @@ import tensorflow as tf
 # Check that we have correct TensorFlow version installed
 tf_version = tf.__version__
 print("TensorFlow version: {}".format(tf_version))
-assert "1.3" <= tf_version, "TensorFlow r1.3 or later is needed"
+assert "1.4" <= tf_version, "TensorFlow r1.4 or later is needed"
 
 # Windows users: You only need to change PATH, rest is platform independent
 PATH = "/tmp/tf_dataset_and_estimator_apis"
@@ -65,7 +65,7 @@ feature_names = [
 def my_input_fn(file_path, perform_shuffle=False, repeat_count=1):
     def decode_csv(line):
         parsed_line = tf.decode_csv(line, [[0.], [0.], [0.], [0.], [0]])
-        label = parsed_line[-1:]  # Last element is the label
+        label = parsed_line[-1]  # Last element is the label
         del parsed_line[-1]  # Delete last element
         features = parsed_line  # Everything but last elements are the features
         d = dict(zip(feature_names, features)), label

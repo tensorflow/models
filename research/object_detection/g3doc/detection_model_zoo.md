@@ -1,10 +1,12 @@
 # Tensorflow detection model zoo
 
 We provide a collection of detection models pre-trained on the [COCO
-dataset](http://mscoco.org) and the [Kitti dataset](http://www.cvlibs.net/datasets/kitti/).
-These models can be useful for
+dataset](http://mscoco.org), the [Kitti dataset](http://www.cvlibs.net/datasets/kitti/), and the
+[Open Images dataset](https://github.com/openimages/dataset). These models can
+be useful for
 out-of-the-box inference if you are interested in categories already in COCO
-(e.g., humans, cars, etc). They are also useful for initializing your models when
+(e.g., humans, cars, etc) or in Open Images (e.g.,
+surfboard, jacuzzi, etc). They are also useful for initializing your models when
 training on novel datasets.
 
 In the table below, we list each such pre-trained model including:
@@ -18,7 +20,7 @@ In the table below, we list each such pre-trained model including:
   configuration (these timings were performed using an Nvidia
   GeForce GTX TITAN X card) and should be treated more as relative timings in
   many cases.
-* detector performance on subset of the COCO validation set.
+* detector performance on subset of the COCO validation set or Open Images test split as measured by the dataset-specific mAP measure.
   Here, higher is better, and we only report bounding box mAP rounded to the
   nearest integer.
 * Output types (currently only `Boxes`)
@@ -65,8 +67,8 @@ Some remarks on frozen inference graphs:
 
 | Model name  | Speed (ms) | COCO mAP[^1] | Outputs |
 | ------------ | :--------------: | :--------------: | :-------------: |
-| [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2017_11_08.tar.gz) | 30 | 21 | Boxes |
-| [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2017_11_08.tar.gz) | 42 | 24 | Boxes |
+| [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2017_11_17.tar.gz) | 30 | 21 | Boxes |
+| [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2017_11_17.tar.gz) | 42 | 24 | Boxes |
 | [faster_rcnn_inception_v2_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_v2_coco_2017_11_08.tar.gz) | 58 | 28 | Boxes |
 | [faster_rcnn_resnet50_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet50_coco_2017_11_08.tar.gz) | 89 | 30 | Boxes |
 | [faster_rcnn_resnet50_lowproposals_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet50_lowproposals_coco_2017_11_08.tar.gz) | 64 |  | Boxes |
@@ -86,5 +88,14 @@ Model name                                                                      
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
 [faster_rcnn_resnet101_kitti](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_kitti_2017_11_08.tar.gz) | 79  | 87              | Boxes
 
+## Open Images-trained models {#open-images-models}
+
+Model name                                                                                                                                                        | Speed (ms) | Open Images mAP@0.5[^2] | Outputs
+----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
+[faster_rcnn_inception_resnet_v2_atrous_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2017_11_08.tar.gz) | 727 | 37              | Boxes
+[faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2017_11_08.tar.gz) | 347  |               | Boxes
+
+
 [^1]: See [MSCOCO evaluation protocol](http://cocodataset.org/#detections-eval).
+[^2]: This is PASCAL mAP with a slightly different way of true positives computation: see [Open Images evaluation protocol](evaluation_protocols.md#open-images).
 
