@@ -62,11 +62,12 @@ class Tests(tf.test.TestCase):
       self.assertEqual(predictions['probabilities'].shape, (10,))
       self.assertEqual(predictions['classes'].shape, ())
 
-  def mnist_model_fn_helper(self, mode):
+  def mnist_model_fn_helper(self, mode, multi_gpu=False):
     features, labels = dummy_input_fn()
     image_count = features.shape[0]
     spec = mnist.model_fn(features, labels, mode, {
-        'data_format': 'channels_last'
+        'data_format': 'channels_last',
+        'multi_gpu': multi_gpu
     })
 
     if mode == tf.estimator.ModeKeys.PREDICT:
@@ -90,6 +91,9 @@ class Tests(tf.test.TestCase):
 
   def test_mnist_model_fn_train_mode(self):
     self.mnist_model_fn_helper(tf.estimator.ModeKeys.TRAIN)
+
+  def test_mnist_model_fn_train_mode_multi_gpu(self):
+    self.mnist_model_fn_helper(tf.estimator.ModeKeys.TRAIN, multi_gpu=True)
 
   def test_mnist_model_fn_eval_mode(self):
     self.mnist_model_fn_helper(tf.estimator.ModeKeys.EVAL)
