@@ -25,14 +25,14 @@ import tensorflow as tf
 
 
 def learning_rate_with_decay(
-    batch_size, batch_denom, train_images, epochs, decay_rates):
+    batch_size, batch_denom, num_images, epochs, decay_rates):
   """Scale the learning rate linearly with the batch size. When the batch size
   is batch_denom, the learning rate should be 0.1.
 
   Returns a function that will be called at training time.
   """
   initial_learning_rate = 0.1 * batch_size / batch_denom
-  batches_per_epoch = train_images / batch_size
+  batches_per_epoch = num_images / batch_size
 
   # Multiply the learning rate by 0.1 at 100, 150, and 200 epochs.
   boundaries = [int(batches_per_epoch * epoch) for epoch in epochs]

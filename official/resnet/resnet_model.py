@@ -217,19 +217,6 @@ def block_layer(inputs, filters, block_fn, blocks, strides, training, name,
 class Model(object):
   """Base class for building the Resnet v2 Model.
   """
-  resnet_size = None
-  num_classes = None
-  num_filters = None
-  kernel_size = None
-  first_pool_size = None
-  second_pool_size = None
-  block_fn = None
-  layers = None
-  stride_sizes = None
-  final_size = None
-  data_format = None
-  input_shape = None
-
   def __init__(self, resnet_size, num_classes, num_filters, kernel_size,
                first_pool_size, second_pool_size, block_fn, layers,
                stride_sizes, final_size, data_format=None):
@@ -238,7 +225,9 @@ class Model(object):
     Args:
       resnet_size: A single integer for the size of the ResNet model.
       num_classes: The number of classes used as labels.
-      num_filters: The number of filters to use for the model.
+      num_filters: The number of filters to use for the first block layer
+        of the model. This number is then doubled for each subsequent block
+        layer.
       kernel_size: The kernel size to use for convolution.
       first_pool_size: Pool size to be used for the first pooling layer.
         If none, the first pooling layer is skipped.
@@ -246,7 +235,7 @@ class Model(object):
       block_fn: Which block layer function should be used? Pass in one of
         the two functions defined above: building_block or bottleneck_block
       layers: A list containing n values, where n is the bnumber of block
-        layers desired. Each value should be the number of blocks in the ith
+        layers desired. Each value should be the number of blocks in the i-th
         layer.
       stride_sizes: List of integers representing the desired stride size for
         all layers-- fixed padding; first pool (if applicable); each block

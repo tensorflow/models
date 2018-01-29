@@ -136,6 +136,15 @@ class ImagenetModel(resnet_model.Model):
   def __init__(self, resnet_size, data_format=None):
     """These are the parameters that work for Imagenet data.
     """
+
+    # For bigger models, we want to use "bottleneck" layers
+    if resnet_size < self.size_threshold:
+      block_fn = resnet_model.building_block
+      final_size = 512
+    else:
+      block_fn = resnet_model.bottleneck_block
+      final_size = 2048
+
     super(ImagenetModel, self).__init__(
         resnet_size=resnet_size,
         num_classes=_NUM_CLASSES,
@@ -143,51 +152,41 @@ class ImagenetModel(resnet_model.Model):
         kernel_size=7,
         first_pool_size=3,
         second_pool_size=7,
-        block_fn=self._get_block_fn(resnet_size),
-        layers=self._get_layers(resnet_size),
-        stride_sizes=self._get_stride_sizes(),
-        final_size=self._get_final_size(resnet_size),
+        block_fn=block_fn,
+        layers=_get_imagenet_layers(resnet_size),
+        stride_sizes=[2, 2, 1, 2, 2, 2, 1],
+        final_size=final_size,
         data_format=data_format)
 
-  def _get_block_fn(self, resnet_size):
-    if resnet_size < self.size_threshold:
-      return resnet_model.building_block
-    else:
-      return resnet_model.bottleneck_block
 
-  def _get_layers(self, resnet_size):
-    choices = {
-        18: [2, 2, 2, 2],
-        34: [3, 4, 6, 3],
-        50: [3, 4, 6, 3],
-        101: [3, 4, 23, 3],
-        152: [3, 8, 36, 3],
-        200: [3, 24, 36, 3]
-    }
+def _get_imagenet_layers(resnet_size):
+  """The number of block layers used for the Resnet model varies according
+  to the size of the model. This helper grabs the layer set we want, throwing
+  an error if a non-standard size has been selected.
+  """
+  choices = {
+      18: [2, 2, 2, 2],
+      34: [3, 4, 6, 3],
+      50: [3, 4, 6, 3],
+      101: [3, 4, 23, 3],
+      152: [3, 8, 36, 3],
+      200: [3, 24, 36, 3]
+  }
 
-    try:
-      return choices[resnet_size]
-    except KeyError:
-      err = ('Could not find layers for selected Resnet size.\n'
-             'Size received: {}; sizes allowed: {}.'.format(
-                 resnet_size, choices.keys()))
-      raise ValueError(err)
-
-  def _get_stride_sizes(self):
-    return [2, 2, 1, 2, 2, 2, 1]
-
-  def _get_final_size(self, resnet_size):
-    if resnet_size < self.size_threshold:
-      return 512
-    else:
-      return 2048
+  try:
+    return choices[resnet_size]
+  except KeyError:
+    err = ('Could not find layers for selected Resnet size.\n'
+           'Size received: {}; sizes allowed: {}.'.format(
+               resnet_size, choices.keys()))
+    raise ValueError(err)
 
 
 def imagenet_model_fn(features, labels, mode, params):
   """Our model_fn for ResNet to be used with our Estimator."""
   learning_rate_fn = resnet_shared.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=256,
-      train_images=_NUM_IMAGES['train'], epochs=[30, 60, 80, 90],
+      num_images=_NUM_IMAGES['train'], epochs=[30, 60, 80, 90],
       decay_rates=[1, 0.1, 0.01, 1e-3, 1e-4])
 
   train_params = dict(
