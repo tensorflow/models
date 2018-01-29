@@ -81,12 +81,12 @@ class MnistShiftTest(tf.test.TestCase):
     Writes a dataset of size two and reads the tfrecords files with
     mnist_input_record to check the integrity of the workflow.
     """
-    colors = [1, 2]
+    colors = [255, 128]
     labels = [3, 4]
     dataset = []
     for i in range(2):
       dataset.append((np.zeros((28, 28)) + colors[i], labels[i]))
-    expected_pair = dataset[0][0] + dataset[1][0]
+    expected_pair = np.minimum(dataset[0][0] + dataset[1][0], 255)
     file_prefix = os.path.join(self.get_temp_dir(), "mnist_multi")
     with self.test_session(graph=tf.Graph()) as session:
       mnist_shift.shift_write_multi_mnist(dataset, file_prefix, 0, 4, 1, 1)
@@ -101,13 +101,11 @@ class MnistShiftTest(tf.test.TestCase):
       coord = tf.train.Coordinator()
       threads = tf.train.start_queue_runners(coord=coord)
 
-      pair_0, label_0 = session.run([data["images"], data["recons_label"]])
-      pair_1, label_1 = session.run([data["images"], data["recons_label"]])
+      pair_0 = session.run(data["images"])
+      pair_1 = session.run(data["images"])
       self.assertAllEqual(pair_0, pair_1)
       pair_image = np.reshape(pair_0, (36, 36))
       self.assertAllClose(expected_pair / 255.0, pair_image[4:-4, 4:-4])
-      self.assertEqual(labels[0], label_0)
-      self.assertEqual(labels[1], label_1)
 
       coord.request_stop()
       for thread in threads:
