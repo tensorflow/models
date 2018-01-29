@@ -8,6 +8,7 @@ import contextlib
 import os
 import shutil
 import tempfile
+from six.moves import xrange
 import tensorflow as tf
 
 from single_task import results_lib  # brain coder

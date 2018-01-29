@@ -16,6 +16,7 @@
 """Utilities for manipulating files.
 """
 import os
+import numpy as np
 import PIL
 from tensorflow.python.platform import gfile
 import cv2

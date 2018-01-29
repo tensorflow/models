@@ -14,6 +14,7 @@ import random
 from absl import flags
 from absl import logging
 import numpy as np
+from six.moves import xrange
 
 from common import bf  # brain coder
 from common import utils  # brain coder
@@ -469,4 +470,3 @@ class Individual(list):
 
 def random_individual(genome_size):
   return lambda: Individual(np.random.choice(GENES, genome_size).tolist())
-

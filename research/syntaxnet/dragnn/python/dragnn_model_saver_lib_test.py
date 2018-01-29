@@ -45,7 +45,7 @@ class DragnnModelSaverLibTest(test_util.TensorFlowTestCase):
     master_spec = spec_pb2.MasterSpec()
     root_dir = os.path.join(FLAGS.test_srcdir,
                             'dragnn/python')
-    with file(os.path.join(root_dir, 'testdata', spec_path), 'r') as fin:
+    with open(os.path.join(root_dir, 'testdata', spec_path), 'r') as fin:
       text_format.Parse(fin.read().replace('TOPDIR', root_dir), master_spec)
       return master_spec
 

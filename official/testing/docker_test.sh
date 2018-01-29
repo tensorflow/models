@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-# 
+#
 # DO NOT MODIFY THIS FILE. Add tests to be executed in test_models.sh
 # Usage: docker_test.sh [--docker-image <DOCKER_IMG_NAME>]
 #
@@ -22,7 +22,7 @@
 #                  --docker-image flag), the default latest tensorflow docker
 #                  will be used.
 #
-# The script obeys the following required environment variables unless superceded by 
+# The script obeys the following required environment variables unless superceded by
 # the docker image flag:
 # PYTHON_VERSION:   (PYTHON2 | PYTHON3)
 
@@ -35,9 +35,9 @@ EXIT=0
 export WORKSPACE=${PWD}
 
 if [ "$PYTHON_VERSION" = "PYTHON3" ]; then
-  DOCKER_IMG_NAME="tensorflow/tensorflow:1.4.0-py3"
+  DOCKER_IMG_NAME="tensorflow/tensorflow:nightly-py3"
 else
-  DOCKER_IMG_NAME="tensorflow/tensorflow:1.4.0"
+  DOCKER_IMG_NAME="tensorflow/tensorflow:nightly"
   if [ "$PYTHON_VERSION" != "PYTHON2" ]; then
     echo "WARNING: Python version was not specified. Using Python2 by default."
     sleep 5
@@ -55,6 +55,9 @@ fi
 
 # Specify which test is to be run
 COMMAND="./official/testing/test_models.sh"
+
+# Check the recency of the desired image
+${DOCKER_BINARY} pull ${DOCKER_IMG_NAME}
 
 # RUN
 ${DOCKER_BINARY} run \

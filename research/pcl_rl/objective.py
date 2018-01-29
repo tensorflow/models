@@ -46,7 +46,8 @@ class Objective(object):
 
   def get(self, rewards, pads, values, final_values,
           log_probs, prev_log_probs, target_log_probs,
-          entropies, logits):
+          entropies, logits,
+          target_values, final_target_values):
     """Get objective calculations."""
     raise NotImplementedError()
 
@@ -101,7 +102,8 @@ class ActorCritic(Objective):
   def __init__(self, learning_rate, clip_norm=5,
                policy_weight=1.0, critic_weight=0.1,
                tau=0.1, gamma=1.0, rollout=10,
-               eps_lambda=0.0, clip_adv=None):
+               eps_lambda=0.0, clip_adv=None,
+               use_target_values=False):
     super(ActorCritic, self).__init__(learning_rate, clip_norm=clip_norm)
     self.policy_weight = policy_weight
     self.critic_weight = critic_weight
@@ -111,14 +113,17 @@ class ActorCritic(Objective):
     self.clip_adv = clip_adv
 
     self.eps_lambda = tf.get_variable(  # TODO: need a better way
-        'eps_lambda', [], initializer=tf.constant_initializer(eps_lambda))
+        'eps_lambda', [], initializer=tf.constant_initializer(eps_lambda),
+        trainable=False)
     self.new_eps_lambda = tf.placeholder(tf.float32, [])
     self.assign_eps_lambda = self.eps_lambda.assign(
-        0.95 * self.eps_lambda + 0.05 * self.new_eps_lambda)
+        0.99 * self.eps_lambda + 0.01 * self.new_eps_lambda)
+    self.use_target_values = use_target_values
 
   def get(self, rewards, pads, values, final_values,
           log_probs, prev_log_probs, target_log_probs,
-          entropies, logits):
+          entropies, logits,
+          target_values, final_target_values):
     not_pad = 1 - pads
     batch_size = tf.shape(rewards)[1]
 
@@ -126,10 +131,17 @@ class ActorCritic(Objective):
     rewards = not_pad * rewards
     value_estimates = not_pad * values
     log_probs = not_pad * sum(log_probs)
+    target_values = not_pad * tf.stop_gradient(target_values)
+    final_target_values = tf.stop_gradient(final_target_values)
 
     sum_rewards = discounted_future_sum(rewards, self.gamma, self.rollout)
-    last_values = shift_values(value_estimates, self.gamma, self.rollout,
-                               final_values)
+    if self.use_target_values:
+      last_values = shift_values(
+          target_values, self.gamma, self.rollout,
+          final_target_values)
+    else:
+      last_values = shift_values(value_estimates, self.gamma, self.rollout,
+                                 final_values)
 
     future_values = sum_rewards + last_values
     baseline_values = value_estimates
@@ -183,7 +195,8 @@ class PCL(ActorCritic):
 
   def get(self, rewards, pads, values, final_values,
           log_probs, prev_log_probs, target_log_probs,
-          entropies, logits):
+          entropies, logits,
+          target_values, final_target_values):
     not_pad = 1 - pads
     batch_size = tf.shape(rewards)[1]
 
@@ -192,6 +205,8 @@ class PCL(ActorCritic):
     log_probs = not_pad * sum(log_probs)
     target_log_probs = not_pad * tf.stop_gradient(sum(target_log_probs))
     relative_log_probs = not_pad * (log_probs - target_log_probs)
+    target_values = not_pad * tf.stop_gradient(target_values)
+    final_target_values = tf.stop_gradient(final_target_values)
 
     # Prepend.
     not_pad = tf.concat([tf.ones([self.rollout - 1, batch_size]),
@@ -210,14 +225,26 @@ class PCL(ActorCritic):
                                 prev_log_probs], 0)
     relative_log_probs = tf.concat([tf.zeros([self.rollout - 1, batch_size]),
                                     relative_log_probs], 0)
+    target_values = tf.concat(
+        [self.gamma ** tf.expand_dims(
+            tf.range(float(self.rollout - 1), 0, -1), 1) *
+         tf.ones([self.rollout - 1, batch_size]) *
+         target_values[0:1, :],
+         target_values], 0)
 
     sum_rewards = discounted_future_sum(rewards, self.gamma, self.rollout)
     sum_log_probs = discounted_future_sum(log_probs, self.gamma, self.rollout)
     sum_prev_log_probs = discounted_future_sum(prev_log_probs, self.gamma, self.rollout)
     sum_relative_log_probs = discounted_future_sum(
         relative_log_probs, self.gamma, self.rollout)
-    last_values = shift_values(value_estimates, self.gamma, self.rollout,
-                               final_values)
+
+    if self.use_target_values:
+      last_values = shift_values(
+          target_values, self.gamma, self.rollout,
+          final_target_values)
+    else:
+      last_values = shift_values(value_estimates, self.gamma, self.rollout,
+                                 final_values)
 
     future_values = (
         - self.tau * sum_log_probs
@@ -272,7 +299,8 @@ class TRPO(ActorCritic):
 
   def get(self, rewards, pads, values, final_values,
           log_probs, prev_log_probs, target_log_probs,
-          entropies, logits):
+          entropies, logits,
+          target_values, final_target_values):
     not_pad = 1 - pads
     batch_size = tf.shape(rewards)[1]
 
@@ -280,10 +308,18 @@ class TRPO(ActorCritic):
     value_estimates = not_pad * values
     log_probs = not_pad * sum(log_probs)
     prev_log_probs = not_pad * prev_log_probs
+    target_values = not_pad * tf.stop_gradient(target_values)
+    final_target_values = tf.stop_gradient(final_target_values)
 
     sum_rewards = discounted_future_sum(rewards, self.gamma, self.rollout)
-    last_values = shift_values(value_estimates, self.gamma, self.rollout,
-                               final_values)
+
+    if self.use_target_values:
+      last_values = shift_values(
+          target_values, self.gamma, self.rollout,
+          final_target_values)
+    else:
+      last_values = shift_values(value_estimates, self.gamma, self.rollout,
+                                 final_values)
 
     future_values = sum_rewards + last_values
     baseline_values = value_estimates

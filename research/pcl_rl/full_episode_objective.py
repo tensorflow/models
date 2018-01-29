@@ -42,7 +42,8 @@ class Reinforce(objective.Objective):
 
   def get(self, rewards, pads, values, final_values,
           log_probs, prev_log_probs, target_log_probs,
-          entropies, logits):
+          entropies, logits,
+          target_values, final_target_values):
     seq_length = tf.shape(rewards)[0]
 
     not_pad = tf.reshape(1 - pads, [seq_length, -1, self.num_samples])
