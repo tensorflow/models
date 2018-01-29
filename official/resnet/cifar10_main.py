@@ -187,7 +187,7 @@ def cifar10_model_fn(features, labels, mode, params):
 
   learning_rate_fn = resnet_shared.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
-      num_images=_NUM_IMAGES['train'], epochs=[100, 150, 200],
+      num_images=_NUM_IMAGES['train'], boundary_epochs=[100, 150, 200],
       decay_rates=[1, 0.1, 0.01, 1e-3])
 
   train_params = dict(
