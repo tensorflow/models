@@ -31,7 +31,7 @@ class ListType(object):
     if not isinstance(other, ListType):
       return False
     return self.arg == other.arg
-  
+
   def __hash__(self):
     return hash(self.arg)
 
@@ -68,7 +68,7 @@ class FunctionType(object):
 
 class Function(object):
   def __init__(self, name, arg_types, output_type, fn_arg_types = None):
-    self.name = name 
+    self.name = name
     self.arg_types = arg_types
     self.fn_arg_types = fn_arg_types or []
     self.output_type = output_type
@@ -113,14 +113,14 @@ def minus_one(x): return x - 1
 def times_two(x): return x * 2
 def neg(x): return x * (-1)
 def div_two(x): return int(x/2)
-def sq(x): return x**2 
+def sq(x): return x**2
 def times_three(x): return x * 3
 def div_three(x): return int(x/3)
 def times_four(x): return x * 4
 def div_four(x): return int(x/4)
 
-# Int -> Bool 
-def pos(x): return x > 0 
+# Int -> Bool
+def pos(x): return x > 0
 def neg(x): return x < 0
 def even(x): return x%2 == 0
 def odd(x): return x%2 == 1
@@ -131,24 +131,24 @@ def sub(x, y): return x - y
 def mul(x, y): return x * y
 
 # HOFs
-f_map = Function("map", [ListType("Int")], 
-                        ListType("Int"), 
+f_map = Function("map", [ListType("Int")],
+                        ListType("Int"),
                         [FunctionType(["Int", "Int"])])
-f_filter = Function("filter", [ListType("Int")], 
-                              ListType("Int"), 
+f_filter = Function("filter", [ListType("Int")],
+                              ListType("Int"),
                               [FunctionType(["Int", "Bool"])])
-f_count = Function("c_count", [ListType("Int")], 
-                              "Int", 
+f_count = Function("c_count", [ListType("Int")],
+                              "Int",
                               [FunctionType(["Int", "Bool"])])
 def c_count(f, xs): return len([x for x in xs if f(x)])
 
-f_zipwith = Function("c_zipwith", [ListType("Int"), ListType("Int")], 
-                                  ListType("Int"), 
+f_zipwith = Function("c_zipwith", [ListType("Int"), ListType("Int")],
+                                  ListType("Int"),
                                   [FunctionType(["Int", "Int", "Int"])]) #FIX
 def c_zipwith(f, xs, ys): return [f(x, y) for (x, y) in zip(xs, ys)]
 
 f_scan = Function("c_scan", [ListType("Int")],
-                            ListType("Int"), 
+                            ListType("Int"),
                             [FunctionType(["Int", "Int", "Int"])])
 def c_scan(f, xs):
   out = xs
@@ -177,7 +177,7 @@ def evaluate(program_str, input_names_to_vals, default="ERROR"):
   with stdoutIO() as s:
     # pylint: disable=bare-except
     try:
-      exec exec_str + " print(out)"
+      exec(exec_str + " print(out)")
       return s.getvalue()[:-1]
     except:
       return default
@@ -186,7 +186,7 @@ def evaluate(program_str, input_names_to_vals, default="ERROR"):
 
 class Statement(object):
   """Statement class."""
-  
+
   def __init__(self, fn, output_var, arg_vars, fn_args=None):
     self.fn = fn
     self.output_var = output_var
@@ -290,7 +290,7 @@ class Program(object):
 
     with stdoutIO() as s:
       # pylint: disable=exec-used
-      exec inp_str + self.body + "; print(out)"
+      exec(inp_str + self.body + "; print(out)")
       # pylint: enable=exec-used
     return s.getvalue()[:-1]
 
@@ -412,11 +412,11 @@ def gen(max_len, how_many):
     else:
       outcomes_to_programs[outcome_str] = t.flat_str()
     if counter % 5000 == 0:
-      print "== proggen: tried: " + str(counter)
-      print "== proggen: kept:  " + str(len(outcomes_to_programs))
+      print("== proggen: tried: " + str(counter))
+      print("== proggen: kept:  " + str(len(outcomes_to_programs)))
 
     if counter % 250000 == 0 and save_prefix is not None:
-      print "saving..."
+      print("saving...")
       save_counter = 0
       progfilename = os.path.join(save_prefix, "prog_" + str(counter) + ".txt")
       iofilename = os.path.join(save_prefix, "io_" + str(counter) + ".txt")
@@ -431,7 +431,7 @@ def gen(max_len, how_many):
         for (o, p) in outcomes_to_programs.iteritems():
           save_counter += 1
           if save_counter % 500 == 0:
-            print "saving %d of %d" % (save_counter, len(outcomes_to_programs))
+            print("saving %d of %d" % (save_counter, len(outcomes_to_programs)))
           fp.write(p+"\n")
           fi.write(o+"\n")
           ftp.write(str(tokenize(p, tokens))+"\n")
