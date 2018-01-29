@@ -128,7 +128,7 @@ class SkipgramWord2vecOp : public OpKernel {
   random::SimplePhilox rng_ GUARDED_BY(mu_);
   int32 current_epoch_ GUARDED_BY(mu_) = -1;
   int64 total_words_processed_ GUARDED_BY(mu_) = 0;
-  int32 example_pos_ GUARDED_BY(mu_);
+  int64 example_pos_ GUARDED_BY(mu_);
   int32 label_pos_ GUARDED_BY(mu_);
   int32 label_limit_ GUARDED_BY(mu_);
 
