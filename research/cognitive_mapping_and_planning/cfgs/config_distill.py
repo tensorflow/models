@@ -91,7 +91,7 @@ def get_args_for_config(config_name):
   
   args.buildinger.task_params.n_ori = int(vars[2])
   args.solver.freeze_conv = True
-  args.solver.pretrained_path = resnet_v2_50_path
+  args.solver.pretrained_path = rgb_resnet_v2_50_path
   args.buildinger.task_params.img_channels = 5
   args.solver.data_loss_wt = 0.00001
  
