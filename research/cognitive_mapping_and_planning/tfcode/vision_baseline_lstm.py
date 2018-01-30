@@ -23,9 +23,9 @@ from tensorflow.contrib import slim
 import logging
 from tensorflow.python.platform import app
 from tensorflow.python.platform import flags
-from src import utils 
+from src import utils
 import src.file_utils as fu
-import tfcode.nav_utils as nu 
+import tfcode.nav_utils as nu
 from tfcode import tf_utils
 
 setup_train_step_kwargs = nu.default_train_step_kwargs
@@ -40,15 +40,15 @@ _plot_trajectories = nu.plot_trajectories
 
 def lstm_online(cell_fn, num_steps, inputs, state, varscope):
   # inputs is B x num_steps x C, C channels.
-  # state is 2 tuple with B x 1 x C1, B x 1 x C2 
+  # state is 2 tuple with B x 1 x C1, B x 1 x C2
   # Output state is always B x 1 x C
   inputs = tf.unstack(inputs, axis=1, num=num_steps)
   state = tf.unstack(state, axis=1, num=1)[0]
-  outputs = [] 
-  
-  if num_steps > 1: 
+  outputs = []
+
+  if num_steps > 1:
     varscope.reuse_variables()
-  
+
   for s in range(num_steps):
     output, state = cell_fn(inputs[s], state)
     outputs.append(output)
@@ -132,11 +132,11 @@ def _add_summaries(m, summary_mode, arop_full_summary_iters):
                                      m.input_tensors, scope_name=scope_name)
     m.summary_ops = {summary_mode: s_ops}
 
-def visit_count_fc(visit_count, last_visit, embed_neurons, wt_decay, fc_dropout):
+def visit_count_fc(visit_count, last_visit, embed_neurons, wt_decay, fc_dropout, is_training):
   with tf.variable_scope('embed_visit_count'):
     visit_count = tf.reshape(visit_count, shape=[-1])
     last_visit = tf.reshape(last_visit, shape=[-1])
-    
+
     visit_count = tf.clip_by_value(visit_count, clip_value_min=-1,
                                    clip_value_max=15)
     last_visit = tf.clip_by_value(last_visit, clip_value_min=-1,
@@ -154,7 +154,7 @@ def visit_count_fc(visit_count, last_visit, embed_neurons, wt_decay, fc_dropout)
 
 def lstm_setup(name, x, batch_size, is_single_step, lstm_dim, lstm_out,
                num_steps, state_input_op):
-  # returns state_name, state_init_op, updated_state_op, out_op 
+  # returns state_name, state_init_op, updated_state_op, out_op
   with tf.name_scope('reshape_'+name):
     sh = x.get_shape().as_list()
     x = tf.reshape(x, shape=[batch_size, -1, sh[-1]])
@@ -173,7 +173,7 @@ def lstm_setup(name, x, batch_size, is_single_step, lstm_dim, lstm_out,
     out_op, updated_state_op = tf.cond(is_single_step, lambda: fn(1), lambda:
                                        fn(num_steps))
 
-  return name, state_init_op, updated_state_op, out_op 
+  return name, state_init_op, updated_state_op, out_op
 
 def combine_setup(name, combine_type, embed_img, embed_goal, num_img_neuorons=None,
                   num_goal_neurons=None):
@@ -219,7 +219,7 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
 
   batch_norm_is_training_op = \
       tf.placeholder_with_default(batch_norm_is_training, shape=[],
-                                  name='batch_norm_is_training_op') 
+                                  name='batch_norm_is_training_op')
   # Setup the inputs
   m.input_tensors = {}
   lstm_states = []; lstm_state_dims = [];
@@ -244,14 +244,14 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
       _inputs(task_params, lstm_states, lstm_state_dims)
 
   with tf.name_scope('check_size'):
-    is_single_step = tf.equal(tf.unstack(tf.shape(m.input_tensors['step']['imgs']), 
+    is_single_step = tf.equal(tf.unstack(tf.shape(m.input_tensors['step']['imgs']),
                                         num=6)[1], 1)
 
-  images_reshaped = tf.reshape(m.input_tensors['step']['imgs'], 
+  images_reshaped = tf.reshape(m.input_tensors['step']['imgs'],
       shape=[-1, task_params.img_height, task_params.img_width,
              task_params.img_channels], name='re_image')
 
-  rel_goal_loc_reshaped = tf.reshape(m.input_tensors['step']['rel_goal_loc'], 
+  rel_goal_loc_reshaped = tf.reshape(m.input_tensors['step']['rel_goal_loc'],
       shape=[-1, task_params.rel_goal_loc_dim], name='re_rel_goal_loc')
 
   x, vars_ = get_repr_from_image(
@@ -279,7 +279,7 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
         weights_initializer=tf.random_normal_initializer(stddev=init_var))
     reshape_conv_feat = slim.flatten(m.conv_feat)
     sh = reshape_conv_feat.get_shape().as_list()
-    m.reshape_conv_feat = tf.reshape(reshape_conv_feat, 
+    m.reshape_conv_feat = tf.reshape(reshape_conv_feat,
                                      shape=[-1, sh[1]*n_views])
 
   # Restore these from a checkpoint.
@@ -299,7 +299,7 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
         wt_decay=args.solver.wt_decay, name='goal_embed', offset=0,
         batch_norm_param=batch_norm_param, dropout_ratio=args.arch.fc_dropout,
         is_training=is_training)
-  
+
   if args.arch.embed_goal_for_state:
     with tf.variable_scope('embed_goal_for_state'):
       batch_norm_param = args.arch.batch_norm_param
@@ -325,7 +325,7 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
   # LSTM, combine with image features and accumulate those in an LSTM. Finally
   # combine what you get from the image LSTM with the goal to output an action.
   if args.arch.lstm_ego:
-    ego_reshaped = preprocess_egomotion(m.input_tensors['step']['incremental_locs'], 
+    ego_reshaped = preprocess_egomotion(m.input_tensors['step']['incremental_locs'],
                                         m.input_tensors['step']['incremental_thetas'])
     with tf.variable_scope('embed_ego'):
       batch_norm_param = args.arch.batch_norm_param
@@ -337,7 +337,7 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
           is_training=is_training)
 
     state_name, state_init_op, updated_state_op, out_op = lstm_setup(
-        'lstm_ego', m.embed_ego, task_params.batch_size, is_single_step, 
+        'lstm_ego', m.embed_ego, task_params.batch_size, is_single_step,
         args.arch.lstm_ego_dim, args.arch.lstm_ego_out, num_steps*num_goals,
         m.input_tensors['step']['lstm_ego'])
     state_names += [state_name]
@@ -352,7 +352,7 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
 
     # LSTM on these vision features.
     state_name, state_init_op, updated_state_op, out_op = lstm_setup(
-        'lstm_img', m.img_ego_op, task_params.batch_size, is_single_step, 
+        'lstm_img', m.img_ego_op, task_params.batch_size, is_single_step,
         args.arch.lstm_img_dim, args.arch.lstm_img_out, num_steps*num_goals,
         m.input_tensors['step']['lstm_img'])
     state_names += [state_name]
@@ -385,7 +385,7 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
         m.input_tensors['step']['last_visit'], args.arch.goal_embed_neurons,
         args.solver.wt_decay, args.arch.fc_dropout, is_training=is_training)
     m.embed_goal = m.embed_goal + m.embed_visit_count
-  
+
   m.combined_f = combine_setup('img_goal', args.arch.combine_type,
                                m.img_for_goal, m.embed_goal,
                                num_img_for_goal_neurons,
@@ -454,7 +454,7 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
         m.action_logits_op = out_op[:,:num_actions]
         m.baseline_op = out_op[:,num_actions:]
       else:
-        m.action_logits_op = out_op 
+        m.action_logits_op = out_op
         m.baseline_op = None
       m.action_prob_op = tf.nn.softmax(m.action_logits_op)
 
@@ -495,22 +495,22 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
 
   m.lr_op, m.global_step_op, m.train_op, m.should_stop_op, m.optimizer, \
   m.sync_optimizer = tf_utils.setup_training(
-      m.total_loss_op, 
-      args.solver.initial_learning_rate, 
+      m.total_loss_op,
+      args.solver.initial_learning_rate,
       args.solver.steps_per_decay,
-      args.solver.learning_rate_decay, 
+      args.solver.learning_rate_decay,
       args.solver.momentum,
-      args.solver.max_steps, 
-      args.solver.sync, 
+      args.solver.max_steps,
+      args.solver.sync,
       args.solver.adjust_lr_sync,
-      args.solver.num_workers, 
+      args.solver.num_workers,
       args.solver.task,
       vars_to_optimize=vars_to_optimize,
       clip_gradient_norm=args.solver.clip_gradient_norm,
       typ=args.solver.typ, momentum2=args.solver.momentum2,
       adam_eps=args.solver.adam_eps)
-  
-  
+
+
   if args.arch.sample_gt_prob_type == 'inverse_sigmoid_decay':
     m.sample_gt_prob_op = tf_utils.inverse_sigmoid_decay(args.arch.isd_k,
                                                          m.global_step_op)
@@ -520,14 +520,14 @@ def setup_to_run(m, args, is_training, batch_norm_is_training, summary_mode):
     step = int(args.arch.sample_gt_prob_type.split('_')[1])
     m.sample_gt_prob_op = tf_utils.step_gt_prob(
         step, m.input_tensors['step']['step_number'][0,0,0])
-  
+
   m.sample_action_type = args.arch.action_sample_type
   m.sample_action_combine_type = args.arch.action_sample_combine_type
   _add_summaries(m, summary_mode, args.summary.arop_full_summary_iters)
-  
+
   m.init_op = tf.group(tf.global_variables_initializer(),
                        tf.local_variables_initializer())
   m.saver_op = tf.train.Saver(keep_checkpoint_every_n_hours=4,
                               write_version=tf.train.SaverDef.V2)
-  
+
   return m
