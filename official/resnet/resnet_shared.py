@@ -59,13 +59,41 @@ def learning_rate_with_decay(
   return learning_rate_fn
 
 
-def resnet_model_fn(features, labels, mode, params, model_class):
-  """Shared functionality for different resnet model_fns."""
+def resnet_model_fn(features, labels, mode, model_class,
+                    resnet_size, weight_decay, learning_rate_fn, momentum,
+                    data_format):
+  """Shared functionality for different resnet model_fns.
+
+  Initializes the ResnetModel representing the model layers
+  and uses that model to build the necessary EstimatorSpecs for
+  the `mode` in question. For training, this means building losses,
+  the optimizer, and the train op that get passed into the EstimatorSpec.
+  For evaluation and prediction, the EstimatorSpec is returned without
+  a train op, but with the necessary parameters for the given mode.
+
+  Args:
+    features: tensor representing input images
+    labels: tensor representing class labels for all input images
+    mode: current estimator mode; should be one of
+      `tf.estimator.ModeKeys.TRAIN`, `EVALUATE`, `PREDICT`
+    model_class: a class representing a TensorFlow model that has a __call__
+      function. We assume here that this is a subclass of ResnetModel.
+    resnet_size: A single integer for the size of the ResNet model.
+    weight_decay: weight decay loss rate used to regularize learned variables.
+    learning_rate_fn: function that returns the current learning rate given
+      the current global_step
+    momentum: momentum term used for optimization
+    data_format: Input format ('channels_last', 'channels_first', or None).
+        If set to None, the format is dependent on whether a GPU is available.
+  Returns:
+    EstimatorSpec parameterized according to the input params and the
+    current mode.
+  """
 
   # Generate a summary node for the images
   tf.summary.image('images', features, max_outputs=6)
 
-  model = model_class(params['resnet_size'], params['data_format'])
+  model = model_class(resnet_size, data_format)
   logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
   predictions = {
@@ -85,13 +113,13 @@ def resnet_model_fn(features, labels, mode, params, model_class):
   tf.summary.scalar('cross_entropy', cross_entropy)
 
   # Add weight decay to the loss.
-  loss = cross_entropy + params['weight_decay'] * tf.add_n(
+  loss = cross_entropy + weight_decay * tf.add_n(
       [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
     global_step = tf.train.get_or_create_global_step()
 
-    learning_rate = params['learning_rate_fn'](global_step)
+    learning_rate = learning_rate_fn(global_step)
 
     # Create a tensor named learning_rate for logging purposes
     tf.identity(learning_rate, name='learning_rate')
@@ -99,7 +127,7 @@ def resnet_model_fn(features, labels, mode, params, model_class):
 
     optimizer = tf.train.MomentumOptimizer(
         learning_rate=learning_rate,
-        momentum=params['momentum'])
+        momentum=momentum)
 
     # Batch norm requires update ops to be added as a dependency to train_op
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -148,11 +176,13 @@ def resnet_main(flags, model_function, input_function):
     logging_hook = tf.train.LoggingTensorHook(
         tensors=tensors_to_log, every_n_iter=100)
 
+    print('Starting a training cycle.')
     classifier.train(
         input_fn=lambda: input_function(
             True, flags.data_dir, flags.batch_size, flags.epochs_per_eval),
         hooks=[logging_hook])
 
+    print('Starting to evaluate.')
     # Evaluate the model and print results
     eval_results = classifier.evaluate(input_fn=lambda: input_function(
         False, flags.data_dir, flags.batch_size))

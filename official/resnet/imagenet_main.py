@@ -187,17 +187,14 @@ def imagenet_model_fn(features, labels, mode, params):
   learning_rate_fn = resnet_shared.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=256,
       num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-      decay_rates=[1, 0.1, 0.01, 1e-3, 1e-4])
+      decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
 
-  train_params = dict(
-      learning_rate_fn=learning_rate_fn,
-      weight_decay=1e-4,
-      momentum=0.9)
-
-  params.update(train_params)
-
-  return resnet_shared.resnet_model_fn(
-      features, labels, mode, params, ImagenetModel)
+  return resnet_shared.resnet_model_fn(features, labels, mode, ImagenetModel,
+                                       resnet_size=params['resnet_size'],
+                                       weight_decay=1e-4,
+                                       learning_rate_fn=learning_rate_fn,
+                                       momentum=0.9,
+                                       data_format=params['data_format'])
 
 
 def main(unused_argv):

@@ -188,19 +188,18 @@ def cifar10_model_fn(features, labels, mode, params):
   learning_rate_fn = resnet_shared.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
       num_images=_NUM_IMAGES['train'], boundary_epochs=[100, 150, 200],
-      decay_rates=[1, 0.1, 0.01, 1e-3])
+      decay_rates=[1, 0.1, 0.01, 0.001])
 
-  train_params = dict(
-      learning_rate_fn=learning_rate_fn,
-      # We use a weight decay of 0.0002, which performs better
-      # than the 0.0001 that was originally suggested.
-      weight_decay=2e-4,
-      momentum=0.9)
+  # We use a weight decay of 0.0002, which performs better
+  # than the 0.0001 that was originally suggested.
+  weight_decay = 2e-4
 
-  params.update(train_params)
-
-  return resnet_shared.resnet_model_fn(features, labels, mode, params,
-                                       Cifar10Model)
+  return resnet_shared.resnet_model_fn(features, labels, mode, Cifar10Model,
+                                       resnet_size=params['resnet_size'],
+                                       weight_decay=weight_decay,
+                                       learning_rate_fn=learning_rate_fn,
+                                       momentum=0.9,
+                                       data_format=params['data_format'])
 
 
 def main(unused_argv):
