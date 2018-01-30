@@ -165,7 +165,7 @@ def parse_sequence_example(serialized_example, num_views):
   views = tf.stack([sequence_parse[v] for v in view_names])
   lens = [sequence_parse[v].get_shape().as_list()[0] for v in view_names]
   assert len(set(lens)) == 1
-  seq_len = tf.shape(sequence_parse[v])[0]
+  seq_len = tf.shape(sequence_parse[view_names[-1]])[0]
   return context_parse, views, seq_len
 
 
