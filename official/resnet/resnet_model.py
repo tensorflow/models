@@ -218,8 +218,9 @@ class Model(object):
   """Base class for building the Resnet v2 Model.
   """
   def __init__(self, resnet_size, num_classes, num_filters, kernel_size,
-               first_pool_size, second_pool_size, block_fn, layers,
-               stride_sizes, final_size, data_format=None):
+               conv_stride, first_pool_size, first_pool_stride,
+               second_pool_size, second_pool_stride, block_fn, block_sizes,
+               block_strides, final_size, data_format=None):
     """Creates a model for classifying an image.
 
     Args:
@@ -229,17 +230,20 @@ class Model(object):
         of the model. This number is then doubled for each subsequent block
         layer.
       kernel_size: The kernel size to use for convolution.
+      conv_stride: stride size for the initial convolutional layer
       first_pool_size: Pool size to be used for the first pooling layer.
         If none, the first pooling layer is skipped.
+      first_pool_stride: stride size for the first pooling layer. Not used
+        if first_pool_size is None.
       second_pool_size: Pool size to be used for the second pooling layer.
+      second_pool_stride: stride size for the final pooling layer
       block_fn: Which block layer function should be used? Pass in one of
         the two functions defined above: building_block or bottleneck_block
-      layers: A list containing n values, where n is the bnumber of block
-        layers desired. Each value should be the number of blocks in the i-th
-        layer.
-      stride_sizes: List of integers representing the desired stride size for
-        all layers-- fixed padding; first pool (if applicable); each block
-        layer; and second pool.
+      block_sizes: A list containing n values, where n is the number of sets of
+        block layers desired. Each value should be the number of blocks in the
+        i-th set.
+      block_strides: List of integers representing the desired stride size for
+        each of the sets of block layers. Should be same length as block_sizes.
       final_size: The expected size of the model after the second pooling.
       data_format: Input format ('channels_last', 'channels_first', or None).
         If set to None, the format is dependent on whether a GPU is available.
@@ -250,22 +254,18 @@ class Model(object):
       data_format = (
           'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
 
-    if data_format == 'channels_first':
-      self.input_shape = [0, 3, 1, 2]
-    else:
-      assert data_format == 'channels_last'
-      self.input_shape = [0, 1, 2, 3]
-
     self.data_format = data_format
-
     self.num_classes = num_classes
     self.num_filters = num_filters
     self.kernel_size = kernel_size
+    self.conv_stride = conv_stride
     self.first_pool_size = first_pool_size
+    self.first_pool_stride = first_pool_stride
     self.second_pool_size = second_pool_size
+    self.second_pool_stride = second_pool_stride
     self.block_fn = block_fn
-    self.layers = layers
-    self.stride_sizes = stride_sizes
+    self.block_sizes = block_sizes
+    self.block_strides = block_strides
     self.final_size = final_size
 
   def __call__(self, inputs, training):
@@ -280,36 +280,36 @@ class Model(object):
       A logits Tensor with shape [<batch_size>, self.num_classes].
     """
 
-    # Reshape to match CPU/GPU channel preference
-    inputs = tf.transpose(inputs, self.input_shape)
-
-    # Get a stack of strides we can pop as we go.
-    stride_stack = self.stride_sizes[::-1]
+    if self.data_format == 'channels_first':
+      # Convert the inputs from channels_last (NHWC) to channels_first (NCHW).
+      # This provides a large performance boost on GPU. See
+      # https://www.tensorflow.org/performance/performance_guide#data_formats
+      inputs = tf.transpose(inputs, [0, 3, 1, 2])
 
     inputs = conv2d_fixed_padding(
         inputs=inputs, filters=self.num_filters, kernel_size=self.kernel_size,
-        strides=stride_stack.pop(), data_format=self.data_format)
+        strides=self.conv_stride, data_format=self.data_format)
     inputs = tf.identity(inputs, 'initial_conv')
 
     if self.first_pool_size:
       inputs = tf.layers.max_pooling2d(
           inputs=inputs, pool_size=self.first_pool_size,
-          strides=stride_stack.pop(), padding='SAME',
+          strides=self.first_pool_stride, padding='SAME',
           data_format=self.data_format)
       inputs = tf.identity(inputs, 'initial_max_pool')
 
-    for i, num_blocks in enumerate(self.layers):
+    for i, num_blocks in enumerate(self.block_sizes):
       num_filters = self.num_filters * (2**i)
       inputs = block_layer(
           inputs=inputs, filters=num_filters, block_fn=self.block_fn,
-          blocks=num_blocks, strides=stride_stack.pop(),
+          blocks=num_blocks, strides=self.block_strides[i],
           training=training, name='block_layer{}'.format(i + 1),
           data_format=self.data_format)
 
     inputs = batch_norm_relu(inputs, training, self.data_format)
     inputs = tf.layers.average_pooling2d(
         inputs=inputs, pool_size=self.second_pool_size,
-        strides=stride_stack.pop(), padding='VALID',
+        strides=self.second_pool_stride, padding='VALID',
         data_format=self.data_format)
     inputs = tf.identity(inputs, 'final_avg_pool')
 

@@ -157,28 +157,26 @@ class Cifar10Model(resnet_model.Model):
   def __init__(self, resnet_size, data_format=None):
     """These are the parameters that work for Cifar10 data.
     """
+    if resnet_size % 6 != 2:
+      raise ValueError('resnet_size must be 6n + 2:', resnet_size)
+
+    num_blocks = (resnet_size - 2) // 6
+
     super(Cifar10Model, self).__init__(
         resnet_size=resnet_size,
         num_classes=_NUM_CLASSES,
         num_filters=16,
         kernel_size=3,
+        conv_stride=1,
         first_pool_size=None,
+        first_pool_stride=None,
         second_pool_size=8,
+        second_pool_stride=1,
         block_fn=resnet_model.building_block,
-        layers=self._get_layers(resnet_size),
-        stride_sizes=self._get_stride_sizes(),
+        block_sizes=[num_blocks] * 3,
+        block_strides=[1, 2, 2],
         final_size=64,
         data_format=data_format)
-
-  def _get_layers(self, resnet_size):
-    if resnet_size % 6 != 2:
-      raise ValueError('resnet_size must be 6n + 2:', resnet_size)
-
-    num_blocks = (resnet_size - 2) // 6
-    return [num_blocks] * 3
-
-  def _get_stride_sizes(self):
-    return [1, 1, 2, 2, 1]
 
 
 def cifar10_model_fn(features, labels, mode, params):

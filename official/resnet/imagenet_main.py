@@ -150,11 +150,14 @@ class ImagenetModel(resnet_model.Model):
         num_classes=_NUM_CLASSES,
         num_filters=64,
         kernel_size=7,
+        conv_stride=2,
         first_pool_size=3,
+        first_pool_stride=2,
         second_pool_size=7,
+        second_pool_stride=1,
         block_fn=block_fn,
-        layers=_get_imagenet_layers(resnet_size),
-        stride_sizes=[2, 2, 1, 2, 2, 2, 1],
+        block_sizes=_get_imagenet_layers(resnet_size),
+        block_strides=[1, 2, 2, 2],
         final_size=final_size,
         data_format=data_format)
 
