@@ -102,9 +102,9 @@ def model_fn(features, labels, mode, params):
       optimizer = tf.contrib.estimator.TowerOptimizer(optimizer)
 
     logits = model(image, training=True)
-    loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
+    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
     accuracy = tf.metrics.accuracy(
-        labels=tf.argmax(labels, axis=1), predictions=tf.argmax(logits, axis=1))
+        labels=labels, predictions=tf.argmax(logits, axis=1))
     # Name the accuracy tensor 'train_accuracy' to demonstrate the
     # LoggingTensorHook.
     tf.identity(accuracy[1], name='train_accuracy')
@@ -115,7 +115,7 @@ def model_fn(features, labels, mode, params):
         train_op=optimizer.minimize(loss, tf.train.get_or_create_global_step()))
   if mode == tf.estimator.ModeKeys.EVAL:
     logits = model(image, training=False)
-    loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
+    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
     return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.EVAL,
         loss=loss,
