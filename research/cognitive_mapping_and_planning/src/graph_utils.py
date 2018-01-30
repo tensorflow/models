@@ -19,19 +19,21 @@ import skimage.morphology
 import numpy as np
 import networkx as nx
 import itertools
+import logging
+from datasets.nav_env import get_path_ids
 import graph_tool as gt
 import graph_tool.topology
-import graph_tool.generation 
+import graph_tool.generation
 import src.utils as utils
 
 # Compute shortest path from all nodes to or from all source nodes
 def get_distance_node_list(gtG, source_nodes, direction, weights=None):
   gtG_ = gt.Graph(gtG)
   v = gtG_.add_vertex()
-  
+
   if weights is not None:
     weights = gtG_.edge_properties[weights]
-  
+
   for s in source_nodes:
     e = gtG_.add_edge(s, int(v))
     if weights is not None:
@@ -109,12 +111,12 @@ def convert_traversible_to_graph(traversible, ff_cost=1., fo_cost=1.,
   for i, e in enumerate(g.edges()):
     edge_wts[e] = edge_wts[e] * wts[i]
   # d = edge_wts.get_array()*1.
-  # edge_wts.get_array()[:] = d*wts 
+  # edge_wts.get_array()[:] = d*wts
   return g, nodes
 
 def label_nodes_with_class(nodes_xyt, class_maps, pix):
   """
-  Returns: 
+  Returns:
     class_maps__: one-hot class_map for each class.
     node_class_label: one-hot class_map for each class, nodes_xyt.shape[0] x n_classes
   """
@@ -136,7 +138,7 @@ def label_nodes_with_class(nodes_xyt, class_maps, pix):
   class_maps_one_hot = np.zeros(class_maps.shape, dtype=np.bool)
   node_class_label_one_hot = np.zeros((node_class_label.shape[0], class_maps.shape[2]), dtype=np.bool)
   for i in range(class_maps.shape[2]):
-    class_maps_one_hot[:,:,i] = class_maps__ == i 
+    class_maps_one_hot[:,:,i] = class_maps__ == i
     node_class_label_one_hot[:,i] = node_class_label == i
   return class_maps_one_hot, node_class_label_one_hot
 
@@ -467,7 +469,7 @@ def rng_next_goal(start_node_ids, batch_size, gtG, rng, max_dist,
     if compute_path:
       path = get_path_ids(start_node_ids[i], end_node_ids[i], pred_map)
     paths.append(path)
-  
+
   return start_node_ids, end_node_ids, dists, pred_maps, paths
 
 
