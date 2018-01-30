@@ -110,11 +110,11 @@ def convert_kitti_to_tfrecords(data_dir, output_path, classes_to_use,
                                            output_path)
 
   images = sorted(tf.gfile.ListDirectory(image_dir))
-  for img_name in images:
-    img_num = int(img_name.split('.')[0])
+  for img_num, img_name in enumerate(images):
     is_validation_img = img_num < validation_set_size
-    img_anno = read_annotation_file(os.path.join(annotation_dir,
-                                                 str(img_num).zfill(6)+'.txt'))
+    img_anno = read_annotation_file(os.path.join(
+        annotation_dir,
+        os.path.splitext(img_name)[0] + '.txt'))
 
     image_path = os.path.join(image_dir, img_name)
 
