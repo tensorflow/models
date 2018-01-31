@@ -192,11 +192,6 @@ def imagenet_model_fn(features, labels, mode, params):
       num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
       decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
 
-  # Empirical testing showed that including batch_normalization variables
-  # in the calculation of regularized loss hurt validation accuracy
-  # for the Imagenet dataset. We exclude them when regularizing and computing
-  # loss during training.
-  loss_filter_fn = lambda name: 'batch_normalization' not in name
 
   return resnet_shared.resnet_model_fn(features, labels, mode, ImagenetModel,
                                        resnet_size=params['resnet_size'],
@@ -204,7 +199,7 @@ def imagenet_model_fn(features, labels, mode, params):
                                        learning_rate_fn=learning_rate_fn,
                                        momentum=0.9,
                                        data_format=params['data_format'],
-                                       loss_filter_fn=loss_filter_fn)
+                                       loss_filter_fn=None)
 
 
 def main(unused_argv):

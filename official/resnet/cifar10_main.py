@@ -192,13 +192,20 @@ def cifar10_model_fn(features, labels, mode, params):
   # than the 0.0001 that was originally suggested.
   weight_decay = 2e-4
 
+  # Empirical testing showed that including batch_normalization variables
+  # in the calculation of regularized loss helped validation accuracy
+  # for the Cifar10 dataset, perhaps because the regularization prevents
+  # overfitting on the small data set. We therefore include all vars when
+  # regularizing and computing loss during training.
+  loss_filter_fn = lambda name: True
+
   return resnet_shared.resnet_model_fn(features, labels, mode, Cifar10Model,
                                        resnet_size=params['resnet_size'],
                                        weight_decay=weight_decay,
                                        learning_rate_fn=learning_rate_fn,
                                        momentum=0.9,
                                        data_format=params['data_format'],
-                                       loss_filter_fn=None)
+                                       loss_filter_fn=loss_filter_fn)
 
 
 def main(unused_argv):

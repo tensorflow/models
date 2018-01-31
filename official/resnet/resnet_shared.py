@@ -87,8 +87,8 @@ def resnet_model_fn(features, labels, mode, model_class,
       If set to None, the format is dependent on whether a GPU is available.
     loss_filter_fn: function that takes a string variable name and returns
       True if the var should be included in loss calculation, and False
-      otherwise. If None, all trainable variables will be included in loss
-      calculation.
+      otherwise. If None, batch_normalization variables will be excluded
+      from the loss.
   Returns:
     EstimatorSpec parameterized according to the input params and the
     current mode.
@@ -116,9 +116,10 @@ def resnet_model_fn(features, labels, mode, model_class,
   tf.identity(cross_entropy, name='cross_entropy')
   tf.summary.scalar('cross_entropy', cross_entropy)
 
-  # If no loss_filter_fn is passed, do not filter any vars out of loss.
+  # If no loss_filter_fn is passed, assume we want the default behavior,
+  # which is that batch_normalization variables are excluded from loss.
   if not loss_filter_fn:
-    loss_filter_fn = lambda name: True
+    loss_filter_fn = lambda name: 'batch_normalization' not in name
 
   # Add weight decay to the loss.
   loss = cross_entropy + weight_decay * tf.add_n(
