@@ -198,7 +198,8 @@ def imagenet_model_fn(features, labels, mode, params):
                                 learning_rate_fn=learning_rate_fn,
                                 momentum=0.9,
                                 data_format=params['data_format'],
-                                loss_filter_fn=None)
+                                loss_filter_fn=None,
+                                multi_gpu=params['multi_gpu'])
 
 
 def main(unused_argv):

@@ -367,7 +367,7 @@ def learning_rate_with_decay(
 
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format, loss_filter_fn=None):
+                    data_format, loss_filter_fn=None, multi_gpu=False):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -395,6 +395,8 @@ def resnet_model_fn(features, labels, mode, model_class,
       True if the var should be included in loss calculation, and False
       otherwise. If None, batch_normalization variables will be excluded
       from the loss.
+    multi_gpu: If True, wrap the optimizer in a TowerOptimizer to allow
+      for running on multiple GPUs.
   Returns:
     EstimatorSpec parameterized according to the input params and the
     current mode.
@@ -445,6 +447,10 @@ def resnet_model_fn(features, labels, mode, model_class,
         learning_rate=learning_rate,
         momentum=momentum)
 
+    # If we are running multi-GPU, we need to wrap the optimizer.
+    if multi_gpu:
+      optimizer = tf.contrib.estimator.TowerOptimizer(optimizer)
+
     # Batch norm requires update ops to be added as a dependency to train_op
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
@@ -468,9 +474,42 @@ def resnet_model_fn(features, labels, mode, model_class,
       eval_metric_ops=metrics)
 
 
+def validate_batch_size_for_multi_gpu(batch_size):
+  """For multi-gpu, batch-size must be a multiple of the number of
+  available GPUs.
+  Note that this should eventually be handled by replicate_model_fn
+  directly. Multi-GPU support is currently experimental, however,
+  so doing the work here until that feature is in place.
+  """
+  from tensorflow.python.client import device_lib
+
+  local_device_protos = device_lib.list_local_devices()
+  num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
+  if not num_gpus:
+    raise ValueError('Multi-GPU mode was specified, but no GPUs '
+                     'were found. To use CPU, run without --multi_gpu.')
+
+  remainder = batch_size % num_gpus
+  if remainder:
+    err = ('When running with multiple GPUs, batch size '
+           'must be a multiple of the number of available GPUs. '
+           'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
+    raise ValueError(err)
+
+
 def resnet_main(flags, model_function, input_function):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+
+  if flags.multi_gpu:
+    validate_batch_size_for_multi_gpu(flags.batch_size)
+
+    # There are two steps required if using multi-GPU: (1) wrap the model_fn,
+    # and (2) wrap the optimizer. The first happens here, and (2) happens
+    # in the model_fn itself when the optimizer is defined.
+    model_function = tf.contrib.estimator.replicate_model_fn(
+        model_function, loss_reduction=tf.losses.Reduction.MEAN)
 
   # Set up a RunConfig to only save checkpoints once per training cycle.
   run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
@@ -480,6 +519,7 @@ def resnet_main(flags, model_function, input_function):
           'resnet_size': flags.resnet_size,
           'data_format': flags.data_format,
           'batch_size': flags.batch_size,
+          'multi_gpu': flags.multi_gpu,
       })
 
   for _ in range(flags.train_epochs // flags.epochs_per_eval):
@@ -511,6 +551,10 @@ class ResnetArgParser(argparse.ArgumentParser):
 
   def __init__(self, resnet_size_choices=None):
     super(ResnetArgParser, self).__init__()
+    self.add_argument(
+        '--multi_gpu', action='store_true',
+        help='If set, run across all available GPUs.')
+
     self.add_argument(
         '--data_dir', type=str, default='/tmp/resnet_data',
         help='The directory where the input data is stored.')
