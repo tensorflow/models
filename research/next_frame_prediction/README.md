@@ -8,7 +8,7 @@ This is an implementation based on my understanding, with small
 variations. It doesn't necessarily represents the paper published
 by the original authors.
 
-Authors: Xin Pan (Github: panyx0718), Anelia Angelova
+Authors: Xin Pan, Anelia Angelova
 
 <b>Results:</b>
 
