@@ -83,7 +83,8 @@ def build(image_resizer_config):
         preprocessor.resize_to_range,
         min_dimension=keep_aspect_ratio_config.min_dimension,
         max_dimension=keep_aspect_ratio_config.max_dimension,
-        method=method)
+        method=method,
+        pad_to_max_dimension=keep_aspect_ratio_config.pad_to_max_dimension)
   if image_resizer_config.WhichOneof(
       'image_resizer_oneof') == 'fixed_shape_resizer':
     fixed_shape_resizer_config = image_resizer_config.fixed_shape_resizer

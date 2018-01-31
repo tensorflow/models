@@ -80,7 +80,6 @@ class LocalizationLossBuilderTest(tf.test.TestCase):
     losses_text_proto = """
       localization_loss {
         weighted_smooth_l1 {
-          anchorwise_output: true
         }
       }
       classification_loss {
@@ -245,7 +244,7 @@ class ClassificationLossBuilderTest(tf.test.TestCase):
     targets = tf.constant([[[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]])
     weights = tf.constant([[1.0, 1.0]])
     loss = classification_loss(predictions, targets, weights=weights)
-    self.assertEqual(loss.shape, [1, 2])
+    self.assertEqual(loss.shape, [1, 2, 3])
 
   def test_raise_error_on_empty_config(self):
     losses_text_proto = """

@@ -228,6 +228,9 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
       if value:
         _update_label_map_path(configs, value)
         tf.logging.info("Overwriting label map path: %s", value)
+    if key == "mask_type":
+      _update_mask_type(configs, value)
+      tf.logging.info("Overwritten mask type: %s", value)
   return configs
 
 
@@ -450,3 +453,18 @@ def _update_label_map_path(configs, label_map_path):
   """
   configs["train_input_config"].label_map_path = label_map_path
   configs["eval_input_config"].label_map_path = label_map_path
+
+
+def _update_mask_type(configs, mask_type):
+  """Updates the mask type for both train and eval input readers.
+
+  The configs dictionary is updated in place, and hence not returned.
+
+  Args:
+    configs: Dictionary of configuration objects. See outputs from
+      get_configs_from_pipeline_file() or get_configs_from_multiple_files().
+    mask_type: A string name representing a value of
+      input_reader_pb2.InstanceMaskType
+  """
+  configs["train_input_config"].mask_type = mask_type
+  configs["eval_input_config"].mask_type = mask_type

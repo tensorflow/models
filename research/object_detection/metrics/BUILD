@@ -8,6 +8,57 @@ licenses(["notice"])
 
 # Apache 2.0
 
+py_library(
+    name = "coco_tools",
+    srcs = [
+        "coco_tools.py",
+    ],
+    deps = [
+        "//file/localfile",
+        "//file/placer",
+        "//pycocotools",
+        "//tensorflow",
+        "//tensorflow/models/research/object_detection/utils:json_utils",
+    ],
+)
+
+py_test(
+    name = "coco_tools_test",
+    srcs = [
+        "coco_tools_test.py",
+    ],
+    deps = [
+        ":coco_tools",
+        "//testing/pybase",
+        "//numpy",
+    ],
+)
+
+py_library(
+    name = "coco_evaluation",
+    srcs = [
+        "coco_evaluation.py",
+    ],
+    deps = [
+        ":coco_tools",
+        "//tensorflow",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/utils:object_detection_evaluation",
+    ],
+)
+
+py_test(
+    name = "coco_evaluation_test",
+    srcs = [
+        "coco_evaluation_test.py",
+    ],
+    deps = [
+        ":coco_evaluation",
+        "//tensorflow",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+    ],
+)
+
 py_binary(
     name = "offline_eval_map_corloc",
     srcs = [
@@ -15,11 +66,11 @@ py_binary(
     ],
     deps = [
         ":tf_example_parser",
-        "//tensorflow_models/object_detection:evaluator",
-        "//tensorflow_models/object_detection/builders:input_reader_builder",
-        "//tensorflow_models/object_detection/core:standard_fields",
-        "//tensorflow_models/object_detection/utils:config_util",
-        "//tensorflow_models/object_detection/utils:label_map_util",
+        "//tensorflow/models/research/object_detection:evaluator",
+        "//tensorflow/models/research/object_detection/builders:input_reader_builder",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/utils:config_util",
+        "//tensorflow/models/research/object_detection/utils:label_map_util",
     ],
 )
 
@@ -39,8 +90,8 @@ py_library(
     srcs = ["tf_example_parser.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:data_parser",
-        "//tensorflow_models/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/core:data_parser",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
     ],
 )
 
@@ -50,6 +101,6 @@ py_test(
     deps = [
         ":tf_example_parser",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
     ],
 )

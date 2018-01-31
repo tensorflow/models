@@ -16,8 +16,7 @@
 
 import os
 
-import google3
-import tensorflow.google as tf
+import tensorflow as tf
 
 from google.protobuf import text_format
 
@@ -154,7 +153,7 @@ class ConfigUtilTest(tf.test.TestCase):
     """Asserts successful updating of all learning rate schemes."""
     original_learning_rate = 0.7
     learning_rate_scaling = 0.1
-    hparams = tf.HParams(learning_rate=0.15)
+    hparams = tf.contrib.training.HParams(learning_rate=0.15)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     # Constant learning rate.
@@ -216,7 +215,7 @@ class ConfigUtilTest(tf.test.TestCase):
   def testNewBatchSize(self):
     """Tests that batch size is updated appropriately."""
     original_batch_size = 2
-    hparams = tf.HParams(batch_size=16)
+    hparams = tf.contrib.training.HParams(batch_size=16)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
@@ -231,7 +230,7 @@ class ConfigUtilTest(tf.test.TestCase):
   def testNewBatchSizeWithClipping(self):
     """Tests that batch size is clipped to 1 from below."""
     original_batch_size = 2
-    hparams = tf.HParams(batch_size=0.5)
+    hparams = tf.contrib.training.HParams(batch_size=0.5)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
@@ -246,7 +245,7 @@ class ConfigUtilTest(tf.test.TestCase):
   def testNewMomentumOptimizerValue(self):
     """Tests that new momentum value is updated appropriately."""
     original_momentum_value = 0.4
-    hparams = tf.HParams(momentum_optimizer_value=1.1)
+    hparams = tf.contrib.training.HParams(momentum_optimizer_value=1.1)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
@@ -265,7 +264,7 @@ class ConfigUtilTest(tf.test.TestCase):
     original_localization_weight = 0.1
     original_classification_weight = 0.2
     new_weight_ratio = 5.0
-    hparams = tf.HParams(
+    hparams = tf.contrib.training.HParams(
         classification_localization_weight_ratio=new_weight_ratio)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
@@ -288,7 +287,8 @@ class ConfigUtilTest(tf.test.TestCase):
     original_gamma = 1.0
     new_alpha = 0.3
     new_gamma = 2.0
-    hparams = tf.HParams(focal_loss_alpha=new_alpha, focal_loss_gamma=new_gamma)
+    hparams = tf.contrib.training.HParams(
+        focal_loss_alpha=new_alpha, focal_loss_gamma=new_gamma)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
@@ -395,6 +395,25 @@ class ConfigUtilTest(tf.test.TestCase):
                      configs["train_input_config"].label_map_path)
     self.assertEqual(new_label_map_path,
                      configs["eval_input_config"].label_map_path)
+
+  def testNewMaskType(self):
+    """Tests that mask type can be overwritten in input readers."""
+    original_mask_type = input_reader_pb2.NUMERICAL_MASKS
+    new_mask_type = input_reader_pb2.PNG_MASKS
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    train_input_reader = pipeline_config.train_input_reader
+    train_input_reader.mask_type = original_mask_type
+    eval_input_reader = pipeline_config.eval_input_reader
+    eval_input_reader.mask_type = original_mask_type
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(
+        configs, mask_type=new_mask_type)
+    self.assertEqual(new_mask_type, configs["train_input_config"].mask_type)
+    self.assertEqual(new_mask_type, configs["eval_input_config"].mask_type)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 // Message for defining a preprocessing operation on input data.
-// See: //object_detection/core/preprocessor.py
+// See: //third_party/tensorflow_models/object_detection/core/preprocessor.py
 message PreprocessingStep {
   oneof preprocessing_step {
     NormalizeImage normalize_image = 1;
@@ -202,7 +202,7 @@ message RandomCropPadImage {
   repeated float max_padded_size_ratio = 9;
 
   // Color of the padding. If unset, will pad using average color of the input
-  // image.
+  // image. This field should be of length 3.
   repeated float pad_color = 10;
 }
 

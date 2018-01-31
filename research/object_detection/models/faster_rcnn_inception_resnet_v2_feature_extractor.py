@@ -180,7 +180,7 @@ class FasterRCNNInceptionResnetV2FeatureExtractor(
     faster_rcnn_meta_arch.FasterRCNNFeatureExtractor which does not work for
     InceptionResnetV2 checkpoints.
 
-    TODO: revisit whether it's possible to force the
+    TODO(jonathanhuang,rathodv): revisit whether it's possible to force the
     `Repeat` namescope as created in `_extract_box_classifier_features` to
     start counting at 2 (e.g. `Repeat_2`) so that the default restore_fn can
     be used.
