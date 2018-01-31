@@ -32,6 +32,7 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 * Derek Chow, github: [derekjchow](https://github.com/derekjchow)
 * Chen Sun, github: [jesu9](https://github.com/jesu9)
 * Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
+* Alireza Fathi, github: [afathi3](https://github.com/afathi3)
 
 
 ## Table of contents

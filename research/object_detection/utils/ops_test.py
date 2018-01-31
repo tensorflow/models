@@ -19,6 +19,7 @@ import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
 from object_detection.utils import ops
+from object_detection.utils import test_case
 
 
 class NormalizedToImageCoordinatesTest(tf.test.TestCase):
@@ -40,6 +41,18 @@ class NormalizedToImageCoordinatesTest(tf.test.TestCase):
                                            normalized_boxes_np})
 
     self.assertAllEqual(absolute_boxes, expected_boxes)
+
+
+class ReduceSumTrailingDimensions(tf.test.TestCase):
+
+  def test_reduce_sum_trailing_dimensions(self):
+    input_tensor = tf.placeholder(tf.float32, shape=[None, None, None])
+    reduced_tensor = ops.reduce_sum_trailing_dimensions(input_tensor, ndims=2)
+    with self.test_session() as sess:
+      reduced_np = sess.run(reduced_tensor,
+                            feed_dict={input_tensor: np.ones((2, 2, 2),
+                                                             np.float32)})
+    self.assertAllClose(reduced_np, 2 * np.ones((2, 2), np.float32))
 
 
 class MeshgridTest(tf.test.TestCase):
@@ -81,6 +94,30 @@ class MeshgridTest(tf.test.TestCase):
       # rounding.
       self.assertEqual(xgrid_output[yind + xind], x[xind])
       self.assertEqual(ygrid_output[yind + xind], y[yind])
+
+
+class OpsTestFixedPadding(tf.test.TestCase):
+
+  def test_3x3_kernel(self):
+    tensor = tf.constant([[[[0.], [0.]], [[0.], [0.]]]])
+    padded_tensor = ops.fixed_padding(tensor, 3)
+    with self.test_session() as sess:
+      padded_tensor_out = sess.run(padded_tensor)
+    self.assertEqual((1, 4, 4, 1), padded_tensor_out.shape)
+
+  def test_5x5_kernel(self):
+    tensor = tf.constant([[[[0.], [0.]], [[0.], [0.]]]])
+    padded_tensor = ops.fixed_padding(tensor, 5)
+    with self.test_session() as sess:
+      padded_tensor_out = sess.run(padded_tensor)
+    self.assertEqual((1, 6, 6, 1), padded_tensor_out.shape)
+
+  def test_3x3_atrous_kernel(self):
+    tensor = tf.constant([[[[0.], [0.]], [[0.], [0.]]]])
+    padded_tensor = ops.fixed_padding(tensor, 3, 2)
+    with self.test_session() as sess:
+      padded_tensor_out = sess.run(padded_tensor)
+    self.assertEqual((1, 6, 6, 1), padded_tensor_out.shape)
 
 
 class OpsTestPadToMultiple(tf.test.TestCase):
@@ -1126,6 +1163,20 @@ class MergeBoxesWithMultipleLabelsTest(tf.test.TestCase):
       self.assertAllEqual(np_merged_boxes.shape, [0, 4])
       self.assertAllEqual(np_merged_classes.shape, [0, 5])
       self.assertAllEqual(np_merged_box_indices.shape, [0])
+
+
+class NearestNeighborUpsamplingTest(test_case.TestCase):
+
+  def test_upsampling(self):
+
+    def graph_fn(inputs):
+      custom_op_output = ops.nearest_neighbor_upsampling(inputs, scale=2)
+      tf_op_output = tf.image.resize_images(
+          inputs, [4, 4], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+      return (custom_op_output, tf_op_output)
+    inputs = np.reshape(np.arange(2**4), [2, 2, 2, 2])
+    (custom_op_output, tf_op_output) = self.execute(graph_fn, [inputs])
+    self.assertAllClose(custom_op_output, tf_op_output)
 
 
 if __name__ == '__main__':

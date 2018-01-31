@@ -170,6 +170,12 @@ class LabelMapUtilTest(tf.test.TestCase):
     }]
     self.assertListEqual(expected_categories_list, cat_no_offset)
 
+  def test_get_max_label_map_index(self):
+    num_classes = 4
+    label_map_proto = self._generate_label_map(num_classes=num_classes)
+    max_index = label_map_util.get_max_label_map_index(label_map_proto)
+    self.assertEqual(num_classes, max_index)
+
   def test_create_category_index(self):
     categories = [{'name': u'1', 'id': 1}, {'name': u'2', 'id': 2}]
     category_index = label_map_util.create_category_index(categories)

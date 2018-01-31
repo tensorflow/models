@@ -24,7 +24,7 @@ import tensorflow as tf
 from object_detection.dataset_tools import create_kitti_tf_record
 
 
-class DictToTFExampleTest(tf.test.TestCase):
+class CreateKittiTFRecordTest(tf.test.TestCase):
 
   def _assertProtoEqual(self, proto_field, expectation):
     """Helper function to assert if a proto field equals some value.
