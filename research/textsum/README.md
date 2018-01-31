@@ -2,7 +2,7 @@ Sequence-to-Sequence with Attention Model for Text Summarization.
 
 Authors:
 
-Xin Pan (xpan@google.com, github:panyx0718),
+Xin Pan
 Peter Liu (peterjliu@google.com, github:peterjliu)
 
 <b>Introduction</b>
