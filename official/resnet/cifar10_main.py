@@ -155,7 +155,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
 class Cifar10Model(resnet_model.Model):
 
   def __init__(self, resnet_size, data_format=None):
-    """These are the parameters that work for Cifar10 data.
+    """These are the parameters that work for CIFAR-10 data.
     """
     if resnet_size % 6 != 2:
       raise ValueError('resnet_size must be 6n + 2:', resnet_size)
@@ -194,7 +194,7 @@ def cifar10_model_fn(features, labels, mode, params):
 
   # Empirical testing showed that including batch_normalization variables
   # in the calculation of regularized loss helped validation accuracy
-  # for the Cifar10 dataset, perhaps because the regularization prevents
+  # for the CIFAR-10 dataset, perhaps because the regularization prevents
   # overfitting on the small data set. We therefore include all vars when
   # regularizing and computing loss during training.
   loss_filter_fn = lambda name: True
