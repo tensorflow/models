@@ -51,6 +51,7 @@ from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import standard_fields as fields
+from object_detection.utils import shape_utils
 
 
 def _apply_with_random_selector(x, func, num_cases):
@@ -1647,6 +1648,7 @@ def _compute_new_static_size(image, min_dimension, max_dimension):
   image_shape = image.get_shape().as_list()
   orig_height = image_shape[0]
   orig_width = image_shape[1]
+  num_channels = image_shape[2]
   orig_min_dim = min(orig_height, orig_width)
   # Calculates the larger of the possible sizes
   large_scale_factor = min_dimension / float(orig_min_dim)
@@ -1674,7 +1676,7 @@ def _compute_new_static_size(image, min_dimension, max_dimension):
       new_size = small_size
   else:
     new_size = large_size
-  return tf.constant(new_size)
+  return tf.constant(new_size + [num_channels])
 
 
 def _compute_new_dynamic_size(image, min_dimension, max_dimension):
@@ -1682,6 +1684,7 @@ def _compute_new_dynamic_size(image, min_dimension, max_dimension):
   image_shape = tf.shape(image)
   orig_height = tf.to_float(image_shape[0])
   orig_width = tf.to_float(image_shape[1])
+  num_channels = image_shape[2]
   orig_min_dim = tf.minimum(orig_height, orig_width)
   # Calculates the larger of the possible sizes
   min_dimension = tf.constant(min_dimension, dtype=tf.float32)
@@ -1711,7 +1714,7 @@ def _compute_new_dynamic_size(image, min_dimension, max_dimension):
         lambda: small_size, lambda: large_size)
   else:
     new_size = large_size
-  return new_size
+  return tf.stack(tf.unstack(new_size) + [num_channels])
 
 
 def resize_to_range(image,
@@ -1719,7 +1722,8 @@ def resize_to_range(image,
                     min_dimension=None,
                     max_dimension=None,
                     method=tf.image.ResizeMethod.BILINEAR,
-                    align_corners=False):
+                    align_corners=False,
+                    pad_to_max_dimension=False):
   """Resizes an image so its dimensions are within the provided value.
 
   The output size can be described by two cases:
@@ -1740,15 +1744,22 @@ def resize_to_range(image,
             BILINEAR.
     align_corners: bool. If true, exactly align all 4 corners of the input
                    and output. Defaults to False.
+    pad_to_max_dimension: Whether to resize the image and pad it with zeros
+      so the resulting image is of the spatial size
+      [max_dimension, max_dimension]. If masks are included they are padded
+      similarly.
 
   Returns:
-    A 3D tensor of shape [new_height, new_width, channels],
-    where the image has been resized (with bilinear interpolation) so that
-    min(new_height, new_width) == min_dimension or
-    max(new_height, new_width) == max_dimension.
-
-    If masks is not None, also outputs masks:
-    A 3D tensor of shape [num_instances, new_height, new_width]
+    Note that the position of the resized_image_shape changes based on whether
+    masks are present.
+    resized_image: A 3D tensor of shape [new_height, new_width, channels],
+      where the image has been resized (with bilinear interpolation) so that
+      min(new_height, new_width) == min_dimension or
+      max(new_height, new_width) == max_dimension.
+    resized_masks: If masks is not None, also outputs masks. A 3D tensor of
+      shape [num_instances, new_height, new_width].
+    resized_image_shape: A 1D tensor of shape [3] containing shape of the
+      resized image.
 
   Raises:
     ValueError: if the image is not a 3D tensor.
@@ -1762,16 +1773,27 @@ def resize_to_range(image,
     else:
       new_size = _compute_new_dynamic_size(image, min_dimension, max_dimension)
     new_image = tf.image.resize_images(
-        image, new_size, method=method, align_corners=align_corners)
+        image, new_size[:-1], method=method, align_corners=align_corners)
 
-    result = new_image
+    if pad_to_max_dimension:
+      new_image = tf.image.pad_to_bounding_box(
+          new_image, 0, 0, max_dimension, max_dimension)
+
+    result = [new_image]
     if masks is not None:
       new_masks = tf.expand_dims(masks, 3)
-      new_masks = tf.image.resize_nearest_neighbor(
-          new_masks, new_size, align_corners=align_corners)
+      new_masks = tf.image.resize_images(
+          new_masks,
+          new_size[:-1],
+          method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+          align_corners=align_corners)
       new_masks = tf.squeeze(new_masks, 3)
-      result = [new_image, new_masks]
+      if pad_to_max_dimension:
+        new_masks = tf.image.pad_to_bounding_box(
+            new_masks, 0, 0, max_dimension, max_dimension)
+      result.append(new_masks)
 
+    result.append(new_size)
     return result
 
 
@@ -1789,10 +1811,13 @@ def resize_to_min_dimension(image, masks=None, min_dimension=600):
     min_dimension: minimum image dimension.
 
   Returns:
-    a tuple containing the following:
-      Resized image. A tensor of size [new_height, new_width, channels].
-      (optional) Resized masks. A tensor of
-        size [num_instances, new_height, new_width].
+    Note that the position of the resized_image_shape changes based on whether
+    masks are present.
+    resized_image: A tensor of size [new_height, new_width, channels].
+    resized_masks: If masks is not None, also outputs masks. A 3D tensor of
+      shape [num_instances, new_height, new_width]
+    resized_image_shape: A 1D tensor of shape [3] containing the shape of the
+      resized image.
 
   Raises:
     ValueError: if the image is not a 3D tensor.
@@ -1803,6 +1828,7 @@ def resize_to_min_dimension(image, masks=None, min_dimension=600):
   with tf.name_scope('ResizeGivenMinDimension', values=[image, min_dimension]):
     image_height = tf.shape(image)[0]
     image_width = tf.shape(image)[1]
+    num_channels = tf.shape(image)[2]
     min_image_dimension = tf.minimum(image_height, image_width)
     min_target_dimension = tf.maximum(min_image_dimension, min_dimension)
     target_ratio = tf.to_float(min_target_dimension) / tf.to_float(
@@ -1813,13 +1839,16 @@ def resize_to_min_dimension(image, masks=None, min_dimension=600):
         tf.expand_dims(image, axis=0),
         size=[target_height, target_width],
         align_corners=True)
-    result = tf.squeeze(image, axis=0)
+    result = [tf.squeeze(image, axis=0)]
+
     if masks is not None:
       masks = tf.image.resize_nearest_neighbor(
           tf.expand_dims(masks, axis=3),
           size=[target_height, target_width],
           align_corners=True)
-      result = (result, tf.squeeze(masks, axis=3))
+      result.append(tf.squeeze(masks, axis=3))
+
+    result.append(tf.stack([target_height, target_width, num_channels]))
     return result
 
 
@@ -1854,6 +1883,8 @@ def scale_boxes_to_pixel_coordinates(image, boxes, keypoints=None):
   return tuple(result)
 
 
+# TODO: Investigate if instead the function should return None if
+# masks is None.
 # pylint: disable=g-doc-return-or-yield
 def resize_image(image,
                  masks=None,
@@ -1861,7 +1892,28 @@ def resize_image(image,
                  new_width=1024,
                  method=tf.image.ResizeMethod.BILINEAR,
                  align_corners=False):
-  """See `tf.image.resize_images` for detailed doc."""
+  """Resizes images to the given height and width.
+
+  Args:
+    image: A 3D tensor of shape [height, width, channels]
+    masks: (optional) rank 3 float32 tensor with shape
+           [num_instances, height, width] containing instance masks.
+    new_height: (optional) (scalar) desired height of the image.
+    new_width: (optional) (scalar) desired width of the image.
+    method: (optional) interpolation method used in resizing. Defaults to
+            BILINEAR.
+    align_corners: bool. If true, exactly align all 4 corners of the input
+                   and output. Defaults to False.
+
+  Returns:
+    Note that the position of the resized_image_shape changes based on whether
+    masks are present.
+    resized_image: A tensor of size [new_height, new_width, channels].
+    resized_masks: If masks is not None, also outputs masks. A 3D tensor of
+      shape [num_instances, new_height, new_width]
+    resized_image_shape: A 1D tensor of shape [3] containing the shape of the
+      resized image.
+  """
   with tf.name_scope(
       'ResizeImage',
       values=[image, new_height, new_width, method, align_corners]):
@@ -1869,7 +1921,8 @@ def resize_image(image,
         image, [new_height, new_width],
         method=method,
         align_corners=align_corners)
-    result = new_image
+    image_shape = shape_utils.combined_static_and_dynamic_shape(image)
+    result = [new_image]
     if masks is not None:
       num_instances = tf.shape(masks)[0]
       new_size = tf.constant([new_height, new_width], dtype=tf.int32)
@@ -1886,8 +1939,9 @@ def resize_image(image,
 
       masks = tf.cond(num_instances > 0, resize_masks_branch,
                       reshape_masks_branch)
-      result = [new_image, masks]
+      result.append(masks)
 
+    result.append(tf.stack([new_height, new_width, image_shape[2]]))
     return result
 
 

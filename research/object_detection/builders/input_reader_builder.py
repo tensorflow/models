@@ -69,6 +69,7 @@ def build(input_reader_config):
       label_map_proto_file = input_reader_config.label_map_path
     decoder = tf_example_decoder.TfExampleDecoder(
         load_instance_masks=input_reader_config.load_instance_masks,
+        instance_mask_type=input_reader_config.mask_type,
         label_map_proto_file=label_map_proto_file)
     return decoder.decode(string_tensor)
 

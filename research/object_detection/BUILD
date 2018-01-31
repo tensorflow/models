@@ -7,6 +7,43 @@ package(
 licenses(["notice"])
 
 # Apache 2.0
+
+py_library(
+    name = "inputs",
+    srcs = [
+        "inputs.py",
+    ],
+    deps = [
+        "//tensorflow",
+        "//tensorflow/models/research/object_detection:trainer",
+        "//tensorflow/models/research/object_detection/builders:dataset_builder",
+        "//tensorflow/models/research/object_detection/builders:preprocessor_builder",
+        "//tensorflow/models/research/object_detection/protos:input_reader_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:train_py_pb2",
+        "//tensorflow/models/research/object_detection/utils:dataset_util",
+        "//tensorflow/models/research/object_detection/utils:ops",
+    ],
+)
+
+py_test(
+    name = "inputs_test",
+    srcs = [
+        "inputs_test.py",
+    ],
+    data = [
+        "//tensorflow/models/research/object_detection/data:pet_label_map.pbtxt",
+        "//tensorflow/models/research/object_detection/samples/configs:faster_rcnn_resnet50_pets.config",
+        "//tensorflow/models/research/object_detection/samples/configs:ssd_inception_v2_pets.config",
+        "//tensorflow/models/research/object_detection/test_data:pets_examples.record",
+    ],
+    deps = [
+        ":inputs",
+        "//tensorflow",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/utils:config_util",
+    ],
+)
+
 py_binary(
     name = "train",
     srcs = [
@@ -15,9 +52,10 @@ py_binary(
     deps = [
         ":trainer",
         "//tensorflow",
-        "//tensorflow_models/object_detection/builders:input_reader_builder",
-        "//tensorflow_models/object_detection/builders:model_builder",
-        "//tensorflow_models/object_detection/utils:config_util",
+        "//tensorflow/models/research/object_detection/builders:dataset_builder",
+        "//tensorflow/models/research/object_detection/builders:model_builder",
+        "//tensorflow/models/research/object_detection/utils:config_util",
+        "//tensorflow/models/research/object_detection/utils:dataset_util",
     ],
 )
 
@@ -26,14 +64,14 @@ py_library(
     srcs = ["trainer.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/builders:optimizer_builder",
-        "//tensorflow_models/object_detection/builders:preprocessor_builder",
-        "//tensorflow_models/object_detection/core:batcher",
-        "//tensorflow_models/object_detection/core:preprocessor",
-        "//tensorflow_models/object_detection/core:standard_fields",
-        "//tensorflow_models/object_detection/utils:ops",
-        "//tensorflow_models/object_detection/utils:variables_helper",
-        "//tensorflow_models/slim:model_deploy",
+        "//tensorflow/models/research/object_detection/builders:optimizer_builder",
+        "//tensorflow/models/research/object_detection/builders:preprocessor_builder",
+        "//tensorflow/models/research/object_detection/core:batcher",
+        "//tensorflow/models/research/object_detection/core:preprocessor",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/utils:ops",
+        "//tensorflow/models/research/object_detection/utils:variables_helper",
+        "//third_party/tensorflow_models/slim:model_deploy",
     ],
 )
 
@@ -43,10 +81,10 @@ py_test(
     deps = [
         ":trainer",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:losses",
-        "//tensorflow_models/object_detection/core:model",
-        "//tensorflow_models/object_detection/core:standard_fields",
-        "//tensorflow_models/object_detection/protos:train_py_pb2",
+        "//tensorflow/models/research/object_detection/core:losses",
+        "//tensorflow/models/research/object_detection/core:model",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/protos:train_py_pb2",
     ],
 )
 
@@ -57,13 +95,13 @@ py_library(
     ],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:box_list",
-        "//tensorflow_models/object_detection/core:box_list_ops",
-        "//tensorflow_models/object_detection/core:keypoint_ops",
-        "//tensorflow_models/object_detection/core:standard_fields",
-        "//tensorflow_models/object_detection/utils:label_map_util",
-        "//tensorflow_models/object_detection/utils:ops",
-        "//tensorflow_models/object_detection/utils:visualization_utils",
+        "//tensorflow/models/research/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:box_list_ops",
+        "//tensorflow/models/research/object_detection/core:keypoint_ops",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/utils:label_map_util",
+        "//tensorflow/models/research/object_detection/utils:ops",
+        "//tensorflow/models/research/object_detection/utils:visualization_utils",
     ],
 )
 
@@ -72,11 +110,11 @@ py_library(
     srcs = ["evaluator.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection:eval_util",
-        "//tensorflow_models/object_detection/core:prefetcher",
-        "//tensorflow_models/object_detection/core:standard_fields",
-        "//tensorflow_models/object_detection/protos:eval_py_pb2",
-        "//tensorflow_models/object_detection/utils:object_detection_evaluation",
+        "//tensorflow/models/research/object_detection:eval_util",
+        "//tensorflow/models/research/object_detection/core:prefetcher",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/protos:eval_py_pb2",
+        "//tensorflow/models/research/object_detection/utils:object_detection_evaluation",
     ],
 )
 
@@ -88,10 +126,11 @@ py_binary(
     deps = [
         ":evaluator",
         "//tensorflow",
-        "//tensorflow_models/object_detection/builders:input_reader_builder",
-        "//tensorflow_models/object_detection/builders:model_builder",
-        "//tensorflow_models/object_detection/utils:config_util",
-        "//tensorflow_models/object_detection/utils:label_map_util",
+        "//tensorflow/models/research/object_detection/builders:dataset_builder",
+        "//tensorflow/models/research/object_detection/builders:model_builder",
+        "//tensorflow/models/research/object_detection/utils:config_util",
+        "//tensorflow/models/research/object_detection/utils:dataset_util",
+        "//tensorflow/models/research/object_detection/utils:label_map_util",
     ],
 )
 
@@ -103,9 +142,9 @@ py_library(
     deps = [
         "//tensorflow",
         "//tensorflow/python/tools:freeze_graph_lib",
-        "//tensorflow_models/object_detection/builders:model_builder",
-        "//tensorflow_models/object_detection/core:standard_fields",
-        "//tensorflow_models/object_detection/data_decoders:tf_example_decoder",
+        "//tensorflow/models/research/object_detection/builders:model_builder",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/data_decoders:tf_example_decoder",
     ],
 )
 
@@ -117,9 +156,9 @@ py_test(
     deps = [
         ":exporter",
         "//tensorflow",
-        "//tensorflow_models/object_detection/builders:model_builder",
-        "//tensorflow_models/object_detection/core:model",
-        "//tensorflow_models/object_detection/protos:pipeline_py_pb2",
+        "//tensorflow/models/research/object_detection/builders:model_builder",
+        "//tensorflow/models/research/object_detection/core:model",
+        "//tensorflow/models/research/object_detection/protos:pipeline_py_pb2",
     ],
 )
 
@@ -131,6 +170,6 @@ py_binary(
     deps = [
         ":exporter",
         "//tensorflow",
-        "//tensorflow_models/object_detection/protos:pipeline_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:pipeline_py_pb2",
     ],
 )
