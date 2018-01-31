@@ -217,6 +217,7 @@ def block_layer(inputs, filters, block_fn, blocks, strides, training, name,
 class Model(object):
   """Base class for building the Resnet v2 Model.
   """
+
   def __init__(self, resnet_size, num_classes, num_filters, kernel_size,
                conv_stride, first_pool_size, first_pool_stride,
                second_pool_size, second_pool_stride, block_fn, block_sizes,

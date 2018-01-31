@@ -197,7 +197,8 @@ def cifar10_model_fn(features, labels, mode, params):
                                        weight_decay=weight_decay,
                                        learning_rate_fn=learning_rate_fn,
                                        momentum=0.9,
-                                       data_format=params['data_format'])
+                                       data_format=params['data_format'],
+                                       loss_filter_fn=None)
 
 
 def main(unused_argv):

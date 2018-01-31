@@ -61,7 +61,7 @@ def learning_rate_with_decay(
 
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format):
+                    data_format, loss_filter_fn=None):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -84,7 +84,11 @@ def resnet_model_fn(features, labels, mode, model_class,
       the current global_step
     momentum: momentum term used for optimization
     data_format: Input format ('channels_last', 'channels_first', or None).
-        If set to None, the format is dependent on whether a GPU is available.
+      If set to None, the format is dependent on whether a GPU is available.
+    loss_filter_fn: function that takes a string variable name and returns
+      True if the var should be included in loss calculation, and False
+      otherwise. If None, all trainable variables will be included in loss
+      calculation.
   Returns:
     EstimatorSpec parameterized according to the input params and the
     current mode.
@@ -112,9 +116,14 @@ def resnet_model_fn(features, labels, mode, model_class,
   tf.identity(cross_entropy, name='cross_entropy')
   tf.summary.scalar('cross_entropy', cross_entropy)
 
+  # If no loss_filter_fn is passed, do not filter any vars out of loss.
+  if not loss_filter_fn:
+    loss_filter_fn = lambda name: True
+
   # Add weight decay to the loss.
   loss = cross_entropy + weight_decay * tf.add_n(
-      [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
+      [tf.nn.l2_loss(v) for v in tf.trainable_variables()
+       if loss_filter_fn(v.name)])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
     global_step = tf.train.get_or_create_global_step()
