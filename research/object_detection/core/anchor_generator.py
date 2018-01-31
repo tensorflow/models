@@ -77,8 +77,8 @@ class AnchorGenerator(object):
   def generate(self, feature_map_shape_list, **params):
     """Generates a collection of bounding boxes to be used as anchors.
 
-    TODO: remove **params from argument list and make stride and offsets (for
-        multiple_grid_anchor_generator) constructor arguments.
+    TODO: remove **params from argument list and make stride and
+      offsets (for multiple_grid_anchor_generator) constructor arguments.
 
     Args:
       feature_map_shape_list: list of (height, width) pairs in the format
@@ -140,3 +140,4 @@ class AnchorGenerator(object):
                                * feature_map_shape[0]
                                * feature_map_shape[1])
     return tf.assert_equal(expected_num_anchors, anchors.num_boxes())
+

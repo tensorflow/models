@@ -46,12 +46,13 @@ class MockBoxPredictor(box_predictor.BoxPredictor):
     super(MockBoxPredictor, self).__init__(is_training, num_classes)
 
   def _predict(self, image_features, num_predictions_per_location):
+    image_feature = image_features[0]
     combined_feature_shape = shape_utils.combined_static_and_dynamic_shape(
-        image_features)
+        image_feature)
     batch_size = combined_feature_shape[0]
     num_anchors = (combined_feature_shape[1] * combined_feature_shape[2])
     code_size = 4
-    zero = tf.reduce_sum(0 * image_features)
+    zero = tf.reduce_sum(0 * image_feature)
     box_encodings = zero + tf.zeros(
         (batch_size, num_anchors, 1, code_size), dtype=tf.float32)
     class_predictions_with_background = zero + tf.zeros(

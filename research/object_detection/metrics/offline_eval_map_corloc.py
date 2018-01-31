@@ -22,7 +22,7 @@ The evaluation metrics set is supplied in object_detection.protos.EvalConfig
 in metrics_set field.
 Currently two set of metrics are supported:
 - pascal_voc_metrics: standard PASCAL VOC 2007 metric
-- open_images_metrics: Open Image V2 metric
+- open_images_detection_metrics: Open Image V2 metric
 All other field of object_detection.protos.EvalConfig are ignored.
 
 Example usage:
