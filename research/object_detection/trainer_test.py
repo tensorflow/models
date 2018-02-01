@@ -51,10 +51,8 @@ class FakeDetectionModel(model.DetectionModel):
 
   def __init__(self):
     super(FakeDetectionModel, self).__init__(num_classes=NUMBER_OF_CLASSES)
-    self._classification_loss = losses.WeightedSigmoidClassificationLoss(
-        anchorwise_output=True)
-    self._localization_loss = losses.WeightedSmoothL1LocalizationLoss(
-        anchorwise_output=True)
+    self._classification_loss = losses.WeightedSigmoidClassificationLoss()
+    self._localization_loss = losses.WeightedSmoothL1LocalizationLoss()
 
   def preprocess(self, inputs):
     """Input preprocessing, resizes images to 28x28.
@@ -65,14 +63,24 @@ class FakeDetectionModel(model.DetectionModel):
 
     Returns:
       preprocessed_inputs: a [batch, 28, 28, channels] float32 tensor.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
     """
-    return tf.image.resize_images(inputs, [28, 28])
+    true_image_shapes = [inputs.shape[:-1].as_list()
+                         for _ in range(inputs.shape[-1])]
+    return tf.image.resize_images(inputs, [28, 28]), true_image_shapes
 
-  def predict(self, preprocessed_inputs):
+  def predict(self, preprocessed_inputs, true_image_shapes):
     """Prediction tensors from inputs tensor.
 
     Args:
       preprocessed_inputs: a [batch, 28, 28, channels] float32 tensor.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
 
     Returns:
       prediction_dict: a dictionary holding prediction tensors to be
@@ -89,11 +97,15 @@ class FakeDetectionModel(model.DetectionModel):
         'box_encodings': tf.reshape(box_prediction, [-1, 1, 4])
     }
 
-  def postprocess(self, prediction_dict, **params):
+  def postprocess(self, prediction_dict, true_image_shapes, **params):
     """Convert predicted output tensors to final detections. Unused.
 
     Args:
       prediction_dict: a dictionary holding prediction tensors.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
       **params: Additional keyword arguments for specific implementations of
         DetectionModel.
 
@@ -107,7 +119,7 @@ class FakeDetectionModel(model.DetectionModel):
         'num_detections': None
     }
 
-  def loss(self, prediction_dict):
+  def loss(self, prediction_dict, true_image_shapes):
     """Compute scalar loss tensors with respect to provided groundtruth.
 
     Calling this function requires that groundtruth tensors have been
@@ -115,6 +127,10 @@ class FakeDetectionModel(model.DetectionModel):
 
     Args:
       prediction_dict: a dictionary holding predicted tensors
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
 
     Returns:
       a dictionary mapping strings (loss names) to scalar tensors representing

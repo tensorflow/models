@@ -14,7 +14,8 @@ py_library(
     ],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:matcher",
+        "//tensorflow/models/research/object_detection/core:matcher",
+        "//tensorflow/models/research/object_detection/utils:shape_utils",
     ],
 )
 
@@ -24,6 +25,7 @@ py_test(
     deps = [
         ":argmax_matcher",
         "//tensorflow",
+        "//tensorflow/models/research/object_detection/utils:test_case",
     ],
 )
 
@@ -35,7 +37,7 @@ py_library(
     deps = [
         "//tensorflow",
         "//tensorflow/contrib/image:image_py",
-        "//tensorflow_models/object_detection/core:matcher",
+        "//tensorflow/models/research/object_detection/core:matcher",
     ],
 )
 

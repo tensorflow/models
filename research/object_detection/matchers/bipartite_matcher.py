@@ -27,8 +27,8 @@ class GreedyBipartiteMatcher(matcher.Matcher):
   def _match(self, similarity_matrix, num_valid_rows=-1):
     """Bipartite matches a collection rows and columns. A greedy bi-partite.
 
-    TODO: Add num_valid_columns options to match only that many columns with
-        all the rows.
+    TODO: Add num_valid_columns options to match only that many columns
+    with all the rows.
 
     Args:
       similarity_matrix: Float tensor of shape [N, M] with pairwise similarity

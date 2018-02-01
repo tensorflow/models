@@ -68,6 +68,24 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
     )
     return box_predictor_object
 
+  if  box_predictor_oneof == 'weight_shared_convolutional_box_predictor':
+    conv_box_predictor = (box_predictor_config.
+                          weight_shared_convolutional_box_predictor)
+    conv_hyperparams = argscope_fn(conv_box_predictor.conv_hyperparams,
+                                   is_training)
+    box_predictor_object = box_predictor.WeightSharedConvolutionalBoxPredictor(
+        is_training=is_training,
+        num_classes=num_classes,
+        conv_hyperparams=conv_hyperparams,
+        depth=conv_box_predictor.depth,
+        num_layers_before_predictor=(conv_box_predictor.
+                                     num_layers_before_predictor),
+        kernel_size=conv_box_predictor.kernel_size,
+        box_code_size=conv_box_predictor.box_code_size,
+        class_prediction_bias_init=conv_box_predictor.class_prediction_bias_init
+    )
+    return box_predictor_object
+
   if box_predictor_oneof == 'mask_rcnn_box_predictor':
     mask_rcnn_box_predictor = box_predictor_config.mask_rcnn_box_predictor
     fc_hyperparams = argscope_fn(mask_rcnn_box_predictor.fc_hyperparams,
@@ -85,8 +103,12 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
         box_code_size=mask_rcnn_box_predictor.box_code_size,
         conv_hyperparams=conv_hyperparams,
         predict_instance_masks=mask_rcnn_box_predictor.predict_instance_masks,
-        mask_prediction_conv_depth=(mask_rcnn_box_predictor.
-                                    mask_prediction_conv_depth),
+        mask_height=mask_rcnn_box_predictor.mask_height,
+        mask_width=mask_rcnn_box_predictor.mask_width,
+        mask_prediction_num_conv_layers=(
+            mask_rcnn_box_predictor.mask_prediction_num_conv_layers),
+        mask_prediction_conv_depth=(
+            mask_rcnn_box_predictor.mask_prediction_conv_depth),
         predict_keypoints=mask_rcnn_box_predictor.predict_keypoints)
     return box_predictor_object
 

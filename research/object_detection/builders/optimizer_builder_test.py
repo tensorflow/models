@@ -196,7 +196,7 @@ class OptimizerBuilderTest(tf.test.TestCase):
     optimizer = optimizer_builder.build(optimizer_proto, global_summaries)
     self.assertTrue(
         isinstance(optimizer, tf.contrib.opt.MovingAverageOptimizer))
-    # TODO(rathodv): Find a way to not depend on the private members.
+    # TODO: Find a way to not depend on the private members.
     self.assertAlmostEqual(optimizer._ema._decay, 0.2)
 
   def testBuildEmptyOptimizer(self):

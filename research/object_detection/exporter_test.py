@@ -18,6 +18,7 @@ import os
 import numpy as np
 import six
 import tensorflow as tf
+from google.protobuf import text_format
 from object_detection import exporter
 from object_detection.builders import model_builder
 from object_detection.core import model
@@ -37,12 +38,13 @@ class FakeModel(model.DetectionModel):
     self._add_detection_masks = add_detection_masks
 
   def preprocess(self, inputs):
-    return tf.identity(inputs)
+    true_image_shapes = []  # Doesn't matter for the fake model.
+    return tf.identity(inputs), true_image_shapes
 
-  def predict(self, preprocessed_inputs):
+  def predict(self, preprocessed_inputs, true_image_shapes):
     return {'image': tf.layers.conv2d(preprocessed_inputs, 3, 1)}
 
-  def postprocess(self, prediction_dict):
+  def postprocess(self, prediction_dict, true_image_shapes):
     with tf.control_dependencies(prediction_dict.values()):
       postprocessed_tensors = {
           'detection_boxes': tf.constant([[[0.0, 0.0, 0.5, 0.5],
@@ -63,7 +65,7 @@ class FakeModel(model.DetectionModel):
   def restore_map(self, checkpoint_path, from_detection_checkpoint):
     pass
 
-  def loss(self, prediction_dict):
+  def loss(self, prediction_dict, true_image_shapes):
     pass
 
 
@@ -74,10 +76,10 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     g = tf.Graph()
     with g.as_default():
       mock_model = FakeModel()
-      preprocessed_inputs = mock_model.preprocess(
+      preprocessed_inputs, true_image_shapes = mock_model.preprocess(
           tf.placeholder(tf.float32, shape=[None, None, None, 3]))
-      predictions = mock_model.predict(preprocessed_inputs)
-      mock_model.postprocess(predictions)
+      predictions = mock_model.predict(preprocessed_inputs, true_image_shapes)
+      mock_model.postprocess(predictions, true_image_shapes)
       if use_moving_averages:
         tf.train.ExponentialMovingAverage(0.0).apply()
       slim.get_or_create_global_step()
@@ -213,10 +215,10 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     graph = tf.Graph()
     with graph.as_default():
       fake_model = FakeModel()
-      preprocessed_inputs = fake_model.preprocess(
+      preprocessed_inputs, true_image_shapes = fake_model.preprocess(
           tf.placeholder(dtype=tf.float32, shape=[None, None, None, 3]))
-      predictions = fake_model.predict(preprocessed_inputs)
-      fake_model.postprocess(predictions)
+      predictions = fake_model.predict(preprocessed_inputs, true_image_shapes)
+      fake_model.postprocess(predictions, true_image_shapes)
       exporter.replace_variable_values_with_moving_averages(
           graph, trained_checkpoint_prefix, new_checkpoint_prefix)
 
@@ -448,7 +450,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
       with self.assertRaisesRegexp(tf.errors.InvalidArgumentError,
-                                   '^TensorArray has inconsistent shapes.'):
+                                   'TensorArray.*shape'):
         sess.run([boxes, scores, classes, masks, num_detections],
                  feed_dict={image_str_tensor: image_str_batch_np})
 
@@ -494,6 +496,31 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                        [2, 1]])
       self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
       self.assertAllClose(num_detections_np, [2, 1])
+
+  def test_export_graph_saves_pipeline_file(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=True)
+    output_directory = os.path.join(tmp_dir, 'output')
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      exporter.export_inference_graph(
+          input_type='image_tensor',
+          pipeline_config=pipeline_config,
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory)
+      expected_pipeline_path = os.path.join(
+          output_directory, 'pipeline.config')
+      self.assertTrue(os.path.exists(expected_pipeline_path))
+
+      written_pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      with tf.gfile.GFile(expected_pipeline_path, 'r') as f:
+        proto_str = f.read()
+        text_format.Merge(proto_str, written_pipeline_config)
+        self.assertProtoEquals(pipeline_config, written_pipeline_config)
 
   def test_export_saved_model_and_run_inference(self):
     tmp_dir = self.get_temp_dir()
