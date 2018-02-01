@@ -97,8 +97,19 @@ def parse_record(raw_record, is_training):
   return image, tf.one_hot(label, _NUM_CLASSES)
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
-  """Input function which provides batches for train or eval."""
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, input_threads=1):
+  """Input function which provides batches for train or eval.
+
+  Args:
+    is_training: A boolean denoting whether the input is for training.
+    data_dir: The directory containing the input data.
+    batch_size: The number of samples per batch.
+    num_epochs: The number of epochs to repeat the dataset.
+    input_threads: The number of CPU threads to use for input processing.
+
+  Returns:
+    A tuple of images and labels.
+  """
   dataset = tf.data.Dataset.from_tensor_slices(
       filenames(is_training, data_dir))
 
@@ -107,8 +118,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
 
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
   dataset = dataset.map(lambda value: parse_record(value, is_training),
-                        num_parallel_calls=5)
-  dataset = dataset.prefetch(batch_size)
+                        num_parallel_calls=input_threads)
+  dataset = dataset.prefetch(2 * batch_size)
 
   if is_training:
     # When choosing shuffle buffer sizes, larger sizes result in better

@@ -533,15 +533,19 @@ def resnet_main(flags, model_function, input_function):
         tensors=tensors_to_log, every_n_iter=100)
 
     print('Starting a training cycle.')
-    classifier.train(
-        input_fn=lambda: input_function(
-            True, flags.data_dir, flags.batch_size, flags.epochs_per_eval),
-        hooks=[logging_hook])
+
+    def input_fn_train():
+      return input_function(True, flags.data_dir, flags.batch_size,
+                            flags.epochs_per_eval, flags.input_threads)
+
+    classifier.train(input_fn=input_fn_train, hooks=[logging_hook])
 
     print('Starting to evaluate.')
     # Evaluate the model and print results
-    eval_results = classifier.evaluate(input_fn=lambda: input_function(
-        False, flags.data_dir, flags.batch_size))
+    def input_fn_eval():
+      return input_function(False, flags.data_dir, flags.batch_size,
+                            1, flags.input_threads)
+    eval_results = classifier.evaluate(input_fn=input_fn_eval)
     print(eval_results)
 
 
@@ -588,3 +592,7 @@ class ResnetArgParser(argparse.ArgumentParser):
              'is not always compatible with CPU. If left unspecified, '
              'the data format will be chosen automatically based on '
              'whether TensorFlow was built for CPU or GPU.')
+
+    self.add_argument(
+        '--input_threads', type=int, default=5,
+        help='Number of CPU threads to use for input processing.')

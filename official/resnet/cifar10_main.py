@@ -109,7 +109,7 @@ def preprocess_image(image, is_training):
   return image
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, input_threads=1):
   """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
@@ -117,6 +117,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
+    input_threads: The number of CPU threads to use for input processing.
 
   Returns:
     A tuple of images and labels.
@@ -129,9 +130,10 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     # is a relatively small dataset, we choose to shuffle the full epoch.
     dataset = dataset.shuffle(buffer_size=_NUM_IMAGES['train'])
 
-  dataset = dataset.map(parse_record)
+  dataset = dataset.map(parse_record, num_parallel_calls=input_threads)
   dataset = dataset.map(
-      lambda image, label: (preprocess_image(image, is_training), label))
+      lambda image, label: (preprocess_image(image, is_training), label),
+      num_parallel_calls=input_threads)
 
   dataset = dataset.prefetch(2 * batch_size)
 
