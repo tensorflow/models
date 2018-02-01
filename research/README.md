@@ -21,6 +21,8 @@ installation](https://www.tensorflow.org/install).
     [AudioSet](http://g.co/audioset).
 -   [autoencoder](autoencoder): various autoencoders.
 -   [brain_coder](brain_coder): Program synthesis with reinforcement learning.
+-   [capsules](capsules): Capsules code for "Dynamic Routing between Capsules" 
+    paper.
 -   [cognitive_mapping_and_planning](cognitive_mapping_and_planning):
     implementation of a spatial memory based mapping and planning architecture
     for visual navigation.
