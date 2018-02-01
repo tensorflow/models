@@ -114,6 +114,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, input_threads=1):
       filenames(is_training, data_dir))
 
   if is_training:
+    # Shuffle the input files
     dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
 
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
@@ -122,6 +123,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, input_threads=1):
   dataset = dataset.prefetch(2 * batch_size)
 
   if is_training:
+    # Shuffle the images themselves.
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes have better performance.
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)

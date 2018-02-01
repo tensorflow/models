@@ -131,9 +131,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, input_threads=1):
     dataset = dataset.shuffle(buffer_size=_NUM_IMAGES['train'])
 
   dataset = dataset.map(parse_record, num_parallel_calls=input_threads)
-  dataset = dataset.map(
-      lambda image, label: (preprocess_image(image, is_training), label),
-      num_parallel_calls=input_threads)
+  #dataset = dataset.map(
+  #    lambda image, label: (preprocess_image(image, is_training), label),
+  #    num_parallel_calls=input_threads)
 
   dataset = dataset.prefetch(2 * batch_size)
 

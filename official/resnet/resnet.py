@@ -564,6 +564,10 @@ class ResnetArgParser(argparse.ArgumentParser):
         help='The directory where the input data is stored.')
 
     self.add_argument(
+        '--input_threads', type=int, default=5,
+        help='Number of CPU threads to use for input processing.')
+
+    self.add_argument(
         '--model_dir', type=str, default='/tmp/resnet_model',
         help='The directory where the model will be stored.')
 
@@ -592,7 +596,3 @@ class ResnetArgParser(argparse.ArgumentParser):
              'is not always compatible with CPU. If left unspecified, '
              'the data format will be chosen automatically based on '
              'whether TensorFlow was built for CPU or GPU.')
-
-    self.add_argument(
-        '--input_threads', type=int, default=5,
-        help='Number of CPU threads to use for input processing.')
