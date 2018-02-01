@@ -50,7 +50,7 @@ FLAGS = tf.flags.FLAGS
 
 def metric_fn(labels, logits):
   accuracy = tf.metrics.accuracy(
-      labels=tf.argmax(labels, axis=1), predictions=tf.argmax(logits, axis=1))
+      labels=labels, predictions=tf.argmax(logits, axis=1))
   return {"accuracy": accuracy}
 
 
@@ -64,7 +64,7 @@ def model_fn(features, labels, mode, params):
 
   model = mnist.Model("channels_last")
   logits = model(image, training=(mode == tf.estimator.ModeKeys.TRAIN))
-  loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
+  loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
 
   if mode == tf.estimator.ModeKeys.TRAIN:
     learning_rate = tf.train.exponential_decay(
