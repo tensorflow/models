@@ -36,7 +36,11 @@ from __future__ import print_function
 import argparse
 import os
 
+from tensorflow.python.training import basic_session_run_hooks
+from tensorflow.python.platform import tf_logging as logging
+from tensorflow.python.training import session_run_hook
 import tensorflow as tf
+from tensorflow.python.training import training_util
 
 _BATCH_NORM_DECAY = 0.997
 _BATCH_NORM_EPSILON = 1e-5
@@ -50,9 +54,14 @@ def batch_norm_relu(inputs, training, data_format):
   # We set fused=True for a significant performance boost. See
   # https://www.tensorflow.org/performance/performance_guide#common_fused_ops
   inputs = tf.layers.batch_normalization(
-      inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
-      momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
-      scale=True, training=training, fused=True)
+      inputs=inputs,
+      axis=1 if data_format == 'channels_first' else 3,
+      momentum=_BATCH_NORM_DECAY,
+      epsilon=_BATCH_NORM_EPSILON,
+      center=True,
+      scale=True,
+      training=training,
+      fused=True)
   inputs = tf.nn.relu(inputs)
   return inputs
 
@@ -76,11 +85,11 @@ def fixed_padding(inputs, kernel_size, data_format):
   pad_end = pad_total - pad_beg
 
   if data_format == 'channels_first':
-    padded_inputs = tf.pad(inputs, [[0, 0], [0, 0],
-                                    [pad_beg, pad_end], [pad_beg, pad_end]])
+    padded_inputs = tf.pad(
+        inputs, [[0, 0], [0, 0], [pad_beg, pad_end], [pad_beg, pad_end]])
   else:
-    padded_inputs = tf.pad(inputs, [[0, 0], [pad_beg, pad_end],
-                                    [pad_beg, pad_end], [0, 0]])
+    padded_inputs = tf.pad(
+        inputs, [[0, 0], [pad_beg, pad_end], [pad_beg, pad_end], [0, 0]])
   return padded_inputs
 
 
@@ -92,8 +101,12 @@ def conv2d_fixed_padding(inputs, filters, kernel_size, strides, data_format):
     inputs = fixed_padding(inputs, kernel_size, data_format)
 
   return tf.layers.conv2d(
-      inputs=inputs, filters=filters, kernel_size=kernel_size, strides=strides,
-      padding=('SAME' if strides == 1 else 'VALID'), use_bias=False,
+      inputs=inputs,
+      filters=filters,
+      kernel_size=kernel_size,
+      strides=strides,
+      padding=('SAME' if strides == 1 else 'VALID'),
+      use_bias=False,
       kernel_initializer=tf.variance_scaling_initializer(),
       data_format=data_format)
 
@@ -126,19 +139,25 @@ def building_block(inputs, filters, training, projection_shortcut, strides,
     shortcut = projection_shortcut(inputs)
 
   inputs = conv2d_fixed_padding(
-      inputs=inputs, filters=filters, kernel_size=3, strides=strides,
+      inputs=inputs,
+      filters=filters,
+      kernel_size=3,
+      strides=strides,
       data_format=data_format)
 
   inputs = batch_norm_relu(inputs, training, data_format)
   inputs = conv2d_fixed_padding(
-      inputs=inputs, filters=filters, kernel_size=3, strides=1,
+      inputs=inputs,
+      filters=filters,
+      kernel_size=3,
+      strides=1,
       data_format=data_format)
 
   return inputs + shortcut
 
 
-def bottleneck_block(inputs, filters, training, projection_shortcut,
-                     strides, data_format):
+def bottleneck_block(inputs, filters, training, projection_shortcut, strides,
+                     data_format):
   """Bottleneck block variant for residual networks with BN before convolutions.
 
   Args:
@@ -166,17 +185,26 @@ def bottleneck_block(inputs, filters, training, projection_shortcut,
     shortcut = projection_shortcut(inputs)
 
   inputs = conv2d_fixed_padding(
-      inputs=inputs, filters=filters, kernel_size=1, strides=1,
+      inputs=inputs,
+      filters=filters,
+      kernel_size=1,
+      strides=1,
       data_format=data_format)
 
   inputs = batch_norm_relu(inputs, training, data_format)
   inputs = conv2d_fixed_padding(
-      inputs=inputs, filters=filters, kernel_size=3, strides=strides,
+      inputs=inputs,
+      filters=filters,
+      kernel_size=3,
+      strides=strides,
       data_format=data_format)
 
   inputs = batch_norm_relu(inputs, training, data_format)
   inputs = conv2d_fixed_padding(
-      inputs=inputs, filters=4 * filters, kernel_size=1, strides=1,
+      inputs=inputs,
+      filters=4 * filters,
+      kernel_size=1,
+      strides=1,
       data_format=data_format)
 
   return inputs + shortcut
@@ -208,7 +236,10 @@ def block_layer(inputs, filters, block_fn, blocks, strides, training, name,
 
   def projection_shortcut(inputs):
     return conv2d_fixed_padding(
-        inputs=inputs, filters=filters_out, kernel_size=1, strides=strides,
+        inputs=inputs,
+        filters=filters_out,
+        kernel_size=1,
+        strides=strides,
         data_format=data_format)
 
   # Only the first block per block_layer uses projection_shortcut and strides
@@ -225,10 +256,21 @@ class Model(object):
   """Base class for building the Resnet v2 Model.
   """
 
-  def __init__(self, resnet_size, num_classes, num_filters, kernel_size,
-               conv_stride, first_pool_size, first_pool_stride,
-               second_pool_size, second_pool_stride, block_fn, block_sizes,
-               block_strides, final_size, data_format=None):
+  def __init__(self,
+               resnet_size,
+               num_classes,
+               num_filters,
+               kernel_size,
+               conv_stride,
+               first_pool_size,
+               first_pool_stride,
+               second_pool_size,
+               second_pool_stride,
+               block_fn,
+               block_sizes,
+               block_strides,
+               final_size,
+               data_format=None):
     """Creates a model for classifying an image.
 
     Args:
@@ -259,8 +301,8 @@ class Model(object):
     self.resnet_size = resnet_size
 
     if not data_format:
-      data_format = (
-          'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
+      data_format = ('channels_first'
+                     if tf.test.is_built_with_cuda() else 'channels_last')
 
     self.data_format = data_format
     self.num_classes = num_classes
@@ -295,29 +337,40 @@ class Model(object):
       inputs = tf.transpose(inputs, [0, 3, 1, 2])
 
     inputs = conv2d_fixed_padding(
-        inputs=inputs, filters=self.num_filters, kernel_size=self.kernel_size,
-        strides=self.conv_stride, data_format=self.data_format)
+        inputs=inputs,
+        filters=self.num_filters,
+        kernel_size=self.kernel_size,
+        strides=self.conv_stride,
+        data_format=self.data_format)
     inputs = tf.identity(inputs, 'initial_conv')
 
     if self.first_pool_size:
       inputs = tf.layers.max_pooling2d(
-          inputs=inputs, pool_size=self.first_pool_size,
-          strides=self.first_pool_stride, padding='SAME',
+          inputs=inputs,
+          pool_size=self.first_pool_size,
+          strides=self.first_pool_stride,
+          padding='SAME',
           data_format=self.data_format)
       inputs = tf.identity(inputs, 'initial_max_pool')
 
     for i, num_blocks in enumerate(self.block_sizes):
       num_filters = self.num_filters * (2**i)
       inputs = block_layer(
-          inputs=inputs, filters=num_filters, block_fn=self.block_fn,
-          blocks=num_blocks, strides=self.block_strides[i],
-          training=training, name='block_layer{}'.format(i + 1),
+          inputs=inputs,
+          filters=num_filters,
+          block_fn=self.block_fn,
+          blocks=num_blocks,
+          strides=self.block_strides[i],
+          training=training,
+          name='block_layer{}'.format(i + 1),
           data_format=self.data_format)
 
     inputs = batch_norm_relu(inputs, training, self.data_format)
     inputs = tf.layers.average_pooling2d(
-        inputs=inputs, pool_size=self.second_pool_size,
-        strides=self.second_pool_stride, padding='VALID',
+        inputs=inputs,
+        pool_size=self.second_pool_size,
+        strides=self.second_pool_stride,
+        padding='VALID',
         data_format=self.data_format)
     inputs = tf.identity(inputs, 'final_avg_pool')
 
@@ -330,8 +383,8 @@ class Model(object):
 ################################################################################
 # Functions for running training/eval/validation loops for the model.
 ################################################################################
-def learning_rate_with_decay(
-    batch_size, batch_denom, num_images, boundary_epochs, decay_rates):
+def learning_rate_with_decay(batch_size, batch_denom, num_images,
+                             boundary_epochs, decay_rates):
   """Get a learning rate that decays step-wise as training progresses.
 
   Args:
@@ -365,9 +418,17 @@ def learning_rate_with_decay(
   return learning_rate_fn
 
 
-def resnet_model_fn(features, labels, mode, model_class,
-                    resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format, loss_filter_fn=None, multi_gpu=False):
+def resnet_model_fn(features,
+                    labels,
+                    mode,
+                    model_class,
+                    resnet_size,
+                    weight_decay,
+                    learning_rate_fn,
+                    momentum,
+                    data_format,
+                    loss_filter_fn=None,
+                    num_gpus=False):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -395,8 +456,8 @@ def resnet_model_fn(features, labels, mode, model_class,
       True if the var should be included in loss calculation, and False
       otherwise. If None, batch_normalization variables will be excluded
       from the loss.
-    multi_gpu: If True, wrap the optimizer in a TowerOptimizer to allow
-      for running on multiple GPUs.
+    num_gpus: If > -1, wrap the optimizer in a TowerOptimizer to allow
+      for running on multiple GPUs. If > 0 tower model on that number of gpus.
   Returns:
     EstimatorSpec parameterized according to the input params and the
     current mode.
@@ -430,9 +491,11 @@ def resnet_model_fn(features, labels, mode, model_class,
     loss_filter_fn = lambda name: 'batch_normalization' not in name
 
   # Add weight decay to the loss.
-  loss = cross_entropy + weight_decay * tf.add_n(
-      [tf.nn.l2_loss(v) for v in tf.trainable_variables()
-       if loss_filter_fn(v.name)])
+  loss = cross_entropy + weight_decay * tf.add_n([
+      tf.nn.l2_loss(v)
+      for v in tf.trainable_variables()
+      if loss_filter_fn(v.name)
+  ])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
     global_step = tf.train.get_or_create_global_step()
@@ -444,11 +507,10 @@ def resnet_model_fn(features, labels, mode, model_class,
     tf.summary.scalar('learning_rate', learning_rate)
 
     optimizer = tf.train.MomentumOptimizer(
-        learning_rate=learning_rate,
-        momentum=momentum)
+        learning_rate=learning_rate, momentum=momentum)
 
     # If we are running multi-GPU, we need to wrap the optimizer.
-    if multi_gpu:
+    if num_gpus > -1:
       optimizer = tf.contrib.estimator.TowerOptimizer(optimizer)
 
     # Batch norm requires update ops to be added as a dependency to train_op
@@ -502,24 +564,33 @@ def resnet_main(flags, model_function, input_function):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
-  if flags.multi_gpu:
+  if flags.num_gpus > -1:
     validate_batch_size_for_multi_gpu(flags.batch_size)
+
+    # Supports num_gups
+    devices = None
+    if flags.num_gpus > 0:
+      devices = ['GPU:{}'.format(i) for i in xrange(flags.num_gpus)]
 
     # There are two steps required if using multi-GPU: (1) wrap the model_fn,
     # and (2) wrap the optimizer. The first happens here, and (2) happens
     # in the model_fn itself when the optimizer is defined.
     model_function = tf.contrib.estimator.replicate_model_fn(
-        model_function, loss_reduction=tf.losses.Reduction.MEAN)
+        model_function,
+        loss_reduction=tf.losses.Reduction.MEAN,
+        devices=devices)
 
   # Set up a RunConfig to only save checkpoints once per training cycle.
   run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
   classifier = tf.estimator.Estimator(
-      model_fn=model_function, model_dir=flags.model_dir, config=run_config,
+      model_fn=model_function,
+      model_dir=flags.model_dir,
+      config=run_config,
       params={
           'resnet_size': flags.resnet_size,
           'data_format': flags.data_format,
           'batch_size': flags.batch_size,
-          'multi_gpu': flags.multi_gpu,
+          'num_gpus': flags.num_gpus,
       })
 
   for _ in range(flags.train_epochs // flags.epochs_per_eval):
@@ -532,21 +603,92 @@ def resnet_main(flags, model_function, input_function):
     logging_hook = tf.train.LoggingTensorHook(
         tensors=tensors_to_log, every_n_iter=100)
 
+    examples_sec_hook = ExamplesPerSecondHook(
+        flags.batch_size, every_n_steps=10)
+
     print('Starting a training cycle.')
 
     def input_fn_train():
       return input_function(True, flags.data_dir, flags.batch_size,
                             flags.epochs_per_eval, flags.input_threads)
 
-    classifier.train(input_fn=input_fn_train, hooks=[logging_hook])
+    classifier.train(
+        input_fn=input_fn_train, hooks=[logging_hook, examples_sec_hook])
 
     print('Starting to evaluate.')
+
     # Evaluate the model and print results
     def input_fn_eval():
-      return input_function(False, flags.data_dir, flags.batch_size,
-                            1, flags.input_threads)
+      return input_function(False, flags.data_dir, flags.batch_size, 1,
+                            flags.input_threads)
+
     eval_results = classifier.evaluate(input_fn=input_fn_eval)
     print(eval_results)
+
+
+class ExamplesPerSecondHook(session_run_hook.SessionRunHook):
+  """Hook to print out examples per second.
+    Total time is tracked and then divided by the total number of steps
+    to get the average step time and then batch_size is used to determine
+    the running average of examples per second. The examples per second for the
+    most recent interval is also logged.
+  """
+
+  def __init__(self,
+               batch_size,
+               every_n_steps=100,
+               every_n_secs=None,
+               warm_steps=0):
+    """Initializer for ExamplesPerSecondHook.
+    Args:
+      batch_size: Total batch size used to calculate examples/second from
+        global time.
+      every_n_steps: Log stats every n steps.
+      every_n_secs: Log stats every n seconds.
+      warm_steps: skip this number of steps before logging and running
+        average.
+    Raises:
+      ValueError: if neither `every_n_steps` or `every_n_secs` is set.
+    """
+    if (every_n_steps is None) == (every_n_secs is None):
+      raise ValueError('exactly one of every_n_steps'
+                       ' and every_n_secs should be provided.')
+    self._timer = basic_session_run_hooks.SecondOrStepTimer(
+        every_steps=every_n_steps, every_secs=every_n_secs)
+
+    self._step_train_time = 0
+    self._total_steps = 0
+    self._batch_size = batch_size
+    self._warm_steps = warm_steps
+
+  def begin(self):
+    self._global_step_tensor = training_util.get_global_step()
+    if self._global_step_tensor is None:
+      raise RuntimeError(
+          'Global step should be created to use StepCounterHook.')
+
+  def before_run(self, run_context):  # pylint: disable=unused-argument
+    return basic_session_run_hooks.SessionRunArgs(self._global_step_tensor)
+
+  def after_run(self, run_context, run_values):
+    _ = run_context
+
+    global_step = run_values.results
+    if self._timer.should_trigger_for_step(
+        global_step) and global_step > self._warm_steps:
+      elapsed_time, elapsed_steps = self._timer.update_last_triggered_step(
+          global_step)
+      if elapsed_time is not None:
+        steps_per_sec = elapsed_steps / elapsed_time
+        self._step_train_time += elapsed_time
+        self._total_steps += elapsed_steps
+
+        average_examples_per_sec = self._batch_size * (
+            self._total_steps / self._step_train_time)
+        current_examples_per_sec = steps_per_sec * self._batch_size
+        # Average examples/sec followed by current examples/sec
+        logging.info('Batch [%g] %g exp/sec (%g)', self._total_steps,
+                     current_examples_per_sec, average_examples_per_sec)
 
 
 class ResnetArgParser(argparse.ArgumentParser):
@@ -556,43 +698,62 @@ class ResnetArgParser(argparse.ArgumentParser):
   def __init__(self, resnet_size_choices=None):
     super(ResnetArgParser, self).__init__()
     self.add_argument(
-        '--multi_gpu', action='store_true',
-        help='If set, run across all available GPUs.')
+        '--num_gpus',
+        type=int,
+        default=-1,
+        help='If not set, uses all available GPUs or CPU if GPUs are not'
+        'available')
 
     self.add_argument(
-        '--data_dir', type=str, default='/tmp/resnet_data',
+        '--data_dir',
+        type=str,
+        default='/tmp/resnet_data',
         help='The directory where the input data is stored.')
 
     self.add_argument(
-        '--model_dir', type=str, default='/tmp/resnet_model',
+        '--model_dir',
+        type=str,
+        default='/tmp/resnet_model',
         help='The directory where the model will be stored.')
 
     self.add_argument(
-        '--resnet_size', type=int, default=50,
+        '--resnet_size',
+        type=int,
+        default=50,
         choices=resnet_size_choices,
         help='The size of the ResNet model to use.')
 
     self.add_argument(
-        '--train_epochs', type=int, default=100,
+        '--train_epochs',
+        type=int,
+        default=100,
         help='The number of epochs to use for training.')
 
     self.add_argument(
-        '--epochs_per_eval', type=int, default=1,
+        '--epochs_per_eval',
+        type=int,
+        default=1,
         help='The number of training epochs to run between evaluations.')
 
     self.add_argument(
-        '--batch_size', type=int, default=32,
+        '--batch_size',
+        type=int,
+        default=32,
         help='Batch size for training and evaluation.')
 
     self.add_argument(
-        '--data_format', type=str, default=None,
+        '--data_format',
+        type=str,
+        default=None,
         choices=['channels_first', 'channels_last'],
         help='A flag to override the data format used in the model. '
-             'channels_first provides a performance boost on GPU but '
-             'is not always compatible with CPU. If left unspecified, '
-             'the data format will be chosen automatically based on '
-             'whether TensorFlow was built for CPU or GPU.')
+        'channels_first provides a performance boost on GPU but '
+        'is not always compatible with CPU. If left unspecified, '
+        'the data format will be chosen automatically based on '
+        'whether TensorFlow was built for CPU or GPU.')
 
     self.add_argument(
-        '--input_threads', type=int, default=5,
+        '--input_threads',
+        type=int,
+        default=5,
         help='Number of CPU threads to use for input processing.')

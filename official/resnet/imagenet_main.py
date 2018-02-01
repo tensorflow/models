@@ -46,12 +46,13 @@ def filenames(is_training, data_dir):
   """Return filenames for dataset."""
   if is_training:
     return [
-        os.path.join(data_dir, 'train-%05d-of-01024' % i)
-        for i in range(1024)]
+        os.path.join(data_dir, 'train-%05d-of-01024' % i) for i in range(1024)
+    ]
   else:
     return [
         os.path.join(data_dir, 'validation-%05d-of-00128' % i)
-        for i in range(128)]
+        for i in range(128)
+    ]
 
 
 def parse_record(raw_record, is_training):
@@ -80,8 +81,7 @@ def parse_record(raw_record, is_training):
   parsed = tf.parse_single_example(raw_record, keys_to_features)
 
   image = tf.image.decode_image(
-      tf.reshape(parsed['image/encoded'], shape=[]),
-      _NUM_CHANNELS)
+      tf.reshape(parsed['image/encoded'], shape=[]), _NUM_CHANNELS)
   image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
   image = vgg_preprocessing.preprocess_image(
@@ -91,8 +91,7 @@ def parse_record(raw_record, is_training):
       is_training=is_training)
 
   label = tf.cast(
-      tf.reshape(parsed['image/class/label'], shape=[]),
-      dtype=tf.int32)
+      tf.reshape(parsed['image/class/label'], shape=[]), dtype=tf.int32)
 
   return image, tf.one_hot(label, _NUM_CLASSES)
 
@@ -110,15 +109,15 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, input_threads=1):
   Returns:
     A tuple of images and labels.
   """
-  dataset = tf.data.Dataset.from_tensor_slices(
-      filenames(is_training, data_dir))
+  dataset = tf.data.Dataset.from_tensor_slices(filenames(is_training, data_dir))
 
   if is_training:
     dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
 
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
-  dataset = dataset.map(lambda value: parse_record(value, is_training),
-                        num_parallel_calls=input_threads)
+  dataset = dataset.map(
+      lambda value: parse_record(value, is_training),
+      num_parallel_calls=input_threads)
   dataset = dataset.prefetch(2 * batch_size)
 
   if is_training:
@@ -198,19 +197,24 @@ def _get_imagenet_layers(resnet_size):
 def imagenet_model_fn(features, labels, mode, params):
   """Our model_fn for ResNet to be used with our Estimator."""
   learning_rate_fn = resnet.learning_rate_with_decay(
-      batch_size=params['batch_size'], batch_denom=256,
-      num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
+      batch_size=params['batch_size'],
+      batch_denom=256,
+      num_images=_NUM_IMAGES['train'],
+      boundary_epochs=[30, 60, 80, 90],
       decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
 
-
-  return resnet.resnet_model_fn(features, labels, mode, ImagenetModel,
-                                resnet_size=params['resnet_size'],
-                                weight_decay=1e-4,
-                                learning_rate_fn=learning_rate_fn,
-                                momentum=0.9,
-                                data_format=params['data_format'],
-                                loss_filter_fn=None,
-                                multi_gpu=params['multi_gpu'])
+  return resnet.resnet_model_fn(
+      features,
+      labels,
+      mode,
+      ImagenetModel,
+      resnet_size=params['resnet_size'],
+      weight_decay=1e-4,
+      learning_rate_fn=learning_rate_fn,
+      momentum=0.9,
+      data_format=params['data_format'],
+      loss_filter_fn=None,
+      num_gpus=params['num_gpus'])
 
 
 def main(unused_argv):
