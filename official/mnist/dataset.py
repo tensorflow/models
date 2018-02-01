@@ -89,15 +89,14 @@ def dataset(directory, images_file, labels_file):
     image = tf.reshape(image, [784])
     return image / 255.0
 
-  def one_hot_label(label):
-    label = tf.decode_raw(label, tf.uint8)  # tf.string -> tf.uint8
-    label = tf.reshape(label, [])  # label is a scalar
-    return tf.one_hot(label, 10)
+  def decode_label(label):
+    label = tf.decode_raw(label, tf.uint8)  # tf.string -> [tf.uint8]
+    return tf.to_int32(label)
 
   images = tf.data.FixedLengthRecordDataset(
       images_file, 28 * 28, header_bytes=16).map(decode_image)
   labels = tf.data.FixedLengthRecordDataset(
-      labels_file, 1, header_bytes=8).map(one_hot_label)
+      labels_file, 1, header_bytes=8).map(decode_label)
   return tf.data.Dataset.zip((images, labels))
 
 
