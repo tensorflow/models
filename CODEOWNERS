@@ -1,0 +1,46 @@
+/official/ @nealwu @k-w-w @karmel
+/research/adversarial_crypto/ @dave-andersen
+/research/adversarial_text/ @rsepassi
+/research/adv_imagenet_models/ @AlexeyKurakin
+/research/attention_ocr/ @alexgorban
+/research/audioset/ @plakal @dpwe
+/research/autoencoders/ @snurkabill
+/research/brain_coder/ @danabo
+/research/cognitive_mapping_and_planning/ @s-gupta
+/research/compression/ @nmjohn
+/research/delf/ @andrefaraujo
+/research/differential_privacy/ @panyx0718
+/research/domain_adaptation/ @bousmalis @dmrd
+/research/gan/ @joel-shor
+/research/im2txt/ @cshallue
+/research/inception/ @shlens @vincentvanhoucke
+/research/learned_optimizer/ @olganw @nirum
+/research/learning_to_remember_rare_events/ @lukaszkaiser @ofirnachum
+/research/lfads/ @jazcollins @susillo
+/research/lm_1b/ @oriolvinyals @panyx0718
+/research/namignizer/ @knathanieltucker
+/research/neural_gpu/ @lukaszkaiser
+/research/neural_programmer/ @arvind2505
+/research/next_frame_prediction/ @panyx0718
+/research/object_detection/ @jch1 @tombstone @derekjchow @jesu9 @dreamdragon
+/research/pcl_rl/ @ofirnachum
+/research/ptn/ @xcyan @arkanath @hellojas @honglaklee
+/research/real_nvp/ @laurent-dinh
+/research/rebar/ @gjtucker
+/research/resnet/ @panyx0718
+/research/skip_thoughts/ @cshallue
+/research/slim/ @sguada @nathansilberman
+/research/street/ @theraysmith
+/research/swivel/ @waterson
+/research/syntaxnet/ @calberti @andorardo @bogatyy @markomernick
+/research/tcn/ @coreylynch @sermanet
+/research/textsum/ @panyx0718 @peterjliu
+/research/transformer/ @daviddao
+/research/video_prediction/ @cbfinn
+/research/fivo/ @dieterichlawson
+/samples/ @MarkDaoust
+/samples/languages/java/ @asimshankar
+/tutorials/embedding/ @zffchen78 @a-dai
+/tutorials/image/ @sherrym @shlens
+/tutorials/image/cifar10_estimator/ @tfboyd @protoget
+/tutorials/rnn/ @lukaszkaiser @ebrevdo
