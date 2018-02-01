@@ -27,8 +27,8 @@ BATCH_SIZE = 100
 
 def dummy_input_fn():
   image = tf.random_uniform([BATCH_SIZE, 784])
-  labels = tf.random_uniform([BATCH_SIZE], maxval=9, dtype=tf.int32)
-  return image, tf.one_hot(labels, 10)
+  labels = tf.random_uniform([BATCH_SIZE, 1], maxval=9, dtype=tf.int32)
+  return image, labels
 
 
 def make_estimator():
