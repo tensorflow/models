@@ -22,6 +22,7 @@ import tensorflow as tf
 
 from object_detection.core import data_decoder
 from object_detection.core import standard_fields as fields
+from object_detection.protos import input_reader_pb2
 from object_detection.utils import label_map_util
 
 slim_example_decoder = tf.contrib.slim.tfexample_decoder
@@ -32,12 +33,15 @@ class TfExampleDecoder(data_decoder.DataDecoder):
 
   def __init__(self,
                load_instance_masks=False,
+               instance_mask_type=input_reader_pb2.NUMERICAL_MASKS,
                label_map_proto_file=None,
                use_display_name=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
       load_instance_masks: whether or not to load and handle instance masks.
+      instance_mask_type: type of instance masks. Options are provided in
+        input_reader.proto. This is only used if `load_instance_masks` is True.
       label_map_proto_file: a file path to a
         object_detection.protos.StringIntLabelMap proto. If provided, then the
         mapped IDs of 'image/object/class/text' will take precedence over the
@@ -46,6 +50,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       use_display_name: whether or not to use the `display_name` for label
         mapping (instead of `name`).  Only used if label_map_proto_file is
         provided.
+
+    Raises:
+      ValueError: If `instance_mask_type` option is not one of
+        input_reader_pb2.DEFAULT, input_reader_pb2.NUMERICAL, or
+        input_reader_pb2.PNG_MASKS.
     """
     self.keys_to_features = {
         'image/encoded':
@@ -83,6 +92,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.VarLenFeature(tf.int64),
         'image/object/group_of':
             tf.VarLenFeature(tf.int64),
+        'image/object/weight':
+            tf.VarLenFeature(tf.float32),
     }
     self.items_to_handlers = {
         fields.InputDataFields.image: slim_example_decoder.Image(
@@ -104,19 +115,46 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         fields.InputDataFields.groundtruth_difficult: (
             slim_example_decoder.Tensor('image/object/difficult')),
         fields.InputDataFields.groundtruth_group_of: (
-            slim_example_decoder.Tensor('image/object/group_of'))
+            slim_example_decoder.Tensor('image/object/group_of')),
+        fields.InputDataFields.groundtruth_weights: (
+            slim_example_decoder.Tensor('image/object/weight')),
     }
     if load_instance_masks:
-      self.keys_to_features['image/object/mask'] = tf.VarLenFeature(tf.float32)
-      self.items_to_handlers[
-          fields.InputDataFields.groundtruth_instance_masks] = (
-              slim_example_decoder.ItemHandlerCallback(
-                  ['image/object/mask', 'image/height', 'image/width'],
-                  self._reshape_instance_masks))
-    # TODO: Add label_handler that decodes from 'image/object/class/text'
-    # primarily after the recent tf.contrib.slim changes make into a release
-    # supported by cloudml.
-    label_handler = slim_example_decoder.Tensor('image/object/class/label')
+      if instance_mask_type in (input_reader_pb2.DEFAULT,
+                                input_reader_pb2.NUMERICAL_MASKS):
+        self.keys_to_features['image/object/mask'] = (
+            tf.VarLenFeature(tf.float32))
+        self.items_to_handlers[
+            fields.InputDataFields.groundtruth_instance_masks] = (
+                slim_example_decoder.ItemHandlerCallback(
+                    ['image/object/mask', 'image/height', 'image/width'],
+                    self._reshape_instance_masks))
+      elif instance_mask_type == input_reader_pb2.PNG_MASKS:
+        self.keys_to_features['image/object/mask'] = tf.VarLenFeature(tf.string)
+        self.items_to_handlers[
+            fields.InputDataFields.groundtruth_instance_masks] = (
+                slim_example_decoder.ItemHandlerCallback(
+                    ['image/object/mask'], self._decode_png_instance_masks))
+      else:
+        raise ValueError('Did not recognize the `instance_mask_type` option.')
+    if label_map_proto_file:
+      label_map = label_map_util.get_label_map_dict(label_map_proto_file,
+                                                    use_display_name)
+      # We use a default_value of -1, but we expect all labels to be contained
+      # in the label map.
+      table = tf.contrib.lookup.HashTable(
+          initializer=tf.contrib.lookup.KeyValueTensorInitializer(
+              keys=tf.constant(list(label_map.keys())),
+              values=tf.constant(list(label_map.values()), dtype=tf.int64)),
+          default_value=-1)
+      # If the label_map_proto is provided, try to use it in conjunction with
+      # the class text, and fall back to a materialized ID.
+      label_handler = slim_example_decoder.BackupHandler(
+          slim_example_decoder.LookupTensor(
+              'image/object/class/text', table, default_value=''),
+          slim_example_decoder.Tensor('image/object/class/label'))
+    else:
+      label_handler = slim_example_decoder.Tensor('image/object/class/label')
     self.items_to_handlers[
         fields.InputDataFields.groundtruth_classes] = label_handler
 
@@ -149,8 +187,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         [None] indicating if the boxes represent `difficult` instances.
       fields.InputDataFields.groundtruth_group_of - 1D bool tensor of shape
         [None] indicating if the boxes represent `group_of` instances.
-      fields.InputDataFields.groundtruth_instance_masks - 3D int64 tensor of
+      fields.InputDataFields.groundtruth_instance_masks - 3D float32 tensor of
         shape [None, None, None] containing instance masks.
+      fields.InputDataFields.groundtruth_weights - 1D float32 tensor of
+        shape [None] indicating the weights of groundtruth boxes.
     """
     serialized_example = tf.reshape(tf_example_string_tensor, shape=[])
     decoder = slim_example_decoder.TFExampleDecoder(self.keys_to_features,
@@ -167,7 +207,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     """Reshape instance segmentation masks.
 
     The instance segmentation masks are reshaped to [num_instances, height,
-    width] and cast to boolean type to save memory.
+    width].
 
     Args:
       keys_to_tensors: a dictionary from keys to tensors.
@@ -184,3 +224,29 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       masks = tf.sparse_tensor_to_dense(masks)
     masks = tf.reshape(tf.to_float(tf.greater(masks, 0.0)), to_shape)
     return tf.cast(masks, tf.float32)
+
+  def _decode_png_instance_masks(self, keys_to_tensors):
+    """Decode PNG instance segmentation masks and stack into dense tensor.
+
+    The instance segmentation masks are reshaped to [num_instances, height,
+    width].
+
+    Args:
+      keys_to_tensors: a dictionary from keys to tensors.
+
+    Returns:
+      A 3-D float tensor of shape [num_instances, height, width] with values
+        in {0, 1}.
+    """
+
+    def decode_png_mask(image_buffer):
+      image = tf.squeeze(
+          tf.image.decode_image(image_buffer, channels=1), axis=2)
+      image.set_shape([None, None])
+      image = tf.to_float(tf.greater(image, 0))
+      return image
+
+    png_masks = keys_to_tensors['image/object/mask']
+    if isinstance(png_masks, tf.SparseTensor):
+      png_masks = tf.sparse_tensor_to_dense(png_masks, default_value='')
+    return tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32)

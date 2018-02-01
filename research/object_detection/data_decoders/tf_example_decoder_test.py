@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
+from object_detection.protos import input_reader_pb2
 
 
 class TfExampleDecoderTest(tf.test.TestCase):
@@ -116,6 +117,36 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(decoded_png, tensor_dict[fields.InputDataFields.image])
     self.assertEqual('image_id', tensor_dict[fields.InputDataFields.source_id])
 
+  def testDecodePngInstanceMasks(self):
+    image_tensor = np.random.randint(256, size=(10, 10, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    mask_1 = np.random.randint(0, 2, size=(10, 10, 1)).astype(np.uint8)
+    mask_2 = np.random.randint(0, 2, size=(10, 10, 1)).astype(np.uint8)
+    encoded_png_1 = self._EncodeImage(mask_1, encoding_type='png')
+    decoded_png_1 = np.squeeze(mask_1.astype(np.float32))
+    encoded_png_2 = self._EncodeImage(mask_2, encoding_type='png')
+    decoded_png_2 = np.squeeze(mask_2.astype(np.float32))
+    encoded_masks = [encoded_png_1, encoded_png_2]
+    decoded_masks = np.stack([decoded_png_1, decoded_png_2])
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded': self._BytesFeature(encoded_jpeg),
+                'image/format': self._BytesFeature('jpeg'),
+                'image/object/mask': self._BytesFeature(encoded_masks)
+            })).SerializeToString()
+
+    example_decoder = tf_example_decoder.TfExampleDecoder(
+        load_instance_masks=True, instance_mask_type=input_reader_pb2.PNG_MASKS)
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+
+    self.assertAllEqual(
+        decoded_masks,
+        tensor_dict[fields.InputDataFields.groundtruth_instance_masks])
+
   def testDecodeBoundingBox(self):
     image_tensor = np.random.randint(255, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
@@ -166,6 +197,48 @@ class TfExampleDecoderTest(tf.test.TestCase):
       tensor_dict = sess.run(tensor_dict)
 
     self.assertAllEqual(bbox_classes,
+                        tensor_dict[fields.InputDataFields.groundtruth_classes])
+
+  def testDecodeObjectLabelWithMapping(self):
+    image_tensor = np.random.randint(255, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    bbox_classes_text = ['cat', 'dog']
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded':
+                    self._BytesFeature(encoded_jpeg),
+                'image/format':
+                    self._BytesFeature('jpeg'),
+                'image/object/class/text':
+                    self._BytesFeature(bbox_classes_text),
+            })).SerializeToString()
+
+    label_map_string = """
+      item {
+        id:3
+        name:'cat'
+      }
+      item {
+        id:1
+        name:'dog'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+    example_decoder = tf_example_decoder.TfExampleDecoder(
+        label_map_proto_file=label_map_path)
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.groundtruth_classes]
+                         .get_shape().as_list()), [None])
+
+    with self.test_session() as sess:
+      sess.run(tf.tables_initializer())
+      tensor_dict = sess.run(tensor_dict)
+
+    self.assertAllEqual([3, 1],
                         tensor_dict[fields.InputDataFields.groundtruth_classes])
 
   def testDecodeObjectArea(self):
@@ -258,6 +331,30 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(
         [bool(item) for item in object_group_of],
         tensor_dict[fields.InputDataFields.groundtruth_group_of])
+
+  def testDecodeObjectWeight(self):
+    image_tensor = np.random.randint(255, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    object_weights = [0.75, 1.0]
+    example = tf.train.Example(features=tf.train.Features(
+        feature={
+            'image/encoded': self._BytesFeature(encoded_jpeg),
+            'image/format': self._BytesFeature('jpeg'),
+            'image/object/weight': self._FloatFeature(object_weights),
+        })).SerializeToString()
+
+    example_decoder = tf_example_decoder.TfExampleDecoder()
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+
+    self.assertAllEqual((tensor_dict[
+        fields.InputDataFields.groundtruth_weights].get_shape().as_list()),
+                        [None])
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+
+    self.assertAllEqual(
+        object_weights,
+        tensor_dict[fields.InputDataFields.groundtruth_weights])
 
   def testDecodeInstanceSegmentation(self):
     num_instances = 4

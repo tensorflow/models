@@ -50,6 +50,8 @@ flags.DEFINE_boolean('faces_only', True, 'If True, generates bounding boxes '
                      'for pet faces.  Otherwise generates bounding boxes (as '
                      'well as segmentations for full pet bodies).  Note that '
                      'in the latter case, the resulting files are much larger.')
+flags.DEFINE_string('mask_type', 'png', 'How to represent instance '
+                    'segmentation masks. Options are "png" or "numerical".')
 FLAGS = flags.FLAGS
 
 
@@ -72,7 +74,8 @@ def dict_to_tf_example(data,
                        label_map_dict,
                        image_subdirectory,
                        ignore_difficult_instances=False,
-                       faces_only=True):
+                       faces_only=True,
+                       mask_type='png'):
   """Convert XML derived dict to tf.Example proto.
 
   Notice that this function normalizes the bounding box coordinates provided
@@ -89,6 +92,8 @@ def dict_to_tf_example(data,
       dataset  (default: False).
     faces_only: If True, generates bounding boxes for pet faces.  Otherwise
       generates bounding boxes (as well as segmentations for full pet bodies).
+    mask_type: 'numerical' or 'png'. 'png' is recommended because it leads to
+      smaller file sizes.
 
   Returns:
     example: The converted tf.Example.
@@ -158,7 +163,7 @@ def dict_to_tf_example(data,
     truncated.append(int(obj['truncated']))
     poses.append(obj['pose'].encode('utf8'))
     if not faces_only:
-      mask_remapped = mask_np != 2
+      mask_remapped = (mask_np != 2).astype(np.uint8)
       masks.append(mask_remapped)
 
   feature_dict = {
@@ -182,10 +187,20 @@ def dict_to_tf_example(data,
       'image/object/view': dataset_util.bytes_list_feature(poses),
   }
   if not faces_only:
-    mask_stack = np.stack(masks).astype(np.float32)
-    masks_flattened = np.reshape(mask_stack, [-1])
-    feature_dict['image/object/mask'] = (
-        dataset_util.float_list_feature(masks_flattened.tolist()))
+    if mask_type == 'numerical':
+      mask_stack = np.stack(masks).astype(np.float32)
+      masks_flattened = np.reshape(mask_stack, [-1])
+      feature_dict['image/object/mask'] = (
+          dataset_util.float_list_feature(masks_flattened.tolist()))
+    elif mask_type == 'png':
+      encoded_mask_png_list = []
+      for mask in masks:
+        img = PIL.Image.fromarray(mask)
+        output = io.BytesIO()
+        img.save(output, format='PNG')
+        encoded_mask_png_list.append(output.getvalue())
+      feature_dict['image/object/mask'] = (
+          dataset_util.bytes_list_feature(encoded_mask_png_list))
 
   example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
   return example
@@ -196,7 +211,8 @@ def create_tf_record(output_filename,
                      annotations_dir,
                      image_dir,
                      examples,
-                     faces_only=True):
+                     faces_only=True,
+                     mask_type='png'):
   """Creates a TFRecord file from examples.
 
   Args:
@@ -207,6 +223,8 @@ def create_tf_record(output_filename,
     examples: Examples to parse and save to tf record.
     faces_only: If True, generates bounding boxes for pet faces.  Otherwise
       generates bounding boxes (as well as segmentations for full pet bodies).
+    mask_type: 'numerical' or 'png'. 'png' is recommended because it leads to
+      smaller file sizes.
   """
   writer = tf.python_io.TFRecordWriter(output_filename)
   for idx, example in enumerate(examples):
@@ -225,7 +243,12 @@ def create_tf_record(output_filename,
 
     try:
       tf_example = dict_to_tf_example(
-          data, mask_path, label_map_dict, image_dir, faces_only=faces_only)
+          data,
+          mask_path,
+          label_map_dict,
+          image_dir,
+          faces_only=faces_only,
+          mask_type=mask_type)
       writer.write(tf_example.SerializeToString())
     except ValueError:
       logging.warning('Invalid example: %s, ignoring.', xml_path)
@@ -233,7 +256,7 @@ def create_tf_record(output_filename,
   writer.close()
 
 
-# TODO(derekjchow): Add test for pet/PASCAL main files.
+# TODO: Add test for pet/PASCAL main files.
 def main(_):
   data_dir = FLAGS.data_dir
   label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
@@ -262,10 +285,22 @@ def main(_):
                                      'pet_train_with_masks.record')
     val_output_path = os.path.join(FLAGS.output_dir,
                                    'pet_val_with_masks.record')
-  create_tf_record(train_output_path, label_map_dict, annotations_dir,
-                   image_dir, train_examples, faces_only=FLAGS.faces_only)
-  create_tf_record(val_output_path, label_map_dict, annotations_dir,
-                   image_dir, val_examples, faces_only=FLAGS.faces_only)
+  create_tf_record(
+      train_output_path,
+      label_map_dict,
+      annotations_dir,
+      image_dir,
+      train_examples,
+      faces_only=FLAGS.faces_only,
+      mask_type=FLAGS.mask_type)
+  create_tf_record(
+      val_output_path,
+      label_map_dict,
+      annotations_dir,
+      image_dir,
+      val_examples,
+      faces_only=FLAGS.faces_only,
+      mask_type=FLAGS.mask_type)
 
 
 if __name__ == '__main__':

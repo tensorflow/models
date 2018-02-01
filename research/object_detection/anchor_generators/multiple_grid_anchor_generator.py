@@ -165,7 +165,10 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
         grid.
 
     Returns:
-      boxes: a BoxList holding a collection of N anchor boxes
+      boxes: a BoxList holding a collection of N anchor boxes.  Additionally
+        this BoxList also holds a `feature_map_index` field which, for each
+        anchor, stores the index of the corresponding feature map which was used
+        to generate it.
     Raises:
       ValueError: if feature_map_shape_list, box_specs_list do not have the same
         length.
@@ -208,6 +211,7 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
         raise ValueError('%s must be a list of pairs.' % arg_name)
 
     anchor_grid_list = []
+    anchor_indices_list = []
     min_im_shape = tf.minimum(im_height, im_width)
     scale_height = min_im_shape / im_height
     scale_width = min_im_shape / im_width
@@ -215,32 +219,40 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
         scale_height * self._base_anchor_size[0],
         scale_width * self._base_anchor_size[1]
     ]
-    for grid_size, scales, aspect_ratios, stride, offset in zip(
-        feature_map_shape_list, self._scales, self._aspect_ratios,
-        anchor_strides, anchor_offsets):
-      anchor_grid_list.append(
-          grid_anchor_generator.tile_anchors(
-              grid_height=grid_size[0],
-              grid_width=grid_size[1],
-              scales=scales,
-              aspect_ratios=aspect_ratios,
-              base_anchor_size=base_anchor_size,
-              anchor_stride=stride,
-              anchor_offset=offset))
+    for feature_map_index, (
+        grid_size, scales, aspect_ratios, stride, offset) in enumerate(
+            zip(feature_map_shape_list, self._scales, self._aspect_ratios,
+                anchor_strides, anchor_offsets)):
+      tiled_anchors = grid_anchor_generator.tile_anchors(
+          grid_height=grid_size[0],
+          grid_width=grid_size[1],
+          scales=scales,
+          aspect_ratios=aspect_ratios,
+          base_anchor_size=base_anchor_size,
+          anchor_stride=stride,
+          anchor_offset=offset)
+      anchor_grid_list.append(tiled_anchors)
+      num_anchors_in_layer = tiled_anchors.num_boxes_static()
+      if num_anchors_in_layer is None:
+        num_anchors_in_layer = tiled_anchors.num_boxes()
+      anchor_indices_list.append(
+          feature_map_index * tf.ones([num_anchors_in_layer]))
     concatenated_anchors = box_list_ops.concatenate(anchor_grid_list)
+    anchor_indices = tf.concat(anchor_indices_list, 0)
     num_anchors = concatenated_anchors.num_boxes_static()
     if num_anchors is None:
       num_anchors = concatenated_anchors.num_boxes()
     if self._clip_window is not None:
       concatenated_anchors = box_list_ops.clip_to_window(
           concatenated_anchors, self._clip_window, filter_nonoverlapping=False)
-      # TODO(jonathanhuang): make reshape an option for the clip_to_window op
+      # TODO: make reshape an option for the clip_to_window op
       concatenated_anchors.set(
           tf.reshape(concatenated_anchors.get(), [num_anchors, 4]))
 
     stddevs_tensor = 0.01 * tf.ones(
         [num_anchors, 4], dtype=tf.float32, name='stddevs')
     concatenated_anchors.add_field('stddev', stddevs_tensor)
+    concatenated_anchors.add_field('feature_map_index', anchor_indices)
 
     return concatenated_anchors
 

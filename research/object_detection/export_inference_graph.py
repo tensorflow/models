@@ -65,6 +65,31 @@ with contents:
  - model.ckpt.meta
  - frozen_inference_graph.pb
  + saved_model (a directory)
+
+Config overrides (see the `config_override` flag) are text protobufs
+(also of type pipeline_pb2.TrainEvalPipelineConfig) which are used to override
+certain fields in the provided pipeline_config_path.  These are useful for
+making small changes to the inference graph that differ from the training or
+eval config.
+
+Example Usage (in which we change the second stage post-processing score
+threshold to be 0.5):
+
+python export_inference_graph \
+    --input_type image_tensor \
+    --pipeline_config_path path/to/ssd_inception_v2.config \
+    --trained_checkpoint_prefix path/to/model.ckpt \
+    --output_directory path/to/exported_model_directory \
+    --config_override " \
+            model{ \
+              faster_rcnn { \
+                second_stage_post_processing { \
+                  batch_non_max_suppression { \
+                    score_threshold: 0.5 \
+                  } \
+                } \
+              } \
+            }"
 """
 import tensorflow as tf
 from google.protobuf import text_format
@@ -92,7 +117,9 @@ flags.DEFINE_string('trained_checkpoint_prefix', None,
                     'Path to trained checkpoint, typically of the form '
                     'path/to/model.ckpt')
 flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
-
+flags.DEFINE_string('config_override', '',
+                    'pipeline_pb2.TrainEvalPipelineConfig '
+                    'text proto to override pipeline_config_path.')
 tf.app.flags.mark_flag_as_required('pipeline_config_path')
 tf.app.flags.mark_flag_as_required('trained_checkpoint_prefix')
 tf.app.flags.mark_flag_as_required('output_directory')
@@ -103,6 +130,7 @@ def main(_):
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
   with tf.gfile.GFile(FLAGS.pipeline_config_path, 'r') as f:
     text_format.Merge(f.read(), pipeline_config)
+  text_format.Merge(FLAGS.config_override, pipeline_config)
   if FLAGS.input_shape:
     input_shape = [
         int(dim) if dim != '-1' else None

@@ -106,6 +106,7 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   min_depth = feature_extractor_config.min_depth
   pad_to_multiple = feature_extractor_config.pad_to_multiple
   batch_norm_trainable = feature_extractor_config.batch_norm_trainable
+  use_explicit_padding = feature_extractor_config.use_explicit_padding
   conv_hyperparams = hyperparams_builder.build(
       feature_extractor_config.conv_hyperparams, is_training)
 
@@ -115,7 +116,8 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
   return feature_extractor_class(is_training, depth_multiplier, min_depth,
                                  pad_to_multiple, conv_hyperparams,
-                                 batch_norm_trainable, reuse_weights)
+                                 batch_norm_trainable, reuse_weights,
+                                 use_explicit_padding)
 
 
 def _build_ssd_model(ssd_config, is_training):
@@ -228,7 +230,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training):
   feature_extractor = _build_faster_rcnn_feature_extractor(
       frcnn_config.feature_extractor, is_training)
 
-  first_stage_only = frcnn_config.first_stage_only
+  number_of_stages = frcnn_config.number_of_stages
   first_stage_anchor_generator = anchor_generator_builder.build(
       frcnn_config.first_stage_anchor_generator)
 
@@ -283,7 +285,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training):
       'num_classes': num_classes,
       'image_resizer_fn': image_resizer_fn,
       'feature_extractor': feature_extractor,
-      'first_stage_only': first_stage_only,
+      'number_of_stages': number_of_stages,
       'first_stage_anchor_generator': first_stage_anchor_generator,
       'first_stage_atrous_rate': first_stage_atrous_rate,
       'first_stage_box_predictor_arg_scope':

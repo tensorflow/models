@@ -33,12 +33,14 @@ message LocalizationLoss {
 
 // L2 location loss: 0.5 * ||weight * (a - b)|| ^ 2
 message WeightedL2LocalizationLoss {
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
 }
 
 // SmoothL1 (Huber) location loss: .5 * x ^ 2 if |x| < 1 else |x| - .5
 message WeightedSmoothL1LocalizationLoss {
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
 }
@@ -59,6 +61,7 @@ message ClassificationLoss {
 
 // Classification loss using a sigmoid function over class predictions.
 message WeightedSigmoidClassificationLoss {
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
 }
@@ -66,6 +69,7 @@ message WeightedSigmoidClassificationLoss {
 // Sigmoid Focal cross entropy loss as described in
 // https://arxiv.org/abs/1708.02002
 message SigmoidFocalClassificationLoss {
+  // DEPRECATED, do not use.
   optional bool anchorwise_output = 1 [default = false];
   // modulating factor for the loss.
   optional float gamma = 2 [default = 2.0];
@@ -75,6 +79,7 @@ message SigmoidFocalClassificationLoss {
 
 // Classification loss using a softmax function over class predictions.
 message WeightedSoftmaxClassificationLoss {
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 1 [default=false];
   // Scale logit (input) value before calculating softmax classification loss.
@@ -93,6 +98,7 @@ message BootstrappedSigmoidClassificationLoss {
   // probabilities.
   optional bool hard_bootstrap = 2 [default=false];
 
+  // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 3 [default=false];
 }
