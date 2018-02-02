@@ -197,7 +197,8 @@ def cifar10_model_fn(features, labels, mode, params):
   # for the CIFAR-10 dataset, perhaps because the regularization prevents
   # overfitting on the small data set. We therefore include all vars when
   # regularizing and computing loss during training.
-  loss_filter_fn = lambda name: True
+  def loss_filter_fn(name):
+    return True
 
   return resnet_shared.resnet_model_fn(features, labels, mode, Cifar10Model,
                                        resnet_size=params['resnet_size'],

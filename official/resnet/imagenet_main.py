@@ -189,7 +189,6 @@ def imagenet_model_fn(features, labels, mode, params):
       num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
       decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
 
-
   return resnet_shared.resnet_model_fn(features, labels, mode, ImagenetModel,
                                        resnet_size=params['resnet_size'],
                                        weight_decay=1e-4,
