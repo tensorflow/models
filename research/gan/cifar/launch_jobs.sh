@@ -89,7 +89,7 @@ if [[ "$gan_type" == "unconditional" ]]; then
     --dataset_dir=${DATASET_DIR} \
     --eval_real_images=false \
     --conditional_eval=false \
-    --max_number_of_evaluation=1
+    --max_number_of_evaluations=1
   Banner "Finished unconditional evaluation. See ${UNCONDITIONAL_EVAL_DIR} for output images."
 fi
 
@@ -116,6 +116,6 @@ if [[ "$gan_type" == "conditional" ]]; then
     --dataset_dir=${DATASET_DIR} \
     --eval_real_images=false \
     --conditional_eval=true \
-    --max_number_of_evaluation=1
+    --max_number_of_evaluations=1
   Banner "Finished conditional evaluation. See ${CONDITIONAL_EVAL_DIR} for output images."
 fi
