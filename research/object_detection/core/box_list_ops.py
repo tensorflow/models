@@ -657,7 +657,7 @@ def filter_greater_than(boxlist, thresh, scope=None):
   This op keeps the collection of boxes whose corresponding scores are
   greater than the input threshold.
 
-  TODO: Change function name to FilterScoresGreaterThan
+  TODO: Change function name to filter_scores_greater_than
 
   Args:
     boxlist: BoxList holding N boxes.  Must contain a 'scores' field

@@ -130,7 +130,7 @@ class SSDMetaArch(model.DetectionModel):
                add_summaries=True):
     """SSDMetaArch Constructor.
 
-    TODO(rathodv,jonathanhuang): group NMS parameters + score converter into
+    TODO: group NMS parameters + score converter into
     a class and loss parameters into a class and write config protos for
     postprocessing and losses.
 

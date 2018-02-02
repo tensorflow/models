@@ -40,7 +40,7 @@ Output classes are always integers in the range [0, num_classes).  Any mapping
 of these integers to semantic labels is to be handled outside of this class.
 
 Images are resized in the `preprocess` method. All of `preprocess`, `predict`,
-and `postprocess` should be stateless.
+and `postprocess` should be reentrant.
 
 The `preprocess` method runs `image_resizer_fn` that returns resized_images and
 `true_image_shapes`. Since `image_resizer_fn` can pad the images with zeros,

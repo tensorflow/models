@@ -33,6 +33,7 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 * Chen Sun, github: [jesu9](https://github.com/jesu9)
 * Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
 * Alireza Fathi, github: [afathi3](https://github.com/afathi3)
+* Zhichao Lu, github: [pkulzc](https://github.com/pkulzc)
 
 
 ## Table of contents
