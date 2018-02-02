@@ -47,7 +47,7 @@ _BATCH_NORM_EPSILON = 1e-5
 ################################################################################
 def iterator_for_record_dataset(dataset, batch_size, is_training,
                                 shuffle_buffer, parse_record_fn, num_epochs=1,
-                                input_threads=1):
+                                parallel_calls=1):
   """Given a Dataset with raw records, parse each record into images and labels,
   and return an iterator over the records.
 
@@ -61,7 +61,10 @@ def iterator_for_record_dataset(dataset, batch_size, is_training,
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
     num_epochs: The number of epochs to repeat the dataset.
-    input_threads: The number of CPU threads to use for input processing.
+    parallel_calls: The number of parallel calls to make to the shared
+      threadpool when processing records. This can be optimized per data set,
+      but for generally homogeneous data sets, should be approximately the
+      number of available CPU cores.
 
   Returns:
     Op representing the next image, label pair that can be used to iterate
@@ -81,7 +84,7 @@ def iterator_for_record_dataset(dataset, batch_size, is_training,
 
   # Parse the raw records into images and labels
   dataset = dataset.map(lambda value: parse_record(value, is_training),
-                        num_parallel_calls=input_threads)
+                        num_parallel_calls=parallel_calls)
 
   dataset = dataset.batch(batch_size)
 
@@ -450,6 +453,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       from the loss.
     multi_gpu: If True, wrap the optimizer in a TowerOptimizer to allow
       for running on multiple GPUs.
+
   Returns:
     EstimatorSpec parameterized according to the input params and the
     current mode.
@@ -590,7 +594,7 @@ def resnet_main(flags, model_function, input_function):
 
     def input_fn_train():
       return input_function(True, flags.data_dir, flags.batch_size,
-                            flags.epochs_per_eval, flags.input_threads)
+                            flags.epochs_per_eval, flags.parallel_calls)
 
     classifier.train(input_fn=input_fn_train, hooks=[logging_hook])
 
@@ -598,7 +602,7 @@ def resnet_main(flags, model_function, input_function):
     # Evaluate the model and print results
     def input_fn_eval():
       return input_function(False, flags.data_dir, flags.batch_size,
-                            1, flags.input_threads)
+                            1, flags.parallel_calls)
     eval_results = classifier.evaluate(input_fn=input_fn_eval)
     print(eval_results)
 
@@ -618,8 +622,9 @@ class ResnetArgParser(argparse.ArgumentParser):
         help='The directory where the input data is stored.')
 
     self.add_argument(
-        '--input_threads', type=int, default=5,
-        help='Number of CPU threads to use for input processing.')
+        '--parallel_calls', type=int, default=5,
+        help='The number of parallel calls to make to the shared '
+             'threadpool when processing input.')
 
     self.add_argument(
         '--model_dir', type=str, default='/tmp/resnet_model',
