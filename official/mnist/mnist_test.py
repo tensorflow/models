@@ -27,8 +27,8 @@ BATCH_SIZE = 100
 
 def dummy_input_fn():
   image = tf.random_uniform([BATCH_SIZE, 784])
-  labels = tf.random_uniform([BATCH_SIZE], maxval=9, dtype=tf.int32)
-  return image, tf.one_hot(labels, 10)
+  labels = tf.random_uniform([BATCH_SIZE, 1], maxval=9, dtype=tf.int32)
+  return image, labels
 
 
 def make_estimator():
@@ -62,11 +62,12 @@ class Tests(tf.test.TestCase):
       self.assertEqual(predictions['probabilities'].shape, (10,))
       self.assertEqual(predictions['classes'].shape, ())
 
-  def mnist_model_fn_helper(self, mode):
+  def mnist_model_fn_helper(self, mode, multi_gpu=False):
     features, labels = dummy_input_fn()
     image_count = features.shape[0]
     spec = mnist.model_fn(features, labels, mode, {
-        'data_format': 'channels_last'
+        'data_format': 'channels_last',
+        'multi_gpu': multi_gpu
     })
 
     if mode == tf.estimator.ModeKeys.PREDICT:
@@ -90,6 +91,9 @@ class Tests(tf.test.TestCase):
 
   def test_mnist_model_fn_train_mode(self):
     self.mnist_model_fn_helper(tf.estimator.ModeKeys.TRAIN)
+
+  def test_mnist_model_fn_train_mode_multi_gpu(self):
+    self.mnist_model_fn_helper(tf.estimator.ModeKeys.TRAIN, multi_gpu=True)
 
   def test_mnist_model_fn_eval_mode(self):
     self.mnist_model_fn_helper(tf.estimator.ModeKeys.EVAL)
