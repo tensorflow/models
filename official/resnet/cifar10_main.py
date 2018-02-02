@@ -29,7 +29,7 @@ import resnet_shared
 _HEIGHT = 32
 _WIDTH = 32
 _NUM_CHANNELS = 3
-_DEFAULT_IMAGE_SIZE = _HEIGHT * _WIDTH * _NUM_CHANNELS
+_DEFAULT_IMAGE_BYTES = _HEIGHT * _WIDTH * _NUM_CHANNELS
 _NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
@@ -44,7 +44,7 @@ _NUM_IMAGES = {
 ###############################################################################
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
-  record_bytes = _DEFAULT_IMAGE_SIZE + 1
+  record_bytes = _DEFAULT_IMAGE_BYTES + 1
   return tf.data.FixedLengthRecordDataset(filenames, record_bytes)
 
 
@@ -70,7 +70,7 @@ def parse_record(raw_record):
   # Every record consists of a label followed by the image, with a fixed number
   # of bytes for each.
   label_bytes = 1
-  record_bytes = label_bytes + _DEFAULT_IMAGE_SIZE
+  record_bytes = label_bytes + _DEFAULT_IMAGE_BYTES
 
   # Convert bytes to a vector of uint8 that is record_bytes long.
   record_vector = tf.decode_raw(raw_record, tf.uint8)

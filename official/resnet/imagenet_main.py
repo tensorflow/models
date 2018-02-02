@@ -130,15 +130,12 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
 # Running the model
 ###############################################################################
 class ImagenetModel(resnet_model.Model):
-  # >= this value of resnet_size, use more layers and bottleneck blocks.
-  size_threshold = 50
-
   def __init__(self, resnet_size, data_format=None):
     """These are the parameters that work for Imagenet data.
     """
 
     # For bigger models, we want to use "bottleneck" layers
-    if resnet_size < self.size_threshold:
+    if resnet_size < 50:
       block_fn = resnet_model.building_block
       final_size = 512
     else:
@@ -156,13 +153,13 @@ class ImagenetModel(resnet_model.Model):
         second_pool_size=7,
         second_pool_stride=1,
         block_fn=block_fn,
-        block_sizes=_get_imagenet_layers(resnet_size),
+        block_sizes=_get_block_sizes(resnet_size),
         block_strides=[1, 2, 2, 2],
         final_size=final_size,
         data_format=data_format)
 
 
-def _get_imagenet_layers(resnet_size):
+def _get_block_sizes(resnet_size):
   """The number of block layers used for the Resnet model varies according
   to the size of the model. This helper grabs the layer set we want, throwing
   an error if a non-standard size has been selected.
