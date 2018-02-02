@@ -101,8 +101,7 @@ class BoxPredictor(object):
       with tf.variable_scope(scope):
         return self._predict(image_features, num_predictions_per_location,
                              **params)
-    else:
-      return self._predict(image_features, num_predictions_per_location,
+    return self._predict(image_features, num_predictions_per_location,
                            **params)
 
   # TODO: num_predictions_per_location could be moved to constructor.

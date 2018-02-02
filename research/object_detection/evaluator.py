@@ -117,9 +117,8 @@ def get_evaluators(eval_config, categories):
   for eval_metric_fn_key in eval_metric_fn_keys:
     if eval_metric_fn_key not in EVAL_METRICS_CLASS_DICT:
       raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
-    else:
-      evaluators_list.append(
-          EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](categories=categories))
+    evaluators_list.append(
+        EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](categories=categories))
   return evaluators_list
 
 

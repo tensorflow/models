@@ -17,7 +17,7 @@
 Generates grid anchors on the fly corresponding to multiple CNN layers as
 described in:
 "Focal Loss for Dense Object Detection"
-T.-Y. Lin, P. Goyal, R. Girshick, K. He, P. Dollar
+T.-Y. Lin, P. Goyal, R. Girshick, K. He, P. Dollar (https://arxiv.org/abs/1708.02002)
 """
 
 from object_detection.anchor_generators import grid_anchor_generator
@@ -25,7 +25,7 @@ from object_detection.core import box_list_ops
 
 
 class MultiscaleGridAnchorGenerator(object):
-  """Generate a grid of anchors for multiple CNN layers."""
+  """Generate a grid of anchors for multiple CNN layers of different scale."""
 
   def __init__(self, min_level, max_level, anchor_scale, aspect_ratios,
                scales_per_octave):
