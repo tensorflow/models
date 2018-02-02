@@ -45,9 +45,8 @@ _BATCH_NORM_EPSILON = 1e-5
 ################################################################################
 # Functions for input processing.
 ################################################################################
-def iterator_for_record_dataset(dataset, is_training, batch_size,
-                                shuffle_buffer, parse_record_fn, num_epochs=1,
-                                parallel_calls=1):
+def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
+                           parse_record_fn, num_epochs=1, parallel_calls=1):
   """Given a Dataset with raw records, parse each record into images and labels,
   and return an iterator over the records.
 
@@ -66,8 +65,7 @@ def iterator_for_record_dataset(dataset, is_training, batch_size,
       sets, should be approximately the number of available CPU cores.
 
   Returns:
-    Op representing the next image, label pair that can be used to iterate
-    over images and labels.
+    Dataset of (image, label) pairs ready for iteration.
   """
   # We prefetch a batch at a time, This can help smooth out the time taken to
   # load input files as we go through shuffling and processing.
@@ -93,8 +91,7 @@ def iterator_for_record_dataset(dataset, is_training, batch_size,
   # critical training path.
   dataset = dataset.prefetch(1)
 
-  iterator = dataset.make_one_shot_iterator()
-  return iterator.get_next()
+  return dataset
 
 
 ################################################################################

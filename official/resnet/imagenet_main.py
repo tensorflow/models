@@ -123,7 +123,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, parallel_calls=1):
   # Convert to individual records
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
-  return resnet.iterator_for_record_dataset(dataset, is_training, batch_size,
+  return resnet.process_record_dataset(dataset, is_training, batch_size,
       _SHUFFLE_BUFFER, parse_record, num_epochs, parallel_calls)
 
 
