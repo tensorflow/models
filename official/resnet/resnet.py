@@ -76,7 +76,7 @@ def iterator_for_record_dataset(dataset, batch_size, is_training,
   if is_training:
     # Shuffle the records. Note that we shuffle before repeating to ensure
     # that the shuffling respects epoch boundaries.
-    dataset = dataset.repeat(buffer_size=shuffle_buffer)
+    dataset = dataset.shuffle(buffer_size=shuffle_buffer)
 
   # If we are training over multiple epochs before evaluating, repeat the
   # dataset for the appropriate number of epochs.
