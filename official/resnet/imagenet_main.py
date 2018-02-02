@@ -35,19 +35,20 @@ _NUM_IMAGES = {
     'validation': 50000,
 }
 
-_FILE_SHUFFLE_BUFFER = 1024
+_NUM_TRAIN_FILES = 1024
+
 _SHUFFLE_BUFFER = 1500
 
 
 ###############################################################################
 # Data processing
 ###############################################################################
-def filenames(is_training, data_dir):
+def get_filenames(is_training, data_dir):
   """Return filenames for dataset."""
   if is_training:
     return [
         os.path.join(data_dir, 'train-%05d-of-01024' % i)
-        for i in range(1024)]
+        for i in range(_NUM_TRAIN_FILES)]
   else:
     return [
         os.path.join(data_dir, 'validation-%05d-of-00128' % i)
@@ -110,32 +111,18 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, input_threads=1):
   Returns:
     A tuple of images and labels.
   """
-  dataset = tf.data.Dataset.from_tensor_slices(
-      filenames(is_training, data_dir))
+  filenames = get_filenames(is_training, data_dir)
+  dataset = tf.data.Dataset.from_tensor_slices(filenames)
 
   if is_training:
     # Shuffle the input files
-    dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
+    dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
+  # Convert to individual records
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
-  dataset = dataset.map(lambda value: parse_record(value, is_training),
-                        num_parallel_calls=input_threads)
-  dataset = dataset.prefetch(2 * batch_size)
 
-  if is_training:
-    # Shuffle the images themselves.
-    # When choosing shuffle buffer sizes, larger sizes result in better
-    # randomness, while smaller sizes have better performance.
-    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
-
-  # We call repeat after shuffling, rather than before, to prevent separate
-  # epochs from blending together.
-  dataset = dataset.repeat(num_epochs)
-  dataset = dataset.batch(batch_size)
-
-  iterator = dataset.make_one_shot_iterator()
-  images, labels = iterator.get_next()
-  return images, labels
+  return resnet.iterator_for_record_dataset(dataset, is_training, batch_size,
+      _SHUFFLE_BUFFER, parse_record, num_epochs, input_threads)
 
 
 ###############################################################################

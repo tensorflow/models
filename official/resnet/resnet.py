@@ -43,6 +43,52 @@ _BATCH_NORM_EPSILON = 1e-5
 
 
 ################################################################################
+# Functions for input processing.
+################################################################################
+def iterator_for_record_dataset(dataset, batch_size, is_training,
+                                shuffle_buffer, parse_record_fn, num_epochs=1,
+                                input_threads=1):
+  """Given a Dataset with raw records, parse each record into images and labels,
+  and return an iterator over the records.
+
+  Args:
+    dataset: A Dataset representing raw records
+    is_training: A boolean denoting whether the input is for training.
+    batch_size: The number of samples per batch.
+    shuffle_buffer: The buffer size to use when shuffling records. A larger
+      value results in better randomness, but smaller values perform better.
+    parse_record_fn: A function that takes a raw record and returns the
+      corresponding (image, label) pair.
+    num_epochs: The number of epochs to repeat the dataset.
+    input_threads: The number of CPU threads to use for input processing.
+
+  Returns:
+    Op representing the next image, label pair that can be used to iterate
+    over images and labels.
+  """
+  dataset = dataset.prefetch(buffer_size=batch_size)
+  if is_training:
+    # Shuffle the records.
+    # When choosing shuffle buffer sizes, larger sizes result in better
+    # randomness, while smaller sizes have better performance.
+    dataset = dataset.shuffle(buffer_size=shuffle_buffer)
+
+  # We call repeat after shuffling, rather than before, to prevent separate
+  # epochs from blending together.
+  dataset = dataset.repeat(num_epochs)
+
+  # Parse the raw records into images and labels
+  dataset = dataset.map(lambda value: parse_record(value, is_training),
+                        num_parallel_calls=input_threads)
+
+  dataset = dataset.batch(batch_size)
+  dataset = dataset.prefetch(1)
+
+  iterator = dataset.make_one_shot_iterator()
+  return iterator.get_next()
+
+
+################################################################################
 # Functions building the ResNet model.
 ################################################################################
 def batch_norm_relu(inputs, training, data_format):
