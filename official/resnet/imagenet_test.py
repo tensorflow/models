@@ -50,7 +50,6 @@ class BaseTest(tf.test.TestCase):
       model = imagenet_main.ImagenetModel(
           resnet_size,
           data_format='channels_first' if with_gpu else 'channels_last')
-      model.num_classes = 456
       inputs = tf.random_uniform([1, 224, 224, 3])
       output = model(inputs, training=True)
 
@@ -81,8 +80,8 @@ class BaseTest(tf.test.TestCase):
         self.assertAllEqual(block_layer4.shape, reshape((1, 2048, 7, 7)))
         self.assertAllEqual(avg_pool.shape, reshape((1, 2048, 1, 1)))
 
-      self.assertAllEqual(dense.shape, (1, 456))
-      self.assertAllEqual(output.shape, (1, 456))
+      self.assertAllEqual(dense.shape, (1, _LABEL_CLASSES))
+      self.assertAllEqual(output.shape, (1, _LABEL_CLASSES))
 
   def test_tensor_shapes_resnet_18(self):
     self.tensor_shapes_helper(18)
