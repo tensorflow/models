@@ -122,7 +122,7 @@ def model_fn(features, labels, mode, params):
         eval_metric_ops={
             'accuracy':
                 tf.metrics.accuracy(
-                    labels=tf.argmax(labels, axis=1),
+                    labels=labels,
                     predictions=tf.argmax(logits, axis=1)),
         })
 
