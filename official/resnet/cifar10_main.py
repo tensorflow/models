@@ -28,7 +28,7 @@ import resnet
 _HEIGHT = 32
 _WIDTH = 32
 _NUM_CHANNELS = 3
-_DEFAULT_IMAGE_SIZE = _HEIGHT * _WIDTH * _NUM_CHANNELS
+_DEFAULT_IMAGE_BYTES = _HEIGHT * _WIDTH * _NUM_CHANNELS
 _NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
@@ -43,7 +43,7 @@ _NUM_IMAGES = {
 ###############################################################################
 def record_dataset(filenames):
   """Returns an input pipeline Dataset from `filenames`."""
-  record_bytes = _DEFAULT_IMAGE_SIZE + 1
+  record_bytes = _DEFAULT_IMAGE_BYTES + 1
   return tf.data.FixedLengthRecordDataset(filenames, record_bytes)
 
 
@@ -69,7 +69,7 @@ def parse_record(raw_record):
   # Every record consists of a label followed by the image, with a fixed number
   # of bytes for each.
   label_bytes = 1
-  record_bytes = label_bytes + _DEFAULT_IMAGE_SIZE
+  record_bytes = label_bytes + _DEFAULT_IMAGE_BYTES
 
   # Convert bytes to a vector of uint8 that is record_bytes long.
   record_vector = tf.decode_raw(raw_record, tf.uint8)
@@ -154,7 +154,6 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, input_threads=1):
 # Running the model
 ###############################################################################
 class Cifar10Model(resnet.Model):
-
   def __init__(self, resnet_size, data_format=None):
     """These are the parameters that work for CIFAR-10 data.
     """
@@ -198,7 +197,8 @@ def cifar10_model_fn(features, labels, mode, params):
   # for the CIFAR-10 dataset, perhaps because the regularization prevents
   # overfitting on the small data set. We therefore include all vars when
   # regularizing and computing loss during training.
-  loss_filter_fn = lambda name: True
+  def loss_filter_fn(name):
+    return True
 
   return resnet.resnet_model_fn(features, labels, mode, Cifar10Model,
                                 resnet_size=params['resnet_size'],

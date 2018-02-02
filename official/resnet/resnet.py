@@ -427,7 +427,8 @@ def resnet_model_fn(features, labels, mode, model_class,
   # If no loss_filter_fn is passed, assume we want the default behavior,
   # which is that batch_normalization variables are excluded from loss.
   if not loss_filter_fn:
-    loss_filter_fn = lambda name: 'batch_normalization' not in name
+    def loss_filter_fn(name):
+      return 'batch_normalization' not in name
 
   # Add weight decay to the loss.
   loss = cross_entropy + weight_decay * tf.add_n(

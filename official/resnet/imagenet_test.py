@@ -81,8 +81,8 @@ class BaseTest(tf.test.TestCase):
         self.assertAllEqual(block_layer4.shape, reshape((1, 2048, 7, 7)))
         self.assertAllEqual(avg_pool.shape, reshape((1, 2048, 1, 1)))
 
-      self.assertAllEqual(dense.shape, (1, 456))
-      self.assertAllEqual(output.shape, (1, 456))
+      self.assertAllEqual(dense.shape, (1, _LABEL_CLASSES))
+      self.assertAllEqual(output.shape, (1, _LABEL_CLASSES))
 
   def test_tensor_shapes_resnet_18(self):
     self.tensor_shapes_helper(18)
