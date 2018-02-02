@@ -56,7 +56,8 @@ def iterator_for_record_dataset(dataset, batch_size, is_training,
     is_training: A boolean denoting whether the input is for training.
     batch_size: The number of samples per batch.
     shuffle_buffer: The buffer size to use when shuffling records. A larger
-      value results in better randomness, but smaller values perform better.
+      value results in better randomness, but smaller values perform better
+      and use less memory.
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
     num_epochs: The number of epochs to repeat the dataset.
@@ -66,22 +67,28 @@ def iterator_for_record_dataset(dataset, batch_size, is_training,
     Op representing the next image, label pair that can be used to iterate
     over images and labels.
   """
+  # We prefetch a batch at a time, This can help smooth out the time taken to
+  # load input files as we go through shuffling and processing.
   dataset = dataset.prefetch(buffer_size=batch_size)
   if is_training:
-    # Shuffle the records.
-    # When choosing shuffle buffer sizes, larger sizes result in better
-    # randomness, while smaller sizes have better performance.
-    dataset = dataset.shuffle(buffer_size=shuffle_buffer)
-
-  # We call repeat after shuffling, rather than before, to prevent separate
-  # epochs from blending together.
-  dataset = dataset.repeat(num_epochs)
+    # Note that shuffle_and_repeat allows us to maintain ordering by epoch
+    # while not incurring the performance cost of having to reinitialize
+    # the state of the transformation at each epoch
+    dataset = dataset.shuffle_and_repeat(
+        buffer_size=shuffle_buffer, count=num_epochs)
+  else:
+    dataset = dataset.repeat(num_epochs)
 
   # Parse the raw records into images and labels
   dataset = dataset.map(lambda value: parse_record(value, is_training),
                         num_parallel_calls=input_threads)
 
   dataset = dataset.batch(batch_size)
+
+  # Operations between the final prefetch and the get_next call to the iterator
+  # will happen synchronously during run time. We prefetch here again to
+  # background all of the above processing work and keep it out of the
+  # critical training path.
   dataset = dataset.prefetch(1)
 
   iterator = dataset.make_one_shot_iterator()
