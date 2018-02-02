@@ -74,13 +74,13 @@ def iterator_for_record_dataset(dataset, batch_size, is_training,
   # load input files as we go through shuffling and processing.
   dataset = dataset.prefetch(buffer_size=batch_size)
   if is_training:
-    # Note that shuffle_and_repeat allows us to maintain ordering by epoch
-    # while not incurring the performance cost of having to reinitialize
-    # the state of the transformation at each epoch
-    dataset = dataset.shuffle_and_repeat(
-        buffer_size=shuffle_buffer, count=num_epochs)
-  else:
-    dataset = dataset.repeat(num_epochs)
+    # Shuffle the records. Note that we shuffle before repeating to ensure
+    # that the shuffling respects epoch boundaries.
+    dataset = dataset.repeat(buffer_size=shuffle_buffer)
+
+  # If we are training over multiple epochs before evaluating, repeat the
+  # dataset for the appropriate number of epochs.
+  dataset = dataset.repeat(num_epochs)
 
   # Parse the raw records into images and labels
   dataset = dataset.map(lambda value: parse_record(value, is_training),
