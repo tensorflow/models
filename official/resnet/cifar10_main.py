@@ -23,8 +23,7 @@ import sys
 
 import tensorflow as tf
 
-import resnet_model
-import resnet_shared
+import resnet
 
 _HEIGHT = 32
 _WIDTH = 32
@@ -152,8 +151,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
 ###############################################################################
 # Running the model
 ###############################################################################
-class Cifar10Model(resnet_model.Model):
-
+class Cifar10Model(resnet.Model):
   def __init__(self, resnet_size, data_format=None):
     """These are the parameters that work for CIFAR-10 data.
     """
@@ -172,7 +170,7 @@ class Cifar10Model(resnet_model.Model):
         first_pool_stride=None,
         second_pool_size=8,
         second_pool_stride=1,
-        block_fn=resnet_model.building_block,
+        block_fn=resnet.building_block,
         block_sizes=[num_blocks] * 3,
         block_strides=[1, 2, 2],
         final_size=64,
@@ -183,7 +181,7 @@ def cifar10_model_fn(features, labels, mode, params):
   """Model function for CIFAR-10."""
   features = tf.reshape(features, [-1, _HEIGHT, _WIDTH, _NUM_CHANNELS])
 
-  learning_rate_fn = resnet_shared.learning_rate_with_decay(
+  learning_rate_fn = resnet.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
       num_images=_NUM_IMAGES['train'], boundary_epochs=[100, 150, 200],
       decay_rates=[1, 0.1, 0.01, 0.001])
@@ -200,23 +198,23 @@ def cifar10_model_fn(features, labels, mode, params):
   def loss_filter_fn(name):
     return True
 
-  return resnet_shared.resnet_model_fn(features, labels, mode, Cifar10Model,
-                                       resnet_size=params['resnet_size'],
-                                       weight_decay=weight_decay,
-                                       learning_rate_fn=learning_rate_fn,
-                                       momentum=0.9,
-                                       data_format=params['data_format'],
-                                       loss_filter_fn=loss_filter_fn)
+  return resnet.resnet_model_fn(features, labels, mode, Cifar10Model,
+                                resnet_size=params['resnet_size'],
+                                weight_decay=weight_decay,
+                                learning_rate_fn=learning_rate_fn,
+                                momentum=0.9,
+                                data_format=params['data_format'],
+                                loss_filter_fn=loss_filter_fn)
 
 
 def main(unused_argv):
-  resnet_shared.resnet_main(FLAGS, cifar10_model_fn, input_fn)
+  resnet.resnet_main(FLAGS, cifar10_model_fn, input_fn)
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  parser = resnet_shared.ResnetArgParser()
+  parser = resnet.ResnetArgParser()
   # Set defaults that are reasonable for this model.
   parser.set_defaults(data_dir='/tmp/cifar10_data',
                       model_dir='/tmp/cifar10_model',
