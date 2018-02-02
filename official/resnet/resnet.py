@@ -83,7 +83,7 @@ def iterator_for_record_dataset(dataset, batch_size, is_training,
   dataset = dataset.repeat(num_epochs)
 
   # Parse the raw records into images and labels
-  dataset = dataset.map(lambda value: parse_record(value, is_training),
+  dataset = dataset.map(lambda value: parse_record_fn(value, is_training),
                         num_parallel_calls=parallel_calls)
 
   dataset = dataset.batch(batch_size)
