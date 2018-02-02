@@ -509,10 +509,8 @@ def resnet_model_fn(features, labels, mode, model_class,
     if multi_gpu:
       optimizer = tf.contrib.estimator.TowerOptimizer(optimizer)
 
-    # Batch norm requires update ops to be added as a dependency to train_op
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-      train_op = optimizer.minimize(loss, global_step)
+    train_op = tf.group(optimizer.minimize(loss, global_step), update_ops)
   else:
     train_op = None
 
