@@ -1,6 +1,6 @@
 <font size=4><b>Reproduced ResNet on CIFAR-10 and CIFAR-100 dataset.</b></font>
 
-contact: panyx0718 (xpan@google.com)
+Xin Pan
 
 <b>Dataset:</b>
 
