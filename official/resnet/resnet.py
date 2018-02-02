@@ -45,7 +45,7 @@ _BATCH_NORM_EPSILON = 1e-5
 ################################################################################
 # Functions for input processing.
 ################################################################################
-def iterator_for_record_dataset(dataset, batch_size, is_training,
+def iterator_for_record_dataset(dataset, is_training, batch_size,
                                 shuffle_buffer, parse_record_fn, num_epochs=1,
                                 parallel_calls=1):
   """Given a Dataset with raw records, parse each record into images and labels,
