@@ -24,7 +24,7 @@ import mnist
 
 BATCH_SIZE = 100
 
-
+# Force commit to test.
 def dummy_input_fn():
   image = tf.random_uniform([BATCH_SIZE, 784])
   labels = tf.random_uniform([BATCH_SIZE, 1], maxval=9, dtype=tf.int32)
@@ -61,6 +61,7 @@ class Tests(tf.test.TestCase):
       predictions = next(predictions_generator)
       self.assertEqual(predictions['probabilities'].shape, (10,))
       self.assertEqual(predictions['classes'].shape, ())
+    raise ValueError
 
   def mnist_model_fn_helper(self, mode, multi_gpu=False):
     features, labels = dummy_input_fn()

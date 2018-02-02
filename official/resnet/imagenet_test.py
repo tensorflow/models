@@ -62,7 +62,7 @@ class BaseTest(tf.test.TestCase):
       avg_pool = graph.get_tensor_by_name('final_avg_pool:0')
       dense = graph.get_tensor_by_name('final_dense:0')
 
-      self.assertAllEqual(initial_conv.shape, reshape((1, 64, 112, 112)))
+      self.assertAllEqual(initial_conv.shape, reshape((1, 64, 112, 1000)))
       self.assertAllEqual(max_pool.shape, reshape((1, 64, 56, 56)))
 
       # The number of channels after each block depends on whether we're
