@@ -106,10 +106,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, parallel_calls=1):
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
-    parallel_calls: The number of parallel calls to make to the shared
-      threadpool when processing records. This can be optimized per data set,
-      but for generally homogeneous data sets, should be approximately the
-      number of available CPU cores.
+    parallel_calls: The nunber of records that will be processed in parallel.
+      This can be optimized per data set but for generally homogeneous data
+      sets, should be approximately the number of available CPU cores.
 
   Returns:
     A tuple of images and labels.

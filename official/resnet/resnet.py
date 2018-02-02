@@ -56,15 +56,14 @@ def iterator_for_record_dataset(dataset, is_training, batch_size,
     is_training: A boolean denoting whether the input is for training.
     batch_size: The number of samples per batch.
     shuffle_buffer: The buffer size to use when shuffling records. A larger
-      value results in better randomness, but smaller values perform better
-      and use less memory.
+      value results in better randomness, but smaller values reduce startup
+      time and use less memory.
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
     num_epochs: The number of epochs to repeat the dataset.
-    parallel_calls: The number of parallel calls to make to the shared
-      threadpool when processing records. This can be optimized per data set,
-      but for generally homogeneous data sets, should be approximately the
-      number of available CPU cores.
+    parallel_calls: The nunber of records that will be processed in parallel.
+      This can be optimized per data set but for generally homogeneous data
+      sets, should be approximately the number of available CPU cores.
 
   Returns:
     Op representing the next image, label pair that can be used to iterate
@@ -621,8 +620,7 @@ class ResnetArgParser(argparse.ArgumentParser):
 
     self.add_argument(
         '--parallel_calls', type=int, default=5,
-        help='The number of parallel calls to make to the shared '
-             'threadpool when processing input.')
+        help='The number of input records to process in parallel.')
 
     self.add_argument(
         '--model_dir', type=str, default='/tmp/resnet_model',
