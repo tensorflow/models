@@ -164,7 +164,8 @@ def init_linear(in_size, out_size, do_bias=True, mat_init_value=None,
   else:
       # construct a non-learnable vector of zeros as the bias
       b = tf.get_variable(bname, [1, out_size],
-                          initializer=tf.zeros_initializer(), trainable=False)
+                          initializer=tf.zeros_initializer(),
+                          collections=b_collections, trainable=False)
 
   return (w, b)
 
