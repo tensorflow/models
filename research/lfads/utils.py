@@ -148,24 +148,21 @@ def init_linear(in_size, out_size, do_bias=True, mat_init_value=None,
     else:
       w = tf.get_variable(wname, [in_size, out_size], initializer=mat_init,
                           collections=w_collections, trainable=trainable)
-
-  b_collections = [tf.GraphKeys.GLOBAL_VARIABLES]
-  if collections:
-    b_collections += collections
-  bname = (name + "/b") if name else "/b"
+  b = None
   if do_bias:
+    b_collections = [tf.GraphKeys.GLOBAL_VARIABLES]
+    if collections:
+      b_collections += collections
+    bname = (name + "/b") if name else "/b"
     if bias_init_value is None:
       b = tf.get_variable(bname, [1, out_size],
                           initializer=tf.zeros_initializer(),
-                          collections=b_collections, trainable=trainable)
+                          collections=b_collections,
+                          trainable=trainable)
     else:
       b = tf.Variable(bias_init_value, name=bname,
-                      collections=b_collections, trainable=trainable)
-  else:
-      # construct a non-learnable vector of zeros as the bias
-      b = tf.get_variable(bname, [1, out_size],
-                          initializer=tf.zeros_initializer(),
-                          collections=b_collections, trainable=False)
+                      collections=b_collections,
+                      trainable=trainable)
 
   return (w, b)
 
