@@ -121,7 +121,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, parallel_calls=1):
   filenames = get_filenames(is_training, data_dir)
   dataset = tf.data.FixedLengthRecordDataset(filenames, _RECORD_BYTES)
 
-   return resnet.process_record_dataset(dataset, is_training, batch_size,
+  return resnet.process_record_dataset(dataset, is_training, batch_size,
       _NUM_IMAGES['train'], parse_record, num_epochs, parallel_calls)
 
 

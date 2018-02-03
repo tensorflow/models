@@ -50,7 +50,6 @@ class BaseTest(tf.test.TestCase):
       model = imagenet_main.ImagenetModel(
           resnet_size,
           data_format='channels_first' if with_gpu else 'channels_last')
-      model.num_classes = 456
       inputs = tf.random_uniform([1, 224, 224, 3])
       output = model(inputs, training=True)
 
@@ -184,3 +183,4 @@ class BaseTest(tf.test.TestCase):
 
 if __name__ == '__main__':
   tf.test.main()
+

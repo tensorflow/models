@@ -43,8 +43,9 @@ class BaseTest(tf.test.TestCase):
     data_file.write(fake_data)
     data_file.close()
 
-    fake_dataset = cifar10_main.record_dataset(filename)
-    fake_dataset = fake_dataset.map(cifar10_main.parse_record)
+    fake_dataset = tf.data.FixedLengthRecordDataset(
+        filename, cifar10_main._RECORD_BYTES)
+    fake_dataset = fake_dataset.map(lambda val: cifar10_main.parse_record(val, True))
     image, label = fake_dataset.make_one_shot_iterator().get_next()
 
     self.assertEqual(label.get_shape().as_list(), [10])
