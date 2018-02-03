@@ -34,7 +34,7 @@ def write_image(image_path, rgb):
     f.write(img_str)
 
 def read_image(image_path, type='rgb'):
-  with fopen(file_name, 'r') as f:
+  with fopen(image_path, 'r') as f:
     I = PIL.Image.open(f)
     II = np.array(I)
     if type == 'rgb':

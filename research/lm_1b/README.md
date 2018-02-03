@@ -3,7 +3,7 @@
 <b>Authors:</b>
 
 Oriol Vinyals (vinyals@google.com, github: OriolVinyals),
-Xin Pan (xpan@google.com, github: panyx0718)
+Xin Pan
 
 <b>Paper Authors:</b>
 
