@@ -366,11 +366,11 @@ class LFADS(object):
       if datasets and 'alignment_matrix_cxf' in datasets[name].keys():
         dataset = datasets[name]
         if hps.do_train_readin:
-            print("Initializing trainable readin matrix with alignment matrix \
-                  provided for dataset:", name)
+            print("Initializing trainable readin matrix with alignment matrix" \
+                  " provided for dataset:", name)
         else:
-            print("Setting non-trainable readin matrix to alignment matrix \
-                  provided for dataset:", name)
+            print("Setting non-trainable readin matrix to alignment matrix" \
+                  " provided for dataset:", name)
         in_mat_cxf = dataset['alignment_matrix_cxf'].astype(np.float32)
         if in_mat_cxf.shape != (data_dim, factors_dim):
           raise ValueError("""Alignment matrix must have dimensions %d x %d
@@ -380,11 +380,11 @@ class LFADS(object):
       if datasets and 'alignment_bias_c' in datasets[name].keys():
         dataset = datasets[name]
         if hps.do_train_readin:
-          print("Initializing trainable readin bias with alignment bias \
-                provided for dataset:", name)
+          print("Initializing trainable readin bias with alignment bias " \
+                "provided for dataset:", name)
         else:
-          print("Setting non-trainable readin bias to alignment bias \
-                provided for dataset:", name)
+          print("Setting non-trainable readin bias to alignment bias " \
+                "provided for dataset:", name)
         align_bias_c = dataset['alignment_bias_c'].astype(np.float32)
         align_bias_1xc = np.expand_dims(align_bias_c, axis=0)
         if align_bias_1xc.shape[1] != data_dim:
@@ -398,7 +398,9 @@ class LFADS(object):
           in_bias_1xf = -np.dot(align_bias_1xc, in_mat_cxf)
 
       if hps.do_train_readin:
-          # only add to IO transformations collection only if we want it to be learnable, because IO_transformations collection will be trained when do_train_io_only
+          # only add to IO transformations collection only if we want it to be
+          # learnable, because IO_transformations collection will be trained
+          # when do_train_io_only
           collections_readin=['IO_transformations']
       else:
           collections_readin=None
