@@ -92,7 +92,7 @@ def init_linear(in_size, out_size, do_bias=True, mat_init_value=None,
     in_size: The integer size of the non-batc input dimension. [(x),y]
     out_size: The integer size of non-batch output dimension. [x,(y)]
     do_bias (optional): Add a (learnable) bias vector to the operation,
-      if false, b will be an appropriately sized, non-trainable vector
+      if false, b will be None
     mat_init_value (optional): numpy constant for matrix initialization, if None
       , do random, with additional parameters.
     alpha (optional): A multiplicative scaling for the weight initialization
