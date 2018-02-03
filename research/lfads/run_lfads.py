@@ -212,9 +212,9 @@ flags.DEFINE_float("co_prior_var_scale", CO_PRIOR_VAR_SCALE,
                    "Variance of control input prior distribution.")
 
 
-flags.DEFINE_float("prior_ar_atau",  PRIOR_AR_AUTOCORRELATION, 
+flags.DEFINE_float("prior_ar_atau",  PRIOR_AR_AUTOCORRELATION,
                    "Initial autocorrelation of AR(1) priors.")
-flags.DEFINE_float("prior_ar_nvar", PRIOR_AR_PROCESS_VAR, 
+flags.DEFINE_float("prior_ar_nvar", PRIOR_AR_PROCESS_VAR,
                    "Initial noise variance for AR(1) priors.")
 flags.DEFINE_boolean("do_train_prior_ar_atau", DO_TRAIN_PRIOR_AR_ATAU,
                      "Is the value for atau an init, or the constant value?")
@@ -257,13 +257,13 @@ flags.DEFINE_boolean("do_causal_controller",
 # Strictly speaking, feeding either the factors or the rates to the controller
 # violates causality, since the g0 gets to see all the data. This may or may not
 # be only a theoretical concern.
-flags.DEFINE_boolean("do_feed_factors_to_controller", 
-                     DO_FEED_FACTORS_TO_CONTROLLER, 
+flags.DEFINE_boolean("do_feed_factors_to_controller",
+                     DO_FEED_FACTORS_TO_CONTROLLER,
                      "Should factors[t-1] be input to controller at time t?")
 flags.DEFINE_string("feedback_factors_or_rates", FEEDBACK_FACTORS_OR_RATES,
                     "Feedback the factors or the rates to the controller? \
                      Acceptable values: 'factors' or 'rates'.")
-flags.DEFINE_integer("controller_input_lag", CONTROLLER_INPUT_LAG, 
+flags.DEFINE_integer("controller_input_lag", CONTROLLER_INPUT_LAG,
                      "Time lag on the encoding to controller t-lag for \
                      forward, t+lag for reverse.")
 
@@ -320,10 +320,13 @@ flags.DEFINE_boolean("do_reset_learning_rate", DO_RESET_LEARNING_RATE,
 
 
 # for multi-session "stitching" models, the per-session readin matrices map from
-# neurons to input factors which are fed into the shared encoder. These are initialized
-# by alignment_matrix_cxf and alignment_bias_c in the input .h5 files. They can be fixed or 
-# made trainable.
-flags.DEFINE_boolean("do_train_readin", DO_TRAIN_READIN, "Whether to train the readin matrices and bias vectors. False leaves them fixed at their initial values specified by the alignment matrices / vectors.")
+# neurons to input factors which are fed into the shared encoder. These are
+# initialized by alignment_matrix_cxf and alignment_bias_c in the input .h5
+# files. They can be fixed or made trainable.
+flags.DEFINE_boolean("do_train_readin", DO_TRAIN_READIN, "Whether to train the \
+                     readin matrices and bias vectors. False leaves them fixed \
+                     at their initial values specified by the alignment \
+                     matrices and vectors.")
 
 
 # OVERFITTING
@@ -439,8 +442,9 @@ def build_model(hps, kind="train", datasets=None):
                 "write_model_params"]:
       print("Possible error!!! You are running ", kind, " on a newly \
       initialized model!")
-      # cant print ckpt.model_check_point path if no ckpt 
-      print("Are you sure you sure a checkpoint in ", hps.lfads_save_dir, " exists?")
+      # cant print ckpt.model_check_point path if no ckpt
+      print("Are you sure you sure a checkpoint in ", hps.lfads_save_dir,
+            " exists?")
 
     tf.global_variables_initializer().run()
 
@@ -462,7 +466,7 @@ def jsonify_dict(d):
   Creates a shallow-copied dictionary first, then accomplishes string
   conversion.
 
-  Args: 
+  Args:
     d: hyperparameter dictionary
 
   Returns: hyperparameter dictionary with bool's as strings
@@ -787,4 +791,3 @@ def main(_):
 
 if __name__ == "__main__":
     tf.app.run()
- 
