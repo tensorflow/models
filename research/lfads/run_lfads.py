@@ -23,6 +23,8 @@ import os
 import tensorflow as tf
 import re
 import utils
+import sys
+MAX_INT = sys.maxsize
 
 # Lots of hyperparameters, but most are pretty insensitive.  The
 # explanation of these hyperparameters is found below, in the flags
@@ -35,7 +37,7 @@ OUTPUT_FILENAME_STEM = ""
 DEVICE = "gpu:0" # "cpu:0", or other gpus, e.g. "gpu:1"
 MAX_CKPT_TO_KEEP = 5
 MAX_CKPT_TO_KEEP_LVE = 5
-PS_NEXAMPLES_TO_PROCESS = 1e8 # if larger than number of examples, process all
+PS_NEXAMPLES_TO_PROCESS = MAX_INT # if larger than number of examples, process all
 EXT_INPUT_DIM = 0
 IC_DIM = 64
 FACTORS_DIM = 50
@@ -53,6 +55,7 @@ INJECT_EXT_INPUT_TO_GEN = False
 DO_TRAIN_IO_ONLY = False
 DO_RESET_LEARNING_RATE = False
 FEEDBACK_FACTORS_OR_RATES = "factors"
+DO_TRAIN_READIN = True
 
 # Calibrated just above the average value for the rnn synthetic data.
 MAX_GRAD_NORM = 200.0
@@ -60,7 +63,7 @@ CELL_CLIP_VALUE = 5.0
 KEEP_PROB = 0.95
 TEMPORAL_SPIKE_JITTER_WIDTH = 0
 OUTPUT_DISTRIBUTION = 'poisson' # 'poisson' or 'gaussian'
-NUM_STEPS_FOR_GEN_IC = np.inf # set to num_steps if greater than num_steps
+NUM_STEPS_FOR_GEN_IC = MAX_INT # set to num_steps if greater than num_steps
 
 DATA_DIR = "/tmp/rnn_synth_data_v1.0/"
 DATA_FILENAME_STEM = "chaotic_rnn_inputs_g1p5"
@@ -316,6 +319,13 @@ flags.DEFINE_boolean("do_reset_learning_rate", DO_RESET_LEARNING_RATE,
                      "Reset the learning rate to initial value.")
 
 
+# for multi-session "stitching" models, the per-session readin matrices map from
+# neurons to input factors which are fed into the shared encoder. These are initialized
+# by alignment_matrix_cxf and alignment_bias_c in the input .h5 files. They can be fixed or 
+# made trainable.
+flags.DEFINE_boolean("do_train_readin", DO_TRAIN_READIN, "Whether to train the readin matrices and bias vectors. False leaves them fixed at their initial values specified by the alignment matrices / vectors.")
+
+
 # OVERFITTING
 # Dropout is done on the input data, on controller inputs (from
 # encoder), on outputs from generator to factors.
@@ -429,7 +439,8 @@ def build_model(hps, kind="train", datasets=None):
                 "write_model_params"]:
       print("Possible error!!! You are running ", kind, " on a newly \
       initialized model!")
-      print("Are you sure you sure ", ckpt.model_checkpoint_path, " exists?")
+      # cant print ckpt.model_check_point path if no ckpt 
+      print("Are you sure you sure a checkpoint in ", hps.lfads_save_dir, " exists?")
 
     tf.global_variables_initializer().run()
 
@@ -536,6 +547,7 @@ def build_hyperparameter_dict(flags):
   d['cell_clip_value'] = flags.cell_clip_value
   d['do_train_io_only'] = flags.do_train_io_only
   d['do_reset_learning_rate'] = flags.do_reset_learning_rate
+  d['do_train_readin'] = flags.do_train_readin
 
   # Overfitting
   d['keep_prob'] = flags.keep_prob
@@ -659,7 +671,7 @@ def write_model_parameters(hps, output_fname=None, datasets=None):
   fname = os.path.join(hps.lfads_save_dir, output_fname)
   print("Writing model parameters to: ", fname)
   # save the optimizer params as well
-  model = build_model(hps, kind="write_model_params", datasets=datasets) 
+  model = build_model(hps, kind="write_model_params", datasets=datasets)
   model_params = model.eval_model_parameters(use_nested=False,
                                              include_strs="LFADS")
   utils.write_data(fname, model_params, compression=None)
