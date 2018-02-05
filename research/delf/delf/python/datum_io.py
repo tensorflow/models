@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Python interface for DatumProto.
 
 DatumProto is protocol buffer used to serialize tensor with arbitrary shape.
@@ -93,7 +92,7 @@ def ReadFromFile(file_path):
   Returns:
     data: Numpy array.
   """
-  with tf.gfile.FastGFile(file_path, 'r') as f:
+  with tf.gfile.FastGFile(file_path, 'rb') as f:
     return ParseFromString(f.read())
 
 
