@@ -46,7 +46,7 @@ _BATCH_NORM_EPSILON = 1e-5
 # Functions for input processing.
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
-                           parse_record_fn, num_epochs=1, parallel_calls=1):
+                           parse_record_fn, num_epochs=1, num_parallel_calls=1):
   """Given a Dataset with raw records, parse each record into images and labels,
   and return an iterator over the records.
   Args:
@@ -59,7 +59,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
     num_epochs: The number of epochs to repeat the dataset.
-    parallel_calls: The nunber of records that will be processed in parallel.
+    num_parallel_calls: The number of records that are processed in parallel.
       This can be optimized per data set but for generally homogeneous data
       sets, should be approximately the number of available CPU cores.
 
@@ -80,7 +80,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
 
   # Parse the raw records into images and labels
   dataset = dataset.map(lambda value: parse_record_fn(value, is_training),
-                        num_parallel_calls=parallel_calls)
+                        num_parallel_calls=num_parallel_calls)
 
   dataset = dataset.batch(batch_size)
 
@@ -548,7 +548,7 @@ def resnet_main(flags, model_function, input_function):
 
     def input_fn_train():
       return input_function(True, flags.data_dir, flags.batch_size,
-                            flags.epochs_per_eval, flags.parallel_calls)
+                            flags.epochs_per_eval, flags.num_parallel_calls)
 
     classifier.train(input_fn=input_fn_train, hooks=[logging_hook])
 
@@ -556,7 +556,7 @@ def resnet_main(flags, model_function, input_function):
     # Evaluate the model and print results
     def input_fn_eval():
       return input_function(False, flags.data_dir, flags.batch_size,
-                            1, flags.parallel_calls)
+                            1, flags.num_parallel_calls)
 
     eval_results = classifier.evaluate(input_fn=input_fn_eval)
     print(eval_results)
@@ -573,8 +573,11 @@ class ResnetArgParser(argparse.ArgumentParser):
         help='The directory where the input data is stored.')
 
     self.add_argument(
-        '--parallel_calls', type=int, default=5,
-        help='The number of input records to process in parallel.')
+        '--num_parallel_calls', type=int, default=5,
+        help='The number of records that are processed in parallel '
+        'during input processing. This can be optimized per data set but '
+        'for generally homogeneous data sets, should be approximately the '
+        'number of available CPU cores.')
 
     self.add_argument(
         '--model_dir', type=str, default='/tmp/resnet_model',

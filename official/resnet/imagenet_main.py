@@ -97,14 +97,15 @@ def parse_record(raw_record, is_training):
   return image, tf.one_hot(label, _NUM_CLASSES)
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, parallel_calls=1):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1,
+             num_parallel_calls=1):
   """Input function which provides batches for train or eval.
   Args:
     is_training: A boolean denoting whether the input is for training.
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
-    parallel_calls: The nunber of records that will be processed in parallel.
+    num_parallel_calls: The number of records that are processed in parallel.
       This can be optimized per data set but for generally homogeneous data
       sets, should be approximately the number of available CPU cores.
 
@@ -122,7 +123,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, parallel_calls=1):
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
   return resnet.process_record_dataset(dataset, is_training, batch_size,
-      _SHUFFLE_BUFFER, parse_record, num_epochs, parallel_calls)
+      _SHUFFLE_BUFFER, parse_record, num_epochs, num_parallel_calls)
 
 
 ###############################################################################
