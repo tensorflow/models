@@ -225,15 +225,15 @@ class PTBModel(object):
 
     self._initial_state = cell.zero_state(config.batch_size, data_type())
     state = self._initial_state
-    # Simplified version of tensorflow_models/tutorials/rnn/rnn.py's rnn().
+    # Simplified version of tf.nn.static_rnn().
     # This builds an unrolled LSTM for tutorial purposes only.
-    # In general, use the rnn() or state_saving_rnn() from rnn.py.
+    # In general, use tf.nn.static_rnn() or tf.nn.static_state_saving_rnn().
     #
     # The alternative version of the code below is:
     #
-    # inputs = tf.unstack(inputs, num=num_steps, axis=1)
-    # outputs, state = tf.contrib.rnn.static_rnn(cell, inputs,
-    #                            initial_state=self._initial_state)
+    # inputs = tf.unstack(inputs, num=self.num_steps, axis=1)
+    # outputs, state = tf.nn.static_rnn(cell, inputs,
+    #                                   initial_state=self._initial_state)
     outputs = []
     with tf.variable_scope("RNN"):
       for time_step in range(self.num_steps):
