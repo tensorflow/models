@@ -43,8 +43,10 @@ class BaseTest(tf.test.TestCase):
     data_file.write(fake_data)
     data_file.close()
 
-    fake_dataset = cifar10_main.record_dataset(filename)
-    fake_dataset = fake_dataset.map(cifar10_main.parse_record)
+    fake_dataset = tf.data.FixedLengthRecordDataset(
+        filename, cifar10_main._RECORD_BYTES)
+    fake_dataset = fake_dataset.map(
+        lambda val: cifar10_main.parse_record(val, False))
     image, label = fake_dataset.make_one_shot_iterator().get_next()
 
     self.assertEqual(label.get_shape().as_list(), [10])
@@ -57,7 +59,7 @@ class BaseTest(tf.test.TestCase):
 
       for row in image:
         for pixel in row:
-          self.assertAllEqual(pixel, np.array([0, 1, 2]))
+          self.assertAllClose(pixel, np.array([-1.225, 0., 1.225]), rtol=1e-3)
 
   def input_fn(self):
     features = tf.random_uniform([_BATCH_SIZE, 32, 32, 3])

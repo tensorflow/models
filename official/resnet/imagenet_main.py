@@ -35,19 +35,19 @@ _NUM_IMAGES = {
     'validation': 50000,
 }
 
-_FILE_SHUFFLE_BUFFER = 1024
+_NUM_TRAIN_FILES = 1024
 _SHUFFLE_BUFFER = 1500
 
 
 ###############################################################################
 # Data processing
 ###############################################################################
-def filenames(is_training, data_dir):
+def get_filenames(is_training, data_dir):
   """Return filenames for dataset."""
   if is_training:
     return [
         os.path.join(data_dir, 'train-%05d-of-01024' % i)
-        for i in range(1024)]
+        for i in range(_NUM_TRAIN_FILES)]
   else:
     return [
         os.path.join(data_dir, 'validation-%05d-of-00128' % i)
@@ -97,32 +97,33 @@ def parse_record(raw_record, is_training):
   return image, tf.one_hot(label, _NUM_CLASSES)
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
-  """Input function which provides batches for train or eval."""
-  dataset = tf.data.Dataset.from_tensor_slices(
-      filenames(is_training, data_dir))
+def input_fn(is_training, data_dir, batch_size, num_epochs=1,
+             num_parallel_calls=1):
+  """Input function which provides batches for train or eval.
+  Args:
+    is_training: A boolean denoting whether the input is for training.
+    data_dir: The directory containing the input data.
+    batch_size: The number of samples per batch.
+    num_epochs: The number of epochs to repeat the dataset.
+    num_parallel_calls: The number of records that are processed in parallel.
+      This can be optimized per data set but for generally homogeneous data
+      sets, should be approximately the number of available CPU cores.
+
+  Returns:
+    A dataset that can be used for iteration.
+  """
+  filenames = get_filenames(is_training, data_dir)
+  dataset = tf.data.Dataset.from_tensor_slices(filenames)
 
   if is_training:
-    dataset = dataset.shuffle(buffer_size=_FILE_SHUFFLE_BUFFER)
+    # Shuffle the input files
+    dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
+  # Convert to individual records
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
-  dataset = dataset.map(lambda value: parse_record(value, is_training),
-                        num_parallel_calls=5)
-  dataset = dataset.prefetch(batch_size)
 
-  if is_training:
-    # When choosing shuffle buffer sizes, larger sizes result in better
-    # randomness, while smaller sizes have better performance.
-    dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER)
-
-  # We call repeat after shuffling, rather than before, to prevent separate
-  # epochs from blending together.
-  dataset = dataset.repeat(num_epochs)
-  dataset = dataset.batch(batch_size)
-
-  iterator = dataset.make_one_shot_iterator()
-  images, labels = iterator.get_next()
-  return images, labels
+  return resnet.process_record_dataset(dataset, is_training, batch_size,
+      _SHUFFLE_BUFFER, parse_record, num_epochs, num_parallel_calls)
 
 
 ###############################################################################
