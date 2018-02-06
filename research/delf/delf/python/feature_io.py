@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Python interface for DelfFeatures proto.
 
 Support read and write of DelfFeatures from/to numpy arrays and file.
@@ -169,7 +168,7 @@ def ReadFromFile(file_path):
     attention: [N] float array with attention scores.
     orientations: [N] float array with orientations.
   """
-  with tf.gfile.FastGFile(file_path, 'r') as f:
+  with tf.gfile.FastGFile(file_path, 'rb') as f:
     return ParseFromString(f.read())
 
 
