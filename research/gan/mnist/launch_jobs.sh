@@ -102,7 +102,7 @@ if [[ "$gan_type" == "unconditional" ]]; then
     --dataset_dir=${DATASET_DIR} \
     --eval_real_images=false \
     --classifier_filename=${FROZEN_GRAPH} \
-    --max_number_of_evaluation=1
+    --max_number_of_evaluations=1
   Banner "Finished unconditional evaluation. See ${UNCONDITIONAL_EVAL_DIR} for output images."
 fi
 
@@ -127,7 +127,7 @@ if [[ "$gan_type" == "conditional" ]]; then
     --checkpoint_dir=${CONDITIONAL_TRAIN_DIR} \
     --eval_dir=${CONDITIONAL_EVAL_DIR} \
     --classifier_filename=${FROZEN_GRAPH} \
-    --max_number_of_evaluation=1
+    --max_number_of_evaluations=1
   Banner "Finished conditional evaluation. See ${CONDITIONAL_EVAL_DIR} for output images."
 fi
 
@@ -152,6 +152,6 @@ if [[ "$gan_type" == "infogan" ]]; then
     --checkpoint_dir=${INFOGAN_TRAIN_DIR} \
     --eval_dir=${INFOGAN_EVAL_DIR} \
     --classifier_filename=${FROZEN_GRAPH} \
-    --max_number_of_evaluation=1
+    --max_number_of_evaluations=1
   Banner "Finished InfoGAN evaluation. See ${INFOGAN_EVAL_DIR} for output images."
 fi
