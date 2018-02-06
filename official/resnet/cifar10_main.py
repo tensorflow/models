@@ -102,7 +102,8 @@ def preprocess_image(image, is_training):
   return image
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1, parallel_calls=1):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1,
+             num_parallel_calls=1):
   """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
@@ -110,19 +111,18 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, parallel_calls=1):
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
-    parallel_calls: The number of parallel calls to make to the shared
-      threadpool when processing records. This can be optimized per data set,
-      but for generally homogeneous data sets, should be approximately the
-      number of available CPU cores.
+    num_parallel_calls: The number of records that are processed in parallel.
+      This can be optimized per data set but for generally homogeneous data
+      sets, should be approximately the number of available CPU cores.
 
   Returns:
-    A tuple of images and labels.
+    A dataset that can be used for iteration.
   """
   filenames = get_filenames(is_training, data_dir)
   dataset = tf.data.FixedLengthRecordDataset(filenames, _RECORD_BYTES)
 
   return resnet.process_record_dataset(dataset, is_training, batch_size,
-      _NUM_IMAGES['train'], parse_record, num_epochs, parallel_calls)
+      _NUM_IMAGES['train'], parse_record, num_epochs, num_parallel_calls)
 
 
 ###############################################################################
