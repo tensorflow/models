@@ -43,6 +43,57 @@ _BATCH_NORM_EPSILON = 1e-5
 
 
 ################################################################################
+# Functions for input processing.
+################################################################################
+def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
+                           parse_record_fn, num_epochs=1, num_parallel_calls=1):
+  """Given a Dataset with raw records, parse each record into images and labels,
+  and return an iterator over the records.
+  Args:
+    dataset: A Dataset representing raw records
+    is_training: A boolean denoting whether the input is for training.
+    batch_size: The number of samples per batch.
+    shuffle_buffer: The buffer size to use when shuffling records. A larger
+      value results in better randomness, but smaller values reduce startup
+      time and use less memory.
+    parse_record_fn: A function that takes a raw record and returns the
+      corresponding (image, label) pair.
+    num_epochs: The number of epochs to repeat the dataset.
+    num_parallel_calls: The number of records that are processed in parallel.
+      This can be optimized per data set but for generally homogeneous data
+      sets, should be approximately the number of available CPU cores.
+
+  Returns:
+    Dataset of (image, label) pairs ready for iteration.
+  """
+  # We prefetch a batch at a time, This can help smooth out the time taken to
+  # load input files as we go through shuffling and processing.
+  dataset = dataset.prefetch(buffer_size=batch_size)
+  if is_training:
+    # Shuffle the records. Note that we shuffle before repeating to ensure
+    # that the shuffling respects epoch boundaries.
+    dataset = dataset.shuffle(buffer_size=shuffle_buffer)
+
+  # If we are training over multiple epochs before evaluating, repeat the
+  # dataset for the appropriate number of epochs.
+  dataset = dataset.repeat(num_epochs)
+
+  # Parse the raw records into images and labels
+  dataset = dataset.map(lambda value: parse_record_fn(value, is_training),
+                        num_parallel_calls=num_parallel_calls)
+
+  dataset = dataset.batch(batch_size)
+
+  # Operations between the final prefetch and the get_next call to the iterator
+  # will happen synchronously during run time. We prefetch here again to
+  # background all of the above processing work and keep it out of the
+  # critical training path.
+  dataset = dataset.prefetch(1)
+
+  return dataset
+
+
+################################################################################
 # Functions building the ResNet model.
 ################################################################################
 def batch_norm_relu(inputs, training, data_format):
@@ -494,15 +545,20 @@ def resnet_main(flags, model_function, input_function):
         tensors=tensors_to_log, every_n_iter=100)
 
     print('Starting a training cycle.')
-    classifier.train(
-        input_fn=lambda: input_function(
-            True, flags.data_dir, flags.batch_size, flags.epochs_per_eval),
-        hooks=[logging_hook])
+
+    def input_fn_train():
+      return input_function(True, flags.data_dir, flags.batch_size,
+                            flags.epochs_per_eval, flags.num_parallel_calls)
+
+    classifier.train(input_fn=input_fn_train, hooks=[logging_hook])
 
     print('Starting to evaluate.')
     # Evaluate the model and print results
-    eval_results = classifier.evaluate(input_fn=lambda: input_function(
-        False, flags.data_dir, flags.batch_size))
+    def input_fn_eval():
+      return input_function(False, flags.data_dir, flags.batch_size,
+                            1, flags.num_parallel_calls)
+
+    eval_results = classifier.evaluate(input_fn=input_fn_eval)
     print(eval_results)
 
 
@@ -515,6 +571,13 @@ class ResnetArgParser(argparse.ArgumentParser):
     self.add_argument(
         '--data_dir', type=str, default='/tmp/resnet_data',
         help='The directory where the input data is stored.')
+
+    self.add_argument(
+        '--num_parallel_calls', type=int, default=5,
+        help='The number of records that are processed in parallel '
+        'during input processing. This can be optimized per data set but '
+        'for generally homogeneous data sets, should be approximately the '
+        'number of available CPU cores.')
 
     self.add_argument(
         '--model_dir', type=str, default='/tmp/resnet_model',
