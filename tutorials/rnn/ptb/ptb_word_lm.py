@@ -233,7 +233,7 @@ class PTBModel(object):
     #
     # inputs = tf.unstack(inputs, num=self.num_steps, axis=1)
     # outputs, state = tf.nn.static_rnn(cell, inputs,
-    #                  initial_state=self._initial_state)
+    #                                   initial_state=self._initial_state)
     outputs = []
     with tf.variable_scope("RNN"):
       for time_step in range(self.num_steps):
