@@ -18,8 +18,9 @@ installation](https://www.tensorflow.org/install).
 -   [attention_ocr](attention_ocr): a model for real-world image text
     extraction.
 -   [audioset](audioset): Models and supporting code for use with
-    [AudioSet](http://g.co.audioset).
+    [AudioSet](http://g.co/audioset).
 -   [autoencoder](autoencoder): various autoencoders.
+-   [brain_coder](brain_coder): Program synthesis with reinforcement learning.
 -   [cognitive_mapping_and_planning](cognitive_mapping_and_planning):
     implementation of a spatial memory based mapping and planning architecture
     for visual navigation.

@@ -49,7 +49,7 @@ import sys
 try:
   opts, args = getopt(
       sys.argv[1:], 'o:v:', ['output=', 'vocab='])
-except GetoptError, e:
+except GetoptError as e:
   print >> sys.stderr, e
   sys.exit(2)
 

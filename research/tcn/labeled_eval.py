@@ -22,6 +22,7 @@ from collections import defaultdict
 import os
 import numpy as np
 from sklearn.metrics.pairwise import pairwise_distances
+from six.moves import xrange
 import data_providers
 from estimators.get_estimator import get_estimator
 from utils import util

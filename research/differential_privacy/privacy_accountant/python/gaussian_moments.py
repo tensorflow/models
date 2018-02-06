@@ -40,12 +40,15 @@ To verify that the I1 >= I2 (see comments in GaussianMomentsAccountant in
 accountant.py for the context), run the same loop above with verify=True
 passed to compute_log_moment.
 """
+from __future__ import print_function
+
 import math
 import sys
 
 import numpy as np
 import scipy.integrate as integrate
 import scipy.stats
+from six.moves import xrange
 from sympy.mpmath import mp
 
 
@@ -108,10 +111,10 @@ def compute_a(sigma, q, lmbd, verbose=False):
   a_lambda_exact = ((1.0 - q) * a_lambda_first_term_exact +
                     q * a_lambda_second_term_exact)
   if verbose:
-    print "A: by binomial expansion    {} = {} + {}".format(
+    print("A: by binomial expansion    {} = {} + {}".format(
         a_lambda_exact,
         (1.0 - q) * a_lambda_first_term_exact,
-        q * a_lambda_second_term_exact)
+        q * a_lambda_second_term_exact))
   return _to_np_float64(a_lambda_exact)
 
 
@@ -125,8 +128,8 @@ def compute_b(sigma, q, lmbd, verbose=False):
   b_fn = lambda z: (np.power(mu0(z) / mu(z), lmbd) -
                     np.power(mu(-z) / mu0(z), lmbd))
   if verbose:
-    print "M =", m
-    print "f(-M) = {} f(M) = {}".format(b_fn(-m), b_fn(m))
+    print("M =", m)
+    print("f(-M) = {} f(M) = {}".format(b_fn(-m), b_fn(m)))
     assert b_fn(-m) < 0 and b_fn(m) < 0
 
   b_lambda_int1_fn = lambda z: (mu0(z) *
@@ -140,9 +143,9 @@ def compute_b(sigma, q, lmbd, verbose=False):
   b_bound = a_lambda_m1 + b_int1 - b_int2
 
   if verbose:
-    print "B: by numerical integration", b_lambda
-    print "B must be no more than     ", b_bound
-  print b_lambda, b_bound
+    print("B: by numerical integration", b_lambda)
+    print("B must be no more than     ", b_bound)
+  print(b_lambda, b_bound)
   return _to_np_float64(b_lambda)
 
 
@@ -188,10 +191,10 @@ def compute_a_mp(sigma, q, lmbd, verbose=False):
   a_lambda_second_term = integral_inf_mp(a_lambda_second_term_fn)
 
   if verbose:
-    print "A: by numerical integration {} = {} + {}".format(
+    print("A: by numerical integration {} = {} + {}".format(
         a_lambda,
         (1 - q) * a_lambda_first_term,
-        q * a_lambda_second_term)
+        q * a_lambda_second_term))
 
   return _to_np_float64(a_lambda)
 
@@ -210,8 +213,8 @@ def compute_b_mp(sigma, q, lmbd, verbose=False):
   b_fn = lambda z: ((mu0(z) / mu(z)) ** lmbd_int -
                     (mu(-z) / mu0(z)) ** lmbd_int)
   if verbose:
-    print "M =", m
-    print "f(-M) = {} f(M) = {}".format(b_fn(-m), b_fn(m))
+    print("M =", m)
+    print("f(-M) = {} f(M) = {}".format(b_fn(-m), b_fn(m)))
     assert b_fn(-m) < 0 and b_fn(m) < 0
 
   b_lambda_int1_fn = lambda z: mu0(z) * (mu0(z) / mu(z)) ** lmbd_int
@@ -223,8 +226,8 @@ def compute_b_mp(sigma, q, lmbd, verbose=False):
   b_bound = a_lambda_m1 + b_int1 - b_int2
 
   if verbose:
-    print "B by numerical integration", b_lambda
-    print "B must be no more than    ", b_bound
+    print("B by numerical integration", b_lambda)
+    print("B must be no more than    ", b_bound)
   assert b_lambda < b_bound + 1e-5
   return _to_np_float64(b_lambda)
 

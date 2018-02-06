@@ -15,6 +15,7 @@
 """Utils for building DRAGNN specs."""
 
 
+from six.moves import xrange
 import tensorflow as tf
 
 from dragnn.protos import spec_pb2

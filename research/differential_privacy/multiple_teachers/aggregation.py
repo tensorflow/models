@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+from six.moves import xrange
 
 
 def labels_from_probs(probs):
@@ -127,5 +128,3 @@ def aggregation_most_frequent(logits):
     result[i] = np.argmax(label_counts)
 
   return np.asarray(result, dtype=np.int32)
-
-

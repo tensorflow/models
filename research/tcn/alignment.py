@@ -76,9 +76,9 @@ def compute_average_alignment(
         alignment = np.mean(
             np.abs(np.array(times_i)-np.array(times_j))/float(seq_len))
         all_alignments.append(alignment)
-        print 'alignment so far %f' % alignment
+        print('alignment so far %f' % alignment)
   average_alignment = np.mean(all_alignments)
-  print 'Average alignment %f' % average_alignment
+  print('Average alignment %f' % average_alignment)
   summ = tf.Summary(value=[tf.Summary.Value(
       tag='validation/alignment', simple_value=average_alignment)])
   summary_writer.add_summary(summ, int(training_step))

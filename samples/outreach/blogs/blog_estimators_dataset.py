@@ -65,7 +65,7 @@ feature_names = [
 def my_input_fn(file_path, perform_shuffle=False, repeat_count=1):
     def decode_csv(line):
         parsed_line = tf.decode_csv(line, [[0.], [0.], [0.], [0.], [0]])
-        label = parsed_line[-1:]  # Last element is the label
+        label = parsed_line[-1]  # Last element is the label
         del parsed_line[-1]  # Delete last element
         features = parsed_line  # Everything but last elements are the features
         d = dict(zip(feature_names, features)), label

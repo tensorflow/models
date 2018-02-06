@@ -23,6 +23,7 @@ published as a conference paper at ICLR 2017.
 """
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 

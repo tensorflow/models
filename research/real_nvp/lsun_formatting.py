@@ -29,6 +29,7 @@ python lsun_formatting.py \
     --fn_root [LSUN_FOLDER]
 
 """
+from __future__ import print_function
 
 import os
 import os.path
@@ -68,10 +69,10 @@ def main():
             file_out = "%s_%05d.tfrecords"
             file_out = file_out % (FLAGS.file_out,
                                    example_idx // n_examples_per_file)
-            print "Writing on:", file_out
+            print("Writing on:", file_out)
             writer = tf.python_io.TFRecordWriter(file_out)
         if example_idx % 1000 == 0:
-            print example_idx, "/", num_examples
+            print(example_idx, "/", num_examples)
         image_raw = numpy.array(Image.open(os.path.join(fn_root, img_fn)))
         rows = image_raw.shape[0]
         cols = image_raw.shape[1]

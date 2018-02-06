@@ -29,6 +29,7 @@ import numpy as np
 from scipy.misc import imresize
 from scipy.misc import imrotate
 from scipy.ndimage import imread
+from six.moves import xrange
 import tensorflow as tf
 
 
