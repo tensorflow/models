@@ -6,7 +6,7 @@ TEST_URL = "http://download.tensorflow.org/data/iris_test.csv"
 
 CSV_COLUMN_NAMES = ['SepalLength', 'SepalWidth',
                     'PetalLength', 'PetalWidth', 'Species']
-SPECIES = ['Sentosa', 'Versicolor', 'Virginica']
+SPECIES = ['Setosa', 'Versicolor', 'Virginica']
 
 def maybe_download():
     train_path = tf.keras.utils.get_file(TRAIN_URL.split('/')[-1], TRAIN_URL)
