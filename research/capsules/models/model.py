@@ -31,6 +31,8 @@ from __future__ import print_function
 
 import abc
 import collections
+
+from six.moves import xrange
 import tensorflow as tf
 from models.layers import layers
 
