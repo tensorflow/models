@@ -23,7 +23,7 @@ Maintainers of TFGAN:
 
 1. [CIFAR10](#cifar10)
 
-1. [Image compression (coming soon)](#compression)
+1. [Image compression](#compression)
 
 ## MNIST
 <a id='mnist'></a>
