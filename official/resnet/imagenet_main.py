@@ -82,6 +82,8 @@ def parse_record(raw_record, is_training):
   image = tf.image.decode_image(
       tf.reshape(parsed['image/encoded'], shape=[]),
       _NUM_CHANNELS)
+
+  # Note that tf.image.convert_image_dtype scales the image data to [0, 1).
   image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
   image = vgg_preprocessing.preprocess_image(
