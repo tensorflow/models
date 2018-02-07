@@ -90,3 +90,7 @@ ENV/
 
 # PyCharm
 .idea/
+
+**/pretrained_models/*
+**/*_pb2.py
+**/~/

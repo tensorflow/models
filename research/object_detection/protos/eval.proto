@@ -44,4 +44,7 @@ message EvalConfig {
   // Note that since there is no evaluation code currently for instance
   // segmenation this option is unused.
   optional bool eval_instance_masks = 12 [default=false];
+
+  // IoU Threshold to use during the evaluation
+  optional float matching_iou_threshold = 13 [default=0.5];
 }
