@@ -93,3 +93,4 @@ ENV/
 
 **/pretrained_models/*
 **/*_pb2.py
+**/~/
