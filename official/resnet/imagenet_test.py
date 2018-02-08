@@ -176,6 +176,18 @@ class BaseTest(tf.test.TestCase):
   def test_resnet_model_fn_predict_mode(self):
     self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT)
 
+  def test_imagenetmodel_shape(self):
+    batch_size = 135
+    num_classes = 246
+
+    model = imagenet_main.ImagenetModel(
+        50, data_format='channels_last', num_classes=num_classes)
+    fake_input = tf.constant(
+        0.0, shape=[batch_size, 224, 224, 3])
+    output = model(fake_input, training=True)
+
+    self.assertAllEqual(output.shape, (batch_size, num_classes))
+
 
 if __name__ == '__main__':
   tf.test.main()
