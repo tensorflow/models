@@ -145,7 +145,7 @@ def main(argv):
             zone=FLAGS.tpu_zone,
             project=FLAGS.gcp_project))
     tpu_grpc_url = tpu_cluster_resolver.get_master()
-  
+
   run_config = tf.contrib.tpu.RunConfig(
       master=tpu_grpc_url,
       evaluation_master=tpu_grpc_url,
