@@ -129,8 +129,16 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 # Running the model
 ###############################################################################
 class Cifar10Model(resnet.Model):
-  def __init__(self, resnet_size, data_format=None):
+
+  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES):
     """These are the parameters that work for CIFAR-10 data.
+
+    Args:
+      resnet_size: The number of convolutional layers needed in the model.
+      data_format: Either 'channels_first' or 'channels_last', specifying which
+        data format to use when setting up the model.
+      num_classes: The number of output classes needed from the model. This
+        enables users to extend the same model to their own datasets.
     """
     if resnet_size % 6 != 2:
       raise ValueError('resnet_size must be 6n + 2:', resnet_size)
@@ -139,7 +147,7 @@ class Cifar10Model(resnet.Model):
 
     super(Cifar10Model, self).__init__(
         resnet_size=resnet_size,
-        num_classes=_NUM_CLASSES,
+        num_classes=num_classes,
         num_filters=16,
         kernel_size=3,
         conv_stride=1,
