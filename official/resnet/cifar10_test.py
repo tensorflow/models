@@ -113,8 +113,7 @@ class BaseTest(tf.test.TestCase):
 
     model = cifar10_main.Cifar10Model(
         32, data_format='channels_last', num_classes=num_classes)
-    fake_input = tf.constant(
-        0.0, shape=[batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+    fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
     output = model(fake_input, training=True)
 
     self.assertAllEqual(output.shape, (batch_size, num_classes))
