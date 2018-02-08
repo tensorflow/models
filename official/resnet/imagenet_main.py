@@ -141,7 +141,7 @@ class ImagenetModel(resnet.Model):
       data_format: Either 'channels_first' or 'channels_last', specifying which
         data format to use when setting up the model.
       num_classes: The number of output classes needed from the model. This
-        enables users to extend the same model to different datasets.
+        enables users to extend the same model to their own datasets.
     """
 
     # For bigger models, we want to use "bottleneck" layers
