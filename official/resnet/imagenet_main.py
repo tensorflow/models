@@ -134,7 +134,15 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 class ImagenetModel(resnet.Model):
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES):
-    """These are the parameters that work for Imagenet data."""
+    """These are the parameters that work for Imagenet data.
+
+    Args:
+      resnet_size: The number of convolutional layers needed in the model.
+      data_format: Either 'channels_first' or 'channels_last', specifying which
+        data format to use when setting up the model.
+      num_classes: The number of output classes needed from the model. This
+        enables users to extend the same model to different datasets.
+    """
 
     # For bigger models, we want to use "bottleneck" layers
     if resnet_size < 50:
