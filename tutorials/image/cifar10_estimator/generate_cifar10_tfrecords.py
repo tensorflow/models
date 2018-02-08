@@ -24,10 +24,10 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import pickle
 import os
 
 import tarfile
+from six.moves import cPickle as pickle
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
@@ -63,7 +63,7 @@ def _get_file_names():
 
 def read_pickle_from_file(filename):
   with tf.gfile.Open(filename, 'rb') as f:
-    data_dict = pickle.load(f, encoding='latin1')
+    data_dict = pickle.load(f)
   return data_dict
 
 
