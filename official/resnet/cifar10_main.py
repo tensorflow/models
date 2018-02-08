@@ -129,9 +129,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 # Running the model
 ###############################################################################
 class Cifar10Model(resnet.Model):
-  def __init__(self, resnet_size, data_format=None):
-    """These are the parameters that work for CIFAR-10 data.
-    """
+
+  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES):
+    """These are the parameters that work for CIFAR-10 data."""
     if resnet_size % 6 != 2:
       raise ValueError('resnet_size must be 6n + 2:', resnet_size)
 
@@ -139,7 +139,7 @@ class Cifar10Model(resnet.Model):
 
     super(Cifar10Model, self).__init__(
         resnet_size=resnet_size,
-        num_classes=_NUM_CLASSES,
+        num_classes=num_classes,
         num_filters=16,
         kernel_size=3,
         conv_stride=1,
