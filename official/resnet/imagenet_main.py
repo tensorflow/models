@@ -132,9 +132,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 # Running the model
 ###############################################################################
 class ImagenetModel(resnet.Model):
-  def __init__(self, resnet_size, data_format=None):
-    """These are the parameters that work for Imagenet data.
-    """
+
+  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES):
+    """These are the parameters that work for Imagenet data."""
 
     # For bigger models, we want to use "bottleneck" layers
     if resnet_size < 50:
@@ -146,7 +146,7 @@ class ImagenetModel(resnet.Model):
 
     super(ImagenetModel, self).__init__(
         resnet_size=resnet_size,
-        num_classes=_NUM_CLASSES,
+        num_classes=num_classes,
         num_filters=64,
         kernel_size=7,
         conv_stride=2,
