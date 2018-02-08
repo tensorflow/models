@@ -182,8 +182,7 @@ class BaseTest(tf.test.TestCase):
 
     model = imagenet_main.ImagenetModel(
         50, data_format='channels_last', num_classes=num_classes)
-    fake_input = tf.constant(
-        0.0, shape=[batch_size, 224, 224, 3])
+    fake_input = tf.random_uniform([batch_size, 224, 224, 3])
     output = model(fake_input, training=True)
 
     self.assertAllEqual(output.shape, (batch_size, num_classes))
