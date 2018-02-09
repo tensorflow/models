@@ -53,6 +53,7 @@ LEARNING_RATE_STOP = 0.00001
 LEARNING_RATE_N_TO_COMPARE = 6
 INJECT_EXT_INPUT_TO_GEN = False
 DO_TRAIN_IO_ONLY = False
+DO_TRAIN_ENCODER_ONLY = False
 DO_RESET_LEARNING_RATE = False
 FEEDBACK_FACTORS_OR_RATES = "factors"
 DO_TRAIN_READIN = True
@@ -315,6 +316,16 @@ flags.DEFINE_boolean("do_train_io_only", DO_TRAIN_IO_ONLY,
                      "Train only the input (readin) and output (readout) \
                      affine functions.")
 
+# This flag is used for an experiment where one wants to know if the dynamics
+# learned by the generator generalize across conditions. In that case, you might
+# train up a model on one set of data, and then only further train the encoder on 
+# another set of data (the conditions to be tested) so that the model is forced
+# to use the same dynamics to describe that data.
+# If you don't care about that particular experiment, this flag should always be
+# false.
+flags.DEFINE_boolean("do_train_encoder_only", DO_TRAIN_ENCODER_ONLY,
+                     "Train only the encoder weights.")
+
 flags.DEFINE_boolean("do_reset_learning_rate", DO_RESET_LEARNING_RATE,
                      "Reset the learning rate to initial value.")
 
@@ -550,6 +561,7 @@ def build_hyperparameter_dict(flags):
   d['max_grad_norm'] = flags.max_grad_norm
   d['cell_clip_value'] = flags.cell_clip_value
   d['do_train_io_only'] = flags.do_train_io_only
+  d['do_train_encoder_only'] = flags.do_train_encoder_only
   d['do_reset_learning_rate'] = flags.do_reset_learning_rate
   d['do_train_readin'] = flags.do_train_readin
 
