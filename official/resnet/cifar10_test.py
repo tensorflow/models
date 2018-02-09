@@ -52,13 +52,13 @@ class BaseTest(tf.test.TestCase):
         lambda val: cifar10_main.parse_record(val, False))
     image, label = fake_dataset.make_one_shot_iterator().get_next()
 
-    self.assertAllEqual(label.shape, (10,))
+    self.assertAllEqual(label.shape, (1,))
     self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))
 
     with self.test_session() as sess:
       image, label = sess.run([image, label])
 
-      self.assertAllEqual(label, np.array([int(i == 7) for i in range(10)]))
+      self.assertAllEqual(label, [7])
 
       for row in image:
         for pixel in row:
@@ -66,9 +66,8 @@ class BaseTest(tf.test.TestCase):
 
   def input_fn(self):
     features = tf.random_uniform([_BATCH_SIZE, _HEIGHT, _WIDTH, _NUM_CHANNELS])
-    labels = tf.random_uniform(
-        [_BATCH_SIZE], maxval=9, dtype=tf.int32)
-    return features, tf.one_hot(labels, 10)
+    labels = tf.random_uniform([_BATCH_SIZE, 1], maxval=9, dtype=tf.int32)
+    return features, labels
 
   def cifar10_model_fn_helper(self, mode, multi_gpu=False):
     features, labels = self.input_fn()

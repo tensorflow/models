@@ -82,7 +82,7 @@ def parse_example_proto(example_serialized):
 
   Returns:
     image_buffer: Tensor tf.string containing the contents of a JPEG file.
-    label: Tensor tf.int32 containing the label.
+    label: Tensor tf.int64 containing the label.
   """
   # Dense features in Example proto.
   feature_map = {
@@ -103,15 +103,7 @@ def parse_example_proto(example_serialized):
 
   features = tf.parse_single_example(example_serialized, feature_map)
 
-  image = tf.image.decode_image(tf.reshape(parsed['image/encoded'], shape=[]),
-      _NUM_CHANNELS)
-
-  # Note that tf.image.convert_image_dtype scales the image data to [0, 1).
-  image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-
-  label = tf.cast(features['image/class/label'], dtype=tf.int32)
-
-  return image, label
+  return features['image/encoded'], features['image/class/label']
 
 
 def parse_record(raw_record, is_training):
@@ -122,7 +114,8 @@ def parse_record(raw_record, is_training):
   # Note that the resulting image contains an unknown height and width
   # that is set dynamically by decode_jpeg. In other words, the height
   # and width of image is unknown at compile-time.
-  image = tf.image.decode_jpeg(image_buffer, channels=_NUM_CHANNELS)
+  # Results in a 3-D float Tensor with values ranging from [0, 1).
+  image = tf.image.decode_jpeg(image, channels=_NUM_CHANNELS)
 
   image = vgg_preprocessing.preprocess_image(
       image=image,
@@ -130,7 +123,9 @@ def parse_record(raw_record, is_training):
       output_width=_DEFAULT_IMAGE_SIZE,
       is_training=is_training)
 
-  return image, tf.one_hot(label, _NUM_CLASSES)
+  label = tf.cast(label, dtype=tf.int32)
+
+  return image, label
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1,
