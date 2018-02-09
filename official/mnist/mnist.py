@@ -142,7 +142,7 @@ def validate_batch_size_for_multi_gpu(batch_size):
   if not num_gpus:
     raise ValueError('Multi-GPU mode was specified, but no GPUs '
       'were found. To use CPU, run without --multi_gpu.')
-    
+
   remainder = batch_size % num_gpus
   if remainder:
     err = ('When running with multiple GPUs, batch size '
@@ -184,8 +184,7 @@ def main(unused_argv):
     ds = dataset.train(FLAGS.data_dir)
     ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
         FLAGS.train_epochs)
-    (images, labels) = ds.make_one_shot_iterator().get_next()
-    return (images, labels)
+    return ds
 
   # Set up training hook that logs the training accuracy every 100 steps.
   tensors_to_log = {'train_accuracy': 'train_accuracy'}
