@@ -915,13 +915,25 @@ class LFADS(object):
       return
 
     # OPTIMIZATION
-    if not self.hps.do_train_io_only:
-      self.train_vars = tvars = \
-        tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                          scope=tf.get_variable_scope().name)
-    else:
+    # train the io matrices only
+    if self.hps.do_train_io_only:
       self.train_vars = tvars = \
         tf.get_collection('IO_transformations',
+                          scope=tf.get_variable_scope().name)
+    # train the encoder only
+    elif self.hps.do_train_encoder_only:
+      tvars1 = \
+        tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                          scope='LFADS/ic_enc_*')
+      tvars2 = \
+        tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                          scope='LFADS/z/ic_enc_*')
+      
+      self.train_vars = tvars = tvars1 + tvars2
+    # train all variables
+    else:
+      self.train_vars = tvars = \
+        tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                           scope=tf.get_variable_scope().name)
     print("done.")
     print("Model Variables (to be optimized): ")
