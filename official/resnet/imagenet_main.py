@@ -54,47 +54,81 @@ def get_filenames(is_training, data_dir):
         for i in range(128)]
 
 
-def parse_record(raw_record, is_training):
-  """Parse an ImageNet record from `value`."""
-  keys_to_features = {
-      'image/encoded':
-          tf.FixedLenFeature((), tf.string, default_value=''),
-      'image/format':
-          tf.FixedLenFeature((), tf.string, default_value='jpeg'),
-      'image/class/label':
-          tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
-      'image/class/text':
-          tf.FixedLenFeature([], dtype=tf.string, default_value=''),
-      'image/object/bbox/xmin':
-          tf.VarLenFeature(dtype=tf.float32),
-      'image/object/bbox/ymin':
-          tf.VarLenFeature(dtype=tf.float32),
-      'image/object/bbox/xmax':
-          tf.VarLenFeature(dtype=tf.float32),
-      'image/object/bbox/ymax':
-          tf.VarLenFeature(dtype=tf.float32),
-      'image/object/class/label':
-          tf.VarLenFeature(dtype=tf.int64),
+def parse_example_proto(example_serialized):
+  """Parses an Example proto containing a training example of an image.
+
+  The dataset contains serialized Example protocol buffers.
+  Each Example proto contains the following fields:
+
+    image/height: 462
+    image/width: 581
+    image/colorspace: 'RGB'
+    image/channels: 3
+    image/class/label: 615
+    image/class/synset: 'n03623198'
+    image/class/text: 'knee pad'
+    image/object/bbox/xmin: 0.1
+    image/object/bbox/xmax: 0.9
+    image/object/bbox/ymin: 0.2
+    image/object/bbox/ymax: 0.6
+    image/object/bbox/label: 615
+    image/format: 'JPEG'
+    image/filename: 'ILSVRC2012_val_00041207.JPEG'
+    image/encoded: <JPEG encoded string>
+
+  Args:
+    example_serialized: scalar Tensor tf.string containing a serialized
+      Example protocol buffer.
+
+  Returns:
+    image_buffer: Tensor tf.string containing the contents of a JPEG file.
+    label: Tensor tf.int32 containing the label.
+  """
+  # Dense features in Example proto.
+  feature_map = {
+      'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
+                                          default_value=''),
+      'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64,
+                                              default_value=-1),
+      'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
+                                             default_value=''),
   }
+  sparse_float32 = tf.VarLenFeature(dtype=tf.float32)
+  # Sparse features in Example proto.
+  feature_map.update(
+      {k: sparse_float32 for k in ['image/object/bbox/xmin',
+                                   'image/object/bbox/ymin',
+                                   'image/object/bbox/xmax',
+                                   'image/object/bbox/ymax']})
 
-  parsed = tf.parse_single_example(raw_record, keys_to_features)
+  features = tf.parse_single_example(example_serialized, feature_map)
 
-  image = tf.image.decode_image(
-      tf.reshape(parsed['image/encoded'], shape=[]),
+  image = tf.image.decode_image(tf.reshape(parsed['image/encoded'], shape=[]),
       _NUM_CHANNELS)
 
   # Note that tf.image.convert_image_dtype scales the image data to [0, 1).
   image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+
+  label = tf.cast(features['image/class/label'], dtype=tf.int32)
+
+  return image, label
+
+
+def parse_record(raw_record, is_training):
+  """Parse an ImageNet record from `value`."""
+  image, label = parse_example_proto(raw_record)
+
+  # Decode the string as an RGB JPEG.
+  # Note that the resulting image contains an unknown height and width
+  # that is set dynamically by decode_jpeg. In other words, the height
+  # and width of image is unknown at compile-time.
+  image = tf.image.decode_jpeg(image_buffer, channels=_NUM_CHANNELS)
 
   image = vgg_preprocessing.preprocess_image(
       image=image,
       output_height=_DEFAULT_IMAGE_SIZE,
       output_width=_DEFAULT_IMAGE_SIZE,
       is_training=is_training)
-
-  label = tf.cast(
-      tf.reshape(parsed['image/class/label'], shape=[]),
-      dtype=tf.int32)
 
   return image, tf.one_hot(label, _NUM_CLASSES)
 
