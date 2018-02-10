@@ -82,4 +82,12 @@ message SsdFeatureExtractor {
   // will apply only to the additional layers that are added and are outside the
   // canned arg_scope.
   optional bool batch_norm_trainable = 6 [default=true];
+
+  // Whether to use explicit padding when extracting SSD multiresolution
+  // features. Note that this does not apply to the base feature extractor.
+  optional bool use_explicit_padding = 7 [default=false];
+
+  // Whether to use depthwise separable convolutions for to extract additional
+  // feature maps added by SSD.
+  optional bool use_depthwise = 8 [default=false];
 }

@@ -23,6 +23,7 @@ import tensorflow as tf
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import standard_fields as fields
+from object_detection.utils import shape_utils
 from object_detection.utils import static_shape
 
 
@@ -67,7 +68,7 @@ def normalized_to_image_coordinates(normalized_boxes, image_shape,
         box_list.BoxList(normalized_boxes),
         image_shape[1], image_shape[2], check_range=False).get()
 
-  absolute_boxes = tf.map_fn(
+  absolute_boxes = shape_utils.static_or_dynamic_map_fn(
       _to_absolute_coordinates,
       elems=(normalized_boxes),
       dtype=tf.float32,
@@ -113,6 +114,28 @@ def meshgrid(x, y):
     ygrid.set_shape(new_shape)
 
     return xgrid, ygrid
+
+
+def fixed_padding(inputs, kernel_size, rate=1):
+  """Pads the input along the spatial dimensions independently of input size.
+
+  Args:
+    inputs: A tensor of size [batch, height_in, width_in, channels].
+    kernel_size: The kernel to be used in the conv2d or max_pool2d operation.
+                 Should be a positive integer.
+    rate: An integer, rate for atrous convolution.
+
+  Returns:
+    output: A tensor of size [batch, height_out, width_out, channels] with the
+      input, either intact (if kernel_size == 1) or padded (if kernel_size > 1).
+  """
+  kernel_size_effective = kernel_size + (kernel_size - 1) * (rate - 1)
+  pad_total = kernel_size_effective - 1
+  pad_beg = pad_total // 2
+  pad_end = pad_total - pad_beg
+  padded_inputs = tf.pad(inputs, [[0, 0], [pad_beg, pad_end],
+                                  [pad_beg, pad_end], [0, 0]])
+  return padded_inputs
 
 
 def pad_to_multiple(tensor, multiple):
@@ -209,8 +232,10 @@ def padded_one_hot_encoding(indices, depth, left_pad):
     raise ValueError('`left_pad` must be a non-negative integer.')
   if depth == 0:
     return None
-  if len(indices.get_shape().as_list()) != 1:
-    raise ValueError('`indices` must have rank 1')
+
+  rank = len(indices.get_shape().as_list())
+  if rank != 1:
+    raise ValueError('`indices` must have rank 1, but has rank=%s' % rank)
 
   def one_hot_and_pad():
     one_hot = tf.cast(tf.one_hot(tf.cast(indices, tf.int64), depth,
@@ -282,6 +307,11 @@ def indices_to_dense_vector(indices,
 
   return tf.dynamic_stitch([tf.range(size), tf.to_int32(indices)],
                            [zeros, values])
+
+
+def reduce_sum_trailing_dimensions(tensor, ndims):
+  """Computes sum across all dimensions following first `ndims` dimensions."""
+  return tf.reduce_sum(tensor, axis=tuple(range(ndims, tensor.shape.ndims)))
 
 
 def retain_groundtruth(tensor_dict, valid_indices):
@@ -627,7 +657,7 @@ def position_sensitive_crop_regions(image,
     position_sensitive_features = tf.add_n(image_crops) / len(image_crops)
     # Then average over spatial positions within the bins.
     position_sensitive_features = tf.reduce_mean(
-        position_sensitive_features, [1, 2], keep_dims=True)
+        position_sensitive_features, [1, 2], keepdims=True)
   else:
     # Reorder height/width to depth channel.
     block_size = bin_crop_size[0]
@@ -739,3 +769,53 @@ def merge_boxes_with_multiple_labels(boxes, classes, num_classes):
   class_encodings = tf.reshape(class_encodings, [-1, num_classes])
   merged_box_indices = tf.reshape(merged_box_indices, [-1])
   return merged_boxes, class_encodings, merged_box_indices
+
+
+def nearest_neighbor_upsampling(input_tensor, scale):
+  """Nearest neighbor upsampling implementation.
+
+  Nearest neighbor upsampling function that maps input tensor with shape
+  [batch_size, height, width, channels] to [batch_size, height * scale
+  , width * scale, channels]. This implementation only uses reshape and tile to
+  make it compatible with certain hardware.
+
+  Args:
+    input_tensor: A float32 tensor of size [batch, height_in, width_in,
+      channels].
+    scale: An integer multiple to scale resolution of input data.
+  Returns:
+    data_up: A float32 tensor of size
+      [batch, height_in*scale, width_in*scale, channels].
+  """
+  shape = shape_utils.combined_static_and_dynamic_shape(input_tensor)
+  shape_before_tile = [shape[0], shape[1], 1, shape[2], 1, shape[3]]
+  shape_after_tile = [shape[0], shape[1] * scale, shape[2] * scale, shape[3]]
+  data_reshaped = tf.reshape(input_tensor, shape_before_tile)
+  resized_tensor = tf.tile(data_reshaped, [1, 1, scale, 1, scale, 1])
+  resized_tensor = tf.reshape(resized_tensor, shape_after_tile)
+  return resized_tensor
+
+
+def matmul_gather_on_zeroth_axis(params, indices, scope=None):
+  """Matrix multiplication based implementation of tf.gather on zeroth axis.
+
+  TODO(rathodv, jonathanhuang): enable sparse matmul option.
+
+  Args:
+    params: A float32 Tensor. The tensor from which to gather values.
+      Must be at least rank 1.
+    indices: A Tensor. Must be one of the following types: int32, int64.
+      Must be in range [0, params.shape[0])
+    scope: A name for the operation (optional).
+
+  Returns:
+    A Tensor. Has the same type as params. Values from params gathered
+    from indices given by indices, with shape indices.shape + params.shape[1:].
+  """
+  with tf.name_scope(scope, 'MatMulGather'):
+    index_range = params.shape[0]
+    params2d = tf.reshape(params, [index_range, -1])
+    indicator_matrix = tf.one_hot(indices, index_range)
+    gathered_result_flattened = tf.matmul(indicator_matrix, params2d)
+    return tf.reshape(gathered_result_flattened,
+                      indices.shape.concatenate(params.shape[1:]))

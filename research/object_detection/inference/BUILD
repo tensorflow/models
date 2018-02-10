@@ -13,7 +13,7 @@ py_library(
     srcs = ["detection_inference.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
     ],
 )
 
@@ -22,11 +22,11 @@ py_test(
     srcs = ["detection_inference_test.py"],
     deps = [
         ":detection_inference",
-        "//third_party/py/PIL:pil",
-        "//third_party/py/numpy",
+        "//PIL:pil",
+        "//numpy",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:standard_fields",
-        "//tensorflow_models/object_detection/utils:dataset_util",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/utils:dataset_util",
     ],
 )
 
