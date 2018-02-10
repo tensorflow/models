@@ -32,7 +32,7 @@ message InputReader {
   optional bool shuffle = 2 [default=true];
 
   // Buffer size to be used when shuffling.
-  optional uint32 shuffle_buffer_size = 11 [default = 100];
+  optional uint32 shuffle_buffer_size = 11 [default = 2048];
 
   // Buffer size to be used when shuffling file names.
   optional uint32 filenames_shuffle_buffer_size = 12 [default = 100];
@@ -49,10 +49,13 @@ message InputReader {
   optional uint32 num_epochs = 5 [default=0];
 
   // Number of reader instances to create.
-  optional uint32 num_readers = 6 [default=8];
+  optional uint32 num_readers = 6 [default=32];
 
-  // Size of the buffer for prefetching (in batches).
-  optional uint32 prefetch_buffer_size = 13 [default = 2];
+  // Number of decoded records to prefetch before batching.
+  optional uint32 prefetch_size = 13 [default = 512];
+
+  // Number of parallel decode ops to apply.
+  optional uint32 num_parallel_map_calls = 14 [default = 64];
 
   // Whether to load groundtruth instance masks.
   optional bool load_instance_masks = 7 [default = false];

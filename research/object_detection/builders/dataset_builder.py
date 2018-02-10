@@ -21,7 +21,7 @@ Note: If users wishes to also use their own InputReaders with the Object
 Detection configuration framework, they should define their own builder function
 that wraps the build function.
 """
-
+import functools
 import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
@@ -86,8 +86,8 @@ def _get_padding_shapes(dataset, max_num_boxes, num_classes,
           for tensor_key, _ in dataset.output_shapes.items()}
 
 
-def build(input_reader_config, transform_input_data_fn=None, num_workers=1,
-          worker_index=0, batch_size=1, max_num_boxes=None, num_classes=None,
+def build(input_reader_config, transform_input_data_fn=None,
+          batch_size=1, max_num_boxes=None, num_classes=None,
           spatial_image_shape=None):
   """Builds a tf.data.Dataset.
 
@@ -100,8 +100,6 @@ def build(input_reader_config, transform_input_data_fn=None, num_workers=1,
     input_reader_config: A input_reader_pb2.InputReader object.
     transform_input_data_fn: Function to apply to all records, or None if
       no extra decoding is required.
-    num_workers: Number of workers (tpu shard).
-    worker_index: Id for the current worker (tpu shard).
     batch_size: Batch size. If not None, returns a padded batch dataset.
     max_num_boxes: Max number of groundtruth boxes needed to computes shapes for
       padding. This is only used if batch_size is greater than 1.
@@ -146,8 +144,8 @@ def build(input_reader_config, transform_input_data_fn=None, num_workers=1,
       return processed
 
     dataset = dataset_util.read_dataset(
-        tf.data.TFRecordDataset, process_fn, config.input_path[:],
-        input_reader_config, num_workers, worker_index)
+        functools.partial(tf.data.TFRecordDataset, buffer_size=8 * 1000 * 1000),
+        process_fn, config.input_path[:], input_reader_config)
 
     if batch_size > 1:
       if num_classes is None:

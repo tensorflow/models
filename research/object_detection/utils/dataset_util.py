@@ -103,9 +103,7 @@ def make_initializable_iterator(dataset):
   return iterator
 
 
-def read_dataset(
-    file_read_func, decode_func, input_files, config, num_workers=1,
-    worker_index=0):
+def read_dataset(file_read_func, decode_func, input_files, config):
   """Reads a dataset, and handles repetition and shuffling.
 
   Args:
@@ -114,8 +112,6 @@ def read_dataset(
     decode_func: Function to apply to all records.
     input_files: A list of file paths to read.
     config: A input_reader_builder.InputReader object.
-    num_workers: Number of workers / shards.
-    worker_index: Id for the current worker.
 
   Returns:
     A tf.data.Dataset based on config.
@@ -123,25 +119,17 @@ def read_dataset(
   # Shard, shuffle, and read files.
   filenames = tf.concat([tf.matching_files(pattern) for pattern in input_files],
                         0)
-  dataset = tf.data.Dataset.from_tensor_slices(filenames)
-  dataset = dataset.shard(num_workers, worker_index)
-  dataset = dataset.repeat(config.num_epochs or None)
+  filename_dataset = tf.data.Dataset.from_tensor_slices(filenames)
   if config.shuffle:
-    dataset = dataset.shuffle(config.filenames_shuffle_buffer_size,
-                              reshuffle_each_iteration=True)
+    filename_dataset = filename_dataset.shuffle(
+        config.filenames_shuffle_buffer_size)
+  filename_dataset = filename_dataset.repeat(config.num_epochs or None)
 
-  # Read file records and shuffle them.
-  # If cycle_length is larger than the number of files, more than one reader
-  # will be assigned to the same file, leading to repetition.
-  cycle_length = tf.cast(
-      tf.minimum(config.num_readers, tf.size(filenames)), tf.int64)
-  # TODO: find the optimal block_length.
-  dataset = dataset.interleave(
-      file_read_func, cycle_length=cycle_length, block_length=1)
-
+  records_dataset = filename_dataset.apply(
+      tf.contrib.data.parallel_interleave(
+          file_read_func, cycle_length=config.num_readers, sloppy=True))
   if config.shuffle:
-    dataset = dataset.shuffle(config.shuffle_buffer_size,
-                              reshuffle_each_iteration=True)
-
-  dataset = dataset.map(decode_func, num_parallel_calls=config.num_readers)
-  return dataset.prefetch(config.prefetch_buffer_size)
+    records_dataset.shuffle(config.shuffle_buffer_size)
+  tensor_dataset = records_dataset.map(
+      decode_func, num_parallel_calls=config.num_parallel_map_calls)
+  return tensor_dataset.prefetch(config.prefetch_size)
