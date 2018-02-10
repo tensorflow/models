@@ -19,6 +19,7 @@ import os
 import tempfile
 import tensorflow as tf
 from google.protobuf import text_format
+from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python import pywrap_tensorflow
 from tensorflow.python.client import session
 from tensorflow.python.framework import graph_util
@@ -354,16 +355,22 @@ def _export_inference_graph(input_type,
 
   if graph_hook_fn: graph_hook_fn()
 
+  saver_kwargs = {}
   if use_moving_averages:
-    temp_checkpoint_file = tempfile.NamedTemporaryFile()
+    # This check is to be compatible with both version of SaverDef.
+    if os.path.isfile(trained_checkpoint_prefix):
+      saver_kwargs['write_version'] = saver_pb2.SaverDef.V1
+      temp_checkpoint_prefix = tempfile.NamedTemporaryFile().name
+    else:
+      temp_checkpoint_prefix = tempfile.mkdtemp()
     replace_variable_values_with_moving_averages(
         tf.get_default_graph(), trained_checkpoint_prefix,
-        temp_checkpoint_file.name)
-    checkpoint_to_use = temp_checkpoint_file.name
+        temp_checkpoint_prefix)
+    checkpoint_to_use = temp_checkpoint_prefix
   else:
     checkpoint_to_use = trained_checkpoint_prefix
 
-  saver = tf.train.Saver()
+  saver = tf.train.Saver(**saver_kwargs)
   input_saver_def = saver.as_saver_def()
 
   _write_graph_and_checkpoint(

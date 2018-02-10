@@ -251,7 +251,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                second_stage_classification_loss,
                second_stage_mask_prediction_loss_weight=1.0,
                hard_example_miner=None,
-               parallel_iterations=16):
+               parallel_iterations=16,
+               add_summaries=True):
     """FasterRCNNMetaArch Constructor.
 
     Args:
@@ -355,12 +356,17 @@ class FasterRCNNMetaArch(model.DetectionModel):
       hard_example_miner:  A losses.HardExampleMiner object (can be None).
       parallel_iterations: (Optional) The number of iterations allowed to run
         in parallel for calls to tf.map_fn.
+      add_summaries: boolean (default: True) controlling whether summary ops
+        should be added to tensorflow graph.
+
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals` at
         training time.
       ValueError: If first_stage_anchor_generator is not of type
         grid_anchor_generator.GridAnchorGenerator.
     """
+    # TODO: add_summaries is currently unused. Respect that directive
+    # in the future.
     super(FasterRCNNMetaArch, self).__init__(num_classes=num_classes)
 
     if is_training and second_stage_batch_size > first_stage_max_proposals:

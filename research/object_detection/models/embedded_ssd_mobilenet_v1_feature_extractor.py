@@ -52,7 +52,8 @@ class EmbeddedSSDMobileNetV1FeatureExtractor(
                conv_hyperparams,
                batch_norm_trainable=True,
                reuse_weights=None,
-               use_explicit_padding=False):
+               use_explicit_padding=False,
+               use_depthwise=False):
     """MobileNetV1 Feature Extractor for Embedded-friendly SSD Models.
 
     Args:
@@ -69,6 +70,7 @@ class EmbeddedSSDMobileNetV1FeatureExtractor(
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
+      use_depthwise: Whether to use depthwise convolutions. Default is False.
 
     Raises:
       ValueError: upon invalid `pad_to_multiple` values.
@@ -80,7 +82,7 @@ class EmbeddedSSDMobileNetV1FeatureExtractor(
     super(EmbeddedSSDMobileNetV1FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, batch_norm_trainable, reuse_weights,
-        use_explicit_padding)
+        use_explicit_padding, use_depthwise)
 
   def extract_features(self, preprocessed_inputs):
     """Extract features from preprocessed inputs.
@@ -119,6 +121,7 @@ class EmbeddedSSDMobileNetV1FeatureExtractor(
         'layer_depth': [-1, -1, 512, 256, 256],
         'conv_kernel_size': [-1, -1, 3, 3, 2],
         'use_explicit_padding': self._use_explicit_padding,
+        'use_depthwise': self._use_depthwise,
     }
 
     with slim.arg_scope(self._conv_hyperparams):

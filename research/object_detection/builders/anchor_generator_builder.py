@@ -83,10 +83,10 @@ def build(anchor_generator_config):
       'anchor_generator_oneof') == 'multiscale_anchor_generator':
     cfg = anchor_generator_config.multiscale_anchor_generator
     return multiscale_grid_anchor_generator.MultiscaleGridAnchorGenerator(
-        cfg.min_lvl,
-        cfg.max_lvl,
+        cfg.min_level,
+        cfg.max_level,
         cfg.anchor_scale,
-        cfg.aspect_ratios,
+        [float(aspect_ratio) for aspect_ratio in cfg.aspect_ratios],
         cfg.scales_per_octave
     )
   else:

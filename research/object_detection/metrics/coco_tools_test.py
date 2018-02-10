@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for google3.image.understanding.object_detection.metrics.coco_tools."""
+"""Tests for tensorflow_model.object_detection.metrics.coco_tools."""
 import json
 import os
 import re

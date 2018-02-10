@@ -232,8 +232,10 @@ def padded_one_hot_encoding(indices, depth, left_pad):
     raise ValueError('`left_pad` must be a non-negative integer.')
   if depth == 0:
     return None
-  if len(indices.get_shape().as_list()) != 1:
-    raise ValueError('`indices` must have rank 1')
+
+  rank = len(indices.get_shape().as_list())
+  if rank != 1:
+    raise ValueError('`indices` must have rank 1, but has rank=%s' % rank)
 
   def one_hot_and_pad():
     one_hot = tf.cast(tf.one_hot(tf.cast(indices, tf.int64), depth,
@@ -792,3 +794,28 @@ def nearest_neighbor_upsampling(input_tensor, scale):
   resized_tensor = tf.tile(data_reshaped, [1, 1, scale, 1, scale, 1])
   resized_tensor = tf.reshape(resized_tensor, shape_after_tile)
   return resized_tensor
+
+
+def matmul_gather_on_zeroth_axis(params, indices, scope=None):
+  """Matrix multiplication based implementation of tf.gather on zeroth axis.
+
+  TODO(rathodv, jonathanhuang): enable sparse matmul option.
+
+  Args:
+    params: A float32 Tensor. The tensor from which to gather values.
+      Must be at least rank 1.
+    indices: A Tensor. Must be one of the following types: int32, int64.
+      Must be in range [0, params.shape[0])
+    scope: A name for the operation (optional).
+
+  Returns:
+    A Tensor. Has the same type as params. Values from params gathered
+    from indices given by indices, with shape indices.shape + params.shape[1:].
+  """
+  with tf.name_scope(scope, 'MatMulGather'):
+    index_range = params.shape[0]
+    params2d = tf.reshape(params, [index_range, -1])
+    indicator_matrix = tf.one_hot(indices, index_range)
+    gathered_result_flattened = tf.matmul(indicator_matrix, params2d)
+    return tf.reshape(gathered_result_flattened,
+                      indices.shape.concatenate(params.shape[1:]))

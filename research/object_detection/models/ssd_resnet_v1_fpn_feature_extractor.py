@@ -25,9 +25,11 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                conv_hyperparams,
                resnet_base_fn,
                resnet_scope_name,
+               fpn_scope_name,
                batch_norm_trainable=True,
                reuse_weights=None,
-               use_explicit_padding=False):
+               use_explicit_padding=False,
+               use_depthwise=False):
     """SSD FPN feature extractor based on Resnet v1 architecture.
 
     Args:
@@ -39,7 +41,9 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         width dimensions to.
       conv_hyperparams: tf slim arg_scope for conv2d and separable_conv2d ops.
       resnet_base_fn: base resnet network to use.
-      resnet_scope_name: scope name to construct resnet
+      resnet_scope_name: scope name under which to construct resnet
+      fpn_scope_name: scope name under which to construct the feature pyramid
+        network.
       batch_norm_trainable: Whether to update batch norm parameters during
         training or not. When training with a small batch size
         (e.g. 1), it is desirable to disable batch norm update and use
@@ -47,6 +51,7 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
+      use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
 
     Raises:
       ValueError: On supplying invalid arguments for unused arguments.
@@ -62,6 +67,7 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       raise ValueError('Explicit padding is not a valid option.')
     self._resnet_base_fn = resnet_base_fn
     self._resnet_scope_name = resnet_scope_name
+    self._fpn_scope_name = fpn_scope_name
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -124,6 +130,7 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
             scope=scope)
       image_features = self._filter_features(image_features)
       last_feature_map = image_features['block4']
+    with tf.variable_scope(self._fpn_scope_name, reuse=self._reuse_weights):
       with slim.arg_scope(self._conv_hyperparams):
         for i in range(5, 7):
           last_feature_map = slim.conv2d(
@@ -154,7 +161,8 @@ class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                conv_hyperparams,
                batch_norm_trainable=True,
                reuse_weights=None,
-               use_explicit_padding=False):
+               use_explicit_padding=False,
+               use_depthwise=False):
     """Resnet50 v1 FPN Feature Extractor for SSD Models.
 
     Args:
@@ -170,11 +178,12 @@ class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
         pretrained batch norm params.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
-        features. Default is False.
+        features. Default is False. UNUSED currently.
+      use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
     """
     super(SSDResnet50V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, resnet_v1.resnet_v1_50, 'resnet_v1_50_fpn',
+        conv_hyperparams, resnet_v1.resnet_v1_50, 'resnet_v1_50', 'fpn',
         batch_norm_trainable, reuse_weights, use_explicit_padding)
 
 
@@ -188,7 +197,8 @@ class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                conv_hyperparams,
                batch_norm_trainable=True,
                reuse_weights=None,
-               use_explicit_padding=False):
+               use_explicit_padding=False,
+               use_depthwise=False):
     """Resnet101 v1 FPN Feature Extractor for SSD Models.
 
     Args:
@@ -204,11 +214,12 @@ class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
         pretrained batch norm params.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
-        features. Default is False.
+        features. Default is False. UNUSED currently.
+      use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
     """
     super(SSDResnet101V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, resnet_v1.resnet_v1_101, 'resnet_v1_101_fpn',
+        conv_hyperparams, resnet_v1.resnet_v1_101, 'resnet_v1_101', 'fpn',
         batch_norm_trainable, reuse_weights, use_explicit_padding)
 
 
@@ -222,7 +233,8 @@ class SSDResnet152V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                conv_hyperparams,
                batch_norm_trainable=True,
                reuse_weights=None,
-               use_explicit_padding=False):
+               use_explicit_padding=False,
+               use_depthwise=False):
     """Resnet152 v1 FPN Feature Extractor for SSD Models.
 
     Args:
@@ -238,9 +250,10 @@ class SSDResnet152V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
         pretrained batch norm params.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
-        features. Default is False.
+        features. Default is False. UNUSED currently.
+      use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
     """
     super(SSDResnet152V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, resnet_v1.resnet_v1_152, 'resnet_v1_152_fpn',
+        conv_hyperparams, resnet_v1.resnet_v1_152, 'resnet_v1_152', 'fpn',
         batch_norm_trainable, reuse_weights, use_explicit_padding)

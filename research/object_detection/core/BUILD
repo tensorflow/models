@@ -123,6 +123,7 @@ py_library(
         "matcher.py",
     ],
     deps = [
+        "//tensorflow/models/research/object_detection/utils:ops",
     ],
 )
 
@@ -160,9 +161,17 @@ py_library(
         ":box_list",
         ":box_list_ops",
         ":keypoint_ops",
+        ":preprocessor_cache",
         ":standard_fields",
         "//tensorflow",
         "//tensorflow/models/research/object_detection/utils:shape_utils",
+    ],
+)
+
+py_library(
+    name = "preprocessor_cache",
+    srcs = [
+        "preprocessor_cache.py",
     ],
 )
 
@@ -173,6 +182,7 @@ py_test(
     ],
     deps = [
         ":preprocessor",
+        ":preprocessor_cache",
         "//tensorflow",
     ],
 )

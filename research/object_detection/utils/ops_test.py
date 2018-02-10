@@ -1179,5 +1179,52 @@ class NearestNeighborUpsamplingTest(test_case.TestCase):
     self.assertAllClose(custom_op_output, tf_op_output)
 
 
+class MatmulGatherOnZerothAxis(test_case.TestCase):
+
+  def test_gather_2d(self):
+
+    def graph_fn(params, indices):
+      return ops.matmul_gather_on_zeroth_axis(params, indices)
+
+    params = np.array([[1, 2, 3, 4],
+                       [5, 6, 7, 8],
+                       [9, 10, 11, 12],
+                       [0, 1, 0, 0]], dtype=np.float32)
+    indices = np.array([2, 2, 1])
+    expected_output = np.array([[9, 10, 11, 12], [9, 10, 11, 12], [5, 6, 7, 8]])
+    gather_output = self.execute(graph_fn, [params, indices])
+    self.assertAllClose(gather_output, expected_output)
+
+  def test_gather_3d(self):
+
+    def graph_fn(params, indices):
+      return ops.matmul_gather_on_zeroth_axis(params, indices)
+
+    params = np.array([[[1, 2], [3, 4]],
+                       [[5, 6], [7, 8]],
+                       [[9, 10], [11, 12]],
+                       [[0, 1], [0, 0]]], dtype=np.float32)
+    indices = np.array([0, 3, 1])
+    expected_output = np.array([[[1, 2], [3, 4]],
+                                [[0, 1], [0, 0]],
+                                [[5, 6], [7, 8]]])
+    gather_output = self.execute(graph_fn, [params, indices])
+    self.assertAllClose(gather_output, expected_output)
+
+  def test_gather_with_many_indices(self):
+
+    def graph_fn(params, indices):
+      return ops.matmul_gather_on_zeroth_axis(params, indices)
+
+    params = np.array([[1, 2, 3, 4],
+                       [5, 6, 7, 8],
+                       [9, 10, 11, 12],
+                       [0, 1, 0, 0]], dtype=np.float32)
+    indices = np.array([0, 0, 0, 0, 0, 0])
+    expected_output = np.array(6*[[1, 2, 3, 4]])
+    gather_output = self.execute(graph_fn, [params, indices])
+    self.assertAllClose(gather_output, expected_output)
+
+
 if __name__ == '__main__':
   tf.test.main()

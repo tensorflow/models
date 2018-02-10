@@ -87,13 +87,12 @@ def create_tf_example(image,
       to the format expected by the Tensorflow Object Detection API (which is
       which is [ymin, xmin, ymax, xmax] with coordinates normalized relative
       to image size).
-    image_dir: Directory containing the image files.
+    image_dir: directory containing the image files.
     category_index: a dict containing COCO category information keyed
       by the 'id' field of each category.  See the
       label_map_util.create_category_index function.
     include_masks: Whether to include instance segmentations masks
       (PNG encoded) in the result. default: False.
-
   Returns:
     example: The converted tf.Example
     num_annotations_skipped: Number of (invalid) annotations that were ignored.
@@ -104,6 +103,7 @@ def create_tf_example(image,
   image_height = image['height']
   image_width = image['width']
   filename = image['file_name']
+  image_id = image['id']
 
   full_path = os.path.join(image_dir, filename)
   with tf.gfile.GFile(full_path, 'rb') as fid:
@@ -118,6 +118,7 @@ def create_tf_example(image,
   ymax = []
   is_crowd = []
   category_names = []
+  category_ids = []
   area = []
   encoded_mask_png = []
   num_annotations_skipped = 0
@@ -135,12 +136,13 @@ def create_tf_example(image,
     ymax.append(float(y + height) / image_height)
     is_crowd.append(object_annotations['iscrowd'])
     category_id = int(object_annotations['category_id'])
+    category_ids.append(category_id)
     category_names.append(category_index[category_id]['name'].encode('utf8'))
     area.append(object_annotations['area'])
 
     if include_masks:
-      run_len_encoding = mask.frPyObjects(
-          object_annotations['segmentation'], image_height, image_width)
+      run_len_encoding = mask.frPyObjects(object_annotations['segmentation'],
+                                          image_height, image_width)
       binary_mask = mask.decode(run_len_encoding)
       if not object_annotations['iscrowd']:
         binary_mask = np.amax(binary_mask, axis=2)
@@ -148,31 +150,41 @@ def create_tf_example(image,
       output_io = io.BytesIO()
       pil_image.save(output_io, format='PNG')
       encoded_mask_png.append(output_io.getvalue())
-
   feature_dict = {
-      'image/height': dataset_util.int64_feature(image_height),
-      'image/width': dataset_util.int64_feature(image_width),
-      'image/filename': dataset_util.bytes_feature(
-          filename.encode('utf8')),
-      'image/source_id': dataset_util.bytes_feature(
-          filename.encode('utf8')),
-      'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
-      'image/encoded': dataset_util.bytes_feature(encoded_jpg),
-      'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
-      'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
-      'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
-      'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
-      'image/object/bbox/ymax': dataset_util.float_list_feature(ymax),
-      'image/object/class/text': dataset_util.bytes_list_feature(
-          category_names),
-      'image/object/is_crowd': dataset_util.int64_list_feature(is_crowd),
-      'image/object/area': dataset_util.float_list_feature(area),
+      'image/height':
+          dataset_util.int64_feature(image_height),
+      'image/width':
+          dataset_util.int64_feature(image_width),
+      'image/filename':
+          dataset_util.bytes_feature(filename.encode('utf8')),
+      'image/source_id':
+          dataset_util.bytes_feature(str(image_id).encode('utf8')),
+      'image/key/sha256':
+          dataset_util.bytes_feature(key.encode('utf8')),
+      'image/encoded':
+          dataset_util.bytes_feature(encoded_jpg),
+      'image/format':
+          dataset_util.bytes_feature('jpeg'.encode('utf8')),
+      'image/object/bbox/xmin':
+          dataset_util.float_list_feature(xmin),
+      'image/object/bbox/xmax':
+          dataset_util.float_list_feature(xmax),
+      'image/object/bbox/ymin':
+          dataset_util.float_list_feature(ymin),
+      'image/object/bbox/ymax':
+          dataset_util.float_list_feature(ymax),
+      'image/object/class/label':
+          dataset_util.int64_list_feature(category_ids),
+      'image/object/is_crowd':
+          dataset_util.int64_list_feature(is_crowd),
+      'image/object/area':
+          dataset_util.float_list_feature(area),
   }
   if include_masks:
     feature_dict['image/object/mask'] = (
         dataset_util.bytes_list_feature(encoded_mask_png))
   example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
-  return example, num_annotations_skipped
+  return key, example, num_annotations_skipped
 
 
 def _create_tf_record_from_coco_annotations(
@@ -217,7 +229,7 @@ def _create_tf_record_from_coco_annotations(
       if idx % 100 == 0:
         tf.logging.info('On image %d of %d', idx, len(images))
       annotations_list = annotations_index[image['id']]
-      tf_example, num_annotations_skipped = create_tf_example(
+      _, tf_example, num_annotations_skipped = create_tf_example(
           image, annotations_list, image_dir, category_index, include_masks)
       total_num_annotations_skipped += num_annotations_skipped
       writer.write(tf_example.SerializeToString())

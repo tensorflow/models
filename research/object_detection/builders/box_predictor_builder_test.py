@@ -83,6 +83,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         box_code_size: 3
         apply_sigmoid_to_scores: true
         class_prediction_bias_init: 4.0
+        use_depthwise: true
       }
     """
     conv_hyperparams_text_proto = """
@@ -118,6 +119,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertAlmostEqual(box_predictor._class_prediction_bias_init, 4.0)
     self.assertEqual(box_predictor.num_classes, 10)
     self.assertFalse(box_predictor._is_training)
+    self.assertTrue(box_predictor._use_depthwise)
 
   def test_construct_default_conv_box_predictor(self):
     box_predictor_text_proto = """
@@ -148,6 +150,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertFalse(box_predictor._apply_sigmoid_to_scores)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
+    self.assertFalse(box_predictor._use_depthwise)
 
 
 class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):

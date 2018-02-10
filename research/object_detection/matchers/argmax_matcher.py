@@ -55,7 +55,8 @@ class ArgMaxMatcher(matcher.Matcher):
                matched_threshold,
                unmatched_threshold=None,
                negatives_lower_than_unmatched=True,
-               force_match_for_each_row=False):
+               force_match_for_each_row=False,
+               use_matmul_gather=False):
     """Construct ArgMaxMatcher.
 
     Args:
@@ -74,11 +75,15 @@ class ArgMaxMatcher(matcher.Matcher):
         at least one column (which is not guaranteed otherwise if the
         matched_threshold is high). Defaults to False. See
         argmax_matcher_test.testMatcherForceMatch() for an example.
+      use_matmul_gather: Force constructed match objects to use matrix
+        multiplication based gather instead of standard tf.gather.
+        (Default: False).
 
     Raises:
       ValueError: if unmatched_threshold is set but matched_threshold is not set
         or if unmatched_threshold > matched_threshold.
     """
+    super(ArgMaxMatcher, self).__init__(use_matmul_gather=use_matmul_gather)
     if (matched_threshold is None) and (unmatched_threshold is not None):
       raise ValueError('Need to also define matched_threshold when'
                        'unmatched_threshold is defined')

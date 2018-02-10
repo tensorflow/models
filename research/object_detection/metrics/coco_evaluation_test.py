@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for image.understanding.object_detection.metrics.coco_evaluation."""
+"""Tests for tensorflow_models.object_detection.metrics.coco_evaluation."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import math
 import numpy as np
 import tensorflow as tf
 from object_detection.core import standard_fields
@@ -86,43 +85,6 @@ class CocoDetectionEvaluationTest(tf.test.TestCase):
         })
     metrics = coco_evaluator.evaluate()
     self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
-
-  def testReturnAllMetricsPerCategory(self):
-    """Tests that mAP is calculated correctly on GT and Detections."""
-    category_list = [{'id': 0, 'name': 'person'}]
-    coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
-        category_list, all_metrics_per_category=True)
-    coco_evaluator.add_single_ground_truth_image_info(
-        image_id='image1',
-        groundtruth_dict={
-            standard_fields.InputDataFields.groundtruth_boxes:
-            np.array([[100., 100., 200., 200.]]),
-            standard_fields.InputDataFields.groundtruth_classes: np.array([1])
-        })
-    coco_evaluator.add_single_detected_image_info(
-        image_id='image1',
-        detections_dict={
-            standard_fields.DetectionResultFields.detection_boxes:
-            np.array([[100., 100., 200., 200.]]),
-            standard_fields.DetectionResultFields.detection_scores:
-            np.array([.8]),
-            standard_fields.DetectionResultFields.detection_classes:
-            np.array([1])
-        })
-    metrics = coco_evaluator.evaluate()
-    expected_metrics = [
-        'DetectionBoxes_Recall AR@10 ByCategory/person',
-        'DetectionBoxes_Precision mAP (medium) ByCategory/person',
-        'DetectionBoxes_Precision mAP ByCategory/person',
-        'DetectionBoxes_Precision mAP@.50IOU ByCategory/person',
-        'DetectionBoxes_Precision mAP (small) ByCategory/person',
-        'DetectionBoxes_Precision mAP (large) ByCategory/person',
-        'DetectionBoxes_Recall AR@1 ByCategory/person',
-        'DetectionBoxes_Precision mAP@.75IOU ByCategory/person',
-        'DetectionBoxes_Recall AR@100 ByCategory/person',
-        'DetectionBoxes_Recall AR@100 (medium) ByCategory/person',
-        'DetectionBoxes_Recall AR@100 (large) ByCategory/person']
-    self.assertTrue(set(expected_metrics).issubset(set(metrics)))
 
   def testRejectionOnDuplicateGroundtruth(self):
     """Tests that groundtruth cannot be added more than once for an image."""
@@ -279,12 +241,6 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
     self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100 (medium)'],
                            -1.0)
     self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100 (small)'], 1.0)
-    self.assertAlmostEqual(metrics[
-        'DetectionBoxes_PerformanceByCategory/mAP/dog'], 1.0)
-    self.assertAlmostEqual(metrics[
-        'DetectionBoxes_PerformanceByCategory/mAP/cat'], 1.0)
-    self.assertTrue(math.isnan(metrics[
-        'DetectionBoxes_PerformanceByCategory/mAP/person']))
     self.assertFalse(coco_evaluator._groundtruth_list)
     self.assertFalse(coco_evaluator._detection_boxes_list)
     self.assertFalse(coco_evaluator._image_ids)

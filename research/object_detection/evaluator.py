@@ -24,6 +24,7 @@ import tensorflow as tf
 from object_detection import eval_util
 from object_detection.core import prefetcher
 from object_detection.core import standard_fields as fields
+from object_detection.metrics import coco_evaluation
 from object_detection.utils import object_detection_evaluation
 
 # A dictionary of metric names to classes that implement the metric. The classes
@@ -39,7 +40,11 @@ EVAL_METRICS_CLASS_DICT = {
     'weighted_pascal_voc_instance_segmentation_metrics':
         object_detection_evaluation.WeightedPascalInstanceSegmentationEvaluator,
     'open_images_detection_metrics':
-        object_detection_evaluation.OpenImagesDetectionEvaluator
+        object_detection_evaluation.OpenImagesDetectionEvaluator,
+    'coco_detection_metrics':
+        coco_evaluation.CocoDetectionEvaluator,
+    'coco_mask_metrics':
+        coco_evaluation.CocoMaskEvaluator,
 }
 
 EVAL_DEFAULT_METRIC = 'pascal_voc_detection_metrics'

@@ -475,6 +475,7 @@ class ObjectDetectionEvaluation(object):
         nms_iou_threshold=nms_iou_threshold,
         nms_max_output_boxes=nms_max_output_boxes)
     self.num_class = num_groundtruth_classes
+    self.use_weighted_mean_ap = use_weighted_mean_ap
     self.label_id_offset = label_id_offset
 
     self.groundtruth_boxes = {}
@@ -485,6 +486,9 @@ class ObjectDetectionEvaluation(object):
     self.num_gt_instances_per_class = np.zeros(self.num_class, dtype=int)
     self.num_gt_imgs_per_class = np.zeros(self.num_class, dtype=int)
 
+    self._initialize_detections()
+
+  def _initialize_detections(self):
     self.detection_keys = set()
     self.scores_per_class = [[] for _ in range(self.num_class)]
     self.tp_fp_labels_per_class = [[] for _ in range(self.num_class)]
@@ -495,17 +499,8 @@ class ObjectDetectionEvaluation(object):
     self.recalls_per_class = []
     self.corloc_per_class = np.ones(self.num_class, dtype=float)
 
-    self.use_weighted_mean_ap = use_weighted_mean_ap
-
   def clear_detections(self):
-    self.detection_keys = {}
-    self.scores_per_class = [[] for _ in range(self.num_class)]
-    self.tp_fp_labels_per_class = [[] for _ in range(self.num_class)]
-    self.num_images_correctly_detected_per_class = np.zeros(self.num_class)
-    self.average_precision_per_class = np.zeros(self.num_class, dtype=float)
-    self.precisions_per_class = []
-    self.recalls_per_class = []
-    self.corloc_per_class = np.ones(self.num_class, dtype=float)
+    self._initialize_detections()
 
   def add_single_ground_truth_image_info(self,
                                          image_key,

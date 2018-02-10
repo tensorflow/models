@@ -62,6 +62,7 @@ class MatcherBuilderTest(tf.test.TestCase):
         unmatched_threshold: 0.3
         negatives_lower_than_unmatched: false
         force_match_for_each_row: true
+        use_matmul_gather: true
       }
     """
     matcher_proto = matcher_pb2.Matcher()
@@ -72,6 +73,7 @@ class MatcherBuilderTest(tf.test.TestCase):
     self.assertAlmostEqual(matcher_object._unmatched_threshold, 0.3)
     self.assertFalse(matcher_object._negatives_lower_than_unmatched)
     self.assertTrue(matcher_object._force_match_for_each_row)
+    self.assertTrue(matcher_object._use_matmul_gather)
 
   def test_build_bipartite_matcher(self):
     matcher_text_proto = """

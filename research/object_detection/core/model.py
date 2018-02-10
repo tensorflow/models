@@ -236,7 +236,8 @@ class DetectionModel(object):
                           groundtruth_boxes_list,
                           groundtruth_classes_list,
                           groundtruth_masks_list=None,
-                          groundtruth_keypoints_list=None):
+                          groundtruth_keypoints_list=None,
+                          groundtruth_weights_list=None):
     """Provide groundtruth tensors.
 
     Args:
@@ -257,10 +258,15 @@ class DetectionModel(object):
         shape [num_boxes, num_keypoints, 2] containing keypoints.
         Keypoints are assumed to be provided in normalized coordinates and
         missing keypoints should be encoded as NaN.
+      groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
+        [num_boxes] containing weights for groundtruth boxes.
     """
     self._groundtruth_lists[fields.BoxListFields.boxes] = groundtruth_boxes_list
     self._groundtruth_lists[
         fields.BoxListFields.classes] = groundtruth_classes_list
+    if groundtruth_weights_list:
+      self._groundtruth_lists[fields.BoxListFields.
+                              weights] = groundtruth_weights_list
     if groundtruth_masks_list:
       self._groundtruth_lists[
           fields.BoxListFields.masks] = groundtruth_masks_list

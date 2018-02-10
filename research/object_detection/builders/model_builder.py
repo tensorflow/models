@@ -31,6 +31,7 @@ from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extr
 from object_detection.models import faster_rcnn_inception_v2_feature_extractor as frcnn_inc_v2
 from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
+from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
 from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
 from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
 from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
@@ -42,6 +43,9 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_inception_v2': SSDInceptionV2FeatureExtractor,
     'ssd_inception_v3': SSDInceptionV3FeatureExtractor,
     'ssd_mobilenet_v1': SSDMobileNetV1FeatureExtractor,
+    'ssd_resnet50_v1_fpn': ssd_resnet_v1_fpn.SSDResnet50V1FpnFeatureExtractor,
+    'ssd_resnet101_v1_fpn': ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
+    'ssd_resnet152_v1_fpn': ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
     'embedded_ssd_mobilenet_v1': EmbeddedSSDMobileNetV1FeatureExtractor,
 }
 
@@ -62,13 +66,14 @@ FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
 }
 
 
-def build(model_config, is_training):
+def build(model_config, is_training, add_summaries=True):
   """Builds a DetectionModel based on the model config.
 
   Args:
     model_config: A model.proto object containing the config for the desired
       DetectionModel.
     is_training: True if this model is being built for training purposes.
+    add_summaries: Whether to add tensorflow summaries in the model graph.
 
   Returns:
     DetectionModel based on the config.
@@ -80,9 +85,10 @@ def build(model_config, is_training):
     raise ValueError('model_config not of type model_pb2.DetectionModel.')
   meta_architecture = model_config.WhichOneof('model')
   if meta_architecture == 'ssd':
-    return _build_ssd_model(model_config.ssd, is_training)
+    return _build_ssd_model(model_config.ssd, is_training, add_summaries)
   if meta_architecture == 'faster_rcnn':
-    return _build_faster_rcnn_model(model_config.faster_rcnn, is_training)
+    return _build_faster_rcnn_model(model_config.faster_rcnn, is_training,
+                                    add_summaries)
   raise ValueError('Unknown meta architecture: {}'.format(meta_architecture))
 
 
@@ -107,6 +113,7 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   pad_to_multiple = feature_extractor_config.pad_to_multiple
   batch_norm_trainable = feature_extractor_config.batch_norm_trainable
   use_explicit_padding = feature_extractor_config.use_explicit_padding
+  use_depthwise = feature_extractor_config.use_depthwise
   conv_hyperparams = hyperparams_builder.build(
       feature_extractor_config.conv_hyperparams, is_training)
 
@@ -117,16 +124,17 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   return feature_extractor_class(is_training, depth_multiplier, min_depth,
                                  pad_to_multiple, conv_hyperparams,
                                  batch_norm_trainable, reuse_weights,
-                                 use_explicit_padding)
+                                 use_explicit_padding, use_depthwise)
 
 
-def _build_ssd_model(ssd_config, is_training):
+def _build_ssd_model(ssd_config, is_training, add_summaries):
   """Builds an SSD detection model based on the model config.
 
   Args:
     ssd_config: A ssd.proto object containing the config for the desired
       SSDMetaArch.
     is_training: True if this model is being built for training purposes.
+    add_summaries: Whether to add tf summaries in the model.
 
   Returns:
     SSDMetaArch based on the config.
@@ -173,7 +181,8 @@ def _build_ssd_model(ssd_config, is_training):
       classification_weight,
       localization_weight,
       normalize_loss_by_num_matches,
-      hard_example_miner)
+      hard_example_miner,
+      add_summaries=add_summaries)
 
 
 def _build_faster_rcnn_feature_extractor(
@@ -207,7 +216,7 @@ def _build_faster_rcnn_feature_extractor(
       batch_norm_trainable, reuse_weights)
 
 
-def _build_faster_rcnn_model(frcnn_config, is_training):
+def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   """Builds a Faster R-CNN or R-FCN detection model based on the model config.
 
   Builds R-FCN model if the second_stage_box_predictor in the config is of type
@@ -215,8 +224,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training):
 
   Args:
     frcnn_config: A faster_rcnn.proto object containing the config for the
-    desired FasterRCNNMetaArch or RFCNMetaArch.
+      desired FasterRCNNMetaArch or RFCNMetaArch.
     is_training: True if this model is being built for training purposes.
+    add_summaries: Whether to add tf summaries in the model.
 
   Returns:
     FasterRCNNMetaArch based on the config.
@@ -312,7 +322,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training):
       second_stage_classification_loss,
       'second_stage_classification_loss_weight':
       second_stage_classification_loss_weight,
-      'hard_example_miner': hard_example_miner}
+      'hard_example_miner': hard_example_miner,
+      'add_summaries': add_summaries}
 
   if isinstance(second_stage_box_predictor, box_predictor.RfcnBoxPredictor):
     return rfcn_meta_arch.RFCNMetaArch(
