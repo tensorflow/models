@@ -121,6 +121,7 @@ class SSDMetaArch(model.DetectionModel):
                feature_extractor,
                matcher,
                region_similarity_calculator,
+               encode_background_as_zeros,
                image_resizer_fn,
                non_max_suppression_fn,
                score_conversion_fn,
@@ -147,6 +148,9 @@ class SSDMetaArch(model.DetectionModel):
       matcher: a matcher.Matcher object.
       region_similarity_calculator: a
         region_similarity_calculator.RegionSimilarityCalculator object.
+      encode_background_as_zeros: boolean determining whether background
+        targets are to be encoded as an all zeros vector or a one-hot
+        vector (where background is the 0th class).
       image_resizer_fn: a callable for image resizing.  This callable always
         takes a rank-3 image tensor (corresponding to a single image) and
         returns a rank-3 image tensor, possibly with new spatial dimensions and
@@ -190,7 +194,12 @@ class SSDMetaArch(model.DetectionModel):
     # TODO: handle agnostic mode and positive/negative class
     # weights
     unmatched_cls_target = None
-    unmatched_cls_target = tf.constant([1] + self.num_classes * [0], tf.float32)
+    unmatched_cls_target = tf.constant([1] + self.num_classes * [0],
+                                       tf.float32)
+    if encode_background_as_zeros:
+      unmatched_cls_target = tf.constant((self.num_classes + 1) * [0],
+                                         tf.float32)
+
     self._target_assigner = target_assigner.TargetAssigner(
         self._region_similarity_calculator,
         self._matcher,
