@@ -152,6 +152,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
   matcher = matcher_builder.build(ssd_config.matcher)
   region_similarity_calculator = sim_calc.build(
       ssd_config.similarity_calculator)
+  encode_background_as_zeros = ssd_config.encode_background_as_zeros
   ssd_box_predictor = box_predictor_builder.build(hyperparams_builder.build,
                                                   ssd_config.box_predictor,
                                                   is_training, num_classes)
@@ -173,6 +174,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       feature_extractor,
       matcher,
       region_similarity_calculator,
+      encode_background_as_zeros,
       image_resizer_fn,
       non_max_suppression_fn,
       score_conversion_fn,
