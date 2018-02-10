@@ -308,6 +308,21 @@ python object_detection/export_inference_graph.py \
 Afterwards, you should see a directory named `exported_graphs` containing the
 SavedModel and frozen graph.
 
+## Configuring the Instance Segmentation Pipeline
+
+Mask prediction can be turned on for an object detection config by adding
+`predict_instance_masks: true` within the `MaskRCNNBoxPredictor`. Other
+parameters such as mask size, number of convolutions in the mask layer, and the
+convolution hyper parameters can be defined. We will use
+`mask_rcnn_resnet101_pets.config` as a starting point for configuring the
+instance segmentation pipeline. Everything above that was mentioned about object
+detection holds true for instance segmentation. Instance segmentation consists
+of an object detection model with an additional head that predicts the object
+mask inside each predicted box once we remove the training and other details.
+Please refer to the section on [Running an Instance Segmentation
+Model](instance_segmentation.md) for instructions on how to configure a model
+that predicts masks in addition to object bounding boxes.
+
 ## What's Next
 
 Congratulations, you have now trained an object detector for various cats and

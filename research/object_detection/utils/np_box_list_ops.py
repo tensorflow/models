@@ -21,7 +21,6 @@ Example box operations that are supported:
 """
 
 import numpy as np
-from six.moves import xrange
 
 from object_detection.utils import np_box_list
 from object_detection.utils import np_box_ops
@@ -97,7 +96,7 @@ def ioa(boxlist1, boxlist2):
 def gather(boxlist, indices, fields=None):
   """Gather boxes from BoxList according to indices and return new BoxList.
 
-  By default, Gather returns boxes corresponding to the input index list, as
+  By default, gather returns boxes corresponding to the input index list, as
   well as all additional fields stored in the boxlist (indexing into the
   first dimension).  However one can optionally only gather from a
   subset of fields.

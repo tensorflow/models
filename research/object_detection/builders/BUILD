@@ -20,18 +20,20 @@ py_library(
         ":matcher_builder",
         ":post_processing_builder",
         ":region_similarity_calculator_builder",
-        "//tensorflow_models/object_detection/core:box_predictor",
-        "//tensorflow_models/object_detection/meta_architectures:faster_rcnn_meta_arch",
-        "//tensorflow_models/object_detection/meta_architectures:rfcn_meta_arch",
-        "//tensorflow_models/object_detection/meta_architectures:ssd_meta_arch",
-        "//tensorflow_models/object_detection/models:embedded_ssd_mobilenet_v1_feature_extractor",
-        "//tensorflow_models/object_detection/models:faster_rcnn_inception_resnet_v2_feature_extractor",
-        "//tensorflow_models/object_detection/models:faster_rcnn_inception_v2_feature_extractor",
-        "//tensorflow_models/object_detection/models:faster_rcnn_resnet_v1_feature_extractor",
-        "//tensorflow_models/object_detection/models:ssd_inception_v2_feature_extractor",
-        "//tensorflow_models/object_detection/models:ssd_inception_v3_feature_extractor",
-        "//tensorflow_models/object_detection/models:ssd_mobilenet_v1_feature_extractor",
-        "//tensorflow_models/object_detection/protos:model_py_pb2",
+        "//tensorflow/models/research/object_detection/core:box_predictor",
+        "//tensorflow/models/research/object_detection/meta_architectures:faster_rcnn_meta_arch",
+        "//tensorflow/models/research/object_detection/meta_architectures:rfcn_meta_arch",
+        "//tensorflow/models/research/object_detection/meta_architectures:ssd_meta_arch",
+        "//tensorflow/models/research/object_detection/models:embedded_ssd_mobilenet_v1_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:faster_rcnn_inception_resnet_v2_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:faster_rcnn_inception_v2_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:faster_rcnn_nas_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:faster_rcnn_resnet_v1_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_inception_v2_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_inception_v3_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_mobilenet_v1_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_resnet_v1_fpn_feature_extractor",
+        "//tensorflow/models/research/object_detection/protos:model_py_pb2",
     ],
 )
 
@@ -41,15 +43,18 @@ py_test(
     deps = [
         ":model_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/meta_architectures:faster_rcnn_meta_arch",
-        "//tensorflow_models/object_detection/meta_architectures:ssd_meta_arch",
-        "//tensorflow_models/object_detection/models:faster_rcnn_inception_resnet_v2_feature_extractor",
-        "//tensorflow_models/object_detection/models:faster_rcnn_inception_v2_feature_extractor",
-        "//tensorflow_models/object_detection/models:faster_rcnn_resnet_v1_feature_extractor",
-        "//tensorflow_models/object_detection/models:ssd_inception_v2_feature_extractor",
-        "//tensorflow_models/object_detection/models:ssd_inception_v3_feature_extractor",
-        "//tensorflow_models/object_detection/models:ssd_mobilenet_v1_feature_extractor",
-        "//tensorflow_models/object_detection/protos:model_py_pb2",
+        "//tensorflow/models/research/object_detection/meta_architectures:faster_rcnn_meta_arch",
+        "//tensorflow/models/research/object_detection/meta_architectures:ssd_meta_arch",
+        "//tensorflow/models/research/object_detection/models:embedded_ssd_mobilenet_v1_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:faster_rcnn_inception_resnet_v2_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:faster_rcnn_inception_v2_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:faster_rcnn_nas_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:faster_rcnn_resnet_v1_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_inception_v2_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_inception_v3_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_mobilenet_v1_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_resnet_v1_fpn_feature_extractor",
+        "//tensorflow/models/research/object_detection/protos:model_py_pb2",
     ],
 )
 
@@ -57,9 +62,9 @@ py_library(
     name = "matcher_builder",
     srcs = ["matcher_builder.py"],
     deps = [
-        "//tensorflow_models/object_detection/matchers:argmax_matcher",
-        "//tensorflow_models/object_detection/matchers:bipartite_matcher",
-        "//tensorflow_models/object_detection/protos:matcher_py_pb2",
+        "//tensorflow/models/research/object_detection/matchers:argmax_matcher",
+        "//tensorflow/models/research/object_detection/matchers:bipartite_matcher",
+        "//tensorflow/models/research/object_detection/protos:matcher_py_pb2",
     ],
 )
 
@@ -68,9 +73,9 @@ py_test(
     srcs = ["matcher_builder_test.py"],
     deps = [
         ":matcher_builder",
-        "//tensorflow_models/object_detection/matchers:argmax_matcher",
-        "//tensorflow_models/object_detection/matchers:bipartite_matcher",
-        "//tensorflow_models/object_detection/protos:matcher_py_pb2",
+        "//tensorflow/models/research/object_detection/matchers:argmax_matcher",
+        "//tensorflow/models/research/object_detection/matchers:bipartite_matcher",
+        "//tensorflow/models/research/object_detection/protos:matcher_py_pb2",
     ],
 )
 
@@ -78,11 +83,11 @@ py_library(
     name = "box_coder_builder",
     srcs = ["box_coder_builder.py"],
     deps = [
-        "//tensorflow_models/object_detection/box_coders:faster_rcnn_box_coder",
-        "//tensorflow_models/object_detection/box_coders:keypoint_box_coder",
-        "//tensorflow_models/object_detection/box_coders:mean_stddev_box_coder",
-        "//tensorflow_models/object_detection/box_coders:square_box_coder",
-        "//tensorflow_models/object_detection/protos:box_coder_py_pb2",
+        "//tensorflow/models/research/object_detection/box_coders:faster_rcnn_box_coder",
+        "//tensorflow/models/research/object_detection/box_coders:keypoint_box_coder",
+        "//tensorflow/models/research/object_detection/box_coders:mean_stddev_box_coder",
+        "//tensorflow/models/research/object_detection/box_coders:square_box_coder",
+        "//tensorflow/models/research/object_detection/protos:box_coder_py_pb2",
     ],
 )
 
@@ -92,11 +97,11 @@ py_test(
     deps = [
         ":box_coder_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/box_coders:faster_rcnn_box_coder",
-        "//tensorflow_models/object_detection/box_coders:keypoint_box_coder",
-        "//tensorflow_models/object_detection/box_coders:mean_stddev_box_coder",
-        "//tensorflow_models/object_detection/box_coders:square_box_coder",
-        "//tensorflow_models/object_detection/protos:box_coder_py_pb2",
+        "//tensorflow/models/research/object_detection/box_coders:faster_rcnn_box_coder",
+        "//tensorflow/models/research/object_detection/box_coders:keypoint_box_coder",
+        "//tensorflow/models/research/object_detection/box_coders:mean_stddev_box_coder",
+        "//tensorflow/models/research/object_detection/box_coders:square_box_coder",
+        "//tensorflow/models/research/object_detection/protos:box_coder_py_pb2",
     ],
 )
 
@@ -104,9 +109,10 @@ py_library(
     name = "anchor_generator_builder",
     srcs = ["anchor_generator_builder.py"],
     deps = [
-        "//tensorflow_models/object_detection/anchor_generators:grid_anchor_generator",
-        "//tensorflow_models/object_detection/anchor_generators:multiple_grid_anchor_generator",
-        "//tensorflow_models/object_detection/protos:anchor_generator_py_pb2",
+        "//tensorflow/models/research/object_detection/anchor_generators:grid_anchor_generator",
+        "//tensorflow/models/research/object_detection/anchor_generators:multiple_grid_anchor_generator",
+        "//tensorflow/models/research/object_detection/anchor_generators:multiscale_grid_anchor_generator",
+        "//tensorflow/models/research/object_detection/protos:anchor_generator_py_pb2",
     ],
 )
 
@@ -116,9 +122,35 @@ py_test(
     deps = [
         ":anchor_generator_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/anchor_generators:grid_anchor_generator",
-        "//tensorflow_models/object_detection/anchor_generators:multiple_grid_anchor_generator",
-        "//tensorflow_models/object_detection/protos:anchor_generator_py_pb2",
+        "//tensorflow/models/research/object_detection/anchor_generators:grid_anchor_generator",
+        "//tensorflow/models/research/object_detection/anchor_generators:multiple_grid_anchor_generator",
+        "//tensorflow/models/research/object_detection/anchor_generators:multiscale_grid_anchor_generator",
+        "//tensorflow/models/research/object_detection/protos:anchor_generator_py_pb2",
+    ],
+)
+
+py_library(
+    name = "dataset_builder",
+    srcs = ["dataset_builder.py"],
+    deps = [
+        "//tensorflow",
+        "//tensorflow/models/research/object_detection/data_decoders:tf_example_decoder",
+        "//tensorflow/models/research/object_detection/protos:input_reader_py_pb2",
+        "//tensorflow/models/research/object_detection/utils:dataset_util",
+    ],
+)
+
+py_test(
+    name = "dataset_builder_test",
+    srcs = [
+        "dataset_builder_test.py",
+    ],
+    deps = [
+        ":dataset_builder",
+        "//tensorflow",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/protos:input_reader_py_pb2",
+        "//tensorflow/models/research/object_detection/utils:dataset_util",
     ],
 )
 
@@ -127,8 +159,8 @@ py_library(
     srcs = ["input_reader_builder.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/data_decoders:tf_example_decoder",
-        "//tensorflow_models/object_detection/protos:input_reader_py_pb2",
+        "//tensorflow/models/research/object_detection/data_decoders:tf_example_decoder",
+        "//tensorflow/models/research/object_detection/protos:input_reader_py_pb2",
     ],
 )
 
@@ -140,8 +172,8 @@ py_test(
     deps = [
         ":input_reader_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:standard_fields",
-        "//tensorflow_models/object_detection/protos:input_reader_py_pb2",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/protos:input_reader_py_pb2",
     ],
 )
 
@@ -149,8 +181,8 @@ py_library(
     name = "losses_builder",
     srcs = ["losses_builder.py"],
     deps = [
-        "//tensorflow_models/object_detection/core:losses",
-        "//tensorflow_models/object_detection/protos:losses_py_pb2",
+        "//tensorflow/models/research/object_detection/core:losses",
+        "//tensorflow/models/research/object_detection/protos:losses_py_pb2",
     ],
 )
 
@@ -159,8 +191,8 @@ py_test(
     srcs = ["losses_builder_test.py"],
     deps = [
         ":losses_builder",
-        "//tensorflow_models/object_detection/core:losses",
-        "//tensorflow_models/object_detection/protos:losses_py_pb2",
+        "//tensorflow/models/research/object_detection/core:losses",
+        "//tensorflow/models/research/object_detection/protos:losses_py_pb2",
     ],
 )
 
@@ -169,7 +201,7 @@ py_library(
     srcs = ["optimizer_builder.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/utils:learning_schedules",
+        "//tensorflow/models/research/object_detection/utils:learning_schedules",
     ],
 )
 
@@ -179,7 +211,7 @@ py_test(
     deps = [
         ":optimizer_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/protos:optimizer_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:optimizer_py_pb2",
     ],
 )
 
@@ -188,8 +220,8 @@ py_library(
     srcs = ["post_processing_builder.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:post_processing",
-        "//tensorflow_models/object_detection/protos:post_processing_py_pb2",
+        "//tensorflow/models/research/object_detection/core:post_processing",
+        "//tensorflow/models/research/object_detection/protos:post_processing_py_pb2",
     ],
 )
 
@@ -199,7 +231,7 @@ py_test(
     deps = [
         ":post_processing_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/protos:post_processing_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:post_processing_py_pb2",
     ],
 )
 
@@ -207,7 +239,7 @@ py_library(
     name = "hyperparams_builder",
     srcs = ["hyperparams_builder.py"],
     deps = [
-        "//tensorflow_models/object_detection/protos:hyperparams_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:hyperparams_py_pb2",
     ],
 )
 
@@ -217,7 +249,7 @@ py_test(
     deps = [
         ":hyperparams_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/protos:hyperparams_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:hyperparams_py_pb2",
     ],
 )
 
@@ -226,8 +258,8 @@ py_library(
     srcs = ["box_predictor_builder.py"],
     deps = [
         ":hyperparams_builder",
-        "//tensorflow_models/object_detection/core:box_predictor",
-        "//tensorflow_models/object_detection/protos:box_predictor_py_pb2",
+        "//tensorflow/models/research/object_detection/core:box_predictor",
+        "//tensorflow/models/research/object_detection/protos:box_predictor_py_pb2",
     ],
 )
 
@@ -238,8 +270,8 @@ py_test(
         ":box_predictor_builder",
         ":hyperparams_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/protos:box_predictor_py_pb2",
-        "//tensorflow_models/object_detection/protos:hyperparams_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:box_predictor_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:hyperparams_py_pb2",
     ],
 )
 
@@ -247,8 +279,8 @@ py_library(
     name = "region_similarity_calculator_builder",
     srcs = ["region_similarity_calculator_builder.py"],
     deps = [
-        "//tensorflow_models/object_detection/core:region_similarity_calculator",
-        "//tensorflow_models/object_detection/protos:region_similarity_calculator_py_pb2",
+        "//tensorflow/models/research/object_detection/core:region_similarity_calculator",
+        "//tensorflow/models/research/object_detection/protos:region_similarity_calculator_py_pb2",
     ],
 )
 
@@ -266,8 +298,8 @@ py_library(
     srcs = ["preprocessor_builder.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:preprocessor",
-        "//tensorflow_models/object_detection/protos:preprocessor_py_pb2",
+        "//tensorflow/models/research/object_detection/core:preprocessor",
+        "//tensorflow/models/research/object_detection/protos:preprocessor_py_pb2",
     ],
 )
 
@@ -279,8 +311,8 @@ py_test(
     deps = [
         ":preprocessor_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:preprocessor",
-        "//tensorflow_models/object_detection/protos:preprocessor_py_pb2",
+        "//tensorflow/models/research/object_detection/core:preprocessor",
+        "//tensorflow/models/research/object_detection/protos:preprocessor_py_pb2",
     ],
 )
 
@@ -289,8 +321,8 @@ py_library(
     srcs = ["image_resizer_builder.py"],
     deps = [
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:preprocessor",
-        "//tensorflow_models/object_detection/protos:image_resizer_py_pb2",
+        "//tensorflow/models/research/object_detection/core:preprocessor",
+        "//tensorflow/models/research/object_detection/protos:image_resizer_py_pb2",
     ],
 )
 
@@ -300,6 +332,6 @@ py_test(
     deps = [
         ":image_resizer_builder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/protos:image_resizer_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:image_resizer_py_pb2",
     ],
 )

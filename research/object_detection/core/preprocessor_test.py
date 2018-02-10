@@ -21,6 +21,7 @@ import six
 import tensorflow as tf
 
 from object_detection.core import preprocessor
+from object_detection.core import preprocessor_cache
 from object_detection.core import standard_fields as fields
 
 if six.PY2:
@@ -290,6 +291,15 @@ class PreprocessorTest(tf.test.TestCase):
   def expectedLabelsAfterThresholdingWithMissingScore(self):
     return tf.constant([2], dtype=tf.float32)
 
+  def testRgbToGrayscale(self):
+    images = self.createTestImages()
+    grayscale_images = preprocessor._rgb_to_grayscale(images)
+    expected_images = tf.image.rgb_to_grayscale(images)
+    with self.test_session() as sess:
+      (grayscale_images, expected_images) = sess.run(
+          [grayscale_images, expected_images])
+      self.assertAllEqual(expected_images, grayscale_images)
+
   def testNormalizeImage(self):
     preprocess_options = [(preprocessor.normalize_image, {
         'original_minval': 0,
@@ -435,6 +445,55 @@ class PreprocessorTest(tf.test.TestCase):
       rotated_mask, expected_mask = sess.run([rotated_mask, expected_mask])
       self.assertAllEqual(rotated_mask.flatten(), expected_mask.flatten())
 
+  def _testPreprocessorCache(self,
+                             preprocess_options,
+                             test_boxes=False,
+                             test_masks=False,
+                             test_keypoints=False,
+                             num_runs=4):
+    cache = preprocessor_cache.PreprocessorCache()
+    images = self.createTestImages()
+    boxes = self.createTestBoxes()
+    classes = self.createTestLabels()
+    masks = self.createTestMasks()
+    keypoints = self.createTestKeypoints()
+    preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+        include_instance_masks=test_masks, include_keypoints=test_keypoints)
+    out = []
+    for i in range(num_runs):
+      tensor_dict = {
+          fields.InputDataFields.image: images,
+      }
+      num_outputs = 1
+      if test_boxes:
+        tensor_dict[fields.InputDataFields.groundtruth_boxes] = boxes
+        tensor_dict[fields.InputDataFields.groundtruth_classes] = classes
+        num_outputs += 1
+      if test_masks:
+        tensor_dict[fields.InputDataFields.groundtruth_instance_masks] = masks
+        num_outputs += 1
+      if test_keypoints:
+        tensor_dict[fields.InputDataFields.groundtruth_keypoints] = keypoints
+        num_outputs += 1
+      out.append(preprocessor.preprocess(
+          tensor_dict, preprocess_options, preprocessor_arg_map, cache))
+
+    with self.test_session() as sess:
+      to_run = []
+      for i in range(num_runs):
+        to_run.append(out[i][fields.InputDataFields.image])
+        if test_boxes:
+          to_run.append(out[i][fields.InputDataFields.groundtruth_boxes])
+        if test_masks:
+          to_run.append(
+              out[i][fields.InputDataFields.groundtruth_instance_masks])
+        if test_keypoints:
+          to_run.append(out[i][fields.InputDataFields.groundtruth_keypoints])
+
+      out_array = sess.run(to_run)
+      for i in range(num_outputs, len(out_array)):
+        self.assertAllClose(out_array[i], out_array[i - num_outputs])
+
   def testRandomHorizontalFlip(self):
     preprocess_options = [(preprocessor.random_horizontal_flip, {})]
     images = self.expectedImagesAfterNormalization()
@@ -490,6 +549,16 @@ class PreprocessorTest(tf.test.TestCase):
                                     boxes_expected])
       self.assertAllClose(boxes_, boxes_expected_)
       self.assertAllClose(images_diff_, images_diff_expected_)
+
+  def testRandomHorizontalFlipWithCache(self):
+    keypoint_flip_permutation = self.createKeypointFlipPermutation()
+    preprocess_options = [
+        (preprocessor.random_horizontal_flip,
+         {'keypoint_flip_permutation': keypoint_flip_permutation})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=True,
+                                test_keypoints=True)
 
   def testRunRandomHorizontalFlipWithMaskAndKeypoints(self):
     preprocess_options = [(preprocessor.random_horizontal_flip, {})]
@@ -578,6 +647,16 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllClose(boxes_, boxes_expected_)
       self.assertAllClose(images_diff_, images_diff_expected_)
 
+  def testRandomVerticalFlipWithCache(self):
+    keypoint_flip_permutation = self.createKeypointFlipPermutation()
+    preprocess_options = [
+        (preprocessor.random_vertical_flip,
+         {'keypoint_flip_permutation': keypoint_flip_permutation})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=True,
+                                test_keypoints=True)
+
   def testRunRandomVerticalFlipWithMaskAndKeypoints(self):
     preprocess_options = [(preprocessor.random_vertical_flip, {})]
     image_height = 3
@@ -665,6 +744,13 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllClose(boxes_, boxes_expected_)
       self.assertAllClose(images_diff_, images_diff_expected_)
 
+  def testRandomRotation90WithCache(self):
+    preprocess_options = [(preprocessor.random_rotation90, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=True,
+                                test_keypoints=True)
+
   def testRunRandomRotation90WithMaskAndKeypoints(self):
     preprocess_options = [(preprocessor.random_rotation90, {})]
     image_height = 3
@@ -716,6 +802,20 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllClose(values_greater_, values_true_)
       self.assertAllClose(values_less_, values_true_)
 
+  def testRandomPixelValueScaleWithCache(self):
+    preprocess_options = []
+    preprocess_options.append((preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }))
+    preprocess_options.append((preprocessor.random_pixel_value_scale, {}))
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=False,
+                                test_keypoints=False)
+
   def testRandomImageScale(self):
     preprocess_options = [(preprocessor.random_image_scale, {})]
     images_original = self.createTestImages()
@@ -735,6 +835,13 @@ class PreprocessorTest(tf.test.TestCase):
           images_original_shape_[2] * 0.5 <= images_scaled_shape_[2])
       self.assertTrue(
           images_original_shape_[2] * 2.0 >= images_scaled_shape_[2])
+
+  def testRandomImageScaleWithCache(self):
+    preprocess_options = [(preprocessor.random_image_scale, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=False,
+                                test_masks=False,
+                                test_keypoints=False)
 
   def testRandomRGBtoGray(self):
     preprocess_options = [(preprocessor.random_rgb_to_gray, {})]
@@ -769,6 +876,14 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllClose(images_g_diff_, image_zero1_)
       self.assertAllClose(images_b_diff_, image_zero1_)
 
+  def testRandomRGBtoGrayWithCache(self):
+    preprocess_options = [(
+        preprocessor.random_rgb_to_gray, {'probability': 0.5})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=False,
+                                test_masks=False,
+                                test_keypoints=False)
+
   def testRandomAdjustBrightness(self):
     preprocessing_options = []
     preprocessing_options.append((preprocessor.normalize_image, {
@@ -788,6 +903,20 @@ class PreprocessorTest(tf.test.TestCase):
       (image_original_shape_, image_bright_shape_) = sess.run(
           [image_original_shape, image_bright_shape])
       self.assertAllEqual(image_original_shape_, image_bright_shape_)
+
+  def testRandomAdjustBrightnessWithCache(self):
+    preprocess_options = []
+    preprocess_options.append((preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }))
+    preprocess_options.append((preprocessor.random_adjust_brightness, {}))
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=False,
+                                test_masks=False,
+                                test_keypoints=False)
 
   def testRandomAdjustContrast(self):
     preprocessing_options = []
@@ -809,6 +938,20 @@ class PreprocessorTest(tf.test.TestCase):
           [image_original_shape, image_contrast_shape])
       self.assertAllEqual(image_original_shape_, image_contrast_shape_)
 
+  def testRandomAdjustContrastWithCache(self):
+    preprocess_options = []
+    preprocess_options.append((preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }))
+    preprocess_options.append((preprocessor.random_adjust_contrast, {}))
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=False,
+                                test_masks=False,
+                                test_keypoints=False)
+
   def testRandomAdjustHue(self):
     preprocessing_options = []
     preprocessing_options.append((preprocessor.normalize_image, {
@@ -829,6 +972,20 @@ class PreprocessorTest(tf.test.TestCase):
           [image_original_shape, image_hue_shape])
       self.assertAllEqual(image_original_shape_, image_hue_shape_)
 
+  def testRandomAdjustHueWithCache(self):
+    preprocess_options = []
+    preprocess_options.append((preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }))
+    preprocess_options.append((preprocessor.random_adjust_hue, {}))
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=False,
+                                test_masks=False,
+                                test_keypoints=False)
+
   def testRandomDistortColor(self):
     preprocessing_options = []
     preprocessing_options.append((preprocessor.normalize_image, {
@@ -848,6 +1005,20 @@ class PreprocessorTest(tf.test.TestCase):
       (images_original_shape_, images_distorted_color_shape_) = sess.run(
           [images_original_shape, images_distorted_color_shape])
       self.assertAllEqual(images_original_shape_, images_distorted_color_shape_)
+
+  def testRandomDistortColorWithCache(self):
+    preprocess_options = []
+    preprocess_options.append((preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }))
+    preprocess_options.append((preprocessor.random_distort_color, {}))
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=False,
+                                test_masks=False,
+                                test_keypoints=False)
 
   def testRandomJitterBoxes(self):
     preprocessing_options = []
@@ -899,6 +1070,21 @@ class PreprocessorTest(tf.test.TestCase):
        ])
       self.assertAllEqual(boxes_rank_, distorted_boxes_rank_)
       self.assertAllEqual(images_rank_, distorted_images_rank_)
+
+  def testRandomCropImageWithCache(self):
+    preprocess_options = [(preprocessor.random_rgb_to_gray,
+                           {'probability': 0.5}),
+                          (preprocessor.normalize_image, {
+                              'original_minval': 0,
+                              'original_maxval': 255,
+                              'target_minval': 0,
+                              'target_maxval': 1,
+                          }),
+                          (preprocessor.random_crop_image, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=False,
+                                test_keypoints=False)
 
   def testRandomCropImageGrayscale(self):
     preprocessing_options = [(preprocessor.rgb_to_gray, {}),
@@ -1446,6 +1632,13 @@ class PreprocessorTest(tf.test.TestCase):
            self.expectedKeypointsAfterThresholding()])
       self.assertAllClose(retained_keypoints_, expected_keypoints_)
 
+  def testRandomCropToAspectRatioWithCache(self):
+    preprocess_options = [(preprocessor.random_crop_to_aspect_ratio, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=False,
+                                test_keypoints=False)
+
   def testRunRandomCropToAspectRatioWithMasks(self):
     image = self.createColorfulTestImage()
     boxes = self.createTestBoxes()
@@ -1536,6 +1729,13 @@ class PreprocessorTest(tf.test.TestCase):
         self.assertAllClose(distorted_keypoints_.flatten(),
                             expected_keypoints.flatten())
 
+  def testRandomPadToAspectRatioWithCache(self):
+    preprocess_options = [(preprocessor.random_pad_to_aspect_ratio, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=True,
+                                test_keypoints=True)
+
   def testRunRandomPadToAspectRatioWithMasks(self):
     image = self.createColorfulTestImage()
     boxes = self.createTestBoxes()
@@ -1624,6 +1824,17 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertAllClose(distorted_keypoints_.flatten(),
                           expected_keypoints.flatten())
 
+  def testRandomPadImageWithCache(self):
+    preprocess_options = [(preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1,}), (preprocessor.random_pad_image, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=True,
+                                test_keypoints=True)
+
   def testRandomPadImage(self):
     preprocessing_options = [(preprocessor.normalize_image, {
         'original_minval': 0,
@@ -1669,6 +1880,17 @@ class PreprocessorTest(tf.test.TestCase):
           padded_boxes_[:, 2] - padded_boxes_[:, 0])))
       self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
           padded_boxes_[:, 3] - padded_boxes_[:, 1])))
+
+  def testRandomCropPadImageWithCache(self):
+    preprocess_options = [(preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1,}), (preprocessor.random_crop_pad_image, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=True,
+                                test_keypoints=True)
 
   def testRandomCropPadImageWithRandomCoefOne(self):
     preprocessing_options = [(preprocessor.normalize_image, {
@@ -1788,6 +2010,22 @@ class PreprocessorTest(tf.test.TestCase):
       self.assertEqual(images_shape_[1], padded_images_shape_[1])
       self.assertEqual(2 * images_shape_[2], padded_images_shape_[2])
 
+  def testRandomBlackPatchesWithCache(self):
+    preprocess_options = []
+    preprocess_options.append((preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }))
+    preprocess_options.append((preprocessor.random_black_patches, {
+        'size_to_image_ratio': 0.5
+    }))
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=True,
+                                test_keypoints=True)
+
   def testRandomBlackPatches(self):
     preprocessing_options = []
     preprocessing_options.append((preprocessor.normalize_image, {
@@ -1811,6 +2049,22 @@ class PreprocessorTest(tf.test.TestCase):
       (images_shape_, blacked_images_shape_) = sess.run(
           [images_shape, blacked_images_shape])
       self.assertAllEqual(images_shape_, blacked_images_shape_)
+
+  def testRandomResizeMethodWithCache(self):
+    preprocess_options = []
+    preprocess_options.append((preprocessor.normalize_image, {
+        'original_minval': 0,
+        'original_maxval': 255,
+        'target_minval': 0,
+        'target_maxval': 1
+    }))
+    preprocess_options.append((preprocessor.random_resize_method, {
+        'target_size': (75, 150)
+    }))
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=True,
+                                test_keypoints=True)
 
   def testRandomResizeMethod(self):
     preprocessing_options = []
@@ -1853,7 +2107,7 @@ class PreprocessorTest(tf.test.TestCase):
                                      expected_masks_shape_list):
       in_image = tf.random_uniform(in_image_shape)
       in_masks = tf.random_uniform(in_masks_shape)
-      out_image, out_masks = preprocessor.resize_image(
+      out_image, out_masks, _ = preprocessor.resize_image(
           in_image, in_masks, new_height=height, new_width=width)
       out_image_shape = tf.shape(out_image)
       out_masks_shape = tf.shape(out_masks)
@@ -1880,7 +2134,7 @@ class PreprocessorTest(tf.test.TestCase):
                                      expected_masks_shape_list):
       in_image = tf.random_uniform(in_image_shape)
       in_masks = tf.random_uniform(in_masks_shape)
-      out_image, out_masks = preprocessor.resize_image(
+      out_image, out_masks, _ = preprocessor.resize_image(
           in_image, in_masks, new_height=height, new_width=width)
       out_image_shape = tf.shape(out_image)
       out_masks_shape = tf.shape(out_masks)
@@ -1900,7 +2154,7 @@ class PreprocessorTest(tf.test.TestCase):
 
     for in_shape, expected_shape in zip(in_shape_list, expected_shape_list):
       in_image = tf.random_uniform(in_shape)
-      out_image = preprocessor.resize_to_range(
+      out_image, _ = preprocessor.resize_to_range(
           in_image, min_dimension=min_dim, max_dimension=max_dim)
       self.assertAllEqual(out_image.get_shape().as_list(), expected_shape)
 
@@ -1913,7 +2167,7 @@ class PreprocessorTest(tf.test.TestCase):
 
     for in_shape, expected_shape in zip(in_shape_list, expected_shape_list):
       in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
-      out_image = preprocessor.resize_to_range(
+      out_image, _ = preprocessor.resize_to_range(
           in_image, min_dimension=min_dim, max_dimension=max_dim)
       out_image_shape = tf.shape(out_image)
       with self.test_session() as sess:
@@ -1938,7 +2192,7 @@ class PreprocessorTest(tf.test.TestCase):
                                      expected_masks_shape_list):
       in_image = tf.random_uniform(in_image_shape)
       in_masks = tf.random_uniform(in_masks_shape)
-      out_image, out_masks = preprocessor.resize_to_range(
+      out_image, out_masks, _ = preprocessor.resize_to_range(
           in_image, in_masks, min_dimension=min_dim, max_dimension=max_dim)
       self.assertAllEqual(out_masks.get_shape().as_list(), expected_mask_shape)
       self.assertAllEqual(out_image.get_shape().as_list(), expected_image_shape)
@@ -1960,7 +2214,7 @@ class PreprocessorTest(tf.test.TestCase):
       in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
       in_masks = tf.placeholder(tf.float32, shape=(None, None, None))
       in_masks = tf.random_uniform(in_masks_shape)
-      out_image, out_masks = preprocessor.resize_to_range(
+      out_image, out_masks, _ = preprocessor.resize_to_range(
           in_image, in_masks, min_dimension=min_dim, max_dimension=max_dim)
       out_image_shape = tf.shape(out_image)
       out_masks_shape = tf.shape(out_masks)
@@ -1991,7 +2245,7 @@ class PreprocessorTest(tf.test.TestCase):
                                      expected_masks_shape_list):
       in_image = tf.random_uniform(in_image_shape)
       in_masks = tf.random_uniform(in_masks_shape)
-      out_image, out_masks = preprocessor.resize_to_range(
+      out_image, out_masks, _ = preprocessor.resize_to_range(
           in_image, in_masks, min_dimension=min_dim, max_dimension=max_dim)
       out_image_shape = tf.shape(out_image)
       out_masks_shape = tf.shape(out_masks)
@@ -2016,7 +2270,7 @@ class PreprocessorTest(tf.test.TestCase):
 
     for in_shape, expected_shape in zip(in_shape_list, expected_shape_list):
       in_image = tf.random_uniform(in_shape)
-      out_image = preprocessor.resize_to_range(
+      out_image, _ = preprocessor.resize_to_range(
           in_image, min_dimension=min_dim, max_dimension=max_dim)
       out_image_shape = tf.shape(out_image)
 
@@ -2039,7 +2293,7 @@ class PreprocessorTest(tf.test.TestCase):
       in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
       in_masks = tf.placeholder(tf.float32, shape=(None, None, None))
       in_masks = tf.random_uniform(in_masks_shape)
-      out_image, out_masks = preprocessor.resize_to_min_dimension(
+      out_image, out_masks, _ = preprocessor.resize_to_min_dimension(
           in_image, in_masks, min_dimension=min_dim)
       out_image_shape = tf.shape(out_image)
       out_masks_shape = tf.shape(out_masks)
@@ -2069,7 +2323,7 @@ class PreprocessorTest(tf.test.TestCase):
                                      expected_masks_shape_list):
       in_image = tf.random_uniform(in_image_shape)
       in_masks = tf.random_uniform(in_masks_shape)
-      out_image, out_masks = preprocessor.resize_to_min_dimension(
+      out_image, out_masks, _ = preprocessor.resize_to_min_dimension(
           in_image, in_masks, min_dimension=min_dim)
       out_image_shape = tf.shape(out_image)
       out_masks_shape = tf.shape(out_masks)
@@ -2144,6 +2398,20 @@ class PreprocessorTest(tf.test.TestCase):
 
       self.assertAllEqual([0, 1, 1, 0, 1], one_hot)
 
+  def testSSDRandomCropWithCache(self):
+    preprocess_options = [
+        (preprocessor.normalize_image, {
+            'original_minval': 0,
+            'original_maxval': 255,
+            'target_minval': 0,
+            'target_maxval': 1
+        }),
+        (preprocessor.ssd_random_crop, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=False,
+                                test_keypoints=False)
+
   def testSSDRandomCrop(self):
     preprocessing_options = [
         (preprocessor.normalize_image, {
@@ -2215,6 +2483,20 @@ class PreprocessorTest(tf.test.TestCase):
        ])
       self.assertAllEqual(boxes_rank_, distorted_boxes_rank_)
       self.assertAllEqual(images_rank_, distorted_images_rank_)
+
+  def testSSDRandomCropFixedAspectRatioWithCache(self):
+    preprocess_options = [
+        (preprocessor.normalize_image, {
+            'original_minval': 0,
+            'original_maxval': 255,
+            'target_minval': 0,
+            'target_maxval': 1
+        }),
+        (preprocessor.ssd_random_crop_fixed_aspect_ratio, {})]
+    self._testPreprocessorCache(preprocess_options,
+                                test_boxes=True,
+                                test_masks=False,
+                                test_keypoints=False)
 
   def _testSSDRandomCropFixedAspectRatio(self,
                                          include_label_scores,

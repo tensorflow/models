@@ -18,7 +18,8 @@ import logging
 import os
 import tempfile
 import tensorflow as tf
-from tensorflow.core.protobuf import rewriter_config_pb2
+from google.protobuf import text_format
+from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python import pywrap_tensorflow
 from tensorflow.python.client import session
 from tensorflow.python.framework import graph_util
@@ -43,7 +44,6 @@ def freeze_graph_with_def_protos(
     filename_tensor_name,
     clear_devices,
     initializer_nodes,
-    optimize_graph=True,
     variable_names_blacklist=''):
   """Converts all variables in a graph and checkpoint into constants."""
   del restore_op_name, filename_tensor_name  # Unused by updated loading code.
@@ -65,20 +65,7 @@ def freeze_graph_with_def_protos(
 
   with tf.Graph().as_default():
     tf.import_graph_def(input_graph_def, name='')
-
-    if optimize_graph:
-      logging.info('Graph Rewriter optimizations enabled')
-      rewrite_options = rewriter_config_pb2.RewriterConfig(
-          layout_optimizer=rewriter_config_pb2.RewriterConfig.ON)
-      rewrite_options.optimizers.append('pruning')
-      rewrite_options.optimizers.append('constfold')
-      rewrite_options.optimizers.append('layout')
-      graph_options = tf.GraphOptions(
-          rewrite_options=rewrite_options, infer_shapes=True)
-    else:
-      logging.info('Graph Rewriter optimizations disabled')
-      graph_options = tf.GraphOptions()
-    config = tf.ConfigProto(graph_options=graph_options)
+    config = tf.ConfigProto(graph_options=tf.GraphOptions())
     with session.Session(config=config) as sess:
       if input_saver_def:
         saver = saver_lib.Saver(saver_def=input_saver_def)
@@ -227,23 +214,31 @@ def _add_output_tensor_nodes(postprocessed_tensors,
   Returns:
     A tensor dict containing the added output tensor nodes.
   """
+  detection_fields = fields.DetectionResultFields
   label_id_offset = 1
-  boxes = postprocessed_tensors.get('detection_boxes')
-  scores = postprocessed_tensors.get('detection_scores')
-  classes = postprocessed_tensors.get('detection_classes') + label_id_offset
-  masks = postprocessed_tensors.get('detection_masks')
-  num_detections = postprocessed_tensors.get('num_detections')
+  boxes = postprocessed_tensors.get(detection_fields.detection_boxes)
+  scores = postprocessed_tensors.get(detection_fields.detection_scores)
+  classes = postprocessed_tensors.get(
+      detection_fields.detection_classes) + label_id_offset
+  masks = postprocessed_tensors.get(detection_fields.detection_masks)
+  num_detections = postprocessed_tensors.get(detection_fields.num_detections)
   outputs = {}
-  outputs['detection_boxes'] = tf.identity(boxes, name='detection_boxes')
-  outputs['detection_scores'] = tf.identity(scores, name='detection_scores')
-  outputs['detection_classes'] = tf.identity(classes, name='detection_classes')
-  outputs['num_detections'] = tf.identity(num_detections, name='num_detections')
+  outputs[detection_fields.detection_boxes] = tf.identity(
+      boxes, name=detection_fields.detection_boxes)
+  outputs[detection_fields.detection_scores] = tf.identity(
+      scores, name=detection_fields.detection_scores)
+  outputs[detection_fields.detection_classes] = tf.identity(
+      classes, name=detection_fields.detection_classes)
+  outputs[detection_fields.num_detections] = tf.identity(
+      num_detections, name=detection_fields.num_detections)
   if masks is not None:
-    outputs['detection_masks'] = tf.identity(masks, name='detection_masks')
+    outputs[detection_fields.detection_masks] = tf.identity(
+        masks, name=detection_fields.detection_masks)
   for output_key in outputs:
     tf.add_to_collection(output_collection_name, outputs[output_key])
   if masks is not None:
-    tf.add_to_collection(output_collection_name, outputs['detection_masks'])
+    tf.add_to_collection(output_collection_name,
+                         outputs[detection_fields.detection_masks])
   return outputs
 
 
@@ -328,8 +323,8 @@ def _export_inference_graph(input_type,
                             output_directory,
                             additional_output_tensor_names=None,
                             input_shape=None,
-                            optimize_graph=True,
-                            output_collection_name='inference_op'):
+                            output_collection_name='inference_op',
+                            graph_hook_fn=None):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
   frozen_graph_path = os.path.join(output_directory,
@@ -348,24 +343,34 @@ def _export_inference_graph(input_type,
   placeholder_tensor, input_tensors = input_placeholder_fn_map[input_type](
       **placeholder_args)
   inputs = tf.to_float(input_tensors)
-  preprocessed_inputs = detection_model.preprocess(inputs)
-  output_tensors = detection_model.predict(preprocessed_inputs)
-  postprocessed_tensors = detection_model.postprocess(output_tensors)
+  preprocessed_inputs, true_image_shapes = detection_model.preprocess(inputs)
+  output_tensors = detection_model.predict(
+      preprocessed_inputs, true_image_shapes)
+  postprocessed_tensors = detection_model.postprocess(
+      output_tensors, true_image_shapes)
   outputs = _add_output_tensor_nodes(postprocessed_tensors,
                                      output_collection_name)
   # Add global step to the graph.
   slim.get_or_create_global_step()
 
+  if graph_hook_fn: graph_hook_fn()
+
+  saver_kwargs = {}
   if use_moving_averages:
-    temp_checkpoint_file = tempfile.NamedTemporaryFile()
+    # This check is to be compatible with both version of SaverDef.
+    if os.path.isfile(trained_checkpoint_prefix):
+      saver_kwargs['write_version'] = saver_pb2.SaverDef.V1
+      temp_checkpoint_prefix = tempfile.NamedTemporaryFile().name
+    else:
+      temp_checkpoint_prefix = tempfile.mkdtemp()
     replace_variable_values_with_moving_averages(
         tf.get_default_graph(), trained_checkpoint_prefix,
-        temp_checkpoint_file.name)
-    checkpoint_to_use = temp_checkpoint_file.name
+        temp_checkpoint_prefix)
+    checkpoint_to_use = temp_checkpoint_prefix
   else:
     checkpoint_to_use = trained_checkpoint_prefix
 
-  saver = tf.train.Saver()
+  saver = tf.train.Saver(**saver_kwargs)
   input_saver_def = saver.as_saver_def()
 
   _write_graph_and_checkpoint(
@@ -387,7 +392,6 @@ def _export_inference_graph(input_type,
       restore_op_name='save/restore_all',
       filename_tensor_name='save/Const:0',
       clear_devices=True,
-      optimize_graph=optimize_graph,
       initializer_nodes='')
   _write_frozen_graph(frozen_graph_path, frozen_graph_def)
   _write_saved_model(saved_model_path, frozen_graph_def,
@@ -399,7 +403,6 @@ def export_inference_graph(input_type,
                            trained_checkpoint_prefix,
                            output_directory,
                            input_shape=None,
-                           optimize_graph=True,
                            output_collection_name='inference_op',
                            additional_output_tensor_names=None):
   """Exports inference graph for the model specified in the pipeline config.
@@ -412,11 +415,10 @@ def export_inference_graph(input_type,
     output_directory: Path to write outputs.
     input_shape: Sets a fixed shape for an `image_tensor` input. If not
       specified, will default to [None, None, None, 3].
-    optimize_graph: Whether to optimize graph using Grappler.
     output_collection_name: Name of collection to add output tensors to.
       If None, does not add output tensors to a collection.
     additional_output_tensor_names: list of additional output
-    tensors to include in the frozen graph.
+      tensors to include in the frozen graph.
   """
   detection_model = model_builder.build(pipeline_config.model,
                                         is_training=False)
@@ -424,4 +426,10 @@ def export_inference_graph(input_type,
                           pipeline_config.eval_config.use_moving_averages,
                           trained_checkpoint_prefix,
                           output_directory, additional_output_tensor_names,
-                          input_shape, optimize_graph, output_collection_name)
+                          input_shape, output_collection_name,
+                          graph_hook_fn=None)
+  pipeline_config.eval_config.use_moving_averages = False
+  config_text = text_format.MessageToString(pipeline_config)
+  with tf.gfile.Open(
+      os.path.join(output_directory, 'pipeline.config'), 'wb') as f:
+    f.write(config_text)

@@ -120,7 +120,7 @@ def convert_kitti_to_tfrecords(data_dir, output_path, classes_to_use,
 
     # Filter all bounding boxes of this frame that are of a legal class, and
     # don't overlap with a dontcare region.
-    # TODO(talremez) filter out targets that are truncated or heavily occluded.
+    # TODO filter out targets that are truncated or heavily occluded.
     annotation_for_image = filter_annotations(img_anno, classes_to_use)
 
     example = prepare_example(image_path, annotation_for_image, label_map_dict)

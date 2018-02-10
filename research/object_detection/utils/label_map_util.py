@@ -55,6 +55,18 @@ def create_category_index(categories):
   return category_index
 
 
+def get_max_label_map_index(label_map):
+  """Get maximum index in label map.
+
+  Args:
+    label_map: a StringIntLabelMapProto
+
+  Returns:
+    an integer
+  """
+  return max([item.id for item in label_map.item])
+
+
 def convert_label_map_to_categories(label_map,
                                     max_num_classes,
                                     use_display_name=True):

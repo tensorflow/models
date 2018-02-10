@@ -379,6 +379,16 @@ class PreprocessorBuilderTest(tf.test.TestCase):
                             'new_width': 100,
                             'method': tf.image.ResizeMethod.BICUBIC})
 
+  def test_build_rgb_to_gray(self):
+    preprocessor_text_proto = """
+    rgb_to_gray {}
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Merge(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.rgb_to_gray)
+    self.assertEqual(args, {})
+
   def test_build_subtract_channel_mean(self):
     preprocessor_text_proto = """
     subtract_channel_mean {

@@ -20,7 +20,7 @@ import "object_detection/protos/post_processing.proto";
 message FasterRcnn {
 
   // Whether to construct only the Region Proposal Network (RPN).
-  optional bool first_stage_only = 1 [default=false];
+  optional int32 number_of_stages = 1 [default=2];
 
   // Number of classes to predict.
   optional int32 num_classes = 3;
