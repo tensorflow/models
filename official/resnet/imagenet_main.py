@@ -123,7 +123,7 @@ def parse_record(raw_record, is_training):
       output_width=_DEFAULT_IMAGE_SIZE,
       is_training=is_training)
 
-  label = tf.cast(label, dtype=tf.int32)
+  label = tf.cast(tf.reshape(label, shape=[]), dtype=tf.int32)
   label = tf.one_hot(label, _NUM_CLASSES)
 
   return image, label
