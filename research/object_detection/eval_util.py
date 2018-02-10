@@ -509,6 +509,11 @@ def result_dict_for_single_example(image,
     detection_masks = detections[detection_fields.detection_masks][0]
     # TODO: This should be done in model's postprocess
     # function ideally.
+    num_detections = tf.to_int32(detections[detection_fields.num_detections][0])
+    detection_boxes = tf.slice(
+        detection_boxes, begin=[0, 0], size=[num_detections, -1])
+    detection_masks = tf.slice(
+        detection_masks, begin=[0, 0, 0], size=[num_detections, -1, -1])
     detection_masks_reframed = ops.reframe_box_masks_to_image_masks(
         detection_masks, detection_boxes, image_shape[1], image_shape[2])
     detection_masks_reframed = tf.cast(

@@ -172,5 +172,21 @@ class MatchTest(tf.test.TestCase):
       gathered_tensor_out = gathered_tensor.eval()
     self.assertAllEqual(expected_gathered_tensor, gathered_tensor_out)
 
+  def test_multidimensional_gather_based_on_match_with_matmul_gather_op(self):
+    match_results = tf.constant([1, -1, -2])
+    input_tensor = tf.constant([[0, 0.5, 0, 0.5], [0, 0, 0.5, 0.5]],
+                               dtype=tf.float32)
+    expected_gathered_tensor = [[0, 0, 0.5, 0.5], [0, 0, 0, 0], [0, 0, 0, 0]]
+    match = matcher.Match(match_results, use_matmul_gather=True)
+    gathered_tensor = match.gather_based_on_match(input_tensor,
+                                                  unmatched_value=tf.zeros(4),
+                                                  ignored_value=tf.zeros(4))
+    self.assertEquals(gathered_tensor.dtype, tf.float32)
+    with self.test_session() as sess:
+      self.assertTrue(
+          all([op.name is not 'Gather' for op in sess.graph.get_operations()]))
+      gathered_tensor_out = gathered_tensor.eval()
+    self.assertAllEqual(expected_gathered_tensor, gathered_tensor_out)
+
 if __name__ == '__main__':
   tf.test.main()

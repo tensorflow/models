@@ -58,6 +58,9 @@ class InputDataFields(object):
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
     groundtruth_label_scores: groundtruth label scores.
     groundtruth_weights: groundtruth weight factor for bounding boxes.
+    num_groundtruth_boxes: number of groundtruth boxes.
+    true_image_shapes: true shapes of images in the resized images, as resized
+      images can be padded with zeros.
   """
   image = 'image'
   original_image = 'original_image'
@@ -81,6 +84,8 @@ class InputDataFields(object):
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
   groundtruth_label_scores = 'groundtruth_label_scores'
   groundtruth_weights = 'groundtruth_weights'
+  num_groundtruth_boxes = 'num_groundtruth_boxes'
+  true_image_shape = 'true_image_shape'
 
 
 class DetectionResultFields(object):

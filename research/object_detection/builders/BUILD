@@ -32,6 +32,7 @@ py_library(
         "//tensorflow/models/research/object_detection/models:ssd_inception_v2_feature_extractor",
         "//tensorflow/models/research/object_detection/models:ssd_inception_v3_feature_extractor",
         "//tensorflow/models/research/object_detection/models:ssd_mobilenet_v1_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_resnet_v1_fpn_feature_extractor",
         "//tensorflow/models/research/object_detection/protos:model_py_pb2",
     ],
 )
@@ -44,6 +45,7 @@ py_test(
         "//tensorflow",
         "//tensorflow/models/research/object_detection/meta_architectures:faster_rcnn_meta_arch",
         "//tensorflow/models/research/object_detection/meta_architectures:ssd_meta_arch",
+        "//tensorflow/models/research/object_detection/models:embedded_ssd_mobilenet_v1_feature_extractor",
         "//tensorflow/models/research/object_detection/models:faster_rcnn_inception_resnet_v2_feature_extractor",
         "//tensorflow/models/research/object_detection/models:faster_rcnn_inception_v2_feature_extractor",
         "//tensorflow/models/research/object_detection/models:faster_rcnn_nas_feature_extractor",
@@ -51,6 +53,7 @@ py_test(
         "//tensorflow/models/research/object_detection/models:ssd_inception_v2_feature_extractor",
         "//tensorflow/models/research/object_detection/models:ssd_inception_v3_feature_extractor",
         "//tensorflow/models/research/object_detection/models:ssd_mobilenet_v1_feature_extractor",
+        "//tensorflow/models/research/object_detection/models:ssd_resnet_v1_fpn_feature_extractor",
         "//tensorflow/models/research/object_detection/protos:model_py_pb2",
     ],
 )

@@ -319,6 +319,9 @@ instance segmentation pipeline. Everything above that was mentioned about object
 detection holds true for instance segmentation. Instance segmentation consists
 of an object detection model with an additional head that predicts the object
 mask inside each predicted box once we remove the training and other details.
+Please refer to the section on [Running an Instance Segmentation
+Model](instance_segmentation.md) for instructions on how to configure a model
+that predicts masks in addition to object bounding boxes.
 
 ## What's Next
 

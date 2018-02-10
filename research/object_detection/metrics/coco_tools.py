@@ -189,14 +189,18 @@ class COCOEvalWrapper(cocoeval.COCOeval):
     """Returns list of valid category ids."""
     return self.params.catIds
 
-  def ComputeMetrics(self, all_metrics_per_category=False):
+  def ComputeMetrics(self,
+                     include_metrics_per_category=False,
+                     all_metrics_per_category=False):
     """Computes detection metrics.
 
     Args:
+      include_metrics_per_category: If True, will include metrics per category.
       all_metrics_per_category: If true, include all the summery metrics for
         each category in per_category_ap. Be careful with setting it to true if
         you have more than handful of categories, because it will pollute
         your mldash.
+
     Returns:
       1. summary_metrics: a dictionary holding:
         'Precision/mAP': mean average precision over classes averaged over IOU
@@ -225,6 +229,9 @@ class COCOEvalWrapper(cocoeval.COCOeval):
         output regardless of all_metrics_per_category.
         If evaluating class-agnostic mode, per_category_ap is an empty
         dictionary.
+
+    Raises:
+      ValueError: If category_stats does not exist.
     """
     self.evaluate()
     self.accumulate()
@@ -244,6 +251,10 @@ class COCOEvalWrapper(cocoeval.COCOeval):
         ('Recall/AR@100 (medium)', self.stats[10]),
         ('Recall/AR@100 (large)', self.stats[11])
     ])
+    if not include_metrics_per_category:
+      return summary_metrics, {}
+    if not hasattr(self, 'category_stats'):
+      raise ValueError('Category stats do not exist')
     per_category_ap = OrderedDict([])
     if self.GetAgnosticMode():
       return summary_metrics, per_category_ap

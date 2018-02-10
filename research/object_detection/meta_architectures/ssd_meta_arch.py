@@ -44,7 +44,8 @@ class SSDFeatureExtractor(object):
                conv_hyperparams,
                batch_norm_trainable=True,
                reuse_weights=None,
-               use_explicit_padding=False):
+               use_explicit_padding=False,
+               use_depthwise=False):
     """Constructor.
 
     Args:
@@ -61,6 +62,7 @@ class SSDFeatureExtractor(object):
       reuse_weights: whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
+      use_depthwise: Whether to use depthwise convolutions. Default is False.
     """
     self._is_training = is_training
     self._depth_multiplier = depth_multiplier
@@ -70,6 +72,7 @@ class SSDFeatureExtractor(object):
     self._batch_norm_trainable = batch_norm_trainable
     self._reuse_weights = reuse_weights
     self._use_explicit_padding = use_explicit_padding
+    self._use_depthwise = use_depthwise
 
   @abstractmethod
   def preprocess(self, resized_inputs):
@@ -130,7 +133,7 @@ class SSDMetaArch(model.DetectionModel):
                add_summaries=True):
     """SSDMetaArch Constructor.
 
-    TODO: group NMS parameters + score converter into
+    TODO(rathodv,jonathanhuang): group NMS parameters + score converter into
     a class and loss parameters into a class and write config protos for
     postprocessing and losses.
 
@@ -330,7 +333,8 @@ class SSDMetaArch(model.DetectionModel):
       feature_maps = self._feature_extractor.extract_features(
           preprocessed_inputs)
     feature_map_spatial_dims = self._get_feature_map_spatial_dims(feature_maps)
-    image_shape = tf.shape(preprocessed_inputs)
+    image_shape = shape_utils.combined_static_and_dynamic_shape(
+        preprocessed_inputs)
     self._anchors = self._anchor_generator.generate(
         feature_map_spatial_dims,
         im_height=image_shape[1],
@@ -472,11 +476,14 @@ class SSDMetaArch(model.DetectionModel):
       keypoints = None
       if self.groundtruth_has_field(fields.BoxListFields.keypoints):
         keypoints = self.groundtruth_lists(fields.BoxListFields.keypoints)
+      weights = None
+      if self.groundtruth_has_field(fields.BoxListFields.weights):
+        weights = self.groundtruth_lists(fields.BoxListFields.weights)
       (batch_cls_targets, batch_cls_weights, batch_reg_targets,
        batch_reg_weights, match_list) = self._assign_targets(
            self.groundtruth_lists(fields.BoxListFields.boxes),
            self.groundtruth_lists(fields.BoxListFields.classes),
-           keypoints)
+           keypoints, weights)
       if self._add_summaries:
         self._summarize_input(
             self.groundtruth_lists(fields.BoxListFields.boxes), match_list)
@@ -539,7 +546,8 @@ class SSDMetaArch(model.DetectionModel):
                                               'NegativeAnchorLossCDF')
 
   def _assign_targets(self, groundtruth_boxes_list, groundtruth_classes_list,
-                      groundtruth_keypoints_list=None):
+                      groundtruth_keypoints_list=None,
+                      groundtruth_weights_list=None):
     """Assign groundtruth targets.
 
     Adds a background class to each one-hot encoding of groundtruth classes
@@ -556,6 +564,8 @@ class SSDMetaArch(model.DetectionModel):
         index assumed to map to the first non-background class.
       groundtruth_keypoints_list: (optional) a list of 3-D tensors of shape
         [num_boxes, num_keypoints, 2]
+      groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
+        [num_boxes] containing weights for groundtruth boxes.
 
     Returns:
       batch_cls_targets: a tensor with shape [batch_size, num_anchors,
@@ -582,7 +592,7 @@ class SSDMetaArch(model.DetectionModel):
         boxlist.add_field(fields.BoxListFields.keypoints, keypoints)
     return target_assigner.batch_assign_targets(
         self._target_assigner, self.anchors, groundtruth_boxlists,
-        groundtruth_classes_with_background_list)
+        groundtruth_classes_with_background_list, groundtruth_weights_list)
 
   def _summarize_input(self, groundtruth_boxes_list, match_list):
     """Creates tensorflow summaries for the input boxes and anchors.

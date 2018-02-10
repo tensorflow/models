@@ -1,17 +1,22 @@
 """Tests for ssd resnet v1 FPN feature extractors."""
 import abc
 import numpy as np
+import tensorflow as tf
 
 from object_detection.models import ssd_feature_extractor_test
 
 
-class SSDResnetFeatureExtractorTestBase(
+class SSDResnetFPNFeatureExtractorTestBase(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
   """Helper test class for SSD Resnet v1 FPN feature extractors."""
 
   @abc.abstractmethod
-  def _scope_name(self):
+  def _resnet_scope_name(self):
     pass
+
+  @abc.abstractmethod
+  def _fpn_scope_name(self):
+    return 'fpn'
 
   def test_extract_features_returns_correct_shapes_256(self):
     image_height = 256
@@ -73,5 +78,16 @@ class SSDResnetFeatureExtractorTestBase(
   def test_variables_only_created_in_scope(self):
     depth_multiplier = 1
     pad_to_multiple = 1
-    self.check_feature_extractor_variables_under_scope(
-        depth_multiplier, pad_to_multiple, self._scope_name())
+    g = tf.Graph()
+    with g.as_default():
+      feature_extractor = self._create_feature_extractor(
+          depth_multiplier, pad_to_multiple)
+      preprocessed_inputs = tf.placeholder(tf.float32, (4, None, None, 3))
+      feature_extractor.extract_features(preprocessed_inputs)
+      variables = g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+      for variable in variables:
+        self.assertTrue(
+            variable.name.startswith(self._resnet_scope_name())
+            or variable.name.startswith(self._fpn_scope_name()))
+
+

@@ -134,7 +134,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         self.items_to_handlers[
             fields.InputDataFields.groundtruth_instance_masks] = (
                 slim_example_decoder.ItemHandlerCallback(
-                    ['image/object/mask'], self._decode_png_instance_masks))
+                    ['image/object/mask', 'image/height', 'image/width'],
+                    self._decode_png_instance_masks))
       else:
         raise ValueError('Did not recognize the `instance_mask_type` option.')
     if label_map_proto_file:
@@ -178,10 +179,15 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         [None, 4] containing box corners.
       fields.InputDataFields.groundtruth_classes - 1D int64 tensor of shape
         [None] containing classes for the boxes.
+      fields.InputDataFields.groundtruth_weights - 1D float32 tensor of
+        shape [None] indicating the weights of groundtruth boxes.
+      fields.InputDataFields.num_groundtruth_boxes - int32 scalar indicating
+        the number of groundtruth_boxes.
       fields.InputDataFields.groundtruth_area - 1D float32 tensor of shape
         [None] containing containing object mask area in pixel squared.
       fields.InputDataFields.groundtruth_is_crowd - 1D bool tensor of shape
         [None] indicating if the boxes enclose a crowd.
+
     Optional:
       fields.InputDataFields.groundtruth_difficult - 1D bool tensor of shape
         [None] indicating if the boxes represent `difficult` instances.
@@ -189,8 +195,6 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         [None] indicating if the boxes represent `group_of` instances.
       fields.InputDataFields.groundtruth_instance_masks - 3D float32 tensor of
         shape [None, None, None] containing instance masks.
-      fields.InputDataFields.groundtruth_weights - 1D float32 tensor of
-        shape [None] indicating the weights of groundtruth boxes.
     """
     serialized_example = tf.reshape(tf_example_string_tensor, shape=[])
     decoder = slim_example_decoder.TFExampleDecoder(self.keys_to_features,
@@ -201,6 +205,20 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     is_crowd = fields.InputDataFields.groundtruth_is_crowd
     tensor_dict[is_crowd] = tf.cast(tensor_dict[is_crowd], dtype=tf.bool)
     tensor_dict[fields.InputDataFields.image].set_shape([None, None, 3])
+    tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
+        tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
+
+    def default_groundtruth_weights():
+      return tf.ones(
+          [tf.shape(tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]],
+          dtype=tf.float32)
+
+    tensor_dict[fields.InputDataFields.groundtruth_weights] = tf.cond(
+        tf.greater(
+            tf.shape(
+                tensor_dict[fields.InputDataFields.groundtruth_weights])[0],
+            0), lambda: tensor_dict[fields.InputDataFields.groundtruth_weights],
+        default_groundtruth_weights)
     return tensor_dict
 
   def _reshape_instance_masks(self, keys_to_tensors):
@@ -247,6 +265,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       return image
 
     png_masks = keys_to_tensors['image/object/mask']
+    height = keys_to_tensors['image/height']
+    width = keys_to_tensors['image/width']
     if isinstance(png_masks, tf.SparseTensor):
       png_masks = tf.sparse_tensor_to_dense(png_masks, default_value='')
-    return tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32)
+    return tf.cond(
+        tf.greater(tf.size(png_masks), 0),
+        lambda: tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32),
+        lambda: tf.zeros(tf.to_int32(tf.stack([0, height, width]))))

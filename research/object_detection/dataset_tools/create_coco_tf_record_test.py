@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Test for create_coco_tf_record.py."""
 
 import io
@@ -52,26 +51,34 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
         'id': 11,
     }
 
-    annotations_list = [
-        {
-            'area': .5,
-            'iscrowd': False,
-            'image_id': 11,
-            'bbox': [64, 64, 128, 128],
-            'category_id': 2,
-            'id': 1000,
-        }
-    ]
+    annotations_list = [{
+        'area': .5,
+        'iscrowd': False,
+        'image_id': 11,
+        'bbox': [64, 64, 128, 128],
+        'category_id': 2,
+        'id': 1000,
+    }]
 
     image_dir = tmp_dir
     category_index = {
-        1: {'name': 'dog', 'id': 1},
-        2: {'name': 'cat', 'id': 2},
-        3: {'name': 'human', 'id': 3}
+        1: {
+            'name': 'dog',
+            'id': 1
+        },
+        2: {
+            'name': 'cat',
+            'id': 2
+        },
+        3: {
+            'name': 'human',
+            'id': 3
+        }
     }
 
-    example, num_annotations_skipped = create_coco_tf_record.create_tf_example(
-        image, annotations_list, image_dir, category_index)
+    (_, example,
+     num_annotations_skipped) = create_coco_tf_record.create_tf_example(
+         image, annotations_list, image_dir, category_index)
 
     self.assertEqual(num_annotations_skipped, 0)
     self._assertProtoEqual(
@@ -83,7 +90,7 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
         [image_file_name])
     self._assertProtoEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        [image_file_name])
+        [str(image['id'])])
     self._assertProtoEqual(
         example.features.feature['image/format'].bytes_list.value, ['jpeg'])
     self._assertProtoEqual(
@@ -98,9 +105,6 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/ymax'].float_list.value,
         [0.75])
-    self._assertProtoEqual(
-        example.features.feature['image/object/class/text'].bytes_list.value,
-        ['cat'])
 
   def test_create_tf_example_with_instance_masks(self):
     image_file_name = 'tmp_image.jpg'
@@ -117,26 +121,27 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
         'id': 11,
     }
 
-    annotations_list = [
-        {
-            'area': .5,
-            'iscrowd': False,
-            'image_id': 11,
-            'bbox': [0, 0, 8, 8],
-            'segmentation': [[4, 0, 0, 0, 0, 4],
-                             [8, 4, 4, 8, 8, 8]],
-            'category_id': 1,
-            'id': 1000,
-        }
-    ]
+    annotations_list = [{
+        'area': .5,
+        'iscrowd': False,
+        'image_id': 11,
+        'bbox': [0, 0, 8, 8],
+        'segmentation': [[4, 0, 0, 0, 0, 4], [8, 4, 4, 8, 8, 8]],
+        'category_id': 1,
+        'id': 1000,
+    }]
 
     image_dir = tmp_dir
     category_index = {
-        1: {'name': 'dog', 'id': 1},
+        1: {
+            'name': 'dog',
+            'id': 1
+        },
     }
 
-    example, num_annotations_skipped = create_coco_tf_record.create_tf_example(
-        image, annotations_list, image_dir, category_index, include_masks=True)
+    (_, example,
+     num_annotations_skipped) = create_coco_tf_record.create_tf_example(
+         image, annotations_list, image_dir, category_index, include_masks=True)
 
     self.assertEqual(num_annotations_skipped, 0)
     self._assertProtoEqual(
@@ -148,7 +153,7 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
         [image_file_name])
     self._assertProtoEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        [image_file_name])
+        [str(image['id'])])
     self._assertProtoEqual(
         example.features.feature['image/format'].bytes_list.value, ['jpeg'])
     self._assertProtoEqual(
@@ -163,24 +168,20 @@ class CreateCocoTFRecordTest(tf.test.TestCase):
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/ymax'].float_list.value,
         [1])
-    self._assertProtoEqual(
-        example.features.feature['image/object/class/text'].bytes_list.value,
-        ['dog'])
-    encoded_mask_pngs = [io.BytesIO(encoded_masks)
-                         for encoded_masks in example.features.feature[
-                             'image/object/mask'].bytes_list.value]
-    pil_masks = [np.array(PIL.Image.open(encoded_mask_png))
-                 for encoded_mask_png in encoded_mask_pngs]
+    encoded_mask_pngs = [
+        io.BytesIO(encoded_masks) for encoded_masks in example.features.feature[
+            'image/object/mask'].bytes_list.value
+    ]
+    pil_masks = [
+        np.array(PIL.Image.open(encoded_mask_png))
+        for encoded_mask_png in encoded_mask_pngs
+    ]
     self.assertTrue(len(pil_masks) == 1)
     self.assertAllEqual(pil_masks[0],
-                        [[1, 1, 1, 0, 0, 0, 0, 0],
-                         [1, 1, 0, 0, 0, 0, 0, 0],
-                         [1, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 1],
-                         [0, 0, 0, 0, 0, 0, 1, 1],
-                         [0, 0, 0, 0, 0, 1, 1, 1],
-                         [0, 0, 0, 0, 1, 1, 1, 1]])
+                        [[1, 1, 1, 0, 0, 0, 0, 0], [1, 1, 0, 0, 0, 0, 0, 0],
+                         [1, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 1, 1],
+                         [0, 0, 0, 0, 0, 1, 1, 1], [0, 0, 0, 0, 1, 1, 1, 1]])
 
 
 if __name__ == '__main__':

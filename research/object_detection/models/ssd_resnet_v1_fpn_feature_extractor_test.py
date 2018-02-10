@@ -7,7 +7,7 @@ from object_detection.models import ssd_resnet_v1_fpn_feature_extractor_testbase
 
 class SSDResnet50V1FeatureExtractorTest(
     ssd_resnet_v1_fpn_feature_extractor_testbase.
-    SSDResnetFeatureExtractorTestBase):
+    SSDResnetFPNFeatureExtractorTestBase):
   """SSDResnet50v1Fpn feature extractor test."""
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple):
@@ -19,13 +19,13 @@ class SSDResnet50V1FeatureExtractorTest(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, batch_norm_trainable)
 
-  def _scope_name(self):
-    return 'resnet_v1_50_fpn'
+  def _resnet_scope_name(self):
+    return 'resnet_v1_50'
 
 
 class SSDResnet101V1FeatureExtractorTest(
     ssd_resnet_v1_fpn_feature_extractor_testbase.
-    SSDResnetFeatureExtractorTestBase):
+    SSDResnetFPNFeatureExtractorTestBase):
   """SSDResnet101v1Fpn feature extractor test."""
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple):
@@ -38,13 +38,13 @@ class SSDResnet101V1FeatureExtractorTest(
             is_training, depth_multiplier, min_depth, pad_to_multiple,
             conv_hyperparams, batch_norm_trainable))
 
-  def _scope_name(self):
-    return 'resnet_v1_101_fpn'
+  def _resnet_scope_name(self):
+    return 'resnet_v1_101'
 
 
 class SSDResnet152V1FeatureExtractorTest(
     ssd_resnet_v1_fpn_feature_extractor_testbase.
-    SSDResnetFeatureExtractorTestBase):
+    SSDResnetFPNFeatureExtractorTestBase):
   """SSDResnet152v1Fpn feature extractor test."""
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple):
@@ -57,8 +57,8 @@ class SSDResnet152V1FeatureExtractorTest(
             is_training, depth_multiplier, min_depth, pad_to_multiple,
             conv_hyperparams, batch_norm_trainable))
 
-  def _scope_name(self):
-    return 'resnet_v1_152_fpn'
+  def _resnet_scope_name(self):
+    return 'resnet_v1_152'
 
 
 if __name__ == '__main__':

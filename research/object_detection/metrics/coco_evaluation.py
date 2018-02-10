@@ -24,13 +24,17 @@ from object_detection.utils import object_detection_evaluation
 class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
   """Class to evaluate COCO detection metrics."""
 
-  def __init__(self, categories, all_metrics_per_category=False):
+  def __init__(self,
+               categories,
+               include_metrics_per_category=False,
+               all_metrics_per_category=False):
     """Constructor.
 
     Args:
       categories: A list of dicts, each of which has the following keys -
         'id': (required) an integer id uniquely identifying this category.
         'name': (required) string representing category name e.g., 'cat', 'dog'.
+      include_metrics_per_category: If True, include metrics for each category.
       all_metrics_per_category: Whether to include all the summary metrics for
         each category in per_category_ap. Be careful with setting it to true if
         you have more than handful of categories, because it will pollute
@@ -45,6 +49,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     self._category_id_set = set([cat['id'] for cat in self._categories])
     self._annotation_id = 1
     self._metrics = None
+    self._include_metrics_per_category = include_metrics_per_category
     self._all_metrics_per_category = all_metrics_per_category
 
   def clear(self):
@@ -166,7 +171,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       'DetectionBoxes_Recall/AR@100 (large)': average recall for large objects
         with 100 detections.
 
-      2. per_category_ap: category specific results with keys of the form:
+      2. per_category_ap: if include_metrics_per_category is True, category
+      specific results with keys of the form:
       'Precision mAP ByCategory/category' (without the supercategory part if
       no supercategories exist). For backward compatibility
       'PerformanceByCategory' is included in the output regardless of
@@ -183,6 +189,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     box_evaluator = coco_tools.COCOEvalWrapper(
         coco_wrapped_groundtruth, coco_wrapped_detections, agnostic_mode=False)
     box_metrics, box_per_category_ap = box_evaluator.ComputeMetrics(
+        include_metrics_per_category=self._include_metrics_per_category,
         all_metrics_per_category=self._all_metrics_per_category)
     box_metrics.update(box_per_category_ap)
     box_metrics = {'DetectionBoxes_'+ key: value
@@ -253,9 +260,10 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
                     'DetectionBoxes_Recall/AR@100 (large)',
                     'DetectionBoxes_Recall/AR@100 (medium)',
                     'DetectionBoxes_Recall/AR@100 (small)']
-    for category_dict in self._categories:
-      metric_names.append('DetectionBoxes_PerformanceByCategory/mAP/' +
-                          category_dict['name'])
+    if self._include_metrics_per_category:
+      for category_dict in self._categories:
+        metric_names.append('DetectionBoxes_PerformanceByCategory/mAP/' +
+                            category_dict['name'])
 
     def first_value_func():
       self._metrics = self.evaluate()
@@ -289,13 +297,14 @@ def _check_mask_type_and_value(array_name, masks):
 class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
   """Class to evaluate COCO detection metrics."""
 
-  def __init__(self, categories):
+  def __init__(self, categories, include_metrics_per_category=False):
     """Constructor.
 
     Args:
       categories: A list of dicts, each of which has the following keys -
         'id': (required) an integer id uniquely identifying this category.
         'name': (required) string representing category name e.g., 'cat', 'dog'.
+      include_metrics_per_category: If True, include metrics for each category.
     """
     super(CocoMaskEvaluator, self).__init__(categories)
     self._image_id_to_mask_shape_map = {}
@@ -304,6 +313,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     self._detection_masks_list = []
     self._category_id_set = set([cat['id'] for cat in self._categories])
     self._annotation_id = 1
+    self._include_metrics_per_category = include_metrics_per_category
 
   def clear(self):
     """Clears the state to prepare for a fresh evaluation."""
@@ -438,7 +448,8 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
       'Recall/AR@100 (large)': average recall for large objects with 100
         detections
 
-      2. per_category_ap: category specific results with keys of the form:
+      2. per_category_ap: if include_metrics_per_category is True, category
+      specific results with keys of the form:
       'Precision mAP ByCategory/category' (without the supercategory part if
       no supercategories exist). For backward compatibility
       'PerformanceByCategory' is included in the output regardless of
@@ -458,7 +469,8 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     mask_evaluator = coco_tools.COCOEvalWrapper(
         coco_wrapped_groundtruth, coco_wrapped_detection_masks,
         agnostic_mode=False, iou_type='segm')
-    mask_metrics, mask_per_category_ap = mask_evaluator.ComputeMetrics()
+    mask_metrics, mask_per_category_ap = mask_evaluator.ComputeMetrics(
+        include_metrics_per_category=self._include_metrics_per_category)
     mask_metrics.update(mask_per_category_ap)
     mask_metrics = {'DetectionMasks_'+ key: value
                     for key, value in mask_metrics.iteritems()}

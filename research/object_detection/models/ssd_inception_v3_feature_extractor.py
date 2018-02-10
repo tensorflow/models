@@ -36,7 +36,8 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                conv_hyperparams,
                batch_norm_trainable=True,
                reuse_weights=None,
-               use_explicit_padding=False):
+               use_explicit_padding=False,
+               use_depthwise=False):
     """InceptionV3 Feature Extractor for SSD Models.
 
     Args:
@@ -53,11 +54,12 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
+      use_depthwise: Whether to use depthwise convolutions. Default is False.
     """
     super(SSDInceptionV3FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, batch_norm_trainable, reuse_weights,
-        use_explicit_padding)
+        use_explicit_padding, use_depthwise)
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -92,6 +94,7 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         'from_layer': ['Mixed_5d', 'Mixed_6e', 'Mixed_7c', '', '', ''],
         'layer_depth': [-1, -1, -1, 512, 256, 128],
         'use_explicit_padding': self._use_explicit_padding,
+        'use_depthwise': self._use_depthwise,
     }
 
     with slim.arg_scope(self._conv_hyperparams):

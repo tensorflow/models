@@ -251,8 +251,10 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
 
     with tf.device(deploy_config.optimizer_device()):
-      training_optimizer = optimizer_builder.build(train_config.optimizer,
-                                                   global_summaries)
+      training_optimizer, optimizer_summary_vars = optimizer_builder.build(
+          train_config.optimizer)
+      for var in optimizer_summary_vars:
+        tf.summary.scalar(var.op.name, var)
 
     sync_optimizer = None
     if train_config.sync_replicas:

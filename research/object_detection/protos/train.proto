@@ -78,4 +78,14 @@ message TrainConfig {
   // Setting this option to false is very useful while debugging the model and
   // losses.
   optional bool add_regularization_loss = 18 [default=true];
+
+  // Maximum number of boxes used during training.
+  // Set this to at least the maximum amount of boxes in the input data.
+  // Otherwise, it may cause "Data loss: Attempted to pad to a smaller size
+  // than the input element" errors.
+  optional int32 max_number_of_boxes = 20 [default=50];
+
+  // Whether to remove padding along `num_boxes` dimension of the groundtruth
+  // tensors.
+  optional bool unpad_groundtruth_tensors = 21 [default=true];
 }

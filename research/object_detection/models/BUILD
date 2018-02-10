@@ -119,6 +119,7 @@ py_library(
 
 py_test(
     name = "ssd_resnet_v1_fpn_feature_extractor_test",
+    timeout = "long",
     srcs = ["ssd_resnet_v1_fpn_feature_extractor_test.py"],
     deps = [
         ":ssd_resnet_v1_fpn_feature_extractor",

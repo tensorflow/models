@@ -64,7 +64,9 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
         kernel_size=conv_box_predictor.kernel_size,
         box_code_size=conv_box_predictor.box_code_size,
         apply_sigmoid_to_scores=conv_box_predictor.apply_sigmoid_to_scores,
-        class_prediction_bias_init=conv_box_predictor.class_prediction_bias_init
+        class_prediction_bias_init=(conv_box_predictor.
+                                    class_prediction_bias_init),
+        use_depthwise=conv_box_predictor.use_depthwise
     )
     return box_predictor_object
 

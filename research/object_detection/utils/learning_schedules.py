@@ -94,9 +94,8 @@ def cosine_decay_with_warmup(global_step,
     raise ValueError('total_steps must be larger or equal to '
                      'warmup_steps.')
   learning_rate = 0.5 * learning_rate_base * (
-      1 + tf.cos(np.pi * tf.cast(
-          global_step - warmup_steps, tf.float32
-      ) / float(total_steps - warmup_steps)))
+      1 + tf.cos(np.pi * (tf.cast(global_step, tf.float32) - warmup_steps
+                         ) / float(total_steps - warmup_steps)))
   if warmup_steps > 0:
     slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
     pre_cosine_learning_rate = slope * tf.cast(

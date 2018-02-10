@@ -19,4 +19,5 @@ message MultiscaleAnchorGenerator {
   repeated float aspect_ratios = 4;
 
   // Number of intermediate scale each scale octave
+  optional int32 scales_per_octave = 5 [default = 2];
 }

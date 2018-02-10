@@ -21,6 +21,7 @@ import tensorflow as tf
 from google.protobuf import text_format
 
 from object_detection.protos import eval_pb2
+from object_detection.protos import image_resizer_pb2
 from object_detection.protos import input_reader_pb2
 from object_detection.protos import model_pb2
 from object_detection.protos import pipeline_pb2
@@ -414,6 +415,37 @@ class ConfigUtilTest(tf.test.TestCase):
         configs, mask_type=new_mask_type)
     self.assertEqual(new_mask_type, configs["train_input_config"].mask_type)
     self.assertEqual(new_mask_type, configs["eval_input_config"].mask_type)
+
+  def  test_get_image_resizer_config(self):
+    """Tests that number of classes can be retrieved."""
+    model_config = model_pb2.DetectionModel()
+    model_config.faster_rcnn.image_resizer.fixed_shape_resizer.height = 100
+    model_config.faster_rcnn.image_resizer.fixed_shape_resizer.width = 300
+    image_resizer_config = config_util.get_image_resizer_config(model_config)
+    self.assertEqual(image_resizer_config.fixed_shape_resizer.height, 100)
+    self.assertEqual(image_resizer_config.fixed_shape_resizer.width, 300)
+
+  def test_get_spatial_image_size_from_fixed_shape_resizer_config(self):
+    image_resizer_config = image_resizer_pb2.ImageResizer()
+    image_resizer_config.fixed_shape_resizer.height = 100
+    image_resizer_config.fixed_shape_resizer.width = 200
+    image_shape = config_util.get_spatial_image_size(image_resizer_config)
+    self.assertAllEqual(image_shape, [100, 200])
+
+  def test_get_spatial_image_size_from_aspect_preserving_resizer_config(self):
+    image_resizer_config = image_resizer_pb2.ImageResizer()
+    image_resizer_config.keep_aspect_ratio_resizer.min_dimension = 100
+    image_resizer_config.keep_aspect_ratio_resizer.max_dimension = 600
+    image_resizer_config.keep_aspect_ratio_resizer.pad_to_max_dimension = True
+    image_shape = config_util.get_spatial_image_size(image_resizer_config)
+    self.assertAllEqual(image_shape, [600, 600])
+
+  def test_get_spatial_image_size_from_aspect_preserving_resizer_dynamic(self):
+    image_resizer_config = image_resizer_pb2.ImageResizer()
+    image_resizer_config.keep_aspect_ratio_resizer.min_dimension = 100
+    image_resizer_config.keep_aspect_ratio_resizer.max_dimension = 600
+    image_shape = config_util.get_spatial_image_size(image_resizer_config)
+    self.assertAllEqual(image_shape, [-1, -1])
 
 
 if __name__ == "__main__":

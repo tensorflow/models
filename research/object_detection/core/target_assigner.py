@@ -389,7 +389,8 @@ def create_target_assigner(reference, stage=None,
 def batch_assign_targets(target_assigner,
                          anchors_batch,
                          gt_box_batch,
-                         gt_class_targets_batch):
+                         gt_class_targets_batch,
+                         gt_weights_batch=None):
   """Batched assignment of classification and regression targets.
 
   Args:
@@ -402,6 +403,8 @@ def batch_assign_targets(target_assigner,
       each tensor has shape [num_gt_boxes_i, classification_target_size] and
       num_gt_boxes_i is the number of boxes in the ith boxlist of
       gt_box_batch.
+    gt_weights_batch: A list of 1-D tf.float32 tensors of shape
+      [num_boxes] containing weights for groundtruth boxes.
 
   Returns:
     batch_cls_targets: a tensor with shape [batch_size, num_anchors,
@@ -435,11 +438,13 @@ def batch_assign_targets(target_assigner,
   reg_targets_list = []
   reg_weights_list = []
   match_list = []
-  for anchors, gt_boxes, gt_class_targets in zip(
-      anchors_batch, gt_box_batch, gt_class_targets_batch):
+  if gt_weights_batch is None:
+    gt_weights_batch = [None] * len(gt_class_targets_batch)
+  for anchors, gt_boxes, gt_class_targets, gt_weights in zip(
+      anchors_batch, gt_box_batch, gt_class_targets_batch, gt_weights_batch):
     (cls_targets, cls_weights, reg_targets,
      reg_weights, match) = target_assigner.assign(
-         anchors, gt_boxes, gt_class_targets)
+         anchors, gt_boxes, gt_class_targets, gt_weights)
     cls_targets_list.append(cls_targets)
     cls_weights_list.append(cls_weights)
     reg_targets_list.append(reg_targets)

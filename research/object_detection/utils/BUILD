@@ -27,6 +27,7 @@ py_library(
         "//pyglib/logging",
         "//tensorflow",
         "//tensorflow/models/research/object_detection/protos:eval_py_pb2",
+        "//tensorflow/models/research/object_detection/protos:image_resizer_py_pb2",
         "//tensorflow/models/research/object_detection/protos:input_reader_py_pb2",
         "//tensorflow/models/research/object_detection/protos:model_py_pb2",
         "//tensorflow/models/research/object_detection/protos:pipeline_py_pb2",
@@ -231,6 +232,7 @@ py_test(
     deps = [
         ":config_util",
         "//tensorflow",
+        "//tensorflow/models/research/object_detection/protos:image_resizer_py_pb2",
         "//tensorflow/models/research/object_detection/protos:input_reader_py_pb2",
         "//tensorflow/models/research/object_detection/protos:model_py_pb2",
         "//tensorflow/models/research/object_detection/protos:pipeline_py_pb2",

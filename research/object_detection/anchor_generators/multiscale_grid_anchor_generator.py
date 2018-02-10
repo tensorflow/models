@@ -16,8 +16,8 @@
 
 Generates grid anchors on the fly corresponding to multiple CNN layers as
 described in:
-"Focal Loss for Dense Object Detection"
-T.-Y. Lin, P. Goyal, R. Girshick, K. He, P. Dollar (https://arxiv.org/abs/1708.02002)
+"Focal Loss for Dense Object Detection" (https://arxiv.org/abs/1708.02002)
+T.-Y. Lin, P. Goyal, R. Girshick, K. He, P. Dollar
 """
 
 from object_detection.anchor_generators import grid_anchor_generator
@@ -77,10 +77,14 @@ class MultiscaleGridAnchorGenerator(object):
       a list of integers, one for each expected feature map to be passed to
       the Generate function.
     """
-    return self._aspect_ratios * self._scales_per_octave
+    return len(self._anchor_grid_info) * [
+        len(self._aspect_ratios) * self._scales_per_octave]
 
   def generate(self, feature_map_shape_list, im_height, im_width):
     """Generates a collection of bounding boxes to be used as anchors.
+
+    Currently we require the input image shape to be statically defined.  That
+    is, im_height and im_width should be integers rather than tensors.
 
     Args:
       feature_map_shape_list: list of pairs of convnet layer resolutions in the
@@ -92,8 +96,12 @@ class MultiscaleGridAnchorGenerator(object):
 
     Returns:
       boxes: a BoxList holding a collection of N anchor boxes
+    Raises:
+      ValueError: if im_height and im_width are not integers.
     """
-
+    if not isinstance(im_height, int) or not isinstance(im_width, int):
+      raise ValueError('MultiscaleGridAnchorGenerator currently requires '
+                       'input image shape to be statically defined.')
     anchor_grid_list = []
     for feat_shape, grid_info in zip(feature_map_shape_list,
                                      self._anchor_grid_info):
