@@ -124,6 +124,7 @@ def parse_record(raw_record, is_training):
       is_training=is_training)
 
   label = tf.cast(label, dtype=tf.int32)
+  label = tf.one_hot(label, _NUM_CLASSES)
 
   return image, label
 

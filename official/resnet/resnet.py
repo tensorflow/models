@@ -466,7 +466,7 @@ def resnet_model_fn(features, labels, mode, model_class,
     return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
   # Calculate loss, which includes softmax cross entropy and L2 regularization.
-  cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+  cross_entropy = tf.losses.softmax_cross_entropy(
       labels=labels, logits=logits)
 
   # Create a tensor named cross_entropy for logging purposes.
