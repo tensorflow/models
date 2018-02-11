@@ -214,7 +214,7 @@ def non_max_suppression(boxlist,
   is_index_valid = np.full(num_boxes, 1, dtype=bool)
   selected_indices = []
   num_output = 0
-  for i in xrange(num_boxes):
+  for i in range(num_boxes):
     if num_output < max_output_size:
       if is_index_valid[i]:
         num_output += 1
