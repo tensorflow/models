@@ -264,6 +264,7 @@ py_test(
     srcs = ["learning_schedules_test.py"],
     deps = [
         ":learning_schedules",
+        ":test_case",
         "//tensorflow",
     ],
 )
