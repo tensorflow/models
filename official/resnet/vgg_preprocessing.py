@@ -50,7 +50,7 @@ def _get_h_w_c(image):
 
 
 def _random_crop(image, crop_height, crop_width):
-  """Crops the given image.
+  """Crops the given image to a random part of the image, and randomly flips.
 
   Args:
     image: a 3-D image tensor
@@ -73,9 +73,11 @@ def _random_crop(image, crop_height, crop_width):
   total_crop_width = (width - crop_width)
   crop_left = tf.random_uniform([], maxval=total_crop_width + 1, dtype=tf.int32)
 
-  return tf.slice(
+  cropped = tf.slice(
       image, [crop_top, crop_left, 0], [crop_height, crop_width, num_channels])
 
+  cropped = tf.image.random_flip_left_right(cropped)
+  return cropped
 
 def _central_crop(image, crop_height, crop_width):
   """Performs central crops of the given image list.
