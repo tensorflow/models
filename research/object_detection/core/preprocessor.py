@@ -2002,8 +2002,8 @@ def _compute_new_static_size(image, min_dimension, max_dimension):
   large_height = int(round(orig_height * large_scale_factor))
   large_width = int(round(orig_width * large_scale_factor))
   large_size = [large_height, large_width]
-  if max_dimension:
-    # Calculates the smaller of the possible sizes, use that if the larger
+  if max_dimension and max(large_size) > max_dimension:
+    # Calculates the smaller of the possible sizes, use that since the larger
     # is too big.
     orig_max_dim = max(orig_height, orig_width)
     small_scale_factor = max_dimension / float(orig_max_dim)
@@ -2014,9 +2014,7 @@ def _compute_new_static_size(image, min_dimension, max_dimension):
     small_height = int(round(orig_height * small_scale_factor))
     small_width = int(round(orig_width * small_scale_factor))
     small_size = [small_height, small_width]
-    new_size = large_size
-    if max(large_size) > max_dimension:
-      new_size = small_size
+    new_size = small_size
   else:
     new_size = large_size
   return tf.constant(new_size + [num_channels])
