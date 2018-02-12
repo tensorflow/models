@@ -46,6 +46,32 @@ class ImageResizerBuilderTest(tf.test.TestCase):
         input_shape, image_resizer_text_proto)
     self.assertEqual(output_shape, expected_output_shape)
 
+  def test_build_keep_aspect_ratio_resizer_min_dimension(self):
+    image_resizer_text_proto = """
+      keep_aspect_ratio_resizer {
+        min_dimension: 10
+        max_dimension: 20
+      }
+    """
+    input_shape = (90, 60, 3)
+    expected_output_shape = (15, 10, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_keep_aspect_ratio_resizer_max_dimension(self):
+    image_resizer_text_proto = """
+      keep_aspect_ratio_resizer {
+        min_dimension: 10
+        max_dimension: 20
+      }
+    """
+    input_shape = (240, 60, 3)
+    expected_output_shape = (20, 5, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
   def test_build_keep_aspect_ratio_resizer_with_padding(self):
     image_resizer_text_proto = """
       keep_aspect_ratio_resizer {
