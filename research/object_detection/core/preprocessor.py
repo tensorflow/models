@@ -2019,6 +2019,18 @@ def _compute_new_static_size(image, min_dimension, max_dimension):
     new_size = large_size
   return tf.constant(new_size + [num_channels])
 
+def _compute_new_dynamic_small_size(orig_height, orig_width, max_dimension):
+  """Compute small_size for _compute_new_dynamic_size method."""
+  orig_max_dim = tf.maximum(orig_height, orig_width)
+  max_dimension = tf.constant(max_dimension, dtype=tf.float32)
+  small_scale_factor = max_dimension / orig_max_dim
+  # Scaling orig_(height|width) by small_scale_factor will make the larger
+  # dimension equal to max_dimension, save for floating point rounding
+  # errors. For reasonably-sized images, taking the nearest integer will
+  # reliably eliminate this error.
+  small_height = tf.to_int32(tf.round(orig_height * small_scale_factor))
+  small_width = tf.to_int32(tf.round(orig_width * small_scale_factor))
+  return tf.stack([small_height, small_width])
 
 def _compute_new_dynamic_size(image, min_dimension, max_dimension):
   """Compute new dynamic shape for resize_to_range method."""
@@ -2037,24 +2049,13 @@ def _compute_new_dynamic_size(image, min_dimension, max_dimension):
   large_height = tf.to_int32(tf.round(orig_height * large_scale_factor))
   large_width = tf.to_int32(tf.round(orig_width * large_scale_factor))
   large_size = tf.stack([large_height, large_width])
-  if max_dimension:
-    # Calculates the smaller of the possible sizes, use that if the larger
-    # is too big.
-    orig_max_dim = tf.maximum(orig_height, orig_width)
-    max_dimension = tf.constant(max_dimension, dtype=tf.float32)
-    small_scale_factor = max_dimension / orig_max_dim
-    # Scaling orig_(height|width) by small_scale_factor will make the larger
-    # dimension equal to max_dimension, save for floating point rounding
-    # errors. For reasonably-sized images, taking the nearest integer will
-    # reliably eliminate this error.
-    small_height = tf.to_int32(tf.round(orig_height * small_scale_factor))
-    small_width = tf.to_int32(tf.round(orig_width * small_scale_factor))
-    small_size = tf.stack([small_height, small_width])
-    new_size = tf.cond(
-        tf.to_float(tf.reduce_max(large_size)) > max_dimension,
-        lambda: small_size, lambda: large_size)
-  else:
-    new_size = large_size
+  # Calculates the smaller of the possible sizes if the larger is too big.
+  new_size = tf.cond(
+      max_dimension and tf.to_float(tf.reduce_max(large_size)) > max_dimension,
+      lambda: _compute_new_dynamic_small_size(orig_height,
+                                              orig_width,
+                                              max_dimension),
+      lambda: large_size)
   return tf.stack(tf.unstack(new_size) + [num_channels])
 
 
