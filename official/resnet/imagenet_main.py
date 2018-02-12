@@ -154,6 +154,12 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
   # Convert to individual records
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
+  # Currently, if we are using multiple GPUs, we can't pass in uneven batches.
+  # This ensures that we cut off the uneven images at the end of each epoch
+  # (there are fifteen leftovers), rather than trying and failing to split
+  # them across multiple GPUs.
+  dataset = dataset.take(batch_size * (_NUM_IMAGES['train'] // batch_size))
+
   return resnet.process_record_dataset(dataset, is_training, batch_size,
       _SHUFFLE_BUFFER, parse_record, num_epochs, num_parallel_calls)
 
