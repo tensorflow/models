@@ -58,7 +58,7 @@ class BaseTest(tf.test.TestCase):
     with self.test_session() as sess:
       image, label = sess.run([image, label])
 
-      self.assertAllEqual(label, np.array([int(i == 7) for i in range(10)])))
+      self.assertAllEqual(label, np.array([int(i == 7) for i in range(10)]))
 
       for row in image:
         for pixel in row:
@@ -66,7 +66,8 @@ class BaseTest(tf.test.TestCase):
 
   def input_fn(self):
     features = tf.random_uniform([_BATCH_SIZE, _HEIGHT, _WIDTH, _NUM_CHANNELS])
-    labels = tf.random_uniform([_BATCH_SIZE], maxval=9, dtype=tf.int32)
+    labels = tf.random_uniform(
+        [_BATCH_SIZE], maxval=9, dtype=tf.int32)
     return features, tf.one_hot(labels, 10)
 
   def cifar10_model_fn_helper(self, mode):
