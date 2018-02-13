@@ -153,9 +153,8 @@ def spectrogram_to_mel_matrix(num_mel_bins=20,
     ValueError: if frequency edges are incorrectly ordered.
   """
   nyquist_hertz = audio_sample_rate / 2.
-  if upper_edge_hertz > nyquist_hertz:
-    raise ValueError("upper_edge_hertz %.1f is greater than Nyquist %.1f" %
-                     (upper_edge_hertz, nyquist_hertz))
+  if lower_edge_hertz < 0.0:
+    raise ValueError("lower_edge_hertz %.1f must be >= 0" % lower_edge_hertz)
   if lower_edge_hertz >= upper_edge_hertz:
     raise ValueError("lower_edge_hertz %.1f >= upper_edge_hertz %.1f" %
                      (lower_edge_hertz, upper_edge_hertz))
