@@ -35,7 +35,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                load_instance_masks=False,
                instance_mask_type=input_reader_pb2.NUMERICAL_MASKS,
                label_map_proto_file=None,
-               use_display_name=False):
+               use_display_name=False,
+               dct_method=''):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -50,6 +51,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       use_display_name: whether or not to use the `display_name` for label
         mapping (instead of `name`).  Only used if label_map_proto_file is
         provided.
+      dct_method: An optional string. Defaults to None. It only takes
+        effect when image format is jpeg, used to specify a hint about the
+        algorithm used for jpeg decompression. Currently valid values
+        are ['INTEGER_FAST', 'INTEGER_ACCURATE']. The hint may be ignored, for
+        example, the jpeg library does not have that specific option.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
@@ -96,8 +102,12 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.VarLenFeature(tf.float32),
     }
     self.items_to_handlers = {
-        fields.InputDataFields.image: slim_example_decoder.Image(
-            image_key='image/encoded', format_key='image/format', channels=3),
+        fields.InputDataFields.image:
+            slim_example_decoder.Image(
+                image_key='image/encoded',
+                format_key='image/format',
+                channels=3,
+                dct_method=dct_method),
         fields.InputDataFields.source_id: (
             slim_example_decoder.Tensor('image/source_id')),
         fields.InputDataFields.key: (
@@ -106,10 +116,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Tensor('image/filename')),
         # Object boxes and classes.
         fields.InputDataFields.groundtruth_boxes: (
-            slim_example_decoder.BoundingBox(
-                ['ymin', 'xmin', 'ymax', 'xmax'], 'image/object/bbox/')),
-        fields.InputDataFields.groundtruth_area: slim_example_decoder.Tensor(
-            'image/object/area'),
+            slim_example_decoder.BoundingBox(['ymin', 'xmin', 'ymax', 'xmax'],
+                                             'image/object/bbox/')),
+        fields.InputDataFields.groundtruth_area:
+            slim_example_decoder.Tensor('image/object/area'),
         fields.InputDataFields.groundtruth_is_crowd: (
             slim_example_decoder.Tensor('image/object/is_crowd')),
         fields.InputDataFields.groundtruth_difficult: (
