@@ -18,12 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tensorflow as tf
+
 from delf import datum_io
 from delf import delf_v1
-from delf import delf_config_pb2
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
-import tensorflow as tf
 
 
 def NormalizePixelValues(image,
@@ -170,7 +170,8 @@ def ExtractKeypointDescriptor(image, layer_name, image_scales, iou,
         resized_image, normalized_image=True, reuse=reuse)
 
     rf_boxes = CalculateReceptiveBoxes(
-        tf.shape(feature_map)[1], tf.shape(feature_map)[2], rf, stride, padding)
+        tf.shape(feature_map)[1],
+        tf.shape(feature_map)[2], rf, stride, padding)
     # Re-project back to the original image space.
     rf_boxes = tf.divide(rf_boxes, scale)
     attention = tf.reshape(attention, [-1])
@@ -236,8 +237,8 @@ def ExtractKeypointDescriptor(image, layer_name, image_scales, iou,
                                                  nms_max_boxes)
 
   return (final_boxes.get(), final_boxes.get_field('scales'),
-          final_boxes.get_field('features'), tf.expand_dims(
-              final_boxes.get_field('scores'), 1))
+          final_boxes.get_field('features'),
+          tf.expand_dims(final_boxes.get_field('scores'), 1))
 
 
 def BuildModel(layer_name, attention_nonlinear, attention_type,
