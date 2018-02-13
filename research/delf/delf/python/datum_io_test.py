@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for datum_io, the python interface of DatumProto."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from delf import datum_io
-from delf import datum_pb2
-import numpy as np
 import os
+
+import numpy as np
 import tensorflow as tf
+
+from delf import datum_io
 
 
 class DatumIoTest(tf.test.TestCase):
