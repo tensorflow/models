@@ -62,6 +62,6 @@ The image `matched_images.png` is generated and should look similar to this one:
 
 `matplotlib` may complain with a message such as `no display name and no
 $DISPLAY environment variable`. To fix this, one option is add the line
-`backend : Agg` to the file `config/matplotlib/matplotlibrc`. On this problem,
+`backend : Agg` to the file `.config/matplotlib/matplotlibrc`. On this problem,
 see the discussion
 [here](https://stackoverflow.com/questions/37604289/tkinter-tclerror-no-display-name-and-no-display-environment-variable).

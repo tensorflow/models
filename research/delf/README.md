@@ -72,9 +72,11 @@ feature extraction and matching:
 
 ## Dataset
 
-The Google-Landmarks dataset will be released together with a Kaggle-hosted
-landmark recognition competition. We will include the link to it here once it is
-launched (expect this to be done around mid-January, 2018).
+The Google Landmarks dataset has been released as part of two Kaggle challenges:
+[Landmark Recognition](https://www.kaggle.com/c/landmark-recognition-challenge)
+and [Landmark Retrieval](https://www.kaggle.com/c/landmark-retrieval-challenge).
+If you make use of the dataset in your research, please consider citing the
+paper mentioned above.
 
 ## Maintainers
 
