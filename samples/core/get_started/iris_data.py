@@ -6,7 +6,7 @@ TEST_URL = "http://download.tensorflow.org/data/iris_test.csv"
 
 CSV_COLUMN_NAMES = ['SepalLength', 'SepalWidth',
                     'PetalLength', 'PetalWidth', 'Species']
-SPECIES = ['Sentosa', 'Versicolor', 'Virginica']
+SPECIES = ['Setosa', 'Versicolor', 'Virginica']
 
 def maybe_download():
     train_path = tf.keras.utils.get_file(TRAIN_URL.split('/')[-1], TRAIN_URL)
@@ -35,8 +35,8 @@ def train_input_fn(features, labels, batch_size):
     # Shuffle, repeat, and batch the examples.
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
 
-    # Return the read end of the pipeline.
-    return dataset.make_one_shot_iterator().get_next()
+    # Return the dataset.
+    return dataset
 
 
 def eval_input_fn(features, labels, batch_size):
@@ -55,8 +55,8 @@ def eval_input_fn(features, labels, batch_size):
     assert batch_size is not None, "batch_size must not be None"
     dataset = dataset.batch(batch_size)
 
-    # Return the read end of the pipeline.
-    return dataset.make_one_shot_iterator().get_next()
+    # Return the dataset.
+    return dataset
 
 
 # The remainder of this file contains a simple example of a csv parser,
@@ -89,5 +89,5 @@ def csv_input_fn(csv_path, batch_size):
     # Shuffle, repeat, and batch the examples.
     dataset = dataset.shuffle(1000).repeat().batch(batch_size)
 
-    # Return the read end of the pipeline.
-    return dataset.make_one_shot_iterator().get_next()
+    # Return the dataset.
+    return dataset

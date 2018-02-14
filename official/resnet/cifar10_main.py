@@ -23,13 +23,14 @@ import sys
 
 import tensorflow as tf
 
-import resnet_model
-import resnet_shared
+import resnet
 
 _HEIGHT = 32
 _WIDTH = 32
 _NUM_CHANNELS = 3
 _DEFAULT_IMAGE_BYTES = _HEIGHT * _WIDTH * _NUM_CHANNELS
+# The record is the image plus a one-byte label
+_RECORD_BYTES = _DEFAULT_IMAGE_BYTES + 1
 _NUM_CLASSES = 10
 _NUM_DATA_FILES = 5
 
@@ -42,12 +43,6 @@ _NUM_IMAGES = {
 ###############################################################################
 # Data processing
 ###############################################################################
-def record_dataset(filenames):
-  """Returns an input pipeline Dataset from `filenames`."""
-  record_bytes = _DEFAULT_IMAGE_BYTES + 1
-  return tf.data.FixedLengthRecordDataset(filenames, record_bytes)
-
-
 def get_filenames(is_training, data_dir):
   """Returns a list of filenames."""
   data_dir = os.path.join(data_dir, 'cifar-10-batches-bin')
@@ -65,13 +60,8 @@ def get_filenames(is_training, data_dir):
     return [os.path.join(data_dir, 'test_batch.bin')]
 
 
-def parse_record(raw_record):
+def parse_record(raw_record, is_training):
   """Parse CIFAR-10 image and label from a raw record."""
-  # Every record consists of a label followed by the image, with a fixed number
-  # of bytes for each.
-  label_bytes = 1
-  record_bytes = label_bytes + _DEFAULT_IMAGE_BYTES
-
   # Convert bytes to a vector of uint8 that is record_bytes long.
   record_vector = tf.decode_raw(raw_record, tf.uint8)
 
@@ -82,12 +72,14 @@ def parse_record(raw_record):
 
   # The remaining bytes after the label represent the image, which we reshape
   # from [depth * height * width] to [depth, height, width].
-  depth_major = tf.reshape(record_vector[label_bytes:record_bytes],
+  depth_major = tf.reshape(record_vector[1:_RECORD_BYTES],
                            [_NUM_CHANNELS, _HEIGHT, _WIDTH])
 
   # Convert from [depth, height, width] to [height, width, depth], and cast as
   # float32.
   image = tf.cast(tf.transpose(depth_major, [1, 2, 0]), tf.float32)
+
+  image = preprocess_image(image, is_training)
 
   return image, label
 
@@ -110,7 +102,8 @@ def preprocess_image(image, is_training):
   return image
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1,
+             num_parallel_calls=1):
   """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
@@ -118,44 +111,34 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
+    num_parallel_calls: The number of records that are processed in parallel.
+      This can be optimized per data set but for generally homogeneous data
+      sets, should be approximately the number of available CPU cores.
 
   Returns:
-    A tuple of images and labels.
+    A dataset that can be used for iteration.
   """
-  dataset = record_dataset(get_filenames(is_training, data_dir))
+  filenames = get_filenames(is_training, data_dir)
+  dataset = tf.data.FixedLengthRecordDataset(filenames, _RECORD_BYTES)
 
-  if is_training:
-    # When choosing shuffle buffer sizes, larger sizes result in better
-    # randomness, while smaller sizes have better performance. Because CIFAR-10
-    # is a relatively small dataset, we choose to shuffle the full epoch.
-    dataset = dataset.shuffle(buffer_size=_NUM_IMAGES['train'])
-
-  dataset = dataset.map(parse_record)
-  dataset = dataset.map(
-      lambda image, label: (preprocess_image(image, is_training), label))
-
-  dataset = dataset.prefetch(2 * batch_size)
-
-  # We call repeat after shuffling, rather than before, to prevent separate
-  # epochs from blending together.
-  dataset = dataset.repeat(num_epochs)
-
-  # Batch results by up to batch_size, and then fetch the tuple from the
-  # iterator.
-  dataset = dataset.batch(batch_size)
-  iterator = dataset.make_one_shot_iterator()
-  images, labels = iterator.get_next()
-
-  return images, labels
+  return resnet.process_record_dataset(dataset, is_training, batch_size,
+      _NUM_IMAGES['train'], parse_record, num_epochs, num_parallel_calls)
 
 
 ###############################################################################
 # Running the model
 ###############################################################################
-class Cifar10Model(resnet_model.Model):
+class Cifar10Model(resnet.Model):
 
-  def __init__(self, resnet_size, data_format=None):
+  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES):
     """These are the parameters that work for CIFAR-10 data.
+
+    Args:
+      resnet_size: The number of convolutional layers needed in the model.
+      data_format: Either 'channels_first' or 'channels_last', specifying which
+        data format to use when setting up the model.
+      num_classes: The number of output classes needed from the model. This
+        enables users to extend the same model to their own datasets.
     """
     if resnet_size % 6 != 2:
       raise ValueError('resnet_size must be 6n + 2:', resnet_size)
@@ -164,7 +147,7 @@ class Cifar10Model(resnet_model.Model):
 
     super(Cifar10Model, self).__init__(
         resnet_size=resnet_size,
-        num_classes=_NUM_CLASSES,
+        num_classes=num_classes,
         num_filters=16,
         kernel_size=3,
         conv_stride=1,
@@ -172,7 +155,7 @@ class Cifar10Model(resnet_model.Model):
         first_pool_stride=None,
         second_pool_size=8,
         second_pool_stride=1,
-        block_fn=resnet_model.building_block,
+        block_fn=resnet.building_block,
         block_sizes=[num_blocks] * 3,
         block_strides=[1, 2, 2],
         final_size=64,
@@ -183,7 +166,7 @@ def cifar10_model_fn(features, labels, mode, params):
   """Model function for CIFAR-10."""
   features = tf.reshape(features, [-1, _HEIGHT, _WIDTH, _NUM_CHANNELS])
 
-  learning_rate_fn = resnet_shared.learning_rate_with_decay(
+  learning_rate_fn = resnet.learning_rate_with_decay(
       batch_size=params['batch_size'], batch_denom=128,
       num_images=_NUM_IMAGES['train'], boundary_epochs=[100, 150, 200],
       decay_rates=[1, 0.1, 0.01, 0.001])
@@ -200,23 +183,23 @@ def cifar10_model_fn(features, labels, mode, params):
   def loss_filter_fn(name):
     return True
 
-  return resnet_shared.resnet_model_fn(features, labels, mode, Cifar10Model,
-                                       resnet_size=params['resnet_size'],
-                                       weight_decay=weight_decay,
-                                       learning_rate_fn=learning_rate_fn,
-                                       momentum=0.9,
-                                       data_format=params['data_format'],
-                                       loss_filter_fn=loss_filter_fn)
+  return resnet.resnet_model_fn(features, labels, mode, Cifar10Model,
+                                resnet_size=params['resnet_size'],
+                                weight_decay=weight_decay,
+                                learning_rate_fn=learning_rate_fn,
+                                momentum=0.9,
+                                data_format=params['data_format'],
+                                loss_filter_fn=loss_filter_fn)
 
 
 def main(unused_argv):
-  resnet_shared.resnet_main(FLAGS, cifar10_model_fn, input_fn)
+  resnet.resnet_main(FLAGS, cifar10_model_fn, input_fn)
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  parser = resnet_shared.ResnetArgParser()
+  parser = resnet.ResnetArgParser()
   # Set defaults that are reasonable for this model.
   parser.set_defaults(data_dir='/tmp/cifar10_data',
                       model_dir='/tmp/cifar10_model',

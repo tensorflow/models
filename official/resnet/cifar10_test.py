@@ -27,6 +27,9 @@ import cifar10_main
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 _BATCH_SIZE = 128
+_HEIGHT = 32
+_WIDTH = 32
+_NUM_CHANNELS = 3
 
 
 class BaseTest(tf.test.TestCase):
@@ -34,8 +37,8 @@ class BaseTest(tf.test.TestCase):
   def test_dataset_input_fn(self):
     fake_data = bytearray()
     fake_data.append(7)
-    for i in range(3):
-      for _ in range(1024):
+    for i in range(_NUM_CHANNELS):
+      for _ in range(_HEIGHT * _WIDTH):
         fake_data.append(i)
 
     _, filename = mkstemp(dir=self.get_temp_dir())
@@ -43,12 +46,14 @@ class BaseTest(tf.test.TestCase):
     data_file.write(fake_data)
     data_file.close()
 
-    fake_dataset = cifar10_main.record_dataset(filename)
-    fake_dataset = fake_dataset.map(cifar10_main.parse_record)
+    fake_dataset = tf.data.FixedLengthRecordDataset(
+        filename, cifar10_main._RECORD_BYTES)
+    fake_dataset = fake_dataset.map(
+        lambda val: cifar10_main.parse_record(val, False))
     image, label = fake_dataset.make_one_shot_iterator().get_next()
 
-    self.assertEqual(label.get_shape().as_list(), [10])
-    self.assertEqual(image.get_shape().as_list(), [32, 32, 3])
+    self.assertAllEqual(label.shape, (10,))
+    self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))
 
     with self.test_session() as sess:
       image, label = sess.run([image, label])
@@ -57,10 +62,10 @@ class BaseTest(tf.test.TestCase):
 
       for row in image:
         for pixel in row:
-          self.assertAllEqual(pixel, np.array([0, 1, 2]))
+          self.assertAllClose(pixel, np.array([-1.225, 0., 1.225]), rtol=1e-3)
 
   def input_fn(self):
-    features = tf.random_uniform([_BATCH_SIZE, 32, 32, 3])
+    features = tf.random_uniform([_BATCH_SIZE, _HEIGHT, _WIDTH, _NUM_CHANNELS])
     labels = tf.random_uniform(
         [_BATCH_SIZE], maxval=9, dtype=tf.int32)
     return features, tf.one_hot(labels, 10)
@@ -101,6 +106,17 @@ class BaseTest(tf.test.TestCase):
 
   def test_cifar10_model_fn_predict_mode(self):
     self.cifar10_model_fn_helper(tf.estimator.ModeKeys.PREDICT)
+
+  def test_cifar10model_shape(self):
+    batch_size = 135
+    num_classes = 246
+
+    model = cifar10_main.Cifar10Model(
+        32, data_format='channels_last', num_classes=num_classes)
+    fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+    output = model(fake_input, training=True)
+
+    self.assertAllEqual(output.shape, (batch_size, num_classes))
 
 
 if __name__ == '__main__':
