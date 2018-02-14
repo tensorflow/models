@@ -24,9 +24,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from delf import datum_pb2
 import numpy as np
 import tensorflow as tf
+
+from delf import datum_pb2
 
 
 def ArrayToDatum(arr):
