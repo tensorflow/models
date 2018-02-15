@@ -38,6 +38,8 @@ flags.DEFINE_float('small_constant_for_finite_diff', 1e-1,
 # Parameters for building the graph
 flags.DEFINE_string('adv_training_method', None,
                     'The flag which specifies training method. '
+                    '""    : non-adversarial training (e.g. for running the '
+                    '        semi-supervised sequence learning model) '
                     '"rp"  : random perturbation training '
                     '"at"  : adversarial training '
                     '"vat" : virtual adversarial training '

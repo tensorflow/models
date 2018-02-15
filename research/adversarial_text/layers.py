@@ -20,7 +20,7 @@ from __future__ import print_function
 # Dependency imports
 
 import tensorflow as tf
-K = tf.contrib.keras
+K = tf.keras
 
 
 def cl_logits_subgraph(layer_sizes, input_size, num_classes, keep_prob=1.):
@@ -148,6 +148,7 @@ class SoftmaxLoss(K.layers.Layer):
     self.num_candidate_samples = num_candidate_samples
     self.vocab_freqs = vocab_freqs
     super(SoftmaxLoss, self).__init__(**kwargs)
+    self.multiclass_dense_layer = K.layers.Dense(self.vocab_size)
 
   def build(self, input_shape):
     input_shape = input_shape[0]
@@ -160,6 +161,7 @@ class SoftmaxLoss(K.layers.Layer):
           shape=(self.vocab_size,),
           name='lm_lin_b',
           initializer=K.initializers.glorot_uniform())
+      self.multiclass_dense_layer.build(input_shape)
 
     super(SoftmaxLoss, self).build(input_shape)
 
@@ -190,7 +192,7 @@ class SoftmaxLoss(K.layers.Layer):
           lm_loss,
           [int(x.get_shape()[0]), int(x.get_shape()[1])])
     else:
-      logits = tf.matmul(x, self.lin_w) + self.lin_b
+      logits = self.multiclass_dense_layer(x)
       lm_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
           logits=logits, labels=labels)
 
@@ -255,7 +257,7 @@ def predictions(logits):
       pred = tf.cast(tf.greater(tf.squeeze(logits, -1), 0.5), tf.int64)
     # For multi-class classification
     else:
-      pred = tf.argmax(logits, 1)
+      pred = tf.argmax(logits, 2)
     return pred
 
 
@@ -354,10 +356,9 @@ def optimize(loss,
                            opt.ready_for_local_init_op)
     else:
       # Non-sync optimizer
-      variables_averages_op = variable_averages.apply(tvars)
       apply_gradient_op = opt.apply_gradients(grads_and_vars, global_step)
-      with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
-        train_op = tf.no_op(name='train_op')
+      with tf.control_dependencies([apply_gradient_op]):
+        train_op = variable_averages.apply(tvars)
 
     return train_op
 
