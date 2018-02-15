@@ -64,8 +64,8 @@ def run_training(train_op,
   sv = tf.train.Supervisor(
       logdir=FLAGS.train_dir,
       is_chief=is_chief,
-      save_summaries_secs=5 * 60,
-      save_model_secs=5 * 60,
+      save_summaries_secs=30,
+      save_model_secs=30,
       local_init_op=local_init_op,
       ready_for_local_init_op=ready_for_local_init_op,
       global_step=global_step)
@@ -90,10 +90,9 @@ def run_training(train_op,
     global_step_val = 0
     while not sv.should_stop() and global_step_val < FLAGS.max_steps:
       global_step_val = train_step(sess, train_op, loss, global_step)
-    sv.stop()
 
     # Final checkpoint
-    if is_chief:
+    if is_chief and global_step_val >= FLAGS.max_steps:
       sv.saver.save(sess, sv.save_path, global_step=global_step)
 
 

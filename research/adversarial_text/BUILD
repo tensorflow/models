@@ -10,7 +10,7 @@ py_binary(
     deps = [
         ":graphs",
         # google3 file dep,
-        # tensorflow dep,
+        # tensorflow internal dep,
     ],
 )
 
@@ -21,7 +21,7 @@ py_binary(
         ":graphs",
         ":train_utils",
         # google3 file dep,
-        # tensorflow dep,
+        # tensorflow internal dep,
     ],
 )
 
@@ -34,7 +34,8 @@ py_binary(
         ":graphs",
         ":train_utils",
         # google3 file dep,
-        # tensorflow dep,
+        # tensorflow internal gpu deps
+        # tensorflow internal dep,
     ],
 )
 
