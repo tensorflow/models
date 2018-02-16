@@ -192,10 +192,7 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   # epochs from blending together.
   dataset = dataset.repeat(num_epochs)
   dataset = dataset.batch(batch_size)
-
-  iterator = dataset.make_one_shot_iterator()
-  features, labels = iterator.get_next()
-  return features, labels
+  return dataset
 
 
 def main(unused_argv):

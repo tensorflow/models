@@ -84,14 +84,15 @@ def linear(x, out_size, do_bias=True, alpha=1.0, identity_if_possible=False,
 
 def init_linear(in_size, out_size, do_bias=True, mat_init_value=None,
                 bias_init_value=None, alpha=1.0, identity_if_possible=False,
-                normalized=False, name=None, collections=None):
+                normalized=False, name=None, collections=None, trainable=True):
   """Linear (affine) transformation, y = x W + b, for a variety of
   configurations.
 
   Args:
     in_size: The integer size of the non-batc input dimension. [(x),y]
     out_size: The integer size of non-batch output dimension. [x,(y)]
-    do_bias (optional): Add a learnable bias vector to the operation.
+    do_bias (optional): Add a (learnable) bias vector to the operation,
+      if false, b will be None
     mat_init_value (optional): numpy constant for matrix initialization, if None
       , do random, with additional parameters.
     alpha (optional): A multiplicative scaling for the weight initialization
@@ -131,21 +132,22 @@ def init_linear(in_size, out_size, do_bias=True, mat_init_value=None,
     if collections:
       w_collections += collections
     if mat_init_value is not None:
-      w = tf.Variable(mat_init_value, name=wname, collections=w_collections)
+      w = tf.Variable(mat_init_value, name=wname, collections=w_collections,
+                      trainable=trainable)
     else:
       w = tf.get_variable(wname, [in_size, out_size], initializer=mat_init,
-                          collections=w_collections)
+                          collections=w_collections, trainable=trainable)
     w = tf.nn.l2_normalize(w, dim=0) # x W, so xW_j = \sum_i x_bi W_ij
   else:
     w_collections = [tf.GraphKeys.GLOBAL_VARIABLES]
     if collections:
       w_collections += collections
     if mat_init_value is not None:
-      w = tf.Variable(mat_init_value, name=wname, collections=w_collections)
+      w = tf.Variable(mat_init_value, name=wname, collections=w_collections,
+                      trainable=trainable)
     else:
       w = tf.get_variable(wname, [in_size, out_size], initializer=mat_init,
-                          collections=w_collections)
-
+                          collections=w_collections, trainable=trainable)
   b = None
   if do_bias:
     b_collections = [tf.GraphKeys.GLOBAL_VARIABLES]
@@ -155,11 +157,12 @@ def init_linear(in_size, out_size, do_bias=True, mat_init_value=None,
     if bias_init_value is None:
       b = tf.get_variable(bname, [1, out_size],
                           initializer=tf.zeros_initializer(),
-                          collections=b_collections)
+                          collections=b_collections,
+                          trainable=trainable)
     else:
       b = tf.Variable(bias_init_value, name=bname,
-                      collections=b_collections)
-
+                      collections=b_collections,
+                      trainable=trainable)
 
   return (w, b)
 

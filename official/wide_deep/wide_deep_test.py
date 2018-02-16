@@ -54,7 +54,9 @@ class BaseTest(tf.test.TestCase):
       temp_csv.write(TEST_INPUT)
 
   def test_input_fn(self):
-    features, labels = wide_deep.input_fn(self.input_csv, 1, False, 1)
+    dataset = wide_deep.input_fn(self.input_csv, 1, False, 1)
+    features, labels = dataset.make_one_shot_iterator().get_next()
+
     with tf.Session() as sess:
       features, labels = sess.run((features, labels))
 

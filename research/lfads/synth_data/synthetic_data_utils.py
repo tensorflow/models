@@ -176,13 +176,13 @@ def gaussify_data(data_e, rng, dt=1.0, max_firing_rate=100):
 
 
 
-def get_train_n_valid_inds(num_trials, train_fraction, nspikifications):
+def get_train_n_valid_inds(num_trials, train_fraction, nreplications):
   """Split the numbers between 0 and num_trials-1 into two portions for
   training and validation, based on the train fraction.
   Args:
     num_trials: the number of trials
     train_fraction: (e.g. .80)
-    nspikifications: the number of spiking trials per initial condition
+    nreplications: the number of spiking trials per initial condition
   Returns:
     a 2-tuple of two lists: the training indices and validation indices
     """
@@ -192,7 +192,7 @@ def get_train_n_valid_inds(num_trials, train_fraction, nspikifications):
     # This line divides up the trials so that within one initial condition,
     # the randomness of spikifying the condition is shared among both
     # training and validation data splits.
-    if (i % nspikifications)+1 > train_fraction * nspikifications:
+    if (i % nreplications)+1 > train_fraction * nreplications:
       valid_inds.append(i)
     else:
       train_inds.append(i)

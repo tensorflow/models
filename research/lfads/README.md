@@ -7,7 +7,7 @@ This code implements the model from the paper "[LFADS - Latent Factor Analysis v
 
 The code is written in Python 2.7.6. You will also need:
 
-* **TensorFlow** version 1.2.1 ([install](https://www.tensorflow.org/install/)) -
+* **TensorFlow** version 1.5 ([install](https://www.tensorflow.org/install/)) -
 * **NumPy, SciPy, Matplotlib** ([install SciPy stack](https://www.scipy.org/install.html), contains all of them)
 * **h5py** ([install](https://pypi.python.org/pypi/h5py))
 
@@ -98,7 +98,18 @@ $ python run_lfads.py --kind=train \
 --output_filename_stem="" \
 --ic_prior_var_max=0.1 \
 --prior_ar_atau=10.0 \
---do_train_io_only=false
+--do_train_io_only=false \
+--do_train_encoder_only=false
+
+# Run LFADS on chaotic rnn data with no input pulses (g = 1.5) with Gaussian noise
+$ python run_lfads.py --kind=train \
+--data_dir=/tmp/rnn_synth_data_v1.0/ \
+--data_filename_stem=gaussian_chaotic_rnn_no_inputs \
+--lfads_save_dir=/tmp/lfads_chaotic_rnn_inputs_g2p5 \
+--co_dim=1 \
+--factors_dim=20 \
+--output_dist=gaussian
+
 
 # Run LFADS on chaotic rnn data with input pulses (g = 2.5)
 $ python run_lfads.py --kind=train \
