@@ -17,6 +17,7 @@ r"""Tests for detection_inference.py."""
 import os
 import StringIO
 
+
 import numpy as np
 from PIL import Image
 import tensorflow as tf

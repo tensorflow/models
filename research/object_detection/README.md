@@ -32,6 +32,8 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 * Derek Chow, github: [derekjchow](https://github.com/derekjchow)
 * Chen Sun, github: [jesu9](https://github.com/jesu9)
 * Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
+* Alireza Fathi, github: [afathi3](https://github.com/afathi3)
+* Zhichao Lu, github: [pkulzc](https://github.com/pkulzc)
 
 
 ## Table of contents
@@ -67,6 +69,8 @@ Extras:
       Supported object detection evaluation protocols</a><br>
   * <a href='g3doc/oid_inference_and_evaluation.md'>
       Inference and evaluation on the Open Images dataset</a><br>
+  * <a href='g3doc/instance_segmentation.md'>
+      Run an instance segmentation model
 
 ## Getting Help
 
@@ -75,13 +79,22 @@ API, create a new question on [StackOverflow](https://stackoverflow.com/) with
 the tags "tensorflow" and "object-detection".
 
 Please report bugs (actually broken code, not usage questions) to the
-tensorflow/models Github
+tensorflow/models GitHub
 [issue tracker](https://github.com/tensorflow/models/issues), prefixing the
 issue name with "object_detection".
 
 
 
 ## Release information
+
+### February 9, 2018
+
+We now support instance segmentation!!  In this API update we support a number of instance segmentation models similar to those discussed in the [Mask R-CNN paper](https://arxiv.org/abs/1703.06870). For further details refer to
+[our slides](http://presentations.cocodataset.org/Places17-GMRI.pdf) from the 2017 Coco + Places Workshop.
+Refer to the section on [Running an Instance Segmentation Model](g3doc/instance_segmentation.md) for instructions on how to configure a model
+that predicts masks in addition to object bounding boxes.
+
+<b>Thanks to contributors</b>: Alireza Fathi, Zhichao Lu, Vivek Rathod, Ronny Votel, Jonathan Huang
 
 ### November 17, 2017
 

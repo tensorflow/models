@@ -183,7 +183,8 @@ def prune_completely_outside_window(boxlist, window, scope=None):
     scope: name scope.
 
   Returns:
-    pruned_corners: a tensor with shape [M_out, 4] where M_out <= M_in
+    pruned_boxlist: a new BoxList with all bounding boxes partially or fully in
+      the window.
     valid_indices: a tensor with shape [M_out] indexing the valid bounding boxes
      in the input tensor.
   """
@@ -982,3 +983,79 @@ def pad_or_clip_box_list(boxlist, num_boxes, scope=None):
           boxlist.get_field(field), num_boxes)
       subboxlist.add_field(field, subfield)
     return subboxlist
+
+
+def select_random_box(boxlist,
+                      default_box=None,
+                      seed=None,
+                      scope=None):
+  """Selects a random bounding box from a `BoxList`.
+
+  Args:
+    boxlist: A BoxList.
+    default_box: A [1, 4] float32 tensor. If no boxes are present in `boxlist`,
+      this default box will be returned. If None, will use a default box of
+      [[-1., -1., -1., -1.]].
+    seed: Random seed.
+    scope: Name scope.
+
+  Returns:
+    bbox: A [1, 4] tensor with a random bounding box.
+    valid: A bool tensor indicating whether a valid bounding box is returned
+      (True) or whether the default box is returned (False).
+  """
+  with tf.name_scope(scope, 'SelectRandomBox'):
+    bboxes = boxlist.get()
+    combined_shape = shape_utils.combined_static_and_dynamic_shape(bboxes)
+    number_of_boxes = combined_shape[0]
+    default_box = default_box or tf.constant([[-1., -1., -1., -1.]])
+
+    def select_box():
+      random_index = tf.random_uniform([],
+                                       maxval=number_of_boxes,
+                                       dtype=tf.int32,
+                                       seed=seed)
+      return tf.expand_dims(bboxes[random_index], axis=0), tf.constant(True)
+
+  return tf.cond(
+      tf.greater_equal(number_of_boxes, 1),
+      true_fn=select_box,
+      false_fn=lambda: (default_box, tf.constant(False)))
+
+
+def get_minimal_coverage_box(boxlist,
+                             default_box=None,
+                             scope=None):
+  """Creates a single bounding box which covers all boxes in the boxlist.
+
+  Args:
+    boxlist: A Boxlist.
+    default_box: A [1, 4] float32 tensor. If no boxes are present in `boxlist`,
+      this default box will be returned. If None, will use a default box of
+      [[0., 0., 1., 1.]].
+    scope: Name scope.
+
+  Returns:
+    A [1, 4] float32 tensor with a bounding box that tightly covers all the
+    boxes in the box list. If the boxlist does not contain any boxes, the
+    default box is returned.
+  """
+  with tf.name_scope(scope, 'CreateCoverageBox'):
+    num_boxes = boxlist.num_boxes()
+
+    def coverage_box(bboxes):
+      y_min, x_min, y_max, x_max = tf.split(
+          value=bboxes, num_or_size_splits=4, axis=1)
+      y_min_coverage = tf.reduce_min(y_min, axis=0)
+      x_min_coverage = tf.reduce_min(x_min, axis=0)
+      y_max_coverage = tf.reduce_max(y_max, axis=0)
+      x_max_coverage = tf.reduce_max(x_max, axis=0)
+      return tf.stack(
+          [y_min_coverage, x_min_coverage, y_max_coverage, x_max_coverage],
+          axis=1)
+
+    default_box = default_box or tf.constant([[0., 0., 1., 1.]])
+    return tf.cond(
+        tf.greater_equal(num_boxes, 1),
+        true_fn=lambda: coverage_box(boxlist.get()),
+        false_fn=lambda: default_box)

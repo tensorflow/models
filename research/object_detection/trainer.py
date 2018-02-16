@@ -108,6 +108,8 @@ def get_inputs(input_queue, num_classes, merge_multiple_label_boxes=False):
     keypoints_list: a list of 3-D float tensors of shape [num_boxes,
       num_keypoints, 2] containing keypoints for objects if present in the
       input queue. Else returns None.
+    weights_lists: a list of 1-D float32 tensors of shape [num_boxes]
+      containing groundtruth weight for each box.
   """
   read_data_list = input_queue.dequeue()
   label_id_offset = 1
@@ -132,7 +134,10 @@ def get_inputs(input_queue, num_classes, merge_multiple_label_boxes=False):
     if (merge_multiple_label_boxes and (
         masks_gt is not None or keypoints_gt is not None)):
       raise NotImplementedError('Multi-label support is only for boxes.')
-    return image, key, location_gt, classes_gt, masks_gt, keypoints_gt
+    weights_gt = read_data.get(
+        fields.InputDataFields.groundtruth_weights)
+    return (image, key, location_gt, classes_gt, masks_gt, keypoints_gt,
+            weights_gt)
 
   return zip(*map(extract_images_and_targets, read_data_list))
 
@@ -147,12 +152,21 @@ def _create_losses(input_queue, create_model_fn, train_config):
   """
   detection_model = create_model_fn()
   (images, _, groundtruth_boxes_list, groundtruth_classes_list,
-   groundtruth_masks_list, groundtruth_keypoints_list) = get_inputs(
+   groundtruth_masks_list, groundtruth_keypoints_list, _) = get_inputs(
        input_queue,
        detection_model.num_classes,
        train_config.merge_multiple_label_boxes)
-  images = [detection_model.preprocess(image) for image in images]
-  images = tf.concat(images, 0)
+
+  preprocessed_images = []
+  true_image_shapes = []
+  for image in images:
+    resized_image, true_image_shape = detection_model.preprocess(image)
+    preprocessed_images.append(resized_image)
+    true_image_shapes.append(true_image_shape)
+
+  images = tf.concat(preprocessed_images, 0)
+  true_image_shapes = tf.concat(true_image_shapes, 0)
+
   if any(mask is None for mask in groundtruth_masks_list):
     groundtruth_masks_list = None
   if any(keypoints is None for keypoints in groundtruth_keypoints_list):
@@ -162,16 +176,16 @@ def _create_losses(input_queue, create_model_fn, train_config):
                                       groundtruth_classes_list,
                                       groundtruth_masks_list,
                                       groundtruth_keypoints_list)
-  prediction_dict = detection_model.predict(images)
+  prediction_dict = detection_model.predict(images, true_image_shapes)
 
-  losses_dict = detection_model.loss(prediction_dict)
+  losses_dict = detection_model.loss(prediction_dict, true_image_shapes)
   for loss_tensor in losses_dict.values():
     tf.losses.add_loss(loss_tensor)
 
 
 def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
           num_clones, worker_replicas, clone_on_cpu, ps_tasks, worker_job_name,
-          is_chief, train_dir):
+          is_chief, train_dir, graph_hook_fn=None):
   """Training function for detection models.
 
   Args:
@@ -188,6 +202,10 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     worker_job_name: Name of the worker job.
     is_chief: Whether this replica is the chief replica.
     train_dir: Directory to write checkpoints and training summaries to.
+    graph_hook_fn: Optional function that is called after the training graph is
+      completely built. This is helpful to perform additional changes to the
+      training graph such as optimizing batchnorm. The function should modify
+      the default graph.
   """
 
   detection_model = create_model_fn()
@@ -217,7 +235,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
           train_config.prefetch_queue_capacity, data_augmentation_options)
 
     # Gather initial summaries.
-    # TODO(rathodv): See if summaries can be added/extracted from global tf
+    # TODO: See if summaries can be added/extracted from global tf
     # collections so that they don't have to be passed around.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
     global_summaries = set([])
@@ -233,8 +251,10 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
 
     with tf.device(deploy_config.optimizer_device()):
-      training_optimizer = optimizer_builder.build(train_config.optimizer,
-                                                   global_summaries)
+      training_optimizer, optimizer_summary_vars = optimizer_builder.build(
+          train_config.optimizer)
+      for var in optimizer_summary_vars:
+        tf.summary.scalar(var.op.name, var)
 
     sync_optimizer = None
     if train_config.sync_replicas:
@@ -258,8 +278,11 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
       init_fn = initializer_fn
 
     with tf.device(deploy_config.optimizer_device()):
+      regularization_losses = (None if train_config.add_regularization_loss
+                               else [])
       total_loss, grads_and_vars = model_deploy.optimize_clones(
-          clones, training_optimizer, regularization_losses=None)
+          clones, training_optimizer,
+          regularization_losses=regularization_losses)
       total_loss = tf.check_numerics(total_loss, 'LossTensor is inf or nan.')
 
       # Optionally multiply bias gradients by train_config.bias_grad_multiplier.
@@ -285,10 +308,13 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
       grad_updates = training_optimizer.apply_gradients(grads_and_vars,
                                                         global_step=global_step)
       update_ops.append(grad_updates)
-
-      update_op = tf.group(*update_ops)
+      update_op = tf.group(*update_ops, name='update_barrier')
       with tf.control_dependencies([update_op]):
         train_tensor = tf.identity(total_loss, name='train_op')
+
+    if graph_hook_fn:
+      with tf.device(deploy_config.variables_device()):
+        graph_hook_fn()
 
     # Add summaries.
     for model_var in slim.get_model_variables():

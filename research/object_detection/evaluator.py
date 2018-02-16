@@ -24,19 +24,30 @@ import tensorflow as tf
 from object_detection import eval_util
 from object_detection.core import prefetcher
 from object_detection.core import standard_fields as fields
+from object_detection.metrics import coco_evaluation
 from object_detection.utils import object_detection_evaluation
 
 # A dictionary of metric names to classes that implement the metric. The classes
 # in the dictionary must implement
 # utils.object_detection_evaluation.DetectionEvaluator interface.
 EVAL_METRICS_CLASS_DICT = {
-    'pascal_voc_metrics':
+    'pascal_voc_detection_metrics':
         object_detection_evaluation.PascalDetectionEvaluator,
-    'weighted_pascal_voc_metrics':
+    'weighted_pascal_voc_detection_metrics':
         object_detection_evaluation.WeightedPascalDetectionEvaluator,
-    'open_images_metrics':
-        object_detection_evaluation.OpenImagesDetectionEvaluator
+    'pascal_voc_instance_segmentation_metrics':
+        object_detection_evaluation.PascalInstanceSegmentationEvaluator,
+    'weighted_pascal_voc_instance_segmentation_metrics':
+        object_detection_evaluation.WeightedPascalInstanceSegmentationEvaluator,
+    'open_images_detection_metrics':
+        object_detection_evaluation.OpenImagesDetectionEvaluator,
+    'coco_detection_metrics':
+        coco_evaluation.CocoDetectionEvaluator,
+    'coco_mask_metrics':
+        coco_evaluation.CocoMaskEvaluator,
 }
+
+EVAL_DEFAULT_METRIC = 'pascal_voc_detection_metrics'
 
 
 def _extract_prediction_tensors(model,
@@ -56,9 +67,10 @@ def _extract_prediction_tensors(model,
   prefetch_queue = prefetcher.prefetch(input_dict, capacity=500)
   input_dict = prefetch_queue.dequeue()
   original_image = tf.expand_dims(input_dict[fields.InputDataFields.image], 0)
-  preprocessed_image = model.preprocess(tf.to_float(original_image))
-  prediction_dict = model.predict(preprocessed_image)
-  detections = model.postprocess(prediction_dict)
+  preprocessed_image, true_image_shapes = model.preprocess(
+      tf.to_float(original_image))
+  prediction_dict = model.predict(preprocessed_image, true_image_shapes)
+  detections = model.postprocess(prediction_dict, true_image_shapes)
 
   groundtruth = None
   if not ignore_groundtruth:
@@ -103,17 +115,20 @@ def get_evaluators(eval_config, categories):
   Raises:
     ValueError: if metric is not in the metric class dictionary.
   """
-  eval_metric_fn_key = eval_config.metrics_set
-  if eval_metric_fn_key not in EVAL_METRICS_CLASS_DICT:
-    raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
-  return [
-      EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](
-          categories=categories)
-  ]
+  eval_metric_fn_keys = eval_config.metrics_set
+  if not eval_metric_fn_keys:
+    eval_metric_fn_keys = [EVAL_DEFAULT_METRIC]
+  evaluators_list = []
+  for eval_metric_fn_key in eval_metric_fn_keys:
+    if eval_metric_fn_key not in EVAL_METRICS_CLASS_DICT:
+      raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
+    evaluators_list.append(
+        EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](categories=categories))
+  return evaluators_list
 
 
 def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
-             checkpoint_dir, eval_dir):
+             checkpoint_dir, eval_dir, graph_hook_fn=None):
   """Evaluation function for detection models.
 
   Args:
@@ -124,6 +139,10 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
                 have an integer 'id' field and string 'name' field.
     checkpoint_dir: directory to load the checkpoints to evaluate from.
     eval_dir: directory to write evaluation metrics summary to.
+    graph_hook_fn: Optional function that is called after the training graph is
+      completely built. This is helpful to perform additional changes to the
+      training graph such as optimizing batchnorm. The function should modify
+      the default graph.
 
   Returns:
     metrics: A dictionary containing metric names and values from the latest
@@ -177,12 +196,23 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
           categories=categories,
           summary_dir=eval_dir,
           export_dir=eval_config.visualization_export_dir,
-          show_groundtruth=eval_config.visualization_export_dir)
+          show_groundtruth=eval_config.visualize_groundtruth_boxes,
+          groundtruth_box_visualization_color=eval_config.
+          groundtruth_box_visualization_color,
+          min_score_thresh=eval_config.min_score_threshold,
+          max_num_predictions=eval_config.max_num_boxes_to_visualize,
+          skip_scores=eval_config.skip_scores,
+          skip_labels=eval_config.skip_labels,
+          keep_image_id_for_visualization_export=eval_config.
+          keep_image_id_for_visualization_export)
     return result_dict
 
   variables_to_restore = tf.global_variables()
   global_step = tf.train.get_or_create_global_step()
   variables_to_restore.append(global_step)
+
+  if graph_hook_fn: graph_hook_fn()
+
   if eval_config.use_moving_averages:
     variable_averages = tf.train.ExponentialMovingAverage(0.0)
     variables_to_restore = variable_averages.variables_to_restore()

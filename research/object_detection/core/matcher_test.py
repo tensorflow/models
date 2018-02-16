@@ -20,7 +20,7 @@ import tensorflow as tf
 from object_detection.core import matcher
 
 
-class AnchorMatcherTest(tf.test.TestCase):
+class MatchTest(tf.test.TestCase):
 
   def test_get_correct_matched_columnIndices(self):
     match_results = tf.constant([3, 1, -1, 0, -1, 5, -2])
@@ -145,6 +145,48 @@ class AnchorMatcherTest(tf.test.TestCase):
       self.assertAllEqual(all_indices_sorted,
                           np.arange(num_matches, dtype=np.int32))
 
+  def test_scalar_gather_based_on_match(self):
+    match_results = tf.constant([3, 1, -1, 0, -1, 5, -2])
+    input_tensor = tf.constant([0, 1, 2, 3, 4, 5, 6, 7], dtype=tf.float32)
+    expected_gathered_tensor = [3, 1, 100, 0, 100, 5, 200]
+    match = matcher.Match(match_results)
+    gathered_tensor = match.gather_based_on_match(input_tensor,
+                                                  unmatched_value=100.,
+                                                  ignored_value=200.)
+    self.assertEquals(gathered_tensor.dtype, tf.float32)
+    with self.test_session():
+      gathered_tensor_out = gathered_tensor.eval()
+    self.assertAllEqual(expected_gathered_tensor, gathered_tensor_out)
+
+  def test_multidimensional_gather_based_on_match(self):
+    match_results = tf.constant([1, -1, -2])
+    input_tensor = tf.constant([[0, 0.5, 0, 0.5], [0, 0, 0.5, 0.5]],
+                               dtype=tf.float32)
+    expected_gathered_tensor = [[0, 0, 0.5, 0.5], [0, 0, 0, 0], [0, 0, 0, 0]]
+    match = matcher.Match(match_results)
+    gathered_tensor = match.gather_based_on_match(input_tensor,
+                                                  unmatched_value=tf.zeros(4),
+                                                  ignored_value=tf.zeros(4))
+    self.assertEquals(gathered_tensor.dtype, tf.float32)
+    with self.test_session():
+      gathered_tensor_out = gathered_tensor.eval()
+    self.assertAllEqual(expected_gathered_tensor, gathered_tensor_out)
+
+  def test_multidimensional_gather_based_on_match_with_matmul_gather_op(self):
+    match_results = tf.constant([1, -1, -2])
+    input_tensor = tf.constant([[0, 0.5, 0, 0.5], [0, 0, 0.5, 0.5]],
+                               dtype=tf.float32)
+    expected_gathered_tensor = [[0, 0, 0.5, 0.5], [0, 0, 0, 0], [0, 0, 0, 0]]
+    match = matcher.Match(match_results, use_matmul_gather=True)
+    gathered_tensor = match.gather_based_on_match(input_tensor,
+                                                  unmatched_value=tf.zeros(4),
+                                                  ignored_value=tf.zeros(4))
+    self.assertEquals(gathered_tensor.dtype, tf.float32)
+    with self.test_session() as sess:
+      self.assertTrue(
+          all([op.name is not 'Gather' for op in sess.graph.get_operations()]))
+      gathered_tensor_out = gathered_tensor.eval()
+    self.assertAllEqual(expected_gathered_tensor, gathered_tensor_out)
 
 if __name__ == '__main__':
   tf.test.main()

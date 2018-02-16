@@ -13,8 +13,8 @@ py_library(
         "faster_rcnn_box_coder.py",
     ],
     deps = [
-        "//tensorflow_models/object_detection/core:box_coder",
-        "//tensorflow_models/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:box_coder",
+        "//tensorflow/models/research/object_detection/core:box_list",
     ],
 )
 
@@ -26,7 +26,7 @@ py_test(
     deps = [
         ":faster_rcnn_box_coder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:box_list",
     ],
 )
 
@@ -36,9 +36,9 @@ py_library(
         "keypoint_box_coder.py",
     ],
     deps = [
-        "//tensorflow_models/object_detection/core:box_coder",
-        "//tensorflow_models/object_detection/core:box_list",
-        "//tensorflow_models/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/core:box_coder",
+        "//tensorflow/models/research/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
     ],
 )
 
@@ -50,8 +50,8 @@ py_test(
     deps = [
         ":keypoint_box_coder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:box_list",
-        "//tensorflow_models/object_detection/core:standard_fields",
+        "//tensorflow/models/research/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:standard_fields",
     ],
 )
 
@@ -61,8 +61,8 @@ py_library(
         "mean_stddev_box_coder.py",
     ],
     deps = [
-        "//tensorflow_models/object_detection/core:box_coder",
-        "//tensorflow_models/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:box_coder",
+        "//tensorflow/models/research/object_detection/core:box_list",
     ],
 )
 
@@ -74,7 +74,7 @@ py_test(
     deps = [
         ":mean_stddev_box_coder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:box_list",
     ],
 )
 
@@ -84,8 +84,8 @@ py_library(
         "square_box_coder.py",
     ],
     deps = [
-        "//tensorflow_models/object_detection/core:box_coder",
-        "//tensorflow_models/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:box_coder",
+        "//tensorflow/models/research/object_detection/core:box_list",
     ],
 )
 
@@ -97,6 +97,6 @@ py_test(
     deps = [
         ":square_box_coder",
         "//tensorflow",
-        "//tensorflow_models/object_detection/core:box_list",
+        "//tensorflow/models/research/object_detection/core:box_list",
     ],
 )
