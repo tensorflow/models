@@ -42,11 +42,11 @@ _RESIZE_SIDE_MIN = 256
 _RESIZE_SIDE_MAX = 512
 
 
-def _get_h_w_c(image):
+def _get_h_w(image):
   """Convenience for grabbing the height and width of an image.
   """
   shape = tf.shape(image)
-  return shape[0], shape[1], shape[2]
+  return shape[0], shape[1]
 
 
 def _random_crop_and_flip(image, crop_height, crop_width):
@@ -61,7 +61,7 @@ def _random_crop_and_flip(image, crop_height, crop_width):
     3-D tensor with cropped image.
 
   """
-  height, width, num_channels = _get_h_w_c(image)
+  height, width = _get_h_w(image)
 
   # Create a random bounding box.
   #
@@ -74,7 +74,7 @@ def _random_crop_and_flip(image, crop_height, crop_width):
   crop_left = tf.random_uniform([], maxval=total_crop_width + 1, dtype=tf.int32)
 
   cropped = tf.slice(
-      image, [crop_top, crop_left, 0], [crop_height, crop_width, num_channels])
+      image, [crop_top, crop_left, 0], [crop_height, crop_width, -1])
 
   cropped = tf.image.random_flip_left_right(cropped)
   return cropped
@@ -90,14 +90,14 @@ def _central_crop(image, crop_height, crop_width):
   Returns:
     3-D tensor with cropped image.
   """
-  height, width, num_channels = _get_h_w_c(image)
+  height, width = _get_h_w(image)
 
   total_crop_height = (height - crop_height)
   crop_top = total_crop_height // 2
   total_crop_width = (width - crop_width)
   crop_left = total_crop_width // 2
   return tf.slice(
-      image, [crop_top, crop_left, 0], [crop_height, crop_width, num_channels])
+      image, [crop_top, crop_left, 0], [crop_height, crop_width, -1])
 
 
 def _mean_image_subtraction(image, means):
@@ -127,7 +127,6 @@ def _mean_image_subtraction(image, means):
   if len(means) != num_channels:
     raise ValueError('len(means) must match the number of channels')
 
-  means = tf.convert_to_tensor(means, dtype=tf.float32)
   # We have a 1-D tensor of means; convert to 3-D.
   means = tf.expand_dims(tf.expand_dims(means, 0), 0)
 
@@ -176,7 +175,7 @@ def _aspect_preserving_resize(image, smallest_side):
   """
   smallest_side = tf.convert_to_tensor(smallest_side, dtype=tf.int32)
 
-  height, width, _ = _get_h_w_c(image)
+  height, width = _get_h_w(image)
   new_height, new_width = _smallest_size_at_least(height, width, smallest_side)
 
   resized_image = tf.image.resize_images(
