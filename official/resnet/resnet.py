@@ -14,16 +14,13 @@
 # ==============================================================================
 """Contains definitions for the preactivation form of Residual Networks
 (also known as ResNet v2).
-
 Residual networks (ResNets) were originally proposed in:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
     Deep Residual Learning for Image Recognition. arXiv:1512.03385
-
 The full preactivation 'v2' ResNet variant implemented in this module was
 introduced by:
 [2] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
     Identity Mappings in Deep Residual Networks. arXiv: 1603.05027
-
 The key difference of the full preactivation 'v2' variant compared to the
 'v1' variant in [1] is the use of batch normalization before every weight layer
 rather than after.
@@ -62,7 +59,6 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     num_parallel_calls: The number of records that are processed in parallel.
       This can be optimized per data set but for generally homogeneous data
       sets, should be approximately the number of available CPU cores.
-
   Returns:
     Dataset of (image, label) pairs ready for iteration.
   """
@@ -90,7 +86,10 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # critical training path.
   dataset = dataset.prefetch(1)
 
-  return dataset
+  iterator = dataset.make_one_shot_iterator()
+  features, labels = iterator.get_next()
+
+  return features, labels
 
 
 ################################################################################
@@ -110,14 +109,12 @@ def batch_norm_relu(inputs, training, data_format):
 
 def fixed_padding(inputs, kernel_size, data_format):
   """Pads the input along the spatial dimensions independently of input size.
-
   Args:
     inputs: A tensor of size [batch, channels, height_in, width_in] or
       [batch, height_in, width_in, channels] depending on data_format.
     kernel_size: The kernel to be used in the conv2d or max_pool2d operation.
                  Should be a positive integer.
     data_format: The input format ('channels_last' or 'channels_first').
-
   Returns:
     A tensor with the same format as the input with the data either intact
     (if kernel_size == 1) or padded (if kernel_size > 1).
@@ -152,7 +149,6 @@ def conv2d_fixed_padding(inputs, filters, kernel_size, strides, data_format):
 def building_block(inputs, filters, training, projection_shortcut, strides,
                    data_format):
   """Standard building block for residual networks with BN before convolutions.
-
   Args:
     inputs: A tensor of size [batch, channels, height_in, width_in] or
       [batch, height_in, width_in, channels] depending on data_format.
@@ -164,7 +160,6 @@ def building_block(inputs, filters, training, projection_shortcut, strides,
     strides: The block's stride. If greater than 1, this block will ultimately
       downsample the input.
     data_format: The input format ('channels_last' or 'channels_first').
-
   Returns:
     The output tensor of the block.
   """
@@ -191,7 +186,6 @@ def building_block(inputs, filters, training, projection_shortcut, strides,
 def bottleneck_block(inputs, filters, training, projection_shortcut,
                      strides, data_format):
   """Bottleneck block variant for residual networks with BN before convolutions.
-
   Args:
     inputs: A tensor of size [batch, channels, height_in, width_in] or
       [batch, height_in, width_in, channels] depending on data_format.
@@ -204,7 +198,6 @@ def bottleneck_block(inputs, filters, training, projection_shortcut,
     strides: The block's stride. If greater than 1, this block will ultimately
       downsample the input.
     data_format: The input format ('channels_last' or 'channels_first').
-
   Returns:
     The output tensor of the block.
   """
@@ -236,7 +229,6 @@ def bottleneck_block(inputs, filters, training, projection_shortcut,
 def block_layer(inputs, filters, block_fn, blocks, strides, training, name,
                 data_format):
   """Creates one layer of blocks for the ResNet model.
-
   Args:
     inputs: A tensor of size [batch, channels, height_in, width_in] or
       [batch, height_in, width_in, channels] depending on data_format.
@@ -250,7 +242,6 @@ def block_layer(inputs, filters, block_fn, blocks, strides, training, name,
       model. Needed for batch norm.
     name: A string name for the tensor output of the block layer.
     data_format: The input format ('channels_last' or 'channels_first').
-
   Returns:
     The output tensor of the block layer.
   """
@@ -281,7 +272,6 @@ class Model(object):
                second_pool_size, second_pool_stride, block_fn, block_sizes,
                block_strides, final_size, data_format=None):
     """Creates a model for classifying an image.
-
     Args:
       resnet_size: A single integer for the size of the ResNet model.
       num_classes: The number of classes used as labels.
@@ -329,12 +319,10 @@ class Model(object):
 
   def __call__(self, inputs, training):
     """Add operations to classify a batch of input images.
-
     Args:
       inputs: A Tensor representing a batch of input images.
       training: A boolean. Set to True to add operations required only when
         training the classifier.
-
     Returns:
       A logits Tensor with shape [<batch_size>, self.num_classes].
     """
@@ -384,7 +372,6 @@ class Model(object):
 def learning_rate_with_decay(
     batch_size, batch_denom, num_images, boundary_epochs, decay_rates):
   """Get a learning rate that decays step-wise as training progresses.
-
   Args:
     batch_size: the number of examples processed in each training batch.
     batch_denom: this value will be used to scale the base learning rate.
@@ -396,7 +383,6 @@ def learning_rate_with_decay(
     decay_rates: list of floats representing the decay rates to be used
       for scaling the learning rate. Should be the same length as
       boundary_epochs.
-
   Returns:
     Returns a function that takes a single argument - the number of batches
     trained so far (global_step)- and returns the learning rate to be used
@@ -420,14 +406,12 @@ def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
                     data_format, loss_filter_fn=None):
   """Shared functionality for different resnet model_fns.
-
   Initializes the ResnetModel representing the model layers
   and uses that model to build the necessary EstimatorSpecs for
   the `mode` in question. For training, this means building losses,
   the optimizer, and the train op that get passed into the EstimatorSpec.
   For evaluation and prediction, the EstimatorSpec is returned without
   a train op, but with the necessary parameters for the given mode.
-
   Args:
     features: tensor representing input images
     labels: tensor representing class labels for all input images
