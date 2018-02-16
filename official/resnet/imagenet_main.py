@@ -108,7 +108,7 @@ def parse_record(raw_record, is_training):
   # Results in a 3-D int8 Tensor which we then convert to a float
   # with values ranging from [0, 1).
   image = tf.image.decode_jpeg(image, channels=_NUM_CHANNELS)
-  image = tf.image.convert_image_dtype(image, dtypes.float32)
+  image = tf.image.convert_image_dtype(image, tf.float32)
 
   image = vgg_preprocessing.preprocess_image(
       image=image,
