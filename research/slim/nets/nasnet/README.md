@@ -37,7 +37,7 @@ Run eval with the NASNet-A mobile ImageNet model
 DATASET_DIR=/tmp/imagenet
 EVAL_DIR=/tmp/tfmodel/eval
 CHECKPOINT_DIR=/tmp/checkpoints/model.ckpt
-python tensorflow_models/research/slim/eval_image_classifier \
+python tensorflow_models/research/slim/eval_image_classifier.py \
 --checkpoint_path=${CHECKPOINT_DIR} \
 --eval_dir=${EVAL_DIR} \
 --dataset_dir=${DATASET_DIR} \
@@ -54,7 +54,7 @@ Run eval with the NASNet-A large ImageNet model
 DATASET_DIR=/tmp/imagenet
 EVAL_DIR=/tmp/tfmodel/eval
 CHECKPOINT_DIR=/tmp/checkpoints/model.ckpt
-python tensorflow_models/research/slim/eval_image_classifier \
+python tensorflow_models/research/slim/eval_image_classifier.py \
 --checkpoint_path=${CHECKPOINT_DIR} \
 --eval_dir=${EVAL_DIR} \
 --dataset_dir=${DATASET_DIR} \
