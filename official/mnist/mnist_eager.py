@@ -104,7 +104,7 @@ def main(_):
   # Load the datasets
   train_ds = dataset.train(FLAGS.data_dir).shuffle(60000).batch(
       FLAGS.batch_size)
-  test_ds = dataset.test(FLAGS.data_dir).batch(10000)
+  test_ds = dataset.test(FLAGS.data_dir).batch(FLAGS.batch_size)
 
   # Create the model and optimizer
   model = mnist.Model(data_format)
