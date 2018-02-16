@@ -49,7 +49,7 @@ def _get_h_w_c(image):
   return shape[0], shape[1], shape[2]
 
 
-def _random_crop(image, crop_height, crop_width):
+def _random_crop_and_flip(image, crop_height, crop_width):
   """Crops the given image to a random part of the image, and randomly flips.
 
   Args:
@@ -211,7 +211,7 @@ def preprocess_image(image, output_height, output_width, is_training=False,
     # For training, we want to randomize some of the distortions.
     resize_side = tf.random_uniform(
         [], minval=resize_side_min, maxval=resize_side_max + 1, dtype=tf.int32)
-    crop_fn = _random_crop
+    crop_fn = _random_crop_and_flip
   else:
     resize_side = resize_side_min
     crop_fn = _central_crop

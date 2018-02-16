@@ -89,17 +89,8 @@ def parse_example_proto(example_serialized):
       'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
                                           default_value=''),
       'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64,
-                                              default_value=-1),
-      'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
-                                             default_value=''),
+                                              default_value=-1)
   }
-  sparse_float32 = tf.VarLenFeature(dtype=tf.float32)
-  # Sparse features in Example proto.
-  feature_map.update(
-      {k: sparse_float32 for k in ['image/object/bbox/xmin',
-                                   'image/object/bbox/ymin',
-                                   'image/object/bbox/xmax',
-                                   'image/object/bbox/ymax']})
 
   features = tf.parse_single_example(example_serialized, feature_map)
 
@@ -114,8 +105,10 @@ def parse_record(raw_record, is_training):
   # Note that the resulting image contains an unknown height and width
   # that is set dynamically by decode_jpeg. In other words, the height
   # and width of image is unknown at compile-time.
-  # Results in a 3-D float Tensor with values ranging from [0, 1).
+  # Results in a 3-D int8 Tensor which we then convert to a float
+  # with values ranging from [0, 1).
   image = tf.image.decode_jpeg(image, channels=_NUM_CHANNELS)
+  image = tf.image.convert_image_dtype(image, dtypes.float32)
 
   image = vgg_preprocessing.preprocess_image(
       image=image,
