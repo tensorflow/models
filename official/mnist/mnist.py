@@ -26,14 +26,14 @@ import dataset
 
 
 class Model(tf.keras.Model):
-  """Class that defines a graph to recognize digits in the MNIST dataset.
+  """Model to recognize digits in the MNIST dataset.
 
   Network structure is equivalent to:
   https://github.com/tensorflow/tensorflow/blob/r1.5/tensorflow/examples/tutorials/mnist/mnist_deep.py
   and
   https://github.com/tensorflow/models/blob/master/tutorials/image/mnist/convolutional.py
 
-  But written as a tf.keras and tf.layers APIs.
+  But written as a tf.keras.Model using the tf.layers API.
   """
 
   def __init__(self, data_format):
