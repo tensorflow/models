@@ -77,5 +77,3 @@ python mnist_eager.py
 classify digits on CPUs and GPUs. `mnist_tpu.py` can be used to train the
 same model using TPUs for hardware acceleration. More information in
 the [tensorflow/tpu](https://github.com/tensorflow/tpu) repository.
-
-
