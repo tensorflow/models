@@ -54,27 +54,12 @@ def get_filenames(is_training, data_dir):
         for i in range(128)]
 
 
-def parse_example_proto(example_serialized):
+def _parse_example_proto(example_serialized):
   """Parses an Example proto containing a training example of an image.
 
   The dataset contains serialized Example protocol buffers.
-  Each Example proto contains the following fields:
-
-    image/height: 462
-    image/width: 581
-    image/colorspace: 'RGB'
-    image/channels: 3
-    image/class/label: 615
-    image/class/synset: 'n03623198'
-    image/class/text: 'knee pad'
-    image/object/bbox/xmin: 0.1
-    image/object/bbox/xmax: 0.9
-    image/object/bbox/ymin: 0.2
-    image/object/bbox/ymax: 0.6
-    image/object/bbox/label: 615
-    image/format: 'JPEG'
-    image/filename: 'ILSVRC2012_val_00041207.JPEG'
-    image/encoded: <JPEG encoded string>
+  The Example proto is expected to contain features named
+  image/encoded (a JPEG-encoded string) and image/class/label (int)
 
   Args:
     example_serialized: scalar Tensor tf.string containing a serialized
@@ -98,8 +83,20 @@ def parse_example_proto(example_serialized):
 
 
 def parse_record(raw_record, is_training):
-  """Parse an ImageNet record from `value`."""
-  image, label = parse_example_proto(raw_record)
+  """Parses a record containing a training example of an image.
+
+  The input record is parsed into a label and image, and the image is passed
+  through preprocessing steps (cropping, flipping, and so on).
+
+  Args:
+    raw_record: scalar Tensor tf.string containing a serialized
+      Example protocol buffer.
+    is_training: A boolean denoting whether the input is for training.
+
+  Returns:
+    Tuple with processed image tensor and one-hot-encoded label tensor.
+"""
+  image, label = _parse_example_proto(raw_record)
 
   # Decode the string as an RGB JPEG.
   # Note that the resulting image contains an unknown height and width
