@@ -54,37 +54,58 @@ def get_filenames(is_training, data_dir):
         for i in range(128)]
 
 
-def parse_record(raw_record, is_training):
-  """Parse an ImageNet record from `value`."""
-  keys_to_features = {
-      'image/encoded':
-          tf.FixedLenFeature((), tf.string, default_value=''),
-      'image/format':
-          tf.FixedLenFeature((), tf.string, default_value='jpeg'),
-      'image/class/label':
-          tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
-      'image/class/text':
-          tf.FixedLenFeature([], dtype=tf.string, default_value=''),
-      'image/object/bbox/xmin':
-          tf.VarLenFeature(dtype=tf.float32),
-      'image/object/bbox/ymin':
-          tf.VarLenFeature(dtype=tf.float32),
-      'image/object/bbox/xmax':
-          tf.VarLenFeature(dtype=tf.float32),
-      'image/object/bbox/ymax':
-          tf.VarLenFeature(dtype=tf.float32),
-      'image/object/class/label':
-          tf.VarLenFeature(dtype=tf.int64),
+def _parse_example_proto(example_serialized):
+  """Parses an Example proto containing a training example of an image.
+
+  The dataset contains serialized Example protocol buffers.
+  The Example proto is expected to contain features named
+  image/encoded (a JPEG-encoded string) and image/class/label (int)
+
+  Args:
+    example_serialized: scalar Tensor tf.string containing a serialized
+      Example protocol buffer.
+
+  Returns:
+    image_buffer: Tensor tf.string containing the contents of a JPEG file.
+    label: Tensor tf.int64 containing the label.
+  """
+  # Dense features in Example proto.
+  feature_map = {
+      'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
+                                          default_value=''),
+      'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64,
+                                              default_value=-1)
   }
 
-  parsed = tf.parse_single_example(raw_record, keys_to_features)
+  features = tf.parse_single_example(example_serialized, feature_map)
 
-  image = tf.image.decode_image(
-      tf.reshape(parsed['image/encoded'], shape=[]),
-      _NUM_CHANNELS)
+  return features['image/encoded'], features['image/class/label']
 
-  # Note that tf.image.convert_image_dtype scales the image data to [0, 1).
-  image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+
+def parse_record(raw_record, is_training):
+  """Parses a record containing a training example of an image.
+
+  The input record is parsed into a label and image, and the image is passed
+  through preprocessing steps (cropping, flipping, and so on).
+
+  Args:
+    raw_record: scalar Tensor tf.string containing a serialized
+      Example protocol buffer.
+    is_training: A boolean denoting whether the input is for training.
+
+  Returns:
+    Tuple with processed image tensor and one-hot-encoded label tensor.
+"""
+  image, label = _parse_example_proto(raw_record)
+
+  # Decode the string as an RGB JPEG.
+  # Note that the resulting image contains an unknown height and width
+  # that is set dynamically by decode_jpeg. In other words, the height
+  # and width of image is unknown at compile-time.
+  # Results in a 3-D int8 Tensor which we then convert to a float
+  # with values ranging from [0, 1).
+  image = tf.image.decode_jpeg(image, channels=_NUM_CHANNELS)
+  image = tf.image.convert_image_dtype(image, tf.float32)
 
   image = vgg_preprocessing.preprocess_image(
       image=image,
@@ -92,11 +113,10 @@ def parse_record(raw_record, is_training):
       output_width=_DEFAULT_IMAGE_SIZE,
       is_training=is_training)
 
-  label = tf.cast(
-      tf.reshape(parsed['image/class/label'], shape=[]),
-      dtype=tf.int32)
+  label = tf.cast(tf.reshape(label, shape=[]), dtype=tf.int32)
+  label = tf.one_hot(label, _NUM_CLASSES)
 
-  return image, tf.one_hot(label, _NUM_CLASSES)
+  return image, label
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1,
