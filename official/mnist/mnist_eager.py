@@ -61,6 +61,9 @@ def train(model, optimizer, dataset, log_interval=None):
   start = time.time()
   for (batch, (images, labels)) in enumerate(tfe.Iterator(dataset)):
     with tf.contrib.summary.record_summaries_every_n_global_steps(10):
+      # Record the operations used to compute the loss given the input,
+      # so that the gradient of the loss with respect to the variables
+      # can be computed.
       with tfe.GradientTape() as tape:
         logits = model(images, training=True)
         loss_value = loss(logits, labels)
@@ -111,6 +114,9 @@ def main(_):
   optimizer = tf.train.MomentumOptimizer(FLAGS.lr, FLAGS.momentum)
 
   if FLAGS.output_dir:
+    # Create directories to which summaries will be written
+    # tensorboard --logdir=<output_dir>
+    # can then be used to see the recorded summaries.
     train_dir = os.path.join(FLAGS.output_dir, 'train')
     test_dir = os.path.join(FLAGS.output_dir, 'eval')
     tf.gfile.MakeDirs(FLAGS.output_dir)
