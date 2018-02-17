@@ -129,6 +129,7 @@ def main(_):
       test_dir, flush_millis=10000, name='test')
   checkpoint_prefix = os.path.join(FLAGS.checkpoint_dir, 'ckpt')
 
+  # Train and evaluate for 11 epochs.
   with tf.device(device):
     for epoch in range(1, 11):
       with tfe.restore_variables_on_create(
