@@ -25,8 +25,16 @@ import tensorflow as tf
 import dataset
 
 
-class Model(object):
-  """Class that defines a graph to recognize digits in the MNIST dataset."""
+class Model(tf.keras.Model):
+  """Model to recognize digits in the MNIST dataset.
+
+  Network structure is equivalent to:
+  https://github.com/tensorflow/tensorflow/blob/r1.5/tensorflow/examples/tutorials/mnist/mnist_deep.py
+  and
+  https://github.com/tensorflow/models/blob/master/tutorials/image/mnist/convolutional.py
+
+  But written as a tf.keras.Model using the tf.layers API.
+  """
 
   def __init__(self, data_format):
     """Creates a model for classifying a hand-written digit.
@@ -37,6 +45,7 @@ class Model(object):
         typically faster on CPUs. See
         https://www.tensorflow.org/performance/performance_guide#data_formats
     """
+    super(Model, self).__init__()
     if data_format == 'channels_first':
       self._input_shape = [-1, 1, 28, 28]
     else:
