@@ -47,6 +47,12 @@ saved_model_cli run --dir /tmp/mnist_saved_model/TIMESTAMP --tag_set serve --sig
 
 `examples.npy` contains the data from `example5.png` and `example3.png` in a numpy array, in that order. The array values are normalized to values between 0 and 1.
 
+To convert your own image(s) to this format, run the following command with your images in this directory:
+
+```
+python convert_npy.py --image <"filename(s)"> --output <"filename(s)"> --batch <True/False>
+```
+
 The output should look similar to below:
 ```
 Result for output key classes:
@@ -63,7 +69,7 @@ Result for output key probabilities:
 ## Experimental: Eager Execution
 
 [Eager execution](https://research.googleblog.com/2017/10/eager-execution-imperative-define-by.html)
-(an preview feature in TensorFlow 1.5) is an imperative interface to TensorFlow.
+(a preview feature in TensorFlow 1.5) is an imperative interface to TensorFlow.
 The exact same model defined in `mnist.py` can be trained without creating a
 TensorFlow graph using:
 
