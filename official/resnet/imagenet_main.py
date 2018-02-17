@@ -103,8 +103,7 @@ def parse_record(raw_record, is_training):
   # that is set dynamically by decode_jpeg. In other words, the height
   # and width of image is unknown at compile-time.
   # Results in a 3-D int8 Tensor. This will be converted to a float later,
-  # during resizing, so we leave as a smaller int8 until then to improve GPU
-  # performance.
+  # during resizing.
   image = tf.image.decode_jpeg(image, channels=_NUM_CHANNELS)
 
   image = vgg_preprocessing.preprocess_image(
