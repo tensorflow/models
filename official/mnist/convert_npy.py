@@ -30,32 +30,33 @@ def main(unused_argv):
 
 	if FLAGS.images is not None:
 		images = str.split(FLAGS.images)
-	if FLAGS.output is not "":                                                 # check for output names and make sure outputs map to images
+		
+	if FLAGS.output is not "": # check for output names and make sure outputs map to images
 		output = str.split(FLAGS.output)
 		filename_generate = False
 		if len(output) != len(images):
 			raise ValueError('The number of image files and output files must be the same.')
-
-	if FLAGS.batch == "True":
-		combined_arr = np.array([])                                            # we'll be adding up arrays
+			
+	if FLAGS.batch == "True": # we'll be adding up arrays
+		combined_arr = np.array([]) 
 
 	for image_name in images:
-		input_image = Image.open(image_name).convert('L')                      # convert to grayscale
-		input_image = input_image.resize((28, 28))                             # resize the image, if needed
+		input_image = Image.open(image_name).convert('L') # convert to grayscale
+		input_image = input_image.resize((28, 28)) # resize the image, if needed
 		width, height = input_image.size
 		data_image = array('B')
 		pixel = input_image.load()
 		for x in range(0,width):
 			for y in range(0,height):
-				data_image.append(pixel[y,x])                                  # use the MNIST format
+				data_image.append(pixel[y,x]) # use the MNIST format
 		np_image = np.array(data_image)
 		img_arr = np.reshape(np_image, (1, 28, 28))
-		img_arr = img_arr/float(255)                                           # use scale of [0, 1]
+		img_arr = img_arr/float(255) # use scale of [0, 1]
 		if FLAGS.batch != "True":
 			if filename_generate:
-				np.save("image"+str(index), img_arr)                           # save each image with random filenames
+				np.save("image"+str(index), img_arr) # save each image with random filenames
 			else:
-				np.save(output[index], img_arr)                                # save each image with chosen filenames
+				np.save(output[index], img_arr) # save each image with chosen filenames
 			index = index+1
 		else:
 			if combined_arr.size == 0:
@@ -64,9 +65,9 @@ def main(unused_argv):
 				combined_arr = np.concatenate((combined_arr, img_arr), axis=0) # add all image arrays to one array
 	if FLAGS.batch == "True":
 		if filename_generate:
-			np.save("images"+str(index), combined_arr)                         # save batched images with random filename
+			np.save("images"+str(index), combined_arr) # save batched images with random filename
 		else:
-			np.save(output[0], combined_arr)                                   # save batched images with chosen filename
+			np.save(output[0], combined_arr) # save batched images with chosen filename
 
 class ImageArgParser(argparse.ArgumentParser):
 
