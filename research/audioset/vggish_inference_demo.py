@@ -56,6 +56,8 @@ import vggish_params
 import vggish_postprocess
 import vggish_slim
 
+np.set_printoptions(threshold=np.inf)
+
 flags = tf.app.flags
 
 flags.DEFINE_string(
@@ -83,6 +85,7 @@ def main(_):
   # the model. If none is provided, we generate a synthetic input.
   if FLAGS.wav_file:
     wav_file = FLAGS.wav_file
+    print(wav_file)
   else:
     # Write a WAV of a sine wav into an in-memory file object.
     num_secs = 5
@@ -96,7 +99,7 @@ def main(_):
     wavfile.write(wav_file, sr, samples)
     wav_file.seek(0)
   examples_batch = vggish_input.wavfile_to_examples(wav_file)
-  print(examples_batch)
+  # print(examples_batch)
 
   # Prepare a postprocessor to munge the model embeddings.
   pproc = vggish_postprocess.Postprocessor(FLAGS.pca_params)
@@ -118,9 +121,10 @@ def main(_):
     # Run inference and postprocessing.
     [embedding_batch] = sess.run([embedding_tensor],
                                  feed_dict={features_tensor: examples_batch})
-    print(embedding_batch)
+    # print(embedding_batch)
     postprocessed_batch = pproc.postprocess(embedding_batch)
     print(postprocessed_batch)
+    np.save(wav_file + '.npy', postprocessed_batch)
 
     # Write the postprocessed embeddings as a SequenceExample, in a similar
     # format as the features released in AudioSet. Each row of the batch of
@@ -142,7 +146,7 @@ def main(_):
             }
         )
     )
-    print(seq_example)
+    # print(seq_example)
     if writer:
       writer.write(seq_example.SerializeToString())
 
