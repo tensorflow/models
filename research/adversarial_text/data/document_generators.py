@@ -259,7 +259,7 @@ def dbpedia_documents(dataset='train',
           content=content,
           is_validation=is_validation,
           is_test=False,
-          label=int(row[0]),
+          label=int(row[0]) - 1,  # Labels should start from 0
           add_tokens=True)
 
 
