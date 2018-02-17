@@ -52,6 +52,7 @@ def main(unused_argv):
 				data_image.append(pixel[y,x]) # use the MNIST format
 		np_image = np.array(data_image)
 		img_arr = np.reshape(np_image, (1, 28, 28))
+		img_arr = (img_arr - 255) * -1 #Invert pixel values. The MNIST digits are white on black. Keep if your images are black on white, otherwise, remove.
 		img_arr = img_arr/float(255) # use scale of [0, 1]
 		if FLAGS.batch != "True":
 			if filename_generate:
