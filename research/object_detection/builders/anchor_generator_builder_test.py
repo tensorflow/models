@@ -15,6 +15,8 @@
 
 """Tests for anchor_generator_builder."""
 
+from __future__ import print_function
+
 import math
 
 import tensorflow as tf
@@ -266,7 +268,7 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
     self.assertTrue(isinstance(anchor_generator_object,
                                multiscale_grid_anchor_generator.
                                MultiscaleGridAnchorGenerator))
-    print anchor_generator_object._anchor_grid_info
+    print(anchor_generator_object._anchor_grid_info)
     for level, anchor_grid_info in zip(
         range(3, 8), anchor_generator_object._anchor_grid_info):
       self.assertEqual(set(anchor_grid_info.keys()), set(['level', 'info']))
