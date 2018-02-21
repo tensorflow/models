@@ -12,6 +12,7 @@ Tensorflow Object Detection API depends on the following libraries:
 * Jupyter notebook
 * Matplotlib
 * Tensorflow
+* cocoapi
 
 For detailed steps to install Tensorflow, follow the [Tensorflow installation
 instructions](https://www.tensorflow.org/install/). A typical user can install
@@ -39,6 +40,25 @@ sudo pip install pillow
 sudo pip install lxml
 sudo pip install jupyter
 sudo pip install matplotlib
+```
+
+## COCO API installation
+
+Download the
+<a href="https://github.com/cocodataset/cocoapi" target=_blank>cocoapi</a> and
+copy the pycocotools subfolder to the tensorflow/models/research directory if
+you are interested in using COCO evaluation metrics. The default metrics are
+based on those used in Pascal VOC evaluation. To use the COCO object detection
+metrics add `metrics_set: "coco_detection_metrics"` to the `eval_config` message
+in the config file. To use the COCO instance segmentation metrics add
+`metrics_set: "coco_mask_metrics"` to the `eval_config` message in the config
+file.
+
+```bash
+git clone https://github.com/cocodataset/cocoapi.git
+cd cocoapi/PythonAPI
+make
+cp -r pycocotools <path_to_tensorflow>/models/research/
 ```
 
 ## Protobuf Compilation

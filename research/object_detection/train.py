@@ -117,9 +117,7 @@ def main(_):
 
   def get_next(config):
     return dataset_util.make_initializable_iterator(
-        dataset_builder.build(
-            config, num_workers=FLAGS.worker_replicas,
-            worker_index=FLAGS.task)).get_next()
+        dataset_builder.build(config)).get_next()
 
   create_input_dict_fn = functools.partial(get_next, input_config)
 
