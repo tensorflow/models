@@ -84,7 +84,7 @@ class SsdMetaArchTest(test_case.TestCase):
     fake_feature_extractor = FakeSSDFeatureExtractor()
     mock_matcher = test_utils.MockMatcher()
     region_similarity_calculator = sim_calc.IouSimilarity()
-
+    encode_background_as_zeros = False
     def image_resizer_fn(image):
       return [tf.identity(image), tf.shape(image)]
 
@@ -111,10 +111,10 @@ class SsdMetaArchTest(test_case.TestCase):
     model = ssd_meta_arch.SSDMetaArch(
         is_training, mock_anchor_generator, mock_box_predictor, mock_box_coder,
         fake_feature_extractor, mock_matcher, region_similarity_calculator,
-        image_resizer_fn, non_max_suppression_fn, tf.identity,
-        classification_loss, localization_loss, classification_loss_weight,
-        localization_loss_weight, normalize_loss_by_num_matches,
-        hard_example_miner, add_summaries=False)
+        encode_background_as_zeros, image_resizer_fn, non_max_suppression_fn,
+        tf.identity, classification_loss, localization_loss,
+        classification_loss_weight, localization_loss_weight,
+        normalize_loss_by_num_matches, hard_example_miner, add_summaries=False)
     return model, num_classes, mock_anchor_generator.num_anchors(), code_size
 
   def test_preprocess_preserves_shapes_with_dynamic_input_image(self):

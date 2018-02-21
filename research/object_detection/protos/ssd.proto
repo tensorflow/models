@@ -32,6 +32,10 @@ message Ssd {
   // Region similarity calculator to compute similarity of boxes.
   optional RegionSimilarityCalculator similarity_calculator = 6;
 
+  // Whether background targets are to be encoded as an all
+  // zeros vector or a one-hot vector (where background is the 0th class).
+  optional bool encode_background_as_zeros = 12 [default=false];
+
   // Box predictor to attach to the features.
   optional BoxPredictor box_predictor = 7;
 
