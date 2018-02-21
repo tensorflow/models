@@ -147,7 +147,7 @@ def _smallest_size_at_least(height, width, smallest_side):
 
   Returns:
     new_height: an int32 scalar tensor indicating the new height.
-    new_width: and int32 scalar tensor indicating the new width.
+    new_width: an int32 scalar tensor indicating the new width.
   """
   smallest_side = tf.cast(smallest_side, tf.float32)
 

@@ -102,10 +102,9 @@ def parse_record(raw_record, is_training):
   # Note that the resulting image contains an unknown height and width
   # that is set dynamically by decode_jpeg. In other words, the height
   # and width of image is unknown at compile-time.
-  # Results in a 3-D int8 Tensor which we then convert to a float
-  # with values ranging from [0, 1).
+  # Results in a 3-D int8 Tensor. This will be converted to a float later,
+  # during resizing.
   image = tf.image.decode_jpeg(image, channels=_NUM_CHANNELS)
-  image = tf.image.convert_image_dtype(image, tf.float32)
 
   image = vgg_preprocessing.preprocess_image(
       image=image,
@@ -143,6 +142,12 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 
   # Convert to individual records
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
+
+  # Currently, if we are using multiple GPUs, we can't pass in uneven batches.
+  # This ensures that we cut off the uneven images at the end of each epoch
+  # (there are fifteen leftovers), rather than trying and failing to split
+  # them across multiple GPUs.
+  dataset = dataset.take(batch_size * (_NUM_IMAGES['train'] // batch_size))
 
   return resnet.process_record_dataset(dataset, is_training, batch_size,
       _SHUFFLE_BUFFER, parse_record, num_epochs, num_parallel_calls)
@@ -225,7 +230,8 @@ def imagenet_model_fn(features, labels, mode, params):
                                 learning_rate_fn=learning_rate_fn,
                                 momentum=0.9,
                                 data_format=params['data_format'],
-                                loss_filter_fn=None)
+                                loss_filter_fn=None,
+                                multi_gpu=params['multi_gpu'])
 
 
 def main(unused_argv):

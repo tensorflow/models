@@ -49,6 +49,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_parallel_calls=1):
   """Given a Dataset with raw records, parse each record into images and labels,
   and return an iterator over the records.
+
   Args:
     dataset: A Dataset representing raw records
     is_training: A boolean denoting whether the input is for training.
@@ -418,7 +419,7 @@ def learning_rate_with_decay(
 
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format, loss_filter_fn=None):
+                    data_format, loss_filter_fn=None, multi_gpu=False):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -446,6 +447,9 @@ def resnet_model_fn(features, labels, mode, model_class,
       True if the var should be included in loss calculation, and False
       otherwise. If None, batch_normalization variables will be excluded
       from the loss.
+    multi_gpu: If True, wrap the optimizer in a TowerOptimizer to allow
+      for running on multiple GPUs.
+
   Returns:
     EstimatorSpec parameterized according to the input params and the
     current mode.
@@ -497,10 +501,12 @@ def resnet_model_fn(features, labels, mode, model_class,
         learning_rate=learning_rate,
         momentum=momentum)
 
-    # Batch norm requires update ops to be added as a dependency to train_op
+    # If we are running multi-GPU, we need to wrap the optimizer.
+    if multi_gpu:
+      optimizer = tf.contrib.estimator.TowerOptimizer(optimizer)
+
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-      train_op = optimizer.minimize(loss, global_step)
+    train_op = tf.group(optimizer.minimize(loss, global_step), update_ops)
   else:
     train_op = None
 
@@ -520,9 +526,70 @@ def resnet_model_fn(features, labels, mode, model_class,
       eval_metric_ops=metrics)
 
 
+def get_devices(requested_num_gpus):
+  """Returns the list of available GPUs, or the subset explicitly specified,
+  if available. If requested_num_gpus is specified, truncates the list of available
+  to that number.
+
+  Args:
+    requested_num_gpus: int or None representing the number of GPUs desired.
+
+  Returns:
+    List of device names to use.
+
+  Raises:
+    ValueError: if there are no GPUs or not enough GPUs.
+  """
+  from tensorflow.python.client import device_lib
+
+  local_device_protos = device_lib.list_local_devices()
+  avail_gpus = [d.name for d in local_device_protos if d.device_type == 'GPU']
+
+  if not avail_gpus or len(avail_gpus) < requested_num_gpus:
+    err = ('Multiple GPUs were requested, but sufficient GPUs could not be '
+           'found. Found {} GPUs.\nTo use CPU, run without --multi_gpu '
+           'and without --num_gpus.').format(len(avail_gpus))
+    raise ValueError(err)
+
+  if requested_num_gpus:
+    avail_gpus = avail_gpus[:requested_num_gpus]
+  return avail_gpus
+
+
+def validate_batch_size_for_multi_gpu(batch_size, num_gpus):
+  """For multi-gpu, batch-size must be a multiple of the number of
+  available GPUs.
+  Note that this should eventually be handled by replicate_model_fn
+  directly. Multi-GPU support is currently experimental, however,
+  so doing the work here until that feature is in place.
+  """
+  remainder = batch_size % num_gpus
+  if remainder:
+    err = ('When running with multiple GPUs, batch size '
+           'must be a multiple of the number of available GPUs. '
+           'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
+    raise ValueError(err)
+
+
 def resnet_main(flags, model_function, input_function):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+
+  multi_gpu = False
+  if flags.multi_gpu or flags.num_gpus > 0:
+    devices = get_devices(flags.num_gpus)
+    validate_batch_size_for_multi_gpu(flags.batch_size, len(devices))
+
+    multi_gpu = True
+
+    # There are two steps required if using multi-GPU: (1) wrap the model_fn,
+    # and (2) wrap the optimizer. The first happens here, and (2) happens
+    # in the model_fn itself when the optimizer is defined.
+    model_function = tf.contrib.estimator.replicate_model_fn(
+        model_function,
+        loss_reduction=tf.losses.Reduction.MEAN,
+        devices=devices)
 
   # Set up a RunConfig to only save checkpoints once per training cycle.
   run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
@@ -532,6 +599,7 @@ def resnet_main(flags, model_function, input_function):
           'resnet_size': flags.resnet_size,
           'data_format': flags.data_format,
           'batch_size': flags.batch_size,
+          'multi_gpu': multi_gpu,
       })
 
   for _ in range(flags.train_epochs // flags.epochs_per_eval):
@@ -608,3 +676,13 @@ class ResnetArgParser(argparse.ArgumentParser):
              'is not always compatible with CPU. If left unspecified, '
              'the data format will be chosen automatically based on '
              'whether TensorFlow was built for CPU or GPU.')
+
+    self.add_argument(
+        '--multi_gpu', action='store_true',
+        help='If set, run across all available GPUs. Note that this is '
+        'superseded by the --num_gpus flag.')
+
+    self.add_argument(
+        '--num_gpus', type=int, default=None,
+        help='Use num_gpus GPUs to run the model. Note that this supersedes '
+        'the --multi_gpu flag.')

@@ -136,7 +136,7 @@ class BaseTest(tf.test.TestCase):
 
     return features, labels
 
-  def resnet_model_fn_helper(self, mode):
+  def resnet_model_fn_helper(self, mode, multi_gpu=False):
     """Tests that the EstimatorSpec is given the appropriate arguments."""
     tf.train.create_global_step()
 
@@ -146,6 +146,7 @@ class BaseTest(tf.test.TestCase):
             'resnet_size': 50,
             'data_format': 'channels_last',
             'batch_size': _BATCH_SIZE,
+            'multi_gpu': multi_gpu,
         })
 
     predictions = spec.predictions
@@ -170,6 +171,9 @@ class BaseTest(tf.test.TestCase):
   def test_resnet_model_fn_train_mode(self):
     self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN)
 
+  def test_resnet_model_fn_train_mode_multi_gpu(self):
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, multi_gpu=True)
+
   def test_resnet_model_fn_eval_mode(self):
     self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL)
 
@@ -190,3 +194,4 @@ class BaseTest(tf.test.TestCase):
 
 if __name__ == '__main__':
   tf.test.main()
+
