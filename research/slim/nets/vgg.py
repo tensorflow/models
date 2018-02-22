@@ -212,7 +212,7 @@ def vgg_16(inputs,
                           activation_fn=None,
                           normalizer_fn=None,
                           scope='fc8')
-        if spatial_squeeze and num_classes is not None:
+        if spatial_squeeze:
           net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
         end_points[sc.name + '/fc8'] = net
       return net, end_points
