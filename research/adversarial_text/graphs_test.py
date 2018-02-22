@@ -29,8 +29,8 @@ import tempfile
 
 import tensorflow as tf
 
-from adversarial_text import graphs
-from adversarial_text.data import data_utils
+import graphs
+from data import data_utils
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS

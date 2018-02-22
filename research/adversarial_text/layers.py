@@ -254,7 +254,7 @@ def predictions(logits):
   with tf.name_scope('predictions'):
     # For binary classification
     if inner_dim == 1:
-      pred = tf.cast(tf.greater(tf.squeeze(logits, -1), 0.5), tf.int64)
+      pred = tf.cast(tf.greater(tf.squeeze(logits, -1), 0.), tf.int64)
     # For multi-class classification
     else:
       pred = tf.argmax(logits, 2)
