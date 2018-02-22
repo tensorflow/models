@@ -24,7 +24,7 @@ import os
 
 import tensorflow as tf
 
-from adversarial_text.data import data_utils
+from data import data_utils
 
 
 class VatxtInput(object):

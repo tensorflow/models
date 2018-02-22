@@ -24,9 +24,9 @@ import os
 
 import tensorflow as tf
 
-from adversarial_text import adversarial_losses as adv_lib
-from adversarial_text import inputs as inputs_lib
-from adversarial_text import layers as layers_lib
+import adversarial_losses as adv_lib
+import inputs as inputs_lib
+import layers as layers_lib
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
