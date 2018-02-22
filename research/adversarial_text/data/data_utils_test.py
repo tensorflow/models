@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from adversarial_text.data import data_utils
+from data import data_utils
 
 data = data_utils
 

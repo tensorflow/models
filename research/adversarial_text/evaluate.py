@@ -25,7 +25,7 @@ import time
 
 import tensorflow as tf
 
-from adversarial_text import graphs
+import graphs
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
