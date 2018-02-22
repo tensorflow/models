@@ -26,7 +26,7 @@ import random
 
 import tensorflow as tf
 
-from adversarial_text.data import data_utils
+import data_utils
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
