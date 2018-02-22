@@ -34,8 +34,8 @@ import string
 
 import tensorflow as tf
 
-import data_utils
-import document_generators
+from data import data_utils
+from data import document_generators
 
 data = data_utils
 flags = tf.app.flags
