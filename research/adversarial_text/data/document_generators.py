@@ -26,7 +26,7 @@ import random
 
 import tensorflow as tf
 
-import data_utils
+from data import data_utils
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
