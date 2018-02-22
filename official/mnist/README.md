@@ -50,7 +50,7 @@ saved_model_cli run --dir /tmp/mnist_saved_model/TIMESTAMP --tag_set serve --sig
 To convert your own image(s) to this format, run the following command with your images in this directory:
 
 ```
-python convert_npy.py --image <"filename(s)"> --output <"filename(s)"> --batch <True/False>
+python convert_to_npy.py <"filename(s)">
 ```
 
 The output should look similar to below:
