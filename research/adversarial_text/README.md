@@ -22,7 +22,7 @@ The directory `/tmp/aclImdb` contains the raw IMDB data.
 
 ```
 $ IMDB_DATA_DIR=/tmp/imdb
-$ python gen_vocab.py -- \
+$ python gen_vocab.py \
     --output_dir=$IMDB_DATA_DIR \
     --dataset=imdb \
     --imdb_input_dir=/tmp/aclImdb \
@@ -34,7 +34,7 @@ Vocabulary and frequency files will be generated in `$IMDB_DATA_DIR`.
 ###  Generate training, validation, and test data
 
 ```
-$ python gen_data.py -- \
+$ python gen_data.py \
     --output_dir=$IMDB_DATA_DIR \
     --dataset=imdb \
     --imdb_input_dir=/tmp/aclImdb \
@@ -48,7 +48,7 @@ $ python gen_data.py -- \
 
 ```
 $ PRETRAIN_DIR=/tmp/models/imdb_pretrain
-$ python pretrain.py -- \
+$ python pretrain.py \
     --train_dir=$PRETRAIN_DIR \
     --data_dir=$IMDB_DATA_DIR \
     --vocab_size=86934 \
@@ -76,7 +76,7 @@ training and classification.
 
 ```
 $ TRAIN_DIR=/tmp/models/imdb_classify
-$ python train_classifier.py -- \
+$ python train_classifier.py \
     --train_dir=$TRAIN_DIR \
     --pretrained_model_dir=$PRETRAIN_DIR \
     --data_dir=$IMDB_DATA_DIR \
@@ -101,7 +101,7 @@ $ python train_classifier.py -- \
 
 ```
 $ EVAL_DIR=/tmp/models/imdb_eval
-$ python evaluate.py -- \
+$ python evaluate.py \
     --eval_dir=$EVAL_DIR \
     --checkpoint_dir=$TRAIN_DIR \
     --eval_data=test \
