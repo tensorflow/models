@@ -150,7 +150,7 @@ def manual_stepping(global_step, boundaries, rates):
           # Casting global step to tf.int32 is dangerous, but necessary to be
           # compatible with TPU.
           tf.greater(step_boundaries, tf.cast(global_step, tf.int32)),
-          tf.constant(range(num_boundaries), dtype=tf.int32),
+          tf.constant(list(range(num_boundaries)), dtype=tf.int32),
           tf.constant([num_boundaries] * num_boundaries, dtype=tf.int32)))
   return tf.reduce_sum(learning_rates * tf.one_hot(index, len(rates),
                                                    dtype=tf.float32))
