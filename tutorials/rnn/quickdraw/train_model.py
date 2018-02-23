@@ -69,11 +69,13 @@ def get_input_fn(mode, tfrecord_pattern, batch_size):
       feature_to_type["class_index"] = tf.FixedLenFeature([1], dtype=tf.int64)
 
     parsed_features = tf.parse_single_example(example_proto, feature_to_type)
-    labels = None
+    parsed_features["ink"] = tf.sparse_tensor_to_dense(parsed_features["ink"])
+
     if mode != tf.estimator.ModeKeys.PREDICT:
       labels = parsed_features["class_index"]
-    parsed_features["ink"] = tf.sparse_tensor_to_dense(parsed_features["ink"])
-    return parsed_features, labels
+      return parsed_features, labels
+    else:
+      return parsed_features  # In prediction, we have no labels
 
   def _input_fn():
     """Estimator `input_fn`.
@@ -101,8 +103,14 @@ def get_input_fn(mode, tfrecord_pattern, batch_size):
     # Our inputs are variable length, so pad them.
     dataset = dataset.padded_batch(
         batch_size, padded_shapes=dataset.output_shapes)
-    features, labels = dataset.make_one_shot_iterator().get_next()
-    return features, labels
+
+    iter = dataset.make_one_shot_iterator()
+    if mode != tf.estimator.ModeKeys.PREDICT:
+        features, labels = iter.get_next()
+        return features, labels
+    else:
+        features = iter.get_next()
+        return features, None  # In prediction, we have no labels
 
   return _input_fn
 
