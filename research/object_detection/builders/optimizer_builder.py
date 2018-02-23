@@ -119,4 +119,5 @@ def _create_learning_rate(learning_rate_config):
   if learning_rate is None:
     raise ValueError('Learning_rate %s not supported.' % learning_rate_type)
 
+  learning_rate = tf.identity(learning_rate, name='learning_rate')
   return learning_rate
