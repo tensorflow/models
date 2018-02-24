@@ -10,7 +10,7 @@ Code for [*Adversarial Training Methods for Semi-Supervised Text Classification*
 
 ### Fetch data
 
-```
+```bash
 $ wget http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz \
     -O /tmp/imdb.tar.gz
 $ tar -xf /tmp/imdb.tar.gz -C /tmp
@@ -20,7 +20,7 @@ The directory `/tmp/aclImdb` contains the raw IMDB data.
 
 ### Generate vocabulary
 
-```
+```bash
 $ IMDB_DATA_DIR=/tmp/imdb
 $ python gen_vocab.py \
     --output_dir=$IMDB_DATA_DIR \
@@ -33,7 +33,7 @@ Vocabulary and frequency files will be generated in `$IMDB_DATA_DIR`.
 
 ###  Generate training, validation, and test data
 
-```
+```bash
 $ python gen_data.py \
     --output_dir=$IMDB_DATA_DIR \
     --dataset=imdb \
@@ -46,7 +46,7 @@ $ python gen_data.py \
 
 ### Pretrain IMDB Language Model
 
-```
+```bash
 $ PRETRAIN_DIR=/tmp/models/imdb_pretrain
 $ python pretrain.py \
     --train_dir=$PRETRAIN_DIR \
@@ -74,7 +74,7 @@ addition of `pretrained_model_dir`, from which the classifier will load the
 pretrained embedding and LSTM variables, and flags related to adversarial
 training and classification.
 
-```
+```bash
 $ TRAIN_DIR=/tmp/models/imdb_classify
 $ python train_classifier.py \
     --train_dir=$TRAIN_DIR \
@@ -99,7 +99,7 @@ $ python train_classifier.py \
 
 ### Evaluate on test data
 
-```
+```bash
 $ EVAL_DIR=/tmp/models/imdb_eval
 $ python evaluate.py \
     --eval_dir=$EVAL_DIR \
