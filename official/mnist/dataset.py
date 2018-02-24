@@ -20,6 +20,7 @@ from __future__ import print_function
 import os
 import shutil
 import gzip
+
 import numpy as np
 from six.moves import urllib
 import tensorflow as tf
