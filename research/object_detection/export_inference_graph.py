@@ -122,6 +122,8 @@ flags.DEFINE_string('config_override', '',
                     'text proto to override pipeline_config_path.')
 flags.DEFINE_boolean('write_inference_graph', False,
                      'If true, writes inference graph to disk.')
+flags.DEFINE_string('gpuid', '0',
+                    'Which GPU device to use. Separated by commas. Default is 0.')
 tf.app.flags.mark_flag_as_required('pipeline_config_path')
 tf.app.flags.mark_flag_as_required('trained_checkpoint_prefix')
 tf.app.flags.mark_flag_as_required('output_directory')
@@ -129,6 +131,7 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
+  os.environ['CUDA_VISIBLE_DEVICES'] = str(FLAGS.gpuid)
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
   with tf.gfile.GFile(FLAGS.pipeline_config_path, 'r') as f:
     text_format.Merge(f.read(), pipeline_config)

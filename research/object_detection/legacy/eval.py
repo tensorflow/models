@@ -73,12 +73,13 @@ flags.DEFINE_string('input_config_path', '',
                     'Path to an input_reader_pb2.InputReader config file.')
 flags.DEFINE_string('model_config_path', '',
                     'Path to a model_pb2.DetectionModel config file.')
-flags.DEFINE_boolean(
-    'run_once', False, 'Option to only run a single pass of '
-    'evaluation. Overrides the `max_evals` parameter in the '
-    'provided config.')
+flags.DEFINE_boolean('run_once', False, 'Option to only run a single pass of '
+                     'evaluation. Overrides the `max_evals` parameter in the '
+                     'provided config.')
+flags.DEFINE_string('gpuid', '0',
+                    'Which GPU device to use. Separated by commas. Default is 0.')
 FLAGS = flags.FLAGS
-
+os.environ['CUDA_VISIBLE_DEVICES'] = str(FLAGS.gpuid)
 
 @tf.contrib.framework.deprecated(None, 'Use object_detection/model_main.py.')
 def main(unused_argv):

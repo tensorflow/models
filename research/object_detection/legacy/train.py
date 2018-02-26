@@ -80,7 +80,8 @@ flags.DEFINE_string('input_config_path', '',
                     'Path to an input_reader_pb2.InputReader config file.')
 flags.DEFINE_string('model_config_path', '',
                     'Path to a model_pb2.DetectionModel config file.')
-
+flags.DEFINE_string('gpuid', '0',
+                    'Which GPU device to use. Separated by commas. Default is 0.')
 FLAGS = flags.FLAGS
 
 
@@ -164,6 +165,7 @@ def main(_):
     graph_rewriter_fn = graph_rewriter_builder.build(
         configs['graph_rewriter_config'], is_training=True)
 
+  os.environ['CUDA_VISIBLE_DEVICES'] = str(FLAGS.gpuid)
   trainer.train(
       create_input_dict_fn,
       model_fn,
@@ -178,7 +180,6 @@ def main(_):
       is_chief,
       FLAGS.train_dir,
       graph_hook_fn=graph_rewriter_fn)
-
 
 if __name__ == '__main__':
   tf.app.run()
