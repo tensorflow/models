@@ -244,18 +244,19 @@ class SSDMetaArch(model.DetectionModel):
     """
     if inputs.dtype is not tf.float32:
       raise ValueError('`preprocess` expects a tf.float32 tensor')
-    with tf.name_scope('Preprocessor'):
-      # TODO: revisit whether to always use batch size as
-      # the number of parallel iterations vs allow for dynamic batching.
-      outputs = shape_utils.static_or_dynamic_map_fn(
-          self._image_resizer_fn,
-          elems=inputs,
-          dtype=[tf.float32, tf.int32])
-      resized_inputs = outputs[0]
-      true_image_shapes = outputs[1]
+    with tf.device('/cpu:0'):
+      with tf.name_scope('Preprocessor'):
+        # TODO: revisit whether to always use batch size as
+        # the number of parallel iterations vs allow for dynamic batching.
+        outputs = shape_utils.static_or_dynamic_map_fn(
+            self._image_resizer_fn,
+            elems=inputs,
+            dtype=[tf.float32, tf.int32])
+        resized_inputs = outputs[0]
+        true_image_shapes = outputs[1]
 
-      return (self._feature_extractor.preprocess(resized_inputs),
-              true_image_shapes)
+        return (self._feature_extractor.preprocess(resized_inputs),
+                true_image_shapes)
 
   def _compute_clip_window(self, preprocessed_images, true_image_shapes):
     """Computes clip window to use during post_processing.
@@ -411,41 +412,42 @@ class SSDMetaArch(model.DetectionModel):
     if ('box_encodings' not in prediction_dict or
         'class_predictions_with_background' not in prediction_dict):
       raise ValueError('prediction_dict does not contain expected entries.')
-    with tf.name_scope('Postprocessor'):
-      preprocessed_images = prediction_dict['preprocessed_inputs']
-      box_encodings = prediction_dict['box_encodings']
-      class_predictions = prediction_dict['class_predictions_with_background']
-      detection_boxes, detection_keypoints = self._batch_decode(box_encodings)
-      detection_boxes = tf.expand_dims(detection_boxes, axis=2)
+    with tf.device('/cpu:0'):
+      with tf.name_scope('Postprocessor'):
+        preprocessed_images = prediction_dict['preprocessed_inputs']
+        box_encodings = prediction_dict['box_encodings']
+        class_predictions = prediction_dict['class_predictions_with_background']
+        detection_boxes, detection_keypoints = self._batch_decode(box_encodings)
+        detection_boxes = tf.expand_dims(detection_boxes, axis=2)
 
-      detection_scores_with_background = self._score_conversion_fn(
-          class_predictions)
-      detection_scores = tf.slice(detection_scores_with_background, [0, 0, 1],
-                                  [-1, -1, -1])
-      additional_fields = None
+        detection_scores_with_background = self._score_conversion_fn(
+            class_predictions)
+        detection_scores = tf.slice(detection_scores_with_background, [0, 0, 1],
+                                    [-1, -1, -1])
+        additional_fields = None
 
-      if detection_keypoints is not None:
-        additional_fields = {
-            fields.BoxListFields.keypoints: detection_keypoints}
-      (nmsed_boxes, nmsed_scores, nmsed_classes, _, nmsed_additional_fields,
-       num_detections) = self._non_max_suppression_fn(
-           detection_boxes,
-           detection_scores,
-           clip_window=self._compute_clip_window(
-               preprocessed_images, true_image_shapes),
-           additional_fields=additional_fields)
-      detection_dict = {
-          fields.DetectionResultFields.detection_boxes: nmsed_boxes,
-          fields.DetectionResultFields.detection_scores: nmsed_scores,
-          fields.DetectionResultFields.detection_classes: nmsed_classes,
-          fields.DetectionResultFields.num_detections:
-              tf.to_float(num_detections)
-      }
-      if (nmsed_additional_fields is not None and
-          fields.BoxListFields.keypoints in nmsed_additional_fields):
-        detection_dict[fields.DetectionResultFields.detection_keypoints] = (
-            nmsed_additional_fields[fields.BoxListFields.keypoints])
-      return detection_dict
+        if detection_keypoints is not None:
+          additional_fields = {
+              fields.BoxListFields.keypoints: detection_keypoints}
+        (nmsed_boxes, nmsed_scores, nmsed_classes, _, nmsed_additional_fields,
+        num_detections) = self._non_max_suppression_fn(
+            detection_boxes,
+            detection_scores,
+            clip_window=self._compute_clip_window(
+                preprocessed_images, true_image_shapes),
+            additional_fields=additional_fields)
+        detection_dict = {
+            fields.DetectionResultFields.detection_boxes: nmsed_boxes,
+            fields.DetectionResultFields.detection_scores: nmsed_scores,
+            fields.DetectionResultFields.detection_classes: nmsed_classes,
+            fields.DetectionResultFields.num_detections:
+                tf.to_float(num_detections)
+        }
+        if (nmsed_additional_fields is not None and
+            fields.BoxListFields.keypoints in nmsed_additional_fields):
+          detection_dict[fields.DetectionResultFields.detection_keypoints] = (
+              nmsed_additional_fields[fields.BoxListFields.keypoints])
+        return detection_dict
 
   def loss(self, prediction_dict, true_image_shapes, scope=None):
     """Compute scalar loss tensors with respect to provided groundtruth.

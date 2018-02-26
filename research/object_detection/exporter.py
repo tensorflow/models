@@ -324,7 +324,8 @@ def _export_inference_graph(input_type,
                             additional_output_tensor_names=None,
                             input_shape=None,
                             output_collection_name='inference_op',
-                            graph_hook_fn=None):
+                            graph_hook_fn=None,
+                            clear_devices=True):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
   frozen_graph_path = os.path.join(output_directory,
@@ -391,7 +392,7 @@ def _export_inference_graph(input_type,
       output_node_names=output_node_names,
       restore_op_name='save/restore_all',
       filename_tensor_name='save/Const:0',
-      clear_devices=True,
+      clear_devices=clear_devices,
       initializer_nodes='')
   _write_frozen_graph(frozen_graph_path, frozen_graph_def)
   _write_saved_model(saved_model_path, frozen_graph_def,
@@ -404,7 +405,8 @@ def export_inference_graph(input_type,
                            output_directory,
                            input_shape=None,
                            output_collection_name='inference_op',
-                           additional_output_tensor_names=None):
+                           additional_output_tensor_names=None,
+                           clear_devices=True):
   """Exports inference graph for the model specified in the pipeline config.
 
   Args:
@@ -427,7 +429,7 @@ def export_inference_graph(input_type,
                           trained_checkpoint_prefix,
                           output_directory, additional_output_tensor_names,
                           input_shape, output_collection_name,
-                          graph_hook_fn=None)
+                          graph_hook_fn=None, clear_devices=clear_devices)
   pipeline_config.eval_config.use_moving_averages = False
   config_text = text_format.MessageToString(pipeline_config)
   with tf.gfile.Open(
