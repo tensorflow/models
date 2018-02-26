@@ -60,3 +60,20 @@ Result for output key probabilities:
     2.52568233e-03   4.15460236e-04]]
 ```
 
+## Experimental: Eager Execution
+
+[Eager execution](https://research.googleblog.com/2017/10/eager-execution-imperative-define-by.html)
+(an preview feature in TensorFlow 1.5) is an imperative interface to TensorFlow.
+The exact same model defined in `mnist.py` can be trained without creating a
+TensorFlow graph using:
+
+```
+python mnist_eager.py
+```
+
+## Experimental: TPU Acceleration
+
+`mnist.py` (and `mnist_eager.py`) demonstrate training a neural network to
+classify digits on CPUs and GPUs. `mnist_tpu.py` can be used to train the
+same model using TPUs for hardware acceleration. More information in
+the [tensorflow/tpu](https://github.com/tensorflow/tpu) repository.

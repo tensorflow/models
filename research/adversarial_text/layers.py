@@ -16,12 +16,11 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from six.moves import xrange  # pylint: disable=redefined-builtin
 
 # Dependency imports
 
 import tensorflow as tf
-K = tf.contrib.keras
+K = tf.keras
 
 
 def cl_logits_subgraph(layer_sizes, input_size, num_classes, keep_prob=1.):
@@ -96,7 +95,7 @@ class Embedding(K.layers.Layer):
 
 
 class LSTM(object):
-  """LSTM layer using static_rnn.
+  """LSTM layer using dynamic_rnn.
 
   Exposes variables in `trainable_weights` property.
   """
@@ -120,16 +119,11 @@ class LSTM(object):
       ])
 
       # shape(x) = (batch_size, num_timesteps, embedding_dim)
-      # Convert into a time-major list for static_rnn
-      x = tf.unstack(tf.transpose(x, perm=[1, 0, 2]))
 
-      lstm_out, next_state = tf.contrib.rnn.static_rnn(
+      lstm_out, next_state = tf.nn.dynamic_rnn(
           cell, x, initial_state=initial_state, sequence_length=seq_length)
 
-      # Merge time and batch dimensions
-      # shape(lstm_out) = timesteps * (batch_size, cell_size)
-      lstm_out = tf.concat(lstm_out, 0)
-      # shape(lstm_out) = (timesteps*batch_size, cell_size)
+      # shape(lstm_out) = (batch_size, timesteps, cell_size)
 
       if self.keep_prob < 1.:
         lstm_out = tf.nn.dropout(lstm_out, self.keep_prob)
@@ -154,6 +148,7 @@ class SoftmaxLoss(K.layers.Layer):
     self.num_candidate_samples = num_candidate_samples
     self.vocab_freqs = vocab_freqs
     super(SoftmaxLoss, self).__init__(**kwargs)
+    self.multiclass_dense_layer = K.layers.Dense(self.vocab_size)
 
   def build(self, input_shape):
     input_shape = input_shape[0]
@@ -166,6 +161,7 @@ class SoftmaxLoss(K.layers.Layer):
           shape=(self.vocab_size,),
           name='lm_lin_b',
           initializer=K.initializers.glorot_uniform())
+      self.multiclass_dense_layer.build(input_shape)
 
     super(SoftmaxLoss, self).build(input_shape)
 
@@ -173,25 +169,30 @@ class SoftmaxLoss(K.layers.Layer):
     x, labels, weights = inputs
     if self.num_candidate_samples > -1:
       assert self.vocab_freqs is not None
-      labels = tf.expand_dims(labels, -1)
+      labels_reshaped = tf.reshape(labels, [-1])
+      labels_reshaped = tf.expand_dims(labels_reshaped, -1)
       sampled = tf.nn.fixed_unigram_candidate_sampler(
-          true_classes=labels,
+          true_classes=labels_reshaped,
           num_true=1,
           num_sampled=self.num_candidate_samples,
           unique=True,
           range_max=self.vocab_size,
           unigrams=self.vocab_freqs)
+      inputs_reshaped = tf.reshape(x, [-1, int(x.get_shape()[2])])
 
       lm_loss = tf.nn.sampled_softmax_loss(
           weights=tf.transpose(self.lin_w),
           biases=self.lin_b,
-          labels=labels,
-          inputs=x,
+          labels=labels_reshaped,
+          inputs=inputs_reshaped,
           num_sampled=self.num_candidate_samples,
           num_classes=self.vocab_size,
           sampled_values=sampled)
+      lm_loss = tf.reshape(
+          lm_loss,
+          [int(x.get_shape()[0]), int(x.get_shape()[1])])
     else:
-      logits = tf.matmul(x, self.lin_w) + self.lin_b
+      logits = self.multiclass_dense_layer(x)
       lm_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
           logits=logits, labels=labels)
 
@@ -218,7 +219,7 @@ def classification_loss(logits, labels, weights):
     # Logistic loss
     if inner_dim == 1:
       loss = tf.nn.sigmoid_cross_entropy_with_logits(
-          logits=tf.squeeze(logits), labels=tf.cast(labels, tf.float32))
+          logits=tf.squeeze(logits, -1), labels=tf.cast(labels, tf.float32))
     # Softmax loss
     else:
       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -253,10 +254,10 @@ def predictions(logits):
   with tf.name_scope('predictions'):
     # For binary classification
     if inner_dim == 1:
-      pred = tf.cast(tf.greater(tf.squeeze(logits), 0.5), tf.int64)
+      pred = tf.cast(tf.greater(tf.squeeze(logits, -1), 0.), tf.int64)
     # For multi-class classification
     else:
-      pred = tf.argmax(logits, 1)
+      pred = tf.argmax(logits, 2)
     return pred
 
 
@@ -355,10 +356,9 @@ def optimize(loss,
                            opt.ready_for_local_init_op)
     else:
       # Non-sync optimizer
-      variables_averages_op = variable_averages.apply(tvars)
       apply_gradient_op = opt.apply_gradients(grads_and_vars, global_step)
-      with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
-        train_op = tf.no_op(name='train_op')
+      with tf.control_dependencies([apply_gradient_op]):
+        train_op = variable_averages.apply(tvars)
 
     return train_op
 

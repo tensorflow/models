@@ -237,6 +237,7 @@ class ModelBuilderTest(tf.test.TestCase):
           iou_similarity {
           }
         }
+        encode_background_as_zeros: true
         anchor_generator {
           multiscale_anchor_generator {
             aspect_ratios: [1.0, 2.0, 0.5]
