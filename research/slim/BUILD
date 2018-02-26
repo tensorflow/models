@@ -429,6 +429,28 @@ py_library(
     ],
 )
 
+py_binary(
+    name = "mobilenet_v1_train",
+    srcs = ["nets/mobilenet_v1_train.py"],
+    deps = [
+        ":dataset_factory",
+        ":mobilenet_v1",
+        ":preprocessing_factory",
+        # "//tensorflow"
+    ],
+)
+
+py_binary(
+    name = "mobilenet_v1_eval",
+    srcs = ["nets/mobilenet_v1_eval.py"],
+    deps = [
+        ":dataset_factory",
+        ":mobilenet_v1",
+        ":preprocessing_factory",
+        # "//tensorflow"
+    ],
+)
+
 py_test(
     name = "mobilenet_v1_test",
     size = "large",
