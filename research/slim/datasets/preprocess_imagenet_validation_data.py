@@ -52,8 +52,6 @@ import os
 import os.path
 import sys
 
-from six.moves import xrange
-
 
 if __name__ == '__main__':
   if len(sys.argv) < 3:
