@@ -10,7 +10,7 @@ Code for [*Adversarial Training Methods for Semi-Supervised Text Classification*
 
 ### Fetch data
 
-```
+```bash
 $ wget http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz \
     -O /tmp/imdb.tar.gz
 $ tar -xf /tmp/imdb.tar.gz -C /tmp
@@ -20,9 +20,9 @@ The directory `/tmp/aclImdb` contains the raw IMDB data.
 
 ### Generate vocabulary
 
-```
+```bash
 $ IMDB_DATA_DIR=/tmp/imdb
-$ python gen_vocab.py -- \
+$ python gen_vocab.py \
     --output_dir=$IMDB_DATA_DIR \
     --dataset=imdb \
     --imdb_input_dir=/tmp/aclImdb \
@@ -33,8 +33,8 @@ Vocabulary and frequency files will be generated in `$IMDB_DATA_DIR`.
 
 ###  Generate training, validation, and test data
 
-```
-$ python gen_data.py -- \
+```bash
+$ python gen_data.py \
     --output_dir=$IMDB_DATA_DIR \
     --dataset=imdb \
     --imdb_input_dir=/tmp/aclImdb \
@@ -46,9 +46,9 @@ $ python gen_data.py -- \
 
 ### Pretrain IMDB Language Model
 
-```
+```bash
 $ PRETRAIN_DIR=/tmp/models/imdb_pretrain
-$ python pretrain.py -- \
+$ python pretrain.py \
     --train_dir=$PRETRAIN_DIR \
     --data_dir=$IMDB_DATA_DIR \
     --vocab_size=86934 \
@@ -74,9 +74,9 @@ addition of `pretrained_model_dir`, from which the classifier will load the
 pretrained embedding and LSTM variables, and flags related to adversarial
 training and classification.
 
-```
+```bash
 $ TRAIN_DIR=/tmp/models/imdb_classify
-$ python train_classifier.py -- \
+$ python train_classifier.py \
     --train_dir=$TRAIN_DIR \
     --pretrained_model_dir=$PRETRAIN_DIR \
     --data_dir=$IMDB_DATA_DIR \
@@ -99,9 +99,9 @@ $ python train_classifier.py -- \
 
 ### Evaluate on test data
 
-```
+```bash
 $ EVAL_DIR=/tmp/models/imdb_eval
-$ python evaluate.py -- \
+$ python evaluate.py \
     --eval_dir=$EVAL_DIR \
     --checkpoint_dir=$TRAIN_DIR \
     --eval_data=test \
@@ -154,3 +154,4 @@ control which dataset is processed and how.
 
 * Ryan Sepassi, @rsepassi
 * Andrew M. Dai, @a-dai <adai@google.com>
+* Takeru Miyato, @takerum (Original implementation)
