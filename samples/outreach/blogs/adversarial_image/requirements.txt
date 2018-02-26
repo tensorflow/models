@@ -1,0 +1,4 @@
+matplotlib==2.1.2
+Pillow==5.0.0
+scikit-image==0.13.1
+tensorflow==1.4.0
