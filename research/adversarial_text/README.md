@@ -154,3 +154,4 @@ control which dataset is processed and how.
 
 * Ryan Sepassi, @rsepassi
 * Andrew M. Dai, @a-dai <adai@google.com>
+* Takeru Miyato, @takerum (Original implementation)
