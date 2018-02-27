@@ -95,7 +95,8 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # over the GPUs. This will likely be handled by Estimator during replication
   # in the future, but for now, we just drop the leftovers here.
   if multi_gpu:
-    dataset = dataset.take(batch_size * (num_epochs * total_images // batch_size))
+    total_examples = num_epochs * examples_per_epoch
+    dataset = dataset.take(batch_size * (total_examples // batch_size))
 
   # Parse the raw records into images and labels
   dataset = dataset.map(lambda value: parse_record_fn(value, is_training),
