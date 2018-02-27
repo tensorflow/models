@@ -96,13 +96,13 @@ $ bazel build -c opt --config=cuda mobilenet_v1_{eval,train}
 Train:
 
 ```
-$ ./bazel-bin/mobilenet_v1_train
+$ ./bazel-bin/mobilenet_v1_train --dataset_dir "path/to/dataset" --checkpoint_dir "path/to/checkpoints"
 ```
 
 Eval:
 
 ```
-$ ./bazel-bin/mobilenet_v1_eval
+$ ./bazel-bin/mobilenet_v1_eval --dataset_dir "path/to/dataset" --checkpoint_dir "path/to/checkpoints"
 ```
 
 #### Quantized Training and Eval
@@ -110,19 +110,20 @@ $ ./bazel-bin/mobilenet_v1_eval
 Train from preexisting float checkpoint:
 
 ```
-$ ./bazel-bin/mobilenet_v1_train --quantize=True --fine_tune_checkpoint=checkpoint-name
+$ ./bazel-bin/mobilenet_v1_train --dataset_dir "path/to/dataset" --checkpoint_dir "path/to/checkpoints" \
+  --quantize=True --fine_tune_checkpoint=float/checkpoint/path
 ```
 
 Train from scratch:
 
 ```
-$ ./bazel-bin/mobilenet_v1_train --quantize=True
+$ ./bazel-bin/mobilenet_v1_train --dataset_dir "path/to/dataset" --checkpoint_dir "path/to/checkpoints" --quantize=True
 ```
 
 Eval:
 
 ```
-$ ./bazel-bin/mobilenet_v1_eval --quantize=True
+$ ./bazel-bin/mobilenet_v1_eval --dataset_dir "path/to/dataset" --checkpoint_dir "path/to/checkpoints" --quantize=True
 ```
 
 The resulting float and quantized models can be run on-device via [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/).
