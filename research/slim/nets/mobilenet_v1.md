@@ -48,11 +48,11 @@ Model  | Million MACs | Million Parameters | Top-1 Accuracy| Top-5 Accuracy |
 [MobileNet_v1_0.25_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.25_128_quant.tgz)|14|0.47|39.9|65.8|
 
 The linked model tar files contain the following:
-- Trained model checkpoints
-- Eval graph text protos (to be easily viewed)
-- Frozen trained models
-- Info file containing input and output information
-- Converted [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/) flatbuffer model
+* Trained model checkpoints
+* Eval graph text protos (to be easily viewed)
+* Frozen trained models
+* Info file containing input and output information
+* Converted [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/) flatbuffer model
 
 Note that quantized model GraphDefs are still float models, they just have FakeQuantization
 operation embedded to simulate quantization. These are converted by [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/) 
