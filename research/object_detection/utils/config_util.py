@@ -241,6 +241,10 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
   if hparams:
     kwargs.update(hparams.values())
   for key, value in kwargs.items():
+    # pylint: disable=g-explicit-bool-comparison
+    if value == "" or value is None:
+      continue
+    # pylint: enable=g-explicit-bool-comparison
     if key == "learning_rate":
       _update_initial_learning_rate(configs, value)
       tf.logging.info("Overwriting learning rate: %f", value)
@@ -270,9 +274,8 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
       _update_input_path(configs["eval_input_config"], value)
       tf.logging.info("Overwriting eval input path: %s", value)
     if key == "label_map_path":
-      if value:
-        _update_label_map_path(configs, value)
-        tf.logging.info("Overwriting label map path: %s", value)
+      _update_label_map_path(configs, value)
+      tf.logging.info("Overwriting label map path: %s", value)
     if key == "mask_type":
       _update_mask_type(configs, value)
       tf.logging.info("Overwritten mask type: %s", value)

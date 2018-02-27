@@ -259,13 +259,15 @@ class ModelBuilderTest(tf.test.TestCase):
                 }
               }
               initializer {
-                truncated_normal_initializer {
+                random_normal_initializer {
                 }
               }
             }
             num_layers_before_predictor: 1
           }
         }
+        normalize_loss_by_num_matches: true
+        normalize_loc_loss_by_codesize: true
         loss {
           classification_loss {
             weighted_sigmoid_focal {
@@ -275,6 +277,7 @@ class ModelBuilderTest(tf.test.TestCase):
           }
           localization_loss {
             weighted_smooth_l1 {
+              delta: 0.1
             }
           }
           classification_weight: 1.0
@@ -344,6 +347,7 @@ class ModelBuilderTest(tf.test.TestCase):
             }
           }
         }
+        normalize_loc_loss_by_codesize: true
         loss {
           classification_loss {
             weighted_softmax {
@@ -362,6 +366,7 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertIsInstance(model._feature_extractor,
                           SSDMobileNetV1FeatureExtractor)
     self.assertTrue(model._feature_extractor._batch_norm_trainable)
+    self.assertTrue(model._normalize_loc_loss_by_codesize)
 
   def test_create_embedded_ssd_mobilenet_v1_model_from_config(self):
     model_text_proto = """

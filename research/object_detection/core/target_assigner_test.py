@@ -836,7 +836,7 @@ class CreateTargetAssignerTest(tf.test.TestCase):
   def test_create_target_assigner(self):
     """Tests that named constructor gives working target assigners.
 
-    TODO: Make this test more general.
+    TODO(rathodv): Make this test more general.
     """
     corners = [[0.0, 0.0, 1.0, 1.0]]
     groundtruth = box_list.BoxList(tf.constant(corners))

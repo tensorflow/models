@@ -108,7 +108,7 @@ def _build_nasnet_base(hidden_previous,
   return net
 
 
-# TODO: Only fixed_shape_resizer is currently supported for NASNet
+# TODO(shlens): Only fixed_shape_resizer is currently supported for NASNet
 # featurization. The reason for this is that nasnet.py only supports
 # inputs with fully known shapes. We need to update nasnet.py to handle
 # shapes not known at compile time.

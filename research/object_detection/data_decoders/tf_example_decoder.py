@@ -101,13 +101,18 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         'image/object/weight':
             tf.VarLenFeature(tf.float32),
     }
+    if dct_method:
+      image = slim_example_decoder.Image(
+          image_key='image/encoded',
+          format_key='image/format',
+          channels=3,
+          dct_method=dct_method)
+    else:
+      image = slim_example_decoder.Image(
+          image_key='image/encoded', format_key='image/format', channels=3)
     self.items_to_handlers = {
         fields.InputDataFields.image:
-            slim_example_decoder.Image(
-                image_key='image/encoded',
-                format_key='image/format',
-                channels=3,
-                dct_method=dct_method),
+            image,
         fields.InputDataFields.source_id: (
             slim_example_decoder.Tensor('image/source_id')),
         fields.InputDataFields.key: (

@@ -745,7 +745,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       preprocessed_inputs, _ = model.preprocess(image_placeholder)
       self.assertAllEqual(preprocessed_inputs.shape.as_list(), image_shape)
 
-  # TODO: Split test into two - with and without masks.
+  # TODO(rathodv): Split test into two - with and without masks.
   def test_loss_first_stage_only_mode(self):
     model = self._build_model(
         is_training=True, number_of_stages=1, second_stage_batch_size=6)
@@ -797,7 +797,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       self.assertTrue('second_stage_localization_loss' not in loss_dict_out)
       self.assertTrue('second_stage_classification_loss' not in loss_dict_out)
 
-  # TODO: Split test into two - with and without masks.
+  # TODO(rathodv): Split test into two - with and without masks.
   def test_loss_full(self):
     model = self._build_model(
         is_training=True, number_of_stages=2, second_stage_batch_size=6)

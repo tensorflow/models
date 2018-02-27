@@ -72,8 +72,8 @@ def build(image_resizer_config):
     raise ValueError('image_resizer_config not of type '
                      'image_resizer_pb2.ImageResizer.')
 
-  if image_resizer_config.WhichOneof(
-      'image_resizer_oneof') == 'keep_aspect_ratio_resizer':
+  image_resizer_oneof = image_resizer_config.WhichOneof('image_resizer_oneof')
+  if image_resizer_oneof == 'keep_aspect_ratio_resizer':
     keep_aspect_ratio_config = image_resizer_config.keep_aspect_ratio_resizer
     if not (keep_aspect_ratio_config.min_dimension <=
             keep_aspect_ratio_config.max_dimension):
@@ -87,8 +87,7 @@ def build(image_resizer_config):
         pad_to_max_dimension=keep_aspect_ratio_config.pad_to_max_dimension)
     if not keep_aspect_ratio_config.convert_to_grayscale:
       return image_resizer_fn
-  elif image_resizer_config.WhichOneof(
-      'image_resizer_oneof') == 'fixed_shape_resizer':
+  elif image_resizer_oneof == 'fixed_shape_resizer':
     fixed_shape_resizer_config = image_resizer_config.fixed_shape_resizer
     method = _tf_resize_method(fixed_shape_resizer_config.resize_method)
     image_resizer_fn = functools.partial(
@@ -99,7 +98,8 @@ def build(image_resizer_config):
     if not fixed_shape_resizer_config.convert_to_grayscale:
       return image_resizer_fn
   else:
-    raise ValueError('Invalid image resizer option.')
+    raise ValueError(
+        'Invalid image resizer option: \'%s\'.' % image_resizer_oneof)
 
   def grayscale_image_resizer(image):
     [resized_image, resized_image_shape] = image_resizer_fn(image)

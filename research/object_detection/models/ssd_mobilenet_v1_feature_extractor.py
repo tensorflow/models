@@ -53,8 +53,9 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         (e.g. 1), it is desirable to disable batch norm update and use
         pretrained batch norm params.
       reuse_weights: Whether to reuse variables. Default is None.
-      use_explicit_padding: Whether to use explicit padding when extracting
-        features. Default is False.
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
     """
     super(SSDMobileNetV1FeatureExtractor, self).__init__(
@@ -100,7 +101,7 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     }
 
     with slim.arg_scope(self._conv_hyperparams):
-      # TODO: Enable fused batch norm once quantization supports it.
+      # TODO(skligys): Enable fused batch norm once quantization supports it.
       with slim.arg_scope([slim.batch_norm], fused=False):
         with tf.variable_scope('MobilenetV1',
                                reuse=self._reuse_weights) as scope:
@@ -109,6 +110,7 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
               final_endpoint='Conv2d_13_pointwise',
               min_depth=self._min_depth,
               depth_multiplier=self._depth_multiplier,
+              use_explicit_padding=self._use_explicit_padding,
               scope=scope)
           feature_maps = feature_map_generators.multi_resolution_feature_maps(
               feature_map_layout=feature_map_layout,
