@@ -447,8 +447,8 @@ def resnet_model_fn(features, labels, mode, model_class,
       True if the var should be included in loss calculation, and False
       otherwise. If None, batch_normalization variables will be excluded
       from the loss.
-    multi_gpu: If True, wrap the optimizer in a TowerOptimizer to allow
-      for running on multiple GPUs.
+    multi_gpu: If True, wrap the optimizer in a TowerOptimizer suitable for
+      data-parallel distribution across multiple GPUs.
 
   Returns:
     EstimatorSpec parameterized according to the input params and the
