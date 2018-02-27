@@ -40,7 +40,8 @@ flags.DEFINE_float('depth_multiplier', 1.0, 'Depth multiplier for mobilenet')
 flags.DEFINE_bool('quantize', False, 'Quantize training')
 flags.DEFINE_string('fine_tune_checkpoint', '',
                     'Checkpoint from which to start finetuning.')
-flags.DEFINE_string('logdir', '', 'Directory for writing training event logs')
+flags.DEFINE_string('checkpoint_dir', '',
+                    'Directory for writing training checkpoints and logs')
 flags.DEFINE_string('dataset_dir', '', 'Location of dataset')
 flags.DEFINE_integer('log_every_n_steps', 100, 'Number of steps per log')
 flags.DEFINE_integer('save_summaries_secs', 100,
@@ -191,7 +192,7 @@ def train_model():
   with g.as_default():
     slim.learning.train(
         train_tensor,
-        FLAGS.logdir,
+        FLAGS.checkpoint_dir,
         is_chief=(FLAGS.task == 0),
         master=FLAGS.master,
         log_every_n_steps=FLAGS.log_every_n_steps,
