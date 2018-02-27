@@ -253,8 +253,8 @@ def _smallest_size_at_least(height, width, smallest_side):
   scale = tf.cond(tf.greater(height, width),
                   lambda: smallest_side / width,
                   lambda: smallest_side / height)
-  new_height = tf.to_int32(height * scale)
-  new_width = tf.to_int32(width * scale)
+  new_height = tf.to_int32(tf.rint(height * scale))
+  new_width = tf.to_int32(tf.rint(width * scale))
   return new_height, new_width
 
 

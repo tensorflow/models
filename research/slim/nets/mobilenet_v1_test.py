@@ -104,7 +104,7 @@ class MobilenetV1Test(tf.test.TestCase):
             inputs, final_endpoint=endpoint)
         self.assertTrue(out_tensor.op.name.startswith(
             'MobilenetV1/' + endpoint))
-        self.assertItemsEqual(endpoints[:index+1], end_points)
+        self.assertItemsEqual(endpoints[:index+1], end_points.keys())
 
   def testBuildCustomNetworkUsingConvDefs(self):
     batch_size = 5
@@ -137,6 +137,9 @@ class MobilenetV1Test(tf.test.TestCase):
                         normalizer_fn=slim.batch_norm):
       _, end_points = mobilenet_v1.mobilenet_v1_base(
           inputs, final_endpoint='Conv2d_13_pointwise')
+      _, explicit_padding_end_points = mobilenet_v1.mobilenet_v1_base(
+          inputs, final_endpoint='Conv2d_13_pointwise',
+          use_explicit_padding=True)
     endpoints_shapes = {'Conv2d_0': [batch_size, 112, 112, 32],
                         'Conv2d_1_depthwise': [batch_size, 112, 112, 32],
                         'Conv2d_1_pointwise': [batch_size, 112, 112, 64],
@@ -165,10 +168,17 @@ class MobilenetV1Test(tf.test.TestCase):
                         'Conv2d_13_depthwise': [batch_size, 7, 7, 1024],
                         'Conv2d_13_pointwise': [batch_size, 7, 7, 1024]}
     self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
-    for endpoint_name, expected_shape in endpoints_shapes.items():
+    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
+    self.assertItemsEqual(endpoints_shapes.keys(),
+                          explicit_padding_end_points.keys())
+    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
+      self.assertTrue(endpoint_name in explicit_padding_end_points)
+      self.assertListEqual(
+          explicit_padding_end_points[endpoint_name].get_shape().as_list(),
+          expected_shape)
 
   def testOutputStride16BuildAndCheckAllEndPointsUptoConv2d_13(self):
     batch_size = 5
@@ -181,6 +191,9 @@ class MobilenetV1Test(tf.test.TestCase):
       _, end_points = mobilenet_v1.mobilenet_v1_base(
           inputs, output_stride=output_stride,
           final_endpoint='Conv2d_13_pointwise')
+      _, explicit_padding_end_points = mobilenet_v1.mobilenet_v1_base(
+          inputs, output_stride=output_stride,
+          final_endpoint='Conv2d_13_pointwise', use_explicit_padding=True)
     endpoints_shapes = {'Conv2d_0': [batch_size, 112, 112, 32],
                         'Conv2d_1_depthwise': [batch_size, 112, 112, 32],
                         'Conv2d_1_pointwise': [batch_size, 112, 112, 64],
@@ -209,10 +222,17 @@ class MobilenetV1Test(tf.test.TestCase):
                         'Conv2d_13_depthwise': [batch_size, 14, 14, 1024],
                         'Conv2d_13_pointwise': [batch_size, 14, 14, 1024]}
     self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
-    for endpoint_name, expected_shape in endpoints_shapes.items():
+    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
+    self.assertItemsEqual(endpoints_shapes.keys(),
+                          explicit_padding_end_points.keys())
+    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
+      self.assertTrue(endpoint_name in explicit_padding_end_points)
+      self.assertListEqual(
+          explicit_padding_end_points[endpoint_name].get_shape().as_list(),
+          expected_shape)
 
   def testOutputStride8BuildAndCheckAllEndPointsUptoConv2d_13(self):
     batch_size = 5
@@ -225,6 +245,9 @@ class MobilenetV1Test(tf.test.TestCase):
       _, end_points = mobilenet_v1.mobilenet_v1_base(
           inputs, output_stride=output_stride,
           final_endpoint='Conv2d_13_pointwise')
+      _, explicit_padding_end_points = mobilenet_v1.mobilenet_v1_base(
+          inputs, output_stride=output_stride,
+          final_endpoint='Conv2d_13_pointwise', use_explicit_padding=True)
     endpoints_shapes = {'Conv2d_0': [batch_size, 112, 112, 32],
                         'Conv2d_1_depthwise': [batch_size, 112, 112, 32],
                         'Conv2d_1_pointwise': [batch_size, 112, 112, 64],
@@ -253,10 +276,17 @@ class MobilenetV1Test(tf.test.TestCase):
                         'Conv2d_13_depthwise': [batch_size, 28, 28, 1024],
                         'Conv2d_13_pointwise': [batch_size, 28, 28, 1024]}
     self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
-    for endpoint_name, expected_shape in endpoints_shapes.items():
+    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
+    self.assertItemsEqual(endpoints_shapes.keys(),
+                          explicit_padding_end_points.keys())
+    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
+      self.assertTrue(endpoint_name in explicit_padding_end_points)
+      self.assertListEqual(
+          explicit_padding_end_points[endpoint_name].get_shape().as_list(),
+          expected_shape)
 
   def testBuildAndCheckAllEndPointsApproximateFaceNet(self):
     batch_size = 5
@@ -267,6 +297,9 @@ class MobilenetV1Test(tf.test.TestCase):
                         normalizer_fn=slim.batch_norm):
       _, end_points = mobilenet_v1.mobilenet_v1_base(
           inputs, final_endpoint='Conv2d_13_pointwise', depth_multiplier=0.75)
+      _, explicit_padding_end_points = mobilenet_v1.mobilenet_v1_base(
+          inputs, final_endpoint='Conv2d_13_pointwise', depth_multiplier=0.75,
+          use_explicit_padding=True)
     # For the Conv2d_0 layer FaceNet has depth=16
     endpoints_shapes = {'Conv2d_0': [batch_size, 64, 64, 24],
                         'Conv2d_1_depthwise': [batch_size, 64, 64, 24],
@@ -296,10 +329,17 @@ class MobilenetV1Test(tf.test.TestCase):
                         'Conv2d_13_depthwise': [batch_size, 4, 4, 768],
                         'Conv2d_13_pointwise': [batch_size, 4, 4, 768]}
     self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
-    for endpoint_name, expected_shape in endpoints_shapes.items():
+    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
+    self.assertItemsEqual(endpoints_shapes.keys(),
+                          explicit_padding_end_points.keys())
+    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
+      self.assertTrue(endpoint_name in explicit_padding_end_points)
+      self.assertListEqual(
+          explicit_padding_end_points[endpoint_name].get_shape().as_list(),
+          expected_shape)
 
   def testModelHasExpectedNumberOfParameters(self):
     batch_size = 5
@@ -310,7 +350,7 @@ class MobilenetV1Test(tf.test.TestCase):
       mobilenet_v1.mobilenet_v1_base(inputs)
       total_params, _ = slim.model_analyzer.analyze_vars(
           slim.get_model_variables())
-      self.assertAlmostEqual(3217920, total_params)
+      self.assertAlmostEqual(3217920L, total_params)
 
   def testBuildEndPointsWithDepthMultiplierLessThanOne(self):
     batch_size = 5
@@ -398,8 +438,8 @@ class MobilenetV1Test(tf.test.TestCase):
 
   def testGlobalPoolUnknownImageShape(self):
     tf.reset_default_graph()
-    batch_size = 2
-    height, width = 300, 400
+    batch_size = 1
+    height, width = 250, 300
     num_classes = 1000
     input_np = np.random.uniform(0, 1, (batch_size, height, width, 3))
     with self.test_session() as sess:
@@ -413,7 +453,7 @@ class MobilenetV1Test(tf.test.TestCase):
       feed_dict = {inputs: input_np}
       tf.global_variables_initializer().run()
       pre_pool_out = sess.run(pre_pool, feed_dict=feed_dict)
-      self.assertListEqual(list(pre_pool_out.shape), [batch_size, 10, 13, 1024])
+      self.assertListEqual(list(pre_pool_out.shape), [batch_size, 8, 10, 1024])
 
   def testUnknowBatchSize(self):
     batch_size = 1

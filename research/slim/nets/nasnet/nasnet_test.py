@@ -158,6 +158,19 @@ class NASNetTest(tf.test.TestCase):
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
 
+  def testNoAuxHeadCifarModel(self):
+    batch_size = 5
+    height, width = 32, 32
+    num_classes = 10
+    for use_aux_head in (True, False):
+      tf.reset_default_graph()
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      tf.train.create_global_step()
+      with slim.arg_scope(nasnet.nasnet_cifar_arg_scope()):
+        _, end_points = nasnet.build_nasnet_cifar(inputs, num_classes,
+                                                  use_aux_head=use_aux_head)
+      self.assertEqual('AuxLogits' in end_points, use_aux_head)
+
   def testAllEndPointsShapesMobileModel(self):
     batch_size = 5
     height, width = 224, 224
@@ -193,6 +206,19 @@ class NASNetTest(tf.test.TestCase):
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
+
+  def testNoAuxHeadMobileModel(self):
+    batch_size = 5
+    height, width = 224, 224
+    num_classes = 1000
+    for use_aux_head in (True, False):
+      tf.reset_default_graph()
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      tf.train.create_global_step()
+      with slim.arg_scope(nasnet.nasnet_mobile_arg_scope()):
+        _, end_points = nasnet.build_nasnet_mobile(inputs, num_classes,
+                                                   use_aux_head=use_aux_head)
+      self.assertEqual('AuxLogits' in end_points, use_aux_head)
 
   def testAllEndPointsShapesLargeModel(self):
     batch_size = 5
@@ -235,6 +261,19 @@ class NASNetTest(tf.test.TestCase):
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
+
+  def testNoAuxHeadLargeModel(self):
+    batch_size = 5
+    height, width = 331, 331
+    num_classes = 1000
+    for use_aux_head in (True, False):
+      tf.reset_default_graph()
+      inputs = tf.random_uniform((batch_size, height, width, 3))
+      tf.train.create_global_step()
+      with slim.arg_scope(nasnet.nasnet_large_arg_scope()):
+        _, end_points = nasnet.build_nasnet_large(inputs, num_classes,
+                                                  use_aux_head=use_aux_head)
+      self.assertEqual('AuxLogits' in end_points, use_aux_head)
 
   def testVariablesSetDeviceMobileModel(self):
     batch_size = 5
