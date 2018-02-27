@@ -201,7 +201,7 @@ py_library(
         ":cyclegan",
         ":inception",
         ":lenet",
-        ":mobilenet_v1",
+        ":mobilenet",
         ":nasnet",
         ":overfeat",
         ":pix2pix",
@@ -426,6 +426,34 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "mobilenet_v2",
+    srcs = glob(["nets/mobilenet/*.py"]),
+    srcs_version = "PY2AND3",
+    deps = [
+        "//third_party/py/contextlib2",
+        # "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "mobilenet_v2_test",
+    srcs = ["nets/mobilenet/mobilenet_v2_test.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":mobilenet",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "mobilenet",
+    deps = [
+        ":mobilenet_v1",
+        ":mobilenet_v2",
     ],
 )
 
