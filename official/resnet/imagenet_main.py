@@ -130,7 +130,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
       This can be optimized per data set but for generally homogeneous data
       sets, should be approximately the number of available CPU cores.
     multi_gpu: Whether this is run multi-GPU. Note that this is only required
-      currently to handle the batch leftovers (see below), and can be removed
+      currently to handle the batch leftovers, and can be removed
       when that is handled directly by Estimator.
 
   Returns:
@@ -142,16 +142,15 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
   if is_training:
     # Shuffle the input files
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
-    examples_per_epoch = _NUM_IMAGES['train']
-  else:
-    examples_per_epoch = _NUM_IMAGES['validation']
+
+  num_images = is_training and _NUM_IMAGES['train'] or _NUM_IMAGES['validation']
 
   # Convert to individual records
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
   return resnet.process_record_dataset(dataset, is_training, batch_size,
       _SHUFFLE_BUFFER, parse_record, num_epochs, num_parallel_calls,
-      examples_per_epoch=examples_per_epoch, multi_gpu=multi_gpu)
+      examples_per_epoch=num_images, multi_gpu=multi_gpu)
 
 
 ###############################################################################
