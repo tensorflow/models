@@ -111,7 +111,7 @@ class FasterRCNNResnetV1FeatureExtractor(
 
     with tf.control_dependencies([shape_assert]):
       # Disables batchnorm for fine-tuning with smaller batch sizes.
-      # TODO: Figure out if it is needed when image
+      # TODO(chensun): Figure out if it is needed when image
       # batch size is bigger.
       with slim.arg_scope(
           resnet_utils.resnet_arg_scope(

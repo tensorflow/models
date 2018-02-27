@@ -50,7 +50,7 @@ def write_metrics(metrics, global_step, summary_dir):
   logging.info('Metrics written to tf summary.')
 
 
-# TODO: Add tests.
+# TODO(rathodv): Add tests.
 def visualize_detection_results(result_dict,
                                 tag,
                                 global_step,
@@ -289,7 +289,7 @@ def _run_checkpoint_once(tensor_dict,
         for evaluator in evaluators:
           # TODO(b/65130867): Use image_id tensor once we fix the input data
           # decoders to return correct image_id.
-          # TODO: result_dict contains batches of images, while
+          # TODO(akuznetsa): result_dict contains batches of images, while
           # add_single_ground_truth_image_info expects a single image. Fix
           evaluator.add_single_ground_truth_image_info(
               image_id=batch, groundtruth_dict=result_dict)
@@ -314,7 +314,7 @@ def _run_checkpoint_once(tensor_dict,
   return (global_step, all_evaluator_metrics)
 
 
-# TODO: Add tests.
+# TODO(rathodv): Add tests.
 def repeated_checkpoint_run(tensor_dict,
                             summary_dir,
                             evaluators,
@@ -507,7 +507,7 @@ def result_dict_for_single_example(image,
 
   if detection_fields.detection_masks in detections:
     detection_masks = detections[detection_fields.detection_masks][0]
-    # TODO: This should be done in model's postprocess
+    # TODO(rathodv): This should be done in model's postprocess
     # function ideally.
     num_detections = tf.to_int32(detections[detection_fields.num_detections][0])
     detection_boxes = tf.slice(

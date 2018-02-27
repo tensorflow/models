@@ -235,7 +235,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
           train_config.prefetch_queue_capacity, data_augmentation_options)
 
     # Gather initial summaries.
-    # TODO: See if summaries can be added/extracted from global tf
+    # TODO(rathodv): See if summaries can be added/extracted from global tf
     # collections so that they don't have to be passed around.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
     global_summaries = set([])

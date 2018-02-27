@@ -224,7 +224,7 @@ def padded_one_hot_encoding(indices, depth, left_pad):
     ValueError: if `indices` does not have rank 1 or if `left_pad` or `depth are
       either negative or non-integers.
 
-  TODO: add runtime checks for depth and indices.
+  TODO(rathodv): add runtime checks for depth and indices.
   """
   if depth < 0 or not isinstance(depth, six.integer_types):
     raise ValueError('`depth` must be a non-negative integer.')
@@ -474,7 +474,7 @@ def normalize_to_target(inputs,
   Note that the rank of `inputs` must be known and the dimension to which
   normalization is to be applied should be statically defined.
 
-  TODO: Add option to scale by L2 norm of the entire input.
+  TODO(jonathanhuang): Add option to scale by L2 norm of the entire input.
 
   Args:
     inputs: A `Tensor` of arbitrary size.
@@ -704,7 +704,7 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
   Returns:
     A tf.float32 tensor of size [num_masks, image_height, image_width].
   """
-  # TODO: Make this a public function.
+  # TODO(rathodv): Make this a public function.
   def transform_boxes_relative_to_boxes(boxes, reference_boxes):
     boxes = tf.reshape(boxes, [-1, 2, 2])
     min_corner = tf.expand_dims(reference_boxes[:, 0:2], 1)

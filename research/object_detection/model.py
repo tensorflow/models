@@ -319,9 +319,11 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       else:
         category_index = label_map_util.create_category_index_from_labelmap(
             eval_input_config.label_map_path)
-      detection_and_groundtruth = vis_utils.draw_side_by_side_evaluation_image(
-          eval_dict, category_index, max_boxes_to_draw=20, min_score_thresh=0.2)
       if not use_tpu:
+        detection_and_groundtruth = (
+            vis_utils.draw_side_by_side_evaluation_image(
+                eval_dict, category_index, max_boxes_to_draw=20,
+                min_score_thresh=0.2))
         tf.summary.image('Detections_Left_Groundtruth_Right',
                          detection_and_groundtruth)
 
@@ -424,11 +426,11 @@ def populate_experiment(run_config,
   eval_config = configs['eval_config']
   eval_input_config = configs['eval_input_config']
 
-  if train_steps is None:
-    train_steps = train_config.num_steps if train_config.num_steps else None
+  if train_steps is None and train_config.num_steps:
+    train_steps = train_config.num_steps
 
-  if eval_steps is None:
-    eval_steps = eval_config.num_examples if eval_config.num_examples else None
+  if eval_steps is None and eval_config.num_examples:
+    eval_steps = eval_config.num_examples
 
   detection_model_fn = functools.partial(
       model_builder.build, model_config=model_config)

@@ -75,5 +75,21 @@ class LearningSchedulesTest(test_case.TestCase):
     exp_rates = [1.0, 1.0, 2.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0]
     self.assertAllClose(output_rates, exp_rates)
 
+  def testManualSteppingWithZeroBoundaries(self):
+    def graph_fn(global_step):
+      boundaries = []
+      rates = [0.01]
+      learning_rate = learning_schedules.manual_stepping(
+          global_step, boundaries, rates)
+      return (learning_rate,)
+
+    output_rates = [
+        self.execute(graph_fn, [np.array(i).astype(np.int64)])
+        for i in range(4)
+    ]
+    exp_rates = [0.01] * 4
+    self.assertAllClose(output_rates, exp_rates)
+
+
 if __name__ == '__main__':
   tf.test.main()

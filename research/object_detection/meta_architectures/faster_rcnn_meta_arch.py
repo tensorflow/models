@@ -365,7 +365,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       ValueError: If first_stage_anchor_generator is not of type
         grid_anchor_generator.GridAnchorGenerator.
     """
-    # TODO: add_summaries is currently unused. Respect that directive
+    # TODO(rathodv): add_summaries is currently unused. Respect that directive
     # in the future.
     super(FasterRCNNMetaArch, self).__init__(num_classes=num_classes)
 
@@ -597,7 +597,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
           `num_anchors` can differ depending on whether the model is created in
           training or inference mode.
 
-        (and if number_of_stages=1):
+        (and if number_of_stages > 1):
         7) refined_box_encodings: a 3-D tensor with shape
           [total_num_proposals, num_classes, 4] representing predicted
           (final) refined box encodings, where
@@ -910,8 +910,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
         preprocessed_inputs, scope=self.first_stage_feature_extractor_scope)
 
     feature_map_shape = tf.shape(rpn_features_to_crop)
-    anchors = self._first_stage_anchor_generator.generate(
-        [(feature_map_shape[1], feature_map_shape[2])])
+    anchors = box_list_ops.concatenate(
+        self._first_stage_anchor_generator.generate([(feature_map_shape[1],
+                                                      feature_map_shape[2])]))
     with slim.arg_scope(self._first_stage_box_predictor_arg_scope):
       kernel_size = self._first_stage_box_predictor_kernel_size
       rpn_box_predictor_features = slim.conv2d(
@@ -957,9 +958,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
         num_anchors_per_location,
         scope=self.first_stage_box_predictor_scope)
 
-    box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-    objectness_predictions_with_background = box_predictions[
-        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+    box_encodings = tf.concat(
+        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+    objectness_predictions_with_background = tf.concat(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1)
     return (tf.squeeze(box_encodings, axis=2),
             objectness_predictions_with_background)
 
@@ -1796,7 +1799,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
         # Create a new target assigner that matches the proposals to groundtruth
         # and returns the mask targets.
-        # TODO: Move `unmatched_cls_target` from constructor to assign
+        # TODO(rathodv): Move `unmatched_cls_target` from constructor to assign
         # function. This will enable reuse of a single target assigner for both
         # class targets and mask targets.
         mask_target_assigner = target_assigner.create_target_assigner(

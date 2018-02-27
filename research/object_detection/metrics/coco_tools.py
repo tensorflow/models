@@ -17,7 +17,7 @@
 Note that nothing in this file is tensorflow related and thus cannot
 be called directly as a slim metric, for example.
 
-TODO: wrap as a slim metric in metrics.py
+TODO(jonathanhuang): wrap as a slim metric in metrics.py
 
 
 Usage example: given a set of images with ids in the list image_ids
@@ -339,7 +339,7 @@ def ExportSingleImageGroundtruthToCoco(image_id,
 
   In the exported result, "area" fields are always set to the area of the
   groundtruth bounding box and "iscrowd" fields are always set to 0.
-  TODO: pass in "iscrowd" array for evaluating on COCO dataset.
+  TODO(jonathanhuang): pass in "iscrowd" array for evaluating on COCO dataset.
 
   Args:
     image_id: a unique image identifier either of type integer or string.
@@ -416,7 +416,7 @@ def ExportGroundtruthToCOCO(image_ids,
 
   In the exported result, "area" fields are always set to the area of the
   groundtruth bounding box and "iscrowd" fields are always set to 0.
-  TODO: pass in "iscrowd" array for evaluating on COCO dataset.
+  TODO(jonathanhuang): pass in "iscrowd" array for evaluating on COCO dataset.
 
   Args:
     image_ids: a list of unique image identifier either of type integer or

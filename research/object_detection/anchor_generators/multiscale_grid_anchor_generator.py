@@ -21,14 +21,15 @@ T.-Y. Lin, P. Goyal, R. Girshick, K. He, P. Dollar
 """
 
 from object_detection.anchor_generators import grid_anchor_generator
+from object_detection.core import anchor_generator
 from object_detection.core import box_list_ops
 
 
-class MultiscaleGridAnchorGenerator(object):
+class MultiscaleGridAnchorGenerator(anchor_generator.AnchorGenerator):
   """Generate a grid of anchors for multiple CNN layers of different scale."""
 
   def __init__(self, min_level, max_level, anchor_scale, aspect_ratios,
-               scales_per_octave):
+               scales_per_octave, normalize_coordinates=True):
     """Constructs a MultiscaleGridAnchorGenerator.
 
     To construct anchors, at multiple scale resolutions, one must provide a
@@ -48,10 +49,13 @@ class MultiscaleGridAnchorGenerator(object):
       aspect_ratios: list or tuple of (float) aspect ratios to place on each
         grid point.
       scales_per_octave: integer number of intermediate scales per scale octave.
+      normalize_coordinates: whether to produce anchors in normalized
+        coordinates. (defaults to True).
     """
     self._anchor_grid_info = []
     self._aspect_ratios = aspect_ratios
     self._scales_per_octave = scales_per_octave
+    self._normalize_coordinates = normalize_coordinates
 
     for level in range(min_level, max_level + 1):
       anchor_stride = [2**level, 2**level]
@@ -80,7 +84,7 @@ class MultiscaleGridAnchorGenerator(object):
     return len(self._anchor_grid_info) * [
         len(self._aspect_ratios) * self._scales_per_octave]
 
-  def generate(self, feature_map_shape_list, im_height, im_width):
+  def _generate(self, feature_map_shape_list, im_height, im_width):
     """Generates a collection of bounding boxes to be used as anchors.
 
     Currently we require the input image shape to be statically defined.  That
@@ -95,7 +99,8 @@ class MultiscaleGridAnchorGenerator(object):
       im_width: the width of the image to generate the grid for.
 
     Returns:
-      boxes: a BoxList holding a collection of N anchor boxes
+      boxes_list: a list of BoxLists each holding anchor boxes corresponding to
+        the input feature map shapes.
     Raises:
       ValueError: if im_height and im_width are not integers.
     """
@@ -105,7 +110,7 @@ class MultiscaleGridAnchorGenerator(object):
     anchor_grid_list = []
     for feat_shape, grid_info in zip(feature_map_shape_list,
                                      self._anchor_grid_info):
-      # TODO check the feature_map_shape_list is consistent with
+      # TODO(rathodv) check the feature_map_shape_list is consistent with
       # self._anchor_grid_info
       level = grid_info['level']
       stride = 2**level
@@ -123,9 +128,11 @@ class MultiscaleGridAnchorGenerator(object):
           base_anchor_size=base_anchor_size,
           anchor_stride=anchor_stride,
           anchor_offset=anchor_offset)
-      anchor_grid_list.append(
-          ag.generate(feature_map_shape_list=[(feat_h, feat_w)]))
+      (anchor_grid,) = ag.generate(feature_map_shape_list=[(feat_h, feat_w)])
 
-    concatenated_anchors = box_list_ops.concatenate(anchor_grid_list)
+      if self._normalize_coordinates:
+        anchor_grid = box_list_ops.to_normalized_coordinates(
+            anchor_grid, im_height, im_width, check_range=False)
+      anchor_grid_list.append(anchor_grid)
 
-    return concatenated_anchors
+    return anchor_grid_list

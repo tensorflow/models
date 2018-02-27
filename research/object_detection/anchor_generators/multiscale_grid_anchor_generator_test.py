@@ -37,10 +37,35 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
                           [-16, -48, 112, 80],
                           [-16, -16, 112, 112]]
     anchor_generator = mg.MultiscaleGridAnchorGenerator(
-        min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave)
-    anchors = anchor_generator.generate(feature_map_shape_list,
-                                        im_height, im_width)
-    anchor_corners = anchors.get()
+        min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+        normalize_coordinates=False)
+    anchors_list = anchor_generator.generate(
+        feature_map_shape_list, im_height=im_height, im_width=im_width)
+    anchor_corners = anchors_list[0].get()
+
+    with self.test_session():
+      anchor_corners_out = anchor_corners.eval()
+      self.assertAllClose(anchor_corners_out, exp_anchor_corners)
+
+  def test_construct_single_anchor_in_normalized_coordinates(self):
+    min_level = 5
+    max_level = 5
+    anchor_scale = 4.0
+    aspect_ratios = [1.0]
+    scales_per_octave = 1
+    im_height = 64
+    im_width = 128
+    feature_map_shape_list = [(2, 2)]
+    exp_anchor_corners = [[-48./64, -48./128, 80./64, 80./128],
+                          [-48./64, -16./128, 80./64, 112./128],
+                          [-16./64, -48./128, 112./64, 80./128],
+                          [-16./64, -16./128, 112./64, 112./128]]
+    anchor_generator = mg.MultiscaleGridAnchorGenerator(
+        min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+        normalize_coordinates=True)
+    anchors_list = anchor_generator.generate(
+        feature_map_shape_list, im_height=im_height, im_width=im_width)
+    anchor_corners = anchors_list[0].get()
 
     with self.test_session():
       anchor_corners_out = anchor_corners.eval()
@@ -53,7 +78,8 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
     aspect_ratios = [1.0, 2.0]
     scales_per_octave = 3
     anchor_generator = mg.MultiscaleGridAnchorGenerator(
-        min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave)
+        min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+        normalize_coordinates=False)
     self.assertEqual(anchor_generator.num_anchors_per_location(), [6, 6])
 
   def test_construct_single_anchor_fails_with_tensor_image_size(self):
@@ -66,9 +92,11 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
     im_width = tf.constant(64)
     feature_map_shape_list = [(2, 2)]
     anchor_generator = mg.MultiscaleGridAnchorGenerator(
-        min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave)
+        min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+        normalize_coordinates=False)
     with self.assertRaises(ValueError):
-      anchor_generator.generate(feature_map_shape_list, im_height, im_width)
+      anchor_generator.generate(
+          feature_map_shape_list, im_height=im_height, im_width=im_width)
 
   def test_construct_single_anchor_with_odd_input_dimension(self):
 
@@ -82,10 +110,11 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
       im_width = 65
       feature_map_shape_list = [(3, 3)]
       anchor_generator = mg.MultiscaleGridAnchorGenerator(
-          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave)
-      anchors = anchor_generator.generate(feature_map_shape_list, im_height,
-                                          im_width)
-      anchor_corners = anchors.get()
+          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+          normalize_coordinates=False)
+      anchors_list = anchor_generator.generate(
+          feature_map_shape_list, im_height=im_height, im_width=im_width)
+      anchor_corners = anchors_list[0].get()
       return (anchor_corners,)
     anchor_corners_out = self.execute(graph_fn, [])
     exp_anchor_corners = [[-64, -64, 64, 64],
@@ -111,13 +140,15 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
       im_width = 64
       feature_map_shape_list = [(2, 2), (1, 1)]
       anchor_generator = mg.MultiscaleGridAnchorGenerator(
-          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave)
-      anchors = anchor_generator.generate(feature_map_shape_list, im_height,
-                                          im_width)
-      anchor_corners = anchors.get()
-      return (anchor_corners,)
+          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+          normalize_coordinates=False)
+      anchors_list = anchor_generator.generate(feature_map_shape_list,
+                                               im_height=im_height,
+                                               im_width=im_width)
+      anchor_corners = [anchors.get() for anchors in anchors_list]
+      return anchor_corners
 
-    anchor_corners_out = self.execute(graph_fn, [])
+    anchor_corners_out = np.concatenate(self.execute(graph_fn, []), axis=0)
     exp_anchor_corners = [[-48, -48, 80, 80],
                           [-48, -16, 80, 112],
                           [-16, -48, 112, 80],
@@ -135,19 +166,22 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
       scales_per_octave = 2
       im_height = 64
       im_width = 64
-      feature_map_shape_list = [(1, 1), (1, 1)]
+      feature_map_shape_list = [(1, 1)]
 
       anchor_generator = mg.MultiscaleGridAnchorGenerator(
-          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave)
-      anchors = anchor_generator.generate(feature_map_shape_list, im_height,
-                                          im_width)
-      anchor_corners = anchors.get()
-      return (anchor_corners,)
+          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+          normalize_coordinates=False)
+      anchors_list = anchor_generator.generate(feature_map_shape_list,
+                                               im_height=im_height,
+                                               im_width=im_width)
+      anchor_corners = [anchors.get() for anchors in anchors_list]
+      return anchor_corners
     # There are 4 set of anchors in this configuration. The order is:
     # [[2**0.0 intermediate scale + 1.0 aspect],
     #  [2**0.5 intermediate scale + 1.0 aspect]]
     exp_anchor_corners = [[-96., -96., 160., 160.],
                           [-149.0193, -149.0193, 213.0193, 213.0193]]
+
     anchor_corners_out = self.execute(graph_fn, [])
     self.assertAllClose(anchor_corners_out, exp_anchor_corners)
 
@@ -160,18 +194,21 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
       scales_per_octave = 2
       im_height = 64
       im_width = 64
-      feature_map_shape_list = [(1, 1), (1, 1), (1, 1), (1, 1)]
+      feature_map_shape_list = [(1, 1)]
       anchor_generator = mg.MultiscaleGridAnchorGenerator(
-          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave)
-      anchors = anchor_generator.generate(feature_map_shape_list, im_height,
-                                          im_width)
-      anchor_corners = anchors.get()
+          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+          normalize_coordinates=False)
+      anchors_list = anchor_generator.generate(feature_map_shape_list,
+                                               im_height=im_height,
+                                               im_width=im_width)
+      anchor_corners = [anchors.get() for anchors in anchors_list]
       return anchor_corners
     # There are 4 set of anchors in this configuration. The order is:
     # [[2**0.0 intermediate scale + 1.0 aspect],
     #  [2**0.5 intermediate scale + 1.0 aspect],
     #  [2**0.0 intermediate scale + 2.0 aspect],
     #  [2**0.5 intermediate scale + 2.0 aspect]]
+
     exp_anchor_corners = [[-96., -96., 160., 160.],
                           [-149.0193, -149.0193, 213.0193, 213.0193],
                           [-58.50967, -149.0193, 122.50967, 213.0193],
@@ -193,18 +230,22 @@ class MultiscaleGridAnchorGeneratorTest(test_case.TestCase):
       feature_map_shape_list = [(feature_map1_height, feature_map1_width),
                                 (feature_map2_height, feature_map2_width)]
       anchor_generator = mg.MultiscaleGridAnchorGenerator(
-          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave)
-      anchors = anchor_generator.generate(feature_map_shape_list, im_height,
-                                          im_width)
-      anchor_corners = anchors.get()
-      return (anchor_corners,)
+          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+          normalize_coordinates=False)
+      anchors_list = anchor_generator.generate(feature_map_shape_list,
+                                               im_height=im_height,
+                                               im_width=im_width)
+      anchor_corners = [anchors.get() for anchors in anchors_list]
+      return anchor_corners
 
-    anchor_corners_out = self.execute_cpu(graph_fn, [
-        np.array(2, dtype=np.int32),
-        np.array(2, dtype=np.int32),
-        np.array(1, dtype=np.int32),
-        np.array(1, dtype=np.int32)
-    ])
+    anchor_corners_out = np.concatenate(
+        self.execute_cpu(graph_fn, [
+            np.array(2, dtype=np.int32),
+            np.array(2, dtype=np.int32),
+            np.array(1, dtype=np.int32),
+            np.array(1, dtype=np.int32)
+        ]),
+        axis=0)
     exp_anchor_corners = [[-48, -48, 80, 80],
                           [-48, -16, 80, 112],
                           [-16, -48, 112, 80],
