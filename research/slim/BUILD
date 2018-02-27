@@ -624,7 +624,7 @@ py_test(
 py_binary(
     name = "train_image_classifier",
     srcs = ["train_image_classifier.py"],
-    paropts = ["--compress"],  # go/par-nocompress 674 MiB -> 1.5 GiB 1m35s -> 32s
+    paropts = ["--compress"],
     deps = [
         ":dataset_factory",
         ":model_deploy",
@@ -648,7 +648,7 @@ py_binary(
 py_binary(
     name = "export_inference_graph",
     srcs = ["export_inference_graph.py"],
-    paropts = ["--compress"],  # go/par-nocompress 674 MiB -> 1.5 GiB 1m41s -> 32s
+    paropts = ["--compress"],
     deps = [
         ":dataset_factory",
         ":nets_factory",
