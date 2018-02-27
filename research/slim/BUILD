@@ -442,6 +442,28 @@ py_test(
     ],
 )
 
+py_binary(
+    name = "mobilenet_v1_train",
+    srcs = ["nets/mobilenet_v1_train.py"],
+    deps = [
+        ":dataset_factory",
+        ":mobilenet_v1",
+        ":preprocessing_factory",
+        # "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "mobilenet_v1_eval",
+    srcs = ["nets/mobilenet_v1_eval.py"],
+    deps = [
+        ":dataset_factory",
+        ":mobilenet_v1",
+        ":preprocessing_factory",
+        # "//tensorflow",
+    ],
+)
+
 py_library(
     name = "nasnet_utils",
     srcs = ["nets/nasnet/nasnet_utils.py"],
