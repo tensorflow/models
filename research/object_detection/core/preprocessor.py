@@ -2251,36 +2251,32 @@ def resize_to_range(image,
         align_corners=align_corners, preserve_aspect_ratio=True)
 
   with tf.name_scope('ResizeToRange', values=[image, min_dimension]):
-    if image.get_shape().is_fully_defined():
-      if image.get_shape()[0] < image.get_shape()[1]:
-        new_image = _resize_landscape_image(image)
-      else:
-        new_image = _resize_portrait_image(image)
-      new_size = tf.constant(new_image.get_shape().as_list())
-    else:
-      new_image = tf.cond(
-          tf.less(tf.shape(image)[0], tf.shape(image)[1]),
-          lambda: _resize_landscape_image(image),
-          lambda: _resize_portrait_image(image))
-      new_size = tf.shape(new_image)
+    # Removed resizing
+    #if image.get_shape().is_fully_defined():
+    #  new_size = _compute_new_static_size(image, min_dimension, max_dimension)
+    #else:
+    #  new_size = _compute_new_dynamic_size(image, min_dimension, max_dimension)
+    #new_image = tf.image.resize_images(
+    #    image, new_size[:-1], method=method, align_corners=align_corners)
 
-    if pad_to_max_dimension:
-      channels = tf.unstack(new_image, axis=2)
-      if len(channels) != len(per_channel_pad_value):
-        raise ValueError('Number of channels must be equal to the length of '
-                         'per-channel pad value.')
-      new_image = tf.stack(
-          [
-              tf.pad(
-                  channels[i], [[0, max_dimension - new_size[0]],
-                                [0, max_dimension - new_size[1]]],
-                  constant_values=per_channel_pad_value[i])
-              for i in range(len(channels))
-          ],
-          axis=2)
-      new_image.set_shape([max_dimension, max_dimension, 3])
+    #if pad_to_max_dimension:
+    #  channels = tf.unstack(new_image, axis=2)
+    #  if len(channels) != len(per_channel_pad_value):
+    #    raise ValueError('Number of channels must be equal to the length of '
+    #                     'per-channel pad value.')
+    #  new_image = tf.stack(
+    #      [
+    #          tf.pad(
+    #              channels[i], [[0, max_dimension - new_size[0]],
+    #                            [0, max_dimension - new_size[1]]],
+    #              constant_values=per_channel_pad_value[i])
+    #          for i in range(len(channels))
+    #      ],
+    #      axis=2)
+    #  new_image.set_shape([max_dimension, max_dimension, 3])
 
-    result = [new_image]
+    #result = [new_image]
+    result = [image]
     if masks is not None:
       new_masks = tf.expand_dims(masks, 3)
       new_masks = tf.image.resize_images(
@@ -2294,7 +2290,7 @@ def resize_to_range(image,
       new_masks = tf.squeeze(new_masks, 3)
       result.append(new_masks)
 
-    result.append(new_size)
+    result.append(tf.shape(image))
     return result
 
 
