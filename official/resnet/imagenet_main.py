@@ -119,7 +119,7 @@ def parse_record(raw_record, is_training):
 
 
 def input_fn(is_training, data_dir, batch_size, num_epochs=1,
-             num_parallel_calls=1):
+             num_parallel_calls=1, multi_gpu=False):
   """Input function which provides batches for train or eval.
   Args:
     is_training: A boolean denoting whether the input is for training.
@@ -129,6 +129,9 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
     num_parallel_calls: The number of records that are processed in parallel.
       This can be optimized per data set but for generally homogeneous data
       sets, should be approximately the number of available CPU cores.
+    multi_gpu: Whether this is run multi-GPU. Note that this is only required
+      currently to handle the batch leftovers (see below), and can be removed
+      when that is handled directly by Estimator.
 
   Returns:
     A dataset that can be used for iteration.
@@ -139,18 +142,16 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
   if is_training:
     # Shuffle the input files
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
+    examples_per_epoch = _NUM_IMAGES['train']
+  else:
+    examples_per_epoch = _NUM_IMAGES['validation']
 
   # Convert to individual records
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
-  # Currently, if we are using multiple GPUs, we can't pass in uneven batches.
-  # This ensures that we cut off the uneven images at the end of each epoch
-  # (there are fifteen leftovers), rather than trying and failing to split
-  # them across multiple GPUs.
-  dataset = dataset.take(batch_size * (_NUM_IMAGES['train'] // batch_size))
-
   return resnet.process_record_dataset(dataset, is_training, batch_size,
-      _SHUFFLE_BUFFER, parse_record, num_epochs, num_parallel_calls)
+      _SHUFFLE_BUFFER, parse_record, num_epochs, num_parallel_calls,
+      examples_per_epoch=examples_per_epoch, multi_gpu=multi_gpu)
 
 
 ###############################################################################

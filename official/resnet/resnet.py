@@ -46,7 +46,8 @@ _BATCH_NORM_EPSILON = 1e-5
 # Functions for input processing.
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
-                           parse_record_fn, num_epochs=1, num_parallel_calls=1):
+                           parse_record_fn, num_epochs=1, num_parallel_calls=1,
+                           examples_per_epoch=0, multi_gpu=False):
   """Given a Dataset with raw records, parse each record into images and labels,
   and return an iterator over the records.
 
@@ -63,6 +64,12 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     num_parallel_calls: The number of records that are processed in parallel.
       This can be optimized per data set but for generally homogeneous data
       sets, should be approximately the number of available CPU cores.
+    examples_per_epoch: The number of examples in the current set that
+      are processed each epoch. Note that this is only used for multi-GPU mode,
+      and only to handle what will eventually be handled inside of Estimator.
+    multi_gpu: Whether this is run multi-GPU. Note that this is only required
+      currently to handle the batch leftovers (see below), and can be removed
+      when that is handled directly by Estimator.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -78,6 +85,17 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # If we are training over multiple epochs before evaluating, repeat the
   # dataset for the appropriate number of epochs.
   dataset = dataset.repeat(num_epochs)
+
+  # Currently, if we are using multiple GPUs, we can't pass in uneven batches.
+  # (For example, if we have 4 GPUs, the number of examples in each batch
+  # must be divisible by 4.) We already ensured this for the batch_size, but
+  # we have to additionally ensure that any "leftover" examples-- the remainder
+  # examples (total examples % batch_size) that get called a batch for the very
+  # last batch of an epoch-- do not raise an error when we try to split them
+  # over the GPUs. This will likely be handled by Estimator during replication
+  # in the future, but for now, we just drop the leftovers here.
+  if multi_gpu:
+    dataset = dataset.take(batch_size * (num_epochs * total_images // batch_size))
 
   # Parse the raw records into images and labels
   dataset = dataset.map(lambda value: parse_record_fn(value, is_training),
@@ -616,7 +634,8 @@ def resnet_main(flags, model_function, input_function):
 
     def input_fn_train():
       return input_function(True, flags.data_dir, flags.batch_size,
-                            flags.epochs_per_eval, flags.num_parallel_calls)
+                            flags.epochs_per_eval, flags.num_parallel_calls,
+                            multi_gpu)
 
     classifier.train(input_fn=input_fn_train, hooks=[logging_hook])
 
@@ -624,7 +643,7 @@ def resnet_main(flags, model_function, input_function):
     # Evaluate the model and print results
     def input_fn_eval():
       return input_function(False, flags.data_dir, flags.batch_size,
-                            1, flags.num_parallel_calls)
+                            1, flags.num_parallel_calls, multi_gpu)
 
     eval_results = classifier.evaluate(input_fn=input_fn_eval)
     print(eval_results)
