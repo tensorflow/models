@@ -4,7 +4,7 @@ Code for [*Adversarial Training Methods for Semi-Supervised Text Classification*
 
 ## Requirements
 
-* TensorFlow >= v1.1
+* TensorFlow >= v1.3
 
 ## End-to-end IMDB Sentiment Classification
 
