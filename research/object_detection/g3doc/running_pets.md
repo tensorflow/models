@@ -43,6 +43,8 @@ Please run through the [installation instructions](installation.md) to install
 Tensorflow and all it dependencies. Ensure the Protobuf libraries are
 compiled and the library directories are added to `PYTHONPATH`.
 
+**Note**: Will probably need to install Cython `pip install cython`.
+
 ## Getting the Oxford-IIIT Pets Dataset and Uploading it to Google Cloud Storage
 
 In order to train a detector, we require a dataset of images, bounding boxes and
@@ -99,8 +101,8 @@ copy the files into your GCS bucket (substituting `${YOUR_GCS_BUCKET}`):
 
 ``` bash
 # From tensorflow/models/research/
-gsutil cp pet_train.record gs://${YOUR_GCS_BUCKET}/data/pet_train.record
-gsutil cp pet_val.record gs://${YOUR_GCS_BUCKET}/data/pet_val.record
+gsutil cp pet_train_with_masks.record gs://${YOUR_GCS_BUCKET}/data/pet_train.record
+gsutil cp pet_val_with_masks.record gs://${YOUR_GCS_BUCKET}/data/pet_val.record
 gsutil cp object_detection/data/pet_label_map.pbtxt gs://${YOUR_GCS_BUCKET}/data/pet_label_map.pbtxt
 ```
 
