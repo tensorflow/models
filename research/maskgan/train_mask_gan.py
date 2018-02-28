@@ -81,8 +81,7 @@ tf.app.flags.DEFINE_enum(
 tf.app.flags.DEFINE_string('master', '',
                            """Name of the TensorFlow master to use.""")
 tf.app.flags.DEFINE_string('eval_master', '',
-                           """Name prefix of the Tensorflow eval master,
-                    or "local".""")
+                           """Name prefix of the Tensorflow eval master.""")
 tf.app.flags.DEFINE_integer('task', 0,
                             """Task id of the replica running the training.""")
 tf.app.flags.DEFINE_integer('ps_tasks', 0, """Number of tasks in the ps job.
