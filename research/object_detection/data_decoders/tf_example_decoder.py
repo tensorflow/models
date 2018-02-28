@@ -106,8 +106,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Image(
                 image_key='image/encoded',
                 format_key='image/format',
-                channels=3,
-                dct_method=dct_method),
+                channels=3),
         fields.InputDataFields.source_id: (
             slim_example_decoder.Tensor('image/source_id')),
         fields.InputDataFields.key: (
@@ -160,10 +159,13 @@ class TfExampleDecoder(data_decoder.DataDecoder):
           default_value=-1)
       # If the label_map_proto is provided, try to use it in conjunction with
       # the class text, and fall back to a materialized ID.
+      """
       label_handler = slim_example_decoder.BackupHandler(
           slim_example_decoder.LookupTensor(
               'image/object/class/text', table, default_value=''),
           slim_example_decoder.Tensor('image/object/class/label'))
+      """
+      label_handler = slim_example_decoder.Tensor('image/object/class/label')
     else:
       label_handler = slim_example_decoder.Tensor('image/object/class/label')
     self.items_to_handlers[
