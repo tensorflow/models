@@ -582,8 +582,7 @@ def resnet_main(flags, model_function, input_function):
     # in the model_fn itself when the optimizer is defined.
     model_function = tf.contrib.estimator.replicate_model_fn(
         model_function,
-        loss_reduction=tf.losses.Reduction.MEAN,
-        devices=devices)
+        loss_reduction=tf.losses.Reduction.MEAN)
 
   # Set up a RunConfig to only save checkpoints once per training cycle.
   run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
