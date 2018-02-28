@@ -545,49 +545,28 @@ def resnet_model_fn(features, labels, mode, model_class,
       eval_metric_ops=metrics)
 
 
-def get_devices(requested_num_gpus):
-  """Returns the list of available GPUs, or the subset explicitly specified,
-  if available. If requested_num_gpus is specified, truncates the list of available
-  to that number.
-
-  Args:
-    requested_num_gpus: int or None representing the number of GPUs desired.
-
-  Returns:
-    List of device names to use.
-
-  Raises:
-    ValueError: if there are no GPUs or not enough GPUs.
-  """
-  from tensorflow.python.client import device_lib
-
-  local_device_protos = device_lib.list_local_devices()
-  avail_gpus = [d.name for d in local_device_protos if d.device_type == 'GPU']
-
-  if not avail_gpus or len(avail_gpus) < requested_num_gpus:
-    err = ('Multiple GPUs were requested, but sufficient GPUs could not be '
-           'found. Found {} GPUs.\nTo use CPU, run without --multi_gpu '
-           'and without --num_gpus.').format(len(avail_gpus))
-    raise ValueError(err)
-
-  if requested_num_gpus:
-    avail_gpus = avail_gpus[:requested_num_gpus]
-  return avail_gpus
-
-
-def validate_batch_size_for_multi_gpu(batch_size, num_gpus):
+def validate_batch_size_for_multi_gpu(batch_size):
   """For multi-gpu, batch-size must be a multiple of the number of
   available GPUs.
+
   Note that this should eventually be handled by replicate_model_fn
   directly. Multi-GPU support is currently experimental, however,
   so doing the work here until that feature is in place.
   """
+  from tensorflow.python.client import device_lib
+
+  local_device_protos = device_lib.list_local_devices()
+  num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
+  if not num_gpus:
+    raise ValueError('Multi-GPU mode was specified, but no GPUs '
+      'were found. To use CPU, run without --multi_gpu.')
+
   remainder = batch_size % num_gpus
   if remainder:
     err = ('When running with multiple GPUs, batch size '
-           'must be a multiple of the number of available GPUs. '
-           'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
-          ).format(num_gpus, batch_size, batch_size - remainder)
+      'must be a multiple of the number of available GPUs. '
+      'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
+      ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
 
 
@@ -595,12 +574,8 @@ def resnet_main(flags, model_function, input_function):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
-  multi_gpu = False
-  if flags.multi_gpu or flags.num_gpus > 0:
-    devices = get_devices(flags.num_gpus)
-    validate_batch_size_for_multi_gpu(flags.batch_size, len(devices))
-
-    multi_gpu = True
+  if flags.multi_gpu:
+    validate_batch_size_for_multi_gpu(flags.batch_size)
 
     # There are two steps required if using multi-GPU: (1) wrap the model_fn,
     # and (2) wrap the optimizer. The first happens here, and (2) happens
@@ -618,7 +593,7 @@ def resnet_main(flags, model_function, input_function):
           'resnet_size': flags.resnet_size,
           'data_format': flags.data_format,
           'batch_size': flags.batch_size,
-          'multi_gpu': multi_gpu,
+          'multi_gpu': flags.multi_gpu,
       })
 
   for _ in range(flags.train_epochs // flags.epochs_per_eval):
@@ -636,7 +611,7 @@ def resnet_main(flags, model_function, input_function):
     def input_fn_train():
       return input_function(True, flags.data_dir, flags.batch_size,
                             flags.epochs_per_eval, flags.num_parallel_calls,
-                            multi_gpu)
+                            flags.multi_gpu)
 
     classifier.train(input_fn=input_fn_train, hooks=[logging_hook])
 
@@ -644,7 +619,7 @@ def resnet_main(flags, model_function, input_function):
     # Evaluate the model and print results
     def input_fn_eval():
       return input_function(False, flags.data_dir, flags.batch_size,
-                            1, flags.num_parallel_calls, multi_gpu)
+                            1, flags.num_parallel_calls, flags.multi_gpu)
 
     eval_results = classifier.evaluate(input_fn=input_fn_eval)
     print(eval_results)
@@ -701,8 +676,3 @@ class ResnetArgParser(argparse.ArgumentParser):
         '--multi_gpu', action='store_true',
         help='If set, run across all available GPUs. Note that this is '
         'superseded by the --num_gpus flag.')
-
-    self.add_argument(
-        '--num_gpus', type=int, default=None,
-        help='Use num_gpus GPUs to run the model. Note that this supersedes '
-        'the --multi_gpu flag.')
