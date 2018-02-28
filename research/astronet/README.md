@@ -62,7 +62,7 @@ First, ensure that you have installed the following required packages:
 
 * **TensorFlow** ([instructions](https://www.tensorflow.org/install/))
 * **Pandas** ([instructions](http://pandas.pydata.org/pandas-docs/stable/install.html))
-* **NumPy** ([instructions](https://docs.scipy.org/docs/numpy/user/install.html))
+* **NumPy** ([instructions](https://docs.scipy.org/doc/numpy/user/install.html))
 * **AstroPy** ([instructions](http://www.astropy.org/))
 * **PyDl** ([instructions](https://pypi.python.org/pypi/pydl))
 * **Bazel** ([instructions](https://docs.bazel.build/versions/master/install.html))
