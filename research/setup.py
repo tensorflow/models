@@ -4,7 +4,12 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-REQUIRED_PACKAGES = ['Pillow>=1.0']
+REQUIRED_PACKAGES = [
+    'Pillow>=1.0',
+    'matplotlib',
+    'tensorflow==1.5.0',
+    'numpy==1.11',
+]
 
 setup(
     name='object_detection',
