@@ -465,7 +465,7 @@ allow_soft_placement: true
 2017-07-31 22:54:58.929873: I tensorflow/core/distributed_runtime/rpc/grpc_server_lib.cc:316] Started server with target: grpc://localhost:8000
 ```
 
-## Visualizing results with TensorFlow
+## Visualizing results with TensorBoard
 
 When using Estimators you can also visualize your data in TensorBoard, with no
 changes in your code. You can use TensorBoard to visualize your TensorFlow
@@ -473,14 +473,13 @@ graph, plot quantitative metrics about the execution of your graph, and show
 additional data like images that pass through it.
 
 You'll see something similar to this if you "point" TensorBoard to the
-`model_dir` you used to train or evaluate your model.
+`job dir` parameter you used to train or evaluate your model.
 
 Check TensorBoard during training or after it. Just point TensorBoard to the
-model_dir you chose on the previous step by default the model_dir is
-"sentiment_analysis_output"
+model_dir you chose on the previous step.
 
 ```shell
-tensorboard --log-dir="sentiment_analysis_output"
+tensorboard --log-dir="<job dir>"
 ```
 
 ## Warnings

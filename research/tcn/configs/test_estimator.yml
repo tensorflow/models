@@ -1,0 +1,29 @@
+use_tpu: False
+training_strategy: 'mvtcn'
+loss_strategy: 'triplet_semihard'
+
+learning:
+  max_step: 2
+  optimizer: 'adam'
+
+embedding_size: 8
+
+data:
+  embed_batch_size: 12
+  batch_size: 12
+  examples_per_sequence: 12
+  num_views: 2
+  num_parallel_calls: 1
+  sequence_prefetch_size: 1
+  batch_prefetch_size: 1
+
+logging:
+  summary:
+    image_summaries: false
+    save_summaries_steps: 100
+    flush_secs: 600
+    save_summaries_secs: 60
+  checkpoint:
+    num_to_keep: 0 # Keep all checkpoints.
+    save_checkpoints_steps: 1000
+    secs: 1800

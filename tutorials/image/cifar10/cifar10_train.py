@@ -59,7 +59,7 @@ tf.app.flags.DEFINE_integer('log_frequency', 10,
 def train():
   """Train CIFAR-10 for a number of steps."""
   with tf.Graph().as_default():
-    global_step = tf.contrib.framework.get_or_create_global_step()
+    global_step = tf.train.get_or_create_global_step()
 
     # Get images and labels for CIFAR-10.
     # Force input pipeline to CPU:0 to avoid operations sometimes ending up on

@@ -24,10 +24,10 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import cPickle
 import os
 
 import tarfile
+from six.moves import cPickle as pickle
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
@@ -49,7 +49,7 @@ def _int64_feature(value):
 
 
 def _bytes_feature(value):
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[str(value)]))
+  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
 def _get_file_names():
@@ -62,8 +62,8 @@ def _get_file_names():
 
 
 def read_pickle_from_file(filename):
-  with tf.gfile.Open(filename, 'r') as f:
-    data_dict = cPickle.load(f)
+  with tf.gfile.Open(filename, 'rb') as f:
+    data_dict = pickle.load(f)
   return data_dict
 
 

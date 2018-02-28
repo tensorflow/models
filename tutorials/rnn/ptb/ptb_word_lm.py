@@ -162,7 +162,7 @@ class PTBModel(object):
     optimizer = tf.train.GradientDescentOptimizer(self._lr)
     self._train_op = optimizer.apply_gradients(
         zip(grads, tvars),
-        global_step=tf.contrib.framework.get_or_create_global_step())
+        global_step=tf.train.get_or_create_global_step())
 
     self._new_lr = tf.placeholder(
         tf.float32, shape=[], name="new_learning_rate")
@@ -213,25 +213,27 @@ class PTBModel(object):
     # Slightly better results can be obtained with forget gate biases
     # initialized to 1 but the hyperparameters of the model would need to be
     # different than reported in the paper.
-    cell = self._get_lstm_cell(config, is_training)
-    if is_training and config.keep_prob < 1:
-      cell = tf.contrib.rnn.DropoutWrapper(
-          cell, output_keep_prob=config.keep_prob)
+    def make_cell():
+      cell = self._get_lstm_cell(config, is_training)
+      if is_training and config.keep_prob < 1:
+        cell = tf.contrib.rnn.DropoutWrapper(
+            cell, output_keep_prob=config.keep_prob)
+      return cell
 
     cell = tf.contrib.rnn.MultiRNNCell(
-        [cell for _ in range(config.num_layers)], state_is_tuple=True)
+        [make_cell() for _ in range(config.num_layers)], state_is_tuple=True)
 
     self._initial_state = cell.zero_state(config.batch_size, data_type())
     state = self._initial_state
-    # Simplified version of tensorflow_models/tutorials/rnn/rnn.py's rnn().
+    # Simplified version of tf.nn.static_rnn().
     # This builds an unrolled LSTM for tutorial purposes only.
-    # In general, use the rnn() or state_saving_rnn() from rnn.py.
+    # In general, use tf.nn.static_rnn() or tf.nn.static_state_saving_rnn().
     #
     # The alternative version of the code below is:
     #
-    # inputs = tf.unstack(inputs, num=num_steps, axis=1)
-    # outputs, state = tf.contrib.rnn.static_rnn(cell, inputs,
-    #                            initial_state=self._initial_state)
+    # inputs = tf.unstack(inputs, num=self.num_steps, axis=1)
+    # outputs, state = tf.nn.static_rnn(cell, inputs,
+    #                                   initial_state=self._initial_state)
     outputs = []
     with tf.variable_scope("RNN"):
       for time_step in range(self.num_steps):
@@ -252,7 +254,7 @@ class PTBModel(object):
       ops.update(lr=self._lr, new_lr=self._new_lr, lr_update=self._lr_update)
       if self._rnn_params:
         ops.update(rnn_params=self._rnn_params)
-    for name, op in ops.iteritems():
+    for name, op in ops.items():
       tf.add_to_collection(name, op)
     self._initial_state_name = util.with_prefix(self._name, "initial")
     self._final_state_name = util.with_prefix(self._name, "final")
@@ -329,7 +331,7 @@ class SmallConfig(object):
   lr_decay = 0.5
   batch_size = 20
   vocab_size = 10000
-  rnn_mode = CUDNN
+  rnn_mode = BLOCK
 
 
 class MediumConfig(object):
@@ -484,7 +486,7 @@ def main(_):
                          input_=test_input)
 
     models = {"Train": m, "Valid": mvalid, "Test": mtest}
-    for name, model in models.iteritems():
+    for name, model in models.items():
       model.export_ops(name)
     metagraph = tf.train.export_meta_graph()
     if tf.__version__ < "1.1.0" and FLAGS.num_gpus > 1:

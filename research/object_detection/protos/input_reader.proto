@@ -1,0 +1,82 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Configuration proto for defining input readers that generate Object Detection
+// Examples from input sources. Input readers are expected to generate a
+// dictionary of tensors, with the following fields populated:
+//
+// 'image': an [image_height, image_width, channels] image tensor that detection
+//    will be run on.
+// 'groundtruth_classes': a [num_boxes] int32 tensor storing the class
+//    labels of detected boxes in the image.
+// 'groundtruth_boxes': a [num_boxes, 4] float tensor storing the coordinates of
+//    detected boxes in the image.
+// 'groundtruth_instance_masks': (Optional), a [num_boxes, image_height,
+//    image_width] float tensor storing binary mask of the objects in boxes.
+
+// Instance mask format. Note that PNG masks are much more space efficient.
+enum InstanceMaskType {
+  DEFAULT = 0;          // Default implementation, currently NUMERICAL_MASKS
+  NUMERICAL_MASKS = 1;  // [num_masks, H, W] float32 binary masks.
+  PNG_MASKS = 2;        // Encoded PNG masks.
+}
+
+message InputReader {
+  // Path to StringIntLabelMap pbtxt file specifying the mapping from string
+  // labels to integer ids.
+  optional string label_map_path = 1 [default=""];
+
+  // Whether data should be processed in the order they are read in, or
+  // shuffled randomly.
+  optional bool shuffle = 2 [default=true];
+
+  // Buffer size to be used when shuffling.
+  optional uint32 shuffle_buffer_size = 11 [default = 2048];
+
+  // Buffer size to be used when shuffling file names.
+  optional uint32 filenames_shuffle_buffer_size = 12 [default = 100];
+
+  // Maximum number of records to keep in reader queue.
+  optional uint32 queue_capacity = 3 [default=2000];
+
+  // Minimum number of records to keep in reader queue. A large value is needed
+  // to generate a good random shuffle.
+  optional uint32 min_after_dequeue = 4 [default=1000];
+
+  // The number of times a data source is read. If set to zero, the data source
+  // will be reused indefinitely.
+  optional uint32 num_epochs = 5 [default=0];
+
+  // Number of reader instances to create.
+  optional uint32 num_readers = 6 [default=32];
+
+  // Number of decoded records to prefetch before batching.
+  optional uint32 prefetch_size = 13 [default = 512];
+
+  // Number of parallel decode ops to apply.
+  optional uint32 num_parallel_map_calls = 14 [default = 64];
+
+  // Whether to load groundtruth instance masks.
+  optional bool load_instance_masks = 7 [default = false];
+
+  // Type of instance mask.
+  optional InstanceMaskType mask_type = 10 [default = NUMERICAL_MASKS];
+
+  oneof input_reader {
+    TFRecordInputReader tf_record_input_reader = 8;
+    ExternalInputReader external_input_reader = 9;
+  }
+}
+
+// An input reader that reads TF Example protos from local TFRecord files.
+message TFRecordInputReader {
+  // Path(s) to `TFRecordFile`s.
+  repeated string input_path = 1;
+}
+
+// An externally defined input reader. Users may define an extension to this
+// proto to interface their own input readers.
+message ExternalInputReader {
+  extensions 1 to 999;
+}
