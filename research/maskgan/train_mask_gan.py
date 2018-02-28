@@ -78,9 +78,9 @@ MODE_TEST = 'TEST'
 tf.app.flags.DEFINE_enum(
     'mode', 'TRAIN', [MODE_TRAIN, MODE_VALIDATION, MODE_TEST, MODE_TRAIN_EVAL],
     'What this binary will do.')
-tf.app.flags.DEFINE_string('master', 'local',
+tf.app.flags.DEFINE_string('master', '',
                            """Name of the TensorFlow master to use.""")
-tf.app.flags.DEFINE_string('eval_master', 'local',
+tf.app.flags.DEFINE_string('eval_master', '',
                            """Name prefix of the Tensorflow eval master,
                     or "local".""")
 tf.app.flags.DEFINE_integer('task', 0,
@@ -517,7 +517,7 @@ def train_model(hparams, data, log_dir, log, id_to_word, data_ngram_counts):
   is_chief = FLAGS.task == 0
 
   with tf.Graph().as_default():
-    with tf.device(tf.ReplicaDeviceSetter(FLAGS.ps_tasks)):
+    with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
       container_name = ''
       with tf.container(container_name):
         # Construct the model.
@@ -540,7 +540,7 @@ def train_model(hparams, data, log_dir, log, id_to_word, data_ngram_counts):
 
         # Create the supervisor.  It will take care of initialization,
         # summaries, checkpoints, and recovery.
-        sv = tf.Supervisor(
+        sv = tf.train.Supervisor(
             logdir=log_dir,
             is_chief=is_chief,
             saver=model.saver,
