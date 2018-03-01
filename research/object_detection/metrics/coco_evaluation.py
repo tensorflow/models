@@ -74,23 +74,30 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
           [ymin, xmin, ymax, xmax] in absolute image coordinates.
         InputDataFields.groundtruth_classes: integer numpy array of shape
           [num_boxes] containing 1-indexed groundtruth classes for the boxes.
+        InputDataFields.groundtruth_is_crowd (optional): integer numpy array of
+          shape [num_boxes] containing iscrowd flag for groundtruth boxes.
     """
     if image_id in self._image_ids:
       tf.logging.warning('Ignoring ground truth with image id %s since it was '
                          'previously added', image_id)
       return
 
+    groundtruth_is_crowd = groundtruth_dict.get(
+        standard_fields.InputDataFields.groundtruth_is_crowd)
+    # Drop groundtruth_is_crowd if empty tensor.
+    if groundtruth_is_crowd is not None and not groundtruth_is_crowd.shape[0]:
+      groundtruth_is_crowd = None
+
     self._groundtruth_list.extend(
-        coco_tools.
-        ExportSingleImageGroundtruthToCoco(
+        coco_tools.ExportSingleImageGroundtruthToCoco(
             image_id=image_id,
             next_annotation_id=self._annotation_id,
             category_id_set=self._category_id_set,
-            groundtruth_boxes=groundtruth_dict[standard_fields.InputDataFields.
-                                               groundtruth_boxes],
-            groundtruth_classes=groundtruth_dict[standard_fields.
-                                                 InputDataFields.
-                                                 groundtruth_classes]))
+            groundtruth_boxes=groundtruth_dict[
+                standard_fields.InputDataFields.groundtruth_boxes],
+            groundtruth_classes=groundtruth_dict[
+                standard_fields.InputDataFields.groundtruth_classes],
+            groundtruth_is_crowd=groundtruth_is_crowd))
     self._annotation_id += groundtruth_dict[standard_fields.InputDataFields.
                                             groundtruth_boxes].shape[0]
     self._image_ids[image_id] = False
