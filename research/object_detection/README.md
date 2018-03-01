@@ -70,7 +70,7 @@ Extras:
   * <a href='g3doc/oid_inference_and_evaluation.md'>
       Inference and evaluation on the Open Images dataset</a><br>
   * <a href='g3doc/instance_segmentation.md'>
-      Run an instance segmentation model
+      Run an instance segmentation model</a><br>
 
 ## Getting Help
 
