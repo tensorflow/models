@@ -205,7 +205,7 @@ def cifar10_model_fn(features, labels, mode, params):
 
 def main(unused_argv):
   input_function = FLAGS.use_synthetic_data and get_synth_input_fn() or input_fn
-  resnet.resnet_main(FLAGS, imagenet_model_fn, input_function)
+  resnet.resnet_main(FLAGS, cifar10_model_fn, input_function)
 
 
 if __name__ == '__main__':
