@@ -248,7 +248,11 @@ class CocoToolsTest(tf.test.TestCase):
                            [0, 0, .5, .5],
                            [.5, .5, .5, .5]], dtype=np.float32)
     classes = np.array([1, 2, 3], dtype=np.int32)
+    is_crowd = np.array([0, 1, 0], dtype=np.int32)
     next_annotation_id = 1
+    expected_counts = ['04', '31', '4']
+
+    # Tests exporting without passing in is_crowd (for backward compatibility).
     coco_annotations = coco_tools.ExportSingleImageGroundtruthToCoco(
         image_id='first_image',
         category_id_set=set([1, 2, 3]),
@@ -256,7 +260,6 @@ class CocoToolsTest(tf.test.TestCase):
         groundtruth_boxes=boxes,
         groundtruth_classes=classes,
         groundtruth_masks=masks)
-    expected_counts = ['04', '31', '4']
     for i, annotation in enumerate(coco_annotations):
       self.assertEqual(annotation['segmentation']['counts'],
                        expected_counts[i])
@@ -265,6 +268,26 @@ class CocoToolsTest(tf.test.TestCase):
       self.assertTrue(np.all(np.isclose(annotation['bbox'], coco_boxes[i])))
       self.assertEqual(annotation['image_id'], 'first_image')
       self.assertEqual(annotation['category_id'], classes[i])
+      self.assertEqual(annotation['id'], i + next_annotation_id)
+
+    # Tests exporting with is_crowd.
+    coco_annotations = coco_tools.ExportSingleImageGroundtruthToCoco(
+        image_id='first_image',
+        category_id_set=set([1, 2, 3]),
+        next_annotation_id=next_annotation_id,
+        groundtruth_boxes=boxes,
+        groundtruth_classes=classes,
+        groundtruth_masks=masks,
+        groundtruth_is_crowd=is_crowd)
+    for i, annotation in enumerate(coco_annotations):
+      self.assertEqual(annotation['segmentation']['counts'],
+                       expected_counts[i])
+      self.assertTrue(np.all(np.equal(mask.decode(
+          annotation['segmentation']), masks[i])))
+      self.assertTrue(np.all(np.isclose(annotation['bbox'], coco_boxes[i])))
+      self.assertEqual(annotation['image_id'], 'first_image')
+      self.assertEqual(annotation['category_id'], classes[i])
+      self.assertEqual(annotation['iscrowd'], is_crowd[i])
       self.assertEqual(annotation['id'], i + next_annotation_id)
 
 
