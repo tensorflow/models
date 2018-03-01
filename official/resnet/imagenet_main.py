@@ -154,6 +154,11 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
       multi_gpu=multi_gpu)
 
 
+def get_synth_input_fn():
+  return resnet.get_synth_input_fn(
+        _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS, _NUM_CLASSES)
+
+
 ###############################################################################
 # Running the model
 ###############################################################################
@@ -236,12 +241,7 @@ def imagenet_model_fn(features, labels, mode, params):
 
 
 def main(unused_argv):
-  input_function = input_fn
-  if FLAGS.use_synthetic_data:
-    input_function = resnet.synthetic_input_fn(
-        FLAGS.batch_size, _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE,
-        _NUM_CHANNELS, _NUM_CLASSES)
-
+  input_function = FLAGS.use_synthetic_data and get_synth_input_fn() or input_fn
   resnet.resnet_main(FLAGS, imagenet_model_fn, input_function)
 
 

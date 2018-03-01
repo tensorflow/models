@@ -113,15 +113,16 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   return dataset
 
 
-def synthetic_input_fn(batch_size, height, width, num_channels, num_classes):
-  """Returns an input function that returns a dataset with fake data.
+def get_synth_input_fn(height, width, num_channels, num_classes):
+  """Returns an input function that returns a tensor tuple with fake data.
 
   This is useful in debugging input pipeline performance, as it removes all
-  elements of file reading and image preprocessing. Note that this dataset
-  cannot be used for actual learning or convergence.
+  elements of file reading and image preprocessing. We do not bundle as a
+  dataset here, to avoid introducing any complications related to threading
+  and other dataset operations. Note that this data cannot be used for actual
+  learning or convergence.
 
   Args:
-    batch_size: The number of samples per batch.
     height: Integer height that will be used to create a fake image tensor.
     width: Integer width that will be used to create a fake image tensor.
     num_channels: Integer depth that will be used to create a fake image tensor.
@@ -129,13 +130,13 @@ def synthetic_input_fn(batch_size, height, width, num_channels, num_classes):
       tensor
 
   Returns:
-    An input_fn that can be used in place of a real one to return a dataset
-    that can be used for iteration.
+    An input_fn that can be used in place of a real one to return a tuple of
+    tensors that can be used for iteration.
   """
   def input_fn(is_training, data_dir, batch_size, *args):
     images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
-    labels = tf.zeros((batch_size, num_classes), tf.float32)
-    return tf.data.Dataset.from_tensor_slices((images, labels))
+    labels = tf.zeros((batch_size, num_classes), tf.int32)
+    return images, labels
 
   return input_fn
 
