@@ -268,7 +268,9 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     init_fn = None
     if train_config.fine_tune_checkpoint:
       var_map = detection_model.restore_map(
-          from_detection_checkpoint=train_config.from_detection_checkpoint)
+          from_detection_checkpoint=train_config.from_detection_checkpoint,
+          load_all_detection_checkpoint_vars=(
+              train_config.load_all_detection_checkpoint_vars))
       available_var_map = (variables_helper.
                            get_variables_available_in_checkpoint(
                                var_map, train_config.fine_tune_checkpoint))
