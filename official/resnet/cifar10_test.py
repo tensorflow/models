@@ -70,13 +70,14 @@ class BaseTest(tf.test.TestCase):
         [_BATCH_SIZE], maxval=9, dtype=tf.int32)
     return features, tf.one_hot(labels, 10)
 
-  def cifar10_model_fn_helper(self, mode):
+  def cifar10_model_fn_helper(self, mode, multi_gpu=False):
     features, labels = self.input_fn()
     spec = cifar10_main.cifar10_model_fn(
         features, labels, mode, {
             'resnet_size': 32,
             'data_format': 'channels_last',
             'batch_size': _BATCH_SIZE,
+            'multi_gpu': multi_gpu
         })
 
     predictions = spec.predictions
@@ -100,6 +101,9 @@ class BaseTest(tf.test.TestCase):
 
   def test_cifar10_model_fn_train_mode(self):
     self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN)
+
+  def test_cifar10_model_fn_train_mode_multi_gpu(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, multi_gpu=True)
 
   def test_cifar10_model_fn_eval_mode(self):
     self.cifar10_model_fn_helper(tf.estimator.ModeKeys.EVAL)
