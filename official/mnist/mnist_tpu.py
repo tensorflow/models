@@ -41,7 +41,7 @@ tf.flags.DEFINE_string(
     help="Name of the Cloud TPU for Cluster Resolvers. You must specify either "
     "this flag or --master.")
 
-# Model specific paramenters
+# Model specific parameters
 tf.flags.DEFINE_string(
     "master", default=None,
     help="GRPC URL of the master (e.g. grpc://ip.address.of.tpu:8470). You "
