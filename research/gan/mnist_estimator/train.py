@@ -22,7 +22,7 @@ import os
 
 import numpy as np
 import scipy.misc
-from six.moves import xrange
+from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 from mnist import data_provider
@@ -66,10 +66,16 @@ def _get_predict_input_fn(batch_size, noise_dims):
   return predict_input_fn
 
 
+def _unconditional_generator(noise, mode):
+  """MNIST generator with extra argument for tf.Estimator's `mode`."""
+  is_training = (mode == tf.estimator.ModeKeys.TRAIN)
+  return networks.unconditional_generator(noise, is_training=is_training)
+
+
 def main(_):
   # Initialize GANEstimator with options and hyperparameters.
   gan_estimator = tfgan.estimator.GANEstimator(
-      generator_fn=networks.unconditional_generator,
+      generator_fn=_unconditional_generator,
       discriminator_fn=networks.unconditional_discriminator,
       generator_loss_fn=tfgan.losses.wasserstein_generator_loss,
       discriminator_loss_fn=tfgan.losses.wasserstein_discriminator_loss,
