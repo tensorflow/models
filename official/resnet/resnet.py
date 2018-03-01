@@ -114,13 +114,10 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
 
 
 def get_synth_input_fn(height, width, num_channels, num_classes):
-  """Returns an input function that returns a tensor tuple with fake data.
+  """Returns an input function that returns a dataset with zeroes.
 
   This is useful in debugging input pipeline performance, as it removes all
-  elements of file reading and image preprocessing. We do not bundle as a
-  dataset here, to avoid introducing any complications related to threading
-  and other dataset operations. Note that this data cannot be used for actual
-  learning or convergence.
+  elements of file reading and image preprocessing.
 
   Args:
     height: Integer height that will be used to create a fake image tensor.
@@ -130,13 +127,13 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
       tensor
 
   Returns:
-    An input_fn that can be used in place of a real one to return a tuple of
-    tensors that can be used for iteration.
+    An input_fn that can be used in place of a real one to return a dataset
+    that can be used for iteration.
   """
   def input_fn(is_training, data_dir, batch_size, *args):
     images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
     labels = tf.zeros((batch_size, num_classes), tf.int32)
-    return images, labels
+    return tf.data.Dataset.from_tensors((images, labels)).repeat()
 
   return input_fn
 
