@@ -32,12 +32,13 @@ import logging
 import os
 import random
 import re
+import math
 
 from lxml import etree
 import numpy as np
 import PIL.Image
 import tensorflow as tf
-
+import sys; print sys.path
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
@@ -110,18 +111,18 @@ def dict_to_tf_example(data,
     raise ValueError('Image format not JPEG')
   key = hashlib.sha256(encoded_jpg).hexdigest()
 
-  with tf.gfile.GFile(mask_path, 'rb') as fid:
-    encoded_mask_png = fid.read()
-  encoded_png_io = io.BytesIO(encoded_mask_png)
-  mask = PIL.Image.open(encoded_png_io)
-  if mask.format != 'PNG':
-    raise ValueError('Mask format not PNG')
+#  with tf.gfile.GFile(mask_path, 'rb') as fid:
+#    encoded_mask_png = fid.read()
+#  encoded_png_io = io.BytesIO(encoded_mask_png)
+#  mask = PIL.Image.open(encoded_png_io)
+#  if mask.format != 'PNG':
+#    raise ValueError('Mask format not PNG')
 
-  mask_np = np.asarray(mask)
-  nonbackground_indices_x = np.any(mask_np != 2, axis=0)
-  nonbackground_indices_y = np.any(mask_np != 2, axis=1)
-  nonzero_x_indices = np.where(nonbackground_indices_x)
-  nonzero_y_indices = np.where(nonbackground_indices_y)
+#  mask_np = np.asarray(mask)
+#  nonbackground_indices_x = np.any(mask_np != 2, axis=0)
+#  nonbackground_indices_y = np.any(mask_np != 2, axis=1)
+#  nonzero_x_indices = np.where(nonbackground_indices_x)
+#  nonzero_y_indices = np.where(nonbackground_indices_y)
 
   width = int(data['size']['width'])
   height = int(data['size']['height'])
@@ -157,7 +158,7 @@ def dict_to_tf_example(data,
     ymins.append(ymin / height)
     xmaxs.append(xmax / width)
     ymaxs.append(ymax / height)
-    class_name = get_class_name_from_filename(data['filename'])
+    class_name = get_class_name_from_filename(data['filename']) # Really? This is how you do it? In the future will need to be able to have multiple different kinds of classes in an image
     classes_text.append(class_name.encode('utf8'))
     classes.append(label_map_dict[class_name])
     truncated.append(int(obj['truncated']))
@@ -272,7 +273,7 @@ def main(_):
   random.seed(42)
   random.shuffle(examples_list)
   num_examples = len(examples_list)
-  num_train = int(0.7 * num_examples)
+  num_train = int(math.ceil(0.7 * num_examples))
   train_examples = examples_list[:num_train]
   val_examples = examples_list[num_train:]
   logging.info('%d training and %d validation examples.',
@@ -282,9 +283,9 @@ def main(_):
   val_output_path = os.path.join(FLAGS.output_dir, 'pet_val.record')
   if FLAGS.faces_only:
     train_output_path = os.path.join(FLAGS.output_dir,
-                                     'pet_train_with_masks.record')
+                                     'lattice_train_with_masks.record')
     val_output_path = os.path.join(FLAGS.output_dir,
-                                   'pet_val_with_masks.record')
+                                   'lattice_val_with_masks.record')
   create_tf_record(
       train_output_path,
       label_map_dict,
