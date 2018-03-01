@@ -62,6 +62,8 @@ flags.DEFINE_integer('max_number_of_evaluations', None,
                      'Number of times to run evaluation. If `None`, run '
                      'forever.')
 
+flags.DEFINE_boolean('write_to_disk', True, 'If `True`, run images to disk.')
+
 CAT_SAMPLE_POINTS = np.arange(0, 10)
 CONT_SAMPLE_POINTS = np.linspace(-2.0, 2.0, 10)
 FLAGS = flags.FLAGS
@@ -79,7 +81,9 @@ def main(_, run_eval_loop=True):
 
   # Visualize the effect of each structured noise dimension on the generated
   # image.
-  generator_fn = lambda x: networks.infogan_generator(x, len(CAT_SAMPLE_POINTS))
+  def generator_fn(inputs):
+    return networks.infogan_generator(
+        inputs, len(CAT_SAMPLE_POINTS), is_training=False)
   with tf.variable_scope('Generator') as genscope:  # Same scope as in training.
     categorical_images = generator_fn(display_noise1)
   reshaped_categorical_img = tfgan.eval.image_reshaper(
@@ -106,12 +110,13 @@ def main(_, run_eval_loop=True):
 
   # Write images to disk.
   image_write_ops = []
-  image_write_ops.append(_get_write_image_ops(
-      FLAGS.eval_dir, 'categorical_infogan.png', reshaped_categorical_img[0]))
-  image_write_ops.append(_get_write_image_ops(
-      FLAGS.eval_dir, 'continuous1_infogan.png', reshaped_continuous1_img[0]))
-  image_write_ops.append(_get_write_image_ops(
-      FLAGS.eval_dir, 'continuous2_infogan.png', reshaped_continuous2_img[0]))
+  if FLAGS.write_to_disk:
+    image_write_ops.append(_get_write_image_ops(
+        FLAGS.eval_dir, 'categorical_infogan.png', reshaped_categorical_img[0]))
+    image_write_ops.append(_get_write_image_ops(
+        FLAGS.eval_dir, 'continuous1_infogan.png', reshaped_continuous1_img[0]))
+    image_write_ops.append(_get_write_image_ops(
+        FLAGS.eval_dir, 'continuous2_infogan.png', reshaped_continuous2_img[0]))
 
   # For unit testing, use `run_eval_loop=False`.
   if not run_eval_loop: return
