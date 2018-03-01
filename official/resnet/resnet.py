@@ -113,6 +113,33 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   return dataset
 
 
+def synthetic_input_fn(batch_size, height, width, num_channels, num_classes):
+  """Returns an input function that returns a dataset with fake data.
+
+  This is useful in debugging input pipeline performance, as it removes all
+  elements of file reading and image preprocessing. Note that this dataset
+  cannot be used for actual learning or convergence.
+
+  Args:
+    batch_size: The number of samples per batch.
+    height: Integer height that will be used to create a fake image tensor.
+    width: Integer width that will be used to create a fake image tensor.
+    num_channels: Integer depth that will be used to create a fake image tensor.
+    num_classes: Number of classes that should be represented in the fake labels
+      tensor
+
+  Returns:
+    An input_fn that can be used in place of a real one to return a dataset
+    that can be used for iteration.
+  """
+  def input_fn(is_training, data_dir, batch_size, *args):
+    images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
+    labels = tf.zeros((batch_size, num_classes), tf.float32)
+    return tf.data.Dataset.from_tensor_slices((images, labels))
+
+  return input_fn
+
+
 ################################################################################
 # Functions building the ResNet model.
 ################################################################################
@@ -673,5 +700,11 @@ class ResnetArgParser(argparse.ArgumentParser):
 
     self.add_argument(
         '--multi_gpu', action='store_true',
-        help='If set, run across all available GPUs. Note that this is '
-        'superseded by the --num_gpus flag.')
+        help='If set, run across all available GPUs.')
+
+    # Advanced args
+    self.add_argument(
+        '--use_synthetic_data', action='store_true',
+        help='If set, use fake data (zeroes) instead of a real dataset. '
+             'This mode is useful for performance debugging, as it removes '
+             'input processing steps, but will not learn anything.')

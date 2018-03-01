@@ -200,7 +200,12 @@ def cifar10_model_fn(features, labels, mode, params):
 
 
 def main(unused_argv):
-  resnet.resnet_main(FLAGS, cifar10_model_fn, input_fn)
+  input_function = input_fn
+  if FLAGS.use_synthetic_data:
+    input_function = resnet.synthetic_input_fn(
+        FLAGS.batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS, _NUM_CLASSES)
+
+  resnet.resnet_main(FLAGS, imagenet_model_fn, input_function)
 
 
 if __name__ == '__main__':
