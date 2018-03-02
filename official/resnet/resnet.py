@@ -146,10 +146,6 @@ def fixed_padding(inputs, kernel_size, data_format):
   pad_beg = pad_total // 2
   pad_end = pad_total - pad_beg
 
-  # Optimization to eliminate tf.pad
-  if pad_beg == 0 and pad_end == 0:
-    return inputs
-
   if data_format == 'channels_first':
     padded_inputs = tf.pad(inputs, [[0, 0], [0, 0],
                                     [pad_beg, pad_end], [pad_beg, pad_end]])
@@ -689,10 +685,10 @@ class ResnetArgParser(argparse.ArgumentParser):
 
     self.add_argument(
         '--inter_op_parallelism_threads', type=int, default=0,
-        help='Number of inter_op_parallelism_threads to use for CPU.'
-             'See config.proto for details.')
+        help='Number of inter_op_parallelism_threads to use for CPU. '
+             'See TensorFlow config.proto for details.')
 
     self.add_argument(
         '--intra_op_parallelism_threads', type=int, default=0,
-        help='Number of intra_op_parallelism_threads to use for CPU.'
-             'See Config.proto for details.')
+        help='Number of intra_op_parallelism_threads to use for CPU. '
+             'See TensorFlow config.proto for details.')
