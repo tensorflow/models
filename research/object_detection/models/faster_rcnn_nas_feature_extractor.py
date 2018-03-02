@@ -182,10 +182,14 @@ class FasterRCNNNASFeatureExtractor(
 
     with slim.arg_scope(nasnet_large_arg_scope_for_detection(
         is_batch_norm_training=self._train_batch_norm)):
-      _, end_points = nasnet.build_nasnet_large(
-          preprocessed_inputs, num_classes=None,
-          is_training=self._is_training,
-          final_endpoint='Cell_11')
+      with arg_scope([slim.conv2d,
+                      slim.batch_norm,
+                      slim.separable_conv2d],
+                     reuse=self._reuse_weights):
+        _, end_points = nasnet.build_nasnet_large(
+            preprocessed_inputs, num_classes=None,
+            is_training=self._is_training,
+            final_endpoint='Cell_11')
 
     # Note that both 'Cell_10' and 'Cell_11' have equal depth = 2016.
     rpn_feature_map = tf.concat([end_points['Cell_10'],
