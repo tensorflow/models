@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python \
     python-pip \
     python-setuptools
-    
+
 RUN pip install tf-nightly
 
 # Checkout tensorflow/models and pin to a particular version
