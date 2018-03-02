@@ -22,10 +22,11 @@ import os
 import sys
 
 import tensorflow as tf
+import tensorflow.contrib.eager as tfe
 import dataset
 
 
-class Model(tf.keras.Model):
+class Model(tfe.Network):
   """Model to recognize digits in the MNIST dataset.
 
   Network structure is equivalent to:
@@ -52,15 +53,15 @@ class Model(tf.keras.Model):
       assert data_format == 'channels_last'
       self._input_shape = [-1, 28, 28, 1]
 
-    self.conv1 = tf.layers.Conv2D(
-        32, 5, padding='same', data_format=data_format, activation=tf.nn.relu)
-    self.conv2 = tf.layers.Conv2D(
-        64, 5, padding='same', data_format=data_format, activation=tf.nn.relu)
-    self.fc1 = tf.layers.Dense(1024, activation=tf.nn.relu)
-    self.fc2 = tf.layers.Dense(10)
-    self.dropout = tf.layers.Dropout(0.4)
-    self.max_pool2d = tf.layers.MaxPooling2D(
-        (2, 2), (2, 2), padding='same', data_format=data_format)
+    self.conv1 = self.track_layer(tf.layers.Conv2D(
+        32, 5, padding='same', data_format=data_format, activation=tf.nn.relu))
+    self.conv2 = self.track_layer(tf.layers.Conv2D(
+        64, 5, padding='same', data_format=data_format, activation=tf.nn.relu))
+    self.fc1 = self.track_layer(tf.layers.Dense(1024, activation=tf.nn.relu))
+    self.fc2 = self.track_layer(tf.layers.Dense(10))
+    self.dropout = self.track_layer(tf.layers.Dropout(0.4))
+    self.max_pool2d = self.track_layer(tf.layers.MaxPooling2D(
+        (2, 2), (2, 2), padding='same', data_format=data_format))
 
   def __call__(self, inputs, training):
     """Add operations to classify a batch of input images.
