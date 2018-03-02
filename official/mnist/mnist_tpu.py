@@ -137,7 +137,7 @@ def main(argv):
   tf.logging.set_verbosity(tf.logging.INFO)
 
   tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-            FLAGS.tpu, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project))
+            FLAGS.tpu, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
   run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
