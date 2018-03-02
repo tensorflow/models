@@ -130,7 +130,9 @@ class BaseTest(tf.test.TestCase):
     tf.train.create_global_step()
 
     input_fn = imagenet_main.get_synth_input_fn()
-    features, labels = input_fn(True, '', _BATCH_SIZE)
+    dataset = input_fn(True, '', _BATCH_SIZE)
+    iterator = dataset.make_one_shot_iterator()
+    features, labels = iterator.get_next()
     spec = imagenet_main.imagenet_model_fn(
         features, labels, mode, {
             'resnet_size': 50,

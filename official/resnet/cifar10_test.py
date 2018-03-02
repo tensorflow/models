@@ -66,7 +66,9 @@ class BaseTest(tf.test.TestCase):
 
   def cifar10_model_fn_helper(self, mode, multi_gpu=False):
     input_fn = cifar10_main.get_synth_input_fn()
-    features, labels = input_fn(True, '', _BATCH_SIZE)
+    dataset = input_fn(True, '', _BATCH_SIZE)
+    iterator = dataset.make_one_shot_iterator()
+    features, labels = iterator.get_next()
     spec = cifar10_main.cifar10_model_fn(
         features, labels, mode, {
             'resnet_size': 32,
