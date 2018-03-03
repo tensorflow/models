@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for image.understanding.object_detection.core.visualization_utils."""
+"""Tests for object_detection.utils.visualization_utils."""
 import logging
 import os
 

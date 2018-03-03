@@ -53,7 +53,7 @@ recommended. Read [our paper](https://arxiv.org/abs/1611.10012) for a more
 detailed discussion on the speed vs accuracy tradeoff.
 
 To help new users get started, sample model configurations have been provided
-in the object_detection/samples/model_configs folder. The contents of these
+in the object_detection/samples/configs folder. The contents of these
 configuration files can be pasted into `model` field of the skeleton
 configuration. Users should note that the `num_classes` field should be changed
 to a value suited for the dataset the user is training on.
