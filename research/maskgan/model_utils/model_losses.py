@@ -21,7 +21,7 @@ from __future__ import print_function
 
 # Dependency imports
 import numpy as np
-
+from six.moves import xrange
 import tensorflow as tf
 
 # Useful for REINFORCE baseline.
