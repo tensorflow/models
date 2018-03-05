@@ -148,9 +148,15 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
   # Convert to individual records
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
-  return resnet.process_record_dataset(dataset, is_training, batch_size,
-      _SHUFFLE_BUFFER, parse_record, num_epochs, num_parallel_calls,
-      examples_per_epoch=num_images, multi_gpu=multi_gpu)
+  return resnet.process_record_dataset(
+      dataset, is_training, batch_size, _SHUFFLE_BUFFER, parse_record,
+      num_epochs, num_parallel_calls, examples_per_epoch=num_images,
+      multi_gpu=multi_gpu)
+
+
+def get_synth_input_fn():
+  return resnet.get_synth_input_fn(
+        _DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS, _NUM_CLASSES)
 
 
 ###############################################################################
@@ -235,7 +241,8 @@ def imagenet_model_fn(features, labels, mode, params):
 
 
 def main(unused_argv):
-  resnet.resnet_main(FLAGS, imagenet_model_fn, input_fn)
+  input_function = FLAGS.use_synthetic_data and get_synth_input_fn() or input_fn
+  resnet.resnet_main(FLAGS, imagenet_model_fn, input_function)
 
 
 if __name__ == '__main__':

@@ -64,7 +64,6 @@ def _random_crop_and_flip(image, crop_height, crop_width):
   height, width = _get_h_w(image)
 
   # Create a random bounding box.
-  #
   # Use tf.random_uniform and not numpy.random.rand as doing the former would
   # generate random numbers at graph eval time, unlike the latter which
   # generates random numbers at graph definition time.
@@ -78,6 +77,7 @@ def _random_crop_and_flip(image, crop_height, crop_width):
 
   cropped = tf.image.random_flip_left_right(cropped)
   return cropped
+
 
 def _central_crop(image, crop_height, crop_width):
   """Performs central crops of the given image list.
