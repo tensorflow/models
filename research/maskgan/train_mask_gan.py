@@ -47,7 +47,7 @@ import time
 # Dependency imports
 
 import numpy as np
-
+from six.moves import xrange
 import tensorflow as tf
 
 import pretrain_mask_gan
