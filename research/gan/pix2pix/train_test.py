@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
-from google3.third_party.tensorflow_models.gan.pix2pix import train
+import train
 
 FLAGS = tf.flags.FLAGS
 mock = tf.test.mock
