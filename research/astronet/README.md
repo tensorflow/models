@@ -16,7 +16,7 @@ see [our paper](http://adsabs.harvard.edu/abs/2018AJ....155...94S) in
 For shorter summaries, see:
 
 * ["Earth to Exoplanet"](https://www.blog.google/topics/machine-learning/hunting-planets-machine-learning/) on the Google blog
-* [This blog post](https://www.cfa.harvard.edu/~avanderb/page1.html) by Andrew Vanderburg
+* [This blog post](https://www.cfa.harvard.edu/~avanderb/page1.html#kepler90) by Andrew Vanderburg
 * [This great article](https://milesobrien.com/artificial-intelligence-gains-intuition-hunting-exoplanets/) by Fedor Kossakovski
 * [NASA's press release](https://www.nasa.gov/press-release/artificial-intelligence-nasa-data-used-to-discover-eighth-planet-circling-distant-star) article
 
