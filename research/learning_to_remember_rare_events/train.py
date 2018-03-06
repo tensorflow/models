@@ -208,17 +208,16 @@ class Trainer(object):
           correct.append(self.compute_correct(np.array(y), y_preds))
 
           # compute per-shot accuracies
-          seen_counts = [[0] * episode_width for _ in xrange(batch_size)]
+          seen_counts = [0] * episode_width
           # loop over episode steps
           for yy, yy_preds in zip(y, y_preds):
             # loop over batch examples
-            for k, (yyy, yyy_preds) in enumerate(zip(yy, yy_preds)):
-              yyy, yyy_preds = int(yyy), int(yyy_preds)
-              count = seen_counts[k][yyy % episode_width]
-              if count in correct_by_shot:
-                correct_by_shot[count].append(
-                    self.individual_compute_correct(yyy, yyy_preds))
-              seen_counts[k][yyy % episode_width] = count + 1
+            yyy, yyy_preds = int(yy[0]), int(yy_preds[0])
+            count = seen_counts[yyy % episode_width]
+            if count in correct_by_shot:
+              correct_by_shot[count].append(
+                self.individual_compute_correct(yyy, yyy_preds))
+            seen_counts[yyy % episode_width] = count + 1
 
         logging.info('validation overall accuracy %f', np.mean(correct))
         logging.info('%d-shot: %.3f, ' * num_shots,
