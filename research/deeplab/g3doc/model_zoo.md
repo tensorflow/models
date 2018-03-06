@@ -23,31 +23,10 @@ is available, since we have already fine-tuned the batch normalization for you.
 In the latter case, one could directly evaluate the checkpoints on VOC 2012 test
 set or use this checkpoint for demo.
 
-| Checkpoint name               | Network      | Pretrained | ASPP  | Decoder |
-:                               : backbone     : dataset    :       :         :
-| ----------------------------- | :----------: | :--------: | :---: | :-----: |
-| xception_coco_voc_trainaug    | Xception_65  | MS-COCO    | [6,   | OS = 4  |
-:                               :              : <br> VOC   : 12,   :         :
-:                               :              : 2012       : 18]   :         :
-:                               :              : train_aug  : for   :         :
-:                               :              : set        : OS=16 :         :
-:                               :              :            : <br>  :         :
-:                               :              :            : [12,  :         :
-:                               :              :            : 24,   :         :
-:                               :              :            : 36]   :         :
-:                               :              :            : for   :         :
-:                               :              :            : OS=8  :         :
-| xception_coco_voc_trainval    | Xception_65  | MS-COCO    | [6,   | OS = 4  |
-:                               :              : <br> VOC   : 12,   :         :
-:                               :              : 2012       : 18]   :         :
-:                               :              : train_aug  : for   :         :
-:                               :              : + trainval : OS=16 :         :
-:                               :              : sets       : <br>  :         :
-:                               :              :            : [12,  :         :
-:                               :              :            : 24,   :         :
-:                               :              :            : 36]   :         :
-:                               :              :            : for   :         :
-:                               :              :            : OS=8  :         :
+Checkpoint name             | Network backbone | Pretrained  dataset | ASPP  | Decoder
+--------------------------- | :--------------: | :-----------------: | :---: | :-----:
+xception_coco_voc_trainaug  | Xception_65  | MS-COCO <br> VOC 2012 train_aug set| [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
+xception_coco_voc_trainval  | Xception_65  | MS-COCO <br> VOC 2012 train_aug + trainval sets | [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
 
 In the table, **OS** denotes output stride.
 

@@ -39,12 +39,11 @@ work:
 }
 ```
 
-
 In the current implementation, we support adopting the following network
 backbones:
 
 1.  MobileNetv2 [8]: A fast network structure designed for mobile devices. **We
-will provide MobileNetv2 support in the next update. Please stay tuned.**
+    will provide MobileNetv2 support in the next update. Please stay tuned.**
 
 2.  Xception [9, 10]: A powerful network structure intended for server-side
     deployment.
@@ -86,13 +85,14 @@ Models:
 
 Misc:
 
-*   Please check <a href='g3doc/faq.md'>FAQ<a/a> if you have some questions before reporting the issues.<br>
+*   Please check <a href='g3doc/faq.md'>FAQ</a> if you have some questions before reporting the issues.<br>
 
 ## Getting Help
 
 To get help with issues you may encounter while using the DeepLab Tensorflow
-implementation, create a new question on [StackOverflow](https://stackoverflow.com/)
-with the tags "tensorflow" and "deeplab".
+implementation, create a new question on
+[StackOverflow](https://stackoverflow.com/) with the tags "tensorflow" and
+"deeplab".
 
 Please report bugs (i.e., broken code, not usage questions) to the
 tensorflow/models GitHub [issue
