@@ -106,7 +106,7 @@ flags.DEFINE_string('input_shape', None,
                     'If input_type is `image_tensor`, this can explicitly set '
                     'the shape of this input tensor to a fixed size. The '
                     'dimensions are to be provided as a comma-separated list '
-                    'of integers. A value of -1 can be used for unknown '
+                    'of integers. A value of `None` can be used for unknown '
                     'dimensions. If not specified, for an `image_tensor, the '
                     'default shape will be partially specified as '
                     '`[None, None, None, 3]`.')
@@ -133,7 +133,7 @@ def main(_):
   text_format.Merge(FLAGS.config_override, pipeline_config)
   if FLAGS.input_shape:
     input_shape = [
-        int(dim) if dim != '-1' else None
+        int(dim) if dim != 'None' else None
         for dim in FLAGS.input_shape.split(',')
     ]
   else:
