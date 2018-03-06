@@ -1,4 +1,4 @@
-#FAQ
+# FAQ
 ___
 Q1: What if I want to use other network backbones, such as ResNet [1], instead of only those provided ones (e.g., Xception)?
 
