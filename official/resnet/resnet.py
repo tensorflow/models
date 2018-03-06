@@ -609,8 +609,18 @@ def resnet_main(flags, model_function, input_function):
         model_function,
         loss_reduction=tf.losses.Reduction.MEAN)
 
-  # Set up a RunConfig to only save checkpoints once per training cycle.
-  run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9)
+  # Create session config based on values of inter_op_parallelism_threads and
+  # intra_op_parallelism_threads. Note that we default to having
+  # allow_soft_placement = True, which is required for multi-GPU and not
+  # harmful for other modes.
+  session_config = tf.ConfigProto(
+      inter_op_parallelism_threads=flags.inter_op_parallelism_threads,
+      intra_op_parallelism_threads=flags.intra_op_parallelism_threads,
+      allow_soft_placement=True)
+
+  # Set up a RunConfig to save checkpoint and set session config.
+  run_config = tf.estimator.RunConfig().replace(save_checkpoints_secs=1e9,
+                                                session_config=session_config)
   classifier = tf.estimator.Estimator(
       model_fn=model_function, model_dir=flags.model_dir, config=run_config,
       params={
@@ -706,3 +716,13 @@ class ResnetArgParser(argparse.ArgumentParser):
         help='If set, use fake data (zeroes) instead of a real dataset. '
              'This mode is useful for performance debugging, as it removes '
              'input processing steps, but will not learn anything.')
+
+    self.add_argument(
+        '--inter_op_parallelism_threads', type=int, default=0,
+        help='Number of inter_op_parallelism_threads to use for CPU. '
+             'See TensorFlow config.proto for details.')
+
+    self.add_argument(
+        '--intra_op_parallelism_threads', type=int, default=0,
+        help='Number of intra_op_parallelism_threads to use for CPU. '
+             'See TensorFlow config.proto for details.')
