@@ -19,6 +19,7 @@ from __future__ import print_function
 
 # Dependency imports
 
+from six.moves import xrange
 import tensorflow as tf
 
 flags = tf.app.flags

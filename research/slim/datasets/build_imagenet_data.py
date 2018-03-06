@@ -93,6 +93,7 @@ import sys
 import threading
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 tf.app.flags.DEFINE_string('train_directory', '/tmp/',
