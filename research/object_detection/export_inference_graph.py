@@ -133,7 +133,7 @@ def main(_):
   text_format.Merge(FLAGS.config_override, pipeline_config)
   if FLAGS.input_shape:
     input_shape = [
-        int(dim) if dim != '-1' else None
+        int(dim) if dim != 'None' else None
         for dim in FLAGS.input_shape.split(',')
     ]
   else:
