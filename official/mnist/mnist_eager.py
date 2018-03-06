@@ -131,7 +131,7 @@ def main(_):
 
   # Train and evaluate for 11 epochs.
   with tf.device(device):
-    for epoch in range(1, 11):
+    for epoch in range(0, 11):
       with tfe.restore_variables_on_create(
           tf.train.latest_checkpoint(FLAGS.checkpoint_dir)):
         global_step = tf.train.get_or_create_global_step()
