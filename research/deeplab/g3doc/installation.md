@@ -48,9 +48,19 @@ to avoid running this manually, you can add it as a new line to the end of your
 # Testing the Installation
 
 You can test if you have successfully installed the Tensorflow DeepLab by
-running the following command:
+running the following commands:
+
+Quick test by running model_test.py:
 
 ```bash
 # From tensorflow/models/research/
 python deeplab/model_test.py
 ```
+
+Quick running the whole code on the PASCAL VOC 2012 dataset:
+
+```bash
+# From tensorflow/models/research/deeplab
+sh local_test.sh
+```
+
