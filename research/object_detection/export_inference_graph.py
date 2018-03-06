@@ -106,7 +106,7 @@ flags.DEFINE_string('input_shape', None,
                     'If input_type is `image_tensor`, this can explicitly set '
                     'the shape of this input tensor to a fixed size. The '
                     'dimensions are to be provided as a comma-separated list '
-                    'of integers. A value of -1 can be used for unknown '
+                    'of integers. A value of `None` can be used for unknown '
                     'dimensions. If not specified, for an `image_tensor, the '
                     'default shape will be partially specified as '
                     '`[None, None, None, 3]`.')
