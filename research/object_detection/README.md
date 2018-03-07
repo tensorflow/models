@@ -83,6 +83,8 @@ tensorflow/models GitHub
 [issue tracker](https://github.com/tensorflow/models/issues), prefixing the
 issue name with "object_detection".
 
+Please check [FAQ](g3doc/faq.md) for frequently asked questions before
+reporting an issue.
 
 
 ## Release information
