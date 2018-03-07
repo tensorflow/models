@@ -112,7 +112,7 @@ class Trainer(object):
       remainders = [0] * (episode_width - remainder) + [1] * remainder
       episode_x = [
           random.sample(data[lab],
-                        r + (episode_length - remainder) / episode_width)
+                        r + (episode_length - remainder) // episode_width)
           for lab, r in zip(episode_labels, remainders)]
       episode = sum([[(x, i, ii) for ii, x in enumerate(xx)]
                      for i, xx in enumerate(episode_x)], [])
@@ -160,9 +160,9 @@ class Trainer(object):
     logging.info('batch_size %d', batch_size)
 
     assert all(len(v) >= float(episode_length) / episode_width
-               for v in train_data.itervalues())
+               for v in train_data.values())
     assert all(len(v) >= float(episode_length) / episode_width
-               for v in valid_data.itervalues())
+               for v in valid_data.values())
 
     output_dim = episode_width
     self.model = self.get_model()
