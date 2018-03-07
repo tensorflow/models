@@ -158,7 +158,8 @@ def dict_to_tf_example(data,
     ymins.append(ymin / height)
     xmaxs.append(xmax / width)
     ymaxs.append(ymax / height)
-    class_name = get_class_name_from_filename(data['filename']) # Really? This is how you do it? In the future will need to be able to have multiple different kinds of classes in an image
+    class_name = obj['name']
+    # class_name = get_class_name_from_filename(data['filename']) # Really? This is how you do it? In the future will need to be able to have multiple different kinds of classes in an image
     classes_text.append(class_name.encode('utf8'))
     classes.append(label_map_dict[class_name])
     truncated.append(int(obj['truncated']))
