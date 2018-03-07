@@ -1,4 +1,9 @@
 item {
   id: 1
-  name: 'Person'
+  name: 'person'
+}
+
+item {
+  id: 2
+  name: 'car'
 }

@@ -90,3 +90,5 @@ ENV/
 
 # PyCharm
 .idea/
+research/demo_data/images
+research/demo_data/annotations
