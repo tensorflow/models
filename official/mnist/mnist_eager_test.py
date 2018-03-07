@@ -46,7 +46,8 @@ def train(defun=False):
   optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.01)
   dataset = random_dataset()
   with tf.device(device()):
-    mnist_eager.train(model, optimizer, dataset)
+    mnist_eager.train(model, optimizer, dataset,
+                      step_counter=tf.train.get_or_create_global_step())
 
 
 def evaluate(defun=False):
