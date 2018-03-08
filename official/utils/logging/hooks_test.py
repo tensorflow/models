@@ -13,16 +13,19 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for perf_hooks."""
+"""Tests for hooks."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import time
-import perf_hooks
-import tensorflow as tf
 from tensorflow.python.training import monitored_session
+
+import tensorflow as tf
+
+import hooks
+
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -30,8 +33,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 class ExamplesPerSecondHookTest(tf.test.TestCase):
 
   def setUp(self):
-    # Mock out logging calls so we can verify whether correct info is being
-    # monitored.
+    """Mock out logging calls to verify if correct info is being monitored."""
     self._actual_log = tf.logging.info
     self.logged_message = None
 
@@ -51,20 +53,20 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
 
   def test_raise_in_both_secs_and_steps(self):
     with self.assertRaises(ValueError):
-      perf_hooks.ExamplesPerSecondHook(
+      hooks.ExamplesPerSecondHook(
           batch_size=256,
           every_n_steps=10,
           every_n_secs=20)
 
   def test_raise_in_none_secs_and_steps(self):
     with self.assertRaises(ValueError):
-      perf_hooks.ExamplesPerSecondHook(
+      hooks.ExamplesPerSecondHook(
           batch_size=256,
           every_n_steps=None,
           every_n_secs=None)
 
   def _validate_log_every_n_steps(self, sess, every_n_steps, warm_steps):
-    hook = perf_hooks.ExamplesPerSecondHook(
+    hook = hooks.ExamplesPerSecondHook(
         batch_size=256,
         every_n_steps=every_n_steps,
         warm_steps=warm_steps)
@@ -79,6 +81,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
 
     mon_sess.run(self.train_op)
     global_step_val = sess.run(self.global_step)
+    # assertNotRegexpMatches is not supported by python 3.1 and later
     if global_step_val > warm_steps:
       self.assertRegexpMatches(str(self.logged_message), 'exp/sec')
     else:
@@ -112,7 +115,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
       self._validate_log_every_n_steps(sess, 5, 10)
 
   def _validate_log_every_n_secs(self, sess, every_n_secs):
-    hook = perf_hooks.ExamplesPerSecondHook(
+    hook = hooks.ExamplesPerSecondHook(
         batch_size=256,
         every_n_steps=None,
         every_n_secs=every_n_secs)

@@ -26,15 +26,15 @@ import tensorflow as tf
 class ExamplesPerSecondHook(tf.train.SessionRunHook):
   """Hook to print out examples per second.
 
-    Total time is tracked and then divided by the total number of steps
-    to get the average step time and then batch_size is used to determine
-    the running average of examples per second. The examples per second for the
-    most recent interval is also logged.
+  Total time is tracked and then divided by the total number of steps
+  to get the average step time and then batch_size is used to determine
+  the running average of examples per second. The examples per second for the
+  most recent interval is also logged.
   """
 
   def __init__(self,
                batch_size,
-               every_n_steps=100,
+               every_n_steps=None,
                every_n_secs=None,
                warm_steps=0):
     """Initializer for ExamplesPerSecondHook.
@@ -43,13 +43,15 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
       batch_size: Total batch size used to calculate examples/second from
         global time.
       every_n_steps: Log stats every n steps.
-      every_n_secs: Log stats every n seconds.
+      every_n_secs: Log stats every n seconds. Exactly one of the
+      `every_n_steps` or `every_n_secs` should be set.
       warm_steps: skip this number of steps before logging and running
-        average.
-
+        average. warm_steps steps refers to global steps across all workers,
+        not on each worker
 
     Raises:
-      ValueError: if neither `every_n_steps` or `every_n_secs` is set.
+      ValueError: if neither `every_n_steps` or `every_n_secs` is set, or
+      both are set.
     """
 
     if (every_n_steps is None) == (every_n_secs is None):
@@ -65,8 +67,7 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
     self._warm_steps = warm_steps
 
   def begin(self):
-    # Called once before using the session to check if global step has
-    # been created.
+    """Called once before using the session to check global step."""
     self._global_step_tensor = tf.train.get_global_step()
     if self._global_step_tensor is None:
       raise RuntimeError(
@@ -78,21 +79,18 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
     Args:
       run_context: A SessionRunContext object.
 
-
     Returns:
-      None or a SessionRunArgs object.
+      A SessionRunArgs object or None if never triggered.
     """
     return tf.train.SessionRunArgs(self._global_step_tensor)
 
-  def after_run(self, run_context, run_values):
+  def after_run(self, run_context, run_values):  # pylint: disable=unused-argument
     """Called after each call to run().
 
     Args:
       run_context: A SessionRunContext object.
       run_values: A SessionRunValues object.
     """
-    _ = run_context
-
     global_step = run_values.results
 
     if self._timer.should_trigger_for_step(
@@ -108,7 +106,7 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
         average_examples_per_sec = self._batch_size * (
             self._total_steps / self._step_train_time)
         # current examples per second is based on the elapsed training steps
-        # and training time between the current trigger and the last one
+        # and training time per batch
         current_examples_per_sec = self._batch_size * (
             elapsed_steps / elapsed_time)
         # Current examples/sec followed by average examples/sec
