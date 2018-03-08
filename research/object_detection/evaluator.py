@@ -52,6 +52,7 @@ EVAL_DEFAULT_METRIC = 'pascal_voc_detection_metrics'
 
 def _extract_prediction_tensors(model,
                                 create_input_dict_fn,
+                                capacity,
                                 ignore_groundtruth=False):
   """Restores the model in a tensorflow session.
 
@@ -64,7 +65,7 @@ def _extract_prediction_tensors(model,
     tensor_dict: A tensor dictionary with evaluations.
   """
   input_dict = create_input_dict_fn()
-  prefetch_queue = prefetcher.prefetch(input_dict, capacity=500)
+  prefetch_queue = prefetcher.prefetch(input_dict, capacity=capacity)
   input_dict = prefetch_queue.dequeue()
   original_image = tf.expand_dims(input_dict[fields.InputDataFields.image], 0)
   preprocessed_image, true_image_shapes = model.preprocess(
@@ -127,7 +128,7 @@ def get_evaluators(eval_config, categories):
   return evaluators_list
 
 
-def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
+def evaluate(create_input_dict_fn, input_config, create_model_fn, eval_config, categories,
              checkpoint_dir, eval_dir, graph_hook_fn=None):
   """Evaluation function for detection models.
 
@@ -158,6 +159,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
   tensor_dict = _extract_prediction_tensors(
       model=model,
       create_input_dict_fn=create_input_dict_fn,
+      capacity=input_config.queue_capacity,
       ignore_groundtruth=eval_config.ignore_groundtruth)
 
   def _process_batch(tensor_dict, sess, batch_index, counters):
