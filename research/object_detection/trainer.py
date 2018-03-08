@@ -258,10 +258,10 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
 
     sync_optimizer = None
     if train_config.sync_replicas:
-      training_optimizer = tf.SyncReplicasOptimizer(
+      training_optimizer = tf.train.SyncReplicasOptimizer(
           training_optimizer,
           replicas_to_aggregate=train_config.replicas_to_aggregate,
-          total_num_replicas=train_config.worker_replicas)
+          total_num_replicas=worker_replicas)
       sync_optimizer = training_optimizer
 
     # Create ops required to initialize the model from a given checkpoint.
