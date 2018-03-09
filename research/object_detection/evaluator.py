@@ -128,7 +128,7 @@ def get_evaluators(eval_config, categories):
 
 
 def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
-             checkpoint_dir, eval_dir, graph_hook_fn=None):
+             checkpoint_dir, eval_dir, graph_hook_fn=None, evaluator_list=None):
   """Evaluation function for detection models.
 
   Args:
@@ -143,6 +143,8 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       completely built. This is helpful to perform additional changes to the
       training graph such as optimizing batchnorm. The function should modify
       the default graph.
+    evaluator_list: Optional list of instances of DetectionEvaluator. If not
+      given, this list of metrics is created according to the eval_config.
 
   Returns:
     metrics: A dictionary containing metric names and values from the latest
@@ -222,10 +224,13 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
     latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
     saver.restore(sess, latest_checkpoint)
 
+  if not evaluator_list:
+    evaluator_list = get_evaluators(eval_config, categories)
+
   metrics = eval_util.repeated_checkpoint_run(
       tensor_dict=tensor_dict,
       summary_dir=eval_dir,
-      evaluators=get_evaluators(eval_config, categories),
+      evaluators=evaluator_list,
       batch_processor=_process_batch,
       checkpoint_dirs=[checkpoint_dir],
       variables_to_restore=None,

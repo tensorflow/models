@@ -64,11 +64,9 @@ class BoxPredictor(object):
               scope=None, **params):
     """Computes encoded object locations and corresponding confidences.
 
-    Takes a high level image feature map as input and produce two predictions,
-    (1) a tensor encoding box locations, and
-    (2) a tensor encoding class scores for each corresponding box.
-    In this interface, we only assume that two tensors are returned as output
-    and do not assume anything about their shapes.
+    Takes a list of high level image feature maps as input and produces a list
+    of box encodings and a list of class scores where each element in the output
+    lists correspond to the feature maps in the input list.
 
     Args:
       image_features: A list of float tensors of shape [batch_size, height_i,
@@ -81,12 +79,14 @@ class BoxPredictor(object):
 
     Returns:
       A dictionary containing at least the following tensors.
-        box_encodings: A float tensor of shape
-          [batch_size, num_anchors, q, code_size] representing the location of
-          the objects, where q is 1 or the number of classes.
-        class_predictions_with_background: A float tensor of shape
-          [batch_size, num_anchors, num_classes + 1] representing the class
-          predictions for the proposals.
+        box_encodings: A list of float tensors of shape
+          [batch_size, num_anchors_i, q, code_size] representing the location of
+          the objects, where q is 1 or the number of classes. Each entry in the
+          list corresponds to a feature map in the input `image_features` list.
+        class_predictions_with_background: A list of float tensors of shape
+          [batch_size, num_anchors_i, num_classes + 1] representing the class
+          predictions for the proposals. Each entry in the list corresponds to a
+          feature map in the input `image_features` list.
 
     Raises:
       ValueError: If length of `image_features` is not equal to length of
@@ -104,7 +104,7 @@ class BoxPredictor(object):
     return self._predict(image_features, num_predictions_per_location,
                          **params)
 
-  # TODO: num_predictions_per_location could be moved to constructor.
+  # TODO(rathodv): num_predictions_per_location could be moved to constructor.
   # This is currently only used by ConvolutionalBoxPredictor.
   @abstractmethod
   def _predict(self, image_features, num_predictions_per_location, **params):
@@ -120,12 +120,14 @@ class BoxPredictor(object):
 
     Returns:
       A dictionary containing at least the following tensors.
-        box_encodings: A float tensor of shape
-          [batch_size, num_anchors, q, code_size] representing the location of
-          the objects, where q is 1 or the number of classes.
-        class_predictions_with_background: A float tensor of shape
-          [batch_size, num_anchors, num_classes + 1] representing the class
-          predictions for the proposals.
+        box_encodings: A list of float tensors of shape
+          [batch_size, num_anchors_i, q, code_size] representing the location of
+          the objects, where q is 1 or the number of classes. Each entry in the
+          list corresponds to a feature map in the input `image_features` list.
+        class_predictions_with_background: A list of float tensors of shape
+          [batch_size, num_anchors_i, num_classes + 1] representing the class
+          predictions for the proposals. Each entry in the list corresponds to a
+          feature map in the input `image_features` list.
     """
     pass
 
@@ -133,7 +135,7 @@ class BoxPredictor(object):
 class RfcnBoxPredictor(BoxPredictor):
   """RFCN Box Predictor.
 
-  Applies a position sensitve ROI pooling on position sensitive feature maps to
+  Applies a position sensitive ROI pooling on position sensitive feature maps to
   predict classes and refined locations. See https://arxiv.org/abs/1605.06409
   for details.
 
@@ -191,12 +193,14 @@ class RfcnBoxPredictor(BoxPredictor):
         box_code_size].
 
     Returns:
-      box_encodings: A float tensor of shape
-        [batch_size, num_anchors, num_classes, code_size] representing the
-        location of the objects.
-      class_predictions_with_background: A float tensor of shape
-        [batch_size, num_anchors, num_classes + 1] representing the class
-        predictions for the proposals.
+      box_encodings: A list of float tensors of shape
+        [batch_size, num_anchors_i, q, code_size] representing the location of
+        the objects, where q is 1 or the number of classes. Each entry in the
+        list corresponds to a feature map in the input `image_features` list.
+      class_predictions_with_background: A list of float tensors of shape
+        [batch_size, num_anchors_i, num_classes + 1] representing the class
+        predictions for the proposals. Each entry in the list corresponds to a
+        feature map in the input `image_features` list.
 
     Raises:
       ValueError: if num_predictions_per_location is not 1 or if
@@ -266,11 +270,12 @@ class RfcnBoxPredictor(BoxPredictor):
           class_predictions_with_background,
           [batch_size * num_boxes, 1, total_classes])
 
-    return {BOX_ENCODINGS: box_encodings,
+    return {BOX_ENCODINGS: [box_encodings],
             CLASS_PREDICTIONS_WITH_BACKGROUND:
-            class_predictions_with_background}
+            [class_predictions_with_background]}
 
 
+# TODO(rathodv): Change the implementation to return lists of predictions.
 class MaskRCNNBoxPredictor(BoxPredictor):
   """Mask R-CNN Box Predictor.
 
@@ -644,18 +649,18 @@ class ConvolutionalBoxPredictor(BoxPredictor):
         feature map.
 
     Returns:
-      A dictionary containing the following tensors.
-        box_encodings: A float tensor of shape [batch_size, num_anchors, 1,
-          code_size] representing the location of the objects, where
-          num_anchors = feat_height * feat_width * num_predictions_per_location
-        class_predictions_with_background: A float tensor of shape
-          [batch_size, num_anchors, num_classes + 1] representing the class
-          predictions for the proposals.
-
+      box_encodings: A list of float tensors of shape
+        [batch_size, num_anchors_i, q, code_size] representing the location of
+        the objects, where q is 1 or the number of classes. Each entry in the
+        list corresponds to a feature map in the input `image_features` list.
+      class_predictions_with_background: A list of float tensors of shape
+        [batch_size, num_anchors_i, num_classes + 1] representing the class
+        predictions for the proposals. Each entry in the list corresponds to a
+        feature map in the input `image_features` list.
     """
     box_encodings_list = []
     class_predictions_list = []
-    # TODO: Come up with a better way to generate scope names
+    # TODO(rathodv): Come up with a better way to generate scope names
     # in box predictor once we have time to retrain all models in the zoo.
     # The following lines create scope names to be backwards compatible with the
     # existing checkpoints.
@@ -741,12 +746,13 @@ class ConvolutionalBoxPredictor(BoxPredictor):
                       num_predictions_per_location,
                       num_class_slots]))
         class_predictions_list.append(class_predictions_with_background)
-    return {BOX_ENCODINGS: tf.concat(box_encodings_list, axis=1),
-            CLASS_PREDICTIONS_WITH_BACKGROUND:
-            tf.concat(class_predictions_list, axis=1)}
+    return {
+        BOX_ENCODINGS: box_encodings_list,
+        CLASS_PREDICTIONS_WITH_BACKGROUND: class_predictions_list
+    }
 
 
-# TODO: Merge the implementation with ConvolutionalBoxPredictor above
+# TODO(rathodv): Merge the implementation with ConvolutionalBoxPredictor above
 # since they are very similar.
 class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
   """Convolutional Box Predictor with weight sharing.
@@ -806,13 +812,14 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
         shared.
 
     Returns:
-      A dictionary containing the following tensors.
-        box_encodings: A float tensor of shape [batch_size, num_anchors, 1,
-          code_size] representing the location of the objects, where
-          num_anchors = feat_height * feat_width * num_predictions_per_location
-        class_predictions_with_background: A float tensor of shape
-          [batch_size, num_anchors, num_classes + 1] representing the class
-          predictions for the proposals.
+      box_encodings: A list of float tensors of shape
+        [batch_size, num_anchors_i, q, code_size] representing the location of
+        the objects, where q is 1 or the number of classes. Each entry in the
+        list corresponds to a feature map in the input `image_features` list.
+      class_predictions_with_background: A list of float tensors of shape
+        [batch_size, num_anchors_i, num_classes + 1] representing the class
+        predictions for the proposals. Each entry in the list corresponds to a
+        feature map in the input `image_features` list.
 
     Raises:
       ValueError: If the image feature maps do not have the same number of
@@ -890,6 +897,7 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                         num_predictions_per_location,
                         num_class_slots]))
           class_predictions_list.append(class_predictions_with_background)
-    return {BOX_ENCODINGS: tf.concat(box_encodings_list, axis=1),
-            CLASS_PREDICTIONS_WITH_BACKGROUND:
-            tf.concat(class_predictions_list, axis=1)}
+    return {
+        BOX_ENCODINGS: box_encodings_list,
+        CLASS_PREDICTIONS_WITH_BACKGROUND: class_predictions_list
+    }

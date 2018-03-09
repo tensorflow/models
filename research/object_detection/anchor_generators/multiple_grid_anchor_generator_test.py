@@ -37,8 +37,8 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
           base_anchor_size=tf.constant([256, 256], dtype=tf.float32),
           anchor_strides=[(16, 16)],
           anchor_offsets=[(7, -3)])
-      anchors = anchor_generator.generate(feature_map_shape_list=[(1, 1)])
-      return anchors.get()
+      anchors_list = anchor_generator.generate(feature_map_shape_list=[(1, 1)])
+      return anchors_list[0].get()
     exp_anchor_corners = [[-121, -35, 135, 29], [-249, -67, 263, 61],
                           [-505, -131, 519, 125], [-57, -67, 71, 61],
                           [-121, -131, 135, 125], [-249, -259, 263, 253],
@@ -57,8 +57,8 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
           base_anchor_size=tf.constant([10, 10], dtype=tf.float32),
           anchor_strides=[(19, 19)],
           anchor_offsets=[(0, 0)])
-      anchors = anchor_generator.generate(feature_map_shape_list=[(2, 2)])
-      return anchors.get()
+      anchors_list = anchor_generator.generate(feature_map_shape_list=[(2, 2)])
+      return anchors_list[0].get()
     exp_anchor_corners = [[-2.5, -2.5, 2.5, 2.5], [-5., -5., 5., 5.],
                           [-10., -10., 10., 10.], [-2.5, 16.5, 2.5, 21.5],
                           [-5., 14., 5, 24], [-10., 9., 10, 29],
@@ -76,9 +76,9 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
       anchor_generator = ag.MultipleGridAnchorGenerator(
           box_specs_list, base_anchor_size=tf.constant([1, 1],
                                                        dtype=tf.float32))
-      anchors = anchor_generator.generate(feature_map_shape_list=[(tf.constant(
-          1, dtype=tf.int32), tf.constant(2, dtype=tf.int32))])
-      return anchors.get()
+      anchors_list = anchor_generator.generate(feature_map_shape_list=[(
+          tf.constant(1, dtype=tf.int32), tf.constant(2, dtype=tf.int32))])
+      return anchors_list[0].get()
 
     exp_anchor_corners = [[0., -0.25, 1., 0.75], [0., 0.25, 1., 1.25]]
     anchor_corners_out = self.execute(graph_fn, [])
@@ -91,9 +91,9 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
       anchor_generator = ag.MultipleGridAnchorGenerator(
           box_specs_list, base_anchor_size=tf.constant([1, 1],
                                                        dtype=tf.float32))
-      anchors = anchor_generator.generate(feature_map_shape_list=[(height,
-                                                                   width)])
-      return anchors.get()
+      anchors_list = anchor_generator.generate(feature_map_shape_list=[(height,
+                                                                        width)])
+      return anchors_list[0].get()
 
     exp_anchor_corners = [[0., -0.25, 1., 0.75], [0., 0.25, 1., 1.25]]
 
@@ -109,12 +109,12 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
       anchor_generator = ag.MultipleGridAnchorGenerator(
           box_specs_list, base_anchor_size=tf.constant([1, 1],
                                                        dtype=tf.float32))
-      anchors = anchor_generator.generate(
+      anchors_list = anchor_generator.generate(
           feature_map_shape_list=[(tf.constant(1, dtype=tf.int32), tf.constant(
               2, dtype=tf.int32))],
           im_height=320,
           im_width=640)
-      return anchors.get()
+      return anchors_list[0].get()
 
     exp_anchor_corners = [[0., 0., 1., 0.5], [0., 0.5, 1., 1.]]
     anchor_corners_out = self.execute(graph_fn, [])
@@ -131,9 +131,9 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
           base_anchor_size=tf.constant([1.0, 1.0], dtype=tf.float32),
           anchor_strides=[(.25, .25), (.5, .5)],
           anchor_offsets=[(.125, .125), (.25, .25)])
-      anchors = anchor_generator.generate(feature_map_shape_list=[(4, 4),
-                                                                  (2, 2)])
-      return anchors.get()
+      anchors_list = anchor_generator.generate(feature_map_shape_list=[(4, 4), (
+          2, 2)])
+      return [anchors.get() for anchors in anchors_list]
     # height and width of box with .5 aspect ratio
     h = np.sqrt(2)
     w = 1.0/np.sqrt(2)
@@ -150,7 +150,7 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
                             [.125-1.0, .125-1.0, .125+1.0, .125+1.0],
                             [.125-.5*h, .125-.5*w, .125+.5*h, .125+.5*w],]
 
-    anchor_corners_out = self.execute(graph_fn, [])
+    anchor_corners_out = np.concatenate(self.execute(graph_fn, []), axis=0)
     self.assertEquals(anchor_corners_out.shape, (56, 4))
     big_grid_corners = anchor_corners_out[0:3, :]
     small_grid_corners = anchor_corners_out[48:, :]
@@ -168,9 +168,9 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
           box_specs_list,
           base_anchor_size=tf.constant([1.0, 1.0], dtype=tf.float32),
           clip_window=clip_window)
-      anchors = anchor_generator.generate(feature_map_shape_list=[(4, 4),
-                                                                  (2, 2)])
-      return anchors.get()
+      anchors_list = anchor_generator.generate(feature_map_shape_list=[(4, 4), (
+          2, 2)])
+      return [anchors.get() for anchors in anchors_list]
     # height and width of box with .5 aspect ratio
     h = np.sqrt(2)
     w = 1.0/np.sqrt(2)
@@ -183,7 +183,7 @@ class MultipleGridAnchorGeneratorTest(test_case.TestCase):
                               [.25, .25, 1, 1],
                               [.75-.5*h, .75-.5*w, 1, 1]]
 
-    anchor_corners_out = self.execute(graph_fn, [])
+    anchor_corners_out = np.concatenate(self.execute(graph_fn, []), axis=0)
     small_grid_corners = anchor_corners_out[48:, :]
     self.assertAllClose(small_grid_corners, exp_small_grid_corners)
 
@@ -264,10 +264,10 @@ class CreateSSDAnchorsTest(test_case.TestCase):
 
       feature_map_shape_list = [(38, 38), (19, 19), (10, 10),
                                 (5, 5), (3, 3), (1, 1)]
-      anchors = anchor_generator.generate(
+      anchors_list = anchor_generator.generate(
           feature_map_shape_list=feature_map_shape_list)
-      return anchors.get()
-    anchor_corners_out = self.execute(graph_fn1, [])
+      return [anchors.get() for anchors in anchors_list]
+    anchor_corners_out = np.concatenate(self.execute(graph_fn1, []), axis=0)
     self.assertEquals(anchor_corners_out.shape, (7308, 4))
 
     def graph_fn2():
@@ -278,10 +278,10 @@ class CreateSSDAnchorsTest(test_case.TestCase):
 
       feature_map_shape_list = [(38, 38), (19, 19), (10, 10),
                                 (5, 5), (3, 3), (1, 1)]
-      anchors = anchor_generator.generate(
+      anchors_list = anchor_generator.generate(
           feature_map_shape_list=feature_map_shape_list)
-      return anchors.get()
-    anchor_corners_out = self.execute(graph_fn2, [])
+      return [anchors.get() for anchors in anchors_list]
+    anchor_corners_out = np.concatenate(self.execute(graph_fn2, []), axis=0)
     self.assertEquals(anchor_corners_out.shape, (11640, 4))
 
 

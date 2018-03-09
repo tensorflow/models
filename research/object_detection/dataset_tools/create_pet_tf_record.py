@@ -256,7 +256,7 @@ def create_tf_record(output_filename,
   writer.close()
 
 
-# TODO: Add test for pet/PASCAL main files.
+# TODO(derekjchow): Add test for pet/PASCAL main files.
 def main(_):
   data_dir = FLAGS.data_dir
   label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)

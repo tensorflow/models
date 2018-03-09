@@ -4,15 +4,15 @@
 
 Tensorflow Object Detection API depends on the following libraries:
 
-* Protobuf 2.6
-* Python-tk
-* Pillow 1.0
-* lxml
-* tf Slim (which is included in the "tensorflow/models/research/" checkout)
-* Jupyter notebook
-* Matplotlib
-* Tensorflow
-* cocoapi
+*   Protobuf 2.6
+*   Python-tk
+*   Pillow 1.0
+*   lxml
+*   tf Slim (which is included in the "tensorflow/models/research/" checkout)
+*   Jupyter notebook
+*   Matplotlib
+*   Tensorflow
+*   cocoapi
 
 For detailed steps to install Tensorflow, follow the [Tensorflow installation
 instructions](https://www.tensorflow.org/install/). A typical user can install

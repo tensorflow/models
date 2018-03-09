@@ -20,12 +20,49 @@ protos for object detection.
 """
 import tensorflow as tf
 
+from tensorflow.python.ops import array_ops
+from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import math_ops
 from object_detection.core import data_decoder
 from object_detection.core import standard_fields as fields
 from object_detection.protos import input_reader_pb2
 from object_detection.utils import label_map_util
 
 slim_example_decoder = tf.contrib.slim.tfexample_decoder
+
+
+class BackupHandler(slim_example_decoder.ItemHandler):
+  """An ItemHandler that tries two ItemHandlers in order."""
+
+  def __init__(self, handler, backup):
+    """Initializes the BackupHandler handler.
+
+    If the first Handler's tensors_to_item returns a Tensor with no elements,
+    the second Handler is used.
+
+    Args:
+      handler: The primary ItemHandler.
+      backup: The backup ItemHandler.
+
+    Raises:
+      ValueError: if either is not an ItemHandler.
+    """
+    if not isinstance(handler, slim_example_decoder.ItemHandler):
+      raise ValueError('Primary handler is of type %s instead of ItemHandler' %
+                       type(handler))
+    if not isinstance(backup, slim_example_decoder.ItemHandler):
+      raise ValueError(
+          'Backup handler is of type %s instead of ItemHandler' % type(backup))
+    self._handler = handler
+    self._backup = backup
+    super(BackupHandler, self).__init__(handler.keys + backup.keys)
+
+  def tensors_to_item(self, keys_to_tensors):
+    item = self._handler.tensors_to_item(keys_to_tensors)
+    return control_flow_ops.cond(
+        pred=math_ops.equal(math_ops.reduce_prod(array_ops.shape(item)), 0),
+        true_fn=lambda: self._backup.tensors_to_item(keys_to_tensors),
+        false_fn=lambda: item)
 
 
 class TfExampleDecoder(data_decoder.DataDecoder):
@@ -101,13 +138,18 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         'image/object/weight':
             tf.VarLenFeature(tf.float32),
     }
+    if dct_method:
+      image = slim_example_decoder.Image(
+          image_key='image/encoded',
+          format_key='image/format',
+          channels=3,
+          dct_method=dct_method)
+    else:
+      image = slim_example_decoder.Image(
+          image_key='image/encoded', format_key='image/format', channels=3)
     self.items_to_handlers = {
         fields.InputDataFields.image:
-            slim_example_decoder.Image(
-                image_key='image/encoded',
-                format_key='image/format',
-                channels=3,
-                dct_method=dct_method),
+            image,
         fields.InputDataFields.source_id: (
             slim_example_decoder.Tensor('image/source_id')),
         fields.InputDataFields.key: (
@@ -160,7 +202,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
           default_value=-1)
       # If the label_map_proto is provided, try to use it in conjunction with
       # the class text, and fall back to a materialized ID.
-      label_handler = slim_example_decoder.BackupHandler(
+      # TODO(lzc): note that here we are using BackupHandler defined in this
+      # file(which is branching slim_example_decoder.BackupHandler). Need to
+      # switch back to slim_example_decoder.BackupHandler once tf 1.5 becomes
+      # more popular.
+      label_handler = BackupHandler(
           slim_example_decoder.LookupTensor(
               'image/object/class/text', table, default_value=''),
           slim_example_decoder.Tensor('image/object/class/label'))

@@ -70,7 +70,7 @@ Extras:
   * <a href='g3doc/oid_inference_and_evaluation.md'>
       Inference and evaluation on the Open Images dataset</a><br>
   * <a href='g3doc/instance_segmentation.md'>
-      Run an instance segmentation model
+      Run an instance segmentation model</a><br>
 
 ## Getting Help
 
@@ -83,6 +83,8 @@ tensorflow/models GitHub
 [issue tracker](https://github.com/tensorflow/models/issues), prefixing the
 issue name with "object_detection".
 
+Please check [FAQ](g3doc/faq.md) for frequently asked questions before
+reporting an issue.
 
 
 ## Release information

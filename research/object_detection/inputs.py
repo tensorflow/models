@@ -200,8 +200,8 @@ def create_train_input_fn(train_config, train_input_config,
           keypoints for each box.
 
     Raises:
-      TypeError: if the `train_config` or `train_input_config` are not of the
-        correct type.
+      TypeError: if the `train_config`, `train_input_config` or `model_config`
+        are not of the correct type.
     """
     if not isinstance(train_config, train_pb2.TrainConfig):
       raise TypeError('For training mode, the `train_config` must be a '
@@ -316,8 +316,8 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
           which represent instance masks for objects.
 
     Raises:
-      TypeError: if the `eval_config` or `eval_input_config` are not of the
-        correct type.
+      TypeError: if the `eval_config`, `eval_input_config` or `model_config`
+        are not of the correct type.
     """
     del params
     if not isinstance(eval_config, eval_pb2.EvalConfig):

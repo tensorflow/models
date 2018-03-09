@@ -17,7 +17,7 @@
 Note that nothing in this file is tensorflow related and thus cannot
 be called directly as a slim metric, for example.
 
-TODO: wrap as a slim metric in metrics.py
+TODO(jonathanhuang): wrap as a slim metric in metrics.py
 
 
 Usage example: given a set of images with ids in the list image_ids
@@ -327,7 +327,8 @@ def ExportSingleImageGroundtruthToCoco(image_id,
                                        category_id_set,
                                        groundtruth_boxes,
                                        groundtruth_classes,
-                                       groundtruth_masks=None):
+                                       groundtruth_masks=None,
+                                       groundtruth_is_crowd=None):
   """Export groundtruth of a single image to COCO format.
 
   This function converts groundtruth detection annotations represented as numpy
@@ -338,8 +339,7 @@ def ExportSingleImageGroundtruthToCoco(image_id,
   groundtruth_classes[i] are associated with the same groundtruth annotation.
 
   In the exported result, "area" fields are always set to the area of the
-  groundtruth bounding box and "iscrowd" fields are always set to 0.
-  TODO: pass in "iscrowd" array for evaluating on COCO dataset.
+  groundtruth bounding box.
 
   Args:
     image_id: a unique image identifier either of type integer or string.
@@ -352,6 +352,8 @@ def ExportSingleImageGroundtruthToCoco(image_id,
     groundtruth_classes: numpy array (int) with shape [num_gt_boxes]
     groundtruth_masks: optional uint8 numpy array of shape [num_detections,
       image_height, image_width] containing detection_masks.
+    groundtruth_is_crowd: optional numpy array (int) with shape [num_gt_boxes]
+      indicating whether groundtruth boxes are crowd.
 
   Returns:
     a list of groundtruth annotations for a single image in the COCO format.
@@ -379,17 +381,27 @@ def ExportSingleImageGroundtruthToCoco(image_id,
                      'Classes shape: %d. Boxes shape: %d. Image ID: %s' % (
                          groundtruth_classes.shape[0],
                          groundtruth_boxes.shape[0], image_id))
+  has_is_crowd = groundtruth_is_crowd is not None
+  if has_is_crowd and len(groundtruth_is_crowd.shape) != 1:
+    raise ValueError('groundtruth_is_crowd is expected to be of rank 1.')
   groundtruth_list = []
   for i in range(num_boxes):
     if groundtruth_classes[i] in category_id_set:
+      iscrowd = groundtruth_is_crowd[i] if has_is_crowd else 0
       export_dict = {
-          'id': next_annotation_id + i,
-          'image_id': image_id,
-          'category_id': int(groundtruth_classes[i]),
-          'bbox': list(_ConvertBoxToCOCOFormat(groundtruth_boxes[i, :])),
-          'area': float((groundtruth_boxes[i, 2] - groundtruth_boxes[i, 0]) *
-                        (groundtruth_boxes[i, 3] - groundtruth_boxes[i, 1])),
-          'iscrowd': 0
+          'id':
+              next_annotation_id + i,
+          'image_id':
+              image_id,
+          'category_id':
+              int(groundtruth_classes[i]),
+          'bbox':
+              list(_ConvertBoxToCOCOFormat(groundtruth_boxes[i, :])),
+          'area':
+              float((groundtruth_boxes[i, 2] - groundtruth_boxes[i, 0]) *
+                    (groundtruth_boxes[i, 3] - groundtruth_boxes[i, 1])),
+          'iscrowd':
+              iscrowd
       }
       if groundtruth_masks is not None:
         export_dict['segmentation'] = _RleCompress(groundtruth_masks[i])
@@ -416,7 +428,7 @@ def ExportGroundtruthToCOCO(image_ids,
 
   In the exported result, "area" fields are always set to the area of the
   groundtruth bounding box and "iscrowd" fields are always set to 0.
-  TODO: pass in "iscrowd" array for evaluating on COCO dataset.
+  TODO(jonathanhuang): pass in "iscrowd" array for evaluating on COCO dataset.
 
   Args:
     image_ids: a list of unique image identifier either of type integer or
