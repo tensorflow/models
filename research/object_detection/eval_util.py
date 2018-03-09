@@ -47,6 +47,7 @@ def write_metrics(metrics, global_step, summary_dir):
     ])
     summary_writer.add_summary(summary, global_step)
     logging.info('%s: %f', key, metrics[key])
+  summary_writer.close()
   logging.info('Metrics written to tf summary.')
 
 
