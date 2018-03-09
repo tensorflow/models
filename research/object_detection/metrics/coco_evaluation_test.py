@@ -86,6 +86,78 @@ class CocoDetectionEvaluationTest(tf.test.TestCase):
     metrics = coco_evaluator.evaluate()
     self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
 
+  def testGetOneMAPWithMatchingGroundtruthAndDetectionsSkipCrowd(self):
+    """Tests computing mAP with is_crowd GT boxes skipped."""
+    category_list = [{
+        'id': 0,
+        'name': 'person'
+    }, {
+        'id': 1,
+        'name': 'cat'
+    }, {
+        'id': 2,
+        'name': 'dog'
+    }]
+    coco_evaluator = coco_evaluation.CocoDetectionEvaluator(category_list)
+    coco_evaluator.add_single_ground_truth_image_info(
+        image_id='image1',
+        groundtruth_dict={
+            standard_fields.InputDataFields.groundtruth_boxes:
+                np.array([[100., 100., 200., 200.], [99., 99., 200., 200.]]),
+            standard_fields.InputDataFields.groundtruth_classes:
+                np.array([1, 2]),
+            standard_fields.InputDataFields.groundtruth_is_crowd:
+                np.array([0, 1])
+        })
+    coco_evaluator.add_single_detected_image_info(
+        image_id='image1',
+        detections_dict={
+            standard_fields.DetectionResultFields.detection_boxes:
+                np.array([[100., 100., 200., 200.]]),
+            standard_fields.DetectionResultFields.detection_scores:
+                np.array([.8]),
+            standard_fields.DetectionResultFields.detection_classes:
+                np.array([1])
+        })
+    metrics = coco_evaluator.evaluate()
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
+
+  def testGetOneMAPWithMatchingGroundtruthAndDetectionsEmptyCrowd(self):
+    """Tests computing mAP with empty is_crowd array passed in."""
+    category_list = [{
+        'id': 0,
+        'name': 'person'
+    }, {
+        'id': 1,
+        'name': 'cat'
+    }, {
+        'id': 2,
+        'name': 'dog'
+    }]
+    coco_evaluator = coco_evaluation.CocoDetectionEvaluator(category_list)
+    coco_evaluator.add_single_ground_truth_image_info(
+        image_id='image1',
+        groundtruth_dict={
+            standard_fields.InputDataFields.groundtruth_boxes:
+                np.array([[100., 100., 200., 200.]]),
+            standard_fields.InputDataFields.groundtruth_classes:
+                np.array([1]),
+            standard_fields.InputDataFields.groundtruth_is_crowd:
+                np.array([])
+        })
+    coco_evaluator.add_single_detected_image_info(
+        image_id='image1',
+        detections_dict={
+            standard_fields.DetectionResultFields.detection_boxes:
+                np.array([[100., 100., 200., 200.]]),
+            standard_fields.DetectionResultFields.detection_scores:
+                np.array([.8]),
+            standard_fields.DetectionResultFields.detection_classes:
+                np.array([1])
+        })
+    metrics = coco_evaluator.evaluate()
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
+
   def testRejectionOnDuplicateGroundtruth(self):
     """Tests that groundtruth cannot be added more than once for an image."""
     categories = [{'id': 1, 'name': 'cat'},

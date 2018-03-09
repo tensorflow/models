@@ -1,3 +1,17 @@
+# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 """A convenience wrapper around tf.test.TestCase to enable TPU tests."""
 
 import tensorflow as tf
@@ -33,7 +47,9 @@ class TestCase(tf.test.TestCase):
       materialized_results = sess.run(tpu_computation,
                                       feed_dict=dict(zip(placeholders, inputs)))
       sess.run(tpu.shutdown_system())
-      if len(materialized_results) == 1:
+      if (len(materialized_results) == 1
+          and (isinstance(materialized_results, list)
+               or isinstance(materialized_results, tuple))):
         materialized_results = materialized_results[0]
     return materialized_results
 
@@ -56,7 +72,9 @@ class TestCase(tf.test.TestCase):
                 tf.local_variables_initializer()])
       materialized_results = sess.run(results, feed_dict=dict(zip(placeholders,
                                                                   inputs)))
-      if len(materialized_results) == 1:
+      if (len(materialized_results) == 1
+          and (isinstance(materialized_results, list)
+               or isinstance(materialized_results, tuple))):
         materialized_results = materialized_results[0]
     return materialized_results
 

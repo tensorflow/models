@@ -65,6 +65,7 @@ message Initializer {
   oneof initializer_oneof {
     TruncatedNormalInitializer truncated_normal_initializer = 1;
     VarianceScalingInitializer variance_scaling_initializer = 2;
+    RandomNormalInitializer random_normal_initializer = 3;
   }
 }
 
@@ -87,6 +88,13 @@ message VarianceScalingInitializer {
     FAN_AVG = 2;
   }
   optional Mode mode = 3 [default = FAN_IN];
+}
+
+// Configuration proto for random normal initializer. See
+// https://www.tensorflow.org/api_docs/python/tf/random_normal_initializer
+message RandomNormalInitializer {
+  optional float mean = 1 [default = 0.0];
+  optional float stddev = 2 [default = 1.0];
 }
 
 // Configuration proto for batch norm to apply after convolution op. See

@@ -150,7 +150,8 @@ def _build_localization_loss(loss_config):
     return losses.WeightedL2LocalizationLoss()
 
   if loss_type == 'weighted_smooth_l1':
-    return losses.WeightedSmoothL1LocalizationLoss()
+    return losses.WeightedSmoothL1LocalizationLoss(
+        loss_config.weighted_smooth_l1.delta)
 
   if loss_type == 'weighted_iou':
     return losses.WeightedIOULocalizationLoss()
