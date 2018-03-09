@@ -1296,7 +1296,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
-      var_map = model.restore_map(from_detection_checkpoint=False)
+      var_map = model.restore_map(fine_tune_checkpoint_type='classification')
       self.assertIsInstance(var_map, dict)
       saver = tf.train.Saver(var_map)
       with self.test_session(graph=test_graph_classification) as sess:
@@ -1338,7 +1338,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       prediction_dict2 = model2.predict(preprocessed_inputs2, true_image_shapes)
       model2.postprocess(prediction_dict2, true_image_shapes)
       another_variable = tf.Variable([17.0], name='another_variable')  # pylint: disable=unused-variable
-      var_map = model2.restore_map(from_detection_checkpoint=True)
+      var_map = model2.restore_map(fine_tune_checkpoint_type='detection')
       self.assertIsInstance(var_map, dict)
       saver = tf.train.Saver(var_map)
       with self.test_session(graph=test_graph_detection2) as sess:
@@ -1366,7 +1366,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       model.postprocess(prediction_dict, true_image_shapes)
       another_variable = tf.Variable([17.0], name='another_variable')  # pylint: disable=unused-variable
       var_map = model.restore_map(
-          from_detection_checkpoint=True,
+          fine_tune_checkpoint_type='detection',
           load_all_detection_checkpoint_vars=True)
       self.assertIsInstance(var_map, dict)
       self.assertIn('another_variable', var_map)

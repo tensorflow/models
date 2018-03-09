@@ -1927,26 +1927,32 @@ class FasterRCNNMetaArch(model.DetectionModel):
           decoded_boxlist_list=[proposal_boxlist])
 
   def restore_map(self,
-                  from_detection_checkpoint=True,
+                  fine_tune_checkpoint_type='detection',
                   load_all_detection_checkpoint_vars=False):
     """Returns a map of variables to load from a foreign checkpoint.
 
     See parent class for details.
 
     Args:
-      from_detection_checkpoint: whether to restore from a full detection
+      fine_tune_checkpoint_type: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
-        classification checkpoint for initialization prior to training. Default
-        True.
+        classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
        load_all_detection_checkpoint_vars: whether to load all variables (when
-         `from_detection_checkpoint` is True). If False, only variables within
-         the feature extractor scopes are included. Default False.
+         `fine_tune_checkpoint_type` is `detection`). If False, only variables
+         within the feature extractor scopes are included. Default False.
 
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    Raises:
+      ValueError: if fine_tune_checkpoint_type is neither `classification`
+        nor `detection`.
     """
-    if not from_detection_checkpoint:
+    if fine_tune_checkpoint_type not in ['detection', 'classification']:
+      raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
+          fine_tune_checkpoint_type))
+    if fine_tune_checkpoint_type == 'classification':
       return self._feature_extractor.restore_from_classification_checkpoint_fn(
           self.first_stage_feature_extractor_scope,
           self.second_stage_feature_extractor_scope)

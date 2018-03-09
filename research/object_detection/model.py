@@ -252,7 +252,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
     if mode == tf.estimator.ModeKeys.TRAIN:
       if train_config.fine_tune_checkpoint and hparams.load_pretrained:
         asg_map = detection_model.restore_map(
-            from_detection_checkpoint=train_config.from_detection_checkpoint,
+            fine_tune_checkpoint_type=train_config.fine_tune_checkpoint_type,
             load_all_detection_checkpoint_vars=(
                 train_config.load_all_detection_checkpoint_vars))
         available_var_map = (
