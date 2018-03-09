@@ -17,11 +17,14 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import errors
+from tensorflow.python.framework import ops
+from tensorflow.python.framework import test_util
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 
 
+@test_util.with_c_api
 class BoxListOpsTest(tf.test.TestCase):
   """Tests for common bounding box operations."""
 
@@ -509,9 +512,13 @@ class BoxListOpsTest(tf.test.TestCase):
       with self.assertRaises(ValueError):
         box_list_ops.sort_by_field(boxes, 'misc')
 
-      with self.assertRaisesWithPredicateMatch(errors.InvalidArgumentError,
-                                               'Incorrect field size'):
-        sess.run(box_list_ops.sort_by_field(boxes, 'weights').get())
+      if ops._USE_C_API:
+        with self.assertRaises(ValueError):
+          box_list_ops.sort_by_field(boxes, 'weights')
+      else:
+        with self.assertRaisesWithPredicateMatch(errors.InvalidArgumentError,
+                                                 'Incorrect field size'):
+          sess.run(box_list_ops.sort_by_field(boxes, 'weights').get())
 
   def test_visualize_boxes_in_image(self):
     image = tf.zeros((6, 4, 3))
