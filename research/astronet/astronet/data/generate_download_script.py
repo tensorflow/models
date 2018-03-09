@@ -90,7 +90,7 @@ def main(argv):
     f.write("echo 'Finished downloading {} Kepler targets to {}'\n".format(
         num_kepids, FLAGS.download_dir))
 
-  os.chmod(FLAGS.output_file, 0744)  # Make the download script executable.
+  os.chmod(FLAGS.output_file, 0o744)  # Make the download script executable.
   print("{} Kepler targets will be downloaded to {}".format(
       num_kepids, FLAGS.output_file))
   print("To start download, run:\n  {}".format("./" + FLAGS.output_file

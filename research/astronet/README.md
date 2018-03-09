@@ -402,10 +402,16 @@ The output should look like this:
 
 ```Prediction: 0.9480018```
 
-This means that the model is about 95% confident that the input TCE is a planet.
-Indeed, this TCE is
+This means the model is about 95% confident that the input TCE is a planet.
+Of course, this is only a small step in the overall process of discovering and
+validating an exoplanet: the model’s prediction is not proof one way or the
+other. The process of validating this signal as a real exoplanet requires
+significant follow-up work by an expert astronomer --- see Sections 6.3 and 6.4
+of [our paper](http://iopscience.iop.org/article/10.3847/1538-3881/aa9e09/meta)
+for the full details. In this particular case, our follow-up analysis validated
+this signal as a bona fide exoplanet: it’s now called
 [Kepler-90 i](https://www.nasa.gov/press-release/artificial-intelligence-nasa-data-used-to-discover-eighth-planet-circling-distant-star),
-which is the eighth planet discovered around the Kepler-90 star!
+and is the record-breaking eighth planet discovered around the Kepler-90 star!
 
 In addition to the output prediction, the script will also produce a plot of the
 input representations. For Kepler-90 i, the plot should look something like
