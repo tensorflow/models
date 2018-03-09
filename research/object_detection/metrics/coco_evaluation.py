@@ -198,7 +198,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         all_metrics_per_category=self._all_metrics_per_category)
     box_metrics.update(box_per_category_ap)
     box_metrics = {'DetectionBoxes_'+ key: value
-                   for key, value in box_metrics.iteritems()}
+                   for key, value in iter(box_metrics.items())}
     return box_metrics
 
   def get_estimator_eval_metric_ops(self, image_id, groundtruth_boxes,
