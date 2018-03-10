@@ -33,8 +33,8 @@ import time
 
 import tensorflow as tf
 import tensorflow.contrib.eager as tfe
-import mnist
-import dataset
+from official.mnist import mnist
+from official.mnist import dataset
 
 FLAGS = None
 

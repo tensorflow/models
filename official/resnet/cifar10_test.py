@@ -22,7 +22,7 @@ from tempfile import mkstemp
 import numpy as np
 import tensorflow as tf
 
-import cifar10_main
+from official.resnet import cifar10_main
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 

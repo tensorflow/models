@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for hooks."""
+"""Tests for perf_hooks."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,7 +24,7 @@ from tensorflow.python.training import monitored_session
 
 import tensorflow as tf
 
-import hooks
+from official.utils.logging import hooks
 
 
 tf.logging.set_verbosity(tf.logging.ERROR)

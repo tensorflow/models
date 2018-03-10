@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import hooks
+from official.utils.logging import hooks
 
 
 def get_train_hooks(name_list, **kwargs):

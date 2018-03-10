@@ -8,7 +8,6 @@ The master branch of the models are **in development**, and they target the [nig
 
 If you are on a version of TensorFlow earlier than 1.4, please [update your installation](https://www.tensorflow.org/install/).
 
-
 ---
 
 Below is a list of the models available.
@@ -22,3 +21,11 @@ Below is a list of the models available.
 More models to come!
 
 If you would like to make any fixes or improvements to the models, please [submit a pull request](https://github.com/tensorflow/models/compare).
+
+---
+
+Run the models.
+
+The *Official Models* is made as a Python module. To run the models directly, you must change your work directory to the top-level ***/models*** folder (the parent directory of ***/official***), and set the Python path by issuing the following command: ``` export PYTHONPATH="$PYTHONPATH:$(pwd)" ```
+
+To make Official Models easier to use, we are planning to pip package Official Models for [pip install](https://github.com/tensorflow/models/issues/917).
