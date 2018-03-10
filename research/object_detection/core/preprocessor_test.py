@@ -2118,6 +2118,33 @@ class PreprocessorTest(tf.test.TestCase):
         self.assertAllEqual(out_image_shape, expected_image_shape)
         self.assertAllEqual(out_masks_shape, expected_mask_shape)
 
+  def testResizeImageWithMasksTensorInputHeightAndWidth(self):
+    """Tests image resizing, checking output sizes."""
+    in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
+    in_masks_shape_list = [[15, 60, 40], [10, 15, 30]]
+    height = tf.constant(50, dtype=tf.int32)
+    width = tf.constant(100, dtype=tf.int32)
+    expected_image_shape_list = [[50, 100, 3], [50, 100, 3]]
+    expected_masks_shape_list = [[15, 50, 100], [10, 50, 100]]
+
+    for (in_image_shape, expected_image_shape, in_masks_shape,
+         expected_mask_shape) in zip(in_image_shape_list,
+                                     expected_image_shape_list,
+                                     in_masks_shape_list,
+                                     expected_masks_shape_list):
+      in_image = tf.random_uniform(in_image_shape)
+      in_masks = tf.random_uniform(in_masks_shape)
+      out_image, out_masks, _ = preprocessor.resize_image(
+          in_image, in_masks, new_height=height, new_width=width)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape])
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
+
   def testResizeImageWithNoInstanceMask(self):
     """Tests image resizing, checking output sizes."""
     in_image_shape_list = [[60, 40, 3], [15, 30, 3]]

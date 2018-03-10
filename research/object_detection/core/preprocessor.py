@@ -2261,14 +2261,14 @@ def resize_image(image,
       'ResizeImage',
       values=[image, new_height, new_width, method, align_corners]):
     new_image = tf.image.resize_images(
-        image, [new_height, new_width],
+        image, tf.stack([new_height, new_width]),
         method=method,
         align_corners=align_corners)
     image_shape = shape_utils.combined_static_and_dynamic_shape(image)
     result = [new_image]
     if masks is not None:
       num_instances = tf.shape(masks)[0]
-      new_size = tf.constant([new_height, new_width], dtype=tf.int32)
+      new_size = tf.stack([new_height, new_width])
       def resize_masks_branch():
         new_masks = tf.expand_dims(masks, 3)
         new_masks = tf.image.resize_nearest_neighbor(
