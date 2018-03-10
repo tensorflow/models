@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Common functions for repeatedly evaluating a checkpoint."""
+"""Common utility functions for evaluation."""
 import logging
 import os
 import time
@@ -24,6 +24,7 @@ from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import standard_fields as fields
+from object_detection.metrics import coco_evaluation
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
 from object_detection.utils import visualization_utils as vis_utils
@@ -432,7 +433,7 @@ def result_dict_for_single_example(image,
   have label 1.
 
   Args:
-    image: A single 4D image tensor of shape [1, H, W, C].
+    image: A single 4D uint8 image tensor of shape [1, H, W, C].
     key: A single string tensor identifying the image.
     detections: A dictionary of detections, returned from
       DetectionModel.postprocess().
@@ -479,7 +480,7 @@ def result_dict_for_single_example(image,
   """
   label_id_offset = 1  # Applying label id offset (b/63711816)
 
-  input_data_fields = fields.InputDataFields()
+  input_data_fields = fields.InputDataFields
   output_dict = {
       input_data_fields.original_image: image,
       input_data_fields.key: key,
@@ -550,3 +551,69 @@ def result_dict_for_single_example(image,
       output_dict[input_data_fields.groundtruth_classes] = groundtruth_classes
 
   return output_dict
+
+
+def get_eval_metric_ops_for_evaluators(evaluation_metrics,
+                                       categories,
+                                       eval_dict,
+                                       include_metrics_per_category=False):
+  """Returns a dictionary of eval metric ops to use with `tf.EstimatorSpec`.
+
+  Args:
+    evaluation_metrics: List of evaluation metric names. Current options are
+      'coco_detection_metrics' and 'coco_mask_metrics'.
+    categories: A list of dicts, each of which has the following keys -
+        'id': (required) an integer id uniquely identifying this category.
+        'name': (required) string representing category name e.g., 'cat', 'dog'.
+    eval_dict: An evaluation dictionary, returned from
+      result_dict_for_single_example().
+    include_metrics_per_category: If True, include metrics for each category.
+
+  Returns:
+    A dictionary of metric names to tuple of value_op and update_op that can be
+    used as eval metric ops in tf.EstimatorSpec.
+
+  Raises:
+    ValueError: If any of the metrics in `evaluation_metric` is not
+    'coco_detection_metrics' or 'coco_mask_metrics'.
+  """
+  evaluation_metrics = list(set(evaluation_metrics))
+
+  input_data_fields = fields.InputDataFields
+  detection_fields = fields.DetectionResultFields
+  eval_metric_ops = {}
+  for metric in evaluation_metrics:
+    if metric == 'coco_detection_metrics':
+      coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
+          categories, include_metrics_per_category=include_metrics_per_category)
+      eval_metric_ops.update(
+          coco_evaluator.get_estimator_eval_metric_ops(
+              image_id=eval_dict[input_data_fields.key],
+              groundtruth_boxes=eval_dict[input_data_fields.groundtruth_boxes],
+              groundtruth_classes=eval_dict[
+                  input_data_fields.groundtruth_classes],
+              detection_boxes=eval_dict[detection_fields.detection_boxes],
+              detection_scores=eval_dict[detection_fields.detection_scores],
+              detection_classes=eval_dict[detection_fields.detection_classes]))
+    elif metric == 'coco_mask_metrics':
+      coco_mask_evaluator = coco_evaluation.CocoMaskEvaluator(
+          categories, include_metrics_per_category=include_metrics_per_category)
+      eval_metric_ops.update(
+          coco_mask_evaluator.get_estimator_eval_metric_ops(
+              image_id=eval_dict[input_data_fields.key],
+              groundtruth_boxes=eval_dict[input_data_fields.groundtruth_boxes],
+              groundtruth_classes=eval_dict[
+                  input_data_fields.groundtruth_classes],
+              groundtruth_instance_masks=eval_dict[
+                  input_data_fields.groundtruth_instance_masks],
+              detection_scores=eval_dict[detection_fields.detection_scores],
+              detection_classes=eval_dict[detection_fields.detection_classes],
+              detection_masks=eval_dict[detection_fields.detection_masks]))
+    else:
+      raise ValueError('The only evaluation metrics supported are '
+                       '"coco_detection_metrics" and "coco_mask_metrics". '
+                       'Found {} in the evaluation metrics'.format(metric))
+
+  return eval_metric_ops
+
+
