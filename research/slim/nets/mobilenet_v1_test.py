@@ -350,7 +350,7 @@ class MobilenetV1Test(tf.test.TestCase):
       mobilenet_v1.mobilenet_v1_base(inputs)
       total_params, _ = slim.model_analyzer.analyze_vars(
           slim.get_model_variables())
-      self.assertAlmostEqual(3217920L, total_params)
+      self.assertAlmostEqual(3217920, total_params)
 
   def testBuildEndPointsWithDepthMultiplierLessThanOne(self):
     batch_size = 5
