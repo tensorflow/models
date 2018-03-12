@@ -168,7 +168,6 @@ def _float_feature(value):
     value = [value]
   return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
-import random
 def _bytes_feature(value):
   """Wrapper for inserting bytes features into Example proto."""
   if isinstance(value, six.string_types):
