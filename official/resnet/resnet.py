@@ -102,7 +102,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # The optimal number of batches to process in parallel is approximately
   # NUM_CPUS / batch_size, as map_and_batch will create
   # num_parallel_batches * batch_size calls during processing.
-  num_parallel_batches = math.ceil(num_parallel_calls / batch_size)
+  num_parallel_batches = int(math.ceil(num_parallel_calls / batch_size)) or 1
 
   # Parse the raw records into images and labels in parallel across batches
   dataset = dataset.apply(tf.contrib.data.map_and_batch(
