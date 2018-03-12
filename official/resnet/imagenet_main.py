@@ -23,8 +23,8 @@ import sys
 
 import tensorflow as tf
 
-import resnet
-import vgg_preprocessing
+from official.resnet import resnet
+from official.resnet import vgg_preprocessing
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3

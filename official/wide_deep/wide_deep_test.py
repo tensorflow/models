@@ -21,7 +21,7 @@ import os
 
 import tensorflow as tf
 
-import wide_deep
+from official.wide_deep import wide_deep
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 

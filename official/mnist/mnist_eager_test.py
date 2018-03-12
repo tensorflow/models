@@ -20,8 +20,8 @@ from __future__ import print_function
 import tensorflow as tf
 import tensorflow.contrib.eager as tfe
 
-import mnist
-import mnist_eager
+from official.mnist import mnist
+from official.mnist import mnist_eager
 
 
 def device():

@@ -20,7 +20,7 @@ from __future__ import print_function
 import tensorflow as tf
 import time
 
-import mnist
+from official.mnist import mnist
 
 BATCH_SIZE = 100
 

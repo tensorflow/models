@@ -22,7 +22,7 @@ import os
 import sys
 
 import tensorflow as tf
-import dataset
+from official.mnist import dataset
 
 
 class Model(tf.keras.Model):

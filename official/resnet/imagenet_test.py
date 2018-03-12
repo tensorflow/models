@@ -21,7 +21,7 @@ import unittest
 
 import tensorflow as tf
 
-import imagenet_main
+from official.resnet import imagenet_main
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
