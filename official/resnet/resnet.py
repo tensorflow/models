@@ -34,6 +34,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import math
 import os
 
 import tensorflow as tf
@@ -98,11 +99,16 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     total_examples = num_epochs * examples_per_epoch
     dataset = dataset.take(batch_size * (total_examples // batch_size))
 
-  # Parse the raw records into images and labels
-  dataset = dataset.map(lambda value: parse_record_fn(value, is_training),
-                        num_parallel_calls=num_parallel_calls)
+  # The optimal number of batches to process in parallel is approximately
+  # NUM_CPUS / batch_size, as map_and_batch will create
+  # num_parallel_batches * batch_size calls during processing.
+  num_parallel_batches = math.ceil(num_parallel_calls / batch_size)
 
-  dataset = dataset.batch(batch_size)
+  # Parse the raw records into images and labels in parallel across batches
+  dataset = dataset.apply(tf.contrib.data.map_and_batch(
+      map_func=lambda value: parse_record_fn(value, is_training),
+      batch_size=batch_size,
+      num_parallel_batches=num_parallel_batches))
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
