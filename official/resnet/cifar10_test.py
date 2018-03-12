@@ -64,7 +64,7 @@ class BaseTest(tf.test.TestCase):
         for pixel in row:
           self.assertAllClose(pixel, np.array([-1.225, 0., 1.225]), rtol=1e-3)
 
-  def cifar10_model_fn_helper(self, mode, multi_gpu=False):
+  def cifar10_model_fn_helper(self, mode, version, multi_gpu=False):
     input_fn = cifar10_main.get_synth_input_fn()
     dataset = input_fn(True, '', _BATCH_SIZE)
     iterator = dataset.make_one_shot_iterator()
@@ -74,6 +74,7 @@ class BaseTest(tf.test.TestCase):
             'resnet_size': 32,
             'data_format': 'channels_last',
             'batch_size': _BATCH_SIZE,
+            'version': version,
             'multi_gpu': multi_gpu
         })
 
@@ -96,28 +97,43 @@ class BaseTest(tf.test.TestCase):
       self.assertEqual(eval_metric_ops['accuracy'][0].dtype, tf.float32)
       self.assertEqual(eval_metric_ops['accuracy'][1].dtype, tf.float32)
 
-  def test_cifar10_model_fn_train_mode(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN)
+  def test_cifar10_model_fn_train_mode_v1(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=1)
 
-  def test_cifar10_model_fn_train_mode_multi_gpu(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, multi_gpu=True)
+  def test_cifar10_model_fn_trainmode__v2(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=2)
 
-  def test_cifar10_model_fn_eval_mode(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.EVAL)
+  def test_cifar10_model_fn_train_mode_multi_gpu_v1(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=1,
+                                 multi_gpu=True)
 
-  def test_cifar10_model_fn_predict_mode(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.PREDICT)
+  def test_cifar10_model_fn_train_mode_multi_gpu_v2(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=2,
+                                 multi_gpu=True)
+
+  def test_cifar10_model_fn_eval_mode_v1(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=1)
+
+  def test_cifar10_model_fn_eval_mode_v2(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=2)
+
+  def test_cifar10_model_fn_predict_mode_v1(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=1)
+
+  def test_cifar10_model_fn_predict_mode_v2(self):
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=2)
 
   def test_cifar10model_shape(self):
     batch_size = 135
     num_classes = 246
 
-    model = cifar10_main.Cifar10Model(
-        32, data_format='channels_last', num_classes=num_classes)
-    fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
-    output = model(fake_input, training=True)
+    for version in (1, 2):
+      model = cifar10_main.Cifar10Model(32, data_format='channels_last',
+                                     num_classes=num_classes, version=version)
+      fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+      output = model(fake_input, training=True)
 
-    self.assertAllEqual(output.shape, (batch_size, num_classes))
+      self.assertAllEqual(output.shape, (batch_size, num_classes))
 
 
 if __name__ == '__main__':

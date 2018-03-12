@@ -164,7 +164,8 @@ def get_synth_input_fn():
 ###############################################################################
 class ImagenetModel(resnet.Model):
 
-  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES):
+  def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
+    version=resnet.DEFAULT_VERSION):
     """These are the parameters that work for Imagenet data.
 
     Args:
@@ -173,18 +174,21 @@ class ImagenetModel(resnet.Model):
         data format to use when setting up the model.
       num_classes: The number of output classes needed from the model. This
         enables users to extend the same model to their own datasets.
+      version: Integer representing which version of the ResNet network to use.
+        See README for details. Valid values: [1, 2]
     """
 
     # For bigger models, we want to use "bottleneck" layers
     if resnet_size < 50:
-      block_fn = resnet.building_block
+      bottleneck = False
       final_size = 512
     else:
-      block_fn = resnet.bottleneck_block
+      bottleneck = True
       final_size = 2048
 
     super(ImagenetModel, self).__init__(
         resnet_size=resnet_size,
+        bottleneck=bottleneck,
         num_classes=num_classes,
         num_filters=64,
         kernel_size=7,
@@ -193,10 +197,10 @@ class ImagenetModel(resnet.Model):
         first_pool_stride=2,
         second_pool_size=7,
         second_pool_stride=1,
-        block_fn=block_fn,
         block_sizes=_get_block_sizes(resnet_size),
         block_strides=[1, 2, 2, 2],
         final_size=final_size,
+        version=version,
         data_format=data_format)
 
 
@@ -236,6 +240,7 @@ def imagenet_model_fn(features, labels, mode, params):
                                 learning_rate_fn=learning_rate_fn,
                                 momentum=0.9,
                                 data_format=params['data_format'],
+                                version=params['version'],
                                 loss_filter_fn=None,
                                 multi_gpu=params['multi_gpu'])
 
