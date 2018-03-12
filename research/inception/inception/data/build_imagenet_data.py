@@ -168,11 +168,15 @@ def _float_feature(value):
     value = [value]
   return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
-
+import random
 def _bytes_feature(value):
   """Wrapper for inserting bytes features into Example proto."""
-  if isinstance(value, six.string_types):           
-    value = six.binary_type(value, encoding='utf-8') 
+  if isinstance(value, six.string_types):
+    try:
+      value = six.binary_type(value, encoding='utf-8')
+    except TypeError:
+      value = six.binary_type(value)
+
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
@@ -224,6 +228,7 @@ def _convert_to_example(filename, image_buffer, label, synset, human, bbox,
       'image/format': _bytes_feature(image_format),
       'image/filename': _bytes_feature(os.path.basename(filename)),
       'image/encoded': _bytes_feature(image_buffer)}))
+
   return example
 
 
