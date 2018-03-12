@@ -23,7 +23,7 @@ import sys
 
 import tensorflow as tf
 
-import resnet
+from official.resnet import resnet
 
 _HEIGHT = 32
 _WIDTH = 32
