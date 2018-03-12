@@ -24,7 +24,7 @@ from tensorflow.python.training import monitored_session
 
 import tensorflow as tf
 
-import hooks
+from official.utils.logging import hooks
 
 
 tf.logging.set_verbosity(tf.logging.ERROR)

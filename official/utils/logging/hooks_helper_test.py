@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import hooks_helper
+from official.utils.logging import hooks_helper
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 

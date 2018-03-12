@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import hooks
+from official.utils.logging import hooks
 
 
 def get_train_hooks(name_list, **kwargs):
@@ -115,5 +115,5 @@ def get_examples_per_second_hook(every_n_steps=100, **kwargs):
 HOOKS = {
     'loggingtensorhook': get_logging_tensor_hook,
     'profilerhook': get_profiler_hook,
-    'examplespersecondhook': get_profiler_hook,
+    'examplespersecondhook': get_examples_per_second_hook,
 }
