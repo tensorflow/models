@@ -26,6 +26,6 @@ If you would like to make any fixes or improvements to the models, please [submi
 
 Run the models.
 
-The *Official Models* is made as a Python module. To run the models directly, you must change your work directory to the top-level ***/models*** folder (the parent directory of ***/official***), and set the Python path by issuing the following command: ``` export PYTHONPATH="$PYTHONPATH:$(pwd)" ```
+The *Official Models* is made as a Python module. To run the models directly, you need to add the top-level ***/models*** folder to the python path by command: ` export PYTHONPATH="$PYTHONPATH:/path/to/models" `
 
 To make Official Models easier to use, we are planning to pip package Official Models for [pip install](https://github.com/tensorflow/models/issues/917).
