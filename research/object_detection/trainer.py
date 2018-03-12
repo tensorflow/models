@@ -267,16 +267,16 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     # Create ops required to initialize the model from a given checkpoint.
     init_fn = None
     if train_config.fine_tune_checkpoint:
-      if not train_config.finetune_checkpoint_type:
+      if not train_config.fine_tune_checkpoint_type:
         # train_config.from_detection_checkpoint field is deprecated. For
-        # backward compatibility, finetune_checkpoint_type is set based on
+        # backward compatibility, fine_tune_checkpoint_type is set based on
         # from_detection_checkpoint.
         if train_config.from_detection_checkpoint:
-          train_config.finetune_checkpoint_type = 'detection'
+          train_config.fine_tune_checkpoint_type = 'detection'
         else:
-          train_config.finetune_checkpoint_type = 'classification'
+          train_config.fine_tune_checkpoint_type = 'classification'
       var_map = detection_model.restore_map(
-          finetune_checkpoint_type=train_config.finetune_checkpoint_type,
+          fine_tune_checkpoint_type=train_config.fine_tune_checkpoint_type,
           load_all_detection_checkpoint_vars=(
               train_config.load_all_detection_checkpoint_vars))
       available_var_map = (variables_helper.
