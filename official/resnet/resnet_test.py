@@ -19,8 +19,10 @@ from __future__ import print_function
 
 
 import numpy as np
-import resnet
 import tensorflow as tf
+
+
+from official.resnet import resnet  # pylint: disable=g-bad-import-order
 
 
 class BlockTest(tf.test.TestCase):
