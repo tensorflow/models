@@ -20,10 +20,10 @@ from __future__ import division
 from __future__ import print_function
 
 import time
-from tensorflow.python.training import monitored_session
 
 import tensorflow as tf
 
+from tensorflow.python.training import monitored_session
 from official.utils.logging import hooks
 
 

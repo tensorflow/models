@@ -13,7 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Hooks helper to return a list of TensorFlow hooks for training by name."""
+"""Hooks helper to return a list of TensorFlow hooks for training by name.
+
+More hooks can be added to this set. To add a new hook, 1) add the new hook to
+the registry in HOOKS, 2) add a corresponding function that parses out necessary
+parameters.
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,14 +28,18 @@ import tensorflow as tf
 
 from official.utils.logging import hooks
 
+_TENSORS_TO_LOG = dict((x, x) for x in ['learning_rate',
+                                        'cross_entropy',
+                                        'train_accuracy'])
+
 
 def get_train_hooks(name_list, **kwargs):
   """Factory for getting a list of TensorFlow hooks for training by name.
 
   Args:
     name_list: a list of strings to name desired hook classes. Allowed:
-    LoggingTensorHook, ProfilerHook, ExamplesPerSecondHook, which are defined
-    as keys in HOOKS
+      LoggingTensorHook, ProfilerHook, ExamplesPerSecondHook, which are defined
+      as keys in HOOKS
     kwargs: a dictionary of arguments to the hooks.
 
   Returns:
@@ -42,9 +51,6 @@ def get_train_hooks(name_list, **kwargs):
 
   if not name_list:
     return []
-
-  if not isinstance(name_list, list):
-    raise ValueError('Hook names should be in a list')
 
   train_hooks = []
   for name in name_list:
@@ -67,16 +73,10 @@ def get_logging_tensor_hook(every_n_iter=100, **kwargs):  # pylint: disable=unus
 
   Returns:
     Returns a LoggingTensorHook with a standard set of tensors that will be
-      printed to stdout.
+    printed to stdout.
   """
-  tensors_to_log = {
-      'learning_rate': 'learning_rate',
-      'cross_entropy': 'cross_entropy',
-      'train_accuracy': 'train_accuracy'
-  }
-
   return tf.train.LoggingTensorHook(
-      tensors=tensors_to_log,
+      tensors=_TENSORS_TO_LOG,
       every_n_iter=every_n_iter)
 
 
@@ -89,31 +89,38 @@ def get_profiler_hook(save_steps=1000, **kwargs):  # pylint: disable=unused-argu
 
   Returns:
     Returns a ProfilerHook that writes out timelines that can be loaded into
-      profiling tools like chrome://tracing.
+    profiling tools like chrome://tracing.
   """
   return tf.train.ProfilerHook(save_steps=save_steps)
 
 
-def get_examples_per_second_hook(every_n_steps=100, **kwargs):
+def get_examples_per_second_hook(every_n_steps=100,
+                                 batch_size=128,
+                                 warm_steps=10,
+                                 **kwargs):  # pylint: disable=unused-argument
   """Function to get ExamplesPerSecondHook.
 
   Args:
     every_n_steps: `int`, print current and average examples per second every
       N steps.
+    batch_size: `int`, total batch size used to calculate examples/second from
+      global time.
+    warm_steps: skip this number of steps before logging and running average.
     kwargs: a dictionary of arguments to ExamplesPerSecondHook.
 
   Returns:
     Returns a ProfilerHook that writes out timelines that can be loaded into
-      profiling tools like chrome://tracing.
+    profiling tools like chrome://tracing.
   """
-  return hooks.ExamplesPerSecondHook(
-      every_n_steps=every_n_steps,
-      batch_size=kwargs.get('batch_size', 128),
-      warm_steps=kwargs.get('warm_steps', 10))
+  return hooks.ExamplesPerSecondHook(every_n_steps=every_n_steps,
+                                     batch_size=batch_size,
+                                     warm_steps=warm_steps)
 
 
+# A dictionary to map one hook name and its corresponding function
 HOOKS = {
     'loggingtensorhook': get_logging_tensor_hook,
     'profilerhook': get_profiler_hook,
     'examplespersecondhook': get_examples_per_second_hook,
 }
+

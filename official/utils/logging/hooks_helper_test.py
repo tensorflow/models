@@ -34,24 +34,27 @@ class BaseTest(tf.test.TestCase):
           'LoggingTensorHook, ProfilerHook', batch_size=256)
 
   def test_raise_in_invalid_names(self):
-    invalid_names = 'StepCounterHook, StopAtStepHook'
+    invalid_names = ['StepCounterHook', 'StopAtStepHook']
     with self.assertRaises(ValueError):
       hooks_helper.get_train_hooks(invalid_names, batch_size=256)
 
-  def get_train_hooks_valid_names_helper(self, hook_names, **kwargs):
-    returned_hooks = hooks_helper.get_train_hooks(hook_names, **kwargs)
-    for returned_hook in returned_hooks:
-      self.assertIsInstance(returned_hook, tf.train.SessionRunHook)
-      self.assertIn(returned_hook.__class__.__name__.lower(),
-                    list(hooks_helper.HOOKS.keys()))
+  def get_train_hook_valid_name(self, test_name, hook_name, **kwargs):
+    returned_hook = hooks_helper.get_train_hooks(test_name, **kwargs)
+    self.assertEqual(len(returned_hook), 1)
+    self.assertIsInstance(returned_hook[0], tf.train.SessionRunHook)
+    self.assertEqual(returned_hook[0].__class__.__name__.lower(), hook_name)
 
-  def test_get_train_hooks_one_valid_names(self):
-    valid_names = ['LoggingTensorHook']
-    self.get_train_hooks_valid_names_helper(valid_names, batch_size=256)
+  def test_get_train_hooks_LoggingTensorHook(self):
+    test_name = ['LoggingTensorHook']
+    self.get_train_hook_valid_name(test_name, 'loggingtensorhook')
 
-  def test_get_train_hooks_three_valid_names(self):
-    valid_names = ['LoggingTensorHook', 'profilerhook', 'ExamplesPerSecondHook']
-    self.get_train_hooks_valid_names_helper(valid_names, batch_size=256)
+  def test_get_train_hooks_ProfilerHook(self):
+    test_name = ['ProfilerHook']
+    self.get_train_hook_valid_name(test_name, 'profilerhook')
+
+  def test_get_train_hooks_ExamplesPerSecondHook(self):
+    test_name = ['ExamplesPerSecondHook']
+    self.get_train_hook_valid_name(test_name, 'examplespersecondhook')
 
 if __name__ == '__main__':
   tf.test.main()

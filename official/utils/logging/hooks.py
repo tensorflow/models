@@ -40,14 +40,14 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
     """Initializer for ExamplesPerSecondHook.
 
     Args:
-      batch_size: Total batch size used to calculate examples/second from
-        global time.
+      batch_size: Total batch size across all workers used to calculate
+        examples/second from global time.
       every_n_steps: Log stats every n steps.
       every_n_secs: Log stats every n seconds. Exactly one of the
-      `every_n_steps` or `every_n_secs` should be set.
-      warm_steps: skip this number of steps before logging and running
-        average. warm_steps steps refers to global steps across all workers,
-        not on each worker
+        `every_n_steps` or `every_n_secs` should be set.
+      warm_steps: The number of steps to be skipped before logging and running
+        average calculation. warm_steps steps refers to global steps across all
+        workers, not on each worker
 
     Raises:
       ValueError: if neither `every_n_steps` or `every_n_secs` is set, or
