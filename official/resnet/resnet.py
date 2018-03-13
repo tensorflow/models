@@ -752,7 +752,7 @@ def resnet_main(flags, model_function, input_function):
       })
 
   for _ in range(flags.train_epochs // flags.epochs_per_eval):
-    train_hooks = hooks_helper.get_train_hooks(['LoggingTensorHook'])
+    train_hooks = hooks_helper.get_train_hooks(['LoggingTensorHook'], batch_size=128)
 
     print('Starting a training cycle.')
 
