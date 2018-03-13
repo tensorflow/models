@@ -24,8 +24,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-import dataset
-import mnist
+from official.mnist import dataset
+from official.mnist import mnist
 
 # Cloud TPU Cluster Resolver flags
 tf.flags.DEFINE_string(

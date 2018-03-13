@@ -43,7 +43,7 @@ SYNSETS_FILE="${2:-./synsets.txt}"
 
 echo "Saving downloaded files to $OUTDIR"
 mkdir -p "${OUTDIR}"
-INITIAL_DIR=$(pwd)
+CURRENT_DIR=$(pwd)
 BBOX_DIR="${OUTDIR}bounding_boxes"
 mkdir -p "${BBOX_DIR}"
 cd "${OUTDIR}"
@@ -96,4 +96,4 @@ while read SYNSET; do
   rm -f "${SYNSET}.tar"
 
   echo "Finished processing: ${SYNSET}"
-done < "${INITIAL_DIR}/${SYNSETS_FILE}"
+done < "${SYNSETS_FILE}"
