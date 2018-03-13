@@ -128,8 +128,8 @@ class PerformanceParser(argparse.ArgumentParser):
     intra_op: Create a flag to allow specification of intra op threads.
   """
 
-  def __init__(self, add_help=False, num_parallel_calls=False, inter_op=False,
-               intra_op=False, use_synthetic_data=False):
+  def __init__(self, add_help=False, num_parallel_calls=True, inter_op=True,
+               intra_op=True, use_synthetic_data=True):
     super(PerformanceParser, self).__init__(add_help=add_help)
 
     if num_parallel_calls:
@@ -180,7 +180,7 @@ class ImageModelParser(argparse.ArgumentParser):
     data_format: Create a flag to specify image axis convention.
   """
 
-  def __init__(self, add_help=False, data_format=False):
+  def __init__(self, add_help=False, data_format=True):
     super(ImageModelParser, self).__init__(add_help=add_help)
     if data_format:
       self.add_argument(

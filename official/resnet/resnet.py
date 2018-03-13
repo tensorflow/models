@@ -783,9 +783,8 @@ class ResnetArgParser(argparse.ArgumentParser):
   def __init__(self, resnet_size_choices=None):
     super(ResnetArgParser, self).__init__(parents=[
         parsers.BaseParser(),
-        parsers.PerformanceParser(num_parallel_calls=True, inter_op=True,
-                                  intra_op=True, use_synthetic_data=True),
-        parsers.ImageModelParser(data_format=True)
+        parsers.PerformanceParser(),
+        parsers.ImageModelParser(),
     ])
 
     self.add_argument(
