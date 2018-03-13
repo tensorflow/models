@@ -24,7 +24,7 @@ import sys
 import tensorflow as tf
 
 from official.resnet import resnet
-from official.resnet import vgg_preprocessing
+from official.resnet import imagenet_preprocessing
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -57,9 +57,25 @@ def get_filenames(is_training, data_dir):
 def _parse_example_proto(example_serialized):
   """Parses an Example proto containing a training example of an image.
 
-  The dataset contains serialized Example protocol buffers.
-  The Example proto is expected to contain features named
-  image/encoded (a JPEG-encoded string) and image/class/label (int)
+  The output of the build_image_data.py image preprocessing script is a dataset
+  containing serialized Example protocol buffers. Each Example proto contains
+  the following fields (values are included as examples):
+
+    image/height: 462
+    image/width: 581
+    image/colorspace: 'RGB'
+    image/channels: 3
+    image/class/label: 615
+    image/class/synset: 'n03623198'
+    image/class/text: 'knee pad'
+    image/object/bbox/xmin: 0.1
+    image/object/bbox/xmax: 0.9
+    image/object/bbox/ymin: 0.2
+    image/object/bbox/ymax: 0.6
+    image/object/bbox/label: 615
+    image/format: 'JPEG'
+    image/filename: 'ILSVRC2012_val_00041207.JPEG'
+    image/encoded: <JPEG encoded string>
 
   Args:
     example_serialized: scalar Tensor tf.string containing a serialized
@@ -67,19 +83,45 @@ def _parse_example_proto(example_serialized):
 
   Returns:
     image_buffer: Tensor tf.string containing the contents of a JPEG file.
-    label: Tensor tf.int64 containing the label.
+    label: Tensor tf.int32 containing the label.
+    bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
+      where each coordinate is [0, 1) and the coordinates are arranged as
+      [ymin, xmin, ymax, xmax].
   """
   # Dense features in Example proto.
   feature_map = {
       'image/encoded': tf.FixedLenFeature([], dtype=tf.string,
                                           default_value=''),
       'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64,
-                                              default_value=-1)
+                                              default_value=-1),
+      'image/class/text': tf.FixedLenFeature([], dtype=tf.string,
+                                             default_value=''),
   }
+  sparse_float32 = tf.VarLenFeature(dtype=tf.float32)
+  # Sparse features in Example proto.
+  feature_map.update(
+      {k: sparse_float32 for k in ['image/object/bbox/xmin',
+                                   'image/object/bbox/ymin',
+                                   'image/object/bbox/xmax',
+                                   'image/object/bbox/ymax']})
 
   features = tf.parse_single_example(example_serialized, feature_map)
+  label = tf.cast(features['image/class/label'], dtype=tf.int32)
 
-  return features['image/encoded'], features['image/class/label']
+  xmin = tf.expand_dims(features['image/object/bbox/xmin'].values, 0)
+  ymin = tf.expand_dims(features['image/object/bbox/ymin'].values, 0)
+  xmax = tf.expand_dims(features['image/object/bbox/xmax'].values, 0)
+  ymax = tf.expand_dims(features['image/object/bbox/ymax'].values, 0)
+
+  # Note that we impose an ordering of (y, x) just to make life difficult.
+  bbox = tf.concat([ymin, xmin, ymax, xmax], 0)
+
+  # Force the variable number of bounding boxes into the shape
+  # [1, num_boxes, coords].
+  bbox = tf.expand_dims(bbox, 0)
+  bbox = tf.transpose(bbox, [0, 2, 1])
+
+  return features['image/encoded'], label, bbox
 
 
 def parse_record(raw_record, is_training):
@@ -95,25 +137,18 @@ def parse_record(raw_record, is_training):
 
   Returns:
     Tuple with processed image tensor and one-hot-encoded label tensor.
-"""
-  image, label = _parse_example_proto(raw_record)
+  """
+  image_buffer, label, bbox = _parse_example_proto(raw_record)
 
-  # Decode the string as an RGB JPEG.
-  # Note that the resulting image contains an unknown height and width
-  # that is set dynamically by decode_jpeg. In other words, the height
-  # and width of image is unknown at compile-time.
-  # Results in a 3-D int8 Tensor. This will be converted to a float later,
-  # during resizing.
-  image = tf.image.decode_jpeg(image, channels=_NUM_CHANNELS)
-
-  image = vgg_preprocessing.preprocess_image(
-      image=image,
+  image = imagenet_preprocessing.preprocess_image(
+      image_buffer=image_buffer,
+      bbox=bbox,
       output_height=_DEFAULT_IMAGE_SIZE,
       output_width=_DEFAULT_IMAGE_SIZE,
+      num_channels=_NUM_CHANNELS,
       is_training=is_training)
 
-  label = tf.cast(tf.reshape(label, shape=[]), dtype=tf.int32)
-  label = tf.one_hot(label, _NUM_CLASSES)
+  label = tf.one_hot(tf.reshape(label, shape=[]), _NUM_CLASSES)
 
   return image, label
 
