@@ -120,7 +120,7 @@ def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
 
   Each color distortion is non-commutative and thus ordering of the color ops
   matters. Ideally we would randomly permute the ordering of the color ops.
-  Rather then adding that level of complication, we select a distinct ordering
+  Rather than adding that level of complication, we select a distinct ordering
   of color ops for each preprocessing thread.
   Args:
     image: 3-D Tensor containing single image in [0, 1].
