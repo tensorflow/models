@@ -81,7 +81,7 @@ Oxford-IIIT Pet dataset into TFRecords. Run the following commands from the
 
 ``` bash
 # From tensorflow/models/research/
-python object_detection/create_pet_tf_record.py \
+python object_detection/dataset_tools/create_pet_tf_record.py \
     --label_map_path=object_detection/data/pet_label_map.pbtxt \
     --data_dir=`pwd` \
     --output_dir=`pwd`
@@ -203,12 +203,15 @@ For running the training Cloud ML job, we'll configure the cluster to use 10
 training jobs (1 master + 9 workers) and three parameters servers. The
 configuration file can be found at `object_detection/samples/cloud/cloud.yml`.
 
+Note: This sample is supported for use with 1.2 runtime version.
+
 To start training, execute the following command from the
 `tensorflow/models/research/` directory:
 
 ``` bash
 # From tensorflow/models/research/
 gcloud ml-engine jobs submit training `whoami`_object_detection_`date +%s` \
+    --runtime-version 1.2 \
     --job-dir=gs://${YOUR_GCS_BUCKET}/train \
     --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz \
     --module-name object_detection.train \
@@ -224,6 +227,7 @@ Once training has started, we can run an evaluation concurrently:
 ``` bash
 # From tensorflow/models/research/
 gcloud ml-engine jobs submit training `whoami`_object_detection_eval_`date +%s` \
+    --runtime-version 1.2 \
     --job-dir=gs://${YOUR_GCS_BUCKET}/train \
     --packages dist/object_detection-0.1.tar.gz,slim/dist/slim-0.1.tar.gz \
     --module-name object_detection.eval \
@@ -303,6 +307,21 @@ python object_detection/export_inference_graph.py \
 
 Afterwards, you should see a directory named `exported_graphs` containing the
 SavedModel and frozen graph.
+
+## Configuring the Instance Segmentation Pipeline
+
+Mask prediction can be turned on for an object detection config by adding
+`predict_instance_masks: true` within the `MaskRCNNBoxPredictor`. Other
+parameters such as mask size, number of convolutions in the mask layer, and the
+convolution hyper parameters can be defined. We will use
+`mask_rcnn_resnet101_pets.config` as a starting point for configuring the
+instance segmentation pipeline. Everything above that was mentioned about object
+detection holds true for instance segmentation. Instance segmentation consists
+of an object detection model with an additional head that predicts the object
+mask inside each predicted box once we remove the training and other details.
+Please refer to the section on [Running an Instance Segmentation
+Model](instance_segmentation.md) for instructions on how to configure a model
+that predicts masks in addition to object bounding boxes.
 
 ## What's Next
 

@@ -83,6 +83,7 @@ PREPROCESSING_FUNCTION_MAP = {
     'random_jitter_boxes': preprocessor.random_jitter_boxes,
     'random_crop_to_aspect_ratio': preprocessor.random_crop_to_aspect_ratio,
     'random_black_patches': preprocessor.random_black_patches,
+    'rgb_to_gray': preprocessor.rgb_to_gray,
     'scale_boxes_to_pixel_coordinates': (
         preprocessor.scale_boxes_to_pixel_coordinates),
     'subtract_channel_mean': preprocessor.subtract_channel_mean,
@@ -255,12 +256,10 @@ def build(preprocessor_step_config):
       area_range = [(op.min_area, op.max_area) for op in config.operations]
       overlap_thresh = [op.overlap_thresh for op in config.operations]
       random_coef = [op.random_coef for op in config.operations]
-      min_padded_size_ratio = [
-          (op.min_padded_size_ratio[0], op.min_padded_size_ratio[1])
-          for op in config.operations]
-      max_padded_size_ratio = [
-          (op.max_padded_size_ratio[0], op.max_padded_size_ratio[1])
-          for op in config.operations]
+      min_padded_size_ratio = [tuple(op.min_padded_size_ratio)
+                               for op in config.operations]
+      max_padded_size_ratio = [tuple(op.max_padded_size_ratio)
+                               for op in config.operations]
       pad_color = [(op.pad_color_r, op.pad_color_g, op.pad_color_b)
                    for op in config.operations]
       return (preprocessor.ssd_random_crop_pad,
@@ -295,30 +294,29 @@ def build(preprocessor_step_config):
 
   if step_type == 'ssd_random_crop_pad_fixed_aspect_ratio':
     config = preprocessor_step_config.ssd_random_crop_pad_fixed_aspect_ratio
+    kwargs = {}
+    aspect_ratio = config.aspect_ratio
+    if aspect_ratio:
+      kwargs['aspect_ratio'] = aspect_ratio
+    min_padded_size_ratio = config.min_padded_size_ratio
+    if min_padded_size_ratio:
+      if len(min_padded_size_ratio) != 2:
+        raise ValueError('min_padded_size_ratio should have 2 elements if set!')
+      kwargs['min_padded_size_ratio'] = tuple(min_padded_size_ratio)
+    max_padded_size_ratio = config.max_padded_size_ratio
+    if max_padded_size_ratio:
+      if len(max_padded_size_ratio) != 2:
+        raise ValueError('max_padded_size_ratio should have 2 elements if set!')
+      kwargs['max_padded_size_ratio'] = tuple(max_padded_size_ratio)
     if config.operations:
-      min_object_covered = [op.min_object_covered for op in config.operations]
-      aspect_ratio_range = [(op.min_aspect_ratio, op.max_aspect_ratio)
-                            for op in config.operations]
-      area_range = [(op.min_area, op.max_area) for op in config.operations]
-      overlap_thresh = [op.overlap_thresh for op in config.operations]
-      random_coef = [op.random_coef for op in config.operations]
-      min_padded_size_ratio = [
-          (op.min_padded_size_ratio[0], op.min_padded_size_ratio[1])
-          for op in config.operations]
-      max_padded_size_ratio = [
-          (op.max_padded_size_ratio[0], op.max_padded_size_ratio[1])
-          for op in config.operations]
-      return (preprocessor.ssd_random_crop_pad_fixed_aspect_ratio,
-              {
-                  'min_object_covered': min_object_covered,
-                  'aspect_ratio': config.aspect_ratio,
-                  'aspect_ratio_range': aspect_ratio_range,
-                  'area_range': area_range,
-                  'overlap_thresh': overlap_thresh,
-                  'random_coef': random_coef,
-                  'min_padded_size_ratio': min_padded_size_ratio,
-                  'max_padded_size_ratio': max_padded_size_ratio,
-              })
-    return (preprocessor.ssd_random_crop_pad_fixed_aspect_ratio, {})
+      kwargs['min_object_covered'] = [op.min_object_covered
+                                      for op in config.operations]
+      kwargs['aspect_ratio_range'] = [(op.min_aspect_ratio, op.max_aspect_ratio)
+                                      for op in config.operations]
+      kwargs['area_range'] = [(op.min_area, op.max_area)
+                              for op in config.operations]
+      kwargs['overlap_thresh'] = [op.overlap_thresh for op in config.operations]
+      kwargs['random_coef'] = [op.random_coef for op in config.operations]
+    return (preprocessor.ssd_random_crop_pad_fixed_aspect_ratio, kwargs)
 
   raise ValueError('Unknown preprocessing step.')

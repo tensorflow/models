@@ -53,10 +53,10 @@ def exponential_decay_with_burnin(global_step,
       learning_rate_decay_steps,
       learning_rate_decay_factor,
       staircase=True)
-  return tf.cond(
-      tf.less(global_step, burnin_steps),
-      lambda: tf.convert_to_tensor(burnin_learning_rate),
-      lambda: post_burnin_learning_rate)
+  return tf.where(
+      tf.less(tf.cast(global_step, tf.int32), tf.constant(burnin_steps)),
+      tf.constant(burnin_learning_rate),
+      post_burnin_learning_rate)
 
 
 def cosine_decay_with_warmup(global_step,
@@ -94,16 +94,16 @@ def cosine_decay_with_warmup(global_step,
     raise ValueError('total_steps must be larger or equal to '
                      'warmup_steps.')
   learning_rate = 0.5 * learning_rate_base * (
-      1 + tf.cos(np.pi * tf.cast(
-          global_step - warmup_steps, tf.float32
-      ) / float(total_steps - warmup_steps)))
+      1 + tf.cos(np.pi * (tf.cast(global_step, tf.float32) - warmup_steps
+                         ) / float(total_steps - warmup_steps)))
   if warmup_steps > 0:
     slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
     pre_cosine_learning_rate = slope * tf.cast(
         global_step, tf.float32) + warmup_learning_rate
-    learning_rate = tf.cond(
-        tf.less(global_step, warmup_steps), lambda: pre_cosine_learning_rate,
-        lambda: learning_rate)
+    learning_rate = tf.where(
+        tf.less(tf.cast(global_step, tf.int32), warmup_steps),
+        pre_cosine_learning_rate,
+        learning_rate)
   return learning_rate
 
 
@@ -142,10 +142,16 @@ def manual_stepping(global_step, boundaries, rates):
   if len(rates) != len(boundaries) + 1:
     raise ValueError('Number of provided learning rates must exceed '
                      'number of boundary points by exactly 1.')
-  step_boundaries = tf.constant(boundaries, tf.int64)
+  if not boundaries: return tf.constant(rates[0])
+  step_boundaries = tf.constant(boundaries, tf.int32)
+  num_boundaries = len(boundaries)
   learning_rates = tf.constant(rates, tf.float32)
-  unreached_boundaries = tf.reshape(
-      tf.where(tf.greater(step_boundaries, global_step)), [-1])
-  unreached_boundaries = tf.concat([unreached_boundaries, [len(boundaries)]], 0)
-  index = tf.reshape(tf.reduce_min(unreached_boundaries), [1])
-  return tf.reshape(tf.slice(learning_rates, index, [1]), [])
+  index = tf.reduce_min(
+      tf.where(
+          # Casting global step to tf.int32 is dangerous, but necessary to be
+          # compatible with TPU.
+          tf.greater(step_boundaries, tf.cast(global_step, tf.int32)),
+          tf.constant(range(num_boundaries), dtype=tf.int32),
+          tf.constant([num_boundaries] * num_boundaries, dtype=tf.int32)))
+  return tf.reduce_sum(learning_rates * tf.one_hot(index, len(rates),
+                                                   dtype=tf.float32))

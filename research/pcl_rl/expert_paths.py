@@ -22,6 +22,7 @@ import tensorflow as tf
 import random
 import os
 import numpy as np
+from six.moves import xrange
 import pickle
 
 gfile = tf.gfile

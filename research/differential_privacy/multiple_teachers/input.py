@@ -24,6 +24,7 @@ import numpy as np
 import os
 from scipy.io import loadmat as loadmat
 from six.moves import urllib
+from six.moves import xrange
 import sys
 import tarfile
 

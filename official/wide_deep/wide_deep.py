@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Example code for TensorFlow Wide & Deep Tutorial using TF.Learn API."""
+"""Example code for TensorFlow Wide & Deep Tutorial using tf.estimator API."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -192,10 +192,7 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   # epochs from blending together.
   dataset = dataset.repeat(num_epochs)
   dataset = dataset.batch(batch_size)
-
-  iterator = dataset.make_one_shot_iterator()
-  features, labels = iterator.get_next()
-  return features, labels
+  return dataset
 
 
 def main(unused_argv):

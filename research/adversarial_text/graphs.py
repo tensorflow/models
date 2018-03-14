@@ -47,6 +47,8 @@ flags.DEFINE_integer('num_timesteps', 100, 'Number of timesteps for BPTT')
 
 # Model architechture
 flags.DEFINE_bool('bidir_lstm', False, 'Whether to build a bidirectional LSTM.')
+flags.DEFINE_bool('single_label', True, 'Whether the sequence has a single '
+                  'label, for optimization.')
 flags.DEFINE_integer('rnn_num_layers', 1, 'Number of LSTM layers.')
 flags.DEFINE_integer('rnn_cell_size', 512,
                      'Number of hidden units in the LSTM.')
@@ -181,7 +183,14 @@ class VatxtModel(object):
     self.tensors['cl_logits'] = logits
     self.tensors['cl_loss'] = loss
 
-    acc = layers_lib.accuracy(logits, inputs.labels, inputs.weights)
+    if FLAGS.single_label:
+      indices = tf.stack([tf.range(FLAGS.batch_size), inputs.length - 1], 1)
+      labels = tf.expand_dims(tf.gather_nd(inputs.labels, indices), 1)
+      weights = tf.expand_dims(tf.gather_nd(inputs.weights, indices), 1)
+    else:
+      labels = inputs.labels
+      weights = inputs.weights
+    acc = layers_lib.accuracy(logits, labels, weights)
     tf.summary.scalar('accuracy', acc)
 
     adv_loss = (self.adversarial_loss() * tf.constant(
@@ -189,11 +198,10 @@ class VatxtModel(object):
     tf.summary.scalar('adversarial_loss', adv_loss)
 
     total_loss = loss + adv_loss
-    tf.summary.scalar('total_classification_loss', total_loss)
 
     with tf.control_dependencies([inputs.save_state(next_state)]):
       total_loss = tf.identity(total_loss)
-
+      tf.summary.scalar('total_classification_loss', total_loss)
     return total_loss
 
   def language_model_graph(self, compute_loss=True):
@@ -249,10 +257,17 @@ class VatxtModel(object):
     _, next_state, logits, _ = self.cl_loss_from_embedding(
         embedded, inputs=inputs, return_intermediates=True)
 
+    if FLAGS.single_label:
+      indices = tf.stack([tf.range(FLAGS.batch_size), inputs.length - 1], 1)
+      labels = tf.expand_dims(tf.gather_nd(inputs.labels, indices), 1)
+      weights = tf.expand_dims(tf.gather_nd(inputs.weights, indices), 1)
+    else:
+      labels = inputs.labels
+      weights = inputs.weights
     eval_ops = {
         'accuracy':
             tf.contrib.metrics.streaming_accuracy(
-                layers_lib.predictions(logits), inputs.labels, inputs.weights)
+                layers_lib.predictions(logits), labels, weights)
     }
 
     with tf.control_dependencies([inputs.save_state(next_state)]):
@@ -286,8 +301,16 @@ class VatxtModel(object):
 
     lstm_out, next_state = self.layers['lstm'](embedded, inputs.state,
                                                inputs.length)
+    if FLAGS.single_label:
+      indices = tf.stack([tf.range(FLAGS.batch_size), inputs.length - 1], 1)
+      lstm_out = tf.expand_dims(tf.gather_nd(lstm_out, indices), 1)
+      labels = tf.expand_dims(tf.gather_nd(inputs.labels, indices), 1)
+      weights = tf.expand_dims(tf.gather_nd(inputs.weights, indices), 1)
+    else:
+      labels = inputs.labels
+      weights = inputs.weights
     logits = self.layers['cl_logits'](lstm_out)
-    loss = layers_lib.classification_loss(logits, inputs.labels, inputs.weights)
+    loss = layers_lib.classification_loss(logits, labels, weights)
 
     if return_intermediates:
       return lstm_out, next_state, logits, loss
@@ -419,12 +442,12 @@ class VatxtBidirModel(VatxtModel):
     tf.summary.scalar('adversarial_loss', adv_loss)
 
     total_loss = loss + adv_loss
-    tf.summary.scalar('total_classification_loss', total_loss)
+
 
     saves = [inp.save_state(state) for (inp, state) in zip(inputs, next_states)]
     with tf.control_dependencies(saves):
       total_loss = tf.identity(total_loss)
-
+      tf.summary.scalar('total_classification_loss', total_loss)
     return total_loss
 
   def language_model_graph(self, compute_loss=True):

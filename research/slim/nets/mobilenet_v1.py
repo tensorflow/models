@@ -139,12 +139,39 @@ _CONV_DEFS = [
 ]
 
 
+def _fixed_padding(inputs, kernel_size, rate=1):
+  """Pads the input along the spatial dimensions independently of input size.
+
+  Pads the input such that if it was used in a convolution with 'VALID' padding,
+  the output would have the same dimensions as if the unpadded input was used
+  in a convolution with 'SAME' padding.
+
+  Args:
+    inputs: A tensor of size [batch, height_in, width_in, channels].
+    kernel_size: The kernel to be used in the conv2d or max_pool2d operation.
+    rate: An integer, rate for atrous convolution.
+
+  Returns:
+    output: A tensor of size [batch, height_out, width_out, channels] with the
+      input, either intact (if kernel_size == 1) or padded (if kernel_size > 1).
+  """
+  kernel_size_effective = [kernel_size[0] + (kernel_size[0] - 1) * (rate - 1),
+                           kernel_size[0] + (kernel_size[0] - 1) * (rate - 1)]
+  pad_total = [kernel_size_effective[0] - 1, kernel_size_effective[1] - 1]
+  pad_beg = [pad_total[0] // 2, pad_total[1] // 2]
+  pad_end = [pad_total[0] - pad_beg[0], pad_total[1] - pad_beg[1]]
+  padded_inputs = tf.pad(inputs, [[0, 0], [pad_beg[0], pad_end[0]],
+                                  [pad_beg[1], pad_end[1]], [0, 0]])
+  return padded_inputs
+
+
 def mobilenet_v1_base(inputs,
                       final_endpoint='Conv2d_13_pointwise',
                       min_depth=8,
                       depth_multiplier=1.0,
                       conv_defs=None,
                       output_stride=None,
+                      use_explicit_padding=False,
                       scope=None):
   """Mobilenet v1.
 
@@ -171,6 +198,9 @@ def mobilenet_v1_base(inputs,
       if necessary to prevent the network from reducing the spatial resolution
       of the activation maps. Allowed values are 8 (accurate fully convolutional
       mode), 16 (fast fully convolutional mode), 32 (classification mode).
+    use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+      inputs so that the output dimensions are the same as if 'SAME' padding
+      were used.
     scope: Optional variable_scope.
 
   Returns:
@@ -196,8 +226,11 @@ def mobilenet_v1_base(inputs,
   if output_stride is not None and output_stride not in [8, 16, 32]:
     raise ValueError('Only allowed output_stride values are 8, 16, 32.')
 
+  padding = 'SAME'
+  if use_explicit_padding:
+    padding = 'VALID'
   with tf.variable_scope(scope, 'MobilenetV1', [inputs]):
-    with slim.arg_scope([slim.conv2d, slim.separable_conv2d], padding='SAME'):
+    with slim.arg_scope([slim.conv2d, slim.separable_conv2d], padding=padding):
       # The current_stride variable keeps track of the output stride of the
       # activations, i.e., the running product of convolution strides up to the
       # current network layer. This allows us to invoke atrous convolution
@@ -226,6 +259,8 @@ def mobilenet_v1_base(inputs,
 
         if isinstance(conv_def, Conv):
           end_point = end_point_base
+          if use_explicit_padding:
+            net = _fixed_padding(net, conv_def.kernel)
           net = slim.conv2d(net, depth(conv_def.depth), conv_def.kernel,
                             stride=conv_def.stride,
                             normalizer_fn=slim.batch_norm,
@@ -239,6 +274,8 @@ def mobilenet_v1_base(inputs,
 
           # By passing filters=None
           # separable_conv2d produces only a depthwise convolution layer
+          if use_explicit_padding:
+            net = _fixed_padding(net, conv_def.kernel, layer_rate)
           net = slim.separable_conv2d(net, None, conv_def.kernel,
                                       depth_multiplier=1,
                                       stride=layer_stride,
@@ -391,7 +428,9 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
 def mobilenet_v1_arg_scope(is_training=True,
                            weight_decay=0.00004,
                            stddev=0.09,
-                           regularize_depthwise=False):
+                           regularize_depthwise=False,
+                           batch_norm_decay=0.9997,
+                           batch_norm_epsilon=0.001):
   """Defines the default MobilenetV1 arg scope.
 
   Args:
@@ -399,6 +438,9 @@ def mobilenet_v1_arg_scope(is_training=True,
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
     regularize_depthwise: Whether or not apply regularization on depthwise.
+    batch_norm_decay: Decay for batch norm moving average.
+    batch_norm_epsilon: Small float added to variance to avoid dividing by zero
+      in batch norm.
 
   Returns:
     An `arg_scope` to use for the mobilenet v1 model.
@@ -407,8 +449,8 @@ def mobilenet_v1_arg_scope(is_training=True,
       'is_training': is_training,
       'center': True,
       'scale': True,
-      'decay': 0.9997,
-      'epsilon': 0.001,
+      'decay': batch_norm_decay,
+      'epsilon': batch_norm_epsilon,
   }
 
   # Set weight_decay for weights in Conv and DepthSepConv layers.

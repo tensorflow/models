@@ -155,3 +155,7 @@ if __name__ == '__main__':
 
 Note: You may notice additional fields in some other datasets. They are
 currently unused by the API and are optional.
+
+Note: Please refer to the section on [Running an Instance Segmentation
+Model](instance_segmentation.md) for instructions on how to configure a model
+that predicts masks in addition to object bounding boxes.

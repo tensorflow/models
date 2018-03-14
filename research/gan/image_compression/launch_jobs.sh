@@ -57,8 +57,9 @@ Banner () {
   echo -e "${green}${text}${nc}"
 }
 
-# Download the dataset.
-bazel build "${git_repo}/research/slim:download_and_convert_imagenet" 
+# Download the dataset. You will be asked for an ImageNet username and password.
+# To get one, register at http://www.image-net.org/.
+bazel build "${git_repo}/research/slim:download_and_convert_imagenet"
 "./bazel-bin/download_and_convert_imagenet" ${DATASET_DIR}
 
 # Run the compression model.
@@ -80,5 +81,5 @@ python "${git_repo}/research/gan/image_compression/eval.py" \
   --checkpoint_dir=${MODEL_TRAIN_DIR} \
   --eval_dir=${MODEL_EVAL_DIR} \
   --dataset_dir=${DATASET_DIR} \
-  --max_number_of_evaluation=1
+  --max_number_of_evaluations=1
 Banner "Finished evaluation. See ${MODEL_EVAL_DIR} for output images."

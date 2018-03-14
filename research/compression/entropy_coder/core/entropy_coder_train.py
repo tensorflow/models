@@ -171,7 +171,7 @@ def train():
               'code_length': model.average_code_length
           }
           np_tensors = sess.run(tf_tensors, feed_dict=feed_dict)
-          print np_tensors['code_length']
+          print(np_tensors['code_length'])
 
       sv.Stop()
 

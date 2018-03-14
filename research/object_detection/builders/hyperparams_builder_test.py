@@ -28,7 +28,7 @@ slim = tf.contrib.slim
 
 class HyperparamsBuilderTest(tf.test.TestCase):
 
-  # TODO: Make this a public api in slim arg_scope.py.
+  # TODO(rathodv): Make this a public api in slim arg_scope.py.
   def _get_scope_key(self, op):
     return getattr(op, '_key_op', str(op))
 
@@ -443,6 +443,27 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=0.49, tol=1e-1)
+
+  def test_variance_in_range_with_random_normal_initializer(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l2_regularizer {
+        }
+      }
+      initializer {
+        random_normal_initializer {
+          mean: 0.0
+          stddev: 0.8
+        }
+      }
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    scope = hyperparams_builder.build(conv_hyperparams_proto, is_training=True)
+    conv_scope_arguments = scope.values()[0]
+    initializer = conv_scope_arguments['weights_initializer']
+    self._assert_variance_in_range(initializer, shape=[100, 40],
+                                   variance=0.64, tol=1e-1)
 
 
 if __name__ == '__main__':

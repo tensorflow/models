@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for DELF feature extractor."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from delf import feature_extractor
 import numpy as np
 import tensorflow as tf
+
+from delf import feature_extractor
 
 
 class FeatureExtractorTest(tf.test.TestCase):
@@ -80,14 +80,15 @@ class FeatureExtractorTest(tf.test.TestCase):
           axis=3)
       return attention, feature_map
 
-    boxes, feature_scales, features, scores = feature_extractor.ExtractKeypointDescriptor(
-        image,
-        layer_name='resnet_v1_50/block3',
-        image_scales=tf.constant([1.0]),
-        iou=1.0,
-        max_feature_num=10,
-        abs_thres=1.5,
-        model_fn=_test_model_fn)
+    boxes, feature_scales, features, scores = (
+        feature_extractor.ExtractKeypointDescriptor(
+            image,
+            layer_name='resnet_v1_50/block3',
+            image_scales=tf.constant([1.0]),
+            iou=1.0,
+            max_feature_num=10,
+            abs_thres=1.5,
+            model_fn=_test_model_fn))
 
     exp_boxes = [[-145.0, -145.0, 145.0, 145.0], [-113.0, -145.0, 177.0, 145.0]]
     exp_feature_scales = [1.0, 1.0]

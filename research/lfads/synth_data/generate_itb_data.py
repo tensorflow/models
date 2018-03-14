@@ -18,6 +18,7 @@ from __future__ import print_function
 import h5py
 import numpy as np
 import os
+from six.moves import xrange
 import tensorflow as tf
 
 from utils import write_datasets
@@ -38,7 +39,7 @@ flags.DEFINE_integer("C", 800, "Number of conditions")
 flags.DEFINE_integer("N", 50, "Number of units for the RNN")
 flags.DEFINE_float("train_percentage", 4.0/5.0,
                    "Percentage of train vs validation trials")
-flags.DEFINE_integer("nspikifications", 5,
+flags.DEFINE_integer("nreplications", 5,
                      "Number of spikifications of the same underlying rates.")
 flags.DEFINE_float("tau", 0.025, "Time constant of RNN")
 flags.DEFINE_float("dt", 0.010, "Time bin")
@@ -47,12 +48,12 @@ flags.DEFINE_float("max_firing_rate", 30.0,
 flags.DEFINE_float("u_std", 0.25,
                    "Std dev of input to integration to bound model")
 flags.DEFINE_string("checkpoint_path", "SAMPLE_CHECKPOINT",
-                    """Path to directory with checkpoints of model 
+                    """Path to directory with checkpoints of model
                     trained on integration to bound task. Currently this
                     is a placeholder which tells the code to grab the
-                    checkpoint that is provided with the code 
-                    (in /trained_itb/..). If you have your own checkpoint 
-                    you would like to restore, you would point it to 
+                    checkpoint that is provided with the code
+                    (in /trained_itb/..). If you have your own checkpoint
+                    you would like to restore, you would point it to
                     that path.""")
 FLAGS = flags.FLAGS
 
@@ -89,8 +90,8 @@ u_rng = np.random.RandomState(seed=FLAGS.synth_data_seed+1)
 T = FLAGS.T
 C = FLAGS.C
 N = FLAGS.N  # must be same N as in trained model (provided example is N = 50)
-nspikifications = FLAGS.nspikifications
-E = nspikifications * C  # total number of trials
+nreplications = FLAGS.nreplications
+E = nreplications * C  # total number of trials
 train_percentage = FLAGS.train_percentage
 ntimesteps = int(T / FLAGS.dt)
 batch_size = 1  # gives one example per ntrial
@@ -143,7 +144,7 @@ with tf.Session() as sess:
     outputs_t_bxn = np.squeeze(np.asarray(outputs_t_bxn))
     r_sxt = np.dot(P_nxn, states_nxt)
 
-    for s in xrange(nspikifications):
+    for s in xrange(nreplications):
       data_e.append(r_sxt)
       u_e.append(u_1xt)
       outs_e.append(outputs_t_bxn)
@@ -153,7 +154,7 @@ with tf.Session() as sess:
 spiking_data_e = spikify_data(truth_data_e, rng, dt=FLAGS.dt,
                               max_firing_rate=FLAGS.max_firing_rate)
 train_inds, valid_inds = get_train_n_valid_inds(E, train_percentage,
-                                                nspikifications)
+                                                nreplications)
 
 data_train_truth, data_valid_truth = split_list_by_inds(truth_data_e,
                                                         train_inds,
@@ -187,7 +188,7 @@ data = { 'train_truth': data_train_truth,
          'train_data' : data_train_spiking,
          'valid_data' : data_valid_spiking,
          'train_percentage' : train_percentage,
-         'nspikifications' : nspikifications,
+         'nreplications' : nreplications,
          'dt' : FLAGS.dt,
          'u_std' : FLAGS.u_std,
          'max_firing_rate': FLAGS.max_firing_rate,

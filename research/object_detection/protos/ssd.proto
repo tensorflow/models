@@ -32,6 +32,14 @@ message Ssd {
   // Region similarity calculator to compute similarity of boxes.
   optional RegionSimilarityCalculator similarity_calculator = 6;
 
+  // Whether background targets are to be encoded as an all
+  // zeros vector or a one-hot vector (where background is the 0th class).
+  optional bool encode_background_as_zeros = 12 [default=false];
+
+  // classification weight to be associated to negative
+  // anchors (default: 1.0). The weight must be in [0., 1.].
+  optional float negative_class_weight = 13 [default = 1.0];
+
   // Box predictor to attach to the features.
   optional BoxPredictor box_predictor = 7;
 
@@ -44,6 +52,10 @@ message Ssd {
   // Whether to normalize the loss by number of groundtruth boxes that match to
   // the anchors.
   optional bool normalize_loss_by_num_matches = 10 [default=true];
+
+  // Whether to normalize the localization loss by the code size of the box
+  // encodings. This is applied along with other normalization factors.
+  optional bool normalize_loc_loss_by_codesize = 14 [default=false];
 
   // Loss configuration for training.
   optional Loss loss = 11;
@@ -82,4 +94,12 @@ message SsdFeatureExtractor {
   // will apply only to the additional layers that are added and are outside the
   // canned arg_scope.
   optional bool batch_norm_trainable = 6 [default=true];
+
+  // Whether to use explicit padding when extracting SSD multiresolution
+  // features. Note that this does not apply to the base feature extractor.
+  optional bool use_explicit_padding = 7 [default=false];
+
+  // Whether to use depthwise separable convolutions for to extract additional
+  // feature maps added by SSD.
+  optional bool use_depthwise = 8 [default=false];
 }

@@ -185,7 +185,7 @@ class ResnetUtilsTest(tf.test.TestCase):
         'tiny/block2/unit_2/bottleneck_v1/conv1',
         'tiny/block2/unit_2/bottleneck_v1/conv2',
         'tiny/block2/unit_2/bottleneck_v1/conv3']
-    self.assertItemsEqual(expected, end_points)
+    self.assertItemsEqual(expected, end_points.keys())
 
   def _stack_blocks_nondense(self, net, blocks):
     """A simplified ResNet Block stacker without output stride control."""
@@ -239,6 +239,70 @@ class ResnetUtilsTest(tf.test.TestCase):
               sess.run(tf.global_variables_initializer())
               output, expected = sess.run([output, expected])
               self.assertAllClose(output, expected, atol=1e-4, rtol=1e-4)
+
+  def testStridingLastUnitVsSubsampleBlockEnd(self):
+    """Compares subsampling at the block's last unit or block's end.
+
+    Makes sure that the final output is the same when we use a stride at the
+    last unit of a block vs. we subsample activations at the end of a block.
+    """
+    block = resnet_v1.resnet_v1_block
+
+    blocks = [
+        block('block1', base_depth=1, num_units=2, stride=2),
+        block('block2', base_depth=2, num_units=2, stride=2),
+        block('block3', base_depth=4, num_units=2, stride=2),
+        block('block4', base_depth=8, num_units=2, stride=1),
+    ]
+
+    # Test both odd and even input dimensions.
+    height = 30
+    width = 31
+    with slim.arg_scope(resnet_utils.resnet_arg_scope()):
+      with slim.arg_scope([slim.batch_norm], is_training=False):
+        for output_stride in [1, 2, 4, 8, None]:
+          with tf.Graph().as_default():
+            with self.test_session() as sess:
+              tf.set_random_seed(0)
+              inputs = create_test_input(1, height, width, 3)
+
+              # Subsampling at the last unit of the block.
+              output = resnet_utils.stack_blocks_dense(
+                  inputs, blocks, output_stride,
+                  store_non_strided_activations=False,
+                  outputs_collections='output')
+              output_end_points = slim.utils.convert_collection_to_dict(
+                  'output')
+
+              # Make the two networks use the same weights.
+              tf.get_variable_scope().reuse_variables()
+
+              # Subsample activations at the end of the blocks.
+              expected = resnet_utils.stack_blocks_dense(
+                  inputs, blocks, output_stride,
+                  store_non_strided_activations=True,
+                  outputs_collections='expected')
+              expected_end_points = slim.utils.convert_collection_to_dict(
+                  'expected')
+
+              sess.run(tf.global_variables_initializer())
+
+              # Make sure that the final output is the same.
+              output, expected = sess.run([output, expected])
+              self.assertAllClose(output, expected, atol=1e-4, rtol=1e-4)
+
+              # Make sure that intermediate block activations in
+              # output_end_points are subsampled versions of the corresponding
+              # ones in expected_end_points.
+              for i, block in enumerate(blocks[:-1:]):
+                output = output_end_points[block.scope]
+                expected = expected_end_points[block.scope]
+                atrous_activated = (output_stride is not None and
+                                    2 ** i >= output_stride)
+                if not atrous_activated:
+                  expected = resnet_utils.subsample(expected, 2)
+                output, expected = sess.run([output, expected])
+                self.assertAllClose(output, expected, atol=1e-4, rtol=1e-4)
 
 
 class ResnetCompleteNetworkTest(tf.test.TestCase):

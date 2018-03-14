@@ -67,20 +67,27 @@ python trainer.py --logtostderr --batch_size=25 --env=HalfCheetah-v1 \
   --max_divergence=0.05 --value_opt=best_fit --critic_weight=0.0 \
 ```
 
-Run Mujoco task with Trust-PCL:
+To run Mujoco task using Trust-PCL (off-policy) use the below command.
+It should work well across all environments, given that you
+search sufficiently among
+
+(1) max_divergence (0.001, 0.0005, 0.002 are good values),
+
+(2) rollout (1, 5, 10 are good values),
+
+(3) tf_seed (need to average over enough random seeds).
 
 ```
 python trainer.py --logtostderr --batch_size=1 --env=HalfCheetah-v1 \
-  --validation_frequency=50 --rollout=10 --critic_weight=0.0 \
-  --gamma=0.995 --clip_norm=40 --learning_rate=0.002 \
-  --replay_buffer_freq=1 --replay_buffer_size=20000 \
-  --replay_buffer_alpha=0.1 --norecurrent --objective=pcl \
-  --max_step=100 --tau=0.0 --eviction=fifo --max_divergence=0.001 \
-  --internal_dim=64 --cutoff_agent=1000 \
-  --replay_batch_size=25 --nouse_online_batch --batch_by_steps \
-  --sample_from=target --value_opt=grad --value_hidden_layers=2 \
-  --update_eps_lambda --unify_episodes --clip_adv=1.0 \
-  --target_network_lag=0.99 --prioritize_by=step
+  --validation_frequency=250 --rollout=1 --critic_weight=1.0 --gamma=0.995 \
+  --clip_norm=40 --learning_rate=0.0001 --replay_buffer_freq=1 \
+  --replay_buffer_size=5000 --replay_buffer_alpha=0.001 --norecurrent \
+  --objective=pcl --max_step=10 --cutoff_agent=1000 --tau=0.0 --eviction=fifo \
+  --max_divergence=0.001 --internal_dim=256 --replay_batch_size=64 \
+  --nouse_online_batch --batch_by_steps --value_hidden_layers=2 \
+  --update_eps_lambda --nounify_episodes --target_network_lag=0.99 \
+  --sample_from=online --clip_adv=1 --prioritize_by=step --num_steps=1000000 \
+  --noinput_prev_actions --use_target_values --tf_seed=57
 ```
 
 Run Mujoco task with PCL constraint trust region:

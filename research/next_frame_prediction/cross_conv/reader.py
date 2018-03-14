@@ -15,6 +15,7 @@
 
 """Read image sequence."""
 
+from six.moves import xrange
 import tensorflow as tf
 
 

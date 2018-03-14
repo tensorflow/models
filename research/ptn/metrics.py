@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import xrange
 import tensorflow as tf
 
 slim = tf.contrib.slim
@@ -108,5 +109,3 @@ def add_volume_iou_metrics(inputs, outputs):
   names_to_values['volume_iou'] = tmp_values * 3.0
   names_to_updates['volume_iou'] = tmp_updates
   return names_to_values, names_to_updates
-
-

@@ -22,6 +22,7 @@ import sys
 import time
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from differential_privacy.dp_sgd.dp_optimizer import dp_optimizer

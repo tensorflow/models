@@ -23,6 +23,7 @@ import random
 
 
 import tensorflow as tf
+from six.moves import xrange
 from tensorflow.core.framework.summary_pb2 import Summary
 from tensorflow.python.framework import errors
 from tensorflow.python.platform import gfile

@@ -56,6 +56,8 @@ flags.DEFINE_integer('max_number_of_evaluations', None,
                      'Number of times to run evaluation. If `None`, run '
                      'forever.')
 
+flags.DEFINE_boolean('write_to_disk', True, 'If `True`, run images to disk.')
+
 
 def main(_, run_eval_loop=True):
   # Fetch real images.
@@ -72,13 +74,14 @@ def main(_, run_eval_loop=True):
     # train job.
     with tf.variable_scope('Generator'):
       images = networks.unconditional_generator(
-          tf.random_normal([FLAGS.num_images_generated, FLAGS.noise_dims]))
+          tf.random_normal([FLAGS.num_images_generated, FLAGS.noise_dims]),
+          is_training=False)
     tf.summary.scalar('MNIST_Frechet_distance',
                       util.mnist_frechet_distance(
                           real_images, images, FLAGS.classifier_filename))
     tf.summary.scalar('MNIST_Classifier_score',
                       util.mnist_score(images, FLAGS.classifier_filename))
-    if FLAGS.num_images_generated >= 100:
+    if FLAGS.num_images_generated >= 100 and FLAGS.write_to_disk:
       reshaped_images = tfgan.eval.image_reshaper(
           images[:100, ...], num_cols=10)
       uint8_images = data_provider.float_image_to_uint8(reshaped_images)

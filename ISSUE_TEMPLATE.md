@@ -4,7 +4,7 @@ http://stackoverflow.com/questions/tagged/tensorflow
 
 Also, please understand that many of the models included in this repository are experimental and research-style code. If you open a GitHub issue, here is our policy:
 
-1. It must be a bug or a feature request.
+1. It must be a bug, a feature request, or a significant problem with documentation (for small docs fixes please send a PR instead).
 2. The form below must be filled out.
 
 **Here's why we have that policy**: TensorFlow developers respond to issues. We want to focus on work that benefits the whole community, e.g., fixing bugs and adding features. Support only helps individuals. GitHub also notifies thousands of people when issues are filed. We want them to see you communicating an interesting problem, rather than being redirected to Stack Overflow.

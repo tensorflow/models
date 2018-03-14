@@ -17,6 +17,7 @@
 """
 import copy
 import skimage.morphology
+import logging
 import numpy as np
 import scipy.ndimage
 import matplotlib.pyplot as plt

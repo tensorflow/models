@@ -57,6 +57,8 @@ class Model(object):
     # summary placeholder
     self.avg_episode_reward = tf.placeholder(
         tf.float32, [], 'avg_episode_reward')
+    self.greedy_episode_reward = tf.placeholder(
+        tf.float32, [], 'greedy_episode_reward')
 
     # sampling placeholders
     self.internal_state = tf.placeholder(tf.float32,
@@ -118,12 +120,13 @@ class Model(object):
     self.prev_log_probs = tf.placeholder(tf.float32, [None, None],
                                          'prev_log_probs')
 
-  def setup(self):
+  def setup(self, train=True):
     """Setup Tensorflow Graph."""
 
     self.setup_placeholders()
 
     tf.summary.scalar('avg_episode_reward', self.avg_episode_reward)
+    tf.summary.scalar('greedy_episode_reward', self.greedy_episode_reward)
 
     with tf.variable_scope('model', reuse=None):
       # policy network
@@ -174,45 +177,46 @@ class Model(object):
           target_p.assign(aa * target_p + (1 - aa) * online_p)
           for online_p, target_p in zip(online_vars, target_vars)])
 
-      # evaluate objective
-      (self.loss, self.raw_loss, self.regression_target,
-       self.gradient_ops, self.summary) = self.objective.get(
-          self.rewards, self.pads,
-          self.values[:-1, :],
-          self.values[-1, :] * (1 - self.terminated),
-          self.log_probs, self.prev_log_probs, self.target_log_probs,
-          self.entropies,
-          self.logits)
+      if train:
+        # evaluate objective
+        (self.loss, self.raw_loss, self.regression_target,
+         self.gradient_ops, self.summary) = self.objective.get(
+            self.rewards, self.pads,
+            self.values[:-1, :],
+            self.values[-1, :] * (1 - self.terminated),
+            self.log_probs, self.prev_log_probs, self.target_log_probs,
+            self.entropies, self.logits, self.target_values[:-1, :],
+            self.target_values[-1, :] * (1 - self.terminated))
 
-      self.regression_target = tf.reshape(self.regression_target, [-1])
+        self.regression_target = tf.reshape(self.regression_target, [-1])
 
-      self.policy_vars = [
-          v for v in tf.trainable_variables()
-          if '/policy_net' in v.name]
-      self.value_vars = [
-          v for v in tf.trainable_variables()
-          if '/value_net' in v.name]
+        self.policy_vars = [
+            v for v in tf.trainable_variables()
+            if '/policy_net' in v.name]
+        self.value_vars = [
+            v for v in tf.trainable_variables()
+            if '/value_net' in v.name]
 
-    # trust region optimizer
-    if self.trust_region_policy_opt is not None:
-      with tf.variable_scope('trust_region_policy', reuse=None):
-        avg_self_kl = (
-            tf.reduce_sum(sum(self.self_kls) * (1 - self.pads)) /
-            tf.reduce_sum(1 - self.pads))
+        # trust region optimizer
+        if self.trust_region_policy_opt is not None:
+          with tf.variable_scope('trust_region_policy', reuse=None):
+            avg_self_kl = (
+                tf.reduce_sum(sum(self.self_kls) * (1 - self.pads)) /
+                tf.reduce_sum(1 - self.pads))
 
-        self.trust_region_policy_opt.setup(
-            self.policy_vars, self.raw_loss, avg_self_kl,
-            self.avg_kl)
+            self.trust_region_policy_opt.setup(
+                self.policy_vars, self.raw_loss, avg_self_kl,
+                self.avg_kl)
 
-    # value optimizer
-    if self.value_opt is not None:
-      with tf.variable_scope('trust_region_value', reuse=None):
-        self.value_opt.setup(
-            self.value_vars,
-            tf.reshape(self.values[:-1, :], [-1]),
-            self.regression_target,
-            tf.reshape(self.pads, [-1]),
-            self.regression_input, self.regression_weight)
+        # value optimizer
+        if self.value_opt is not None:
+          with tf.variable_scope('trust_region_value', reuse=None):
+            self.value_opt.setup(
+                self.value_vars,
+                tf.reshape(self.values[:-1, :], [-1]),
+                self.regression_target,
+                tf.reshape(self.pads, [-1]),
+                self.regression_input, self.regression_weight)
 
     # we re-use variables for the sampling operations
     with tf.variable_scope('model', reuse=True):
@@ -249,18 +253,26 @@ class Model(object):
   def train_step(self, sess,
                  observations, internal_state, actions,
                  rewards, terminated, pads,
-                 avg_episode_reward=0):
+                 avg_episode_reward=0, greedy_episode_reward=0):
     """Train network using standard gradient descent."""
     outputs = [self.raw_loss, self.gradient_ops, self.summary]
     feed_dict = {self.internal_state: internal_state,
                  self.rewards: rewards,
                  self.terminated: terminated,
                  self.pads: pads,
-                 self.avg_episode_reward: avg_episode_reward}
+                 self.avg_episode_reward: avg_episode_reward,
+                 self.greedy_episode_reward: greedy_episode_reward}
+    time_len = None
     for action_place, action in zip(self.actions, actions):
+      if time_len is None:
+        time_len = len(action)
+      assert time_len == len(action)
       feed_dict[action_place] = action
     for obs_place, obs in zip(self.observations, observations):
+      assert time_len == len(obs)
       feed_dict[obs_place] = obs
+
+    assert len(rewards) == time_len - 1
 
     return sess.run(outputs, feed_dict=feed_dict)
 
@@ -268,13 +280,15 @@ class Model(object):
   def trust_region_step(self, sess,
                         observations, internal_state, actions,
                         rewards, terminated, pads,
-                        avg_episode_reward=0):
+                        avg_episode_reward=0,
+                        greedy_episode_reward=0):
     """Train policy using trust region step."""
     feed_dict = {self.internal_state: internal_state,
                  self.rewards: rewards,
                  self.terminated: terminated,
                  self.pads: pads,
-                 self.avg_episode_reward: avg_episode_reward}
+                 self.avg_episode_reward: avg_episode_reward,
+                 self.greedy_episode_reward: greedy_episode_reward}
     for action_place, action in zip(self.actions, actions):
       feed_dict[action_place] = action
     for obs_place, obs in zip(self.observations, observations):

@@ -18,6 +18,7 @@
 import os
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 import synthetic_model

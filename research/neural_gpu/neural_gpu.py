@@ -17,6 +17,7 @@
 import time
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 from tensorflow.python.framework import function
@@ -500,8 +501,10 @@ class NeuralGPU(object):
             return tf.reduce_sum(encoder_outputs * tf.expand_dims(mask, 2), 1)
 
           with tf.variable_scope("decoder"):
-            def decoder_loop_fn((state, prev_cell_out, _), (cell_inp, cur_tgt)):
+            def decoder_loop_fn(state__prev_cell_out__unused, cell_inp__cur_tgt):
               """Decoder loop function."""
+              state, prev_cell_out, _ = state__prev_cell_out__unused
+              cell_inp, cur_tgt = cell_inp__cur_tgt
               attn_q = tf.layers.dense(prev_cell_out, height * nmaps,
                                        name="attn_query")
               attn_res = attention_query(attn_q, tf.get_variable(

@@ -16,6 +16,7 @@
 """Define some typical masked 2D convolutions."""
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 
 import block_util

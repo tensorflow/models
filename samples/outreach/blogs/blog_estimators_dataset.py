@@ -38,7 +38,7 @@ URL_TRAIN = "http://download.tensorflow.org/data/iris_training.csv"
 URL_TEST = "http://download.tensorflow.org/data/iris_test.csv"
 
 
-def downloadDataset(url, file):
+def download_dataset(url, file):
     if not os.path.exists(PATH_DATASET):
         os.makedirs(PATH_DATASET)
     if not os.path.exists(file):
@@ -46,8 +46,8 @@ def downloadDataset(url, file):
         with open(file, "wb") as f:
             f.write(data)
             f.close()
-downloadDataset(URL_TRAIN, FILE_TRAIN)
-downloadDataset(URL_TEST, FILE_TEST)
+download_dataset(URL_TRAIN, FILE_TRAIN)
+download_dataset(URL_TEST, FILE_TEST)
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -65,7 +65,7 @@ feature_names = [
 def my_input_fn(file_path, perform_shuffle=False, repeat_count=1):
     def decode_csv(line):
         parsed_line = tf.decode_csv(line, [[0.], [0.], [0.], [0.], [0]])
-        label = parsed_line[-1:]  # Last element is the label
+        label = parsed_line[-1]  # Last element is the label
         del parsed_line[-1]  # Delete last element
         features = parsed_line  # Everything but last elements are the features
         d = dict(zip(feature_names, features)), label
@@ -97,7 +97,7 @@ classifier = tf.estimator.DNNClassifier(
     n_classes=3,
     model_dir=PATH)  # Path to where checkpoints etc are stored
 
-# Train our model, use the previously function my_input_fn
+# Train our model, use the previously defined function my_input_fn
 # Input to training is a file with training example
 # Stop training after 8 iterations of train data (epochs)
 classifier.train(
@@ -126,6 +126,7 @@ for prediction in predict_results:
 prediction_input = [[5.9, 3.0, 4.2, 1.5],  # -> 1, Iris Versicolor
                     [6.9, 3.1, 5.4, 2.1],  # -> 2, Iris Virginica
                     [5.1, 3.3, 1.7, 0.5]]  # -> 0, Iris Sentosa
+
 
 def new_input_fn():
     def decode(x):

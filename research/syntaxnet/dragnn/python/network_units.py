@@ -22,6 +22,7 @@ import abc
 
 
 import numpy as np
+from six.moves import xrange
 import tensorflow as tf
 from tensorflow.python.ops import nn
 from tensorflow.python.ops import tensor_array_ops as ta

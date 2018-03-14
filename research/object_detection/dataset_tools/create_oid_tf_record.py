@@ -96,7 +96,7 @@ def main(_):
       tf_example = oid_tfrecord_creation.tf_example_from_annotations_data_frame(
           image_annotations, label_map, encoded_image)
       if tf_example:
-        shard_idx = long(image_id, 16) % FLAGS.num_shards
+        shard_idx = int(image_id, 16) % FLAGS.num_shards
         output_tfrecords[shard_idx].write(tf_example.SerializeToString())
 
 

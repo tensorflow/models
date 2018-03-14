@@ -23,7 +23,7 @@ import tensorflow as tf
 slim = tf.contrib.slim
 
 
-# TODO: Consider replacing with tf.contrib.filter_variables in
+# TODO(derekjchow): Consider replacing with tf.contrib.filter_variables in
 # tensorflow/contrib/framework/python/ops/variables.py
 def filter_variables(variables, filter_regex_list, invert=False):
   """Filters out the variables matching the filter_regex.
@@ -42,7 +42,7 @@ def filter_variables(variables, filter_regex_list, invert=False):
     a list of filtered variables.
   """
   kept_vars = []
-  variables_to_ignore_patterns = filter(None, filter_regex_list)
+  variables_to_ignore_patterns = list(filter(None, filter_regex_list))
   for var in variables:
     add = True
     for pattern in variables_to_ignore_patterns:
@@ -96,17 +96,21 @@ def freeze_gradients_matching_regex(grads_and_vars, regex_list):
   return kept_grads_and_vars
 
 
-def get_variables_available_in_checkpoint(variables, checkpoint_path):
+def get_variables_available_in_checkpoint(variables,
+                                          checkpoint_path,
+                                          include_global_step=True):
   """Returns the subset of variables available in the checkpoint.
 
   Inspects given checkpoint and returns the subset of variables that are
   available in it.
 
-  TODO: force input and output to be a dictionary.
+  TODO(rathodv): force input and output to be a dictionary.
 
   Args:
     variables: a list or dictionary of variables to find in checkpoint.
     checkpoint_path: path to the checkpoint to restore variables from.
+    include_global_step: whether to include `global_step` variable, if it
+      exists. Default True.
 
   Returns:
     A list or dictionary of variables.
@@ -120,13 +124,20 @@ def get_variables_available_in_checkpoint(variables, checkpoint_path):
   else:
     raise ValueError('`variables` is expected to be a list or dict.')
   ckpt_reader = tf.train.NewCheckpointReader(checkpoint_path)
-  ckpt_vars = ckpt_reader.get_variable_to_shape_map().keys()
+  ckpt_vars_to_shape_map = ckpt_reader.get_variable_to_shape_map()
+  if not include_global_step:
+    ckpt_vars_to_shape_map.pop(tf.GraphKeys.GLOBAL_STEP, None)
   vars_in_ckpt = {}
   for variable_name, variable in sorted(variable_names_map.items()):
-    if variable_name in ckpt_vars:
-      vars_in_ckpt[variable_name] = variable
+    if variable_name in ckpt_vars_to_shape_map:
+      if ckpt_vars_to_shape_map[variable_name] == variable.shape.as_list():
+        vars_in_ckpt[variable_name] = variable
+      else:
+        logging.warning('Variable [%s] is available in checkpoint, but has an '
+                        'incompatible shape with model variable.',
+                        variable_name)
     else:
-      logging.warning('Variable [%s] not available in checkpoint',
+      logging.warning('Variable [%s] is not available in checkpoint',
                       variable_name)
   if isinstance(variables, list):
     return vars_in_ckpt.values()

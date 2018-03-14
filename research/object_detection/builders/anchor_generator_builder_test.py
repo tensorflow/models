@@ -22,6 +22,7 @@ import tensorflow as tf
 from google.protobuf import text_format
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.anchor_generators import multiple_grid_anchor_generator
+from object_detection.anchor_generators import multiscale_grid_anchor_generator
 from object_detection.builders import anchor_generator_builder
 from object_detection.protos import anchor_generator_pb2
 
@@ -251,6 +252,48 @@ class AnchorGeneratorBuilderTest(tf.test.TestCase):
     text_format.Merge(anchor_generator_text_proto, anchor_generator_proto)
     with self.assertRaises(ValueError):
       anchor_generator_builder.build(anchor_generator_proto)
+
+  def test_build_multiscale_anchor_generator_custom_aspect_ratios(self):
+    anchor_generator_text_proto = """
+      multiscale_anchor_generator {
+        aspect_ratios: [1.0]
+      }
+    """
+    anchor_generator_proto = anchor_generator_pb2.AnchorGenerator()
+    text_format.Merge(anchor_generator_text_proto, anchor_generator_proto)
+    anchor_generator_object = anchor_generator_builder.build(
+        anchor_generator_proto)
+    self.assertTrue(isinstance(anchor_generator_object,
+                               multiscale_grid_anchor_generator.
+                               MultiscaleGridAnchorGenerator))
+    for level, anchor_grid_info in zip(
+        range(3, 8), anchor_generator_object._anchor_grid_info):
+      self.assertEqual(set(anchor_grid_info.keys()), set(['level', 'info']))
+      self.assertTrue(level, anchor_grid_info['level'])
+      self.assertEqual(len(anchor_grid_info['info']), 4)
+      self.assertAllClose(anchor_grid_info['info'][0], [2**0, 2**0.5])
+      self.assertTrue(anchor_grid_info['info'][1], 1.0)
+      self.assertAllClose(anchor_grid_info['info'][2],
+                          [4.0 * 2**level, 4.0 * 2**level])
+      self.assertAllClose(anchor_grid_info['info'][3], [2**level, 2**level])
+      self.assertTrue(anchor_generator_object._normalize_coordinates)
+
+  def test_build_multiscale_anchor_generator_with_anchors_in_pixel_coordinates(
+      self):
+    anchor_generator_text_proto = """
+      multiscale_anchor_generator {
+        aspect_ratios: [1.0]
+        normalize_coordinates: false
+      }
+    """
+    anchor_generator_proto = anchor_generator_pb2.AnchorGenerator()
+    text_format.Merge(anchor_generator_text_proto, anchor_generator_proto)
+    anchor_generator_object = anchor_generator_builder.build(
+        anchor_generator_proto)
+    self.assertTrue(isinstance(anchor_generator_object,
+                               multiscale_grid_anchor_generator.
+                               MultiscaleGridAnchorGenerator))
+    self.assertFalse(anchor_generator_object._normalize_coordinates)
 
 
 if __name__ == '__main__':

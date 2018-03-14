@@ -93,6 +93,7 @@ import sys
 import threading
 
 import numpy as np
+import six
 import tensorflow as tf
 
 tf.app.flags.DEFINE_string('train_directory', '/tmp/',
@@ -170,6 +171,8 @@ def _float_feature(value):
 
 def _bytes_feature(value):
   """Wrapper for inserting bytes features into Example proto."""
+  if isinstance(value, six.string_types):           
+    value = six.binary_type(value, encoding='utf-8') 
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
@@ -312,7 +315,7 @@ def _process_image(filename, coder):
     width: integer, image width in pixels.
   """
   # Read the image file.
-  with tf.gfile.FastGFile(filename, 'r') as f:
+  with tf.gfile.FastGFile(filename, 'rb') as f:
     image_data = f.read()
 
   # Clean the dirty data.
