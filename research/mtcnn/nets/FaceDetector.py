@@ -52,8 +52,6 @@ class FaceDetector(object):
             		if boxes_c is None:
                 		return( np.array([]),np.array([]) )    
             		onet_time = time.time() - start_time
-
-		print('detect')
 		return(boxes_c, landmark)
 
 

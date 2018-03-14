@@ -24,6 +24,7 @@ def main(args):
 	webcamera.set(3, 600)
 	webcamera.set(4, 800)
 	
+	thresh = 0.125
 	while True:
     		start_time = cv2.getTickCount()
     		status, current_frame = webcamera.read()
@@ -34,14 +35,21 @@ def main(args):
 			end_time = cv2.getTickCount()
         		time_duration = (end_time - start_time) / cv2.getTickFrequency()
         		frames_per_sec = 1.0 / time_duration
+        		cv2.putText(current_frame, '{:.3f}'.format(frames_per_sec) + ' fps', (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
 
-        		cv2.putText(current_frame, '{:.3f}'.format(frames_per_sec), (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+        		for index in range(boxes_c.shape[0]):
+            			bounding_box = boxes_c[i, :4]
+            			probability = boxes_c[i, 4]
+            			crop_box = [int(bounding_box[0]), int(bounding_box[1]), int(bounding_box[2]), int(bounding_box[3])]
+            
+            			if( probability > thresh ):
+            				cv2.rectangle(frame, (crop_box[0], crop_box[1]),(crop_box[2], crop_box[3]), (255, 0, 0), 1)
      
 		        cv2.imshow("", current_frame)
         		if cv2.waitKey(1) & 0xFF == ord('q'):
             			break
     		else:
-        		print('Error detecting the webcamera')
+        		print('Error detecting the webcamera.')
         		break
 
 	webcamera.release()
