@@ -436,4 +436,3 @@ class Model(object):
     inputs = tf.identity(inputs, 'final_dense')
     return inputs
 
-

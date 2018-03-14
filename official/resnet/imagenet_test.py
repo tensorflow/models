@@ -17,16 +17,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import unittest
 
 import tensorflow as tf
 
 from official.resnet import imagenet_main
+from official.utils.testing import integration
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 _BATCH_SIZE = 32
 _LABEL_CLASSES = 1001
+
+
+MAIN_PATH = os.path.join(os.path.split(
+    os.path.abspath(__file__))[0], "imagenet_main.py")
 
 
 class BaseTest(tf.test.TestCase):
@@ -242,6 +248,27 @@ class BaseTest(tf.test.TestCase):
 
       self.assertAllEqual(output.shape, (batch_size, num_classes))
 
+  def test_imagenet_end_to_end_synthetic_v1(self):
+    integration.run_synthetic(file_path=MAIN_PATH, extra_flags=["-v", "1"])
+
+  def test_imagenet_end_to_end_synthetic_v2(self):
+    integration.run_synthetic(file_path=MAIN_PATH, extra_flags=["-v", "2"])
+
+  def test_imagenet_end_to_end_synthetic_v1_tiny(self):
+    integration.run_synthetic(file_path=MAIN_PATH,
+                              extra_flags=["-v", "1", "-rs", "18"])
+
+  def test_imagenet_end_to_end_synthetic_v2_tiny(self):
+    integration.run_synthetic(file_path=MAIN_PATH,
+                              extra_flags=["-v", "2", "-rs", "18"])
+
+  def test_imagenet_end_to_end_synthetic_v1_huge(self):
+    integration.run_synthetic(file_path=MAIN_PATH,
+                              extra_flags=["-v", "1", "-rs", "200"])
+
+  def test_imagenet_end_to_end_synthetic_v2_huge(self):
+    integration.run_synthetic(file_path=MAIN_PATH,
+                              extra_flags=["-v", "2", "-rs", "200"])
 
 if __name__ == '__main__':
   tf.test.main()

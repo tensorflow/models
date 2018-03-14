@@ -291,5 +291,5 @@ if __name__ == '__main__':
 
   parser = resnet_run_loop.ResnetArgParser(
       resnet_size_choices=[18, 34, 50, 101, 152, 200])
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(argv=[sys.argv[0]] + unparsed)
+  FLAGS = parser.parse_args()
+  tf.app.run(argv=[sys.argv[0]])
