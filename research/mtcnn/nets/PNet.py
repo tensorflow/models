@@ -7,12 +7,7 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 
 from nets.AbstractFaceDetector import AbstractFaceDetector
-
-def prelu(inputs):
-    alphas = tf.get_variable("alphas", shape=inputs.get_shape()[-1], dtype=tf.float32, initializer=tf.constant_initializer(0.25))
-    pos = tf.nn.relu(inputs)
-    neg = alphas * (inputs-abs(inputs))*0.5
-    return( pos + neg )
+from nets.prelu import prelu
 
 class PNet(AbstractFaceDetector):
 
@@ -23,11 +18,11 @@ class PNet(AbstractFaceDetector):
 
 	def setup_network(self, inputs):
     		with slim.arg_scope([slim.conv2d],
-                        activation_fn = prelu,
-                        weights_initializer = slim.xavier_initializer(),
-                        biases_initializer = tf.zeros_initializer(),
-                        weights_regularizer = slim.l2_regularizer(0.0005), 
-                        padding='valid'):
+                        	activation_fn = prelu,
+                        	weights_initializer = slim.xavier_initializer(),
+                        	biases_initializer = tf.zeros_initializer(),
+                        	weights_regularizer = slim.l2_regularizer(0.0005), 
+                        	padding='valid'):
 
         		print( inputs.get_shape() )
         		net = slim.conv2d(inputs, 10, 3, stride=1,scope='conv1')
@@ -92,10 +87,9 @@ class PNet(AbstractFaceDetector):
             		assert  read_state, "Invalid parameter dictionary."
             		saver.restore(self.session, checkpoint_path)
 
-	def detect(self, databatch):
-        	height, width, _ = databatch.shape
+	def detect(self, data_batch):
+        	height, width, _ = data_batch.shape
         	probabilities, bounding_boxes = self.session.run([self.probability, self.bounding_box],
-                                                           feed_dict={self.input_image: databatch, self.image_width: width,
-                                                                      self.image_height: height})
+                                                           	 feed_dict={self.input_image: data_batch, self.image_width: width, self.image_height: height})
         	return( probabilities, bounding_boxes )
 		
