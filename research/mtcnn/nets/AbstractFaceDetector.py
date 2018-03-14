@@ -6,11 +6,8 @@ class AbstractFaceDetector(object):
 
 	def __init__(self):
 		print('AbstractFaceDetector')
-		self.setup()
+		self.network_size = 12
 
-	def setup(self):
+	def load_model(self, checkpoint_path):
 		raise NotImplementedError('Must be implemented by the subclass.')
-
-	def detect(self, image):
-		raise NotImplementedError('Must be implemented by the subclass.')
-		
+	

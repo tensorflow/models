@@ -10,6 +10,7 @@ class ONet(AbstractFaceDetector):
 
 	def __init__(self):
 		print('ONet')
+		self.network_size = 48
 
 	def detect(self, image, boxes):
 		return( np.array([]), np.array([]), np.array([]) )
