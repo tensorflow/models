@@ -718,6 +718,9 @@ def resnet_main(flags, model_function, input_function):
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
+  print('Test flags.hooks!!!')
+  print(flags.hooks)
+
   if flags.multi_gpu:
     validate_batch_size_for_multi_gpu(flags.batch_size)
 
