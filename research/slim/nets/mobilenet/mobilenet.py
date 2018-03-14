@@ -22,8 +22,6 @@ import contextlib
 import copy
 import os
 
-import contextlib2
-
 import tensorflow as tf
 
 
@@ -76,17 +74,23 @@ def _set_arg_scope_defaults(defaults):
   """Sets arg scope defaults for all items present in defaults.
 
   Args:
-    defaults: dictionary mapping function to default_dict
+    defaults: dictionary/list of pairs, containing a mapping from
+    function to a dictionary of default args.
 
   Yields:
-    context manager
+    context manager where all defaults are set.
   """
-  with contextlib2.ExitStack() as stack:
-    _ = [
-        stack.enter_context(slim.arg_scope(func, **default_arg))
-        for func, default_arg in defaults.items()
-    ]
+  if hasattr(defaults, 'items'):
+    items = defaults.items()
+  else:
+    items = defaults
+  if not items:
     yield
+  else:
+    func, default_arg = items[0]
+    with slim.arg_scope(func, **default_arg):
+      with _set_arg_scope_defaults(items[1:]):
+        yield
 
 
 @slim.add_arg_scope

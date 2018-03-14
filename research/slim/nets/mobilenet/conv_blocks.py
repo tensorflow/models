@@ -13,8 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 """Convolution blocks for mobilenet."""
+import contextlib
 import functools
-import contextlib2
 
 import tensorflow as tf
 
@@ -75,6 +75,19 @@ def _split_divisible(num, num_ways, divisible_by=8):
   return result
 
 
+@contextlib.contextmanager
+def _v1_compatible_scope_naming(scope):
+  if scope is None:  # Create uniqified separable blocks.
+    with tf.variable_scope(None, default_name='separable') as s, \
+         tf.name_scope(s.original_name_scope):
+      yield ''
+  else:
+    # We use scope_depthwise, scope_pointwise for compatibility with V1 ckpts.
+    # which provide numbered scopes.
+    scope += '_'
+    yield scope
+
+
 @slim.add_arg_scope
 def split_separable_conv2d(input_tensor,
                            num_outputs,
@@ -110,15 +123,7 @@ def split_separable_conv2d(input_tensor,
     output tesnor
   """
 
-  with contextlib2.ExitStack() as stack:
-    if scope is None:  # Create uniqified separable blocks.
-      s = stack.enter_context(tf.variable_scope(None, default_name='separable'))
-      stack.enter_context(tf.name_scope(s.original_name_scope))
-      scope = ''
-    else:
-      # We use scope_depthwise, scope_pointwise for compatibility with V1 ckpts.
-      scope += '_'
-
+  with _v1_compatible_scope_naming(scope) as scope:
     dw_scope = scope + 'depthwise'
     endpoints = endpoints if endpoints is not None else {}
     kernel_size = [3, 3]
