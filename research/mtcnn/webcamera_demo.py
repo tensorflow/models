@@ -29,7 +29,8 @@ def main(args):
     		status, current_frame = webcamera.read()
     		if status:
         		image = np.array(current_frame)
-        
+        		boxes_c, landmarks = face_detector.detect(image)
+
 			end_time = cv2.getTickCount()
         		time_duration = (end_time - start_time) / cv2.getTickFrequency()
         		frames_per_sec = 1.0 / time_duration

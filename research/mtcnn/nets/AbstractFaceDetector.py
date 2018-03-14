@@ -9,4 +9,8 @@ class AbstractFaceDetector(object):
 		self.setup()
 
 	def setup(self):
-		print('setup')
+		raise NotImplementedError('Must be implemented by the subclass.')
+
+	def detect(self, image):
+		raise NotImplementedError('Must be implemented by the subclass.')
+		
