@@ -33,7 +33,7 @@ See the following papers for more details:
 "Encoder-Decoder with Atrous Separable Convolution for Semantic Image
 Segmentation"
 Liang-Chieh Chen, Yukun Zhu, George Papandreou, Florian Schroff, Hartwig Adam.
-(https://arxiv.org/abs1802.02611)
+(https://arxiv.org/abs/1802.02611)
 
 "Rethinking Atrous Convolution for Semantic Image Segmentation,"
 Liang-Chieh Chen, George Papandreou, Florian Schroff, Hartwig Adam
