@@ -19,14 +19,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
+
 import tensorflow as tf
 
 from official.utils.logging import hooks_helper
 
-tf.logging.set_verbosity(tf.logging.ERROR)
 
-
-class BaseTest(tf.test.TestCase):
+class BaseTest(unittest.TestCase):
 
   def test_raise_in_non_list_names(self):
     with self.assertRaises(ValueError):
@@ -48,15 +48,15 @@ class BaseTest(tf.test.TestCase):
     self.assertEqual(returned_hook[0].__class__.__name__.lower(),
                      expected_hook_name)
 
-  def test_get_train_hooks_LoggingTensorHook(self):
+  def test_get_train_hooks_logging_tensor_hook(self):
     test_hook_name = 'LoggingTensorHook'
     self.validate_train_hook_name(test_hook_name, 'loggingtensorhook')
 
-  def test_get_train_hooks_ProfilerHook(self):
+  def test_get_train_hooks_profiler_hook(self):
     test_hook_name = 'ProfilerHook'
     self.validate_train_hook_name(test_hook_name, 'profilerhook')
 
-  def test_get_train_hooks_ExamplesPerSecondHook(self):
+  def test_get_train_hooks_examples_per_second_hook(self):
     test_hook_name = 'ExamplesPerSecondHook'
     self.validate_train_hook_name(test_hook_name, 'examplespersecondhook')
 
