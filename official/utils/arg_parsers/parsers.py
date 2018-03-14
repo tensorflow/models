@@ -58,8 +58,32 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import argparse
+
+import tensorflow as tf
+
+
+def parse_dtype_info(flags):
+  """Convert dtype string to tf dtype, and set loss_scale default as needed.
+
+  Args:
+    flags: namespace object returned by arg parser.
+
+  Raises:
+    ValueError: If an invalid dtype is provided.
+  """
+  flags.dtype = {
+      "fp16": tf.float16,
+      "float16": tf.float16,
+      "fp32": tf.float32,
+      "float32": tf.float32,
+  }.get(flags.dtype, flags.dtype)
+
+  if flags.dtype is None or isinstance(flags.dtype, str):
+    raise ValueError("Invalid dtype: {}".format(flags.dtype))
+
+  if flags.loss_scale is None:
+    flags.loss_scale = 128 if flags.dtype == tf.float16 else 1
 
 
 class BaseParser(argparse.ArgumentParser):
@@ -148,7 +172,8 @@ class PerformanceParser(argparse.ArgumentParser):
   """
 
   def __init__(self, add_help=False, num_parallel_calls=True, inter_op=True,
-               intra_op=True, use_synthetic_data=True, max_train_steps=True):
+               intra_op=True, use_synthetic_data=True, max_train_steps=True,
+               dtype=True):
     super(PerformanceParser, self).__init__(add_help=add_help)
 
     if num_parallel_calls:
@@ -199,6 +224,31 @@ class PerformanceParser(argparse.ArgumentParser):
                "generally recommended to set --train_epochs=1 when using this"
                "flag.",
           metavar="<MTS>"
+      )
+
+    if dtype:
+      self.add_argument(
+          "--dtype", "-dt",
+          default="fp32",
+          choices=["fp16", "float16", "fp32", "float32"],
+          help="[default: %(default)s] {%(choices)s} The TensorFlow datatype "
+               "used for calculations. Variables may be cast to a higher"
+               "precision on a case-by-case basis for numerical stability.",
+          metavar="<DT>"
+      )
+
+      self.add_argument(
+          "--loss_scale", "-ls",
+          type=int,
+          help="[default: %(default)s] The amount to scale the loss by when "
+               "the model is run. Before gradients are computed, the loss is "
+               "multiplied by the loss scale, making all gradients loss_scale "
+               "times larger. To adjust for this, gradients are divided by the "
+               "loss scale before being applied to variables. This is "
+               "mathematically equivalent to training without a loss scale, "
+               "but the loss scale helps avoid some intermediate gradients "
+               "from underflowing to zero. If not provided the default for "
+               "fp16 is 128 and 1 for all other dtypes.",
       )
 
 

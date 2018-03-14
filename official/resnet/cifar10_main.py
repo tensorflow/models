@@ -145,7 +145,7 @@ class Cifar10Model(resnet_model.Model):
   """Model class with appropriate defaults for CIFAR-10 data."""
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
-               version=resnet_model.DEFAULT_VERSION):
+               version=resnet_model.DEFAULT_VERSION, dtype=None):
     """These are the parameters that work for CIFAR-10 data.
 
     Args:
@@ -156,6 +156,7 @@ class Cifar10Model(resnet_model.Model):
         enables users to extend the same model to their own datasets.
       version: Integer representing which version of the ResNet network to use.
         See README for details. Valid values: [1, 2]
+      dtype: The TensorFlow dtype to use for calculations.
 
     Raises:
       ValueError: if invalid resnet_size is chosen
@@ -180,7 +181,9 @@ class Cifar10Model(resnet_model.Model):
         block_strides=[1, 2, 2],
         final_size=64,
         version=version,
-        data_format=data_format)
+        data_format=data_format,
+        dtype=dtype
+    )
 
 
 def cifar10_model_fn(features, labels, mode, params):
@@ -204,15 +207,19 @@ def cifar10_model_fn(features, labels, mode, params):
   def loss_filter_fn(_):
     return True
 
-  return resnet_run_loop.resnet_model_fn(features, labels, mode, Cifar10Model,
-                                         resnet_size=params['resnet_size'],
-                                         weight_decay=weight_decay,
-                                         learning_rate_fn=learning_rate_fn,
-                                         momentum=0.9,
-                                         data_format=params['data_format'],
-                                         version=params['version'],
-                                         loss_filter_fn=loss_filter_fn,
-                                         multi_gpu=params['multi_gpu'])
+  return resnet_run_loop.resnet_model_fn(
+      dtype=params['dtype'],
+      features=features, labels=labels, mode=mode, model_class=Cifar10Model,
+      resnet_size=params['resnet_size'],
+      weight_decay=weight_decay,
+      learning_rate_fn=learning_rate_fn,
+      momentum=0.9,
+      data_format=params['data_format'],
+      version=params['version'],
+      loss_scale=params['loss_scale'],
+      loss_filter_fn=loss_filter_fn,
+      multi_gpu=params['multi_gpu']
+  )
 
 
 def main(argv):

@@ -203,7 +203,7 @@ class ImagenetModel(resnet_model.Model):
   """Model class with appropriate defaults for Imagenet data."""
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
-               version=resnet_model.DEFAULT_VERSION):
+               version=resnet_model.DEFAULT_VERSION, dtype=None):
     """These are the parameters that work for Imagenet data.
 
     Args:
@@ -214,6 +214,7 @@ class ImagenetModel(resnet_model.Model):
         enables users to extend the same model to their own datasets.
       version: Integer representing which version of the ResNet network to use.
         See README for details. Valid values: [1, 2]
+      dtype: The TensorFlow dtype to use for calculations.
     """
 
     # For bigger models, we want to use "bottleneck" layers
@@ -239,7 +240,9 @@ class ImagenetModel(resnet_model.Model):
         block_strides=[1, 2, 2, 2],
         final_size=final_size,
         version=version,
-        data_format=data_format)
+        data_format=data_format,
+        dtype=dtype
+    )
 
 
 def _get_block_sizes(resnet_size):
@@ -283,15 +286,22 @@ def imagenet_model_fn(features, labels, mode, params):
       num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
       decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
 
-  return resnet_run_loop.resnet_model_fn(features, labels, mode, ImagenetModel,
-                                         resnet_size=params['resnet_size'],
-                                         weight_decay=1e-4,
-                                         learning_rate_fn=learning_rate_fn,
-                                         momentum=0.9,
-                                         data_format=params['data_format'],
-                                         version=params['version'],
-                                         loss_filter_fn=None,
-                                         multi_gpu=params['multi_gpu'])
+  return resnet_run_loop.resnet_model_fn(
+      dtype=params['dtype'],
+      features=features,
+      labels=labels,
+      mode=mode,
+      model_class=ImagenetModel,
+      resnet_size=params['resnet_size'],
+      weight_decay=1e-4,
+      learning_rate_fn=learning_rate_fn,
+      momentum=0.9,
+      data_format=params['data_format'],
+      version=params['version'],
+      loss_scale=params['loss_scale'],
+      loss_filter_fn=None,
+      multi_gpu=params['multi_gpu']
+  )
 
 
 def main(argv):
