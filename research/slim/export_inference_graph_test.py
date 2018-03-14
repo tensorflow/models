@@ -22,6 +22,7 @@ from __future__ import print_function
 import os
 
 
+import google3
 import tensorflow as tf
 
 from tensorflow.python.platform import gfile

@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 import functools
 
+import google3
 import tensorflow as tf
 
 from nets import alexnet

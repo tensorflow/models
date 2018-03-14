@@ -32,6 +32,7 @@ from __future__ import print_function
 import collections
 import functools
 
+import google3
 import tensorflow as tf
 
 layers = tf.contrib.layers

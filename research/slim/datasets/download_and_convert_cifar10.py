@@ -30,6 +30,7 @@ import os
 import sys
 import tarfile
 
+import google3
 import numpy as np
 from six.moves import cPickle
 from six.moves import urllib
