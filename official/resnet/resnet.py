@@ -36,7 +36,6 @@ import os
 
 import tensorflow as tf
 
-
 from official.utils.arg_parsers import parsers  # pylint: disable=g-bad-import-order
 from official.utils.logging import hooks_helper
 
