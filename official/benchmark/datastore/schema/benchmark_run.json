@@ -18,6 +18,26 @@
     "type": "DATETIME"
   },
   {
+    "description": "The tensorflow version information.",
+    "fields": [
+      {
+        "description": "Version of the tensorflow. E.g. 1.7.0-rc0",
+        "mode": "REQUIRED",
+        "name": "version",
+        "type": "STRING"
+      },
+      {
+        "description": "Git Hash of the tensorflow",
+        "mode": "NULLABLE",
+        "name": "git_hash",
+        "type": "STRING"
+      }
+    ],
+    "mode": "REQUIRED",
+    "name": "tensorflow_version",
+    "type": "RECORD"
+  },
+  {
     "description": "The arbitrary attribute of the model.",
     "fields": [
       {
@@ -38,41 +58,61 @@
     "type": "RECORD"
   },
   {
-    "description": "The list of hyper parameter of the model.",
+    "description": "Enviornment variables when the benchmark run is executed.",
     "fields": [
       {
-        "description": "The name of the hyper parameter.",
+        "description": "The name of the variable.",
         "mode": "REQUIRED",
         "name": "name",
         "type": "STRING"
       },
       {
-        "description": "The string value of the hyper parameter.",
+        "description": "The value of the variable.",
+        "mode": "NULLABLE",
+        "name": "value",
+        "type": "STRING"
+      }
+    ],
+    "mode": "REPEATED",
+    "name": "enviornment_variable",
+    "type": "RECORD"
+  },
+  {
+    "description": "The list of hyperparameters of the model.",
+    "fields": [
+      {
+        "description": "The name of the hyperparameter.",
+        "mode": "REQUIRED",
+        "name": "name",
+        "type": "STRING"
+      },
+      {
+        "description": "The string value of the hyperparameter.",
         "mode": "NULLABLE",
         "name": "string_value",
         "type": "STRING"
       },
       {
-        "description": "The bool value of the hyper parameter.",
+        "description": "The bool value of the hyperparameter.",
         "mode": "NULLABLE",
         "name": "bool_value",
         "type": "STRING"
       },
       {
-        "description": "The int/long value of the hyper parameter.",
+        "description": "The int/long value of the hyperparameter.",
         "mode": "NULLABLE",
         "name": "long_value",
         "type": "INTEGER"
       },
       {
-        "description": "The double/float value of hyper parameter.",
+        "description": "The double/float value of hyperparameter.",
         "mode": "NULLABLE",
         "name": "float_value",
         "type": "FLOAT"
       }
     ],
     "mode": "REPEATED",
-    "name": "hyper_parameter",
+    "name": "hyperparameter",
     "type": "RECORD"
   },
   {
@@ -227,6 +267,45 @@
             "mode": "NULLABLE",
             "name": "model",
             "type": "STRING"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "cuda_version",
+            "type": "STRING"
+          }
+        ]
+      },
+      {
+        "description": "The cloud instance inforation if the benchmark run is executed on cloud",
+        "mode": "NULLABLE",
+        "name": "cloud_info",
+        "type": "RECORD",
+        "fields": [
+          {
+            "description": "The instance type, E.g. n1-standard-4.",
+            "mode": "NULLABLE",
+            "name": "instance_type",
+            "type": "STRING"
+          },
+          {
+            "description": "The arbitrary attribute of the cloud info.",
+            "fields": [
+              {
+                "description": "The name of the attribute.",
+                "mode": "REQUIRED",
+                "name": "name",
+                "type": "STRING"
+              },
+              {
+                "description": "The value of the attribute.",
+                "mode": "NULLABLE",
+                "name": "value",
+                "type": "STRING"
+              }
+            ],
+            "mode": "REPEATED",
+            "name": "attribute",
+            "type": "RECORD"
           }
         ]
       },
