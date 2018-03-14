@@ -1736,6 +1736,41 @@ class PreprocessorTest(tf.test.TestCase):
                                 test_masks=True,
                                 test_keypoints=True)
 
+  def testRunRandomPadToAspectRatioWithMinMaxPaddedSizeRatios(self):
+    image = self.createColorfulTestImage()
+    boxes = self.createTestBoxes()
+    labels = self.createTestLabels()
+
+    tensor_dict = {
+        fields.InputDataFields.image: image,
+        fields.InputDataFields.groundtruth_boxes: boxes,
+        fields.InputDataFields.groundtruth_classes: labels
+    }
+
+    preprocessor_arg_map = preprocessor.get_default_func_arg_map()
+    preprocessing_options = [(preprocessor.random_pad_to_aspect_ratio,
+                              {'min_padded_size_ratio': (4.0, 4.0),
+                               'max_padded_size_ratio': (4.0, 4.0)})]
+
+    distorted_tensor_dict = preprocessor.preprocess(
+        tensor_dict, preprocessing_options, func_arg_map=preprocessor_arg_map)
+    distorted_image = distorted_tensor_dict[fields.InputDataFields.image]
+    distorted_boxes = distorted_tensor_dict[
+        fields.InputDataFields.groundtruth_boxes]
+    distorted_labels = distorted_tensor_dict[
+        fields.InputDataFields.groundtruth_classes]
+    with self.test_session() as sess:
+      distorted_image_, distorted_boxes_, distorted_labels_ = sess.run([
+          distorted_image, distorted_boxes, distorted_labels])
+
+      expected_boxes = np.array(
+          [[0.0, 0.125, 0.1875, 0.5], [0.0625, 0.25, 0.1875, 0.5]],
+          dtype=np.float32)
+      self.assertAllEqual(distorted_image_.shape, [1, 800, 800, 3])
+      self.assertAllEqual(distorted_labels_, [1, 2])
+      self.assertAllClose(distorted_boxes_.flatten(),
+                          expected_boxes.flatten())
+
   def testRunRandomPadToAspectRatioWithMasks(self):
     image = self.createColorfulTestImage()
     boxes = self.createTestBoxes()

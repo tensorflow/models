@@ -1821,8 +1821,10 @@ def random_pad_to_aspect_ratio(image,
     max_width = tf.maximum(
         max_padded_size_ratio[1] * image_width, target_width)
 
-    min_scale = tf.maximum(min_height / target_height, min_width / target_width)
     max_scale = tf.minimum(max_height / target_height, max_width / target_width)
+    min_scale = tf.minimum(
+        max_scale,
+        tf.maximum(min_height / target_height, min_width / target_width))
 
     generator_func = functools.partial(tf.random_uniform, [],
                                        min_scale, max_scale, seed=seed)
@@ -1831,8 +1833,8 @@ def random_pad_to_aspect_ratio(image,
         preprocessor_cache.PreprocessorCache.PAD_TO_ASPECT_RATIO,
         preprocess_vars_cache)
 
-    target_height = scale * target_height
-    target_width = scale * target_width
+    target_height = tf.round(scale * target_height)
+    target_width = tf.round(scale * target_width)
 
     new_image = tf.image.pad_to_bounding_box(
         image, 0, 0, tf.to_int32(target_height), tf.to_int32(target_width))
