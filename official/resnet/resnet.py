@@ -788,6 +788,12 @@ class ResnetArgParser(argparse.ArgumentParser):
     ])
 
     self.add_argument(
+        '--version', '-v', type=int, choices=[1, 2],
+        default=DEFAULT_VERSION,
+        help="Version of ResNet. (1 or 2) See README.md for details."
+    )
+
+    self.add_argument(
         '--resnet_size', '-rs', type=int, default=50,
         choices=resnet_size_choices,
         help='[default: %(default)s]The size of the ResNet model to use.',
