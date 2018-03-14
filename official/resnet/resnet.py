@@ -36,11 +36,10 @@ import os
 
 import tensorflow as tf
 
-<<<<<<< HEAD
+
 from official.utils.arg_parsers import parsers  # pylint: disable=g-bad-import-order
-=======
 from official.utils.logging import hooks_helper
->>>>>>> Update resnet with logging utils
+
 
 _BATCH_NORM_DECAY = 0.997
 _BATCH_NORM_EPSILON = 1e-5
@@ -752,7 +751,7 @@ def resnet_main(flags, model_function, input_function):
       })
 
   for _ in range(flags.train_epochs // flags.epochs_per_eval):
-    train_hooks = hooks_helper.get_train_hooks(['LoggingTensorHook'], batch_size=128)
+    train_hooks = hooks_helper.get_train_hooks(flags.hooks, batch_size=flags.batch_size)
 
     print('Starting a training cycle.')
 

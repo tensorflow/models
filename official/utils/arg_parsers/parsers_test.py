@@ -44,6 +44,7 @@ class BaseTester(unittest.TestCase):
         train_epochs=534,
         epochs_per_eval=15,
         batch_size=256,
+        hooks=["LoggingTensorHook"],
         num_parallel_calls=18,
         inter_op_parallelism_threads=5,
         intra_op_parallelism_thread=10,
