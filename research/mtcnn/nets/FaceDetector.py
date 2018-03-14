@@ -27,6 +27,7 @@ class FaceDetector(object):
 		self.rnet.load_model('/git-space/mtcnn/research/mtcnn/data/mtcnn/RNet/RNet')
 
 		self.onet = ONet()
+		self.onet.load_model('/git-space/mtcnn/research/mtcnn/data/mtcnn/ONet/ONet')
 		print('FaceDetector-done')
 
     	def generate_bbox(self, cls_map, reg, scale, threshold):
@@ -191,8 +192,42 @@ class FaceDetector(object):
         	boxes_c = self.calibrate_box(boxes, reg[keep])
         	return( boxes, boxes_c, None )
 
-	def outpute_faces(self, image, boxes_c):
-		return(self.onet.detect(image, boxes_c))
+	def outpute_faces(self, im, dets):
+        	h, w, c = im.shape
+        	dets = self.convert_to_square(dets)
+        	dets[:, 0:4] = np.round(dets[:, 0:4])
+        	[dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = self.pad(dets, w, h)
+        	num_boxes = dets.shape[0]
+        	cropped_ims = np.zeros((num_boxes, 48, 48, 3), dtype=np.float32)
+        	for i in range(num_boxes):
+            		tmp = np.zeros((tmph[i], tmpw[i], 3), dtype=np.uint8)
+            		tmp[dy[i]:edy[i] + 1, dx[i]:edx[i] + 1, :] = im[y[i]:ey[i] + 1, x[i]:ex[i] + 1, :]
+            		cropped_ims[i, :, :, :] = (cv2.resize(tmp, (48, 48))-127.5) / 128
+            
+        	cls_scores, reg,landmark = self.onet.detect(cropped_ims)
+        	cls_scores = cls_scores[:,1]        
+        	keep_inds = np.where(cls_scores > self.threshold[2])[0]        
+        	if len(keep_inds) > 0:
+            		boxes = dets[keep_inds]
+            		boxes[:, 4] = cls_scores[keep_inds]
+            		reg = reg[keep_inds]
+            		landmark = landmark[keep_inds]
+        	else:
+            		return( None, None, None )
+        
+        	w = boxes[:,2] - boxes[:,0] + 1
+        	h = boxes[:,3] - boxes[:,1] + 1
+
+        	landmark[:,0::2] = (np.tile(w,(5,1)) * landmark[:,0::2].T + np.tile(boxes[:,0],(5,1)) - 1).T
+        	landmark[:,1::2] = (np.tile(h,(5,1)) * landmark[:,1::2].T + np.tile(boxes[:,1],(5,1)) - 1).T        
+        	boxes_c = self.calibrate_box(boxes, reg)
+        
+        
+        	boxes = boxes[py_nms(boxes, 0.6, "Minimum")]
+        	keep = py_nms(boxes_c, 0.6, "Minimum")
+        	boxes_c = boxes_c[keep]
+        	landmark = landmark[keep]
+        	return( boxes, boxes_c,landmark )		
 
 	def detect(self, image):
 		boxes = None
