@@ -24,7 +24,7 @@ If you would like to make any fixes or improvements to the models, please [submi
 
 ---
 
-Run the models.
+## Running the models
 
 The *Official Models* are made available as a Python module. To run the models and associated scripts, add the top-level ***/models*** folder to the Python path with the command: `export PYTHONPATH="$PYTHONPATH:/path/to/models"`
 
