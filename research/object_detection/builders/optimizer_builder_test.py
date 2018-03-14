@@ -35,6 +35,7 @@ class LearningRateBuilderTest(tf.test.TestCase):
     text_format.Merge(learning_rate_text_proto, learning_rate_proto)
     learning_rate = optimizer_builder._create_learning_rate(
         learning_rate_proto)
+    self.assertTrue(learning_rate.op.name.endswith('learning_rate'))
     with self.test_session():
       learning_rate_out = learning_rate.eval()
     self.assertAlmostEqual(learning_rate_out, 0.004)
@@ -52,6 +53,7 @@ class LearningRateBuilderTest(tf.test.TestCase):
     text_format.Merge(learning_rate_text_proto, learning_rate_proto)
     learning_rate = optimizer_builder._create_learning_rate(
         learning_rate_proto)
+    self.assertTrue(learning_rate.op.name.endswith('learning_rate'))
     self.assertTrue(isinstance(learning_rate, tf.Tensor))
 
   def testBuildManualStepLearningRate(self):

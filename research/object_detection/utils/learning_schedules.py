@@ -56,7 +56,7 @@ def exponential_decay_with_burnin(global_step,
   return tf.where(
       tf.less(tf.cast(global_step, tf.int32), tf.constant(burnin_steps)),
       tf.constant(burnin_learning_rate),
-      post_burnin_learning_rate)
+      post_burnin_learning_rate, name='learning_rate')
 
 
 def cosine_decay_with_warmup(global_step,
@@ -103,7 +103,9 @@ def cosine_decay_with_warmup(global_step,
     learning_rate = tf.where(
         tf.less(tf.cast(global_step, tf.int32), warmup_steps),
         pre_cosine_learning_rate,
-        learning_rate)
+        learning_rate, name='learning_rate')
+  else:
+    return tf.identity(learning_rate, name='learning_rate')
   return learning_rate
 
 
@@ -154,4 +156,5 @@ def manual_stepping(global_step, boundaries, rates):
           tf.constant(range(num_boundaries), dtype=tf.int32),
           tf.constant([num_boundaries] * num_boundaries, dtype=tf.int32)))
   return tf.reduce_sum(learning_rates * tf.one_hot(index, len(rates),
-                                                   dtype=tf.float32))
+                                                   dtype=tf.float32),
+                       name='learning_rate')

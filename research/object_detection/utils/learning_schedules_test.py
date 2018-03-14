@@ -33,6 +33,7 @@ class LearningSchedulesTest(test_case.TestCase):
       learning_rate = learning_schedules.exponential_decay_with_burnin(
           global_step, learning_rate_base, learning_rate_decay_steps,
           learning_rate_decay_factor, burnin_learning_rate, burnin_steps)
+      assert learning_rate.op.name.endswith('learning_rate')
       return (learning_rate,)
 
     output_rates = [
@@ -51,6 +52,7 @@ class LearningSchedulesTest(test_case.TestCase):
       learning_rate = learning_schedules.cosine_decay_with_warmup(
           global_step, learning_rate_base, total_steps,
           warmup_learning_rate, warmup_steps)
+      assert learning_rate.op.name.endswith('learning_rate')
       return (learning_rate,)
     exp_rates = [0.1, 0.5, 0.9, 1.0, 0]
     input_global_steps = [0, 4, 8, 9, 100]
@@ -66,6 +68,7 @@ class LearningSchedulesTest(test_case.TestCase):
       rates = [1.0, 2.0, 3.0, 4.0]
       learning_rate = learning_schedules.manual_stepping(
           global_step, boundaries, rates)
+      assert learning_rate.op.name.endswith('learning_rate')
       return (learning_rate,)
 
     output_rates = [
