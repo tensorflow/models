@@ -12,9 +12,8 @@ from losses.prelu import prelu
 class PNet(AbstractFaceDetector):
 
 	def __init__(self):		
-		print('PNet')
-		self.is_training = False
 		self.network_size = 12
+		self.network_name = 'PNet'
 
 	def setup_network(self, inputs):
     		with slim.arg_scope([slim.conv2d],

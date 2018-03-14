@@ -12,9 +12,9 @@ from losses.prelu import prelu
 class ONet(RNet):
 
 	def __init__(self, batch_size = 1):
-		print('ONet')
 		self.network_size = 48
 		self.batch_size = batch_size
+		self.network_name = 'ONet'
 
 	def setup_network(self, inputs):
     		with slim.arg_scope([slim.conv2d],

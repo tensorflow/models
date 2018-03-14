@@ -12,9 +12,9 @@ from losses.prelu import prelu
 class RNet(AbstractFaceDetector):
 
 	def __init__(self, batch_size = 1):
-		print('RNet')
 		self.network_size = 24
 		self.batch_size = batch_size
+		self.network_name = 'RNet'
 
 	def setup_network(self, inputs):
 		with slim.arg_scope([slim.conv2d],

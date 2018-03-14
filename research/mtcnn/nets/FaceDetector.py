@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import time
 import cv2
 import numpy as np
@@ -14,21 +15,26 @@ from nets.ONet import ONet
 
 class FaceDetector(object):
 
-	def __init__(self):
-		print('FaceDetector')
+	def __init__(self, model_root_dir=None):
+	    	if not model_root_dir:
+	        	self.model_root_dir, _ = os.path.split(os.path.realpath(__file__))
+	        	self.model_root_dir = os.path.join(self.model_root_dir, '../data/mtcnn/')
+
 		self.min_face_size = 24
 		self.threshold = [0.9, 0.6, 0.7]
 		self.scale_factor = 0.79
 
 		self.pnet = PNet()
-		self.pnet.load_model('/git-space/mtcnn/research/mtcnn/data/mtcnn/PNet/PNet')
+		pnet_model_path = os.path.join(self.model_root_dir, self.pnet.network_name, self.pnet.network_name)
+		self.pnet.load_model(pnet_model_path)
 
 		self.rnet = RNet()
-		self.rnet.load_model('/git-space/mtcnn/research/mtcnn/data/mtcnn/RNet/RNet')
+		rnet_model_path = os.path.join(self.model_root_dir, self.rnet.network_name, self.rnet.network_name)
+		self.rnet.load_model(rnet_model_path)
 
 		self.onet = ONet()
-		self.onet.load_model('/git-space/mtcnn/research/mtcnn/data/mtcnn/ONet/ONet')
-		print('FaceDetector-done')
+		onet_model_path = os.path.join(self.model_root_dir, self.onet.network_name, self.onet.network_name)
+		self.onet.load_model(onet_model_path)
 
     	def generate_bbox(self, cls_map, reg, scale, threshold):
  
