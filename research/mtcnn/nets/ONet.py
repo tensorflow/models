@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 
 from nets.RNet import RNet
-from nets.prelu import prelu
+from losses.prelu import prelu
 
 class ONet(RNet):
 

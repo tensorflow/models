@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 
 from nets.AbstractFaceDetector import AbstractFaceDetector
-from nets.prelu import prelu
+from losses.prelu import prelu
 
 class PNet(AbstractFaceDetector):
 
