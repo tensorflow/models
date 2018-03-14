@@ -30,7 +30,6 @@ import gzip
 import os
 import sys
 
-import google3
 import numpy as np
 from six.moves import urllib
 import tensorflow as tf

@@ -108,7 +108,6 @@ from __future__ import print_function
 from collections import namedtuple
 import functools
 
-import google3
 import tensorflow as tf
 
 slim = tf.contrib.slim

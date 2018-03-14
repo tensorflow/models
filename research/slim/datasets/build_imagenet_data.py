@@ -92,7 +92,6 @@ import random
 import sys
 import threading
 
-import google3
 import numpy as np
 import tensorflow as tf
 
