@@ -96,7 +96,7 @@ def get_profiler_hook(save_steps=1000, **kwargs):  # pylint: disable=unused-argu
 
 def get_examples_per_second_hook(every_n_steps=100,
                                  batch_size=128,
-                                 warm_steps=10,
+                                 warm_steps=5,
                                  **kwargs):  # pylint: disable=unused-argument
   """Function to get ExamplesPerSecondHook.
 

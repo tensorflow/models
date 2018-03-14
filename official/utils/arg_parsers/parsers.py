@@ -120,10 +120,10 @@ class BaseParser(argparse.ArgumentParser):
 
     if hooks:
       self.add_argument(
-          "--hooks", "-hk", nargs="+", default=["LoggingTensorHook", "ExamplesPerSecondHook"],
+          "--hooks", "-hk", nargs="+", default=["LoggingTensorHook"],
           help="[default: %(default)s] A list of strings to specify the names "
                "of train hooks. "
-               "Example: --hooks LoggingTensorHook ExamplesPerSecondHook"
+               "Example: --hooks LoggingTensorHook ExamplesPerSecondHook. "
                "Allowed hook names (case-insensitive): LoggingTensorHook, "
                "ProfilerHook, ExamplesPerSecondHook. "
                "See official.utils.logging.hooks_helper for details.",
