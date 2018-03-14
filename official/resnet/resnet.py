@@ -788,7 +788,7 @@ class ResnetArgParser(argparse.ArgumentParser):
     ])
 
     self.add_argument(
-        '-v', '--version', type=int, choices=[1, 2], dest="version",
+        '--version', '-v', type=int, choices=[1, 2],
         default=DEFAULT_VERSION,
         help="Version of ResNet. (1 or 2) See README.md for details."
     )
