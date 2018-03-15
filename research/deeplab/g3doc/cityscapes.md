@@ -54,7 +54,6 @@ python deeplab/train.py \
     --train_crop_size=769 \
     --train_batch_size=1 \
     --dataset="cityscapes" \
-    --train_split="train" \
     --tf_initial_checkpoints=${PATH_TO_INITIAL_CHECKPOINT} \
     --train_logdir=${PATH_TO_TRAIN_DIR} \
     --dataset_dir=${PATH_TO_DATASET}
@@ -97,7 +96,6 @@ python deeplab/eval.py \
     --eval_crop_size=1025 \
     --eval_crop_size=2049 \
     --dataset="cityscapes" \
-    --eval_split="val" \
     --checkpoint_dir=${PATH_TO_CHECKPOINT} \
     --eval_logdir=${PATH_TO_EVAL_DIR} \
     --dataset_dir=${PATH_TO_DATASET}
@@ -125,7 +123,6 @@ python deeplab/vis.py \
     --vis_crop_size=1025 \
     --vis_crop_size=2049 \
     --dataset="cityscapes" \
-    --vis_split="val" \
     --colormap_type="cityscapes" \
     --checkpoint_dir=${PATH_TO_CHECKPOINT} \
     --vis_logdir=${PATH_TO_VIS_DIR} \
