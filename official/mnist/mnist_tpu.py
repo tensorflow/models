@@ -45,11 +45,6 @@ tf.flags.DEFINE_string(
     "metadata.")
 
 # Model specific parameters
-tf.flags.DEFINE_string(
-    "master", default=None,
-    help="GRPC URL of the master (e.g. grpc://ip.address.of.tpu:8470). You "
-    "must specify either this flag or --tpu_name.")
-
 tf.flags.DEFINE_string("data_dir", "",
                        "Path to directory containing the MNIST dataset")
 tf.flags.DEFINE_string("model_dir", None, "Estimator model_dir")
