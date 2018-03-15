@@ -185,8 +185,8 @@ def build_dataset(file_pattern,
 
     # Create a HashTable mapping label strings to integer ids.
     table_initializer = tf.contrib.lookup.KeyValueTensorInitializer(
-        keys=input_config.label_map.keys(),
-        values=input_config.label_map.values(),
+        keys=list(input_config.label_map.keys()),
+        values=list(input_config.label_map.values()),
         key_dtype=tf.string,
         value_dtype=tf.int32)
     label_to_id = tf.contrib.lookup.HashTable(
