@@ -22,7 +22,7 @@ import numpy as np
 import tensorflow as tf
 
 
-from official.resnet import resnet  # pylint: disable=g-bad-import-order
+from official.resnet import resnet_model  # pylint: disable=g-bad-import-order
 
 
 class BlockTest(tf.test.TestCase):
@@ -63,7 +63,7 @@ class BlockTest(tf.test.TestCase):
       A 1 wide CNN projector function.
     """
     def projection_shortcut(inputs):
-      return resnet.conv2d_fixed_padding(
+      return resnet_model.conv2d_fixed_padding(
           inputs=inputs, filters=filters_out, kernel_size=1, strides=strides,
           data_format=data_format)
     return projection_shortcut
@@ -91,13 +91,13 @@ class BlockTest(tf.test.TestCase):
     data_format = "channels_last"
 
     if version == 1:
-      block_fn = resnet._building_block_v1
+      block_fn = resnet_model._building_block_v1
       if bottleneck:
-        block_fn = resnet._bottleneck_block_v1
+        block_fn = resnet_model._bottleneck_block_v1
     else:
-      block_fn = resnet._building_block_v2
+      block_fn = resnet_model._building_block_v2
       if bottleneck:
-        block_fn = resnet._bottleneck_block_v2
+        block_fn = resnet_model._bottleneck_block_v2
 
     with self.test_session(graph=tf.Graph()) as sess:
       tf.set_random_seed(tf_seed)
