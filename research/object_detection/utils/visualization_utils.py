@@ -619,7 +619,7 @@ def visualize_boxes_and_labels_on_image_array(
         box_to_display_str_map[box].append(display_str)
         if agnostic_mode:
           box_to_color_map[box] = 'DarkOrange'
-        elif box not in box_to_color_map[box]:
+        elif box not in box_to_color_map:
           box_to_color_map[box] = STANDARD_COLORS[
               classes[i] % len(STANDARD_COLORS)]
 
