@@ -90,7 +90,7 @@ _FOLDERS_MAP = {
 # A map from data type to filename postfix.
 _POSTFIX_MAP = {
     'image': '_leftImg8bit',
-    'label': '_gtFine_labelTrainIds',
+    'label': '_gtFine_labelIds',
 }
 
 # A map from data type to data format.
