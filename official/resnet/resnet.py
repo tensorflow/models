@@ -32,6 +32,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import functools
 import os
 
 import tensorflow as tf
@@ -194,9 +195,22 @@ def conv2d_fixed_padding(inputs, filters, kernel_size, strides, data_format):
       data_format=data_format)
 
 
+def group_block(f):
+  setattr(f, "block_counter", 0)
+
+  @functools.wraps(f)
+  def wrapper(*args, **kwargs):
+    with tf.variable_scope("block_{}".format(f.block_counter)):
+      f.block_counter += 1
+      return f(*args, **kwargs)
+
+  return wrapper
+
+
 ################################################################################
 # ResNet block definitions.
 ################################################################################
+@group_block
 def _building_block_v1(inputs, filters, training, projection_shortcut, strides,
     data_format):
   """
@@ -243,6 +257,7 @@ def _building_block_v1(inputs, filters, training, projection_shortcut, strides,
   return inputs
 
 
+@group_block
 def _building_block_v2(inputs, filters, training, projection_shortcut, strides,
     data_format):
   """
@@ -267,6 +282,7 @@ def _building_block_v2(inputs, filters, training, projection_shortcut, strides,
     The output tensor of the block.
   """
   shortcut = inputs
+
   inputs = batch_norm(inputs, training, data_format)
   inputs = tf.nn.relu(inputs)
 
@@ -288,6 +304,7 @@ def _building_block_v2(inputs, filters, training, projection_shortcut, strides,
   return inputs + shortcut
 
 
+@group_block
 def _bottleneck_block_v1(inputs, filters, training, projection_shortcut,
     strides, data_format):
   """
@@ -327,6 +344,7 @@ def _bottleneck_block_v1(inputs, filters, training, projection_shortcut,
   return inputs
 
 
+@group_block
 def _bottleneck_block_v2(inputs, filters, training, projection_shortcut,
     strides, data_format):
   """
@@ -629,24 +647,25 @@ def resnet_model_fn(features, labels, mode, model_class,
   if mode == tf.estimator.ModeKeys.PREDICT:
     return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-  # Calculate loss, which includes softmax cross entropy and L2 regularization.
-  cross_entropy = tf.losses.softmax_cross_entropy(
-      logits=logits, onehot_labels=labels)
+  with tf.name_scope("loss"):
+    # Calculate loss, which includes softmax cross entropy and L2 regularization.
+    cross_entropy = tf.losses.softmax_cross_entropy(
+        logits=logits, onehot_labels=labels)
 
-  # Create a tensor named cross_entropy for logging purposes.
-  tf.identity(cross_entropy, name='cross_entropy')
-  tf.summary.scalar('cross_entropy', cross_entropy)
+    # Create a tensor named cross_entropy for logging purposes.
+    tf.identity(cross_entropy, name='cross_entropy')
+    tf.summary.scalar('cross_entropy', cross_entropy)
 
-  # If no loss_filter_fn is passed, assume we want the default behavior,
-  # which is that batch_normalization variables are excluded from loss.
-  if not loss_filter_fn:
-    def loss_filter_fn(name):
-      return 'batch_normalization' not in name
+    # If no loss_filter_fn is passed, assume we want the default behavior,
+    # which is that batch_normalization variables are excluded from loss.
+    if not loss_filter_fn:
+      def loss_filter_fn(name):
+        return 'batch_normalization' not in name
 
-  # Add weight decay to the loss.
-  loss = cross_entropy + weight_decay * tf.add_n(
-      [tf.nn.l2_loss(v) for v in tf.trainable_variables()
-       if loss_filter_fn(v.name)])
+    # Add weight decay to the loss.
+    loss = cross_entropy + weight_decay * tf.add_n(
+        [tf.nn.l2_loss(v) for v in tf.trainable_variables()
+         if loss_filter_fn(v.name)])
 
   if mode == tf.estimator.ModeKeys.TRAIN:
     global_step = tf.train.get_or_create_global_step()
@@ -750,7 +769,7 @@ def resnet_main(flags, model_function, input_function):
   for _ in range(flags.train_epochs // flags.epochs_per_eval):
     tensors_to_log = {
         'learning_rate': 'learning_rate',
-        'cross_entropy': 'cross_entropy',
+        'cross_entropy': 'loss/cross_entropy',
         'train_accuracy': 'train_accuracy'
     }
 
