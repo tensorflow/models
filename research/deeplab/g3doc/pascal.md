@@ -45,6 +45,10 @@ A local training job using `xception_65` can be run with the following command:
 python deeplab/train.py \
     --logtostderr \
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    --training_number_of_steps=30000 \
+>>>>>>> origin/master
 =======
     --training_number_of_steps=30000 \
 >>>>>>> origin/master
@@ -59,6 +63,11 @@ python deeplab/train.py \
     --train_crop_size=513 \
     --train_batch_size=1 \
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    --dataset="pascal_voc_seg" \
+    --train_split="train" \
+>>>>>>> origin/master
 =======
     --dataset="pascal_voc_seg" \
     --train_split="train" \
@@ -75,12 +84,15 @@ ${PATH_TO_DATASET} is the directory in which the PASCAL VOC 2012 dataset
 resides.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Note that for {train,eval,vis}.py:
 
 1.  We use small batch size during training. The users could change it based on
     the available GPU memory and also set `fine_tune_batch_norm` to be False or
     True depending on the use case.
 =======
+=======
+>>>>>>> origin/master
 **Note that for {train,eval,vis}.py:**
 
 1.  In order to reproduce our results, one needs to use large batch size (> 12),
@@ -89,6 +101,9 @@ Note that for {train,eval,vis}.py:
     GPU memory at hand, please fine-tune from our provided checkpoints whose
     batch norm parameters have been trained, and use smaller learning rate with
     fine_tune_batch_norm = False.
+<<<<<<< HEAD
+>>>>>>> origin/master
+=======
 >>>>>>> origin/master
 
 2.  The users should change atrous_rates from [6, 12, 18] to [12, 24, 36] if
@@ -114,6 +129,11 @@ python deeplab/eval.py \
     --eval_crop_size=513 \
     --eval_crop_size=513 \
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    --dataset="pascal_voc_seg" \
+    --eval_split="val" \
+>>>>>>> origin/master
 =======
     --dataset="pascal_voc_seg" \
     --eval_split="val" \
@@ -145,6 +165,11 @@ python deeplab/vis.py \
     --vis_crop_size=513 \
     --vis_crop_size=513 \
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    --dataset="pascal_voc_seg" \
+    --vis_split="val" \
+>>>>>>> origin/master
 =======
     --dataset="pascal_voc_seg" \
     --vis_split="val" \
