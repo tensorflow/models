@@ -37,6 +37,7 @@ import os
 import tensorflow as tf
 
 from official.utils.arg_parsers import parsers  # pylint: disable=g-bad-import-order
+from official.utils.logging import hooks_helper
 
 _BATCH_NORM_DECAY = 0.997
 _BATCH_NORM_EPSILON = 1e-5
@@ -748,14 +749,7 @@ def resnet_main(flags, model_function, input_function):
       })
 
   for _ in range(flags.train_epochs // flags.epochs_per_eval):
-    tensors_to_log = {
-        'learning_rate': 'learning_rate',
-        'cross_entropy': 'cross_entropy',
-        'train_accuracy': 'train_accuracy'
-    }
-
-    logging_hook = tf.train.LoggingTensorHook(
-        tensors=tensors_to_log, every_n_iter=100)
+    train_hooks = hooks_helper.get_train_hooks(flags.hooks, batch_size=flags.batch_size)
 
     print('Starting a training cycle.')
 
@@ -764,7 +758,7 @@ def resnet_main(flags, model_function, input_function):
                             flags.epochs_per_eval, flags.num_parallel_calls,
                             flags.multi_gpu)
 
-    classifier.train(input_fn=input_fn_train, hooks=[logging_hook])
+    classifier.train(input_fn=input_fn_train, hooks=train_hooks)
 
     print('Starting to evaluate.')
     # Evaluate the model and print results

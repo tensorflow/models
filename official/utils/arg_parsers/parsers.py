@@ -21,8 +21,8 @@ parsers in official models. For instance, one might define a new class:
 class ExampleParser(argparse.ArgumentParser):
   def __init__(self):
     super(ExampleParser, self).__init__(parents=[
-      official.utils.arg_parsers.LocationParser(data_dir=True, model_dir=True),
-      official.utils.arg_parsers.DummyParser(use_synthetic_data=True),
+      arg_parsers.LocationParser(data_dir=True, model_dir=True),
+      arg_parsers.DummyParser(use_synthetic_data=True),
     ])
 
     self.add_argument(
@@ -68,11 +68,12 @@ class BaseParser(argparse.ArgumentParser):
     epochs_per_eval: Create a flag to specify the frequency of testing.
     batch_size: Create a flag to specify the batch size.
     multi_gpu: Create a flag to allow the use of all available GPUs.
+    hooks: Create a flag to specify hooks for logging.
   """
 
   def __init__(self, add_help=False, data_dir=True, model_dir=True,
                train_epochs=True, epochs_per_eval=True, batch_size=True,
-               multi_gpu=True):
+               multi_gpu=True, hooks=True):
     super(BaseParser, self).__init__(add_help=add_help)
 
     if data_dir:
@@ -115,6 +116,18 @@ class BaseParser(argparse.ArgumentParser):
       self.add_argument(
           "--multi_gpu", action="store_true",
           help="If set, run across all available GPUs."
+      )
+
+    if hooks:
+      self.add_argument(
+          "--hooks", "-hk", nargs="+", default=["LoggingTensorHook"],
+          help="[default: %(default)s] A list of strings to specify the names "
+               "of train hooks. "
+               "Example: --hooks LoggingTensorHook ExamplesPerSecondHook. "
+               "Allowed hook names (case-insensitive): LoggingTensorHook, "
+               "ProfilerHook, ExamplesPerSecondHook. "
+               "See official.utils.logging.hooks_helper for details.",
+          metavar="<HK>"
       )
 
 
@@ -190,5 +203,5 @@ class ImageModelParser(argparse.ArgumentParser):
                "always compatible with CPU. If left unspecified, the data "
                "format will be chosen automatically based on whether TensorFlow"
                "was built for CPU or GPU.",
-          metavar="<CF>",
+          metavar="<CF>"
       )
