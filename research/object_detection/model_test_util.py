@@ -49,6 +49,6 @@ def BuildExperiment():
       hparams_overrides='load_pretrained=false')
 
   # pylint: disable=protected-access
-  experiment_fn = model._build_experiment_fn(10, 10)
+  experiment_fn = model.build_experiment_fn(10, 10)
   # pylint: enable=protected-access
   return experiment_fn(run_config, hparams)
