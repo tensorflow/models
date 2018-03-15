@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Common utility functions for evaluation."""
+import collections
 import logging
 import os
 import time
@@ -202,8 +203,9 @@ def _run_checkpoint_once(tensor_dict,
                          num_batches=1,
                          master='',
                          save_graph=False,
-                         save_graph_dir=''):
-  """Evaluates metrics defined in evaluators.
+                         save_graph_dir='',
+                         losses_dict=None):
+  """Evaluates metrics defined in evaluators and returns summaries.
 
   This function loads the latest checkpoint in checkpoint_dirs and evaluates
   all metrics defined in evaluators. The metrics are processed in batch by the
@@ -241,6 +243,7 @@ def _run_checkpoint_once(tensor_dict,
     save_graph: whether or not the Tensorflow graph is stored as a pbtxt file.
     save_graph_dir: where to store the Tensorflow graph on disk. If save_graph
       is True this must be non-empty.
+    losses_dict: optional dictionary of scalar detection losses.
 
   Returns:
     global_step: the count of global steps.
@@ -270,6 +273,7 @@ def _run_checkpoint_once(tensor_dict,
     tf.train.write_graph(sess.graph_def, save_graph_dir, 'eval.pbtxt')
 
   counters = {'skipped': 0, 'success': 0}
+  aggregate_result_losses_dict = collections.defaultdict(list)
   with tf.contrib.slim.queues.QueueRunners(sess):
     try:
       for batch in range(int(num_batches)):
@@ -277,16 +281,22 @@ def _run_checkpoint_once(tensor_dict,
           logging.info('Running eval ops batch %d/%d', batch + 1, num_batches)
         if not batch_processor:
           try:
-            result_dict = sess.run(tensor_dict)
+            if not losses_dict:
+              losses_dict = {}
+            result_dict, result_losses_dict = sess.run([tensor_dict,
+                                                        losses_dict])
             counters['success'] += 1
           except tf.errors.InvalidArgumentError:
             logging.info('Skipping image')
             counters['skipped'] += 1
             result_dict = {}
         else:
-          result_dict = batch_processor(tensor_dict, sess, batch, counters)
+          result_dict, result_losses_dict = batch_processor(
+              tensor_dict, sess, batch, counters, losses_dict=losses_dict)
         if not result_dict:
           continue
+        for key, value in iter(result_losses_dict.items()):
+          aggregate_result_losses_dict[key].append(value)
         for evaluator in evaluators:
           # TODO(b/65130867): Use image_id tensor once we fix the input data
           # decoders to return correct image_id.
@@ -311,6 +321,9 @@ def _run_checkpoint_once(tensor_dict,
           raise ValueError('Metric names between evaluators must not collide.')
         all_evaluator_metrics.update(metrics)
       global_step = tf.train.global_step(sess, tf.train.get_global_step())
+
+      for key, value in iter(aggregate_result_losses_dict.items()):
+        all_evaluator_metrics[key] = np.mean(value)
   sess.close()
   return (global_step, all_evaluator_metrics)
 
@@ -328,7 +341,8 @@ def repeated_checkpoint_run(tensor_dict,
                             max_number_of_evaluations=None,
                             master='',
                             save_graph=False,
-                            save_graph_dir=''):
+                            save_graph_dir='',
+                            losses_dict=None):
   """Periodically evaluates desired tensors using checkpoint_dirs or restore_fn.
 
   This function repeatedly loads a checkpoint and evaluates a desired
@@ -368,6 +382,7 @@ def repeated_checkpoint_run(tensor_dict,
     save_graph: whether or not the Tensorflow graph is saved as a pbtxt file.
     save_graph_dir: where to save on disk the Tensorflow graph. If store_graph
       is True this must be non-empty.
+    losses_dict: optional dictionary of scalar detection losses.
 
   Returns:
     metrics: A dictionary containing metric names and values in the latest
@@ -405,7 +420,8 @@ def repeated_checkpoint_run(tensor_dict,
                                                   variables_to_restore,
                                                   restore_fn, num_batches,
                                                   master, save_graph,
-                                                  save_graph_dir)
+                                                  save_graph_dir,
+                                                  losses_dict=losses_dict)
       write_metrics(metrics, global_step, summary_dir)
     number_of_evaluations += 1
 

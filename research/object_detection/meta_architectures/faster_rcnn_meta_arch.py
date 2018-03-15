@@ -1649,14 +1649,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
           tf.reduce_sum(localization_losses, axis=1) / normalizer)
       objectness_loss = tf.reduce_mean(
           tf.reduce_sum(objectness_losses, axis=1) / normalizer)
-      loss_dict = {}
 
-      with tf.name_scope('localization_loss'):
-        loss_dict['first_stage_localization_loss'] = (
-            self._first_stage_loc_loss_weight * localization_loss)
-      with tf.name_scope('objectness_loss'):
-        loss_dict['first_stage_objectness_loss'] = (
-            self._first_stage_obj_loss_weight * objectness_loss)
+      localization_loss = tf.multiply(self._first_stage_loc_loss_weight,
+                                      localization_loss,
+                                      name='localization_loss')
+      objectness_loss = tf.multiply(self._first_stage_obj_loss_weight,
+                                    objectness_loss, name='objectness_loss')
+      loss_dict = {localization_loss.op.name: localization_loss,
+                   objectness_loss.op.name: objectness_loss}
     return loss_dict
 
   def _loss_box_classifier(self,
@@ -1782,15 +1782,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
         ) = self._unpad_proposals_and_apply_hard_mining(
             proposal_boxlists, second_stage_loc_losses,
             second_stage_cls_losses, num_proposals)
-      loss_dict = {}
-      with tf.name_scope('localization_loss'):
-        loss_dict['second_stage_localization_loss'] = (
-            self._second_stage_loc_loss_weight * second_stage_loc_loss)
+      localization_loss = tf.multiply(self._second_stage_loc_loss_weight,
+                                      second_stage_loc_loss,
+                                      name='localization_loss')
 
-      with tf.name_scope('classification_loss'):
-        loss_dict['second_stage_classification_loss'] = (
-            self._second_stage_cls_loss_weight * second_stage_cls_loss)
+      classification_loss = tf.multiply(self._second_stage_cls_loss_weight,
+                                        second_stage_cls_loss,
+                                        name='classification_loss')
 
+      loss_dict = {localization_loss.op.name: localization_loss,
+                   classification_loss.op.name: classification_loss}
       second_stage_mask_loss = None
       if prediction_masks is not None:
         if groundtruth_masks_list is None:
@@ -1857,9 +1858,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
             tf.boolean_mask(second_stage_mask_losses, paddings_indicator))
 
       if second_stage_mask_loss is not None:
-        with tf.name_scope('mask_loss'):
-          loss_dict['second_stage_mask_loss'] = (
-              self._second_stage_mask_loss_weight * second_stage_mask_loss)
+        mask_loss = tf.multiply(self._second_stage_mask_loss_weight,
+                                second_stage_mask_loss, name='mask_loss')
+        loss_dict[mask_loss.op.name] = mask_loss
     return loss_dict
 
   def _padded_batched_proposals_indicator(self,

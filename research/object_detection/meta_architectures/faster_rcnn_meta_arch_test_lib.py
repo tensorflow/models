@@ -792,10 +792,12 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
     loss_dict = model.loss(prediction_dict, true_image_shapes)
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertTrue('second_stage_localization_loss' not in loss_dict_out)
-      self.assertTrue('second_stage_classification_loss' not in loss_dict_out)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertTrue('Loss/BoxClassifierLoss/localization_loss'
+                      not in loss_dict_out)
+      self.assertTrue('Loss/BoxClassifierLoss/classification_loss'
+                      not in loss_dict_out)
 
   # TODO(rathodv): Split test into two - with and without masks.
   def test_loss_full(self):
@@ -890,11 +892,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_mask_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
   def test_loss_full_zero_padded_proposals(self):
     model = self._build_model(
@@ -978,11 +982,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_mask_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
   def test_loss_full_multiple_label_groundtruth(self):
     model = self._build_model(
@@ -1074,11 +1080,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_mask_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
   def test_loss_full_zero_padded_proposals_nonzero_loss_with_two_images(self):
     model = self._build_model(
@@ -1173,12 +1181,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'],
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'],
                           exp_loc_loss)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'],
-                          exp_loc_loss)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], exp_loc_loss)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
 
   def test_loss_with_hard_mining(self):
     model = self._build_model(is_training=True,
@@ -1263,9 +1272,10 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'],
-                          exp_loc_loss)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], exp_loc_loss)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
 
   def test_restore_map_for_classification_ckpt(self):
     # Define mock tensorflow classification graph and save variables.

@@ -538,19 +538,20 @@ class SSDMetaArch(model.DetectionModel):
         normalizer = tf.maximum(tf.to_float(tf.reduce_sum(batch_reg_weights)),
                                 1.0)
 
-      with tf.name_scope('localization_loss'):
-        localization_loss_normalizer = normalizer
-        if self._normalize_loc_loss_by_codesize:
-          localization_loss_normalizer *= self._box_coder.code_size
-        localization_loss = ((self._localization_loss_weight / (
-            localization_loss_normalizer)) * localization_loss)
-      with tf.name_scope('classification_loss'):
-        classification_loss = ((self._classification_loss_weight / normalizer) *
-                               classification_loss)
+      localization_loss_normalizer = normalizer
+      if self._normalize_loc_loss_by_codesize:
+        localization_loss_normalizer *= self._box_coder.code_size
+      localization_loss = tf.multiply((self._localization_loss_weight /
+                                       localization_loss_normalizer),
+                                      localization_loss,
+                                      name='localization_loss')
+      classification_loss = tf.multiply((self._classification_loss_weight /
+                                         normalizer), classification_loss,
+                                        name='classification_loss')
 
       loss_dict = {
-          'localization_loss': localization_loss,
-          'classification_loss': classification_loss
+          localization_loss.op.name: localization_loss,
+          classification_loss.op.name: classification_loss
       }
     return loss_dict
 
