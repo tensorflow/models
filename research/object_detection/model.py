@@ -289,6 +289,15 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       losses_dict = detection_model.loss(
           prediction_dict, features[fields.InputDataFields.true_image_shape])
       losses = [loss_tensor for loss_tensor in losses_dict.itervalues()]
+      if train_config.add_regularization_loss:
+        regularization_losses = tf.get_collection(
+            tf.GraphKeys.REGULARIZATION_LOSSES)
+        if regularization_losses:
+          regularization_loss = tf.add_n(regularization_losses,
+                                         name='regularization_loss')
+          losses.append(regularization_loss)
+          if not use_tpu:
+            tf.summary.scalar('regularization_loss', regularization_loss)
       total_loss = tf.add_n(losses, name='total_loss')
 
     if mode == tf.estimator.ModeKeys.TRAIN:
