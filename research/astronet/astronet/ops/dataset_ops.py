@@ -60,7 +60,7 @@ def _recursive_pad_to_batch_size(tensor_or_collection, batch_size):
   if isinstance(tensor_or_collection, dict):
     return {
         name: _recursive_pad_to_batch_size(t, batch_size)
-        for name, t in tensor_or_collection.iteritems()
+        for name, t in tensor_or_collection.items()
     }
 
   if isinstance(tensor_or_collection, collections.Iterable):
@@ -197,7 +197,7 @@ def build_dataset(file_pattern,
     # Set specifications for parsing the features.
     data_fields = {
         feature_name: tf.FixedLenFeature([feature.length], tf.float32)
-        for feature_name, feature in input_config.features.iteritems()
+        for feature_name, feature in input_config.features.items()
     }
     if include_labels:
       data_fields[input_config.label_feature] = tf.FixedLenFeature([],
@@ -217,7 +217,7 @@ def build_dataset(file_pattern,
 
     # Reorganize outputs.
     output = {}
-    for feature_name, value in parsed_features.iteritems():
+    for feature_name, value in parsed_features.items():
       if include_labels and feature_name == input_config.label_feature:
         label_id = label_to_id.lookup(value)
         # Ensure that the label_id is nonnegative to verify a successful hash

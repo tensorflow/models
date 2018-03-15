@@ -180,7 +180,7 @@ def _process_tce(tce):
   _set_float_feature(ex, "local_view", local_view)
 
   # Set other columns.
-  for col_name, value in tce.iteritems():
+  for col_name, value in tce.items():
     if np.issubdtype(type(value), np.integer):
       _set_int64_feature(ex, col_name, [value])
     else:
