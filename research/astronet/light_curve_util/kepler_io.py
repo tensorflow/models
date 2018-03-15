@@ -160,7 +160,7 @@ def read_kepler_light_curve(filenames,
   all_flux = []
 
   for filename in filenames:
-    with fits.open(open(filename, "r")) as hdu_list:
+    with fits.open(open(filename, "rb")) as hdu_list:
       light_curve = hdu_list[light_curve_extension].data
       time = light_curve.TIME
       flux = light_curve.PDCSAP_FLUX
