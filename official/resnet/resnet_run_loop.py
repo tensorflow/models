@@ -362,6 +362,8 @@ def resnet_main(flags, model_function, input_function):
     # As a result it is frequently called with synthetic data, which will
     # iterate forever. Passing steps=flags.max_train_steps allows the eval
     # (which is generally unimportant in those circumstances) to terminate.
+    # Note that eval will run for max_train_steps each loop, regardless of the
+    # global_step count.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                        steps=flags.max_train_steps)
     print(eval_results)
