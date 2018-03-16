@@ -128,6 +128,37 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllClose([2, 0, 1], obtained_class_ids_each_example[1])
     self.assertAllClose([42, 10, 901], obtained_class_ids_each_example[2])
 
+  def testDecodeExampleWithBranchedLookup(self):
+
+    example = example_pb2.Example(features=feature_pb2.Features(feature={
+        'image/object/class/text': self._BytesFeatureFromList(
+            np.array(['cat', 'dog', 'guinea pig'])),
+    }))
+    serialized_example = example.SerializeToString()
+    # 'dog' -> 0, 'guinea pig' -> 1, 'cat' -> 2
+    table = lookup_ops.index_table_from_tensor(
+        constant_op.constant(['dog', 'guinea pig', 'cat']))
+
+    with self.test_session() as sess:
+      sess.run(lookup_ops.tables_initializer())
+
+      serialized_example = array_ops.reshape(serialized_example, shape=[])
+
+      keys_to_features = {
+          'image/object/class/text': parsing_ops.VarLenFeature(dtypes.string),
+      }
+
+      items_to_handlers = {
+          'labels':
+              tf_example_decoder.LookupTensor('image/object/class/text', table),
+      }
+
+      decoder = slim_example_decoder.TFExampleDecoder(keys_to_features,
+                                                      items_to_handlers)
+      obtained_class_ids = decoder.decode(serialized_example)[0].eval()
+
+    self.assertAllClose([2, 0, 1], obtained_class_ids)
+
   def testDecodeJpegImage(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)
