@@ -78,6 +78,22 @@ class LearningSchedulesTest(test_case.TestCase):
     exp_rates = [1.0, 1.0, 2.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0]
     self.assertAllClose(output_rates, exp_rates)
 
+  def testManualSteppingWithWarmup(self):
+    def graph_fn(global_step):
+      boundaries = [4, 6, 8]
+      rates = [0.02, 0.10, 0.01, 0.001]
+      learning_rate = learning_schedules.manual_stepping(
+          global_step, boundaries, rates, warmup=True)
+      assert learning_rate.op.name.endswith('learning_rate')
+      return (learning_rate,)
+
+    output_rates = [
+        self.execute(graph_fn, [np.array(i).astype(np.int64)])
+        for i in range(9)
+    ]
+    exp_rates = [0.02, 0.04, 0.06, 0.08, 0.10, 0.10, 0.01, 0.01, 0.001]
+    self.assertAllClose(output_rates, exp_rates)
+
   def testManualSteppingWithZeroBoundaries(self):
     def graph_fn(global_step):
       boundaries = []

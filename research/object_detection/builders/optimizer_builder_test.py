@@ -59,14 +59,16 @@ class LearningRateBuilderTest(tf.test.TestCase):
   def testBuildManualStepLearningRate(self):
     learning_rate_text_proto = """
       manual_step_learning_rate {
+        initial_learning_rate: 0.002
         schedule {
-          step: 0
+          step: 100
           learning_rate: 0.006
         }
         schedule {
           step: 90000
           learning_rate: 0.00006
         }
+        warmup: true
       }
     """
     learning_rate_proto = optimizer_pb2.LearningRate()

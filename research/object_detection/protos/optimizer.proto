@@ -71,6 +71,10 @@ message ManualStepLearningRate {
     optional float learning_rate = 2 [default = 0.002];
   }
   repeated LearningRateSchedule schedule = 2;
+
+  // Whether to linearly interpolate learning rates for steps in
+  // [0, schedule[0].step].
+  optional bool warmup = 3 [default = false];
 }
 
 // Configuration message for a cosine decaying learning rate as defined in
