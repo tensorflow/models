@@ -86,6 +86,8 @@ import os.path
 import sys
 import xml.etree.ElementTree as ET
 
+from six.moves import xrange
+
 
 class BoundingBox(object):
   pass
