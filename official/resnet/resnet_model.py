@@ -424,17 +424,13 @@ class Model(object):
 
     inputs = batch_norm(inputs, training, self.data_format)
     inputs = tf.nn.relu(inputs)
-    inputs = tf.layers.average_pooling2d(
-        inputs=inputs, pool_size=self.second_pool_size,
-        strides=self.second_pool_stride, padding='VALID',
-        data_format=self.data_format)
-    inputs = tf.identity(inputs, 'final_avg_pool')
-
-    inputs = tf.reshape(inputs, [-1, self.final_size])
-    inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
 
     axes = [1, 2] if self.data_format == 'channels_first' else [2, 3]
     inputs = tf.reduce_mean(inputs, axes)
+    inputs = tf.identity(inputs, 'final_reduce_mean')
+
+    inputs = tf.reshape(inputs, [-1, self.final_size])
+    inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
 
     inputs = tf.identity(inputs, 'final_dense')
     return inputs
