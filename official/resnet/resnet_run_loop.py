@@ -349,7 +349,8 @@ def resnet_main(flags, model_function, input_function):
                             flags.epochs_per_eval, flags.num_parallel_calls,
                             flags.multi_gpu)
 
-    classifier.train(input_fn=input_fn_train, hooks=train_hooks)
+    classifier.train(input_fn=input_fn_train, hooks=train_hooks,
+                     max_steps=flags.max_train_steps)
 
     print('Starting to evaluate.')
     # Evaluate the model and print results
@@ -357,7 +358,14 @@ def resnet_main(flags, model_function, input_function):
       return input_function(False, flags.data_dir, flags.batch_size,
                             1, flags.num_parallel_calls, flags.multi_gpu)
 
-    eval_results = classifier.evaluate(input_fn=input_fn_eval)
+    # flags.max_train_steps is generally associated with testing and profiling.
+    # As a result it is frequently called with synthetic data, which will
+    # iterate forever. Passing steps=flags.max_train_steps allows the eval
+    # (which is generally unimportant in those circumstances) to terminate.
+    # Note that eval will run for max_train_steps each loop, regardless of the
+    # global_step count.
+    eval_results = classifier.evaluate(input_fn=input_fn_eval,
+                                       steps=flags.max_train_steps)
     print(eval_results)
 
 
@@ -381,6 +389,6 @@ class ResnetArgParser(argparse.ArgumentParser):
     self.add_argument(
         '--resnet_size', '-rs', type=int, default=50,
         choices=resnet_size_choices,
-        help='[default: %(default)s]The size of the ResNet model to use.',
-        metavar='<RS>'
+        help='[default: %(default)s] The size of the ResNet model to use.',
+        metavar='<RS>' if resnet_size_choices is None else None
     )

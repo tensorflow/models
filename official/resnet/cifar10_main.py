@@ -209,14 +209,7 @@ def cifar10_model_fn(features, labels, mode, params):
                                          multi_gpu=params['multi_gpu'])
 
 
-def main(unused_argv):
-  input_function = FLAGS.use_synthetic_data and get_synth_input_fn() or input_fn
-  resnet_run_loop.resnet_main(FLAGS, cifar10_model_fn, input_function)
-
-
-if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
-
+def main(argv):
   parser = resnet_run_loop.ResnetArgParser()
   # Set defaults that are reasonable for this model.
   parser.set_defaults(data_dir='/tmp/cifar10_data',
@@ -226,5 +219,12 @@ if __name__ == '__main__':
                       epochs_per_eval=10,
                       batch_size=128)
 
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(argv=[sys.argv[0]] + unparsed)
+  flags = parser.parse_args(args=argv[1:])
+
+  input_function = flags.use_synthetic_data and get_synth_input_fn() or input_fn
+  resnet_run_loop.resnet_main(flags, cifar10_model_fn, input_function)
+
+
+if __name__ == '__main__':
+  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.app.run(argv=sys.argv)
