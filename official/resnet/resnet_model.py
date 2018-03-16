@@ -425,7 +425,7 @@ class Model(object):
     inputs = batch_norm(inputs, training, self.data_format)
     inputs = tf.nn.relu(inputs)
 
-    axes = [1, 2] if self.data_format == 'channels_first' else [2, 3]
+    axes = [2, 3] if self.data_format == 'channels_first' else [1, 2]
     inputs = tf.reduce_mean(inputs, axes)
     inputs = tf.identity(inputs, 'final_reduce_mean')
 
