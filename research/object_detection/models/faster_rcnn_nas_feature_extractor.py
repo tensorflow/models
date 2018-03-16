@@ -231,9 +231,11 @@ class FasterRCNNNASFeatureExtractor(
     # Note that what follows is largely a copy of build_nasnet_large() within
     # nasnet.py. We are copying to minimize code pollution in slim.
 
-    # pylint: disable=protected-access
-    hparams = nasnet._large_imagenet_config(is_training=self._is_training)
-    # pylint: enable=protected-access
+    # TODO(shlens,skornblith): Determine the appropriate drop path schedule.
+    # For now the schedule is the default (1.0->0.7 over 250,000 train steps).
+    hparams = nasnet.large_imagenet_config()
+    if not self._is_training:
+      hparams.set_hparam('drop_path_keep_prob', 1.0)
 
     # Calculate the total number of cells in the network
     # -- Add 2 for the reduction cells.
