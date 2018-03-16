@@ -36,11 +36,6 @@ def run_synthetic(main, extra_flags=None):
     main: The primary function used to excercise a code path. Generally this
       function is "<MODULE>.main(argv)".
     extra_flags: Additional flags passed by the the caller of this function.
-
-  Raises:
-    OSError: Any error detected in the run causes an OSError. Because the code
-      is run as a subprocess, it is not able to manifest the specific python
-      error that was raised.
   """
 
   extra_flags = [] if extra_flags is None else extra_flags
