@@ -22,22 +22,19 @@ from __future__ import print_function
 
 import os
 import shutil
-import subprocess
 import sys
 import time
 
 
-PYTHON_CMD = "python2" if sys.version_info[0] == 2 else "python3"
-
-
-def run_synthetic(file_path, extra_flags=None):
+def run_synthetic(main, extra_flags=None):
   """Performs a minimal run of a model.
 
     This function is intended to test for syntax errors throughout a model. A
   very limited run is performed using synthetic data.
 
   Args:
-    file_path: The absolute path of a python script to be tested.
+    main: The primary function used to excercise a code path. Generally this
+      function is "<MODULE>.main(argv)".
     extra_flags: Additional flags passed by the the caller of this function.
 
   Raises:
@@ -52,20 +49,12 @@ def run_synthetic(file_path, extra_flags=None):
   if os.path.exists(model_dir):
     shutil.rmtree(model_dir)
 
-  args = [PYTHON_CMD, file_path, "--model_dir", model_dir,
-          "--train_epochs", "1", "--epochs_per_eval", "1",
-          "--use_synthetic_data",
+  args = [sys.argv[0], "--model_dir", model_dir, "--train_epochs", "1",
+          "--epochs_per_eval", "1", "--use_synthetic_data",
           "--max_train_steps", "1"] + extra_flags
 
-  p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE)
-  output, err = p.communicate()
-  returncode = p.returncode
-
-  if os.path.exists(model_dir):
-    shutil.rmtree(model_dir)
-
-  if returncode != 0:
-    raise OSError("Run failed:\nStdout:\n{}\n\nStderr:\n{}".format(
-        output.decode("utf-8"), err.decode("utf-8")
-    ))
+  try:
+    main(args)
+  finally:
+    if os.path.exists(model_dir):
+      shutil.rmtree(model_dir)

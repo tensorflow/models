@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 from tempfile import mkstemp
 
 import numpy as np
@@ -32,10 +31,6 @@ _BATCH_SIZE = 128
 _HEIGHT = 32
 _WIDTH = 32
 _NUM_CHANNELS = 3
-
-
-MAIN_PATH = os.path.join(os.path.split(
-    os.path.abspath(__file__))[0], "cifar10_main.py")
 
 
 class BaseTest(tf.test.TestCase):
@@ -142,10 +137,10 @@ class BaseTest(tf.test.TestCase):
       self.assertAllEqual(output.shape, (batch_size, num_classes))
 
   def test_cifar10_end_to_end_synthetic_v1(self):
-    integration.run_synthetic(file_path=MAIN_PATH, extra_flags=["-v", "1"])
+    integration.run_synthetic(main=cifar10_main.main, extra_flags=["-v", "1"])
 
   def test_cifar10_end_to_end_synthetic_v2(self):
-    integration.run_synthetic(file_path=MAIN_PATH, extra_flags=["-v", "2"])
+    integration.run_synthetic(main=cifar10_main.main, extra_flags=["-v", "2"])
 
 
 if __name__ == '__main__':
