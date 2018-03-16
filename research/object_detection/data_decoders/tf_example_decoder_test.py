@@ -108,8 +108,8 @@ class TfExampleDecoderTest(tf.test.TestCase):
     }
     backup_handler = tf_example_decoder.BackupHandler(
         handler=slim_example_decoder.Tensor('image/object/class/label'),
-        backup=tf_example_decoder.LookupTensor('image/object/class/text',
-                                               table))
+        backup=slim_example_decoder.LookupTensor('image/object/class/text',
+                                                 table))
     items_to_handlers = {
         'labels': backup_handler,
     }

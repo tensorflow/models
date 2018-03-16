@@ -503,7 +503,7 @@ class SSDMetaArch(model.DetectionModel):
            self.groundtruth_lists(fields.BoxListFields.classes),
            keypoints, weights)
       if self._add_summaries:
-        self._summarize_input(
+        self._summarize_target_assignment(
             self.groundtruth_lists(fields.BoxListFields.boxes), match_list)
       location_losses = self._localization_loss(
           prediction_dict['box_encodings'],
@@ -616,7 +616,7 @@ class SSDMetaArch(model.DetectionModel):
         self._target_assigner, self.anchors, groundtruth_boxlists,
         groundtruth_classes_with_background_list, groundtruth_weights_list)
 
-  def _summarize_input(self, groundtruth_boxes_list, match_list):
+  def _summarize_target_assignment(self, groundtruth_boxes_list, match_list):
     """Creates tensorflow summaries for the input boxes and anchors.
 
     This function creates four summaries corresponding to the average
@@ -640,14 +640,17 @@ class SSDMetaArch(model.DetectionModel):
         [match.num_unmatched_columns() for match in match_list])
     ignored_anchors_per_image = tf.stack(
         [match.num_ignored_columns() for match in match_list])
-    tf.summary.scalar('Input/AvgNumGroundtruthBoxesPerImage',
-                      tf.reduce_mean(tf.to_float(num_boxes_per_image)))
-    tf.summary.scalar('Input/AvgNumPositiveAnchorsPerImage',
-                      tf.reduce_mean(tf.to_float(pos_anchors_per_image)))
-    tf.summary.scalar('Input/AvgNumNegativeAnchorsPerImage',
+    tf.summary.scalar('AvgNumGroundtruthBoxesPerImage',
+                      tf.reduce_mean(tf.to_float(num_boxes_per_image)),
+                      family='TargetAssignment')
+    tf.summary.scalar('AvgNumPositiveAnchorsPerImage',
+                      tf.reduce_mean(tf.to_float(pos_anchors_per_image)),
+                      family='TargetAssignment')
+    tf.summary.scalar('AvgNumNegativeAnchorsPerImage',
                       tf.reduce_mean(tf.to_float(neg_anchors_per_image)))
-    tf.summary.scalar('Input/AvgNumIgnoredAnchorsPerImage',
-                      tf.reduce_mean(tf.to_float(ignored_anchors_per_image)))
+    tf.summary.scalar('AvgNumIgnoredAnchorsPerImage',
+                      tf.reduce_mean(tf.to_float(ignored_anchors_per_image)),
+                      family='TargetAssignment')
 
   def _apply_hard_mining(self, location_losses, cls_losses, prediction_dict,
                          match_list):

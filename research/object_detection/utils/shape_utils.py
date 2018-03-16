@@ -106,7 +106,7 @@ def pad_or_clip_tensor(t, length):
       length is an integer, the first dimension of the processed tensor is set
       to length statically.
   """
-  processed_t = tf.cond(
+  processed_t = tf.contrib.framework.smart_cond(
       tf.greater(tf.shape(t)[0], length),
       lambda: clip_tensor(t, length),
       lambda: pad_tensor(t, length))
