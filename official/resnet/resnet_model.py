@@ -31,7 +31,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
+import numpy as np
 import tensorflow as tf
 
 
@@ -432,8 +432,35 @@ class Model(object):
     inputs = tf.identity(inputs, 'final_avg_pool')
 
     inputs = tf.reshape(inputs, [-1, self.final_size])
-    inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
+    #inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
+    inputs = self.affine(
+        self.num_classes, input_layer=inputs, num_channels_in=self.final_size,
+        activation='linear')
     inputs = tf.identity(inputs, 'final_dense')
     return inputs
 
-
+  def affine(self, num_out_channels,
+             input_layer,
+             num_channels_in,
+             bias=0.0,
+             stddev=None,
+             activation='relu'):
+    name = 'affine'
+    with tf.variable_scope(name):
+      init_factor = 2. if activation == 'relu' else 1.
+      stddev = stddev or np.sqrt(init_factor / num_channels_in)
+      kernel = tf.get_variable(
+          'weights', [num_channels_in, num_out_channels], tf.float32,
+          initializer=tf.truncated_normal_initializer(stddev=stddev))
+      biases = tf.get_variable('biases', [num_out_channels], tf.float32,
+                               initializer=tf.constant_initializer(bias))
+      logits = tf.nn.xw_plus_b(input_layer, kernel, biases)
+      if activation == 'relu':
+        affine1 = tf.nn.relu(logits, name=name)
+      elif activation == 'linear' or activation is None:
+        affine1 = logits
+      else:
+        raise KeyError('Invalid activation type \'%s\'' % activation)
+      self.top_layer = affine1
+      self.top_size = num_out_channels
+      return affine1
