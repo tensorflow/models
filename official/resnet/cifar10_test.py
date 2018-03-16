@@ -23,6 +23,7 @@ import numpy as np
 import tensorflow as tf
 
 from official.resnet import cifar10_main
+from official.utils.testing import integration
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -134,6 +135,12 @@ class BaseTest(tf.test.TestCase):
       output = model(fake_input, training=True)
 
       self.assertAllEqual(output.shape, (batch_size, num_classes))
+
+  def test_cifar10_end_to_end_synthetic_v1(self):
+    integration.run_synthetic(main=cifar10_main.main, extra_flags=['-v', '1'])
+
+  def test_cifar10_end_to_end_synthetic_v2(self):
+    integration.run_synthetic(main=cifar10_main.main, extra_flags=['-v', '2'])
 
 
 if __name__ == '__main__':

@@ -22,6 +22,7 @@ import unittest
 import tensorflow as tf
 
 from official.resnet import imagenet_main
+from official.utils.testing import integration
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -242,6 +243,27 @@ class BaseTest(tf.test.TestCase):
 
       self.assertAllEqual(output.shape, (batch_size, num_classes))
 
+  def test_imagenet_end_to_end_synthetic_v1(self):
+    integration.run_synthetic(main=imagenet_main.main, extra_flags=['-v', '1'])
+
+  def test_imagenet_end_to_end_synthetic_v2(self):
+    integration.run_synthetic(main=imagenet_main.main, extra_flags=['-v', '2'])
+
+  def test_imagenet_end_to_end_synthetic_v1_tiny(self):
+    integration.run_synthetic(main=imagenet_main.main,
+                              extra_flags=['-v', '1', '-rs', '18'])
+
+  def test_imagenet_end_to_end_synthetic_v2_tiny(self):
+    integration.run_synthetic(main=imagenet_main.main,
+                              extra_flags=['-v', '2', '-rs', '18'])
+
+  def test_imagenet_end_to_end_synthetic_v1_huge(self):
+    integration.run_synthetic(main=imagenet_main.main,
+                              extra_flags=['-v', '1', '-rs', '200'])
+
+  def test_imagenet_end_to_end_synthetic_v2_huge(self):
+    integration.run_synthetic(main=imagenet_main.main,
+                              extra_flags=['-v', '2', '-rs', '200'])
 
 if __name__ == '__main__':
   tf.test.main()
