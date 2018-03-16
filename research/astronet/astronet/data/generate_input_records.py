@@ -140,7 +140,8 @@ def _set_float_feature(ex, name, value):
 def _set_bytes_feature(ex, name, value):
   """Sets the value of a bytes feature in a tensorflow.train.Example proto."""
   assert name not in ex.features.feature, "Duplicate feature: %s" % name
-  ex.features.feature[name].bytes_list.value.extend([str(v) for v in value])
+  ex.features.feature[name].bytes_list.value.extend([
+      str(v).encode("latin-1") for v in value])
 
 
 def _set_int64_feature(ex, name, value):
@@ -187,7 +188,7 @@ def _process_tce(tce):
       try:
         _set_float_feature(ex, col_name, [float(value)])
       except ValueError:
-        _set_bytes_feature(ex, col_name, [str(value)])
+        _set_bytes_feature(ex, col_name, [value])
 
   return ex
 
