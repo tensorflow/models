@@ -358,6 +358,10 @@ def resnet_main(flags, model_function, input_function):
       return input_function(False, flags.data_dir, flags.batch_size,
                             1, flags.num_parallel_calls, flags.multi_gpu)
 
+    # flags.max_train_steps is generally associated with testing and profiling.
+    # As a result it is frequently called with synthetic data, which will
+    # iterate forever. Passing steps=flags.max_train_steps allows the eval
+    # (which is generally unimportant in those circumstances) to terminate.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                        steps=flags.max_train_steps)
     print(eval_results)
