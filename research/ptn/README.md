@@ -1,11 +1,11 @@
 # Perspective Transformer Nets
 
 ## Introduction
-This is the TensorFlow implementation for the NIPS 2016 work ["Perspective Transformer Nets: Learning Single-View 3D Object Reconstrution without 3D Supervision"](https://papers.nips.cc/paper/6206-perspective-transformer-nets-learning-single-view-3d-object-reconstruction-without-3d-supervision.pdf)
+This is the TensorFlow implementation for the NIPS 2016 work ["Perspective Transformer Nets: Learning Single-View 3D Object Reconstruction without 3D Supervision"](https://papers.nips.cc/paper/6206-perspective-transformer-nets-learning-single-view-3d-object-reconstruction-without-3d-supervision.pdf)
 
 Re-implemented by Xinchen Yan, Arkanath Pathak, Jasmine Hsu, Honglak Lee
 
-Reference: [Orginal implementation in Torch](https://github.com/xcyan/nips16_PTN)
+Reference: [Original implementation in Torch](https://github.com/xcyan/nips16_PTN)
 
 ## How to run this code
 

@@ -88,7 +88,7 @@ InputBatchCache that has fields for each of your data types.**
 
 ## Using Transition States
 
-Each Component is expected to intialize itself from a beam of TransitionStates
+Each Component is expected to initialize itself from a beam of TransitionStates
 (which may be empty, if the component is the first one in a DRAGNN computation)
 and is expected to emit a set of TransitionStates when it is complete (via a
 call to GetBeam). There is no requirement that TransitionStates be used

@@ -14,7 +14,7 @@ ComputeSessions, which represent the overall state of a DRAGNN computation.
 
 The fundamental concept behind DRAGNN is that it allows users to compose sets of
 ML subsystems in a single computation. Each of those subsystems is represented
-in the DRAGNN framweork by a pair of classes - a Component subclass and a
+in the DRAGNN framework by a pair of classes - a Component subclass and a
 TransitionState subclass. While the Component will generally contain the logic
 code for the subsystem, the state of a computation should be held in a
 TransitionState instance. This way, a batch of inferences can be represented by

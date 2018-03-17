@@ -1,7 +1,7 @@
 # Image Compression with Neural Networks
 
 This is a [TensorFlow](http://www.tensorflow.org/) model for compressing and
-decompressing images using an already trained  Residual GRU model as descibed
+decompressing images using an already trained  Residual GRU model as described
 in [Full Resolution Image Compression with Recurrent Neural Networks](https://arxiv.org/abs/1608.05148). Please consult the paper for more details
 on the architecture and compression results.
 

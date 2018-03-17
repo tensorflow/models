@@ -5,7 +5,7 @@
 This video prediction model, which is optionally conditioned on actions,
 predictions future video by internally predicting how to transform the last
 image (which may have been predicted) into the next image. As a result, it can
-reuse apperance information from previous frames and can better generalize to
+reuse appearance information from previous frames and can better generalize to
 objects not seen in the training set. Some example predictions on novel objects
 are shown below:
 
@@ -35,7 +35,7 @@ blur.
 
 ## Requirements
 * Tensorflow (see tensorflow.org for installation instructions)
-* spatial_tranformer model in tensorflow/models, for the spatial tranformer
+* spatial_transformer model in tensorflow/models, for the spatial transformer
   predictor (STP).
 
 ## Data
@@ -55,7 +55,7 @@ python prediction_train.py
 ```
 
 There are several flags which can control the model that is trained, which are
-exeplified below:
+exemplified below:
 ```shell
 python prediction_train.py \
   --data_dir=push/push_train \ # path to the training set.
@@ -63,7 +63,7 @@ python prediction_train.py \
   --output_dir=./checkpoints \ # where to save model checkpoints
   --event_log_dir=./summaries \ # where to save training statistics
   --num_iterations=100000 \ # number of training iterations
-  --pretrained_model=model \ # path to model to initialize from, random if emtpy
+  --pretrained_model=model \ # path to model to initialize from, random if empty
   --sequence_length=10 \ # the number of total frames in a sequence
   --context_frames=2 \ # the number of ground truth frames to pass in at start
   --use_state=1 \ # whether or not to condition on actions and the initial state

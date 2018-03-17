@@ -7,7 +7,7 @@
 The general goal is to train structured models, where there's a beam or a
 trellis, normalized globally.
 
-To begin, we implement the CRF objective (also termend "contrastive learning")
+To begin, we implement the CRF objective (also termed "contrastive learning")
 for parsing. Paraphrasing the notes of who/mjcollins, we have globally
 normalized path probabilities
 

@@ -185,7 +185,7 @@ on distributed settings.
 Run this on master:
 Runs an Experiment in sync mode on 4 GPUs using CPU as parameter server for
 40000 steps. It will run evaluation a couple of times during training. The
-num_workers arugument is used only to update the learning rate correctly. Make
+num_workers argument is used only to update the learning rate correctly. Make
 sure the model_dir is the same as defined on the TF_CONFIG.
 
 ```shell

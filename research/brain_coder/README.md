@@ -6,7 +6,7 @@ Brain coder is a code synthesis experimental environment. We provide code that r
 
 ## Installation
 
-First install dependencies seperately:
+First install dependencies separately:
 
 * [bazel](https://docs.bazel.build/versions/master/install.html)
 * [TensorFlow](https://www.tensorflow.org/install/)

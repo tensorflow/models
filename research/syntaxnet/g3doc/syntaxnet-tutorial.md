@@ -147,7 +147,7 @@ worry about clobbering old models by accident.
 
 The `--arg_prefix` flag controls which parameters should be read from the task
 context file `context.pbtxt`. In this case `arg_prefix` is set to `brain_pos`,
-so the paramters being used in this training run are
+so the parameters being used in this training run are
 `brain_pos_transition_system`, `brain_pos_embedding_dims`, `brain_pos_features`
 and, `brain_pos_embedding_names`. To train the dependency parser later
 `arg_prefix` will be set to `brain_parser`.
@@ -212,7 +212,7 @@ Crucially, we also see directed arcs signifying grammatical relationships
 between different words in the sentence. For example *I* is the subject of
 *saw*, as signified by the directed arc labeled *nsubj* between these words;
 *man* is the direct object (dobj) of *saw*; the preposition *with* modifies
-*man* with a prep relation, signifiying modification by a prepositional phrase;
+*man* with a prep relation, signifying modification by a prepositional phrase;
 and so on. In addition the verb *saw* is identified as the *root* of the entire
 sentence.
 

@@ -1,7 +1,7 @@
 # TensorFlow-Slim NASNet-A Implementation/Checkpoints
 This directory contains the code for the NASNet-A model from the paper
 [Learning Transferable Architectures for Scalable Image Recognition](https://arxiv.org/abs/1707.07012) by Zoph et al.
-In nasnet.py there are three different configurations of NASNet-A that are implementented. One of the models is the NASNet-A built for CIFAR-10 and the
+In nasnet.py there are three different configurations of NASNet-A that are implemented. One of the models is the NASNet-A built for CIFAR-10 and the
 other two are variants of NASNet-A trained on ImageNet, which are listed below.
 
 # Pre-Trained Models

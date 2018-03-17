@@ -3,7 +3,7 @@
 The Tensorflow Object Detection API supports distributed training on Google
 Cloud ML Engine. This section documents instructions on how to train and
 evaluate your model using Cloud ML. The reader should complete the following
-prerequistes:
+prerequisites:
 
 1. The reader has created and configured a project on Google Cloud Platform.
 See [the Cloud ML quick start guide](https://cloud.google.com/ml-engine/docs/quickstarts/command-line).

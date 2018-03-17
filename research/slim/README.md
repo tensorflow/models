@@ -311,7 +311,7 @@ python train_image_classifier.py \
 
 This process may take several days, depending on your hardware setup.
 For convenience, we provide a way to train a model on multiple GPUs,
-and/or multiple CPUs, either synchrononously or asynchronously.
+and/or multiple CPUs, either synchronously or asynchronously.
 See [model_deploy](https://github.com/tensorflow/models/blob/master/research/slim/deployment/model_deploy.py)
 for details.
 

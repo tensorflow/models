@@ -316,7 +316,7 @@ sequence can then be collapsed in the other dimension to make a 0-d categorical
 
 Using the (parallel) op it is entirely possible to run multiple [series] of ops
 that collapse x first in one and y first in the other, reducing both eventually
-to a single categorical value! For eample, the following description may do
+to a single categorical value! For example, the following description may do
 something useful with ImageNet-like problems:
 
 ```python

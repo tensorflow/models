@@ -9,7 +9,7 @@ The `pixel_domain_adaptation` directory contains the code used for the
 "Unsupervised Pixel-Level Domain Adaptation with Generative Adversarial
 Networks" paper by Bousmalis K., et al. (presented at CVPR 2017). The paper can
 be found here: https://arxiv.org/abs/1612.05424. PixelDA aims to perform domain
-adaptation by transfering the visual style of the target domain (which has few
+adaptation by transferring the visual style of the target domain (which has few
 or no labels) to a source domain (which has many labels). This is accomplished
 using a Generative Adversarial Network (GAN).
 

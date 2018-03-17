@@ -28,7 +28,7 @@ Available at: http://link.springer.com/chapter/10.1007%2F978-3-319-46604-0_30
 ## Introduction
 
 The *STREET* model is a deep recurrent neural network that learns how to
-identify the name of a street (in France) from an image containing upto four
+identify the name of a street (in France) from an image containing up to four
 different views of the street name sign. The model merges information from the
 different views and normalizes the text to the correct format. For example:
 

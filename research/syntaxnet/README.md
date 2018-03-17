@@ -202,7 +202,7 @@ We see that Parsey McParseface is state-of-the-art; more importantly, with
 SyntaxNet you can train larger networks with more hidden units and bigger beam
 sizes if you want to push the accuracy even further: [Andor et al.
 (2016)](http://arxiv.org/abs/1603.06042)* is simply a SyntaxNet model with a
-larger beam and network. For futher information on the datasets, see that paper
+larger beam and network. For further information on the datasets, see that paper
 under the section "Treebank Union".
 
 Parsey McParseface is also state-of-the-art for part-of-speech (POS) tagging

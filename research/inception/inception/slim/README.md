@@ -263,8 +263,8 @@ net = slim.ops.conv2d(net, 256, [11, 11], padding='SAME', stddev=0.01, weight_de
 It should be clear that these three Convolution layers share many of the same
 hyperparameters. Two have the same padding, all three have the same weight_decay
 and standard deviation of its weights. Not only do the duplicated values make
-the code more difficult to read, it also adds the addition burder to the writer
-of needing to doublecheck that all of the values are identical in each step. One
+the code more difficult to read, it also adds the addition burden to the writer
+of needing to double check that all of the values are identical in each step. One
 solution would be to specify default values using variables:
 
 ```python
@@ -289,7 +289,7 @@ ensure that each layer uses the same values and simplify the code:
 ```
 
 As the example illustrates, the use of arg_scope makes the code cleaner, simpler
-and easier to maintain. Notice that while argument values are specifed in the
+and easier to maintain. Notice that while argument values are specified in the
 arg_scope, they can be overwritten locally. In particular, while the padding
 argument has been set to 'SAME', the second convolution overrides it with the
 value of 'VALID'.
@@ -362,7 +362,7 @@ classes. For regression problems, this is often the sum-of-squares differences
 between the predicted and true values.
 
 Certain models, such as multi-task learning models, require the use of multiple
-loss functions simultaneously. In other words, the loss function ultimatey being
+loss functions simultaneously. In other words, the loss function ultimately being
 minimized is the sum of various other loss functions. For example, consider a
 model that predicts both the type of scene in an image as well as the depth from
 the camera of each pixel. This model's loss function would be the sum of the
