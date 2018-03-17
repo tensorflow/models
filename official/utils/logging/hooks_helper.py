@@ -63,12 +63,14 @@ def get_train_hooks(name_list, **kwargs):
   return train_hooks
 
 
-def get_logging_tensor_hook(every_n_iter=100, **kwargs):  # pylint: disable=unused-argument
+def get_logging_tensor_hook(every_n_iter=100, tensors_to_log=None, **kwargs):  # pylint: disable=unused-argument
   """Function to get LoggingTensorHook.
 
   Args:
     every_n_iter: `int`, print the values of `tensors` once every N local
       steps taken on the current worker.
+    tensors_to_log: List of string tensor names to be logged by the
+      LoggingTensorHook. If not provided, log _TENSORS_TO_LOG by default.
     kwargs: a dictionary of arguments to LoggingTensorHook.
 
   Returns:
@@ -76,7 +78,7 @@ def get_logging_tensor_hook(every_n_iter=100, **kwargs):  # pylint: disable=unus
     printed to stdout.
   """
   return tf.train.LoggingTensorHook(
-      tensors=_TENSORS_TO_LOG,
+      tensors=tensors_to_log or _TENSORS_TO_LOG,
       every_n_iter=every_n_iter)
 
 
