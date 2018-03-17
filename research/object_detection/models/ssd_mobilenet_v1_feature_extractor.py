@@ -100,11 +100,13 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         'use_depthwise': self._use_depthwise,
     }
 
-    with slim.arg_scope(self._conv_hyperparams):
-      # TODO(skligys): Enable fused batch norm once quantization supports it.
-      with slim.arg_scope([slim.batch_norm], fused=False):
-        with tf.variable_scope('MobilenetV1',
-                               reuse=self._reuse_weights) as scope:
+    with tf.variable_scope('MobilenetV1',
+                           reuse=self._reuse_weights) as scope:
+      with slim.arg_scope(
+          mobilenet_v1.mobilenet_v1_arg_scope(
+              is_training=(self._batch_norm_trainable and self._is_training))):
+        # TODO(skligys): Enable fused batch norm once quantization supports it.
+        with slim.arg_scope([slim.batch_norm], fused=False):
           _, image_features = mobilenet_v1.mobilenet_v1_base(
               ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
               final_endpoint='Conv2d_13_pointwise',
@@ -112,6 +114,9 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
               depth_multiplier=self._depth_multiplier,
               use_explicit_padding=self._use_explicit_padding,
               scope=scope)
+      with slim.arg_scope(self._conv_hyperparams):
+        # TODO(skligys): Enable fused batch norm once quantization supports it.
+        with slim.arg_scope([slim.batch_norm], fused=False):
           feature_maps = feature_map_generators.multi_resolution_feature_maps(
               feature_map_layout=feature_map_layout,
               depth_multiplier=self._depth_multiplier,
