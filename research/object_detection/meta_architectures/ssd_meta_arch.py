@@ -647,7 +647,8 @@ class SSDMetaArch(model.DetectionModel):
                       tf.reduce_mean(tf.to_float(pos_anchors_per_image)),
                       family='TargetAssignment')
     tf.summary.scalar('AvgNumNegativeAnchorsPerImage',
-                      tf.reduce_mean(tf.to_float(neg_anchors_per_image)))
+                      tf.reduce_mean(tf.to_float(neg_anchors_per_image)),
+                      family='TargetAssignment')
     tf.summary.scalar('AvgNumIgnoredAnchorsPerImage',
                       tf.reduce_mean(tf.to_float(ignored_anchors_per_image)),
                       family='TargetAssignment')

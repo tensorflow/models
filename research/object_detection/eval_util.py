@@ -323,7 +323,7 @@ def _run_checkpoint_once(tensor_dict,
       global_step = tf.train.global_step(sess, tf.train.get_global_step())
 
       for key, value in iter(aggregate_result_losses_dict.items()):
-        all_evaluator_metrics[key] = np.mean(value)
+        all_evaluator_metrics['Losses/' + key] = np.mean(value)
   sess.close()
   return (global_step, all_evaluator_metrics)
 
