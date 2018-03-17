@@ -145,8 +145,8 @@ def learning_rate_with_decay(
     boundary_epochs: list of ints representing the epochs at which we
       decay the learning rate.
     decay_rates: list of floats representing the decay rates to be used
-      for scaling the learning rate. Should be the same length as
-      boundary_epochs.
+      for scaling the learning rate. It should have one more element
+      than `boundary_epochs`, and all elements should have the same type.
 
   Returns:
     Returns a function that takes a single argument - the number of batches
