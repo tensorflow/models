@@ -188,7 +188,7 @@ def prune_completely_outside_window(boxlist, window, scope=None):
     valid_indices: a tensor with shape [M_out] indexing the valid bounding boxes
      in the input tensor.
   """
-  with tf.name_scope(scope, 'PruneCompleteleyOutsideWindow'):
+  with tf.name_scope(scope, 'PruneCompletelyOutsideWindow'):
     y_min, x_min, y_max, x_max = tf.split(
         value=boxlist.get(), num_or_size_splits=4, axis=1)
     win_y_min, win_x_min, win_y_max, win_x_max = tf.unstack(window)
