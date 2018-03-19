@@ -341,17 +341,16 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       }
 
     eval_metric_ops = None
-    if mode == tf.estimator.ModeKeys.EVAL:
-      # Detection summaries during eval.
+    if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
       class_agnostic = (fields.DetectionResultFields.detection_classes
                         not in detections)
       groundtruth = _get_groundtruth_data(detection_model, class_agnostic)
       use_original_images = fields.InputDataFields.original_image in features
-      eval_images = (
+      original_images = (
           features[fields.InputDataFields.original_image] if use_original_images
           else features[fields.InputDataFields.image])
       eval_dict = eval_util.result_dict_for_single_example(
-          eval_images[0:1],
+          original_images[0:1],
           features[inputs.HASH_KEY][0],
           detections,
           groundtruth,
@@ -368,16 +367,19 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
             vis_utils.draw_side_by_side_evaluation_image(
                 eval_dict, category_index, max_boxes_to_draw=20,
                 min_score_thresh=0.2))
-        tf.summary.image('Detections_Left_Groundtruth_Right',
-                         detection_and_groundtruth)
+        img_summary = tf.summary.image('Detections_Left_Groundtruth_Right',
+                                       detection_and_groundtruth)
 
-      # Eval metrics on a single image.
-      eval_metrics = eval_config.metrics_set
-      if not eval_metrics:
-        eval_metrics = ['coco_detection_metrics']
-      eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-          eval_metrics, category_index.values(), eval_dict,
-          include_metrics_per_category=False)
+      if mode == tf.estimator.ModeKeys.EVAL:
+        # Eval metrics on a single example.
+        eval_metrics = eval_config.metrics_set
+        if not eval_metrics:
+          eval_metrics = ['coco_detection_metrics']
+        eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
+            eval_metrics, category_index.values(), eval_dict,
+            include_metrics_per_category=False)
+        eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
+            img_summary, tf.no_op())
 
     if use_tpu:
       return tf.contrib.tpu.TPUEstimatorSpec(

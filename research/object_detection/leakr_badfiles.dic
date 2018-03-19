@@ -1,0 +1,10 @@
+;; We use bazel, so BUILD files are required.
+$RE:BUILD$;0;Allow BUILD file
+
+;; Android Studio auto generated files
+$RE:\.class$!!.*org\/gradle\/cli\/.*\.class!!.*org\/gradle\/wrapper\/.*\.class;0;Allow gradle cli classes
+
+;; We are shipping source code so override the source code entries in
+;; the default dictionary.
+$RE:\.(?:cc|cpp)(?:.bak|)$;0;Allow C++ source code
+$RE:\.proto(?:.bak|)$;0;Allow Proto file

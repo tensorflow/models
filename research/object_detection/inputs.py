@@ -184,6 +184,8 @@ def create_train_input_fn(train_config, train_input_config,
         features[fields.InputDataFields.true_image_shape] is a [batch_size, 3]
           int32 tensor representing the true image shapes, as preprocessed
           images could be padded.
+        features[fields.InputDataFields.image] (optional) is a
+          [batch_size, H, W, C] float32 tensor with original images.
       labels: Dictionary of groundtruth tensors.
         labels[fields.InputDataFields.num_groundtruth_boxes] is a [batch_size]
           int32 tensor indicating the number of groundtruth boxes.
@@ -233,7 +235,8 @@ def create_train_input_fn(train_config, train_input_config,
         transform_input_data, model_preprocess_fn=model.preprocess,
         image_resizer_fn=image_resizer_fn,
         num_classes=config_util.get_number_of_classes(model_config),
-        data_augmentation_fn=data_augmentation_fn)
+        data_augmentation_fn=data_augmentation_fn,
+        retain_original_image=train_config.retain_original_images)
     dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         train_input_config,
         transform_input_data_fn=transform_data_fn,
@@ -252,6 +255,9 @@ def create_train_input_fn(train_config, train_input_config,
         fields.InputDataFields.true_image_shape: tensor_dict[
             fields.InputDataFields.true_image_shape]
     }
+    if fields.InputDataFields.original_image in tensor_dict:
+      features[fields.InputDataFields.original_image] = tensor_dict[
+          fields.InputDataFields.original_image]
 
     labels = {
         fields.InputDataFields.num_groundtruth_boxes: tensor_dict[
@@ -345,7 +351,7 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
         image_resizer_fn=image_resizer_fn,
         num_classes=num_classes,
         data_augmentation_fn=None,
-        retain_original_image=True)
+        retain_original_image=eval_config.retain_original_images)
     dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         eval_input_config,
         transform_input_data_fn=transform_data_fn,

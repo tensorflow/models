@@ -94,4 +94,9 @@ message TrainConfig {
   // Whether to remove padding along `num_boxes` dimension of the groundtruth
   // tensors.
   optional bool unpad_groundtruth_tensors = 21 [default=true];
+
+  // Whether to retain original images (i.e. not pre-processed) in the tensor
+  // dictionary, so that they can be displayed in Tensorboard. Note that this
+  // will lead to a larger memory footprint.
+  optional bool retain_original_images = 23 [default=false];
 }

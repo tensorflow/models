@@ -1,0 +1,55 @@
+;; Bad words to avoid
+adbrain;2;
+bamm;2;
+cloudml;2;
+mactruck;2;
+seastar;2;
+$RE:(^|[\W])((?i)borg(?-i))($|[\W]);2;Use regex as borg is a common letter combo
+blaze;2;
+mognet;2;
+/cns/;2;
+
+;; XLA and Jellyfish-related terms.
+techila;2;
+jellyfish;2;
+jelly fish;2;
+dragonfish;2;
+dragon fish;2;
+tensorcore;2;
+tensor core;2;
+barnacore;2;
+barna core;2;
+barnacle;2;
+nautilus;2;
+polyp;2;
+XLA:JF;2;
+
+;; OSS licensing wants this to be true
+google3;2;
+
+;; We should attempt to remove all/most occurrences of brain:
+brain;1;
+
+;; make sure internal paths don't make it out
+net/proto2;2;
+
+;; We are allowing todos (while scrubbing out some people's user names)
+todo:;0;
+todo(;0;
+
+;; Override default dictionary and make the following errors instead
+;; of warnings.
+//go/;2;
+//goto/;2;
+//cr/;2;
+//cl/;2;
+//test/;2;
+//sites/;2;
+a/google.com;2;
+corp.google.com;2;
+.googleplex.com;2;
+.mtv;2;
+sandbox.;2;
+
+;; Python 3 compatibility
+basestring;2;
