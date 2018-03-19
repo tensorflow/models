@@ -194,29 +194,33 @@ def main(unused_argv):
           'multi_gpu': FLAGS.multi_gpu
       })
 
-  # Train the model
+  # Set up training and evaluation input functions.
   def train_input_fn():
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
     ds = dataset.train(FLAGS.data_dir)
-    ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
-        FLAGS.train_epochs)
+    ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size)
+
+    # Iterate through the dataset a set number (`epochs_per_eval`) of times
+    # during each training session.
+    ds = ds.repeat(FLAGS.epochs_per_eval)
     return ds
 
-  # Set up training hook that outputs logs every 100 steps.
-  train_hooks = hooks_helper.get_train_hooks(
-      FLAGS.hooks, batch_size=FLAGS.batch_size)
-  mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
-
-  # Evaluate the model and print results
   def eval_input_fn():
     return dataset.test(FLAGS.data_dir).batch(
         FLAGS.batch_size).make_one_shot_iterator().get_next()
 
-  eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
-  print()
-  print('Evaluation results:\n\t%s' % eval_results)
+  # Set up hook that outputs training logs every 100 steps.
+  train_hooks = hooks_helper.get_train_hooks(
+      FLAGS.hooks, batch_size=FLAGS.batch_size)
+
+  # Train and evaluate model.
+  for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
+    mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
+    eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
+    print()
+    print('Evaluation results at epoch %d:\n\t%s\n' % eval_results)
 
   # Export the model
   if FLAGS.export_dir is not None:
@@ -228,6 +232,7 @@ def main(unused_argv):
 
 
 class MNISTArgParser(argparse.ArgumentParser):
+  """Argument parser for running MNIST model."""
   def __init__(self, **kwargs):
     super(MNISTArgParser, self).__init__(parents=[
       parsers.BaseParser(**kwargs),
