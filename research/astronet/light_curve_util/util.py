@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import itertools
 
 import numpy as np
 from six.moves import range  # pylint:disable=redefined-builtin
@@ -72,7 +71,7 @@ def split(all_time, all_flux, gap_width=0.75):
 
   out_time = []
   out_flux = []
-  for time, flux in itertools.izip(all_time, all_flux):
+  for time, flux in zip(all_time, all_flux):
     start = 0
     for end in range(1, len(time) + 1):
       # Choose the largest endpoint such that time[start:end] has no gaps.
@@ -117,7 +116,7 @@ def remove_events(all_time, all_flux, events, width_factor=1.0):
 
   output_time = []
   output_flux = []
-  for time, flux in itertools.izip(all_time, all_flux):
+  for time, flux in zip(all_time, all_flux):
     mask = np.ones_like(time, dtype=np.bool)
     for event in events:
       transit_dist = np.abs(phase_fold_time(time, event.period, event.t0))
@@ -149,7 +148,7 @@ def interpolate_masked_spline(all_time, all_masked_time, all_masked_spline):
         points linearly interpolated.
   """
   interp_spline = []
-  for time, masked_time, masked_spline in itertools.izip(
+  for time, masked_time, masked_spline in zip(
       all_time, all_masked_time, all_masked_spline):
     if len(masked_time) > 0:  # pylint:disable=g-explicit-length-test
       interp_spline.append(np.interp(time, masked_time, masked_spline))

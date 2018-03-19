@@ -39,7 +39,7 @@ class InputOpsTest(tf.test.TestCase):
     for feature_type in features:
       actual_shapes[feature_type] = {
           feature: tensor.shape.as_list()
-          for feature, tensor in features[feature_type].iteritems()
+          for feature, tensor in features[feature_type].items()
       }
     self.assertDictEqual(expected_shapes, actual_shapes)
 
