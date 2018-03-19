@@ -218,8 +218,7 @@ def main(unused_argv):
   for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
     mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
-    print()
-    print('Evaluation results at epoch %d:\n\t%s\n' % eval_results)
+    print('\nEvaluation results:\n\t%s\n' % eval_results)
 
   # Export the model
   if FLAGS.export_dir is not None:
@@ -232,25 +231,27 @@ def main(unused_argv):
 
 class MNISTArgParser(argparse.ArgumentParser):
   """Argument parser for running MNIST model."""
-  def __init__(self, **kwargs):
+  def __init__(self):
     super(MNISTArgParser, self).__init__(parents=[
-      parsers.BaseParser(**kwargs),
+      parsers.BaseParser(),
       parsers.ImageModelParser()])
 
     self.add_argument(
         '--export_dir',
         type=str,
-        help='The directory where the exported SavedModel will be stored.')
+        help='[default: %(default)s] If set, a SavedModel serialization of the '
+             'model will be exported to this directory at the end of training. '
+             'See the README for more details and relevant links.')
 
     self.set_defaults(
         data_dir='/tmp/mnist_data',
-        model_dir='--model_dir',
+        model_dir='/tmp/mnist_model',
         batch_size=100,
         train_epochs=40)
 
 
 if __name__ == '__main__':
-  parser = MNISTArgParser()
   tf.logging.set_verbosity(tf.logging.INFO)
+  parser = MNISTArgParser()
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)

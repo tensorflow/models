@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import os
 import shutil
 import sys
@@ -201,18 +202,25 @@ def main(unused_argv):
       print('%s: %s' % (key, results[key]))
 
 
+class WideDeepArgParser(argparse.ArgumentParser):
+  """Argument parser for running the wide deep model."""
+  def __init__(self):
+    super(WideDeepArgParser, self).__init__(parents=[parsers.BaseParser()])
+    self.add_argument(
+        '--model_type', '-mt', type=str, default='wide_deep',
+        choices=['wide', 'deep', 'wide_deep'],
+        help='[default %(default)s] Valid model types: wide, deep, wide_deep.',
+        metavar='<MT>')
+    self.set_defaults(
+        data_dir='/tmp/census_data',
+        model_dir='/tmp/census_model',
+        train_epochs=40,
+        epochs_per_eval=2,
+        batch_size=40)
+
+
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-
-  parser = parsers.BaseParser()
-  parser.set_defaults(data_dir='/tmp/census_data',
-                      model_dir='/tmp/census_model',
-                      train_epochs=40,
-                      epochs_per_eval=2,
-                      batch_size=40)
-  parser.add_argument(
-      '--model_type', type=str, default='wide_deep',
-      help="Valid model types: {'wide', 'deep', 'wide_deep'}.")
-
+  parser = WideDeepArgParser()
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
