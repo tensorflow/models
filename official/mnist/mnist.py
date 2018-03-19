@@ -18,10 +18,10 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import os
 import sys
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
 from official.mnist import dataset
 
 
@@ -137,27 +137,32 @@ def model_fn(features, labels, mode, params):
 
 
 def validate_batch_size_for_multi_gpu(batch_size):
-  """For multi-gpu, batch-size must be a multiple of the number of
-  available GPUs.
+  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
 
   Note that this should eventually be handled by replicate_model_fn
   directly. Multi-GPU support is currently experimental, however,
   so doing the work here until that feature is in place.
+
+  Args:
+    batch_size: the number of examples processed in each training batch.
+
+  Raises:
+    ValueError: if no GPUs are found, or selected batch_size is invalid.
   """
-  from tensorflow.python.client import device_lib
+  from tensorflow.python.client import device_lib  # pylint: disable=g-import-not-at-top
 
   local_device_protos = device_lib.list_local_devices()
   num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
   if not num_gpus:
     raise ValueError('Multi-GPU mode was specified, but no GPUs '
-      'were found. To use CPU, run without --multi_gpu.')
+                     'were found. To use CPU, run without --multi_gpu.')
 
   remainder = batch_size % num_gpus
   if remainder:
     err = ('When running with multiple GPUs, batch size '
-      'must be a multiple of the number of available GPUs. '
-      'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
-      ).format(num_gpus, batch_size, batch_size - remainder)
+           'must be a multiple of the number of available GPUs. '
+           'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
 
 

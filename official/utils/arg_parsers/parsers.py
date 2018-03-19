@@ -46,11 +46,11 @@ Notes about add_argument():
     The metavar variable determines how the flag will appear in help text. If
   not specified, the convention is to use name.upper(). Thus rather than:
 
-    --application_specific_arg APPLICATION_SPECIFIC_ARG, -asa APPLICATION_SPECIFIC_ARG
+    --app_specific_arg APP_SPECIFIC_ARG, -asa APP_SPECIFIC_ARG
 
   if metavar="<ASA>" is set, the user sees:
 
-    --application_specific_arg <ASA>, -asa <ASA>
+    --app_specific_arg <ASA>, -asa <ASA>
 
 """
 

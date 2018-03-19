@@ -201,12 +201,17 @@ def main(unused_argv):
   model = build_estimator(FLAGS.model_dir, FLAGS.model_type)
 
   # Train and evaluate the model every `FLAGS.epochs_per_eval` epochs.
-  for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
-    model.train(input_fn=lambda: input_fn(
-        FLAGS.train_data, FLAGS.epochs_per_eval, True, FLAGS.batch_size))
+  def train_input_fn():
+    return input_fn(
+        FLAGS.train_data, FLAGS.epochs_per_eval, True, FLAGS.batch_size)
 
-    results = model.evaluate(input_fn=lambda: input_fn(
-        FLAGS.test_data, 1, False, FLAGS.batch_size))
+  def eval_input_fn():
+    return input_fn(FLAGS.test_data, 1, False, FLAGS.batch_size)
+
+  for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
+    model.train(input_fn=train_input_fn)
+
+    results = model.evaluate(input_fn=eval_input_fn)
 
     # Display evaluation metrics
     print('Results at epoch', (n + 1) * FLAGS.epochs_per_eval)
