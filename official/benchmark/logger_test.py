@@ -32,6 +32,7 @@ import tensorflow as tf
 class BenchmarkLoggerTest(tf.test.TestCase):
 
   def tearDown(self):
+    super(BenchmarkLoggerTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
 
   def test_create_logging_dir(self):

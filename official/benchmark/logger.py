@@ -60,12 +60,16 @@ class BenchmarkLogger(object):
         os.path.join(self._logging_dir, _METRIC_LOG_FILE_NAME), "a") as f:
       metric = {
           "name": name,
-          "value": value,
+          "value": float(value),
           "unit": unit,
           "global_step": global_step,
           "timestamp": datetime.datetime.now().strftime(
               _DATE_TIME_FORMAT_PATTERN),
           "extras": extras}
-      json.dump(metric, f)
-      f.write("\n")
+      try:
+        json.dump(metric, f)
+        f.write("\n")
+      except (TypeError, ValueError) as e:
+        tf.logging.warning("Failed to dump metric to log file: name %s, value %s, error %s",
+                           name, value, e)
 
