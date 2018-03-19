@@ -23,10 +23,10 @@ from __future__ import print_function
 import os
 import shutil
 import sys
-import time
+import tempfile
 
 
-def run_synthetic(main, extra_flags=None):
+def run_synthetic(main, tmp_root, extra_flags=None):
   """Performs a minimal run of a model.
 
     This function is intended to test for syntax errors throughout a model. A
@@ -35,14 +35,13 @@ def run_synthetic(main, extra_flags=None):
   Args:
     main: The primary function used to excercise a code path. Generally this
       function is "<MODULE>.main(argv)".
+    tmp_root: Root path for the temp directory created by the test class.
     extra_flags: Additional flags passed by the the caller of this function.
   """
 
   extra_flags = [] if extra_flags is None else extra_flags
 
-  model_dir = "/tmp/model_test_{}".format(hash(time.time()))
-  if os.path.exists(model_dir):
-    shutil.rmtree(model_dir)
+  model_dir = tempfile.mkdtemp(dir=tmp_root)
 
   args = [sys.argv[0], "--model_dir", model_dir, "--train_epochs", "1",
           "--epochs_per_eval", "1", "--use_synthetic_data",
