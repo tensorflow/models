@@ -84,6 +84,7 @@ class LearningRateBuilderTest(tf.test.TestCase):
         total_steps: 20000
         warmup_learning_rate: 0.0001
         warmup_steps: 1000
+        hold_base_rate_steps: 20000
       }
     """
     learning_rate_proto = optimizer_pb2.LearningRate()

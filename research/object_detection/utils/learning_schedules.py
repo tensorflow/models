@@ -63,7 +63,8 @@ def cosine_decay_with_warmup(global_step,
                              learning_rate_base,
                              total_steps,
                              warmup_learning_rate=0.0,
-                             warmup_steps=0):
+                             warmup_steps=0,
+                             hold_base_rate_steps=0):
   """Cosine decay schedule with warm up period.
 
   Cosine annealing learning rate as described in:
@@ -79,6 +80,8 @@ def cosine_decay_with_warmup(global_step,
     total_steps: total number of training steps.
     warmup_learning_rate: initial learning rate for warm up.
     warmup_steps: number of warmup steps.
+    hold_base_rate_steps: Optional number of steps to hold base learning rate
+      before decaying.
 
   Returns:
     a (scalar) float tensor representing learning rate.
@@ -93,20 +96,21 @@ def cosine_decay_with_warmup(global_step,
   if total_steps < warmup_steps:
     raise ValueError('total_steps must be larger or equal to '
                      'warmup_steps.')
-  learning_rate = 0.5 * learning_rate_base * (
-      1 + tf.cos(np.pi * (tf.cast(global_step, tf.float32) - warmup_steps
-                         ) / float(total_steps - warmup_steps)))
+  learning_rate = 0.5 * learning_rate_base * (1 + tf.cos(
+      np.pi *
+      (tf.cast(global_step, tf.float32) - warmup_steps - hold_base_rate_steps
+      ) / float(total_steps - warmup_steps - hold_base_rate_steps)))
+  if hold_base_rate_steps > 0:
+    learning_rate = tf.where(global_step > warmup_steps + hold_base_rate_steps,
+                             learning_rate, learning_rate_base)
   if warmup_steps > 0:
     slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
-    pre_cosine_learning_rate = slope * tf.cast(
-        global_step, tf.float32) + warmup_learning_rate
-    learning_rate = tf.where(
-        tf.less(tf.cast(global_step, tf.int32), warmup_steps),
-        pre_cosine_learning_rate,
-        learning_rate, name='learning_rate')
-  else:
-    return tf.identity(learning_rate, name='learning_rate')
-  return learning_rate
+    warmup_rate = slope * tf.cast(global_step,
+                                  tf.float32) + warmup_learning_rate
+    learning_rate = tf.where(global_step < warmup_steps, warmup_rate,
+                             learning_rate)
+  return tf.where(global_step > total_steps, 0.0, learning_rate,
+                  name='learning_rate')
 
 
 def manual_stepping(global_step, boundaries, rates, warmup=False):

@@ -115,7 +115,8 @@ def _create_learning_rate(learning_rate_config):
         config.learning_rate_base,
         config.total_steps,
         config.warmup_learning_rate,
-        config.warmup_steps)
+        config.warmup_steps,
+        config.hold_base_rate_steps)
 
   if learning_rate is None:
     raise ValueError('Learning_rate %s not supported.' % learning_rate_type)
