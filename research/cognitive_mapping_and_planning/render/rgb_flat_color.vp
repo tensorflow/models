@@ -1,0 +1,18 @@
+uniform mat4 uViewMatrix;
+uniform mat4 uProjectionMatrix;
+uniform vec4 uColor;
+
+attribute vec4 aColor;
+attribute vec3 aPosition;
+attribute vec2 aTextureCoord;
+
+varying vec4 vColor;
+varying vec2 vTextureCoord;
+
+void main(void) {
+  vec4 worldPosition = vec4(aPosition, 1.0);
+  gl_Position = uProjectionMatrix * (uViewMatrix * worldPosition);
+
+  vColor = aColor * uColor;
+  vTextureCoord = aTextureCoord;
+}
