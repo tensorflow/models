@@ -1,0 +1,18 @@
+$RE:([^a-zA-Z]|)blaze[^a-zA-Z];2;Blaze build artifact
+$RE:\.git/;2;Git repo directory
+$RE:\.p4\w+$;2;Perforce repo files
+$RE:\.hg/;2;Mercurial repo directory
+$RE:proguard;2;Proguard related file
+$RE:res/raw/.*keystore;2;Possibly a keystore file
+$RE:\.java(?:.bak|)$;1;Java source code
+$RE:\.(?:cc|cpp)(?:.bak|)$;1;C++ source code
+$RE:\.proto(?:.bak|)$;1;Proto file
+$RE:build-data.properties;1;Unstripped build-data file
+$RE:BUILD$;1;Unstripped BUILD file
+$RE:OWNERS$;1;Unstripped OWNERS file
+$RE:METADATA$;1;Unstripped METADATA file
+$RE:\.blueprint$;3;Unstripped blueprint file
+$RE:\.class$;3;Unstripped Java class file
+$RE:\.dSYM(?:/.*|)$;1;Apple debug symbols
+$RE:\.gypi?(.bak)?$;2;Unstripped GYP file
+$RE:^(?:assets|res|Payload)/.*\.sh$;3;Shell script
