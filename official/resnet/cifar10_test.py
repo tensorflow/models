@@ -36,6 +36,7 @@ _NUM_CHANNELS = 3
 class BaseTest(tf.test.TestCase):
 
   def tearDown(self):
+    super(BaseTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
 
   def test_dataset_input_fn(self):

@@ -33,6 +33,7 @@ _LABEL_CLASSES = 1001
 class BaseTest(tf.test.TestCase):
 
   def tearDown(self):
+    super(BaseTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
 
   def tensor_shapes_helper(self, resnet_size, version, with_gpu=False):
