@@ -1,0 +1,4 @@
+deps
+*.pyc
+lib*.so
+lib*.so*

@@ -1,0 +1,411 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Message for defining a preprocessing operation on input data.
+// See: //third_party/tensorflow_models/object_detection/core/preprocessor.py
+message PreprocessingStep {
+  oneof preprocessing_step {
+    NormalizeImage normalize_image = 1;
+    RandomHorizontalFlip random_horizontal_flip = 2;
+    RandomPixelValueScale random_pixel_value_scale = 3;
+    RandomImageScale random_image_scale = 4;
+    RandomRGBtoGray random_rgb_to_gray = 5;
+    RandomAdjustBrightness random_adjust_brightness = 6;
+    RandomAdjustContrast random_adjust_contrast = 7;
+    RandomAdjustHue random_adjust_hue = 8;
+    RandomAdjustSaturation random_adjust_saturation = 9;
+    RandomDistortColor random_distort_color = 10;
+    RandomJitterBoxes random_jitter_boxes = 11;
+    RandomCropImage random_crop_image = 12;
+    RandomPadImage random_pad_image = 13;
+    RandomCropPadImage random_crop_pad_image = 14;
+    RandomCropToAspectRatio random_crop_to_aspect_ratio = 15;
+    RandomBlackPatches random_black_patches = 16;
+    RandomResizeMethod random_resize_method = 17;
+    ScaleBoxesToPixelCoordinates scale_boxes_to_pixel_coordinates = 18;
+    ResizeImage resize_image = 19;
+    SubtractChannelMean subtract_channel_mean = 20;
+    SSDRandomCrop ssd_random_crop = 21;
+    SSDRandomCropPad ssd_random_crop_pad = 22;
+    SSDRandomCropFixedAspectRatio ssd_random_crop_fixed_aspect_ratio = 23;
+    SSDRandomCropPadFixedAspectRatio ssd_random_crop_pad_fixed_aspect_ratio = 24;
+    RandomVerticalFlip random_vertical_flip = 25;
+    RandomRotation90 random_rotation90 = 26;
+    RGBtoGray rgb_to_gray = 27;
+  }
+}
+
+// Normalizes pixel values in an image.
+// For every channel in the image, moves the pixel values from the range
+// [original_minval, original_maxval] to [target_minval, target_maxval].
+message NormalizeImage {
+  optional float original_minval = 1;
+  optional float original_maxval = 2;
+  optional float target_minval = 3 [default=0];
+  optional float target_maxval = 4 [default=1];
+}
+
+// Randomly horizontally flips the image and detections 50% of the time.
+message RandomHorizontalFlip {
+  // Specifies a mapping from the original keypoint indices to horizontally
+  // flipped indices. This is used in the event that keypoints are specified,
+  // in which case when the image is horizontally flipped the keypoints will
+  // need to be permuted. E.g. for keypoints representing left_eye, right_eye,
+  // nose_tip, mouth, left_ear, right_ear (in that order), one might specify
+  // the keypoint_flip_permutation below:
+  // keypoint_flip_permutation: 1
+  // keypoint_flip_permutation: 0
+  // keypoint_flip_permutation: 2
+  // keypoint_flip_permutation: 3
+  // keypoint_flip_permutation: 5
+  // keypoint_flip_permutation: 4
+  repeated int32 keypoint_flip_permutation = 1;
+}
+
+// Randomly vertically flips the image and detections 50% of the time.
+message RandomVerticalFlip {
+  // Specifies a mapping from the original keypoint indices to vertically
+  // flipped indices. This is used in the event that keypoints are specified,
+  // in which case when the image is vertically flipped the keypoints will
+  // need to be permuted. E.g. for keypoints representing left_eye, right_eye,
+  // nose_tip, mouth, left_ear, right_ear (in that order), one might specify
+  // the keypoint_flip_permutation below:
+  // keypoint_flip_permutation: 1
+  // keypoint_flip_permutation: 0
+  // keypoint_flip_permutation: 2
+  // keypoint_flip_permutation: 3
+  // keypoint_flip_permutation: 5
+  // keypoint_flip_permutation: 4
+  repeated int32 keypoint_flip_permutation = 1;
+}
+
+// Randomly rotates the image and detections by 90 degrees counter-clockwise
+// 50% of the time.
+message RandomRotation90 {}
+
+// Randomly scales the values of all pixels in the image by some constant value
+// between [minval, maxval], then clip the value to a range between [0, 1.0].
+message RandomPixelValueScale {
+  optional float minval = 1 [default=0.9];
+  optional float maxval = 2 [default=1.1];
+}
+
+// Randomly enlarges or shrinks image (keeping aspect ratio).
+message RandomImageScale {
+  optional float min_scale_ratio = 1 [default=0.5];
+  optional float max_scale_ratio = 2 [default=2.0];
+}
+
+// Randomly convert entire image to grey scale.
+message RandomRGBtoGray {
+  optional float probability = 1 [default=0.1];
+}
+
+// Randomly changes image brightness by up to max_delta. Image outputs will be
+// saturated between 0 and 1.
+message RandomAdjustBrightness {
+  optional float max_delta=1 [default=0.2];
+}
+
+// Randomly scales contract by a value between [min_delta, max_delta].
+message RandomAdjustContrast {
+  optional float min_delta = 1 [default=0.8];
+  optional float max_delta = 2 [default=1.25];
+}
+
+// Randomly alters hue by a value of up to max_delta.
+message RandomAdjustHue {
+  optional float max_delta = 1 [default=0.02];
+}
+
+// Randomly changes saturation by a value between [min_delta, max_delta].
+message RandomAdjustSaturation {
+  optional float min_delta = 1 [default=0.8];
+  optional float max_delta = 2 [default=1.25];
+}
+
+// Performs a random color distortion. color_orderings should either be 0 or 1.
+message RandomDistortColor {
+  optional int32 color_ordering = 1;
+}
+
+// Randomly jitters corners of boxes in the image determined by ratio.
+// ie. If a box is [100, 200] and ratio is 0.02, the corners can move by [1, 4].
+message RandomJitterBoxes {
+  optional float ratio = 1 [default=0.05];
+}
+
+// Randomly crops the image and bounding boxes.
+message RandomCropImage {
+  // Cropped image must cover at least one box by this fraction.
+  optional float min_object_covered = 1 [default=1.0];
+
+  // Aspect ratio bounds of cropped image.
+  optional float min_aspect_ratio = 2 [default=0.75];
+  optional float max_aspect_ratio = 3 [default=1.33];
+
+  // Allowed area ratio of cropped image to original image.
+  optional float min_area = 4 [default=0.1];
+  optional float max_area = 5 [default=1.0];
+
+  // Minimum overlap threshold of cropped boxes to keep in new image. If the
+  // ratio between a cropped bounding box and the original is less than this
+  // value, it is removed from the new image.
+  optional float overlap_thresh = 6 [default=0.3];
+
+  // Probability of keeping the original image.
+  optional float random_coef = 7 [default=0.0];
+}
+
+// Randomly adds padding to the image.
+message RandomPadImage {
+  // Minimum dimensions for padded image. If unset, will use original image
+  // dimension as a lower bound.
+  optional float min_image_height = 1;
+  optional float min_image_width = 2;
+
+  // Maximum dimensions for padded image. If unset, will use double the original
+  // image dimension as a lower bound.
+  optional float max_image_height = 3;
+  optional float max_image_width = 4;
+
+  // Color of the padding. If unset, will pad using average color of the input
+  // image.
+  repeated float pad_color = 5;
+}
+
+// Randomly crops an image followed by a random pad.
+message RandomCropPadImage {
+  // Cropping operation must cover at least one box by this fraction.
+  optional float min_object_covered = 1 [default=1.0];
+
+  // Aspect ratio bounds of image after cropping operation.
+  optional float min_aspect_ratio = 2 [default=0.75];
+  optional float max_aspect_ratio = 3 [default=1.33];
+
+  // Allowed area ratio of image after cropping operation.
+  optional float min_area = 4 [default=0.1];
+  optional float max_area = 5 [default=1.0];
+
+  // Minimum overlap threshold of cropped boxes to keep in new image. If the
+  // ratio between a cropped bounding box and the original is less than this
+  // value, it is removed from the new image.
+  optional float overlap_thresh = 6 [default=0.3];
+
+  // Probability of keeping the original image during the crop operation.
+  optional float random_coef = 7 [default=0.0];
+
+  // Maximum dimensions for padded image. If unset, will use double the original
+  // image dimension as a lower bound. Both of the following fields should be
+  // length 2.
+  repeated float min_padded_size_ratio = 8;
+  repeated float max_padded_size_ratio = 9;
+
+  // Color of the padding. If unset, will pad using average color of the input
+  // image. This field should be of length 3.
+  repeated float pad_color = 10;
+}
+
+// Randomly crops an iamge to a given aspect ratio.
+message RandomCropToAspectRatio {
+  // Aspect ratio.
+  optional float aspect_ratio = 1 [default=1.0];
+
+  // Minimum overlap threshold of cropped boxes to keep in new image. If the
+  // ratio between a cropped bounding box and the original is less than this
+  // value, it is removed from the new image.
+  optional float overlap_thresh = 2 [default=0.3];
+}
+
+// Randomly adds black square patches to an image.
+message RandomBlackPatches {
+  // The maximum number of black patches to add.
+  optional int32 max_black_patches = 1 [default=10];
+
+  // The probability of a black patch being added to an image.
+  optional float probability = 2 [default=0.5];
+
+  // Ratio between the dimension of the black patch to the minimum dimension of
+  // the image (patch_width = patch_height = min(image_height, image_width)).
+  optional float size_to_image_ratio = 3 [default=0.1];
+}
+
+// Randomly resizes the image up to [target_height, target_width].
+message RandomResizeMethod {
+  optional float target_height = 1;
+  optional float target_width = 2;
+}
+
+// Converts the RGB image to a grayscale image. This also converts the image
+// depth from 3 to 1, unlike RandomRGBtoGray which does not change the image
+// depth.
+message RGBtoGray {}
+
+// Scales boxes from normalized coordinates to pixel coordinates.
+message ScaleBoxesToPixelCoordinates {
+}
+
+// Resizes images to [new_height, new_width].
+message ResizeImage {
+  optional int32 new_height = 1;
+  optional int32 new_width = 2;
+  enum Method {
+    AREA=1;
+    BICUBIC=2;
+    BILINEAR=3;
+    NEAREST_NEIGHBOR=4;
+  }
+  optional Method method = 3 [default=BILINEAR];
+}
+
+// Normalizes an image by subtracting a mean from each channel.
+message SubtractChannelMean {
+  // The mean to subtract from each channel. Should be of same dimension of
+  // channels in the input image.
+  repeated float means = 1;
+}
+
+message SSDRandomCropOperation {
+  // Cropped image must cover at least this fraction of one original bounding
+  // box.
+  optional float min_object_covered = 1;
+
+  // The aspect ratio of the cropped image must be within the range of
+  // [min_aspect_ratio, max_aspect_ratio].
+  optional float min_aspect_ratio = 2;
+  optional float max_aspect_ratio = 3;
+
+  // The area of the cropped image must be within the range of
+  // [min_area, max_area].
+  optional float min_area = 4;
+  optional float max_area = 5;
+
+  // Cropped box area ratio must be above this threhold to be kept.
+  optional float overlap_thresh = 6;
+
+  // Probability a crop operation is skipped.
+  optional float random_coef = 7;
+}
+
+// Randomly crops a image according to:
+//     Liu et al., SSD: Single shot multibox detector.
+// This preprocessing step defines multiple SSDRandomCropOperations. Only one
+// operation (chosen at random) is actually performed on an image.
+message SSDRandomCrop {
+  repeated SSDRandomCropOperation operations = 1;
+}
+
+message SSDRandomCropPadOperation {
+  // Cropped image must cover at least this fraction of one original bounding
+  // box.
+  optional float min_object_covered = 1;
+
+  // The aspect ratio of the cropped image must be within the range of
+  // [min_aspect_ratio, max_aspect_ratio].
+  optional float min_aspect_ratio = 2;
+  optional float max_aspect_ratio = 3;
+
+  // The area of the cropped image must be within the range of
+  // [min_area, max_area].
+  optional float min_area = 4;
+  optional float max_area = 5;
+
+  // Cropped box area ratio must be above this threhold to be kept.
+  optional float overlap_thresh = 6;
+
+  // Probability a crop operation is skipped.
+  optional float random_coef = 7;
+
+  // Min ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float min_padded_size_ratio = 8;
+
+  // Max ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float max_padded_size_ratio = 9;
+
+  // Padding color.
+  optional float pad_color_r = 10;
+  optional float pad_color_g = 11;
+  optional float pad_color_b = 12;
+}
+
+// Randomly crops and pads an image according to:
+//     Liu et al., SSD: Single shot multibox detector.
+// This preprocessing step defines multiple SSDRandomCropPadOperations. Only one
+// operation (chosen at random) is actually performed on an image.
+message SSDRandomCropPad {
+  repeated SSDRandomCropPadOperation operations = 1;
+}
+
+message SSDRandomCropFixedAspectRatioOperation {
+  // Cropped image must cover at least this fraction of one original bounding
+  // box.
+  optional float min_object_covered = 1;
+
+  // The area of the cropped image must be within the range of
+  // [min_area, max_area].
+  optional float min_area = 4;
+  optional float max_area = 5;
+
+  // Cropped box area ratio must be above this threhold to be kept.
+  optional float overlap_thresh = 6;
+
+  // Probability a crop operation is skipped.
+  optional float random_coef = 7;
+}
+
+// Randomly crops a image to a fixed aspect ratio according to:
+//     Liu et al., SSD: Single shot multibox detector.
+// Multiple SSDRandomCropFixedAspectRatioOperations are defined by this
+// preprocessing step. Only one operation (chosen at random) is actually
+// performed on an image.
+message SSDRandomCropFixedAspectRatio {
+  repeated SSDRandomCropFixedAspectRatioOperation operations = 1;
+
+  // Aspect ratio to crop to. This value is used for all crop operations.
+  optional float aspect_ratio = 2 [default=1.0];
+}
+
+message SSDRandomCropPadFixedAspectRatioOperation {
+  // Cropped image must cover at least this fraction of one original bounding
+  // box.
+  optional float min_object_covered = 1;
+
+  // The aspect ratio of the cropped image must be within the range of
+  // [min_aspect_ratio, max_aspect_ratio].
+  optional float min_aspect_ratio = 2;
+  optional float max_aspect_ratio = 3;
+
+  // The area of the cropped image must be within the range of
+  // [min_area, max_area].
+  optional float min_area = 4;
+  optional float max_area = 5;
+
+  // Cropped box area ratio must be above this threhold to be kept.
+  optional float overlap_thresh = 6;
+
+  // Probability a crop operation is skipped.
+  optional float random_coef = 7;
+}
+
+// Randomly crops and pads an image to a fixed aspect ratio according to:
+//     Liu et al., SSD: Single shot multibox detector.
+// Multiple SSDRandomCropPadFixedAspectRatioOperations are defined by this
+// preprocessing step. Only one operation (chosen at random) is actually
+// performed on an image.
+message SSDRandomCropPadFixedAspectRatio {
+  repeated SSDRandomCropPadFixedAspectRatioOperation operations = 1;
+
+  // Aspect ratio to pad to. This value is used for all crop and pad operations.
+  optional float aspect_ratio = 2 [default=1.0];
+
+  // Min ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float min_padded_size_ratio = 3;
+
+  // Max ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float max_padded_size_ratio = 4;
+}

@@ -1,0 +1,48 @@
+component {
+  name: "parser"
+  transition_system {
+    registered_name: "arc-standard"
+  }
+  resource {
+    name: 'label-map'
+    part {
+      file_pattern: 'syntaxnet-tagger.label-map'
+      file_format: 'text'
+    }
+  }
+  resource {
+    name: 'tag-map'
+    part {
+      file_pattern: 'syntaxnet-tagger.tag-map'
+      file_format: 'text'
+    }
+  }
+  fixed_feature {
+    name: "tags"
+    fml: "input.tag input(1).tag"
+    embedding_dim: 32
+    vocabulary_size: 46
+    size: 2
+    predicate_map: "hashed"
+  }
+  fixed_feature {
+    name: "tags"
+    fml: "input(-1).tag input.tag input(1).tag"
+    embedding_dim: 32
+    vocabulary_size: 46
+    size: 3
+    predicate_map: "hashed"
+  }
+  linked_feature {
+    name: "recurrent_stack"
+    fml: "stack.focus stack(1).focus"
+    embedding_dim: 32
+    size: 2
+    source_component: "parser"
+    source_translator: "identity"
+    source_layer: "hidden_0"
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+}

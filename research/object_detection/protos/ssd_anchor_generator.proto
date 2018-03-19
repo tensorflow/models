@@ -1,0 +1,55 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Configuration proto for SSD anchor generator described in
+// https://arxiv.org/abs/1512.02325. See
+// anchor_generators/multiple_grid_anchor_generator.py for details.
+message SsdAnchorGenerator {
+  // Number of grid layers to create anchors for.
+  optional int32 num_layers = 1 [default = 6];
+
+  // Scale of anchors corresponding to finest resolution.
+  optional float min_scale = 2 [default = 0.2];
+
+  // Scale of anchors corresponding to coarsest resolution
+  optional float max_scale = 3 [default = 0.95];
+
+  // Can be used to override min_scale->max_scale, with an explicitly defined
+  // set of scales.  If empty, then min_scale->max_scale is used.
+  repeated float scales = 12;
+
+  // Aspect ratios for anchors at each grid point.
+  repeated float aspect_ratios = 4;
+
+  // When this aspect ratio is greater than 0, then an additional
+  // anchor, with an interpolated scale is added with this aspect ratio.
+  optional float interpolated_scale_aspect_ratio = 13 [default = 1.0];
+
+  // Whether to use the following aspect ratio and scale combination for the
+  // layer with the finest resolution : (scale=0.1, aspect_ratio=1.0),
+  // (scale=min_scale, aspect_ration=2.0), (scale=min_scale, aspect_ratio=0.5).
+  optional bool reduce_boxes_in_lowest_layer = 5 [default = true];
+
+  // The base anchor size in height dimension.
+  optional float base_anchor_height = 6 [default = 1.0];
+
+  // The base anchor size in width dimension.
+  optional float base_anchor_width = 7 [default = 1.0];
+
+  // Anchor stride in height dimension in pixels for each layer. The length of
+  // this field is expected to be equal to the value of num_layers.
+  repeated int32 height_stride = 8;
+
+  // Anchor stride in width dimension in pixels for each layer. The length of
+  // this field is expected to be equal to the value of num_layers.
+  repeated int32 width_stride = 9;
+
+  // Anchor height offset in pixels for each layer. The length of this field is
+  // expected to be equal to the value of num_layers.
+  repeated int32 height_offset = 10;
+
+  // Anchor width offset in pixels for each layer. The length of this field is
+  // expected to be equal to the value of num_layers.
+  repeated int32 width_offset = 11;
+}

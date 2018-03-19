@@ -1,0 +1,55 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Configuration proto for image resizing operations.
+// See builders/image_resizer_builder.py for details.
+message ImageResizer {
+  oneof image_resizer_oneof {
+    KeepAspectRatioResizer keep_aspect_ratio_resizer = 1;
+    FixedShapeResizer fixed_shape_resizer = 2;
+  }
+}
+
+// Enumeration type for image resizing methods provided in TensorFlow.
+enum ResizeType {
+  BILINEAR = 0; // Corresponds to tf.image.ResizeMethod.BILINEAR
+  NEAREST_NEIGHBOR = 1; // Corresponds to tf.image.ResizeMethod.NEAREST_NEIGHBOR
+  BICUBIC = 2; // Corresponds to tf.image.ResizeMethod.BICUBIC
+  AREA = 3; // Corresponds to tf.image.ResizeMethod.AREA
+}
+
+// Configuration proto for image resizer that keeps aspect ratio.
+message KeepAspectRatioResizer {
+  // Desired size of the smaller image dimension in pixels.
+  optional int32 min_dimension = 1 [default = 600];
+
+  // Desired size of the larger image dimension in pixels.
+  optional int32 max_dimension = 2 [default = 1024];
+
+  // Desired method when resizing image.
+  optional ResizeType resize_method = 3 [default = BILINEAR];
+
+  // Whether to pad the image with zeros so the output spatial size is
+  // [max_dimension, max_dimension]. Note that the zeros are padded to the
+  // bottom and the right of the resized image.
+  optional bool pad_to_max_dimension = 4 [default = false];
+
+  // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
+  optional bool convert_to_grayscale = 5 [default = false];
+}
+
+// Configuration proto for image resizer that resizes to a fixed shape.
+message FixedShapeResizer {
+  // Desired height of image in pixels.
+  optional int32 height = 1 [default = 300];
+
+  // Desired width of image in pixels.
+  optional int32 width = 2 [default = 300];
+
+  // Desired method when resizing image.
+  optional ResizeType resize_method = 3 [default = BILINEAR];
+
+  // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
+  optional bool convert_to_grayscale = 4 [default = false];
+}
