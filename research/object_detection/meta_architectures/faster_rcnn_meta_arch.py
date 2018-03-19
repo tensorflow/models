@@ -159,6 +159,7 @@ class FasterRCNNFeatureExtractor(object):
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      activations: A dictionary mapping activation tensor names to tensors.
     """
     with tf.variable_scope(scope, values=[preprocessed_inputs]):
       return self._extract_proposal_features(preprocessed_inputs, scope)
@@ -906,7 +907,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       image_shape: A 1-D tensor representing the input image shape.
     """
     image_shape = tf.shape(preprocessed_inputs)
-    rpn_features_to_crop = self._feature_extractor.extract_proposal_features(
+    rpn_features_to_crop, _ = self._feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope=self.first_stage_feature_extractor_scope)
 
     feature_map_shape = tf.shape(rpn_features_to_crop)

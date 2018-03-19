@@ -47,8 +47,9 @@ class FakeFasterRCNNFeatureExtractor(
 
   def _extract_proposal_features(self, preprocessed_inputs, scope):
     with tf.variable_scope('mock_model'):
-      return 0 * slim.conv2d(preprocessed_inputs,
-                             num_outputs=3, kernel_size=1, scope='layer1')
+      proposal_features = 0 * slim.conv2d(
+          preprocessed_inputs, num_outputs=3, kernel_size=1, scope='layer1')
+      return proposal_features, {}
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     with tf.variable_scope('mock_model'):

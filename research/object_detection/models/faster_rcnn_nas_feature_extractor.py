@@ -171,6 +171,8 @@ class FasterRCNNNASFeatureExtractor(
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      end_points: A dictionary mapping feature extractor tensor names to tensors
+
     Raises:
       ValueError: If the created network is missing the required activation.
     """
@@ -202,7 +204,7 @@ class FasterRCNNNASFeatureExtractor(
     rpn_feature_map_shape = [batch] + shape_without_batch
     rpn_feature_map.set_shape(rpn_feature_map_shape)
 
-    return rpn_feature_map
+    return rpn_feature_map, end_points
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.

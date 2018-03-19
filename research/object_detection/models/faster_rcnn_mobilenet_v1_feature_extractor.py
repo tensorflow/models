@@ -105,6 +105,9 @@ class FasterRCNNMobilenetV1FeatureExtractor(
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      activations: A dictionary mapping feature extractor tensor names to
+        tensors
+
     Raises:
       InvalidArgumentError: If the spatial size of `preprocessed_inputs`
         (height or width) is less than 33.
@@ -129,7 +132,7 @@ class FasterRCNNMobilenetV1FeatureExtractor(
               min_depth=self._min_depth,
               depth_multiplier=self._depth_multiplier,
               scope=scope)
-    return activations['Conv2d_13_pointwise']
+    return activations['Conv2d_13_pointwise'], activations
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.
