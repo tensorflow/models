@@ -214,6 +214,8 @@ class ImageModelParser(argparse.ArgumentParser):
     if data_format:
       self.add_argument(
           "--data_format", "-df",
+          default=None,
+          choices=['channels_first', 'channels_last'],
           help="A flag to override the data format used in the model. "
                "channels_first provides a performance boost on GPU but is not "
                "always compatible with CPU. If left unspecified, the data "

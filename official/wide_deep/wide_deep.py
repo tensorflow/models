@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 import shutil
 import sys
@@ -179,8 +178,10 @@ def main(unused_argv):
   train_file = os.path.join(FLAGS.data_dir, 'adult.data')
   test_file = os.path.join(FLAGS.data_dir, 'adult.test')
 
-  train_hooks = hooks_helper.get_train_hooks(FLAGS.hooks,
-                                             batch_size=FLAGS.batch_size)
+  train_hooks = hooks_helper.get_train_hooks(
+      FLAGS.hooks, batch_size=FLAGS.batch_size,
+      tensors_to_log={'average_loss': 'head/truediv',
+                      'loss': 'head/weighted_loss/Sum'})
 
   # Train and evaluate the model every `FLAGS.epochs_per_eval` epochs.
   for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
@@ -203,7 +204,7 @@ def main(unused_argv):
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  parser = parsers.BaseParser(allowed_hooks=_ALLOWED_HOOKS.keys())
+  parser = parsers.BaseParser()
   parser.set_defaults(data_dir='/tmp/census_data',
                       model_dir='/tmp/census_model',
                       train_epochs=40,

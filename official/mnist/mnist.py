@@ -18,12 +18,15 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import os
 import sys
 
 import tensorflow as tf
-from official.mnist import dataset
 
+from official.mnist import dataset
+from official.utils.arg_parsers import parsers
+from official.utils.logging import hooks_helper
+
+LEARNING_RATE = 1e-4
 
 class Model(tf.keras.Model):
   """Model to recognize digits in the MNIST dataset.
@@ -104,7 +107,8 @@ def model_fn(features, labels, mode, params):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
+
+    optimizer = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE)
 
     # If we are running multi-GPU, we need to wrap the optimizer.
     if params.get('multi_gpu'):
@@ -114,10 +118,15 @@ def model_fn(features, labels, mode, params):
     loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
     accuracy = tf.metrics.accuracy(
         labels=labels, predictions=tf.argmax(logits, axis=1))
-    # Name the accuracy tensor 'train_accuracy' to demonstrate the
-    # LoggingTensorHook.
+
+    # Name tensors to be logged with LoggingTensorHook.
+    tf.identity(LEARNING_RATE, 'learning_rate')
+    tf.identity(loss, 'cross_entropy')
     tf.identity(accuracy[1], name='train_accuracy')
+
+    # Save accuracy scalar to Tensorboard output.
     tf.summary.scalar('train_accuracy', accuracy[1])
+
     return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.TRAIN,
         loss=loss,
@@ -195,11 +204,10 @@ def main(unused_argv):
         FLAGS.train_epochs)
     return ds
 
-  # Set up training hook that logs the training accuracy every 100 steps.
-  tensors_to_log = {'train_accuracy': 'train_accuracy'}
-  logging_hook = tf.train.LoggingTensorHook(
-      tensors=tensors_to_log, every_n_iter=100)
-  mnist_classifier.train(input_fn=train_input_fn, hooks=[logging_hook])
+  # Set up training hook that outputs logs every 100 steps.
+  train_hooks = hooks_helper.get_train_hooks(
+      FLAGS.hooks, batch_size=FLAGS.batch_size)
+  mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
 
   # Evaluate the model and print results
   def eval_input_fn():
@@ -220,47 +228,21 @@ def main(unused_argv):
 
 
 class MNISTArgParser(argparse.ArgumentParser):
+  def __init__(self, **kwargs):
+    super(MNISTArgParser, self).__init__(parents=[
+      parsers.BaseParser(**kwargs),
+      parsers.ImageModelParser()])
 
-  def __init__(self):
-    super(MNISTArgParser, self).__init__()
-
-    self.add_argument(
-        '--multi_gpu', action='store_true',
-        help='If set, run across all available GPUs.')
-    self.add_argument(
-        '--batch_size',
-        type=int,
-        default=100,
-        help='Number of images to process in a batch')
-    self.add_argument(
-        '--data_dir',
-        type=str,
-        default='/tmp/mnist_data',
-        help='Path to directory containing the MNIST dataset')
-    self.add_argument(
-        '--model_dir',
-        type=str,
-        default='/tmp/mnist_model',
-        help='The directory where the model will be stored.')
-    self.add_argument(
-        '--train_epochs',
-        type=int,
-        default=40,
-        help='Number of epochs to train.')
-    self.add_argument(
-        '--data_format',
-        type=str,
-        default=None,
-        choices=['channels_first', 'channels_last'],
-        help='A flag to override the data format used in the model. '
-        'channels_first provides a performance boost on GPU but is not always '
-        'compatible with CPU. If left unspecified, the data format will be '
-        'chosen automatically based on whether TensorFlow was built for CPU or '
-        'GPU.')
     self.add_argument(
         '--export_dir',
         type=str,
         help='The directory where the exported SavedModel will be stored.')
+
+    self.set_defaults(
+        data_dir='/tmp/mnist_data',
+        model_dir='--model_dir',
+        batch_size=100,
+        train_epochs=40)
 
 
 if __name__ == '__main__':
