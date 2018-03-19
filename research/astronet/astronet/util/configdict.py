@@ -41,7 +41,7 @@ class ConfigDict(dict):
         parameters.
     """
     if initial_dictionary:
-      for field, value in initial_dictionary.iteritems():
+      for field, value in initial_dictionary.items():
         initial_dictionary[field] = _maybe_convert_dict(value)
     super(ConfigDict, self).__init__(initial_dictionary)
 

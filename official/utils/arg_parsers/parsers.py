@@ -54,6 +54,11 @@ Notes about add_argument():
 
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+
 import argparse
 
 
@@ -142,7 +147,7 @@ class PerformanceParser(argparse.ArgumentParser):
   """
 
   def __init__(self, add_help=False, num_parallel_calls=True, inter_op=True,
-               intra_op=True, use_synthetic_data=True):
+               intra_op=True, use_synthetic_data=True, max_train_steps=True):
     super(PerformanceParser, self).__init__(add_help=add_help)
 
     if num_parallel_calls:
@@ -182,6 +187,17 @@ class PerformanceParser(argparse.ArgumentParser):
           help="If set, use fake data (zeroes) instead of a real dataset. "
                "This mode is useful for performance debugging, as it removes "
                "input processing steps, but will not learn anything."
+      )
+
+    if max_train_steps:
+      self.add_argument(
+          "--max_train_steps", "-mts", type=int, default=None,
+          help="[default: %(default)s] The model will stop training if the "
+               "global_step reaches this value. If not set, training will run"
+               "until the specified number of epochs have run as usual. It is"
+               "generally recommended to set --train_epochs=1 when using this"
+               "flag.",
+          metavar="<MTS>"
       )
 
 

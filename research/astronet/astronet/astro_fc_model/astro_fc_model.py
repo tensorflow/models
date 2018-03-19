@@ -151,7 +151,7 @@ class AstroFCModel(astro_model.AstroModel):
       self.time_series_hidden_layers
     """
     time_series_hidden_layers = {}
-    for name, time_series in self.time_series_features.iteritems():
+    for name, time_series in self.time_series_features.items():
       time_series_hidden_layers[name] = self._build_local_fc_layers(
           inputs=time_series,
           hparams=self.hparams.time_series_hidden[name],

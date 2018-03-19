@@ -110,7 +110,7 @@ def unflatten(flat_config):
     A dictionary nested according to the keys of the input dictionary.
   """
   config = {}
-  for path, value in flat_config.iteritems():
+  for path, value in flat_config.items():
     path = path.split(".")
     final_key = path.pop()
     nested_config = config
