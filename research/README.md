@@ -36,6 +36,8 @@ installation](https://www.tensorflow.org/install).
 -   [inception](inception): deep convolutional networks for computer vision.
 -   [learning_to_remember_rare_events](learning_to_remember_rare_events): a
     large-scale life-long memory module for use in deep learning.
+-   [lexnet_nc](lexnet_nc): a distributed model for noun compound relationship
+    classification.
 -   [lfads](lfads): sequential variational autoencoder for analyzing
     neuroscience data.
 -   [lm_1b](lm_1b): language modeling on the one billion word benchmark.
