@@ -233,7 +233,7 @@ def _rgb_to_grayscale(images, name=None):
     rgb_weights = [0.2989, 0.5870, 0.1140]
     rank_1 = tf.expand_dims(tf.rank(images) - 1, 0)
     gray_float = tf.reduce_sum(
-        flt_image * rgb_weights, rank_1, keepdims=True)
+        flt_image * rgb_weights, rank_1, keep_dims=True)
     gray_float.set_shape(images.get_shape()[:-1].concatenate([1]))
     return tf.image.convert_image_dtype(gray_float, orig_dtype, name=name)
 
