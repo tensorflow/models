@@ -107,7 +107,6 @@ def model_fn(features, labels, mode, params):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
-
     optimizer = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE)
 
     # If we are running multi-GPU, we need to wrap the optimizer.
