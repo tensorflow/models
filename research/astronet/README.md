@@ -239,7 +239,7 @@ bazel build astronet/...
 TFRECORD_DIR="${HOME}/astronet/tfrecord"
 
 # Preprocess light curves into sharded TFRecord files using 5 worker processes.
-bazel-bin/tensorflow/data/generate_input_records \
+bazel-bin/astronet/data/generate_input_records \
   --input_tce_csv_file=${TCE_CSV_FILE} \
   --kepler_data_dir=${KEPLER_DATA_DIR} \
   --output_dir=${TFRECORD_DIR} \

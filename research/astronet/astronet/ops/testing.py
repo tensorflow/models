@@ -50,11 +50,11 @@ def fake_features(feature_spec, batch_size):
   features = {}
   features["time_series_features"] = {
       name: np.random.random([batch_size, spec["length"]])
-      for name, spec in feature_spec.iteritems() if spec["is_time_series"]
+      for name, spec in feature_spec.items() if spec["is_time_series"]
   }
   features["aux_features"] = {
       name: np.random.random([batch_size, spec["length"]])
-      for name, spec in feature_spec.iteritems() if not spec["is_time_series"]
+      for name, spec in feature_spec.items() if not spec["is_time_series"]
   }
   return features
 
