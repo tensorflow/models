@@ -91,7 +91,8 @@ class BaseParser(argparse.ArgumentParser):
     if model_dir:
       self.add_argument(
           "--model_dir", "-md", default="/tmp",
-          help="[default: %(default)s] The location of the model files.",
+          help="[default: %(default)s] The location of the model checkpoint "
+               "files.",
           metavar="<MD>",
       )
 
