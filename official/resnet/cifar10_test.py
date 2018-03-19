@@ -35,6 +35,10 @@ _NUM_CHANNELS = 3
 
 class BaseTest(tf.test.TestCase):
 
+  def tearDown(self):
+    super(BaseTest, self).tearDown()
+    tf.gfile.DeleteRecursively(self.get_temp_dir())
+
   def test_dataset_input_fn(self):
     fake_data = bytearray()
     fake_data.append(7)
@@ -137,10 +141,16 @@ class BaseTest(tf.test.TestCase):
       self.assertAllEqual(output.shape, (batch_size, num_classes))
 
   def test_cifar10_end_to_end_synthetic_v1(self):
-    integration.run_synthetic(main=cifar10_main.main, extra_flags=['-v', '1'])
+    integration.run_synthetic(
+        main=cifar10_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '1']
+    )
 
   def test_cifar10_end_to_end_synthetic_v2(self):
-    integration.run_synthetic(main=cifar10_main.main, extra_flags=['-v', '2'])
+    integration.run_synthetic(
+        main=cifar10_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '2']
+    )
 
 
 if __name__ == '__main__':
