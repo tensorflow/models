@@ -25,7 +25,7 @@ import os
 import tempfile
 
 
-from official.benchmark import logger
+from official.utils.logging import logger
 import tensorflow as tf
 
 
