@@ -505,10 +505,6 @@ def result_dict_for_single_example(image,
   detection_fields = fields.DetectionResultFields
   detection_boxes = detections[detection_fields.detection_boxes][0]
   image_shape = tf.shape(image)
-  if scale_to_absolute:
-    absolute_detection_boxlist = box_list_ops.to_absolute_coordinates(
-        box_list.BoxList(detection_boxes), image_shape[1], image_shape[2])
-    detection_boxes = absolute_detection_boxlist.get()
   detection_scores = detections[detection_fields.detection_scores][0]
 
   if class_agnostic:
@@ -525,7 +521,14 @@ def result_dict_for_single_example(image,
       detection_classes, begin=[0], size=[num_detections])
   detection_scores = tf.slice(
       detection_scores, begin=[0], size=[num_detections])
-  output_dict[detection_fields.detection_boxes] = detection_boxes
+
+  if scale_to_absolute:
+    absolute_detection_boxlist = box_list_ops.to_absolute_coordinates(
+        box_list.BoxList(detection_boxes), image_shape[1], image_shape[2])
+    output_dict[detection_fields.detection_boxes] = (
+        absolute_detection_boxlist.get())
+  else:
+    output_dict[detection_fields.detection_boxes] = detection_boxes
   output_dict[detection_fields.detection_classes] = detection_classes
   output_dict[detection_fields.detection_scores] = detection_scores
 
