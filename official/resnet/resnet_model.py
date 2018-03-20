@@ -119,7 +119,7 @@ def _building_block_v1(inputs, filters, training, projection_shortcut, strides,
     data_format: The input format ('channels_last' or 'channels_first').
 
   Returns:
-    The output tensor of the block.
+    The output tensor of the block; shape should match inputs.
   """
   shortcut = inputs
 
@@ -166,7 +166,7 @@ def _building_block_v2(inputs, filters, training, projection_shortcut, strides,
     data_format: The input format ('channels_last' or 'channels_first').
 
   Returns:
-    The output tensor of the block.
+    The output tensor of the block; shape should match inputs.
   """
   shortcut = inputs
   inputs = batch_norm(inputs, training, data_format)
@@ -214,7 +214,7 @@ def _bottleneck_block_v1(inputs, filters, training, projection_shortcut,
     data_format: The input format ('channels_last' or 'channels_first').
 
   Returns:
-    The output tensor of the block.
+    The output tensor of the block; shape should match inputs.
   """
   shortcut = inputs
 
@@ -275,7 +275,7 @@ def _bottleneck_block_v2(inputs, filters, training, projection_shortcut,
     data_format: The input format ('channels_last' or 'channels_first').
 
   Returns:
-    The output tensor of the block.
+    The output tensor of the block; shape should match inputs.
   """
   shortcut = inputs
   inputs = batch_norm(inputs, training, data_format)
@@ -471,4 +471,3 @@ class Model(object):
     inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
     inputs = tf.identity(inputs, 'final_dense')
     return inputs
-

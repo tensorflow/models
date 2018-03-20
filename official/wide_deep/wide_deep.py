@@ -195,7 +195,7 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   return dataset
 
 
-def main(unused_argv):
+def main(_):
   # Clean up the model directory if present
   shutil.rmtree(FLAGS.model_dir, ignore_errors=True)
   model = build_estimator(FLAGS.model_dir, FLAGS.model_type)

@@ -142,6 +142,7 @@ def get_synth_input_fn():
 # Running the model
 ###############################################################################
 class Cifar10Model(resnet_model.Model):
+  """Model class with appropriate defaults for CIFAR-10 data."""
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
                version=resnet_model.DEFAULT_VERSION):

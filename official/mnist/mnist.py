@@ -166,7 +166,7 @@ def validate_batch_size_for_multi_gpu(batch_size):
     raise ValueError(err)
 
 
-def main(unused_argv):
+def main(_):
   model_function = model_fn
 
   if FLAGS.multi_gpu:

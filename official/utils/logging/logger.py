@@ -72,4 +72,3 @@ class BenchmarkLogger(object):
       except (TypeError, ValueError) as e:
         tf.logging.warning("Failed to dump metric to log file: "
                            "name %s, value %s, error %s", name, value, e)
-

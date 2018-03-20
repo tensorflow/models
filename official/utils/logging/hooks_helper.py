@@ -123,4 +123,3 @@ HOOKS = {
     'profilerhook': get_profiler_hook,
     'examplespersecondhook': get_examples_per_second_hook,
 }
-

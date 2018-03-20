@@ -36,7 +36,7 @@ def check_image_file_header(filename):
   """Validate that filename corresponds to images for the MNIST dataset."""
   with tf.gfile.Open(filename, 'rb') as f:
     magic = read32(f)
-    num_images = read32(f)  # pylint: disable=unused-variable
+    read32(f)  # num_images, unused
     rows = read32(f)
     cols = read32(f)
     if magic != 2051:
@@ -52,7 +52,7 @@ def check_labels_file_header(filename):
   """Validate that filename corresponds to labels for the MNIST dataset."""
   with tf.gfile.Open(filename, 'rb') as f:
     magic = read32(f)
-    num_items = read32(f)  # pylint: disable=unused-variable
+    read32(f)  # num_items, unused
     if magic != 2049:
       raise ValueError('Invalid magic number %d in MNIST file %s' % (magic,
                                                                      f.name))

@@ -200,6 +200,7 @@ def get_synth_input_fn():
 # Running the model
 ###############################################################################
 class ImagenetModel(resnet_model.Model):
+  """Model class with appropriate defaults for Imagenet data."""
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
                version=resnet_model.DEFAULT_VERSION):

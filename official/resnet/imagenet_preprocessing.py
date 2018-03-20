@@ -206,8 +206,8 @@ def _aspect_preserving_resize(image, resize_min):
 def _resize_image(image, height, width):
   """Simple wrapper around tf.resize_images.
 
-  This is primarily to make sure we use the same `method` and other details
-  each time.
+  This is primarily to make sure we use the same `ResizeMethod` and other
+  details each time.
 
   Args:
     image: A 3-D image `Tensor`.
