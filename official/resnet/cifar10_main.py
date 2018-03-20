@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import sys
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
@@ -127,22 +127,25 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1,
 
   num_images = is_training and _NUM_IMAGES['train'] or _NUM_IMAGES['validation']
 
-  return resnet_run_loop.process_record_dataset(dataset, is_training, batch_size,
-                                                _NUM_IMAGES['train'], parse_record, num_epochs, num_parallel_calls,
-                                                examples_per_epoch=num_images, multi_gpu=multi_gpu)
+  return resnet_run_loop.process_record_dataset(
+      dataset, is_training, batch_size, _NUM_IMAGES['train'],
+      parse_record, num_epochs, num_parallel_calls,
+      examples_per_epoch=num_images, multi_gpu=multi_gpu)
 
 
 def get_synth_input_fn():
-  return resnet_run_loop.get_synth_input_fn(_HEIGHT, _WIDTH, _NUM_CHANNELS, _NUM_CLASSES)
+  return resnet_run_loop.get_synth_input_fn(
+      _HEIGHT, _WIDTH, _NUM_CHANNELS, _NUM_CLASSES)
 
 
 ###############################################################################
 # Running the model
 ###############################################################################
 class Cifar10Model(resnet_model.Model):
+  """Model class with appropriate defaults for CIFAR-10 data."""
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
-      version=resnet_model.DEFAULT_VERSION):
+               version=resnet_model.DEFAULT_VERSION):
     """These are the parameters that work for CIFAR-10 data.
 
     Args:
@@ -153,6 +156,9 @@ class Cifar10Model(resnet_model.Model):
         enables users to extend the same model to their own datasets.
       version: Integer representing which version of the ResNet network to use.
         See README for details. Valid values: [1, 2]
+
+    Raises:
+      ValueError: if invalid resnet_size is chosen
     """
     if resnet_size % 6 != 2:
       raise ValueError('resnet_size must be 6n + 2:', resnet_size)
@@ -195,7 +201,7 @@ def cifar10_model_fn(features, labels, mode, params):
   # for the CIFAR-10 dataset, perhaps because the regularization prevents
   # overfitting on the small data set. We therefore include all vars when
   # regularizing and computing loss during training.
-  def loss_filter_fn(name):
+  def loss_filter_fn(_):
     return True
 
   return resnet_run_loop.resnet_model_fn(features, labels, mode, Cifar10Model,

@@ -33,10 +33,10 @@ def run_synthetic(main, tmp_root, extra_flags=None):
   very limited run is performed using synthetic data.
 
   Args:
-    main: The primary function used to excercise a code path. Generally this
+    main: The primary function used to exercise a code path. Generally this
       function is "<MODULE>.main(argv)".
     tmp_root: Root path for the temp directory created by the test class.
-    extra_flags: Additional flags passed by the the caller of this function.
+    extra_flags: Additional flags passed by the caller of this function.
   """
 
   extra_flags = [] if extra_flags is None else extra_flags

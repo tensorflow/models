@@ -204,8 +204,10 @@ def _aspect_preserving_resize(image, resize_min):
 
 
 def _resize_image(image, height, width):
-  """Simple wrapper around tf.resize_images to make sure we use the same
-  `method` and other details each time.
+  """Simple wrapper around tf.resize_images.
+
+  This is primarily to make sure we use the same `ResizeMethod` and other
+  details each time.
 
   Args:
     image: A 3-D image `Tensor`.
@@ -219,6 +221,7 @@ def _resize_image(image, height, width):
   return tf.image.resize_images(
       image, [height, width], method=tf.image.ResizeMethod.BILINEAR,
       align_corners=False)
+
 
 def preprocess_image(image_buffer, bbox, output_height, output_width,
                      num_channels, is_training=False):

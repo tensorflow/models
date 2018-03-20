@@ -20,13 +20,14 @@ from __future__ import print_function
 import argparse
 import sys
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.mnist import dataset
 from official.utils.arg_parsers import parsers
 from official.utils.logging import hooks_helper
 
 LEARNING_RATE = 1e-4
+
 
 class Model(tf.keras.Model):
   """Model to recognize digits in the MNIST dataset.
@@ -145,31 +146,36 @@ def model_fn(features, labels, mode, params):
 
 
 def validate_batch_size_for_multi_gpu(batch_size):
-  """For multi-gpu, batch-size must be a multiple of the number of
-  available GPUs.
+  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
 
   Note that this should eventually be handled by replicate_model_fn
   directly. Multi-GPU support is currently experimental, however,
   so doing the work here until that feature is in place.
+
+  Args:
+    batch_size: the number of examples processed in each training batch.
+
+  Raises:
+    ValueError: if no GPUs are found, or selected batch_size is invalid.
   """
-  from tensorflow.python.client import device_lib
+  from tensorflow.python.client import device_lib  # pylint: disable=g-import-not-at-top
 
   local_device_protos = device_lib.list_local_devices()
   num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
   if not num_gpus:
     raise ValueError('Multi-GPU mode was specified, but no GPUs '
-      'were found. To use CPU, run without --multi_gpu.')
+                     'were found. To use CPU, run without --multi_gpu.')
 
   remainder = batch_size % num_gpus
   if remainder:
     err = ('When running with multiple GPUs, batch size '
-      'must be a multiple of the number of available GPUs. '
-      'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
-      ).format(num_gpus, batch_size, batch_size - remainder)
+           'must be a multiple of the number of available GPUs. '
+           'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
 
 
-def main(unused_argv):
+def main(_):
   model_function = model_fn
 
   if FLAGS.multi_gpu:
@@ -195,6 +201,8 @@ def main(unused_argv):
 
   # Set up training and evaluation input functions.
   def train_input_fn():
+    """Prepare data for training."""
+
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
@@ -215,7 +223,7 @@ def main(unused_argv):
       FLAGS.hooks, batch_size=FLAGS.batch_size)
 
   # Train and evaluate model.
-  for n in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
+  for _ in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
     mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
     print('\nEvaluation results:\n\t%s\n' % eval_results)
@@ -231,10 +239,11 @@ def main(unused_argv):
 
 class MNISTArgParser(argparse.ArgumentParser):
   """Argument parser for running MNIST model."""
+
   def __init__(self):
     super(MNISTArgParser, self).__init__(parents=[
-      parsers.BaseParser(),
-      parsers.ImageModelParser()])
+        parsers.BaseParser(),
+        parsers.ImageModelParser()])
 
     self.add_argument(
         '--export_dir',

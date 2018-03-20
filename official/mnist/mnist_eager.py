@@ -31,11 +31,11 @@ import os
 import sys
 import time
 
-import tensorflow as tf
-import tensorflow.contrib.eager as tfe
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow.contrib.eager as tfe  # pylint: disable=g-bad-import-order
 
+from official.mnist import dataset as mnist_dataset
 from official.mnist import mnist
-from official.mnist import dataset
 from official.utils.arg_parsers import parsers
 
 FLAGS = None
@@ -110,9 +110,9 @@ def main(_):
   print('Using device %s, and data format %s.' % (device, data_format))
 
   # Load the datasets
-  train_ds = dataset.train(FLAGS.data_dir).shuffle(60000).batch(
+  train_ds = mnist_dataset.train(FLAGS.data_dir).shuffle(60000).batch(
       FLAGS.batch_size)
-  test_ds = dataset.test(FLAGS.data_dir).batch(FLAGS.batch_size)
+  test_ds = mnist_dataset.test(FLAGS.data_dir).batch(FLAGS.batch_size)
 
   # Create the model and optimizer
   model = mnist.Model(data_format)
@@ -159,12 +159,13 @@ def main(_):
 
 
 class MNISTEagerArgParser(argparse.ArgumentParser):
-  """Argument parser for running MNIST model with eager trainng loop."""
+  """Argument parser for running MNIST model with eager training loop."""
+
   def __init__(self):
     super(MNISTEagerArgParser, self).__init__(parents=[
-      parsers.BaseParser(epochs_between_evals=False, multi_gpu=False,
-                         hooks=False),
-      parsers.ImageModelParser()])
+        parsers.BaseParser(
+            epochs_between_evals=False, multi_gpu=False, hooks=False),
+        parsers.ImageModelParser()])
 
     self.add_argument(
         '--log_interval', '-li',

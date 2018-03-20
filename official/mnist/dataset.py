@@ -17,9 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import gzip
 import os
 import shutil
-import gzip
 
 import numpy as np
 from six.moves import urllib
@@ -36,7 +36,7 @@ def check_image_file_header(filename):
   """Validate that filename corresponds to images for the MNIST dataset."""
   with tf.gfile.Open(filename, 'rb') as f:
     magic = read32(f)
-    num_images = read32(f)
+    read32(f)  # num_images, unused
     rows = read32(f)
     cols = read32(f)
     if magic != 2051:
@@ -52,7 +52,7 @@ def check_labels_file_header(filename):
   """Validate that filename corresponds to labels for the MNIST dataset."""
   with tf.gfile.Open(filename, 'rb') as f:
     magic = read32(f)
-    num_items = read32(f)
+    read32(f)  # num_items, unused
     if magic != 2049:
       raise ValueError('Invalid magic number %d in MNIST file %s' % (magic,
                                                                      f.name))
@@ -77,6 +77,8 @@ def download(directory, filename):
 
 
 def dataset(directory, images_file, labels_file):
+  """Download and parse MNIST dataset."""
+
   images_file = download(directory, images_file)
   labels_file = download(directory, labels_file)
 

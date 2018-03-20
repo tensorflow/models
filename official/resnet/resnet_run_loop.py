@@ -26,11 +26,11 @@ from __future__ import print_function
 import argparse
 import os
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.arg_parsers import parsers  # pylint: disable=g-bad-import-order
-from official.utils.logging import hooks_helper
 from official.resnet import resnet_model
+from official.utils.arg_parsers import parsers
+from official.utils.logging import hooks_helper
 
 
 ################################################################################
@@ -39,8 +39,7 @@ from official.resnet import resnet_model
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
                            parse_record_fn, num_epochs=1, num_parallel_calls=1,
                            examples_per_epoch=0, multi_gpu=False):
-  """Given a Dataset with raw records, parse each record into images and labels,
-  and return an iterator over the records.
+  """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
     dataset: A Dataset representing raw records
@@ -121,7 +120,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     An input_fn that can be used in place of a real one to return a dataset
     that can be used for iteration.
   """
-  def input_fn(is_training, data_dir, batch_size, *args):
+  def input_fn(is_training, data_dir, batch_size, *args):  # pylint: disable=unused-argument
     images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
     labels = tf.zeros((batch_size, num_classes), tf.int32)
     return tf.data.Dataset.from_tensors((images, labels)).repeat()
@@ -231,9 +230,9 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   # If no loss_filter_fn is passed, assume we want the default behavior,
   # which is that batch_normalization variables are excluded from loss.
-  if not loss_filter_fn:
-    def loss_filter_fn(name):
-      return 'batch_normalization' not in name
+  def exclude_batch_norm(name):
+    return 'batch_normalization' not in name
+  loss_filter_fn = loss_filter_fn or exclude_batch_norm
 
   # Add weight decay to the loss.
   loss = cross_entropy + weight_decay * tf.add_n(
@@ -279,31 +278,38 @@ def resnet_model_fn(features, labels, mode, model_class,
 
 
 def validate_batch_size_for_multi_gpu(batch_size):
-  """For multi-gpu, batch-size must be a multiple of the number of
-  available GPUs.
+  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
 
   Note that this should eventually be handled by replicate_model_fn
   directly. Multi-GPU support is currently experimental, however,
   so doing the work here until that feature is in place.
+
+  Args:
+    batch_size: the number of examples processed in each training batch.
+
+  Raises:
+    ValueError: if no GPUs are found, or selected batch_size is invalid.
   """
-  from tensorflow.python.client import device_lib
+  from tensorflow.python.client import device_lib  # pylint: disable=g-import-not-at-top
 
   local_device_protos = device_lib.list_local_devices()
   num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
   if not num_gpus:
     raise ValueError('Multi-GPU mode was specified, but no GPUs '
-      'were found. To use CPU, run without --multi_gpu.')
+                     'were found. To use CPU, run without --multi_gpu.')
 
   remainder = batch_size % num_gpus
   if remainder:
     err = ('When running with multiple GPUs, batch size '
-      'must be a multiple of the number of available GPUs. '
-      'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
-      ).format(num_gpus, batch_size, batch_size - remainder)
+           'must be a multiple of the number of available GPUs. '
+           'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
 
 
 def resnet_main(flags, model_function, input_function):
+  """Shared main loop for ResNet Models."""
+
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
@@ -340,8 +346,8 @@ def resnet_main(flags, model_function, input_function):
       })
 
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
-    train_hooks = hooks_helper.get_train_hooks(flags.hooks,
-                                               batch_size=flags.batch_size)
+    train_hooks = hooks_helper.get_train_hooks(
+        flags.hooks, batch_size=flags.batch_size)
 
     print('Starting a training cycle.')
 
@@ -384,7 +390,7 @@ class ResnetArgParser(argparse.ArgumentParser):
     self.add_argument(
         '--version', '-v', type=int, choices=[1, 2],
         default=resnet_model.DEFAULT_VERSION,
-        help="Version of ResNet. (1 or 2) See README.md for details."
+        help='Version of ResNet. (1 or 2) See README.md for details.'
     )
 
     self.add_argument(
