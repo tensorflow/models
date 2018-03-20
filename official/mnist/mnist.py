@@ -200,6 +200,8 @@ def main(_):
 
   # Set up training and evaluation input functions.
   def train_input_fn():
+    """Prepare data for training."""
+
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.

@@ -193,7 +193,6 @@ def main(_):
 
   # Train and evaluate the model every `FLAGS.epochs_between_evals` epochs.
   for n in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
-
     model.train(input_fn=train_input_fn, hooks=train_hooks)
     results = model.evaluate(input_fn=eval_input_fn)
 
