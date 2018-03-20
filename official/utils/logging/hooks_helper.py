@@ -24,7 +24,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.logging import hooks
 
@@ -40,7 +40,7 @@ def get_train_hooks(name_list, **kwargs):
     name_list: a list of strings to name desired hook classes. Allowed:
       LoggingTensorHook, ProfilerHook, ExamplesPerSecondHook, which are defined
       as keys in HOOKS
-    kwargs: a dictionary of arguments to the hooks.
+    **kwargs: a dictionary of arguments to the hooks.
 
   Returns:
     list of instantiated hooks, ready to be used in a classifier.train call.
@@ -63,20 +63,25 @@ def get_train_hooks(name_list, **kwargs):
   return train_hooks
 
 
-def get_logging_tensor_hook(every_n_iter=100, **kwargs):  # pylint: disable=unused-argument
+def get_logging_tensor_hook(every_n_iter=100, tensors_to_log=None, **kwargs):  # pylint: disable=unused-argument
   """Function to get LoggingTensorHook.
 
   Args:
     every_n_iter: `int`, print the values of `tensors` once every N local
       steps taken on the current worker.
-    kwargs: a dictionary of arguments to LoggingTensorHook.
+    tensors_to_log: List of tensor names or dictionary mapping labels to tensor
+      names. If not set, log _TENSORS_TO_LOG by default.
+    **kwargs: a dictionary of arguments to LoggingTensorHook.
 
   Returns:
     Returns a LoggingTensorHook with a standard set of tensors that will be
     printed to stdout.
   """
+  if tensors_to_log is None:
+    tensors_to_log = _TENSORS_TO_LOG
+
   return tf.train.LoggingTensorHook(
-      tensors=_TENSORS_TO_LOG,
+      tensors=tensors_to_log,
       every_n_iter=every_n_iter)
 
 
@@ -85,7 +90,7 @@ def get_profiler_hook(save_steps=1000, **kwargs):  # pylint: disable=unused-argu
 
   Args:
     save_steps: `int`, print profile traces every N steps.
-    kwargs: a dictionary of arguments to ProfilerHook.
+    **kwargs: a dictionary of arguments to ProfilerHook.
 
   Returns:
     Returns a ProfilerHook that writes out timelines that can be loaded into
@@ -106,7 +111,7 @@ def get_examples_per_second_hook(every_n_steps=100,
     batch_size: `int`, total batch size used to calculate examples/second from
       global time.
     warm_steps: skip this number of steps before logging and running average.
-    kwargs: a dictionary of arguments to ExamplesPerSecondHook.
+    **kwargs: a dictionary of arguments to ExamplesPerSecondHook.
 
   Returns:
     Returns a ProfilerHook that writes out timelines that can be loaded into
@@ -123,4 +128,3 @@ HOOKS = {
     'profilerhook': get_profiler_hook,
     'examplespersecondhook': get_examples_per_second_hook,
 }
-

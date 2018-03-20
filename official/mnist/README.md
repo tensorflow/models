@@ -11,7 +11,10 @@ APIs.
 
 ## Setup
 
-To begin, you'll simply need the latest version of TensorFlow installed.
+To begin, you'll simply need the latest version of TensorFlow installed,
+and make sure to run the command to export the `/models` folder to the
+python path: https://github.com/tensorflow/models/tree/master/official#running-the-models
+
 Then to train the model, run the following:
 
 ```

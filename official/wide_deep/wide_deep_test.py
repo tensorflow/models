@@ -19,14 +19,14 @@ from __future__ import print_function
 
 import os
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.wide_deep import wide_deep
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 TEST_INPUT = ('18,Self-emp-not-inc,987,Bachelors,12,Married-civ-spouse,abc,'
-    'Husband,zyx,wvu,34,56,78,tsr,<=50K')
+              'Husband,zyx,wvu,34,56,78,tsr,<=50K')
 
 TEST_INPUT_VALUES = {
     'age': 18,
@@ -45,6 +45,7 @@ TEST_CSV = os.path.join(os.path.dirname(__file__), 'wide_deep_test.csv')
 
 
 class BaseTest(tf.test.TestCase):
+  """Tests for Wide Deep model."""
 
   def setUp(self):
     # Create temporary CSV file
@@ -79,21 +80,19 @@ class BaseTest(tf.test.TestCase):
     model = wide_deep.build_estimator(self.temp_dir, model_type)
 
     # Train for 1 step to initialize model and evaluate initial loss
-    model.train(
-        input_fn=lambda: wide_deep.input_fn(
-            TEST_CSV, num_epochs=1, shuffle=True, batch_size=1),
-        steps=1)
-    initial_results = model.evaluate(
-        input_fn=lambda: wide_deep.input_fn(
-            TEST_CSV, num_epochs=1, shuffle=False, batch_size=1))
+    def get_input_fn(num_epochs, shuffle, batch_size):
+      def input_fn():
+        return wide_deep.input_fn(
+            TEST_CSV, num_epochs=num_epochs, shuffle=shuffle,
+            batch_size=batch_size)
+      return input_fn
+
+    model.train(input_fn=get_input_fn(1, True, 1), steps=1)
+    initial_results = model.evaluate(input_fn=get_input_fn(1, False, 1))
 
     # Train for 100 epochs at batch size 3 and evaluate final loss
-    model.train(
-        input_fn=lambda: wide_deep.input_fn(
-            TEST_CSV, num_epochs=100, shuffle=True, batch_size=3))
-    final_results = model.evaluate(
-        input_fn=lambda: wide_deep.input_fn(
-            TEST_CSV, num_epochs=1, shuffle=False, batch_size=1))
+    model.train(input_fn=get_input_fn(100, True, 3))
+    final_results = model.evaluate(input_fn=get_input_fn(1, False, 1))
 
     print('%s initial results:' % model_type, initial_results)
     print('%s final results:' % model_type, final_results)
