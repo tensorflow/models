@@ -297,6 +297,11 @@ def imagenet_model_fn(features, labels, mode, params):
 def main(argv):
   parser = resnet_run_loop.ResnetArgParser(
       resnet_size_choices=[18, 34, 50, 101, 152, 200])
+
+  parser.set_defaults(
+      train_epochs=100
+  )
+
   flags = parser.parse_args(args=argv[1:])
 
   input_function = flags.use_synthetic_data and get_synth_input_fn() or input_fn
@@ -305,4 +310,4 @@ def main(argv):
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  tf.app.run(argv=sys.argv)
+  main(argv=sys.argv)
