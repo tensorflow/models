@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import unittest
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
 from official.utils.testing import integration
@@ -39,9 +39,8 @@ class BaseTest(tf.test.TestCase):
   def tensor_shapes_helper(self, resnet_size, version, with_gpu=False):
     """Checks the tensor shapes after each phase of the ResNet model."""
     def reshape(shape):
-      """Returns the expected dimensions depending on if a
-      GPU is being used.
-      """
+      """Returns the expected dimensions depending on if a GPU is being used."""
+
       # If a GPU is used for the test, the shape is returned (already in NCHW
       # form). When GPU is not used, the shape is converted to NHWC.
       if with_gpu:
@@ -240,8 +239,9 @@ class BaseTest(tf.test.TestCase):
     num_classes = 246
 
     for version in (1, 2):
-      model = imagenet_main.ImagenetModel(50, data_format='channels_last',
-                                      num_classes=num_classes, version=version)
+      model = imagenet_main.ImagenetModel(
+          50, data_format='channels_last', num_classes=num_classes,
+          version=version)
       fake_input = tf.random_uniform([batch_size, 224, 224, 3])
       output = model(fake_input, training=True)
 
@@ -285,4 +285,3 @@ class BaseTest(tf.test.TestCase):
 
 if __name__ == '__main__':
   tf.test.main()
-

@@ -22,9 +22,9 @@ import os
 import shutil
 import sys
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.arg_parsers import parsers  # pylint: disable=g-bad-import-order
+from official.utils.arg_parsers import parsers
 from official.utils.logging import hooks_helper
 
 _CSV_COLUMNS = [
@@ -171,13 +171,20 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   return dataset
 
 
-def main(unused_argv):
+def main(_):
   # Clean up the model directory if present
   shutil.rmtree(FLAGS.model_dir, ignore_errors=True)
   model = build_estimator(FLAGS.model_dir, FLAGS.model_type)
 
   train_file = os.path.join(FLAGS.data_dir, 'adult.data')
   test_file = os.path.join(FLAGS.data_dir, 'adult.test')
+
+  # Train and evaluate the model every `FLAGS.epochs_per_eval` epochs.
+  def train_input_fn():
+    return input_fn(train_file, FLAGS.epochs_per_eval, True, FLAGS.batch_size)
+
+  def eval_input_fn():
+    return input_fn(test_file, 1, False, FLAGS.batch_size)
 
   train_hooks = hooks_helper.get_train_hooks(
       FLAGS.hooks, batch_size=FLAGS.batch_size,
@@ -186,13 +193,8 @@ def main(unused_argv):
 
   # Train and evaluate the model every `FLAGS.epochs_between_evals` epochs.
   for n in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
-    model.train(
-        input_fn=lambda: input_fn(train_file, FLAGS.epochs_between_evals, True,
-                                  FLAGS.batch_size),
-        hooks=train_hooks)
-
-    results = model.evaluate(input_fn=lambda: input_fn(
-        test_file, 1, False, FLAGS.batch_size))
+    model.train(input_fn=train_input_fn, hooks=train_hooks)
+    results = model.evaluate(input_fn=eval_input_fn)
 
     # Display evaluation metrics
     print('Results at epoch', (n + 1) * FLAGS.epochs_between_evals)
@@ -204,6 +206,7 @@ def main(unused_argv):
 
 class WideDeepArgParser(argparse.ArgumentParser):
   """Argument parser for running the wide deep model."""
+
   def __init__(self):
     super(WideDeepArgParser, self).__init__(parents=[parsers.BaseParser()])
     self.add_argument(

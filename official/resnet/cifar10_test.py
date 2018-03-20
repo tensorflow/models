@@ -20,7 +20,7 @@ from __future__ import print_function
 from tempfile import mkstemp
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main
 from official.utils.testing import integration
@@ -34,6 +34,8 @@ _NUM_CHANNELS = 3
 
 
 class BaseTest(tf.test.TestCase):
+  """Tests for the Cifar10 version of Resnet.
+  """
 
   def tearDown(self):
     super(BaseTest, self).tearDown()
@@ -52,7 +54,7 @@ class BaseTest(tf.test.TestCase):
     data_file.close()
 
     fake_dataset = tf.data.FixedLengthRecordDataset(
-        filename, cifar10_main._RECORD_BYTES)
+        filename, cifar10_main._RECORD_BYTES)  # pylint: disable=protected-access
     fake_dataset = fake_dataset.map(
         lambda val: cifar10_main.parse_record(val, False))
     image, label = fake_dataset.make_one_shot_iterator().get_next()
@@ -133,9 +135,11 @@ class BaseTest(tf.test.TestCase):
     num_classes = 246
 
     for version in (1, 2):
-      model = cifar10_main.Cifar10Model(32, data_format='channels_last',
-                                     num_classes=num_classes, version=version)
-      fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+      model = cifar10_main.Cifar10Model(
+          32, data_format='channels_last', num_classes=num_classes,
+          version=version)
+      fake_input = tf.random_uniform(
+          [batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
       output = model(fake_input, training=True)
 
       self.assertAllEqual(output.shape, (batch_size, num_classes))

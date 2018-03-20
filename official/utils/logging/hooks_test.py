@@ -21,9 +21,9 @@ from __future__ import print_function
 
 import time
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+from tensorflow.python.training import monitored_session  # pylint: disable=g-bad-import-order
 
-from tensorflow.python.training import monitored_session
 from official.utils.logging import hooks
 
 
@@ -31,6 +31,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 class ExamplesPerSecondHookTest(tf.test.TestCase):
+  """Tests for the ExamplesPerSecondHook."""
 
   def setUp(self):
     """Mock out logging calls to verify if correct info is being monitored."""
@@ -71,7 +72,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
         every_n_steps=every_n_steps,
         warm_steps=warm_steps)
     hook.begin()
-    mon_sess = monitored_session._HookedSession(sess, [hook])
+    mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
     sess.run(tf.global_variables_initializer())
 
     self.logged_message = ''
@@ -120,7 +121,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
         every_n_steps=None,
         every_n_secs=every_n_secs)
     hook.begin()
-    mon_sess = monitored_session._HookedSession(sess, [hook])
+    mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
     sess.run(tf.global_variables_initializer())
 
     self.logged_message = ''

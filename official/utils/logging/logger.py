@@ -53,7 +53,7 @@ class BenchmarkLogger(object):
     """
     if not isinstance(value, numbers.Number):
       tf.logging.warning(
-        "Metric value to log should be a number. Got %s", type(value))
+          "Metric value to log should be a number. Got %s", type(value))
       return
 
     with tf.gfile.GFile(
@@ -70,6 +70,5 @@ class BenchmarkLogger(object):
         json.dump(metric, f)
         f.write("\n")
       except (TypeError, ValueError) as e:
-        tf.logging.warning("Failed to dump metric to log file: name %s, value %s, error %s",
-                           name, value, e)
-
+        tf.logging.warning("Failed to dump metric to log file: "
+                           "name %s, value %s, error %s", name, value, e)

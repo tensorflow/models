@@ -19,14 +19,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import json
 import os
 import tempfile
 
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.logging import logger
-import tensorflow as tf
 
 
 class BenchmarkLoggerTest(tf.test.TestCase):

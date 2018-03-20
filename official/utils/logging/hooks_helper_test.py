@@ -21,7 +21,7 @@ from __future__ import print_function
 
 import unittest
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.logging import hooks_helper
 
