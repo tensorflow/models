@@ -22,9 +22,9 @@ import os
 import shutil
 import sys
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.arg_parsers import parsers  # pylint: disable=g-bad-import-order
+from official.utils.arg_parsers import parsers
 from official.utils.logging import hooks_helper
 
 _CSV_COLUMNS = [

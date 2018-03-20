@@ -28,6 +28,7 @@ from official.utils.logging import hooks_helper
 
 LEARNING_RATE = 1e-4
 
+
 class Model(tf.keras.Model):
   """Model to recognize digits in the MNIST dataset.
 
