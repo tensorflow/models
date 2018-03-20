@@ -462,22 +462,31 @@ class DataTransformationFnTest(tf.test.TestCase):
         fields.InputDataFields.groundtruth_classes:
             tf.constant(np.array([3, 1], np.int32))
     }
-    def fake_image_resizer_fn(image, masks):
+    def fake_image_resizer_fn(image, masks=None):
       resized_image = tf.image.resize_images(image, [8, 8])
-      resized_masks = tf.transpose(
-          tf.image.resize_images(tf.transpose(masks, [1, 2, 0]), [8, 8]),
-          [2, 0, 1])
-      return resized_image, resized_masks, tf.shape(resized_image)
+      results = [resized_image]
+      if masks is not None:
+        resized_masks = tf.transpose(
+            tf.image.resize_images(tf.transpose(masks, [1, 2, 0]), [8, 8]),
+            [2, 0, 1])
+        results.append(resized_masks)
+      results.append(tf.shape(resized_image))
+      return results
 
     num_classes = 3
     input_transformation_fn = functools.partial(
         inputs.transform_input_data,
         model_preprocess_fn=_fake_model_preprocessor_fn,
         image_resizer_fn=fake_image_resizer_fn,
-        num_classes=num_classes)
+        num_classes=num_classes,
+        retain_original_image=True)
     with self.test_session() as sess:
       transformed_inputs = sess.run(
           input_transformation_fn(tensor_dict=tensor_dict))
+    self.assertAllEqual(transformed_inputs[
+        fields.InputDataFields.original_image].dtype, tf.uint8)
+    self.assertAllEqual(transformed_inputs[
+        fields.InputDataFields.original_image].shape, [8, 8, 3])
     self.assertAllEqual(transformed_inputs[
         fields.InputDataFields.groundtruth_instance_masks].shape, [2, 8, 8])
 
