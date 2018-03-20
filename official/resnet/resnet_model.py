@@ -466,7 +466,7 @@ class Model(object):
     # but that is the same as doing a reduce_mean. We do a reduce_mean
     # here because it performs better than AveragePooling2D.
     axes = [2, 3] if self.data_format == 'channels_first' else [1, 2]
-    inputs = tf.reduce_mean(inputs, axes)
+    inputs = tf.reduce_mean(inputs, axes, keepdims=True)
     inputs = tf.identity(inputs, 'final_reduce_mean')
 
     inputs = tf.reshape(inputs, [-1, self.final_size])
