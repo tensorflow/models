@@ -41,7 +41,7 @@ mkdir -p ${WORK_DIR}
 cd ${WORK_DIR}
 
 # Helper function to download and unpack VOC 2012 dataset.
-function download_and_uncompress() {
+download_and_uncompress() {
   local BASE_URL=${1}
   local FILENAME=${2}
 
