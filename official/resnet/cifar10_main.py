@@ -216,7 +216,7 @@ def main(argv):
                       model_dir='/tmp/cifar10_model',
                       resnet_size=32,
                       train_epochs=250,
-                      epochs_per_eval=10,
+                      epochs_between_evals=10,
                       batch_size=128)
 
   flags = parser.parse_args(args=argv[1:])
