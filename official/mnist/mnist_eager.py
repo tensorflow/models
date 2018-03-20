@@ -111,7 +111,7 @@ def main(_):
 
   # Load the datasets
   train_ds = dataset.train(FLAGS.data_dir).shuffle(60000).batch(
-      FLAGS.batch_size).repeat(FLAGS.epochs_per_eval)
+      FLAGS.batch_size)
   test_ds = dataset.test(FLAGS.data_dir).batch(FLAGS.batch_size)
 
   # Create the model and optimizer
@@ -162,15 +162,9 @@ class MNISTEagerArgParser(argparse.ArgumentParser):
   """Argument parser for running MNIST model with eager trainng loop."""
   def __init__(self):
     super(MNISTEagerArgParser, self).__init__(parents=[
-      parsers.BaseParser(multi_gpu=False, hooks=False),
+      parsers.BaseParser(epochs_between_evals=False, multi_gpu=False,
+                         hooks=False),
       parsers.ImageModelParser()])
-
-    self.set_defaults(
-        data_dir='/tmp/tensorflow/mnist/input_data',
-        model_dir='/tmp/tensorflow/mnist/checkpoints/',
-        batch_size=100,
-        train_epochs=10,
-    )
 
     self.add_argument(
         '--log_interval', '-li',
@@ -185,7 +179,7 @@ class MNISTEagerArgParser(argparse.ArgumentParser):
         metavar='<OD>',
         help='[default: %(default)s] Directory to write TensorBoard summaries')
     self.add_argument(
-        '--lr', '-1r',
+        '--lr', '-lr',
         type=float,
         default=0.01,
         metavar='<LR>',
@@ -202,6 +196,12 @@ class MNISTEagerArgParser(argparse.ArgumentParser):
         default=False,
         help='disables GPU usage even if a GPU is available')
 
+    self.set_defaults(
+        data_dir='/tmp/tensorflow/mnist/input_data',
+        model_dir='/tmp/tensorflow/mnist/checkpoints/',
+        batch_size=100,
+        train_epochs=10,
+    )
 
 if __name__ == '__main__':
   parser = MNISTEagerArgParser()

@@ -201,9 +201,9 @@ def main(unused_argv):
     ds = dataset.train(FLAGS.data_dir)
     ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size)
 
-    # Iterate through the dataset a set number (`epochs_per_eval`) of times
+    # Iterate through the dataset a set number (`epochs_between_evals`) of times
     # during each training session.
-    ds = ds.repeat(FLAGS.epochs_per_eval)
+    ds = ds.repeat(FLAGS.epochs_between_evals)
     return ds
 
   def eval_input_fn():
@@ -215,7 +215,7 @@ def main(unused_argv):
       FLAGS.hooks, batch_size=FLAGS.batch_size)
 
   # Train and evaluate model.
-  for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
+  for n in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
     mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
     print('\nEvaluation results:\n\t%s\n' % eval_results)

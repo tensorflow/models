@@ -45,7 +45,7 @@ def run_synthetic(main, extra_flags=None):
     shutil.rmtree(model_dir)
 
   args = [sys.argv[0], "--model_dir", model_dir, "--train_epochs", "1",
-          "--epochs_per_eval", "1", "--use_synthetic_data",
+          "--epochs_between_evals", "1", "--use_synthetic_data",
           "--max_train_steps", "1"] + extra_flags
 
   try:

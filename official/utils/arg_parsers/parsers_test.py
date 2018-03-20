@@ -42,7 +42,7 @@ class BaseTester(unittest.TestCase):
         data_dir="dfgasf",
         model_dir="dfsdkjgbs",
         train_epochs=534,
-        epochs_per_eval=15,
+        epochs_between_evals=15,
         batch_size=256,
         hooks=["LoggingTensorHook"],
         num_parallel_calls=18,

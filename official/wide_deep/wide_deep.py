@@ -184,10 +184,10 @@ def main(unused_argv):
       tensors_to_log={'average_loss': 'head/truediv',
                       'loss': 'head/weighted_loss/Sum'})
 
-  # Train and evaluate the model every `FLAGS.epochs_per_eval` epochs.
-  for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
+  # Train and evaluate the model every `FLAGS.epochs_between_evals` epochs.
+  for n in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
     model.train(
-        input_fn=lambda: input_fn(train_file, FLAGS.epochs_per_eval, True,
+        input_fn=lambda: input_fn(train_file, FLAGS.epochs_between_evals, True,
                                   FLAGS.batch_size),
         hooks=train_hooks)
 
@@ -195,7 +195,7 @@ def main(unused_argv):
         test_file, 1, False, FLAGS.batch_size))
 
     # Display evaluation metrics
-    print('Results at epoch', (n + 1) * FLAGS.epochs_per_eval)
+    print('Results at epoch', (n + 1) * FLAGS.epochs_between_evals)
     print('-' * 60)
 
     for key in sorted(results):
@@ -215,7 +215,7 @@ class WideDeepArgParser(argparse.ArgumentParser):
         data_dir='/tmp/census_data',
         model_dir='/tmp/census_model',
         train_epochs=40,
-        epochs_per_eval=2,
+        epochs_between_evals=2,
         batch_size=40)
 
 
