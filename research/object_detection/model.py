@@ -362,6 +362,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       else:
         category_index = label_map_util.create_category_index_from_labelmap(
             eval_input_config.label_map_path)
+      img_summary = None
       if not use_tpu and use_original_images:
         detection_and_groundtruth = (
             vis_utils.draw_side_by_side_evaluation_image(
@@ -378,8 +379,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
             eval_metrics, category_index.values(), eval_dict,
             include_metrics_per_category=False)
-        eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
-            img_summary, tf.no_op())
+        if img_summary is not None:
+          eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
+              img_summary, tf.no_op())
 
     if use_tpu:
       return tf.contrib.tpu.TPUEstimatorSpec(
