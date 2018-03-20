@@ -461,8 +461,8 @@ class Model(object):
     inputs = tf.nn.relu(inputs)
 
     # The current top layer has shape
-    # `batch_size x kernel_size x kernel_size x final_size`.
-    # ResNet does an Average Pooling layer with a pool_size of kernel_size,
+    # `batch_size x pool_size x pool_size x final_size`.
+    # ResNet does an Average Pooling layer over pool_size,
     # but that is the same as doing a reduce_mean. We do a reduce_mean
     # here because it performs better than AveragePooling2D.
     axes = [2, 3] if self.data_format == 'channels_first' else [1, 2]
