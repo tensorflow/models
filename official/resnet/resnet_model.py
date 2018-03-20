@@ -33,7 +33,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-
 _BATCH_NORM_DECAY = 0.997
 _BATCH_NORM_EPSILON = 1e-5
 DEFAULT_VERSION = 2
@@ -461,12 +460,17 @@ class Model(object):
     inputs = batch_norm(inputs, training, self.data_format)
     inputs = tf.nn.relu(inputs)
 
+    # The current top layer has shape
+    # `batch_size x kernel_size x kernel_size x final_size`.
+    # ResNet does an Average Pooling layer with a pool_size of kernel_size,
+    # but that is the same as doing a reduce_mean. We do a reduce_mean
+    # here because it performs better than AveragePooling2D.
     axes = [2, 3] if self.data_format == 'channels_first' else [1, 2]
     inputs = tf.reduce_mean(inputs, axes)
     inputs = tf.identity(inputs, 'final_reduce_mean')
 
     inputs = tf.reshape(inputs, [-1, self.final_size])
     inputs = tf.layers.dense(inputs=inputs, units=self.num_classes)
-
     inputs = tf.identity(inputs, 'final_dense')
+
     return inputs
