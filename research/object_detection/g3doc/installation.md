@@ -12,6 +12,7 @@ Tensorflow Object Detection API depends on the following libraries:
 *   Jupyter notebook
 *   Matplotlib
 *   Tensorflow
+*   Cython
 *   cocoapi
 
 For detailed steps to install Tensorflow, follow the [Tensorflow installation
@@ -29,6 +30,7 @@ The remaining libraries can be installed on Ubuntu 16.04 using via apt-get:
 
 ``` bash
 sudo apt-get install protobuf-compiler python-pil python-lxml python-tk
+sudo pip install Cython
 sudo pip install jupyter
 sudo pip install matplotlib
 ```
@@ -36,6 +38,7 @@ sudo pip install matplotlib
 Alternatively, users can install dependencies using pip:
 
 ``` bash
+sudo pip install Cython
 sudo pip install pillow
 sudo pip install lxml
 sudo pip install jupyter
