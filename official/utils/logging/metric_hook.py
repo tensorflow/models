@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tensorflow.python.framework import ops
 
 from official.utils.logging import logger
 
@@ -78,12 +77,13 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
 
   def begin(self):
     super(LoggingMetricHook, self).begin()
-    global_step_tensor = tf.train.get_global_step()
-    if global_step_tensor is None:
+    self._global_step_tensor = tf.train.get_global_step()
+    if self._global_step_tensor is None:
       raise RuntimeError(
           "Global step should be created to use LoggingMetricHook.")
-    if not self._current_tensors.has_key(ops.GraphKeys.GLOBAL_STEP):
-      self._current_tensors[ops.GraphKeys.GLOBAL_STEP] = global_step_tensor
+    if self._global_step_tensor.name not in self._current_tensors:
+      self._current_tensors[self._global_step_tensor.name] = (
+        self._global_step_tensor)
 
   def after_run(self, unused_run_context, run_values):
     # should_trigger is a internal state that populated at before_run, and it is
@@ -100,7 +100,7 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
 
   def _log_metric(self, tensor_values):
     self._timer.update_last_triggered_step(self._iter_count)
-    global_step = tensor_values[ops.GraphKeys.GLOBAL_STEP]
+    global_step = tensor_values[self._global_step_tensor.name]
     # self._tag_order is populated during the init of LoggingTensorHook
     for tag in self._tag_order:
       self._logger.log_metric(tag, tensor_values[tag], global_step=global_step)
