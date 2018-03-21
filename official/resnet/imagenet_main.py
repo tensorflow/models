@@ -305,8 +305,17 @@ def main(argv):
   flags = parser.parse_args(args=argv[1:])
 
   input_function = flags.use_synthetic_data and get_synth_input_fn() or input_fn
-  resnet_run_loop.resnet_main(flags, imagenet_model_fn, input_function)
 
+  # Train and eval
+  classifier = resnet_run_loop.resnet_main(
+      flags, imagenet_model_fn, input_function)
+
+  # Export the model if desired
+  if flags.export_dir is not None:
+    shape = [_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS]
+    input_receiver_fn = resnet_run_loop.build_tensor_serving_input_receiver_fn(
+        shape)
+    classifier.export_savedmodel(flags.export_dir, input_receiver_fn)
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
