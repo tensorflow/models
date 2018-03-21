@@ -21,13 +21,11 @@ from __future__ import print_function
 import tempfile
 import time
 
-from official.utils.logging import metric_hook
 import tensorflow as tf
-from tensorflow.python.client import session as session_lib
-from tensorflow.python.framework import constant_op
-from tensorflow.python.framework import ops
-from tensorflow.python.ops import variables as variables_lib
 from tensorflow.python.training import monitored_session
+
+from official.utils.logging import metric_hook
+
 
 class LoggingMetricHookTest(tf.test.TestCase):
 
@@ -36,16 +34,16 @@ class LoggingMetricHookTest(tf.test.TestCase):
 
     class MockMetricLogger(object):
       def __init__(self):
-        self.logged_metric = None
+        self.logged_metric = []
 
       def log_metric(self, name, value, unit=None, global_step=None,
-          extras=None):
-        self.logged_metric = {
-          "name": name,
-          "value": float(value),
-          "unit": unit,
-          "global_step": global_step,
-          "extras": extras}
+                     extras=None):
+        self.logged_metric.append({
+            "name": name,
+            "value": float(value),
+            "unit": unit,
+            "global_step": global_step,
+            "extras": extras})
 
     self._log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
     self._logger = MockMetricLogger()
@@ -72,31 +70,31 @@ class LoggingMetricHookTest(tf.test.TestCase):
           metric_logger=self._logger)
 
   def test_print_at_end_only(self):
-    with ops.Graph().as_default(), session_lib.Session() as sess:
+    with tf.Graph().as_default(), tf.Session() as sess:
       tf.train.get_or_create_global_step()
-      t = constant_op.constant(42.0, name='foo')
-      train_op = constant_op.constant(3)
+      t = tf.constant(42.0, name='foo')
+      train_op = tf.constant(3)
       hook = metric_hook.LoggingMetricHook(
           tensors=[t.name], at_end=True, metric_logger=self._logger)
       hook.begin()
       mon_sess = monitored_session._HookedSession(sess, [hook])
-      sess.run(variables_lib.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
 
-      # metric_log = os.path.join(self.log_dir, "metric.log")
       for _ in range(3):
         mon_sess.run(train_op)
-        self.assertIsNone(self._logger.logged_metric)
+        self.assertEqual(self._logger.logged_metric, [])
 
       hook.end(sess)
-      metric = self._logger.logged_metric
+      self.assertEqual(len(self._logger.logged_metric), 1)
+      metric = self._logger.logged_metric[0]
       self.assertRegexpMatches(metric["name"], "foo")
       self.assertEqual(metric["value"], 42.0)
       self.assertEqual(metric["unit"], None)
       self.assertEqual(metric["global_step"], 0)
 
   def test_global_step_not_found(self):
-    with ops.Graph().as_default(), session_lib.Session() as sess:
-      t = constant_op.constant(42.0, name='foo')
+    with tf.Graph().as_default(), tf.Session() as sess:
+      t = tf.constant(42.0, name='foo')
       hook = metric_hook.LoggingMetricHook(
           tensors=[t.name], at_end=True, metric_logger=self._logger)
 
@@ -104,20 +102,50 @@ class LoggingMetricHookTest(tf.test.TestCase):
           RuntimeError, 'should be created to use LoggingMetricHook.'):
         hook.begin()
 
-  def _validate_print_every_n_steps(self, sess, at_end):
-    t = constant_op.constant(42.0, name='foo')
+  def test_log_tensors(self):
+    with tf.Graph().as_default(), tf.Session() as sess:
+      tf.train.get_or_create_global_step()
+      t1 = tf.constant(42.0, name='foo')
+      t2 = tf.constant(43.0, name='bar')
+      train_op = tf.constant(3)
+      hook = metric_hook.LoggingMetricHook(
+          tensors=[t1, t2], at_end=True, metric_logger=self._logger)
+      hook.begin()
+      mon_sess = monitored_session._HookedSession(sess, [hook])
+      sess.run(tf.global_variables_initializer())
 
-    train_op = constant_op.constant(3)
+      for _ in range(3):
+        mon_sess.run(train_op)
+        self.assertEqual(self._logger.logged_metric, [])
+
+      hook.end(sess)
+      self.assertEqual(len(self._logger.logged_metric), 2)
+      metric1 = self._logger.logged_metric[0]
+      self.assertRegexpMatches(str(metric1["name"]), "foo")
+      self.assertEqual(metric1["value"], 42.0)
+      self.assertEqual(metric1["unit"], None)
+      self.assertEqual(metric1["global_step"], 0)
+
+      metric2 = self._logger.logged_metric[1]
+      self.assertRegexpMatches(str(metric2["name"]), "bar")
+      self.assertEqual(metric2["value"], 43.0)
+      self.assertEqual(metric2["unit"], None)
+      self.assertEqual(metric2["global_step"], 0)
+
+  def _validate_print_every_n_steps(self, sess, at_end):
+    t = tf.constant(42.0, name='foo')
+
+    train_op = tf.constant(3)
     hook = metric_hook.LoggingMetricHook(
         tensors=[t.name], every_n_iter=10, at_end=at_end,
         metric_logger=self._logger)
     hook.begin()
     mon_sess = monitored_session._HookedSession(sess, [hook])
-    sess.run(variables_lib.global_variables_initializer())
+    sess.run(tf.global_variables_initializer())
     mon_sess.run(train_op)
     self.assertRegexpMatches(str(self._logger.logged_metric), t.name)
     for _ in range(3):
-      self._logger.logged_metric = {}
+      self._logger.logged_metric = []
       for _ in range(9):
         mon_sess.run(train_op)
         # assertNotRegexpMatches is not supported by python 3.1 and later
@@ -126,12 +154,12 @@ class LoggingMetricHookTest(tf.test.TestCase):
       self.assertRegexpMatches(str(self._logger.logged_metric), t.name)
 
     # Add additional run to verify proper reset when called multiple times.
-    self._logger.logged_metric = {}
+    self._logger.logged_metric = []
     mon_sess.run(train_op)
     # assertNotRegexpMatches is not supported by python 3.1 and later
     self.assertEqual(str(self._logger.logged_metric).find(t.name), -1)
 
-    self._logger.logged_metric = {}
+    self._logger.logged_metric = []
     hook.end(sess)
     if at_end:
       self.assertRegexpMatches(str(self._logger.logged_metric), t.name)
@@ -140,44 +168,44 @@ class LoggingMetricHookTest(tf.test.TestCase):
       self.assertEqual(str(self._logger.logged_metric).find(t.name), -1)
 
   def test_print_every_n_steps(self):
-    with ops.Graph().as_default(), session_lib.Session() as sess:
+    with tf.Graph().as_default(), tf.Session() as sess:
       tf.train.get_or_create_global_step()
       self._validate_print_every_n_steps(sess, at_end=False)
       # Verify proper reset.
       self._validate_print_every_n_steps(sess, at_end=False)
 
   def test_print_every_n_steps_and_end(self):
-    with ops.Graph().as_default(), session_lib.Session() as sess:
+    with tf.Graph().as_default(), tf.Session() as sess:
       tf.train.get_or_create_global_step()
       self._validate_print_every_n_steps(sess, at_end=True)
       # Verify proper reset.
       self._validate_print_every_n_steps(sess, at_end=True)
 
   def _validate_print_every_n_secs(self, sess, at_end):
-    t = constant_op.constant(42.0, name='foo')
-    train_op = constant_op.constant(3)
+    t = tf.constant(42.0, name='foo')
+    train_op = tf.constant(3)
 
     hook = metric_hook.LoggingMetricHook(
         tensors=[t.name], every_n_secs=1.0, at_end=at_end,
         metric_logger=self._logger)
     hook.begin()
     mon_sess = monitored_session._HookedSession(sess, [hook])
-    sess.run(variables_lib.global_variables_initializer())
+    sess.run(tf.global_variables_initializer())
 
     mon_sess.run(train_op)
     self.assertRegexpMatches(str(self._logger.logged_metric), t.name)
 
     # assertNotRegexpMatches is not supported by python 3.1 and later
-    self._logger.logged_metric = {}
+    self._logger.logged_metric = []
     mon_sess.run(train_op)
     self.assertEqual(str(self._logger.logged_metric).find(t.name), -1)
     time.sleep(1.0)
 
-    self._logger.logged_metric = {}
+    self._logger.logged_metric = []
     mon_sess.run(train_op)
     self.assertRegexpMatches(str(self._logger.logged_metric), t.name)
 
-    self._logger.logged_metric = {}
+    self._logger.logged_metric = []
     hook.end(sess)
     if at_end:
       self.assertRegexpMatches(str(self._logger.logged_metric), t.name)
@@ -186,14 +214,14 @@ class LoggingMetricHookTest(tf.test.TestCase):
       self.assertEqual(str(self._logger.logged_metric).find(t.name), -1)
 
   def test_print_every_n_secs(self):
-    with ops.Graph().as_default(), session_lib.Session() as sess:
+    with tf.Graph().as_default(), tf.Session() as sess:
       tf.train.get_or_create_global_step()
       self._validate_print_every_n_secs(sess, at_end=False)
       # Verify proper reset.
       self._validate_print_every_n_secs(sess, at_end=False)
 
   def test_print_every_n_secs_and_end(self):
-    with ops.Graph().as_default(), session_lib.Session() as sess:
+    with tf.Graph().as_default(), tf.Session() as sess:
       tf.train.get_or_create_global_step()
       self._validate_print_every_n_secs(sess, at_end=True)
       # Verify proper reset.

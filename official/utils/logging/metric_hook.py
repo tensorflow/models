@@ -19,17 +19,18 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.python.framework import ops
 
 from official.utils.logging import logger
-
-GLOBAL_STEP_TENSOR_NAME = "global_step"
 
 
 class LoggingMetricHook(tf.train.LoggingTensorHook):
   """Hook to log benchmark metric information.
 
   This hook is very similar as tf.train.LoggingTensorHook, which logs given
-  tensors every N local steps, every N seconds, or at the end.
+  tensors every N local steps, every N seconds, or at the end. The metric
+  information will be logged to given log_dir or via metric_logger in JSON
+  format, which can be consumed by data analysis pipeline later.
 
   Note that if `at_end` is True, `tensors` should not include any tensor
   whose evaluation produces a side effect such as consuming additional inputs.
@@ -43,9 +44,9 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
       tensors: `dict` that maps string-valued tags to tensors/tensor names,
           or `iterable` of tensors/tensor names.
       log_dir: `string`, directory path that metric hook should write log to.
-      metric_logger: `BenchmarkLogger`, the benchmark logger that hook should
-          use to write the log. Exactly one of the `log_dir` and `metric_logger`
-          should be provided.
+      metric_logger: instance of `BenchmarkLogger`, the benchmark logger that
+          hook should use to write the log. Exactly one of the `log_dir` and
+          `metric_logger` should be provided.
       every_n_iter: `int`, print the values of `tensors` once every N local
           steps taken on the current worker.
       every_n_secs: `int` or `float`, print the values of `tensors` once every N
@@ -77,12 +78,16 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
 
   def begin(self):
     super(LoggingMetricHook, self).begin()
-    if tf.train.get_global_step() is None:
+    global_step_tensor = tf.train.get_global_step()
+    if global_step_tensor is None:
       raise RuntimeError(
           "Global step should be created to use LoggingMetricHook.")
-    self._current_tensors[GLOBAL_STEP_TENSOR_NAME] = tf.train.get_global_step()
+    if not self._current_tensors.has_key(ops.GraphKeys.GLOBAL_STEP):
+      self._current_tensors[ops.GraphKeys.GLOBAL_STEP] = global_step_tensor
 
   def after_run(self, unused_run_context, run_values):
+    # should_trigger is a internal state that populated at before_run, and it is
+    # using self_timer to determine whether it should trigger.
     if self._should_trigger:
       self._log_metric(run_values.results)
 
@@ -95,6 +100,7 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
 
   def _log_metric(self, tensor_values):
     self._timer.update_last_triggered_step(self._iter_count)
-    global_step = tensor_values[GLOBAL_STEP_TENSOR_NAME]
+    global_step = tensor_values[ops.GraphKeys.GLOBAL_STEP]
+    # self._tag_order is populated during the init of LoggingTensorHook
     for tag in self._tag_order:
       self._logger.log_metric(tag, tensor_values[tag], global_step=global_step)
