@@ -83,7 +83,7 @@ class LoggingMetricHook(tf.train.LoggingTensorHook):
           "Global step should be created to use LoggingMetricHook.")
     if self._global_step_tensor.name not in self._current_tensors:
       self._current_tensors[self._global_step_tensor.name] = (
-        self._global_step_tensor)
+          self._global_step_tensor)
 
   def after_run(self, unused_run_context, run_values):
     # should_trigger is a internal state that populated at before_run, and it is
