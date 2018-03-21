@@ -64,9 +64,9 @@ class LoggingMetricHookTest(tf.test.TestCase):
           tensors=['t'], every_n_iter=5, every_n_secs=5)
     with self.assertRaisesRegexp(ValueError, 'xactly one of'):
       metric_hook.LoggingMetricHook(tensors=['t'])
-    with self.assertRaisesRegexp(ValueError, 'ither log_dir or metric_logger'):
+    with self.assertRaisesRegexp(ValueError, 'log_dir and metric_logger'):
       metric_hook.LoggingMetricHook(tensors=['t'], every_n_iter=5)
-    with self.assertRaisesRegexp(ValueError, 'ither log_dir or metric_logger'):
+    with self.assertRaisesRegexp(ValueError, 'log_dir and metric_logger'):
       metric_hook.LoggingMetricHook(
           tensors=['t'], every_n_iter=5, log_dir=self._log_dir,
           metric_logger=self._logger)
@@ -88,9 +88,6 @@ class LoggingMetricHookTest(tf.test.TestCase):
         self.assertIsNone(self._logger.logged_metric)
 
       hook.end(sess)
-      # self.assertTrue(tf.gfile.Exists(metric_log))
-      # with tf.gfile.GFile(metric_log) as f:
-      #   metric = json.loads(f.readline())
       metric = self._logger.logged_metric
       self.assertRegexpMatches(metric["name"], "foo")
       self.assertEqual(metric["value"], 42.0)
