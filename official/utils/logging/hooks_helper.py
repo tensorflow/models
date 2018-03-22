@@ -147,8 +147,7 @@ def get_logging_metric_hook(benchmark_log_dir=None,
   return metric_hook.LoggingMetricHook(
       tensors=tensors_to_log,
       log_dir=benchmark_log_dir,
-      every_n_secs=every_n_secs,
-      at_end=True)
+      every_n_secs=every_n_secs)
 
 
 # A dictionary to map one hook name and its corresponding function
