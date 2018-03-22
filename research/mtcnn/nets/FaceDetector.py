@@ -7,7 +7,7 @@ import time
 import cv2
 import numpy as np
 
-from nets.nms import py_nms
+from utils.nms import py_nms
 
 from nets.PNet import PNet
 from nets.RNet import RNet
