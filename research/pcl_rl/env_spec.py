@@ -86,8 +86,8 @@ class EnvSpec(object):
     else:
       self.combine_actions = False
 
-    self.obs_dims_and_types = zip(self.obs_dims, self.obs_types)
-    self.act_dims_and_types = zip(self.act_dims, self.act_types)
+    self.obs_dims_and_types = tuple(zip(self.obs_dims, self.obs_types))
+    self.act_dims_and_types = tuple(zip(self.act_dims, self.act_types))
 
     self.total_obs_dim = sum(self.obs_dims)
     self.total_sampling_act_dim = sum(self.sampling_dim(dim, typ)
