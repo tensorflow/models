@@ -233,7 +233,7 @@ def _rgb_to_grayscale(images, name=None):
     rgb_weights = [0.2989, 0.5870, 0.1140]
     rank_1 = tf.expand_dims(tf.rank(images) - 1, 0)
     gray_float = tf.reduce_sum(
-        flt_image * rgb_weights, rank_1, keepdims=True)
+        flt_image * rgb_weights, rank_1, keep_dims=True)
     gray_float.set_shape(images.get_shape()[:-1].concatenate([1]))
     return tf.image.convert_image_dtype(gray_float, orig_dtype, name=name)
 
@@ -1821,8 +1821,10 @@ def random_pad_to_aspect_ratio(image,
     max_width = tf.maximum(
         max_padded_size_ratio[1] * image_width, target_width)
 
-    min_scale = tf.maximum(min_height / target_height, min_width / target_width)
     max_scale = tf.minimum(max_height / target_height, max_width / target_width)
+    min_scale = tf.minimum(
+        max_scale,
+        tf.maximum(min_height / target_height, min_width / target_width))
 
     generator_func = functools.partial(tf.random_uniform, [],
                                        min_scale, max_scale, seed=seed)
@@ -1831,8 +1833,8 @@ def random_pad_to_aspect_ratio(image,
         preprocessor_cache.PreprocessorCache.PAD_TO_ASPECT_RATIO,
         preprocess_vars_cache)
 
-    target_height = scale * target_height
-    target_width = scale * target_width
+    target_height = tf.round(scale * target_height)
+    target_width = tf.round(scale * target_width)
 
     new_image = tf.image.pad_to_bounding_box(
         image, 0, 0, tf.to_int32(target_height), tf.to_int32(target_width))
@@ -2261,14 +2263,14 @@ def resize_image(image,
       'ResizeImage',
       values=[image, new_height, new_width, method, align_corners]):
     new_image = tf.image.resize_images(
-        image, [new_height, new_width],
+        image, tf.stack([new_height, new_width]),
         method=method,
         align_corners=align_corners)
     image_shape = shape_utils.combined_static_and_dynamic_shape(image)
     result = [new_image]
     if masks is not None:
       num_instances = tf.shape(masks)[0]
-      new_size = tf.constant([new_height, new_width], dtype=tf.int32)
+      new_size = tf.stack([new_height, new_width])
       def resize_masks_branch():
         new_masks = tf.expand_dims(masks, 3)
         new_masks = tf.image.resize_nearest_neighbor(

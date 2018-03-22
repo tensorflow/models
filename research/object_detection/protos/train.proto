@@ -29,11 +29,17 @@ message TrainConfig {
   // extractor variables trained outside of object detection.
   optional string fine_tune_checkpoint = 7 [default=""];
 
+  // Type of checkpoint to restore variables from, e.g. 'classification' or
+  // 'detection'. Provides extensibility to from_detection_checkpoint.
+  // Typically used to load feature extractor variables from trained models.
+  optional string fine_tune_checkpoint_type = 22 [default=""];
+
+  // [Deprecated]: use fine_tune_checkpoint_type instead.
   // Specifies if the finetune checkpoint is from an object detection model.
   // If from an object detection model, the model being trained should have
   // the same parameters with the exception of the num_classes parameter.
   // If false, it assumes the checkpoint was a object classification model.
-  optional bool from_detection_checkpoint = 8 [default=false];
+  optional bool from_detection_checkpoint = 8 [default=false, deprecated=true];
 
   // Whether to load all checkpoint vars that match model variable names and
   // sizes. This option is only available if `from_detection_checkpoint` is
@@ -83,7 +89,7 @@ message TrainConfig {
   // Set this to at least the maximum amount of boxes in the input data.
   // Otherwise, it may cause "Data loss: Attempted to pad to a smaller size
   // than the input element" errors.
-  optional int32 max_number_of_boxes = 20 [default=50];
+  optional int32 max_number_of_boxes = 20 [default=100];
 
   // Whether to remove padding along `num_boxes` dimension of the groundtruth
   // tensors.

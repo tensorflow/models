@@ -657,7 +657,7 @@ def position_sensitive_crop_regions(image,
     position_sensitive_features = tf.add_n(image_crops) / len(image_crops)
     # Then average over spatial positions within the bins.
     position_sensitive_features = tf.reduce_mean(
-        position_sensitive_features, [1, 2], keepdims=True)
+        position_sensitive_features, [1, 2], keep_dims=True)
   else:
     # Reorder height/width to depth channel.
     block_size = bin_crop_size[0]

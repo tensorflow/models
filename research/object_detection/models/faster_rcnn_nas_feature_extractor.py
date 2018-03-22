@@ -171,6 +171,8 @@ class FasterRCNNNASFeatureExtractor(
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      end_points: A dictionary mapping feature extractor tensor names to tensors
+
     Raises:
       ValueError: If the created network is missing the required activation.
     """
@@ -202,7 +204,7 @@ class FasterRCNNNASFeatureExtractor(
     rpn_feature_map_shape = [batch] + shape_without_batch
     rpn_feature_map.set_shape(rpn_feature_map_shape)
 
-    return rpn_feature_map
+    return rpn_feature_map, end_points
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.
@@ -231,9 +233,11 @@ class FasterRCNNNASFeatureExtractor(
     # Note that what follows is largely a copy of build_nasnet_large() within
     # nasnet.py. We are copying to minimize code pollution in slim.
 
-    # pylint: disable=protected-access
-    hparams = nasnet._large_imagenet_config(is_training=self._is_training)
-    # pylint: enable=protected-access
+    # TODO(shlens,skornblith): Determine the appropriate drop path schedule.
+    # For now the schedule is the default (1.0->0.7 over 250,000 train steps).
+    hparams = nasnet.large_imagenet_config()
+    if not self._is_training:
+      hparams.set_hparam('drop_path_keep_prob', 1.0)
 
     # Calculate the total number of cells in the network
     # -- Add 2 for the reduction cells.

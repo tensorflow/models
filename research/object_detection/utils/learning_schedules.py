@@ -56,14 +56,15 @@ def exponential_decay_with_burnin(global_step,
   return tf.where(
       tf.less(tf.cast(global_step, tf.int32), tf.constant(burnin_steps)),
       tf.constant(burnin_learning_rate),
-      post_burnin_learning_rate)
+      post_burnin_learning_rate, name='learning_rate')
 
 
 def cosine_decay_with_warmup(global_step,
                              learning_rate_base,
                              total_steps,
                              warmup_learning_rate=0.0,
-                             warmup_steps=0):
+                             warmup_steps=0,
+                             hold_base_rate_steps=0):
   """Cosine decay schedule with warm up period.
 
   Cosine annealing learning rate as described in:
@@ -79,6 +80,8 @@ def cosine_decay_with_warmup(global_step,
     total_steps: total number of training steps.
     warmup_learning_rate: initial learning rate for warm up.
     warmup_steps: number of warmup steps.
+    hold_base_rate_steps: Optional number of steps to hold base learning rate
+      before decaying.
 
   Returns:
     a (scalar) float tensor representing learning rate.
@@ -93,21 +96,24 @@ def cosine_decay_with_warmup(global_step,
   if total_steps < warmup_steps:
     raise ValueError('total_steps must be larger or equal to '
                      'warmup_steps.')
-  learning_rate = 0.5 * learning_rate_base * (
-      1 + tf.cos(np.pi * (tf.cast(global_step, tf.float32) - warmup_steps
-                         ) / float(total_steps - warmup_steps)))
+  learning_rate = 0.5 * learning_rate_base * (1 + tf.cos(
+      np.pi *
+      (tf.cast(global_step, tf.float32) - warmup_steps - hold_base_rate_steps
+      ) / float(total_steps - warmup_steps - hold_base_rate_steps)))
+  if hold_base_rate_steps > 0:
+    learning_rate = tf.where(global_step > warmup_steps + hold_base_rate_steps,
+                             learning_rate, learning_rate_base)
   if warmup_steps > 0:
     slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
-    pre_cosine_learning_rate = slope * tf.cast(
-        global_step, tf.float32) + warmup_learning_rate
-    learning_rate = tf.where(
-        tf.less(tf.cast(global_step, tf.int32), warmup_steps),
-        pre_cosine_learning_rate,
-        learning_rate)
-  return learning_rate
+    warmup_rate = slope * tf.cast(global_step,
+                                  tf.float32) + warmup_learning_rate
+    learning_rate = tf.where(global_step < warmup_steps, warmup_rate,
+                             learning_rate)
+  return tf.where(global_step > total_steps, 0.0, learning_rate,
+                  name='learning_rate')
 
 
-def manual_stepping(global_step, boundaries, rates):
+def manual_stepping(global_step, boundaries, rates, warmup=False):
   """Manually stepped learning rate schedule.
 
   This function provides fine grained control over learning rates.  One must
@@ -124,6 +130,8 @@ def manual_stepping(global_step, boundaries, rates):
     rates: a list of (float) learning rates corresponding to intervals between
       the boundaries.  The length of this list must be exactly
       len(boundaries) + 1.
+    warmup: Whether to linearly interpolate learning rate for steps in
+      [0, boundaries[0]].
 
   Returns:
     a (scalar) float tensor representing learning rate
@@ -131,6 +139,7 @@ def manual_stepping(global_step, boundaries, rates):
     ValueError: if one of the following checks fails:
       1. boundaries is a strictly increasing list of positive integers
       2. len(rates) == len(boundaries) + 1
+      3. boundaries[0] != 0
   """
   if any([b < 0 for b in boundaries]) or any(
       [not isinstance(b, int) for b in boundaries]):
@@ -142,16 +151,21 @@ def manual_stepping(global_step, boundaries, rates):
   if len(rates) != len(boundaries) + 1:
     raise ValueError('Number of provided learning rates must exceed '
                      'number of boundary points by exactly 1.')
-  if not boundaries: return tf.constant(rates[0])
-  step_boundaries = tf.constant(boundaries, tf.int32)
+
+  if boundaries and boundaries[0] == 0:
+    raise ValueError('First step cannot be zero.')
+
+  if warmup and boundaries:
+    slope = (rates[1] - rates[0]) * 1.0 / boundaries[0]
+    warmup_steps = range(boundaries[0])
+    warmup_rates = [rates[0] + slope * step for step in warmup_steps]
+    boundaries = warmup_steps + boundaries
+    rates = warmup_rates + rates[1:]
+  else:
+    boundaries = [0] + boundaries
   num_boundaries = len(boundaries)
-  learning_rates = tf.constant(rates, tf.float32)
-  index = tf.reduce_min(
-      tf.where(
-          # Casting global step to tf.int32 is dangerous, but necessary to be
-          # compatible with TPU.
-          tf.greater(step_boundaries, tf.cast(global_step, tf.int32)),
-          tf.constant(range(num_boundaries), dtype=tf.int32),
-          tf.constant([num_boundaries] * num_boundaries, dtype=tf.int32)))
-  return tf.reduce_sum(learning_rates * tf.one_hot(index, len(rates),
-                                                   dtype=tf.float32))
+  rate_index = tf.reduce_max(tf.where(tf.greater_equal(global_step, boundaries),
+                                      range(num_boundaries),
+                                      [0] * num_boundaries))
+  return tf.reduce_sum(rates * tf.one_hot(rate_index, depth=num_boundaries),
+                       name='learning_rate')

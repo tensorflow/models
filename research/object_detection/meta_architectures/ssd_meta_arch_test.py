@@ -72,6 +72,13 @@ class MockAnchorGenerator2x2(anchor_generator.AnchorGenerator):
     return 4
 
 
+def _get_value_for_matching_key(dictionary, suffix):
+  for key in dictionary.keys():
+    if key.endswith(suffix):
+      return dictionary[key]
+  raise ValueError('key not found {}'.format(suffix))
+
+
 class SsdMetaArchTest(test_case.TestCase):
 
   def _create_model(self, apply_hard_mining=True,
@@ -270,7 +277,9 @@ class SsdMetaArchTest(test_case.TestCase):
       prediction_dict = model.predict(preprocessed_tensor,
                                       true_image_shapes=None)
       loss_dict = model.loss(prediction_dict, true_image_shapes=None)
-      return (loss_dict['localization_loss'], loss_dict['classification_loss'])
+      return (
+          _get_value_for_matching_key(loss_dict, 'Loss/localization_loss'),
+          _get_value_for_matching_key(loss_dict, 'Loss/classification_loss'))
 
     batch_size = 2
     preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
@@ -305,7 +314,7 @@ class SsdMetaArchTest(test_case.TestCase):
       prediction_dict = model.predict(preprocessed_tensor,
                                       true_image_shapes=None)
       loss_dict = model.loss(prediction_dict, true_image_shapes=None)
-      return (loss_dict['localization_loss'],)
+      return (_get_value_for_matching_key(loss_dict, 'Loss/localization_loss'),)
 
     batch_size = 2
     preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
@@ -335,7 +344,9 @@ class SsdMetaArchTest(test_case.TestCase):
       prediction_dict = model.predict(preprocessed_tensor,
                                       true_image_shapes=None)
       loss_dict = model.loss(prediction_dict, true_image_shapes=None)
-      return (loss_dict['localization_loss'], loss_dict['classification_loss'])
+      return (
+          _get_value_for_matching_key(loss_dict, 'Loss/localization_loss'),
+          _get_value_for_matching_key(loss_dict, 'Loss/classification_loss'))
 
     batch_size = 2
     preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
@@ -366,7 +377,7 @@ class SsdMetaArchTest(test_case.TestCase):
       sess.run(init_op)
       saved_model_path = saver.save(sess, save_path)
       var_map = model.restore_map(
-          from_detection_checkpoint=True,
+          fine_tune_checkpoint_type='detection',
           load_all_detection_checkpoint_vars=False)
       self.assertIsInstance(var_map, dict)
       saver = tf.train.Saver(var_map)
@@ -402,7 +413,7 @@ class SsdMetaArchTest(test_case.TestCase):
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
       another_variable = tf.Variable([17.0], name='another_variable')  # pylint: disable=unused-variable
-      var_map = model.restore_map(from_detection_checkpoint=False)
+      var_map = model.restore_map(fine_tune_checkpoint_type='classification')
       self.assertNotIn('another_variable', var_map)
       self.assertIsInstance(var_map, dict)
       saver = tf.train.Saver(var_map)
@@ -423,7 +434,7 @@ class SsdMetaArchTest(test_case.TestCase):
       model.postprocess(prediction_dict, true_image_shapes)
       another_variable = tf.Variable([17.0], name='another_variable')  # pylint: disable=unused-variable
       var_map = model.restore_map(
-          from_detection_checkpoint=True,
+          fine_tune_checkpoint_type='detection',
           load_all_detection_checkpoint_vars=True)
       self.assertIsInstance(var_map, dict)
       self.assertIn('another_variable', var_map)
