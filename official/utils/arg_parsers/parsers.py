@@ -238,7 +238,7 @@ class BenchmarkParser(argparse.ArgumentParser):
     super(BenchmarkParser, self).__init__(add_help=add_help)
     if benchmark_log_dir:
       self.add_argument(
-          "--benchmark_log_dir", "-bld", default="/tmp",
+          "--benchmark_log_dir", "-bld", default=None,
           help="[default: %(default)s] The location of the benchmark logging.",
           metavar="<BLD>"
       )
