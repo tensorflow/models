@@ -250,14 +250,6 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         prediction_dict, features[fields.InputDataFields.true_image_shape])
 
     if mode == tf.estimator.ModeKeys.TRAIN:
-      if not train_config.fine_tune_checkpoint_type:
-        # train_config.from_detection_checkpoint field is deprecated. For
-        # backward compatibility, sets finetune_checkpoint_type based on
-        # from_detection_checkpoint.
-        if train_config.from_detection_checkpoint:
-          train_config.fine_tune_checkpoint_type = 'detection'
-        else:
-          train_config.fine_tune_checkpoint_type = 'classification'
       if train_config.fine_tune_checkpoint and hparams.load_pretrained:
         if not train_config.fine_tune_checkpoint_type:
           # train_config.from_detection_checkpoint field is deprecated. For
