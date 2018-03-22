@@ -385,7 +385,7 @@ def resnet_main(flags, model_function, input_function):
       # 2. global_step, which is default output for Evaluator.evaluate
       # 3. accuracy, which is defined in eval_metric_ops
       global_step = eval_results[tf.GraphKeys.GLOBAL_STEP]
-      for key in eval_results.item:
+      for key in eval_results:
         if key != tf.GraphKeys.GLOBAL_STEP:
           benchmark_logger.log_metric(
               key, eval_results[key], global_step=global_step)
