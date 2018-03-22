@@ -137,7 +137,7 @@ class BenchmarkLogger(object):
     l2_cache_size = re.match(r"(\d+)", str(info.get("l2_cache_size", "")))
     if l2_cache_size:
       # If a value is returned, it"s in KB
-      cpu_info["cache_size"] = {"L2", int(l2_cache_size.group(0)) * 1024}
+      cpu_info["cache_size"] = {"L2": int(l2_cache_size.group(0)) * 1024}
 
     # Try to get the CPU governor
     try:
@@ -180,7 +180,7 @@ class BenchmarkLogger(object):
 def _parse_gpu_model(physical_device_desc):
   # Assume all the GPU connected are same model
   for kv in physical_device_desc.split(","):
-    for k, v in kv.split(":", 1):
-      if k.strip() == "name":
-        return v.strip()
+    k, _, v = kv.partition(":")
+    if k.strip() == "name":
+      return v.strip()
   return None
