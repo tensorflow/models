@@ -55,7 +55,7 @@ The linked model tar files contain the following:
 * Converted [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/) flatbuffer model
 
 Note that quantized model GraphDefs are still float models, they just have FakeQuantization
-operation embedded to simulate quantization. These are converted by [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/) 
+operation embedded to simulate quantization. These are converted by [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/)
 to be fully quantized. The final effect of quantization can be seen by comparing the frozen fake
 quantized graph to the size of the TFLite flatbuffer, i.e. The TFLite flatbuffer is about 1/4
 the size.
@@ -127,4 +127,3 @@ $ ./bazel-bin/mobilenet_v1_eval --dataset_dir "path/to/dataset" --checkpoint_dir
 ```
 
 The resulting float and quantized models can be run on-device via [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/).
-

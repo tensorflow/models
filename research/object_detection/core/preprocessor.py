@@ -204,7 +204,7 @@ def _random_integer(minval, maxval, seed):
       [], minval=minval, maxval=maxval, dtype=tf.int32, seed=seed)
 
 
-# TODO: This method is needed because the current
+# TODO(mttang): This method is needed because the current
 # tf.image.rgb_to_grayscale method does not support quantization. Replace with
 # tf.image.rgb_to_grayscale after quantization support is added.
 def _rgb_to_grayscale(images, name=None):
@@ -2140,7 +2140,7 @@ def resize_to_range(image,
     return result
 
 
-# TODO: Make sure the static shapes are preserved.
+# TODO(alirezafathi): Make sure the static shapes are preserved.
 def resize_to_min_dimension(image, masks=None, min_dimension=600):
   """Resizes image and masks given the min size maintaining the aspect ratio.
 
@@ -2226,7 +2226,7 @@ def scale_boxes_to_pixel_coordinates(image, boxes, keypoints=None):
   return tuple(result)
 
 
-# TODO: Investigate if instead the function should return None if
+# TODO(alirezafathi): Investigate if instead the function should return None if
 # masks is None.
 # pylint: disable=g-doc-return-or-yield
 def resize_image(image,

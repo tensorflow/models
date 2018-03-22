@@ -27,7 +27,8 @@ class SsdMobilenetV1FeatureExtractorTest(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                is_training=True, batch_norm_trainable=True):
+                                is_training=True, batch_norm_trainable=True,
+                                use_explicit_padding=False):
     """Constructs a new feature extractor.
 
     Args:
@@ -37,6 +38,9 @@ class SsdMobilenetV1FeatureExtractorTest(
       is_training: whether the network is in training mode.
       batch_norm_trainable: Whether to update batch norm parameters during
         training or not.
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
     Returns:
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
@@ -45,7 +49,8 @@ class SsdMobilenetV1FeatureExtractorTest(
       conv_hyperparams = sc
     return ssd_mobilenet_v1_feature_extractor.SSDMobileNetV1FeatureExtractor(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, batch_norm_trainable)
+        conv_hyperparams, batch_norm_trainable=batch_norm_trainable,
+        use_explicit_padding=use_explicit_padding)
 
   def test_extract_features_returns_correct_shapes_128(self):
     image_height = 128
@@ -57,7 +62,10 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 1, 1, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
         2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape)
+        expected_feature_map_shape, use_explicit_padding=False)
+    self.check_extract_features_returns_correct_shape(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape, use_explicit_padding=True)
 
   def test_extract_features_returns_correct_shapes_299(self):
     image_height = 299
@@ -69,7 +77,10 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 2, 2, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
         2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape)
+        expected_feature_map_shape, use_explicit_padding=False)
+    self.check_extract_features_returns_correct_shape(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape, use_explicit_padding=True)
 
   def test_extract_features_with_dynamic_image_shape(self):
     image_height = 128
@@ -81,7 +92,10 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 1, 1, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shapes_with_dynamic_inputs(
         2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape)
+        expected_feature_map_shape, use_explicit_padding=False)
+    self.check_extract_features_returns_correct_shape(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape, use_explicit_padding=True)
 
   def test_extract_features_returns_correct_shapes_enforcing_min_depth(self):
     image_height = 299
@@ -93,7 +107,10 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 2, 2, 32), (2, 1, 1, 32)]
     self.check_extract_features_returns_correct_shape(
         2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape)
+        expected_feature_map_shape, use_explicit_padding=False)
+    self.check_extract_features_returns_correct_shape(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape, use_explicit_padding=True)
 
   def test_extract_features_returns_correct_shapes_with_pad_to_multiple(self):
     image_height = 299
@@ -105,7 +122,10 @@ class SsdMobilenetV1FeatureExtractorTest(
                                   (2, 2, 2, 256), (2, 1, 1, 128)]
     self.check_extract_features_returns_correct_shape(
         2, image_height, image_width, depth_multiplier, pad_to_multiple,
-        expected_feature_map_shape)
+        expected_feature_map_shape, use_explicit_padding=False)
+    self.check_extract_features_returns_correct_shape(
+        2, image_height, image_width, depth_multiplier, pad_to_multiple,
+        expected_feature_map_shape, use_explicit_padding=True)
 
   def test_extract_features_raises_error_with_invalid_image_size(self):
     image_height = 32

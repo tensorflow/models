@@ -37,6 +37,9 @@ environment variable below:
 export YOUR_GCS_BUCKET=${YOUR_GCS_BUCKET}
 ```
 
+It is also possible to run locally by following 
+[the running locally instructions](running_locally.md).
+
 ## Installing Tensorflow and the Tensorflow Object Detection API
 
 Please run through the [installation instructions](installation.md) to install

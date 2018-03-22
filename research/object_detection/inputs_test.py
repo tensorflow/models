@@ -34,7 +34,6 @@ FLAGS = tf.flags.FLAGS
 
 def _get_configs_for_model(model_name):
   """Returns configurations for model."""
-  # TODO: Make sure these tests work fine outside google3.
   fname = os.path.join(
       FLAGS.test_srcdir,
       ('google3/third_party/tensorflow_models/'

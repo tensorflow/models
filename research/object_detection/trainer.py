@@ -235,7 +235,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
           train_config.prefetch_queue_capacity, data_augmentation_options)
 
     # Gather initial summaries.
-    # TODO: See if summaries can be added/extracted from global tf
+    # TODO(rathodv): See if summaries can be added/extracted from global tf
     # collections so that they don't have to be passed around.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
     global_summaries = set([])
@@ -258,17 +258,19 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
 
     sync_optimizer = None
     if train_config.sync_replicas:
-      training_optimizer = tf.SyncReplicasOptimizer(
+      training_optimizer = tf.train.SyncReplicasOptimizer(
           training_optimizer,
           replicas_to_aggregate=train_config.replicas_to_aggregate,
-          total_num_replicas=train_config.worker_replicas)
+          total_num_replicas=worker_replicas)
       sync_optimizer = training_optimizer
 
     # Create ops required to initialize the model from a given checkpoint.
     init_fn = None
     if train_config.fine_tune_checkpoint:
       var_map = detection_model.restore_map(
-          from_detection_checkpoint=train_config.from_detection_checkpoint)
+          from_detection_checkpoint=train_config.from_detection_checkpoint,
+          load_all_detection_checkpoint_vars=(
+              train_config.load_all_detection_checkpoint_vars))
       available_var_map = (variables_helper.
                            get_variables_available_in_checkpoint(
                                var_map, train_config.fine_tune_checkpoint))

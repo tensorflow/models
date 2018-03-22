@@ -8,6 +8,7 @@
 /research/brain_coder/ @danabo
 /research/cognitive_mapping_and_planning/ @s-gupta
 /research/compression/ @nmjohn
+/research/deeplab/ @aquariusjay @yknzhu @gpapan
 /research/delf/ @andrefaraujo
 /research/differential_privacy/ @panyx0718
 /research/domain_adaptation/ @bousmalis @dmrd
@@ -16,6 +17,7 @@
 /research/inception/ @shlens @vincentvanhoucke
 /research/learned_optimizer/ @olganw @nirum
 /research/learning_to_remember_rare_events/ @lukaszkaiser @ofirnachum
+/research/lexnet_nc/ @vered1986 @waterson
 /research/lfads/ @jazcollins @susillo
 /research/lm_1b/ @oriolvinyals @panyx0718
 /research/maskgan/ @a-dai
@@ -23,7 +25,7 @@
 /research/neural_gpu/ @lukaszkaiser
 /research/neural_programmer/ @arvind2505
 /research/next_frame_prediction/ @panyx0718
-/research/object_detection/ @jch1 @tombstone @derekjchow @jesu9 @dreamdragon
+/research/object_detection/ @jch1 @tombstone @derekjchow @jesu9 @dreamdragon @pkulzc
 /research/pcl_rl/ @ofirnachum
 /research/ptn/ @xcyan @arkanath @hellojas @honglaklee
 /research/real_nvp/ @laurent-dinh

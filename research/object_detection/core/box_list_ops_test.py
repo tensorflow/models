@@ -738,12 +738,9 @@ class NonMaxSuppressionTest(tf.test.TestCase):
     boxes.add_field('scores', tf.constant([.9, .75, .6, .95, .5]))
     iou_thresh = .5
     max_output_size = 3
-    nms = box_list_ops.non_max_suppression(
-        boxes, iou_thresh, max_output_size)
-    with self.test_session() as sess:
-      with self.assertRaisesWithPredicateMatch(
-          errors.InvalidArgumentError, 'scores has incompatible shape'):
-        sess.run(nms.get())
+    with self.assertRaisesWithPredicateMatch(ValueError,
+                                             'Dimensions must be equal'):
+      box_list_ops.non_max_suppression(boxes, iou_thresh, max_output_size)
 
   def test_select_from_three_clusters(self):
     corners = tf.constant([[0, 0, 1, 1],

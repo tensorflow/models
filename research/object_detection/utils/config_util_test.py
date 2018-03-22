@@ -397,6 +397,27 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertEqual(new_label_map_path,
                      configs["eval_input_config"].label_map_path)
 
+  def testDontOverwriteEmptyLabelMapPath(self):
+    """Tests that label map path will not by overwritten with empty string."""
+    original_label_map_path = "path/to/original/label_map"
+    new_label_map_path = ""
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    train_input_reader = pipeline_config.train_input_reader
+    train_input_reader.label_map_path = original_label_map_path
+    eval_input_reader = pipeline_config.eval_input_reader
+    eval_input_reader.label_map_path = original_label_map_path
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(
+        configs, label_map_path=new_label_map_path)
+    self.assertEqual(original_label_map_path,
+                     configs["train_input_config"].label_map_path)
+    self.assertEqual(original_label_map_path,
+                     configs["eval_input_config"].label_map_path)
+
   def testNewMaskType(self):
     """Tests that mask type can be overwritten in input readers."""
     original_mask_type = input_reader_pb2.NUMERICAL_MASKS

@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install tf-nightly-gpu
 
-# Checkout tensorflow/models and pin to a particular version
-RUN git clone https://github.com/tensorflow/models.git /tensorflow_models && \
-    cd /tensorflow_models && git checkout feat/multi-gpu-resnet
+# Checkout tensorflow/models at HEAD
+RUN git clone https://github.com/tensorflow/models.git /tensorflow_models
+
 

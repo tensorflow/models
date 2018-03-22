@@ -19,7 +19,6 @@ Example box operations that are supported:
   * Areas: compute bounding box areas
   * IOU: pairwise intersection-over-union scores
 """
-
 import numpy as np
 
 from object_detection.utils import np_box_list

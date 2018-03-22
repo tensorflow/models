@@ -388,14 +388,6 @@ message SSDRandomCropPadFixedAspectRatioOperation {
 
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
-
-  // Min ratio of padded image height and width to the input image's height and
-  // width. Two entries per operation.
-  repeated float min_padded_size_ratio = 8;
-
-  // Max ratio of padded image height and width to the input image's height and
-  // width. Two entries per operation.
-  repeated float max_padded_size_ratio = 9;
 }
 
 // Randomly crops and pads an image to a fixed aspect ratio according to:
@@ -408,4 +400,12 @@ message SSDRandomCropPadFixedAspectRatio {
 
   // Aspect ratio to pad to. This value is used for all crop and pad operations.
   optional float aspect_ratio = 2 [default=1.0];
+
+  // Min ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float min_padded_size_ratio = 3;
+
+  // Max ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float max_padded_size_ratio = 4;
 }

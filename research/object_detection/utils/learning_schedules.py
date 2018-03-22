@@ -142,6 +142,7 @@ def manual_stepping(global_step, boundaries, rates):
   if len(rates) != len(boundaries) + 1:
     raise ValueError('Number of provided learning rates must exceed '
                      'number of boundary points by exactly 1.')
+  if not boundaries: return tf.constant(rates[0])
   step_boundaries = tf.constant(boundaries, tf.int32)
   num_boundaries = len(boundaries)
   learning_rates = tf.constant(rates, tf.float32)
