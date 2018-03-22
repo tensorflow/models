@@ -68,7 +68,7 @@ Here is an example of how to download the MobileNet_v1_1.0_224 checkpoint:
 $ CHECKPOINT_DIR=/tmp/checkpoints
 $ mkdir ${CHECKPOINT_DIR}
 $ wget http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_224.tgz
-$ tar -xvf mobilenet_v1_1.0_224.tar.gz
+$ tar -xvf mobilenet_v1_1.0_224.tgz
 $ mv mobilenet_v1_1.0_224.ckpt.* ${CHECKPOINT_DIR}
 ```
 
