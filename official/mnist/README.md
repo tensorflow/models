@@ -12,7 +12,7 @@ APIs.
 ## Setup
 
 To begin, you'll simply need the latest version of TensorFlow installed.
-First make sure you've [added the models folder to your Python path](official/README.md#running-the-models).
+First make sure you've [added the models folder to your Python path](/official/README.md#running-the-models).
 
 Then to train the model, run the following:
 
