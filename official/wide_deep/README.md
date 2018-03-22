@@ -15,7 +15,7 @@ The input function for the `Estimator` uses `tf.contrib.data.TextLineDataset`, w
 The `Estimator` and `Dataset` APIs are both highly encouraged for fast development and efficient training.
 
 ## Running the code
-Make sure to run the command to export the `/models` folder to the python path: https://github.com/tensorflow/models/tree/master/official#running-the-models
+First make sure you've [added the models folder to your Python path](/official/#running-the-models); otherwise you may encounter an error like `ImportError: No module named official.wide_deep`.
 
 ### Setup
 The [Census Income Data Set](https://archive.ics.uci.edu/ml/datasets/Census+Income) that this sample uses for training is hosted by the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/). We have provided a script that downloads and cleans the necessary files.
