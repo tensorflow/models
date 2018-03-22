@@ -101,7 +101,7 @@ class PNASNetTest(tf.test.TestCase):
       tf.reset_default_graph()
       inputs = tf.random_uniform((batch_size, height, width, 3))
       tf.train.create_global_step()
-      config = pnasnet._large_imagenet_config()
+      config = pnasnet.large_imagenet_config()
       config.set_hparam('use_aux_head', int(use_aux_head))
       with slim.arg_scope(pnasnet.pnasnet_large_arg_scope()):
         _, end_points = pnasnet.build_pnasnet_large(inputs, num_classes,
@@ -114,7 +114,7 @@ class PNASNetTest(tf.test.TestCase):
     num_classes = 1000
     inputs = tf.random_uniform((batch_size, height, width, 3))
     tf.train.create_global_step()
-    config = pnasnet._large_imagenet_config()
+    config = pnasnet.large_imagenet_config()
     config.set_hparam('data_format', 'NCHW')
     with slim.arg_scope(pnasnet.pnasnet_large_arg_scope()):
       _, end_points = pnasnet.build_pnasnet_large(

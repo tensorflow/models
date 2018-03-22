@@ -31,7 +31,7 @@ arg_scope = tf.contrib.framework.arg_scope
 slim = tf.contrib.slim
 
 
-def _large_imagenet_config():
+def large_imagenet_config():
   """Large ImageNet configuration based on PNASNet-5."""
   return tf.contrib.training.HParams(
       stem_multiplier=3.0,
@@ -137,7 +137,7 @@ def build_pnasnet_large(images,
                         final_endpoint=None,
                         config=None):
   """Build PNASNet Large model for the ImageNet Dataset."""
-  hparams = copy.deepcopy(config) if config else _large_imagenet_config()
+  hparams = copy.deepcopy(config) if config else large_imagenet_config()
   # pylint: disable=protected-access
   nasnet._update_hparams(hparams, is_training)
   # pylint: enable=protected-access
