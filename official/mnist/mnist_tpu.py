@@ -23,7 +23,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
 from official.mnist import dataset
 from official.mnist import mnist
 
@@ -45,11 +46,6 @@ tf.flags.DEFINE_string(
     "metadata.")
 
 # Model specific parameters
-tf.flags.DEFINE_string(
-    "master", default=None,
-    help="GRPC URL of the master (e.g. grpc://ip.address.of.tpu:8470). You "
-    "must specify either this flag or --tpu_name.")
-
 tf.flags.DEFINE_string("data_dir", "",
                        "Path to directory containing the MNIST dataset")
 tf.flags.DEFINE_string("model_dir", None, "Estimator model_dir")
@@ -137,7 +133,7 @@ def main(argv):
   tf.logging.set_verbosity(tf.logging.INFO)
 
   tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-            FLAGS.tpu, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
+      FLAGS.tpu, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
 
   run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,

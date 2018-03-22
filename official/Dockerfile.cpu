@@ -12,6 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install tf-nightly
 
-# Checkout tensorflow/models and pin to a particular version
+# Checkout tensorflow/models at HEAD
 RUN git clone https://github.com/tensorflow/models.git /tensorflow_models
 

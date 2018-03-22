@@ -428,7 +428,9 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
 def mobilenet_v1_arg_scope(is_training=True,
                            weight_decay=0.00004,
                            stddev=0.09,
-                           regularize_depthwise=False):
+                           regularize_depthwise=False,
+                           batch_norm_decay=0.9997,
+                           batch_norm_epsilon=0.001):
   """Defines the default MobilenetV1 arg scope.
 
   Args:
@@ -436,6 +438,9 @@ def mobilenet_v1_arg_scope(is_training=True,
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
     regularize_depthwise: Whether or not apply regularization on depthwise.
+    batch_norm_decay: Decay for batch norm moving average.
+    batch_norm_epsilon: Small float added to variance to avoid dividing by zero
+      in batch norm.
 
   Returns:
     An `arg_scope` to use for the mobilenet v1 model.
@@ -444,8 +449,8 @@ def mobilenet_v1_arg_scope(is_training=True,
       'is_training': is_training,
       'center': True,
       'scale': True,
-      'decay': 0.9997,
-      'epsilon': 0.001,
+      'decay': batch_norm_decay,
+      'epsilon': batch_norm_epsilon,
   }
 
   # Set weight_decay for weights in Conv and DepthSepConv layers.

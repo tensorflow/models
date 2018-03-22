@@ -18,10 +18,14 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import os
 import shutil
 import sys
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
+from official.utils.arg_parsers import parsers
+from official.utils.logging import hooks_helper
 
 _CSV_COLUMNS = [
     'age', 'workclass', 'fnlwgt', 'education', 'education_num',
@@ -32,34 +36,6 @@ _CSV_COLUMNS = [
 
 _CSV_COLUMN_DEFAULTS = [[0], [''], [0], [''], [0], [''], [''], [''], [''], [''],
                         [0], [0], [0], [''], ['']]
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    '--model_dir', type=str, default='/tmp/census_model',
-    help='Base directory for the model.')
-
-parser.add_argument(
-    '--model_type', type=str, default='wide_deep',
-    help="Valid model types: {'wide', 'deep', 'wide_deep'}.")
-
-parser.add_argument(
-    '--train_epochs', type=int, default=40, help='Number of training epochs.')
-
-parser.add_argument(
-    '--epochs_per_eval', type=int, default=2,
-    help='The number of training epochs to run between evaluations.')
-
-parser.add_argument(
-    '--batch_size', type=int, default=40, help='Number of examples per batch.')
-
-parser.add_argument(
-    '--train_data', type=str, default='/tmp/census_data/adult.data',
-    help='Path to the training data.')
-
-parser.add_argument(
-    '--test_data', type=str, default='/tmp/census_data/adult.test',
-    help='Path to the test data.')
 
 _NUM_EXAMPLES = {
     'train': 32561,
@@ -170,8 +146,8 @@ def build_estimator(model_dir, model_type):
 def input_fn(data_file, num_epochs, shuffle, batch_size):
   """Generate an input function for the Estimator."""
   assert tf.gfile.Exists(data_file), (
-      '%s not found. Please make sure you have either run data_download.py or '
-      'set both arguments --train_data and --test_data.' % data_file)
+      '%s not found. Please make sure you have run data_download.py and '
+      'set the --data_dir argument to the correct path.' % data_file)
 
   def parse_csv(value):
     print('Parsing', data_file)
@@ -195,28 +171,59 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   return dataset
 
 
-def main(unused_argv):
+def main(_):
   # Clean up the model directory if present
   shutil.rmtree(FLAGS.model_dir, ignore_errors=True)
   model = build_estimator(FLAGS.model_dir, FLAGS.model_type)
 
-  # Train and evaluate the model every `FLAGS.epochs_per_eval` epochs.
-  for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
-    model.train(input_fn=lambda: input_fn(
-        FLAGS.train_data, FLAGS.epochs_per_eval, True, FLAGS.batch_size))
+  train_file = os.path.join(FLAGS.data_dir, 'adult.data')
+  test_file = os.path.join(FLAGS.data_dir, 'adult.test')
 
-    results = model.evaluate(input_fn=lambda: input_fn(
-        FLAGS.test_data, 1, False, FLAGS.batch_size))
+  # Train and evaluate the model every `FLAGS.epochs_per_eval` epochs.
+  def train_input_fn():
+    return input_fn(train_file, FLAGS.epochs_per_eval, True, FLAGS.batch_size)
+
+  def eval_input_fn():
+    return input_fn(test_file, 1, False, FLAGS.batch_size)
+
+  train_hooks = hooks_helper.get_train_hooks(
+      FLAGS.hooks, batch_size=FLAGS.batch_size,
+      tensors_to_log={'average_loss': 'head/truediv',
+                      'loss': 'head/weighted_loss/Sum'})
+
+  # Train and evaluate the model every `FLAGS.epochs_between_evals` epochs.
+  for n in range(FLAGS.train_epochs // FLAGS.epochs_between_evals):
+    model.train(input_fn=train_input_fn, hooks=train_hooks)
+    results = model.evaluate(input_fn=eval_input_fn)
 
     # Display evaluation metrics
-    print('Results at epoch', (n + 1) * FLAGS.epochs_per_eval)
+    print('Results at epoch', (n + 1) * FLAGS.epochs_between_evals)
     print('-' * 60)
 
     for key in sorted(results):
       print('%s: %s' % (key, results[key]))
 
 
+class WideDeepArgParser(argparse.ArgumentParser):
+  """Argument parser for running the wide deep model."""
+
+  def __init__(self):
+    super(WideDeepArgParser, self).__init__(parents=[parsers.BaseParser()])
+    self.add_argument(
+        '--model_type', '-mt', type=str, default='wide_deep',
+        choices=['wide', 'deep', 'wide_deep'],
+        help='[default %(default)s] Valid model types: wide, deep, wide_deep.',
+        metavar='<MT>')
+    self.set_defaults(
+        data_dir='/tmp/census_data',
+        model_dir='/tmp/census_model',
+        train_epochs=40,
+        epochs_between_evals=2,
+        batch_size=40)
+
+
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
+  parser = WideDeepArgParser()
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)

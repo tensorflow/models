@@ -20,9 +20,10 @@ from __future__ import print_function
 from tempfile import mkstemp
 
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main
+from official.utils.testing import integration
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -33,6 +34,12 @@ _NUM_CHANNELS = 3
 
 
 class BaseTest(tf.test.TestCase):
+  """Tests for the Cifar10 version of Resnet.
+  """
+
+  def tearDown(self):
+    super(BaseTest, self).tearDown()
+    tf.gfile.DeleteRecursively(self.get_temp_dir())
 
   def test_dataset_input_fn(self):
     fake_data = bytearray()
@@ -47,7 +54,7 @@ class BaseTest(tf.test.TestCase):
     data_file.close()
 
     fake_dataset = tf.data.FixedLengthRecordDataset(
-        filename, cifar10_main._RECORD_BYTES)
+        filename, cifar10_main._RECORD_BYTES)  # pylint: disable=protected-access
     fake_dataset = fake_dataset.map(
         lambda val: cifar10_main.parse_record(val, False))
     image, label = fake_dataset.make_one_shot_iterator().get_next()
@@ -128,12 +135,26 @@ class BaseTest(tf.test.TestCase):
     num_classes = 246
 
     for version in (1, 2):
-      model = cifar10_main.Cifar10Model(32, data_format='channels_last',
-                                     num_classes=num_classes, version=version)
-      fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
+      model = cifar10_main.Cifar10Model(
+          32, data_format='channels_last', num_classes=num_classes,
+          version=version)
+      fake_input = tf.random_uniform(
+          [batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
       output = model(fake_input, training=True)
 
       self.assertAllEqual(output.shape, (batch_size, num_classes))
+
+  def test_cifar10_end_to_end_synthetic_v1(self):
+    integration.run_synthetic(
+        main=cifar10_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '1']
+    )
+
+  def test_cifar10_end_to_end_synthetic_v2(self):
+    integration.run_synthetic(
+        main=cifar10_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '2']
+    )
 
 
 if __name__ == '__main__':

@@ -19,9 +19,10 @@ from __future__ import print_function
 
 import unittest
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import imagenet_main
+from official.utils.testing import integration
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
@@ -31,12 +32,15 @@ _LABEL_CLASSES = 1001
 
 class BaseTest(tf.test.TestCase):
 
+  def tearDown(self):
+    super(BaseTest, self).tearDown()
+    tf.gfile.DeleteRecursively(self.get_temp_dir())
+
   def tensor_shapes_helper(self, resnet_size, version, with_gpu=False):
     """Checks the tensor shapes after each phase of the ResNet model."""
     def reshape(shape):
-      """Returns the expected dimensions depending on if a
-      GPU is being used.
-      """
+      """Returns the expected dimensions depending on if a GPU is being used."""
+
       # If a GPU is used for the test, the shape is returned (already in NCHW
       # form). When GPU is not used, the shape is converted to NHWC.
       if with_gpu:
@@ -60,7 +64,7 @@ class BaseTest(tf.test.TestCase):
       block_layer2 = graph.get_tensor_by_name('block_layer2:0')
       block_layer3 = graph.get_tensor_by_name('block_layer3:0')
       block_layer4 = graph.get_tensor_by_name('block_layer4:0')
-      avg_pool = graph.get_tensor_by_name('final_avg_pool:0')
+      reduce_mean = graph.get_tensor_by_name('final_reduce_mean:0')
       dense = graph.get_tensor_by_name('final_dense:0')
 
       self.assertAllEqual(initial_conv.shape, reshape((1, 64, 112, 112)))
@@ -73,13 +77,13 @@ class BaseTest(tf.test.TestCase):
         self.assertAllEqual(block_layer2.shape, reshape((1, 128, 28, 28)))
         self.assertAllEqual(block_layer3.shape, reshape((1, 256, 14, 14)))
         self.assertAllEqual(block_layer4.shape, reshape((1, 512, 7, 7)))
-        self.assertAllEqual(avg_pool.shape, reshape((1, 512, 1, 1)))
+        self.assertAllEqual(reduce_mean.shape, reshape((1, 512, 1, 1)))
       else:
         self.assertAllEqual(block_layer1.shape, reshape((1, 256, 56, 56)))
         self.assertAllEqual(block_layer2.shape, reshape((1, 512, 28, 28)))
         self.assertAllEqual(block_layer3.shape, reshape((1, 1024, 14, 14)))
         self.assertAllEqual(block_layer4.shape, reshape((1, 2048, 7, 7)))
-        self.assertAllEqual(avg_pool.shape, reshape((1, 2048, 1, 1)))
+        self.assertAllEqual(reduce_mean.shape, reshape((1, 2048, 1, 1)))
 
       self.assertAllEqual(dense.shape, (1, _LABEL_CLASSES))
       self.assertAllEqual(output.shape, (1, _LABEL_CLASSES))
@@ -235,14 +239,49 @@ class BaseTest(tf.test.TestCase):
     num_classes = 246
 
     for version in (1, 2):
-      model = imagenet_main.ImagenetModel(50, data_format='channels_last',
-                                      num_classes=num_classes, version=version)
+      model = imagenet_main.ImagenetModel(
+          50, data_format='channels_last', num_classes=num_classes,
+          version=version)
       fake_input = tf.random_uniform([batch_size, 224, 224, 3])
       output = model(fake_input, training=True)
 
       self.assertAllEqual(output.shape, (batch_size, num_classes))
 
+  def test_imagenet_end_to_end_synthetic_v1(self):
+    integration.run_synthetic(
+        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '1']
+    )
+
+  def test_imagenet_end_to_end_synthetic_v2(self):
+    integration.run_synthetic(
+        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '2']
+    )
+
+  def test_imagenet_end_to_end_synthetic_v1_tiny(self):
+    integration.run_synthetic(
+        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '1', '-rs', '18']
+    )
+
+  def test_imagenet_end_to_end_synthetic_v2_tiny(self):
+    integration.run_synthetic(
+        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '2', '-rs', '18']
+    )
+
+  def test_imagenet_end_to_end_synthetic_v1_huge(self):
+    integration.run_synthetic(
+        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '1', '-rs', '200']
+    )
+
+  def test_imagenet_end_to_end_synthetic_v2_huge(self):
+    integration.run_synthetic(
+        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=['-v', '2', '-rs', '200']
+    )
 
 if __name__ == '__main__':
   tf.test.main()
-
