@@ -21,6 +21,7 @@ from __future__ import print_function
 import datetime
 import glob
 import json
+import multiprocessing
 import numbers
 import os
 import re
@@ -115,6 +116,7 @@ class BenchmarkLogger(object):
   def _collect_cpu_info(self, run_info):
     cpu_info = {}
 
+    cpu_info["num_cores"] = multiprocessing.cpu_count()
     # Gather num_cores_allowed
     try:
       with tf.gfile.GFile("/proc/self/status", "rb") as fh:
@@ -125,7 +127,7 @@ class BenchmarkLogger(object):
     except tf.OpError:
       pass
     finally:
-      if cpu_info["num_cores_allowed"] == 0:
+      if "num_cores_allowed" not in cpu_info:
         cpu_info["num_cores_allowed"]= cpu_info["num_cores"]
 
     info = cpuinfo.get_cpu_info()
