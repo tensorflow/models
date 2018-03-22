@@ -167,10 +167,7 @@ class BenchmarkLogger(object):
     # "device: 0, name: Tesla P100-PCIE-16GB, pci bus id: 0000:00:04.0"
     for d in local_device_protos:
       if d.device_type == "GPU":
-        for k, v in d.physical_device_desc.split(",", 1):
-          if k.strip() == "name":
-            gpu_info["model"] = v.strip()
-            break
+        gpu_info["model"] = _parse_gpu_model(d.physical_device_desc)
         # Assume all the GPU connected are same model
         break
     run_info["gpu_info"] = gpu_info
@@ -179,3 +176,11 @@ class BenchmarkLogger(object):
     vmem = psutil.virtual_memory()
     run_info["memory_total"] = vmem.total
     run_info["memory_available"] = vmem.available
+
+def _parse_gpu_model(physical_device_desc):
+  # Assume all the GPU connected are same model
+  for kv in physical_device_desc.split(","):
+    for k, v in kv.split(":", 1):
+      if k.strip() == "name":
+        return v.strip()
+  return None
