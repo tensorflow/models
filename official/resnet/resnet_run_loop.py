@@ -30,6 +30,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import resnet_model
 from official.utils.arg_parsers import parsers
+from official.utils.export import export
 from official.utils.logging import hooks_helper
 
 
@@ -126,34 +127,6 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     return tf.data.Dataset.from_tensors((images, labels)).repeat()
 
   return input_fn
-
-
-def build_tensor_serving_input_receiver_fn(shape, dtype=tf.float32,
-                                           batch_size=1):
-  """Returns a input_receiver_fn that can be used during serving.
-
-  This expects examples to come through as float tensors, and simply
-  wraps them as TensorServingInputReceivers.
-
-  Arguably, this should live in tf.estimator.export. Testing here first.
-
-  Args:
-    shape: list representing target size of a single example.
-    dtype: the expected datatype for the input example
-    batch_size: number of input tensors that will be passed for prediction
-
-  Returns:
-    A function that itself returns a TensorServingInputReceiver.
-  """
-  def serving_input_receiver_fn():
-    # Prep a placeholder where the input example will be fed in
-    features = tf.placeholder(
-        dtype=dtype, shape=[batch_size] + shape, name='input_tensor')
-
-    return tf.estimator.export.TensorServingInputReceiver(
-        features=features, receiver_tensors=features)
-
-  return serving_input_receiver_fn
 
 
 ################################################################################
@@ -424,6 +397,12 @@ def resnet_main(flags, model_function, input_function):
     print(eval_results)
 
     return classifier
+
+
+def export_savedmodel(classifier, export_dir, shape):
+  """Exports a saved model for the given classifier."""
+  input_receiver_fn = export.build_tensor_serving_input_receiver_fn(shape)
+  classifier.export_savedmodel(export_dir, input_receiver_fn)
 
 
 class ResnetArgParser(argparse.ArgumentParser):

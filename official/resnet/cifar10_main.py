@@ -234,10 +234,7 @@ def main(argv):
   # Export the model if desired
   if flags.export_dir is not None:
     shape = [_HEIGHT, _WIDTH, _NUM_CHANNELS]
-    input_receiver_fn = resnet_run_loop.build_tensor_serving_input_receiver_fn(
-        shape)
-    classifier.export_savedmodel(flags.export_dir, input_receiver_fn)
-    resnet_run_loop.export_model(classifier, flags.export_dir, parse_record)
+    resnet_run_loop.export_savedmodel(classifier, flags.export_dir, shape)
 
 
 if __name__ == '__main__':
