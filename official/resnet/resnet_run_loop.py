@@ -345,8 +345,8 @@ def resnet_main(flags, model_function, input_function):
           'multi_gpu': flags.multi_gpu,
           'version': flags.version,
       })
-  if flags.benchmark_log_dir is not None:
-    benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
+  benchmark_logger = (logger.BenchmarkLogger(flags.benchmark_log_dir)
+                      if flags.benchmark_log_dir is not None else None)
 
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
     train_hooks = hooks_helper.get_train_hooks(
