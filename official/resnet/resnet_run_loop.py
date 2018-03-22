@@ -380,7 +380,15 @@ def resnet_main(flags, model_function, input_function):
                                        steps=flags.max_train_steps)
     print(eval_results)
     if benchmark_logger is not None:
-      benchmark_logger.log_metric("eval_results", eval_results)
+      # The eval_results result contains 3 entries:
+      # 1. loss, which is default output for Evaluator.evaluate
+      # 2. global_step, which is default output for Evaluator.evaluate
+      # 3. accuracy, which is defined in eval_metric_ops
+      global_step = eval_results[tf.GraphKeys.GLOBAL_STEP]
+      for key in eval_results.item:
+        if key != tf.GraphKeys.GLOBAL_STEP:
+          benchmark_logger.log_metric(
+              key, eval_results[key], global_step=global_step)
 
 
 class ResnetArgParser(argparse.ArgumentParser):
