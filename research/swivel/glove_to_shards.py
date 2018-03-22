@@ -44,6 +44,7 @@ import struct
 import sys
 
 import tensorflow as tf
+from six.moves import xrange
 
 flags = tf.app.flags
 

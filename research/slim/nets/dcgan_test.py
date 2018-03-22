@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from six.moves import xrange
 import tensorflow as tf
+from six.moves import xrange
 from nets import dcgan
 
 
