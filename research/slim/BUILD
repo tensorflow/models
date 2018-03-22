@@ -434,7 +434,6 @@ py_library(
     srcs = glob(["nets/mobilenet/*.py"]),
     srcs_version = "PY2AND3",
     deps = [
-        "//third_party/py/contextlib2",
         # "//tensorflow",
     ],
 )

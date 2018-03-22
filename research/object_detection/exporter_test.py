@@ -62,7 +62,7 @@ class FakeModel(model.DetectionModel):
             np.arange(64).reshape([2, 2, 4, 4]), tf.float32)
     return postprocessed_tensors
 
-  def restore_map(self, checkpoint_path, from_detection_checkpoint):
+  def restore_map(self, checkpoint_path, fine_tune_checkpoint_type):
     pass
 
   def loss(self, prediction_dict, true_image_shapes):

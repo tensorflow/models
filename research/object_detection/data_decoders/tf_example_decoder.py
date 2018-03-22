@@ -31,6 +31,44 @@ from object_detection.utils import label_map_util
 slim_example_decoder = tf.contrib.slim.tfexample_decoder
 
 
+# TODO(lzc): keep LookupTensor and BackupHandler in sync with
+# tf.contrib.slim.tfexample_decoder version.
+class LookupTensor(slim_example_decoder.Tensor):
+  """An ItemHandler that returns a parsed Tensor, the result of a lookup."""
+
+  def __init__(self,
+               tensor_key,
+               table,
+               shape_keys=None,
+               shape=None,
+               default_value=''):
+    """Initializes the LookupTensor handler.
+
+    Simply calls a vocabulary (most often, a label mapping) lookup.
+
+    Args:
+      tensor_key: the name of the `TFExample` feature to read the tensor from.
+      table: A tf.lookup table.
+      shape_keys: Optional name or list of names of the TF-Example feature in
+        which the tensor shape is stored. If a list, then each corresponds to
+        one dimension of the shape.
+      shape: Optional output shape of the `Tensor`. If provided, the `Tensor` is
+        reshaped accordingly.
+      default_value: The value used when the `tensor_key` is not found in a
+        particular `TFExample`.
+
+    Raises:
+      ValueError: if both `shape_keys` and `shape` are specified.
+    """
+    self._table = table
+    super(LookupTensor, self).__init__(tensor_key, shape_keys, shape,
+                                       default_value)
+
+  def tensors_to_item(self, keys_to_tensors):
+    unmapped_tensor = super(LookupTensor, self).tensors_to_item(keys_to_tensors)
+    return self._table.lookup(unmapped_tensor)
+
+
 class BackupHandler(slim_example_decoder.ItemHandler):
   """An ItemHandler that tries two ItemHandlers in order."""
 
@@ -207,8 +245,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       # switch back to slim_example_decoder.BackupHandler once tf 1.5 becomes
       # more popular.
       label_handler = BackupHandler(
-          slim_example_decoder.LookupTensor(
-              'image/object/class/text', table, default_value=''),
+          LookupTensor('image/object/class/text', table, default_value=''),
           slim_example_decoder.Tensor('image/object/class/label'))
     else:
       label_handler = slim_example_decoder.Tensor('image/object/class/label')

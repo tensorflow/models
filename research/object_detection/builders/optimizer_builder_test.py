@@ -35,6 +35,7 @@ class LearningRateBuilderTest(tf.test.TestCase):
     text_format.Merge(learning_rate_text_proto, learning_rate_proto)
     learning_rate = optimizer_builder._create_learning_rate(
         learning_rate_proto)
+    self.assertTrue(learning_rate.op.name.endswith('learning_rate'))
     with self.test_session():
       learning_rate_out = learning_rate.eval()
     self.assertAlmostEqual(learning_rate_out, 0.004)
@@ -52,19 +53,22 @@ class LearningRateBuilderTest(tf.test.TestCase):
     text_format.Merge(learning_rate_text_proto, learning_rate_proto)
     learning_rate = optimizer_builder._create_learning_rate(
         learning_rate_proto)
+    self.assertTrue(learning_rate.op.name.endswith('learning_rate'))
     self.assertTrue(isinstance(learning_rate, tf.Tensor))
 
   def testBuildManualStepLearningRate(self):
     learning_rate_text_proto = """
       manual_step_learning_rate {
+        initial_learning_rate: 0.002
         schedule {
-          step: 0
+          step: 100
           learning_rate: 0.006
         }
         schedule {
           step: 90000
           learning_rate: 0.00006
         }
+        warmup: true
       }
     """
     learning_rate_proto = optimizer_pb2.LearningRate()
@@ -80,6 +84,7 @@ class LearningRateBuilderTest(tf.test.TestCase):
         total_steps: 20000
         warmup_learning_rate: 0.0001
         warmup_steps: 1000
+        hold_base_rate_steps: 20000
       }
     """
     learning_rate_proto = optimizer_pb2.LearningRate()

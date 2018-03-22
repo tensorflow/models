@@ -122,7 +122,7 @@ def multiclass_non_max_suppression(boxes,
     if boundaries is not None:
       per_class_boundaries_list = tf.unstack(boundaries, axis=1)
     boxes_ids = (range(num_classes) if len(per_class_boxes_list) > 1
-                 else [0] * num_classes)
+                 else [0] * num_classes.value)
     for class_idx, boxes_idx in zip(range(num_classes), boxes_ids):
       per_class_boxes = per_class_boxes_list[boxes_idx]
       boxlist_and_class_scores = box_list.BoxList(per_class_boxes)

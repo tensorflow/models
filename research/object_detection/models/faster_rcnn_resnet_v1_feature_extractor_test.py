@@ -47,7 +47,7 @@ class FasterRcnnResnetV1FeatureExtractorTest(tf.test.TestCase):
           first_stage_features_stride=16, architecture=architecture)
       preprocessed_inputs = tf.random_uniform(
           [4, 224, 224, 3], maxval=255, dtype=tf.float32)
-      rpn_feature_map = feature_extractor.extract_proposal_features(
+      rpn_feature_map, _ = feature_extractor.extract_proposal_features(
           preprocessed_inputs, scope='TestScope')
       features_shape = tf.shape(rpn_feature_map)
 
@@ -62,7 +62,7 @@ class FasterRcnnResnetV1FeatureExtractorTest(tf.test.TestCase):
         first_stage_features_stride=8)
     preprocessed_inputs = tf.random_uniform(
         [4, 224, 224, 3], maxval=255, dtype=tf.float32)
-    rpn_feature_map = feature_extractor.extract_proposal_features(
+    rpn_feature_map, _ = feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope='TestScope')
     features_shape = tf.shape(rpn_feature_map)
 
@@ -77,7 +77,7 @@ class FasterRcnnResnetV1FeatureExtractorTest(tf.test.TestCase):
         first_stage_features_stride=16)
     preprocessed_inputs = tf.random_uniform(
         [1, 112, 112, 3], maxval=255, dtype=tf.float32)
-    rpn_feature_map = feature_extractor.extract_proposal_features(
+    rpn_feature_map, _ = feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope='TestScope')
     features_shape = tf.shape(rpn_feature_map)
 
@@ -95,7 +95,7 @@ class FasterRcnnResnetV1FeatureExtractorTest(tf.test.TestCase):
     feature_extractor = self._build_feature_extractor(
         first_stage_features_stride=16)
     preprocessed_inputs = tf.placeholder(tf.float32, (4, None, None, 3))
-    rpn_feature_map = feature_extractor.extract_proposal_features(
+    rpn_feature_map, _ = feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope='TestScope')
     features_shape = tf.shape(rpn_feature_map)
 

@@ -40,6 +40,11 @@ HASH_KEY = 'hash'
 HASH_BINS = 1 << 31
 SERVING_FED_EXAMPLE_KEY = 'serialized_example'
 
+# A map of names to methods that help build the input pipeline.
+INPUT_BUILDER_UTIL_MAP = {
+    'dataset_build': dataset_builder.build,
+}
+
 
 def transform_input_data(tensor_dict,
                          model_preprocess_fn,
@@ -229,7 +234,7 @@ def create_train_input_fn(train_config, train_input_config,
         image_resizer_fn=image_resizer_fn,
         num_classes=config_util.get_number_of_classes(model_config),
         data_augmentation_fn=data_augmentation_fn)
-    dataset = dataset_builder.build(
+    dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         train_input_config,
         transform_input_data_fn=transform_data_fn,
         batch_size=params['batch_size'] if params else train_config.batch_size,
@@ -341,8 +346,13 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
         num_classes=num_classes,
         data_augmentation_fn=None,
         retain_original_image=True)
-    dataset = dataset_builder.build(eval_input_config,
-                                    transform_input_data_fn=transform_data_fn)
+    dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
+        eval_input_config,
+        transform_input_data_fn=transform_data_fn,
+        batch_size=1,
+        num_classes=config_util.get_number_of_classes(model_config),
+        spatial_image_shape=config_util.get_spatial_image_size(
+            image_resizer_config))
     input_dict = dataset_util.make_initializable_iterator(dataset).get_next()
 
     hash_from_source_id = tf.string_to_hash_bucket_fast(
@@ -373,16 +383,6 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
     if fields.InputDataFields.groundtruth_instance_masks in input_dict:
       labels[fields.InputDataFields.groundtruth_instance_masks] = input_dict[
           fields.InputDataFields.groundtruth_instance_masks]
-
-    # Add a batch dimension to the tensors.
-    features = {
-        key: tf.expand_dims(features[key], axis=0)
-        for key, feature in features.items()
-    }
-    labels = {
-        key: tf.expand_dims(labels[key], axis=0)
-        for key, label in labels.items()
-    }
 
     return features, labels
 
@@ -426,9 +426,13 @@ def create_predict_input_fn(model_config):
     input_dict = transform_fn(decoder.decode(example))
     images = tf.to_float(input_dict[fields.InputDataFields.image])
     images = tf.expand_dims(images, axis=0)
+    true_image_shape = tf.expand_dims(
+        input_dict[fields.InputDataFields.true_image_shape], axis=0)
 
     return tf.estimator.export.ServingInputReceiver(
-        features={fields.InputDataFields.image: images},
+        features={
+            fields.InputDataFields.image: images,
+            fields.InputDataFields.true_image_shape: true_image_shape},
         receiver_tensors={SERVING_FED_EXAMPLE_KEY: example})
 
   return _predict_input_fn

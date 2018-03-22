@@ -159,6 +159,7 @@ class FasterRCNNFeatureExtractor(object):
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      activations: A dictionary mapping activation tensor names to tensors.
     """
     with tf.variable_scope(scope, values=[preprocessed_inputs]):
       return self._extract_proposal_features(preprocessed_inputs, scope)
@@ -906,7 +907,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       image_shape: A 1-D tensor representing the input image shape.
     """
     image_shape = tf.shape(preprocessed_inputs)
-    rpn_features_to_crop = self._feature_extractor.extract_proposal_features(
+    rpn_features_to_crop, _ = self._feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope=self.first_stage_feature_extractor_scope)
 
     feature_map_shape = tf.shape(rpn_features_to_crop)
@@ -1649,14 +1650,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
           tf.reduce_sum(localization_losses, axis=1) / normalizer)
       objectness_loss = tf.reduce_mean(
           tf.reduce_sum(objectness_losses, axis=1) / normalizer)
-      loss_dict = {}
 
-      with tf.name_scope('localization_loss'):
-        loss_dict['first_stage_localization_loss'] = (
-            self._first_stage_loc_loss_weight * localization_loss)
-      with tf.name_scope('objectness_loss'):
-        loss_dict['first_stage_objectness_loss'] = (
-            self._first_stage_obj_loss_weight * objectness_loss)
+      localization_loss = tf.multiply(self._first_stage_loc_loss_weight,
+                                      localization_loss,
+                                      name='localization_loss')
+      objectness_loss = tf.multiply(self._first_stage_obj_loss_weight,
+                                    objectness_loss, name='objectness_loss')
+      loss_dict = {localization_loss.op.name: localization_loss,
+                   objectness_loss.op.name: objectness_loss}
     return loss_dict
 
   def _loss_box_classifier(self,
@@ -1782,15 +1783,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
         ) = self._unpad_proposals_and_apply_hard_mining(
             proposal_boxlists, second_stage_loc_losses,
             second_stage_cls_losses, num_proposals)
-      loss_dict = {}
-      with tf.name_scope('localization_loss'):
-        loss_dict['second_stage_localization_loss'] = (
-            self._second_stage_loc_loss_weight * second_stage_loc_loss)
+      localization_loss = tf.multiply(self._second_stage_loc_loss_weight,
+                                      second_stage_loc_loss,
+                                      name='localization_loss')
 
-      with tf.name_scope('classification_loss'):
-        loss_dict['second_stage_classification_loss'] = (
-            self._second_stage_cls_loss_weight * second_stage_cls_loss)
+      classification_loss = tf.multiply(self._second_stage_cls_loss_weight,
+                                        second_stage_cls_loss,
+                                        name='classification_loss')
 
+      loss_dict = {localization_loss.op.name: localization_loss,
+                   classification_loss.op.name: classification_loss}
       second_stage_mask_loss = None
       if prediction_masks is not None:
         if groundtruth_masks_list is None:
@@ -1857,9 +1859,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
             tf.boolean_mask(second_stage_mask_losses, paddings_indicator))
 
       if second_stage_mask_loss is not None:
-        with tf.name_scope('mask_loss'):
-          loss_dict['second_stage_mask_loss'] = (
-              self._second_stage_mask_loss_weight * second_stage_mask_loss)
+        mask_loss = tf.multiply(self._second_stage_mask_loss_weight,
+                                second_stage_mask_loss, name='mask_loss')
+        loss_dict[mask_loss.op.name] = mask_loss
     return loss_dict
 
   def _padded_batched_proposals_indicator(self,
@@ -1927,26 +1929,32 @@ class FasterRCNNMetaArch(model.DetectionModel):
           decoded_boxlist_list=[proposal_boxlist])
 
   def restore_map(self,
-                  from_detection_checkpoint=True,
+                  fine_tune_checkpoint_type='detection',
                   load_all_detection_checkpoint_vars=False):
     """Returns a map of variables to load from a foreign checkpoint.
 
     See parent class for details.
 
     Args:
-      from_detection_checkpoint: whether to restore from a full detection
+      fine_tune_checkpoint_type: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
-        classification checkpoint for initialization prior to training. Default
-        True.
+        classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
        load_all_detection_checkpoint_vars: whether to load all variables (when
-         `from_detection_checkpoint` is True). If False, only variables within
-         the feature extractor scopes are included. Default False.
+         `fine_tune_checkpoint_type` is `detection`). If False, only variables
+         within the feature extractor scopes are included. Default False.
 
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    Raises:
+      ValueError: if fine_tune_checkpoint_type is neither `classification`
+        nor `detection`.
     """
-    if not from_detection_checkpoint:
+    if fine_tune_checkpoint_type not in ['detection', 'classification']:
+      raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
+          fine_tune_checkpoint_type))
+    if fine_tune_checkpoint_type == 'classification':
       return self._feature_extractor.restore_from_classification_checkpoint_fn(
           self.first_stage_feature_extractor_scope,
           self.second_stage_feature_extractor_scope)

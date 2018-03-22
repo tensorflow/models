@@ -72,7 +72,8 @@ message SsdFeatureExtractor {
   // Minimum number of the channels in the feature extractor.
   optional int32 min_depth = 3 [default=16];
 
-  // Hyperparameters for the feature extractor.
+  // Hyperparameters that affect the layers of feature extractor added on top
+  // of the base feature extractor.
   optional Hyperparams conv_hyperparams = 4;
 
   // The nearest multiple to zero-pad the input height and width dimensions to.
