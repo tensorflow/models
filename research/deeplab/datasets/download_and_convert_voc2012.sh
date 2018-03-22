@@ -20,7 +20,7 @@
 #   bash ./download_and_preprocess_voc2012.sh
 #
 # The folder structure is assumed to be:
-#  + data
+#  + datasets
 #     - build_data.py
 #     - build_voc2012_data.py
 #     - download_and_preprocess_voc2012.sh
