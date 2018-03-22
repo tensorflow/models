@@ -14,8 +14,7 @@ from nets.FaceDetector import FaceDetector
 def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--webcamera_id', type=int, help='Webcamera ID.', default=0)
-	parser.add_argument('--threshold', type=float, help='Lower threshold value for face probability.', default=0.125)
-	parser.add_argument('--gpu_memory_fraction', type=float, help='Upper bound on the amount of GPU memory that will be used by the process.', default=0.2)
+	parser.add_argument('--threshold', type=float, help='Lower threshold value for face probability (0 to 1.0).', default=0.125)
 	return(parser.parse_args(argv))
 
 def main(args):
