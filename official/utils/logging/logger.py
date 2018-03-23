@@ -13,7 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Logging utilities for benchmark."""
+"""Logging utilities for benchmark.
+
+For collecting local environment metrics like CPU and memory, certain python
+packages need be installed. Run the following commands for dependency packages:
+  > pip install --upgrade py-cpuinfo
+  > pip install --upgrade psutil
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -92,7 +98,7 @@ class BenchmarkLogger(object):
     """
     run_info = {"model_name": model_name}
     _collect_tensorflow_info(run_info)
-    _collect_environment_variable(run_info)
+    _collect_tensorflow_environment_variables(run_info)
     _collect_cpu_info(run_info)
     _collect_gpu_info(run_info)
     _collect_memory_info(run_info)
@@ -110,9 +116,9 @@ def _collect_tensorflow_info(run_info):
   run_info["tensorflow_version"] = {
       "version": tf.VERSION, "git_hash": tf.GIT_VERSION}
 
-def _collect_environment_variable(run_info):
-  run_info["environment_variable"] = {
-      k:v for k, v in os.environ.items() if k.startswith("TF_")}
+def _collect_tensorflow_environment_variables(run_info):
+  run_info["tensorflow_environment_variables"] = {
+      k : v for k, v in os.environ.items() if k.startswith("TF_")}
 
 # The following code is mirrored from tensorflow/tools/test/system_info_lib
 # which is not exposed for import.
@@ -124,14 +130,19 @@ def _collect_cpu_info(run_info):
   try:
     with tf.gfile.GFile("/proc/self/status", "rb") as fh:
       nc = re.search(r"(?m)^Cpus_allowed:\s*(.*)$", fh.read())
-    if nc:  # e.g. "ff" => 8, "fff" => 12
+    # Trying to find a line starts with "Cpus_allowed:"
+    # The content after that is like "ff" or "fff", which means 8 or 12, each
+    # "f" indicates 4 CPU.
+    # See https://www.kernel.org/doc/Documentation/filesystems/proc.txt for more
+    # details.
+    if nc:  # e.g.
       cpu_info["num_cores_allowed"] = (
         bin(int(nc.group(1).replace(",", ""), 16)).count("1"))
   except tf.OpError:
     pass
   finally:
     if "num_cores_allowed" not in cpu_info:
-      cpu_info["num_cores_allowed"]= cpu_info["num_cores"]
+      cpu_info["num_cores_allowed"] = cpu_info["num_cores"]
 
   info = cpuinfo.get_cpu_info()
   cpu_info["cpu_info"] = info["brand"]
@@ -139,7 +150,7 @@ def _collect_cpu_info(run_info):
   cpu_info["mhz_per_cpu"] = info["hz_advertised_raw"][0] / 1.0e6
   l2_cache_size = re.match(r"(\d+)", str(info.get("l2_cache_size", "")))
   if l2_cache_size:
-    # If a value is returned, it"s in KB
+    # If a value is returned, it's in KB
     cpu_info["cache_size"] = {"L2": int(l2_cache_size.group(0)) * 1024}
 
   # Try to get the CPU governor
