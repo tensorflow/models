@@ -8,6 +8,7 @@ class AbstractFaceDetector(object):
 
 	def __init__(self):
 		self.is_training = False
+		self.end_points = {}
 
 	def setup_network(self, inputs):
 		raise NotImplementedError('Must be implemented by the subclass.')

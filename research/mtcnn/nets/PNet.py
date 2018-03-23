@@ -13,8 +13,7 @@ class PNet(AbstractFaceDetector):
 
 	def __init__(self):		
 		self.network_size = 12
-		self.network_name = 'PNet'
-		self.end_points = {}
+		self.network_name = 'PNet'		
 
 	def setup_network(self, inputs):	
 		self.end_points = {}
@@ -68,11 +67,11 @@ class PNet(AbstractFaceDetector):
 
             			#batch
             			bounding_box_predictions = tf.squeeze(bounding_box_predictions, [1,2], name='bounding_box_predictions')
-            			bounding_box_loss = bbox_ohem(bounding_box_predictions, bounding_box_target, label)
+            			bounding_box_loss = bbox_ohem(bounding_box_predictions, bounding_box_targets, label)
 
             			#batch*10
             			landmark_predictions = tf.squeeze(landmark_predictions, [1,2], name="landmark_predictions")
-            			landmark_loss = landmark_ohem(landmark_predictions, landmark_target, label)
+            			landmark_loss = landmark_ohem(landmark_predictions, landmark_targets, label)
 
             			accuracy = cal_accuracy(class_probability, label)
             			L2_loss = tf.add_n(slim.losses.get_regularization_losses())
@@ -102,7 +101,7 @@ class PNet(AbstractFaceDetector):
 
 	def detect(self, input_batch):
         	image_height, image_width, _ = input_batch.shape
-        	probabilities, bounding_boxes = self.session.run([self.output_class_probability, self.output_bounding_box],
+        	class_probabilities, bounding_boxes = self.session.run([self.output_class_probability, self.output_bounding_box],
                                                            	 feed_dict={self.input_batch: input_batch, self.image_width: image_width, self.image_height: image_height})
-        	return( probabilities, bounding_boxes )
+        	return( class_probabilities, bounding_boxes )
 		
