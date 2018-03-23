@@ -12,53 +12,78 @@ from utils.prelu import prelu
 class ONet(RNet):
 
 	def __init__(self, batch_size = 1):
+		RNet.__init__(self, batch_size)
 		self.network_size = 48
-		self.batch_size = batch_size
 		self.network_name = 'ONet'
 
 	def setup_network(self, inputs):
+		self.end_points = {}
+
     		with slim.arg_scope([slim.conv2d],
                         		activation_fn = prelu,
                         		weights_initializer=slim.xavier_initializer(),
                         		biases_initializer=tf.zeros_initializer(),
                         		weights_regularizer=slim.l2_regularizer(0.0005),                        
                         		padding='valid'):
-        		print( inputs.get_shape() )
-        		net = slim.conv2d(inputs, num_outputs=32, kernel_size=[3,3], stride=1, scope="conv1")
-        		print( net.get_shape() )
-        		net = slim.max_pool2d(net, kernel_size=[3, 3], stride=2, scope="pool1", padding='SAME')
-        		print( net.get_shape() )
-        		net = slim.conv2d(net,num_outputs=64,kernel_size=[3,3],stride=1,scope="conv2")
-        		print( net.get_shape() )
-        		net = slim.max_pool2d(net, kernel_size=[3, 3], stride=2, scope="pool2")
-        		print( net.get_shape() )
-        		net = slim.conv2d(net,num_outputs=64,kernel_size=[3,3],stride=1,scope="conv3")
-        		print( net.get_shape() )
-        		net = slim.max_pool2d(net, kernel_size=[2, 2], stride=2, scope="pool3", padding='SAME')
-        		print( net.get_shape() )
-        		net = slim.conv2d(net,num_outputs=128,kernel_size=[2,2],stride=1,scope="conv4")
-        		print( net.get_shape() )
+
+			end_point = 'conv1'
+        		net = slim.conv2d(inputs, num_outputs=32, kernel_size=[3,3], stride=1, scope=end_point)
+			self.end_points[end_point] = net
+
+			end_point = 'pool1'
+        		net = slim.max_pool2d(net, kernel_size=[3, 3], stride=2, scope=end_point, padding='SAME')
+			self.end_points[end_point] = net
+
+			end_point = 'conv2'
+        		net = slim.conv2d(net, num_outputs=64, kernel_size=[3,3], stride=1, scope=end_point)
+			self.end_points[end_point] = net
+		
+			end_point = 'pool2'
+        		net = slim.max_pool2d(net, kernel_size=[3, 3], stride=2, scope=end_point)
+			self.end_points[end_point] = net
+
+			end_point = 'conv3'
+        		net = slim.conv2d(net, num_outputs=64, kernel_size=[3,3], stride=1, scope=end_point)
+			self.end_points[end_point] = net
+
+			end_point = 'pool3'
+        		net = slim.max_pool2d(net, kernel_size=[2, 2], stride=2, scope=end_point, padding='SAME')
+			self.end_points[end_point] = net
+
+			end_point = 'conv4'
+        		net = slim.conv2d(net, num_outputs=128, kernel_size=[2,2], stride=1, scope=end_point)
+			self.end_points[end_point] = net
+
         		fc_flatten = slim.flatten(net)
-        		print( fc_flatten.get_shape() )
-        		fc1 = slim.fully_connected(fc_flatten, num_outputs=256,scope="fc1", activation_fn=prelu)
-        		print( fc1.get_shape() )
+
+			end_point = 'fc1'
+        		fc1 = slim.fully_connected(fc_flatten, num_outputs=256, scope=end_point, activation_fn=prelu)
+			self.end_points[end_point] = fc1
+
         		#batch*2
-        		cls_prob = slim.fully_connected(fc1,num_outputs=2,scope="cls_fc",activation_fn=tf.nn.softmax)
-        		print( cls_prob.get_shape() )
+			end_point = 'cls_fc'
+        		class_probability = slim.fully_connected(fc1, num_outputs=2, scope=end_point, activation_fn=tf.nn.softmax)
+			self.end_points[end_point] = class_probability
+
         		#batch*4
-        		bbox_pred = slim.fully_connected(fc1,num_outputs=4,scope="bbox_fc",activation_fn=None)
-        		print( bbox_pred.get_shape() )
+			end_point = 'bbox_fc'
+        		bounding_box_predictions = slim.fully_connected(fc1, num_outputs=4, scope=end_point, activation_fn=None)
+			self.end_points[end_point] = bounding_box_predictions
+
         		#batch*10
-        		landmark_pred = slim.fully_connected(fc1,num_outputs=10,scope="landmark_fc",activation_fn=None)
-        		print( landmark_pred.get_shape() )
-        		#train
+			end_point = 'landmark_fc'
+        		landmark_predictions = slim.fully_connected(fc1, num_outputs=10, scope=end_point, activation_fn=None)
+			self.end_points[end_point] = landmark_predictions
+
         		if(self.is_training):
-            			cls_loss = cls_ohem(cls_prob,label)
-            			bbox_loss = bbox_ohem(bbox_pred,bbox_target,label)
-            			accuracy = cal_accuracy(cls_prob,label)
-            			landmark_loss = landmark_ohem(landmark_pred, landmark_target,label)
+            			class_loss = cls_ohem(class_probability, label)
+            			bounding_box_loss = bbox_ohem(bounding_box_predictions, bounding_box_targets, label)
+            			landmark_loss = landmark_ohem(landmark_predictions, landmark_targets,label)
+
+            			accuracy = cal_accuracy(class_probability, label)
             			L2_loss = tf.add_n(slim.losses.get_regularization_losses())
-            			return( cls_loss,bbox_loss,landmark_loss,L2_loss,accuracy )
+
+            			return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy )
         		else:
-            			return( cls_prob,bbox_pred,landmark_pred )
+            			return(class_probability, bounding_box_predictions, landmark_predictions)
 

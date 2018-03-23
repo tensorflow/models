@@ -11,7 +11,8 @@ from utils.prelu import prelu
 
 class PNet(AbstractFaceDetector):
 
-	def __init__(self):		
+	def __init__(self):	
+		AbstractFaceDetector.__init__(self)	
 		self.network_size = 12
 		self.network_name = 'PNet'		
 
