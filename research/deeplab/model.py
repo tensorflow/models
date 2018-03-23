@@ -226,8 +226,7 @@ def multi_scale_logits(images,
   Raises:
     ValueError: If model_options doesn't specify crop_size and its
       add_image_level_feature = True, since add_image_level_feature requires
-      crop_size information. Or, if model_options has model_variant =
-      'mobilenet_v2' but atrous_rates or decoder_output_stride are not None.
+      crop_size information.
   """
   # Setup default values.
   if not image_pyramid:
@@ -236,6 +235,12 @@ def multi_scale_logits(images,
   if model_options.crop_size is None and model_options.add_image_level_feature:
     raise ValueError(
         'Crop size must be specified for using image-level feature.')
+  if model_options.model_variant == 'mobilenet_v2':
+    if (model_options.atrous_rates is not None or
+        model_options.decoder_output_stride is not None):
+      # Output a warning and users should make sure if the setting is desired.
+      tf.logging.warning('Our provided mobilenet_v2 checkpoint does not '
+                         'include ASPP and decoder modules.')
 
   crop_height = (
       model_options.crop_size[0]

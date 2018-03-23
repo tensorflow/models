@@ -54,7 +54,7 @@ python deeplab/train.py \
     --train_crop_size=769 \
     --train_batch_size=1 \
     --dataset="cityscapes" \
-    --tf_initial_checkpoints=${PATH_TO_INITIAL_CHECKPOINT} \
+    --tf_initial_checkpoint=${PATH_TO_INITIAL_CHECKPOINT} \
     --train_logdir=${PATH_TO_TRAIN_DIR} \
     --dataset_dir=${PATH_TO_DATASET}
 ```
