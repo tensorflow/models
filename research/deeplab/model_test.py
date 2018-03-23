@@ -78,7 +78,7 @@ class DeeplabModelTest(tf.test.TestCase):
 
               # Expected number of logits = len(image_pyramid) + 1, since the
               # last logits is merged from all the scales.
-              self.assertEquals(len(scales_to_logits), expected_num_logits[i])
+              self.assertEqual(len(scales_to_logits), expected_num_logits[i])
 
   def testForwardpassDeepLabv3plus(self):
     crop_size = [33, 33]
