@@ -98,17 +98,17 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     metric_log = os.path.join(log_dir, "metric.log")
     self.assertTrue(tf.gfile.Exists(metric_log))
     with tf.gfile.GFile(metric_log) as f:
-      loss = json.loads(f.readline())
-      self.assertEqual(loss["name"], "loss")
-      self.assertEqual(loss["value"], 0.46237424)
-      self.assertEqual(loss["unit"], None)
-      self.assertEqual(loss["global_step"], 207082)
-
       accuracy = json.loads(f.readline())
       self.assertEqual(accuracy["name"], "accuracy")
       self.assertEqual(accuracy["value"], 0.9285)
       self.assertEqual(accuracy["unit"], None)
       self.assertEqual(accuracy["global_step"], 207082)
+
+      loss = json.loads(f.readline())
+      self.assertEqual(loss["name"], "loss")
+      self.assertEqual(loss["value"], 0.46237424)
+      self.assertEqual(loss["unit"], None)
+      self.assertEqual(loss["global_step"], 207082)
 
   def test_log_evaluation_result_with_invalid_type(self):
     eval_result = "{'loss': 0.46237424, 'global_step': 207082}"
