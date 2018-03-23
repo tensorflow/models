@@ -28,7 +28,9 @@ features:
     convolution to trade-off precision and runtime.
 
 If you find the code useful for your research, please consider citing our latest
-work:
+works:
+
+*   DeepLabv3+:
 
 ```
 @article{deeplabv3plus2018,
@@ -39,11 +41,21 @@ work:
 }
 ```
 
+*   MobileNetv2:
+
+```
+@inproceedings{mobilenetv22018,
+  title={Inverted Residuals and Linear Bottlenecks: Mobile Networks for Classification, Detection and Segmentation},
+  author={Mark Sandler and Andrew Howard and Menglong Zhu and Andrey Zhmoginov and Liang-Chieh Chen},
+  booktitle={CVPR},
+  year={2018}
+}
+```
+
 In the current implementation, we support adopting the following network
 backbones:
 
-1.  MobileNetv2 [8]: A fast network structure designed for mobile devices. **We
-    will provide MobileNetv2 support in the next update. Please stay tuned.**
+1.  MobileNetv2 [8]: A fast network structure designed for mobile devices.
 
 2.  Xception [9, 10]: A powerful network structure intended for server-side
     deployment.
@@ -71,7 +83,7 @@ Some segmentation results on Flickr images:
 
 Demo:
 
-*   <a href='deeplab_demo.ipynb'>Jupyter notebook for off-the-shelf inference.</a><br>
+*   <a href='https://colab.sandbox.google.com/github/tensorflow/models/blob/master/research/deeplab/deeplab_demo.ipynb'>Colab notebook for off-the-shelf inference.</a><br>
 
 Running:
 
