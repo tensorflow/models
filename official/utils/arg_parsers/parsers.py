@@ -148,8 +148,7 @@ class PerformanceParser(argparse.ArgumentParser):
   """
 
   def __init__(self, add_help=False, num_parallel_calls=True, inter_op=True,
-               intra_op=True, use_synthetic_data=True, max_train_steps=True,
-               benchmark_log_dir=True):
+               intra_op=True, use_synthetic_data=True, max_train_steps=True):
     super(PerformanceParser, self).__init__(add_help=add_help)
 
     if num_parallel_calls:
@@ -202,13 +201,6 @@ class PerformanceParser(argparse.ArgumentParser):
           metavar="<MTS>"
       )
 
-    if benchmark_log_dir:
-      self.add_argument(
-          "--benchmark_log_dir", "-bld", default=None,
-          help="[default: %(default)s] The location of the benchmark logging.",
-          metavar="<BLD>"
-      )
-
 
 class ImageModelParser(argparse.ArgumentParser):
   """Default parser for specification image specific behavior.
@@ -231,4 +223,22 @@ class ImageModelParser(argparse.ArgumentParser):
                "format will be chosen automatically based on whether TensorFlow"
                "was built for CPU or GPU.",
           metavar="<CF>"
+      )
+
+
+class BenchmarkParser(argparse.ArgumentParser):
+  """Default parser for benchmark logging.
+
+  Args:
+    add_help: Create the "--help" flag. False if class instance is a parent.
+    benchmark_log_dir: Create a flag to specify location for benchmark logging.
+  """
+
+  def __init__(self, add_help=False, benchmark_log_dir=True):
+    super(BenchmarkParser, self).__init__(add_help=add_help)
+    if benchmark_log_dir:
+      self.add_argument(
+          "--benchmark_log_dir", "-bld", default=None,
+          help="[default: %(default)s] The location of the benchmark logging.",
+          metavar="<BLD>"
       )

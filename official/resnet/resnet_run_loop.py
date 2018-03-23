@@ -392,6 +392,7 @@ class ResnetArgParser(argparse.ArgumentParser):
         parsers.BaseParser(),
         parsers.PerformanceParser(),
         parsers.ImageModelParser(),
+        parsers.BenchmarkParser(),
     ])
 
     self.add_argument(
