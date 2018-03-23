@@ -87,5 +87,37 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     metric_log = os.path.join(log_dir, "metric.log")
     self.assertFalse(tf.gfile.Exists(metric_log))
 
+  def test_log_evaluation_result(self):
+    eval_result = {'loss': 0.46237424,
+                   'global_step': 207082,
+                   'accuracy': 0.9285}
+    log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
+    log = logger.BenchmarkLogger(log_dir)
+    log.log_estimator_evaluation_result(eval_result)
+
+    metric_log = os.path.join(log_dir, "metric.log")
+    self.assertTrue(tf.gfile.Exists(metric_log))
+    with tf.gfile.GFile(metric_log) as f:
+      loss = json.loads(f.readline())
+      self.assertEqual(loss["name"], "loss")
+      self.assertEqual(loss["value"], 0.46237424)
+      self.assertEqual(loss["unit"], None)
+      self.assertEqual(loss["global_step"], 207082)
+
+      accuracy = json.loads(f.readline())
+      self.assertEqual(accuracy["name"], "accuracy")
+      self.assertEqual(accuracy["value"], 0.9285)
+      self.assertEqual(accuracy["unit"], None)
+      self.assertEqual(accuracy["global_step"], 207082)
+
+  def test_log_evaluation_result_with_invalid_type(self):
+    eval_result = "{'loss': 0.46237424, 'global_step': 207082}"
+    log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
+    log = logger.BenchmarkLogger(log_dir)
+    log.log_estimator_evaluation_result(eval_result)
+
+    metric_log = os.path.join(log_dir, "metric.log")
+    self.assertFalse(tf.gfile.Exists(metric_log))
+
 if __name__ == "__main__":
   tf.test.main()

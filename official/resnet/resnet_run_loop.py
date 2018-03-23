@@ -345,8 +345,6 @@ def resnet_main(flags, model_function, input_function):
           'multi_gpu': flags.multi_gpu,
           'version': flags.version,
       })
-  benchmark_logger = (logger.BenchmarkLogger(flags.benchmark_log_dir)
-                      if flags.benchmark_log_dir is not None else None)
 
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
     train_hooks = hooks_helper.get_train_hooks(
@@ -379,16 +377,10 @@ def resnet_main(flags, model_function, input_function):
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                        steps=flags.max_train_steps)
     print(eval_results)
-    if benchmark_logger is not None:
-      # The eval_results result contains 3 entries:
-      # 1. loss, which is default output for Evaluator.evaluate
-      # 2. global_step, which is default output for Evaluator.evaluate
-      # 3. accuracy, which is defined in eval_metric_ops
-      global_step = eval_results[tf.GraphKeys.GLOBAL_STEP]
-      for key in eval_results:
-        if key != tf.GraphKeys.GLOBAL_STEP:
-          benchmark_logger.log_metric(
-              key, eval_results[key], global_step=global_step)
+
+    if flags.benchmark_log_dir is not None:
+      benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
+      benchmark_logger.log_estimator_evaluation_result(eval_results)
 
 
 class ResnetArgParser(argparse.ArgumentParser):
@@ -400,7 +392,6 @@ class ResnetArgParser(argparse.ArgumentParser):
         parsers.BaseParser(),
         parsers.PerformanceParser(),
         parsers.ImageModelParser(),
-        parsers.BenchmarkParser(),
     ])
 
     self.add_argument(

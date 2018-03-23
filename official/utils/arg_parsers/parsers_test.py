@@ -27,9 +27,9 @@ class TestParser(argparse.ArgumentParser):
     super(TestParser, self).__init__(parents=[
         parsers.BaseParser(),
         parsers.PerformanceParser(num_parallel_calls=True, inter_op=True,
-                                  intra_op=True, use_synthetic_data=True),
-        parsers.ImageModelParser(data_format=True),
-        parsers.BenchmarkParser(benchmark_log_dir=True)
+                                  intra_op=True, use_synthetic_data=True,
+                                  benchmark_log_dir=True),
+        parsers.ImageModelParser(data_format=True)
     ])
 
 
