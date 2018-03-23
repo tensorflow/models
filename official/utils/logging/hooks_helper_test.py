@@ -49,16 +49,19 @@ class BaseTest(unittest.TestCase):
                      expected_hook_name)
 
   def test_get_train_hooks_logging_tensor_hook(self):
-    test_hook_name = 'LoggingTensorHook'
-    self.validate_train_hook_name(test_hook_name, 'loggingtensorhook')
+    self.validate_train_hook_name('LoggingTensorHook', 'loggingtensorhook')
 
   def test_get_train_hooks_profiler_hook(self):
-    test_hook_name = 'ProfilerHook'
-    self.validate_train_hook_name(test_hook_name, 'profilerhook')
+    self.validate_train_hook_name('ProfilerHook', 'profilerhook')
 
   def test_get_train_hooks_examples_per_second_hook(self):
-    test_hook_name = 'ExamplesPerSecondHook'
-    self.validate_train_hook_name(test_hook_name, 'examplespersecondhook')
+    self.validate_train_hook_name('ExamplesPerSecondHook',
+                                  'examplespersecondhook')
+
+  def test_get_logging_metric_hook(self):
+    test_hook_name = 'LoggingMetricHook'
+    self.validate_train_hook_name(test_hook_name, 'loggingmetrichook',
+                                  benchmark_log_dir='/tmp')
 
 if __name__ == '__main__':
   tf.test.main()
