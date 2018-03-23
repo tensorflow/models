@@ -25,10 +25,11 @@
 #     - build_voc2012_data.py
 #     - download_and_preprocess_voc2012.sh
 #     - remove_gt_colormap.py
-#     + VOCdevkit
-#       + VOC2012
-#         + JPEGImages
-#         + SegmentationClass
+#     + pascal_voc_seg
+#       + VOCdevkit
+#         + VOC2012
+#           + JPEGImages
+#           + SegmentationClass
 #
 
 # Exit immediately if a command exits with a non-zero status.

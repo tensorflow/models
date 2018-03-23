@@ -18,12 +18,49 @@ A: We have not tried this. The interested users could take a look at Philipp Kr√
 ___
 Q5: What if I want to train the model and fine-tune the batch normalization parameters?
 
-A: Fine-tuning batch normalization requires large batch size, and thus in the train.py we suggest setting `num_clones` (number of GPUs on one machine) and `train_batch_size` to be as large as possible.
+A: If given the limited resource at hand, we would suggest you simply fine-tune
+from our provided checkpoint whose batch-norm parameters have been trained (i.e.,
+train with a smaller learning rate, set `fine_tune_batch_norm = false`, and
+employ longer training iterations since the learning rate is small). If
+you really would like to train by yourself, we would suggest
+
+1. Set `output_stride = 16` or maybe even `32` (remember to change the flag
+`atrous_rates` accordingly, e.g., `atrous_rates = [3, 6, 9]` for
+`output_stride = 32`).
+
+2. Use as many GPUs as possible (change the flag `num_clones` in train.py) and
+set `train_batch_size` as large as possible.
+
+3. Adjust the `train_crop_size` in train.py. Maybe set it to be smaller, e.g.,
+513x513 (or even 321x321), so that you could use a larger batch size.
+
+4. Use a smaller network backbone, such as MobileNet-v2.
+
 ___
 Q6: How can I train the model asynchronously?
 
 A: In the train.py, the users could set `num_replicas` (number of machines for training) and `num_ps_tasks` (we usually set `num_ps_tasks` = `num_replicas` / 2). See slim.deployment.model_deploy for more details.
 ___
+Q7: I could not reproduce the performance even with the provided checkpoints.
+
+A: Please try running
+
+```bash
+# Run the simple test with Xception_65 as network backbone.
+sh local_test.sh
+```
+
+or
+
+```bash
+# Run the simple test with MobileNet-v2 as network backbone.
+sh local_test_mobilenetv2.sh
+```
+
+First, make sure you could reproduce the results with our provided setting.
+After that, you could start to make a new change one at a time to help debug.
+___
+
 ## References
 
 1. **Deep Residual Learning for Image Recognition**<br />
