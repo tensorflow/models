@@ -52,7 +52,7 @@ class BenchmarkLogger(object):
                          type(eval_results))
       return
     global_step = eval_results[tf.GraphKeys.GLOBAL_STEP]
-    for key in eval_results:
+    for key in sorted(eval_results):
       if key != tf.GraphKeys.GLOBAL_STEP:
         self.log_metric(key, eval_results[key], global_step=global_step)
 
