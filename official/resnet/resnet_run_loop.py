@@ -31,6 +31,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import resnet_model
 from official.utils.arg_parsers import parsers
 from official.utils.logging import hooks_helper
+from official.utils.logging import logger
 
 
 ################################################################################
@@ -349,7 +350,9 @@ def resnet_main(flags, model_function, input_function):
 
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
     train_hooks = hooks_helper.get_train_hooks(
-        flags.hooks, batch_size=flags.batch_size)
+        flags.hooks,
+        batch_size=flags.batch_size,
+        benchmark_log_dir=flags.benchmark_log_dir)
 
     print('Starting a training cycle.')
 
@@ -377,6 +380,10 @@ def resnet_main(flags, model_function, input_function):
                                        steps=flags.max_train_steps)
     print(eval_results)
 
+    if flags.benchmark_log_dir is not None:
+      benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
+      benchmark_logger.log_estimator_evaluation_result(eval_results)
+
 
 class ResnetArgParser(argparse.ArgumentParser):
   """Arguments for configuring and running a Resnet Model.
@@ -387,6 +394,7 @@ class ResnetArgParser(argparse.ArgumentParser):
         parsers.BaseParser(),
         parsers.PerformanceParser(),
         parsers.ImageModelParser(),
+        parsers.BenchmarkParser(),
     ])
 
     self.add_argument(

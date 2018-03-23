@@ -37,6 +37,25 @@ class BenchmarkLogger(object):
     if not tf.gfile.IsDirectory(self._logging_dir):
       tf.gfile.MakeDirs(self._logging_dir)
 
+  def log_estimator_evaluation_result(self, eval_results):
+    """Log the evaluation result for a estimator.
+
+    The evaluate result is a directory that contains metrics defined in
+    model_fn. It also contains a entry for global_step which contains the value
+    of the global step when evaluation was performed.
+
+    Args:
+      eval_results: dict, the result of evaluate() from a estimator.
+    """
+    if not isinstance(eval_results, dict):
+      tf.logging.warning("eval_results should be directory for logging. Got %s",
+                         type(eval_results))
+      return
+    global_step = eval_results[tf.GraphKeys.GLOBAL_STEP]
+    for key in eval_results:
+      if key != tf.GraphKeys.GLOBAL_STEP:
+        self.log_metric(key, eval_results[key], global_step=global_step)
+
   def log_metric(self, name, value, unit=None, global_step=None, extras=None):
     """Log the benchmark metric information to local file.
 
