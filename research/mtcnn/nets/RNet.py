@@ -17,64 +17,78 @@ class RNet(AbstractFaceDetector):
 		self.network_name = 'RNet'
 
 	def setup_network(self, inputs):
+		self.end_points = {}
+
 		with slim.arg_scope([slim.conv2d],
                         	activation_fn = prelu,
                         	weights_initializer=slim.xavier_initializer(),
                         	biases_initializer=tf.zeros_initializer(),
                         	weights_regularizer=slim.l2_regularizer(0.0005),                        
                         	padding='valid'):
-        		print( inputs.get_shape() )
-        		net = slim.conv2d(inputs, num_outputs=28, kernel_size=[3,3], stride=1, scope="conv1")
-        		print( net.get_shape() )
-        		net = slim.max_pool2d(net, kernel_size=[3, 3], stride=2, scope="pool1", padding='SAME')
-        		print( net.get_shape() )
-        		net = slim.conv2d(net,num_outputs=48,kernel_size=[3,3],stride=1,scope="conv2")
-        		print( net.get_shape() )
-        		net = slim.max_pool2d(net,kernel_size=[3,3],stride=2,scope="pool2")
-        		print( net.get_shape() )
-        		net = slim.conv2d(net,num_outputs=64,kernel_size=[2,2],stride=1,scope="conv3")
-        		print( net.get_shape() )
+
+			end_point = 'conv1'
+        		net = slim.conv2d(inputs, num_outputs=28, kernel_size=[3,3], stride=1, scope=end_point)
+			self.end_points[end_point] = net
+
+			end_point = 'pool1'
+        		net = slim.max_pool2d(net, kernel_size=[3, 3], stride=2, scope=end_point, padding='SAME')
+			self.end_points[end_point] = net
+
+			end_point = 'conv2'
+        		net = slim.conv2d(net, num_outputs=48, kernel_size=[3,3], stride=1, scope=end_point)
+			self.end_points[end_point] = net
+
+			end_point = 'pool2'
+        		net = slim.max_pool2d(net, kernel_size=[3,3], stride=2, scope=end_point)
+			self.end_points[end_point] = net
+
+			end_point = 'conv3'
+        		net = slim.conv2d(net, num_outputs=64, kernel_size=[2,2], stride=1, scope=end_point)
+			self.end_points[end_point] = net
+
         		fc_flatten = slim.flatten(net)
-        		print( fc_flatten.get_shape() )
-        		fc1 = slim.fully_connected(fc_flatten, num_outputs=128,scope="fc1", activation_fn=prelu)
-        		print( fc1.get_shape() )
+
+			end_point = 'fc1'
+        		fc1 = slim.fully_connected(fc_flatten, num_outputs=128, scope=end_point, activation_fn=prelu)
+			self.end_points[end_point] = fc1
+
         		#batch*2
-        		cls_prob = slim.fully_connected(fc1,num_outputs=2,scope="cls_fc",activation_fn=tf.nn.softmax)
-        		print( cls_prob.get_shape() )
+			end_point = 'cls_fc'
+        		class_probability = slim.fully_connected(fc1, num_outputs=2, scope=end_point, activation_fn=tf.nn.softmax)
+			self.end_points[end_point] = class_probability
+
         		#batch*4
-        		bbox_pred = slim.fully_connected(fc1,num_outputs=4,scope="bbox_fc",activation_fn=None)
-        		print( bbox_pred.get_shape() )
+			end_point = 'bbox_fc'
+        		bounding_box_predictions = slim.fully_connected(fc1, num_outputs=4, scope=end_point, activation_fn=None)
+			self.end_points[end_point] = bounding_box_predictions
+
         		#batch*10
-        		landmark_pred = slim.fully_connected(fc1,num_outputs=10,scope="landmark_fc",activation_fn=None)
-        		print( landmark_pred.get_shape() )
-        		#train
+			end_point = 'landmark_fc'
+        		landmark_predictions = slim.fully_connected(fc1, num_outputs=10, scope=end_point, activation_fn=None)
+			self.end_points[end_point] = landmark_predictions
+
         		if(self.is_training):
-            			cls_loss = cls_ohem(cls_prob,label)
-            			bbox_loss = bbox_ohem(bbox_pred,bbox_target,label)
-            			accuracy = cal_accuracy(cls_prob,label)
-            			landmark_loss = landmark_ohem(landmark_pred,landmark_target,label)
+            			class_loss = cls_ohem(class_probability, label)
+            			bounding_box_loss = bbox_ohem(bounding_box_predictions, bbox_targets, label)
+            			landmark_loss = landmark_ohem(landmark_predictions, landmark_targets, label)
+
+            			accuracy = cal_accuracy(class_probability, label)
             			L2_loss = tf.add_n(slim.losses.get_regularization_losses())
-            			return( cls_loss,bbox_loss,landmark_loss,L2_loss,accuracy )
+
+            			return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy)
         		else:
-            			return( cls_prob, bbox_pred, landmark_pred )
+            			return(class_probability, bounding_box_predictions, landmark_predictions)
 
 	def load_model(self, checkpoint_path):
 		self.is_training = False
-		self.model_path = checkpoint_path
 
         	graph = tf.Graph()
         	with graph.as_default():
-            		self.image_op = tf.placeholder(tf.float32, shape=[self.batch_size, self.network_size, self.network_size, 3], name='input_image')
-            		#figure out landmark            
-            		self.probability, self.bounding_box, self.landmark = self.setup_network(self.image_op)
-            		self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
+            		self.input_batch = tf.placeholder(tf.float32, shape=[self.batch_size, self.network_size, self.network_size, 3], name='input_batch')            		
+            		self.output_class_probability, self.output_bounding_box, self.output_landmarks = self.setup_network(self.input_batch)
 
-            		saver = tf.train.Saver()            		
-            		model_dictionary = '/'.join(self.model_path.split('/')[:-1])
-            		check_point = tf.train.get_checkpoint_state(model_dictionary)            		
-            		read_state = check_point and check_point.model_checkpoint_path
-            		assert  read_state, "Invalid parameter dictionary."
-            		saver.restore(self.sess, self.model_path)      
+            		self.session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
+			self.load_model_from(checkpoint_path)
 
 	def detect(self, data_batch):
         	scores = []
@@ -88,9 +102,9 @@ class RNet(AbstractFaceDetector):
 	            minibatch.append(data_batch[cur:min(cur + batch_size, n), :, :, :])
 	            cur += batch_size
 
-	        cls_prob_list = []
-	        bbox_pred_list = []
-	        landmark_pred_list = []
+	        class_probability_list = []
+	        bounding_box_list = []
+	        landmark_list = []
 	        for idx, data in enumerate(minibatch):
 	            m = data.shape[0]
 	            real_size = self.batch_size
@@ -107,10 +121,11 @@ class RNet(AbstractFaceDetector):
 	                data = data[keep_inds]
 	                real_size = m
 
-	            cls_prob, bbox_pred,landmark_pred = self.sess.run([self.probability, self.bounding_box, self.landmark], feed_dict={self.image_op: data})
-	            cls_prob_list.append(cls_prob[:real_size])
-	            bbox_pred_list.append(bbox_pred[:real_size])
-	            landmark_pred_list.append(landmark_pred[:real_size])
+	            class_probabilities, bounding_boxes, landmarks = self.session.run([self.output_class_probability, self.output_bounding_box, self.output_landmarks], feed_dict={self.input_batch: data})
 
-	        return( np.concatenate(cls_prob_list, axis=0), np.concatenate(bbox_pred_list, axis=0), np.concatenate(landmark_pred_list, axis=0) )
+	            class_probability_list.append(class_probabilities[:real_size])
+	            bounding_box_list.append(bounding_boxes[:real_size])
+	            landmark_list.append(landmarks[:real_size])
+
+	        return( np.concatenate(class_probability_list, axis=0), np.concatenate(bounding_box_list, axis=0), np.concatenate(landmark_list, axis=0) )
 	
