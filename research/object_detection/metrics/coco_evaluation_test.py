@@ -403,5 +403,101 @@ class CocoMaskEvaluationTest(tf.test.TestCase):
     self.assertFalse(coco_evaluator._detection_masks_list)
 
 
+class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
+
+  def testGetOneMAPWithMatchingGroundtruthAndDetections(self):
+    category_list = [{'id': 0, 'name': 'person'},
+                     {'id': 1, 'name': 'cat'},
+                     {'id': 2, 'name': 'dog'}]
+    coco_evaluator = coco_evaluation.CocoMaskEvaluator(category_list)
+    image_id = tf.placeholder(tf.string, shape=())
+    groundtruth_boxes = tf.placeholder(tf.float32, shape=(None, 4))
+    groundtruth_classes = tf.placeholder(tf.float32, shape=(None))
+    groundtruth_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
+    detection_scores = tf.placeholder(tf.float32, shape=(None))
+    detection_classes = tf.placeholder(tf.float32, shape=(None))
+    detection_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
+
+    eval_metric_ops = coco_evaluator.get_estimator_eval_metric_ops(
+        image_id, groundtruth_boxes,
+        groundtruth_classes,
+        groundtruth_masks,
+        detection_scores,
+        detection_classes,
+        detection_masks)
+
+    _, update_op = eval_metric_ops['DetectionMasks_Precision/mAP']
+
+    with self.test_session() as sess:
+      sess.run(update_op,
+               feed_dict={
+                   image_id: 'image1',
+                   groundtruth_boxes: np.array([[100., 100., 200., 200.]]),
+                   groundtruth_classes: np.array([1]),
+                   groundtruth_masks: np.pad(np.ones([1, 100, 100],
+                                                     dtype=np.uint8),
+                                             ((0, 0), (10, 10), (10, 10)),
+                                             mode='constant'),
+                   detection_scores: np.array([.8]),
+                   detection_classes: np.array([1]),
+                   detection_masks: np.pad(np.ones([1, 100, 100],
+                                                   dtype=np.uint8),
+                                           ((0, 0), (10, 10), (10, 10)),
+                                           mode='constant')
+               })
+      sess.run(update_op,
+               feed_dict={
+                   image_id: 'image2',
+                   groundtruth_boxes: np.array([[50., 50., 100., 100.]]),
+                   groundtruth_classes: np.array([1]),
+                   groundtruth_masks: np.pad(np.ones([1, 50, 50],
+                                                     dtype=np.uint8),
+                                             ((0, 0), (10, 10), (10, 10)),
+                                             mode='constant'),
+                   detection_scores: np.array([.8]),
+                   detection_classes: np.array([1]),
+                   detection_masks: np.pad(np.ones([1, 50, 50], dtype=np.uint8),
+                                           ((0, 0), (10, 10), (10, 10)),
+                                           mode='constant')
+               })
+      sess.run(update_op,
+               feed_dict={
+                   image_id: 'image3',
+                   groundtruth_boxes: np.array([[25., 25., 50., 50.]]),
+                   groundtruth_classes: np.array([1]),
+                   groundtruth_masks: np.pad(np.ones([1, 25, 25],
+                                                     dtype=np.uint8),
+                                             ((0, 0), (10, 10), (10, 10)),
+                                             mode='constant'),
+                   detection_scores: np.array([.8]),
+                   detection_classes: np.array([1]),
+                   detection_masks: np.pad(np.ones([1, 25, 25],
+                                                   dtype=np.uint8),
+                                           ((0, 0), (10, 10), (10, 10)),
+                                           mode='constant')
+               })
+    metrics = {}
+    for key, (value_op, _) in eval_metric_ops.iteritems():
+      metrics[key] = value_op
+    metrics = sess.run(metrics)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP@.50IOU'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP@.75IOU'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP (large)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP (medium)'],
+                           1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP (small)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@1'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@10'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@100'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@100 (large)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@100 (medium)'],
+                           1.0)
+    self.assertAlmostEqual(metrics['DetectionMasks_Recall/AR@100 (small)'], 1.0)
+    self.assertFalse(coco_evaluator._groundtruth_list)
+    self.assertFalse(coco_evaluator._image_ids_with_detections)
+    self.assertFalse(coco_evaluator._image_id_to_mask_shape_map)
+    self.assertFalse(coco_evaluator._detection_masks_list)
+
 if __name__ == '__main__':
   tf.test.main()

@@ -20,15 +20,16 @@
 #   bash ./download_and_preprocess_voc2012.sh
 #
 # The folder structure is assumed to be:
-#  + data
+#  + datasets
 #     - build_data.py
 #     - build_voc2012_data.py
 #     - download_and_preprocess_voc2012.sh
 #     - remove_gt_colormap.py
-#     + VOCdevkit
-#       + VOC2012
-#         + JPEGImages
-#         + SegmentationClass
+#     + pascal_voc_seg
+#       + VOCdevkit
+#         + VOC2012
+#           + JPEGImages
+#           + SegmentationClass
 #
 
 # Exit immediately if a command exits with a non-zero status.
@@ -40,7 +41,7 @@ mkdir -p ${WORK_DIR}
 cd ${WORK_DIR}
 
 # Helper function to download and unpack VOC 2012 dataset.
-function download_and_uncompress() {
+download_and_uncompress() {
   local BASE_URL=${1}
   local FILENAME=${2}
 

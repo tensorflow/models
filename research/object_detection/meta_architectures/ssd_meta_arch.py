@@ -503,7 +503,7 @@ class SSDMetaArch(model.DetectionModel):
            self.groundtruth_lists(fields.BoxListFields.classes),
            keypoints, weights)
       if self._add_summaries:
-        self._summarize_input(
+        self._summarize_target_assignment(
             self.groundtruth_lists(fields.BoxListFields.boxes), match_list)
       location_losses = self._localization_loss(
           prediction_dict['box_encodings'],
@@ -538,19 +538,20 @@ class SSDMetaArch(model.DetectionModel):
         normalizer = tf.maximum(tf.to_float(tf.reduce_sum(batch_reg_weights)),
                                 1.0)
 
-      with tf.name_scope('localization_loss'):
-        localization_loss_normalizer = normalizer
-        if self._normalize_loc_loss_by_codesize:
-          localization_loss_normalizer *= self._box_coder.code_size
-        localization_loss = ((self._localization_loss_weight / (
-            localization_loss_normalizer)) * localization_loss)
-      with tf.name_scope('classification_loss'):
-        classification_loss = ((self._classification_loss_weight / normalizer) *
-                               classification_loss)
+      localization_loss_normalizer = normalizer
+      if self._normalize_loc_loss_by_codesize:
+        localization_loss_normalizer *= self._box_coder.code_size
+      localization_loss = tf.multiply((self._localization_loss_weight /
+                                       localization_loss_normalizer),
+                                      localization_loss,
+                                      name='localization_loss')
+      classification_loss = tf.multiply((self._classification_loss_weight /
+                                         normalizer), classification_loss,
+                                        name='classification_loss')
 
       loss_dict = {
-          'localization_loss': localization_loss,
-          'classification_loss': classification_loss
+          localization_loss.op.name: localization_loss,
+          classification_loss.op.name: classification_loss
       }
     return loss_dict
 
@@ -615,7 +616,7 @@ class SSDMetaArch(model.DetectionModel):
         self._target_assigner, self.anchors, groundtruth_boxlists,
         groundtruth_classes_with_background_list, groundtruth_weights_list)
 
-  def _summarize_input(self, groundtruth_boxes_list, match_list):
+  def _summarize_target_assignment(self, groundtruth_boxes_list, match_list):
     """Creates tensorflow summaries for the input boxes and anchors.
 
     This function creates four summaries corresponding to the average
@@ -639,14 +640,18 @@ class SSDMetaArch(model.DetectionModel):
         [match.num_unmatched_columns() for match in match_list])
     ignored_anchors_per_image = tf.stack(
         [match.num_ignored_columns() for match in match_list])
-    tf.summary.scalar('Input/AvgNumGroundtruthBoxesPerImage',
-                      tf.reduce_mean(tf.to_float(num_boxes_per_image)))
-    tf.summary.scalar('Input/AvgNumPositiveAnchorsPerImage',
-                      tf.reduce_mean(tf.to_float(pos_anchors_per_image)))
-    tf.summary.scalar('Input/AvgNumNegativeAnchorsPerImage',
-                      tf.reduce_mean(tf.to_float(neg_anchors_per_image)))
-    tf.summary.scalar('Input/AvgNumIgnoredAnchorsPerImage',
-                      tf.reduce_mean(tf.to_float(ignored_anchors_per_image)))
+    tf.summary.scalar('AvgNumGroundtruthBoxesPerImage',
+                      tf.reduce_mean(tf.to_float(num_boxes_per_image)),
+                      family='TargetAssignment')
+    tf.summary.scalar('AvgNumPositiveAnchorsPerImage',
+                      tf.reduce_mean(tf.to_float(pos_anchors_per_image)),
+                      family='TargetAssignment')
+    tf.summary.scalar('AvgNumNegativeAnchorsPerImage',
+                      tf.reduce_mean(tf.to_float(neg_anchors_per_image)),
+                      family='TargetAssignment')
+    tf.summary.scalar('AvgNumIgnoredAnchorsPerImage',
+                      tf.reduce_mean(tf.to_float(ignored_anchors_per_image)),
+                      family='TargetAssignment')
 
   def _apply_hard_mining(self, location_losses, cls_losses, prediction_dict,
                          match_list):
@@ -731,16 +736,17 @@ class SSDMetaArch(model.DetectionModel):
     return decoded_boxes, decoded_keypoints
 
   def restore_map(self,
-                  from_detection_checkpoint=True,
+                  fine_tune_checkpoint_type='detection',
                   load_all_detection_checkpoint_vars=False):
     """Returns a map of variables to load from a foreign checkpoint.
 
     See parent class for details.
 
     Args:
-      from_detection_checkpoint: whether to restore from a full detection
+      fine_tune_checkpoint_type: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
       load_all_detection_checkpoint_vars: whether to load all variables (when
          `from_detection_checkpoint` is True). If False, only variables within
          the appropriate scopes are included. Default False.
@@ -748,15 +754,22 @@ class SSDMetaArch(model.DetectionModel):
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    Raises:
+      ValueError: if fine_tune_checkpoint_type is neither `classification`
+        nor `detection`.
     """
+    if fine_tune_checkpoint_type not in ['detection', 'classification']:
+      raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
+          fine_tune_checkpoint_type))
     variables_to_restore = {}
     for variable in tf.global_variables():
       var_name = variable.op.name
-      if from_detection_checkpoint and load_all_detection_checkpoint_vars:
+      if (fine_tune_checkpoint_type == 'detection' and
+          load_all_detection_checkpoint_vars):
         variables_to_restore[var_name] = variable
       else:
         if var_name.startswith(self._extract_features_scope):
-          if not from_detection_checkpoint:
+          if fine_tune_checkpoint_type == 'classification':
             var_name = (
                 re.split('^' + self._extract_features_scope + '/',
                          var_name)[-1])

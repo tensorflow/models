@@ -727,21 +727,6 @@ class ConcatenateTest(tf.test.TestCase):
 
 class NonMaxSuppressionTest(tf.test.TestCase):
 
-  def test_with_invalid_scores_field(self):
-    corners = tf.constant([[0, 0, 1, 1],
-                           [0, 0.1, 1, 1.1],
-                           [0, -0.1, 1, 0.9],
-                           [0, 10, 1, 11],
-                           [0, 10.1, 1, 11.1],
-                           [0, 100, 1, 101]], tf.float32)
-    boxes = box_list.BoxList(corners)
-    boxes.add_field('scores', tf.constant([.9, .75, .6, .95, .5]))
-    iou_thresh = .5
-    max_output_size = 3
-    with self.assertRaisesWithPredicateMatch(ValueError,
-                                             'Dimensions must be equal'):
-      box_list_ops.non_max_suppression(boxes, iou_thresh, max_output_size)
-
   def test_select_from_three_clusters(self):
     corners = tf.constant([[0, 0, 1, 1],
                            [0, 0.1, 1, 1.1],

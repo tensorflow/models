@@ -254,7 +254,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
       training_optimizer, optimizer_summary_vars = optimizer_builder.build(
           train_config.optimizer)
       for var in optimizer_summary_vars:
-        tf.summary.scalar(var.op.name, var)
+        tf.summary.scalar(var.op.name, var, family='LearningRate')
 
     sync_optimizer = None
     if train_config.sync_replicas:
@@ -267,8 +267,16 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     # Create ops required to initialize the model from a given checkpoint.
     init_fn = None
     if train_config.fine_tune_checkpoint:
+      if not train_config.fine_tune_checkpoint_type:
+        # train_config.from_detection_checkpoint field is deprecated. For
+        # backward compatibility, fine_tune_checkpoint_type is set based on
+        # from_detection_checkpoint.
+        if train_config.from_detection_checkpoint:
+          train_config.fine_tune_checkpoint_type = 'detection'
+        else:
+          train_config.fine_tune_checkpoint_type = 'classification'
       var_map = detection_model.restore_map(
-          from_detection_checkpoint=train_config.from_detection_checkpoint,
+          fine_tune_checkpoint_type=train_config.fine_tune_checkpoint_type,
           load_all_detection_checkpoint_vars=(
               train_config.load_all_detection_checkpoint_vars))
       available_var_map = (variables_helper.
@@ -320,11 +328,13 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
 
     # Add summaries.
     for model_var in slim.get_model_variables():
-      global_summaries.add(tf.summary.histogram(model_var.op.name, model_var))
+      global_summaries.add(tf.summary.histogram('ModelVars/' +
+                                                model_var.op.name, model_var))
     for loss_tensor in tf.losses.get_losses():
-      global_summaries.add(tf.summary.scalar(loss_tensor.op.name, loss_tensor))
+      global_summaries.add(tf.summary.scalar('Losses/' + loss_tensor.op.name,
+                                             loss_tensor))
     global_summaries.add(
-        tf.summary.scalar('TotalLoss', tf.losses.get_total_loss()))
+        tf.summary.scalar('Losses/TotalLoss', tf.losses.get_total_loss()))
 
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().
