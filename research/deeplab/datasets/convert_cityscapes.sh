@@ -14,19 +14,21 @@
 # limitations under the License.
 # ==============================================================================
 #
-# Script to preprocess the Cityscapes dataset. Note (1) the users should register
-# the Cityscapes dataset website: https://www.cityscapes-dataset.com/downloads/ to
-# download the dataset, and (2) the users should run the script provided by Cityscapes
-# `preparation/createTrainIdLabelImgs.py` to generate the training groundtruth.
+# Script to preprocess the Cityscapes dataset. Note (1) the users should
+# register the Cityscapes dataset website at
+# https://www.cityscapes-dataset.com/downloads/ to download the dataset,
+# and (2) the users should download the utility scripts provided by
+# Cityscapes at https://github.com/mcordts/cityscapesScripts.
 #
 # Usage:
 #   bash ./preprocess_cityscapes.sh
 #
 # The folder structure is assumed to be:
-#  + data
+#  + datasets
 #    - build_cityscapes_data.py
+#    - convert_cityscapes.sh
 #    + cityscapes
-#      + cityscapesscripts
+#      + cityscapesscripts (downloaded scripts)
 #      + gtFine
 #      + leftImg8bit
 #
@@ -37,17 +39,18 @@ set -e
 CURRENT_DIR=$(pwd)
 WORK_DIR="."
 
-cd "${CURRENT_DIR}"
-
-# Root path for PASCAL VOC 2012 dataset.
+# Root path for Cityscapes dataset.
 CITYSCAPES_ROOT="${WORK_DIR}/cityscapes"
+
+# Create training labels.
+python "${CITYSCAPES_ROOT}/cityscapesscripts/preparation/createTrainIdLabelImgs.py"
 
 # Build TFRecords of the dataset.
 # First, create output directory for storing TFRecords.
 OUTPUT_DIR="${CITYSCAPES_ROOT}/tfrecord"
 mkdir -p "${OUTPUT_DIR}"
 
-BUILD_SCRIPT="${WORK_DIR}/build_cityscapes_data.py"
+BUILD_SCRIPT="${CURRENT_DIR}/build_cityscapes_data.py"
 
 echo "Converting Cityscapes dataset..."
 python "${BUILD_SCRIPT}" \
