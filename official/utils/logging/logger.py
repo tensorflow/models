@@ -137,7 +137,7 @@ def _collect_cpu_info(run_info):
     # details.
     if nc:  # e.g.
       cpu_info["num_cores_allowed"] = (
-        bin(int(nc.group(1).replace(",", ""), 16)).count("1"))
+          bin(int(nc.group(1).replace(",", ""), 16)).count("1"))
   except tf.OpError:
     pass
   finally:
@@ -156,9 +156,9 @@ def _collect_cpu_info(run_info):
   # Try to get the CPU governor
   try:
     cpu_governors = set([
-      tf.gfile.GFile(f, "r").readline().rstrip()
-      for f in glob.glob(
-          "/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor")
+        tf.gfile.GFile(f, "r").readline().rstrip()
+        for f in glob.glob(
+            "/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor")
     ])
     if cpu_governors:
       if len(cpu_governors) > 1:
