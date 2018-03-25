@@ -131,7 +131,7 @@ class BaseParser(argparse.ArgumentParser):
                "of train hooks. "
                "Example: --hooks LoggingTensorHook ExamplesPerSecondHook. "
                "Allowed hook names (case-insensitive): LoggingTensorHook, "
-               "ProfilerHook, ExamplesPerSecondHook. "
+               "ProfilerHook, ExamplesPerSecondHook, LoggingMetricHook."
                "See official.utils.logging.hooks_helper for details.",
           metavar="<HK>"
       )
@@ -223,4 +223,22 @@ class ImageModelParser(argparse.ArgumentParser):
                "format will be chosen automatically based on whether TensorFlow"
                "was built for CPU or GPU.",
           metavar="<CF>"
+      )
+
+
+class BenchmarkParser(argparse.ArgumentParser):
+  """Default parser for benchmark logging.
+
+  Args:
+    add_help: Create the "--help" flag. False if class instance is a parent.
+    benchmark_log_dir: Create a flag to specify location for benchmark logging.
+  """
+
+  def __init__(self, add_help=False, benchmark_log_dir=True):
+    super(BenchmarkParser, self).__init__(add_help=add_help)
+    if benchmark_log_dir:
+      self.add_argument(
+          "--benchmark_log_dir", "-bld", default=None,
+          help="[default: %(default)s] The location of the benchmark logging.",
+          metavar="<BLD>"
       )

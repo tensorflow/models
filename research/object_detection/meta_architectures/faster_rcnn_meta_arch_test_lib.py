@@ -47,8 +47,9 @@ class FakeFasterRCNNFeatureExtractor(
 
   def _extract_proposal_features(self, preprocessed_inputs, scope):
     with tf.variable_scope('mock_model'):
-      return 0 * slim.conv2d(preprocessed_inputs,
-                             num_outputs=3, kernel_size=1, scope='layer1')
+      proposal_features = 0 * slim.conv2d(
+          preprocessed_inputs, num_outputs=3, kernel_size=1, scope='layer1')
+      return proposal_features, {}
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     with tf.variable_scope('mock_model'):
@@ -792,10 +793,12 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
     loss_dict = model.loss(prediction_dict, true_image_shapes)
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertTrue('second_stage_localization_loss' not in loss_dict_out)
-      self.assertTrue('second_stage_classification_loss' not in loss_dict_out)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertTrue('Loss/BoxClassifierLoss/localization_loss'
+                      not in loss_dict_out)
+      self.assertTrue('Loss/BoxClassifierLoss/classification_loss'
+                      not in loss_dict_out)
 
   # TODO(rathodv): Split test into two - with and without masks.
   def test_loss_full(self):
@@ -890,11 +893,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_mask_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
   def test_loss_full_zero_padded_proposals(self):
     model = self._build_model(
@@ -978,11 +983,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_mask_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
   def test_loss_full_multiple_label_groundtruth(self):
     model = self._build_model(
@@ -1074,11 +1081,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_mask_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
 
   def test_loss_full_zero_padded_proposals_nonzero_loss_with_two_images(self):
     model = self._build_model(
@@ -1173,12 +1182,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['first_stage_localization_loss'],
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'],
                           exp_loc_loss)
-      self.assertAllClose(loss_dict_out['first_stage_objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'],
-                          exp_loc_loss)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], exp_loc_loss)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
 
   def test_loss_with_hard_mining(self):
     model = self._build_model(is_training=True,
@@ -1263,9 +1273,10 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['second_stage_localization_loss'],
-                          exp_loc_loss)
-      self.assertAllClose(loss_dict_out['second_stage_classification_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], exp_loc_loss)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
 
   def test_restore_map_for_classification_ckpt(self):
     # Define mock tensorflow classification graph and save variables.
@@ -1296,7 +1307,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       preprocessed_inputs, true_image_shapes = model.preprocess(inputs)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
-      var_map = model.restore_map(from_detection_checkpoint=False)
+      var_map = model.restore_map(fine_tune_checkpoint_type='classification')
       self.assertIsInstance(var_map, dict)
       saver = tf.train.Saver(var_map)
       with self.test_session(graph=test_graph_classification) as sess:
@@ -1338,7 +1349,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       prediction_dict2 = model2.predict(preprocessed_inputs2, true_image_shapes)
       model2.postprocess(prediction_dict2, true_image_shapes)
       another_variable = tf.Variable([17.0], name='another_variable')  # pylint: disable=unused-variable
-      var_map = model2.restore_map(from_detection_checkpoint=True)
+      var_map = model2.restore_map(fine_tune_checkpoint_type='detection')
       self.assertIsInstance(var_map, dict)
       saver = tf.train.Saver(var_map)
       with self.test_session(graph=test_graph_detection2) as sess:
@@ -1366,7 +1377,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       model.postprocess(prediction_dict, true_image_shapes)
       another_variable = tf.Variable([17.0], name='another_variable')  # pylint: disable=unused-variable
       var_map = model.restore_map(
-          from_detection_checkpoint=True,
+          fine_tune_checkpoint_type='detection',
           load_all_detection_checkpoint_vars=True)
       self.assertIsInstance(var_map, dict)
       self.assertIn('another_variable', var_map)

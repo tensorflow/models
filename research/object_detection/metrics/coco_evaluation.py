@@ -100,6 +100,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
             groundtruth_is_crowd=groundtruth_is_crowd))
     self._annotation_id += groundtruth_dict[standard_fields.InputDataFields.
                                             groundtruth_boxes].shape[0]
+    # Boolean to indicate whether a detection has been added for this image.
     self._image_ids[image_id] = False
 
   def add_single_detected_image_info(self,
@@ -120,9 +121,6 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
           [num_boxes] containing detection scores for the boxes.
         DetectionResultFields.detection_classes: integer numpy array of shape
           [num_boxes] containing 1-indexed detection classes for the boxes.
-        DetectionResultFields.detection_masks: optional uint8 numpy array of
-          shape [num_boxes, image_height, image_width] containing instance
-          masks for the boxes.
 
     Raises:
       ValueError: If groundtruth for the image_id is not available.
@@ -200,7 +198,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         all_metrics_per_category=self._all_metrics_per_category)
     box_metrics.update(box_per_category_ap)
     box_metrics = {'DetectionBoxes_'+ key: value
-                   for key, value in box_metrics.iteritems()}
+                   for key, value in iter(box_metrics.items())}
     return box_metrics
 
   def get_estimator_eval_metric_ops(self, image_id, groundtruth_boxes,
@@ -282,6 +280,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         return np.float32(self._metrics[metric_name])
       return value_func
 
+    # Ensure that the metrics are only evaluated once.
     first_value_op = tf.py_func(first_value_func, [], tf.float32)
     eval_metric_ops = {metric_names[0]: (first_value_op, update_op)}
     with tf.control_dependencies([first_value_op]):
@@ -292,7 +291,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
 
 
 def _check_mask_type_and_value(array_name, masks):
-  """Checks whether mask dtype is uint8 anf the values are either 0 or 1."""
+  """Checks whether mask dtype is uint8 and the values are either 0 or 1."""
   if masks.dtype != np.uint8:
     raise ValueError('{} must be of type np.uint8. Found {}.'.format(
         array_name, masks.dtype))
@@ -333,6 +332,9 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                                          image_id,
                                          groundtruth_dict):
     """Adds groundtruth for a single image to be used for evaluation.
+
+    If the image has already been added, a warning is logged, and groundtruth is
+    ignored.
 
     Args:
       image_id: A unique string/integer identifier for the image.
@@ -378,6 +380,9 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                                      image_id,
                                      detections_dict):
     """Adds detections for a single image to be used for evaluation.
+
+    If a detection has already been added for this image id, a warning is
+    logged, and the detection is skipped.
 
     Args:
       image_id: A unique string/integer identifier for the image.
@@ -435,25 +440,25 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
       A dictionary holding -
 
       1. summary_metrics:
-      'Precision/mAP': mean average precision over classes averaged over IOU
-        thresholds ranging from .5 to .95 with .05 increments
-      'Precision/mAP@.50IOU': mean average precision at 50% IOU
-      'Precision/mAP@.75IOU': mean average precision at 75% IOU
-      'Precision/mAP (small)': mean average precision for small objects
-                      (area < 32^2 pixels)
-      'Precision/mAP (medium)': mean average precision for medium sized
-                      objects (32^2 pixels < area < 96^2 pixels)
-      'Precision/mAP (large)': mean average precision for large objects
-                      (96^2 pixels < area < 10000^2 pixels)
-      'Recall/AR@1': average recall with 1 detection
-      'Recall/AR@10': average recall with 10 detections
-      'Recall/AR@100': average recall with 100 detections
-      'Recall/AR@100 (small)': average recall for small objects with 100
-        detections
-      'Recall/AR@100 (medium)': average recall for medium objects with 100
-        detections
-      'Recall/AR@100 (large)': average recall for large objects with 100
-        detections
+      'DetectionMasks_Precision/mAP': mean average precision over classes
+        averaged over IOU thresholds ranging from .5 to .95 with .05 increments.
+      'DetectionMasks_Precision/mAP@.50IOU': mean average precision at 50% IOU.
+      'DetectionMasks_Precision/mAP@.75IOU': mean average precision at 75% IOU.
+      'DetectionMasks_Precision/mAP (small)': mean average precision for small
+        objects (area < 32^2 pixels).
+      'DetectionMasks_Precision/mAP (medium)': mean average precision for medium
+        sized objects (32^2 pixels < area < 96^2 pixels).
+      'DetectionMasks_Precision/mAP (large)': mean average precision for large
+        objects (96^2 pixels < area < 10000^2 pixels).
+      'DetectionMasks_Recall/AR@1': average recall with 1 detection.
+      'DetectionMasks_Recall/AR@10': average recall with 10 detections.
+      'DetectionMasks_Recall/AR@100': average recall with 100 detections.
+      'DetectionMasks_Recall/AR@100 (small)': average recall for small objects
+        with 100 detections.
+      'DetectionMasks_Recall/AR@100 (medium)': average recall for medium objects
+        with 100 detections.
+      'DetectionMasks_Recall/AR@100 (large)': average recall for large objects
+        with 100 detections.
 
       2. per_category_ap: if include_metrics_per_category is True, category
       specific results with keys of the form:
@@ -482,3 +487,101 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     mask_metrics = {'DetectionMasks_'+ key: value
                     for key, value in mask_metrics.iteritems()}
     return mask_metrics
+
+  def get_estimator_eval_metric_ops(self, image_id, groundtruth_boxes,
+                                    groundtruth_classes,
+                                    groundtruth_instance_masks,
+                                    detection_scores, detection_classes,
+                                    detection_masks):
+    """Returns a dictionary of eval metric ops to use with `tf.EstimatorSpec`.
+
+    Note that once value_op is called, the detections and groundtruth added via
+    update_op are cleared.
+
+    Args:
+      image_id: Unique string/integer identifier for the image.
+      groundtruth_boxes: float32 tensor of shape [num_boxes, 4] containing
+        `num_boxes` groundtruth boxes of the format
+        [ymin, xmin, ymax, xmax] in absolute image coordinates.
+      groundtruth_classes: int32 tensor of shape [num_boxes] containing
+        1-indexed groundtruth classes for the boxes.
+      groundtruth_instance_masks: uint8 tensor array of shape
+        [num_boxes, image_height, image_width] containing groundtruth masks
+        corresponding to the boxes. The elements of the array must be in {0, 1}.
+      detection_scores: float32 tensor of shape [num_boxes] containing
+        detection scores for the boxes.
+      detection_classes: int32 tensor of shape [num_boxes] containing
+        1-indexed detection classes for the boxes.
+      detection_masks: uint8 tensor array of shape
+        [num_boxes, image_height, image_width] containing instance masks
+        corresponding to the boxes. The elements of the array must be in {0, 1}.
+
+    Returns:
+      a dictionary of metric names to tuple of value_op and update_op that can
+      be used as eval metric ops in tf.EstimatorSpec. Note that all update ops
+      must be run together and similarly all value ops must be run together to
+      guarantee correct behaviour.
+    """
+    def update_op(
+        image_id,
+        groundtruth_boxes,
+        groundtruth_classes,
+        groundtruth_instance_masks,
+        detection_scores,
+        detection_classes,
+        detection_masks):
+      self.add_single_ground_truth_image_info(
+          image_id,
+          {'groundtruth_boxes': groundtruth_boxes,
+           'groundtruth_classes': groundtruth_classes,
+           'groundtruth_instance_masks': groundtruth_instance_masks})
+      self.add_single_detected_image_info(
+          image_id,
+          {'detection_scores': detection_scores,
+           'detection_classes': detection_classes,
+           'detection_masks': detection_masks})
+
+    update_op = tf.py_func(update_op, [image_id,
+                                       groundtruth_boxes,
+                                       groundtruth_classes,
+                                       groundtruth_instance_masks,
+                                       detection_scores,
+                                       detection_classes,
+                                       detection_masks], [])
+    metric_names = ['DetectionMasks_Precision/mAP',
+                    'DetectionMasks_Precision/mAP@.50IOU',
+                    'DetectionMasks_Precision/mAP@.75IOU',
+                    'DetectionMasks_Precision/mAP (large)',
+                    'DetectionMasks_Precision/mAP (medium)',
+                    'DetectionMasks_Precision/mAP (small)',
+                    'DetectionMasks_Recall/AR@1',
+                    'DetectionMasks_Recall/AR@10',
+                    'DetectionMasks_Recall/AR@100',
+                    'DetectionMasks_Recall/AR@100 (large)',
+                    'DetectionMasks_Recall/AR@100 (medium)',
+                    'DetectionMasks_Recall/AR@100 (small)']
+    if self._include_metrics_per_category:
+      for category_dict in self._categories:
+        metric_names.append('DetectionMasks_PerformanceByCategory/mAP/' +
+                            category_dict['name'])
+
+    def first_value_func():
+      self._metrics = self.evaluate()
+      self.clear()
+      return np.float32(self._metrics[metric_names[0]])
+
+    def value_func_factory(metric_name):
+      def value_func():
+        return np.float32(self._metrics[metric_name])
+      return value_func
+
+    # Ensure that the metrics are only evaluated once.
+    first_value_op = tf.py_func(first_value_func, [], tf.float32)
+    eval_metric_ops = {metric_names[0]: (first_value_op, update_op)}
+    with tf.control_dependencies([first_value_op]):
+      for metric_name in metric_names[1:]:
+        eval_metric_ops[metric_name] = (tf.py_func(
+            value_func_factory(metric_name), [], np.float32), update_op)
+    return eval_metric_ops
+
+
