@@ -22,8 +22,10 @@ from __future__ import print_function
 import json
 import os
 import tempfile
+import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
+from tensorflow.python.client import device_lib
 
 from official.utils.logging import logger
 
@@ -88,9 +90,9 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     self.assertFalse(tf.gfile.Exists(metric_log))
 
   def test_log_evaluation_result(self):
-    eval_result = {'loss': 0.46237424,
-                   'global_step': 207082,
-                   'accuracy': 0.9285}
+    eval_result = {"loss": 0.46237424,
+                   "global_step": 207082,
+                   "accuracy": 0.9285}
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
     log = logger.BenchmarkLogger(log_dir)
     log.log_estimator_evaluation_result(eval_result)
@@ -118,6 +120,34 @@ class BenchmarkLoggerTest(tf.test.TestCase):
 
     metric_log = os.path.join(log_dir, "metric.log")
     self.assertFalse(tf.gfile.Exists(metric_log))
+
+  def test_collect_tensorflow_info(self):
+    run_info = {}
+    logger._collect_tensorflow_info(run_info)
+    self.assertNotEqual(run_info["tensorflow_version"], {})
+    self.assertEqual(run_info["tensorflow_version"]["version"], tf.VERSION)
+    self.assertEqual(run_info["tensorflow_version"]["git_hash"], tf.GIT_VERSION)
+
+  def test_collect_tensorflow_environment_variables(self):
+    os.environ["TF_ENABLE_WINOGRAD_NONFUSED"] = "1"
+
+    run_info = {}
+    logger._collect_tensorflow_environment_variables(run_info)
+    self.assertIsNotNone(run_info["tensorflow_environment_variables"])
+    self.assertEqual(run_info["tensorflow_environment_variables"]
+                     ["TF_ENABLE_WINOGRAD_NONFUSED"], "1")
+
+  @unittest.skipUnless(tf.test.is_built_with_cuda(), "requires GPU")
+  def test_collect_gpu_info(self):
+    run_info = {}
+    logger._collect_gpu_info(run_info)
+    self.assertNotEqual(run_info["gpu_info"], {})
+
+  def test_collect_memory_info(self):
+    run_info = {}
+    logger._collect_memory_info(run_info)
+    self.assertIsNotNone(run_info["memory_total"])
+    self.assertIsNotNone(run_info["memory_available"])
 
 if __name__ == "__main__":
   tf.test.main()

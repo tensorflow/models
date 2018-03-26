@@ -13,19 +13,35 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Logging utilities for benchmark."""
+"""Logging utilities for benchmark.
+
+For collecting local environment metrics like CPU and memory, certain python
+packages need be installed. Run the following commands for dependency packages:
+  > pip install --upgrade py-cpuinfo
+  > pip install --upgrade psutil
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import datetime
 import json
+import multiprocessing
 import numbers
 import os
 
+# pylint: disable=g-bad-import-order
+# Note: cpuinfo and psutil are not installed in the TensorFlow OSS tree.
+# They are installable via pip.
+import cpuinfo
+import psutil
+# pylint: enable=g-bad-import-order
+
 import tensorflow as tf
+from tensorflow.python.client import device_lib
 
 _METRIC_LOG_FILE_NAME = "metric.log"
+_BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
@@ -91,3 +107,85 @@ class BenchmarkLogger(object):
       except (TypeError, ValueError) as e:
         tf.logging.warning("Failed to dump metric to log file: "
                            "name %s, value %s, error %s", name, value, e)
+
+  def log_run_info(self, model_name):
+    """Collect most of the TF runtime information for the local env.
+
+    The schema of the run info follows official/benchmark/datastore/schema.
+
+    Args:
+      model_name: string, the name of the model.
+    """
+    run_info = {"model_name": model_name}
+    _collect_tensorflow_info(run_info)
+    _collect_tensorflow_environment_variables(run_info)
+    _collect_cpu_info(run_info)
+    _collect_gpu_info(run_info)
+    _collect_memory_info(run_info)
+
+    with tf.gfile.GFile(os.path.join(
+        self._logging_dir, _BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
+      try:
+        json.dump(run_info, f)
+        f.write("\n")
+      except (TypeError, ValueError) as e:
+        tf.logging.warning("Failed to dump benchmark run info to log file: %s",
+                           e)
+
+
+def _collect_tensorflow_info(run_info):
+  run_info["tensorflow_version"] = {
+      "version": tf.VERSION, "git_hash": tf.GIT_VERSION}
+
+
+def _collect_tensorflow_environment_variables(run_info):
+  run_info["tensorflow_environment_variables"] = {
+      k: v for k, v in os.environ.items() if k.startswith("TF_")}
+
+
+# The following code is mirrored from tensorflow/tools/test/system_info_lib
+# which is not exposed for import.
+def _collect_cpu_info(run_info):
+  """Collect the CPU information for the local environment."""
+  cpu_info = {}
+
+  cpu_info["num_cores"] = multiprocessing.cpu_count()
+
+  info = cpuinfo.get_cpu_info()
+  cpu_info["cpu_info"] = info["brand"]
+  cpu_info["mhz_per_cpu"] = info["hz_advertised_raw"][0] / 1.0e6
+
+  run_info["cpu_info"] = cpu_info
+
+
+def _collect_gpu_info(run_info):
+  """Collect local GPU information by TF device library."""
+  gpu_info = {}
+  local_device_protos = device_lib.list_local_devices()
+
+  gpu_info["count"] = len([d for d in local_device_protos
+                           if d.device_type == "GPU"])
+  # The device description usually is a JSON string, which contains the GPU
+  # model info, eg:
+  # "device: 0, name: Tesla P100-PCIE-16GB, pci bus id: 0000:00:04.0"
+  for d in local_device_protos:
+    if d.device_type == "GPU":
+      gpu_info["model"] = _parse_gpu_model(d.physical_device_desc)
+      # Assume all the GPU connected are same model
+      break
+  run_info["gpu_info"] = gpu_info
+
+
+def _collect_memory_info(run_info):
+  vmem = psutil.virtual_memory()
+  run_info["memory_total"] = vmem.total
+  run_info["memory_available"] = vmem.available
+
+
+def _parse_gpu_model(physical_device_desc):
+  # Assume all the GPU connected are same model
+  for kv in physical_device_desc.split(","):
+    k, _, v = kv.partition(":")
+    if k.strip() == "name":
+      return v.strip()
+  return None
