@@ -67,7 +67,7 @@ class BaseTest(tf.test.TestCase):
     raise NotImplementedError
 
   @property
-  def my_name(self):
+  def test_name(self):
     """Subclass should define its own name."""
     raise NotImplementedError
 
@@ -79,7 +79,7 @@ class BaseTest(tf.test.TestCase):
       The path prefix for reference data.
     """
     return os.path.join(os.path.split(
-        os.path.abspath(__file__))[0], "reference_data", self.my_name)
+        os.path.abspath(__file__))[0], "reference_data", self.test_name)
 
   ckpt_prefix = "model.ckpt"
 
@@ -249,7 +249,6 @@ class BaseTest(tf.test.TestCase):
         saver.restore(sess=sess, save_path=os.path.join(
             data_dir, self.ckpt_prefix))
         if differences:
-          print()
           tf.logging.warn(
               "The provided graph is different than expected:\n  {}\n"
               "However the weights were still able to be loaded.\n{}".format(

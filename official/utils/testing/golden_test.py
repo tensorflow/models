@@ -39,7 +39,7 @@ class GoldenBaseTest(golden.BaseTest):
   """Class to ensure that golden testing runs properly."""
 
   @property
-  def my_name(self):
+  def test_name(self):
     return "Golden"
 
   def _uniform_random_ops(self, test=False, wrong_name=False, wrong_shape=False,

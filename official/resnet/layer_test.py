@@ -56,7 +56,7 @@ class BaseTest(golden.BaseTest):
   """Tests for core ResNet layers."""
 
   @property
-  def my_name(self):
+  def test_name(self):
     return "ResNet"
 
   def _batch_norm_ops(self, test=False):
@@ -110,8 +110,12 @@ class BaseTest(golden.BaseTest):
     """
 
     name = "batch-size-{}_{}{}_version-{}_width-{}_channels-{}".format(
-        batch_size, "bottleneck" if bottleneck else "building",
-        "_projection" if projection else "", version, width, channels
+        batch_size,
+        "bottleneck" if bottleneck else "building",
+        "_projection" if projection else "",
+        version,
+        width,
+        channels
     )
 
     if version == 1:
