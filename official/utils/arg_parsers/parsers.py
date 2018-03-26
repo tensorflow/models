@@ -131,7 +131,7 @@ class BaseParser(argparse.ArgumentParser):
                "of train hooks. "
                "Example: --hooks LoggingTensorHook ExamplesPerSecondHook. "
                "Allowed hook names (case-insensitive): LoggingTensorHook, "
-               "ProfilerHook, ExamplesPerSecondHook. "
+               "ProfilerHook, ExamplesPerSecondHook, LoggingMetricHook."
                "See official.utils.logging.hooks_helper for details.",
           metavar="<HK>"
       )
@@ -229,6 +229,9 @@ class ImageModelParser(argparse.ArgumentParser):
 class ExportParser(argparse.ArgumentParser):
   """Parsing options for exporting saved models or other graph defs.
 
+  This is a separate parser for now, but should be made part of BaseParser
+  once all models are brought up to speed.
+
   Args:
     add_help: Create the "--help" flag. False if class instance is a parent.
     export_dir: Create a flag to specify where a SavedModel should be exported.
@@ -243,3 +246,21 @@ class ExportParser(argparse.ArgumentParser):
           help="[default: %(default)s] If set, a SavedModel serialization of "
                "the model will be exported to this directory at the end of "
                "training. See the README for more details and relevant links.")
+
+
+class BenchmarkParser(argparse.ArgumentParser):
+  """Default parser for benchmark logging.
+
+  Args:
+    add_help: Create the "--help" flag. False if class instance is a parent.
+    benchmark_log_dir: Create a flag to specify location for benchmark logging.
+  """
+
+  def __init__(self, add_help=False, benchmark_log_dir=True):
+    super(BenchmarkParser, self).__init__(add_help=add_help)
+    if benchmark_log_dir:
+      self.add_argument(
+          "--benchmark_log_dir", "-bld", default=None,
+          help="[default: %(default)s] The location of the benchmark logging.",
+          metavar="<BLD>"
+      )

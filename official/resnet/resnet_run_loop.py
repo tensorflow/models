@@ -32,6 +32,7 @@ from official.resnet import resnet_model
 from official.utils.arg_parsers import parsers
 from official.utils.export import export
 from official.utils.logging import hooks_helper
+from official.utils.logging import logger
 
 
 ################################################################################
@@ -370,7 +371,9 @@ def resnet_main(flags, model_function, input_function):
 
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
     train_hooks = hooks_helper.get_train_hooks(
-        flags.hooks, batch_size=flags.batch_size)
+        flags.hooks,
+        batch_size=flags.batch_size,
+        benchmark_log_dir=flags.benchmark_log_dir)
 
     print('Starting a training cycle.')
 
@@ -398,13 +401,20 @@ def resnet_main(flags, model_function, input_function):
                                        steps=flags.max_train_steps)
     print(eval_results)
 
-    return classifier
+    if flags.benchmark_log_dir is not None:
+      benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
+      benchmark_logger.log_estimator_evaluation_result(eval_results)
+
+  # Return the classifier after all epochs are completed.
+  return classifier
 
 
-def export_savedmodel(classifier, export_dir, shape):
+def export_savedmodel(classifier, export_dir, shape, batch_size):
   """Exports a saved model for the given classifier."""
-  input_receiver_fn = export.build_tensor_serving_input_receiver_fn(shape)
+  input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
+      shape, batch_size)
   classifier.export_savedmodel(export_dir, input_receiver_fn)
+  return classifier
 
 
 class ResnetArgParser(argparse.ArgumentParser):
@@ -417,6 +427,7 @@ class ResnetArgParser(argparse.ArgumentParser):
         parsers.PerformanceParser(),
         parsers.ImageModelParser(),
         parsers.ExportParser(),
+        parsers.BenchmarkParser(),
     ])
 
     self.add_argument(
