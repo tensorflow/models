@@ -412,7 +412,7 @@ def resnet_main(flags, model_function, input_function):
 def export_savedmodel(classifier, export_dir, shape, batch_size):
   """Exports a saved model for the given classifier."""
   input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-      shape, batch_size)
+      shape, batch_size=batch_size)
   classifier.export_savedmodel(export_dir, input_receiver_fn)
   return classifier
 
