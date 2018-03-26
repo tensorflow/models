@@ -113,7 +113,7 @@ class BenchmarkLoggerTest(tf.test.TestCase):
       self.assertEqual(loss["global_step"], 207082)
 
   def test_log_evaluation_result_with_invalid_type(self):
-    eval_result = "{"loss": 0.46237424, "global_step": 207082}"
+    eval_result = "{'loss': 0.46237424, 'global_step': 207082}"
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
     log = logger.BenchmarkLogger(log_dir)
     log.log_estimator_evaluation_result(eval_result)
