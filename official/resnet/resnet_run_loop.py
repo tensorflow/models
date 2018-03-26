@@ -417,9 +417,18 @@ def export_savedmodel(classifier, export_dir, shape, batch_size):
   return classifier
 
 
+def warn_on_multi_gpu_export(multi_gpu=False):
+  """For the time being, multi-GPU mode does not play nicely with exporting."""
+  if multi_gpu:
+    tf.logging.warning(
+        'You are exporting a SavedModel while in multi-GPU mode. Note that '
+        'the resulting SavedModel will require the same GPUs be available.'
+        'If you wish to serve the SavedModel from a different device, '
+        'try exporting the SavedModel with multi-GPU mode turned off.')
+
+
 class ResnetArgParser(argparse.ArgumentParser):
-  """Arguments for configuring and running a Resnet Model.
-  """
+  """Arguments for configuring and running a Resnet Model."""
 
   def __init__(self, resnet_size_choices=None):
     super(ResnetArgParser, self).__init__(parents=[

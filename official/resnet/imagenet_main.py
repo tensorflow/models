@@ -312,6 +312,8 @@ def main(argv):
 
   # Export the model if desired
   if flags.export_dir is not None:
+    resnet_run_loop.warn_on_multi_gpu_export(flags.multi_gpu)
+
     shape = [_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS]
     resnet_run_loop.export_savedmodel(
         classifier, flags.export_dir, shape, flags.batch_size)
