@@ -114,6 +114,9 @@ class BenchmarkLogger(object):
     """Collect most of the TF runtime information for the local env.
 
     The schema of the run info follows official/benchmark/datastore/schema.
+
+    Args:
+      model_name: string, the name of the model.
     """
     run_info = {"model_name": model_name}
     _collect_tensorflow_info(run_info)
@@ -131,17 +134,21 @@ class BenchmarkLogger(object):
         tf.logging.warning("Failed to dump benchmark run info to log file: %s",
                            e)
 
+
 def _collect_tensorflow_info(run_info):
   run_info["tensorflow_version"] = {
       "version": tf.VERSION, "git_hash": tf.GIT_VERSION}
 
+
 def _collect_tensorflow_environment_variables(run_info):
   run_info["tensorflow_environment_variables"] = {
-      k : v for k, v in os.environ.items() if k.startswith("TF_")}
+      k: v for k, v in os.environ.items() if k.startswith("TF_")}
+
 
 # The following code is mirrored from tensorflow/tools/test/system_info_lib
 # which is not exposed for import.
 def _collect_cpu_info(run_info):
+  """Collect the CPU information for the local environment."""
   cpu_info = {}
 
   cpu_info["num_cores"] = multiprocessing.cpu_count()
@@ -189,7 +196,9 @@ def _collect_cpu_info(run_info):
 
   run_info["cpu_info"] = cpu_info
 
+
 def _collect_gpu_info(run_info):
+  """Collect local GPU information by TF device library."""
   gpu_info = {}
   local_device_protos = device_lib.list_local_devices()
 
@@ -205,10 +214,12 @@ def _collect_gpu_info(run_info):
       break
   run_info["gpu_info"] = gpu_info
 
+
 def _collect_memory_info(run_info):
   vmem = psutil.virtual_memory()
   run_info["memory_total"] = vmem.total
   run_info["memory_available"] = vmem.available
+
 
 def _parse_gpu_model(physical_device_desc):
   # Assume all the GPU connected are same model
