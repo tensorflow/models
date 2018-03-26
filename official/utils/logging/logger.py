@@ -152,47 +152,10 @@ def _collect_cpu_info(run_info):
   cpu_info = {}
 
   cpu_info["num_cores"] = multiprocessing.cpu_count()
-  # Gather num_cores_allowed
-  try:
-    with tf.gfile.GFile("/proc/self/status", "rb") as fh:
-      nc = re.search(r"(?m)^Cpus_allowed:\s*(.*)$", fh.read())
-    # Trying to find a line starts with "Cpus_allowed:"
-    # The content after that is like "ff" or "fff", which means 8 or 12, each
-    # "f" indicates 4 CPU.
-    # See https://www.kernel.org/doc/Documentation/filesystems/proc.txt for more
-    # details.
-    if nc:  # e.g.
-      cpu_info["num_cores_allowed"] = (
-          bin(int(nc.group(1).replace(",", ""), 16)).count("1"))
-  except tf.OpError:
-    pass
-  finally:
-    if "num_cores_allowed" not in cpu_info:
-      cpu_info["num_cores_allowed"] = cpu_info["num_cores"]
 
   info = cpuinfo.get_cpu_info()
   cpu_info["cpu_info"] = info["brand"]
-  cpu_info["num_cores"] = info["count"]
   cpu_info["mhz_per_cpu"] = info["hz_advertised_raw"][0] / 1.0e6
-  l2_cache_size = re.match(r"(\d+)", str(info.get("l2_cache_size", "")))
-  if l2_cache_size:
-    # If a value is returned, it's in KB
-    cpu_info["cache_size"] = {"L2": int(l2_cache_size.group(0)) * 1024}
-
-  # Try to get the CPU governor
-  try:
-    cpu_governors = set([
-        tf.gfile.GFile(f, "r").readline().rstrip()
-        for f in glob.glob(
-            "/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor")
-    ])
-    if cpu_governors:
-      if len(cpu_governors) > 1:
-        cpu_info["cpu_governor"] = "mixed"
-      else:
-        cpu_info["cpu_governor"] = list(cpu_governors)[0]
-  except tf.OpError:
-    pass
 
   run_info["cpu_info"] = cpu_info
 
