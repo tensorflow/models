@@ -25,12 +25,10 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-import glob
 import json
 import multiprocessing
 import numbers
 import os
-import re
 
 # pylint: disable=g-bad-import-order
 # Note: cpuinfo and psutil are not installed in the TensorFlow OSS tree.
