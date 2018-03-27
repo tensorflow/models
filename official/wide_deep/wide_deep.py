@@ -184,7 +184,8 @@ def main(argv):
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   def train_input_fn():
-    return input_fn(train_file, flags.epochs_between_evals, True, flags.batch_size)
+    return input_fn(
+        train_file, flags.epochs_between_evals, True, flags.batch_size)
 
   def eval_input_fn():
     return input_fn(test_file, 1, False, flags.batch_size)
