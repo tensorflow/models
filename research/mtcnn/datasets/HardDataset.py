@@ -30,9 +30,8 @@ from datasets.AbstractDataset import AbstractDataset
 
 class HardDataset(AbstractDataset):
 
-	def __init__(self):	
-		AbstractDataset.__init__(self)	
-		print('HardDataset')
+	def __init__(self, name):	
+		AbstractDataset.__init__(self, name)	
 
 	def generate_samples(self):
 		print('HardDataset-generate_samples')

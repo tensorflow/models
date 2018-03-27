@@ -19,8 +19,8 @@ from __future__ import print_function
 
 class AbstractDataset(object):
 
-	def __init__(self):
-		print('AbstractDataset')
+	def __init__(self, name):
+		self.name = name
 
 	def generate_dataset(self, target_root_dir):
 		raise NotImplementedError('Must be implemented by the subclass.')

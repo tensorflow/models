@@ -27,12 +27,12 @@ import numpy.random as np_random
 from tensorflow.contrib import slim
 
 from datasets.AbstractDataset import AbstractDataset
+from utils.IoU import IoU
 
 class BasicDataset(AbstractDataset):
 
-	def __init__(self):	
-		AbstractDataset.__init__(self)	
-		print('BasicDataset')
+	def __init__(self, name='PNet'):	
+		AbstractDataset.__init__(self, name)	
 
 	def generate_samples(self, annotation_file, input_image_dir, target_root_dir):
 		print('BasicDataset-generate_samples')
@@ -60,7 +60,6 @@ class BasicDataset(AbstractDataset):
 		if(not self.generate_dataset(target_root_dir)):
 			return(False)
 
-		print('BasicDataset-generate')
 		return(True)
 
 

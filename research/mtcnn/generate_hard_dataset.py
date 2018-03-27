@@ -30,7 +30,7 @@ def parse_arguments(argv):
 	return(parser.parse_args(argv))
 
 def main(args):
-	hard_dataset = HardDataset()
+	hard_dataset = HardDataset('RNet')
 	hard_dataset.generate()
 	print('Main')
 
