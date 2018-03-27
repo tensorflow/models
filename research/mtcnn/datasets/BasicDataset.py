@@ -35,6 +35,7 @@ class BasicDataset(AbstractDataset):
 		AbstractDataset.__init__(self, name)	
 	
 	def generate_samples(self, annotation_file, input_image_dir, target_root_dir):
+
 		target_root_dir = os.path.expanduser(target_root_dir)
 		positive_dir = os.path.join(target_root_dir, self.name, 'positive')
 		part_dir = os.path.join(target_root_dir, self.name, 'part')
@@ -49,36 +50,31 @@ class BasicDataset(AbstractDataset):
 		if(not os.path.exists(negative_dir)):
     			os.makedirs(negative_dir)
 
-		f1 = open(os.path.join(target_root_dir, self.name, 'positive.txt'), 'w')
-		f2 = open(os.path.join(target_root_dir, self.name, 'negative.txt'), 'w')
-		f3 = open(os.path.join(target_root_dir, self.name, 'part.txt'), 'w')
+		positive_file = open(os.path.join(target_root_dir, self.name, 'positive.txt'), 'w')
+		part_file = open(os.path.join(target_root_dir, self.name, 'part.txt'), 'w')
+		negative_file = open(os.path.join(target_root_dir, self.name, 'negative.txt'), 'w')
 		with open(annotation_file, 'r') as f:
 			annotations = f.readlines()
 
 		num = len(annotations)
 		print('Total number of images are - %d.' % num)
 
-		p_idx = 0 # positive
-		n_idx = 0 # negative
-		d_idx = 0 # dont care
-		idx = 0
-		box_idx = 0
+		positive_images = 0
+		part_images = 0
+		negative_images = 0
+		annotation_number = 0
 
 		for annotation in annotations:
-    			annotation = annotation.strip().split(' ')
-			
-			im_path = annotation[0]
+    			annotation = annotation.strip().split(' ')			
+			image_path = annotation[0]
 
 			bbox = map(float, annotation[1:])
 			boxes = np.array(bbox, dtype=np.float32).reshape(-1, 4)
 
-			img = cv2.imread(os.path.join(input_image_dir, im_path + '.jpg'))
+			current_image = cv2.imread(os.path.join(input_image_dir, image_path + '.jpg'))
+    			height, width, channel = current_image.shape
 
-		    	idx += 1
-    			if( idx % 100 == 0 ):
-        			print('%d number of images are done.' % idx)
-        
-    			height, width, channel = img.shape
+		    	annotation_number += 1        
 
 			neg_num = 0
 			while(neg_num < 50):
@@ -90,13 +86,13 @@ class BasicDataset(AbstractDataset):
         
         			sample_IoU = IoU(crop_box, boxes)
         
-        			cropped_im = img[ny : ny + size, nx : nx + size, :]
-        			resized_im = cv2.resize(cropped_im, (12, 12), interpolation=cv2.INTER_LINEAR)
+        			cropped_image = current_image[ny : ny + size, nx : nx + size, :]
+        			resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
 				if( np.max(sample_IoU) < 0.3 ):
-					save_file = os.path.join(negative_dir, "%s.jpg"%n_idx)
-					f2.write("PNet/negative/%s.jpg"%n_idx + ' 0\n')
-					cv2.imwrite(save_file, resized_im)
-            				n_idx += 1
+					save_file = os.path.join(negative_dir, "%s.jpg"%negative_images)
+					negative_file.write("PNet/negative/%s.jpg"%negative_images + ' 0\n')
+					cv2.imwrite(save_file, resized_image)
+            				negative_images += 1
             				neg_num += 1
 
 			for box in boxes:
@@ -118,14 +114,14 @@ class BasicDataset(AbstractDataset):
             				crop_box = np.array([nx1, ny1, nx1 + size, ny1 + size])
             				sample_IoU = IoU(crop_box, boxes)
     
-            				cropped_im = img[ny1: ny1 + size, nx1: nx1 + size, :]
-            				resized_im = cv2.resize(cropped_im, (12, 12), interpolation=cv2.INTER_LINEAR)
+            				cropped_image = current_image[ny1: ny1 + size, nx1: nx1 + size, :]
+            				resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
     
             				if np.max(sample_IoU) < 0.3:
-                				save_file = os.path.join(negative_dir, "%s.jpg" % n_idx)
-                				f2.write("PNet/negative/%s.jpg" % n_idx + ' 0\n')
-                				cv2.imwrite(save_file, resized_im)
-                				n_idx += 1 
+                				save_file = os.path.join(negative_dir, "%s.jpg" % negative_images)
+                				negative_file.write("PNet/negative/%s.jpg" % negative_images + ' 0\n')
+                				cv2.imwrite(save_file, resized_image)
+                				negative_images += 1 
 
 				for i in range(20):
             				size = npr.randint(int(min(w, h) * 0.8), np.ceil(1.25 * max(w, h)))
@@ -146,26 +142,26 @@ class BasicDataset(AbstractDataset):
             				offset_x2 = (x2 - nx2) / float(size)
             				offset_y2 = (y2 - ny2) / float(size)
 
-            				cropped_im = img[ny1 : ny2, nx1 : nx2, :]
-            				resized_im = cv2.resize(cropped_im, (12, 12), interpolation=cv2.INTER_LINEAR)
+            				cropped_image = current_image[ny1 : ny2, nx1 : nx2, :]
+            				resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
 
             				box_ = box.reshape(1, -1)
             				if IoU(crop_box, box_) >= 0.65:
-                				save_file = os.path.join(positive_dir, "%s.jpg"%p_idx)
-                				f1.write("PNet/positive/%s.jpg"%p_idx + ' 1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
-                				cv2.imwrite(save_file, resized_im)
-                				p_idx += 1
+                				save_file = os.path.join(positive_dir, "%s.jpg"%positive_images)
+                				positive_file.write("PNet/positive/%s.jpg"%positive_images + ' 1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
+                				cv2.imwrite(save_file, resized_image)
+                				positive_images += 1
             				elif IoU(crop_box, box_) >= 0.4:
-                				save_file = os.path.join(part_dir, "%s.jpg"%d_idx)
-                				f3.write("PNet/part/%s.jpg"%d_idx + ' -1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
-                				cv2.imwrite(save_file, resized_im)
-                				d_idx += 1
+                				save_file = os.path.join(part_dir, "%s.jpg"%part_images)
+                				part_file.write("PNet/part/%s.jpg"%part_images + ' -1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
+                				cv2.imwrite(save_file, resized_image)
+                				part_images += 1
 
-				box_idx += 1
-				print( "%s images done, pos: %s part: %s neg: %s"%(idx, p_idx, d_idx, n_idx))
-		f3.close()
-		f2.close()
-		f1.close()
+				print('%s number of images are done, positive - %s,  part - %s, negative - %s' % (annotation_number, positive_images, part_images, negative_images))
+
+		negative_file.close()
+		part_file.close()
+		positive_file.close()
 
 		return(True)
 
