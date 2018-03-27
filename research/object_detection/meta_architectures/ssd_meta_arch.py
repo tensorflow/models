@@ -46,7 +46,8 @@ class SSDFeatureExtractor(object):
                batch_norm_trainable=True,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               inplace_batchnorm_update=False):
     """Constructor.
 
     Args:
@@ -64,6 +65,10 @@ class SSDFeatureExtractor(object):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      inplace_batchnorm_update: Whether to update batch norm moving average
+        values inplace. When this is false train op must add a control
+        dependency on tf.graphkeys.UPDATE_OPS collection in order to update
+        batch norm statistics.
     """
     self._is_training = is_training
     self._depth_multiplier = depth_multiplier
@@ -71,6 +76,7 @@ class SSDFeatureExtractor(object):
     self._pad_to_multiple = pad_to_multiple
     self._conv_hyperparams = conv_hyperparams
     self._batch_norm_trainable = batch_norm_trainable
+    self._inplace_batchnorm_update = inplace_batchnorm_update
     self._reuse_weights = reuse_weights
     self._use_explicit_padding = use_explicit_padding
     self._use_depthwise = use_depthwise
@@ -108,7 +114,29 @@ class SSDFeatureExtractor(object):
       feature_maps: a list of tensors where the ith tensor has shape
         [batch, height_i, width_i, depth_i]
     """
-    pass
+    batchnorm_updates_collections = (None if self._inplace_batchnorm_update
+                                     else tf.GraphKeys.UPDATE_OPS)
+
+    with slim.arg_scope([slim.batch_norm],
+                        updates_collections=batchnorm_updates_collections):
+      return self._extract_features(preprocessed_inputs)
+
+  @abstractmethod
+  def _extract_features(self, preprocessed_inputs):
+    """Extracts features from preprocessed inputs.
+
+    This function is responsible for extracting feature maps from preprocessed
+    images.
+
+    Args:
+      preprocessed_inputs: a [batch, height, width, channels] float tensor
+        representing a batch of images.
+
+    Returns:
+      feature_maps: a list of tensors where the ith tensor has shape
+        [batch, height_i, width_i, depth_i]
+    """
+    raise NotImplementedError
 
 
 class SSDMetaArch(model.DetectionModel):
