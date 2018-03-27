@@ -28,4 +28,6 @@ If you would like to make any fixes or improvements to the models, please [submi
 
 The *Official Models* are made available as a Python module. To run the models and associated scripts, add the top-level ***/models*** folder to the Python path with the command: `export PYTHONPATH="$PYTHONPATH:/path/to/models"`
 
+To install dependencies pass `-r official/requirements.txt` to pip. (i.e. `pip3 install --user -r official/requirements.txt`)
+
 To make Official Models easier to use, we are planning to create a pip installable Official Models package. This is being tracked in [#917](https://github.com/tensorflow/models/issues/917).
