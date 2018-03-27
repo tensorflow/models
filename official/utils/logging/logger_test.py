@@ -31,9 +31,16 @@ from official.utils.logging import logger
 
 class BenchmarkLoggerTest(tf.test.TestCase):
 
+  def setUp(self):
+    super(BenchmarkLoggerTest, self).setUp()
+    self.original_environ = dict(os.environ)
+    os.environ.clear()
+
   def tearDown(self):
     super(BenchmarkLoggerTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
+    os.environ.clear()
+    os.environ.update(self.original_environ)
 
   def test_create_logging_dir(self):
     non_exist_temp_dir = os.path.join(self.get_temp_dir(), "unknown_dir")
