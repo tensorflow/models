@@ -144,7 +144,7 @@ def _collect_cpu_info(run_info):
 
   # Note: cpuinfo is not installed in the TensorFlow OSS tree.
   # It is installable via pip.
-  import cpuinfo
+  import cpuinfo    # pylint: disable=g-import-not-at-top
 
   info = cpuinfo.get_cpu_info()
   cpu_info["cpu_info"] = info["brand"]
@@ -174,7 +174,7 @@ def _collect_gpu_info(run_info):
 def _collect_memory_info(run_info):
   # Note: psutil is not installed in the TensorFlow OSS tree.
   # It is installable via pip.
-  import psutil
+  import psutil   # pylint: disable=g-import-not-at-top
   vmem = psutil.virtual_memory()
   run_info["memory_total"] = vmem.total
   run_info["memory_available"] = vmem.available
