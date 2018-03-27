@@ -317,7 +317,7 @@ def validate_batch_size_for_multi_gpu(batch_size):
     raise ValueError(err)
 
 
-def resnet_main(flags, model_function, input_function):
+def resnet_main(flags, model_function, input_function, shape=None):
   """Shared main loop for ResNet Models.
 
   Args:
@@ -328,10 +328,8 @@ def resnet_main(flags, model_function, input_function):
     input_function: the function that processes the dataset and returns a
       dataset that the estimator can train on. This will be wrapped with
       all the relevant flags for running and passed to estimator.
-
-  Returns:
-    The estimator after training and evaluating for the specified number of
-    epochs.
+    shape: list of ints representing the shape of the images used for training.
+      This is only used if flags.export_dir is passed.
   """
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
@@ -405,16 +403,13 @@ def resnet_main(flags, model_function, input_function):
       benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
       benchmark_logger.log_estimator_evaluation_result(eval_results)
 
-  # Return the classifier after all epochs are completed.
-  return classifier
+  if flags.export_dir is not None:
+    warn_on_multi_gpu_export(flags.multi_gpu)
 
-
-def export_savedmodel(classifier, export_dir, shape, batch_size):
-  """Exports a saved model for the given classifier."""
-  input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-      shape, batch_size=batch_size)
-  classifier.export_savedmodel(export_dir, input_receiver_fn)
-  return classifier
+    # Exports a saved model for the given classifier.
+    input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
+        shape, batch_size=flags.batch_size)
+    classifier.export_savedmodel(flags.export_dir, input_receiver_fn)
 
 
 def warn_on_multi_gpu_export(multi_gpu=False):

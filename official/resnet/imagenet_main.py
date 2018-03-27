@@ -306,17 +306,9 @@ def main(argv):
 
   input_function = flags.use_synthetic_data and get_synth_input_fn() or input_fn
 
-  # Train and eval
-  classifier = resnet_run_loop.resnet_main(
-      flags, imagenet_model_fn, input_function)
-
-  # Export the model if desired
-  if flags.export_dir is not None:
-    resnet_run_loop.warn_on_multi_gpu_export(flags.multi_gpu)
-
-    shape = [_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS]
-    resnet_run_loop.export_savedmodel(
-        classifier, flags.export_dir, shape, flags.batch_size)
+  resnet_run_loop.resnet_main(
+      flags, imagenet_model_fn, input_function,
+      shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
 
 
 if __name__ == '__main__':

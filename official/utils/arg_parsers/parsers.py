@@ -241,11 +241,12 @@ class ExportParser(argparse.ArgumentParser):
     super(ExportParser, self).__init__(add_help=add_help)
     if export_dir:
       self.add_argument(
-          "--export_dir",
-          type=str,
+          "--export_dir", "-ed",
           help="[default: %(default)s] If set, a SavedModel serialization of "
                "the model will be exported to this directory at the end of "
-               "training. See the README for more details and relevant links.")
+               "training. See the README for more details and relevant links.",
+          metavar="<ED>"
+      )
 
 
 class BenchmarkParser(argparse.ArgumentParser):
