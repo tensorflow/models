@@ -241,7 +241,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           groundtruth_boxes_list=gt_boxes_list,
           groundtruth_classes_list=gt_classes_list,
           groundtruth_masks_list=gt_masks_list,
-          groundtruth_keypoints_list=gt_keypoints_list)
+          groundtruth_keypoints_list=gt_keypoints_list,
+          groundtruth_weights_list=labels[
+              fields.InputDataFields.groundtruth_weights])
 
     preprocessed_images = features[fields.InputDataFields.image]
     prediction_dict = detection_model.predict(
