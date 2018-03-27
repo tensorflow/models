@@ -37,6 +37,9 @@ class HardDataset(AbstractDataset):
 	def generate_samples(self):
 		print('HardDataset-generate_samples')
 
+	def generate_dataset(self, target_root_dir):
+		print('HardDataset-generate_dataset')
+
 	def generate(self):
 		print('HardDataset-generate')
 

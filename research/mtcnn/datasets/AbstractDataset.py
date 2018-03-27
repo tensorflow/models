@@ -22,9 +22,6 @@ class AbstractDataset(object):
 	def __init__(self):
 		print('AbstractDataset')
 
-	def generate_samples(self):
-		raise NotImplementedError('Must be implemented by the subclass.')
-
-	def generate(self):
+	def generate_dataset(self, target_root_dir):
 		raise NotImplementedError('Must be implemented by the subclass.')
 

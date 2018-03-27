@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import numpy as np
 import tensorflow as tf
 import numpy as np
@@ -33,9 +34,31 @@ class BasicDataset(AbstractDataset):
 		AbstractDataset.__init__(self)	
 		print('BasicDataset')
 
-	def generate_samples(self):
+	def generate_samples(self, annotation_file, input_image_dir, target_root_dir):
 		print('BasicDataset-generate_samples')
+		return(True)
 
-	def generate(self):
+	def generate_dataset(self, target_root_dir):
+		print('BasicDataset-generate_dataset')
+		return(True)
+
+	def generate(self, annotation_file, input_image_dir, target_root_dir):
+
+		if(not os.path.isfile(annotation_file)):
+			return(False)
+
+		if(not os.path.exists(input_image_dir)):
+			return(False)
+
+		target_dir = os.path.expanduser(target_root_dir)
+		if(not os.path.exists(target_dir)):
+			os.makedirs(target_dir)
+		
+		if(not self.generate_samples(annotation_file, input_image_dir, target_root_dir)):
+			return(False)
+
+		if(not self.generate_dataset(target_root_dir)):
+			return(False)
+
 		print('BasicDataset-generate')
 
