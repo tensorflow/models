@@ -13,9 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import tensorflow as tf
+from datasets.AbstractDataset import AbstractDataset
+from datasets.BasicDataset import BasicDataset
+from datasets.HardDataset import HardDataset
 

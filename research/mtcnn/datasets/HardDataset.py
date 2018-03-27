@@ -17,5 +17,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import tensorflow as tf
+import numpy as np
+import cv2
+import numpy.random as np_random
+
+from tensorflow.contrib import slim
+
+
+from datasets.AbstractDataset import AbstractDataset
+
+class HardDataset(AbstractDataset):
+
+	def __init__(self):	
+		AbstractDataset.__init__(self)	
+		print('HardDataset')
+
+	def generate_samples(self):
+		print('HardDataset-generate_samples')
+
+	def generate(self):
+		print('HardDataset-generate')
 
