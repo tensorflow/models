@@ -20,6 +20,10 @@ installed with:
   > pip install --upgrade google-cloud-bigquery
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import argparse
 import json
 import os
@@ -58,6 +62,7 @@ class BigQueryUploader(object):
         project=gcp_project, credentials=credentials)
 
   def upload_benchmark_run(self, dataset_name, table_name, run_id):
+    """Upload benchmark run information to Bigquery."""
     expected_file = os.path.join(
         self._logging_dir, logger.BENCHMARK_RUN_LOG_FILE_NAME)
     with tf.gfile.GFile(expected_file) as f:
@@ -70,6 +75,7 @@ class BigQueryUploader(object):
             "Failed to upload benchmark info to bigquery: {}".format(errors))
 
   def upload_metric(self, dataset_name, table_name, run_id):
+    """Upload metric information to Bigquery."""
     expected_file = os.path.join(
         self._logging_dir, logger.METRIC_LOG_FILE_NAME)
     with tf.gfile.GFile(expected_file) as f:
