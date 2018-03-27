@@ -95,13 +95,19 @@ def build(model_config, is_training, add_summaries=True):
 
 
 def _build_ssd_feature_extractor(feature_extractor_config, is_training,
-                                 reuse_weights=None):
+                                 reuse_weights=None,
+                                 inplace_batchnorm_update=False):
   """Builds a ssd_meta_arch.SSDFeatureExtractor based on config.
 
   Args:
     feature_extractor_config: A SSDFeatureExtractor proto config from ssd.proto.
     is_training: True if this feature extractor is being built for training.
     reuse_weights: if the feature extractor should reuse weights.
+    inplace_batchnorm_update: Whether to update batch_norm inplace during
+      training. This is required for batch norm to work correctly on TPUs. When
+      this is false, user must add a control dependency on
+      tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+      norm moving average parameters.
 
   Returns:
     ssd_meta_arch.SSDFeatureExtractor based on config.
@@ -126,7 +132,8 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   return feature_extractor_class(is_training, depth_multiplier, min_depth,
                                  pad_to_multiple, conv_hyperparams,
                                  batch_norm_trainable, reuse_weights,
-                                 use_explicit_padding, use_depthwise)
+                                 use_explicit_padding, use_depthwise,
+                                 inplace_batchnorm_update)
 
 
 def _build_ssd_model(ssd_config, is_training, add_summaries):
@@ -140,6 +147,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
 
   Returns:
     SSDMetaArch based on the config.
+
   Raises:
     ValueError: If ssd_config.type is not recognized (i.e. not registered in
       model_class_map).
@@ -147,8 +155,9 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
   num_classes = ssd_config.num_classes
 
   # Feature extractor
-  feature_extractor = _build_ssd_feature_extractor(ssd_config.feature_extractor,
-                                                   is_training)
+  feature_extractor = _build_ssd_feature_extractor(
+      ssd_config.feature_extractor, is_training,
+      ssd_config.inplace_batchnorm_update)
 
   box_coder = box_coder_builder.build(ssd_config.box_coder)
   matcher = matcher_builder.build(ssd_config.matcher)
@@ -194,7 +203,8 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
 
 
 def _build_faster_rcnn_feature_extractor(
-    feature_extractor_config, is_training, reuse_weights=None):
+    feature_extractor_config, is_training, reuse_weights=None,
+    inplace_batchnorm_update=False):
   """Builds a faster_rcnn_meta_arch.FasterRCNNFeatureExtractor based on config.
 
   Args:
@@ -202,6 +212,11 @@ def _build_faster_rcnn_feature_extractor(
       faster_rcnn.proto.
     is_training: True if this feature extractor is being built for training.
     reuse_weights: if the feature extractor should reuse weights.
+    inplace_batchnorm_update: Whether to update batch_norm inplace during
+      training. This is required for batch norm to work correctly on TPUs. When
+      this is false, user must add a control dependency on
+      tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+      norm moving average parameters.
 
   Returns:
     faster_rcnn_meta_arch.FasterRCNNFeatureExtractor based on config.
@@ -209,6 +224,8 @@ def _build_faster_rcnn_feature_extractor(
   Raises:
     ValueError: On invalid feature extractor type.
   """
+  if inplace_batchnorm_update:
+    raise ValueError('inplace batchnorm updates not supported.')
   feature_type = feature_extractor_config.type
   first_stage_features_stride = (
       feature_extractor_config.first_stage_features_stride)
@@ -238,6 +255,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
 
   Returns:
     FasterRCNNMetaArch based on the config.
+
   Raises:
     ValueError: If frcnn_config.type is not recognized (i.e. not registered in
       model_class_map).
@@ -246,7 +264,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   image_resizer_fn = image_resizer_builder.build(frcnn_config.image_resizer)
 
   feature_extractor = _build_faster_rcnn_feature_extractor(
-      frcnn_config.feature_extractor, is_training)
+      frcnn_config.feature_extractor, is_training,
+      frcnn_config.inplace_batchnorm_update)
 
   number_of_stages = frcnn_config.number_of_stages
   first_stage_anchor_generator = anchor_generator_builder.build(

@@ -297,6 +297,7 @@ class ModelBuilderTest(tf.test.TestCase):
   def test_create_ssd_mobilenet_v1_model_from_config(self):
     model_text_proto = """
       ssd {
+        inplace_batchnorm_update: true
         feature_extractor {
           type: 'ssd_mobilenet_v1'
           conv_hyperparams {
@@ -519,6 +520,7 @@ class ModelBuilderTest(tf.test.TestCase):
   def test_create_faster_rcnn_resnet_v1_models_from_config(self):
     model_text_proto = """
       faster_rcnn {
+        inplace_batchnorm_update: true
         num_classes: 3
         image_resizer {
           keep_aspect_ratio_resizer {
