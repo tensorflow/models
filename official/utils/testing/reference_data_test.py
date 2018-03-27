@@ -16,9 +16,9 @@
 
 This test is not intended to test every layer of interest, and models should
 test the layers that affect them. This test is primarily focused on ensuring
-that reference_data.BaseTest functions as intended. If there is a legitimate change
-such as a change to TensorFlow which changes graph construction, tests can
-be regenerated with the following command:
+that reference_data.BaseTest functions as intended. If there is a legitimate
+change such as a change to TensorFlow which changes graph construction, tests
+can be regenerated with the following command:
 
   $ python3 reference_data_test.py -regen
 """
