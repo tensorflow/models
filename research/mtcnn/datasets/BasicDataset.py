@@ -35,7 +35,55 @@ class BasicDataset(AbstractDataset):
 		AbstractDataset.__init__(self, name)	
 
 	def generate_samples(self, annotation_file, input_image_dir, target_root_dir):
-		print('BasicDataset-generate_samples')
+		target_root_dir = os.path.expanduser(target_root_dir)
+		positive_dir = os.path.join(target_root_dir, self.name, 'positive')
+		part_dir = os.path.join(target_root_dir, self.name, 'part')
+		negative_dir = os.path.join(target_root_dir, self.name, 'negative')
+
+		if(not os.path.exists(target_root_dir)):
+			os.makedirs(target_root_dir)
+		if(not os.path.exists(positive_dir)):
+    			os.makedirs(positive_dir)
+		if(not os.path.exists(part_dir)):
+    			os.makedirs(part_dir)
+		if(not os.path.exists(negative_dir)):
+    			os.makedirs(negative_dir)
+
+		f1 = open(os.path.join(target_root_dir, self.name, 'positive.txt'), 'w')
+		f2 = open(os.path.join(target_root_dir, self.name, 'negative.txt'), 'w')
+		f3 = open(os.path.join(target_root_dir, self.name, 'part.txt'), 'w')
+		with open(annotation_file, 'r') as f:
+			annotations = f.readlines()
+
+		num = len(annotations)
+		print('Total number of images are - %d.' % num)
+
+		p_idx = 0 # positive
+		n_idx = 0 # negative
+		d_idx = 0 # dont care
+		idx = 0
+		box_idx = 0
+
+		for annotation in annotations:
+    			annotation = annotation.strip().split(' ')
+			
+			im_path = annotation[0]
+
+			bbox = map(float, annotation[1:])
+			boxes = np.array(bbox, dtype=np.float32).reshape(-1, 4)
+
+			img = cv2.imread(os.path.join(input_image_dir, im_path + '.jpg'))
+
+		    	idx += 1
+    			if( idx % 100 == 0 ):
+        			print('%d number of images are done.' % idx)
+        
+    			height, width, channel = img.shape
+
+		f3.close()
+		f2.close()
+		f1.close()
+
 		return(True)
 
 	def generate_dataset(self, target_root_dir):
@@ -50,9 +98,9 @@ class BasicDataset(AbstractDataset):
 		if(not os.path.exists(input_image_dir)):
 			return(False)
 
-		target_dir = os.path.expanduser(target_root_dir)
-		if(not os.path.exists(target_dir)):
-			os.makedirs(target_dir)
+		target_root_dir = os.path.expanduser(target_root_dir)
+		if(not os.path.exists(target_root_dir)):
+			os.makedirs(target_root_dir)
 		
 		if(not self.generate_samples(annotation_file, input_image_dir, target_root_dir)):
 			return(False)
