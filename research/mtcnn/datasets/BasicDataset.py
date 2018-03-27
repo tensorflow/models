@@ -61,4 +61,6 @@ class BasicDataset(AbstractDataset):
 			return(False)
 
 		print('BasicDataset-generate')
+		return(True)
+
 

@@ -42,8 +42,11 @@ def main(args):
 		raise ValueError('You must supply output directory for storing output images and TensorFlow data files with --target_root_dir.')
 
 	basic_dataset = BasicDataset()
-	basic_dataset.generate(args.annotation_file, args.input_image_dir, args.target_root_dir)
-	print('Main')
+	status = basic_dataset.generate(args.annotation_file, args.input_image_dir, args.target_root_dir)
+	if(status):
+		print('Basic dataset is generated at ' + args.target_root_dir)
+	else:
+		print('Error generating basic dataset.')
 
 """
 python generate_basic_dataset.py --annotation_file=/workspace/source-code/mtcnn/prepare_data/wider_face_train.txt --input_image_dir=/workspace/source-code/mtcnn/prepare_data/WIDER_train/images --target_root_dir=/workspace/datasets/mtcnn
