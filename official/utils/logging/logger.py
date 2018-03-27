@@ -16,9 +16,7 @@
 """Logging utilities for benchmark.
 
 For collecting local environment metrics like CPU and memory, certain python
-packages need be installed. Run the following commands for dependency packages:
-  > pip install --upgrade py-cpuinfo
-  > pip install --upgrade psutil
+packages need be installed. See README for details.
 """
 from __future__ import absolute_import
 from __future__ import division
