@@ -28,13 +28,6 @@ import multiprocessing
 import numbers
 import os
 
-# pylint: disable=g-bad-import-order
-# Note: cpuinfo and psutil are not installed in the TensorFlow OSS tree.
-# They are installable via pip.
-import cpuinfo
-import psutil
-# pylint: enable=g-bad-import-order
-
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 
@@ -149,6 +142,10 @@ def _collect_cpu_info(run_info):
 
   cpu_info["num_cores"] = multiprocessing.cpu_count()
 
+  # Note: cpuinfo is not installed in the TensorFlow OSS tree.
+  # It is installable via pip.
+  import cpuinfo    # pylint: disable=g-import-not-at-top
+
   info = cpuinfo.get_cpu_info()
   cpu_info["cpu_info"] = info["brand"]
   cpu_info["mhz_per_cpu"] = info["hz_advertised_raw"][0] / 1.0e6
@@ -175,6 +172,9 @@ def _collect_gpu_info(run_info):
 
 
 def _collect_memory_info(run_info):
+  # Note: psutil is not installed in the TensorFlow OSS tree.
+  # It is installable via pip.
+  import psutil   # pylint: disable=g-import-not-at-top
   vmem = psutil.virtual_memory()
   run_info["memory_total"] = vmem.total
   run_info["memory_available"] = vmem.available
