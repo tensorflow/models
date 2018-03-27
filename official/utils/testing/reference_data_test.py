@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""This module tests generic behavior of golden tests.
+"""This module tests generic behavior of reference data tests.
 
 This test is not intended to test every layer of interest, and models should
 test the layers that affect them. This test is primarily focused on ensuring
-that golden.BaseTest functions as intended. If there is a legitimate change
+that reference_data.BaseTest functions as intended. If there is a legitimate change
 such as a change to TensorFlow which changes graph construction, tests can
 be regenerated with the following command:
 
-  $ python3 golden_test.py -regen
+  $ python3 reference_data_test.py -regen
 """
 
 from __future__ import absolute_import
@@ -32,15 +32,15 @@ import unittest
 import warnings
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
-from official.utils.testing import golden
+from official.utils.testing import reference_data
 
 
-class GoldenBaseTest(golden.BaseTest):
-  """Class to ensure that golden testing runs properly."""
+class GoldenBaseTest(reference_data.BaseTest):
+  """Class to ensure that reference data testing runs properly."""
 
   @property
   def test_name(self):
-    return "Golden"
+    return "reference_data_test"
 
   def _uniform_random_ops(self, test=False, wrong_name=False, wrong_shape=False,
                           bad_seed=False, bad_function=False):
@@ -130,4 +130,4 @@ class GoldenBaseTest(golden.BaseTest):
 
 
 if __name__ == "__main__":
-  golden.main(argv=sys.argv, test_class=GoldenBaseTest)
+  reference_data.main(argv=sys.argv, test_class=GoldenBaseTest)

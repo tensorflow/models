@@ -35,7 +35,7 @@ import sys
 
 import tensorflow as tf   # pylint: disable=g-bad-import-order
 from official.resnet import resnet_model
-from official.utils.testing import golden
+from official.utils.testing import reference_data
 
 
 DATA_FORMAT = "channels_last"  # CPU instructions often preclude channels_first
@@ -52,12 +52,12 @@ BLOCK_TESTS = [
 ]
 
 
-class BaseTest(golden.BaseTest):
+class BaseTest(reference_data.BaseTest):
   """Tests for core ResNet layers."""
 
   @property
   def test_name(self):
-    return "ResNet"
+    return "resnet"
 
   def _batch_norm_ops(self, test=False):
     name = "batch_norm"
@@ -86,7 +86,7 @@ class BaseTest(golden.BaseTest):
       data_format: channels_first or channels_last
 
     Returns:
-      A 1 wide CNN projector function.
+      A CNN projector function with kernel_size 1.
     """
     def projection_shortcut(inputs):
       return resnet_model.conv2d_fixed_padding(
@@ -161,8 +161,6 @@ class BaseTest(golden.BaseTest):
   def test_batch_norm(self):
     self._batch_norm_ops(test=True)
 
-  # Sadly python2 does not support "with self.subTest()"
-
   def test_block_0(self):
     self._resnet_block_ops(test=True, batch_size=BATCH_SIZE, **BLOCK_TESTS[0])
 
@@ -195,4 +193,4 @@ class BaseTest(golden.BaseTest):
 
 
 if __name__ == "__main__":
-  golden.main(argv=sys.argv, test_class=BaseTest)
+  reference_data.main(argv=sys.argv, test_class=BaseTest)

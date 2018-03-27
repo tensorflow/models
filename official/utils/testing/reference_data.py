@@ -14,7 +14,7 @@
 # ==============================================================================
 """TensorFlow testing subclass to automate numerical testing.
 
-Golden tests determine when behavior deviates from some "gold standard," and
+Reference tests determine when behavior deviates from some "gold standard," and
 are useful for determining when layer definitions have changed without
 performing full regression testing, which is generally prohibitive. This class
 handles the symbolic graph comparison as well as loading weights to avoid
@@ -40,7 +40,7 @@ The test class should also define a .regenerate() class method which (usually)
 just calls the op definition function with test=False for all relevant tests.
 
 A concise example of this class in action is provided in:
-  official/utils/testing/golden_test.py
+  official/utils/testing/reference_data_test.py
 """
 
 from __future__ import absolute_import
@@ -60,7 +60,7 @@ from tensorflow.python import pywrap_tensorflow
 
 
 class BaseTest(tf.test.TestCase):
-  """TestCase subclass for performing golden tests."""
+  """TestCase subclass for performing reference data tests."""
 
   def regenerate(self):
     """Subclasses should override this function to generate a new reference."""
@@ -144,7 +144,7 @@ class BaseTest(tf.test.TestCase):
 
   def _construct_and_save_reference_files(
       self, name, graph, ops_to_eval, correctness_function):
-    """Save a gold standard.
+    """Save reference data files.
 
     Constructs a serialized graph_def, layer weights, and computation results.
     It then saves them to files which are read at test time.
@@ -198,7 +198,7 @@ class BaseTest(tf.test.TestCase):
         json.dump([tf.VERSION, tf.GIT_VERSION], f)
 
   def _evaluate_test_case(self, name, graph, ops_to_eval, correctness_function):
-    """Determine if a graph agrees with the gold standard.
+    """Determine if a graph agrees with the reference data.
 
     Args:
       name: String defining the run. This will be used to define folder names
@@ -307,11 +307,11 @@ class BaseTest(tf.test.TestCase):
       )
 
 
-class GoldenActionParser(argparse.ArgumentParser):
+class ReferenceDataActionParser(argparse.ArgumentParser):
   """Minimal arg parser so that test regeneration can be called from the CLI."""
 
   def __init__(self):
-    super(GoldenActionParser, self).__init__()
+    super(ReferenceDataActionParser, self).__init__()
     self.add_argument(
         "--regenerate", "-regen",
         action="store_true",
@@ -322,7 +322,7 @@ class GoldenActionParser(argparse.ArgumentParser):
 
 def main(argv, test_class):
   """Simple switch function to allow test regeneration from the CLI."""
-  flags = GoldenActionParser().parse_args(argv[1:])
+  flags = ReferenceDataActionParser().parse_args(argv[1:])
   if flags.regenerate:
     if sys.version_info[0] == 2:
       raise NameError("\nPython2 unittest does not support being run as a "
