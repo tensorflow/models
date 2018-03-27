@@ -95,7 +95,7 @@ import tensorflow as tf
 from google.protobuf import text_format
 from object_detection import exporter
 from object_detection.protos import pipeline_pb2
-
+import os
 slim = tf.contrib.slim
 flags = tf.app.flags
 
