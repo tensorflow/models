@@ -2279,7 +2279,11 @@ def resize_image(image,
         return new_masks
 
       def reshape_masks_branch():
-        new_masks = tf.reshape(masks, [0, new_size[0], new_size[1]])
+        # The shape function will be computed for both branches of the
+        # condition, regardless of which branch is actually taken. Make sure
+        # that we don't trigger an assertion in the shape function when trying
+        # to reshape a non empty tensor into an empty one.
+        new_masks = tf.reshape(masks, [-1, new_size[0], new_size[1]])
         return new_masks
 
       masks = tf.cond(num_instances > 0, resize_masks_branch,
