@@ -98,6 +98,34 @@ class BasicDataset(AbstractDataset):
 					cv2.imwrite(save_file, resized_im)
             				n_idx += 1
             				neg_num += 1
+
+			for box in boxes:
+				x1, y1, x2, y2 = box
+				w = x2 - x1 + 1
+				h = y2 - y1 + 1
+
+				if( max(w, h) < 40 or x1 < 0 or y1 < 0 ):
+            				continue
+
+				for i in range(5):
+			            	size = npr.randint(12, min(width, height) / 2)
+            				delta_x = npr.randint(max(-size, -x1), w)
+            				delta_y = npr.randint(max(-size, -y1), h)
+            				nx1 = int(max(0, x1 + delta_x))
+            				ny1 = int(max(0, y1 + delta_y))
+            				if nx1 + size > width or ny1 + size > height:
+                				continue
+            				crop_box = np.array([nx1, ny1, nx1 + size, ny1 + size])
+            				sample_IoU = IoU(crop_box, boxes)
+    
+            				cropped_im = img[ny1: ny1 + size, nx1: nx1 + size, :]
+            				resized_im = cv2.resize(cropped_im, (12, 12), interpolation=cv2.INTER_LINEAR)
+    
+            				if np.max(sample_IoU) < 0.3:
+                				save_file = os.path.join(negative_dir, "%s.jpg" % n_idx)
+                				f2.write("PNet/negative/%s.jpg" % n_idx + ' 0\n')
+                				cv2.imwrite(save_file, resized_im)
+                				n_idx += 1 
 		f3.close()
 		f2.close()
 		f1.close()
