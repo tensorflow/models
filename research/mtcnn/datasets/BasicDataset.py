@@ -22,7 +22,7 @@ import numpy as np
 import tensorflow as tf
 import numpy as np
 import cv2
-import numpy.random as np_random
+import numpy.random as npr
 
 from tensorflow.contrib import slim
 
@@ -33,7 +33,7 @@ class BasicDataset(AbstractDataset):
 
 	def __init__(self, name='PNet'):	
 		AbstractDataset.__init__(self, name)	
-
+	
 	def generate_samples(self, annotation_file, input_image_dir, target_root_dir):
 		target_root_dir = os.path.expanduser(target_root_dir)
 		positive_dir = os.path.join(target_root_dir, self.name, 'positive')
@@ -80,6 +80,24 @@ class BasicDataset(AbstractDataset):
         
     			height, width, channel = img.shape
 
+			neg_num = 0
+			while(neg_num < 50):
+				size = npr.randint(12, min(width, height) / 2)
+			        nx = npr.randint(0, width - size)
+        			ny = npr.randint(0, height - size)
+        
+        			crop_box = np.array([nx, ny, nx + size, ny + size])
+        
+        			sample_IoU = IoU(crop_box, boxes)
+        
+        			cropped_im = img[ny : ny + size, nx : nx + size, :]
+        			resized_im = cv2.resize(cropped_im, (12, 12), interpolation=cv2.INTER_LINEAR)
+				if( np.max(sample_IoU) < 0.3 ):
+					save_file = os.path.join(negative_dir, "%s.jpg"%n_idx)
+					f2.write("PNet/negative/%s.jpg"%n_idx + ' 0\n')
+					cv2.imwrite(save_file, resized_im)
+            				n_idx += 1
+            				neg_num += 1
 		f3.close()
 		f2.close()
 		f1.close()
