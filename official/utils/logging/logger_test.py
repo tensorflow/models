@@ -25,16 +25,25 @@ import tempfile
 import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
-from tensorflow.python.client import device_lib
 
 from official.utils.logging import logger
 
 
 class BenchmarkLoggerTest(tf.test.TestCase):
 
+  def setUp(self):
+    super(BenchmarkLoggerTest, self).setUp()
+    # Avoid pulling extra env vars from test environment which affects the test
+    # result, eg. Kokoro test has a TF_PKG env which affect the test case
+    # test_collect_tensorflow_environment_variables()
+    self.original_environ = dict(os.environ)
+    os.environ.clear()
+
   def tearDown(self):
     super(BenchmarkLoggerTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
+    os.environ.clear()
+    os.environ.update(self.original_environ)
 
   def test_create_logging_dir(self):
     non_exist_temp_dir = os.path.join(self.get_temp_dir(), "unknown_dir")
@@ -56,7 +65,7 @@ class BenchmarkLoggerTest(tf.test.TestCase):
       self.assertEqual(metric["value"], 0.999)
       self.assertEqual(metric["unit"], None)
       self.assertEqual(metric["global_step"], 1e4)
-      self.assertEqual(metric["extras"], {"name": "value"})
+      self.assertEqual(metric["extras"], [{"name": "name", "value": "value"}])
 
   def test_log_multiple_metrics(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
@@ -72,13 +81,14 @@ class BenchmarkLoggerTest(tf.test.TestCase):
       self.assertEqual(accuracy["value"], 0.999)
       self.assertEqual(accuracy["unit"], None)
       self.assertEqual(accuracy["global_step"], 1e4)
-      self.assertEqual(accuracy["extras"], {"name": "value"})
+      self.assertEqual(accuracy["extras"], [{"name": "name", "value": "value"}])
 
       loss = json.loads(f.readline())
       self.assertEqual(loss["name"], "loss")
       self.assertEqual(loss["value"], 0.02)
       self.assertEqual(loss["unit"], None)
       self.assertEqual(loss["global_step"], 1e4)
+      self.assertEqual(loss["extras"], [])
 
   def test_log_non_nubmer_value(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
@@ -130,24 +140,30 @@ class BenchmarkLoggerTest(tf.test.TestCase):
 
   def test_collect_tensorflow_environment_variables(self):
     os.environ["TF_ENABLE_WINOGRAD_NONFUSED"] = "1"
+    os.environ["TF_OTHER"] = "2"
+    os.environ["OTHER"] = "3"
 
     run_info = {}
     logger._collect_tensorflow_environment_variables(run_info)
     self.assertIsNotNone(run_info["tensorflow_environment_variables"])
-    self.assertEqual(run_info["tensorflow_environment_variables"]
-                     ["TF_ENABLE_WINOGRAD_NONFUSED"], "1")
+    expected_tf_envs = [
+        {"name": "TF_ENABLE_WINOGRAD_NONFUSED", "value": "1"},
+        {"name": "TF_OTHER", "value": "2"},
+    ]
+    self.assertEqual(run_info["tensorflow_environment_variables"],
+                     expected_tf_envs)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), "requires GPU")
   def test_collect_gpu_info(self):
-    run_info = {}
+    run_info = {"machine_config": {}}
     logger._collect_gpu_info(run_info)
-    self.assertNotEqual(run_info["gpu_info"], {})
+    self.assertNotEqual(run_info["machine_config"]["gpu_info"], {})
 
   def test_collect_memory_info(self):
-    run_info = {}
+    run_info = {"machine_config": {}}
     logger._collect_memory_info(run_info)
-    self.assertIsNotNone(run_info["memory_total"])
-    self.assertIsNotNone(run_info["memory_available"])
+    self.assertIsNotNone(run_info["machine_config"]["memory_total"])
+    self.assertIsNotNone(run_info["machine_config"]["memory_available"])
 
 if __name__ == "__main__":
   tf.test.main()

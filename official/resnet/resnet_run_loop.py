@@ -348,6 +348,12 @@ def resnet_main(flags, model_function, input_function):
           'version': flags.version,
       })
 
+  if flags.benchmark_log_dir is not None:
+    benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
+    benchmark_logger.log_run_info("resnet")
+  else:
+    benchmark_logger = None
+
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
     train_hooks = hooks_helper.get_train_hooks(
         flags.hooks,
@@ -380,8 +386,7 @@ def resnet_main(flags, model_function, input_function):
                                        steps=flags.max_train_steps)
     print(eval_results)
 
-    if flags.benchmark_log_dir is not None:
-      benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
+    if benchmark_logger:
       benchmark_logger.log_estimator_evaluation_result(eval_results)
 
 
