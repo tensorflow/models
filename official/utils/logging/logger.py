@@ -28,18 +28,11 @@ import multiprocessing
 import numbers
 import os
 
-# pylint: disable=g-bad-import-order
-# Note: cpuinfo and psutil are not installed in the TensorFlow OSS tree.
-# They are installable via pip.
-import cpuinfo
-import psutil
-# pylint: enable=g-bad-import-order
-
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 
-_METRIC_LOG_FILE_NAME = "metric.log"
-_BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
+METRIC_LOG_FILE_NAME = "metric.log"
+BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
@@ -88,9 +81,12 @@ class BenchmarkLogger(object):
       tf.logging.warning(
           "Metric value to log should be a number. Got %s", type(value))
       return
-
+    if extras:
+      extras = [{"name": k, "value": v} for k, v in sorted(extras.items())]
+    else:
+      extras = []
     with tf.gfile.GFile(
-        os.path.join(self._logging_dir, _METRIC_LOG_FILE_NAME), "a") as f:
+        os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
       metric = {
           "name": name,
           "value": float(value),
@@ -114,7 +110,10 @@ class BenchmarkLogger(object):
     Args:
       model_name: string, the name of the model.
     """
-    run_info = {"model_name": model_name}
+    run_info = {
+        "model_name": model_name,
+        "machine_config": {},
+        "run_date": datetime.datetime.now().strftime(_DATE_TIME_FORMAT_PATTERN)}
     _collect_tensorflow_info(run_info)
     _collect_tensorflow_environment_variables(run_info)
     _collect_cpu_info(run_info)
@@ -122,7 +121,7 @@ class BenchmarkLogger(object):
     _collect_memory_info(run_info)
 
     with tf.gfile.GFile(os.path.join(
-        self._logging_dir, _BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
+        self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
       try:
         json.dump(run_info, f)
         f.write("\n")
@@ -137,8 +136,9 @@ def _collect_tensorflow_info(run_info):
 
 
 def _collect_tensorflow_environment_variables(run_info):
-  run_info["tensorflow_environment_variables"] = {
-      k: v for k, v in os.environ.items() if k.startswith("TF_")}
+  run_info["tensorflow_environment_variables"] = [
+      {"name": k, "value": v}
+      for k, v in sorted(os.environ.items()) if k.startswith("TF_")]
 
 
 # The following code is mirrored from tensorflow/tools/test/system_info_lib
@@ -149,11 +149,15 @@ def _collect_cpu_info(run_info):
 
   cpu_info["num_cores"] = multiprocessing.cpu_count()
 
+  # Note: cpuinfo is not installed in the TensorFlow OSS tree.
+  # It is installable via pip.
+  import cpuinfo    # pylint: disable=g-import-not-at-top
+
   info = cpuinfo.get_cpu_info()
   cpu_info["cpu_info"] = info["brand"]
   cpu_info["mhz_per_cpu"] = info["hz_advertised_raw"][0] / 1.0e6
 
-  run_info["cpu_info"] = cpu_info
+  run_info["machine_config"]["cpu_info"] = cpu_info
 
 
 def _collect_gpu_info(run_info):
@@ -171,13 +175,16 @@ def _collect_gpu_info(run_info):
       gpu_info["model"] = _parse_gpu_model(d.physical_device_desc)
       # Assume all the GPU connected are same model
       break
-  run_info["gpu_info"] = gpu_info
+  run_info["machine_config"]["gpu_info"] = gpu_info
 
 
 def _collect_memory_info(run_info):
+  # Note: psutil is not installed in the TensorFlow OSS tree.
+  # It is installable via pip.
+  import psutil   # pylint: disable=g-import-not-at-top
   vmem = psutil.virtual_memory()
-  run_info["memory_total"] = vmem.total
-  run_info["memory_available"] = vmem.available
+  run_info["machine_config"]["memory_total"] = vmem.total
+  run_info["machine_config"]["memory_available"] = vmem.available
 
 
 def _parse_gpu_model(physical_device_desc):

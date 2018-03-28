@@ -81,7 +81,7 @@ def _set_arg_scope_defaults(defaults):
     context manager where all defaults are set.
   """
   if hasattr(defaults, 'items'):
-    items = defaults.items()
+    items = list(defaults.items())
   else:
     items = defaults
   if not items:
