@@ -18,14 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-
-import numpy as np
-import tensorflow as tf
-import numpy as np
+import cPickle as pickle
 import cv2
-import numpy.random as np_random
-
-from tensorflow.contrib import slim
 
 from datasets.AbstractDataset import AbstractDataset
 from datasets.WIDERFaceDataset import WIDERFaceDataset
@@ -37,6 +31,10 @@ class HardDataset(AbstractDataset):
 
 	def __init__(self, name):	
 		AbstractDataset.__init__(self, name)	
+		self._pickle_file_name = 'detections.pkl'
+
+	def pickle_file_name(self):
+		return(self._pickle_file_name)
 
 	def generate_samples(self, network_name, annotation_file, input_image_dir, minimum_face, target_root_dir):
 
@@ -47,9 +45,11 @@ class HardDataset(AbstractDataset):
 			return(False)
 
 		target_root_dir = os.path.expanduser(target_root_dir)
-		positive_dir = os.path.join(target_root_dir, self.name(), 'positive')
-		part_dir = os.path.join(target_root_dir, self.name(), 'part')
-		negative_dir = os.path.join(target_root_dir, self.name(), 'negative')
+		target_root_dir = os.path.join(target_root_dir, self.name())
+
+		positive_dir = os.path.join(target_root_dir, 'positive')
+		part_dir = os.path.join(target_root_dir, 'part')
+		negative_dir = os.path.join(target_root_dir, 'negative')
 
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
@@ -64,7 +64,10 @@ class HardDataset(AbstractDataset):
 		face_detector = FaceDetector()
 		detections, landmarks = face_detector.detect_face(test_data)
 
-		print(len(detections))
+    		pickle_file_path = os.path.join(target_root_dir, self.pickle_file_name())
+    		with open(pickle_file_path, 'wb') as f:
+        		pickle.dump(detections, f, 1)
+		
 		return(True)
 
 	def generate_dataset(self, target_root_dir):
