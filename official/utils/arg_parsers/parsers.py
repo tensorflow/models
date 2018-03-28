@@ -235,7 +235,7 @@ class BenchmarkParser(argparse.ArgumentParser):
   """
 
   def __init__(self, add_help=False, benchmark_log_dir=True,
-      bigquery_uploader=True):
+               bigquery_uploader=True):
     super(BenchmarkParser, self).__init__(add_help=add_help)
     if benchmark_log_dir:
       self.add_argument(
