@@ -49,8 +49,8 @@ tf.flags.DEFINE_string('model_dir', None, 'Path to output model directory '
                        'where event and checkpoint files will be written.')
 tf.flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                        'file.')
-tf.flags.DEFINE_integer('num_train_steps', 500000, 'Number of train steps.')
-tf.flags.DEFINE_integer('num_eval_steps', 10000, 'Number of train steps.')
+tf.flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
+tf.flags.DEFINE_integer('num_eval_steps', None, 'Number of train steps.')
 FLAGS = tf.flags.FLAGS
 
 
