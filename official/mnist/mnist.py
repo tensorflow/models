@@ -246,14 +246,9 @@ class MNISTArgParser(argparse.ArgumentParser):
   def __init__(self):
     super(MNISTArgParser, self).__init__(parents=[
         parsers.BaseParser(),
-        parsers.ImageModelParser()])
-
-    self.add_argument(
-        '--export_dir',
-        type=str,
-        help='[default: %(default)s] If set, a SavedModel serialization of the '
-             'model will be exported to this directory at the end of training. '
-             'See the README for more details and relevant links.')
+        parsers.ImageModelParser(),
+        parsers.ExportParser(),
+    ])
 
     self.set_defaults(
         data_dir='/tmp/mnist_data',
