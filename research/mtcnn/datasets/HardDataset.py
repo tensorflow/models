@@ -40,13 +40,13 @@ class HardDataset(AbstractDataset):
 	def pickle_file_name(self):
 		return(self._pickle_file_name)
 
-	def save_hard_samples(self, data, target_root_dir):
+	def save_hard_samples(self, wider_data, minimum_face, target_root_dir):
 
 		pickle_file_path = os.path.join(target_root_dir, self.pickle_file_name())
 		detected_boxes = pickle.load(open(os.path.join(pickle_file_path), 'rb'))
 
-		image_file_names = data['images']
-		generated_boxes = data['bboxes']
+		image_file_names = wider_data['images']
+		generated_boxes = wider_data['bboxes']
     		number_of_images = len(image_file_names)
 
 		if(not (len(detected_boxes) == number_of_images)):
@@ -93,7 +93,7 @@ class HardDataset(AbstractDataset):
             			width = x_right - x_left + 1
             			height = y_bottom - y_top + 1
 
-            			if( (width < 20) or (x_left < 0) or (y_top < 0) or (x_right > current_image.shape[1] - 1) or (y_bottom > current_image.shape[0] - 1) ):
+            			if( (width < minimum_face) or (x_left < 0) or (y_top < 0) or (x_right > current_image.shape[1] - 1) or (y_bottom > current_image.shape[0] - 1) ):
                 			continue
 
             			current_IoU = IoU(box, generated_box)
@@ -155,7 +155,7 @@ class HardDataset(AbstractDataset):
     		with open(pickle_file_path, 'wb') as f:
         		pickle.dump(detections, f, 1)
 		
-		return(self.save_hard_samples(wider_data, target_root_dir))
+		return(self.save_hard_samples(wider_data, minimum_face, target_root_dir))
 
 	def generate_dataset(self, target_root_dir):
 		print('HardDataset-generate_dataset')
