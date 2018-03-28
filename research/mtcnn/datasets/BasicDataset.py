@@ -37,9 +37,11 @@ class BasicDataset(AbstractDataset):
 	def generate_samples(self, annotation_file, input_image_dir, minimum_face, target_root_dir):
 
 		target_root_dir = os.path.expanduser(target_root_dir)
-		positive_dir = os.path.join(target_root_dir, self.name(), 'positive')
-		part_dir = os.path.join(target_root_dir, self.name(), 'part')
-		negative_dir = os.path.join(target_root_dir, self.name(), 'negative')
+		target_root_dir = os.path.join(target_root_dir, self.name())
+
+		positive_dir = os.path.join(target_root_dir, 'positive')
+		part_dir = os.path.join(target_root_dir, 'part')
+		negative_dir = os.path.join(target_root_dir, 'negative')
 
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
@@ -50,9 +52,9 @@ class BasicDataset(AbstractDataset):
 		if(not os.path.exists(negative_dir)):
     			os.makedirs(negative_dir)
 
-		positive_file = open(os.path.join(target_root_dir, self.name(), 'positive.txt'), 'w')
-		part_file = open(os.path.join(target_root_dir, self.name(), 'part.txt'), 'w')
-		negative_file = open(os.path.join(target_root_dir, self.name(), 'negative.txt'), 'w')
+		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'w')
+		part_file = open(os.path.join(target_root_dir, 'part.txt'), 'w')
+		negative_file = open(os.path.join(target_root_dir, 'negative.txt'), 'w')
 		with open(annotation_file, 'r') as f:
 			annotations = f.readlines()
 
@@ -89,9 +91,9 @@ class BasicDataset(AbstractDataset):
         			cropped_image = current_image[ny : ny + size, nx : nx + size, :]
         			resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
 				if( np.max(sample_IoU) < 0.3 ):
-					save_file = os.path.join(negative_dir, "%s.jpg"%negative_images)
-					negative_file.write("PNet/negative/%s.jpg"%negative_images + ' 0\n')
-					cv2.imwrite(save_file, resized_image)
+					file_path = os.path.join(negative_dir, "%s.jpg"%negative_images)
+					negative_file.write(file_path + ' 0\n')
+					cv2.imwrite(file_path, resized_image)
             				negative_images += 1
             				neg_num += 1
 
@@ -118,9 +120,9 @@ class BasicDataset(AbstractDataset):
             				resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
     
             				if np.max(sample_IoU) < 0.3:
-                				save_file = os.path.join(negative_dir, "%s.jpg" % negative_images)
-                				negative_file.write("PNet/negative/%s.jpg" % negative_images + ' 0\n')
-                				cv2.imwrite(save_file, resized_image)
+                				file_path = os.path.join(negative_dir, "%s.jpg" % negative_images)
+                				negative_file.write(file_path + ' 0\n')
+                				cv2.imwrite(file_path, resized_image)
                 				negative_images += 1 
 
 				for i in range(20):
@@ -147,14 +149,14 @@ class BasicDataset(AbstractDataset):
 
             				box_ = box.reshape(1, -1)
             				if IoU(crop_box, box_) >= 0.65:
-                				save_file = os.path.join(positive_dir, "%s.jpg"%positive_images)
-                				positive_file.write("PNet/positive/%s.jpg"%positive_images + ' 1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
-                				cv2.imwrite(save_file, resized_image)
+                				file_path = os.path.join(positive_dir, "%s.jpg"%positive_images)
+                				positive_file.write(file_path + ' 1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
+                				cv2.imwrite(file_path, resized_image)
                 				positive_images += 1
             				elif IoU(crop_box, box_) >= 0.4:
-                				save_file = os.path.join(part_dir, "%s.jpg"%part_images)
-                				part_file.write("PNet/part/%s.jpg"%part_images + ' -1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
-                				cv2.imwrite(save_file, resized_image)
+                				file_path = os.path.join(part_dir, "%s.jpg"%part_images)
+                				part_file.write(file_path + ' -1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
+                				cv2.imwrite(file_path, resized_image)
                 				part_images += 1
 
 				print('%s number of images are done, positive - %s,  part - %s, negative - %s' % (annotation_number, positive_images, part_images, negative_images))
