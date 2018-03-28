@@ -190,10 +190,11 @@ def main(argv):
   def eval_input_fn():
     return input_fn(test_file, 1, False, flags.batch_size)
 
+  loss_prefix = {'wide': 'linear/', 'deep': 'dnn/'}.get(flags.model_type, '')
   train_hooks = hooks_helper.get_train_hooks(
       flags.hooks, batch_size=flags.batch_size,
-      tensors_to_log={'average_loss': 'head/truediv',
-                      'loss': 'head/weighted_loss/Sum'})
+      tensors_to_log={'average_loss': loss_prefix + 'head/truediv',
+                      'loss': loss_prefix + 'head/weighted_loss/Sum'})
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   for n in range(flags.train_epochs // flags.epochs_between_evals):
