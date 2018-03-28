@@ -13,6 +13,18 @@
 # limitations under the License.
 # ==============================================================================
 
+r"""Generates a basic dataset i.e. PNet dataset.
+
+Usage:
+```shell
+
+$ python generate_basic_dataset.py \
+	--annotation_file=/workspace/datasets/WIDER_train/wider_face_train.txt \
+	--input_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--target_root_dir=/workspace/datasets/mtcnn
+```
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -48,9 +60,6 @@ def main(args):
 	else:
 		print('Error generating basic dataset.')
 
-"""
-python generate_basic_dataset.py --annotation_file=/workspace/source-code/mtcnn/prepare_data/wider_face_train.txt --input_image_dir=/workspace/source-code/mtcnn/prepare_data/WIDER_train/images --target_root_dir=/workspace/datasets/mtcnn
-"""
 if __name__ == '__main__':
 	main(parse_arguments(sys.argv[1:]))
 
