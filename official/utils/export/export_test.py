@@ -37,7 +37,8 @@ class ExportUtilsTest(tf.test.TestCase):
       self.assertEqual(receiver.features.shape, tf.TensorShape([1, 4, 5]))
       self.assertEqual(receiver.features.dtype, tf.float32)
       self.assertIsInstance(receiver.receiver_tensors, dict)
-      self.assertEqual(receiver.receiver_tensors.values()[0].shape,
+      # Note that Python 3 can no longer index .values() directly; cast to list.
+      self.assertEqual(list(receiver.receiver_tensors.values())[0].shape,
                        tf.TensorShape([1, 4, 5]))
 
   def test_build_tensor_serving_input_receiver_fn_batch_dtype(self):
@@ -53,7 +54,8 @@ class ExportUtilsTest(tf.test.TestCase):
       self.assertEqual(receiver.features.shape, tf.TensorShape([10, 4, 5]))
       self.assertEqual(receiver.features.dtype, tf.int8)
       self.assertIsInstance(receiver.receiver_tensors, dict)
-      self.assertEqual(receiver.receiver_tensors.values()[0].shape,
+      # Note that Python 3 can no longer index .values() directly; cast to list.
+      self.assertEqual(list(receiver.receiver_tensors.values())[0].shape,
                        tf.TensorShape([10, 4, 5]))
 
 
