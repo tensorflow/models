@@ -85,6 +85,7 @@ class BenchmarkLoggerTest(tf.test.TestCase):
       self.assertEqual(loss["value"], 0.02)
       self.assertEqual(loss["unit"], None)
       self.assertEqual(loss["global_step"], 1e4)
+      self.assertEqual(loss["extras"], [])
 
   def test_log_non_nubmer_value(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())

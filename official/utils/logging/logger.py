@@ -63,7 +63,7 @@ class BenchmarkLogger(object):
       if key != tf.GraphKeys.GLOBAL_STEP:
         self.log_metric(key, eval_results[key], global_step=global_step)
 
-  def log_metric(self, name, value, unit=None, global_step=None, extras={}):
+  def log_metric(self, name, value, unit=None, global_step=None, extras=None):
     """Log the benchmark metric information to local file.
 
     Currently the logging is done in a synchronized way. This should be updated
@@ -81,7 +81,10 @@ class BenchmarkLogger(object):
       tf.logging.warning(
           "Metric value to log should be a number. Got %s", type(value))
       return
-    extras = [{"name": k, "value": v} for k, v in extras.items()]
+    if extras:
+      extras = [{"name": k, "value": v} for k, v in sorted(extras.items())]
+    else:
+      extras = []
     with tf.gfile.GFile(
         os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
       metric = {

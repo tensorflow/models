@@ -24,7 +24,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import json
 import os
 import sys
@@ -34,10 +33,8 @@ from google.cloud import bigquery
 
 import tensorflow as tf # pylint: disable=g-bad-import-order
 
+from official.utils.arg_parsers import parsers
 from official.utils.logging import logger
-
-
-FLAGS = None
 
 
 class BigQueryUploader(object):
@@ -50,7 +47,7 @@ class BigQueryUploader(object):
       logging_dir: string, logging directory that contains the benchmark log.
       gcp_project: string, the name of the GCP project that the log will be
         uploaded to. The default project name will be detected from local
-        environment if no value is provide.
+        environment if no value is provided.
       credentials: google.auth.credentials. The credential to access the
         BigQuery service. The default service account credential will be
         detected from local environment if no value is provided. Please use
@@ -62,7 +59,16 @@ class BigQueryUploader(object):
         project=gcp_project, credentials=credentials)
 
   def upload_benchmark_run(self, dataset_name, table_name, run_id):
-    """Upload benchmark run information to Bigquery."""
+    """Upload benchmark run information to Bigquery.
+
+    Args:
+      dataset_name: string, the name of bigquery dataset where the data will be
+        uploaded.
+      table_name: string, the name of bigquery table under the dataset where
+        the data will be uploaded.
+      run_id: string, a unique ID that will be attached to the data, usually
+        this is a UUID4 format.
+    """
     expected_file = os.path.join(
         self._logging_dir, logger.BENCHMARK_RUN_LOG_FILE_NAME)
     with tf.gfile.GFile(expected_file) as f:
@@ -75,15 +81,24 @@ class BigQueryUploader(object):
             "Failed to upload benchmark info to bigquery: {}".format(errors))
 
   def upload_metric(self, dataset_name, table_name, run_id):
-    """Upload metric information to Bigquery."""
+    """Upload metric information to Bigquery.
+
+    Args:
+      dataset_name: string, the name of bigquery dataset where the data will be
+        uploaded.
+      table_name: string, the name of bigquery table under the dataset where
+        the metric data will be uploaded. This is different from the
+        benchmark_run table.
+      run_id: string, a unique ID that will be attached to the data, usually
+        this is a UUID4 format. This should be the same as the benchmark run_id.
+    """
     expected_file = os.path.join(
         self._logging_dir, logger.METRIC_LOG_FILE_NAME)
     with tf.gfile.GFile(expected_file) as f:
       lines = f.readlines()
       metrics = []
-      for l in lines:
-        if not l.strip(): continue
-        metric = json.loads(l)
+      for line in filter(lambda l: l.strip(), lines):
+        metric = json.loads(line)
         metric["run_id"] = run_id
         metrics.append(metric)
       table_ref = self._bq_client.dataset(dataset_name).table(table_name)
@@ -93,49 +108,22 @@ class BigQueryUploader(object):
             "Failed to upload benchmark info to bigquery: {}".format(errors))
 
 
-def main(unused_argv):
-  if not FLAGS.benchmark_log_dir:
+def main(argv):
+  parser = parsers.BenchmarkParser()
+  flags = parser.parse_args(args=argv[1:])
+  if not flags.benchmark_log_dir:
     print("Usage: benchmark_uploader.py --benchmark_log_dir=/some/dir")
     sys.exit(1)
 
   uploader = BigQueryUploader(
-      FLAGS.benchmark_log_dir,
-      gcp_project=FLAGS.gcp_project)
+      flags.benchmark_log_dir,
+      gcp_project=flags.gcp_project)
   run_id = str(uuid.uuid4())
   uploader.upload_benchmark_run(
-      FLAGS.bigquery_data_set, FLAGS.bigquery_run_table, run_id)
+      flags.bigquery_data_set, flags.bigquery_run_table, run_id)
   uploader.upload_metric(
-      FLAGS.bigquery_data_set, FLAGS.bigquery_metric_table, run_id)
+      flags.bigquery_data_set, flags.bigquery_metric_table, run_id)
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--benchmark_log_dir", "-bld", default=None,
-      help="[default: %(default)s] The location of the benchmark logging.",
-      metavar="<BLD>"
-  )
-  parser.add_argument(
-      "--gcp_project", "-gp", default=None,
-      help="The GCP project name where the benchmark will be uploaded.",
-      metavar="<GP>"
-  )
-  parser.add_argument(
-      "--bigquery_data_set", "-bds", default="test_benchmark",
-      help="The Bigquery dataset name where the benchmark will be uploaded.",
-      metavar="<BDS>"
-  )
-  parser.add_argument(
-      "--bigquery_run_table", "-brt", default="benchmark_run",
-      help="The Bigquery table name where the benchmark run information will be"
-           " uploaded.",
-      metavar="<BRT>"
-  )
-  parser.add_argument(
-      "--bigquery_metric_table", "-bmt", default="benchmark_metric",
-      help="The Bigquery table name where the benchmark metric information will"
-           " be uploaded.",
-      metavar="<BMT>"
-  )
-  FLAGS, unparsed = parser.parse_known_args()
-  main(unused_argv=[sys.argv[0]] + unparsed)
+  main(argv=sys.argv)
