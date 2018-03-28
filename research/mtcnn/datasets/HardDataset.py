@@ -31,6 +31,8 @@ from datasets.AbstractDataset import AbstractDataset
 from datasets.WIDERFaceDataset import WIDERFaceDataset
 from datasets.InferenceBatch import InferenceBatch
 
+from nets.FaceDetector import FaceDetector
+
 class HardDataset(AbstractDataset):
 
 	def __init__(self, name):	
@@ -59,7 +61,10 @@ class HardDataset(AbstractDataset):
     			os.makedirs(negative_dir)
 
 		test_data = InferenceBatch(wider_data['images'])
+		face_detector = FaceDetector()
+		detections, landmarks = face_detector.detect_face(test_data)
 
+		print(len(detections))
 		return(True)
 
 	def generate_dataset(self, target_root_dir):

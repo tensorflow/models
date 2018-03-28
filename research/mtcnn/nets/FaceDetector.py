@@ -251,8 +251,6 @@ class FaceDetector(object):
         	return( boxes, boxes_c,landmark )		
 
 	def detect(self, image):
-		boxes = None
-
 		start_time = time.time()
 		pnet_time = 0
         	if self.pnet:
@@ -277,5 +275,17 @@ class FaceDetector(object):
                 		return( np.array([]),np.array([]) )    
             		onet_time = time.time() - start_time
 		return(boxes_c, landmark)
+
+	def detect_face(self, data_batch):
+
+        	all_boxes_c = []
+        	all_landmarks = []
+		for image in data_batch:
+			boxes_c, landmarks = self.detect(image)
+			       
+			all_boxes_c.append(boxes_c)
+            		all_landmarks.append(landmarks)
+
+		return(all_boxes_c, all_landmarks)
 
 

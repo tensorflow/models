@@ -75,6 +75,7 @@ def main(args):
 		print('Error generating basic dataset.')
 
 if __name__ == '__main__':
+	os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 	main(parse_arguments(sys.argv[1:]))
 
 

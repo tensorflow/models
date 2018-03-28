@@ -39,7 +39,7 @@ class InferenceBatch(object):
         	if( self.shuffle ):
         	    np.random.shuffle(self.images)
 
-    	def iter_next(self):
+    	def has_next(self):
         	return( self.current + self.batch_size <= self.size )
 
     	def __iter__(self):
@@ -49,7 +49,7 @@ class InferenceBatch(object):
         	return( self.next() )
 
     	def next(self):
-        	if( self.iter_next() ):
+        	if( self.has_next() ):
             		self.get_batch()
             		self.current += self.batch_size
             		return( self.data )
