@@ -29,7 +29,7 @@ class TestParser(argparse.ArgumentParser):
         parsers.PerformanceParser(num_parallel_calls=True, inter_op=True,
                                   intra_op=True, use_synthetic_data=True),
         parsers.ImageModelParser(data_format=True),
-        parsers.BenchmarkParser(benchmark_log_dir=True)
+        parsers.BenchmarkParser(benchmark_log_dir=True, bigquery_uploader=True)
     ])
 
 
@@ -62,7 +62,8 @@ class BaseTester(unittest.TestCase):
   def test_benchmark_setting(self):
     defaults = dict(
         hooks=["LoggingMetricHook"],
-        benchmark_log_dir="/tmp/12345"
+        benchmark_log_dir="/tmp/12345",
+        gcp_project="project_abc",
     )
 
     parser = TestParser()

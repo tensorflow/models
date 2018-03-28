@@ -234,11 +234,37 @@ class BenchmarkParser(argparse.ArgumentParser):
     benchmark_log_dir: Create a flag to specify location for benchmark logging.
   """
 
-  def __init__(self, add_help=False, benchmark_log_dir=True):
+  def __init__(self, add_help=False, benchmark_log_dir=True,
+               bigquery_uploader=True):
     super(BenchmarkParser, self).__init__(add_help=add_help)
     if benchmark_log_dir:
       self.add_argument(
           "--benchmark_log_dir", "-bld", default=None,
           help="[default: %(default)s] The location of the benchmark logging.",
           metavar="<BLD>"
+      )
+    if bigquery_uploader:
+      self.add_argument(
+          "--gcp_project", "-gp", default=None,
+          help="[default: %(default)s] The GCP project name where the benchmark"
+               " will be uploaded.",
+          metavar="<GP>"
+      )
+      self.add_argument(
+          "--bigquery_data_set", "-bds", default="test_benchmark",
+          help="[default: %(default)s] The Bigquery dataset name where the"
+               " benchmark will be uploaded.",
+          metavar="<BDS>"
+      )
+      self.add_argument(
+          "--bigquery_run_table", "-brt", default="benchmark_run",
+          help="[default: %(default)s] The Bigquery table name where the"
+               " benchmark run information will be uploaded.",
+          metavar="<BRT>"
+      )
+      self.add_argument(
+          "--bigquery_metric_table", "-bmt", default="benchmark_metric",
+          help="[default: %(default)s] The Bigquery table name where the"
+               " benchmark metric information will be uploaded.",
+          metavar="<BMT>"
       )
