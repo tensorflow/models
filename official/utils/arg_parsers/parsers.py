@@ -226,6 +226,29 @@ class ImageModelParser(argparse.ArgumentParser):
       )
 
 
+class ExportParser(argparse.ArgumentParser):
+  """Parsing options for exporting saved models or other graph defs.
+
+  This is a separate parser for now, but should be made part of BaseParser
+  once all models are brought up to speed.
+
+  Args:
+    add_help: Create the "--help" flag. False if class instance is a parent.
+    export_dir: Create a flag to specify where a SavedModel should be exported.
+  """
+
+  def __init__(self, add_help=False, export_dir=True):
+    super(ExportParser, self).__init__(add_help=add_help)
+    if export_dir:
+      self.add_argument(
+          "--export_dir", "-ed",
+          help="[default: %(default)s] If set, a SavedModel serialization of "
+               "the model will be exported to this directory at the end of "
+               "training. See the README for more details and relevant links.",
+          metavar="<ED>"
+      )
+
+
 class BenchmarkParser(argparse.ArgumentParser):
   """Default parser for benchmark logging.
 
