@@ -30,6 +30,7 @@ from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
 from object_detection.models import faster_rcnn_inception_v2_feature_extractor as frcnn_inc_v2
 from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
+from object_detection.models import faster_rcnn_pnas_feature_extractor as frcnn_pnas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
 from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
 from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
@@ -55,6 +56,8 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
 FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
     'faster_rcnn_nas':
     frcnn_nas.FasterRCNNNASFeatureExtractor,
+    'faster_rcnn_pnas':
+    frcnn_pnas.FasterRCNNPNASFeatureExtractor,
     'faster_rcnn_inception_resnet_v2':
     frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor,
     'faster_rcnn_inception_v2':
