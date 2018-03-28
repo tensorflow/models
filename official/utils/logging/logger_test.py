@@ -33,6 +33,9 @@ class BenchmarkLoggerTest(tf.test.TestCase):
 
   def setUp(self):
     super(BenchmarkLoggerTest, self).setUp()
+    # Avoid pulling extra env vars from test environment which affects the test
+    # result, eg. Kokoro test has a TF_PKG env which affect the test case
+    # test_collect_tensorflow_environment_variables()
     self.original_environ = dict(os.environ)
     os.environ.clear()
 
