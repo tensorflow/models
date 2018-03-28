@@ -34,7 +34,7 @@ class BasicDataset(AbstractDataset):
 	def __init__(self, name='PNet'):	
 		AbstractDataset.__init__(self, name)	
 	
-	def generate_samples(self, annotation_file, input_image_dir, target_root_dir):
+	def generate_samples(self, annotation_file, input_image_dir, minimum_face, target_root_dir):
 
 		target_root_dir = os.path.expanduser(target_root_dir)
 		positive_dir = os.path.join(target_root_dir, self.name, 'positive')
@@ -169,7 +169,7 @@ class BasicDataset(AbstractDataset):
 		print('BasicDataset-generate_dataset')
 		return(True)
 
-	def generate(self, annotation_file, input_image_dir, target_root_dir):
+	def generate(self, annotation_file, input_image_dir, minimum_face, target_root_dir):
 
 		if(not os.path.isfile(annotation_file)):
 			return(False)
@@ -181,7 +181,7 @@ class BasicDataset(AbstractDataset):
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
 		
-		if(not self.generate_samples(annotation_file, input_image_dir, target_root_dir)):
+		if(not self.generate_samples(annotation_file, input_image_dir, minimum_face, target_root_dir)):
 			return(False)
 
 		if(not self.generate_dataset(target_root_dir)):
