@@ -18,9 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from six.moves import xrange
+from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-from six.moves import xrange
 
 layers = tf.contrib.layers
 
