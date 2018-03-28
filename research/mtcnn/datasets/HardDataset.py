@@ -29,6 +29,7 @@ from tensorflow.contrib import slim
 
 from datasets.AbstractDataset import AbstractDataset
 from datasets.WIDERFaceDataset import WIDERFaceDataset
+from datasets.InferenceBatch import InferenceBatch
 
 class HardDataset(AbstractDataset):
 
@@ -56,6 +57,8 @@ class HardDataset(AbstractDataset):
     			os.makedirs(part_dir)
 		if(not os.path.exists(negative_dir)):
     			os.makedirs(negative_dir)
+
+		test_data = InferenceBatch(wider_data['images'])
 
 		return(True)
 
