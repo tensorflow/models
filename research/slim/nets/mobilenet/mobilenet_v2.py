@@ -117,7 +117,7 @@ def mobilenet(input_tensor,
     divisible_by: If provided will ensure that all layers # channels
     will be divisible by this number.
     **kwargs: passed directly to mobilenet.mobilenet:
-      prediciton_fn- what prediction function to use.
+      prediction_fn- what prediction function to use.
       reuse-: whether to reuse variables (if reuse set to true, scope
       must be given).
   Returns:
