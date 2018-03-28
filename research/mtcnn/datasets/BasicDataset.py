@@ -85,11 +85,11 @@ class BasicDataset(AbstractDataset):
         
         			crop_box = np.array([nx, ny, nx + size, ny + size])
         
-        			sample_IoU = IoU(crop_box, boxes)
+        			current_IoU = IoU(crop_box, boxes)
         
         			cropped_image = current_image[ny : ny + size, nx : nx + size, :]
         			resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
-				if( np.max(sample_IoU) < 0.3 ):
+				if( np.max(current_IoU) < 0.3 ):
 					file_path = os.path.join(negative_dir, "%s.jpg"%negative_images)
 					negative_file.write(file_path + ' 0\n')
 					cv2.imwrite(file_path, resized_image)
@@ -113,12 +113,12 @@ class BasicDataset(AbstractDataset):
             				if nx1 + size > width or ny1 + size > height:
                 				continue
             				crop_box = np.array([nx1, ny1, nx1 + size, ny1 + size])
-            				sample_IoU = IoU(crop_box, boxes)
+            				current_IoU = IoU(crop_box, boxes)
     
             				cropped_image = current_image[ny1: ny1 + size, nx1: nx1 + size, :]
             				resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
     
-            				if np.max(sample_IoU) < 0.3:
+            				if np.max(current_IoU) < 0.3:
                 				file_path = os.path.join(negative_dir, "%s.jpg" % negative_images)
                 				negative_file.write(file_path + ' 0\n')
                 				cv2.imwrite(file_path, resized_image)
