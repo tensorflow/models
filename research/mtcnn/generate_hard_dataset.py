@@ -68,7 +68,7 @@ def main(args):
 		raise ValueError('The network name should be either RNet or ONet.')
 
 	hard_dataset = HardDataset(args.network_name)
-	status = hard_dataset.generate(args.network_name, args.annotation_file, args.input_image_dir, args.minimum_face, args.target_root_dir)
+	status = hard_dataset.generate(args.annotation_file, args.input_image_dir, args.minimum_face, args.target_root_dir)
 	if(status):
 		print(args.network_name + ' network dataset is generated at ' + args.target_root_dir)
 	else:
