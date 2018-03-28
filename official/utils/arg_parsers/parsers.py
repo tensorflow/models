@@ -268,4 +268,3 @@ class BenchmarkParser(argparse.ArgumentParser):
                " benchmark metric information will be uploaded.",
           metavar="<BMT>"
       )
-
