@@ -37,9 +37,9 @@ class BasicDataset(AbstractDataset):
 	def generate_samples(self, annotation_file, input_image_dir, minimum_face, target_root_dir):
 
 		target_root_dir = os.path.expanduser(target_root_dir)
-		positive_dir = os.path.join(target_root_dir, self.name, 'positive')
-		part_dir = os.path.join(target_root_dir, self.name, 'part')
-		negative_dir = os.path.join(target_root_dir, self.name, 'negative')
+		positive_dir = os.path.join(target_root_dir, self.name(), 'positive')
+		part_dir = os.path.join(target_root_dir, self.name(), 'part')
+		negative_dir = os.path.join(target_root_dir, self.name(), 'negative')
 
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
@@ -50,9 +50,9 @@ class BasicDataset(AbstractDataset):
 		if(not os.path.exists(negative_dir)):
     			os.makedirs(negative_dir)
 
-		positive_file = open(os.path.join(target_root_dir, self.name, 'positive.txt'), 'w')
-		part_file = open(os.path.join(target_root_dir, self.name, 'part.txt'), 'w')
-		negative_file = open(os.path.join(target_root_dir, self.name, 'negative.txt'), 'w')
+		positive_file = open(os.path.join(target_root_dir, self.name(), 'positive.txt'), 'w')
+		part_file = open(os.path.join(target_root_dir, self.name(), 'part.txt'), 'w')
+		negative_file = open(os.path.join(target_root_dir, self.name(), 'negative.txt'), 'w')
 		with open(annotation_file, 'r') as f:
 			annotations = f.readlines()
 

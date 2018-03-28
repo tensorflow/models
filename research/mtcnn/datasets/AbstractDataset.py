@@ -20,7 +20,10 @@ from __future__ import print_function
 class AbstractDataset(object):
 
 	def __init__(self, name):
-		self.name = name
+		self._name = name
+
+	def name(self):
+		return(self._name)
 
 	def generate_dataset(self, target_root_dir):
 		raise NotImplementedError('Must be implemented by the subclass.')
