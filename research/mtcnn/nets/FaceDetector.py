@@ -23,6 +23,7 @@ import cv2
 import numpy as np
 
 from utils.nms import py_nms
+from utils.convert_to_square import convert_to_square
 
 from nets.PNet import PNet
 from nets.RNet import RNet
@@ -85,17 +86,6 @@ class FaceDetector(object):
 	        resized_image = cv2.resize(image, new_shape, interpolation = cv2.INTER_LINEAR)
 	        resized_image = (resized_image - 127.5) / 128
 	        return( resized_image )
-
-    	def convert_to_square(self, bbox): 
-        	square_bbox = bbox.copy()
-        	h = bbox[:, 3] - bbox[:, 1] + 1
-        	w = bbox[:, 2] - bbox[:, 0] + 1
-        	max_side = np.maximum(h, w)
-        	square_bbox[:, 0] = bbox[:, 0] + w * 0.5 - max_side * 0.5
-        	square_bbox[:, 1] = bbox[:, 1] + h * 0.5 - max_side * 0.5
-        	square_bbox[:, 2] = square_bbox[:, 0] + max_side - 1
-        	square_bbox[:, 3] = square_bbox[:, 1] + max_side - 1
-        	return( square_bbox )
 
     	def pad(self, bboxes, w, h):
  
@@ -187,7 +177,7 @@ class FaceDetector(object):
 
 	def refine_faces(self, im, dets):
         	h, w, c = im.shape
-        	dets = self.convert_to_square(dets)
+        	dets = convert_to_square(dets)
         	dets[:, 0:4] = np.round(dets[:, 0:4])
 
         	[dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = self.pad(dets, w, h)
@@ -215,7 +205,7 @@ class FaceDetector(object):
 
 	def outpute_faces(self, im, dets):
         	h, w, c = im.shape
-        	dets = self.convert_to_square(dets)
+        	dets = convert_to_square(dets)
         	dets[:, 0:4] = np.round(dets[:, 0:4])
         	[dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = self.pad(dets, w, h)
         	num_boxes = dets.shape[0]
