@@ -51,8 +51,8 @@ class WIDERFaceDataset(object):
 
        			image_path = os.path.join(base_dir, image_path)
 			image = cv2.imread(image_path)
-			#if(image is None):
-			#	continue
+			if(image is None):
+				continue
 
        			images.append(image_path)
 
