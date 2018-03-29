@@ -43,6 +43,9 @@ _NUM_EXAMPLES = {
 }
 
 
+LOSS_PREFIX = {'wide': 'linear/', 'deep': 'dnn/'}
+
+
 def build_model_columns():
   """Builds a set of wide and deep feature columns."""
   # Continuous columns
@@ -190,7 +193,7 @@ def main(argv):
   def eval_input_fn():
     return input_fn(test_file, 1, False, flags.batch_size)
 
-  loss_prefix = {'wide': 'linear/', 'deep': 'dnn/'}.get(flags.model_type, '')
+  loss_prefix = LOSS_PREFIX.get(flags.model_type, '')
   train_hooks = hooks_helper.get_train_hooks(
       flags.hooks, batch_size=flags.batch_size,
       tensors_to_log={'average_loss': loss_prefix + 'head/truediv',

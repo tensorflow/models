@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import shutil
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
@@ -56,9 +55,13 @@ class BaseTest(tf.test.TestCase):
     with tf.gfile.Open(self.input_csv, 'w') as temp_csv:
       temp_csv.write(TEST_INPUT)
 
+    with tf.gfile.Open(TEST_CSV, "r") as temp_csv:
+      test_csv_contents = temp_csv.read()
+
     # Used for end-to-end tests.
-    shutil.copyfile(self.input_csv, os.path.join(self.temp_dir, 'adult.data'))
-    shutil.copyfile(self.input_csv, os.path.join(self.temp_dir, 'adult.test'))
+    for fname in ['adult.data', 'adult.test']:
+      with tf.gfile.Open(os.path.join(self.temp_dir, fname), 'w') as test_csv:
+        test_csv.write(test_csv_contents)
 
   def test_input_fn(self):
     dataset = wide_deep.input_fn(self.input_csv, 1, False, 1)
