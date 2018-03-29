@@ -21,11 +21,10 @@ We provide some results below, as well as instructions for running this script.
 
 1. [Install TensorFlow.](https://www.tensorflow.org/install/)
 2. [Install TensorRT.](http://docs.nvidia.com/deeplearning/sdk/tensorrt-install-guide/index.html)
-3. We use the [Official version of ResNet image preprocessing](/official/resnet/imagenet_preprocessing.py). Please checkout the Models repository if you haven't
+3. We use the image processing functions from the [Official version of ResNet](/official/resnet/imagenet_preprocessing.py). Please checkout the Models repository if you haven't
 already, and add the Official Models to your Python path:
 
 ```
-cd /path/to
 git clone https://github.com/tensorflow/models.git
 export PYTHONPATH="$PYTHONPATH:/path/to/models"
 ```

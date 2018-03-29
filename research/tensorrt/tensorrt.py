@@ -32,9 +32,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.saved_model.python.saved_model import reader
 import tensorflow.contrib.tensorrt as trt
-from tensorflow.python.client import timeline
 
-from official.resnet import imagenet_preprocessing
+from official.resnet import imagenet_preprocessing  # pylint: disable=g-bad-import-order
 
 _GPU_MEM_FRACTION = 0.50
 _WARMUP_NUM_LOOPS = 50
@@ -192,7 +191,6 @@ def convert_savedmodel_to_frozen_graph(savedmodel_dir, output_dir):
 
   graph = tf.Graph()
   with tf.Session(graph=graph) as sess:
-
     tf.saved_model.loader.load(
         sess, meta_graph.meta_info_def.tags, savedmodel_dir)
     frozen_graph_def = tf.graph_util.convert_variables_to_constants(
@@ -216,7 +214,7 @@ def get_tftrt_name(graph_name, precision_string):
 
 
 def get_trt_graph(graph_name, graph_def, precision_mode, output_dir,
-                  output_nodes, batch_size=128, workspace_size=1<<30):
+                  output_node, batch_size=128, workspace_size=1<<30):
   """Create and save inference graph using the TensorRT library.
 
   Args:
@@ -225,7 +223,7 @@ def get_trt_graph(graph_name, graph_def, precision_mode, output_dir,
     precision_mode: string, the precision that TensorRT should convert into.
       Options- FP32, FP16, INT8.
     output_dir: string, the path to where files should be written.
-    output_nodes: list of strings, the names of the output nodes that will
+    output_node: string, the names of the output node that will
       be returned during inference.
     batch_size: int, the number of examples that will be predicted at a time.
     workspace_size: long, size in bytes that can be used during conversion.
@@ -234,7 +232,7 @@ def get_trt_graph(graph_name, graph_def, precision_mode, output_dir,
     GraphDef for the TensorRT inference graph.
   """
   trt_graph = trt.create_inference_graph(
-      graph_def, output_nodes, max_batch_size=batch_size,
+      graph_def, [output_node], max_batch_size=batch_size,
       max_workspace_size_bytes=workspace_size,
       precision_mode=precision_mode)
 
@@ -265,7 +263,7 @@ def get_iterator(data):
   return dataset.make_one_shot_iterator()
 
 
-def time_graph(graph_def, data, input_node, output_nodes, num_loops=100):
+def time_graph(graph_def, data, input_node, output_node, num_loops=100):
   """Run and time the inference graph.
 
   This function sets up the input and outputs for inference, warms up by
@@ -278,7 +276,7 @@ def time_graph(graph_def, data, input_node, output_nodes, num_loops=100):
       predicted.
     input_node: string, the label of the input node where data will enter the
       graph.
-    output_nodes: list of strings, the names of the output nodes that will
+    output_node: string, the names of the output node that will
       be returned during inference.
     num_loops: int, number of batches that should run through for timing.
 
@@ -293,12 +291,15 @@ def time_graph(graph_def, data, input_node, output_nodes, num_loops=100):
 
   with g.as_default():
     iterator = get_iterator(data)
-    outputs = tf.import_graph_def(
+    return_tensors = tf.import_graph_def(
         graph_def=graph_def,
         input_map={input_node: iterator.get_next()},
-        return_elements=output_nodes
+        return_elements=[output_node]
     )
-    output = outputs[0].outputs[0]
+    # Unwrap the returned output node. For now, we assume we only
+    # want the tensor with index `:0`, which is the 0th element of the
+    # `.outputs` list.
+    output = return_tensors[0].outputs[0]
 
   timings = []
   with tf.Session(graph=g, config=get_gpu_config()) as sess:
@@ -361,7 +362,7 @@ def log_stats(graph_name, log_buffer, timings, batch_size):
 
 def time_and_log_graph(graph_name, graph_def, data, log_buffer, flags):
   timings, result = time_graph(
-      graph_def, data, flags.input_node, flags.output_nodes, flags.num_loops)
+      graph_def, data, flags.input_node, flags.output_node, flags.num_loops)
   log_stats(graph_name, log_buffer, timings, flags.batch_size)
 
   return result
@@ -372,7 +373,7 @@ def run_trt_graph_for_mode(
   """Convert, time, and log the graph at `mode` precision using TensorRT."""
   g_name = get_tftrt_name(graph_name, mode)
   graph = get_trt_graph(
-      g_name, graph_def, mode, flags.output_dir, flags.output_nodes,
+      g_name, graph_def, mode, flags.output_dir, flags.output_node,
       flags.batch_size, flags.workspace_size)
   result = time_and_log_graph(g_name, graph, data, log_buffer, flags)
   return result
@@ -483,9 +484,9 @@ def main(argv):
     print("Running {} graph".format(mode))
     save_name = get_tftrt_name(graph_name, "INT8_calib")
     calib_graph = get_trt_graph(
-        save_name, frozen_graph_def, mode, flags.output_dir, flags.output_nodes,
+        save_name, frozen_graph_def, mode, flags.output_dir, flags.output_node,
         flags.batch_size, flags.workspace_size)
-    time_graph(calib_graph, data, flags.input_node, flags.output_nodes,
+    time_graph(calib_graph, data, flags.input_node, flags.output_node,
                num_loops=1)
 
     g_name = get_tftrt_name(graph_name, mode)
@@ -532,9 +533,9 @@ class TensorRTParser(argparse.ArgumentParser):
     )
 
     self.add_argument(
-        "--output_nodes", "-on", nargs="+", default=["softmax_tensor"],
-        help="[default: %(default)s] The names of the graph output nodes "
-        "that should be used when retrieving results.",
+        "--output_node", "-on", default="softmax_tensor",
+        help="[default: %(default)s] The names of the graph output node "
+        "that should be used when retrieving results. Assumed to be a softmax.",
         metavar="<ON>",
     )
 
