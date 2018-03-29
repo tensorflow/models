@@ -55,18 +55,11 @@ from object_detection.utils import dataset_util
 tf.logging.set_verbosity(tf.logging.INFO)
 
 flags = tf.app.flags
-flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
-flags.DEFINE_integer('task', 0, 'task id')
 flags.DEFINE_integer('num_clones', 1, 'Number of clones to deploy per worker.')
 flags.DEFINE_boolean('clone_on_cpu', False,
                      'Force clones to be deployed on CPU.  Note that even if '
                      'set to False (allowing ops to run on gpu), some ops may '
                      'still be run on the CPU if they have no GPU kernel.')
-flags.DEFINE_integer('worker_replicas', 1, 'Number of worker+trainer '
-                     'replicas.')
-flags.DEFINE_integer('ps_tasks', 0,
-                     'Number of parameter server tasks. If None, does not use '
-                     'a parameter server.')
 flags.DEFINE_string('train_dir', '',
                     'Directory to save the checkpoints and training summaries.')
 
@@ -86,11 +79,18 @@ FLAGS = flags.FLAGS
 
 def main(_):
   assert FLAGS.train_dir, '`train_dir` is missing.'
-  if FLAGS.task == 0: tf.gfile.MakeDirs(FLAGS.train_dir)
+
+  env = json.loads(os.environ.get('TF_CONFIG', '{}'))
+  cluster_data = env.get('cluster', None)
+  cluster = tf.train.ClusterSpec(cluster_data) if cluster_data else None
+  task_data = env.get('task', None) or {'type': 'master', 'index': 0}
+  task_info = type('TaskSpec', (object,), task_data)
+
+  if task_info.index == 0: tf.gfile.MakeDirs(FLAGS.train_dir)
   if FLAGS.pipeline_config_path:
     configs = config_util.get_configs_from_pipeline_file(
         FLAGS.pipeline_config_path)
-    if FLAGS.task == 0:
+    if task_info.index == 0:
       tf.gfile.Copy(FLAGS.pipeline_config_path,
                     os.path.join(FLAGS.train_dir, 'pipeline.config'),
                     overwrite=True)
@@ -99,7 +99,7 @@ def main(_):
         model_config_path=FLAGS.model_config_path,
         train_config_path=FLAGS.train_config_path,
         train_input_config_path=FLAGS.input_config_path)
-    if FLAGS.task == 0:
+    if task_info.index == 0:
       for name, config in [('model.config', FLAGS.model_config_path),
                            ('train.config', FLAGS.train_config_path),
                            ('input.config', FLAGS.input_config_path)]:
@@ -121,12 +121,6 @@ def main(_):
 
   create_input_dict_fn = functools.partial(get_next, input_config)
 
-  env = json.loads(os.environ.get('TF_CONFIG', '{}'))
-  cluster_data = env.get('cluster', None)
-  cluster = tf.train.ClusterSpec(cluster_data) if cluster_data else None
-  task_data = env.get('task', None) or {'type': 'master', 'index': 0}
-  task_info = type('TaskSpec', (object,), task_data)
-
   # Parameters for a single worker.
   ps_tasks = 0
   worker_replicas = 1
@@ -146,7 +140,7 @@ def main(_):
 
   if worker_replicas >= 1 and ps_tasks > 0:
     # Set up distributed training.
-    server = tf.train.Server(tf.train.ClusterSpec(cluster), protocol='grpc',
+    server = tf.train.Server(cluster, protocol='grpc',
                              job_name=task_info.type,
                              task_index=task_info.index)
     if task_info.type == 'ps':
