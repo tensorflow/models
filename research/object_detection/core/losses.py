@@ -116,13 +116,22 @@ class WeightedL2LocalizationLoss(Loss):
 
 
 class WeightedSmoothL1LocalizationLoss(Loss):
-  """Smooth L1 localization loss function.
+  """Smooth L1 localization loss function aka Huber Loss..
 
-  The smooth L1_loss is defined elementwise as .5 x^2 if |x|<1 and |x|-.5
-  otherwise, where x is the difference between predictions and target.
+  The smooth L1_loss is defined elementwise as .5 x^2 if |x| <= delta and
+  0.5 x^2 + delta * (|x|-delta) otherwise, where x is the difference between
+  predictions and target.
 
   See also Equation (3) in the Fast R-CNN paper by Ross Girshick (ICCV 2015)
   """
+
+  def __init__(self, delta=1.0):
+    """Constructor.
+
+    Args:
+      delta: delta for smooth L1 loss.
+    """
+    self._delta = delta
 
   def _compute_loss(self, prediction_tensor, target_tensor, weights):
     """Compute loss function.
@@ -138,13 +147,14 @@ class WeightedSmoothL1LocalizationLoss(Loss):
       loss: a float tensor of shape [batch_size, num_anchors] tensor
         representing the value of the loss function.
     """
-    diff = prediction_tensor - target_tensor
-    abs_diff = tf.abs(diff)
-    abs_diff_lt_1 = tf.less(abs_diff, 1)
-    anchorwise_smooth_l1norm = tf.reduce_sum(
-        tf.where(abs_diff_lt_1, 0.5 * tf.square(abs_diff), abs_diff - 0.5),
-        2) * weights
-    return anchorwise_smooth_l1norm
+    return tf.reduce_sum(tf.losses.huber_loss(
+        target_tensor,
+        prediction_tensor,
+        delta=self._delta,
+        weights=tf.expand_dims(weights, axis=2),
+        loss_collection=None,
+        reduction=tf.losses.Reduction.NONE
+    ), axis=2)
 
 
 class WeightedIOULocalizationLoss(Loss):

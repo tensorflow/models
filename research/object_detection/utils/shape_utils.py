@@ -152,7 +152,7 @@ def static_or_dynamic_map_fn(fn, elems, dtype=None,
   Tensors or lists of Tensors).  Likewise, the output of `fn` can only be a
   Tensor or list of Tensors.
 
-  TODO: make this function fully interchangeable with tf.map_fn.
+  TODO(jonathanhuang): make this function fully interchangeable with tf.map_fn.
 
   Args:
     fn: The callable to be performed. It accepts one argument, which will have

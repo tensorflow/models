@@ -12,6 +12,8 @@ APIs.
 ## Setup
 
 To begin, you'll simply need the latest version of TensorFlow installed.
+First make sure you've [added the models folder to your Python path](/official/#running-the-models); otherwise you may encounter an error like `ImportError: No module named official.mnist`.
+
 Then to train the model, run the following:
 
 ```

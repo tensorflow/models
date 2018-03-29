@@ -58,10 +58,10 @@ tf.app.flags.DEFINE_string('output_path', '', 'Path to which TFRecord files'
                            'will be located at: <output_path>_train.tfrecord.'
                            'And the TFRecord with the validation set will be'
                            'located at: <output_path>_val.tfrecord')
-tf.app.flags.DEFINE_list('classes_to_use', ['car', 'pedestrian', 'dontcare'],
-                         'Which classes of bounding boxes to use. Adding the'
-                         'dontcare class will remove all bboxs in the dontcare'
-                         'regions.')
+tf.app.flags.DEFINE_string('classes_to_use', 'car,pedestrian,dontcare',
+                           'Comma separated list of class names that will be'
+                           'used. Adding the dontcare class will remove all'
+                           'bboxs in the dontcare regions.')
 tf.app.flags.DEFINE_string('label_map_path', 'data/kitti_label_map.pbtxt',
                            'Path to label map proto.')
 tf.app.flags.DEFINE_integer('validation_set_size', '500', 'Number of images to'
@@ -120,7 +120,7 @@ def convert_kitti_to_tfrecords(data_dir, output_path, classes_to_use,
 
     # Filter all bounding boxes of this frame that are of a legal class, and
     # don't overlap with a dontcare region.
-    # TODO filter out targets that are truncated or heavily occluded.
+    # TODO(talremez) filter out targets that are truncated or heavily occluded.
     annotation_for_image = filter_annotations(img_anno, classes_to_use)
 
     example = prepare_example(image_path, annotation_for_image, label_map_dict)
@@ -302,7 +302,7 @@ def main(_):
   convert_kitti_to_tfrecords(
       data_dir=FLAGS.data_dir,
       output_path=FLAGS.output_path,
-      classes_to_use=FLAGS.classes_to_use,
+      classes_to_use=FLAGS.classes_to_use.split(','),
       label_map_path=FLAGS.label_map_path,
       validation_set_size=FLAGS.validation_set_size)
 

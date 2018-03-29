@@ -235,7 +235,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
           train_config.prefetch_queue_capacity, data_augmentation_options)
 
     # Gather initial summaries.
-    # TODO: See if summaries can be added/extracted from global tf
+    # TODO(rathodv): See if summaries can be added/extracted from global tf
     # collections so that they don't have to be passed around.
     summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
     global_summaries = set([])
@@ -254,21 +254,31 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
       training_optimizer, optimizer_summary_vars = optimizer_builder.build(
           train_config.optimizer)
       for var in optimizer_summary_vars:
-        tf.summary.scalar(var.op.name, var)
+        tf.summary.scalar(var.op.name, var, family='LearningRate')
 
     sync_optimizer = None
     if train_config.sync_replicas:
-      training_optimizer = tf.SyncReplicasOptimizer(
+      training_optimizer = tf.train.SyncReplicasOptimizer(
           training_optimizer,
           replicas_to_aggregate=train_config.replicas_to_aggregate,
-          total_num_replicas=train_config.worker_replicas)
+          total_num_replicas=worker_replicas)
       sync_optimizer = training_optimizer
 
     # Create ops required to initialize the model from a given checkpoint.
     init_fn = None
     if train_config.fine_tune_checkpoint:
+      if not train_config.fine_tune_checkpoint_type:
+        # train_config.from_detection_checkpoint field is deprecated. For
+        # backward compatibility, fine_tune_checkpoint_type is set based on
+        # from_detection_checkpoint.
+        if train_config.from_detection_checkpoint:
+          train_config.fine_tune_checkpoint_type = 'detection'
+        else:
+          train_config.fine_tune_checkpoint_type = 'classification'
       var_map = detection_model.restore_map(
-          from_detection_checkpoint=train_config.from_detection_checkpoint)
+          fine_tune_checkpoint_type=train_config.fine_tune_checkpoint_type,
+          load_all_detection_checkpoint_vars=(
+              train_config.load_all_detection_checkpoint_vars))
       available_var_map = (variables_helper.
                            get_variables_available_in_checkpoint(
                                var_map, train_config.fine_tune_checkpoint))
@@ -318,11 +328,13 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
 
     # Add summaries.
     for model_var in slim.get_model_variables():
-      global_summaries.add(tf.summary.histogram(model_var.op.name, model_var))
+      global_summaries.add(tf.summary.histogram('ModelVars/' +
+                                                model_var.op.name, model_var))
     for loss_tensor in tf.losses.get_losses():
-      global_summaries.add(tf.summary.scalar(loss_tensor.op.name, loss_tensor))
+      global_summaries.add(tf.summary.scalar('Losses/' + loss_tensor.op.name,
+                                             loss_tensor))
     global_summaries.add(
-        tf.summary.scalar('TotalLoss', tf.losses.get_total_loss()))
+        tf.summary.scalar('Losses/TotalLoss', tf.losses.get_total_loss()))
 
     # Add the summaries from the first clone. These contain the summaries
     # created by model_fn and either optimize_clones() or _gather_clone_loss().

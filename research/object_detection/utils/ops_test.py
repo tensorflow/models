@@ -840,7 +840,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     # All channels are equal so position-sensitive crop and resize should
     # work as the usual crop and resize for just one channel.
     crop = tf.image.crop_and_resize(image, boxes, box_ind, crop_size)
-    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
+    crop_and_pool = tf.reduce_mean(crop, [1, 2], keep_dims=True)
 
     ps_crop_and_pool = ops.position_sensitive_crop_regions(
         tiled_image,
@@ -866,7 +866,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     # When a single bin is used, position-sensitive crop and pool should be
     # the same as non-position sensitive crop and pool.
     crop = tf.image.crop_and_resize(image, boxes, box_ind, crop_size)
-    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
+    crop_and_pool = tf.reduce_mean(crop, [1, 2], keep_dims=True)
 
     ps_crop_and_pool = ops.position_sensitive_crop_regions(
         image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=True)
@@ -1054,7 +1054,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
       ps_crop = ops.position_sensitive_crop_regions(
           image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=False)
       ps_crop_and_pool = tf.reduce_mean(
-          ps_crop, reduction_indices=(1, 2), keepdims=True)
+          ps_crop, reduction_indices=(1, 2), keep_dims=True)
 
       with self.test_session() as sess:
         output = sess.run(ps_crop_and_pool)
@@ -1171,12 +1171,15 @@ class NearestNeighborUpsamplingTest(test_case.TestCase):
 
     def graph_fn(inputs):
       custom_op_output = ops.nearest_neighbor_upsampling(inputs, scale=2)
-      tf_op_output = tf.image.resize_images(
-          inputs, [4, 4], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-      return (custom_op_output, tf_op_output)
-    inputs = np.reshape(np.arange(2**4), [2, 2, 2, 2])
-    (custom_op_output, tf_op_output) = self.execute(graph_fn, [inputs])
-    self.assertAllClose(custom_op_output, tf_op_output)
+      return custom_op_output
+    inputs = np.reshape(np.arange(4).astype(np.float32), [1, 2, 2, 1])
+    custom_op_output = self.execute(graph_fn, [inputs])
+
+    expected_output = [[[[0], [0], [1], [1]],
+                        [[0], [0], [1], [1]],
+                        [[2], [2], [3], [3]],
+                        [[2], [2], [3], [3]]]]
+    self.assertAllClose(custom_op_output, expected_output)
 
 
 class MatmulGatherOnZerothAxis(test_case.TestCase):
@@ -1190,7 +1193,7 @@ class MatmulGatherOnZerothAxis(test_case.TestCase):
                        [5, 6, 7, 8],
                        [9, 10, 11, 12],
                        [0, 1, 0, 0]], dtype=np.float32)
-    indices = np.array([2, 2, 1])
+    indices = np.array([2, 2, 1], dtype=np.int32)
     expected_output = np.array([[9, 10, 11, 12], [9, 10, 11, 12], [5, 6, 7, 8]])
     gather_output = self.execute(graph_fn, [params, indices])
     self.assertAllClose(gather_output, expected_output)
@@ -1204,7 +1207,7 @@ class MatmulGatherOnZerothAxis(test_case.TestCase):
                        [[5, 6], [7, 8]],
                        [[9, 10], [11, 12]],
                        [[0, 1], [0, 0]]], dtype=np.float32)
-    indices = np.array([0, 3, 1])
+    indices = np.array([0, 3, 1], dtype=np.int32)
     expected_output = np.array([[[1, 2], [3, 4]],
                                 [[0, 1], [0, 0]],
                                 [[5, 6], [7, 8]]])
@@ -1220,7 +1223,7 @@ class MatmulGatherOnZerothAxis(test_case.TestCase):
                        [5, 6, 7, 8],
                        [9, 10, 11, 12],
                        [0, 1, 0, 0]], dtype=np.float32)
-    indices = np.array([0, 0, 0, 0, 0, 0])
+    indices = np.array([0, 0, 0, 0, 0, 0], dtype=np.int32)
     expected_output = np.array(6*[[1, 2, 3, 4]])
     gather_output = self.execute(graph_fn, [params, indices])
     self.assertAllClose(gather_output, expected_output)
@@ -1240,6 +1243,110 @@ class MatmulGatherOnZerothAxis(test_case.TestCase):
       gather_output = sess.run(gather_result, feed_dict={
           params_placeholder: params, indices_placeholder: indices})
       self.assertAllClose(gather_output, expected_output)
+
+
+class OpsTestMatMulCropAndResize(test_case.TestCase):
+
+  def testMatMulCropAndResize2x2To1x1(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
+
+    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
+    boxes = np.array([[0, 0, 1, 1]], dtype=np.float32)
+    expected_output = [[[[2.5]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testMatMulCropAndResize2x2To1x1Flipped(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[1, 1])
+
+    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
+    boxes = np.array([[1, 1, 0, 0]], dtype=np.float32)
+    expected_output = [[[[2.5]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testMatMulCropAndResize2x2To3x3(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
+
+    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
+    boxes = np.array([[0, 0, 1, 1]], dtype=np.float32)
+    expected_output = [[[[1.0], [1.5], [2.0]],
+                        [[2.0], [2.5], [3.0]],
+                        [[3.0], [3.5], [4.0]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testMatMulCropAndResize2x2To3x3Flipped(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[3, 3])
+
+    image = np.array([[[[1], [2]], [[3], [4]]]], dtype=np.float32)
+    boxes = np.array([[1, 1, 0, 0]], dtype=np.float32)
+    expected_output = [[[[4.0], [3.5], [3.0]],
+                        [[3.0], [2.5], [2.0]],
+                        [[2.0], [1.5], [1.0]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testMatMulCropAndResize3x3To2x2(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
+
+    image = np.array([[[[1], [2], [3]],
+                       [[4], [5], [6]],
+                       [[7], [8], [9]]]], dtype=np.float32)
+    boxes = np.array([[0, 0, 1, 1],
+                      [0, 0, .5, .5]], dtype=np.float32)
+    expected_output = [[[[1], [3]], [[7], [9]]],
+                       [[[1], [2]], [[4], [5]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testMatMulCropAndResize3x3To2x2MultiChannel(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
+
+    image = np.array([[[[1, 0], [2, 1], [3, 2]],
+                       [[4, 3], [5, 4], [6, 5]],
+                       [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
+    boxes = np.array([[0, 0, 1, 1],
+                      [0, 0, .5, .5]], dtype=np.float32)
+    expected_output = [[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                       [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testMatMulCropAndResize3x3To2x2Flipped(self):
+
+    def graph_fn(image, boxes):
+      return ops.matmul_crop_and_resize(image, boxes, crop_size=[2, 2])
+
+    image = np.array([[[[1], [2], [3]],
+                       [[4], [5], [6]],
+                       [[7], [8], [9]]]], dtype=np.float32)
+    boxes = np.array([[1, 1, 0, 0],
+                      [.5, .5, 0, 0]], dtype=np.float32)
+    expected_output = [[[[9], [7]], [[3], [1]]],
+                       [[[5], [4]], [[2], [1]]]]
+    crop_output = self.execute(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testInvalidInputShape(self):
+    image = tf.constant([[[1], [2]], [[3], [4]]], dtype=tf.float32)
+    boxes = tf.constant([[-1, -1, 1, 1]], dtype=tf.float32)
+    crop_size = [4, 4]
+    with self.assertRaises(ValueError):
+      _ = ops.matmul_crop_and_resize(image, boxes, crop_size)
+
 
 if __name__ == '__main__':
   tf.test.main()

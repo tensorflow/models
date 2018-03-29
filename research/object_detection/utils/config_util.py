@@ -241,6 +241,10 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
   if hparams:
     kwargs.update(hparams.values())
   for key, value in kwargs.items():
+    # pylint: disable=g-explicit-bool-comparison
+    if value == "" or value is None:
+      continue
+    # pylint: enable=g-explicit-bool-comparison
     if key == "learning_rate":
       _update_initial_learning_rate(configs, value)
       tf.logging.info("Overwriting learning rate: %f", value)
@@ -270,9 +274,8 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
       _update_input_path(configs["eval_input_config"], value)
       tf.logging.info("Overwriting eval input path: %s", value)
     if key == "label_map_path":
-      if value:
-        _update_label_map_path(configs, value)
-        tf.logging.info("Overwriting label map path: %s", value)
+      _update_label_map_path(configs, value)
+      tf.logging.info("Overwriting label map path: %s", value)
     if key == "mask_type":
       _update_mask_type(configs, value)
       tf.logging.info("Overwritten mask type: %s", value)
@@ -282,6 +285,9 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
 def _update_initial_learning_rate(configs, learning_rate):
   """Updates `configs` to reflect the new initial learning rate.
 
+  This function updates the initial learning rate. For learning rate schedules,
+  all other defined learning rates in the pipeline config are scaled to maintain
+  their same ratio with the initial learning rate.
   The configs dictionary is updated in place, and hence not returned.
 
   Args:
@@ -319,6 +325,13 @@ def _update_initial_learning_rate(configs, learning_rate):
     manual_lr.initial_learning_rate = learning_rate
     for schedule in manual_lr.schedule:
       schedule.learning_rate *= learning_rate_scaling
+  elif learning_rate_type == "cosine_decay_learning_rate":
+    cosine_lr = optimizer_config.learning_rate.cosine_decay_learning_rate
+    learning_rate_base = cosine_lr.learning_rate_base
+    warmup_learning_rate = cosine_lr.warmup_learning_rate
+    warmup_scale_factor = warmup_learning_rate / learning_rate_base
+    cosine_lr.learning_rate_base = learning_rate
+    cosine_lr.warmup_learning_rate = warmup_scale_factor * learning_rate
   else:
     raise TypeError("Learning rate %s is not supported." % learning_rate_type)
 

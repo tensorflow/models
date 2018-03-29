@@ -324,7 +324,7 @@ class TargetAssigner(object):
     return self._box_coder
 
 
-# TODO: This method pulls in all the implementation dependencies into
+# TODO(rathodv): This method pulls in all the implementation dependencies into
 # core. Therefore its best to have this factory method outside of core.
 def create_target_assigner(reference, stage=None,
                            negative_class_weight=1.0,

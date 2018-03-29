@@ -33,7 +33,7 @@ from object_detection.data_decoders import tf_example_decoder
 slim = tf.contrib.slim
 
 
-# TODO: Replace with freeze_graph.freeze_graph_with_def_protos when
+# TODO(derekjchow): Replace with freeze_graph.freeze_graph_with_def_protos when
 # newer version of Tensorflow becomes more common.
 def freeze_graph_with_def_protos(
     input_graph_def,
@@ -242,7 +242,7 @@ def _add_output_tensor_nodes(postprocessed_tensors,
   return outputs
 
 
-def _write_frozen_graph(frozen_graph_path, frozen_graph_def):
+def write_frozen_graph(frozen_graph_path, frozen_graph_def):
   """Writes frozen graph to disk.
 
   Args:
@@ -254,10 +254,10 @@ def _write_frozen_graph(frozen_graph_path, frozen_graph_def):
   logging.info('%d ops in the final graph.', len(frozen_graph_def.node))
 
 
-def _write_saved_model(saved_model_path,
-                       frozen_graph_def,
-                       inputs,
-                       outputs):
+def write_saved_model(saved_model_path,
+                      frozen_graph_def,
+                      inputs,
+                      outputs):
   """Writes SavedModel to disk.
 
   If checkpoint_path is not None bakes the weights into the graph thereby
@@ -301,10 +301,11 @@ def _write_saved_model(saved_model_path,
       builder.save()
 
 
-def _write_graph_and_checkpoint(inference_graph_def,
-                                model_path,
-                                input_saver_def,
-                                trained_checkpoint_prefix):
+def write_graph_and_checkpoint(inference_graph_def,
+                               model_path,
+                               input_saver_def,
+                               trained_checkpoint_prefix):
+  """Writes the graph and the checkpoint into disk."""
   for node in inference_graph_def.node:
     node.device = ''
   with tf.Graph().as_default():
@@ -314,6 +315,44 @@ def _write_graph_and_checkpoint(inference_graph_def,
                               save_relative_paths=True)
       saver.restore(sess, trained_checkpoint_prefix)
       saver.save(sess, model_path)
+
+
+def _get_outputs_from_inputs(input_tensors, detection_model,
+                             output_collection_name):
+  inputs = tf.to_float(input_tensors)
+  preprocessed_inputs, true_image_shapes = detection_model.preprocess(inputs)
+  output_tensors = detection_model.predict(
+      preprocessed_inputs, true_image_shapes)
+  postprocessed_tensors = detection_model.postprocess(
+      output_tensors, true_image_shapes)
+  return _add_output_tensor_nodes(postprocessed_tensors,
+                                  output_collection_name)
+
+
+def _build_detection_graph(input_type, detection_model, input_shape,
+                           output_collection_name, graph_hook_fn):
+  """Build the detection graph."""
+  if input_type not in input_placeholder_fn_map:
+    raise ValueError('Unknown input type: {}'.format(input_type))
+  placeholder_args = {}
+  if input_shape is not None:
+    if input_type != 'image_tensor':
+      raise ValueError('Can only specify input shape for `image_tensor` '
+                       'inputs.')
+    placeholder_args['input_shape'] = input_shape
+  placeholder_tensor, input_tensors = input_placeholder_fn_map[input_type](
+      **placeholder_args)
+  outputs = _get_outputs_from_inputs(
+      input_tensors=input_tensors,
+      detection_model=detection_model,
+      output_collection_name=output_collection_name)
+
+  # Add global step to the graph.
+  slim.get_or_create_global_step()
+
+  if graph_hook_fn: graph_hook_fn()
+
+  return outputs, placeholder_tensor
 
 
 def _export_inference_graph(input_type,
@@ -332,28 +371,12 @@ def _export_inference_graph(input_type,
   saved_model_path = os.path.join(output_directory, 'saved_model')
   model_path = os.path.join(output_directory, 'model.ckpt')
 
-  if input_type not in input_placeholder_fn_map:
-    raise ValueError('Unknown input type: {}'.format(input_type))
-  placeholder_args = {}
-  if input_shape is not None:
-    if input_type != 'image_tensor':
-      raise ValueError('Can only specify input shape for `image_tensor` '
-                       'inputs.')
-    placeholder_args['input_shape'] = input_shape
-  placeholder_tensor, input_tensors = input_placeholder_fn_map[input_type](
-      **placeholder_args)
-  inputs = tf.to_float(input_tensors)
-  preprocessed_inputs, true_image_shapes = detection_model.preprocess(inputs)
-  output_tensors = detection_model.predict(
-      preprocessed_inputs, true_image_shapes)
-  postprocessed_tensors = detection_model.postprocess(
-      output_tensors, true_image_shapes)
-  outputs = _add_output_tensor_nodes(postprocessed_tensors,
-                                     output_collection_name)
-  # Add global step to the graph.
-  slim.get_or_create_global_step()
-
-  if graph_hook_fn: graph_hook_fn()
+  outputs, placeholder_tensor = _build_detection_graph(
+      input_type=input_type,
+      detection_model=detection_model,
+      input_shape=input_shape,
+      output_collection_name=output_collection_name,
+      graph_hook_fn=graph_hook_fn)
 
   saver_kwargs = {}
   if use_moving_averages:
@@ -373,7 +396,7 @@ def _export_inference_graph(input_type,
   saver = tf.train.Saver(**saver_kwargs)
   input_saver_def = saver.as_saver_def()
 
-  _write_graph_and_checkpoint(
+  write_graph_and_checkpoint(
       inference_graph_def=tf.get_default_graph().as_graph_def(),
       model_path=model_path,
       input_saver_def=input_saver_def,
@@ -393,9 +416,9 @@ def _export_inference_graph(input_type,
       filename_tensor_name='save/Const:0',
       clear_devices=True,
       initializer_nodes='')
-  _write_frozen_graph(frozen_graph_path, frozen_graph_def)
-  _write_saved_model(saved_model_path, frozen_graph_def,
-                     placeholder_tensor, outputs)
+  write_frozen_graph(frozen_graph_path, frozen_graph_def)
+  write_saved_model(saved_model_path, frozen_graph_def,
+                    placeholder_tensor, outputs)
 
 
 def export_inference_graph(input_type,

@@ -77,6 +77,10 @@ tf.flags.DEFINE_integer('min_eval_interval_secs', 180,
 tf.flags.DEFINE_integer(
     'eval_timeout_secs', None,
     'Maximum seconds between checkpoints before evaluation terminates.')
+tf.flags.DEFINE_string('hparams_overrides', None, 'Comma-separated list of '
+                       'hyperparameters to override defaults.')
+tf.flags.DEFINE_boolean('eval_training_data', False,
+                        'If training data should be evaluated for this job.')
 
 FLAGS = tf.flags.FLAGS
 
@@ -122,7 +126,10 @@ def create_estimator(run_config,
   Returns:
     Estimator: A estimator object used for training and evaluation
     train_input_fn: Input function for the training loop
-    eval_input_fn: Input function for the evaluation run
+    eval_validation_input_fn: Input function to run for evaluation on
+      validation data.
+    eval_training_input_fn: Input function to run for evaluation on
+      training data.
     train_steps: Number of training steps either from arg `train_steps` or
       `TrainConfig` proto
     eval_steps: Number of evaluation steps either from arg `eval_steps` or
@@ -141,15 +148,17 @@ def create_estimator(run_config,
   train_input_config = configs['train_input_config']
   eval_config = configs['eval_config']
   eval_input_config = configs['eval_input_config']
+  if FLAGS.eval_training_data:
+    eval_input_config = configs['train_input_config']
 
   if params is None:
     params = {}
 
-  if train_steps is None:
-    train_steps = train_config.num_steps if train_config.num_steps else None
+  if train_steps is None and train_config.num_steps:
+    train_steps = train_config.num_steps
 
-  if eval_steps is None:
-    eval_steps = eval_config.num_examples if eval_config.num_examples else None
+  if eval_steps is None and eval_config.num_examples:
+    eval_steps = eval_config.num_examples
 
   detection_model_fn = functools.partial(
       model_builder.build, model_config=model_config)
@@ -159,9 +168,13 @@ def create_estimator(run_config,
       train_config=train_config,
       train_input_config=train_input_config,
       model_config=model_config)
-  eval_input_fn = inputs.create_eval_input_fn(
+  eval_validation_input_fn = inputs.create_eval_input_fn(
       eval_config=eval_config,
       eval_input_config=eval_input_config,
+      model_config=model_config)
+  eval_training_input_fn = inputs.create_eval_input_fn(
+      eval_config=eval_config,
+      eval_input_config=train_input_config,
       model_config=model_config)
 
   estimator = tpu_estimator.TPUEstimator(
@@ -173,7 +186,8 @@ def create_estimator(run_config,
       use_tpu=use_tpu,
       config=run_config,
       params=params)
-  return estimator, train_input_fn, eval_input_fn, train_steps, eval_steps
+  return (estimator, train_input_fn, eval_validation_input_fn,
+          eval_training_input_fn, train_steps, eval_steps)
 
 
 def main(unused_argv):
@@ -204,24 +218,27 @@ def main(unused_argv):
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_shards))
   params = {}
-  estimator, train_input_fn, eval_input_fn, train_steps, eval_steps = (
-      create_estimator(
-          config,
-          model_hparams.create_hparams(),
-          FLAGS.pipeline_config_path,
-          train_steps=FLAGS.num_train_steps,
-          eval_steps=FLAGS.num_eval_steps,
-          train_batch_size=FLAGS.train_batch_size,
-          use_tpu=FLAGS.use_tpu,
-          num_shards=FLAGS.num_shards,
-          params=params))
+  (estimator, train_input_fn, eval_validation_input_fn, eval_training_input_fn,
+   train_steps, eval_steps) = (
+       create_estimator(
+           config,
+           model_hparams.create_hparams(
+               hparams_overrides=FLAGS.hparams_overrides),
+           FLAGS.pipeline_config_path,
+           train_steps=FLAGS.num_train_steps,
+           eval_steps=FLAGS.num_eval_steps,
+           train_batch_size=FLAGS.train_batch_size,
+           use_tpu=FLAGS.use_tpu,
+           num_shards=FLAGS.num_shards,
+           params=params))
 
   if FLAGS.mode in ['train', 'train_and_eval']:
     estimator.train(input_fn=train_input_fn, max_steps=train_steps)
 
   if FLAGS.mode == 'train_and_eval':
     # Eval one time.
-    eval_results = estimator.evaluate(input_fn=eval_input_fn, steps=eval_steps)
+    eval_results = estimator.evaluate(
+        input_fn=eval_validation_input_fn, steps=eval_steps)
     tf.logging.info('Eval results: %s' % eval_results)
 
   # Continuously evaluating.
@@ -239,11 +256,18 @@ def main(unused_argv):
         timeout_fn=terminate_eval):
 
       tf.logging.info('Starting to evaluate.')
+      if FLAGS.eval_training_data:
+        name = 'training_data'
+        input_fn = eval_training_input_fn
+      else:
+        name = 'validation_data'
+        input_fn = eval_validation_input_fn
       try:
         eval_results = estimator.evaluate(
-            input_fn=eval_input_fn,
+            input_fn=input_fn,
             steps=eval_steps,
-            checkpoint_path=ckpt)
+            checkpoint_path=ckpt,
+            name=name)
         tf.logging.info('Eval results: %s' % eval_results)
 
         # Terminate eval job when final checkpoint is reached

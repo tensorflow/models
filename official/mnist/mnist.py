@@ -18,11 +18,15 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import os
 import sys
 
-import tensorflow as tf
-import dataset
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
+from official.mnist import dataset
+from official.utils.arg_parsers import parsers
+from official.utils.logging import hooks_helper
+
+LEARNING_RATE = 1e-4
 
 
 class Model(tf.keras.Model):
@@ -104,7 +108,7 @@ def model_fn(features, labels, mode, params):
             'classify': tf.estimator.export.PredictOutput(predictions)
         })
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-4)
+    optimizer = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE)
 
     # If we are running multi-GPU, we need to wrap the optimizer.
     if params.get('multi_gpu'):
@@ -114,10 +118,15 @@ def model_fn(features, labels, mode, params):
     loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
     accuracy = tf.metrics.accuracy(
         labels=labels, predictions=tf.argmax(logits, axis=1))
-    # Name the accuracy tensor 'train_accuracy' to demonstrate the
-    # LoggingTensorHook.
+
+    # Name tensors to be logged with LoggingTensorHook.
+    tf.identity(LEARNING_RATE, 'learning_rate')
+    tf.identity(loss, 'cross_entropy')
     tf.identity(accuracy[1], name='train_accuracy')
+
+    # Save accuracy scalar to Tensorboard output.
     tf.summary.scalar('train_accuracy', accuracy[1])
+
     return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.TRAIN,
         loss=loss,
@@ -137,35 +146,43 @@ def model_fn(features, labels, mode, params):
 
 
 def validate_batch_size_for_multi_gpu(batch_size):
-  """For multi-gpu, batch-size must be a multiple of the number of
-  available GPUs.
+  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
 
   Note that this should eventually be handled by replicate_model_fn
   directly. Multi-GPU support is currently experimental, however,
   so doing the work here until that feature is in place.
+
+  Args:
+    batch_size: the number of examples processed in each training batch.
+
+  Raises:
+    ValueError: if no GPUs are found, or selected batch_size is invalid.
   """
-  from tensorflow.python.client import device_lib
+  from tensorflow.python.client import device_lib  # pylint: disable=g-import-not-at-top
 
   local_device_protos = device_lib.list_local_devices()
   num_gpus = sum([1 for d in local_device_protos if d.device_type == 'GPU'])
   if not num_gpus:
     raise ValueError('Multi-GPU mode was specified, but no GPUs '
-      'were found. To use CPU, run without --multi_gpu.')
+                     'were found. To use CPU, run without --multi_gpu.')
 
   remainder = batch_size % num_gpus
   if remainder:
     err = ('When running with multiple GPUs, batch size '
-      'must be a multiple of the number of available GPUs. '
-      'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
-      ).format(num_gpus, batch_size, batch_size - remainder)
+           'must be a multiple of the number of available GPUs. '
+           'Found {} GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
 
 
-def main(unused_argv):
+def main(argv):
+  parser = MNISTArgParser()
+  flags = parser.parse_args(args=argv[1:])
+
   model_function = model_fn
 
-  if FLAGS.multi_gpu:
-    validate_batch_size_for_multi_gpu(FLAGS.batch_size)
+  if flags.multi_gpu:
+    validate_batch_size_for_multi_gpu(flags.batch_size)
 
     # There are two steps required if using multi-GPU: (1) wrap the model_fn,
     # and (2) wrap the optimizer. The first happens here, and (2) happens
@@ -173,98 +190,73 @@ def main(unused_argv):
     model_function = tf.contrib.estimator.replicate_model_fn(
         model_fn, loss_reduction=tf.losses.Reduction.MEAN)
 
-  data_format = FLAGS.data_format
+  data_format = flags.data_format
   if data_format is None:
     data_format = ('channels_first'
                    if tf.test.is_built_with_cuda() else 'channels_last')
   mnist_classifier = tf.estimator.Estimator(
       model_fn=model_function,
-      model_dir=FLAGS.model_dir,
+      model_dir=flags.model_dir,
       params={
           'data_format': data_format,
-          'multi_gpu': FLAGS.multi_gpu
+          'multi_gpu': flags.multi_gpu
       })
 
-  # Train the model
+  # Set up training and evaluation input functions.
   def train_input_fn():
+    """Prepare data for training."""
+
     # When choosing shuffle buffer sizes, larger sizes result in better
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
-    ds = dataset.train(FLAGS.data_dir)
-    ds = ds.cache().shuffle(buffer_size=50000).batch(FLAGS.batch_size).repeat(
-        FLAGS.train_epochs)
+    ds = dataset.train(flags.data_dir)
+    ds = ds.cache().shuffle(buffer_size=50000).batch(flags.batch_size)
+
+    # Iterate through the dataset a set number (`epochs_between_evals`) of times
+    # during each training session.
+    ds = ds.repeat(flags.epochs_between_evals)
     return ds
 
-  # Set up training hook that logs the training accuracy every 100 steps.
-  tensors_to_log = {'train_accuracy': 'train_accuracy'}
-  logging_hook = tf.train.LoggingTensorHook(
-      tensors=tensors_to_log, every_n_iter=100)
-  mnist_classifier.train(input_fn=train_input_fn, hooks=[logging_hook])
-
-  # Evaluate the model and print results
   def eval_input_fn():
-    return dataset.test(FLAGS.data_dir).batch(
-        FLAGS.batch_size).make_one_shot_iterator().get_next()
+    return dataset.test(flags.data_dir).batch(
+        flags.batch_size).make_one_shot_iterator().get_next()
 
-  eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
-  print()
-  print('Evaluation results:\n\t%s' % eval_results)
+  # Set up hook that outputs training logs every 100 steps.
+  train_hooks = hooks_helper.get_train_hooks(
+      flags.hooks, batch_size=flags.batch_size)
+
+  # Train and evaluate model.
+  for _ in range(flags.train_epochs // flags.epochs_between_evals):
+    mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
+    eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
+    print('\nEvaluation results:\n\t%s\n' % eval_results)
 
   # Export the model
-  if FLAGS.export_dir is not None:
+  if flags.export_dir is not None:
     image = tf.placeholder(tf.float32, [None, 28, 28])
     input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
         'image': image,
     })
-    mnist_classifier.export_savedmodel(FLAGS.export_dir, input_fn)
+    mnist_classifier.export_savedmodel(flags.export_dir, input_fn)
 
 
 class MNISTArgParser(argparse.ArgumentParser):
+  """Argument parser for running MNIST model."""
 
   def __init__(self):
-    super(MNISTArgParser, self).__init__()
+    super(MNISTArgParser, self).__init__(parents=[
+        parsers.BaseParser(),
+        parsers.ImageModelParser(),
+        parsers.ExportParser(),
+    ])
 
-    self.add_argument(
-        '--multi_gpu', action='store_true',
-        help='If set, run across all available GPUs.')
-    self.add_argument(
-        '--batch_size',
-        type=int,
-        default=100,
-        help='Number of images to process in a batch')
-    self.add_argument(
-        '--data_dir',
-        type=str,
-        default='/tmp/mnist_data',
-        help='Path to directory containing the MNIST dataset')
-    self.add_argument(
-        '--model_dir',
-        type=str,
-        default='/tmp/mnist_model',
-        help='The directory where the model will be stored.')
-    self.add_argument(
-        '--train_epochs',
-        type=int,
-        default=40,
-        help='Number of epochs to train.')
-    self.add_argument(
-        '--data_format',
-        type=str,
-        default=None,
-        choices=['channels_first', 'channels_last'],
-        help='A flag to override the data format used in the model. '
-        'channels_first provides a performance boost on GPU but is not always '
-        'compatible with CPU. If left unspecified, the data format will be '
-        'chosen automatically based on whether TensorFlow was built for CPU or '
-        'GPU.')
-    self.add_argument(
-        '--export_dir',
-        type=str,
-        help='The directory where the exported SavedModel will be stored.')
+    self.set_defaults(
+        data_dir='/tmp/mnist_data',
+        model_dir='/tmp/mnist_model',
+        batch_size=100,
+        train_epochs=40)
 
 
 if __name__ == '__main__':
-  parser = MNISTArgParser()
   tf.logging.set_verbosity(tf.logging.INFO)
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  main(argv=sys.argv)

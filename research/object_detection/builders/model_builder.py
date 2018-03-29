@@ -36,6 +36,7 @@ from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import 
 from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
 from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
+from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.protos import model_pb2
 
 # A map of names to SSD feature extractors.
@@ -43,6 +44,7 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_inception_v2': SSDInceptionV2FeatureExtractor,
     'ssd_inception_v3': SSDInceptionV3FeatureExtractor,
     'ssd_mobilenet_v1': SSDMobileNetV1FeatureExtractor,
+    'ssd_mobilenet_v2': SSDMobileNetV2FeatureExtractor,
     'ssd_resnet50_v1_fpn': ssd_resnet_v1_fpn.SSDResnet50V1FpnFeatureExtractor,
     'ssd_resnet101_v1_fpn': ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
     'ssd_resnet152_v1_fpn': ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
@@ -153,6 +155,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
   region_similarity_calculator = sim_calc.build(
       ssd_config.similarity_calculator)
   encode_background_as_zeros = ssd_config.encode_background_as_zeros
+  negative_class_weight = ssd_config.negative_class_weight
   ssd_box_predictor = box_predictor_builder.build(hyperparams_builder.build,
                                                   ssd_config.box_predictor,
                                                   is_training, num_classes)
@@ -165,6 +168,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
    localization_weight,
    hard_example_miner) = losses_builder.build(ssd_config.loss)
   normalize_loss_by_num_matches = ssd_config.normalize_loss_by_num_matches
+  normalize_loc_loss_by_codesize = ssd_config.normalize_loc_loss_by_codesize
 
   return ssd_meta_arch.SSDMetaArch(
       is_training,
@@ -175,6 +179,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       matcher,
       region_similarity_calculator,
       encode_background_as_zeros,
+      negative_class_weight,
       image_resizer_fn,
       non_max_suppression_fn,
       score_conversion_fn,
@@ -184,7 +189,8 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       localization_weight,
       normalize_loss_by_num_matches,
       hard_example_miner,
-      add_summaries=add_summaries)
+      add_summaries=add_summaries,
+      normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize)
 
 
 def _build_faster_rcnn_feature_extractor(

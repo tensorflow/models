@@ -1,0 +1,134 @@
+# TensorFlow DeepLab Model Zoo
+
+We provide deeplab models pretrained on PASCAL VOC 2012 and Cityscapes datasets
+for reproducing our results, as well as some checkpoints that are only
+pretrained on ImageNet for training your own models.
+
+## DeepLab models trained on PASCAL VOC 2012
+
+Un-tar'ed directory includes:
+
+*   a frozen inference graph (`frozen_inference_graph.pb`). All frozen inference
+    graphs use output stride of 8 and a single eval scale of 1.0. No left-right
+    flips are used, and MobileNet-v2 based models do not include the decoder
+    module.
+
+*   a checkpoint (`model.ckpt.data-00000-of-00001`, `model.ckpt.index`)
+
+### Model details
+
+We provide several checkpoints that have been pretrained on VOC 2012 train_aug
+set or train_aug + trainval set. In the former case, one could train their model
+with smaller batch size and freeze batch normalization when limited GPU memory
+is available, since we have already fine-tuned the batch normalization for you.
+In the latter case, one could directly evaluate the checkpoints on VOC 2012 test
+set or use this checkpoint for demo. Note *MobileNet-v2* based models do not
+employ ASPP and decoder modules for fast computation.
+
+Checkpoint name             | Network backbone | Pretrained  dataset | ASPP  | Decoder
+--------------------------- | :--------------: | :-----------------: | :---: | :-----:
+mobilenetv2_coco_voc_trainaug | MobileNet-v2  | MS-COCO <br> VOC 2012 train_aug set| N/A | N/A
+mobilenetv2_coco_voc_trainval | MobileNet-v2  | MS-COCO <br> VOC 2012 train_aug + trainval sets | N/A | N/A
+xception_coco_voc_trainaug  | Xception_65  | MS-COCO <br> VOC 2012 train_aug set| [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
+xception_coco_voc_trainval  | Xception_65  | MS-COCO <br> VOC 2012 train_aug + trainval sets | [6,12,18] for OS=16 <br> [12,24,36] for OS=8 | OS = 4
+
+In the table, **OS** denotes output stride.
+
+Checkpoint name                                                                                                          | Eval OS   | Eval scales                | Left-right Flip | Multiply-Adds        | Runtime (sec)  | PASCAL mIOU                    | File Size
+------------------------------------------------------------------------------------------------------------------------ | :-------: | :------------------------: | :-------------: | :------------------: | :------------: | :----------------------------: | :-------:
+[mobilenetv2_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_mnv2_pascal_train_aug_2018_01_29.tar.gz) | 16 <br> 8 | [1.0] <br> [0.5:0.25:1.75] | No <br> Yes     | 2.75B <br> 152.59B   | 0.1 <br> 26.9  | 75.32% (val) <br> 77.33 (val)  | 23MB
+[mobilenetv2_coco_voc_trainval](http://download.tensorflow.org/models/deeplabv3_mnv2_pascal_trainval_2018_01_29.tar.gz)  | 8         | [0.5:0.25:1.75]            | Yes             | 152.59B              | 26.9           | 80.25% (**test**)              | 23MB
+[xception_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_pascal_train_aug_2018_01_04.tar.gz)         | 16 <br> 8 | [1.0] <br> [0.5:0.25:1.75] | No <br> Yes     | 54.17B <br> 3055.35B | 0.7 <br> 223.2 | 82.20% (val) <br> 83.58% (val) | 439MB
+[xception_coco_voc_trainval](http://download.tensorflow.org/models/deeplabv3_pascal_trainval_2018_01_04.tar.gz)          | 8         | [0.5:0.25:1.75]            | Yes             | 3055.35B             | 223.2          | 87.80% (**test**)              | 439MB
+
+In the table, we report both computation complexity (in terms of Multiply-Adds
+and CPU Runtime) and segmentation performance (in terms of mIOU) on the PASCAL
+VOC val or test set. The reported runtime is calculated by tfprof on a
+workstation with CPU E5-1650 v3 @ 3.50GHz and 32GB memory. Note that applying
+multi-scale inputs and left-right flips increases the segmentation performance
+but also significantly increases the computation and thus may not be suitable
+for real-time applications.
+
+## DeepLab models trained on Cityscapes
+
+### Model details
+
+We provide several checkpoints that have been pretrained on Cityscapes
+train_fine set. Note *MobileNet-v2* based model has been pretrained on MS-COCO
+dataset and does not employ ASPP and decoder modules for fast computation.
+
+Checkpoint name                       | Network backbone | Pretrained dataset                      | ASPP                                             | Decoder
+------------------------------------- | :--------------: | :-------------------------------------: | :----------------------------------------------: | :-----:
+mobilenetv2_coco_cityscapes_trainfine | MobileNet-v2     | MS-COCO <br> Cityscapes train_fine set  | N/A                                              | N/A
+xception_cityscapes_trainfine         | Xception_65      | ImageNet <br> Cityscapes train_fine set | [6, 12, 18] for OS=16 <br> [12, 24, 36] for OS=8 | OS = 4
+
+In the table, **OS** denotes output stride.
+
+Checkpoint name                                                                                                                  | Eval OS   | Eval scales                 | Left-right Flip | Multiply-Adds         | Runtime (sec)  | Cityscapes mIOU                | File Size
+-------------------------------------------------------------------------------------------------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :------------: | :----------------------------: | :-------:
+[mobilenetv2_coco_cityscapes_trainfine](http://download.tensorflow.org/models/deeplabv3_mnv2_cityscapes_train_2018_02_05.tar.gz) | 16 <br> 8 | [1.0] <br> [0.75:0.25:1.25] | No <br> Yes     | 21.27B <br> 433.24B   | 0.8 <br> 51.12 | 70.71% (val) <br> 73.57% (val) | 23MB
+[xception_cityscapes_trainfine](http://download.tensorflow.org/models/deeplabv3_cityscapes_train_2018_02_06.tar.gz)              | 16 <br> 8 | [1.0] <br> [0.75:0.25:1.25] | No <br> Yes     | 418.64B <br> 8677.92B | 5.0 <br> 422.8 | 78.79% (val) <br> 80.42% (val) | 439MB
+
+## Checkpoints pretrained on ImageNet
+
+Un-tar'ed directory includes:
+
+*   model checkpoint (`model.ckpt.data-00000-of-00001`, `model.ckpt.index`).
+
+### Model details
+
+We also provide some checkpoints that are only pretrained on ImageNet so that
+one could use this for training your own models.
+
+*   mobilenet_v2: We refer the interested users to the TensorFlow open source
+    [MobileNet-V2](https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet)
+    for details.
+
+*   xception: We adapt the original Xception model to the task of semantic
+    segmentation with the following changes: (1) more layers, (2) all max
+    pooling operations are replaced by strided (atrous) separable convolutions,
+    and (3) extra batch-norm and ReLU after each 3x3 depthwise convolution are
+    added.
+
+Model name                                                                             | File Size
+-------------------------------------------------------------------------------------- | :-------:
+[xception](http://download.tensorflow.org/models/deeplabv3_xception_2018_01_04.tar.gz) | 447MB
+
+## References
+
+1.  **Mobilenets: Efficient convolutional neural networks for mobile vision applications**<br />
+    Andrew G. Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang, Tobias Weyand, Marco Andreetto, Hartwig Adam<br />
+    [[link]](https://arxiv.org/abs/1704.04861). arXiv:1704.04861, 2017.
+
+2.  **Inverted Residuals and Linear Bottlenecks: Mobile Networks for Classification, Detection and Segmentation**<br />
+    Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zhmoginov, Liang-Chieh Chen<br />
+    [[link]](https://arxiv.org/abs/1801.04381). arXiv:1801.04381, 2018.
+
+3.  **Xception: Deep Learning with Depthwise Separable Convolutions**<br />
+    François Chollet<br />
+    [[link]](https://arxiv.org/abs/1610.02357). In the Proc. of CVPR, 2017.
+
+4.  **Deformable Convolutional Networks -- COCO Detection and Segmentation Challenge 2017 Entry**<br />
+    Haozhi Qi, Zheng Zhang, Bin Xiao, Han Hu, Bowen Cheng, Yichen Wei, Jifeng Dai<br />
+    [[link]](http://presentations.cocodataset.org/COCO17-Detect-MSRA.pdf). ICCV COCO Challenge
+    Workshop, 2017.
+
+5.  **The Pascal Visual Object Classes Challenge: A Retrospective**<br />
+    Mark Everingham, S. M. Ali Eslami, Luc Van Gool, Christopher K. I. Williams, John M. Winn, Andrew Zisserman<br />
+    [[link]](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/). IJCV, 2014.
+
+6.  **Semantic Contours from Inverse Detectors**<br />
+    Bharath Hariharan, Pablo Arbelaez, Lubomir Bourdev, Subhransu Maji, Jitendra Malik<br />
+    [[link]](http://home.bharathh.info/pubs/codes/SBD/download.html). In the Proc. of ICCV, 2011.
+
+7.  **The Cityscapes Dataset for Semantic Urban Scene Understanding**<br />
+    Cordts, Marius, Mohamed Omran, Sebastian Ramos, Timo Rehfeld, Markus Enzweiler, Rodrigo Benenson, Uwe Franke, Stefan Roth, Bernt Schiele. <br />
+    [[link]](https://www.cityscapes-dataset.com/). In the Proc. of CVPR, 2016.
+
+8.  **Microsoft COCO: Common Objects in Context**<br />
+    Tsung-Yi Lin, Michael Maire, Serge Belongie, Lubomir Bourdev, Ross Girshick, James Hays, Pietro Perona, Deva Ramanan, C. Lawrence Zitnick, Piotr Dollar<br />
+    [[link]](http://cocodataset.org/). In the Proc. of ECCV, 2014.
+
+9.  **ImageNet Large Scale Visual Recognition Challenge**<br />
+    Olga Russakovsky, Jia Deng, Hao Su, Jonathan Krause, Sanjeev Satheesh, Sean Ma, Zhiheng Huang, Andrej Karpathy, Aditya Khosla, Michael Bernstein, Alexander C. Berg, Li Fei-Fei<br />
+    [[link]](http://www.image-net.org/). IJCV, 2015.

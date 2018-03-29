@@ -164,7 +164,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       ValueError: If first_stage_anchor_generator is not of type
         grid_anchor_generator.GridAnchorGenerator.
     """
-    # TODO: add_summaries is currently unused. Respect that directive
+    # TODO(rathodv): add_summaries is currently unused. Respect that directive
     # in the future.
     super(RFCNMetaArch, self).__init__(
         is_training,
@@ -275,9 +275,11 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         scope=self.second_stage_box_predictor_scope,
         proposal_boxes=proposal_boxes_normalized)
     refined_box_encodings = tf.squeeze(
-        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+        tf.concat(box_predictions[box_predictor.BOX_ENCODINGS], axis=1), axis=1)
     class_predictions_with_background = tf.squeeze(
-        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        tf.concat(
+            box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+            axis=1),
         axis=1)
 
     absolute_proposal_boxes = ops.normalized_to_image_coordinates(

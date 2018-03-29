@@ -34,7 +34,6 @@ FLAGS = tf.flags.FLAGS
 
 def _get_configs_for_model(model_name):
   """Returns configurations for model."""
-  # TODO: Make sure these tests work fine outside google3.
   fname = os.path.join(
       FLAGS.test_srcdir,
       ('google3/third_party/tensorflow_models/'
@@ -65,24 +64,24 @@ class InputsTest(tf.test.TestCase):
         configs['train_config'], configs['train_input_config'], model_config)
     features, labels = train_input_fn()
 
-    self.assertAllEqual([None, None, 3],
+    self.assertAllEqual([1, None, None, 3],
                         features[fields.InputDataFields.image].shape.as_list())
     self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
-    self.assertAllEqual([],
+    self.assertAllEqual([1],
                         features[inputs.HASH_KEY].shape.as_list())
     self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
     self.assertAllEqual(
-        [None, 4],
+        [1, 50, 4],
         labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
     self.assertEqual(tf.float32,
                      labels[fields.InputDataFields.groundtruth_boxes].dtype)
     self.assertAllEqual(
-        [None, model_config.faster_rcnn.num_classes],
+        [1, 50, model_config.faster_rcnn.num_classes],
         labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
     self.assertEqual(tf.float32,
                      labels[fields.InputDataFields.groundtruth_classes].dtype)
     self.assertAllEqual(
-        [None],
+        [1, 50],
         labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
     self.assertEqual(tf.float32,
                      labels[fields.InputDataFields.groundtruth_weights].dtype)

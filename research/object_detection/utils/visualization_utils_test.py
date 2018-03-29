@@ -13,12 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for image.understanding.object_detection.core.visualization_utils.
-
-Testing with visualization in the following colab:
-https://drive.google.com/a/google.com/file/d/0B5HnKS_hMsNARERpU3MtU3I5RFE/view?usp=sharing
-
-"""
+"""Tests for object_detection.utils.visualization_utils."""
 import logging
 import os
 

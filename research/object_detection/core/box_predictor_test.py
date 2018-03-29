@@ -165,9 +165,11 @@ class RfcnBoxPredictorTest(tf.test.TestCase):
         [image_features], num_predictions_per_location=[1],
         scope='BoxPredictor',
         proposal_boxes=proposal_boxes)
-    box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-    class_predictions_with_background = box_predictions[
-        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+    box_encodings = tf.concat(
+        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+    class_predictions_with_background = tf.concat(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1)
 
     init_op = tf.global_variables_initializer()
     with self.test_session() as sess:
@@ -215,9 +217,11 @@ class ConvolutionalBoxPredictorTest(test_case.TestCase):
       box_predictions = conv_box_predictor.predict(
           [image_features], num_predictions_per_location=[5],
           scope='BoxPredictor')
-      box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-      objectness_predictions = box_predictions[
-          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      objectness_predictions = tf.concat(
+          box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+          axis=1)
       return (box_encodings, objectness_predictions)
     image_features = np.random.rand(4, 8, 8, 64).astype(np.float32)
     (box_encodings, objectness_predictions) = self.execute(graph_fn,
@@ -242,9 +246,10 @@ class ConvolutionalBoxPredictorTest(test_case.TestCase):
       box_predictions = conv_box_predictor.predict(
           [image_features], num_predictions_per_location=[1],
           scope='BoxPredictor')
-      box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-      objectness_predictions = box_predictions[
-          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      objectness_predictions = tf.concat(box_predictions[
+          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND], axis=1)
       return (box_encodings, objectness_predictions)
     image_features = np.random.rand(4, 8, 8, 64).astype(np.float32)
     (box_encodings, objectness_predictions) = self.execute(graph_fn,
@@ -273,9 +278,11 @@ class ConvolutionalBoxPredictorTest(test_case.TestCase):
           [image_features],
           num_predictions_per_location=[5],
           scope='BoxPredictor')
-      box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-      class_predictions_with_background = box_predictions[
-          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      class_predictions_with_background = tf.concat(
+          box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+          axis=1)
       return (box_encodings, class_predictions_with_background)
     (box_encodings,
      class_predictions_with_background) = self.execute(graph_fn,
@@ -302,9 +309,11 @@ class ConvolutionalBoxPredictorTest(test_case.TestCase):
     box_predictions = conv_box_predictor.predict(
         [image_features], num_predictions_per_location=[5],
         scope='BoxPredictor')
-    box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-    objectness_predictions = box_predictions[
-        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+    box_encodings = tf.concat(
+        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+    objectness_predictions = tf.concat(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1)
     init_op = tf.global_variables_initializer()
 
     resolution = 32
@@ -348,9 +357,11 @@ class ConvolutionalBoxPredictorTest(test_case.TestCase):
     box_predictions = conv_box_predictor.predict(
         [image_features], num_predictions_per_location=[5],
         scope='BoxPredictor')
-    box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-    objectness_predictions = box_predictions[
-        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+    box_encodings = tf.concat(
+        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+    objectness_predictions = tf.concat(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1)
     init_op = tf.global_variables_initializer()
 
     resolution = 32
@@ -412,9 +423,10 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
       box_predictions = conv_box_predictor.predict(
           [image_features], num_predictions_per_location=[5],
           scope='BoxPredictor')
-      box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-      objectness_predictions = box_predictions[
-          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      objectness_predictions = tf.concat(box_predictions[
+          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND], axis=1)
       return (box_encodings, objectness_predictions)
     image_features = np.random.rand(4, 8, 8, 64).astype(np.float32)
     (box_encodings, objectness_predictions) = self.execute(
@@ -438,9 +450,10 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
           [image_features],
           num_predictions_per_location=[5],
           scope='BoxPredictor')
-      box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-      class_predictions_with_background = box_predictions[
-          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      class_predictions_with_background = tf.concat(box_predictions[
+          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND], axis=1)
       return (box_encodings, class_predictions_with_background)
 
     image_features = np.random.rand(4, 8, 8, 64).astype(np.float32)
@@ -466,9 +479,11 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
           [image_features1, image_features2],
           num_predictions_per_location=[5, 5],
           scope='BoxPredictor')
-      box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-      class_predictions_with_background = box_predictions[
-          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      class_predictions_with_background = tf.concat(
+          box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+          axis=1)
       return (box_encodings, class_predictions_with_background)
 
     image_features1 = np.random.rand(4, 8, 8, 64).astype(np.float32)
@@ -493,9 +508,11 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
           [image_features1, image_features2],
           num_predictions_per_location=[5, 5],
           scope='BoxPredictor')
-      box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-      class_predictions_with_background = box_predictions[
-          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      class_predictions_with_background = tf.concat(
+          box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+          axis=1)
       return (box_encodings, class_predictions_with_background)
 
     with self.test_session(graph=tf.Graph()):
@@ -543,9 +560,10 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
     box_predictions = conv_box_predictor.predict(
         [image_features], num_predictions_per_location=[5],
         scope='BoxPredictor')
-    box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-    objectness_predictions = box_predictions[
-        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+    box_encodings = tf.concat(box_predictions[box_predictor.BOX_ENCODINGS],
+                              axis=1)
+    objectness_predictions = tf.concat(box_predictions[
+        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND], axis=1)
     init_op = tf.global_variables_initializer()
 
     resolution = 32

@@ -50,10 +50,10 @@ EVAL_METRICS_CLASS_DICT = {
 EVAL_DEFAULT_METRIC = 'pascal_voc_detection_metrics'
 
 
-def _extract_prediction_tensors(model,
-                                create_input_dict_fn,
-                                ignore_groundtruth=False):
-  """Restores the model in a tensorflow session.
+def _extract_predictions_and_losses(model,
+                                    create_input_dict_fn,
+                                    ignore_groundtruth=False):
+  """Constructs tensorflow detection graph and returns output tensors.
 
   Args:
     model: model to perform predictions with.
@@ -61,7 +61,11 @@ def _extract_prediction_tensors(model,
     ignore_groundtruth: whether groundtruth should be ignored.
 
   Returns:
-    tensor_dict: A tensor dictionary with evaluations.
+    prediction_groundtruth_dict: A dictionary with postprocessed tensors (keyed
+      by standard_fields.DetectionResultsFields) and optional groundtruth
+      tensors (keyed by standard_fields.InputDataFields).
+    losses_dict: A dictionary containing detection losses. This is empty when
+      ignore_groundtruth is true.
   """
   input_dict = create_input_dict_fn()
   prefetch_queue = prefetcher.prefetch(input_dict, capacity=500)
@@ -73,6 +77,7 @@ def _extract_prediction_tensors(model,
   detections = model.postprocess(prediction_dict, true_image_shapes)
 
   groundtruth = None
+  losses_dict = {}
   if not ignore_groundtruth:
     groundtruth = {
         fields.InputDataFields.groundtruth_boxes:
@@ -92,8 +97,14 @@ def _extract_prediction_tensors(model,
     if fields.DetectionResultFields.detection_masks in detections:
       groundtruth[fields.InputDataFields.groundtruth_instance_masks] = (
           input_dict[fields.InputDataFields.groundtruth_instance_masks])
+    label_id_offset = 1
+    model.provide_groundtruth(
+        [input_dict[fields.InputDataFields.groundtruth_boxes]],
+        [tf.one_hot(input_dict[fields.InputDataFields.groundtruth_classes]
+                    - label_id_offset, depth=model.num_classes)])
+    losses_dict.update(model.loss(prediction_dict, true_image_shapes))
 
-  return eval_util.result_dict_for_single_example(
+  result_dict = eval_util.result_dict_for_single_example(
       original_image,
       input_dict[fields.InputDataFields.source_id],
       detections,
@@ -101,6 +112,7 @@ def _extract_prediction_tensors(model,
       class_agnostic=(
           fields.DetectionResultFields.detection_classes not in detections),
       scale_to_absolute=True)
+  return result_dict, losses_dict
 
 
 def get_evaluators(eval_config, categories):
@@ -128,7 +140,7 @@ def get_evaluators(eval_config, categories):
 
 
 def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
-             checkpoint_dir, eval_dir, graph_hook_fn=None):
+             checkpoint_dir, eval_dir, graph_hook_fn=None, evaluator_list=None):
   """Evaluation function for detection models.
 
   Args:
@@ -143,6 +155,8 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       completely built. This is helpful to perform additional changes to the
       training graph such as optimizing batchnorm. The function should modify
       the default graph.
+    evaluator_list: Optional list of instances of DetectionEvaluator. If not
+      given, this list of metrics is created according to the eval_config.
 
   Returns:
     metrics: A dictionary containing metric names and values from the latest
@@ -155,13 +169,14 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
     logging.fatal('If ignore_groundtruth=True then an export_path is '
                   'required. Aborting!!!')
 
-  tensor_dict = _extract_prediction_tensors(
+  tensor_dict, losses_dict = _extract_predictions_and_losses(
       model=model,
       create_input_dict_fn=create_input_dict_fn,
       ignore_groundtruth=eval_config.ignore_groundtruth)
 
-  def _process_batch(tensor_dict, sess, batch_index, counters):
-    """Evaluates tensors in tensor_dict, visualizing the first K examples.
+  def _process_batch(tensor_dict, sess, batch_index, counters,
+                     losses_dict=None):
+    """Evaluates tensors in tensor_dict, losses_dict and visualizes examples.
 
     This function calls sess.run on tensor_dict, evaluating the original_image
     tensor only on the first K examples and visualizing detections overlaid
@@ -175,12 +190,17 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
         be updated to keep track of number of successful and failed runs,
         respectively.  If these fields are not updated, then the success/skipped
         counter values shown at the end of evaluation will be incorrect.
+      losses_dict: Optional dictonary of scalar loss tensors.
 
     Returns:
       result_dict: a dictionary of numpy arrays
+      result_losses_dict: a dictionary of scalar losses. This is empty if input
+        losses_dict is None.
     """
     try:
-      result_dict = sess.run(tensor_dict)
+      if not losses_dict:
+        losses_dict = {}
+      result_dict, result_losses_dict = sess.run([tensor_dict, losses_dict])
       counters['success'] += 1
     except tf.errors.InvalidArgumentError:
       logging.info('Skipping image')
@@ -205,7 +225,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
           skip_labels=eval_config.skip_labels,
           keep_image_id_for_visualization_export=eval_config.
           keep_image_id_for_visualization_export)
-    return result_dict
+    return result_dict, result_losses_dict
 
   variables_to_restore = tf.global_variables()
   global_step = tf.train.get_or_create_global_step()
@@ -222,10 +242,13 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
     latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
     saver.restore(sess, latest_checkpoint)
 
+  if not evaluator_list:
+    evaluator_list = get_evaluators(eval_config, categories)
+
   metrics = eval_util.repeated_checkpoint_run(
       tensor_dict=tensor_dict,
       summary_dir=eval_dir,
-      evaluators=get_evaluators(eval_config, categories),
+      evaluators=evaluator_list,
       batch_processor=_process_batch,
       checkpoint_dirs=[checkpoint_dir],
       variables_to_restore=None,
@@ -237,6 +260,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
                                  if eval_config.max_evals else None),
       master=eval_config.eval_master,
       save_graph=eval_config.save_graph,
-      save_graph_dir=(eval_dir if eval_config.save_graph else ''))
+      save_graph_dir=(eval_dir if eval_config.save_graph else ''),
+      losses_dict=losses_dict)
 
   return metrics

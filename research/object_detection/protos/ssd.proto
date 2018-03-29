@@ -36,6 +36,10 @@ message Ssd {
   // zeros vector or a one-hot vector (where background is the 0th class).
   optional bool encode_background_as_zeros = 12 [default=false];
 
+  // classification weight to be associated to negative
+  // anchors (default: 1.0). The weight must be in [0., 1.].
+  optional float negative_class_weight = 13 [default = 1.0];
+
   // Box predictor to attach to the features.
   optional BoxPredictor box_predictor = 7;
 
@@ -48,6 +52,10 @@ message Ssd {
   // Whether to normalize the loss by number of groundtruth boxes that match to
   // the anchors.
   optional bool normalize_loss_by_num_matches = 10 [default=true];
+
+  // Whether to normalize the localization loss by the code size of the box
+  // encodings. This is applied along with other normalization factors.
+  optional bool normalize_loc_loss_by_codesize = 14 [default=false];
 
   // Loss configuration for training.
   optional Loss loss = 11;
@@ -64,7 +72,8 @@ message SsdFeatureExtractor {
   // Minimum number of the channels in the feature extractor.
   optional int32 min_depth = 3 [default=16];
 
-  // Hyperparameters for the feature extractor.
+  // Hyperparameters that affect the layers of feature extractor added on top
+  // of the base feature extractor.
   optional Hyperparams conv_hyperparams = 4;
 
   // The nearest multiple to zero-pad the input height and width dimensions to.

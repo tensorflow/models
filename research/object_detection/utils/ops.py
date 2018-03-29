@@ -224,7 +224,7 @@ def padded_one_hot_encoding(indices, depth, left_pad):
     ValueError: if `indices` does not have rank 1 or if `left_pad` or `depth are
       either negative or non-integers.
 
-  TODO: add runtime checks for depth and indices.
+  TODO(rathodv): add runtime checks for depth and indices.
   """
   if depth < 0 or not isinstance(depth, six.integer_types):
     raise ValueError('`depth` must be a non-negative integer.')
@@ -474,7 +474,7 @@ def normalize_to_target(inputs,
   Note that the rank of `inputs` must be known and the dimension to which
   normalization is to be applied should be statically defined.
 
-  TODO: Add option to scale by L2 norm of the entire input.
+  TODO(jonathanhuang): Add option to scale by L2 norm of the entire input.
 
   Args:
     inputs: A `Tensor` of arbitrary size.
@@ -657,7 +657,7 @@ def position_sensitive_crop_regions(image,
     position_sensitive_features = tf.add_n(image_crops) / len(image_crops)
     # Then average over spatial positions within the bins.
     position_sensitive_features = tf.reduce_mean(
-        position_sensitive_features, [1, 2], keepdims=True)
+        position_sensitive_features, [1, 2], keep_dims=True)
   else:
     # Reorder height/width to depth channel.
     block_size = bin_crop_size[0]
@@ -704,7 +704,7 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
   Returns:
     A tf.float32 tensor of size [num_masks, image_height, image_width].
   """
-  # TODO: Make this a public function.
+  # TODO(rathodv): Make this a public function.
   def transform_boxes_relative_to_boxes(boxes, reference_boxes):
     boxes = tf.reshape(boxes, [-1, 2, 2])
     min_corner = tf.expand_dims(reference_boxes[:, 0:2], 1)
@@ -820,3 +820,127 @@ def matmul_gather_on_zeroth_axis(params, indices, scope=None):
     gathered_result_flattened = tf.matmul(indicator_matrix, params2d)
     return tf.reshape(gathered_result_flattened,
                       tf.stack(indices_shape + params_shape[1:]))
+
+
+def matmul_crop_and_resize(image, boxes, crop_size, scope=None):
+  """Matrix multiplication based implementation of the crop and resize op.
+
+  Extracts crops from the input image tensor and bilinearly resizes them
+  (possibly with aspect ratio change) to a common output size specified by
+  crop_size. This is more general than the crop_to_bounding_box op which
+  extracts a fixed size slice from the input image and does not allow
+  resizing or aspect ratio change.
+
+  Returns a tensor with crops from the input image at positions defined at
+  the bounding box locations in boxes. The cropped boxes are all resized
+  (with bilinear interpolation) to a fixed size = `[crop_height, crop_width]`.
+  The result is a 4-D tensor `[num_boxes, crop_height, crop_width, depth]`.
+
+  Running time complexity:
+    O((# channels) * (# boxes) * (crop_size)^2 * M), where M is the number
+  of pixels of the longer edge of the image.
+
+  Note that this operation is meant to replicate the behavior of the standard
+  tf.image.crop_and_resize operation but there are a few differences.
+  Specifically:
+    1) The extrapolation value (the values that are interpolated from outside
+      the bounds of the image window) is always zero
+    2) Only XLA supported operations are used (e.g., matrix multiplication).
+    3) There is no `box_indices` argument --- to run this op on multiple images,
+      one must currently call this op independently on each image.
+    4) All shapes and the `crop_size` parameter are assumed to be statically
+      defined.  Moreover, the number of boxes must be strictly nonzero.
+
+  Args:
+    image: A `Tensor`. Must be one of the following types: `uint8`, `int8`,
+      `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+      A 4-D tensor of shape `[batch, image_height, image_width, depth]`.
+      Both `image_height` and `image_width` need to be positive.
+    boxes: A `Tensor` of type `float32`.
+      A 2-D tensor of shape `[num_boxes, 4]`. The `i`-th row of the tensor
+      specifies the coordinates of a box in the `box_ind[i]` image and is
+      specified in normalized coordinates `[y1, x1, y2, x2]`. A normalized
+      coordinate value of `y` is mapped to the image coordinate at
+      `y * (image_height - 1)`, so as the `[0, 1]` interval of normalized image
+      height is mapped to `[0, image_height - 1] in image height coordinates.
+      We do allow y1 > y2, in which case the sampled crop is an up-down flipped
+      version of the original image. The width dimension is treated similarly.
+      Normalized coordinates outside the `[0, 1]` range are allowed, in which
+      case we use `extrapolation_value` to extrapolate the input image values.
+    crop_size: A list of two integers `[crop_height, crop_width]`. All
+      cropped image patches are resized to this size. The aspect ratio of the
+      image content is not preserved. Both `crop_height` and `crop_width` need
+      to be positive.
+    scope: A name for the operation (optional).
+
+  Returns:
+    A 4-D tensor of shape `[num_boxes, crop_height, crop_width, depth]`
+
+  Raises:
+    ValueError: if image tensor does not have shape
+      `[1, image_height, image_width, depth]` and all dimensions statically
+      defined.
+    ValueError: if boxes tensor does not have shape `[num_boxes, 4]` where
+      num_boxes > 0.
+    ValueError: if crop_size is not a list of two positive integers
+  """
+  img_shape = image.shape.as_list()
+  boxes_shape = boxes.shape.as_list()
+  _, img_height, img_width, _ = img_shape
+  if not isinstance(crop_size, list) or len(crop_size) != 2:
+    raise ValueError('`crop_size` must be a list of length 2')
+  dimensions = img_shape + crop_size + boxes_shape
+  if not all([isinstance(dim, int) for dim in dimensions]):
+    raise ValueError('all input shapes must be statically defined')
+  if len(crop_size) != 2:
+    raise ValueError('`crop_size` must be a list of length 2')
+  if len(boxes_shape) != 2 or boxes_shape[1] != 4:
+    raise ValueError('`boxes` should have shape `[num_boxes, 4]`')
+  if len(img_shape) != 4 and img_shape[0] != 1:
+    raise ValueError('image should have shape '
+                     '`[1, image_height, image_width, depth]`')
+  num_crops = boxes_shape[0]
+  if not num_crops > 0:
+    raise ValueError('number of boxes must be > 0')
+  if not (crop_size[0] > 0 and crop_size[1] > 0):
+    raise ValueError('`crop_size` must be a list of two positive integers.')
+
+  def _lin_space_weights(num, img_size):
+    if num > 1:
+      alpha = (img_size - 1) / float(num - 1)
+      indices = np.reshape(np.arange(num), (1, num))
+      start_weights = alpha * (num - 1 - indices)
+      stop_weights = alpha * indices
+    else:
+      start_weights = num * [.5 * (img_size - 1)]
+      stop_weights = num * [.5 * (img_size - 1)]
+    return (tf.constant(start_weights, dtype=tf.float32),
+            tf.constant(stop_weights, dtype=tf.float32))
+
+  with tf.name_scope(scope, 'MatMulCropAndResize'):
+    y1_weights, y2_weights = _lin_space_weights(crop_size[0], img_height)
+    x1_weights, x2_weights = _lin_space_weights(crop_size[1], img_width)
+    [y1, x1, y2, x2] = tf.split(value=boxes, num_or_size_splits=4, axis=1)
+
+    # Pixel centers of input image and grid points along height and width
+    image_idx_h = tf.constant(
+        np.reshape(np.arange(img_height), (1, 1, img_height)), dtype=tf.float32)
+    image_idx_w = tf.constant(
+        np.reshape(np.arange(img_width), (1, 1, img_width)), dtype=tf.float32)
+    grid_pos_h = tf.expand_dims(y1 * y1_weights + y2 * y2_weights, 2)
+    grid_pos_w = tf.expand_dims(x1 * x1_weights + x2 * x2_weights, 2)
+
+    # Create kernel matrices of pairwise kernel evaluations between pixel
+    # centers of image and grid points.
+    kernel_h = tf.nn.relu(1 - tf.abs(image_idx_h - grid_pos_h))
+    kernel_w = tf.nn.relu(1 - tf.abs(image_idx_w - grid_pos_w))
+
+    # TODO(jonathanhuang): investigate whether all channels can be processed
+    # without the explicit unstack --- possibly with a permute and map_fn call.
+    result_channels = []
+    for channel in tf.unstack(image, axis=3):
+      result_channels.append(
+          tf.matmul(
+              tf.matmul(kernel_h, tf.tile(channel, [num_crops, 1, 1])),
+              kernel_w, transpose_b=True))
+    return tf.stack(result_channels, axis=3)

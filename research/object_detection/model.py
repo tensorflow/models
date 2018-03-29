@@ -32,13 +32,13 @@ import tensorflow as tf
 from google.protobuf import text_format
 from tensorflow.contrib.learn.python.learn import learn_runner
 from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
+from tensorflow.python.lib.io import file_io
 from object_detection import eval_util
 from object_detection import inputs
 from object_detection import model_hparams
 from object_detection.builders import model_builder
 from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
-from object_detection.metrics import coco_evaluation
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
 from object_detection.utils import shape_utils
@@ -52,6 +52,20 @@ tf.flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
 tf.flags.DEFINE_integer('num_train_steps', 500000, 'Number of train steps.')
 tf.flags.DEFINE_integer('num_eval_steps', 10000, 'Number of train steps.')
 FLAGS = tf.flags.FLAGS
+
+
+# A map of names to methods that help build the model.
+MODEL_BUILD_UTIL_MAP = {
+    'get_configs_from_pipeline_file':
+        config_util.get_configs_from_pipeline_file,
+    'create_pipeline_proto_from_configs':
+        config_util.create_pipeline_proto_from_configs,
+    'merge_external_params_with_configs':
+        config_util.merge_external_params_with_configs,
+    'create_train_input_fn': inputs.create_train_input_fn,
+    'create_eval_input_fn': inputs.create_eval_input_fn,
+    'create_predict_input_fn': inputs.create_predict_input_fn,
+}
 
 
 def _get_groundtruth_data(detection_model, class_agnostic):
@@ -106,8 +120,8 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
   2. [batch_size, height, width, channels]
   3. [batch_size, num_boxes, d1, d2, ... dn]
 
-  When unpad_tensors is set to true, unstacked tensors of form 3 above are
-  sliced along the `num_boxes` dimension using the value in tensor
+  When unpad_groundtruth_tensors is set to true, unstacked tensors of form 3
+  above are sliced along the `num_boxes` dimension using the value in tensor
   field.InputDataFields.num_groundtruth_boxes.
 
   Note that this function has a static list of input data fields and has to be
@@ -183,6 +197,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
   """
   train_config = configs['train_config']
   eval_input_config = configs['eval_input_config']
+  eval_config = configs['eval_config']
 
   def model_fn(features, labels, mode, params=None):
     """Constructs the object detection model.
@@ -235,9 +250,25 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         prediction_dict, features[fields.InputDataFields.true_image_shape])
 
     if mode == tf.estimator.ModeKeys.TRAIN:
+      if not train_config.fine_tune_checkpoint_type:
+        # train_config.from_detection_checkpoint field is deprecated. For
+        # backward compatibility, sets finetune_checkpoint_type based on
+        # from_detection_checkpoint.
+        if train_config.from_detection_checkpoint:
+          train_config.fine_tune_checkpoint_type = 'detection'
+        else:
+          train_config.fine_tune_checkpoint_type = 'classification'
       if train_config.fine_tune_checkpoint and hparams.load_pretrained:
+        if not train_config.fine_tune_checkpoint_type:
+          # train_config.from_detection_checkpoint field is deprecated. For
+          # backward compatibility, set train_config.fine_tune_checkpoint_type
+          # based on train_config.from_detection_checkpoint.
+          if train_config.from_detection_checkpoint:
+            train_config.fine_tune_checkpoint_type = 'detection'
+          else:
+            train_config.fine_tune_checkpoint_type = 'classification'
         asg_map = detection_model.restore_map(
-            from_detection_checkpoint=train_config.from_detection_checkpoint,
+            fine_tune_checkpoint_type=train_config.fine_tune_checkpoint_type,
             load_all_detection_checkpoint_vars=(
                 train_config.load_all_detection_checkpoint_vars))
         available_var_map = (
@@ -258,6 +289,15 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       losses_dict = detection_model.loss(
           prediction_dict, features[fields.InputDataFields.true_image_shape])
       losses = [loss_tensor for loss_tensor in losses_dict.itervalues()]
+      if train_config.add_regularization_loss:
+        regularization_losses = tf.get_collection(
+            tf.GraphKeys.REGULARIZATION_LOSSES)
+        if regularization_losses:
+          regularization_loss = tf.add_n(regularization_losses,
+                                         name='regularization_loss')
+          losses.append(regularization_loss)
+          if not use_tpu:
+            tf.summary.scalar('regularization_loss', regularization_loss)
       total_loss = tf.add_n(losses, name='total_loss')
 
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -306,8 +346,12 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       class_agnostic = (fields.DetectionResultFields.detection_classes
                         not in detections)
       groundtruth = _get_groundtruth_data(detection_model, class_agnostic)
+      use_original_images = fields.InputDataFields.original_image in features
+      eval_images = (
+          features[fields.InputDataFields.original_image] if use_original_images
+          else features[fields.InputDataFields.image])
       eval_dict = eval_util.result_dict_for_single_example(
-          tf.expand_dims(features[fields.InputDataFields.original_image][0], 0),
+          eval_images[0:1],
           features[inputs.HASH_KEY][0],
           detections,
           groundtruth,
@@ -319,24 +363,21 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       else:
         category_index = label_map_util.create_category_index_from_labelmap(
             eval_input_config.label_map_path)
-      detection_and_groundtruth = vis_utils.draw_side_by_side_evaluation_image(
-          eval_dict, category_index, max_boxes_to_draw=20, min_score_thresh=0.2)
-      if not use_tpu:
+      if not use_tpu and use_original_images:
+        detection_and_groundtruth = (
+            vis_utils.draw_side_by_side_evaluation_image(
+                eval_dict, category_index, max_boxes_to_draw=20,
+                min_score_thresh=0.2))
         tf.summary.image('Detections_Left_Groundtruth_Right',
                          detection_and_groundtruth)
 
       # Eval metrics on a single image.
-      detection_fields = fields.DetectionResultFields()
-      input_data_fields = fields.InputDataFields()
-      coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
-          category_index.values())
-      eval_metric_ops = coco_evaluator.get_estimator_eval_metric_ops(
-          image_id=eval_dict[input_data_fields.key],
-          groundtruth_boxes=eval_dict[input_data_fields.groundtruth_boxes],
-          groundtruth_classes=eval_dict[input_data_fields.groundtruth_classes],
-          detection_boxes=eval_dict[detection_fields.detection_boxes],
-          detection_scores=eval_dict[detection_fields.detection_scores],
-          detection_classes=eval_dict[detection_fields.detection_classes])
+      eval_metrics = eval_config.metrics_set
+      if not eval_metrics:
+        eval_metrics = ['coco_detection_metrics']
+      eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
+          eval_metrics, category_index.values(), eval_dict,
+          include_metrics_per_category=False)
 
     if use_tpu:
       return tf.contrib.tpu.TPUEstimatorSpec(
@@ -359,7 +400,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
   return model_fn
 
 
-def _build_experiment_fn(train_steps, eval_steps):
+def build_experiment_fn(train_steps, eval_steps):
   """Returns a function that creates an `Experiment`."""
 
   def build_experiment(run_config, hparams):
@@ -411,8 +452,18 @@ def populate_experiment(run_config,
     An `Experiment` that defines all aspects of training, evaluation, and
     export.
   """
-  configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
-  configs = config_util.merge_external_params_with_configs(
+  get_configs_from_pipeline_file = MODEL_BUILD_UTIL_MAP[
+      'get_configs_from_pipeline_file']
+  create_pipeline_proto_from_configs = MODEL_BUILD_UTIL_MAP[
+      'create_pipeline_proto_from_configs']
+  merge_external_params_with_configs = MODEL_BUILD_UTIL_MAP[
+      'merge_external_params_with_configs']
+  create_train_input_fn = MODEL_BUILD_UTIL_MAP['create_train_input_fn']
+  create_eval_input_fn = MODEL_BUILD_UTIL_MAP['create_eval_input_fn']
+  create_predict_input_fn = MODEL_BUILD_UTIL_MAP['create_predict_input_fn']
+
+  configs = get_configs_from_pipeline_file(pipeline_config_path)
+  configs = merge_external_params_with_configs(
       configs,
       hparams,
       train_steps=train_steps,
@@ -424,28 +475,28 @@ def populate_experiment(run_config,
   eval_config = configs['eval_config']
   eval_input_config = configs['eval_input_config']
 
-  if train_steps is None:
-    train_steps = train_config.num_steps if train_config.num_steps else None
+  if train_steps is None and train_config.num_steps:
+    train_steps = train_config.num_steps
 
-  if eval_steps is None:
-    eval_steps = eval_config.num_examples if eval_config.num_examples else None
+  if eval_steps is None and eval_config.num_examples:
+    eval_steps = eval_config.num_examples
 
   detection_model_fn = functools.partial(
       model_builder.build, model_config=model_config)
 
   # Create the input functions for TRAIN/EVAL.
-  train_input_fn = inputs.create_train_input_fn(
+  train_input_fn = create_train_input_fn(
       train_config=train_config,
       train_input_config=train_input_config,
       model_config=model_config)
-  eval_input_fn = inputs.create_eval_input_fn(
+  eval_input_fn = create_eval_input_fn(
       eval_config=eval_config,
       eval_input_config=eval_input_config,
       model_config=model_config)
 
   export_strategies = [
       tf.contrib.learn.utils.saved_model_export_utils.make_export_strategy(
-          serving_input_fn=inputs.create_predict_input_fn(
+          serving_input_fn=create_predict_input_fn(
               model_config=model_config))
   ]
 
@@ -455,8 +506,10 @@ def populate_experiment(run_config,
 
   if run_config.is_chief:
     # Store the final pipeline config for traceability.
-    pipeline_config_final = config_util.create_pipeline_proto_from_configs(
+    pipeline_config_final = create_pipeline_proto_from_configs(
         configs)
+    if not file_io.file_exists(estimator.model_dir):
+      file_io.recursive_create_dir(estimator.model_dir)
     pipeline_config_final_path = os.path.join(estimator.model_dir,
                                               'pipeline.config')
     config_text = text_format.MessageToString(pipeline_config_final)
@@ -480,8 +533,8 @@ def main(unused_argv):
   tf.flags.mark_flag_as_required('pipeline_config_path')
   config = tf.contrib.learn.RunConfig(model_dir=FLAGS.model_dir)
   learn_runner.run(
-      experiment_fn=_build_experiment_fn(FLAGS.num_train_steps,
-                                         FLAGS.num_eval_steps),
+      experiment_fn=build_experiment_fn(FLAGS.num_train_steps,
+                                        FLAGS.num_eval_steps),
       run_config=config,
       hparams=model_hparams.create_hparams())
 

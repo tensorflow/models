@@ -61,20 +61,28 @@ class MockAnchorGenerator2x2(anchor_generator.AnchorGenerator):
     return [1]
 
   def _generate(self, feature_map_shape_list, im_height, im_width):
-    return box_list.BoxList(
+    return [box_list.BoxList(
         tf.constant([[0, 0, .5, .5],
                      [0, .5, .5, 1],
                      [.5, 0, 1, .5],
                      [1., 1., 1.5, 1.5]  # Anchor that is outside clip_window.
-                    ], tf.float32))
+                    ], tf.float32))]
 
   def num_anchors(self):
     return 4
 
 
+def _get_value_for_matching_key(dictionary, suffix):
+  for key in dictionary.keys():
+    if key.endswith(suffix):
+      return dictionary[key]
+  raise ValueError('key not found {}'.format(suffix))
+
+
 class SsdMetaArchTest(test_case.TestCase):
 
-  def _create_model(self, apply_hard_mining=True):
+  def _create_model(self, apply_hard_mining=True,
+                    normalize_loc_loss_by_codesize=False):
     is_training = False
     num_classes = 1
     mock_anchor_generator = MockAnchorGenerator2x2()
@@ -98,6 +106,7 @@ class SsdMetaArchTest(test_case.TestCase):
         max_total_size=5)
     classification_loss_weight = 1.0
     localization_loss_weight = 1.0
+    negative_class_weight = 1.0
     normalize_loss_by_num_matches = False
 
     hard_example_miner = None
@@ -111,10 +120,11 @@ class SsdMetaArchTest(test_case.TestCase):
     model = ssd_meta_arch.SSDMetaArch(
         is_training, mock_anchor_generator, mock_box_predictor, mock_box_coder,
         fake_feature_extractor, mock_matcher, region_similarity_calculator,
-        encode_background_as_zeros, image_resizer_fn, non_max_suppression_fn,
-        tf.identity, classification_loss, localization_loss,
-        classification_loss_weight, localization_loss_weight,
-        normalize_loss_by_num_matches, hard_example_miner, add_summaries=False)
+        encode_background_as_zeros, negative_class_weight, image_resizer_fn,
+        non_max_suppression_fn, tf.identity, classification_loss,
+        localization_loss, classification_loss_weight, localization_loss_weight,
+        normalize_loss_by_num_matches, hard_example_miner, add_summaries=False,
+        normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize)
     return model, num_classes, mock_anchor_generator.num_anchors(), code_size
 
   def test_preprocess_preserves_shapes_with_dynamic_input_image(self):
@@ -267,7 +277,9 @@ class SsdMetaArchTest(test_case.TestCase):
       prediction_dict = model.predict(preprocessed_tensor,
                                       true_image_shapes=None)
       loss_dict = model.loss(prediction_dict, true_image_shapes=None)
-      return (loss_dict['localization_loss'], loss_dict['classification_loss'])
+      return (
+          _get_value_for_matching_key(loss_dict, 'Loss/localization_loss'),
+          _get_value_for_matching_key(loss_dict, 'Loss/classification_loss'))
 
     batch_size = 2
     preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
@@ -287,6 +299,37 @@ class SsdMetaArchTest(test_case.TestCase):
     self.assertAllClose(localization_loss, expected_localization_loss)
     self.assertAllClose(classification_loss, expected_classification_loss)
 
+  def test_loss_results_are_correct_with_normalize_by_codesize_true(self):
+
+    with tf.Graph().as_default():
+      _, _, _, _ = self._create_model()
+    def graph_fn(preprocessed_tensor, groundtruth_boxes1, groundtruth_boxes2,
+                 groundtruth_classes1, groundtruth_classes2):
+      groundtruth_boxes_list = [groundtruth_boxes1, groundtruth_boxes2]
+      groundtruth_classes_list = [groundtruth_classes1, groundtruth_classes2]
+      model, _, _, _ = self._create_model(apply_hard_mining=False,
+                                          normalize_loc_loss_by_codesize=True)
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list)
+      prediction_dict = model.predict(preprocessed_tensor,
+                                      true_image_shapes=None)
+      loss_dict = model.loss(prediction_dict, true_image_shapes=None)
+      return (_get_value_for_matching_key(loss_dict, 'Loss/localization_loss'),)
+
+    batch_size = 2
+    preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
+    groundtruth_boxes1 = np.array([[0, 0, 1, 1]], dtype=np.float32)
+    groundtruth_boxes2 = np.array([[0, 0, 1, 1]], dtype=np.float32)
+    groundtruth_classes1 = np.array([[1]], dtype=np.float32)
+    groundtruth_classes2 = np.array([[1]], dtype=np.float32)
+    expected_localization_loss = 0.5 / 4
+    localization_loss = self.execute(graph_fn, [preprocessed_input,
+                                                groundtruth_boxes1,
+                                                groundtruth_boxes2,
+                                                groundtruth_classes1,
+                                                groundtruth_classes2])
+    self.assertAllClose(localization_loss, expected_localization_loss)
+
   def test_loss_results_are_correct_with_hard_example_mining(self):
 
     with tf.Graph().as_default():
@@ -301,7 +344,9 @@ class SsdMetaArchTest(test_case.TestCase):
       prediction_dict = model.predict(preprocessed_tensor,
                                       true_image_shapes=None)
       loss_dict = model.loss(prediction_dict, true_image_shapes=None)
-      return (loss_dict['localization_loss'], loss_dict['classification_loss'])
+      return (
+          _get_value_for_matching_key(loss_dict, 'Loss/localization_loss'),
+          _get_value_for_matching_key(loss_dict, 'Loss/classification_loss'))
 
     batch_size = 2
     preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
@@ -332,7 +377,7 @@ class SsdMetaArchTest(test_case.TestCase):
       sess.run(init_op)
       saved_model_path = saver.save(sess, save_path)
       var_map = model.restore_map(
-          from_detection_checkpoint=True,
+          fine_tune_checkpoint_type='detection',
           load_all_detection_checkpoint_vars=False)
       self.assertIsInstance(var_map, dict)
       saver = tf.train.Saver(var_map)
@@ -368,7 +413,7 @@ class SsdMetaArchTest(test_case.TestCase):
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       model.postprocess(prediction_dict, true_image_shapes)
       another_variable = tf.Variable([17.0], name='another_variable')  # pylint: disable=unused-variable
-      var_map = model.restore_map(from_detection_checkpoint=False)
+      var_map = model.restore_map(fine_tune_checkpoint_type='classification')
       self.assertNotIn('another_variable', var_map)
       self.assertIsInstance(var_map, dict)
       saver = tf.train.Saver(var_map)
@@ -389,7 +434,7 @@ class SsdMetaArchTest(test_case.TestCase):
       model.postprocess(prediction_dict, true_image_shapes)
       another_variable = tf.Variable([17.0], name='another_variable')  # pylint: disable=unused-variable
       var_map = model.restore_map(
-          from_detection_checkpoint=True,
+          fine_tune_checkpoint_type='detection',
           load_all_detection_checkpoint_vars=True)
       self.assertIsInstance(var_map, dict)
       self.assertIn('another_variable', var_map)

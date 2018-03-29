@@ -185,7 +185,7 @@ class ResnetUtilsTest(tf.test.TestCase):
         'tiny/block2/unit_2/bottleneck_v2/conv1',
         'tiny/block2/unit_2/bottleneck_v2/conv2',
         'tiny/block2/unit_2/bottleneck_v2/conv3']
-    self.assertItemsEqual(expected, end_points)
+    self.assertItemsEqual(expected, end_points.keys())
 
   def _stack_blocks_nondense(self, net, blocks):
     """A simplified ResNet Block stacker without output stride control."""
