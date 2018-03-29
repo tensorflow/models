@@ -234,7 +234,7 @@ def create_train_input_fn(train_config, train_input_config,
         features[fields.InputDataFields.true_image_shape] is a [batch_size, 3]
           int32 tensor representing the true image shapes, as preprocessed
           images could be padded.
-        features[fields.InputDataFields.image] (optional) is a
+        features[fields.InputDataFields.original_image] (optional) is a
           [batch_size, H, W, C] float32 tensor with original images.
       labels: Dictionary of groundtruth tensors.
         labels[fields.InputDataFields.num_groundtruth_boxes] is a [batch_size]

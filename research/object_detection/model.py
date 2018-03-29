@@ -225,7 +225,14 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           labels,
           unpad_groundtruth_tensors=train_config.unpad_groundtruth_tensors)
     elif mode == tf.estimator.ModeKeys.EVAL:
-      labels = unstack_batch(labels, unpad_groundtruth_tensors=False)
+      # For evaling on train data, it is necessary to check whether groundtruth
+      # must be unpadded.
+      boxes_shape = (
+          labels[fields.InputDataFields.groundtruth_boxes].get_shape()
+          .as_list())
+      unpad_groundtruth_tensors = True if boxes_shape[1] is not None else False
+      labels = unstack_batch(
+          labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
       gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
