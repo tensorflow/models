@@ -517,6 +517,18 @@ class MobilenetV1Test(tf.test.TestCase):
       logits_out = sess.run(logits)
       self.assertListEqual(list(logits_out.shape), [1, 1, 1, num_classes])
 
+  def testBatchNormScopeDoesNotHaveIsTrainingWhenItsSetToNone(self):
+    sc = mobilenet_v1.mobilenet_v1_arg_scope(is_training=None)
+    self.assertNotIn('is_training', sc[slim.arg_scope_func_key(
+        slim.batch_norm)])
+
+  def testBatchNormScopeDoesHasIsTrainingWhenItsNotNone(self):
+    sc = mobilenet_v1.mobilenet_v1_arg_scope(is_training=True)
+    self.assertIn('is_training', sc[slim.arg_scope_func_key(slim.batch_norm)])
+    sc = mobilenet_v1.mobilenet_v1_arg_scope(is_training=False)
+    self.assertIn('is_training', sc[slim.arg_scope_func_key(slim.batch_norm)])
+    sc = mobilenet_v1.mobilenet_v1_arg_scope()
+    self.assertIn('is_training', sc[slim.arg_scope_func_key(slim.batch_norm)])
 
 if __name__ == '__main__':
   tf.test.main()

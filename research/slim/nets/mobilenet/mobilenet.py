@@ -396,7 +396,8 @@ def training_scope(is_training=True,
     is_training: if set to False this will ensure that all customizations are
     set to non-training mode. This might be helpful for code that is reused
     across both training/evaluation, but most of the time training_scope with
-    value False is not needed.
+    value False is not needed. If this is set to None, the parameters is not
+    added to the batch_norm arg_scope.
 
     weight_decay: The weight decay to use for regularizing the model.
     stddev: Standard deviation for initialization, if negative uses xavier.
@@ -409,9 +410,10 @@ def training_scope(is_training=True,
   # Note: do not introduce parameters that would change the inference
   # model here (for example whether to use bias), modify conv_def instead.
   batch_norm_params = {
-      'is_training': is_training,
       'decay': bn_decay,
   }
+  if is_training is not None:
+    batch_norm_params['is_training'] = is_training
 
   if stddev < 0:
     weight_intitializer = slim.initializers.xavier_initializer()

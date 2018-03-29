@@ -434,7 +434,8 @@ def mobilenet_v1_arg_scope(is_training=True,
   """Defines the default MobilenetV1 arg scope.
 
   Args:
-    is_training: Whether or not we're training the model.
+    is_training: Whether or not we're training the model. If this is set to
+      None, the parameter is not added to the batch_norm arg_scope.
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
     regularize_depthwise: Whether or not apply regularization on depthwise.
@@ -446,12 +447,13 @@ def mobilenet_v1_arg_scope(is_training=True,
     An `arg_scope` to use for the mobilenet v1 model.
   """
   batch_norm_params = {
-      'is_training': is_training,
       'center': True,
       'scale': True,
       'decay': batch_norm_decay,
       'epsilon': batch_norm_epsilon,
   }
+  if is_training is not None:
+    batch_norm_params['is_training'] = is_training
 
   # Set weight_decay for weights in Conv and DepthSepConv layers.
   weights_init = tf.truncated_normal_initializer(stddev=stddev)
