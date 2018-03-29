@@ -110,6 +110,23 @@ class ConfigUtilTest(tf.test.TestCase):
         config_util.create_pipeline_proto_from_configs(configs))
     self.assertEqual(pipeline_config, pipeline_config_reconstructed)
 
+  def test_save_pipeline_config(self):
+    """Tests that the pipeline config is properly saved to disk."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.model.faster_rcnn.num_classes = 10
+    pipeline_config.train_config.batch_size = 32
+    pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
+    pipeline_config.eval_config.num_examples = 20
+    pipeline_config.eval_input_reader.queue_capacity = 100
+
+    config_util.save_pipeline_config(pipeline_config, self.get_temp_dir())
+    configs = config_util.get_configs_from_pipeline_file(
+        os.path.join(self.get_temp_dir(), "pipeline.config"))
+    pipeline_config_reconstructed = (
+        config_util.create_pipeline_proto_from_configs(configs))
+
+    self.assertEqual(pipeline_config, pipeline_config_reconstructed)
+
   def test_get_configs_from_multiple_files(self):
     """Tests that proto configs can be read from multiple files."""
     temp_dir = self.get_temp_dir()
