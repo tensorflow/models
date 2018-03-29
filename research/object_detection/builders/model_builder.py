@@ -159,8 +159,9 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
 
   # Feature extractor
   feature_extractor = _build_ssd_feature_extractor(
-      ssd_config.feature_extractor, is_training,
-      ssd_config.inplace_batchnorm_update)
+      feature_extractor_config=ssd_config.feature_extractor,
+      is_training=is_training,
+      inplace_batchnorm_update=ssd_config.inplace_batchnorm_update)
 
   box_coder = box_coder_builder.build(ssd_config.box_coder)
   matcher = matcher_builder.build(ssd_config.matcher)
