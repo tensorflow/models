@@ -205,6 +205,7 @@ py_library(
         ":nasnet",
         ":overfeat",
         ":pix2pix",
+        ":pnasnet",
         ":resnet_v1",
         ":resnet_v2",
         ":vgg",
@@ -434,7 +435,6 @@ py_library(
     srcs = glob(["nets/mobilenet/*.py"]),
     srcs_version = "PY2AND3",
     deps = [
-        "//third_party/py/contextlib2",
         # "//tensorflow",
     ],
 )
@@ -530,6 +530,29 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":nasnet",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "pnasnet",
+    srcs = ["nets/nasnet/pnasnet.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet",
+        ":nasnet_utils",
+        # "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "pnasnet_test",
+    size = "large",
+    srcs = ["nets/nasnet/pnasnet_test.py"],
+    shard_count = 4,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":pnasnet",
         # "//tensorflow",
     ],
 )

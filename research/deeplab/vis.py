@@ -54,8 +54,8 @@ flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                      'How often (in seconds) to run evaluation.')
 
 # For `xception_65`, use atrous_rates = [12, 24, 36] if output_stride = 8, or
-# rates = [6, 12, 18] if output_stride = 16. Note one could use different
-# atrous_rates/output_stride during training/evaluation.
+# rates = [6, 12, 18] if output_stride = 16. For `mobilenet_v2`, use None. Note
+# one could use different atrous_rates/output_stride during training/evaluation.
 flags.DEFINE_multi_integer('atrous_rates', None,
                            'Atrous rates for atrous spatial pyramid pooling.')
 
