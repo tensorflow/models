@@ -21,6 +21,7 @@ import os
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.utils.testing import integration
 from official.wide_deep import wide_deep
 
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -53,6 +54,14 @@ class BaseTest(tf.test.TestCase):
     self.input_csv = os.path.join(self.temp_dir, 'test.csv')
     with tf.gfile.Open(self.input_csv, 'w') as temp_csv:
       temp_csv.write(TEST_INPUT)
+
+    with tf.gfile.Open(TEST_CSV, "r") as temp_csv:
+      test_csv_contents = temp_csv.read()
+
+    # Used for end-to-end tests.
+    for fname in ['adult.data', 'adult.test']:
+      with tf.gfile.Open(os.path.join(self.temp_dir, fname), 'w') as test_csv:
+        test_csv.write(test_csv_contents)
 
   def test_input_fn(self):
     dataset = wide_deep.input_fn(self.input_csv, 1, False, 1)
@@ -106,6 +115,30 @@ class BaseTest(tf.test.TestCase):
 
   def test_wide_deep_estimator_training(self):
     self.build_and_test_estimator('wide_deep')
+
+  def test_end_to_end_wide(self):
+    integration.run_synthetic(
+        main=wide_deep.main, tmp_root=self.get_temp_dir(), extra_flags=[
+            '--data_dir', self.get_temp_dir(),
+            '--model_type', 'wide',
+        ],
+        synth=False, max_train=None)
+
+  def test_end_to_end_deep(self):
+    integration.run_synthetic(
+        main=wide_deep.main, tmp_root=self.get_temp_dir(), extra_flags=[
+            '--data_dir', self.get_temp_dir(),
+            '--model_type', 'deep',
+        ],
+        synth=False, max_train=None)
+
+  def test_end_to_end_wide_deep(self):
+    integration.run_synthetic(
+        main=wide_deep.main, tmp_root=self.get_temp_dir(), extra_flags=[
+            '--data_dir', self.get_temp_dir(),
+            '--model_type', 'wide_deep',
+        ],
+        synth=False, max_train=None)
 
 
 if __name__ == '__main__':

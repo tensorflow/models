@@ -26,7 +26,7 @@ import sys
 import tempfile
 
 
-def run_synthetic(main, tmp_root, extra_flags=None):
+def run_synthetic(main, tmp_root, extra_flags=None, synth=True, max_train=1):
   """Performs a minimal run of a model.
 
     This function is intended to test for syntax errors throughout a model. A
@@ -37,6 +37,8 @@ def run_synthetic(main, tmp_root, extra_flags=None):
       function is "<MODULE>.main(argv)".
     tmp_root: Root path for the temp directory created by the test class.
     extra_flags: Additional flags passed by the caller of this function.
+    synth: Use synthetic data.
+    max_train: Maximum number of allowed training steps.
   """
 
   extra_flags = [] if extra_flags is None else extra_flags
@@ -44,8 +46,13 @@ def run_synthetic(main, tmp_root, extra_flags=None):
   model_dir = tempfile.mkdtemp(dir=tmp_root)
 
   args = [sys.argv[0], "--model_dir", model_dir, "--train_epochs", "1",
-          "--epochs_between_evals", "1", "--use_synthetic_data",
-          "--max_train_steps", "1"] + extra_flags
+          "--epochs_between_evals", "1"] + extra_flags
+
+  if synth:
+    args.append("--use_synthetic_data")
+
+  if max_train is not None:
+    args.extend(["--max_train_steps", str(max_train)])
 
   try:
     main(args)
