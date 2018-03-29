@@ -180,88 +180,66 @@ class BaseTest(tf.test.TestCase):
   def test_tensor_shapes_resnet_200_with_gpu_v2(self):
     self.tensor_shapes_helper(200, version=2, with_gpu=True)
 
-  def _resnet_model_fn_helper(self, mode, version, dtype, multi_gpu):
+  def resnet_model_fn_helper(self, mode, version, dtype):
     """Tests that the EstimatorSpec is given the appropriate arguments."""
-    with tf.Graph().as_default() as g:
-      tf.train.create_global_step()
+    tf.train.create_global_step()
 
-      input_fn = imagenet_main.get_synth_input_fn()
-      dataset = input_fn(True, '', _BATCH_SIZE)
-      iterator = dataset.make_one_shot_iterator()
-      features, labels = iterator.get_next()
-      spec = imagenet_main.imagenet_model_fn(
-          features, labels, mode, {
-              'dtype': dtype,
-              'resnet_size': 50,
-              'data_format': 'channels_last',
-              'batch_size': _BATCH_SIZE,
-              'version': version,
-              'loss_scale': 128 if dtype == tf.float16 else 1,
-              'multi_gpu': multi_gpu,
-          })
+    input_fn = imagenet_main.get_synth_input_fn()
+    dataset = input_fn(True, '', _BATCH_SIZE)
+    iterator = dataset.make_one_shot_iterator()
+    features, labels = iterator.get_next()
+    spec = imagenet_main.imagenet_model_fn(
+        features, labels, mode, {
+            'dtype': dtype,
+            'resnet_size': 50,
+            'data_format': 'channels_last',
+            'batch_size': _BATCH_SIZE,
+            'version': version,
+            'loss_scale': 128 if dtype == tf.float16 else 1,
+        })
 
-      predictions = spec.predictions
-      self.assertAllEqual(predictions['probabilities'].shape,
-                          (_BATCH_SIZE, _LABEL_CLASSES))
-      self.assertEqual(predictions['probabilities'].dtype, tf.float32)
-      self.assertAllEqual(predictions['classes'].shape, (_BATCH_SIZE,))
-      self.assertEqual(predictions['classes'].dtype, tf.int64)
+    predictions = spec.predictions
+    self.assertAllEqual(predictions['probabilities'].shape,
+                        (_BATCH_SIZE, _LABEL_CLASSES))
+    self.assertEqual(predictions['probabilities'].dtype, tf.float32)
+    self.assertAllEqual(predictions['classes'].shape, (_BATCH_SIZE,))
+    self.assertEqual(predictions['classes'].dtype, tf.int64)
 
-      if mode != tf.estimator.ModeKeys.PREDICT:
-        loss = spec.loss
-        self.assertAllEqual(loss.shape, ())
-        self.assertEqual(loss.dtype, tf.float32)
+    if mode != tf.estimator.ModeKeys.PREDICT:
+      loss = spec.loss
+      self.assertAllEqual(loss.shape, ())
+      self.assertEqual(loss.dtype, tf.float32)
 
-      if mode == tf.estimator.ModeKeys.EVAL:
-        eval_metric_ops = spec.eval_metric_ops
-        self.assertAllEqual(eval_metric_ops['accuracy'][0].shape, ())
-        self.assertAllEqual(eval_metric_ops['accuracy'][1].shape, ())
-        self.assertEqual(eval_metric_ops['accuracy'][0].dtype, tf.float32)
-        self.assertEqual(eval_metric_ops['accuracy'][1].dtype, tf.float32)
-
-        tensors_to_check = ('initial_conv:0', 'initial_max_pool:0',
-                            'block_layer1:0', 'block_layer2:0',
-                            'block_layer3:0', 'block_layer4:0',
-                            'final_reduce_mean:0', 'final_dense:0')
-
-        for tensor_name in tensors_to_check:
-          tensor = g.get_tensor_by_name('resnet_model/' + tensor_name)
-          self.assertEqual(tensor.dtype, dtype,
-                           'Tensor {} has dtype {}, while dtype {} was '
-                           'expected'.format(tensor, tensor.dtype,
-                                             dtype))
-
-  def resnet_model_fn_helper(self, mode, version, multi_gpu=False):
-    self._resnet_model_fn_helper(mode=mode, version=version, dtype=tf.float32,
-                                 multi_gpu=multi_gpu)
-    self._resnet_model_fn_helper(mode=mode, version=version, dtype=tf.float16,
-                                 multi_gpu=multi_gpu)
+    if mode == tf.estimator.ModeKeys.EVAL:
+      eval_metric_ops = spec.eval_metric_ops
+      self.assertAllEqual(eval_metric_ops['accuracy'][0].shape, ())
+      self.assertAllEqual(eval_metric_ops['accuracy'][1].shape, ())
+      self.assertEqual(eval_metric_ops['accuracy'][0].dtype, tf.float32)
+      self.assertEqual(eval_metric_ops['accuracy'][1].dtype, tf.float32)
 
   def test_resnet_model_fn_train_mode_v1(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=1)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=1,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_train_mode_v2(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=2)
-
-  def test_resnet_model_fn_train_mode_multi_gpu_v1(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=1,
-                                multi_gpu=True)
-
-  def test_resnet_model_fn_train_mode_multi_gpu_v2(self):
     self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=2,
-                                multi_gpu=True)
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_eval_mode_v1(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=1)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=1,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_eval_mode_v2(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=2)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=2,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_predict_mode_v1(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=1)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=1,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_predict_mode_v2(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=2)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=2,
+                                dtype=tf.float32)
 
   def _test_imagenetmodel_shape(self, version):
     batch_size = 135
