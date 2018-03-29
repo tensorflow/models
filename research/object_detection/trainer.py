@@ -352,6 +352,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     # Save checkpoints regularly.
     keep_checkpoint_every_n_hours = train_config.keep_checkpoint_every_n_hours
     saver = tf.train.Saver(
+        max_to_keep=train_config.max_checkpoints_to_keep,
         keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours)
 
     slim.learning.train(
@@ -365,6 +366,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
         summary_op=summary_op,
         number_of_steps=(
             train_config.num_steps if train_config.num_steps else None),
-        save_summaries_secs=120,
+        save_summaries_secs=save_interval_secs=train_config.save_summaries_secs,
+        save_interval_secs=train_config.checkpoint_save_interval_secs,
         sync_optimizer=sync_optimizer,
         saver=saver)
