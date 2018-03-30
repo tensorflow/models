@@ -173,7 +173,7 @@ def _process_batch(sess, original_images, semantic_predictions, image_names,
         colormap_type=FLAGS.colormap_type)
 
     if FLAGS.also_save_raw_predictions:
-      image_filename = image_names[i]
+      image_filename = os.path.basename(image_names[i])
 
       if train_id_to_eval_id is not None:
         crop_semantic_prediction = _convert_train_id_to_eval_id(
