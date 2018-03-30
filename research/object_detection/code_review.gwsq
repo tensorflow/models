@@ -1,8 +1,0 @@
-send_cls_to('object-detection-reviews');
-
-#define TEAM_LIST ['jonathanhuang', 'rathodv', 'ronnyvotel', 'alirezafathi', \
-                   'menglong', 'lzc']
-
-define Main {
-  reassign_to_list(choose_n(2, TEAM_LIST));
-}
