@@ -29,6 +29,7 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 * Jonathan Huang, github: [jch1](https://github.com/jch1)
 * Vivek Rathod, github: [tombstone](https://github.com/tombstone)
+* Ronny Votel, github: [ronnyvotel](https://github.com/ronnyvotel)
 * Derek Chow, github: [derekjchow](https://github.com/derekjchow)
 * Chen Sun, github: [jesu9](https://github.com/jesu9)
 * Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
