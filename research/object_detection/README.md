@@ -90,6 +90,15 @@ reporting an issue.
 
 ## Release information
 
+### April 2, 2018
+
+Supercharge your mobile phones with the next generation mobile object detector!
+We are adding support for MobileNet V2 with SSDLite presented in
+[MobileNetV2: Inverted Residuals and Linear Bottlenecks](https://arxiv.org/abs/1801.04381).
+Along with the model definition, we are also releasing a model checkpoint trained on COCO dataset.
+
+<b>Thanks to contributors</b>: Menglong Zhu, Mark Sandler, Zhichao Lu, Vivek Rathod, Jonathan Huang
+
 ### February 9, 2018
 
 We now support instance segmentation!!  In this API update we support a number of instance segmentation models similar to those discussed in the [Mask R-CNN paper](https://arxiv.org/abs/1703.06870). For further details refer to
