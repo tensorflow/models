@@ -34,16 +34,12 @@ FLAGS = tf.flags.FLAGS
 
 def _get_configs_for_model(model_name):
   """Returns configurations for model."""
-  fname = os.path.join(
-      FLAGS.test_srcdir,
-      ('google3/third_party/tensorflow_models/'
-       'object_detection/samples/configs/' + model_name + '.config'))
-  label_map_path = os.path.join(FLAGS.test_srcdir,
-                                ('google3/third_party/tensorflow_models/'
-                                 'object_detection/data/pet_label_map.pbtxt'))
-  data_path = os.path.join(FLAGS.test_srcdir,
-                           ('google3/third_party/tensorflow_models/'
-                            'object_detection/test_data/pets_examples.record'))
+  fname = os.path.join(tf.resource_loader.get_data_files_path(),
+                       'samples/configs/' + model_name + '.config')
+  label_map_path = os.path.join(tf.resource_loader.get_data_files_path(),
+                                'data/pet_label_map.pbtxt')
+  data_path = os.path.join(tf.resource_loader.get_data_files_path(),
+                           'test_data/pets_examples.record')
   configs = config_util.get_configs_from_pipeline_file(fname)
   return config_util.merge_external_params_with_configs(
       configs,
