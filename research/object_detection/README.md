@@ -95,7 +95,7 @@ reporting an issue.
 Supercharge your mobile phones with the next generation mobile object detector!
 We are adding support for MobileNet V2 with SSDLite presented in
 [MobileNetV2: Inverted Residuals and Linear Bottlenecks](https://arxiv.org/abs/1801.04381).
-Along with the model definition, we are also releasing a model checkpoint trained on COCO dataset.
+Along with the model definition, we are also releasing a model checkpoint trained on the COCO dataset.
 
 <b>Thanks to contributors</b>: Menglong Zhu, Mark Sandler, Zhichao Lu, Vivek Rathod, Jonathan Huang
 
