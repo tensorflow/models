@@ -329,10 +329,6 @@ def log_stats(graph_name, log_buffer, timings, batch_size):
     timings: list of floats, times produced for multiple runs that will be
       used for statistic calculation
     batch_size: int, number of examples per batch
-
-  Returns:
-    list of two floats representing frames per second and 99th percentile
-      time per batch
   """
   times = np.array(timings)
   steps = len(times)
@@ -356,8 +352,6 @@ def log_stats(graph_name, log_buffer, timings, batch_size):
              time_med, time_mean, time_99th, time_99th_uncertainty)
 
   log_buffer.write(msg)
-
-  return [speed_mean, time_99th]
 
 
 def time_and_log_graph(graph_name, graph_def, data, log_buffer, flags):
