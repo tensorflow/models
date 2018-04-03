@@ -14,9 +14,12 @@
 # ==============================================================================
 """Functions for reading and updating configuration files."""
 
+import os
 import tensorflow as tf
 
 from google.protobuf import text_format
+
+from tensorflow.python.lib.io import file_io
 
 from object_detection.protos import eval_pb2
 from object_detection.protos import input_reader_pb2
@@ -117,6 +120,24 @@ def create_pipeline_proto_from_configs(configs):
   pipeline_config.eval_config.CopyFrom(configs["eval_config"])
   pipeline_config.eval_input_reader.CopyFrom(configs["eval_input_config"])
   return pipeline_config
+
+
+def save_pipeline_config(pipeline_config, directory):
+  """Saves a pipeline config text file to disk.
+
+  Args:
+    pipeline_config: A pipeline_pb2.TrainEvalPipelineConfig.
+    directory: The model directory into which the pipeline config file will be
+      saved.
+  """
+  if not file_io.file_exists(directory):
+    file_io.recursive_create_dir(directory)
+  pipeline_config_path = os.path.join(directory, "pipeline.config")
+  config_text = text_format.MessageToString(pipeline_config)
+  with tf.gfile.Open(pipeline_config_path, "wb") as f:
+    tf.logging.info("Writing pipeline config file to %s",
+                    pipeline_config_path)
+    f.write(config_text)
 
 
 def get_configs_from_multiple_files(model_config_path="",

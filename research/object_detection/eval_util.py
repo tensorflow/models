@@ -79,7 +79,7 @@ def visualize_detection_results(result_dict,
       data corresponding to each image being evaluated.  The following keys
       are required:
         'original_image': a numpy array representing the image with shape
-          [1, height, width, 3]
+          [1, height, width, 3] or [1, height, width, 1]
         'detection_boxes': a numpy array of shape [N, 4]
         'detection_scores': a numpy array of shape [N]
         'detection_classes': a numpy array of shape [N]
@@ -133,6 +133,8 @@ def visualize_detection_results(result_dict,
   category_index = label_map_util.create_category_index(categories)
 
   image = np.squeeze(result_dict[input_fields.original_image], axis=0)
+  if image.shape[2] == 1:  # If one channel image, repeat in RGB.
+    image = np.tile(image, [1, 1, 3])
   detection_boxes = result_dict[detection_fields.detection_boxes]
   detection_scores = result_dict[detection_fields.detection_scores]
   detection_classes = np.int32((result_dict[
