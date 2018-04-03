@@ -25,8 +25,12 @@ import sys
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.arg_parsers import parsers
+<<<<<<< HEAD
 from official.utils.logging import hooks_helper
 from official.utils.misc import model_helpers
+=======
+from official.utils.logs import hooks_helper
+>>>>>>> origin
 
 _CSV_COLUMNS = [
     'age', 'workclass', 'fnlwgt', 'education', 'education_num',

@@ -58,7 +58,8 @@ def transform_input_data(tensor_dict,
   Data transformation functions are applied in the following order.
   1. data_augmentation_fn (optional): applied on tensor_dict.
   2. model_preprocess_fn: applied only on image tensor in tensor_dict.
-  3. image_resizer_fn: applied only on instance mask tensor in tensor_dict.
+  3. image_resizer_fn: applied on original image and instance mask tensor in
+     tensor_dict.
   4. one_hot_encoding: applied to classes tensor in tensor_dict.
   5. merge_multiple_boxes (optional): when groundtruth boxes are exactly the
      same they can be merged into a single box with an associated k-hot class
@@ -70,10 +71,11 @@ def transform_input_data(tensor_dict,
     model_preprocess_fn: model's preprocess function to apply on image tensor.
       This function must take in a 4-D float tensor and return a 4-D preprocess
       float tensor and a tensor containing the true image shape.
-    image_resizer_fn: image resizer function to apply on groundtruth instance
-      masks. This function must take a 4-D float tensor of image and a 4-D
-      tensor of instances masks and return resized version of these along with
-      the true shapes.
+    image_resizer_fn: image resizer function to apply on original image (if
+      `retain_original_image` is True) and groundtruth instance masks. This
+      function must take a 3-D float tensor of an image and a 3-D tensor of
+      instance masks and return a resized version of these along with the true
+      shapes.
     num_classes: number of max classes to one-hot (or k-hot) encode the class
       labels.
     data_augmentation_fn: (optional) data augmentation function to apply on
@@ -88,17 +90,19 @@ def transform_input_data(tensor_dict,
     after applying all the transformations.
   """
   if retain_original_image:
-    tensor_dict[fields.InputDataFields.
-                original_image] = tensor_dict[fields.InputDataFields.image]
+    original_image_resized, _ = image_resizer_fn(
+        tensor_dict[fields.InputDataFields.image])
+    tensor_dict[fields.InputDataFields.original_image] = tf.cast(
+        original_image_resized, tf.uint8)
 
   # Apply data augmentation ops.
   if data_augmentation_fn is not None:
     tensor_dict = data_augmentation_fn(tensor_dict)
 
   # Apply model preprocessing ops and resize instance masks.
-  image = tf.expand_dims(
-      tf.to_float(tensor_dict[fields.InputDataFields.image]), axis=0)
-  preprocessed_resized_image, true_image_shape = model_preprocess_fn(image)
+  image = tensor_dict[fields.InputDataFields.image]
+  preprocessed_resized_image, true_image_shape = model_preprocess_fn(
+      tf.expand_dims(tf.to_float(image), axis=0))
   tensor_dict[fields.InputDataFields.image] = tf.squeeze(
       preprocessed_resized_image, axis=0)
   tensor_dict[fields.InputDataFields.true_image_shape] = tf.squeeze(
@@ -156,6 +160,52 @@ def augment_input_data(tensor_dict, data_augmentation_options):
   return tensor_dict
 
 
+def _get_labels_dict(input_dict):
+  """Extracts labels dict from input dict."""
+  required_label_keys = [
+      fields.InputDataFields.num_groundtruth_boxes,
+      fields.InputDataFields.groundtruth_boxes,
+      fields.InputDataFields.groundtruth_classes,
+      fields.InputDataFields.groundtruth_weights
+  ]
+  labels_dict = {}
+  for key in required_label_keys:
+    labels_dict[key] = input_dict[key]
+
+  optional_label_keys = [
+      fields.InputDataFields.groundtruth_keypoints,
+      fields.InputDataFields.groundtruth_instance_masks,
+      fields.InputDataFields.groundtruth_area,
+      fields.InputDataFields.groundtruth_is_crowd,
+      fields.InputDataFields.groundtruth_difficult
+  ]
+
+  for key in optional_label_keys:
+    if key in input_dict:
+      labels_dict[key] = input_dict[key]
+  if fields.InputDataFields.groundtruth_difficult in labels_dict:
+    labels_dict[fields.InputDataFields.groundtruth_difficult] = tf.cast(
+        labels_dict[fields.InputDataFields.groundtruth_difficult], tf.int32)
+  return labels_dict
+
+
+def _get_features_dict(input_dict):
+  """Extracts features dict from input dict."""
+  hash_from_source_id = tf.string_to_hash_bucket_fast(
+      input_dict[fields.InputDataFields.source_id], HASH_BINS)
+  features = {
+      fields.InputDataFields.image:
+          input_dict[fields.InputDataFields.image],
+      HASH_KEY: tf.cast(hash_from_source_id, tf.int32),
+      fields.InputDataFields.true_image_shape:
+          input_dict[fields.InputDataFields.true_image_shape]
+  }
+  if fields.InputDataFields.original_image in input_dict:
+    features[fields.InputDataFields.original_image] = input_dict[
+        fields.InputDataFields.original_image]
+  return features
+
+
 def create_train_input_fn(train_config, train_input_config,
                           model_config):
   """Creates a train `input` function for `Estimator`.
@@ -184,6 +234,8 @@ def create_train_input_fn(train_config, train_input_config,
         features[fields.InputDataFields.true_image_shape] is a [batch_size, 3]
           int32 tensor representing the true image shapes, as preprocessed
           images could be padded.
+        features[fields.InputDataFields.original_image] (optional) is a
+          [batch_size, H, W, C] float32 tensor with original images.
       labels: Dictionary of groundtruth tensors.
         labels[fields.InputDataFields.num_groundtruth_boxes] is a [batch_size]
           int32 tensor indicating the number of groundtruth boxes.
@@ -233,7 +285,8 @@ def create_train_input_fn(train_config, train_input_config,
         transform_input_data, model_preprocess_fn=model.preprocess,
         image_resizer_fn=image_resizer_fn,
         num_classes=config_util.get_number_of_classes(model_config),
-        data_augmentation_fn=data_augmentation_fn)
+        data_augmentation_fn=data_augmentation_fn,
+        retain_original_image=train_config.retain_original_images)
     dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         train_input_config,
         transform_input_data_fn=transform_data_fn,
@@ -242,35 +295,8 @@ def create_train_input_fn(train_config, train_input_config,
         num_classes=config_util.get_number_of_classes(model_config),
         spatial_image_shape=config_util.get_spatial_image_size(
             image_resizer_config))
-    tensor_dict = dataset_util.make_initializable_iterator(dataset).get_next()
-
-    hash_from_source_id = tf.string_to_hash_bucket_fast(
-        tensor_dict[fields.InputDataFields.source_id], HASH_BINS)
-    features = {
-        fields.InputDataFields.image: tensor_dict[fields.InputDataFields.image],
-        HASH_KEY: tf.cast(hash_from_source_id, tf.int32),
-        fields.InputDataFields.true_image_shape: tensor_dict[
-            fields.InputDataFields.true_image_shape]
-    }
-
-    labels = {
-        fields.InputDataFields.num_groundtruth_boxes: tensor_dict[
-            fields.InputDataFields.num_groundtruth_boxes],
-        fields.InputDataFields.groundtruth_boxes: tensor_dict[
-            fields.InputDataFields.groundtruth_boxes],
-        fields.InputDataFields.groundtruth_classes: tensor_dict[
-            fields.InputDataFields.groundtruth_classes],
-        fields.InputDataFields.groundtruth_weights: tensor_dict[
-            fields.InputDataFields.groundtruth_weights]
-    }
-    if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
-      labels[fields.InputDataFields.groundtruth_keypoints] = tensor_dict[
-          fields.InputDataFields.groundtruth_keypoints]
-    if fields.InputDataFields.groundtruth_instance_masks in tensor_dict:
-      labels[fields.InputDataFields.groundtruth_instance_masks] = tensor_dict[
-          fields.InputDataFields.groundtruth_instance_masks]
-
-    return features, labels
+    input_dict = dataset_util.make_initializable_iterator(dataset).get_next()
+    return (_get_features_dict(input_dict), _get_labels_dict(input_dict))
 
   return _train_input_fn
 
@@ -345,7 +371,7 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
         image_resizer_fn=image_resizer_fn,
         num_classes=num_classes,
         data_augmentation_fn=None,
-        retain_original_image=True)
+        retain_original_image=eval_config.retain_original_images)
     dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         eval_input_config,
         transform_input_data_fn=transform_data_fn,
@@ -355,36 +381,7 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
             image_resizer_config))
     input_dict = dataset_util.make_initializable_iterator(dataset).get_next()
 
-    hash_from_source_id = tf.string_to_hash_bucket_fast(
-        input_dict[fields.InputDataFields.source_id], HASH_BINS)
-    features = {
-        fields.InputDataFields.image:
-            input_dict[fields.InputDataFields.image],
-        fields.InputDataFields.original_image:
-            input_dict[fields.InputDataFields.original_image],
-        HASH_KEY: tf.cast(hash_from_source_id, tf.int32),
-        fields.InputDataFields.true_image_shape:
-            input_dict[fields.InputDataFields.true_image_shape]
-    }
-
-    labels = {
-        fields.InputDataFields.groundtruth_boxes:
-            input_dict[fields.InputDataFields.groundtruth_boxes],
-        fields.InputDataFields.groundtruth_classes:
-            input_dict[fields.InputDataFields.groundtruth_classes],
-        fields.InputDataFields.groundtruth_area:
-            input_dict[fields.InputDataFields.groundtruth_area],
-        fields.InputDataFields.groundtruth_is_crowd:
-            input_dict[fields.InputDataFields.groundtruth_is_crowd],
-        fields.InputDataFields.groundtruth_difficult:
-            tf.cast(input_dict[fields.InputDataFields.groundtruth_difficult],
-                    tf.int32)
-    }
-    if fields.InputDataFields.groundtruth_instance_masks in input_dict:
-      labels[fields.InputDataFields.groundtruth_instance_masks] = input_dict[
-          fields.InputDataFields.groundtruth_instance_masks]
-
-    return features, labels
+    return (_get_features_dict(input_dict), _get_labels_dict(input_dict))
 
   return _eval_input_fn
 

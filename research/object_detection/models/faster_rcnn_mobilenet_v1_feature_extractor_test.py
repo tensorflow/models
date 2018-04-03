@@ -44,7 +44,7 @@ class FasterRcnnMobilenetV1FeatureExtractorTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       features_shape_out = sess.run(features_shape)
-      self.assertAllEqual(features_shape_out, [4, 7, 7, 1024])
+      self.assertAllEqual(features_shape_out, [4, 14, 14, 512])
 
   def test_extract_proposal_features_stride_eight(self):
     feature_extractor = self._build_feature_extractor(
@@ -59,7 +59,7 @@ class FasterRcnnMobilenetV1FeatureExtractorTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       features_shape_out = sess.run(features_shape)
-      self.assertAllEqual(features_shape_out, [4, 7, 7, 1024])
+      self.assertAllEqual(features_shape_out, [4, 14, 14, 512])
 
   def test_extract_proposal_features_half_size_input(self):
     feature_extractor = self._build_feature_extractor(
@@ -74,7 +74,7 @@ class FasterRcnnMobilenetV1FeatureExtractorTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       features_shape_out = sess.run(features_shape)
-      self.assertAllEqual(features_shape_out, [1, 4, 4, 1024])
+      self.assertAllEqual(features_shape_out, [1, 7, 7, 512])
 
   def test_extract_proposal_features_dies_on_invalid_stride(self):
     with self.assertRaises(ValueError):

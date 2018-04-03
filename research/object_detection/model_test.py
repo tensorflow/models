@@ -32,20 +32,19 @@ from object_detection.builders import model_builder
 from object_detection.core import standard_fields as fields
 from object_detection.utils import config_util
 
-FLAGS = tf.flags.FLAGS
 
 MODEL_NAME_FOR_TEST = model_test_util.SSD_INCEPTION_MODEL_NAME
 
 
 def _get_data_path():
   """Returns an absolute path to TFRecord file."""
-  return os.path.join(FLAGS.test_srcdir, model_test_util.PATH_BASE, 'test_data',
+  return os.path.join(tf.resource_loader.get_data_files_path(), 'test_data',
                       'pets_examples.record')
 
 
 def _get_labelmap_path():
   """Returns an absolute path to label map file."""
-  return os.path.join(FLAGS.test_srcdir, model_test_util.PATH_BASE, 'data',
+  return os.path.join(tf.resource_loader.get_data_files_path(), 'data',
                       'pet_label_map.pbtxt')
 
 

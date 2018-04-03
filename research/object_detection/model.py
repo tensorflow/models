@@ -49,8 +49,8 @@ tf.flags.DEFINE_string('model_dir', None, 'Path to output model directory '
                        'where event and checkpoint files will be written.')
 tf.flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                        'file.')
-tf.flags.DEFINE_integer('num_train_steps', 500000, 'Number of train steps.')
-tf.flags.DEFINE_integer('num_eval_steps', 10000, 'Number of train steps.')
+tf.flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
+tf.flags.DEFINE_integer('num_eval_steps', None, 'Number of train steps.')
 FLAGS = tf.flags.FLAGS
 
 
@@ -225,7 +225,14 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           labels,
           unpad_groundtruth_tensors=train_config.unpad_groundtruth_tensors)
     elif mode == tf.estimator.ModeKeys.EVAL:
-      labels = unstack_batch(labels, unpad_groundtruth_tensors=False)
+      # For evaling on train data, it is necessary to check whether groundtruth
+      # must be unpadded.
+      boxes_shape = (
+          labels[fields.InputDataFields.groundtruth_boxes].get_shape()
+          .as_list())
+      unpad_groundtruth_tensors = True if boxes_shape[1] is not None else False
+      labels = unstack_batch(
+          labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
       gt_boxes_list = labels[fields.InputDataFields.groundtruth_boxes]
@@ -241,7 +248,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           groundtruth_boxes_list=gt_boxes_list,
           groundtruth_classes_list=gt_classes_list,
           groundtruth_masks_list=gt_masks_list,
-          groundtruth_keypoints_list=gt_keypoints_list)
+          groundtruth_keypoints_list=gt_keypoints_list,
+          groundtruth_weights_list=labels[
+              fields.InputDataFields.groundtruth_weights])
 
     preprocessed_images = features[fields.InputDataFields.image]
     prediction_dict = detection_model.predict(
@@ -250,14 +259,6 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         prediction_dict, features[fields.InputDataFields.true_image_shape])
 
     if mode == tf.estimator.ModeKeys.TRAIN:
-      if not train_config.fine_tune_checkpoint_type:
-        # train_config.from_detection_checkpoint field is deprecated. For
-        # backward compatibility, sets finetune_checkpoint_type based on
-        # from_detection_checkpoint.
-        if train_config.from_detection_checkpoint:
-          train_config.fine_tune_checkpoint_type = 'detection'
-        else:
-          train_config.fine_tune_checkpoint_type = 'classification'
       if train_config.fine_tune_checkpoint and hparams.load_pretrained:
         if not train_config.fine_tune_checkpoint_type:
           # train_config.from_detection_checkpoint field is deprecated. For
@@ -341,17 +342,16 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       }
 
     eval_metric_ops = None
-    if mode == tf.estimator.ModeKeys.EVAL:
-      # Detection summaries during eval.
+    if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
       class_agnostic = (fields.DetectionResultFields.detection_classes
                         not in detections)
       groundtruth = _get_groundtruth_data(detection_model, class_agnostic)
       use_original_images = fields.InputDataFields.original_image in features
-      eval_images = (
+      original_images = (
           features[fields.InputDataFields.original_image] if use_original_images
           else features[fields.InputDataFields.image])
       eval_dict = eval_util.result_dict_for_single_example(
-          eval_images[0:1],
+          original_images[0:1],
           features[inputs.HASH_KEY][0],
           detections,
           groundtruth,
@@ -363,21 +363,26 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       else:
         category_index = label_map_util.create_category_index_from_labelmap(
             eval_input_config.label_map_path)
+      img_summary = None
       if not use_tpu and use_original_images:
         detection_and_groundtruth = (
             vis_utils.draw_side_by_side_evaluation_image(
                 eval_dict, category_index, max_boxes_to_draw=20,
                 min_score_thresh=0.2))
-        tf.summary.image('Detections_Left_Groundtruth_Right',
-                         detection_and_groundtruth)
+        img_summary = tf.summary.image('Detections_Left_Groundtruth_Right',
+                                       detection_and_groundtruth)
 
-      # Eval metrics on a single image.
-      eval_metrics = eval_config.metrics_set
-      if not eval_metrics:
-        eval_metrics = ['coco_detection_metrics']
-      eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-          eval_metrics, category_index.values(), eval_dict,
-          include_metrics_per_category=False)
+      if mode == tf.estimator.ModeKeys.EVAL:
+        # Eval metrics on a single example.
+        eval_metrics = eval_config.metrics_set
+        if not eval_metrics:
+          eval_metrics = ['coco_detection_metrics']
+        eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
+            eval_metrics, category_index.values(), eval_dict,
+            include_metrics_per_category=False)
+        if img_summary is not None:
+          eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
+              img_summary, tf.no_op())
 
     if use_tpu:
       return tf.contrib.tpu.TPUEstimatorSpec(
