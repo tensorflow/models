@@ -61,7 +61,7 @@ variable-rgx=^[a-z][a-z0-9_]*$
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis. It
 # supports qualified module names, as well as Unix pattern matching.
-ignored-modules=official, official.*, tensorflow, tensorflow.*, LazyLoader
+ignored-modules=official, official.*, tensorflow, tensorflow.*, LazyLoader, google, google.cloud.*
 
 
 [CLASSES]

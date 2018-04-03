@@ -66,7 +66,7 @@ flags.DEFINE_integer('save_interval_secs', 1200,
 flags.DEFINE_integer('save_summaries_secs', 600,
                      'How often, in seconds, we compute the summaries.')
 
-# Settings for training strategry.
+# Settings for training strategy.
 
 flags.DEFINE_enum('learning_policy', 'poly', ['poly', 'step'],
                   'Learning rate policy for training.')
