@@ -131,7 +131,7 @@ class BaseParser(argparse.ArgumentParser):
                "of train hooks. "
                "Example: --hooks LoggingTensorHook ExamplesPerSecondHook. "
                "Allowed hook names (case-insensitive): LoggingTensorHook, "
-               "ProfilerHook, ExamplesPerSecondHook. "
+               "ProfilerHook, ExamplesPerSecondHook, LoggingMetricHook."
                "See official.utils.logging.hooks_helper for details.",
           metavar="<HK>"
       )
@@ -223,4 +223,71 @@ class ImageModelParser(argparse.ArgumentParser):
                "format will be chosen automatically based on whether TensorFlow"
                "was built for CPU or GPU.",
           metavar="<CF>"
+      )
+
+
+class ExportParser(argparse.ArgumentParser):
+  """Parsing options for exporting saved models or other graph defs.
+
+  This is a separate parser for now, but should be made part of BaseParser
+  once all models are brought up to speed.
+
+  Args:
+    add_help: Create the "--help" flag. False if class instance is a parent.
+    export_dir: Create a flag to specify where a SavedModel should be exported.
+  """
+
+  def __init__(self, add_help=False, export_dir=True):
+    super(ExportParser, self).__init__(add_help=add_help)
+    if export_dir:
+      self.add_argument(
+          "--export_dir", "-ed",
+          help="[default: %(default)s] If set, a SavedModel serialization of "
+               "the model will be exported to this directory at the end of "
+               "training. See the README for more details and relevant links.",
+          metavar="<ED>"
+      )
+
+
+class BenchmarkParser(argparse.ArgumentParser):
+  """Default parser for benchmark logging.
+
+  Args:
+    add_help: Create the "--help" flag. False if class instance is a parent.
+    benchmark_log_dir: Create a flag to specify location for benchmark logging.
+  """
+
+  def __init__(self, add_help=False, benchmark_log_dir=True,
+               bigquery_uploader=True):
+    super(BenchmarkParser, self).__init__(add_help=add_help)
+    if benchmark_log_dir:
+      self.add_argument(
+          "--benchmark_log_dir", "-bld", default=None,
+          help="[default: %(default)s] The location of the benchmark logging.",
+          metavar="<BLD>"
+      )
+    if bigquery_uploader:
+      self.add_argument(
+          "--gcp_project", "-gp", default=None,
+          help="[default: %(default)s] The GCP project name where the benchmark"
+               " will be uploaded.",
+          metavar="<GP>"
+      )
+      self.add_argument(
+          "--bigquery_data_set", "-bds", default="test_benchmark",
+          help="[default: %(default)s] The Bigquery dataset name where the"
+               " benchmark will be uploaded.",
+          metavar="<BDS>"
+      )
+      self.add_argument(
+          "--bigquery_run_table", "-brt", default="benchmark_run",
+          help="[default: %(default)s] The Bigquery table name where the"
+               " benchmark run information will be uploaded.",
+          metavar="<BRT>"
+      )
+      self.add_argument(
+          "--bigquery_metric_table", "-bmt", default="benchmark_metric",
+          help="[default: %(default)s] The Bigquery table name where the"
+               " benchmark metric information will be uploaded.",
+          metavar="<BMT>"
       )

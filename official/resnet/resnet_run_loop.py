@@ -30,7 +30,9 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import resnet_model
 from official.utils.arg_parsers import parsers
+from official.utils.export import export
 from official.utils.logging import hooks_helper
+from official.utils.logging import logger
 
 
 ################################################################################
@@ -218,7 +220,13 @@ def resnet_model_fn(features, labels, mode, model_class,
   }
 
   if mode == tf.estimator.ModeKeys.PREDICT:
-    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+    # Return the predictions and the specification for serving a SavedModel
+    return tf.estimator.EstimatorSpec(
+        mode=mode,
+        predictions=predictions,
+        export_outputs={
+            'predict': tf.estimator.export.PredictOutput(predictions)
+        })
 
   # Calculate loss, which includes softmax cross entropy and L2 regularization.
   cross_entropy = tf.losses.softmax_cross_entropy(
@@ -309,8 +317,20 @@ def validate_batch_size_for_multi_gpu(batch_size):
     raise ValueError(err)
 
 
-def resnet_main(flags, model_function, input_function):
-  """Shared main loop for ResNet Models."""
+def resnet_main(flags, model_function, input_function, shape=None):
+  """Shared main loop for ResNet Models.
+
+  Args:
+    flags: FLAGS object that contains the params for running. See
+      ResnetArgParser for created flags.
+    model_function: the function that instantiates the Model and builds the
+      ops for train/eval. This will be passed directly into the estimator.
+    input_function: the function that processes the dataset and returns a
+      dataset that the estimator can train on. This will be wrapped with
+      all the relevant flags for running and passed to estimator.
+    shape: list of ints representing the shape of the images used for training.
+      This is only used if flags.export_dir is passed.
+  """
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
@@ -347,9 +367,17 @@ def resnet_main(flags, model_function, input_function):
           'version': flags.version,
       })
 
+  if flags.benchmark_log_dir is not None:
+    benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
+    benchmark_logger.log_run_info("resnet")
+  else:
+    benchmark_logger = None
+
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
     train_hooks = hooks_helper.get_train_hooks(
-        flags.hooks, batch_size=flags.batch_size)
+        flags.hooks,
+        batch_size=flags.batch_size,
+        benchmark_log_dir=flags.benchmark_log_dir)
 
     print('Starting a training cycle.')
 
@@ -377,16 +405,38 @@ def resnet_main(flags, model_function, input_function):
                                        steps=flags.max_train_steps)
     print(eval_results)
 
+    if benchmark_logger:
+      benchmark_logger.log_estimator_evaluation_result(eval_results)
+
+  if flags.export_dir is not None:
+    warn_on_multi_gpu_export(flags.multi_gpu)
+
+    # Exports a saved model for the given classifier.
+    input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
+        shape, batch_size=flags.batch_size)
+    classifier.export_savedmodel(flags.export_dir, input_receiver_fn)
+
+
+def warn_on_multi_gpu_export(multi_gpu=False):
+  """For the time being, multi-GPU mode does not play nicely with exporting."""
+  if multi_gpu:
+    tf.logging.warning(
+        'You are exporting a SavedModel while in multi-GPU mode. Note that '
+        'the resulting SavedModel will require the same GPUs be available.'
+        'If you wish to serve the SavedModel from a different device, '
+        'try exporting the SavedModel with multi-GPU mode turned off.')
+
 
 class ResnetArgParser(argparse.ArgumentParser):
-  """Arguments for configuring and running a Resnet Model.
-  """
+  """Arguments for configuring and running a Resnet Model."""
 
   def __init__(self, resnet_size_choices=None):
     super(ResnetArgParser, self).__init__(parents=[
         parsers.BaseParser(),
         parsers.PerformanceParser(),
         parsers.ImageModelParser(),
+        parsers.ExportParser(),
+        parsers.BenchmarkParser(),
     ])
 
     self.add_argument(
