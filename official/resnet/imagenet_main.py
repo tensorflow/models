@@ -203,7 +203,8 @@ class ImagenetModel(resnet_model.Model):
   """Model class with appropriate defaults for Imagenet data."""
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
-               version=resnet_model.DEFAULT_VERSION, dtype=None):
+               version=resnet_model.DEFAULT_VERSION,
+               dtype=resnet_model.DEFAULT_DTYPE):
     """These are the parameters that work for Imagenet data.
 
     Args:
@@ -287,7 +288,6 @@ def imagenet_model_fn(features, labels, mode, params):
       decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
 
   return resnet_run_loop.resnet_model_fn(
-      dtype=params['dtype'],
       features=features,
       labels=labels,
       mode=mode,
@@ -300,7 +300,8 @@ def imagenet_model_fn(features, labels, mode, params):
       version=params['version'],
       loss_scale=params['loss_scale'],
       loss_filter_fn=None,
-      multi_gpu=params['multi_gpu']
+      multi_gpu=params['multi_gpu'],
+      dtype=params['dtype']
   )
 
 

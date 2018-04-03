@@ -168,10 +168,11 @@ def learning_rate_with_decay(
   return learning_rate_fn
 
 
-def resnet_model_fn(dtype, features, labels, mode, model_class,
+def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
                     data_format, version, loss_scale,
-                    loss_filter_fn=None, multi_gpu=False):
+                    loss_filter_fn=None, multi_gpu=False,
+                    dtype=resnet_model.DEFAULT_DTYPE):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -182,7 +183,6 @@ def resnet_model_fn(dtype, features, labels, mode, model_class,
   a train op, but with the necessary parameters for the given mode.
 
   Args:
-    dtype: the TensorFlow dtype to use for calculations.
     features: tensor representing input images
     labels: tensor representing class labels for all input images
     mode: current estimator mode; should be one of
@@ -198,13 +198,15 @@ def resnet_model_fn(dtype, features, labels, mode, model_class,
       If set to None, the format is dependent on whether a GPU is available.
     version: Integer representing which version of the ResNet network to use.
       See README for details. Valid values: [1, 2]
-    loss_scale: The factor to scale the loss for numerical stability.
+    loss_scale: The factor to scale the loss for numerical stability. A detailed
+      summary is present in the arg parser help text.
     loss_filter_fn: function that takes a string variable name and returns
       True if the var should be included in loss calculation, and False
       otherwise. If None, batch_normalization variables will be excluded
       from the loss.
     multi_gpu: If True, wrap the optimizer in a TowerOptimizer suitable for
       data-parallel distribution across multiple GPUs.
+    dtype: the TensorFlow dtype to use for calculations.
 
   Returns:
     EstimatorSpec parameterized according to the input params and the
@@ -214,15 +216,15 @@ def resnet_model_fn(dtype, features, labels, mode, model_class,
   # Generate a summary node for the images
   tf.summary.image('images', features, max_outputs=6)
 
-  if dtype == tf.float16:
-    features = tf.cast(features, tf.float16)
+  features = tf.cast(features, dtype)
 
   model = model_class(resnet_size, data_format, version=version, dtype=dtype)
 
   logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
-  # This acts as a no-op if the logits are already in fp32. If dtype is
-  # tf.float16, logits must be casted to fp32 for numerical stability.
+  # This acts as a no-op if the logits are already in fp32 (provided logits are
+  # not a SparseTensor). If dtype is is low precision, logits must be cast to
+  # fp32 for numerical stability.
   logits = tf.cast(logits, tf.float32)
 
   predictions = {
@@ -255,6 +257,7 @@ def resnet_model_fn(dtype, features, labels, mode, model_class,
 
   # Add weight decay to the loss.
   l2_loss = weight_decay * tf.add_n(
+      # loss is computed using fp32 for numerical stability.
       [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
        if loss_filter_fn(v.name)])
   tf.summary.scalar('l2_loss', l2_loss)
@@ -280,8 +283,11 @@ def resnet_model_fn(dtype, features, labels, mode, model_class,
     if loss_scale != 1:
       # When computing fp16 gradients, often intermediate tensor values are
       # so small, they underflow to 0. To avoid this, we multiply the loss by
-      # loss_scale to make these tensor values loss_scales times bigger.
+      # loss_scale to make these tensor values loss_scale times bigger.
       scaled_grad_vars = optimizer.compute_gradients(loss * loss_scale)
+
+      # Once the gradient computation is complete we can scale the gradients
+      # back to the correct scale before passing them to the optimizer.
       unscaled_grad_vars = [(grad / loss_scale, var)
                             for grad, var in scaled_grad_vars]
       minimize_op = optimizer.apply_gradients(unscaled_grad_vars, global_step)
@@ -382,13 +388,13 @@ def resnet_main(flags, model_function, input_function, shape=None):
   classifier = tf.estimator.Estimator(
       model_fn=model_function, model_dir=flags.model_dir, config=run_config,
       params={
-          'dtype': flags.dtype,
           'resnet_size': flags.resnet_size,
           'data_format': flags.data_format,
           'batch_size': flags.batch_size,
           'multi_gpu': flags.multi_gpu,
           'version': flags.version,
-          'loss_scale': flags.loss_scale
+          'loss_scale': flags.loss_scale,
+          'dtype': flags.dtype
       })
 
   if flags.benchmark_log_dir is not None:

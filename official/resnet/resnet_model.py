@@ -36,6 +36,8 @@ import tensorflow as tf
 _BATCH_NORM_DECAY = 0.997
 _BATCH_NORM_EPSILON = 1e-5
 DEFAULT_VERSION = 2
+DEFAULT_DTYPE = tf.float32
+CASTABLE_TYPES = (tf.float16,)
 
 
 ################################################################################
@@ -352,7 +354,7 @@ class Model(object):
                conv_stride, first_pool_size, first_pool_stride,
                second_pool_size, second_pool_stride, block_sizes, block_strides,
                final_size, version=DEFAULT_VERSION, data_format=None,
-               dtype=None):
+               dtype=DEFAULT_DTYPE):
     """Creates a model for classifying an image.
 
     Args:
@@ -421,13 +423,13 @@ class Model(object):
     self.block_sizes = block_sizes
     self.block_strides = block_strides
     self.final_size = final_size
-    self.dtype = dtype or tf.float32
+    self.dtype = dtype
 
-  def _custom_getter(self, getter, name, shape=None, dtype=tf.float32,
-                     *args, **kwargs):
+  def _custom_dtype_getter(self, getter, name, shape=None, dtype=DEFAULT_DTYPE,
+                           *args, **kwargs):
     """Creates variables in fp32, then casts to fp16 if necessary.
 
-      This function is a custom getter. A custom getter is a function with the
+    This function is a custom getter. A custom getter is a function with the
     same signature as tf.get_variable, except it has an additional getter
     parameter. Custom getters can be passed as the `custom_getter` parameter of
     tf.variable_scope. Then, tf.get_variable will call the custom getter,
@@ -436,20 +438,21 @@ class Model(object):
     The `getter` parameter is the underlying variable getter, that would have
     been called if no custom getter was used. Custom getters typically get a
     variable with `getter`, then modify it in some way.
-    This custom getter will create an fp32 variable if an fp16 variable was
-    requested. It will then cast the variable to fp16 and return the result.
-    The reason we do not directly create variables in fp16 is that applying
-    small gradients to fp16 variables may cause the variable not to change. This
-    is because fp16 variables have very low precision.
+
+    This custom getter will create an fp32 variable. If an low precision
+    (e.g. float16) variable was requested it will then cast the variable to the
+    requested dtype. The reason we do not directly create variables in low
+    precision dtypes is that applying small gradients to such variables may
+    cause the variable not to change.
 
     Args:
       getter: The underlying variable getter, that has the same signature as
         tf.get_variable and returns a variable.
       name: The name of the variable to get.
       shape: The shape of the variable to get.
-      dtype: The dtype of the variable to get. Note that if this if tf.float16,
-        the variable will be created as a tf.float32 variable, then casted to
-        tf.float16
+      dtype: The dtype of the variable to get. Note that if this is a low
+        precision dtype, the variable will be created as a tf.float32 variable,
+        then cast to the appropriate dtype
       *args: Additional arguments to pass unmodified to getter.
       **kwargs: Additional keyword arguments to pass unmodified to getter.
 
@@ -457,24 +460,24 @@ class Model(object):
       A variable which is cast to fp16 if necessary.
     """
 
-    if dtype == tf.float16:
+    if dtype in CASTABLE_TYPES:
       var = getter(name, shape, tf.float32, *args, **kwargs)
-      return tf.cast(var, tf.float16, name=name + '_casted')
+      return tf.cast(var, dtype=dtype, name=name + '_cast')
     else:
       return getter(name, shape, dtype, *args, **kwargs)
 
   def _model_variable_scope(self):
     """Returns a variable scope that the model should be created under.
 
-    If self.use_fp16 is True, model variable will be created in fp32 then casted
-    to fp16 before being used.
+    If self.dtype is a castable type, model variable will be created in fp32
+    then cast to self.dtype before being used.
 
     Returns:
       A variable scope for the model.
     """
 
-    custom_getter = self._custom_getter if self.dtype == tf.float16 else None
-    return tf.variable_scope('resnet_model', custom_getter=custom_getter)
+    return tf.variable_scope('resnet_model',
+                             custom_getter=self._custom_dtype_getter)
 
   def __call__(self, inputs, training):
     """Add operations to classify a batch of input images.

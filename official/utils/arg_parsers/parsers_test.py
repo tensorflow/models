@@ -16,6 +16,7 @@
 import argparse
 import unittest
 
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.arg_parsers import parsers
 
@@ -82,6 +83,21 @@ class BaseTester(unittest.TestCase):
 
     assert namespace.multi_gpu
     assert namespace.use_synthetic_data
+
+  def test_parse_dtype_info(self):
+    parser = TestParser()
+    for dtype_str, tf_dtype, loss_scale in [["fp16", tf.float16, 128],
+                                            ["fp32", tf.float32, 1]]:
+      args = parser.parse_args(["--dtype", dtype_str])
+      parsers.parse_dtype_info(args)
+
+      assert args.dtype == tf_dtype
+      assert args.loss_scale == loss_scale
+
+      args = parser.parse_args(["--dtype", dtype_str, "--loss_scale", "5"])
+      parsers.parse_dtype_info(args)
+
+      assert args.loss_scale == 5
 
 
 if __name__ == "__main__":

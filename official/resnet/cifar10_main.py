@@ -145,7 +145,8 @@ class Cifar10Model(resnet_model.Model):
   """Model class with appropriate defaults for CIFAR-10 data."""
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
-               version=resnet_model.DEFAULT_VERSION, dtype=None):
+               version=resnet_model.DEFAULT_VERSION,
+               dtype=resnet_model.DEFAULT_DTYPE):
     """These are the parameters that work for CIFAR-10 data.
 
     Args:
@@ -208,8 +209,10 @@ def cifar10_model_fn(features, labels, mode, params):
     return True
 
   return resnet_run_loop.resnet_model_fn(
-      dtype=params['dtype'],
-      features=features, labels=labels, mode=mode, model_class=Cifar10Model,
+      features=features,
+      labels=labels,
+      mode=mode,
+      model_class=Cifar10Model,
       resnet_size=params['resnet_size'],
       weight_decay=weight_decay,
       learning_rate_fn=learning_rate_fn,
@@ -218,7 +221,8 @@ def cifar10_model_fn(features, labels, mode, params):
       version=params['version'],
       loss_scale=params['loss_scale'],
       loss_filter_fn=loss_filter_fn,
-      multi_gpu=params['multi_gpu']
+      multi_gpu=params['multi_gpu'],
+      dtype=params['dtype']
   )
 
 

@@ -83,7 +83,10 @@ def parse_dtype_info(flags):
     raise ValueError("Invalid dtype: {}".format(flags.dtype))
 
   if flags.loss_scale is None:
-    flags.loss_scale = 128 if flags.dtype == tf.float16 else 1
+    flags.loss_scale = {
+      "float16": 128,
+      "float32": 1,
+    }[flags.dtype.name]
 
 
 class BaseParser(argparse.ArgumentParser):
@@ -230,7 +233,7 @@ class PerformanceParser(argparse.ArgumentParser):
       self.add_argument(
           "--dtype", "-dt",
           default="fp32",
-          choices=["fp16", "float16", "fp32", "float32"],
+          choices=["fp16", "float16", "fp32", "float32", "int8"],
           help="[default: %(default)s] {%(choices)s} The TensorFlow datatype "
                "used for calculations. Variables may be cast to a higher"
                "precision on a case-by-case basis for numerical stability.",
