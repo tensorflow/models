@@ -63,3 +63,6 @@ class PastStopThresholdTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       model_helpers.past_stop_threshold(tf.constant(4), None)
 
+
+if __name__ == "__main__":
+  tf.test.main()
