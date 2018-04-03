@@ -28,8 +28,8 @@ installation](https://www.tensorflow.org/install).
     pre-trained Residual GRU network.
 -   [deeplab](deeplab): deep labelling for semantic image segmentation.
 -   [delf](delf): deep local features for image matching and retrieval.
--   [differential_privacy](differential_privacy): privacy-preserving student
-    models from multiple teachers.
+-   [differential_privacy](differential_privacy): differential privacy for training
+    data.
 -   [domain_adaptation](domain_adaptation): domain separation networks.
 -   [gan](gan): generative adversarial networks.
 -   [im2txt](im2txt): image-to-text neural network for image captioning.
