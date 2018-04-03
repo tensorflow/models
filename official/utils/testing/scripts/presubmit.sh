@@ -53,12 +53,14 @@ py_test() {
 
 py2_test() {
   local PY_BINARY=$(which python2)
-  return $(py_test "${PY_BINARY}")
+  py_test "$PY_BINARY"
+  return $?
 }
 
 py3_test() {
   local PY_BINARY=$(which python3)
-  return $(py_test "${PY_BINARY}")
+  py_test "$PY_BINARY"
+  return $?
 }
 
 test_result=0
