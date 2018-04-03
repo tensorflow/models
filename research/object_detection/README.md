@@ -95,6 +95,7 @@ reporting an issue.
 Supercharge your mobile phones with the next generation mobile object detector!
 We are adding support for MobileNet V2 with SSDLite presented in
 [MobileNetV2: Inverted Residuals and Linear Bottlenecks](https://arxiv.org/abs/1801.04381).
+This model is 35% faster than Mobilenet V1 SSD on a Google Pixel phone CPU (200ms vs. 270ms) at the same accuracy.
 Along with the model definition, we are also releasing a model checkpoint trained on the COCO dataset.
 
 <b>Thanks to contributors</b>: Menglong Zhu, Mark Sandler, Zhichao Lu, Vivek Rathod, Jonathan Huang
