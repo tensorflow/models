@@ -94,4 +94,13 @@ message TrainConfig {
   // Whether to remove padding along `num_boxes` dimension of the groundtruth
   // tensors.
   optional bool unpad_groundtruth_tensors = 21 [default=true];
+
+  // How often to save checkpoints
+  optional uint32 checkpoint_save_interval_secs = 22 [default=600];
+
+  // How often to save summaries
+  optional uint32 save_summaries_secs = 23 [default=120];
+
+  // How many checkpoint to keep
+  optional uint32 max_checkpoints_to_keep = 24 [default=5];
 }
