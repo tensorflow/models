@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import numbers
 
+import tensorflow as tf
+
 
 def past_stop_threshold(stop_threshold, eval_metric):
   """Return a boolean representing whether a model should be stopped.
@@ -45,6 +47,9 @@ def past_stop_threshold(stop_threshold, eval_metric):
                      "must be a number.")
 
   if eval_metric >= stop_threshold:
+    tf.logging.info(
+        "Stop threshold of {} was passed with metric value {}.".format(
+            stop_threshold, eval_metric))
     return True
 
   return False
