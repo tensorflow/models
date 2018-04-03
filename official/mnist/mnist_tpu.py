@@ -23,11 +23,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import google3
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from google3.third_party.tensorflow_models.official.mnist import dataset
-from google3.third_party.tensorflow_models.official.mnist import mnist
+from official.mnist import dataset
+from official.mnist import mnist
 
 # Cloud TPU Cluster Resolver flags
 tf.flags.DEFINE_string(
