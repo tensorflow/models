@@ -38,6 +38,7 @@ _BATCH_NORM_EPSILON = 1e-5
 DEFAULT_VERSION = 2
 DEFAULT_DTYPE = tf.float32
 CASTABLE_TYPES = (tf.float16,)
+ALLOWED_TYPES = (tf.float32,) + CASTABLE_TYPES
 
 
 ################################################################################
@@ -410,6 +411,9 @@ class Model(object):
         self.block_fn = _building_block_v1
       else:
         self.block_fn = _building_block_v2
+
+    if dtype not in ALLOWED_TYPES:
+      raise ValueError("dtype must be one of: {}".format(LEGAL_TYPES))
 
     self.data_format = data_format
     self.num_classes = num_classes
