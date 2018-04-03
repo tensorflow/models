@@ -37,7 +37,8 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                batch_norm_trainable=True,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               inplace_batchnorm_update=False):
     """InceptionV3 Feature Extractor for SSD Models.
 
     Args:
@@ -55,11 +56,16 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      inplace_batchnorm_update: Whether to update batch_norm inplace during
+        training. This is required for batch norm to work correctly on TPUs.
+        When this is false, user must add a control dependency on
+        tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+        norm moving average parameters.
     """
     super(SSDInceptionV3FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, batch_norm_trainable, reuse_weights,
-        use_explicit_padding, use_depthwise)
+        use_explicit_padding, use_depthwise, inplace_batchnorm_update)
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -76,7 +82,7 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     """
     return (2.0 / 255.0) * resized_inputs - 1.0
 
-  def extract_features(self, preprocessed_inputs):
+  def _extract_features(self, preprocessed_inputs):
     """Extract features from preprocessed inputs.
 
     Args:

@@ -136,6 +136,13 @@ class OpsTestPadToMultiple(tf.test.TestCase):
       padded_tensor_out = sess.run(padded_tensor)
     self.assertEqual((1, 2, 2, 1), padded_tensor_out.shape)
 
+  def test_non_square_padding(self):
+    tensor = tf.constant([[[[0.], [0.]]]])
+    padded_tensor = ops.pad_to_multiple(tensor, 2)
+    with self.test_session() as sess:
+      padded_tensor_out = sess.run(padded_tensor)
+    self.assertEqual((1, 2, 2, 1), padded_tensor_out.shape)
+
   def test_padding(self):
     tensor = tf.constant([[[[0.], [0.]], [[0.], [0.]]]])
     padded_tensor = ops.pad_to_multiple(tensor, 4)

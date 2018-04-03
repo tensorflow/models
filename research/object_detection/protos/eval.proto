@@ -68,4 +68,8 @@ message EvalConfig {
   // Whether to keep image identifier in filename when exported to
   // visualization_export_dir.
   optional bool keep_image_id_for_visualization_export = 19 [default=false];
+
+  // Whether to retain original images (i.e. not pre-processed) in the tensor
+  // dictionary, so that they can be displayed in Tensorboard.
+  optional bool retain_original_images = 23 [default=true];
 }

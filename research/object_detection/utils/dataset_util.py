@@ -123,11 +123,16 @@ def read_dataset(file_read_func, decode_func, input_files, config):
   if config.shuffle:
     filename_dataset = filename_dataset.shuffle(
         config.filenames_shuffle_buffer_size)
+  elif config.num_readers > 1:
+    tf.logging.warning('`shuffle` is false, but the input data stream is '
+                       'still slightly shuffled since `num_readers` > 1.')
+
   filename_dataset = filename_dataset.repeat(config.num_epochs or None)
 
   records_dataset = filename_dataset.apply(
       tf.contrib.data.parallel_interleave(
-          file_read_func, cycle_length=config.num_readers, sloppy=True))
+          file_read_func, cycle_length=config.num_readers,
+          block_length=config.read_block_length, sloppy=True))
   if config.shuffle:
     records_dataset.shuffle(config.shuffle_buffer_size)
   tensor_dataset = records_dataset.map(
