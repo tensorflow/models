@@ -53,4 +53,3 @@ def past_stop_threshold(stop_threshold, eval_metric):
     return True
 
   return False
-
