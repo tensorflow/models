@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+""" Tests for Model Helper functions."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils import model_helpers
+from official.utils.misc import model_helpers
 
 
 class PastStopThresholdTest(tf.test.TestCase):
@@ -46,19 +47,19 @@ class PastStopThresholdTest(tf.test.TestCase):
   def test_past_stop_threshold_not_number(self):
     """Tests for error conditions."""
     with self.assertRaises(ValueError):
-      model_helpers.past_stop_threshold('str', 1)
+      model_helpers.past_stop_threshold("str", 1)
 
     with self.assertRaises(ValueError):
-      model_helpers.past_stop_threshold('str', tf.constant(5))
+      model_helpers.past_stop_threshold("str", tf.constant(5))
 
     with self.assertRaises(ValueError):
-      model_helpers.past_stop_threshold('str', 'another')
+      model_helpers.past_stop_threshold("str", "another")
 
     with self.assertRaises(ValueError):
       model_helpers.past_stop_threshold(0, None)
 
     with self.assertRaises(ValueError):
-      model_helpers.past_stop_threshold(0.7, 'str')
+      model_helpers.past_stop_threshold(0.7, "str")
 
     with self.assertRaises(ValueError):
       model_helpers.past_stop_threshold(tf.constant(4), None)
