@@ -24,6 +24,7 @@ import sys
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.utils import model_helpers
 from official.utils.arg_parsers import parsers
 from official.utils.logging import hooks_helper
 
@@ -210,6 +211,10 @@ def main(argv):
 
     for key in sorted(results):
       print('%s: %s' % (key, results[key]))
+
+    if model_helpers.past_stop_threshold(
+        flags.stop_threshold, results['accuracy']):
+      break
 
 
 class WideDeepArgParser(argparse.ArgumentParser):

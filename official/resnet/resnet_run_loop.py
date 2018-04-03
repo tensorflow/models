@@ -29,6 +29,7 @@ import os
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import resnet_model
+from official.utils import model_helpers
 from official.utils.arg_parsers import parsers
 from official.utils.export import export
 from official.utils.logging import hooks_helper
@@ -407,6 +408,10 @@ def resnet_main(flags, model_function, input_function, shape=None):
 
     if benchmark_logger:
       benchmark_logger.log_estimator_evaluation_result(eval_results)
+
+    if model_helpers.past_stop_threshold(
+        flags.stop_threshold, eval_results['accuracy']):
+      break
 
   if flags.export_dir is not None:
     warn_on_multi_gpu_export(flags.multi_gpu)
