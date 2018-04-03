@@ -73,7 +73,7 @@ def define():
   flags.DEFINE_string('optimizer', 'momentum',
                       'the optimizer to use')
 
-  flags.DEFINE_string('momentum', 0.9,
+  flags.DEFINE_float('momentum', 0.9,
                       'momentum value for the momentum optimizer if used')
 
   flags.DEFINE_bool('use_augment_input', True,
