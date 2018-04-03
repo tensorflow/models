@@ -177,6 +177,10 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
   """
   samples = inputs_queue.dequeue()
 
+  # add name input and label so we can add to summary
+  samples[common.IMAGE] = tf.identity(samples[common.IMAGE], 'input_image')
+  samples[common.LABEL] = tf.identity(samples[common.LABEL], 'input_label')
+
   model_options = common.ModelOptions(
       outputs_to_num_classes=outputs_to_num_classes,
       crop_size=FLAGS.train_crop_size,
@@ -189,6 +193,12 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
       weight_decay=FLAGS.weight_decay,
       is_training=True,
       fine_tune_batch_norm=FLAGS.fine_tune_batch_norm)
+
+  # add name to graph node so we can add to summary
+  outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE] = tf.identity( 
+    outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE],
+    name = 'semantic_merged_logits'
+  )
 
   for output, num_classes in outputs_to_num_classes.iteritems():
     train_utils.add_softmax_cross_entropy_loss_for_each_scale(
@@ -226,7 +236,7 @@ def main(unused_argv):
   tf.gfile.MakeDirs(FLAGS.train_logdir)
   tf.logging.info('Training on %s set', FLAGS.train_split)
 
-  with tf.Graph().as_default():
+  with tf.Graph().as_default() as graph:
     with tf.device(config.inputs_device()):
       samples = input_generator.get(
           dataset,
@@ -266,6 +276,16 @@ def main(unused_argv):
     # Add summaries for model variables.
     for model_var in slim.get_model_variables():
       summaries.add(tf.summary.histogram(model_var.op.name, model_var))
+
+    # Add summaries for images, labels, semantic predictions
+    summary_image = graph.get_tensor_by_name(first_clone_scope + '/input_image:0')
+    summaries.add(tf.summary.image('samples/input_image', summary_image))
+
+    summary_label = tf.cast(graph.get_tensor_by_name(first_clone_scope + '/input_label:0'), tf.uint8)
+    summaries.add(tf.summary.image('samples/input_label', summary_label))
+
+    predictions = tf.cast(tf.expand_dims(tf.argmax(graph.get_tensor_by_name(first_clone_scope + '/semantic_merged_logits:0'), 3), -1), tf.uint8)
+    summaries.add(tf.summary.image('samples/semantic_predictions', predictions))
 
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
