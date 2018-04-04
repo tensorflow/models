@@ -95,7 +95,6 @@ ORIGINAL_IMAGE = 'original_image'
 # Test set name.
 TEST_SET = 'test'
 
-
 class ModelOptions(
     collections.namedtuple('ModelOptions', [
         'outputs_to_num_classes',

@@ -181,9 +181,9 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
   """
   samples = inputs_queue.dequeue()
 
-  # add name input and label so we can add to summary
-  samples[common.IMAGE] = tf.identity(samples[common.IMAGE], 'input_image')
-  samples[common.LABEL] = tf.identity(samples[common.LABEL], 'input_label')
+  # add name to input and label nodes so we can add to summary
+  samples[common.IMAGE] = tf.identity(samples[common.IMAGE], name = common.IMAGE)
+  samples[common.LABEL] = tf.identity(samples[common.LABEL], name = common.LABEL)
 
   model_options = common.ModelOptions(
       outputs_to_num_classes=outputs_to_num_classes,
@@ -201,7 +201,7 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
   # add name to graph node so we can add to summary
   outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE] = tf.identity( 
     outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE],
-    name = OUTPUT_MERGED_LOGITS_NODE
+    name = common.OUTPUT_TYPE
   )
 
   for output, num_classes in six.iteritems(outputs_to_num_classes):
@@ -283,14 +283,19 @@ def main(unused_argv):
 
     # Add summaries for images, labels, semantic predictions
     if FLAGS.save_summaries_images:
-        summary_image = graph.get_tensor_by_name('%s/%s:0' % first_clone_slope, INPUT_LABEL_NODE)
-        summaries.add(tf.summary.image('samples/%s' % INPUT_IMAGE_NODE, summary_image))
+        summary_image = graph.get_tensor_by_name(
+            ('%s/%s:0' % (first_clone_scope, common.IMAGE)).strip('/'))
+        summaries.add(tf.summary.image('samples/%s' % common.IMAGE, summary_image))
 
-        summary_label = tf.cast(graph.get_tensor_by_name('%s/%s:0' % first_clone_slope, INPUT_LABEL_NODE), tf.uint8)
-        summaries.add(tf.summary.image('samples/%s' % INPUT_LABEL_NODE, summary_label))
+        summary_label = tf.cast(graph.get_tensor_by_name(
+            ('%s/%s:0' % (first_clone_scope, common.LABEL)).strip('/')),
+            tf.uint8)
+        summaries.add(tf.summary.image('samples/%s' % common.LABEL, summary_label))
 
-        predictions = tf.cast(tf.expand_dims(tf.argmax(graph.get_tensor_by_name('%s/%s:0' % first_clone_scope, OUTPUT_MERGED_LOGITS_NODE), 3), -1), tf.uint8)
-        summaries.add(tf.summary.image('samples/%s' % OUTPUT_MERGED_LOGITS_NODE, predictions))
+        predictions = tf.cast(tf.expand_dims(tf.argmax(graph.get_tensor_by_name( 
+            ('%s/%s:0' % (first_clone_scope, common.OUTPUT_TYPE)).strip('/')),
+            3), -1), tf.uint8)
+        summaries.add(tf.summary.image('samples/%s' % common.OUTPUT_TYPE, predictions))
 
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
