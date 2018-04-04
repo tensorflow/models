@@ -18,6 +18,24 @@
     "type": "TIMESTAMP"
   },
   {
+    "description": "The date when the test of the model is ended",
+    "mode": "REQUIRED",
+    "name": "end_date",
+    "type": "TIMESTAMP"
+  },
+  {
+    "description": "The human-readable duration between run_date and end_date",
+    "mode": "REQUIRED",
+    "name": "elapsed_time",
+    "type": "STRING"
+  },
+  {
+    "description": "The duration in seconds between run_date and end_date",
+    "mode": "REQUIRED",
+    "name": "elapsed_seconds",
+    "type": "FLOAT"
+  },
+  {
     "description": "The tensorflow version information.",
     "fields": [
       {
