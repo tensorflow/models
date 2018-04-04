@@ -79,7 +79,7 @@ def parse_dtype_info(flags):
   Raises:
     ValueError: If an invalid dtype is provided.
   """
-  if not (flags.dtype is None or isinstance(flags.dtype, str)):
+  if flags.dtype in (i[0] for i in DTYPE_MAP.values()):
     return  # Make function idempotent
 
   try:
@@ -87,8 +87,7 @@ def parse_dtype_info(flags):
   except KeyError:
     raise ValueError("Invalid dtype: {}".format(flags.dtype))
 
-  flags.loss_scale = (flags.loss_scale if flags.loss_scale else
-                      default_loss_scale)
+  flags.loss_scale = flags.loss_scale or default_loss_scale
 
 
 class BaseParser(argparse.ArgumentParser):
