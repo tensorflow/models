@@ -29,6 +29,7 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 * Jonathan Huang, github: [jch1](https://github.com/jch1)
 * Vivek Rathod, github: [tombstone](https://github.com/tombstone)
+* Ronny Votel, github: [ronnyvotel](https://github.com/ronnyvotel)
 * Derek Chow, github: [derekjchow](https://github.com/derekjchow)
 * Chen Sun, github: [jesu9](https://github.com/jesu9)
 * Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
@@ -88,6 +89,16 @@ reporting an issue.
 
 
 ## Release information
+
+### April 2, 2018
+
+Supercharge your mobile phones with the next generation mobile object detector!
+We are adding support for MobileNet V2 with SSDLite presented in
+[MobileNetV2: Inverted Residuals and Linear Bottlenecks](https://arxiv.org/abs/1801.04381).
+This model is 35% faster than Mobilenet V1 SSD on a Google Pixel phone CPU (200ms vs. 270ms) at the same accuracy.
+Along with the model definition, we are also releasing a model checkpoint trained on the COCO dataset.
+
+<b>Thanks to contributors</b>: Menglong Zhu, Mark Sandler, Zhichao Lu, Vivek Rathod, Jonathan Huang
 
 ### February 9, 2018
 

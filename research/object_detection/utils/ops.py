@@ -180,26 +180,24 @@ def pad_to_multiple(tensor, multiple):
     padded_tensor_width = int(
         math.ceil(float(tensor_width) / multiple) * multiple)
 
-  if (padded_tensor_height == tensor_height and
-      padded_tensor_width == tensor_width):
-    return tensor
-
   if tensor_depth is None:
     tensor_depth = tf.shape(tensor)[3]
 
   # Use tf.concat instead of tf.pad to preserve static shape
-  height_pad = tf.zeros([
-      batch_size, padded_tensor_height - tensor_height, tensor_width,
-      tensor_depth
-  ])
-  padded_tensor = tf.concat([tensor, height_pad], 1)
-  width_pad = tf.zeros([
-      batch_size, padded_tensor_height, padded_tensor_width - tensor_width,
-      tensor_depth
-  ])
-  padded_tensor = tf.concat([padded_tensor, width_pad], 2)
+  if padded_tensor_height != tensor_height:
+    height_pad = tf.zeros([
+        batch_size, padded_tensor_height - tensor_height, tensor_width,
+        tensor_depth
+    ])
+    tensor = tf.concat([tensor, height_pad], 1)
+  if padded_tensor_width != tensor_width:
+    width_pad = tf.zeros([
+        batch_size, padded_tensor_height, padded_tensor_width - tensor_width,
+        tensor_depth
+    ])
+    tensor = tf.concat([tensor, width_pad], 2)
 
-  return padded_tensor
+  return tensor
 
 
 def padded_one_hot_encoding(indices, depth, left_pad):
