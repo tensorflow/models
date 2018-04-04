@@ -132,7 +132,7 @@ class BaseParser(argparse.ArgumentParser):
                "Example: --hooks LoggingTensorHook ExamplesPerSecondHook. "
                "Allowed hook names (case-insensitive): LoggingTensorHook, "
                "ProfilerHook, ExamplesPerSecondHook, LoggingMetricHook."
-               "See official.utils.logging.hooks_helper for details.",
+               "See official.utils.logs.hooks_helper for details.",
           metavar="<HK>"
       )
 

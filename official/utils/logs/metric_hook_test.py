@@ -24,15 +24,17 @@ import time
 import tensorflow as tf
 from tensorflow.python.training import monitored_session
 
-from official.utils.logging import metric_hook
+from official.utils.logs import metric_hook  # pylint: disable=g-bad-import-order
 
 
 class LoggingMetricHookTest(tf.test.TestCase):
+  """Tests for LoggingMetricHook."""
 
   def setUp(self):
     super(LoggingMetricHookTest, self).setUp()
 
     class MockMetricLogger(object):
+
       def __init__(self):
         self.logged_metric = []
 

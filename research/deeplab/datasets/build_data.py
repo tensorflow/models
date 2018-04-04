@@ -125,7 +125,10 @@ def _bytes_list_feature(values):
   Returns:
     A TF-Feature.
   """
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
+  def norm2bytes(value):
+      return value.encode() if isinstance(value, str) else value
+
+  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[norm2bytes(values)]))
 
 
 def image_seg_to_tfexample(image_data, filename, height, width, seg_data):
