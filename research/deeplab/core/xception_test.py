@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """Tests for xception.py."""
+import six
 import numpy as np
 import tensorflow as tf
 
@@ -309,7 +310,7 @@ class XceptionNetworkTest(tf.test.TestCase):
           'xception/middle_flow/block1': [2, 14, 14, 4],
           'xception/exit_flow/block1': [2, 7, 7, 8],
           'xception/exit_flow/block2': [2, 7, 7, 16]}
-      for endpoint, shape in endpoint_to_shape.iteritems():
+      for endpoint, shape in six.iteritems(endpoint_to_shape):
         self.assertListEqual(end_points[endpoint].get_shape().as_list(), shape)
 
   def testFullyConvolutionalEndpointShapes(self):
@@ -330,7 +331,7 @@ class XceptionNetworkTest(tf.test.TestCase):
           'xception/middle_flow/block1': [2, 21, 21, 4],
           'xception/exit_flow/block1': [2, 11, 11, 8],
           'xception/exit_flow/block2': [2, 11, 11, 16]}
-      for endpoint, shape in endpoint_to_shape.iteritems():
+      for endpoint, shape in six.iteritems(endpoint_to_shape):
         self.assertListEqual(end_points[endpoint].get_shape().as_list(), shape)
 
   def testAtrousFullyConvolutionalEndpointShapes(self):
@@ -352,7 +353,7 @@ class XceptionNetworkTest(tf.test.TestCase):
           'xception/middle_flow/block1': [2, 41, 41, 4],
           'xception/exit_flow/block1': [2, 41, 41, 8],
           'xception/exit_flow/block2': [2, 41, 41, 16]}
-      for endpoint, shape in endpoint_to_shape.iteritems():
+      for endpoint, shape in six.iteritems(endpoint_to_shape):
         self.assertListEqual(end_points[endpoint].get_shape().as_list(), shape)
 
   def testAtrousFullyConvolutionalValues(self):
