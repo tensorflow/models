@@ -99,6 +99,9 @@ class BaseTester(unittest.TestCase):
 
       assert args.loss_scale == 5
 
+    with self.assertRaises(SystemExit):
+      parser.parse_args(["--dtype", "int8"])
+
 
 if __name__ == "__main__":
   unittest.main()

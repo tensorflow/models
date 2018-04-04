@@ -38,7 +38,7 @@ _BATCH_NORM_EPSILON = 1e-5
 DEFAULT_VERSION = 2
 DEFAULT_DTYPE = tf.float32
 CASTABLE_TYPES = (tf.float16,)
-ALLOWED_TYPES = (tf.float32,) + CASTABLE_TYPES
+ALLOWED_TYPES = (DEFAULT_DTYPE,) + CASTABLE_TYPES
 
 
 ################################################################################
@@ -443,7 +443,7 @@ class Model(object):
     been called if no custom getter was used. Custom getters typically get a
     variable with `getter`, then modify it in some way.
 
-    This custom getter will create an fp32 variable. If an low precision
+    This custom getter will create an fp32 variable. If a low precision
     (e.g. float16) variable was requested it will then cast the variable to the
     requested dtype. The reason we do not directly create variables in low
     precision dtypes is that applying small gradients to such variables may

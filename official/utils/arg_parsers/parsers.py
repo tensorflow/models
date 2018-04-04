@@ -63,6 +63,13 @@ import argparse
 import tensorflow as tf
 
 
+# Map string to (TensorFlow dtype, default loss scale)
+DTYPE_MAP = {
+    "fp16": (tf.float16, 128),
+    "fp32": (tf.float32, 1),
+}
+
+
 def parse_dtype_info(flags):
   """Convert dtype string to tf dtype, and set loss_scale default as needed.
 
@@ -72,21 +79,16 @@ def parse_dtype_info(flags):
   Raises:
     ValueError: If an invalid dtype is provided.
   """
-  flags.dtype = {
-      "fp16": tf.float16,
-      "float16": tf.float16,
-      "fp32": tf.float32,
-      "float32": tf.float32,
-  }.get(flags.dtype, flags.dtype)
+  if not (flags.dtype is None or isinstance(flags.dtype, str)):
+    return  # Make function idempotent
 
-  if flags.dtype is None or isinstance(flags.dtype, str):
+  try:
+    flags.dtype, default_loss_scale = DTYPE_MAP[flags.dtype]
+  except KeyError:
     raise ValueError("Invalid dtype: {}".format(flags.dtype))
 
-  if flags.loss_scale is None:
-    flags.loss_scale = {
-        "float16": 128,
-        "float32": 1,
-    }[flags.dtype.name]
+  flags.loss_scale = (flags.loss_scale if flags.loss_scale else
+                      default_loss_scale)
 
 
 class BaseParser(argparse.ArgumentParser):
@@ -233,7 +235,7 @@ class PerformanceParser(argparse.ArgumentParser):
       self.add_argument(
           "--dtype", "-dt",
           default="fp32",
-          choices=["fp16", "float16", "fp32", "float32", "int8"],
+          choices=list(DTYPE_MAP.keys()),
           help="[default: %(default)s] {%(choices)s} The TensorFlow datatype "
                "used for calculations. Variables may be cast to a higher"
                "precision on a case-by-case basis for numerical stability.",
