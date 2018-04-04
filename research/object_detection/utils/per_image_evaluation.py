@@ -35,7 +35,8 @@ class PerImageEvaluation(object):
                num_groundtruth_classes,
                matching_iou_threshold=0.5,
                nms_iou_threshold=0.3,
-               nms_max_output_boxes=50):
+               nms_max_output_boxes=50,
+               group_of_weight=0.0):
     """Initialized PerImageEvaluation by evaluation parameters.
 
     Args:
@@ -44,24 +45,26 @@ class PerImageEvaluation(object):
           the threshold to consider whether a detection is true positive or not
       nms_iou_threshold: IOU threshold used in Non Maximum Suppression.
       nms_max_output_boxes: Number of maximum output boxes in NMS.
+      group_of_weight: Weight of the group-of boxes.
     """
     self.matching_iou_threshold = matching_iou_threshold
     self.nms_iou_threshold = nms_iou_threshold
     self.nms_max_output_boxes = nms_max_output_boxes
     self.num_groundtruth_classes = num_groundtruth_classes
+    self.group_of_weight = group_of_weight
 
   def compute_object_detection_metrics(
       self, detected_boxes, detected_scores, detected_class_labels,
       groundtruth_boxes, groundtruth_class_labels,
       groundtruth_is_difficult_list, groundtruth_is_group_of_list,
       detected_masks=None, groundtruth_masks=None):
-    """Evaluates detections as being tp, fp or ignored from a single image.
+    """Evaluates detections as being tp, fp or weighted from a single image.
 
     The evaluation is done in two stages:
      1. All detections are matched to non group-of boxes; true positives are
         determined and detections matched to difficult boxes are ignored.
      2. Detections that are determined as false positives are matched against
-        group-of boxes and ignored if matched.
+        group-of boxes and weighted if matched.
 
     Args:
       detected_boxes: A float numpy array of shape [N, 4], representing N
@@ -339,7 +342,8 @@ class PerImageEvaluation(object):
         box_data=groundtruth_boxes[groundtruth_is_group_of_list],
         mask_data=groundtruth_masks[groundtruth_is_group_of_list])
     iou = np_box_mask_list_ops.iou(detected_boxlist, gt_non_group_of_boxlist)
-    ioa = np_box_mask_list_ops.ioa(gt_group_of_boxlist, detected_boxlist)
+    ioa = np.transpose(
+        np_box_mask_list_ops.ioa(gt_group_of_boxlist, detected_boxlist))
     scores = detected_boxlist.get_field('scores')
     num_boxes = detected_boxlist.num_boxes()
     return iou, ioa, scores, num_boxes
@@ -380,7 +384,8 @@ class PerImageEvaluation(object):
     gt_group_of_boxlist = np_box_list.BoxList(
         groundtruth_boxes[groundtruth_is_group_of_list])
     iou = np_box_list_ops.iou(detected_boxlist, gt_non_group_of_boxlist)
-    ioa = np_box_list_ops.ioa(gt_group_of_boxlist, detected_boxlist)
+    ioa = np.transpose(
+        np_box_list_ops.ioa(gt_group_of_boxlist, detected_boxlist))
     scores = detected_boxlist.get_field('scores')
     num_boxes = detected_boxlist.num_boxes()
     return iou, ioa, scores, num_boxes
@@ -455,7 +460,8 @@ class PerImageEvaluation(object):
     # 1. All detections are matched to non group-of boxes; true positives are
     #    determined and detections matched to difficult boxes are ignored.
     # 2. Detections that are determined as false positives are matched against
-    #    group-of boxes and ignored if matched.
+    #    group-of boxes and scored with weight w per ground truth box is
+    # matched.
 
     # Tp-fp evaluation for non-group of boxes (if any).
     if iou.shape[1] > 0:
@@ -473,18 +479,29 @@ class PerImageEvaluation(object):
           else:
             is_matched_to_difficult_box[i] = True
 
+    scores_group_of = np.zeros(ioa.shape[1], dtype=float)
+    tp_fp_labels_group_of = self.group_of_weight * np.ones(
+        ioa.shape[1], dtype=float)
     # Tp-fp evaluation for group of boxes.
-    if ioa.shape[0] > 0:
-      max_overlap_group_of_gt = np.max(ioa, axis=0)
+    if ioa.shape[1] > 0:
+      max_overlap_group_of_gt_ids = np.argmax(ioa, axis=1)
       for i in range(num_detected_boxes):
+        gt_id = max_overlap_group_of_gt_ids[i]
         if (not tp_fp_labels[i] and not is_matched_to_difficult_box[i] and
-            max_overlap_group_of_gt[i] >= self.matching_iou_threshold):
+            ioa[i, gt_id] >= self.matching_iou_threshold):
           is_matched_to_group_of_box[i] = True
+          scores_group_of[gt_id] = max(scores_group_of[gt_id], scores[i])
+      selector = np.where((scores_group_of > 0) & (tp_fp_labels_group_of > 0))
+      scores_group_of = scores_group_of[selector]
+      tp_fp_labels_group_of = tp_fp_labels_group_of[selector]
 
-    return scores[~is_matched_to_difficult_box
-                  & ~is_matched_to_group_of_box], tp_fp_labels[
-                      ~is_matched_to_difficult_box
-                      & ~is_matched_to_group_of_box]
+    return np.concatenate(
+        (scores[~is_matched_to_difficult_box
+                & ~is_matched_to_group_of_box],
+         scores_group_of)), np.concatenate(
+             (tp_fp_labels[~is_matched_to_difficult_box
+                           & ~is_matched_to_group_of_box].astype(float),
+              tp_fp_labels_group_of))
 
   def _get_ith_class_arrays(self, detected_boxes, detected_scores,
                             detected_masks, detected_class_labels,

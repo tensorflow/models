@@ -196,7 +196,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         }
       }
     """
-    first_stage_box_predictor_arg_scope = (
+    first_stage_box_predictor_arg_scope_fn = (
         self._build_arg_scope_with_hyperparams(
             first_stage_box_predictor_hyperparams_text_proto, is_training))
 
@@ -255,8 +255,8 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         'number_of_stages': number_of_stages,
         'first_stage_anchor_generator': first_stage_anchor_generator,
         'first_stage_atrous_rate': first_stage_atrous_rate,
-        'first_stage_box_predictor_arg_scope':
-        first_stage_box_predictor_arg_scope,
+        'first_stage_box_predictor_arg_scope_fn':
+        first_stage_box_predictor_arg_scope_fn,
         'first_stage_box_predictor_kernel_size':
         first_stage_box_predictor_kernel_size,
         'first_stage_box_predictor_depth': first_stage_box_predictor_depth,

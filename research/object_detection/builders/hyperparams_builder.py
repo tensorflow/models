@@ -43,7 +43,8 @@ def build(hyperparams_config, is_training):
     is_training: Whether the network is in training mode.
 
   Returns:
-    arg_scope: tf-slim arg_scope containing hyperparameters for ops.
+    arg_scope_fn: A function to construct tf-slim arg_scope containing
+      hyperparameters for ops.
 
   Raises:
     ValueError: if hyperparams_config is not of type hyperparams.Hyperparams.
@@ -64,16 +65,18 @@ def build(hyperparams_config, is_training):
   if hyperparams_config.HasField('op') and (
       hyperparams_config.op == hyperparams_pb2.Hyperparams.FC):
     affected_ops = [slim.fully_connected]
-  with slim.arg_scope(
-      affected_ops,
-      weights_regularizer=_build_regularizer(
-          hyperparams_config.regularizer),
-      weights_initializer=_build_initializer(
-          hyperparams_config.initializer),
-      activation_fn=_build_activation_fn(hyperparams_config.activation),
-      normalizer_fn=batch_norm,
-      normalizer_params=batch_norm_params) as sc:
-    return sc
+  def scope_fn():
+    with slim.arg_scope(
+        affected_ops,
+        weights_regularizer=_build_regularizer(
+            hyperparams_config.regularizer),
+        weights_initializer=_build_initializer(
+            hyperparams_config.initializer),
+        activation_fn=_build_activation_fn(hyperparams_config.activation),
+        normalizer_fn=batch_norm,
+        normalizer_params=batch_norm_params) as sc:
+      return sc
+  return scope_fn
 
 
 def _build_activation_fn(activation_fn):

@@ -229,7 +229,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                number_of_stages,
                first_stage_anchor_generator,
                first_stage_atrous_rate,
-               first_stage_box_predictor_arg_scope,
+               first_stage_box_predictor_arg_scope_fn,
                first_stage_box_predictor_kernel_size,
                first_stage_box_predictor_depth,
                first_stage_minibatch_size,
@@ -291,8 +291,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
         denser resolutions.  The atrous rate is used to compensate for the
         denser feature maps by using an effectively larger receptive field.
         (This should typically be set to 1).
-      first_stage_box_predictor_arg_scope: Slim arg_scope for conv2d,
-        separable_conv2d and fully_connected ops for the RPN box predictor.
+      first_stage_box_predictor_arg_scope_fn: A function to construct tf-slim
+        arg_scope for conv2d, separable_conv2d and fully_connected ops for the
+        RPN box predictor.
       first_stage_box_predictor_kernel_size: Kernel size to use for the
         convolution op just prior to RPN box predictions.
       first_stage_box_predictor_depth: Output depth for the convolution op
@@ -396,8 +397,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
     # (First stage) Region proposal network parameters
     self._first_stage_anchor_generator = first_stage_anchor_generator
     self._first_stage_atrous_rate = first_stage_atrous_rate
-    self._first_stage_box_predictor_arg_scope = (
-        first_stage_box_predictor_arg_scope)
+    self._first_stage_box_predictor_arg_scope_fn = (
+        first_stage_box_predictor_arg_scope_fn)
     self._first_stage_box_predictor_kernel_size = (
         first_stage_box_predictor_kernel_size)
     self._first_stage_box_predictor_depth = first_stage_box_predictor_depth
@@ -406,7 +407,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         positive_fraction=first_stage_positive_balance_fraction)
     self._first_stage_box_predictor = box_predictor.ConvolutionalBoxPredictor(
         self._is_training, num_classes=1,
-        conv_hyperparams=self._first_stage_box_predictor_arg_scope,
+        conv_hyperparams_fn=self._first_stage_box_predictor_arg_scope_fn,
         min_depth=0, max_depth=0, num_layers_before_predictor=0,
         use_dropout=False, dropout_keep_prob=1.0, kernel_size=1,
         box_code_size=self._box_coder.code_size)
@@ -914,7 +915,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     anchors = box_list_ops.concatenate(
         self._first_stage_anchor_generator.generate([(feature_map_shape[1],
                                                       feature_map_shape[2])]))
-    with slim.arg_scope(self._first_stage_box_predictor_arg_scope):
+    with slim.arg_scope(self._first_stage_box_predictor_arg_scope_fn()):
       kernel_size = self._first_stage_box_predictor_kernel_size
       rpn_box_predictor_features = slim.conv2d(
           rpn_features_to_crop,

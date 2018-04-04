@@ -225,7 +225,6 @@ class ModelBuilderTest(tf.test.TestCase):
                 }
               }
           }
-          batch_norm_trainable: true
         }
         box_coder {
           faster_rcnn_box_coder {
@@ -298,6 +297,7 @@ class ModelBuilderTest(tf.test.TestCase):
   def test_create_ssd_mobilenet_v1_model_from_config(self):
     model_text_proto = """
       ssd {
+        freeze_batchnorm: true
         inplace_batchnorm_update: true
         feature_extractor {
           type: 'ssd_mobilenet_v1'
@@ -311,7 +311,6 @@ class ModelBuilderTest(tf.test.TestCase):
                 }
               }
           }
-          batch_norm_trainable: true
         }
         box_coder {
           faster_rcnn_box_coder {
@@ -368,8 +367,9 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
     self.assertIsInstance(model._feature_extractor,
                           SSDMobileNetV1FeatureExtractor)
-    self.assertTrue(model._feature_extractor._batch_norm_trainable)
     self.assertTrue(model._normalize_loc_loss_by_codesize)
+    self.assertTrue(model._freeze_batchnorm)
+    self.assertTrue(model._inplace_batchnorm_update)
 
   def test_create_ssd_mobilenet_v2_model_from_config(self):
     model_text_proto = """
@@ -386,7 +386,6 @@ class ModelBuilderTest(tf.test.TestCase):
                 }
               }
           }
-          batch_norm_trainable: true
         }
         box_coder {
           faster_rcnn_box_coder {
@@ -443,7 +442,6 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
     self.assertIsInstance(model._feature_extractor,
                           SSDMobileNetV2FeatureExtractor)
-    self.assertTrue(model._feature_extractor._batch_norm_trainable)
     self.assertTrue(model._normalize_loc_loss_by_codesize)
 
   def test_create_embedded_ssd_mobilenet_v1_model_from_config(self):
@@ -461,7 +459,6 @@ class ModelBuilderTest(tf.test.TestCase):
                 }
               }
           }
-          batch_norm_trainable: true
         }
         box_coder {
           faster_rcnn_box_coder {

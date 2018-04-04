@@ -38,8 +38,7 @@ class FakeSSDFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         depth_multiplier=0,
         min_depth=0,
         pad_to_multiple=1,
-        batch_norm_trainable=True,
-        conv_hyperparams=None)
+        conv_hyperparams_fn=None)
 
   def preprocess(self, resized_inputs):
     return tf.identity(resized_inputs)
@@ -124,7 +123,8 @@ class SsdMetaArchTest(test_case.TestCase):
         non_max_suppression_fn, tf.identity, classification_loss,
         localization_loss, classification_loss_weight, localization_loss_weight,
         normalize_loss_by_num_matches, hard_example_miner, add_summaries=False,
-        normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize)
+        normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
+        freeze_batchnorm=False, inplace_batchnorm_update=False)
     return model, num_classes, mock_anchor_generator.num_anchors(), code_size
 
   def test_preprocess_preserves_shapes_with_dynamic_input_image(self):
