@@ -84,8 +84,8 @@ def parse_dtype_info(flags):
 
   if flags.loss_scale is None:
     flags.loss_scale = {
-      "float16": 128,
-      "float32": 1,
+        "float16": 128,
+        "float32": 1,
     }[flags.dtype.name]
 
 

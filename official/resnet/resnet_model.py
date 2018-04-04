@@ -413,7 +413,7 @@ class Model(object):
         self.block_fn = _building_block_v2
 
     if dtype not in ALLOWED_TYPES:
-      raise ValueError("dtype must be one of: {}".format(LEGAL_TYPES))
+      raise ValueError('dtype must be one of: {}'.format(ALLOWED_TYPES))
 
     self.data_format = data_format
     self.num_classes = num_classes
