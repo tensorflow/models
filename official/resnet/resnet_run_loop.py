@@ -369,7 +369,7 @@ def resnet_main(flags, model_function, input_function, shape=None):
 
   if flags.benchmark_log_dir is not None:
     benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
-    benchmark_logger.log_run_info("resnet")
+    benchmark_logger.log_run_info('resnet')
   else:
     benchmark_logger = None
 
@@ -407,6 +407,9 @@ def resnet_main(flags, model_function, input_function, shape=None):
 
     if benchmark_logger:
       benchmark_logger.log_estimator_evaluation_result(eval_results)
+
+  if benchmark_logger:
+    benchmark_logger.log_run_end()
 
   if flags.export_dir is not None:
     warn_on_multi_gpu_export(flags.multi_gpu)

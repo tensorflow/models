@@ -19,9 +19,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import datetime
 import json
 import os
 import tempfile
+import time
 import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
@@ -90,7 +92,7 @@ class BenchmarkLoggerTest(tf.test.TestCase):
       self.assertEqual(loss["global_step"], 1e4)
       self.assertEqual(loss["extras"], [])
 
-  def test_log_non_nubmer_value(self):
+  def test_log_non_number_value(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
     log = logger.BenchmarkLogger(log_dir)
     const = tf.constant(1)
@@ -130,6 +132,43 @@ class BenchmarkLoggerTest(tf.test.TestCase):
 
     metric_log = os.path.join(log_dir, "metric.log")
     self.assertFalse(tf.gfile.Exists(metric_log))
+
+  def test_log_run_end(self):
+    log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
+    log = logger.BenchmarkLogger(log_dir)
+    log._log_run_info({"model_name": "test"})
+    time.sleep(1)
+    log.log_run_end()
+
+    info_log = os.path.join(log_dir, logger.BENCHMARK_RUN_LOG_FILE_NAME)
+    with tf.gfile.GFile(info_log) as f:
+      run_info = json.load(f)
+      self.assertEqual(run_info["model_name"], "test")
+      run_end = datetime.datetime.strptime(
+          run_info["end_date"], logger._DATE_TIME_FORMAT_PATTERN)
+      elapsed_time = datetime.timedelta(
+          *map(float, run_info["elapsed_time"].split(":")))
+      self.assertLess(run_end, datetime.datetime.now())
+      self.assertGreater(elapsed_time, datetime.timedelta(0))
+      self.assertGreater(run_info["elapsed_seconds"], 0)
+
+  def test_log_run_end_no_existing(self):
+    log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
+    log = logger.BenchmarkLogger(log_dir)
+    time.sleep(1)
+    log.log_run_end()
+
+    info_log = os.path.join(log_dir, logger.BENCHMARK_RUN_LOG_FILE_NAME)
+    with tf.gfile.GFile(info_log) as f:
+      run_info = json.load(f)
+      self.assertEqual(len(run_info), 3)
+      run_end = datetime.datetime.strptime(
+          run_info["end_date"], logger._DATE_TIME_FORMAT_PATTERN)
+      elapsed_time = datetime.timedelta(
+          *map(float, run_info["elapsed_time"].split(":")))
+      self.assertLess(run_end, datetime.datetime.now())
+      self.assertGreater(elapsed_time, datetime.timedelta(0))
+      self.assertGreater(run_info["elapsed_seconds"], 0)
 
   def test_collect_tensorflow_info(self):
     run_info = {}
