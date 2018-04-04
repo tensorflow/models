@@ -107,7 +107,7 @@ def main(argv):
     (device, data_format) = ('/cpu:0', 'channels_last')
   # If data_format is defined in FLAGS, overwrite automatically set value.
   if flags.data_format is not None:
-    data_format = data_format
+    data_format = flags.data_format
   print('Using device %s, and data format %s.' % (device, data_format))
 
   # Load the datasets
