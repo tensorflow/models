@@ -44,6 +44,8 @@ class BenchmarkLogger(object):
     if not tf.gfile.IsDirectory(self._logging_dir):
       tf.gfile.MakeDirs(self._logging_dir)
 
+    self.run_date = datetime.datetime.now()
+
   def log_estimator_evaluation_result(self, eval_results):
     """Log the evaluation result for a estimator.
 
@@ -92,8 +94,7 @@ class BenchmarkLogger(object):
           "value": float(value),
           "unit": unit,
           "global_step": global_step,
-          "timestamp": datetime.datetime.now().strftime(
-              _DATE_TIME_FORMAT_PATTERN),
+          "timestamp": _formatted_date(),
           "extras": extras}
       try:
         json.dump(metric, f)
@@ -113,21 +114,56 @@ class BenchmarkLogger(object):
     run_info = {
         "model_name": model_name,
         "machine_config": {},
-        "run_date": datetime.datetime.now().strftime(_DATE_TIME_FORMAT_PATTERN)}
+        "run_date": _formatted_date(self.run_date)
+    }
+
     _collect_tensorflow_info(run_info)
     _collect_tensorflow_environment_variables(run_info)
     _collect_cpu_info(run_info)
     _collect_gpu_info(run_info)
     _collect_memory_info(run_info)
 
+    self._log_run_info(run_info)
+
+  def log_run_end(self):
+    """Log timing information at the end of a run."""
+    end_date = datetime.datetime.now()
+    delta = end_date - self.run_date
+    end_info = {
+        "end_date": _formatted_date(end_date),
+        "elapsed_time": str(delta),
+        "elapsed_seconds": delta.total_seconds()
+    }
+
+    # Load in run info so that we can append to existing run_info:
+    with tf.gfile.GFile(os.path.join(
+        self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "r") as f:
+      try:
+        run_info = json.load(f)
+      except (tf.errors.NotFoundError) as e:
+        tf.logging.warning(
+            "Failed to load benchmark run info from log file: %s", e)
+        run_info = {}
+
+    # Append new info and write to file
+    run_info.update(end_info)
+    self._log_run_info(run_info)
+
+  def _log_run_info(self, run_info):
+    """Write singleton information about the run to a log file."""
     with tf.gfile.GFile(os.path.join(
         self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
       try:
         json.dump(run_info, f)
         f.write("\n")
       except (TypeError, ValueError) as e:
-        tf.logging.warning("Failed to dump benchmark run info to log file: %s",
-                           e)
+        tf.logging.warning(
+            "Failed to dump benchmark run info to log file: %s", e)
+
+
+def _formatted_date(date=None):
+  date = date or datetime.datetime.now()
+  return date.strftime(_DATE_TIME_FORMAT_PATTERN)
 
 
 def _collect_tensorflow_info(run_info):
