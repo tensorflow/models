@@ -114,6 +114,16 @@ def op(opfunc, **params):
   return _Op(opfunc, params=params, multiplier_func=multiplier)
 
 
+class NoOpScope(object):
+  """No-op context manager."""
+
+  def __enter__(self):
+    return None
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    return False
+
+
 @slim.add_arg_scope
 def mobilenet_base(  # pylint: disable=invalid-name
     inputs,
@@ -163,7 +173,9 @@ def mobilenet_base(  # pylint: disable=invalid-name
       only. It is safe to set it to the value matching
       training_scope(is_training=...). It is also safe to explicitly set
       it to False, even if there is outer training_scope set to to training.
-      (The network will be built in inference mode).
+      (The network will be built in inference mode). If this is set to None,
+      no arg_scope is added for slim.batch_norm's is_training parameter.
+
   Returns:
     tensor_out: output tensor.
     end_points: a set of activations for external use, for example summaries or
@@ -194,7 +206,8 @@ def mobilenet_base(  # pylint: disable=invalid-name
   # c) set all defaults
   # d) set all extra overrides.
   with _scope_all(scope, default_scope='Mobilenet'), \
-      slim.arg_scope([slim.batch_norm], is_training=is_training), \
+      slim.arg_scope([slim.batch_norm], is_training=is_training) \
+      if is_training is not None else NoOpScope(), \
       _set_arg_scope_defaults(conv_defs_defaults), \
       _set_arg_scope_defaults(conv_defs_overrides):
     # The current_stride variable keeps track of the output stride of the
