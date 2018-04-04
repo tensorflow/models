@@ -22,30 +22,6 @@ from nets import mobilenet_v1
 slim = tf.contrib.slim
 
 
-def _batch_norm_arg_scope(list_ops,
-                          use_batch_norm=True,
-                          batch_norm_decay=0.9997,
-                          batch_norm_epsilon=0.001,
-                          batch_norm_scale=False,
-                          train_batch_norm=False):
-  """Slim arg scope for Mobilenet V1 batch norm."""
-  if use_batch_norm:
-    batch_norm_params = {
-        'is_training': train_batch_norm,
-        'scale': batch_norm_scale,
-        'decay': batch_norm_decay,
-        'epsilon': batch_norm_epsilon
-    }
-    normalizer_fn = slim.batch_norm
-  else:
-    normalizer_fn = None
-    batch_norm_params = None
-
-  return slim.arg_scope(list_ops,
-                        normalizer_fn=normalizer_fn,
-                        normalizer_params=batch_norm_params)
-
-
 class FasterRCNNMobilenetV1FeatureExtractor(
     faster_rcnn_meta_arch.FasterRCNNFeatureExtractor):
   """Faster R-CNN Mobilenet V1 feature extractor implementation."""
@@ -121,18 +97,19 @@ class FasterRCNNMobilenetV1FeatureExtractor(
         ['image size must at least be 33 in both height and width.'])
 
     with tf.control_dependencies([shape_assert]):
-      with tf.variable_scope('MobilenetV1',
-                             reuse=self._reuse_weights) as scope:
-        with _batch_norm_arg_scope([slim.conv2d, slim.separable_conv2d],
-                                   batch_norm_scale=True,
-                                   train_batch_norm=self._train_batch_norm):
+      with slim.arg_scope(
+          mobilenet_v1.mobilenet_v1_arg_scope(
+              is_training=self._train_batch_norm,
+              weight_decay=self._weight_decay)):
+        with tf.variable_scope('MobilenetV1',
+                               reuse=self._reuse_weights) as scope:
           _, activations = mobilenet_v1.mobilenet_v1_base(
               preprocessed_inputs,
-              final_endpoint='Conv2d_13_pointwise',
+              final_endpoint='Conv2d_11_pointwise',
               min_depth=self._min_depth,
               depth_multiplier=self._depth_multiplier,
               scope=scope)
-    return activations['Conv2d_13_pointwise'], activations
+    return activations['Conv2d_11_pointwise'], activations
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.
@@ -152,9 +129,10 @@ class FasterRCNNMobilenetV1FeatureExtractor(
 
     depth = lambda d: max(int(d * 1.0), 16)
     with tf.variable_scope('MobilenetV1', reuse=self._reuse_weights):
-      with _batch_norm_arg_scope([slim.conv2d, slim.separable_conv2d],
-                                 batch_norm_scale=True,
-                                 train_batch_norm=self._train_batch_norm):
+      with slim.arg_scope(
+          mobilenet_v1.mobilenet_v1_arg_scope(
+              is_training=self._train_batch_norm,
+              weight_decay=self._weight_decay)):
         with slim.arg_scope(
             [slim.conv2d, slim.separable_conv2d], padding='SAME'):
           net = slim.separable_conv2d(

@@ -51,6 +51,9 @@ message InputReader {
   // Number of reader instances to create.
   optional uint32 num_readers = 6 [default=32];
 
+  // Number of records to read from each reader at once.
+  optional uint32 read_block_length = 15 [default=32];
+
   // Number of decoded records to prefetch before batching.
   optional uint32 prefetch_size = 13 [default = 512];
 

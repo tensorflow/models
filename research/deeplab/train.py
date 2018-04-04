@@ -17,6 +17,7 @@
 See model.py for more details and usage.
 """
 
+import six
 import tensorflow as tf
 from deeplab import common
 from deeplab import model
@@ -65,6 +66,9 @@ flags.DEFINE_integer('save_interval_secs', 1200,
 
 flags.DEFINE_integer('save_summaries_secs', 600,
                      'How often, in seconds, we compute the summaries.')
+
+flags.DEFINE_boolean('save_summaries_images', False,
+                     'Save sample inputs, labels, and semantic predictions as images to summary.')
 
 # Settings for training strategy.
 
@@ -197,10 +201,10 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
   # add name to graph node so we can add to summary
   outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE] = tf.identity( 
     outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE],
-    name = 'semantic_merged_logits'
+    name = OUTPUT_MERGED_LOGITS_NODE
   )
 
-  for output, num_classes in outputs_to_num_classes.iteritems():
+  for output, num_classes in six.iteritems(outputs_to_num_classes):
     train_utils.add_softmax_cross_entropy_loss_for_each_scale(
         outputs_to_scales_to_logits[output],
         samples[common.LABEL],
@@ -227,7 +231,7 @@ def main(unused_argv):
   assert FLAGS.train_batch_size % config.num_clones == 0, (
       'Training batch size not divisble by number of clones (GPUs).')
 
-  clone_batch_size = FLAGS.train_batch_size / config.num_clones
+  clone_batch_size = int(FLAGS.train_batch_size / config.num_clones)
 
   # Get dataset-dependent information.
   dataset = segmentation_dataset.get_dataset(
@@ -278,14 +282,15 @@ def main(unused_argv):
       summaries.add(tf.summary.histogram(model_var.op.name, model_var))
 
     # Add summaries for images, labels, semantic predictions
-    summary_image = graph.get_tensor_by_name(first_clone_scope + '/input_image:0')
-    summaries.add(tf.summary.image('samples/input_image', summary_image))
+    if FLAGS.save_summaries_images:
+        summary_image = graph.get_tensor_by_name('%s/%s:0' % first_clone_slope, INPUT_LABEL_NODE)
+        summaries.add(tf.summary.image('samples/%s' % INPUT_IMAGE_NODE, summary_image))
 
-    summary_label = tf.cast(graph.get_tensor_by_name(first_clone_scope + '/input_label:0'), tf.uint8)
-    summaries.add(tf.summary.image('samples/input_label', summary_label))
+        summary_label = tf.cast(graph.get_tensor_by_name('%s/%s:0' % first_clone_slope, INPUT_LABEL_NODE), tf.uint8)
+        summaries.add(tf.summary.image('samples/%s' % INPUT_LABEL_NODE, summary_label))
 
-    predictions = tf.cast(tf.expand_dims(tf.argmax(graph.get_tensor_by_name(first_clone_scope + '/semantic_merged_logits:0'), 3), -1), tf.uint8)
-    summaries.add(tf.summary.image('samples/semantic_predictions', predictions))
+        predictions = tf.cast(tf.expand_dims(tf.argmax(graph.get_tensor_by_name('%s/%s:0' % first_clone_scope, OUTPUT_MERGED_LOGITS_NODE), 3), -1), tf.uint8)
+        summaries.add(tf.summary.image('samples/%s' % OUTPUT_MERGED_LOGITS_NODE, predictions))
 
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):

@@ -24,7 +24,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.mnist import dataset
 from official.utils.arg_parsers import parsers
-from official.utils.logging import hooks_helper
+from official.utils.logs import hooks_helper
 
 LEARNING_RATE = 1e-4
 

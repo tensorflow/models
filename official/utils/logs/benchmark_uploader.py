@@ -31,10 +31,10 @@ import uuid
 
 from google.cloud import bigquery
 
-import tensorflow as tf # pylint: disable=g-bad-import-order
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.arg_parsers import parsers
-from official.utils.logging import logger
+from official.utils.logs import logger
 
 
 class BigQueryUploader(object):
