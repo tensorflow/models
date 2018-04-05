@@ -29,6 +29,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import scipy.signal
 
+from six.moves import xrange  # pylint: disable=redefined-builtin
 from tensorflow.python.util import tf_should_use
 from tensorflow.contrib.summary import summary_ops
 from tensorflow.python.ops import summary_op_util

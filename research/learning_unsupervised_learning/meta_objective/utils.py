@@ -22,6 +22,7 @@ import collections
 import numpy as np
 import sonnet as snt
 import tensorflow as tf
+from six.moves import xrange  # pylint: disable=redefined-builtin
 
 from learning_unsupervised_learning import optimizers
 from learning_unsupervised_learning import utils
