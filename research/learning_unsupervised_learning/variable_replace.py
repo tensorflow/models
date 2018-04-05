@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
 
 import tensorflow as tf
 from contextlib import contextmanager
@@ -70,9 +71,9 @@ def variable_replace(replacements, no_new=True):
     names_replace[strip_name] = v
     # TODO(lmetz) is there a cleaner way to do this?
   def new_get_variable(name, *args, **kwargs):
-    #print "Monkeypatch get variable run with name:", name
+    #print("Monkeypatch get variable run with name:", name)
     n = tf.get_variable_scope().name + "/" + name
-    #print "Monkeypatch get variable run with name:", n
+    #print("Monkeypatch get variable run with name:", n)
     if n in names_replace:
       has_replaced_names.append(n)
       return names_replace[n]
@@ -91,15 +92,15 @@ def variable_replace(replacements, no_new=True):
   yield
 
   if set(has_replaced_names) != set(names_replace.keys()):
-    print "Didn't use all replacements"
-    print "replaced variables that are not requested??"
-    print "==="
+    print("Didn't use all replacements")
+    print("replaced variables that are not requested??")
+    print("===")
     for n in list(set(has_replaced_names) - set(names_replace.keys())):
-      print n
-    print "Missed replacing variables"
-    print "==="
+      print(n)
+    print("Missed replacing variables")
+    print("===")
     for n in list(set(names_replace.keys()) - set(has_replaced_names)):
-      print n, "==>", names_replace[n].name
+      print(n, "==>", names_replace[n].name)
     raise ValueError("Fix this -- see stderr")
 
   # undo the monkey patch
