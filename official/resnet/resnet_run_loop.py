@@ -414,7 +414,8 @@ def resnet_main(flags, model_function, input_function, shape=None):
     # Exports a saved model for the given classifier.
     input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
         shape, batch_size=flags.batch_size)
-    classifier.export_savedmodel(flags.export_dir, input_receiver_fn)
+    classifier.export_savedmodel(
+        flags.export_dir, input_receiver_fn, clear_devices=True)
 
 
 def warn_on_multi_gpu_export(multi_gpu=False):
