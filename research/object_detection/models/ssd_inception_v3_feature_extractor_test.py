@@ -40,7 +40,8 @@ class SsdInceptionV3FeatureExtractorTest(
     min_depth = 32
     return ssd_inception_v3_feature_extractor.SSDInceptionV3FeatureExtractor(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        self.conv_hyperparams_fn)
+        self.conv_hyperparams_fn,
+        override_base_feature_extractor_hyperparams=True)
 
   def test_extract_features_returns_correct_shapes_128(self):
     image_height = 128

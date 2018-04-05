@@ -99,6 +99,14 @@ message SsdFeatureExtractor {
   // of the base feature extractor.
   optional Hyperparams conv_hyperparams = 4;
 
+  // Normally, SSD feature extractors are constructed by reusing an existing
+  // base feature extractor (that has its own hyperparams) and adding new layers
+  // on top of it. `conv_hyperparams` above normally applies only to the new
+  // layers while base feature extractor uses its own default hyperparams. If
+  // this value is set to true, the base feature extractor's hyperparams will be
+  // overridden with the `conv_hyperparams`.
+  optional bool override_base_feature_extractor_hyperparams = 9 [default = false];
+
   // The nearest multiple to zero-pad the input height and width dimensions to.
   // For example, if pad_to_multiple = 2, input dimensions are zero-padded
   // until the resulting dimensions are even.

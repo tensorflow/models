@@ -19,6 +19,7 @@ import tensorflow as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
+from object_detection.utils import context_manager
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from nets import mobilenet_v1
@@ -37,7 +38,8 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                conv_hyperparams_fn,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
     """MobileNetV1 Feature Extractor for SSD Models.
 
     Args:
@@ -47,16 +49,21 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
       conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
-        and separable_conv2d ops.
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
     """
     super(SSDMobileNetV1FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise)
+        conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise,
+        override_base_feature_extractor_hyperparams)
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -99,15 +106,18 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                            reuse=self._reuse_weights) as scope:
       with slim.arg_scope(
           mobilenet_v1.mobilenet_v1_arg_scope(is_training=None)):
+        with (slim.arg_scope(self._conv_hyperparams_fn())
+              if self._override_base_feature_extractor_hyperparams
+              else context_manager.IdentityContextManager()):
         # TODO(skligys): Enable fused batch norm once quantization supports it.
-        with slim.arg_scope([slim.batch_norm], fused=False):
-          _, image_features = mobilenet_v1.mobilenet_v1_base(
-              ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
-              final_endpoint='Conv2d_13_pointwise',
-              min_depth=self._min_depth,
-              depth_multiplier=self._depth_multiplier,
-              use_explicit_padding=self._use_explicit_padding,
-              scope=scope)
+          with slim.arg_scope([slim.batch_norm], fused=False):
+            _, image_features = mobilenet_v1.mobilenet_v1_base(
+                ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
+                final_endpoint='Conv2d_13_pointwise',
+                min_depth=self._min_depth,
+                depth_multiplier=self._depth_multiplier,
+                use_explicit_padding=self._use_explicit_padding,
+                scope=scope)
       with slim.arg_scope(self._conv_hyperparams_fn()):
         # TODO(skligys): Enable fused batch norm once quantization supports it.
         with slim.arg_scope([slim.batch_norm], fused=False):

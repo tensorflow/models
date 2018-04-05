@@ -83,6 +83,7 @@ class ModelBuilderTest(tf.test.TestCase):
                 }
               }
           }
+          override_base_feature_extractor_hyperparams: true
         }
         box_coder {
           faster_rcnn_box_coder {
@@ -154,6 +155,7 @@ class ModelBuilderTest(tf.test.TestCase):
                 }
               }
           }
+          override_base_feature_extractor_hyperparams: true
         }
         box_coder {
           faster_rcnn_box_coder {

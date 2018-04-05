@@ -45,7 +45,8 @@ class SSDFeatureExtractor(object):
                conv_hyperparams_fn,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
     """Constructor.
 
     Args:
@@ -55,12 +56,15 @@ class SSDFeatureExtractor(object):
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
       conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
-        and separable_conv2d ops.
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
       reuse_weights: whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
-
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
     """
     self._is_training = is_training
     self._depth_multiplier = depth_multiplier
@@ -70,6 +74,8 @@ class SSDFeatureExtractor(object):
     self._reuse_weights = reuse_weights
     self._use_explicit_padding = use_explicit_padding
     self._use_depthwise = use_depthwise
+    self._override_base_feature_extractor_hyperparams = (
+        override_base_feature_extractor_hyperparams)
 
   @abstractmethod
   def preprocess(self, resized_inputs):

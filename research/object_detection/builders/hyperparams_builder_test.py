@@ -26,11 +26,11 @@ from object_detection.protos import hyperparams_pb2
 slim = tf.contrib.slim
 
 
-class HyperparamsBuilderTest(tf.test.TestCase):
+def _get_scope_key(op):
+  return getattr(op, '_key_op', str(op))
 
-  # TODO(rathodv): Make this a public api in slim arg_scope.py.
-  def _get_scope_key(self, op):
-    return getattr(op, '_key_op', str(op))
+
+class HyperparamsBuilderTest(tf.test.TestCase):
 
   def test_default_arg_scope_has_conv2d_op(self):
     conv_hyperparams_text_proto = """
@@ -48,7 +48,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    self.assertTrue(self._get_scope_key(slim.conv2d) in scope)
+    self.assertTrue(_get_scope_key(slim.conv2d) in scope)
 
   def test_default_arg_scope_has_separable_conv2d_op(self):
     conv_hyperparams_text_proto = """
@@ -66,7 +66,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    self.assertTrue(self._get_scope_key(slim.separable_conv2d) in scope)
+    self.assertTrue(_get_scope_key(slim.separable_conv2d) in scope)
 
   def test_default_arg_scope_has_conv2d_transpose_op(self):
     conv_hyperparams_text_proto = """
@@ -84,7 +84,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    self.assertTrue(self._get_scope_key(slim.conv2d_transpose) in scope)
+    self.assertTrue(_get_scope_key(slim.conv2d_transpose) in scope)
 
   def test_explicit_fc_op_arg_scope_has_fully_connected_op(self):
     conv_hyperparams_text_proto = """
@@ -103,7 +103,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    self.assertTrue(self._get_scope_key(slim.fully_connected) in scope)
+    self.assertTrue(_get_scope_key(slim.fully_connected) in scope)
 
   def test_separable_conv2d_and_conv2d_and_transpose_have_same_parameters(self):
     conv_hyperparams_text_proto = """
@@ -166,7 +166,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
 
     regularizer = conv_scope_arguments['weights_regularizer']
     weights = np.array([1., -1, 4., 2.])
@@ -197,9 +197,9 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     self.assertEqual(conv_scope_arguments['normalizer_fn'], slim.batch_norm)
-    batch_norm_params = conv_scope_arguments['normalizer_params']
+    batch_norm_params = scope[_get_scope_key(slim.batch_norm)]
     self.assertAlmostEqual(batch_norm_params['decay'], 0.7)
     self.assertAlmostEqual(batch_norm_params['epsilon'], 0.03)
     self.assertFalse(batch_norm_params['center'])
@@ -229,9 +229,9 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=False)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     self.assertEqual(conv_scope_arguments['normalizer_fn'], slim.batch_norm)
-    batch_norm_params = conv_scope_arguments['normalizer_params']
+    batch_norm_params = scope[_get_scope_key(slim.batch_norm)]
     self.assertAlmostEqual(batch_norm_params['decay'], 0.7)
     self.assertAlmostEqual(batch_norm_params['epsilon'], 0.03)
     self.assertFalse(batch_norm_params['center'])
@@ -261,9 +261,9 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     self.assertEqual(conv_scope_arguments['normalizer_fn'], slim.batch_norm)
-    batch_norm_params = conv_scope_arguments['normalizer_params']
+    batch_norm_params = scope[_get_scope_key(slim.batch_norm)]
     self.assertAlmostEqual(batch_norm_params['decay'], 0.7)
     self.assertAlmostEqual(batch_norm_params['epsilon'], 0.03)
     self.assertFalse(batch_norm_params['center'])
@@ -286,9 +286,8 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     self.assertEqual(conv_scope_arguments['normalizer_fn'], None)
-    self.assertEqual(conv_scope_arguments['normalizer_params'], None)
 
   def test_use_none_activation(self):
     conv_hyperparams_text_proto = """
@@ -307,7 +306,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     self.assertEqual(conv_scope_arguments['activation_fn'], None)
 
   def test_use_relu_activation(self):
@@ -327,7 +326,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     self.assertEqual(conv_scope_arguments['activation_fn'], tf.nn.relu)
 
   def test_use_relu_6_activation(self):
@@ -347,7 +346,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     self.assertEqual(conv_scope_arguments['activation_fn'], tf.nn.relu6)
 
   def _assert_variance_in_range(self, initializer, shape, variance,
@@ -382,7 +381,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=2. / 100.)
@@ -406,7 +405,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=2. / 40.)
@@ -430,7 +429,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=4. / (100. + 40.))
@@ -454,7 +453,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=2. / 100.)
@@ -477,7 +476,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=0.49, tol=1e-1)
@@ -500,7 +499,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
     initializer = conv_scope_arguments['weights_initializer']
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=0.64, tol=1e-1)

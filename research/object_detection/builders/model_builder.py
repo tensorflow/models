@@ -120,6 +120,8 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   use_depthwise = feature_extractor_config.use_depthwise
   conv_hyperparams = hyperparams_builder.build(
       feature_extractor_config.conv_hyperparams, is_training)
+  override_base_feature_extractor_hyperparams = (
+      feature_extractor_config.override_base_feature_extractor_hyperparams)
 
   if feature_type not in SSD_FEATURE_EXTRACTOR_CLASS_MAP:
     raise ValueError('Unknown ssd feature_extractor: {}'.format(feature_type))
@@ -127,7 +129,8 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
   return feature_extractor_class(
       is_training, depth_multiplier, min_depth, pad_to_multiple,
-      conv_hyperparams, reuse_weights, use_explicit_padding, use_depthwise)
+      conv_hyperparams, reuse_weights, use_explicit_padding, use_depthwise,
+      override_base_feature_extractor_hyperparams)
 
 
 def _build_ssd_model(ssd_config, is_training, add_summaries):
