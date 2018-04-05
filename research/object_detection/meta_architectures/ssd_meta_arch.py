@@ -235,6 +235,7 @@ class SSDMetaArch(model.DetectionModel):
 
     self._anchors = None
     self._add_summaries = add_summaries
+    self._batched_prediction_tensor_names = []
 
   @property
   def anchors(self):
@@ -243,6 +244,13 @@ class SSDMetaArch(model.DetectionModel):
     if not isinstance(self._anchors, box_list.BoxList):
       raise RuntimeError('anchors should be a BoxList object, but is not.')
     return self._anchors
+
+  @property
+  def batched_prediction_tensor_names(self):
+    if not self._batched_prediction_tensor_names:
+      raise RuntimeError('Must call predict() method to get batched prediction '
+                         'tensor names.')
+    return self._batched_prediction_tensor_names
 
   def preprocess(self, inputs):
     """Feature-extractor specific preprocessing.
@@ -385,6 +393,8 @@ class SSDMetaArch(model.DetectionModel):
           'feature_maps': feature_maps,
           'anchors': self._anchors.get()
       }
+      self._batched_prediction_tensor_names = [x for x in predictions_dict
+                                               if x != 'anchors']
       return predictions_dict
 
   def _get_feature_map_spatial_dims(self, feature_maps):
