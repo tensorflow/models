@@ -160,7 +160,7 @@ def extract_features(images,
                      preprocess_images=True,
                      num_classes=None,
                      global_pool=False):
-  """Extracts features by the parituclar model_variant.
+  """Extracts features by the particular model_variant.
 
   Args:
     images: A tensor of size [batch, height, width, channels].
