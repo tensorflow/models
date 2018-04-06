@@ -67,6 +67,7 @@ python deeplab/train.py \
     --fine_tune_batch_norm=False \
     --dataset="ade20k" \
     --initialize_last_layer=False \
+    --last_layers_contain_logits_only=True \
     --tf_initial_checkpoint=${PATH_TO_INITIAL_CHECKPOINT} \
     --train_logdir=${PATH_TO_TRAIN_DIR}\
     --dataset_dir=${PATH_TO_DATASET}
@@ -90,7 +91,7 @@ which the ADE20K dataset resides (the `tfrecord` above)
     fine_tune_batch_norm = False.
 
 2. User should fine tune the `min_resize_value` and `max_resize_value` to get
-   better result. Note that `resize_factor` has to equals to `output_stride`.
+   better result. Note that `resize_factor` has to be equal to `output_stride`.
 
 2.  The users should change atrous_rates from [6, 12, 18] to [12, 24, 36] if
     setting output_stride=8.

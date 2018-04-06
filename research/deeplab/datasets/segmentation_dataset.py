@@ -31,6 +31,11 @@ images for the training, validation and test respectively.
 The Cityscapes dataset contains 19 semantic labels (such as road, person, car,
 and so on) for urban street scenes.
 
+3. ADE20K dataset (http://groups.csail.mit.edu/vision/datasets/ADE20K)
+
+The ADE20K dataset contains 150 semantic labels both urban street scenes and
+indoor scenes.
+
 References:
   M. Everingham, S. M. A. Eslami, L. V. Gool, C. K. I. Williams, J. Winn,
   and A. Zisserman, The pascal visual object classes challenge a retrospective.
@@ -39,6 +44,9 @@ References:
   M. Cordts, M. Omran, S. Ramos, T. Rehfeld, M. Enzweiler, R. Benenson,
   U. Franke, S. Roth, and B. Schiele, "The cityscapes dataset for semantic urban
   scene understanding," In Proc. of CVPR, 2016.
+
+  B. Zhou, H. Zhao, X. Puig, S. Fidler, A. Barriuso, A. Torralba, "Scene Parsing
+  through ADE20K dataset", In Proc. of CVPR, 2017.
 """
 import collections
 import os.path
@@ -87,12 +95,10 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
 
 # These number (i.e., 'train'/'test') seems to have to be hard coded
 # You are required to figure it out for your training/testing example.
-# Is there a way to automatically figure it out ?
 _ADE20K_INFORMATION = DatasetDescriptor(
     splits_to_sizes = {
         'train': 20210, # num of samples in images/training
         'val': 2000, # num of samples in images/validation
-        'eval': 2,
     },
     num_classes=150,
     ignore_label=255,

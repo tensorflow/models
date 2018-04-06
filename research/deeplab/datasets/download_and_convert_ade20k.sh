@@ -39,27 +39,27 @@ set -e
 
 CURRENT_DIR=$(pwd)
 WORK_DIR="./ADE20K"
-mkdir -p ${WORK_DIR}
-cd ${WORK_DIR}
+mkdir -p "${WORK_DIR}"
+cd "${WORK_DIR}"
 
 # Helper function to download and unpack ADE20K dataset.
 download_and_uncompress() {
   local BASE_URL=${1}
   local FILENAME=${2}
 
-  if [ ! -f ${FILENAME} ]; then
+  if [ ! -f "${FILENAME}" ]; then
     echo "Downloading ${FILENAME} to ${WORK_DIR}"
     wget -nd -c "${BASE_URL}/${FILENAME}"
   fi
   echo "Uncompressing ${FILENAME}"
-  unzip ${FILENAME}
+  unzip "${FILENAME}"
 }
 
 # Download the images.
 BASE_URL="http://data.csail.mit.edu/places/ADEchallenge"
 FILENAME="ADEChallengeData2016.zip"
 
-download_and_uncompress ${BASE_URL} ${FILENAME}
+download_and_uncompress "${BASE_URL}" "${FILENAME}"
 
 cd "${CURRENT_DIR}"
 
