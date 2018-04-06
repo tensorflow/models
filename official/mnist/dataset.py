@@ -20,6 +20,7 @@ from __future__ import print_function
 import gzip
 import os
 import shutil
+import tempfile
 
 import numpy as np
 from six.moves import urllib
@@ -67,7 +68,7 @@ def download(directory, filename):
     tf.gfile.MakeDirs(directory)
   # CVDF mirror of http://yann.lecun.com/exdb/mnist/
   url = 'https://storage.googleapis.com/cvdf-datasets/mnist/' + filename + '.gz'
-  zipped_filepath = filepath + '.gz'
+  _, zipped_filepath = tempfile.mkstemp(suffix='.gz')
   print('Downloading %s to %s' % (url, zipped_filepath))
   urllib.request.urlretrieve(url, zipped_filepath)
   with gzip.open(zipped_filepath, 'rb') as f_in, \
