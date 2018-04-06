@@ -582,8 +582,8 @@ class SSDMetaArch(model.DetectionModel):
                                         name='classification_loss')
 
       loss_dict = {
-          localization_loss.op.name: localization_loss,
-          classification_loss.op.name: classification_loss
+          str(localization_loss.op.name): localization_loss,
+          str(classification_loss.op.name): classification_loss
       }
     return loss_dict
 
