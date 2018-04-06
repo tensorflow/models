@@ -1,4 +1,5 @@
-/official/ @nealwu @k-w-w @karmel
+* @tensorflow/tf-garden-team
+/official/ @tensorflow/tf-garden-team @karmel
 /research/adversarial_crypto/ @dave-andersen
 /research/adversarial_text/ @rsepassi @a-dai
 /research/adv_imagenet_models/ @AlexeyKurakin
