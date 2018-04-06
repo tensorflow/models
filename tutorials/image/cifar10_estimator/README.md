@@ -123,7 +123,7 @@ cluster = {'master': ['master-ip:8000'],
 
 TF_CONFIG = json.dumps(
   {'cluster': cluster,
-   'task': {'type': master, 'index': 0},
+   'task': {'type': 'master', 'index': 0},
    'model_dir': 'gs://<bucket_path>/<dir_path>',
    'environment': 'cloud'
   })
@@ -159,7 +159,7 @@ cluster = {'master': ['master-ip:8000'],
 
 TF_CONFIG = json.dumps(
   {'cluster': cluster,
-   'task': {'type': worker, 'index': 0},
+   'task': {'type': 'worker', 'index': 0},
    'model_dir': 'gs://<bucket_path>/<dir_path>',
    'environment': 'cloud'
   })
