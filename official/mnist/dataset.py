@@ -70,7 +70,8 @@ def download(directory, filename):
   zipped_filepath = filepath + '.gz'
   print('Downloading %s to %s' % (url, zipped_filepath))
   urllib.request.urlretrieve(url, zipped_filepath)
-  with gzip.open(zipped_filepath, 'rb') as f_in, open(filepath, 'wb') as f_out:
+  with gzip.open(zipped_filepath, 'rb') as f_in, \
+      tf.gfile.Open(filepath, 'wb') as f_out:
     shutil.copyfileobj(f_in, f_out)
   os.remove(zipped_filepath)
   return filepath
