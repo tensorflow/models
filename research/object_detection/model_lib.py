@@ -280,12 +280,16 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           losses.append(regularization_loss)
           losses_dict['Loss/regularization_loss'] = regularization_loss
       total_loss = tf.add_n(losses, name='total_loss')
+      losses_dict['Loss/total_loss'] = total_loss
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
+    if mode in [tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL]:
+      # TODO(rathodv): Stop creating optimizer summary vars in EVAL mode once we
+      # can write learning rate summaries on TPU without host calls.
       global_step = tf.train.get_or_create_global_step()
       training_optimizer, optimizer_summary_vars = optimizer_builder.build(
           train_config.optimizer)
 
+    if mode == tf.estimator.ModeKeys.TRAIN:
       if use_tpu:
         training_optimizer = tpu_optimizer.CrossShardOptimizer(
             training_optimizer)
@@ -362,6 +366,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
             include_metrics_per_category=False)
         for loss_key, loss_tensor in iter(losses_dict.items()):
           eval_metric_ops[loss_key] = tf.metrics.mean(loss_tensor)
+        for var in optimizer_summary_vars:
+          eval_metric_ops[str(var.op.name)] = (var, tf.no_op())
         if img_summary is not None:
           eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
               img_summary, tf.no_op())
