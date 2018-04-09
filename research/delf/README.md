@@ -21,6 +21,24 @@ Hyeonwoo Noh, Andre Araujo, Jack Sim, Tobias Weyand, Bohyung Han,
 Proc. ICCV'17
 ```
 
+## News
+
+-   DELF achieved state-of-the-art results in a CVPR'18 image retrieval paper:
+    [Radenovic et al., "Revisiting Oxford and Paris: Large-Scale Image Retrieval
+    Benchmarking"](https://arxiv.org/abs/1803.11285).
+-   DELF was featured in
+    [ModelDepot](https://modeldepot.io/mikeshi/delf/overview)
+-   DELF is now available in
+    [TF-Hub](https://www.tensorflow.org/hub/modules/google/delf/1)
+
+## Dataset
+
+The Google-Landmarks dataset has been released as part of two Kaggle challenges:
+[Landmark Recognition](https://www.kaggle.com/c/landmark-recognition-challenge)
+and [Landmark Retrieval](https://www.kaggle.com/c/landmark-retrieval-challenge).
+If you make use of the dataset in your research, please consider citing the
+paper mentioned above.
+
 ## Installation
 
 To be able to use this code, please follow [these
@@ -69,14 +87,6 @@ feature extraction and matching:
     using `extract_features.py`.
 -   `delf_config_example.pbtxt` shows an example instantiation of the DelfConfig
     proto, used for DELF feature extraction.
-
-## Dataset
-
-The Google Landmarks dataset has been released as part of two Kaggle challenges:
-[Landmark Recognition](https://www.kaggle.com/c/landmark-recognition-challenge)
-and [Landmark Retrieval](https://www.kaggle.com/c/landmark-retrieval-challenge).
-If you make use of the dataset in your research, please consider citing the
-paper mentioned above.
 
 ## Maintainers
 
