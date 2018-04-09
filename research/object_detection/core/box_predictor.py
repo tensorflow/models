@@ -307,6 +307,7 @@ class MaskRCNNBoxPredictor(BoxPredictor):
                mask_width=14,
                mask_prediction_num_conv_layers=2,
                mask_prediction_conv_depth=256,
+               masks_are_class_agnostic=False,
                predict_keypoints=False):
     """Constructor.
 
@@ -337,6 +338,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
         to 0, the depth of the convolution layers will be automatically chosen
         based on the number of object classes and the number of channels in the
         image features.
+      masks_are_class_agnostic: Boolean determining if the mask-head is
+        class-agnostic or not.
       predict_keypoints: Whether to predict keypoints insde detection boxes.
 
 
@@ -357,6 +360,7 @@ class MaskRCNNBoxPredictor(BoxPredictor):
     self._mask_width = mask_width
     self._mask_prediction_num_conv_layers = mask_prediction_num_conv_layers
     self._mask_prediction_conv_depth = mask_prediction_conv_depth
+    self._masks_are_class_agnostic = masks_are_class_agnostic
     self._predict_keypoints = predict_keypoints
     if self._predict_keypoints:
       raise ValueError('Keypoint prediction is unimplemented.')
@@ -473,8 +477,9 @@ class MaskRCNNBoxPredictor(BoxPredictor):
             upsampled_features,
             num_outputs=num_conv_channels,
             kernel_size=[3, 3])
+      num_masks = 1 if self._masks_are_class_agnostic else self.num_classes
       mask_predictions = slim.conv2d(upsampled_features,
-                                     num_outputs=self.num_classes,
+                                     num_outputs=num_masks,
                                      activation_fn=None,
                                      kernel_size=[3, 3])
       return tf.expand_dims(

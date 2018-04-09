@@ -768,9 +768,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
         predict_auxiliary_outputs=predict_auxiliary_outputs)
 
     refined_box_encodings = tf.squeeze(
-        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
-    class_predictions_with_background = tf.squeeze(box_predictions[
-        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND], axis=1)
+        box_predictions[box_predictor.BOX_ENCODINGS],
+        axis=1, name='all_refined_box_encodings')
+    class_predictions_with_background = tf.squeeze(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1, name='all_class_predictions_with_background')
 
     absolute_proposal_boxes = ops.normalized_to_image_coordinates(
         proposal_boxes_normalized, image_shape, self._parallel_iterations)
@@ -793,6 +795,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
   def _predict_third_stage(self, prediction_dict, image_shapes):
     """Predicts non-box, non-class outputs using refined detections.
+
+    This happens after calling the post-processing stage, such that masks
+    are only calculated for the top scored boxes.
 
     Args:
      prediction_dict: a dictionary holding "raw" prediction tensors:
@@ -851,16 +856,21 @@ class FasterRCNNMetaArch(model.DetectionModel):
         scope=self.second_stage_box_predictor_scope,
         predict_boxes_and_classes=False,
         predict_auxiliary_outputs=True)
+
     if box_predictor.MASK_PREDICTIONS in box_predictions:
       detection_masks = tf.squeeze(box_predictions[
           box_predictor.MASK_PREDICTIONS], axis=1)
-      detection_masks = self._gather_instance_masks(detection_masks,
-                                                    detection_classes)
-      mask_height = tf.shape(detection_masks)[1]
-      mask_width = tf.shape(detection_masks)[2]
+      _, num_classes, mask_height, mask_width = (
+          detection_masks.get_shape().as_list())
+      _, max_detection = detection_classes.get_shape().as_list()
+      if num_classes > 1:
+        detection_masks = self._gather_instance_masks(
+            detection_masks, detection_classes)
+
       prediction_dict[fields.DetectionResultFields.detection_masks] = (
           tf.reshape(detection_masks,
                      [batch_size, max_detection, mask_height, mask_width]))
+
     return prediction_dict
 
   def _gather_instance_masks(self, instance_masks, classes):
@@ -874,16 +884,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Returns:
       masks: a 3-D float32 tensor with shape [K, mask_height, mask_width].
     """
+    _, num_classes, height, width = instance_masks.get_shape().as_list()
     k = tf.shape(instance_masks)[0]
-    num_mask_classes = tf.shape(instance_masks)[1]
-    instance_mask_height = tf.shape(instance_masks)[2]
-    instance_mask_width = tf.shape(instance_masks)[3]
-    classes = tf.reshape(classes, [-1])
-    instance_masks = tf.reshape(instance_masks, [
-        -1, instance_mask_height, instance_mask_width
-    ])
-    return tf.gather(instance_masks,
-                     tf.range(k) * num_mask_classes + tf.to_int32(classes))
+    instance_masks = tf.reshape(instance_masks, [-1, height, width])
+    classes = tf.to_int32(tf.reshape(classes, [-1]))
+    gather_idx = tf.range(k) * num_classes + classes
+    return tf.gather(instance_masks, gather_idx)
 
   def _extract_rpn_feature_maps(self, preprocessed_inputs):
     """Extracts RPN features.
@@ -1815,11 +1821,18 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
         # Pad the prediction_masks with to add zeros for background class to be
         # consistent with class predictions.
-        prediction_masks_with_background = tf.pad(
-            prediction_masks, [[0, 0], [1, 0], [0, 0], [0, 0]])
-        prediction_masks_masked_by_class_targets = tf.boolean_mask(
-            prediction_masks_with_background,
-            tf.greater(one_hot_flat_cls_targets_with_background, 0))
+        if prediction_masks.get_shape().as_list()[1] == 1:
+          # Class agnostic masks or masks for one-class prediction. Logic for
+          # both cases is the same since background predictions are ignored
+          # through the batch_mask_target_weights.
+          prediction_masks_masked_by_class_targets = prediction_masks
+        else:
+          prediction_masks_with_background = tf.pad(
+              prediction_masks, [[0, 0], [1, 0], [0, 0], [0, 0]])
+          prediction_masks_masked_by_class_targets = tf.boolean_mask(
+              prediction_masks_with_background,
+              tf.greater(one_hot_flat_cls_targets_with_background, 0))
+
         mask_height = prediction_masks.shape[2].value
         mask_width = prediction_masks.shape[3].value
         reshaped_prediction_masks = tf.reshape(

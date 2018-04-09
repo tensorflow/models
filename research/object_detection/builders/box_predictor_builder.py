@@ -111,6 +111,8 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
             mask_rcnn_box_predictor.mask_prediction_num_conv_layers),
         mask_prediction_conv_depth=(
             mask_rcnn_box_predictor.mask_prediction_conv_depth),
+        masks_are_class_agnostic=(
+            mask_rcnn_box_predictor.masks_are_class_agnostic),
         predict_keypoints=mask_rcnn_box_predictor.predict_keypoints)
     return box_predictor_object
 
