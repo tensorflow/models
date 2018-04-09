@@ -50,7 +50,6 @@ The Example proto contains the following fields:
   image/segmentation/class/encoded: encoded semantic segmentation content.
   image/segmentation/class/format: semantic segmentation file format.
 """
-import glob
 import math
 import os.path
 import sys
@@ -133,7 +132,7 @@ def _convert_dataset(dataset_split):
 
 
 def main(unused_argv):
-  dataset_splits = glob.glob(os.path.join(FLAGS.list_folder, '*.txt'))
+  dataset_splits = tf.gfile.Glob(os.path.join(FLAGS.list_folder, '*.txt'))
   for dataset_split in dataset_splits:
     _convert_dataset(dataset_split)
 
