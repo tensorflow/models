@@ -170,7 +170,9 @@ def learning_rate_with_decay(
 
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format, version, loss_filter_fn=None, multi_gpu=False):
+                    data_format, version, loss_scale,
+                    loss_filter_fn=None, multi_gpu=False,
+                    dtype=resnet_model.DEFAULT_DTYPE):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -196,12 +198,15 @@ def resnet_model_fn(features, labels, mode, model_class,
       If set to None, the format is dependent on whether a GPU is available.
     version: Integer representing which version of the ResNet network to use.
       See README for details. Valid values: [1, 2]
+    loss_scale: The factor to scale the loss for numerical stability. A detailed
+      summary is present in the arg parser help text.
     loss_filter_fn: function that takes a string variable name and returns
       True if the var should be included in loss calculation, and False
       otherwise. If None, batch_normalization variables will be excluded
       from the loss.
     multi_gpu: If True, wrap the optimizer in a TowerOptimizer suitable for
       data-parallel distribution across multiple GPUs.
+    dtype: the TensorFlow dtype to use for calculations.
 
   Returns:
     EstimatorSpec parameterized according to the input params and the
@@ -211,8 +216,16 @@ def resnet_model_fn(features, labels, mode, model_class,
   # Generate a summary node for the images
   tf.summary.image('images', features, max_outputs=6)
 
-  model = model_class(resnet_size, data_format, version=version)
+  features = tf.cast(features, dtype)
+
+  model = model_class(resnet_size, data_format, version=version, dtype=dtype)
+
   logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
+
+  # This acts as a no-op if the logits are already in fp32 (provided logits are
+  # not a SparseTensor). If dtype is is low precision, logits must be cast to
+  # fp32 for numerical stability.
+  logits = tf.cast(logits, tf.float32)
 
   predictions = {
       'classes': tf.argmax(logits, axis=1),
@@ -244,7 +257,8 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   # Add weight decay to the loss.
   l2_loss = weight_decay * tf.add_n(
-      [tf.nn.l2_loss(v) for v in tf.trainable_variables()
+      # loss is computed using fp32 for numerical stability.
+      [tf.nn.l2_loss(tf.cast(v, tf.float32)) for v in tf.trainable_variables()
        if loss_filter_fn(v.name)])
   tf.summary.scalar('l2_loss', l2_loss)
   loss = cross_entropy + l2_loss
@@ -266,8 +280,22 @@ def resnet_model_fn(features, labels, mode, model_class,
     if multi_gpu:
       optimizer = tf.contrib.estimator.TowerOptimizer(optimizer)
 
+    if loss_scale != 1:
+      # When computing fp16 gradients, often intermediate tensor values are
+      # so small, they underflow to 0. To avoid this, we multiply the loss by
+      # loss_scale to make these tensor values loss_scale times bigger.
+      scaled_grad_vars = optimizer.compute_gradients(loss * loss_scale)
+
+      # Once the gradient computation is complete we can scale the gradients
+      # back to the correct scale before passing them to the optimizer.
+      unscaled_grad_vars = [(grad / loss_scale, var)
+                            for grad, var in scaled_grad_vars]
+      minimize_op = optimizer.apply_gradients(unscaled_grad_vars, global_step)
+    else:
+      minimize_op = optimizer.minimize(loss, global_step)
+
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    train_op = tf.group(optimizer.minimize(loss, global_step), update_ops)
+    train_op = tf.group(minimize_op, update_ops)
   else:
     train_op = None
 
@@ -365,11 +393,13 @@ def resnet_main(flags, model_function, input_function, shape=None):
           'batch_size': flags.batch_size,
           'multi_gpu': flags.multi_gpu,
           'version': flags.version,
+          'loss_scale': flags.loss_scale,
+          'dtype': flags.dtype
       })
 
   if flags.benchmark_log_dir is not None:
     benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
-    benchmark_logger.log_run_info("resnet")
+    benchmark_logger.log_run_info('resnet')
   else:
     benchmark_logger = None
 
@@ -451,3 +481,12 @@ class ResnetArgParser(argparse.ArgumentParser):
         help='[default: %(default)s] The size of the ResNet model to use.',
         metavar='<RS>' if resnet_size_choices is None else None
     )
+
+  def parse_args(self, args=None, namespace=None):
+    args = super(ResnetArgParser, self).parse_args(
+        args=args, namespace=namespace)
+
+    # handle coupling between dtype and loss_scale
+    parsers.parse_dtype_info(args)
+
+    return args
