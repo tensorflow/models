@@ -173,7 +173,7 @@ class BaseParser(argparse.ArgumentParser):
           type=int,
           default=1 if tf.test.is_built_with_cuda() else 0,
           help="[default: %(default)s] How many GPUs to use with the "
-               "DistributionStrategies API. (https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/distribute/README.md)",
+               "DistributionStrategies API.",
           metavar="<NG>"
       )
 
