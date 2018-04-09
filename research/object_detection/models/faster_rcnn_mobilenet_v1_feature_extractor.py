@@ -17,6 +17,7 @@
 import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
+from object_detection.utils import shape_utils
 from nets import mobilenet_v1
 
 slim = tf.contrib.slim
@@ -112,28 +113,25 @@ class FasterRCNNMobilenetV1FeatureExtractor(
     """
 
     preprocessed_inputs.get_shape().assert_has_rank(4)
-    shape_assert = tf.Assert(
-        tf.logical_and(tf.greater_equal(tf.shape(preprocessed_inputs)[1], 33),
-                       tf.greater_equal(tf.shape(preprocessed_inputs)[2], 33)),
-        ['image size must at least be 33 in both height and width.'])
+    preprocessed_inputs = shape_utils.check_min_image_dim(
+        min_dim=33, image_tensor=preprocessed_inputs)
 
-    with tf.control_dependencies([shape_assert]):
-      with slim.arg_scope(
-          mobilenet_v1.mobilenet_v1_arg_scope(
-              is_training=self._train_batch_norm,
-              weight_decay=self._weight_decay)):
-        with tf.variable_scope('MobilenetV1',
-                               reuse=self._reuse_weights) as scope:
-          params = {}
-          if self._skip_last_stride:
-            params['conv_defs'] = _MOBILENET_V1_100_CONV_NO_LAST_STRIDE_DEFS
-          _, activations = mobilenet_v1.mobilenet_v1_base(
-              preprocessed_inputs,
-              final_endpoint='Conv2d_11_pointwise',
-              min_depth=self._min_depth,
-              depth_multiplier=self._depth_multiplier,
-              scope=scope,
-              **params)
+    with slim.arg_scope(
+        mobilenet_v1.mobilenet_v1_arg_scope(
+            is_training=self._train_batch_norm,
+            weight_decay=self._weight_decay)):
+      with tf.variable_scope('MobilenetV1',
+                             reuse=self._reuse_weights) as scope:
+        params = {}
+        if self._skip_last_stride:
+          params['conv_defs'] = _MOBILENET_V1_100_CONV_NO_LAST_STRIDE_DEFS
+        _, activations = mobilenet_v1.mobilenet_v1_base(
+            preprocessed_inputs,
+            final_endpoint='Conv2d_11_pointwise',
+            min_depth=self._min_depth,
+            depth_multiplier=self._depth_multiplier,
+            scope=scope,
+            **params)
     return activations['Conv2d_11_pointwise'], activations
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
