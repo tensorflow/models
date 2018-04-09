@@ -70,7 +70,9 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # dataset for the appropriate number of epochs.
   dataset = dataset.repeat(num_epochs)
 
-  # Parse the raw records into images and labels
+  # Parse the raw records into images and labels. Testing has shown that setting
+  # num_parallel_batches > 1 produces no improvement in throughput, since
+  # batch_size is almost always much greater than the number of CPU cores.
   dataset = dataset.apply(
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training),
