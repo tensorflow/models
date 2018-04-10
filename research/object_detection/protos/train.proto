@@ -19,6 +19,9 @@ message TrainConfig {
   // How frequently to keep checkpoints.
   optional uint32 keep_checkpoint_every_n_hours = 4 [default=1000];
 
+  // Maximum number of checkpoints to keep.
+  optional uint32 max_to_keep = 24 [default=5];
+
   // Optimizer used to train the DetectionModel.
   optional Optimizer optimizer = 5;
 
