@@ -54,6 +54,7 @@ def main(unused_argv):
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
   eval_input_fn = train_and_eval_dict['eval_input_fn']
+  eval_on_train_input_fn = train_and_eval_dict['eval_on_train_input_fn']
   predict_input_fn = train_and_eval_dict['predict_input_fn']
   train_steps = train_and_eval_dict['train_steps']
   eval_steps = train_and_eval_dict['eval_steps']
@@ -61,6 +62,7 @@ def main(unused_argv):
   train_spec, eval_specs = model_lib.create_train_and_eval_specs(
       train_input_fn,
       eval_input_fn,
+      eval_on_train_input_fn,
       predict_input_fn,
       train_steps,
       eval_steps,

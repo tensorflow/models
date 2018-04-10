@@ -437,6 +437,7 @@ def create_estimator_and_inputs(run_config,
     'estimator': An `Estimator` or `TPUEstimator`.
     'train_input_fn': A training input function.
     'eval_input_fn': An evaluation input function.
+    'eval_on_train_input_fn': An evaluation-on-train input function.
     'predict_input_fn': A prediction input function.
     'train_steps': Number of training steps. Either directly from input or from
       configuration.
@@ -484,6 +485,10 @@ def create_estimator_and_inputs(run_config,
       eval_config=eval_config,
       eval_input_config=eval_input_config,
       model_config=model_config)
+  eval_on_train_input_fn = create_eval_input_fn(
+      eval_config=eval_config,
+      eval_input_config=train_input_config,
+      model_config=model_config)
   predict_input_fn = create_predict_input_fn(model_config=model_config)
 
   model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu)
@@ -509,6 +514,7 @@ def create_estimator_and_inputs(run_config,
       estimator=estimator,
       train_input_fn=train_input_fn,
       eval_input_fn=eval_input_fn,
+      eval_on_train_input_fn=eval_on_train_input_fn,
       predict_input_fn=predict_input_fn,
       train_steps=train_steps,
       eval_steps=eval_steps)
@@ -516,6 +522,7 @@ def create_estimator_and_inputs(run_config,
 
 def create_train_and_eval_specs(train_input_fn,
                                 eval_input_fn,
+                                eval_on_train_input_fn,
                                 predict_input_fn,
                                 train_steps,
                                 eval_steps,
@@ -527,6 +534,8 @@ def create_train_and_eval_specs(train_input_fn,
   Args:
     train_input_fn: Function that produces features and labels on train data.
     eval_input_fn: Function that produces features and labels on eval data.
+    eval_on_train_input_fn: Function that produces features and labels for
+      evaluation on train data.
     predict_input_fn: Function that produces features for inference.
     train_steps: Number of training steps.
     eval_steps: Number of eval steps.
@@ -558,7 +567,8 @@ def create_train_and_eval_specs(train_input_fn,
   if eval_on_train_data:
     eval_specs.append(
         tf.estimator.EvalSpec(
-            name='eval_on_train', input_fn=train_input_fn, steps=eval_steps))
+            name='eval_on_train', input_fn=eval_on_train_input_fn,
+            steps=eval_steps))
 
   return train_spec, eval_specs
 

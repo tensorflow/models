@@ -130,6 +130,7 @@ def main(unused_argv):
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
   eval_input_fn = train_and_eval_dict['eval_input_fn']
+  eval_on_train_input_fn = train_and_eval_dict['eval_on_train_input_fn']
   train_steps = train_and_eval_dict['train_steps']
   eval_steps = train_and_eval_dict['eval_steps']
 
@@ -158,7 +159,7 @@ def main(unused_argv):
       tf.logging.info('Starting to evaluate.')
       if FLAGS.eval_training_data:
         name = 'training_data'
-        input_fn = train_input_fn
+        input_fn = eval_on_train_input_fn
       else:
         name = 'validation_data'
         input_fn = eval_input_fn
