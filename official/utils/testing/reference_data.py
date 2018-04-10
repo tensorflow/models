@@ -191,11 +191,11 @@ class BaseTest(tf.test.TestCase):
 
       if correctness_function is not None:
         results = correctness_function(*eval_results)
-        with tf.gfile.Open(os.path.join(data_dir, "results.json"), "wb") as f:
-          f.write(json.dumps(results).encode("utf-8"))
+        with tf.gfile.Open(os.path.join(data_dir, "results.json"), "w") as f:
+          json.dump(results, f)
 
-      with tf.gfile.Open(os.path.join(data_dir, "tf_version.json"), "wb") as f:
-        f.write(json.dumps([tf.VERSION, tf.GIT_VERSION]).encode("utf-8"))
+      with tf.gfile.Open(os.path.join(data_dir, "tf_version.json"), "w") as f:
+        json.dump([tf.VERSION, tf.GIT_VERSION], f)
 
   def _evaluate_test_case(self, name, graph, ops_to_eval, correctness_function):
     """Determine if a graph agrees with the reference data.
@@ -231,9 +231,8 @@ class BaseTest(tf.test.TestCase):
       init = tf.global_variables_initializer()
       saver = tf.train.Saver()
 
-    with tf.gfile.Open(os.path.join(data_dir, "tf_version.json"), "rb") as f:
-      contents = json.loads(f.read().decode("utf-8"))
-      tf_version_reference, tf_git_version_reference = contents  # pylint: disable=unpacking-non-sequence
+    with tf.gfile.Open(os.path.join(data_dir, "tf_version.json"), "r") as f:
+      tf_version_reference, tf_git_version_reference = json.load(f)  # pylint: disable=unpacking-non-sequence
 
     tf_version_comparison = ""
     if tf.GIT_VERSION != tf_git_version_reference:
@@ -263,8 +262,8 @@ class BaseTest(tf.test.TestCase):
       eval_results = [op.eval() for op in ops_to_eval]
       if correctness_function is not None:
         results = correctness_function(*eval_results)
-        with tf.gfile.Open(os.path.join(data_dir, "results.json"), "rb") as f:
-          expected_results = json.loads(f.read().decode("utf-8"))
+        with tf.gfile.Open(os.path.join(data_dir, "results.json"), "r") as f:
+          expected_results = json.load(f)
         self.assertAllClose(results, expected_results)
 
   def _save_or_test_ops(self, name, graph, ops_to_eval=None, test=True,
