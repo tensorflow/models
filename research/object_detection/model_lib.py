@@ -22,8 +22,6 @@ import functools
 
 import tensorflow as tf
 
-from tensorflow.contrib.tpu.python.tpu import tpu_estimator
-from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 from object_detection import eval_util
 from object_detection import inputs
 from object_detection.builders import model_builder
@@ -291,7 +289,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
 
     if mode == tf.estimator.ModeKeys.TRAIN:
       if use_tpu:
-        training_optimizer = tpu_optimizer.CrossShardOptimizer(
+        training_optimizer = tf.contrib.tpu.CrossShardOptimizer(
             training_optimizer)
 
       # Optionally freeze some layers by setting their gradients to be zero.
@@ -490,7 +488,7 @@ def create_estimator_and_inputs(run_config,
 
   model_fn = model_fn_creator(detection_model_fn, configs, hparams, use_tpu)
   if use_tpu_estimator:
-    estimator = tpu_estimator.TPUEstimator(
+    estimator = tf.contrib.tpu.TPUEstimator(
         model_fn=model_fn,
         train_batch_size=train_config.batch_size,
         # For each core, only batch size 1 is supported for eval.

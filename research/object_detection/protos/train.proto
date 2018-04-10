@@ -7,7 +7,9 @@ import "object_detection/protos/preprocessor.proto";
 
 // Message for configuring DetectionModel training jobs (train.py).
 message TrainConfig {
-  // Input queue batch size.
+  // Effective batch size to use for training.
+  // For TPU (or sync SGD jobs), the batch size per core (or GPU) is going to be
+  // `batch_size` / number of cores (or `batch_size` / number of GPUs).
   optional uint32 batch_size = 1 [default=32];
 
   // Data augmentation options.
