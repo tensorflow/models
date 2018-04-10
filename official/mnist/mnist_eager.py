@@ -164,8 +164,7 @@ class MNISTEagerArgParser(argparse.ArgumentParser):
 
   def __init__(self):
     super(MNISTEagerArgParser, self).__init__(parents=[
-        parsers.BaseParser(
-            epochs_between_evals=False, multi_gpu=False, hooks=False),
+        parsers.EagerParser(),
         parsers.ImageModelParser()])
 
     self.add_argument(

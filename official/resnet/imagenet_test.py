@@ -318,5 +318,6 @@ class BaseTest(tf.test.TestCase):
         extra_flags=['-v', '2', '-rs', '200']
     )
 
+
 if __name__ == '__main__':
   tf.test.main()
