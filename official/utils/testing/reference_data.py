@@ -170,7 +170,7 @@ class BaseTest(tf.test.TestCase):
     # Serialize graph for comparison.
     graph_bytes = graph.as_graph_def().SerializeToString()
     expected_file = os.path.join(data_dir, "expected_graph")
-    with open(expected_file, "wb") as f:
+    with tf.gfile.Open(expected_file, "wb") as f:
       f.write(graph_bytes)
 
     with graph.as_default():
@@ -191,10 +191,10 @@ class BaseTest(tf.test.TestCase):
 
       if correctness_function is not None:
         results = correctness_function(*eval_results)
-        with open(os.path.join(data_dir, "results.json"), "wt") as f:
+        with tf.gfile.Open(os.path.join(data_dir, "results.json"), "w") as f:
           json.dump(results, f)
 
-      with open(os.path.join(data_dir, "tf_version.json"), "wt") as f:
+      with tf.gfile.Open(os.path.join(data_dir, "tf_version.json"), "w") as f:
         json.dump([tf.VERSION, tf.GIT_VERSION], f)
 
   def _evaluate_test_case(self, name, graph, ops_to_eval, correctness_function):
@@ -216,7 +216,7 @@ class BaseTest(tf.test.TestCase):
     # Serialize graph for comparison.
     graph_bytes = graph.as_graph_def().SerializeToString()
     expected_file = os.path.join(data_dir, "expected_graph")
-    with open(expected_file, "rb") as f:
+    with tf.gfile.Open(expected_file, "rb") as f:
       expected_graph_bytes = f.read()
       # The serialization is non-deterministic byte-for-byte. Instead there is
       # a utility which evaluates the semantics of the two graphs to test for
@@ -231,7 +231,7 @@ class BaseTest(tf.test.TestCase):
       init = tf.global_variables_initializer()
       saver = tf.train.Saver()
 
-    with open(os.path.join(data_dir, "tf_version.json"), "rt") as f:
+    with tf.gfile.Open(os.path.join(data_dir, "tf_version.json"), "r") as f:
       tf_version_reference, tf_git_version_reference = json.load(f)  # pylint: disable=unpacking-non-sequence
 
     tf_version_comparison = ""
@@ -262,7 +262,7 @@ class BaseTest(tf.test.TestCase):
       eval_results = [op.eval() for op in ops_to_eval]
       if correctness_function is not None:
         results = correctness_function(*eval_results)
-        with open(os.path.join(data_dir, "results.json"), "rt") as f:
+        with tf.gfile.Open(os.path.join(data_dir, "results.json"), "r") as f:
           expected_results = json.load(f)
         self.assertAllClose(results, expected_results)
 
