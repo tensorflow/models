@@ -25,6 +25,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.mnist import dataset
 from official.utils.arg_parsers import parsers
 from official.utils.logs import hooks_helper
+from official.utils.misc import model_helpers
 
 LEARNING_RATE = 1e-4
 
@@ -211,6 +212,10 @@ def main(argv):
     mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
     print('\nEvaluation results:\n\t%s\n' % eval_results)
+
+    if model_helpers.past_stop_threshold(
+        flags.stop_threshold, eval_results['accuracy']):
+      break
 
   # Export the model
   if flags.export_dir is not None:
