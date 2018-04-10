@@ -86,7 +86,7 @@ def model_fn(features, labels, mode, params):
   if isinstance(image, dict):
     image = features["image"]
 
-  model = mnist.Model("channels_last")
+  model = mnist.create_model("channels_last")
   logits = model(image, training=(mode == tf.estimator.ModeKeys.TRAIN))
   loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
 
