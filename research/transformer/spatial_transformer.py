@@ -157,7 +157,6 @@ def transformer(U, theta, out_size, name='SpatialTransformer', **kwargs):
             out_height = out_size[0]
             out_width = out_size[1]
             grid = _meshgrid(out_height, out_width)
-            grid = tf.expand_dims(grid, 0)
             grid = tf.reshape(grid, [-1])
             grid = tf.tile(grid, tf.stack([num_batch]))
             grid = tf.reshape(grid, tf.stack([num_batch, 3, -1]))
