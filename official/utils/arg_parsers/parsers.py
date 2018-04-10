@@ -99,14 +99,17 @@ class BaseParser(argparse.ArgumentParser):
     model_dir: Create a flag for specifying the model file directory.
     train_epochs: Create a flag to specify the number of training epochs.
     epochs_between_evals: Create a flag to specify the frequency of testing.
+    stop_threshold: Create a flag to specify a threshold accuracy or other
+      eval metric which should trigger the end of training.
     batch_size: Create a flag to specify the batch size.
     multi_gpu: Create a flag to allow the use of all available GPUs.
     hooks: Create a flag to specify hooks for logging.
   """
 
   def __init__(self, add_help=False, data_dir=True, model_dir=True,
-               train_epochs=True, epochs_between_evals=True, batch_size=True,
-               multi_gpu=True, hooks=True):
+               train_epochs=True, epochs_between_evals=True,
+               stop_threshold=True, batch_size=True, multi_gpu=True,
+               hooks=True):
     super(BaseParser, self).__init__(add_help=add_help)
 
     if data_dir:
@@ -137,6 +140,15 @@ class BaseParser(argparse.ArgumentParser):
           help="[default: %(default)s] The number of training epochs to run "
                "between evaluations.",
           metavar="<EBE>"
+      )
+
+    if stop_threshold:
+      self.add_argument(
+          "--stop_threshold", "-st", type=float, default=None,
+          help="[default: %(default)s] If passed, training will stop at "
+          "the earlier of train_epochs and when the evaluation metric is "
+          "greater than or equal to stop_threshold.",
+          metavar="<ST>"
       )
 
     if batch_size:
@@ -345,3 +357,15 @@ class BenchmarkParser(argparse.ArgumentParser):
                " benchmark metric information will be uploaded.",
           metavar="<BMT>"
       )
+
+
+class EagerParser(BaseParser):
+  """Remove options not relevant for Eager from the BaseParser."""
+
+  def __init__(self, add_help=False, data_dir=True, model_dir=True,
+               train_epochs=True, batch_size=True):
+    super(EagerParser, self).__init__(
+        add_help=add_help, data_dir=data_dir, model_dir=model_dir,
+        train_epochs=train_epochs, epochs_between_evals=False,
+        stop_threshold=False, batch_size=batch_size, multi_gpu=False,
+        hooks=False)
