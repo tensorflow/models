@@ -58,6 +58,8 @@ def create_model(data_format):
   l = tf.keras.layers
   max_pool = l.MaxPooling2D(
       (2, 2), (2, 2), padding='same', data_format=data_format)
+  # The model consists of a sequential chain of layers, so tf.keras.Sequential
+  # (a subclass of tf.keras.Model) makes for a compact description.
   return tf.keras.Sequential(
       [
           l.Reshape(input_shape),
