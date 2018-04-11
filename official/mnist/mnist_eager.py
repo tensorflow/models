@@ -116,7 +116,7 @@ def main(argv):
   test_ds = mnist_dataset.test(flags.data_dir).batch(flags.batch_size)
 
   # Create the model and optimizer
-  model = mnist.Model(data_format)
+  model = mnist.create_model(data_format)
   optimizer = tf.train.MomentumOptimizer(flags.lr, flags.momentum)
 
   # Create file writers for writing TensorBoard summaries.
