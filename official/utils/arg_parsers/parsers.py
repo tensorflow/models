@@ -103,13 +103,14 @@ class BaseParser(argparse.ArgumentParser):
       eval metric which should trigger the end of training.
     batch_size: Create a flag to specify the global batch size.
     multi_gpu: Create a flag to allow the use of all available GPUs.
+    num_gpu: Create a flag to specify the number of GPUs used.
     hooks: Create a flag to specify hooks for logging.
   """
 
   def __init__(self, add_help=False, data_dir=True, model_dir=True,
                train_epochs=True, epochs_between_evals=True,
                stop_threshold=True, batch_size=True,
-               multi_gpu=True, num_gpu=True, hooks=True):
+               multi_gpu=False, num_gpu=True, hooks=True):
     super(BaseParser, self).__init__(add_help=add_help)
 
     if data_dir:
@@ -173,7 +174,8 @@ class BaseParser(argparse.ArgumentParser):
           type=int,
           default=1 if tf.test.is_built_with_cuda() else 0,
           help="[default: %(default)s] How many GPUs to use with the "
-               "DistributionStrategies API.",
+               "DistributionStrategies API. The default is 1 if TensorFlow was"
+               "built with CUDA, and 0 otherwise.",
           metavar="<NG>"
       )
 
