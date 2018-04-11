@@ -366,7 +366,7 @@ if __name__ == "__main__":
   parser.add_argument(
       "--model_dir",
       type=str,
-      default="",
+      default=".",
       help="Path for storing the model checkpoints.")
   parser.add_argument(
       "--self_test",
