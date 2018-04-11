@@ -105,7 +105,8 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     with tf.variable_scope('MobilenetV1',
                            reuse=self._reuse_weights) as scope:
       with slim.arg_scope(
-          mobilenet_v1.mobilenet_v1_arg_scope(is_training=None)):
+          mobilenet_v1.mobilenet_v1_arg_scope(
+              is_training=None, regularize_depthwise=True)):
         with (slim.arg_scope(self._conv_hyperparams_fn())
               if self._override_base_feature_extractor_hyperparams
               else context_manager.IdentityContextManager()):
