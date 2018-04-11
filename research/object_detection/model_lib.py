@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+import os
 
 import tensorflow as tf
 
@@ -572,6 +573,48 @@ def create_train_and_eval_specs(train_input_fn,
             steps=eval_steps))
 
   return train_spec, eval_specs
+
+
+def continuous_eval(estimator, model_dir, input_fn, eval_steps, train_steps,
+                    name):
+  """Perform continuous evaluation on checkpoints written to a model directory.
+
+  Args:
+    estimator: Estimator object to use for evaluation.
+    model_dir: Model directory to read checkpoints for continuous evaluation.
+    input_fn: Input function to use for evaluation.
+    eval_steps: Number of steps to run during each evaluation.
+    train_steps: Number of training steps. This is used to infer the last
+      checkpoint and stop evaluation loop.
+    name: Namescope for eval summary.
+  """
+  def terminate_eval():
+    tf.logging.info('Terminating eval after 180 seconds of no checkpoints')
+    return True
+
+  for ckpt in tf.contrib.training.checkpoints_iterator(
+      model_dir, min_interval_secs=180, timeout=None,
+      timeout_fn=terminate_eval):
+
+    tf.logging.info('Starting Evaluation.')
+    try:
+      eval_results = estimator.evaluate(
+          input_fn=input_fn,
+          steps=eval_steps,
+          checkpoint_path=ckpt,
+          name=name)
+      tf.logging.info('Eval results: %s' % eval_results)
+
+      # Terminate eval job when final checkpoint is reached
+      current_step = int(os.path.basename(ckpt).split('-')[1])
+      if current_step >= train_steps:
+        tf.logging.info(
+            'Evaluation finished after training step %d' % current_step)
+        break
+
+    except tf.errors.NotFoundError:
+      tf.logging.info(
+          'Checkpoint %s no longer exists, skipping checkpoint' % ckpt)
 
 
 def populate_experiment(run_config,
