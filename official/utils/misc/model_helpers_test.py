@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import random
+
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.misc import model_helpers
@@ -63,6 +65,29 @@ class PastStopThresholdTest(tf.test.TestCase):
 
     with self.assertRaises(ValueError):
       model_helpers.past_stop_threshold(tf.constant(4), None)
+
+  def test_random_seed(self):
+    """It is unclear if this test is a good idea or stable.
+    If tests are run in parallel, this could be flakey."""
+    model_helpers.set_random_seed(42)
+    expected_py_random = [int(random.random() * 1000) for i in range(10)]
+    tf_random = []
+    with tf.Session() as sess:
+      for i in range(10):
+          a = tf.random_uniform([1])
+          tf_random.append(int(sess.run(a)[0] * 1000))
+
+    model_helpers.set_random_seed(42)
+    py_random = [int(random.random() * 1000) for i in range(10)]
+
+    # Instead of concerning ourselves with the particular results, we simply
+    # want to ensure that the results are reproducible. So, we seed, read,
+    # re-seed, re-read.
+    self.assertAllEqual(expected_py_random, py_random)
+
+    # TF does not accept being re-seeded.
+    expected_tf_random = [637, 689, 961, 969, 321, 390, 919, 681, 112, 187]
+    self.assertAllEqual(expected_tf_random, tf_random)
 
 
 if __name__ == "__main__":

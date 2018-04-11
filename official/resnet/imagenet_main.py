@@ -26,6 +26,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
+from official.utils.misc import model_helpers
 
 _DEFAULT_IMAGE_SIZE = 224
 _NUM_CHANNELS = 3
@@ -314,6 +315,9 @@ def main(argv):
   )
 
   flags = parser.parse_args(args=argv[1:])
+
+  if flags.seed is not None:
+    model_helpers.set_random_seed(flags.seed)
 
   input_function = flags.use_synthetic_data and get_synth_input_fn() or input_fn
 

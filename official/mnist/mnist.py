@@ -182,6 +182,9 @@ def main(argv):
 
   model_function = model_fn
 
+  if flags.seed is not None:
+    model_helpers.set_random_seed(flags.seed)
+
   if flags.multi_gpu:
     validate_batch_size_for_multi_gpu(flags.batch_size)
 

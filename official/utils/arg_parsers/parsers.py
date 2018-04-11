@@ -104,12 +104,13 @@ class BaseParser(argparse.ArgumentParser):
     batch_size: Create a flag to specify the batch size.
     multi_gpu: Create a flag to allow the use of all available GPUs.
     hooks: Create a flag to specify hooks for logging.
+    seed: Create a flag to set random seeds.
   """
 
   def __init__(self, add_help=False, data_dir=True, model_dir=True,
                train_epochs=True, epochs_between_evals=True,
                stop_threshold=True, batch_size=True, multi_gpu=True,
-               hooks=True):
+               hooks=True, seed=True):
     super(BaseParser, self).__init__(add_help=add_help)
 
     if data_dir:
@@ -175,6 +176,16 @@ class BaseParser(argparse.ArgumentParser):
                "See official.utils.logs.hooks_helper for details.",
           metavar="<HK>"
       )
+
+    if seed:
+      self.add_argument(
+          "--seed", "-s", nargs="+", type=int, default=None,
+          help="[default: %(default)s] An integer to seed random number"
+               "generators. If unset, RNGs choose their own seeds resulting "
+               "in each run having a different seed.",
+          metavar="<SEED>"
+      )
+
 
 
 class PerformanceParser(argparse.ArgumentParser):

@@ -179,6 +179,9 @@ def main(argv):
   parser = WideDeepArgParser()
   flags = parser.parse_args(args=argv[1:])
 
+  if flags.seed is not None:
+    model_helpers.set_random_seed(flags.seed)
+
   # Clean up the model directory if present
   shutil.rmtree(flags.model_dir, ignore_errors=True)
   model = build_estimator(flags.model_dir, flags.model_type)

@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numbers
+import random
 
 import tensorflow as tf
 
@@ -53,3 +54,25 @@ def past_stop_threshold(stop_threshold, eval_metric):
     return True
 
   return False
+
+
+def set_random_seed(seed):
+  """Sets the random seeds for available RNGs.
+  This seeds RNGs for python's random and for Tensorflow. The intended
+  use case is for this to be called exactly once at the start of execution
+  to improve stability and reproducability between runs.
+
+  Successive calls to re-seed will not behave as expected. This should
+  be called at most once.
+
+  Args:
+    seed: integer, a seed which will be passed to the RNGs.
+
+  Raises:
+    ValueError: if the seed is not an integer or if deemed unsuitable for
+    seeding a the RNGs.
+  """
+  if not isinstance(seed, int):
+    raise ValueError("Random seed is not an integer: {}".format(seed))
+  random.seed(seed)
+  tf.set_random_seed(seed)
