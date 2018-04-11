@@ -170,7 +170,7 @@ class FasterRCNNMetaArchTest(
     with test_graph.as_default():
       model = self._build_model(
           is_training=True,
-          number_of_stages=2,
+          number_of_stages=3,
           second_stage_batch_size=7,
           predict_masks=True,
           masks_are_class_agnostic=masks_are_class_agnostic)
