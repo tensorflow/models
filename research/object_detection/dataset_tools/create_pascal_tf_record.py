@@ -104,7 +104,7 @@ def dict_to_tf_example(data,
   truncated = []
   poses = []
   difficult_obj = []
-    
+  # for Python =>3.0 string below should look like  "if ('object') in data:" 
   if data.has_key('object'):
     for obj in data['object']:
       difficult = bool(int(obj['difficult']))
