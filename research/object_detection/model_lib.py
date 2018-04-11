@@ -365,10 +365,11 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         for loss_key, loss_tensor in iter(losses_dict.items()):
           eval_metric_ops[loss_key] = tf.metrics.mean(loss_tensor)
         for var in optimizer_summary_vars:
-          eval_metric_ops[str(var.op.name)] = (var, tf.no_op())
+          eval_metric_ops[var.op.name] = (var, tf.no_op())
         if img_summary is not None:
           eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
               img_summary, tf.no_op())
+        eval_metric_ops = {str(k): v for k, v in eval_metric_ops.iteritems()}
 
     if use_tpu:
       return tf.contrib.tpu.TPUEstimatorSpec(
