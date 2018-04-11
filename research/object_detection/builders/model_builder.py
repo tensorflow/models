@@ -71,7 +71,8 @@ FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
 }
 
 
-def build(model_config, is_training, add_summaries=True):
+def build(model_config, is_training, add_summaries=True,
+          add_background_class=True):
   """Builds a DetectionModel based on the model config.
 
   Args:
@@ -79,7 +80,10 @@ def build(model_config, is_training, add_summaries=True):
       DetectionModel.
     is_training: True if this model is being built for training purposes.
     add_summaries: Whether to add tensorflow summaries in the model graph.
-
+    add_background_class: Whether to add an implicit background class to one-hot
+      encodings of groundtruth labels. Set to false if using groundtruth labels
+      with an explicit background class or using multiclass scores instead of
+      truth in the case of distillation. Ignored in the case of faster_rcnn.
   Returns:
     DetectionModel based on the config.
 
@@ -90,7 +94,8 @@ def build(model_config, is_training, add_summaries=True):
     raise ValueError('model_config not of type model_pb2.DetectionModel.')
   meta_architecture = model_config.WhichOneof('model')
   if meta_architecture == 'ssd':
-    return _build_ssd_model(model_config.ssd, is_training, add_summaries)
+    return _build_ssd_model(model_config.ssd, is_training, add_summaries,
+                            add_background_class)
   if meta_architecture == 'faster_rcnn':
     return _build_faster_rcnn_model(model_config.faster_rcnn, is_training,
                                     add_summaries)
@@ -133,7 +138,8 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
       override_base_feature_extractor_hyperparams)
 
 
-def _build_ssd_model(ssd_config, is_training, add_summaries):
+def _build_ssd_model(ssd_config, is_training, add_summaries,
+                     add_background_class=True):
   """Builds an SSD detection model based on the model config.
 
   Args:
@@ -141,7 +147,10 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       SSDMetaArch.
     is_training: True if this model is being built for training purposes.
     add_summaries: Whether to add tf summaries in the model.
-
+    add_background_class: Whether to add an implicit background class to one-hot
+      encodings of groundtruth labels. Set to false if using groundtruth labels
+      with an explicit background class or using multiclass scores instead of
+      truth in the case of distillation.
   Returns:
     SSDMetaArch based on the config.
 
@@ -198,7 +207,8 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       add_summaries=add_summaries,
       normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
       freeze_batchnorm=ssd_config.freeze_batchnorm,
-      inplace_batchnorm_update=ssd_config.inplace_batchnorm_update)
+      inplace_batchnorm_update=ssd_config.inplace_batchnorm_update,
+      add_background_class=add_background_class)
 
 
 def _build_faster_rcnn_feature_extractor(

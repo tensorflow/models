@@ -69,7 +69,7 @@ class DetectionModel(object):
 
     Args:
       num_classes: number of classes.  Note that num_classes *does not* include
-      background categories that might be implicitly be predicted in various
+      background categories that might be implicitly predicted in various
       implementations.
     """
     self._num_classes = num_classes

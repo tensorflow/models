@@ -138,7 +138,8 @@ class SSDMetaArch(model.DetectionModel):
                add_summaries=True,
                normalize_loc_loss_by_codesize=False,
                freeze_batchnorm=False,
-               inplace_batchnorm_update=False):
+               inplace_batchnorm_update=False,
+               add_background_class=True):
     """SSDMetaArch Constructor.
 
     TODO(rathodv,jonathanhuang): group NMS parameters + score converter into
@@ -193,6 +194,10 @@ class SSDMetaArch(model.DetectionModel):
         values inplace. When this is false train op must add a control
         dependency on tf.graphkeys.UPDATE_OPS collection in order to update
         batch norm statistics.
+      add_background_class: Whether to add an implicit background class to
+        one-hot encodings of groundtruth labels. Set to false if using
+        groundtruth labels with an explicit background class or using multiclass
+        scores instead of truth in the case of distillation.
     """
     super(SSDMetaArch, self).__init__(num_classes=box_predictor.num_classes)
     self._is_training = is_training
@@ -210,6 +215,7 @@ class SSDMetaArch(model.DetectionModel):
     self._feature_extractor = feature_extractor
     self._matcher = matcher
     self._region_similarity_calculator = region_similarity_calculator
+    self._add_background_class = add_background_class
 
     # TODO(jonathanhuang): handle agnostic mode
     # weights
@@ -636,10 +642,14 @@ class SSDMetaArch(model.DetectionModel):
     groundtruth_boxlists = [
         box_list.BoxList(boxes) for boxes in groundtruth_boxes_list
     ]
-    groundtruth_classes_with_background_list = [
-        tf.pad(one_hot_encoding, [[0, 0], [1, 0]], mode='CONSTANT')
-        for one_hot_encoding in groundtruth_classes_list
-    ]
+    if self._add_background_class:
+      groundtruth_classes_with_background_list = [
+          tf.pad(one_hot_encoding, [[0, 0], [1, 0]], mode='CONSTANT')
+          for one_hot_encoding in groundtruth_classes_list
+      ]
+    else:
+      groundtruth_classes_with_background_list = groundtruth_classes_list
+
     if groundtruth_keypoints_list is not None:
       for boxlist, keypoints in zip(
           groundtruth_boxlists, groundtruth_keypoints_list):
