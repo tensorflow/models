@@ -14,27 +14,22 @@
 # ==============================================================================
 
 r"""Evaluation executable for detection models.
-
 This executable is used to evaluate DetectionModels. There are two ways of
 configuring the eval job.
-
 1) A single pipeline_pb2.TrainEvalPipelineConfig file maybe specified instead.
 In this mode, the --eval_training_data flag may be given to force the pipeline
 to evaluate on training data instead. Set the --eval_from_ckpt flag to evaluate
 from a specified checkpoint.
-
 Example usage:
     ./eval \
         --logtostderr \
         --checkpoint_dir=path/to/checkpoint_dir \
         --eval_dir=path/to/eval_dir \
         --pipeline_config_path=pipeline_config.pbtxt
-
 2) Three configuration files may be provided: a model_pb2.DetectionModel
 configuration file to define what type of DetectionModel is being evaluated, an
 input_reader_pb2.InputReader file to specify what data the model is evaluating
 and an eval_pb2.EvalConfig file to configure evaluation parameters.
-
 Example usage:
     ./eval \
         --logtostderr \
@@ -44,6 +39,7 @@ Example usage:
         --model_config_path=model_config.pbtxt \
         --input_config_path=eval_input_config.pbtxt
 """
+import logging
 import functools
 import os
 import tensorflow as tf
@@ -55,8 +51,8 @@ from object_detection.utils import config_util
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
-
-tf.logging.set_verbosity(tf.logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+tf.logging.set_verbosity(tf.logging.DEBUG)
 
 flags = tf.app.flags
 flags.DEFINE_boolean('eval_training_data', False,
@@ -66,8 +62,6 @@ flags.DEFINE_string('checkpoint_dir', '',
                     'set to `train_dir` used in the training job.')
 flags.DEFINE_string('eval_dir', '',
                     'Directory to write eval summaries to.')
-flags.DEFINE_string('eval_from_ckpt', '',
-                    'Start evaluation from a specified checkpoint.')
 flags.DEFINE_string('pipeline_config_path', '',
                     'Path to a pipeline_pb2.TrainEvalPipelineConfig config '
                     'file. If provided, other configs are ignored')
@@ -80,6 +74,8 @@ flags.DEFINE_string('model_config_path', '',
 flags.DEFINE_boolean('run_once', False, 'Option to only run a single pass of '
                      'evaluation. Overrides the `max_evals` parameter in the '
                      'provided config.')
+flags.DEFINE_string('eval_from_ckpt', '',
+                    'Start evaluation from a specified checkpoint.')
 FLAGS = flags.FLAGS
 
 

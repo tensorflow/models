@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Detection model evaluator.
-
 This file provides a generic evaluation method that can be used to evaluate a
 DetectionModel.
 """
@@ -54,12 +53,10 @@ def _extract_predictions_and_losses(model,
                                     create_input_dict_fn,
                                     ignore_groundtruth=False):
   """Constructs tensorflow detection graph and returns output tensors.
-
   Args:
     model: model to perform predictions with.
     create_input_dict_fn: function to create input tensor dictionaries.
     ignore_groundtruth: whether groundtruth should be ignored.
-
   Returns:
     prediction_groundtruth_dict: A dictionary with postprocessed tensors (keyed
       by standard_fields.DetectionResultsFields) and optional groundtruth
@@ -127,13 +124,11 @@ def _extract_predictions_and_losses(model,
 
 def get_evaluators(eval_config, categories):
   """Returns the evaluator class according to eval_config, valid for categories.
-
   Args:
     eval_config: evaluation configurations.
     categories: a list of categories to evaluate.
   Returns:
     An list of instances of DetectionEvaluator.
-
   Raises:
     ValueError: if metric is not in the metric class dictionary.
   """
@@ -150,10 +145,8 @@ def get_evaluators(eval_config, categories):
 
 
 def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
-             checkpoint_dir, eval_dir, eval_from_ckpt, graph_hook_fn=None,
-             evaluator_list=None):
+             checkpoint_dir, eval_dir, eval_from_ckpt, graph_hook_fn=None, evaluator_list=None):
   """Evaluation function for detection models.
-
   Args:
     create_input_dict_fn: a function to create a tensor input dictionary.
     create_model_fn: a function that creates a DetectionModel.
@@ -162,14 +155,12 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
                 have an integer 'id' field and string 'name' field.
     checkpoint_dir: directory to load the checkpoints to evaluate from.
     eval_dir: directory to write evaluation metrics summary to.
-    eval_from_ckpt: The checkpoint to start evaluation from.
     graph_hook_fn: Optional function that is called after the training graph is
       completely built. This is helpful to perform additional changes to the
       training graph such as optimizing batchnorm. The function should modify
       the default graph.
     evaluator_list: Optional list of instances of DetectionEvaluator. If not
       given, this list of metrics is created according to the eval_config.
-
   Returns:
     metrics: A dictionary containing metric names and values from the latest
       run.
@@ -189,11 +180,9 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
   def _process_batch(tensor_dict, sess, batch_index, counters,
                      losses_dict=None):
     """Evaluates tensors in tensor_dict, losses_dict and visualizes examples.
-
     This function calls sess.run on tensor_dict, evaluating the original_image
     tensor only on the first K examples and visualizing detections overlaid
     on this original_image.
-
     Args:
       tensor_dict: a dictionary of tensors
       sess: tensorflow session
@@ -203,7 +192,6 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
         respectively.  If these fields are not updated, then the success/skipped
         counter values shown at the end of evaluation will be incorrect.
       losses_dict: Optional dictonary of scalar loss tensors.
-
     Returns:
       result_dict: a dictionary of numpy arrays
       result_losses_dict: a dictionary of scalar losses. This is empty if input
@@ -263,7 +251,6 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       evaluators=evaluator_list,
       batch_processor=_process_batch,
       checkpoint_dirs=[checkpoint_dir],
-      eval_from_ckpt=eval_from_ckpt,
       variables_to_restore=None,
       restore_fn=_restore_latest_checkpoint,
       num_batches=eval_config.num_examples,
@@ -272,6 +259,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
                                  eval_config.max_evals
                                  if eval_config.max_evals else None),
       master=eval_config.eval_master,
+      eval_from_ckpt=eval_from_ckpt,
       save_graph=eval_config.save_graph,
       save_graph_dir=(eval_dir if eval_config.save_graph else ''),
       losses_dict=losses_dict)
