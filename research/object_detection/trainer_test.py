@@ -37,12 +37,15 @@ def get_input_function():
       [1], minval=0, maxval=NUMBER_OF_CLASSES, dtype=tf.int32)
   box_label = tf.random_uniform(
       [1, 4], minval=0.4, maxval=0.6, dtype=tf.float32)
+  multiclass_scores = tf.random_uniform(
+      [1, NUMBER_OF_CLASSES], minval=0.4, maxval=0.6, dtype=tf.float32)
 
   return {
       fields.InputDataFields.image: image,
       fields.InputDataFields.key: key,
       fields.InputDataFields.groundtruth_classes: class_label,
-      fields.InputDataFields.groundtruth_boxes: box_label
+      fields.InputDataFields.groundtruth_boxes: box_label,
+      fields.InputDataFields.multiclass_scores: multiclass_scores
   }
 
 
@@ -197,6 +200,50 @@ class TrainerTest(tf.test.TestCase):
       }
     }
     num_steps: 2
+    """
+    train_config = train_pb2.TrainConfig()
+    text_format.Merge(train_config_text_proto, train_config)
+
+    train_dir = self.get_temp_dir()
+
+    trainer.train(
+        create_tensor_dict_fn=get_input_function,
+        create_model_fn=FakeDetectionModel,
+        train_config=train_config,
+        master='',
+        task=0,
+        num_clones=1,
+        worker_replicas=1,
+        clone_on_cpu=True,
+        ps_tasks=0,
+        worker_job_name='worker',
+        is_chief=True,
+        train_dir=train_dir)
+
+  def test_configure_trainer_with_multiclass_scores_and_train_two_steps(self):
+    train_config_text_proto = """
+    optimizer {
+      adam_optimizer {
+        learning_rate {
+          constant_learning_rate {
+            learning_rate: 0.01
+          }
+        }
+      }
+    }
+    data_augmentation_options {
+      random_adjust_brightness {
+        max_delta: 0.2
+      }
+    }
+    data_augmentation_options {
+      random_adjust_contrast {
+        min_delta: 0.7
+        max_delta: 1.1
+      }
+    }
+    num_steps: 2
+    use_multiclass_scores: true
     """
     train_config = train_pb2.TrainConfig()
     text_format.Merge(train_config_text_proto, train_config)
