@@ -20,7 +20,8 @@ configuring the eval job.
 
 1) A single pipeline_pb2.TrainEvalPipelineConfig file maybe specified instead.
 In this mode, the --eval_training_data flag may be given to force the pipeline
-to evaluate on training data instead.
+to evaluate on training data instead. Set the --eval_from_ckpt flag to evaluate
+from a specified checkpoint.
 
 Example usage:
     ./eval \
@@ -65,6 +66,8 @@ flags.DEFINE_string('checkpoint_dir', '',
                     'set to `train_dir` used in the training job.')
 flags.DEFINE_string('eval_dir', '',
                     'Directory to write eval summaries to.')
+flags.DEFINE_string('eval_from_ckpt', '',
+                    'Start evaluation from a specified checkpoint.')
 flags.DEFINE_string('pipeline_config_path', '',
                     'Path to a pipeline_pb2.TrainEvalPipelineConfig config '
                     'file. If provided, other configs are ignored')
@@ -128,7 +131,7 @@ def main(unused_argv):
     eval_config.max_evals = 1
 
   evaluator.evaluate(create_input_dict_fn, model_fn, eval_config, categories,
-                     FLAGS.checkpoint_dir, FLAGS.eval_dir)
+                     FLAGS.checkpoint_dir, FLAGS.eval_dir, FLAGS.eval_from_ckpt)
 
 
 if __name__ == '__main__':

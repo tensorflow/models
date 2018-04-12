@@ -150,7 +150,8 @@ def get_evaluators(eval_config, categories):
 
 
 def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
-             checkpoint_dir, eval_dir, graph_hook_fn=None, evaluator_list=None):
+             checkpoint_dir, eval_dir, eval_from_ckpt, graph_hook_fn=None,
+             evaluator_list=None):
   """Evaluation function for detection models.
 
   Args:
@@ -161,6 +162,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
                 have an integer 'id' field and string 'name' field.
     checkpoint_dir: directory to load the checkpoints to evaluate from.
     eval_dir: directory to write evaluation metrics summary to.
+    eval_from_ckpt: The checkpoint to start evaluation from.
     graph_hook_fn: Optional function that is called after the training graph is
       completely built. This is helpful to perform additional changes to the
       training graph such as optimizing batchnorm. The function should modify
@@ -261,6 +263,7 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       evaluators=evaluator_list,
       batch_processor=_process_batch,
       checkpoint_dirs=[checkpoint_dir],
+      eval_from_ckpt=eval_from_ckpt,
       variables_to_restore=None,
       restore_fn=_restore_latest_checkpoint,
       num_batches=eval_config.num_examples,
