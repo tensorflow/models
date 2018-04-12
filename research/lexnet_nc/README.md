@@ -29,7 +29,8 @@ Training a model requires the following:
 1. A collection of noun compounds that have been labeled using a *relation
    inventory*.  The inventory describes the specific relationships that you'd
    like the model to differentiate (e.g. *part of* versus *composed of* versus
-   *purpose*), and generally may consist of tens of classes.
+   *purpose*), and generally may consist of tens of classes. 
+   You can download the dataset used in the paper from [here](https://vered1986.github.io/papers/Tratz2011_Dataset.tar.gz).
 2. You'll need a collection of word embeddings: the path-based model uses the
    word embeddings as part of the path representation, and the distributional
    models use the word embeddings directly as prediction features.
@@ -130,3 +131,8 @@ train, dev, and test sets, and will include a confusion matrix for each.
 
 If you have any questions, issues, or suggestions, feel free to contact either
 @vered1986 or @waterson.
+
+If you use this code for any published research, please include the following citation:
+
+Olive Oil Is Made of Olives, Baby Oil Is Made for Babies: Interpreting Noun Compounds Using Paraphrases in a Neural Model. 
+Vered Shwartz and Chris Waterson. NAACL 2018. [link](https://arxiv.org/pdf/1803.08073.pdf).
