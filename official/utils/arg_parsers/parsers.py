@@ -101,15 +101,16 @@ class BaseParser(argparse.ArgumentParser):
     epochs_between_evals: Create a flag to specify the frequency of testing.
     stop_threshold: Create a flag to specify a threshold accuracy or other
       eval metric which should trigger the end of training.
-    batch_size: Create a flag to specify the batch size.
+    batch_size: Create a flag to specify the global batch size.
     multi_gpu: Create a flag to allow the use of all available GPUs.
+    num_gpu: Create a flag to specify the number of GPUs used.
     hooks: Create a flag to specify hooks for logging.
   """
 
   def __init__(self, add_help=False, data_dir=True, model_dir=True,
                train_epochs=True, epochs_between_evals=True,
-               stop_threshold=True, batch_size=True, multi_gpu=True,
-               hooks=True):
+               stop_threshold=True, batch_size=True,
+               multi_gpu=False, num_gpu=True, hooks=True):
     super(BaseParser, self).__init__(add_help=add_help)
 
     if data_dir:
@@ -154,14 +155,28 @@ class BaseParser(argparse.ArgumentParser):
     if batch_size:
       self.add_argument(
           "--batch_size", "-bs", type=int, default=32,
-          help="[default: %(default)s] Batch size for training and evaluation.",
+          help="[default: %(default)s] Global batch size for training and "
+               "evaluation.",
           metavar="<BS>"
       )
+
+    assert not (multi_gpu and num_gpu)
 
     if multi_gpu:
       self.add_argument(
           "--multi_gpu", action="store_true",
           help="If set, run across all available GPUs."
+      )
+
+    if num_gpu:
+      self.add_argument(
+          "--num_gpus", "-ng",
+          type=int,
+          default=1 if tf.test.is_built_with_cuda() else 0,
+          help="[default: %(default)s] How many GPUs to use with the "
+               "DistributionStrategies API. The default is 1 if TensorFlow was"
+               "built with CUDA, and 0 otherwise.",
+          metavar="<NG>"
       )
 
     if hooks:
