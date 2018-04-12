@@ -110,18 +110,19 @@ def dict_to_tf_example(data,
     raise ValueError('Image format not JPEG')
   key = hashlib.sha256(encoded_jpg).hexdigest()
 
-  with tf.gfile.GFile(mask_path, 'rb') as fid:
-    encoded_mask_png = fid.read()
-  encoded_png_io = io.BytesIO(encoded_mask_png)
-  mask = PIL.Image.open(encoded_png_io)
-  if mask.format != 'PNG':
-    raise ValueError('Mask format not PNG')
+  if not faces_only:
+    with tf.gfile.GFile(mask_path, 'rb') as fid:
+      encoded_mask_png = fid.read()
+    encoded_png_io = io.BytesIO(encoded_mask_png)
+    mask = PIL.Image.open(encoded_png_io)
+    if mask.format != 'PNG':
+      raise ValueError('Mask format not PNG')
 
-  mask_np = np.asarray(mask)
-  nonbackground_indices_x = np.any(mask_np != 2, axis=0)
-  nonbackground_indices_y = np.any(mask_np != 2, axis=1)
-  nonzero_x_indices = np.where(nonbackground_indices_x)
-  nonzero_y_indices = np.where(nonbackground_indices_y)
+    mask_np = np.asarray(mask)
+    nonbackground_indices_x = np.any(mask_np != 2, axis=0)
+    nonbackground_indices_y = np.any(mask_np != 2, axis=1)
+    nonzero_x_indices = np.where(nonbackground_indices_x)
+    nonzero_y_indices = np.where(nonbackground_indices_y)
 
   width = int(data['size']['width'])
   height = int(data['size']['height'])
@@ -280,7 +281,7 @@ def main(_):
 
   train_output_path = os.path.join(FLAGS.output_dir, 'pet_train.record')
   val_output_path = os.path.join(FLAGS.output_dir, 'pet_val.record')
-  if FLAGS.faces_only:
+  if not FLAGS.faces_only:
     train_output_path = os.path.join(FLAGS.output_dir,
                                      'pet_train_with_masks.record')
     val_output_path = os.path.join(FLAGS.output_dir,
