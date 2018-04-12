@@ -31,8 +31,8 @@ class GridAnchorGeneratorTest(test_case.TestCase):
       anchor_offset = [7, -3]
       anchor_generator = grid_anchor_generator.GridAnchorGenerator(
           scales, aspect_ratios, anchor_offset=anchor_offset)
-      anchors = anchor_generator.generate(feature_map_shape_list=[(1, 1)])
-      anchor_corners = anchors.get()
+      anchors_list = anchor_generator.generate(feature_map_shape_list=[(1, 1)])
+      anchor_corners = anchors_list[0].get()
       return (anchor_corners,)
     exp_anchor_corners = [[-121, -35, 135, 29], [-249, -67, 263, 61],
                           [-505, -131, 519, 125], [-57, -67, 71, 61],
@@ -57,8 +57,8 @@ class GridAnchorGeneratorTest(test_case.TestCase):
           anchor_stride=anchor_stride,
           anchor_offset=anchor_offset)
 
-      anchors = anchor_generator.generate(feature_map_shape_list=[(2, 2)])
-      anchor_corners = anchors.get()
+      anchors_list = anchor_generator.generate(feature_map_shape_list=[(2, 2)])
+      anchor_corners = anchors_list[0].get()
       return (anchor_corners,)
     exp_anchor_corners = [[-2.5, -2.5, 2.5, 2.5], [-5., -5., 5., 5.],
                           [-10., -10., 10., 10.], [-2.5, 16.5, 2.5, 21.5],
@@ -83,9 +83,9 @@ class GridAnchorGeneratorTest(test_case.TestCase):
           anchor_stride=anchor_stride,
           anchor_offset=anchor_offset)
 
-      anchors = anchor_generator.generate(
+      anchors_list = anchor_generator.generate(
           feature_map_shape_list=[(feature_map_height, feature_map_width)])
-      anchor_corners = anchors.get()
+      anchor_corners = anchors_list[0].get()
       return (anchor_corners,)
 
     exp_anchor_corners = [[-2.5, -2.5, 2.5, 2.5], [-5., -5., 5., 5.],

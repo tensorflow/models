@@ -585,7 +585,7 @@ def sort_by_field(boxlist, field, order=SortOrder.descend, scope=None):
         ['Incorrect field size: actual vs expected.', num_entries, num_boxes])
 
     with tf.control_dependencies([length_assert]):
-      # TODO: Remove with tf.device when top_k operation runs
+      # TODO(derekjchow): Remove with tf.device when top_k operation runs
       # correctly on GPU.
       with tf.device('/cpu:0'):
         _, sorted_indices = tf.nn.top_k(field_to_sort, num_boxes, sorted=True)
@@ -657,7 +657,7 @@ def filter_greater_than(boxlist, thresh, scope=None):
   This op keeps the collection of boxes whose corresponding scores are
   greater than the input threshold.
 
-  TODO: Change function name to filter_scores_greater_than
+  TODO(jonathanhuang): Change function name to filter_scores_greater_than
 
   Args:
     boxlist: BoxList holding N boxes.  Must contain a 'scores' field
@@ -937,7 +937,7 @@ def box_voting(selected_boxes, pool_boxes, iou_thresh=0.5):
   iou_ = iou(selected_boxes, pool_boxes)
   match_indicator = tf.to_float(tf.greater(iou_, iou_thresh))
   num_matches = tf.reduce_sum(match_indicator, 1)
-  # TODO: Handle the case where some boxes in selected_boxes do not
+  # TODO(kbanoop): Handle the case where some boxes in selected_boxes do not
   # match to any boxes in pool_boxes. For such boxes without any matches, we
   # should return the original boxes without voting.
   match_assert = tf.Assert(

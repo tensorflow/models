@@ -28,13 +28,12 @@ FLAGS = tf.flags.FLAGS
 
 FASTER_RCNN_MODEL_NAME = 'faster_rcnn_resnet50_pets'
 SSD_INCEPTION_MODEL_NAME = 'ssd_inception_v2_pets'
-PATH_BASE = 'google3/third_party/tensorflow_models/object_detection/'
 
 
 def GetPipelineConfigPath(model_name):
   """Returns path to the local pipeline config file."""
-  return os.path.join(FLAGS.test_srcdir, PATH_BASE, 'samples', 'configs',
-                      model_name + '.config')
+  return os.path.join(tf.resource_loader.get_data_files_path(), 'samples',
+                      'configs', model_name + '.config')
 
 
 def InitializeFlags(model_name_for_test):
@@ -49,6 +48,6 @@ def BuildExperiment():
       hparams_overrides='load_pretrained=false')
 
   # pylint: disable=protected-access
-  experiment_fn = model._build_experiment_fn(10, 10)
+  experiment_fn = model.build_experiment_fn(10, 10)
   # pylint: enable=protected-access
   return experiment_fn(run_config, hparams)

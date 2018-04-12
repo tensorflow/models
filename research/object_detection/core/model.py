@@ -275,7 +275,7 @@ class DetectionModel(object):
           fields.BoxListFields.keypoints] = groundtruth_keypoints_list
 
   @abstractmethod
-  def restore_map(self, from_detection_checkpoint=True):
+  def restore_map(self, fine_tune_checkpoint_type='detection'):
     """Returns a map of variables to load from a foreign checkpoint.
 
     Returns a map of variable names to load from a checkpoint to variables in
@@ -287,9 +287,10 @@ class DetectionModel(object):
     the num_classes parameter.
 
     Args:
-      from_detection_checkpoint: whether to restore from a full detection
+      fine_tune_checkpoint_type: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
 
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in

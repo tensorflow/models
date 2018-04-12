@@ -93,11 +93,9 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
         allowed.
 
     Returns:
-      boxes: a BoxList holding a collection of N anchor boxes.  Additionally
-        this BoxList also holds a `feature_map_index` field which is set to 0
-        for each anchor; this field exists for interchangeability reasons with
-        the MultipleGridAnchorGenerator (see the docstring for the corresponding
-        `_generate` function in multiple_grid_anchor_generator.py)
+      boxes_list: a list of BoxLists each holding anchor boxes corresponding to
+        the input feature map shapes.
+
     Raises:
       ValueError: if feature_map_shape_list, box_specs_list do not have the same
         length.
@@ -128,7 +126,7 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
       num_anchors = anchors.num_boxes()
     anchor_indices = tf.zeros([num_anchors])
     anchors.add_field('feature_map_index', anchor_indices)
-    return anchors
+    return [anchors]
 
 
 def tile_anchors(grid_height,

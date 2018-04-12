@@ -20,10 +20,10 @@ Simply call
   python data_utils.py
 """
 
-import cPickle as pickle
 import logging
 import os
 import subprocess
+from six.moves import cPickle as pickle
 
 import numpy as np
 from scipy.misc import imresize
@@ -54,9 +54,9 @@ def get_data():
     Train and test data as dictionaries mapping
     label to list of examples.
   """
-  with tf.gfile.GFile(DATA_FILE_FORMAT % 'train') as f:
+  with tf.gfile.GFile(DATA_FILE_FORMAT % 'train', 'rb') as f:
     processed_train_data = pickle.load(f)
-  with tf.gfile.GFile(DATA_FILE_FORMAT % 'test') as f:
+  with tf.gfile.GFile(DATA_FILE_FORMAT % 'test', 'rb') as f:
     processed_test_data = pickle.load(f)
 
   train_data = {}
@@ -72,9 +72,9 @@ def get_data():
 
   intersection = set(train_data.keys()) & set(test_data.keys())
   assert not intersection, 'Train and test data intersect.'
-  ok_num_examples = [len(ll) == 20 for _, ll in train_data.iteritems()]
+  ok_num_examples = [len(ll) == 20 for _, ll in train_data.items()]
   assert all(ok_num_examples), 'Bad number of examples in train data.'
-  ok_num_examples = [len(ll) == 20 for _, ll in test_data.iteritems()]
+  ok_num_examples = [len(ll) == 20 for _, ll in test_data.items()]
   assert all(ok_num_examples), 'Bad number of examples in test data.'
 
   logging.info('Number of labels in train data: %d.', len(train_data))

@@ -26,7 +26,7 @@ tfgan = tf.contrib.gan
 
 
 def _generator_helper(
-    noise, is_conditional, one_hot_labels, weight_decay):
+    noise, is_conditional, one_hot_labels, weight_decay, is_training):
   """Core MNIST generator.
 
   This function is reused between the different GAN modes (unconditional,
@@ -37,6 +37,9 @@ def _generator_helper(
     is_conditional: Whether to condition on labels.
     one_hot_labels: Optional labels for conditioning.
     weight_decay: The value of the l2 weight decay.
+    is_training: If `True`, batch norm uses batch statistics. If `False`, batch
+      norm uses the exponential moving average collected from population
+      statistics.
 
   Returns:
     A generated image in the range [-1, 1].
@@ -45,49 +48,59 @@ def _generator_helper(
       [layers.fully_connected, layers.conv2d_transpose],
       activation_fn=tf.nn.relu, normalizer_fn=layers.batch_norm,
       weights_regularizer=layers.l2_regularizer(weight_decay)):
-    net = layers.fully_connected(noise, 1024)
-    if is_conditional:
-      net = tfgan.features.condition_tensor_from_onehot(net, one_hot_labels)
-    net = layers.fully_connected(net, 7 * 7 * 128)
-    net = tf.reshape(net, [-1, 7, 7, 128])
-    net = layers.conv2d_transpose(net, 64, [4, 4], stride=2)
-    net = layers.conv2d_transpose(net, 32, [4, 4], stride=2)
-    # Make sure that generator output is in the same range as `inputs`
-    # ie [-1, 1].
-    net = layers.conv2d(
-        net, 1, [4, 4], normalizer_fn=None, activation_fn=tf.tanh)
+    with tf.contrib.framework.arg_scope(
+        [layers.batch_norm], is_training=is_training):
+      net = layers.fully_connected(noise, 1024)
+      if is_conditional:
+        net = tfgan.features.condition_tensor_from_onehot(net, one_hot_labels)
+      net = layers.fully_connected(net, 7 * 7 * 128)
+      net = tf.reshape(net, [-1, 7, 7, 128])
+      net = layers.conv2d_transpose(net, 64, [4, 4], stride=2)
+      net = layers.conv2d_transpose(net, 32, [4, 4], stride=2)
+      # Make sure that generator output is in the same range as `inputs`
+      # ie [-1, 1].
+      net = layers.conv2d(
+          net, 1, [4, 4], normalizer_fn=None, activation_fn=tf.tanh)
 
-    return net
+      return net
 
 
-def unconditional_generator(noise, weight_decay=2.5e-5):
+def unconditional_generator(noise, weight_decay=2.5e-5, is_training=True):
   """Generator to produce unconditional MNIST images.
 
   Args:
     noise: A single Tensor representing noise.
     weight_decay: The value of the l2 weight decay.
+    is_training: If `True`, batch norm uses batch statistics. If `False`, batch
+      norm uses the exponential moving average collected from population
+      statistics.
 
   Returns:
     A generated image in the range [-1, 1].
   """
-  return _generator_helper(noise, False, None, weight_decay)
+  return _generator_helper(noise, False, None, weight_decay, is_training)
 
 
-def conditional_generator(inputs, weight_decay=2.5e-5):
+def conditional_generator(inputs, weight_decay=2.5e-5, is_training=True):
   """Generator to produce MNIST images conditioned on class.
 
   Args:
     inputs: A 2-tuple of Tensors (noise, one_hot_labels).
     weight_decay: The value of the l2 weight decay.
+    is_training: If `True`, batch norm uses batch statistics. If `False`, batch
+      norm uses the exponential moving average collected from population
+      statistics.
 
   Returns:
     A generated image in the range [-1, 1].
   """
   noise, one_hot_labels = inputs
-  return _generator_helper(noise, True, one_hot_labels, weight_decay)
+  return _generator_helper(
+      noise, True, one_hot_labels, weight_decay, is_training)
 
 
-def infogan_generator(inputs, categorical_dim, weight_decay=2.5e-5):
+def infogan_generator(inputs, categorical_dim, weight_decay=2.5e-5,
+                      is_training=True):
   """InfoGAN generator network on MNIST digits.
 
   Based on a paper https://arxiv.org/abs/1606.03657, their code
@@ -99,6 +112,9 @@ def infogan_generator(inputs, categorical_dim, weight_decay=2.5e-5):
       2D, and `inputs[1]` must be 1D. All must have the same first dimension.
     categorical_dim: Dimensions of the incompressible categorical noise.
     weight_decay: The value of the l2 weight decay.
+    is_training: If `True`, batch norm uses batch statistics. If `False`, batch
+      norm uses the exponential moving average collected from population
+      statistics.
 
   Returns:
     A generated image in the range [-1, 1].
@@ -107,7 +123,7 @@ def infogan_generator(inputs, categorical_dim, weight_decay=2.5e-5):
   cat_noise_onehot = tf.one_hot(cat_noise, categorical_dim)
   all_noise = tf.concat(
       [unstructured_noise, cat_noise_onehot, cont_noise], axis=1)
-  return _generator_helper(all_noise, False, None, weight_decay)
+  return _generator_helper(all_noise, False, None, weight_decay, is_training)
 
 
 _leaky_relu = lambda x: tf.nn.leaky_relu(x, alpha=0.01)

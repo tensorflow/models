@@ -124,6 +124,7 @@ def conv2d_same(inputs, num_outputs, kernel_size, stride, rate=1, scope=None):
 
 @slim.add_arg_scope
 def stack_blocks_dense(net, blocks, output_stride=None,
+                       store_non_strided_activations=False,
                        outputs_collections=None):
   """Stacks ResNet `Blocks` and controls output feature density.
 
@@ -154,6 +155,12 @@ def stack_blocks_dense(net, blocks, output_stride=None,
       For example, if the ResNet employs units with strides 1, 2, 1, 3, 4, 1,
       then valid values for the output_stride are 1, 2, 6, 24 or None (which
       is equivalent to output_stride=24).
+    store_non_strided_activations: If True, we compute non-strided (undecimated)
+      activations at the last unit of each block and store them in the
+      `outputs_collections` before subsampling them. This gives us access to
+      higher resolution intermediate activations which are useful in some
+      dense prediction problems but increases 4x the computation and memory cost
+      at the last unit of each block.
     outputs_collections: Collection to add the ResNet block outputs.
 
   Returns:
@@ -173,9 +180,12 @@ def stack_blocks_dense(net, blocks, output_stride=None,
 
   for block in blocks:
     with tf.variable_scope(block.scope, 'block', [net]) as sc:
+      block_stride = 1
       for i, unit in enumerate(block.args):
-        if output_stride is not None and current_stride > output_stride:
-          raise ValueError('The target output_stride cannot be reached.')
+        if store_non_strided_activations and i == len(block.args) - 1:
+          # Move stride from the block's last unit to the end of the block.
+          block_stride = unit.get('stride', 1)
+          unit = dict(unit, stride=1)
 
         with tf.variable_scope('unit_%d' % (i + 1), values=[net]):
           # If we have reached the target output_stride, then we need to employ
@@ -188,7 +198,20 @@ def stack_blocks_dense(net, blocks, output_stride=None,
           else:
             net = block.unit_fn(net, rate=1, **unit)
             current_stride *= unit.get('stride', 1)
+            if output_stride is not None and current_stride > output_stride:
+              raise ValueError('The target output_stride cannot be reached.')
+
+      # Collect activations at the block's end before performing subsampling.
       net = slim.utils.collect_named_outputs(outputs_collections, sc.name, net)
+
+      # Subsampling of the block's output activations.
+      if output_stride is not None and current_stride == output_stride:
+        rate *= block_stride
+      else:
+        net = subsample(net, block_stride)
+        current_stride *= block_stride
+        if output_stride is not None and current_stride > output_stride:
+          raise ValueError('The target output_stride cannot be reached.')
 
   if output_stride is not None and current_stride != output_stride:
     raise ValueError('The target output_stride cannot be reached.')

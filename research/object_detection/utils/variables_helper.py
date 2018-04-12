@@ -23,7 +23,7 @@ import tensorflow as tf
 slim = tf.contrib.slim
 
 
-# TODO: Consider replacing with tf.contrib.filter_variables in
+# TODO(derekjchow): Consider replacing with tf.contrib.filter_variables in
 # tensorflow/contrib/framework/python/ops/variables.py
 def filter_variables(variables, filter_regex_list, invert=False):
   """Filters out the variables matching the filter_regex.
@@ -42,7 +42,7 @@ def filter_variables(variables, filter_regex_list, invert=False):
     a list of filtered variables.
   """
   kept_vars = []
-  variables_to_ignore_patterns = filter(None, filter_regex_list)
+  variables_to_ignore_patterns = list(filter(None, filter_regex_list))
   for var in variables:
     add = True
     for pattern in variables_to_ignore_patterns:
@@ -104,7 +104,7 @@ def get_variables_available_in_checkpoint(variables,
   Inspects given checkpoint and returns the subset of variables that are
   available in it.
 
-  TODO: force input and output to be a dictionary.
+  TODO(rathodv): force input and output to be a dictionary.
 
   Args:
     variables: a list or dictionary of variables to find in checkpoint.

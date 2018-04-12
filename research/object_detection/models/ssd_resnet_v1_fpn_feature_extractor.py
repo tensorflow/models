@@ -1,3 +1,17 @@
+# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 """SSD Feature Pyramid Network (FPN) feature extractors based on Resnet v1.
 
 See https://arxiv.org/abs/1708.02002 for details.
@@ -29,7 +43,8 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                batch_norm_trainable=True,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               inplace_batchnorm_update=False):
     """SSD FPN feature extractor based on Resnet v1 architecture.
 
     Args:
@@ -52,6 +67,11 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
       use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
+      inplace_batchnorm_update: Whether to update batch_norm inplace during
+        training. This is required for batch norm to work correctly on TPUs.
+        When this is false, user must add a control dependency on
+        tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+        norm moving average parameters.
 
     Raises:
       ValueError: On supplying invalid arguments for unused arguments.
@@ -59,7 +79,7 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     super(_SSDResnetV1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, batch_norm_trainable, reuse_weights,
-        use_explicit_padding)
+        use_explicit_padding, inplace_batchnorm_update)
     if self._depth_multiplier != 1.0:
       raise ValueError('Only depth 1.0 is supported, found: {}'.
                        format(self._depth_multiplier))
@@ -87,7 +107,7 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     return resized_inputs - [[channel_means]]
 
   def _filter_features(self, image_features):
-    # TODO: Change resnet endpoint to strip scope prefixes instead
+    # TODO(rathodv): Change resnet endpoint to strip scope prefixes instead
     # of munging the scope here.
     filtered_image_features = dict({})
     for key, feature in image_features.items():
@@ -96,7 +116,7 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         filtered_image_features[feature_name] = feature
     return filtered_image_features
 
-  def extract_features(self, preprocessed_inputs):
+  def _extract_features(self, preprocessed_inputs):
     """Extract features from preprocessed inputs.
 
     Args:
@@ -162,7 +182,8 @@ class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                batch_norm_trainable=True,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               inplace_batchnorm_update=False):
     """Resnet50 v1 FPN Feature Extractor for SSD Models.
 
     Args:
@@ -180,11 +201,17 @@ class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
       use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
+      inplace_batchnorm_update: Whether to update batch_norm inplace during
+        training. This is required for batch norm to work correctly on TPUs.
+        When this is false, user must add a control dependency on
+        tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+        norm moving average parameters.
     """
     super(SSDResnet50V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, resnet_v1.resnet_v1_50, 'resnet_v1_50', 'fpn',
-        batch_norm_trainable, reuse_weights, use_explicit_padding)
+        batch_norm_trainable, reuse_weights, use_explicit_padding,
+        inplace_batchnorm_update)
 
 
 class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
@@ -198,7 +225,8 @@ class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                batch_norm_trainable=True,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               inplace_batchnorm_update=False):
     """Resnet101 v1 FPN Feature Extractor for SSD Models.
 
     Args:
@@ -216,11 +244,17 @@ class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
       use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
+      inplace_batchnorm_update: Whether to update batch_norm inplace during
+        training. This is required for batch norm to work correctly on TPUs.
+        When this is false, user must add a control dependency on
+        tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+        norm moving average parameters.
     """
     super(SSDResnet101V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, resnet_v1.resnet_v1_101, 'resnet_v1_101', 'fpn',
-        batch_norm_trainable, reuse_weights, use_explicit_padding)
+        batch_norm_trainable, reuse_weights, use_explicit_padding,
+        inplace_batchnorm_update)
 
 
 class SSDResnet152V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
@@ -234,7 +268,8 @@ class SSDResnet152V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                batch_norm_trainable=True,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               inplace_batchnorm_update=False):
     """Resnet152 v1 FPN Feature Extractor for SSD Models.
 
     Args:
@@ -252,8 +287,14 @@ class SSDResnet152V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
       use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
+      inplace_batchnorm_update: Whether to update batch_norm inplace during
+        training. This is required for batch norm to work correctly on TPUs.
+        When this is false, user must add a control dependency on
+        tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+        norm moving average parameters.
     """
     super(SSDResnet152V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams, resnet_v1.resnet_v1_152, 'resnet_v1_152', 'fpn',
-        batch_norm_trainable, reuse_weights, use_explicit_padding)
+        batch_norm_trainable, reuse_weights, use_explicit_padding,
+        inplace_batchnorm_update)

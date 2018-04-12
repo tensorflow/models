@@ -75,7 +75,8 @@ def run_eval(eval_ops, summary_writer, saver):
   Returns:
     dict<metric name, value>, with value being the average over all examples.
   """
-  sv = tf.train.Supervisor(logdir=FLAGS.eval_dir, saver=None, summary_op=None)
+  sv = tf.train.Supervisor(
+      logdir=FLAGS.eval_dir, saver=None, summary_op=None, summary_writer=None)
   with sv.managed_session(
       master=FLAGS.master, start_standard_services=False) as sess:
     if not restore_from_checkpoint(sess, saver):
@@ -113,6 +114,7 @@ def _log_values(sess, value_ops, summary_writer=None):
 
   if summary_writer is not None:
     global_step_val = sess.run(tf.train.get_global_step())
+    tf.logging.info('Finished eval for step ' + str(global_step_val))
     summary_writer.add_summary(summary, global_step_val)
 
 

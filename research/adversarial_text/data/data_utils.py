@@ -271,7 +271,7 @@ def build_labeled_sequence(seq, class_label, label_gain=False):
 
   Args:
     seq: SequenceWrapper.
-    class_label: bool.
+    class_label: integer, starting from 0.
     label_gain: bool. If True, class_label will be put on every timestep and
       weight will increase linearly from 0 to 1.
 
