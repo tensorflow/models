@@ -49,11 +49,12 @@ def create_model(data_format):
   Returns:
     A tf.keras.Model.
   """
+  input_shape = [28, 28]
   if data_format == 'channels_first':
-    input_shape = [1, 28, 28]
+    target_shape = [1, 28, 28]
   else:
     assert data_format == 'channels_last'
-    input_shape = [28, 28, 1]
+    target_shape = [28, 28, 1]
 
   l = tf.keras.layers
   max_pool = l.MaxPooling2D(
@@ -62,7 +63,7 @@ def create_model(data_format):
   # (a subclass of tf.keras.Model) makes for a compact description.
   return tf.keras.Sequential(
       [
-          l.Reshape(input_shape),
+          l.Reshape(target_shape=target_shape, input_shape=input_shape),
           l.Conv2D(
               32,
               5,
