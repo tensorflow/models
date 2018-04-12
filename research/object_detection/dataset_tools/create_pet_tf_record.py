@@ -154,11 +154,13 @@ def dict_to_tf_example(data,
       ymin = float(np.min(nonzero_y_indices))
       ymax = float(np.max(nonzero_y_indices))
 
+    class_name = obj['name'] if 'name' in obj \
+                 else get_class_name_from_filename(data['filename'])
+
     xmins.append(xmin / width)
     ymins.append(ymin / height)
     xmaxs.append(xmax / width)
     ymaxs.append(ymax / height)
-    class_name = get_class_name_from_filename(data['filename'])
     classes_text.append(class_name.encode('utf8'))
     classes.append(label_map_dict[class_name])
     truncated.append(int(obj['truncated']))
