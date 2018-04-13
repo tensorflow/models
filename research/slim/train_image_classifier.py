@@ -121,6 +121,14 @@ tf.app.flags.DEFINE_float('rmsprop_momentum', 0.9, 'Momentum.')
 
 tf.app.flags.DEFINE_float('rmsprop_decay', 0.9, 'Decay term for RMSProp.')
 
+# Flags governing inter/intra op
+tf.app.flags.DEFINE_integer('num_inter_threads', 0,
+                            'Number of threads to use for inter-op parallelism. If '
+                            'set to 0, the system will pick an appropriate number.')
+tf.app.flags.DEFINE_integer('num_intra_threads', 1,
+                            'Number of threads to use for intra-op parallelism. If '
+                            'set to 0, the system will pick an appropriate number.')
+
 #######################
 # Learning Rate Flags #
 #######################
@@ -556,6 +564,9 @@ def main(_):
     ###########################
     # Kicks off the training. #
     ###########################
+    config = tf.ConfigProto(
+            intra_op_parallelism_threads = FLAGS.num_intra_threads,
+            inter_op_parallelism_threads = FLAGS.num_inter_threads)
     slim.learning.train(
         train_tensor,
         logdir=FLAGS.train_dir,
@@ -567,7 +578,8 @@ def main(_):
         log_every_n_steps=FLAGS.log_every_n_steps,
         save_summaries_secs=FLAGS.save_summaries_secs,
         save_interval_secs=FLAGS.save_interval_secs,
-        sync_optimizer=optimizer if FLAGS.sync_replicas else None)
+        sync_optimizer=optimizer if FLAGS.sync_replicas else None,
+        session_config=config)
 
 
 if __name__ == '__main__':
