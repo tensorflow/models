@@ -118,7 +118,8 @@ def batch_from_random(batch_size, output_height=224, output_width=224,
       [batch_size, output_height, output_width, num_channels]
   """
   shape = [batch_size, output_height, output_width, num_channels]
-  return np.random.random_sample(shape)
+  # Make sure we return float32, as float64 will not get cast automatically.
+  return np.random.random_sample(shape).astype(np.float32)
 
 
 ################################################################################

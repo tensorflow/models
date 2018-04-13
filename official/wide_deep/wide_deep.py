@@ -26,6 +26,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.arg_parsers import parsers
 from official.utils.logs import hooks_helper
+from official.utils.misc import model_helpers
 
 _CSV_COLUMNS = [
     'age', 'workclass', 'fnlwgt', 'education', 'education_num',
@@ -211,12 +212,17 @@ def main(argv):
     for key in sorted(results):
       print('%s: %s' % (key, results[key]))
 
+    if model_helpers.past_stop_threshold(
+        flags.stop_threshold, results['accuracy']):
+      break
+
 
 class WideDeepArgParser(argparse.ArgumentParser):
   """Argument parser for running the wide deep model."""
 
   def __init__(self):
-    super(WideDeepArgParser, self).__init__(parents=[parsers.BaseParser()])
+    super(WideDeepArgParser, self).__init__(parents=[
+        parsers.BaseParser(multi_gpu=False, num_gpu=False)])
     self.add_argument(
         '--model_type', '-mt', type=str, default='wide_deep',
         choices=['wide', 'deep', 'wide_deep'],

@@ -1,4 +1,5 @@
-/official/ @nealwu @k-w-w @karmel
+* @tensorflow/tf-garden-team
+/official/ @tensorflow/tf-garden-team @karmel
 /research/adversarial_crypto/ @dave-andersen
 /research/adversarial_text/ @rsepassi @a-dai
 /research/adv_imagenet_models/ @AlexeyKurakin
@@ -38,6 +39,7 @@
 /research/swivel/ @waterson
 /research/syntaxnet/ @calberti @andorardo @bogatyy @markomernick
 /research/tcn/ @coreylynch @sermanet
+/research/tensorrt/ @karmel
 /research/textsum/ @panyx0718 @peterjliu
 /research/transformer/ @daviddao
 /research/video_prediction/ @cbfinn

@@ -122,6 +122,9 @@ flags.DEFINE_string('tf_initial_checkpoint', None,
 flags.DEFINE_boolean('initialize_last_layer', True,
                      'Initialize the last layer.')
 
+flags.DEFINE_boolean('last_layers_contain_logits_only', False,
+                     'Only consider logits as last layers or not.')
+
 flags.DEFINE_integer('slow_start_step', 0,
                      'Training model with small learning rate for few steps.')
 
@@ -322,7 +325,7 @@ def main(unused_argv):
       summaries.add(tf.summary.scalar('total_loss', total_loss))
 
       # Modify the gradients for biases and last layer variables.
-      last_layers = model.get_extra_layer_scopes()
+      last_layers = model.get_extra_layer_scopes(FLAGS.last_layers_contain_logits_only)
       grad_mult = train_utils.get_model_gradient_multipliers(
           last_layers, FLAGS.last_layer_gradient_multiplier)
       if grad_mult:
