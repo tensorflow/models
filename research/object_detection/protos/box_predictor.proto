@@ -119,6 +119,10 @@ message MaskRCNNBoxPredictor {
   // branch.
   optional int32 mask_prediction_num_conv_layers = 11 [default = 2];
   optional bool masks_are_class_agnostic = 12 [default = false];
+
+  // Whether to use one box for all classes rather than a different box for each
+  // class.
+  optional bool share_box_across_classes = 13 [default = false];
 }
 
 message RfcnBoxPredictor {

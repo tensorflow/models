@@ -308,7 +308,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
                mask_prediction_num_conv_layers=2,
                mask_prediction_conv_depth=256,
                masks_are_class_agnostic=False,
-               predict_keypoints=False):
+               predict_keypoints=False,
+               share_box_across_classes=False):
     """Constructor.
 
     Args:
@@ -341,7 +342,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
       masks_are_class_agnostic: Boolean determining if the mask-head is
         class-agnostic or not.
       predict_keypoints: Whether to predict keypoints insde detection boxes.
-
+      share_box_across_classes: Whether to share boxes across classes rather
+        than use a different box for each class.
 
     Raises:
       ValueError: If predict_instance_masks is true but conv_hyperparams is not
@@ -362,6 +364,7 @@ class MaskRCNNBoxPredictor(BoxPredictor):
     self._mask_prediction_conv_depth = mask_prediction_conv_depth
     self._masks_are_class_agnostic = masks_are_class_agnostic
     self._predict_keypoints = predict_keypoints
+    self._share_box_across_classes = share_box_across_classes
     if self._predict_keypoints:
       raise ValueError('Keypoint prediction is unimplemented.')
     if ((self._predict_instance_masks or self._predict_keypoints) and
@@ -403,10 +406,14 @@ class MaskRCNNBoxPredictor(BoxPredictor):
       flattened_image_features = slim.dropout(flattened_image_features,
                                               keep_prob=self._dropout_keep_prob,
                                               is_training=self._is_training)
+    number_of_boxes = 1
+    if not self._share_box_across_classes:
+      number_of_boxes = self._num_classes
+
     with slim.arg_scope(self._fc_hyperparams_fn()):
       box_encodings = slim.fully_connected(
           flattened_image_features,
-          self._num_classes * self._box_code_size,
+          number_of_boxes * self._box_code_size,
           activation_fn=None,
           scope='BoxEncodingPredictor')
       class_predictions_with_background = slim.fully_connected(
@@ -415,7 +422,7 @@ class MaskRCNNBoxPredictor(BoxPredictor):
           activation_fn=None,
           scope='ClassPredictor')
     box_encodings = tf.reshape(
-        box_encodings, [-1, 1, self._num_classes, self._box_code_size])
+        box_encodings, [-1, 1, number_of_boxes, self._box_code_size])
     class_predictions_with_background = tf.reshape(
         class_predictions_with_background, [-1, 1, self._num_classes + 1])
     return box_encodings, class_predictions_with_background

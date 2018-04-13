@@ -1284,6 +1284,106 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       self.assertAllClose(loss_dict_out[
           'Loss/BoxClassifierLoss/classification_loss'], 0)
 
+  def test_loss_full_with_shared_boxes(self):
+    model = self._build_model(
+        is_training=True, number_of_stages=2, second_stage_batch_size=6)
+    batch_size = 2
+    anchors = tf.constant(
+        [[0, 0, 16, 16],
+         [0, 16, 16, 32],
+         [16, 0, 32, 16],
+         [16, 16, 32, 32]], dtype=tf.float32)
+    rpn_box_encodings = tf.zeros(
+        [batch_size,
+         anchors.get_shape().as_list()[0],
+         BOX_CODE_SIZE], dtype=tf.float32)
+    # use different numbers for the objectness category to break ties in
+    # order of boxes returned by NMS
+    rpn_objectness_predictions_with_background = tf.constant([
+        [[-10, 13],
+         [10, -10],
+         [10, -11],
+         [-10, 12]],
+        [[10, -10],
+         [-10, 13],
+         [-10, 12],
+         [10, -11]]], dtype=tf.float32)
+    image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
+
+    num_proposals = tf.constant([6, 6], dtype=tf.int32)
+    proposal_boxes = tf.constant(
+        2 * [[[0, 0, 16, 16],
+              [0, 16, 16, 32],
+              [16, 0, 32, 16],
+              [16, 16, 32, 32],
+              [0, 0, 16, 16],
+              [0, 16, 16, 32]]], dtype=tf.float32)
+    refined_box_encodings = tf.zeros(
+        (batch_size * model.max_num_proposals,
+         1,  # one box shared among all the classes
+         BOX_CODE_SIZE), dtype=tf.float32)
+    class_predictions_with_background = tf.constant(
+        [[-10, 10, -10],  # first image
+         [10, -10, -10],
+         [10, -10, -10],
+         [-10, -10, 10],
+         [-10, 10, -10],
+         [10, -10, -10],
+         [10, -10, -10],  # second image
+         [-10, 10, -10],
+         [-10, 10, -10],
+         [10, -10, -10],
+         [10, -10, -10],
+         [-10, 10, -10]], dtype=tf.float32)
+
+    mask_predictions_logits = 20 * tf.ones((batch_size *
+                                            model.max_num_proposals,
+                                            model.num_classes,
+                                            14, 14),
+                                           dtype=tf.float32)
+
+    groundtruth_boxes_list = [
+        tf.constant([[0, 0, .5, .5], [.5, .5, 1, 1]], dtype=tf.float32),
+        tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32)]
+    groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
+                                tf.constant([[1, 0], [1, 0]], dtype=tf.float32)]
+
+    # Set all elements of groundtruth mask to 1.0. In this case all proposal
+    # crops of the groundtruth masks should return a mask that covers the entire
+    # proposal. Thus, if mask_predictions_logits element values are all greater
+    # than 20, the loss should be zero.
+    groundtruth_masks_list = [tf.convert_to_tensor(np.ones((2, 32, 32)),
+                                                   dtype=tf.float32),
+                              tf.convert_to_tensor(np.ones((2, 32, 32)),
+                                                   dtype=tf.float32)]
+    prediction_dict = {
+        'rpn_box_encodings': rpn_box_encodings,
+        'rpn_objectness_predictions_with_background':
+        rpn_objectness_predictions_with_background,
+        'image_shape': image_shape,
+        'anchors': anchors,
+        'refined_box_encodings': refined_box_encodings,
+        'class_predictions_with_background': class_predictions_with_background,
+        'proposal_boxes': proposal_boxes,
+        'num_proposals': num_proposals,
+        'mask_predictions': mask_predictions_logits
+    }
+    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+    model.provide_groundtruth(groundtruth_boxes_list,
+                              groundtruth_classes_list,
+                              groundtruth_masks_list)
+    loss_dict = model.loss(prediction_dict, true_image_shapes)
+
+    with self.test_session() as sess:
+      loss_dict_out = sess.run(loss_dict)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/localization_loss'], 0)
+      self.assertAllClose(loss_dict_out[
+          'Loss/BoxClassifierLoss/classification_loss'], 0)
+      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
+
   def test_restore_map_for_classification_ckpt(self):
     # Define mock tensorflow classification graph and save variables.
     test_graph_classification = tf.Graph()
