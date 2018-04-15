@@ -80,12 +80,14 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
         num_classes=num_classes,
         conv_hyperparams_fn=conv_hyperparams_fn,
         depth=conv_box_predictor.depth,
-        num_layers_before_predictor=(conv_box_predictor.
-                                     num_layers_before_predictor),
+        num_layers_before_predictor=(
+            conv_box_predictor.num_layers_before_predictor),
         kernel_size=conv_box_predictor.kernel_size,
         box_code_size=conv_box_predictor.box_code_size,
-        class_prediction_bias_init=conv_box_predictor.class_prediction_bias_init
-    )
+        class_prediction_bias_init=conv_box_predictor.
+        class_prediction_bias_init,
+        use_dropout=conv_box_predictor.use_dropout,
+        dropout_keep_prob=conv_box_predictor.dropout_keep_probability)
     return box_predictor_object
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':

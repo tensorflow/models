@@ -785,7 +785,9 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                num_layers_before_predictor,
                box_code_size,
                kernel_size=3,
-               class_prediction_bias_init=0.0):
+               class_prediction_bias_init=0.0,
+               use_dropout=False,
+               dropout_keep_prob=0.8):
     """Constructor.
 
     Args:
@@ -803,6 +805,8 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
       kernel_size: Size of final convolution kernel.
       class_prediction_bias_init: constant value to initialize bias of the last
         conv2d layer before class prediction.
+      use_dropout: Whether to apply dropout to class prediction head.
+      dropout_keep_prob: Probability of keeping activiations.
     """
     super(WeightSharedConvolutionalBoxPredictor, self).__init__(is_training,
                                                                 num_classes)
@@ -812,6 +816,8 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
     self._box_code_size = box_code_size
     self._kernel_size = kernel_size
     self._class_prediction_bias_init = class_prediction_bias_init
+    self._use_dropout = use_dropout
+    self._dropout_keep_prob = dropout_keep_prob
 
   def _predict(self, image_features, num_predictions_per_location_list):
     """Computes encoded object locations and corresponding confidences.
@@ -884,6 +890,9 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                 stride=1,
                 padding='SAME',
                 scope='ClassPredictionTower/conv2d_{}'.format(i))
+          if self._use_dropout:
+            class_predictions_net = slim.dropout(
+                class_predictions_net, keep_prob=self._dropout_keep_prob)
           class_predictions_with_background = slim.conv2d(
               class_predictions_net,
               num_predictions_per_location * num_class_slots,
