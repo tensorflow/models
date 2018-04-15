@@ -336,8 +336,8 @@ class LFADS(object):
                                       tf.zeros_initializer(),
                                       trainable=False)
     self.hps = hps
-    ndatasets = hps.ndatasets
-    factors_dim = hps.factors_dim
+    self.ndatasets = ndatasets = hps.ndatasets
+    self.factors_dim = factors_dim = hps.factors_dim
     self.preds = preds = [None] * ndatasets
     self.fns_in_fac_Ws = fns_in_fac_Ws = [None] * ndatasets
     self.fns_in_fatcor_bs = fns_in_fac_bs = [None] * ndatasets
