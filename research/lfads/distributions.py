@@ -480,7 +480,7 @@ class KLCost_GaussianGaussianProcessSampled(object):
     logq_bxu = post_zs[0].logp(z0_bxu)
     logp_bxu = prior_z_process.logp_t(z0_bxu)
     z_tm1_bxu = z0_bxu
-    for z_t in post_zs[1:]:
+    for z_t in post_zs[0:]:
       # posterior is independent in time, prior is not
       z_t_bxu = z_t.sample
       logq_bxu += z_t.logp(z_t_bxu)
