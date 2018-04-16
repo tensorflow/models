@@ -91,7 +91,7 @@ class FaceDetector(object):
 
         	return( boundingbox.T )
 
-	def processed_image(self, image, scale):
+	def _processed_image(self, image, scale):
 	        height, width, channels = image.shape
 	        new_height = int(height * scale)
 	        new_width = int(width * scale)
@@ -100,7 +100,7 @@ class FaceDetector(object):
 	        resized_image = (resized_image - 127.5) / 128
 	        return( resized_image )
 
-    	def pad(self, bboxes, w, h):
+    	def _pad(self, bboxes, w, h):
  
         	tmpw, tmph = bboxes[:, 2] - bboxes[:, 0] + 1, bboxes[:, 3] - bboxes[:, 1] + 1
         	num_box = bboxes.shape[0]
@@ -131,12 +131,23 @@ class FaceDetector(object):
 
         	return( return_list )
 
-	def propose_faces(self, image):
+    	def _calibrate_box(self, bbox, reg):
+        	bbox_c = bbox.copy()
+        	w = bbox[:, 2] - bbox[:, 0] + 1
+        	w = np.expand_dims(w, 1)
+        	h = bbox[:, 3] - bbox[:, 1] + 1
+        	h = np.expand_dims(h, 1)
+        	reg_m = np.hstack([w, h, w, h])
+        	aug = reg_m * reg
+        	bbox_c[:, 0:4] = bbox_c[:, 0:4] + aug
+        	return bbox_c
+
+	def _propose_faces(self, image):
         	h, w, c = image.shape
         	net_size = self._pnet.network_size()
         
         	current_scale = float(net_size) / self._min_face_size
-        	resized_image = self.processed_image(image, current_scale)
+        	resized_image = self._processed_image(image, current_scale)
         	current_height, current_width, _ = resized_image.shape
         	
         	all_boxes = list()
@@ -145,7 +156,7 @@ class FaceDetector(object):
             		boxes = self._generate_bbox(cls_cls_map[:, :,1], reg, current_scale, self._threshold[0])
 
             		current_scale *= self._scale_factor
-            		resized_image = self.processed_image(image, current_scale)
+            		resized_image = self._processed_image(image, current_scale)
             		current_height, current_width, _ = resized_image.shape
 
             		if boxes.size == 0:
@@ -177,23 +188,12 @@ class FaceDetector(object):
 
         	return( boxes, boxes_c, None )
 
-    	def _calibrate_box(self, bbox, reg):
-        	bbox_c = bbox.copy()
-        	w = bbox[:, 2] - bbox[:, 0] + 1
-        	w = np.expand_dims(w, 1)
-        	h = bbox[:, 3] - bbox[:, 1] + 1
-        	h = np.expand_dims(h, 1)
-        	reg_m = np.hstack([w, h, w, h])
-        	aug = reg_m * reg
-        	bbox_c[:, 0:4] = bbox_c[:, 0:4] + aug
-        	return bbox_c
-
-	def refine_faces(self, im, dets):
+	def _refine_faces(self, im, dets):
         	h, w, c = im.shape
         	dets = convert_to_square(dets)
         	dets[:, 0:4] = np.round(dets[:, 0:4])
 
-        	[dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = self.pad(dets, w, h)
+        	[dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = self._pad(dets, w, h)
         	num_boxes = dets.shape[0]
         	cropped_ims = np.zeros((num_boxes, 24, 24, 3), dtype=np.float32)
         	for i in range(num_boxes):
@@ -216,11 +216,11 @@ class FaceDetector(object):
         	boxes_c = self._calibrate_box(boxes, reg[keep])
         	return( boxes, boxes_c, None )
 
-	def outpute_faces(self, im, dets):
+	def _outpute_faces(self, im, dets):
         	h, w, c = im.shape
         	dets = convert_to_square(dets)
         	dets[:, 0:4] = np.round(dets[:, 0:4])
-        	[dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = self.pad(dets, w, h)
+        	[dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph] = self._pad(dets, w, h)
         	num_boxes = dets.shape[0]
         	cropped_ims = np.zeros((num_boxes, 48, 48, 3), dtype=np.float32)
         	for i in range(num_boxes):
@@ -253,38 +253,40 @@ class FaceDetector(object):
         	landmark = landmark[keep]
         	return( boxes, boxes_c,landmark )		
 
-	def detect(self, image):
+	def detect(self, image, last_network='ONet'):
+		boxes = boxes_c = landmark = None 
+
 		start_time = time.time()
 		pnet_time = 0
-        	if self._pnet:
-            		boxes, boxes_c, _ = self.propose_faces(image)
+        	if( (last_network in ['PNet', 'RNet', 'ONet'] ) and self._pnet ):
+            		boxes, boxes_c, _ = self._propose_faces(image)
             		if boxes_c is None:
                 		return( np.array([]), np.array([]) )    
             		pnet_time = time.time() - start_time
-            	
+
 		start_time = time.time()
 		rnet_time = 0
-        	if self._rnet:
-            		boxes, boxes_c, _ = self.refine_faces(image, boxes_c)
+        	if ( (last_network in ['RNet', 'ONet'] ) and self._rnet ):
+            		boxes, boxes_c, _ = self._refine_faces(image, boxes_c)
             		if boxes_c is None:
                 		return( np.array([]),np.array([]) )    
             		rnet_time = time.time() - start_time
 
             	start_time = time.time()
 		onet_time = 0
-        	if self._onet:
-            		boxes, boxes_c, landmark = self.outpute_faces(image, boxes_c)
+        	if ( (last_network in ['ONet'] ) and self._onet ):
+            		boxes, boxes_c, landmark = self._outpute_faces(image, boxes_c)
             		if boxes_c is None:
                 		return( np.array([]),np.array([]) )    
             		onet_time = time.time() - start_time
+
 		return(boxes_c, landmark)
 
-	def detect_face(self, data_batch):
-
+	def detect_face(self, data_batch, last_network):
         	all_boxes_c = []
         	all_landmarks = []
 		for image in data_batch:
-			boxes_c, landmarks = self.detect(image)
+			boxes_c, landmarks = self.detect(image, last_network)
 			       
 			all_boxes_c.append(boxes_c)
             		all_landmarks.append(landmarks)

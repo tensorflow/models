@@ -152,7 +152,14 @@ class HardDataset(AbstractDataset):
 		if(not model_train_dir):
 			model_train_dir = FaceDetector.model_train_dir()			
 		face_detector = FaceDetector(model_train_dir)
-		detections, landmarks = face_detector.detect_face(test_data)
+		if(self.name() == 'ONet'):
+			last_network = 'RNet'
+		elif (self.name() == 'RNet'):
+			last_network = 'PNet'
+		else:
+			last_network = 'PNet'
+
+		detections, landmarks = face_detector.detect_face(test_data, last_network)
 
     		pickle_file_path = os.path.join(target_root_dir, self.pickle_file_name())
     		with open(pickle_file_path, 'wb') as f:
