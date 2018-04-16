@@ -86,7 +86,7 @@ class RNet(AbstractFaceDetector):
         		landmark_predictions = slim.fully_connected(fc1, num_outputs=10, scope=end_point, activation_fn=None)
 			self._end_points[end_point] = landmark_predictions
 
-        		if(self.is_training):
+        		if(self._is_training):
             			class_loss = cls_ohem(class_probability, label)
             			bounding_box_loss = bbox_ohem(bounding_box_predictions, bbox_targets, label)
             			landmark_loss = landmark_ohem(landmark_predictions, landmark_targets, label)
@@ -99,15 +99,15 @@ class RNet(AbstractFaceDetector):
             			return(class_probability, bounding_box_predictions, landmark_predictions)
 
 	def load_model(self, checkpoint_path):
-		self.is_training = False
+		self._is_training = False
 
         	graph = tf.Graph()
         	with graph.as_default():
-            		self.input_batch = tf.placeholder(tf.float32, shape=[self.batch_size(), self.network_size(), self.network_size(), 3], name='input_batch')            		
-            		self.output_class_probability, self.output_bounding_box, self.output_landmarks = self.setup_network(self.input_batch)
+            		self._input_batch = tf.placeholder(tf.float32, shape=[self.batch_size(), self.network_size(), self.network_size(), 3], name='input_batch')            		
+            		self._output_class_probability, self._output_bounding_box, self._output_landmarks = self.setup_network(self._input_batch)
 
-            		self.session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
-			self.load_model_from(checkpoint_path)
+            		self._session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
+			self._load_model_from(checkpoint_path)
 
 	def detect(self, data_batch):
         	scores = []
@@ -140,7 +140,7 @@ class RNet(AbstractFaceDetector):
 	                data = data[keep_inds]
 	                real_size = m
 
-	            class_probabilities, bounding_boxes, landmarks = self.session.run([self.output_class_probability, self.output_bounding_box, self.output_landmarks], feed_dict={self.input_batch: data})
+	            class_probabilities, bounding_boxes, landmarks = self._session.run([self._output_class_probability, self._output_bounding_box, self._output_landmarks], feed_dict={self._input_batch: data})
 
 	            class_probability_list.append(class_probabilities[:real_size])
 	            bounding_box_list.append(bounding_boxes[:real_size])

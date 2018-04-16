@@ -133,7 +133,7 @@ class HardDataset(AbstractDataset):
 
 		return(True)
 
-	def generate_samples(self, annotation_file, input_image_dir, minimum_face, target_root_dir):
+	def generate_samples(self, annotation_file, input_image_dir, model_train_dir, minimum_face, target_root_dir):
 
 		wider_dataset = WIDERFaceDataset()
 		if(wider_dataset.read_annotation(input_image_dir, annotation_file)):
@@ -148,7 +148,10 @@ class HardDataset(AbstractDataset):
 			os.makedirs(target_root_dir)
 
 		test_data = InferenceBatch(wider_data['images'])
-		face_detector = FaceDetector()
+
+		if(not model_train_dir):
+			model_train_dir = FaceDetector.model_train_dir()			
+		face_detector = FaceDetector(model_train_dir)
 		detections, landmarks = face_detector.detect_face(test_data)
 
     		pickle_file_path = os.path.join(target_root_dir, self.pickle_file_name())
@@ -160,7 +163,7 @@ class HardDataset(AbstractDataset):
 	def generate_dataset(self, target_root_dir):
 		print('HardDataset-generate_dataset')
 
-	def generate(self, annotation_file, input_image_dir, minimum_face, target_root_dir):
+	def generate(self, annotation_file, input_image_dir, model_train_dir, minimum_face, target_root_dir):
 
 		if(not os.path.isfile(annotation_file)):
 			return(False)
@@ -172,7 +175,7 @@ class HardDataset(AbstractDataset):
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
 
-		if(not self.generate_samples(annotation_file, input_image_dir, minimum_face, target_root_dir)):
+		if(not self.generate_samples(annotation_file, input_image_dir, model_train_dir, minimum_face, target_root_dir)):
 			return(False)
 
 		return(True)

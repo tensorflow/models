@@ -90,7 +90,7 @@ class ONet(RNet):
         		landmark_predictions = slim.fully_connected(fc1, num_outputs=10, scope=end_point, activation_fn=None)
 			self._end_points[end_point] = landmark_predictions
 
-        		if(self.is_training):
+        		if(self._is_training):
             			class_loss = cls_ohem(class_probability, label)
             			bounding_box_loss = bbox_ohem(bounding_box_predictions, bounding_box_targets, label)
             			landmark_loss = landmark_ohem(landmark_predictions, landmark_targets,label)

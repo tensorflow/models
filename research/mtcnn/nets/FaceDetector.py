@@ -31,19 +31,23 @@ from nets.ONet import ONet
 
 class FaceDetector(object):
 
-	def model_deploy_dir(self):
+	@classmethod
+	def model_deploy_dir(klass):
         	model_root_dir, _ = os.path.split(os.path.realpath(__file__))
         	model_root_dir = os.path.join(model_root_dir, '../data/mtcnn/deploy/')
 		return(model_root_dir)
 
-	def model_train_dir(self):
+	@classmethod
+	def model_train_dir(klass):
         	model_root_dir, _ = os.path.split(os.path.realpath(__file__))
         	model_root_dir = os.path.join(model_root_dir, '../data/mtcnn/train/')
 		return(model_root_dir)
 
 	def __init__(self, model_root_dir=None):
-	    	if not model_root_dir:
-	        	self._model_root_dir = self.model_deploy_dir()
+	    	if( not model_root_dir ):
+	        	self._model_root_dir = FaceDetector.model_deploy_dir()
+		else:
+			self._model_root_dir = model_root_dir
 
 		self._min_face_size = 24
 		self._threshold = [0.9, 0.6, 0.7]

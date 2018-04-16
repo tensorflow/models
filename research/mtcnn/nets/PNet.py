@@ -76,7 +76,7 @@ class PNet(AbstractFaceDetector):
         		#cls_prob_original = conv4_1 
         		#bbox_pred_original = bbox_pred
 
-        		if(self.is_training):
+        		if(self._is_training):
             			#batch*2
             			class_probability = tf.squeeze(conv4_1, [1,2], name='class_probability')
             			class_loss = cls_ohem(class_probability, label)
@@ -101,23 +101,23 @@ class PNet(AbstractFaceDetector):
             			return(output_class_probability, output_bounding_box, output_landmarks)
 
 	def load_model(self, checkpoint_path):
-		self.is_training = False
+		self._is_training = False
 
         	graph = tf.Graph()
         	with graph.as_default():
-            		self.input_batch = tf.placeholder(tf.float32, name='input_batch')
-            		self.image_width = tf.placeholder(tf.int32, name='image_width')
-            		self.image_height = tf.placeholder(tf.int32, name='image_height')
-            		image_reshape = tf.reshape(self.input_batch, [1, self.image_height, self.image_width, 3])
+            		self._input_batch = tf.placeholder(tf.float32, name='input_batch')
+            		self._image_width = tf.placeholder(tf.int32, name='image_width')
+            		self._image_height = tf.placeholder(tf.int32, name='image_height')
+            		image_reshape = tf.reshape(self._input_batch, [1, self._image_height, self._image_width, 3])
 
-			self.output_class_probability, self.output_bounding_box, self.output_landmarks = self.setup_network(image_reshape)
+			self._output_class_probability, self._output_bounding_box, self._output_landmarks = self.setup_network(image_reshape)
 
-			self.session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))			
-			self.load_model_from(checkpoint_path)
+			self._session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))			
+			self._load_model_from(checkpoint_path)
 
 	def detect(self, input_batch):
         	image_height, image_width, _ = input_batch.shape
-        	class_probabilities, bounding_boxes = self.session.run([self.output_class_probability, self.output_bounding_box],
-                                                           	 feed_dict={self.input_batch: input_batch, self.image_width: image_width, self.image_height: image_height})
+        	class_probabilities, bounding_boxes = self._session.run([self._output_class_probability, self._output_bounding_box],
+                                                           	 feed_dict={self._input_batch: input_batch, self._image_width: image_width, self._image_height: image_height})
         	return( class_probabilities, bounding_boxes )
 		

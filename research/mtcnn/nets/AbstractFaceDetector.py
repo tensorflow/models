@@ -24,8 +24,9 @@ class AbstractFaceDetector(object):
 	def __init__(self):
 		self._network_size = 0
 		self._network_name = ''
-		self.is_training = False
+		self._is_training = False
 		self._end_points = {}
+		self._session = None
 
 	def network_size(self):
 		return(self._network_size)
@@ -39,7 +40,7 @@ class AbstractFaceDetector(object):
 	def load_model(self, checkpoint_path):
 		raise NotImplementedError('Must be implemented by the subclass.')
 
-	def load_model_from(self, checkpoint_path):
+	def _load_model_from(self, checkpoint_path):
 		self.model_path = checkpoint_path
 
 		saver = tf.train.Saver()
@@ -47,7 +48,8 @@ class AbstractFaceDetector(object):
        		check_point = tf.train.get_checkpoint_state(model_dictionary)
        		read_state = ( check_point and check_point.model_checkpoint_path )
        		assert  read_state, "Invalid parameter dictionary."
-      		saver.restore(self.session, checkpoint_path)
+      		saver.restore(self._session, checkpoint_path)
 
 	def detect(self, data_batch):	
 		raise NotImplementedError('Must be implemented by the subclass.')
+
