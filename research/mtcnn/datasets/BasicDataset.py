@@ -37,9 +37,7 @@ class BasicDataset(AbstractDataset):
 	def _generate_landmark_samples(self):
 		return(True)
 		
-	def _generate_image_samples(self, annotation_file_name, annotation_image_dir, target_root_dir):
-
-		minimum_face=12
+	def _generate_image_samples(self, annotation_file_name, annotation_image_dir, minimum_face, target_root_dir):
 
 		target_root_dir = os.path.expanduser(target_root_dir)
 		target_root_dir = os.path.join(target_root_dir, self.name())
@@ -176,7 +174,7 @@ class BasicDataset(AbstractDataset):
 		print('BasicDataset-generate_dataset')
 		return(True)
 
-	def generate(self, annotation_file_name, annotation_image_dir, target_root_dir):
+	def generate(self, annotation_file_name, annotation_image_dir, minimum_face, target_root_dir):
 
 		if(not os.path.isfile(annotation_file_name)):
 			return(False)
@@ -191,7 +189,7 @@ class BasicDataset(AbstractDataset):
 		if(not self._generate_landmark_samples()):
 			return(False)
 		
-		if(not self._generate_image_samples(annotation_file_name, annotation_image_dir, target_root_dir)):
+		if(not self._generate_image_samples(annotation_file_name, annotation_image_dir, minimum_face, target_root_dir)):
 			return(False)
 
 		if(not self._generate_dataset(target_root_dir)):
