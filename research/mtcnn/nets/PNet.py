@@ -28,11 +28,11 @@ class PNet(AbstractFaceDetector):
 
 	def __init__(self):	
 		AbstractFaceDetector.__init__(self)	
-		self.network_size = 12
-		self.network_name = 'PNet'		
+		self._network_size = 12
+		self._network_name = 'PNet'		
 
 	def setup_network(self, inputs):	
-		self.end_points = {}
+		self._end_points = {}
 	
     		with slim.arg_scope([slim.conv2d],
                         	activation_fn = prelu,
@@ -43,35 +43,35 @@ class PNet(AbstractFaceDetector):
 
 			end_point = 'conv1'
         		net = slim.conv2d(inputs, 10, 3, stride=1, scope=end_point)
-			self.end_points[end_point] = net
+			self._end_points[end_point] = net
 
 			end_point = 'pool1'
         		net = slim.max_pool2d(net, kernel_size=[2,2], stride=2, scope=end_point, padding='SAME')
-			self.end_points[end_point] = net
+			self._end_points[end_point] = net
 
 			end_point = 'conv2'
         		net = slim.conv2d(net, num_outputs=16, kernel_size=[3,3], stride=1, scope=end_point)
-			self.end_points[end_point] = net
+			self._end_points[end_point] = net
 
 			end_point = 'conv3'
         		net = slim.conv2d(net, num_outputs=32, kernel_size=[3,3], stride=1, scope=end_point)
-			self.end_points[end_point] = net
+			self._end_points[end_point] = net
 
         		#batch*H*W*2
 			end_point = 'conv4_1'
         		conv4_1 = slim.conv2d(net, num_outputs=2, kernel_size=[1,1], stride=1, scope=end_point, activation_fn=tf.nn.softmax)
         		#conv4_1 = slim.conv2d(net, num_outputs=1, kernel_size=[1,1], stride=1, scope=end_point, activation_fn=tf.nn.sigmoid)
-			self.end_points[end_point] = conv4_1        
+			self._end_points[end_point] = conv4_1        
 
         		#batch*H*W*4
 			end_point = 'conv4_2'
         		bounding_box_predictions = slim.conv2d(net, num_outputs=4, kernel_size=[1,1], stride=1, scope=end_point, activation_fn=None)
-			self.end_points[end_point] = bounding_box_predictions
+			self._end_points[end_point] = bounding_box_predictions
 
         		#batch*H*W*10
 			end_point = 'conv4_3'
         		landmark_predictions = slim.conv2d(net, num_outputs=10, kernel_size=[1,1], stride=1, scope=end_point, activation_fn=None)
-			self.end_points[end_point] = landmark_predictions
+			self._end_points[end_point] = landmark_predictions
 
         		#cls_prob_original = conv4_1 
         		#bbox_pred_original = bbox_pred

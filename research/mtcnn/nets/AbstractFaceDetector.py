@@ -22,8 +22,16 @@ import tensorflow as tf
 class AbstractFaceDetector(object):
 
 	def __init__(self):
+		self._network_size = 0
+		self._network_name = ''
 		self.is_training = False
-		self.end_points = {}
+		self._end_points = {}
+
+	def network_size(self):
+		return(self._network_size)
+
+	def network_name(self):
+		return(self._network_name)
 
 	def setup_network(self, inputs):
 		raise NotImplementedError('Must be implemented by the subclass.')

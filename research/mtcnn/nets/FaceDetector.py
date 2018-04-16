@@ -41,15 +41,15 @@ class FaceDetector(object):
 		self.scale_factor = 0.79
 
 		self.pnet = PNet()
-		pnet_model_path = os.path.join(self.model_root_dir, self.pnet.network_name, self.pnet.network_name)
+		pnet_model_path = os.path.join(self.model_root_dir, self.pnet.network_name(), self.pnet.network_name())
 		self.pnet.load_model(pnet_model_path)
 
 		self.rnet = RNet()
-		rnet_model_path = os.path.join(self.model_root_dir, self.rnet.network_name, self.rnet.network_name)
+		rnet_model_path = os.path.join(self.model_root_dir, self.rnet.network_name(), self.rnet.network_name())
 		self.rnet.load_model(rnet_model_path)
 
 		self.onet = ONet()
-		onet_model_path = os.path.join(self.model_root_dir, self.onet.network_name, self.onet.network_name)
+		onet_model_path = os.path.join(self.model_root_dir, self.onet.network_name(), self.onet.network_name())
 		self.onet.load_model(onet_model_path)
 
     	def generate_bbox(self, cls_map, reg, scale, threshold):
@@ -120,7 +120,7 @@ class FaceDetector(object):
 
 	def propose_faces(self, image):
         	h, w, c = image.shape
-        	net_size = self.pnet.network_size
+        	net_size = self.pnet.network_size()
         
         	current_scale = float(net_size) / self.min_face_size
         	resized_image = self.processed_image(image, current_scale)
