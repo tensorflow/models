@@ -829,13 +829,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
     if self._is_training:
       curr_box_classifier_features = prediction_dict['box_classifier_features']
       detection_classes = prediction_dict['class_predictions_with_background']
-      box_predictions = self._mask_rcnn_box_predictor.predict(
+      mask_predictions = self._mask_rcnn_box_predictor.predict(
           [curr_box_classifier_features],
           num_predictions_per_location=[1],
           scope=self.second_stage_box_predictor_scope,
           predict_boxes_and_classes=False,
           predict_auxiliary_outputs=True)
-      prediction_dict['mask_predictions'] = tf.squeeze(box_predictions[
+      prediction_dict['mask_predictions'] = tf.squeeze(mask_predictions[
           box_predictor.MASK_PREDICTIONS], axis=1)
     else:
       detections_dict = self._postprocess_box_classifier(
@@ -860,14 +860,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
               flattened_detected_feature_maps,
               scope=self.second_stage_feature_extractor_scope))
 
-      box_predictions = self._mask_rcnn_box_predictor.predict(
+      mask_predictions = self._mask_rcnn_box_predictor.predict(
           [curr_box_classifier_features],
           num_predictions_per_location=[1],
           scope=self.second_stage_box_predictor_scope,
           predict_boxes_and_classes=False,
           predict_auxiliary_outputs=True)
 
-      detection_masks = tf.squeeze(box_predictions[
+      detection_masks = tf.squeeze(mask_predictions[
           box_predictor.MASK_PREDICTIONS], axis=1)
 
       _, num_classes, mask_height, mask_width = (
@@ -1104,8 +1104,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 tf.to_float(num_proposals),
         }
 
+    # TODO(jrru): Remove mask_predictions from _post_process_box_classifier.
     with tf.name_scope('SecondStagePostprocessor'):
-      if self._number_of_stages == 2:
+      if (self._number_of_stages == 2 or
+          (self._number_of_stages == 3 and self._is_training)):
         mask_predictions = prediction_dict.get(box_predictor.MASK_PREDICTIONS)
         detections_dict = self._postprocess_box_classifier(
             prediction_dict['refined_box_encodings'],
