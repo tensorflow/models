@@ -36,21 +36,21 @@ class FaceDetector(object):
 	        	self.model_root_dir, _ = os.path.split(os.path.realpath(__file__))
 	        	self.model_root_dir = os.path.join(self.model_root_dir, '../data/mtcnn/deploy/')
 
-		self.min_face_size = 24
-		self.threshold = [0.9, 0.6, 0.7]
-		self.scale_factor = 0.79
+		self._min_face_size = 24
+		self._threshold = [0.9, 0.6, 0.7]
+		self._scale_factor = 0.79
 
-		self.pnet = PNet()
-		pnet_model_path = os.path.join(self.model_root_dir, self.pnet.network_name(), self.pnet.network_name())
-		self.pnet.load_model(pnet_model_path)
+		self._pnet = PNet()
+		pnet_model_path = os.path.join(self.model_root_dir, self._pnet.network_name(), self._pnet.network_name())
+		self._pnet.load_model(pnet_model_path)
 
-		self.rnet = RNet()
-		rnet_model_path = os.path.join(self.model_root_dir, self.rnet.network_name(), self.rnet.network_name())
-		self.rnet.load_model(rnet_model_path)
+		self._rnet = RNet()
+		rnet_model_path = os.path.join(self.model_root_dir, self._rnet.network_name(), self._rnet.network_name())
+		self._rnet.load_model(rnet_model_path)
 
-		self.onet = ONet()
-		onet_model_path = os.path.join(self.model_root_dir, self.onet.network_name(), self.onet.network_name())
-		self.onet.load_model(onet_model_path)
+		self._onet = ONet()
+		onet_model_path = os.path.join(self.model_root_dir, self._onet.network_name(), self._onet.network_name())
+		self._onet.load_model(onet_model_path)
 
     	def generate_bbox(self, cls_map, reg, scale, threshold):
  
@@ -120,18 +120,18 @@ class FaceDetector(object):
 
 	def propose_faces(self, image):
         	h, w, c = image.shape
-        	net_size = self.pnet.network_size()
+        	net_size = self._pnet.network_size()
         
-        	current_scale = float(net_size) / self.min_face_size
+        	current_scale = float(net_size) / self._min_face_size
         	resized_image = self.processed_image(image, current_scale)
         	current_height, current_width, _ = resized_image.shape
         	
         	all_boxes = list()
         	while min(current_height, current_width) > net_size:
-            		cls_cls_map, reg = self.pnet.detect(resized_image)
-            		boxes = self.generate_bbox(cls_cls_map[:, :,1], reg, current_scale, self.threshold[0])
+            		cls_cls_map, reg = self._pnet.detect(resized_image)
+            		boxes = self.generate_bbox(cls_cls_map[:, :,1], reg, current_scale, self._threshold[0])
 
-            		current_scale *= self.scale_factor
+            		current_scale *= self._scale_factor
             		resized_image = self.processed_image(image, current_scale)
             		current_height, current_width, _ = resized_image.shape
 
@@ -187,9 +187,9 @@ class FaceDetector(object):
             		tmp = np.zeros((tmph[i], tmpw[i], 3), dtype=np.uint8)
             		tmp[dy[i]:edy[i] + 1, dx[i]:edx[i] + 1, :] = im[y[i]:ey[i] + 1, x[i]:ex[i] + 1, :]
             		cropped_ims[i, :, :, :] = (cv2.resize(tmp, (24, 24))-127.5) / 128
-	        cls_scores, reg, _ = self.rnet.detect(cropped_ims)
+	        cls_scores, reg, _ = self._rnet.detect(cropped_ims)
         	cls_scores = cls_scores[:,1]
-        	keep_inds = np.where(cls_scores > self.threshold[1])[0]
+        	keep_inds = np.where(cls_scores > self._threshold[1])[0]
         	if len(keep_inds) > 0:
             		boxes = dets[keep_inds]
             		boxes[:, 4] = cls_scores[keep_inds]
@@ -215,9 +215,9 @@ class FaceDetector(object):
             		tmp[dy[i]:edy[i] + 1, dx[i]:edx[i] + 1, :] = im[y[i]:ey[i] + 1, x[i]:ex[i] + 1, :]
             		cropped_ims[i, :, :, :] = (cv2.resize(tmp, (48, 48))-127.5) / 128
             
-        	cls_scores, reg,landmark = self.onet.detect(cropped_ims)
+        	cls_scores, reg,landmark = self._onet.detect(cropped_ims)
         	cls_scores = cls_scores[:,1]        
-        	keep_inds = np.where(cls_scores > self.threshold[2])[0]        
+        	keep_inds = np.where(cls_scores > self._threshold[2])[0]        
         	if len(keep_inds) > 0:
             		boxes = dets[keep_inds]
             		boxes[:, 4] = cls_scores[keep_inds]
@@ -243,7 +243,7 @@ class FaceDetector(object):
 	def detect(self, image):
 		start_time = time.time()
 		pnet_time = 0
-        	if self.pnet:
+        	if self._pnet:
             		boxes, boxes_c, _ = self.propose_faces(image)
             		if boxes_c is None:
                 		return( np.array([]), np.array([]) )    
@@ -251,7 +251,7 @@ class FaceDetector(object):
             	
 		start_time = time.time()
 		rnet_time = 0
-        	if self.rnet:
+        	if self._rnet:
             		boxes, boxes_c, _ = self.refine_faces(image, boxes_c)
             		if boxes_c is None:
                 		return( np.array([]),np.array([]) )    
@@ -259,7 +259,7 @@ class FaceDetector(object):
 
             	start_time = time.time()
 		onet_time = 0
-        	if self.onet:
+        	if self._onet:
             		boxes, boxes_c, landmark = self.outpute_faces(image, boxes_c)
             		if boxes_c is None:
                 		return( np.array([]),np.array([]) )    
