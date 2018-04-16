@@ -152,7 +152,7 @@ def choose_kepler_spline(all_time,
       # Don't fit a spline on less than 4 points.
       if len(time) < 4:
         spline.append(flux)
-        spline_mask.append(np.ones_like(flux), dtype=np.bool)
+        spline_mask.append(np.ones_like(flux, dtype=np.bool))
         continue
 
       # Fit B-spline to this light-curve segment.
