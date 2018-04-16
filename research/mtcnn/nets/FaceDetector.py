@@ -31,28 +31,37 @@ from nets.ONet import ONet
 
 class FaceDetector(object):
 
+	def model_deploy_dir(self):
+        	model_root_dir, _ = os.path.split(os.path.realpath(__file__))
+        	model_root_dir = os.path.join(model_root_dir, '../data/mtcnn/deploy/')
+		return(model_root_dir)
+
+	def model_train_dir(self):
+        	model_root_dir, _ = os.path.split(os.path.realpath(__file__))
+        	model_root_dir = os.path.join(model_root_dir, '../data/mtcnn/train/')
+		return(model_root_dir)
+
 	def __init__(self, model_root_dir=None):
 	    	if not model_root_dir:
-	        	self.model_root_dir, _ = os.path.split(os.path.realpath(__file__))
-	        	self.model_root_dir = os.path.join(self.model_root_dir, '../data/mtcnn/deploy/')
+	        	self._model_root_dir = self.model_deploy_dir()
 
 		self._min_face_size = 24
 		self._threshold = [0.9, 0.6, 0.7]
 		self._scale_factor = 0.79
 
 		self._pnet = PNet()
-		pnet_model_path = os.path.join(self.model_root_dir, self._pnet.network_name(), self._pnet.network_name())
+		pnet_model_path = os.path.join(self._model_root_dir, self._pnet.network_name(), self._pnet.network_name())
 		self._pnet.load_model(pnet_model_path)
 
 		self._rnet = RNet()
-		rnet_model_path = os.path.join(self.model_root_dir, self._rnet.network_name(), self._rnet.network_name())
+		rnet_model_path = os.path.join(self._model_root_dir, self._rnet.network_name(), self._rnet.network_name())
 		self._rnet.load_model(rnet_model_path)
 
 		self._onet = ONet()
-		onet_model_path = os.path.join(self.model_root_dir, self._onet.network_name(), self._onet.network_name())
+		onet_model_path = os.path.join(self._model_root_dir, self._onet.network_name(), self._onet.network_name())
 		self._onet.load_model(onet_model_path)
 
-    	def generate_bbox(self, cls_map, reg, scale, threshold):
+    	def _generate_bbox(self, cls_map, reg, scale, threshold):
  
         	stride = 2
         	#stride = 4
@@ -129,7 +138,7 @@ class FaceDetector(object):
         	all_boxes = list()
         	while min(current_height, current_width) > net_size:
             		cls_cls_map, reg = self._pnet.detect(resized_image)
-            		boxes = self.generate_bbox(cls_cls_map[:, :,1], reg, current_scale, self._threshold[0])
+            		boxes = self._generate_bbox(cls_cls_map[:, :,1], reg, current_scale, self._threshold[0])
 
             		current_scale *= self._scale_factor
             		resized_image = self.processed_image(image, current_scale)
@@ -164,7 +173,7 @@ class FaceDetector(object):
 
         	return( boxes, boxes_c, None )
 
-    	def calibrate_box(self, bbox, reg):
+    	def _calibrate_box(self, bbox, reg):
         	bbox_c = bbox.copy()
         	w = bbox[:, 2] - bbox[:, 0] + 1
         	w = np.expand_dims(w, 1)
@@ -200,7 +209,7 @@ class FaceDetector(object):
         
         	keep = py_nms(boxes, 0.6)
         	boxes = boxes[keep]
-        	boxes_c = self.calibrate_box(boxes, reg[keep])
+        	boxes_c = self._calibrate_box(boxes, reg[keep])
         	return( boxes, boxes_c, None )
 
 	def outpute_faces(self, im, dets):
@@ -231,7 +240,7 @@ class FaceDetector(object):
 
         	landmark[:,0::2] = (np.tile(w,(5,1)) * landmark[:,0::2].T + np.tile(boxes[:,0],(5,1)) - 1).T
         	landmark[:,1::2] = (np.tile(h,(5,1)) * landmark[:,1::2].T + np.tile(boxes[:,1],(5,1)) - 1).T        
-        	boxes_c = self.calibrate_box(boxes, reg)
+        	boxes_c = self._calibrate_box(boxes, reg)
         
         
         	boxes = boxes[py_nms(boxes, 0.6, "Minimum")]
