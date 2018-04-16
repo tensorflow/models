@@ -26,6 +26,7 @@ import numpy.random as npr
 from tensorflow.contrib import slim
 
 from datasets.AbstractDataset import AbstractDataset
+from datasets.LandmarkDataset import LandmarkDataset
 from utils.IoU import IoU
 
 class BasicDataset(AbstractDataset):
@@ -33,7 +34,12 @@ class BasicDataset(AbstractDataset):
 	def __init__(self, name='PNet'):	
 		AbstractDataset.__init__(self, name)	
 	
-	def generate_samples(self, annotation_file, input_image_dir, minimum_face, target_root_dir):
+	def _generate_landmark_samples(self):
+		return(True)
+		
+	def _generate_image_samples(self, annotation_file_name, annotation_image_dir, target_root_dir):
+
+		minimum_face=12
 
 		target_root_dir = os.path.expanduser(target_root_dir)
 		target_root_dir = os.path.join(target_root_dir, self.name())
@@ -54,7 +60,7 @@ class BasicDataset(AbstractDataset):
 		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'w')
 		part_file = open(os.path.join(target_root_dir, 'part.txt'), 'w')
 		negative_file = open(os.path.join(target_root_dir, 'negative.txt'), 'w')
-		with open(annotation_file, 'r') as f:
+		with open(annotation_file_name, 'r') as f:
 			annotations = f.readlines()
 
 		num = len(annotations)
@@ -72,7 +78,7 @@ class BasicDataset(AbstractDataset):
 			bbox = map(float, annotation[1:])
 			boxes = np.array(bbox, dtype=np.float32).reshape(-1, 4)
 
-			current_image = cv2.imread(os.path.join(input_image_dir, image_path + '.jpg'))
+			current_image = cv2.imread(os.path.join(annotation_image_dir, image_path + '.jpg'))
     			height, width, channel = current_image.shape
 
 		    	annotation_number += 1        
@@ -88,7 +94,7 @@ class BasicDataset(AbstractDataset):
         			current_IoU = IoU(crop_box, boxes)
         
         			cropped_image = current_image[ny : ny + size, nx : nx + size, :]
-        			resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
+        			resized_image = cv2.resize(cropped_image, (minimum_face, minimum_face), interpolation=cv2.INTER_LINEAR)
 				if( np.max(current_IoU) < 0.3 ):
 					file_path = os.path.join(negative_dir, "%s.jpg"%negative_images)
 					negative_file.write(file_path + ' 0\n')
@@ -116,7 +122,7 @@ class BasicDataset(AbstractDataset):
             				current_IoU = IoU(crop_box, boxes)
     
             				cropped_image = current_image[ny1: ny1 + size, nx1: nx1 + size, :]
-            				resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
+            				resized_image = cv2.resize(cropped_image, (minimum_face, minimum_face), interpolation=cv2.INTER_LINEAR)
     
             				if np.max(current_IoU) < 0.3:
                 				file_path = os.path.join(negative_dir, "%s.jpg" % negative_images)
@@ -144,7 +150,7 @@ class BasicDataset(AbstractDataset):
             				offset_y2 = (y2 - ny2) / float(size)
 
             				cropped_image = current_image[ny1 : ny2, nx1 : nx2, :]
-            				resized_image = cv2.resize(cropped_image, (12, 12), interpolation=cv2.INTER_LINEAR)
+            				resized_image = cv2.resize(cropped_image, (minimum_face, minimum_face), interpolation=cv2.INTER_LINEAR)
 
             				box_ = box.reshape(1, -1)
             				if IoU(crop_box, box_) >= 0.65:
@@ -166,26 +172,29 @@ class BasicDataset(AbstractDataset):
 
 		return(True)
 
-	def generate_dataset(self, target_root_dir):
+	def _generate_dataset(self, target_root_dir):
 		print('BasicDataset-generate_dataset')
 		return(True)
 
-	def generate(self, annotation_file, input_image_dir, minimum_face, target_root_dir):
+	def generate(self, annotation_file_name, annotation_image_dir, target_root_dir):
 
-		if(not os.path.isfile(annotation_file)):
+		if(not os.path.isfile(annotation_file_name)):
 			return(False)
 
-		if(not os.path.exists(input_image_dir)):
+		if(not os.path.exists(annotation_image_dir)):
 			return(False)
 
 		target_root_dir = os.path.expanduser(target_root_dir)
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
+
+		if(not self._generate_landmark_samples()):
+			return(False)
 		
-		if(not self.generate_samples(annotation_file, input_image_dir, minimum_face, target_root_dir)):
+		if(not self._generate_image_samples(annotation_file_name, annotation_image_dir, target_root_dir)):
 			return(False)
 
-		if(not self.generate_dataset(target_root_dir)):
+		if(not self._generate_dataset(target_root_dir)):
 			return(False)
 
 		return(True)
