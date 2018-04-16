@@ -34,7 +34,7 @@ class FaceDetector(object):
 	def __init__(self, model_root_dir=None):
 	    	if not model_root_dir:
 	        	self.model_root_dir, _ = os.path.split(os.path.realpath(__file__))
-	        	self.model_root_dir = os.path.join(self.model_root_dir, '../data/mtcnn/')
+	        	self.model_root_dir = os.path.join(self.model_root_dir, '../data/mtcnn/deploy/')
 
 		self.min_face_size = 24
 		self.threshold = [0.9, 0.6, 0.7]
