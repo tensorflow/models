@@ -187,6 +187,15 @@ class VisualizationUtilsTest(tf.test.TestCase):
     with self.test_session():
       cdf_image_summary.eval()
 
+  def test_add_hist_image_summary(self):
+    values = [0.1, 0.2, 0.3, 0.4, 0.42, 0.44, 0.46, 0.48, 0.50]
+    bins = [0.01 * i for i in range(101)]
+    visualization_utils.add_hist_image_summary(values, bins,
+                                               'ScoresDistribution')
+    hist_image_summary = tf.get_collection(key=tf.GraphKeys.SUMMARIES)[0]
+    with self.test_session():
+      hist_image_summary.eval()
+
 
 if __name__ == '__main__':
   tf.test.main()
