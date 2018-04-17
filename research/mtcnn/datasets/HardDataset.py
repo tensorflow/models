@@ -161,8 +161,34 @@ class HardDataset(BasicDataset):
 		
 		return(self._generate_hard_samples(wider_data, minimum_face, target_root_dir))
 
-	def generate_dataset(self, target_root_dir):
-		print('HardDataset-generate_dataset')
+	def _generate_image_list(self, target_root_dir):
+		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'r')
+		positive_data = positive_file.readlines()
+
+		part_file = open(os.path.join(target_root_dir, 'part.txt'), 'r')
+		part_data = part_file.readlines()
+
+		negative_file = open(os.path.join(target_root_dir, 'negative.txt'), 'r')
+		negative_data = negative_file.readlines()
+
+		landmark_file = open(os.path.join(target_root_dir, 'landmark.txt'), 'r')
+		landmark_data = landmark_file.readlines()
+
+		image_list_file = open(os.path.join(target_root_dir, 'image_list.txt'), 'w')
+
+    		for i in np.arange(len(positive_data)):
+        		image_list_file.write(positive_data[i])
+
+    		for i in np.arange(len(negative_data)):
+        		image_list_file.write(negative_data[i])
+
+    		for i in np.arange(len(part_data)):
+        		image_list_file.write(part_data[i])
+
+    		for i in np.arange(len(landmark_data)):
+        		image_list_file.write(landmark_data[i])
+
+		return(True)
 
 	def generate(self, annotation_image_dir, annotation_file_name, landmark_image_dir, landmark_file_name, model_train_dir, minimum_face, target_root_dir):
 
@@ -194,7 +220,7 @@ class HardDataset(BasicDataset):
 		if(not self._generate_image_samples(annotation_file_name, annotation_image_dir, model_train_dir, minimum_face, target_root_dir)):
 			return(False)
 
-		if(not super(HardDataset, self)._generate_image_list(target_root_dir)):
+		if(not self._generate_image_list(target_root_dir)):
 			return(False)
 
 		if(not super(HardDataset, self)._generate_dataset(target_root_dir)):
