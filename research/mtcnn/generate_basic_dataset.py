@@ -21,6 +21,8 @@ Usage:
 $ python generate_basic_dataset.py \
 	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
 	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
+	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
 	--target_root_dir=/workspace/datasets/mtcnn \
 	--minimum_face=12
 ```
