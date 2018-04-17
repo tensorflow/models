@@ -166,6 +166,47 @@ class BasicDataset(AbstractDataset):
 
 		return(True)
 
+	def _generate_image_list(self, target_root_dir):
+		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'r')
+		positive_data = positive_file.readlines()
+
+		part_file = open(os.path.join(target_root_dir, 'part.txt'), 'r')
+		part_data = part_file.readlines()
+
+		negative_file = open(os.path.join(target_root_dir, 'negative.txt'), 'r')
+		negative_data = negative_file.readlines()
+
+		landmark_file = open(os.path.join(target_root_dir, 'landmark.txt'), 'r')
+		landmark_data = landmark_file.readlines()
+
+		image_list_file = open(os.path.join(target_root_dir, 'image_list.txt'), 'w')
+
+    		nums = [len(negative_data), len(positive_data), len(part_data)]
+    		ratio = [3, 1, 1]
+    		base_number_of_images = 25000
+    		print(len(negative_data), len(positive_data), len(part_data), base_number_of_images)
+
+    		if len(negative_data) > base_number_of_images * 3:
+        		neg_keep = npr.choice(len(negative_data), size=base_number_of_images * 3, replace=True)
+    		else:
+        		neg_keep = npr.choice(len(negative_data), size=len(negative_data), replace=True)
+
+    		pos_keep = npr.choice(len(positive_data), size=base_number_of_images, replace=True)
+    		part_keep = npr.choice(len(part_data), size=base_number_of_images, replace=True)
+    		print(len(neg_keep), len(pos_keep), len(part_keep))
+
+    		for i in pos_keep:
+        		image_list_file.write(positive_data[i])
+    		for i in neg_keep:
+        		image_list_file.write(negative_data[i])
+    		for i in part_keep:
+        		image_list_file.write(part_data[i])
+
+    		for item in landmark_data:
+        		image_list_file.write(item)
+
+		return(True)
+
 	def _generate_dataset(self, target_root_dir):
 		print('BasicDataset-generate_dataset')
 		return(True)
@@ -193,6 +234,9 @@ class BasicDataset(AbstractDataset):
 			return(False)
 		
 		if(not self._generate_image_samples(annotation_image_dir, annotation_file_name, minimum_face, target_root_dir)):
+			return(False)
+
+		if(not self._generate_image_list(target_root_dir)):
 			return(False)
 
 		if(not self._generate_dataset(target_root_dir)):
