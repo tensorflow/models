@@ -37,18 +37,22 @@ class LandmarkDataset(object):
 	def __init__(self, name='Landmark'):
 		self._name = name
 		self._is_valid = False
+		self._landmark_data = []
 
 	def is_valid(self):
 		return(self._is_valid)
 
+	def data(self):
+		return(self._landmark_data)
+
 	def _read(self, landmark_image_dir, landmark_file_name, with_landmark=True):
 
 		self._is_valid = False
+    		self._landmark_data = []
 
 		with open(landmark_file_name, 'r') as landmark_file:
         		lines = landmark_file.readlines()
 
-    		landmark_data = []
     		for line in lines:
         			line = line.strip()
         			components = line.split(' ')
@@ -67,30 +71,30 @@ class LandmarkDataset(object):
             				rv = (float(components[5+2*index]), float(components[5+2*index+1]))
             				landmark[index] = rv
 
-        			landmark_data.append((image_path, BBox(bounding_box), landmark))
+        			self._landmark_data.append((image_path, BBox(bounding_box), landmark))
 
-		if(len(landmark_data)):
+		if(len(self._landmark_data)):
 			self._is_valid = True
 
-    		return(landmark_data)
+    		return(self._is_valid)
 
 	def generate(self, landmark_image_dir, landmark_file_name, minimum_face, target_root_dir):
+
+		if(not self._read(landmark_image_dir, landmark_file_name)):
+			return(False)
 		
-		size = minimum_face
-		argument = True
 		landmark_dir = os.path.join(target_root_dir, 'landmark')
 		if(not os.path.exists(landmark_dir)):
     			os.makedirs(landmark_dir)
 
 		landmark_file = open(os.path.join(target_root_dir, 'landmark.txt'), 'w')
+
+		size = minimum_face
+		argument = True
+
 		number_of_images = 0
-    		landmark_data = self._read(landmark_image_dir, landmark_file_name)
-
-		if(not len(landmark_data)):
-			return(False)
-
     		number_of_input_images = 0
-    		for (image_path, bounding_box, landmarkGt) in landmark_data:
+    		for (image_path, bounding_box, landmarkGt) in self._landmark_data:
         		F_imgs = []
         		F_landmarks = []  
 
