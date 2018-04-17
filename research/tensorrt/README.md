@@ -13,8 +13,6 @@ Here we provide a sample script that can:
 
 We provide some results below, as well as instructions for running this script.
 
-<sup>1</sup> INT8 mode is a work in progress; please see [INT8 Mode is the Bleeding Edge](#int8-mode-is-the-bleeding-edge) below.
-
 ## How to Run This Script
 
 ### Step 1: Install Prerequisites
