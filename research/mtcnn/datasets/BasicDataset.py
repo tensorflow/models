@@ -23,6 +23,7 @@ import numpy.random as npr
 from datasets.AbstractDataset import AbstractDataset
 from datasets.LandmarkDataset import LandmarkDataset
 from datasets.WIDERFaceDataset import WIDERFaceDataset
+from datasets.TensorFlowDataset import TensorFlowDataset
 
 class BasicDataset(AbstractDataset):
 
@@ -79,7 +80,28 @@ class BasicDataset(AbstractDataset):
 		return(True)
 
 	def _generate_dataset(self, target_root_dir):
-		print('BasicDataset-generate_dataset')
+		tensorflow_dir = os.path.join(target_root_dir, 'tensorflow')
+		if(not os.path.exists(tensorflow_dir)):
+			os.makedirs(tensorflow_dir)
+
+		tensorflow_dataset = TensorFlowDataset()
+
+		file_name = os.path.join(target_root_dir, 'positive.txt')
+		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'positive')):
+			return(False) 
+
+		file_name = os.path.join(target_root_dir, 'part.txt')
+		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'part')):
+			return(False) 
+
+		file_name = os.path.join(target_root_dir, 'negative.txt')
+		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'negative')):
+			return(False) 
+
+		file_name = os.path.join(target_root_dir, 'image_list.txt')
+		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'image_list')):
+			return(False) 
+
 		return(True)
 
 	def generate(self, annotation_image_dir, annotation_file_name, landmark_image_dir, landmark_file_name, minimum_face, target_root_dir):
