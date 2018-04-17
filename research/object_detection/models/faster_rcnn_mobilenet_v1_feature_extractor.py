@@ -167,6 +167,11 @@ class FasterRCNNMobilenetV1FeatureExtractor(
     """
     net = proposal_feature_maps
 
+    conv_depth = 1024
+    if self._skip_last_stride:
+      conv_depth_ratio = float(self._conv_depth_ratio_in_percentage) / 100.0
+      conv_depth = int(float(conv_depth) * conv_depth_ratio)
+
     depth = lambda d: max(int(d * 1.0), 16)
     with tf.variable_scope('MobilenetV1', reuse=self._reuse_weights):
       with slim.arg_scope(
@@ -177,13 +182,13 @@ class FasterRCNNMobilenetV1FeatureExtractor(
             [slim.conv2d, slim.separable_conv2d], padding='SAME'):
           net = slim.separable_conv2d(
               net,
-              depth(1024), [3, 3],
+              depth(conv_depth), [3, 3],
               depth_multiplier=1,
               stride=2,
               scope='Conv2d_12_pointwise')
           return slim.separable_conv2d(
               net,
-              depth(1024), [3, 3],
+              depth(conv_depth), [3, 3],
               depth_multiplier=1,
               stride=1,
               scope='Conv2d_13_pointwise')
