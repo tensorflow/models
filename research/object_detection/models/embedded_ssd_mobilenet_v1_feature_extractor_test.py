@@ -25,7 +25,7 @@ class EmbeddedSSDMobileNetV1FeatureExtractorTest(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                is_training=True, batch_norm_trainable=True):
+                                is_training=True):
     """Constructs a new feature extractor.
 
     Args:
@@ -33,18 +33,16 @@ class EmbeddedSSDMobileNetV1FeatureExtractorTest(
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
       is_training: whether the network is in training mode.
-      batch_norm_trainable: whether to update batch norm parameters during
-        training.
 
     Returns:
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
     min_depth = 32
-    conv_hyperparams = {}
     return (embedded_ssd_mobilenet_v1_feature_extractor.
             EmbeddedSSDMobileNetV1FeatureExtractor(
                 is_training, depth_multiplier, min_depth, pad_to_multiple,
-                conv_hyperparams, batch_norm_trainable))
+                self.conv_hyperparams_fn,
+                override_base_feature_extractor_hyperparams=True))
 
   def test_extract_features_returns_correct_shapes_256(self):
     image_height = 256

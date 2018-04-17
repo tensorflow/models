@@ -17,6 +17,7 @@
 import tensorflow as tf
 
 from object_detection.protos import hyperparams_pb2
+from object_detection.utils import context_manager
 
 slim = tf.contrib.slim
 
@@ -43,7 +44,8 @@ def build(hyperparams_config, is_training):
     is_training: Whether the network is in training mode.
 
   Returns:
-    arg_scope: tf-slim arg_scope containing hyperparameters for ops.
+    arg_scope_fn: A function to construct tf-slim arg_scope containing
+      hyperparameters for ops.
 
   Raises:
     ValueError: if hyperparams_config is not of type hyperparams.Hyperparams.
@@ -64,16 +66,21 @@ def build(hyperparams_config, is_training):
   if hyperparams_config.HasField('op') and (
       hyperparams_config.op == hyperparams_pb2.Hyperparams.FC):
     affected_ops = [slim.fully_connected]
-  with slim.arg_scope(
-      affected_ops,
-      weights_regularizer=_build_regularizer(
-          hyperparams_config.regularizer),
-      weights_initializer=_build_initializer(
-          hyperparams_config.initializer),
-      activation_fn=_build_activation_fn(hyperparams_config.activation),
-      normalizer_fn=batch_norm,
-      normalizer_params=batch_norm_params) as sc:
-    return sc
+  def scope_fn():
+    with (slim.arg_scope([slim.batch_norm], **batch_norm_params)
+          if batch_norm_params is not None else
+          context_manager.IdentityContextManager()):
+      with slim.arg_scope(
+          affected_ops,
+          weights_regularizer=_build_regularizer(
+              hyperparams_config.regularizer),
+          weights_initializer=_build_initializer(
+              hyperparams_config.initializer),
+          activation_fn=_build_activation_fn(hyperparams_config.activation),
+          normalizer_fn=batch_norm) as sc:
+        return sc
+
+  return scope_fn
 
 
 def _build_activation_fn(activation_fn):
@@ -167,6 +174,9 @@ def _build_batch_norm_params(batch_norm, is_training):
       'center': batch_norm.center,
       'scale': batch_norm.scale,
       'epsilon': batch_norm.epsilon,
+      # Remove is_training parameter from here and deprecate it in the proto
+      # once we refactor Faster RCNN models to set is_training through an outer
+      # arg_scope in the meta architecture.
       'is_training': is_training and batch_norm.train,
   }
   return batch_norm_params

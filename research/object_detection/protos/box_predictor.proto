@@ -118,6 +118,7 @@ message MaskRCNNBoxPredictor {
   // The number of convolutions applied to image_features in the mask prediction
   // branch.
   optional int32 mask_prediction_num_conv_layers = 11 [default = 2];
+  optional bool masks_are_class_agnostic = 12 [default = false];
 }
 
 message RfcnBoxPredictor {

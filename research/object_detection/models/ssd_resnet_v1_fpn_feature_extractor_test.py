@@ -27,13 +27,10 @@ class SSDResnet50V1FeatureExtractorTest(
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
                                 use_explicit_padding=False):
     min_depth = 32
-    conv_hyperparams = {}
-    batch_norm_trainable = True
     is_training = True
     return ssd_resnet_v1_fpn_feature_extractor.SSDResnet50V1FpnFeatureExtractor(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, batch_norm_trainable,
-        use_explicit_padding=use_explicit_padding)
+        self.conv_hyperparams_fn, use_explicit_padding=use_explicit_padding)
 
   def _resnet_scope_name(self):
     return 'resnet_v1_50'
@@ -47,13 +44,14 @@ class SSDResnet101V1FeatureExtractorTest(
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
                                 use_explicit_padding=False):
     min_depth = 32
-    conv_hyperparams = {}
-    batch_norm_trainable = True
     is_training = True
     return (
         ssd_resnet_v1_fpn_feature_extractor.SSDResnet101V1FpnFeatureExtractor(
-            is_training, depth_multiplier, min_depth, pad_to_multiple,
-            conv_hyperparams, batch_norm_trainable,
+            is_training,
+            depth_multiplier,
+            min_depth,
+            pad_to_multiple,
+            self.conv_hyperparams_fn,
             use_explicit_padding=use_explicit_padding))
 
   def _resnet_scope_name(self):
@@ -68,13 +66,14 @@ class SSDResnet152V1FeatureExtractorTest(
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
                                 use_explicit_padding=False):
     min_depth = 32
-    conv_hyperparams = {}
-    batch_norm_trainable = True
     is_training = True
     return (
         ssd_resnet_v1_fpn_feature_extractor.SSDResnet152V1FpnFeatureExtractor(
-            is_training, depth_multiplier, min_depth, pad_to_multiple,
-            conv_hyperparams, batch_norm_trainable,
+            is_training,
+            depth_multiplier,
+            min_depth,
+            pad_to_multiple,
+            self.conv_hyperparams_fn,
             use_explicit_padding=use_explicit_padding))
 
   def _resnet_scope_name(self):

@@ -6,8 +6,11 @@ import "object_detection/protos/optimizer.proto";
 import "object_detection/protos/preprocessor.proto";
 
 // Message for configuring DetectionModel training jobs (train.py).
+// Next id: 25
 message TrainConfig {
-  // Input queue batch size.
+  // Effective batch size to use for training.
+  // For TPU (or sync SGD jobs), the batch size per core (or GPU) is going to be
+  // `batch_size` / number of cores (or `batch_size` / number of GPUs).
   optional uint32 batch_size = 1 [default=32];
 
   // Data augmentation options.
@@ -77,6 +80,10 @@ message TrainConfig {
   // This is useful when each box can have multiple labels.
   // Note that only Sigmoid classification losses should be used.
   optional bool merge_multiple_label_boxes = 17 [default=false];
+
+  // If true, will use multiclass scores from object annotations as ground
+  // truth. Currently only compatible with annotated image inputs.
+  optional bool use_multiclass_scores = 24 [default = false];
 
   // Whether to add regularization loss to `total_loss`. This is true by
   // default and adds all regularization losses defined in the model to

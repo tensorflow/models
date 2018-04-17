@@ -61,6 +61,9 @@ class InputDataFields(object):
     num_groundtruth_boxes: number of groundtruth boxes.
     true_image_shapes: true shapes of images in the resized images, as resized
       images can be padded with zeros.
+    verified_labels: list of human-verified image-level labels (note, that a
+      label can be verified both as positive and negative).
+    multiclass_scores: the label score per class for each box.
   """
   image = 'image'
   original_image = 'original_image'
@@ -86,6 +89,8 @@ class InputDataFields(object):
   groundtruth_weights = 'groundtruth_weights'
   num_groundtruth_boxes = 'num_groundtruth_boxes'
   true_image_shape = 'true_image_shape'
+  verified_labels = 'verified_labels'
+  multiclass_scores = 'multiclass_scores'
 
 
 class DetectionResultFields(object):

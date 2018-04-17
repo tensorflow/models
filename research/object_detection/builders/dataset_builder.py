@@ -72,7 +72,9 @@ def _get_padding_shapes(dataset, max_num_boxes=None, num_classes=None,
       fields.InputDataFields.num_groundtruth_boxes: [],
       fields.InputDataFields.groundtruth_label_types: [max_num_boxes],
       fields.InputDataFields.groundtruth_label_scores: [max_num_boxes],
-      fields.InputDataFields.true_image_shape: [3]
+      fields.InputDataFields.true_image_shape: [3],
+      fields.InputDataFields.multiclass_scores: [
+          max_num_boxes, num_classes + 1 if num_classes is not None else None],
   }
   # Determine whether groundtruth_classes are integers or one-hot encodings, and
   # apply batching appropriately.

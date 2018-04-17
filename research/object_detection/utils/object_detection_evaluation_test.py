@@ -100,6 +100,126 @@ class OpenImagesV2EvaluationTest(tf.test.TestCase):
     self.assertFalse(oiv2_evaluator._image_ids)
 
 
+class OpenImagesDetectionChallengeEvaluatorTest(tf.test.TestCase):
+
+  def test_returns_correct_metric_values(self):
+    categories = [{
+        'id': 1,
+        'name': 'cat'
+    }, {
+        'id': 2,
+        'name': 'dog'
+    }, {
+        'id': 3,
+        'name': 'elephant'
+    }]
+    oivchallenge_evaluator = (
+        object_detection_evaluation.OpenImagesDetectionChallengeEvaluator(
+            categories, group_of_weight=0.5))
+
+    image_key = 'img1'
+    groundtruth_boxes = np.array(
+        [[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]], dtype=float)
+    groundtruth_class_labels = np.array([1, 3, 1], dtype=int)
+    groundtruth_is_group_of_list = np.array([False, False, True], dtype=bool)
+    groundtruth_verified_labels = np.array([1, 2, 3], dtype=int)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels,
+            standard_fields.InputDataFields.groundtruth_group_of:
+                groundtruth_is_group_of_list,
+            standard_fields.InputDataFields.verified_labels:
+                groundtruth_verified_labels,
+        })
+    image_key = 'img2'
+    groundtruth_boxes = np.array(
+        [[10, 10, 11, 11], [500, 500, 510, 510], [10, 10, 12, 12]], dtype=float)
+    groundtruth_class_labels = np.array([1, 1, 3], dtype=int)
+    groundtruth_is_group_of_list = np.array([False, False, True], dtype=bool)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels,
+            standard_fields.InputDataFields.groundtruth_group_of:
+                groundtruth_is_group_of_list
+        })
+    image_key = 'img3'
+    groundtruth_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    groundtruth_class_labels = np.array([2], dtype=int)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels
+        })
+    image_key = 'img1'
+    detected_boxes = np.array(
+        [[10, 10, 11, 11], [100, 100, 120, 120]], dtype=float)
+    detected_class_labels = np.array([2, 2], dtype=int)
+    detected_scores = np.array([0.7, 0.8], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    image_key = 'img2'
+    detected_boxes = np.array(
+        [[10, 10, 11, 11], [100, 100, 120, 120], [100, 100, 220, 220],
+         [10, 10, 11, 11]],
+        dtype=float)
+    detected_class_labels = np.array([1, 1, 2, 3], dtype=int)
+    detected_scores = np.array([0.7, 0.8, 0.5, 0.9], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    image_key = 'img3'
+    detected_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    detected_class_labels = np.array([2], dtype=int)
+    detected_scores = np.array([0.5], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    metrics = oivchallenge_evaluator.evaluate()
+
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/dog'],
+        0.3333333333)
+    self.assertAlmostEqual(
+        metrics[
+            'OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/elephant'],
+        0.333333333333)
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/cat'],
+        0.142857142857)
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_Precision/mAP@0.5IOU'], 0.269841269)
+
+    oivchallenge_evaluator.clear()
+    self.assertFalse(oivchallenge_evaluator._image_ids)
+
+
 class PascalEvaluationTest(tf.test.TestCase):
 
   def test_returns_correct_metric_values_on_boxes(self):
