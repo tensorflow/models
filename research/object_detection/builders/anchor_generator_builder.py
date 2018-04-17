@@ -87,7 +87,8 @@ def build(anchor_generator_config):
         cfg.max_level,
         cfg.anchor_scale,
         [float(aspect_ratio) for aspect_ratio in cfg.aspect_ratios],
-        cfg.scales_per_octave
+        cfg.scales_per_octave,
+        cfg.normalize_coordinates
     )
   else:
     raise ValueError('Empty anchor generator.')

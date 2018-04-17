@@ -91,7 +91,7 @@ class DatasetBuilderTest(tf.test.TestCase):
     input_reader_proto = input_reader_pb2.InputReader()
     text_format.Merge(input_reader_text_proto, input_reader_proto)
     tensor_dict = dataset_util.make_initializable_iterator(
-        dataset_builder.build(input_reader_proto)).get_next()
+        dataset_builder.build(input_reader_proto, batch_size=1)).get_next()
 
     sv = tf.train.Supervisor(logdir=self.get_temp_dir())
     with sv.prepare_or_wait_for_session() as sess:
@@ -100,15 +100,15 @@ class DatasetBuilderTest(tf.test.TestCase):
 
     self.assertTrue(
         fields.InputDataFields.groundtruth_instance_masks not in output_dict)
-    self.assertEquals((4, 5, 3),
+    self.assertEquals((1, 4, 5, 3),
                       output_dict[fields.InputDataFields.image].shape)
-    self.assertEquals([2],
-                      output_dict[fields.InputDataFields.groundtruth_classes])
+    self.assertAllEqual([[2]],
+                        output_dict[fields.InputDataFields.groundtruth_classes])
     self.assertEquals(
-        (1, 4), output_dict[fields.InputDataFields.groundtruth_boxes].shape)
+        (1, 1, 4), output_dict[fields.InputDataFields.groundtruth_boxes].shape)
     self.assertAllEqual(
         [0.0, 0.0, 1.0, 1.0],
-        output_dict[fields.InputDataFields.groundtruth_boxes][0])
+        output_dict[fields.InputDataFields.groundtruth_boxes][0][0])
 
   def test_build_tf_record_input_reader_and_load_instance_masks(self):
     tf_record_path = self.create_tf_record()
@@ -124,14 +124,14 @@ class DatasetBuilderTest(tf.test.TestCase):
     input_reader_proto = input_reader_pb2.InputReader()
     text_format.Merge(input_reader_text_proto, input_reader_proto)
     tensor_dict = dataset_util.make_initializable_iterator(
-        dataset_builder.build(input_reader_proto)).get_next()
+        dataset_builder.build(input_reader_proto, batch_size=1)).get_next()
 
     sv = tf.train.Supervisor(logdir=self.get_temp_dir())
     with sv.prepare_or_wait_for_session() as sess:
       sv.start_queue_runners(sess)
       output_dict = sess.run(tensor_dict)
     self.assertAllEqual(
-        (1, 4, 5),
+        (1, 1, 4, 5),
         output_dict[fields.InputDataFields.groundtruth_instance_masks].shape)
 
   def test_build_tf_record_input_reader_with_batch_size_two(self):

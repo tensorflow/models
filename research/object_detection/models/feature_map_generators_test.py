@@ -40,7 +40,7 @@ EMBEDDED_SSD_MOBILENET_V1_LAYOUT = {
 }
 
 
-# TODO: add tests with different anchor strides.
+# TODO(rathodv): add tests with different anchor strides.
 class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
 
   def test_get_expected_feature_map_shapes_with_inception_v2(self):

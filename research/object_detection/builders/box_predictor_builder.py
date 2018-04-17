@@ -49,12 +49,12 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
 
   if  box_predictor_oneof == 'convolutional_box_predictor':
     conv_box_predictor = box_predictor_config.convolutional_box_predictor
-    conv_hyperparams = argscope_fn(conv_box_predictor.conv_hyperparams,
-                                   is_training)
+    conv_hyperparams_fn = argscope_fn(conv_box_predictor.conv_hyperparams,
+                                      is_training)
     box_predictor_object = box_predictor.ConvolutionalBoxPredictor(
         is_training=is_training,
         num_classes=num_classes,
-        conv_hyperparams=conv_hyperparams,
+        conv_hyperparams_fn=conv_hyperparams_fn,
         min_depth=conv_box_predictor.min_depth,
         max_depth=conv_box_predictor.max_depth,
         num_layers_before_predictor=(conv_box_predictor.
@@ -73,12 +73,12 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
   if  box_predictor_oneof == 'weight_shared_convolutional_box_predictor':
     conv_box_predictor = (box_predictor_config.
                           weight_shared_convolutional_box_predictor)
-    conv_hyperparams = argscope_fn(conv_box_predictor.conv_hyperparams,
-                                   is_training)
+    conv_hyperparams_fn = argscope_fn(conv_box_predictor.conv_hyperparams,
+                                      is_training)
     box_predictor_object = box_predictor.WeightSharedConvolutionalBoxPredictor(
         is_training=is_training,
         num_classes=num_classes,
-        conv_hyperparams=conv_hyperparams,
+        conv_hyperparams_fn=conv_hyperparams_fn,
         depth=conv_box_predictor.depth,
         num_layers_before_predictor=(conv_box_predictor.
                                      num_layers_before_predictor),
@@ -90,20 +90,20 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':
     mask_rcnn_box_predictor = box_predictor_config.mask_rcnn_box_predictor
-    fc_hyperparams = argscope_fn(mask_rcnn_box_predictor.fc_hyperparams,
-                                 is_training)
-    conv_hyperparams = None
+    fc_hyperparams_fn = argscope_fn(mask_rcnn_box_predictor.fc_hyperparams,
+                                    is_training)
+    conv_hyperparams_fn = None
     if mask_rcnn_box_predictor.HasField('conv_hyperparams'):
-      conv_hyperparams = argscope_fn(mask_rcnn_box_predictor.conv_hyperparams,
-                                     is_training)
+      conv_hyperparams_fn = argscope_fn(
+          mask_rcnn_box_predictor.conv_hyperparams, is_training)
     box_predictor_object = box_predictor.MaskRCNNBoxPredictor(
         is_training=is_training,
         num_classes=num_classes,
-        fc_hyperparams=fc_hyperparams,
+        fc_hyperparams_fn=fc_hyperparams_fn,
         use_dropout=mask_rcnn_box_predictor.use_dropout,
         dropout_keep_prob=mask_rcnn_box_predictor.dropout_keep_probability,
         box_code_size=mask_rcnn_box_predictor.box_code_size,
-        conv_hyperparams=conv_hyperparams,
+        conv_hyperparams_fn=conv_hyperparams_fn,
         predict_instance_masks=mask_rcnn_box_predictor.predict_instance_masks,
         mask_height=mask_rcnn_box_predictor.mask_height,
         mask_width=mask_rcnn_box_predictor.mask_width,
@@ -111,17 +111,19 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
             mask_rcnn_box_predictor.mask_prediction_num_conv_layers),
         mask_prediction_conv_depth=(
             mask_rcnn_box_predictor.mask_prediction_conv_depth),
+        masks_are_class_agnostic=(
+            mask_rcnn_box_predictor.masks_are_class_agnostic),
         predict_keypoints=mask_rcnn_box_predictor.predict_keypoints)
     return box_predictor_object
 
   if box_predictor_oneof == 'rfcn_box_predictor':
     rfcn_box_predictor = box_predictor_config.rfcn_box_predictor
-    conv_hyperparams = argscope_fn(rfcn_box_predictor.conv_hyperparams,
-                                   is_training)
+    conv_hyperparams_fn = argscope_fn(rfcn_box_predictor.conv_hyperparams,
+                                      is_training)
     box_predictor_object = box_predictor.RfcnBoxPredictor(
         is_training=is_training,
         num_classes=num_classes,
-        conv_hyperparams=conv_hyperparams,
+        conv_hyperparams_fn=conv_hyperparams_fn,
         crop_size=[rfcn_box_predictor.crop_height,
                    rfcn_box_predictor.crop_width],
         num_spatial_bins=[rfcn_box_predictor.num_spatial_bins_height,

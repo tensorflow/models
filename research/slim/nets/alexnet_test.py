@@ -50,7 +50,7 @@ class AlexnetV2Test(tf.test.TestCase):
 
   def testGlobalPool(self):
     batch_size = 1
-    height, width = 300, 400
+    height, width = 256, 256
     num_classes = 1000
     with self.test_session():
       inputs = tf.random_uniform((batch_size, height, width, 3))

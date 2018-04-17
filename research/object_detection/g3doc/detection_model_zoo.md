@@ -19,7 +19,9 @@ In the table below, we list each such pre-trained model including:
   aware that these timings depend highly on one's specific hardware
   configuration (these timings were performed using an Nvidia
   GeForce GTX TITAN X card) and should be treated more as relative timings in
-  many cases.
+  many cases. Also note that desktop GPU timing does not always reflect mobile
+  run time. For example Mobilenet V2 is faster on mobile devices than Mobilenet
+  V1, but is slightly slower on desktop GPU.
 * detector performance on subset of the COCO validation set or Open Images test split as measured by the dataset-specific mAP measure.
   Here, higher is better, and we only report bounding box mAP rounded to the
   nearest integer.
@@ -68,6 +70,7 @@ Some remarks on frozen inference graphs:
 | Model name  | Speed (ms) | COCO mAP[^1] | Outputs |
 | ------------ | :--------------: | :--------------: | :-------------: |
 | [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2017_11_17.tar.gz) | 30 | 21 | Boxes |
+| [ssd_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz) | 31 | 22 | Boxes |
 | [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2017_11_17.tar.gz) | 42 | 24 | Boxes |
 | [faster_rcnn_inception_v2_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_v2_coco_2018_01_28.tar.gz) | 58 | 28 | Boxes |
 | [faster_rcnn_resnet50_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet50_coco_2018_01_28.tar.gz) | 89 | 30 | Boxes |

@@ -85,7 +85,8 @@ def _create_learning_rate(learning_rate_config):
   learning_rate_type = learning_rate_config.WhichOneof('learning_rate')
   if learning_rate_type == 'constant_learning_rate':
     config = learning_rate_config.constant_learning_rate
-    learning_rate = tf.constant(config.learning_rate, dtype=tf.float32)
+    learning_rate = tf.constant(config.learning_rate, dtype=tf.float32,
+                                name='learning_rate')
 
   if learning_rate_type == 'exponential_decay_learning_rate':
     config = learning_rate_config.exponential_decay_learning_rate
@@ -94,7 +95,7 @@ def _create_learning_rate(learning_rate_config):
         tf.train.get_or_create_global_step(),
         config.decay_steps,
         config.decay_factor,
-        staircase=config.staircase)
+        staircase=config.staircase, name='learning_rate')
 
   if learning_rate_type == 'manual_step_learning_rate':
     config = learning_rate_config.manual_step_learning_rate
@@ -105,7 +106,7 @@ def _create_learning_rate(learning_rate_config):
     learning_rate_sequence += [x.learning_rate for x in config.schedule]
     learning_rate = learning_schedules.manual_stepping(
         tf.train.get_or_create_global_step(), learning_rate_step_boundaries,
-        learning_rate_sequence)
+        learning_rate_sequence, config.warmup)
 
   if learning_rate_type == 'cosine_decay_learning_rate':
     config = learning_rate_config.cosine_decay_learning_rate
@@ -114,7 +115,8 @@ def _create_learning_rate(learning_rate_config):
         config.learning_rate_base,
         config.total_steps,
         config.warmup_learning_rate,
-        config.warmup_steps)
+        config.warmup_steps,
+        config.hold_base_rate_steps)
 
   if learning_rate is None:
     raise ValueError('Learning_rate %s not supported.' % learning_rate_type)

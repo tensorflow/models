@@ -32,8 +32,11 @@ def _validate_label_map(label_map):
     ValueError: if label map is invalid.
   """
   for item in label_map.item:
-    if item.id < 1:
-      raise ValueError('Label map ids should be >= 1.')
+    if item.id < 0:
+      raise ValueError('Label map ids should be >= 0.')
+    if (item.id == 0 and item.name != 'background' and
+        item.display_name != 'background'):
+      raise ValueError('Label map id 0 is reserved for the background label')
 
 
 def create_category_index(categories):

@@ -26,14 +26,22 @@ from object_detection.utils import test_case
 
 class SsdFeatureExtractorTestBase(test_case.TestCase):
 
+  def conv_hyperparams_fn(self):
+    with tf.contrib.slim.arg_scope([]) as sc:
+      return sc
+
   @abstractmethod
-  def _create_feature_extractor(self, depth_multiplier, pad_to_multiple):
+  def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
+                                use_explicit_padding=False):
     """Constructs a new feature extractor.
 
     Args:
       depth_multiplier: float depth multiplier for feature extractor
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
+      use_explicit_padding: use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
     Returns:
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
@@ -41,10 +49,11 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
 
   def check_extract_features_returns_correct_shape(
       self, batch_size, image_height, image_width, depth_multiplier,
-      pad_to_multiple, expected_feature_map_shapes):
+      pad_to_multiple, expected_feature_map_shapes, use_explicit_padding=False):
     def graph_fn(image_tensor):
       feature_extractor = self._create_feature_extractor(depth_multiplier,
-                                                         pad_to_multiple)
+                                                         pad_to_multiple,
+                                                         use_explicit_padding)
       feature_maps = feature_extractor.extract_features(image_tensor)
       return feature_maps
 
@@ -57,10 +66,11 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
 
   def check_extract_features_returns_correct_shapes_with_dynamic_inputs(
       self, batch_size, image_height, image_width, depth_multiplier,
-      pad_to_multiple, expected_feature_map_shapes):
+      pad_to_multiple, expected_feature_map_shapes, use_explicit_padding=False):
     def graph_fn(image_height, image_width):
       feature_extractor = self._create_feature_extractor(depth_multiplier,
-                                                         pad_to_multiple)
+                                                         pad_to_multiple,
+                                                         use_explicit_padding)
       image_tensor = tf.random_uniform([batch_size, image_height, image_width,
                                         3], dtype=tf.float32)
       feature_maps = feature_extractor.extract_features(image_tensor)

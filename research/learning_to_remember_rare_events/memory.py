@@ -173,6 +173,21 @@ class Memory(object):
     softmax_temp = max(1.0, np.log(0.2 * self.choose_k) / self.alpha)
     mask = tf.nn.softmax(hint_pool_sims[:, :choose_k - 1] * softmax_temp)
 
+    # prepare returned values
+    nearest_neighbor = tf.to_int32(
+        tf.argmax(hint_pool_sims[:, :choose_k - 1], 1))
+
+    no_teacher_idxs = tf.gather(
+        tf.reshape(hint_pool_idxs, [-1]),
+        nearest_neighbor + choose_k * tf.range(batch_size))
+
+    with tf.device(self.var_cache_device):
+      result = tf.gather(self.mem_vals, tf.reshape(no_teacher_idxs, [-1]))
+
+    if not output_given:
+        teacher_loss = None
+        return result, mask, teacher_loss
+
     # prepare hints from the teacher on hint pool
     teacher_hints = tf.to_float(
         tf.abs(tf.expand_dims(intended_output, 1) - hint_pool_mem_vals))
@@ -192,13 +207,6 @@ class Memory(object):
     teacher_vals *= (
         1 - tf.to_float(tf.equal(0.0, tf.reduce_sum(teacher_hints, 1))))
 
-    # prepare returned values
-    nearest_neighbor = tf.to_int32(
-        tf.argmax(hint_pool_sims[:, :choose_k - 1], 1))
-    no_teacher_idxs = tf.gather(
-        tf.reshape(hint_pool_idxs, [-1]),
-        nearest_neighbor + choose_k * tf.range(batch_size))
-
     # we'll determine whether to do an update to memory based on whether
     # memory was queried correctly
     sliced_hints = tf.slice(teacher_hints, [0, 0], [-1, self.correct_in_top])
@@ -207,9 +215,6 @@ class Memory(object):
     # loss based on triplet loss
     teacher_loss = (tf.nn.relu(neg_teacher_vals - teacher_vals + self.alpha)
                     - self.alpha)
-
-    with tf.device(self.var_cache_device):
-      result = tf.gather(self.mem_vals, tf.reshape(no_teacher_idxs, [-1]))
 
     # prepare memory updates
     update_keys = normalized_query

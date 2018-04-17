@@ -159,6 +159,7 @@ class FasterRCNNFeatureExtractor(object):
 
     Returns:
       rpn_feature_map: A tensor with shape [batch, height, width, depth]
+      activations: A dictionary mapping activation tensor names to tensors.
     """
     with tf.variable_scope(scope, values=[preprocessed_inputs]):
       return self._extract_proposal_features(preprocessed_inputs, scope)
@@ -228,7 +229,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                number_of_stages,
                first_stage_anchor_generator,
                first_stage_atrous_rate,
-               first_stage_box_predictor_arg_scope,
+               first_stage_box_predictor_arg_scope_fn,
                first_stage_box_predictor_kernel_size,
                first_stage_box_predictor_depth,
                first_stage_minibatch_size,
@@ -290,8 +291,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
         denser resolutions.  The atrous rate is used to compensate for the
         denser feature maps by using an effectively larger receptive field.
         (This should typically be set to 1).
-      first_stage_box_predictor_arg_scope: Slim arg_scope for conv2d,
-        separable_conv2d and fully_connected ops for the RPN box predictor.
+      first_stage_box_predictor_arg_scope_fn: A function to construct tf-slim
+        arg_scope for conv2d, separable_conv2d and fully_connected ops for the
+        RPN box predictor.
       first_stage_box_predictor_kernel_size: Kernel size to use for the
         convolution op just prior to RPN box predictions.
       first_stage_box_predictor_depth: Output depth for the convolution op
@@ -365,7 +367,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       ValueError: If first_stage_anchor_generator is not of type
         grid_anchor_generator.GridAnchorGenerator.
     """
-    # TODO: add_summaries is currently unused. Respect that directive
+    # TODO(rathodv): add_summaries is currently unused. Respect that directive
     # in the future.
     super(FasterRCNNMetaArch, self).__init__(num_classes=num_classes)
 
@@ -395,8 +397,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
     # (First stage) Region proposal network parameters
     self._first_stage_anchor_generator = first_stage_anchor_generator
     self._first_stage_atrous_rate = first_stage_atrous_rate
-    self._first_stage_box_predictor_arg_scope = (
-        first_stage_box_predictor_arg_scope)
+    self._first_stage_box_predictor_arg_scope_fn = (
+        first_stage_box_predictor_arg_scope_fn)
     self._first_stage_box_predictor_kernel_size = (
         first_stage_box_predictor_kernel_size)
     self._first_stage_box_predictor_depth = first_stage_box_predictor_depth
@@ -405,7 +407,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         positive_fraction=first_stage_positive_balance_fraction)
     self._first_stage_box_predictor = box_predictor.ConvolutionalBoxPredictor(
         self._is_training, num_classes=1,
-        conv_hyperparams=self._first_stage_box_predictor_arg_scope,
+        conv_hyperparams_fn=self._first_stage_box_predictor_arg_scope_fn,
         min_depth=0, max_depth=0, num_layers_before_predictor=0,
         use_dropout=False, dropout_keep_prob=1.0, kernel_size=1,
         box_code_size=self._box_coder.code_size)
@@ -449,8 +451,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     if self._number_of_stages <= 0 or self._number_of_stages > 3:
       raise ValueError('Number of stages should be a value in {1, 2, 3}.')
-    if self._is_training and self._number_of_stages == 3:
-      self._number_of_stages = 2
 
   @property
   def first_stage_feature_extractor_scope(self):
@@ -597,7 +597,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
           `num_anchors` can differ depending on whether the model is created in
           training or inference mode.
 
-        (and if number_of_stages=1):
+        (and if number_of_stages > 1):
         7) refined_box_encodings: a 3-D tensor with shape
           [total_num_proposals, num_classes, 4] representing predicted
           (final) refined box encodings, where
@@ -737,9 +737,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
           of the image.
         6) box_classifier_features: a 4-D float32 tensor representing the
           features for each proposal.
-        7) mask_predictions: (optional) a 4-D tensor with shape
-          [total_num_padded_proposals, num_classes, mask_height, mask_width]
-          containing instance mask predictions.
     """
     image_shape_2d = self._image_batch_shape_2d(image_shape)
     proposal_boxes_normalized, _, num_proposals = self._postprocess_rpn(
@@ -755,20 +752,18 @@ class FasterRCNNMetaArch(model.DetectionModel):
             flattened_proposal_feature_maps,
             scope=self.second_stage_feature_extractor_scope))
 
-    predict_auxiliary_outputs = False
-    if self._number_of_stages == 2:
-      predict_auxiliary_outputs = True
     box_predictions = self._mask_rcnn_box_predictor.predict(
         [box_classifier_features],
         num_predictions_per_location=[1],
         scope=self.second_stage_box_predictor_scope,
-        predict_boxes_and_classes=True,
-        predict_auxiliary_outputs=predict_auxiliary_outputs)
+        predict_boxes_and_classes=True)
 
     refined_box_encodings = tf.squeeze(
-        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
-    class_predictions_with_background = tf.squeeze(box_predictions[
-        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND], axis=1)
+        box_predictions[box_predictor.BOX_ENCODINGS],
+        axis=1, name='all_refined_box_encodings')
+    class_predictions_with_background = tf.squeeze(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1, name='all_class_predictions_with_background')
 
     absolute_proposal_boxes = ops.normalized_to_image_coordinates(
         proposal_boxes_normalized, image_shape, self._parallel_iterations)
@@ -782,15 +777,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
         'box_classifier_features': box_classifier_features,
         'proposal_boxes_normalized': proposal_boxes_normalized,
     }
-    if box_predictor.MASK_PREDICTIONS in box_predictions:
-      mask_predictions = tf.squeeze(box_predictions[
-          box_predictor.MASK_PREDICTIONS], axis=1)
-      prediction_dict['mask_predictions'] = mask_predictions
 
     return prediction_dict
 
   def _predict_third_stage(self, prediction_dict, image_shapes):
     """Predicts non-box, non-class outputs using refined detections.
+
+    For training, masks as predicted directly on the box_classifier_features,
+    which are region-features from the initial anchor boxes.
+    For inference, this happens after calling the post-processing stage, such
+    that masks are only calculated for the top scored boxes.
 
     Args:
      prediction_dict: a dictionary holding "raw" prediction tensors:
@@ -812,53 +808,73 @@ class FasterRCNNMetaArch(model.DetectionModel):
         4) proposal_boxes: A float32 tensor of shape
           [batch_size, self.max_num_proposals, 4] representing
           decoded proposal bounding boxes in absolute coordinates.
+        5) box_classifier_features: a 4-D float32 tensor representing the
+          features for each proposal.
       image_shapes: A 2-D int32 tensors of shape [batch_size, 3] containing
         shapes of images in the batch.
 
     Returns:
       prediction_dict: a dictionary that in addition to the input predictions
       does hold the following predictions as well:
-        1) mask_predictions: (optional) a 4-D tensor with shape
+        1) mask_predictions: a 4-D tensor with shape
           [batch_size, max_detection, mask_height, mask_width] containing
           instance mask predictions.
     """
-    detections_dict = self._postprocess_box_classifier(
-        prediction_dict['refined_box_encodings'],
-        prediction_dict['class_predictions_with_background'],
-        prediction_dict['proposal_boxes'],
-        prediction_dict['num_proposals'],
-        image_shapes)
-    prediction_dict.update(detections_dict)
-    detection_boxes = detections_dict[
-        fields.DetectionResultFields.detection_boxes]
-    detection_classes = detections_dict[
-        fields.DetectionResultFields.detection_classes]
-    rpn_features_to_crop = prediction_dict['rpn_features_to_crop']
-    batch_size = tf.shape(detection_boxes)[0]
-    max_detection = tf.shape(detection_boxes)[1]
-    flattened_detected_feature_maps = (
-        self._compute_second_stage_input_feature_maps(
-            rpn_features_to_crop, detection_boxes))
-    detected_box_classifier_features = (
-        self._feature_extractor.extract_box_classifier_features(
-            flattened_detected_feature_maps,
-            scope=self.second_stage_feature_extractor_scope))
-    box_predictions = self._mask_rcnn_box_predictor.predict(
-        [detected_box_classifier_features],
-        num_predictions_per_location=[1],
-        scope=self.second_stage_box_predictor_scope,
-        predict_boxes_and_classes=False,
-        predict_auxiliary_outputs=True)
-    if box_predictor.MASK_PREDICTIONS in box_predictions:
+    if self._is_training:
+      curr_box_classifier_features = prediction_dict['box_classifier_features']
+      detection_classes = prediction_dict['class_predictions_with_background']
+      box_predictions = self._mask_rcnn_box_predictor.predict(
+          [curr_box_classifier_features],
+          num_predictions_per_location=[1],
+          scope=self.second_stage_box_predictor_scope,
+          predict_boxes_and_classes=False,
+          predict_auxiliary_outputs=True)
+      prediction_dict['mask_predictions'] = tf.squeeze(box_predictions[
+          box_predictor.MASK_PREDICTIONS], axis=1)
+    else:
+      detections_dict = self._postprocess_box_classifier(
+          prediction_dict['refined_box_encodings'],
+          prediction_dict['class_predictions_with_background'],
+          prediction_dict['proposal_boxes'],
+          prediction_dict['num_proposals'],
+          image_shapes)
+      prediction_dict.update(detections_dict)
+      detection_boxes = detections_dict[
+          fields.DetectionResultFields.detection_boxes]
+      detection_classes = detections_dict[
+          fields.DetectionResultFields.detection_classes]
+      rpn_features_to_crop = prediction_dict['rpn_features_to_crop']
+      batch_size = tf.shape(detection_boxes)[0]
+      max_detection = tf.shape(detection_boxes)[1]
+      flattened_detected_feature_maps = (
+          self._compute_second_stage_input_feature_maps(
+              rpn_features_to_crop, detection_boxes))
+      curr_box_classifier_features = (
+          self._feature_extractor.extract_box_classifier_features(
+              flattened_detected_feature_maps,
+              scope=self.second_stage_feature_extractor_scope))
+
+      box_predictions = self._mask_rcnn_box_predictor.predict(
+          [curr_box_classifier_features],
+          num_predictions_per_location=[1],
+          scope=self.second_stage_box_predictor_scope,
+          predict_boxes_and_classes=False,
+          predict_auxiliary_outputs=True)
+
       detection_masks = tf.squeeze(box_predictions[
           box_predictor.MASK_PREDICTIONS], axis=1)
-      detection_masks = self._gather_instance_masks(detection_masks,
-                                                    detection_classes)
-      mask_height = tf.shape(detection_masks)[1]
-      mask_width = tf.shape(detection_masks)[2]
+
+      _, num_classes, mask_height, mask_width = (
+          detection_masks.get_shape().as_list())
+      _, max_detection = detection_classes.get_shape().as_list()
+      if num_classes > 1:
+        detection_masks = self._gather_instance_masks(
+            detection_masks, detection_classes)
+
       prediction_dict[fields.DetectionResultFields.detection_masks] = (
           tf.reshape(detection_masks,
                      [batch_size, max_detection, mask_height, mask_width]))
+
     return prediction_dict
 
   def _gather_instance_masks(self, instance_masks, classes):
@@ -872,16 +888,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Returns:
       masks: a 3-D float32 tensor with shape [K, mask_height, mask_width].
     """
+    _, num_classes, height, width = instance_masks.get_shape().as_list()
     k = tf.shape(instance_masks)[0]
-    num_mask_classes = tf.shape(instance_masks)[1]
-    instance_mask_height = tf.shape(instance_masks)[2]
-    instance_mask_width = tf.shape(instance_masks)[3]
-    classes = tf.reshape(classes, [-1])
-    instance_masks = tf.reshape(instance_masks, [
-        -1, instance_mask_height, instance_mask_width
-    ])
-    return tf.gather(instance_masks,
-                     tf.range(k) * num_mask_classes + tf.to_int32(classes))
+    instance_masks = tf.reshape(instance_masks, [-1, height, width])
+    classes = tf.to_int32(tf.reshape(classes, [-1]))
+    gather_idx = tf.range(k) * num_classes + classes
+    return tf.gather(instance_masks, gather_idx)
 
   def _extract_rpn_feature_maps(self, preprocessed_inputs):
     """Extracts RPN features.
@@ -906,13 +918,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
       image_shape: A 1-D tensor representing the input image shape.
     """
     image_shape = tf.shape(preprocessed_inputs)
-    rpn_features_to_crop = self._feature_extractor.extract_proposal_features(
+    rpn_features_to_crop, _ = self._feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope=self.first_stage_feature_extractor_scope)
 
     feature_map_shape = tf.shape(rpn_features_to_crop)
-    anchors = self._first_stage_anchor_generator.generate(
-        [(feature_map_shape[1], feature_map_shape[2])])
-    with slim.arg_scope(self._first_stage_box_predictor_arg_scope):
+    anchors = box_list_ops.concatenate(
+        self._first_stage_anchor_generator.generate([(feature_map_shape[1],
+                                                      feature_map_shape[2])]))
+    with slim.arg_scope(self._first_stage_box_predictor_arg_scope_fn()):
       kernel_size = self._first_stage_box_predictor_kernel_size
       rpn_box_predictor_features = slim.conv2d(
           rpn_features_to_crop,
@@ -957,9 +970,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
         num_anchors_per_location,
         scope=self.first_stage_box_predictor_scope)
 
-    box_encodings = box_predictions[box_predictor.BOX_ENCODINGS]
-    objectness_predictions_with_background = box_predictions[
-        box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND]
+    box_encodings = tf.concat(
+        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+    objectness_predictions_with_background = tf.concat(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1)
     return (tf.squeeze(box_encodings, axis=2),
             objectness_predictions_with_background)
 
@@ -1646,14 +1661,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
           tf.reduce_sum(localization_losses, axis=1) / normalizer)
       objectness_loss = tf.reduce_mean(
           tf.reduce_sum(objectness_losses, axis=1) / normalizer)
-      loss_dict = {}
 
-      with tf.name_scope('localization_loss'):
-        loss_dict['first_stage_localization_loss'] = (
-            self._first_stage_loc_loss_weight * localization_loss)
-      with tf.name_scope('objectness_loss'):
-        loss_dict['first_stage_objectness_loss'] = (
-            self._first_stage_obj_loss_weight * objectness_loss)
+      localization_loss = tf.multiply(self._first_stage_loc_loss_weight,
+                                      localization_loss,
+                                      name='localization_loss')
+      objectness_loss = tf.multiply(self._first_stage_obj_loss_weight,
+                                    objectness_loss, name='objectness_loss')
+      loss_dict = {localization_loss.op.name: localization_loss,
+                   objectness_loss.op.name: objectness_loss}
     return loss_dict
 
   def _loss_box_classifier(self,
@@ -1779,15 +1794,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
         ) = self._unpad_proposals_and_apply_hard_mining(
             proposal_boxlists, second_stage_loc_losses,
             second_stage_cls_losses, num_proposals)
-      loss_dict = {}
-      with tf.name_scope('localization_loss'):
-        loss_dict['second_stage_localization_loss'] = (
-            self._second_stage_loc_loss_weight * second_stage_loc_loss)
+      localization_loss = tf.multiply(self._second_stage_loc_loss_weight,
+                                      second_stage_loc_loss,
+                                      name='localization_loss')
 
-      with tf.name_scope('classification_loss'):
-        loss_dict['second_stage_classification_loss'] = (
-            self._second_stage_cls_loss_weight * second_stage_cls_loss)
+      classification_loss = tf.multiply(self._second_stage_cls_loss_weight,
+                                        second_stage_cls_loss,
+                                        name='classification_loss')
 
+      loss_dict = {localization_loss.op.name: localization_loss,
+                   classification_loss.op.name: classification_loss}
       second_stage_mask_loss = None
       if prediction_masks is not None:
         if groundtruth_masks_list is None:
@@ -1796,7 +1812,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
         # Create a new target assigner that matches the proposals to groundtruth
         # and returns the mask targets.
-        # TODO: Move `unmatched_cls_target` from constructor to assign
+        # TODO(rathodv): Move `unmatched_cls_target` from constructor to assign
         # function. This will enable reuse of a single target assigner for both
         # class targets and mask targets.
         mask_target_assigner = target_assigner.create_target_assigner(
@@ -1809,11 +1825,18 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
         # Pad the prediction_masks with to add zeros for background class to be
         # consistent with class predictions.
-        prediction_masks_with_background = tf.pad(
-            prediction_masks, [[0, 0], [1, 0], [0, 0], [0, 0]])
-        prediction_masks_masked_by_class_targets = tf.boolean_mask(
-            prediction_masks_with_background,
-            tf.greater(one_hot_flat_cls_targets_with_background, 0))
+        if prediction_masks.get_shape().as_list()[1] == 1:
+          # Class agnostic masks or masks for one-class prediction. Logic for
+          # both cases is the same since background predictions are ignored
+          # through the batch_mask_target_weights.
+          prediction_masks_masked_by_class_targets = prediction_masks
+        else:
+          prediction_masks_with_background = tf.pad(
+              prediction_masks, [[0, 0], [1, 0], [0, 0], [0, 0]])
+          prediction_masks_masked_by_class_targets = tf.boolean_mask(
+              prediction_masks_with_background,
+              tf.greater(one_hot_flat_cls_targets_with_background, 0))
+
         mask_height = prediction_masks.shape[2].value
         mask_width = prediction_masks.shape[3].value
         reshaped_prediction_masks = tf.reshape(
@@ -1854,9 +1877,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
             tf.boolean_mask(second_stage_mask_losses, paddings_indicator))
 
       if second_stage_mask_loss is not None:
-        with tf.name_scope('mask_loss'):
-          loss_dict['second_stage_mask_loss'] = (
-              self._second_stage_mask_loss_weight * second_stage_mask_loss)
+        mask_loss = tf.multiply(self._second_stage_mask_loss_weight,
+                                second_stage_mask_loss, name='mask_loss')
+        loss_dict[mask_loss.op.name] = mask_loss
     return loss_dict
 
   def _padded_batched_proposals_indicator(self,
@@ -1924,26 +1947,32 @@ class FasterRCNNMetaArch(model.DetectionModel):
           decoded_boxlist_list=[proposal_boxlist])
 
   def restore_map(self,
-                  from_detection_checkpoint=True,
+                  fine_tune_checkpoint_type='detection',
                   load_all_detection_checkpoint_vars=False):
     """Returns a map of variables to load from a foreign checkpoint.
 
     See parent class for details.
 
     Args:
-      from_detection_checkpoint: whether to restore from a full detection
+      fine_tune_checkpoint_type: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
-        classification checkpoint for initialization prior to training. Default
-        True.
+        classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
        load_all_detection_checkpoint_vars: whether to load all variables (when
-         `from_detection_checkpoint` is True). If False, only variables within
-         the feature extractor scopes are included. Default False.
+         `fine_tune_checkpoint_type` is `detection`). If False, only variables
+         within the feature extractor scopes are included. Default False.
 
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    Raises:
+      ValueError: if fine_tune_checkpoint_type is neither `classification`
+        nor `detection`.
     """
-    if not from_detection_checkpoint:
+    if fine_tune_checkpoint_type not in ['detection', 'classification']:
+      raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
+          fine_tune_checkpoint_type))
+    if fine_tune_checkpoint_type == 'classification':
       return self._feature_extractor.restore_from_classification_checkpoint_fn(
           self.first_stage_feature_extractor_scope,
           self.second_stage_feature_extractor_scope)

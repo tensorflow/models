@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from google3.third_party.tensorflow_models.gan.pix2pix import networks
+import networks
 
 
 class Pix2PixTest(tf.test.TestCase):

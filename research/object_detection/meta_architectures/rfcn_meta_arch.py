@@ -56,7 +56,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                number_of_stages,
                first_stage_anchor_generator,
                first_stage_atrous_rate,
-               first_stage_box_predictor_arg_scope,
+               first_stage_box_predictor_arg_scope_fn,
                first_stage_box_predictor_kernel_size,
                first_stage_box_predictor_depth,
                first_stage_minibatch_size,
@@ -103,8 +103,9 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         denser resolutions.  The atrous rate is used to compensate for the
         denser feature maps by using an effectively larger receptive field.
         (This should typically be set to 1).
-      first_stage_box_predictor_arg_scope: Slim arg_scope for conv2d,
-        separable_conv2d and fully_connected ops for the RPN box predictor.
+      first_stage_box_predictor_arg_scope_fn: A function to generate tf-slim
+        arg_scope for conv2d, separable_conv2d and fully_connected ops for the
+        RPN box predictor.
       first_stage_box_predictor_kernel_size: Kernel size to use for the
         convolution op just prior to RPN box predictions.
       first_stage_box_predictor_depth: Output depth for the convolution op
@@ -164,7 +165,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       ValueError: If first_stage_anchor_generator is not of type
         grid_anchor_generator.GridAnchorGenerator.
     """
-    # TODO: add_summaries is currently unused. Respect that directive
+    # TODO(rathodv): add_summaries is currently unused. Respect that directive
     # in the future.
     super(RFCNMetaArch, self).__init__(
         is_training,
@@ -174,7 +175,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         number_of_stages,
         first_stage_anchor_generator,
         first_stage_atrous_rate,
-        first_stage_box_predictor_arg_scope,
+        first_stage_box_predictor_arg_scope_fn,
         first_stage_box_predictor_kernel_size,
         first_stage_box_predictor_depth,
         first_stage_minibatch_size,
@@ -275,9 +276,11 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         scope=self.second_stage_box_predictor_scope,
         proposal_boxes=proposal_boxes_normalized)
     refined_box_encodings = tf.squeeze(
-        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+        tf.concat(box_predictions[box_predictor.BOX_ENCODINGS], axis=1), axis=1)
     class_predictions_with_background = tf.squeeze(
-        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        tf.concat(
+            box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+            axis=1),
         axis=1)
 
     absolute_proposal_boxes = ops.normalized_to_image_coordinates(

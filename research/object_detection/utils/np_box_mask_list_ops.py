@@ -19,7 +19,6 @@ Example box operations that are supported:
   * Areas: compute bounding box areas
   * IOU: pairwise intersection-over-union scores
 """
-
 import numpy as np
 
 from object_detection.utils import np_box_list_ops
@@ -217,7 +216,7 @@ def non_max_suppression(box_mask_list,
   is_index_valid = np.full(num_masks, 1, dtype=bool)
   selected_indices = []
   num_output = 0
-  for i in xrange(num_masks):
+  for i in range(num_masks):
     if num_output < max_output_size:
       if is_index_valid[i]:
         num_output += 1
