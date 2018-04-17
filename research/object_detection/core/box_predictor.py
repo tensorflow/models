@@ -880,6 +880,7 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
               num_predictions_per_location * self._box_code_size,
               [self._kernel_size, self._kernel_size],
               activation_fn=None, stride=1, padding='SAME',
+              normalizer_fn=None,
               scope='BoxEncodingPredictor')
 
           for i in range(self._num_layers_before_predictor):
@@ -898,6 +899,7 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
               num_predictions_per_location * num_class_slots,
               [self._kernel_size, self._kernel_size],
               activation_fn=None, stride=1, padding='SAME',
+              normalizer_fn=None,
               biases_initializer=tf.constant_initializer(
                   self._class_prediction_bias_init),
               scope='ClassPredictor')

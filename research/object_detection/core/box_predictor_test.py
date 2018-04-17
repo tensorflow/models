@@ -430,8 +430,13 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
         }
       }
       initializer {
-        truncated_normal_initializer {
+        random_normal_initializer {
+          stddev: 0.01
+          mean: 0.0
         }
+      }
+      batch_norm {
+        train: true,
       }
     """
     text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams)
@@ -460,6 +465,27 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
         graph_fn, [image_features])
     self.assertAllEqual(box_encodings.shape, [4, 320, 1, 4])
     self.assertAllEqual(objectness_predictions.shape, [4, 320, 1])
+
+  def test_bias_predictions_to_background_with_sigmoid_score_conversion(self):
+
+    def graph_fn(image_features):
+      conv_box_predictor = box_predictor.WeightSharedConvolutionalBoxPredictor(
+          is_training=True,
+          num_classes=2,
+          conv_hyperparams_fn=self._build_arg_scope_with_conv_hyperparams(),
+          depth=32,
+          num_layers_before_predictor=1,
+          class_prediction_bias_init=-4.6,
+          box_code_size=4)
+      box_predictions = conv_box_predictor.predict(
+          [image_features], num_predictions_per_location=[5],
+          scope='BoxPredictor')
+      class_predictions = tf.concat(box_predictions[
+          box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND], axis=1)
+      return (tf.nn.sigmoid(class_predictions),)
+    image_features = np.random.rand(4, 8, 8, 64).astype(np.float32)
+    class_predictions = self.execute(graph_fn, [image_features])
+    self.assertAlmostEqual(np.mean(class_predictions), 0.01, places=3)
 
   def test_get_multi_class_predictions_for_five_aspect_ratios_per_location(
       self):
@@ -551,19 +577,19 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
          'BoxEncodingPredictionTower/conv2d_0/weights'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
-         'BoxEncodingPredictionTower/conv2d_0/biases'),
+         'BoxEncodingPredictionTower/conv2d_0/BatchNorm/beta'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
          'BoxEncodingPredictionTower/conv2d_1/weights'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
-         'BoxEncodingPredictionTower/conv2d_1/biases'),
+         'BoxEncodingPredictionTower/conv2d_1/BatchNorm/beta'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
          'ClassPredictionTower/conv2d_0/weights'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
-         'ClassPredictionTower/conv2d_0/biases'),
+         'ClassPredictionTower/conv2d_0/BatchNorm/beta'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
          'ClassPredictionTower/conv2d_1/weights'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
-         'ClassPredictionTower/conv2d_1/biases'),
+         'ClassPredictionTower/conv2d_1/BatchNorm/beta'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
          'BoxEncodingPredictor/weights'),
         ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
