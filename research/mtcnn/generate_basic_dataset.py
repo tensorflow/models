@@ -19,8 +19,8 @@ Usage:
 ```shell
 
 $ python generate_basic_dataset.py \
-	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
 	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
 	--target_root_dir=/workspace/datasets/mtcnn \
 	--minimum_face=12
 ```
@@ -38,25 +38,33 @@ from datasets.BasicDataset import BasicDataset
 
 def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--annotation_file_name', type=str, help='Input WIDER face dataset annotations file.', default=None)
 	parser.add_argument('--annotation_image_dir', type=str, help='Input WIDER face dataset training image directory.', default=None)
+	parser.add_argument('--annotation_file_name', type=str, help='Input WIDER face dataset annotation file.', default=None)
+
+	parser.add_argument('--landmark_image_dir', type=str, help='Input landmark dataset training image directory.', default=None)
+	parser.add_argument('--landmark_file_name', type=str, help='Input landmark dataset annotation file.', default=None)
+
 	parser.add_argument('--target_root_dir', type=str, help='Output directory where output images and TensorFlow data files are saved.', default=None)
 	parser.add_argument('--minimum_face', type=int, help='Minimum face size used for face detection.', default=12)
 	return(parser.parse_args(argv))
 
 def main(args):
 
-	if(not args.annotation_file_name):
-		raise ValueError('You must supply input WIDER face dataset annotations file with --annotation_file_name.')		
-
 	if(not args.annotation_image_dir):
-		raise ValueError('You must supply input WIDER face dataset training image directory with --annotation_image_dir.')		
+		raise ValueError('You must supply input WIDER face dataset training image directory with --annotation_image_dir.')
+	if(not args.annotation_file_name):
+		raise ValueError('You must supply input WIDER face dataset annotation file with --annotation_file_name.')
+
+	if(not args.landmark_image_dir):
+		raise ValueError('You must supply input landmark dataset training image directory with --landmark_image_dir.')		
+	if(not args.landmark_file_name):
+		raise ValueError('You must supply input landmark dataset annotation file with --landmark_file_name.')				
 
 	if(not args.target_root_dir):
 		raise ValueError('You must supply output directory for storing output images and TensorFlow data files with --target_root_dir.')
 
 	basic_dataset = BasicDataset()
-	status = basic_dataset.generate(args.annotation_file_name, args.annotation_image_dir, args.minimum_face, args.target_root_dir)
+	status = basic_dataset.generate(args.annotation_image_dir, args.annotation_file_name, args.landmark_image_dir, args.landmark_file_name, args.minimum_face, args.target_root_dir)
 	if(status):
 		print('Basic dataset is generated at ' + args.target_root_dir)
 	else:

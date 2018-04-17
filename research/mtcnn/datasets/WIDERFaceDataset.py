@@ -33,9 +33,9 @@ class WIDERFaceDataset(object):
 	def data(self):
 		return(self._data)
 
-	def read_annotation(self, base_dir, annotation_file_path):
+	def read_annotation(self, annotation_image_dir, annotation_file_name):
 		
-		if(not os.path.isfile(annotation_file_path)):
+		if(not os.path.isfile(annotation_file_name)):
 			return(False)
 
 		self._data = dict()
@@ -43,13 +43,13 @@ class WIDERFaceDataset(object):
 
 		images = []
 		bounding_boxes = []
-		annotation_file = open(annotation_file_path, 'r')
+		annotation_file = open(annotation_file_name, 'r')
 		while( True ):
        			image_path = annotation_file.readline().strip('\n')
        			if( not image_path ):
        				break			
 
-       			image_path = os.path.join(base_dir, image_path)
+       			image_path = os.path.join(annotation_image_dir, image_path)
 			image = cv2.imread(image_path)
 			if(image is None):
 				continue
