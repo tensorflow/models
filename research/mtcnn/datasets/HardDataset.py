@@ -22,7 +22,7 @@ import numpy as np
 import cPickle as pickle
 import cv2
 
-from datasets.AbstractDataset import AbstractDataset
+from datasets.BasicDataset import BasicDataset
 from datasets.WIDERFaceDataset import WIDERFaceDataset
 from datasets.InferenceBatch import InferenceBatch
 
@@ -31,10 +31,10 @@ from nets.FaceDetector import FaceDetector
 from utils.convert_to_square import convert_to_square
 from utils.IoU import IoU
 
-class HardDataset(AbstractDataset):
+class HardDataset(BasicDataset):
 
 	def __init__(self, name):	
-		AbstractDataset.__init__(self, name)	
+		BasicDataset.__init__(self, name)	
 		self._pickle_file_name = self.name() + '.pkl'
 
 	def pickle_file_name(self):
@@ -133,19 +133,13 @@ class HardDataset(AbstractDataset):
 
 		return(True)
 
-	def _generate_samples(self, annotation_file_name, annotation_image_dir, model_train_dir, minimum_face, target_root_dir):
+	def _generate_image_samples(self, annotation_file_name, annotation_image_dir, model_train_dir, minimum_face, target_root_dir):
 
 		wider_dataset = WIDERFaceDataset()
 		if(wider_dataset.read_annotation(annotation_image_dir, annotation_file_name)):
 			wider_data = wider_dataset.data()
 		else:
 			return(False)
-
-		target_root_dir = os.path.expanduser(target_root_dir)
-		target_root_dir = os.path.join(target_root_dir, self.name())
-
-		if(not os.path.exists(target_root_dir)):
-			os.makedirs(target_root_dir)
 
 		test_data = InferenceBatch(wider_data['images'])
 
@@ -170,7 +164,7 @@ class HardDataset(AbstractDataset):
 	def generate_dataset(self, target_root_dir):
 		print('HardDataset-generate_dataset')
 
-	def generate(self, annotation_file_name, annotation_image_dir, model_train_dir, minimum_face, target_root_dir):
+	def generate(self, annotation_image_dir, annotation_file_name, landmark_image_dir, landmark_file_name, model_train_dir, minimum_face, target_root_dir):
 
 		if(not os.path.isfile(annotation_file_name)):
 			return(False)
@@ -178,11 +172,32 @@ class HardDataset(AbstractDataset):
 		if(not os.path.exists(annotation_image_dir)):
 			return(False)
 
+		if(not os.path.isfile(landmark_file_name)):
+			return(False)
+
+		if(not os.path.exists(landmark_image_dir)):
+			return(False)
+
 		target_root_dir = os.path.expanduser(target_root_dir)
+		target_root_dir = os.path.join(target_root_dir, self.name())
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
 
-		if(not self._generate_samples(annotation_file_name, annotation_image_dir, model_train_dir, minimum_face, target_root_dir)):
+		if(self.name() == 'ONet'):
+			image_size = 48
+		else:
+			image_size = 24
+
+		if(not super(HardDataset, self)._generate_landmark_samples(landmark_image_dir, landmark_file_name, image_size, target_root_dir)):
+			return(False)
+
+		if(not self._generate_image_samples(annotation_file_name, annotation_image_dir, model_train_dir, minimum_face, target_root_dir)):
+			return(False)
+
+		if(not super(HardDataset, self)._generate_image_list(target_root_dir)):
+			return(False)
+
+		if(not super(HardDataset, self)._generate_dataset(target_root_dir)):
 			return(False)
 
 		return(True)

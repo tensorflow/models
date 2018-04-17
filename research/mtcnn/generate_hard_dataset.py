@@ -20,17 +20,21 @@ Usage:
 
 $ python generate_hard_dataset.py \
 	--network_name=RNet \ 
-	--annotation_file=/workspace/datasets/WIDER_train/wider_face_train_bbx_gt.txt \
-	--input_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
+	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
 	--target_root_dir=/workspace/datasets/mtcnn \
 	--minimum_face=24
 
 $ python generate_hard_dataset.py \
 	--network_name=ONet \ 
-	--annotation_file=/workspace/datasets/WIDER_train/wider_face_train_bbx_gt.txt \
-	--input_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
+	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
 	--target_root_dir=/workspace/datasets/mtcnn \
-	--minimum_face=24
+	--minimum_face=48
 ```
 """
 
@@ -47,20 +51,29 @@ from datasets.HardDataset import HardDataset
 def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--network_name', type=str, help='The name of the network.', default='ONet')    
-	parser.add_argument('--annotation_file', type=str, help='Input WIDER face dataset annotations file.', default=None)
-	parser.add_argument('--input_image_dir', type=str, help='Input WIDER face dataset training image directory.', default=None)
 	parser.add_argument('--model_train_dir', type=str, help='Input model train directory where model weights are saved.', default=None)
+
+	parser.add_argument('--annotation_file_name', type=str, help='Input WIDER face dataset annotations file.', default=None)
+	parser.add_argument('--annotation_image_dir', type=str, help='Input WIDER face dataset training image directory.', default=None)
+
+	parser.add_argument('--landmark_image_dir', type=str, help='Input landmark dataset training image directory.', default=None)
+	parser.add_argument('--landmark_file_name', type=str, help='Input landmark dataset annotation file.', default=None)
+
 	parser.add_argument('--target_root_dir', type=str, help='Output directory where output images and TensorFlow data files are saved.', default=None)
 	parser.add_argument('--minimum_face', type=int, help='Minimum face size used for face detection.', default=24)
 	return(parser.parse_args(argv))
 
 def main(args):
 
-	if(not args.annotation_file):
-		raise ValueError('You must supply input WIDER face dataset annotations file with --annotation_file.')		
+	if(not args.annotation_file_name):
+		raise ValueError('You must supply input WIDER face dataset annotations file with --annotation_file_name.')
+	if(not args.annotation_image_dir):
+		raise ValueError('You must supply input WIDER face dataset training image directory with --annotation_image_dir.')		
 
-	if(not args.input_image_dir):
-		raise ValueError('You must supply input WIDER face dataset training image directory with --input_image_dir.')		
+	if(not args.landmark_image_dir):
+		raise ValueError('You must supply input landmark dataset training image directory with --landmark_image_dir.')		
+	if(not args.landmark_file_name):
+		raise ValueError('You must supply input landmark dataset annotation file with --landmark_file_name.')	
 
 	if(not args.target_root_dir):
 		raise ValueError('You must supply output directory for storing output images and TensorFlow data files with --target_root_dir.')
@@ -69,7 +82,7 @@ def main(args):
 		raise ValueError('The network name should be either RNet or ONet.')
 
 	hard_dataset = HardDataset(args.network_name)
-	status = hard_dataset.generate(args.annotation_file, args.input_image_dir, args.model_train_dir, args.minimum_face, args.target_root_dir)
+	status = hard_dataset.generate(args.annotation_image_dir, args.annotation_file_name, args.landmark_image_dir, args.landmark_file_name, args.model_train_dir, args.minimum_face, args.target_root_dir)
 	if(status):
 		print(args.network_name + ' network dataset is generated at ' + args.target_root_dir)
 	else:
