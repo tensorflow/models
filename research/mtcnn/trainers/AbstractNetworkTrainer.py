@@ -56,6 +56,10 @@ class AbstractNetworkTrainer(object):
 		tensorflow_dir = os.path.join(dataset_dir, 'tensorflow')
 		return(tensorflow_dir)
 
+	def model_train_dir(self, model_train_dir):
+		model_train_dir = os.path.join(model_train_dir, self.network_name())
+		return(model_train_dir)
+
 	def train(self):
 		raise NotImplementedError('Must be implemented by the subclass.')
 

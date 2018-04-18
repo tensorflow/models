@@ -84,11 +84,21 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		return accuracy_op
 
 	def train(self, network_name, dataset_dir, model_train_dir):
+		model_train_dir = self.model_train_dir(model_train_dir)
+		if(not os.path.exists(model_train_dir)):
+			os.makedirs(model_train_dir)
+
 		base_lr = 0.01
+		end_epoch = 30
+
+		label_file = os.path.join(dataset_dir, self.network_name(), 'image_list.txt')
+	    	print( label_file )
+    		f = open(label_file, 'r')
+    		num = len(f.readlines())
+
 		dataset_dir = self.dataset_dir(dataset_dir)		
 		tensorflow_file_name = os.path.join(dataset_dir, 'image_list.tfrecord')
 
-		num = 10
 		image_size = self.network_size()
 		tensorflow_dataset = TensorFlowDataset()
 		image_batch, label_batch, bbox_batch, landmark_batch = tensorflow_dataset.read_single_tfrecord(tensorflow_file_name, self._config.BATCH_SIZE, image_size)
@@ -107,11 +117,39 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
            	bounding_box_loss = bounding_box_loss_ohem(output_bounding_box, bounding_box_targets, label)
             	landmark_loss = landmark_loss_ohem(output_landmarks, landmark_targets, label)
 
-		accuracy = self._calculate_accuracy(output_class_probability, label)
+		class_accuracy = self._calculate_accuracy(output_class_probability, label)
 		#L2_loss = tf.add_n(slim.losses.get_regularization_losses())
 		L2_loss = tf.add_n(tf.losses.get_regularization_losses())
 
 		train_op, lr_op = self._train_model(base_lr, radio_cls_loss*class_loss + radio_bbox_loss*bounding_box_loss + radio_landmark_loss*landmark_loss + L2_loss, num)
+
+    		init = tf.global_variables_initializer()
+    		sess = tf.Session()
+
+    		saver = tf.train.Saver(max_to_keep=5)
+    		sess.run(init)
+
+    		tf.summary.scalar("class_loss", class_loss)
+    		tf.summary.scalar("bounding_box_loss",bounding_box_loss)
+    		tf.summary.scalar("landmark_loss",landmark_loss)
+    		tf.summary.scalar("class_accuracy",class_accuracy)
+    		summary_op = tf.summary.merge_all()
+
+    		logs_dir = tensorflow_file_name = os.path.join(model_train_dir, "logs")
+
+		if(not os.path.exists(logs_dir)):
+			os.makedirs(logs_dir)
+
+    		writer = tf.summary.FileWriter(logs_dir, sess.graph)
+
+    		coord = tf.train.Coordinator()
+
+    		threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    		i = 0
+
+    		MAX_STEP = int(num / self._config.BATCH_SIZE + 1) * end_epoch
+    		epoch = 0
+    		sess.graph.finalize()    
 
 		return(True)
 
