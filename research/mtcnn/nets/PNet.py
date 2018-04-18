@@ -26,10 +26,10 @@ from utils.prelu import prelu
 
 class PNet(AbstractFaceDetector):
 
-	def __init__(self):	
-		AbstractFaceDetector.__init__(self)	
+	def __init__(self, is_training=False):	
+		AbstractFaceDetector.__init__(self, is_training)	
 		self._network_size = 12
-		self._network_name = 'PNet'		
+		self._network_name = 'PNet'	
 
 	def setup_network(self, inputs):	
 		self._end_points = {}
@@ -77,22 +77,11 @@ class PNet(AbstractFaceDetector):
         		#bbox_pred_original = bbox_pred
 
         		if(self._is_training):
-            			#batch*2
-            			class_probability = tf.squeeze(conv4_1, [1,2], name='class_probability')
-            			class_loss = cls_ohem(class_probability, label)
+            			output_class_probability = tf.squeeze(conv4_1, [1,2], name='class_probability')
+            			output_bounding_box = tf.squeeze(bounding_box_predictions, [1,2], name='bounding_box_predictions')
+				output_landmarks = tf.squeeze(landmark_predictions, [1,2], name="landmark_predictions")
 
-            			#batch
-            			bounding_box_predictions = tf.squeeze(bounding_box_predictions, [1,2], name='bounding_box_predictions')
-            			bounding_box_loss = bbox_ohem(bounding_box_predictions, bounding_box_targets, label)
-
-            			#batch*10
-            			landmark_predictions = tf.squeeze(landmark_predictions, [1,2], name="landmark_predictions")
-            			landmark_loss = landmark_ohem(landmark_predictions, landmark_targets, label)
-
-            			accuracy = cal_accuracy(class_probability, label)
-            			L2_loss = tf.add_n(slim.losses.get_regularization_losses())
-
-            			return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy) 
+             			return(output_class_probability, output_bounding_box, output_landmarks)
         		else:
             			output_class_probability = tf.squeeze(conv4_1, axis=0)
             			output_bounding_box = tf.squeeze(bounding_box_predictions, axis=0)

@@ -26,8 +26,8 @@ from utils.prelu import prelu
 
 class ONet(RNet):
 
-	def __init__(self, batch_size = 1):
-		RNet.__init__(self, batch_size)
+	def __init__(self, is_training=False, batch_size = 1):
+		RNet.__init__(self, is_training, batch_size)
 		self._network_size = 48
 		self._network_name = 'ONet'
 

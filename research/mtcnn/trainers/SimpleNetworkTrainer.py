@@ -17,12 +17,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import numpy as np
 import random
 import cv2
 import tensorflow as tf
+from tensorflow.contrib import slim
 
 from trainers.AbstractNetworkTrainer import AbstractNetworkTrainer
+from datasets.TensorFlowDataset import TensorFlowDataset
+
+from losses.class_loss_ohem import class_loss_ohem
+from losses.bounding_box_loss_ohem import bounding_box_loss_ohem
+from losses.landmark_loss_ohem import landmark_loss_ohem
 
 class SimpleNetworkTrainer(AbstractNetworkTrainer):
 
@@ -66,7 +73,45 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
         
     		return( image_batch, landmark_batch )
 
+	def _calculate_accuracy(self, cls_prob,label):
+    		pred = tf.argmax(cls_prob,axis=1)
+	    	label_int = tf.cast(label,tf.int64)
+    		cond = tf.where(tf.greater_equal(label_int,0))
+    		picked = tf.squeeze(cond)
+    		label_picked = tf.gather(label_int,picked)
+    		pred_picked = tf.gather(pred,picked)
+    		accuracy_op = tf.reduce_mean(tf.cast(tf.equal(label_picked,pred_picked),tf.float32))
+    		return accuracy_op
+
 	def train(self, network_name, dataset_dir, model_train_dir):
-		
+		base_lr = 0.01
+		dataset_dir = self.dataset_dir(dataset_dir)		
+		tensorflow_file_name = os.path.join(dataset_dir, 'image_list.tfrecord')
+
+		num = 10
+		image_size = self.network_size()
+		tensorflow_dataset = TensorFlowDataset()
+		image_batch, label_batch, bbox_batch, landmark_batch = tensorflow_dataset.read_single_tfrecord(tensorflow_file_name, self._config.BATCH_SIZE, image_size)
+
+		radio_cls_loss = 1.0
+		radio_bbox_loss = 0.5
+		radio_landmark_loss = 0.5
+
+    		input_image = tf.placeholder(tf.float32, shape=[self._config.BATCH_SIZE, image_size, image_size, 3], name='input_image')
+    		label = tf.placeholder(tf.float32, shape=[self._config.BATCH_SIZE], name='label')
+    		bounding_box_targets = tf.placeholder(tf.float32, shape=[self._config.BATCH_SIZE, 4], name='bbox_target')
+    		landmark_targets = tf.placeholder(tf.float32,shape=[self._config.BATCH_SIZE,10],name='landmark_target')
+
+		output_class_probability, output_bounding_box, output_landmarks = self._network.setup_network(input_image)
+		class_loss = class_loss_ohem(output_class_probability, label)
+           	bounding_box_loss = bounding_box_loss_ohem(output_bounding_box, bounding_box_targets, label)
+            	landmark_loss = landmark_loss_ohem(output_landmarks, landmark_targets, label)
+
+		accuracy = self._calculate_accuracy(output_class_probability, label)
+		#L2_loss = tf.add_n(slim.losses.get_regularization_losses())
+		L2_loss = tf.add_n(tf.losses.get_regularization_losses())
+
+		train_op, lr_op = self._train_model(base_lr, radio_cls_loss*class_loss + radio_bbox_loss*bounding_box_loss + radio_landmark_loss*landmark_loss + L2_loss, num)
+
 		return(True)
 

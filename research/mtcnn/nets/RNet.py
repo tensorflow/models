@@ -26,8 +26,8 @@ from utils.prelu import prelu
 
 class RNet(AbstractFaceDetector):
 
-	def __init__(self, batch_size = 1):
-		AbstractFaceDetector.__init__(self)
+	def __init__(self, is_training=False, batch_size = 1):
+		AbstractFaceDetector.__init__(self, is_training)
 		self._network_size = 24
 		self._network_name = 'RNet'
 		self._batch_size = batch_size

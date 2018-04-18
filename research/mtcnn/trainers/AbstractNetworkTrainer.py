@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 from easydict import EasyDict as edict
 
 from nets.PNet import PNet
@@ -27,11 +28,11 @@ class AbstractNetworkTrainer(object):
 
 	def __init__(self, network_name):
 		if(network_name == 'PNet'):
-			self._network = PNet()
+			self._network = PNet(True)
 		elif (network_name == 'RNet'):
-			self._network = RNet()
+			self._network = RNet(True)
 		elif (network_name == 'ONet'):
-			self._network = ONet()
+			self._network = ONet(True)
 
 		self._config = edict()
 
@@ -45,7 +46,15 @@ class AbstractNetworkTrainer(object):
 		self._config.LR_EPOCH = [6,16,20]
 
 	def network_name(self):
-		return(self._network.name())
+		return(self._network.network_name())
+
+	def network_size(self):
+		return(self._network.network_size())
+		
+	def dataset_dir(self, dataset_dir):
+		dataset_dir = os.path.join(dataset_dir, self.network_name())
+		tensorflow_dir = os.path.join(dataset_dir, 'tensorflow')
+		return(tensorflow_dir)
 
 	def train(self):
 		raise NotImplementedError('Must be implemented by the subclass.')
