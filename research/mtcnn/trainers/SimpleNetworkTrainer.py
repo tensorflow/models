@@ -110,26 +110,26 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		radio_landmark_loss = 0.5
 
     		input_image = tf.placeholder(tf.float32, shape=[self._config.BATCH_SIZE, image_size, image_size, 3], name='input_image')
-    		label = tf.placeholder(tf.float32, shape=[self._config.BATCH_SIZE], name='label')
-    		bbox_target = tf.placeholder(tf.float32, shape=[self._config.BATCH_SIZE, 4], name='bbox_target')
-    		landmark_target = tf.placeholder(tf.float32,shape=[self._config.BATCH_SIZE,10],name='landmark_target')
+    		target_label = tf.placeholder(tf.float32, shape=[self._config.BATCH_SIZE], name='target_label')
+    		target_bounding_box = tf.placeholder(tf.float32, shape=[self._config.BATCH_SIZE, 4], name='target_bounding_box')
+    		target_landmarks = tf.placeholder(tf.float32,shape=[self._config.BATCH_SIZE,10],name='target_landmarks')
 
 		output_class_probability, output_bounding_box, output_landmarks = self._network.setup_network(input_image)
-		class_loss_op = class_loss_ohem(output_class_probability, label)
-           	bounding_box_loss_op = bounding_box_loss_ohem(output_bounding_box, bbox_target, label)
-            	landmark_loss_op = landmark_loss_ohem(output_landmarks, landmark_target, label)
+		class_loss_op = class_loss_ohem(output_class_probability, target_label)
+           	bounding_box_loss_op = bounding_box_loss_ohem(output_bounding_box, target_bounding_box, target_label)
+            	landmark_loss_op = landmark_loss_ohem(output_landmarks, target_landmarks, target_label)
 
-		class_accuracy_op = self._calculate_accuracy(output_class_probability, label)
+		class_accuracy_op = self._calculate_accuracy(output_class_probability, target_label)
 		#L2_loss = tf.add_n(slim.losses.get_regularization_losses())
 		L2_loss_op = tf.add_n(tf.losses.get_regularization_losses())
 
 		train_op, lr_op = self._train_model(base_lr, radio_cls_loss*class_loss_op + radio_bbox_loss*bounding_box_loss_op + radio_landmark_loss*landmark_loss_op + L2_loss_op, num)
 
     		init = tf.global_variables_initializer()
-    		sess = tf.Session()
+    		session = tf.Session()
 
     		saver = tf.train.Saver(max_to_keep=5)
-    		sess.run(init)
+    		session.run(init)
 
     		tf.summary.scalar("class_loss", class_loss_op)
     		tf.summary.scalar("bounding_box_loss",bounding_box_loss_op)
@@ -140,46 +140,45 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		logs_dir = os.path.join(network_train_dir, "logs")
 		if(not os.path.exists(logs_dir)):
 			os.makedirs(logs_dir)
-    		writer = tf.summary.FileWriter(logs_dir, sess.graph)
+    		writer = tf.summary.FileWriter(logs_dir, session.graph)
 
-    		coord = tf.train.Coordinator()
+    		coordinator = tf.train.Coordinator()
 
-    		threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    		threads = tf.train.start_queue_runners(sess=session, coord=coordinator)
     		i = 0
 
     		MAX_STEP = int(num / self._config.BATCH_SIZE + 1) * end_epoch
     		epoch = 0
-    		sess.graph.finalize()    
+    		session.graph.finalize()    
 
     		try:
         		for step in range(MAX_STEP):
             			i = i + 1
-            			if coord.should_stop():
+            			if coordinator.should_stop():
                 			break
-            			image_batch_array, label_batch_array, bbox_batch_array, landmark_batch_array = sess.run([image_batch, label_batch, bbox_batch, landmark_batch])
+            			image_batch_array, label_batch_array, bbox_batch_array, landmark_batch_array = session.run([image_batch, label_batch, bbox_batch, landmark_batch])
 
             			image_batch_array, landmark_batch_array = self._random_flip_images(image_batch_array, label_batch_array, landmark_batch_array)
-             			_,_,summary = sess.run([train_op, lr_op ,summary_op], feed_dict={input_image:image_batch_array, label:label_batch_array, bbox_target: bbox_batch_array, landmark_target:landmark_batch_array})
+             			_,_,summary = session.run([train_op, lr_op ,summary_op], feed_dict={input_image:image_batch_array, target_label:label_batch_array, target_bounding_box: bbox_batch_array, target_landmarks:landmark_batch_array})
             
             			if (step+1) % display == 0:
-                			#acc = accuracy(cls_pred, labels_batch)
-                			cls_loss, bbox_loss, landmark_loss, L2_loss, lr, acc = sess.run([class_loss_op, bounding_box_loss_op, landmark_loss_op, L2_loss_op, lr_op, class_accuracy_op],
-                                                             feed_dict={input_image: image_batch_array, label: label_batch_array, bbox_target: bbox_batch_array, landmark_target: landmark_batch_array})                
-                			print("%s : Step: %d, accuracy: %3f, cls loss: %4f, bbox loss: %4f, landmark loss: %4f,L2 loss: %4f,lr:%f " % (
+                			cls_loss, bbox_loss, landmark_loss, L2_loss, lr, acc = session.run([class_loss_op, bounding_box_loss_op, landmark_loss_op, L2_loss_op, lr_op, class_accuracy_op],
+                                                             feed_dict={input_image: image_batch_array, target_label: label_batch_array, target_bounding_box: bbox_batch_array, target_landmarks: landmark_batch_array})                
+                			print("%s : Step: %d accuracy - %3f, class loss - %4f, bbox loss - %4f, landmark loss - %4f, L2 loss - %4f, lr - %f " % (
                 			datetime.now(), step+1, acc, cls_loss, bbox_loss, landmark_loss, L2_loss, lr))
-            			#save every two epochs
+
             			if( i * self._config.BATCH_SIZE > num*2 ):
                 			epoch = epoch + 1
                 			i = 0
-                			saver.save(sess, network_train_file_name, global_step=epoch*2)
+                			saver.save(session, network_train_file_name, global_step=epoch*2)
             			writer.add_summary(summary,global_step=step)
 		except tf.errors.OutOfRangeError:
        			print("Error")
 		finally:
-       			coord.request_stop()
+       			coordinator.request_stop()
        			writer.close()
-		coord.join(threads)
-		sess.close()
+		coordinator.join(threads)
+		session.close()
 
 		return(True)
 
