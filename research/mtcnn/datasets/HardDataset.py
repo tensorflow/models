@@ -190,6 +190,31 @@ class HardDataset(BasicDataset):
 
 		return(True)
 
+	def _generate_dataset(self, target_root_dir):
+		tensorflow_dir = os.path.join(target_root_dir, 'tensorflow')
+		if(not os.path.exists(tensorflow_dir)):
+			os.makedirs(tensorflow_dir)
+
+		tensorflow_dataset = TensorFlowDataset()
+
+		file_name = os.path.join(target_root_dir, 'positive.txt')
+		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'positive')):
+			return(False) 
+
+		file_name = os.path.join(target_root_dir, 'part.txt')
+		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'part')):
+			return(False) 
+
+		file_name = os.path.join(target_root_dir, 'negative.txt')
+		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'negative')):
+			return(False) 
+
+		file_name = os.path.join(target_root_dir, 'image_list.txt')
+		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'image_list')):
+			return(False) 
+
+		return(True)
+
 	def generate(self, annotation_image_dir, annotation_file_name, landmark_image_dir, landmark_file_name, model_train_dir, minimum_face, target_root_dir):
 
 		if(not os.path.isfile(annotation_file_name)):
@@ -223,7 +248,7 @@ class HardDataset(BasicDataset):
 		if(not self._generate_image_list(target_root_dir)):
 			return(False)
 
-		if(not super(HardDataset, self)._generate_dataset(target_root_dir)):
+		if(not self._generate_dataset(target_root_dir)):
 			return(False)
 
 		return(True)

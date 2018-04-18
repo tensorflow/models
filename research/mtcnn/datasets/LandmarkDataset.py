@@ -119,7 +119,7 @@ class LandmarkDataset(object):
 
 			if argument:
             			number_of_input_images = number_of_input_images + 1
-            			if( number_of_input_images % 100 == 0 ):
+            			if( number_of_input_images % 1000 == 0 ):
                 			print( number_of_input_images, " number of input images are done.")
 
             			x1, y1, x2, y2 = gt_box

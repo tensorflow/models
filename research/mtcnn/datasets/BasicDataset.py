@@ -56,22 +56,20 @@ class BasicDataset(AbstractDataset):
     		nums = [len(negative_data), len(positive_data), len(part_data)]
     		ratio = [3, 1, 1]
     		base_number_of_images = 25000
-    		print(len(negative_data), len(positive_data), len(part_data), base_number_of_images)
 
-    		if len(negative_data) > base_number_of_images * 3:
-        		neg_keep = npr.choice(len(negative_data), size=base_number_of_images * 3, replace=True)
+    		if(len(negative_data) > base_number_of_images * 3 ):
+        		negative_number_of_images = npr.choice(len(negative_data), size=base_number_of_images * 3, replace=True)
     		else:
-        		neg_keep = npr.choice(len(negative_data), size=len(negative_data), replace=True)
+        		negative_number_of_images = npr.choice(len(negative_data), size=len(negative_data), replace=True)
 
-    		pos_keep = npr.choice(len(positive_data), size=base_number_of_images, replace=True)
-    		part_keep = npr.choice(len(part_data), size=base_number_of_images, replace=True)
-    		print(len(neg_keep), len(pos_keep), len(part_keep))
+    		positive_number_of_images = npr.choice(len(positive_data), size=base_number_of_images, replace=True)
+    		part_number_of_images = npr.choice(len(part_data), size=base_number_of_images, replace=True)
 
-    		for i in pos_keep:
+    		for i in positive_number_of_images:
         		image_list_file.write(positive_data[i])
-    		for i in neg_keep:
+    		for i in negative_number_of_images:
         		image_list_file.write(negative_data[i])
-    		for i in part_keep:
+    		for i in part_number_of_images:
         		image_list_file.write(part_data[i])
 
     		for item in landmark_data:
@@ -86,18 +84,6 @@ class BasicDataset(AbstractDataset):
 
 		tensorflow_dataset = TensorFlowDataset()
 
-		file_name = os.path.join(target_root_dir, 'positive.txt')
-		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'positive')):
-			return(False) 
-
-		file_name = os.path.join(target_root_dir, 'part.txt')
-		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'part')):
-			return(False) 
-
-		file_name = os.path.join(target_root_dir, 'negative.txt')
-		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'negative')):
-			return(False) 
-
 		file_name = os.path.join(target_root_dir, 'image_list.txt')
 		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'image_list')):
 			return(False) 
@@ -108,13 +94,11 @@ class BasicDataset(AbstractDataset):
 
 		if(not os.path.isfile(annotation_file_name)):
 			return(False)
-
 		if(not os.path.exists(annotation_image_dir)):
 			return(False)
 
 		if(not os.path.isfile(landmark_file_name)):
 			return(False)
-
 		if(not os.path.exists(landmark_image_dir)):
 			return(False)
 

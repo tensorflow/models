@@ -205,7 +205,8 @@ class WIDERFaceDataset(object):
                 				cv2.imwrite(file_path, resized_image)
                 				part_images += 1
 
-				print('%s number of images are done, positive - %s,  part - %s, negative - %s' % (annotation_number, positive_images, part_images, negative_images))
+				if(annotation_number % 1000 == 0 ):
+					print('%s number of images are done - positive - %s,  part - %s, negative - %s' % (annotation_number, positive_images, part_images, negative_images))
 
 		negative_file.close()
 		part_file.close()
