@@ -1,4 +1,4 @@
-# Copyright 2018 MLBenchmark Group. All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Defines DualNet model, the architecture of the policy and value network.
 
-Both the policy and value networks share ResNet as a majority of their
-architecture. The neural network consists of a residual tower (ResNet) and two
-separate "heads" for computing the policy and value respectively.
+The input to the neural network is a [board_size * board_size * 17] image stack
+comprising 17 binary feature planes. 8 feature planes consist of binary values
+indicating the presence of the current player's stones; A further 8 feature
+planes represent the corresponding features for the opponent's stones; The final
+feature plane represents the color to play, and has a constant value of either 1
+if black is to play or 0 if white to play. Check 'features.py' for more details.
+
+In MiniGo implementation, the input features are processed by a residual tower
+that consists of a single convolutional block followed by either 9 or 19
+residual blocks.
+The convolutional block applies the following modules:
+  1. A convolution of num_filter filters of kernel size 3 x 3 with stride 1
+  2. Batch normalization
+  3. A rectifier non-linearity
+Each residual block applies the following modules sequentially to its input:
+  1. A convolution of num_filter filters of kernel size 3 x 3 with stride 1
+  2. Batch normalization
+  3. A rectifier non-linearity
+  4. A convolution of num_filter filters of kernel size 3 x 3 with stride 1
+  5. Batch normalization
+  6. A skip connection that adds the input to the block
+  7. A rectifier non-linearity
+Note: num_filter is 128 for 19 x 19 board size, and 32 for 9 x 9 board size.
+
+The output of the residual tower is passed into two separate "heads" for
+computing the policy and value respectively. The policy head applies the
+following modules:
+  1. A convolution of 2 filters of kernel size 1 x 1 with stride 1
+  2. Batch normalization
+  3. A rectifier non-linearity
+  4. A fully connected linear layer that outputs a vector of size 19^2 + 1 = 362
+  corresponding to logit probabilities for all intersections and the pass move
+The value head applies the following modules:
+  1. A convolution of 1 filter of kernel size 1 x 1 with stride 1
+  2. Batch normalization
+  3. A rectifier non-linearity
+  4. A fully connected linear layer to a hidden layer of size 256 for 19 x 19
+    board size and 64 for 9x9 board size
+  5. A rectifier non-linearity
+  6. A fully connected linear layer to a scalar
+  7. A tanh non-linearity outputting a scalar in the range [-1, 1]
+
+The overall network depth, in the 10 or 20 block network, is 19 or 39
+parameterized layers respectively for the residual tower, plus an additional 2
+layers for the policy head and 3 layers for the value head.
 """
 
 from __future__ import absolute_import
@@ -49,7 +90,7 @@ def _conv_block(inputs, filters, kernel_size, training):
 
   Args:
     inputs: A tensor representing a batch of input features with shape
-      [BATCH_SIZE, go.N, go.N, features.NEW_FEATURES_PLANES].
+      [BATCH_SIZE, board_size, board_size, features.NEW_FEATURES_PLANES].
     filters: The number of filters for network layers in residual tower.
     kernel_size: The kernel to be used in conv2d.
     training: Either True or False, whether we are currently training the
@@ -71,7 +112,7 @@ def _res_block(inputs, filters, kernel_size, training):
 
   Args:
     inputs: A tensor representing a batch of input features with shape
-      [BATCH_SIZE, go.N, go.N, features.NEW_FEATURES_PLANES].
+      [BATCH_SIZE, board_size, board_size, features.NEW_FEATURES_PLANES].
     filters: The number of filters for network layers in residual tower.
     kernel_size: The kernel to be used in conv2d.
     training: Either True or False, whether we are currently training the
@@ -94,7 +135,7 @@ def _res_block(inputs, filters, kernel_size, training):
 class Model(object):
   """Base class for building the DualNet Model."""
 
-  def __init__(self, num_filters, num_shared_layers, fc_width, go_size):
+  def __init__(self, num_filters, num_shared_layers, fc_width, board_size):
     """Initialize a model for computing the policy and value in RL.
 
     Args:
@@ -104,12 +145,12 @@ class Model(object):
         and 39. Here we use 19 for 19x19 size and 9 for 9x9 size because it's
         faster to train.
       fc_width: Dimensionality of the fully connected linear layer.
-      go_size: A single integer for the board size.
+      board_size: A single integer for the board size.
     """
     self.num_filters = num_filters
     self.num_shared_layers = num_shared_layers
     self.fc_width = fc_width
-    self.go_size = go_size
+    self.board_size = board_size
     self.kernel_size = [3, 3]  # kernel size is from AGZ paper
 
   def __call__(self, inputs, training):
@@ -117,12 +158,12 @@ class Model(object):
 
     Args:
       inputs: A Tensor representing a batch of input Go features with shape
-        [BATCH_SIZE, go_size, go_size, features.NEW_FEATURES_PLANES]
+        [BATCH_SIZE, board_size, board_size, features.NEW_FEATURES_PLANES]
       training: A boolean. Set to True to add operations required only when
         training the classifier.
 
     Returns:
-      policy_logits: A vector of size self.go_size * self.go_size + 1
+      policy_logits: A vector of size self.board_size * self.board_size + 1
         corresponding to the policy logit probabilities for all intersections
         and the pass move.
       value_logits: A scalar for the value logits output
@@ -143,8 +184,8 @@ class Model(object):
                                 center=False, scale=False)
     policy_relu = tf.nn.relu(policy_batchn)
     policy_logits = tf.layers.dense(
-        tf.reshape(policy_relu, [-1, self.go_size * self.go_size * 2]),
-        self.go_size * self.go_size + 1)
+        tf.reshape(policy_relu, [-1, self.board_size * self.board_size * 2]),
+        self.board_size * self.board_size + 1)
 
     # value head
     value_conv2d = _conv2d(shared_output, filters=1, kernel_size=[1, 1])
@@ -152,7 +193,7 @@ class Model(object):
                                center=False, scale=False)
     value_relu = tf.nn.relu(value_batchn)
     value_fc_hidden = tf.nn.relu(tf.layers.dense(
-        tf.reshape(value_relu, [-1, self.go_size * self.go_size]),
+        tf.reshape(value_relu, [-1, self.board_size * self.board_size]),
         self.fc_width))
     value_logits = tf.reshape(tf.layers.dense(value_fc_hidden, 1), [-1])
 
@@ -164,39 +205,43 @@ def model_fn(features, labels, mode, params, config=None):  # pylint: disable=un
 
   Args:
     features: tensor with shape
-      [BATCH_SIZE, self.go_size, self.go_size, features.NEW_FEATURES_PLANES]
+      [BATCH_SIZE, self.board_size, self.board_size,
+      features.NEW_FEATURES_PLANES]
     labels: dict from string to tensor with shape
-      'pi_tensor': [BATCH_SIZE, self.go_size * self.go_size + 1]
+      'pi_tensor': [BATCH_SIZE, self.board_size * self.board_size + 1]
       'value_tensor': [BATCH_SIZE]
     mode: a tf.estimator.ModeKeys (batchnorm params update for TRAIN only)
-    params: a dict of hyperparams
+    params: an object of hyperparams
     config: ignored; is required by Estimator API.
   Returns:
     EstimatorSpec parameterized according to the input params and the current
     mode.
   """
   model = Model(params.num_filters, params.num_shared_layers, params.fc_width,
-                params.go_size)
+                params.board_size)
   policy_logits, value_logits = model(
       features, mode == tf.estimator.ModeKeys.TRAIN)
 
   policy_output = tf.nn.softmax(policy_logits, name='policy_output')
   value_output = tf.nn.tanh(value_logits, name='value_output')
 
-  # Calculate model loss (combined_cost)
+  # Calculate model loss. The loss function sums over the mean-squared error,
+  # the cross-entropy losses and the l2 regularization term.
+  # Cross-entropy of policy
+  policy_entropy = -tf.reduce_mean(tf.reduce_sum(
+      policy_output * tf.log(policy_output), axis=1))
   policy_cost = tf.reduce_mean(
       tf.nn.softmax_cross_entropy_with_logits(
           logits=policy_logits, labels=labels['pi_tensor']))
+  # Mean squared error
   value_cost = tf.reduce_mean(
       tf.square(value_output - labels['value_tensor']))
+  # L2 term
   l2_cost = params.l2_strength * tf.add_n(
       [tf.nn.l2_loss(v) for v in tf.trainable_variables()
        if 'bias' not in v.name])
+  # The loss function
   combined_cost = policy_cost + value_cost + l2_cost
-
-  # For logging purpose
-  policy_entropy = -tf.reduce_mean(tf.reduce_sum(
-      policy_output * tf.log(policy_output), axis=1))
 
   # Get model train ops
   global_step = tf.train.get_or_create_global_step()

@@ -1,33 +1,38 @@
-# Copyright 2018 Google LLC
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# ==============================================================================
+"""Define symmetries for feature transformation.
+
+Allowable symmetries:
+  identity [12][34]
+  rot90 [24][13]
+  rot180 [43][21]
+  rot270 [31][42]
+  flip [13][24]
+  fliprot90 [34][12]
+  fliprot180 [42][31]
+  fliprot270 [21][43]
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import functools
-import numpy as np
 import random
-import go
 
-"""
-Allowable symmetries:
-identity [12][34]
-rot90 [24][13]
-rot180 [43][21]
-rot270 [31][42]
-flip [13][24]
-fliprot90 [34][12]
-fliprot180 [42][31]
-fliprot270 [21][43]
-"""
+import numpy as np
+
 INVERSES = {
     'identity': 'identity',
     'rot90': 'rot270',
@@ -53,30 +58,29 @@ IMPLS = {
 assert set(INVERSES.keys()) == set(IMPLS.keys())
 SYMMETRIES = list(INVERSES.keys())
 
+
 # A symmetry is just a string describing the transformation.
-
-
 def invert_symmetry(s):
-    return INVERSES[s]
+  return INVERSES[s]
 
 
 def apply_symmetry_feat(s, features):
-    return IMPLS[s](features)
+  return IMPLS[s](features)
 
 
-def apply_symmetry_pi(s, pi):
-    pi = np.copy(pi)
-    # rotate all moves except for the pass move at end
-    pi[:-1] = IMPLS[s](pi[:-1].reshape([go.N, go.N])).ravel()
-    return pi
+def apply_symmetry_pi(board_size, s, pi):
+  pi = np.copy(pi)
+  # rotate all moves except for the pass move at end
+  pi[:-1] = IMPLS[s](pi[:-1].reshape([board_size, board_size])).ravel()
+  return pi
 
 
 def randomize_symmetries_feat(features):
-    symmetries_used = [random.choice(SYMMETRIES) for f in features]
-    return symmetries_used, [apply_symmetry_feat(s, f)
-                             for s, f in zip(symmetries_used, features)]
+  symmetries_used = [random.choice(SYMMETRIES) for f in features]
+  return symmetries_used, [apply_symmetry_feat(s, f)
+                           for s, f in zip(symmetries_used, features)]
 
 
-def invert_symmetries_pi(symmetries, pis):
-    return [apply_symmetry_pi(invert_symmetry(s), pi)
-            for s, pi in zip(symmetries, pis)]
+def invert_symmetries_pi(board_size, symmetries, pis):
+  return [apply_symmetry_pi(board_size, invert_symmetry(s), pi)
+          for s, pi in zip(symmetries, pis)]
