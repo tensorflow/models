@@ -103,8 +103,13 @@ def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose'):
       net = tf.pad(net, spatial_pad_1, 'REFLECT')
       net = layers.conv2d(net, num_outputs, kernel_size=[3, 3], padding='valid')
     elif method == 'conv2d_transpose':
+      # This corrects 1 pixel offset for images with even width and height.
+      # conv2d is left aligned and conv2d_transpose is right aligned for even
+      # sized images (while doing 'SAME' padding).
+      # Note: This doesn't reflect actual model in paper.
       net = layers.conv2d_transpose(
-          net, num_outputs, kernel_size=[3, 3], stride=stride, padding='same')
+          net, num_outputs, kernel_size=[3, 3], stride=stride, padding='valid')
+      net = net[:, 1:, 1:, :]
     else:
       raise ValueError('Unknown method: [%s]', method)
 
