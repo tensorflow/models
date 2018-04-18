@@ -83,24 +83,24 @@ which includes the timing information for each of the models:
 
 ```
 ==========================
-network: native_resnetv2_imagenet_frozen_graph.pb,	 batchsize 128, steps 100
-  fps 	median: 468.2, 	mean: 469.0, 	uncertainty: 0.3, 	jitter: 1.6
-  latency 	median: 0.27336, 	mean: 0.27290, 	99th_p: 0.27475, 	99th_uncertainty: 0.00027
+network: native_resnetv2_imagenet_frozen_graph.pb,	 batchsize 128, steps 3
+  fps 	median: 930.2, 	mean: 934.9, 	uncertainty: 5.9, 	jitter: 3.3
+  latency 	median: 0.13760, 	mean: 0.13692, 	99th_p: 0.13793, 	99th_uncertainty: 0.00271
 
 ==========================
-network: tftrt_fp32_resnetv2_imagenet_frozen_graph.pb,	 batchsize 128, steps 100
-  fps 	median: 627.7, 	mean: 628.9, 	uncertainty: 0.5, 	jitter: 3.6
-  latency 	median: 0.20392, 	mean: 0.20354, 	99th_p: 0.20608, 	99th_uncertainty: 0.00083
+network: tftrt_fp32_resnetv2_imagenet_frozen_graph.pb,	 batchsize 128, steps 3
+  fps 	median: 1160.2, 	mean: 1171.8, 	uncertainty: 18.0, 	jitter: 17.8
+  latency 	median: 0.11033, 	mean: 0.10928, 	99th_p: 0.11146, 	99th_uncertainty: 0.00110
 
 ==========================
-network: tftrt_fp16_resnetv2_imagenet_frozen_graph.pb,	 batchsize 128, steps 100
-  fps 	median: 626.8, 	mean: 628.8, 	uncertainty: 0.5, 	jitter: 3.1
-  latency 	median: 0.20421, 	mean: 0.20359, 	99th_p: 0.20555, 	99th_uncertainty: 0.00019
+network: tftrt_fp16_resnetv2_imagenet_frozen_graph.pb,	 batchsize 128, steps 3
+  fps 	median: 2007.2, 	mean: 2007.4, 	uncertainty: 0.4, 	jitter: 0.7
+  latency 	median: 0.06377, 	mean: 0.06376, 	99th_p: 0.06378, 	99th_uncertainty: 0.00001
 
 ==========================
-network: tftrt_int8_resnetv2_imagenet_frozen_graph.pb,	 batchsize 128, steps 100
-  fps 	median: 1362.4, 	mean: 1368.1, 	uncertainty: 2.2, 	jitter: 14.4
-  latency 	median: 0.09396, 	mean: 0.09359, 	99th_p: 0.09546, 	99th_uncertainty: 0.00021
+network: tftrt_int8_resnetv2_imagenet_frozen_graph.pb,	 batchsize 128, steps 3
+  fps 	median: 2970.2, 	mean: 2971.4, 	uncertainty: 109.8, 	jitter: 279.4
+  latency 	median: 0.04309, 	mean: 0.04320, 	99th_p: 0.04595, 	99th_uncertainty: 0.00286
 ```
 
 The script will also output the GraphDefs used for each of the modes run,
