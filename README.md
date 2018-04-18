@@ -9,3 +9,11 @@ The [research models](https://github.com/tensorflow/models/tree/master/research)
 The [samples folder](samples) contains code snippets and smaller models that demonstrate features of TensorFlow, including code presented in various blog posts.
 
 The [tutorials folder](tutorials) is a collection of models described in the [TensorFlow tutorials](https://www.tensorflow.org/tutorials/).
+
+## Contribution guidelines
+
+If you want to contribute to models, be sure to review the [contribution guidelines](CONTRIBUTING.md).
+
+## License
+
+[Apache License 2.0](LICENSE)
