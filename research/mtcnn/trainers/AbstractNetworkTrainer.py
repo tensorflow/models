@@ -17,13 +17,35 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from easydict import EasyDict as edict
+
+from nets.PNet import PNet
+from nets.RNet import RNet
+from nets.ONet import ONet
+
 class AbstractNetworkTrainer(object):
 
-	def __init__(self):
-		pass
+	def __init__(self, network_name):
+		if(network_name == 'PNet'):
+			self._network = PNet()
+		elif (network_name == 'RNet'):
+			self._network = RNet()
+		elif (network_name == 'ONet'):
+			self._network = ONet()
+
+		self._config = edict()
+
+		self._config.BATCH_SIZE = 384
+		self._config.CLS_OHEM = True
+		self._config.CLS_OHEM_RATIO = 0.7
+		self._config.BBOX_OHEM = False
+		self._config.BBOX_OHEM_RATIO = 0.7
+
+		self._config.EPS = 1e-14
+		self._config.LR_EPOCH = [6,16,20]
 
 	def network_name(self):
-		raise NotImplementedError('Must be implemented by the subclass.')
+		return(self._network.name())
 
 	def train(self):
 		raise NotImplementedError('Must be implemented by the subclass.')
