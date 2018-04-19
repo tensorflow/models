@@ -221,8 +221,7 @@ class WideDeepArgParser(argparse.ArgumentParser):
   """Argument parser for running the wide deep model."""
 
   def __init__(self):
-    super(WideDeepArgParser, self).__init__(parents=[
-        parsers.BaseParser(multi_gpu=False, num_gpu=False)])
+    super(WideDeepArgParser, self).__init__(parents=[parsers.BaseParser()])
     self.add_argument(
         '--model_type', '-mt', type=str, default='wide_deep',
         choices=['wide', 'deep', 'wide_deep'],
