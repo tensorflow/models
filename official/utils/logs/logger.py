@@ -122,7 +122,7 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
   """Class to log the benchmark information to local disk."""
 
   def __init__(self, logging_dir):
-    super(BaseBenchmarkLogger, self).__init__()
+    super(BenchmarkFileLogger, self).__init__()
     self._logging_dir = logging_dir
     if not tf.gfile.IsDirectory(self._logging_dir):
       tf.gfile.MakeDirs(self._logging_dir)
@@ -189,9 +189,9 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
 def _gather_run_info(model_name):
   """Collect the benchmark run information for the local environment."""
   run_info = {
-    "model_name": model_name,
-    "machine_config": {},
-    "run_date": datetime.datetime.now().strftime(_DATE_TIME_FORMAT_PATTERN)}
+      "model_name": model_name,
+      "machine_config": {},
+      "run_date": datetime.datetime.now().strftime(_DATE_TIME_FORMAT_PATTERN)}
   _collect_tensorflow_info(run_info)
   _collect_tensorflow_environment_variables(run_info)
   _collect_cpu_info(run_info)
