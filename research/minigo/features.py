@@ -89,7 +89,3 @@ def extract_features(board_size, position, features=None):
     features = NEW_FEATURES
   return np.concatenate([feature(board_size, position) for feature in features],
                         axis=2)
-
-
-if __name__ == '__main__':
-  tf.test.main()
