@@ -53,6 +53,7 @@ def config_benchmark_logger(logging_dir):
       _benchmark_logger = BaseBenchmarkLogger()
   finally:
     _logger_lock.release()
+  return _benchmark_logger
 
 
 def get_benchmark_logger():
@@ -64,9 +65,6 @@ def get_benchmark_logger():
 
 class BaseBenchmarkLogger(object):
   """Class to log the benchmark information to STDOUT."""
-
-  def __init__(self):
-    pass
 
   def log_evaluation_result(self, eval_results):
     """Log the evaluation result.
@@ -105,10 +103,7 @@ class BaseBenchmarkLogger(object):
       tf.logging.warning(
           "Metric value to log should be a number. Got %s", type(value))
       return
-    if extras:
-      extras = [{"name": k, "value": v} for k, v in sorted(extras.items())]
-    else:
-      extras = []
+    extras = _convert_to_json_dict(extras)
 
     tf.logging.info("Benchmark metric: "
                     "Name %s, value %d, unit %s, global_step %d, extras %s",
@@ -145,10 +140,8 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
       tf.logging.warning(
           "Metric value to log should be a number. Got %s", type(value))
       return
-    if extras:
-      extras = [{"name": k, "value": v} for k, v in sorted(extras.items())]
-    else:
-      extras = []
+    extras = _convert_to_json_dict(extras)
+
     with tf.gfile.GFile(
         os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
       metric = {
@@ -264,3 +257,10 @@ def _parse_gpu_model(physical_device_desc):
     if k.strip() == "name":
       return v.strip()
   return None
+
+
+def _convert_to_json_dict(input_dict):
+  if input_dict:
+    return [{"name": k, "value": v} for k, v in sorted(input_dict.items())]
+  else:
+    return []

@@ -381,8 +381,7 @@ def resnet_main(flags, model_function, input_function, shape=None):
           'dtype': flags.dtype
       })
 
-  logger.config_benchmark_logger(flags.benchmark_log_dir)
-  benchmark_logger = logger.get_benchmark_logger()
+  benchmark_logger = logger.config_benchmark_logger(flags.benchmark_log_dir)
   benchmark_logger.log_run_info('resnet')
 
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
