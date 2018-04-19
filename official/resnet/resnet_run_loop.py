@@ -421,7 +421,6 @@ def resnet_main(flags, model_function, input_function, shape=None):
     # global_step count.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                        steps=flags.max_train_steps)
-    print(eval_results)
 
     benchmark_logger.log_evaluation_result(eval_results)
 
