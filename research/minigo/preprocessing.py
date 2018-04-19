@@ -190,7 +190,8 @@ def make_dataset_from_sgf(board_size, sgf_filename, tf_record):
 def _make_tf_example_from_pwc(board_size, position_w_context):
   features = features_lib.extract_features(
       board_size, position_w_context.position)
-  pi = _one_hot(board_size, coords.to_flat(position_w_context.next_move))
+  pi = _one_hot(board_size, coords.to_flat(
+      board_size, position_w_context.next_move))
   value = position_w_context.result
   return make_tf_example(features, pi, value)
 

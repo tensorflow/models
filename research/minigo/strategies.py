@@ -92,7 +92,6 @@ class MCTSPlayerMixin(object):
     self.result = 0
     self.result_string = None
     self.resign_threshold = -abs(resign_threshold)
-    super(MCTSPlayerMixin, self).__init__(board_size)
 
   def initialize_game(self, position=None):
     if position is None:

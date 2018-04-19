@@ -138,7 +138,8 @@ def is_eyeish(board_size, board, c):
   if color is None:
     return None
   diagonal_faults = 0
-  _, diagonals = get_neighbors_diagonals[c]
+  _, all_diagonals = get_neighbors_diagonals(board_size)
+  diagonals = all_diagonals[c]
   if len(diagonals) < 4:
     diagonal_faults += 1
   for d in diagonals:
@@ -481,7 +482,7 @@ class Position(object):
     if not self.is_move_legal(c):
       raise IllegalMove('{} move at {} is illegal: \n{}'.format(
           'Black' if self.to_play == BLACK else 'White',
-          coords.to_kgs(c), self))
+          coords.to_kgs(self.board_size, c), self))
 
     potential_ko = is_koish(self.board_size, self.board, c)
 

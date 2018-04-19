@@ -110,29 +110,27 @@ def sgf_prop_get(props, key, default):
 def handle_node(board_size, pos, node):
   'A node can either add B+W stones, play as B, or play as W.'
   props = node.properties
-  black_stones_added = [coords.from_sgf(board_size,
-    c) for c in props.get('AB', [])]
-  white_stones_added = [coords.from_sgf(board_size,
-    c) for c in props.get('AW', [])]
+  black_stones_added = [coords.from_sgf(c) for c in props.get('AB', [])]
+  white_stones_added = [coords.from_sgf(c) for c in props.get('AW', [])]
   if black_stones_added or white_stones_added:
-    return add_stones(pos, black_stones_added, white_stones_added)
+    return add_stones(board_size, pos, black_stones_added, white_stones_added)
   # If B/W props are not present, then there is no move. But if it is present
   # and equal to the empty string, then the move was a pass.
   elif 'B' in props:
-    black_move = coords.from_sgf(board_size, props.get('B', [''])[0])
+    black_move = coords.from_sgf(props.get('B', [''])[0])
     return pos.play_move(black_move, color=go.BLACK)
   elif 'W' in props:
-    white_move = coords.from_sgf(board_size, props.get('W', [''])[0])
+    white_move = coords.from_sgf(props.get('W', [''])[0])
     return pos.play_move(white_move, color=go.WHITE)
   else:
     return pos
 
 
-def add_stones(pos, black_stones_added, white_stones_added):
+def add_stones(board_size, pos, black_stones_added, white_stones_added):
   working_board = np.copy(pos.board)
   go.place_stones(working_board, go.BLACK, black_stones_added)
   go.place_stones(working_board, go.WHITE, white_stones_added)
-  new_position = Position(board=working_board, n=pos.n, komi=pos.komi,
+  new_position = Position(board_size, board=working_board, n=pos.n, komi=pos.komi,
               caps=pos.caps, ko=pos.ko, recent=pos.recent, to_play=pos.to_play)
   return new_position
 
@@ -140,9 +138,9 @@ def add_stones(pos, black_stones_added, white_stones_added):
 def get_next_move(board_size, node):
   props = node.next.properties
   if 'W' in props:
-    return coords.from_sgf(board_size, props['W'][0])
+    return coords.from_sgf(props['W'][0])
   else:
-    return coords.from_sgf(board_size, props['B'][0])
+    return coords.from_sgf(props['B'][0])
 
 
 def maybe_correct_next(pos, next_node):
@@ -174,7 +172,7 @@ def replay_sgf(board_size, sgf_contents):
     komi = float(sgf_prop(props.get('KM')))
   result = utils.parse_game_result(sgf_prop(props.get('RE')))
 
-  pos = Position(komi=komi)
+  pos = Position(board_size, komi=komi)
   current_node = game.root
   while pos is not None and current_node.next is not None:
     pos = handle_node(board_size, pos, current_node)
