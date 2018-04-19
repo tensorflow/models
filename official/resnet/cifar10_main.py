@@ -103,7 +103,8 @@ def preprocess_image(image, is_training):
   return image
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1,
+             num_parallel_calls=1, multi_gpu=False):
   """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
@@ -111,6 +112,12 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
+    num_parallel_calls: The number of records that are processed in parallel.
+      This can be optimized per data set but for generally homogeneous data
+      sets, should be approximately the number of available CPU cores.
+    multi_gpu: Whether this is run multi-GPU. Note that this is only required
+      currently to handle the batch leftovers, and can be removed
+      when that is handled directly by Estimator.
 
   Returns:
     A dataset that can be used for iteration.
@@ -118,10 +125,12 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   filenames = get_filenames(is_training, data_dir)
   dataset = tf.data.FixedLengthRecordDataset(filenames, _RECORD_BYTES)
 
+  num_images = is_training and _NUM_IMAGES['train'] or _NUM_IMAGES['validation']
+
   return resnet_run_loop.process_record_dataset(
       dataset, is_training, batch_size, _NUM_IMAGES['train'],
-      parse_record, num_epochs,
-  )
+      parse_record, num_epochs, num_parallel_calls,
+      examples_per_epoch=num_images, multi_gpu=multi_gpu)
 
 
 def get_synth_input_fn():
@@ -212,6 +221,7 @@ def cifar10_model_fn(features, labels, mode, params):
       version=params['version'],
       loss_scale=params['loss_scale'],
       loss_filter_fn=loss_filter_fn,
+      multi_gpu=params['multi_gpu'],
       dtype=params['dtype']
   )
 
