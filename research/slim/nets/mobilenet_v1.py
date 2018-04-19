@@ -277,7 +277,7 @@ def mobilenet_v1_base(inputs,
           if use_explicit_padding:
             net = _fixed_padding(net, conv_def.kernel, layer_rate)
           net = slim.separable_conv2d(net, None, conv_def.kernel,
-                                      depth_multiplier=1,
+                                      depth_multiplier,
                                       stride=layer_stride,
                                       rate=layer_rate,
                                       normalizer_fn=slim.batch_norm,
