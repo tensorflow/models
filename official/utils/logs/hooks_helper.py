@@ -27,6 +27,7 @@ from __future__ import print_function
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.logs import hooks
+from official.utils.logs import logger
 from official.utils.logs import metric_hook
 
 _TENSORS_TO_LOG = dict((x, x) for x in ['learning_rate',
@@ -140,13 +141,12 @@ def get_logging_metric_hook(benchmark_log_dir=None,
     Returns a ProfilerHook that writes out timelines that can be loaded into
     profiling tools like chrome://tracing.
   """
-  if benchmark_log_dir is None:
-    raise ValueError("metric_log_dir should be provided to use metric logger")
+  logger.config_benchmark_logger(benchmark_log_dir)
   if tensors_to_log is None:
     tensors_to_log = _TENSORS_TO_LOG
   return metric_hook.LoggingMetricHook(
       tensors=tensors_to_log,
-      log_dir=benchmark_log_dir,
+      metric_logger=logger.get_benchmark_logger(),
       every_n_secs=every_n_secs)
 
 

@@ -398,11 +398,8 @@ def resnet_main(flags, model_function, input_function, shape=None):
           'dtype': flags.dtype
       })
 
-  if flags.benchmark_log_dir is not None:
-    benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
-    benchmark_logger.log_run_info('resnet')
-  else:
-    benchmark_logger = None
+  benchmark_logger = logger.config_benchmark_logger(flags.benchmark_log_dir)
+  benchmark_logger.log_run_info('resnet')
 
   for _ in range(flags.train_epochs // flags.epochs_between_evals):
     train_hooks = hooks_helper.get_train_hooks(
@@ -434,10 +431,8 @@ def resnet_main(flags, model_function, input_function, shape=None):
     # global_step count.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                        steps=flags.max_train_steps)
-    print(eval_results)
 
-    if benchmark_logger:
-      benchmark_logger.log_estimator_evaluation_result(eval_results)
+    benchmark_logger.log_evaluation_result(eval_results)
 
     if model_helpers.past_stop_threshold(
         flags.stop_threshold, eval_results['accuracy']):
