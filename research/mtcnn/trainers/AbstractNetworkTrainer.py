@@ -20,20 +20,12 @@ from __future__ import print_function
 import os
 from easydict import EasyDict as edict
 
-from nets.PNet import PNet
-from nets.RNet import RNet
-from nets.ONet import ONet
+from nets.NetworkFactory import NetworkFactory
 
 class AbstractNetworkTrainer(object):
 
 	def __init__(self, network_name):
-		if(network_name == 'PNet'):
-			self._network = PNet(True)
-		elif (network_name == 'RNet'):
-			self._network = RNet(True)
-		elif (network_name == 'ONet'):
-			self._network = ONet(True)
-
+		self._network = NetworkFactory.network(network_name, True)
 		self._config = edict()
 
 		self._config.BATCH_SIZE = 384
