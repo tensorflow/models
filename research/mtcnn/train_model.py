@@ -20,17 +20,17 @@ Usage:
 
 $ python train_model.py \
 	--network_name=PNet \ 
-	--model_train_dir=/workspace/train/mtcnn \
+	--train_root_dir=/workspace/train/mtcnn \
 	--dataset_dir=/workspace/datasets/mtcnn
 
 $ python train_model.py \
 	--network_name=RNet \ 
-	--model_train_dir=/workspace/train/mtcnn \
+	--train_root_dir=/workspace/train/mtcnn \
 	--dataset_dir=/workspace/datasets/mtcnn 
 
 $ python train_model.py \
 	--network_name=ONet \ 
-	--model_train_dir=/workspace/train/mtcnn \
+	--train_root_dir=/workspace/train/mtcnn \
 	--dataset_dir=/workspace/datasets/mtcnn  
 ```
 """
@@ -49,7 +49,7 @@ def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--network_name', type=str, help='The name of the network.', default='PNet')  
 	parser.add_argument('--dataset_dir', type=str, help='The directory where the dataset files are stored.', default=None)
-	parser.add_argument('--model_train_dir', type=str, help='Input model train directory where model weights are saved.', default=None)
+	parser.add_argument('--train_root_dir', type=str, help='Input train root directory where model weights are saved.', default=None)
   
 	return(parser.parse_args(argv))
 
@@ -61,9 +61,9 @@ def main(args):
 		raise ValueError('You must supply input dataset directory with --dataset_dir.')
 
 	trainer = SimpleNetworkTrainer(args.network_name)
-	status = trainer.train(args.network_name, args.dataset_dir, args.model_train_dir)
+	status = trainer.train(args.network_name, args.dataset_dir, args.train_root_dir)
 	if(status):
-		print(args.network_name + ' - network is trained and weights are generated at ' + args.model_train_dir)
+		print(args.network_name + ' - network is trained and weights are generated at ' + args.train_root_dir)
 	else:
 		print('Error training the model.')
 

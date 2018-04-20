@@ -25,6 +25,7 @@ import cv2
 from datasets.BasicDataset import BasicDataset
 from datasets.WIDERFaceDataset import WIDERFaceDataset
 from datasets.InferenceBatch import InferenceBatch
+from datasets.TensorFlowDataset import TensorFlowDataset
 
 from nets.FaceDetector import FaceDetector
 

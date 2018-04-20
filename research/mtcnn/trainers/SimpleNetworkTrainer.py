@@ -84,8 +84,8 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		accuracy_op = tf.reduce_mean(tf.cast(tf.equal(label_picked,pred_picked),tf.float32))
     		return accuracy_op
 
-	def train(self, network_name, dataset_dir, model_train_dir):
-		network_train_dir = self.model_train_dir(model_train_dir)
+	def train(self, network_name, dataset_dir, train_root_dir):
+		network_train_dir = self.network_train_dir(train_root_dir)
 		if(not os.path.exists(network_train_dir)):
 			os.makedirs(network_train_dir)
 

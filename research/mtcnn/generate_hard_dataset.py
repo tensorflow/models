@@ -51,7 +51,7 @@ from datasets.HardDataset import HardDataset
 def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--network_name', type=str, help='The name of the network.', default='ONet')    
-	parser.add_argument('--model_train_dir', type=str, help='Input model train directory where model weights are saved.', default=None)
+	parser.add_argument('--train_root_dir', type=str, help='Input train root directory where model weights are saved.', default=None)
 
 	parser.add_argument('--annotation_file_name', type=str, help='Input WIDER face dataset annotations file.', default=None)
 	parser.add_argument('--annotation_image_dir', type=str, help='Input WIDER face dataset training image directory.', default=None)
@@ -82,7 +82,7 @@ def main(args):
 		raise ValueError('The network name should be either RNet or ONet.')
 
 	hard_dataset = HardDataset(args.network_name)
-	status = hard_dataset.generate(args.annotation_image_dir, args.annotation_file_name, args.landmark_image_dir, args.landmark_file_name, args.model_train_dir, args.minimum_face, args.target_root_dir)
+	status = hard_dataset.generate(args.annotation_image_dir, args.annotation_file_name, args.landmark_image_dir, args.landmark_file_name, args.train_root_dir, args.minimum_face, args.target_root_dir)
 	if(status):
 		print(args.network_name + ' network dataset is generated at ' + args.target_root_dir)
 	else:
