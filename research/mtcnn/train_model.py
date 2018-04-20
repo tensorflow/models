@@ -44,6 +44,8 @@ import os
 import argparse
 
 from trainers.SimpleNetworkTrainer import SimpleNetworkTrainer
+from trainers.HardNetworkTrainer import HardNetworkTrainer
+
 from nets.NetworkFactory import NetworkFactory
 
 def parse_arguments(argv):
@@ -69,7 +71,11 @@ def main(args):
 	else:
 		train_root_dir = NetworkFactory.model_train_dir()
 
-	trainer = SimpleNetworkTrainer(args.network_name)
+	if(args.network_name == 'PNet'):
+		trainer = SimpleNetworkTrainer(args.network_name)
+	else:
+		trainer = HardNetworkTrainer(args.network_name)
+		
 	status = trainer.train(args.network_name, args.dataset_root_dir, train_root_dir, args.base_learning_rate, args.max_number_of_epoch, args.log_every_n_steps)
 	if(status):
 		print(args.network_name + ' - network is trained and weights are generated at ' + train_root_dir)
