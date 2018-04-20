@@ -78,6 +78,14 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		accuracy_op = tf.reduce_mean(tf.cast(tf.equal(label_picked,pred_picked),tf.float32))
     		return accuracy_op
 
+	def _set_loss_ratio(self):
+		self._class_loss_ratio = 1.0
+		self._bbox_loss_ratio = 0.5
+		self._landmark_loss_ratio = 0.5
+
+	def _read_batch_data(self, tensorflow_dataset, tensorflow_file_name, image_size):
+		return(tensorflow_dataset.read_single_tfrecord(tensorflow_file_name, self._batch_size, image_size))
+
 	def train(self, network_name, dataset_root_dir, train_root_dir, base_learning_rate, max_number_of_epoch, log_every_n_steps):
 		network_train_dir = self.network_train_dir(train_root_dir)
 		if(not os.path.exists(network_train_dir)):
@@ -90,11 +98,9 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 
 		image_size = self.network_size()
 		tensorflow_dataset = TensorFlowDataset()
-		image_batch, label_batch, bbox_batch, landmark_batch = tensorflow_dataset.read_single_tfrecord(tensorflow_file_name, self._batch_size, image_size)
+		image_batch, label_batch, bbox_batch, landmark_batch = self._read_batch_data(tensorflow_dataset, tensorflow_file_name, image_size)
 
-		radio_cls_loss = 1.0
-		radio_bbox_loss = 0.5
-		radio_landmark_loss = 0.5
+		self._set_loss_ratio()
 
     		input_image = tf.placeholder(tf.float32, shape=[self._batch_size, image_size, image_size, 3], name='input_image')
     		target_label = tf.placeholder(tf.float32, shape=[self._batch_size], name='target_label')
@@ -109,7 +115,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		class_accuracy_op = self._calculate_accuracy(output_class_probability, target_label)
 		L2_loss_op = tf.add_n(tf.losses.get_regularization_losses())
 
-		train_op, learning_rate_op = self._train_model(base_learning_rate, radio_cls_loss*class_loss_op + radio_bbox_loss*bounding_box_loss_op + radio_landmark_loss*landmark_loss_op + L2_loss_op, num)
+		train_op, learning_rate_op = self._train_model(base_learning_rate, self._class_loss_ratio*class_loss_op + self._bbox_loss_ratio*bounding_box_loss_op + self._landmark_loss_ratio*landmark_loss_op + L2_loss_op, num)
 
     		init = tf.global_variables_initializer()
     		session = tf.Session()
