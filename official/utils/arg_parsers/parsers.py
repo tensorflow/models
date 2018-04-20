@@ -104,7 +104,7 @@ class BaseParser(argparse.ArgumentParser):
     batch_size: Create a flag to specify the batch size.
     multi_gpu: Create a flag to allow the use of all available GPUs.
     hooks: Create a flag to specify hooks for logging.
-    export_dir: Create a flag for exporting model to the SavedModel format.
+    export_dir: Create a flag to specify where a SavedModel should be exported.
   """
 
   def __init__(self, add_help=False, data_dir=True, model_dir=True,
