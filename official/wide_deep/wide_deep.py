@@ -175,6 +175,27 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   return dataset
 
 
+def export_model(model, model_type, export_dir):
+  """Export to SavedModel format.
+
+  Args:
+    model: Estimator object
+    model_type: string indicating model type. "wide", "deep" or "wide_deep"
+    export_dir: directory to export the model.
+  """
+  wide_columns, deep_columns = build_model_columns()
+  if model_type == 'wide':
+    columns = wide_columns
+  elif model_type == 'deep':
+    columns = deep_columns
+  else:
+    columns = wide_columns + deep_columns
+  feature_spec = tf.feature_column.make_parse_example_spec(columns)
+  fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      feature_spec)
+  model.export_savedmodel(export_dir, fn)
+
+
 def main(argv):
   parser = WideDeepArgParser()
   flags = parser.parse_args(args=argv[1:])
@@ -218,17 +239,7 @@ def main(argv):
 
   # Export the model
   if flags.export_dir is not None:
-    wide_columns, deep_columns = build_model_columns()
-    if flags.model_type == 'wide':
-      columns = wide_columns
-    elif flags.model_type == 'deep':
-      columns = deep_columns
-    else:
-      columns = wide_columns + deep_columns
-    feature_spec = tf.feature_column.make_parse_example_spec(columns)
-    fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
-        feature_spec)
-    model.export_savedmodel(flags.export_dir, fn)
+    export_model(model, flags.model_type, flags.export_dir)
 
 
 class WideDeepArgParser(argparse.ArgumentParser):

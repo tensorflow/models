@@ -60,11 +60,11 @@ Try the following commands to inspect the SavedModel:
 
 **Replace `${TIMESTAMP}` with the folder produced (e.g. 1524249124)**
 ```
-# List possible tag sets
-saved_model_cli show --dir /tmp/wide_deep_export/${TIMESTAMP}/
+# List possible tag_sets. Only one metagraph is saved, so there will be one option.
+saved_model_cli show --dir /tmp/wide_deep_saved_model/${TIMESTAMP}/
 
-# Show signature defs for tag_set=serve
-saved_model_cli show --dir /tmp/wide_deep_export/${TIMESTAMP}/ \
+# Show SignatureDefs for tag_set=serve. SignatureDefs define the outputs to show.
+saved_model_cli show --dir /tmp/wide_deep_saved_model/${TIMESTAMP}/ \
     --tag_set serve --all
 ```
 
