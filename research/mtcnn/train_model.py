@@ -44,6 +44,7 @@ import os
 import argparse
 
 from trainers.SimpleNetworkTrainer import SimpleNetworkTrainer
+from nets.NetworkFactory import NetworkFactory
 
 def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
@@ -63,10 +64,15 @@ def main(args):
 	if(not args.dataset_root_dir):
 		raise ValueError('You must supply input dataset directory with --dataset_root_dir.')
 
+	if(args.train_root_dir):
+		train_root_dir = args.train_root_dir
+	else:
+		train_root_dir = NetworkFactory.model_train_dir()
+
 	trainer = SimpleNetworkTrainer(args.network_name)
-	status = trainer.train(args.network_name, args.dataset_root_dir, args.train_root_dir, args.base_learning_rate, args.max_number_of_epoch, args.log_every_n_steps)
+	status = trainer.train(args.network_name, args.dataset_root_dir, train_root_dir, args.base_learning_rate, args.max_number_of_epoch, args.log_every_n_steps)
 	if(status):
-		print(args.network_name + ' - network is trained and weights are generated at ' + args.train_root_dir)
+		print(args.network_name + ' - network is trained and weights are generated at ' + train_root_dir)
 	else:
 		print('Error training the model.')
 
