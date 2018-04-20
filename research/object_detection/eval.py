@@ -63,6 +63,9 @@ flags.DEFINE_boolean('eval_training_data', False,
 flags.DEFINE_string('checkpoint_dir', '',
                     'Directory containing checkpoints to evaluate, typically '
                     'set to `train_dir` used in the training job.')
+flags.DEFINE_boolean('evaluate_all_checkpoints',False,'Whether to evaluate all the checkpoints in the directory in order, \
+                     useful for evaluating all checkpoints after training \
+                     setting this to True will override max_eval and time between evaluations. ')
 flags.DEFINE_string('eval_dir', '',
                     'Directory to write eval summaries to.')
 flags.DEFINE_string('pipeline_config_path', '',
@@ -77,12 +80,16 @@ flags.DEFINE_string('model_config_path', '',
 flags.DEFINE_boolean('run_once', False, 'Option to only run a single pass of '
                      'evaluation. Overrides the `max_evals` parameter in the '
                      'provided config.')
+flags.DEFINE_boolean('run_on_CPU_only', False, 'Option to run eval only on CPU, set this to True \
+                     if you want to train on GPU and evaluate on CPU')
 FLAGS = flags.FLAGS
 
 
 def main(unused_argv):
   assert FLAGS.checkpoint_dir, '`checkpoint_dir` is missing.'
   assert FLAGS.eval_dir, '`eval_dir` is missing.'
+  if FLAGS.run_on_CPU_only == True:
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
   tf.gfile.MakeDirs(FLAGS.eval_dir)
   if FLAGS.pipeline_config_path:
     configs = config_util.get_configs_from_pipeline_file(
@@ -128,7 +135,7 @@ def main(unused_argv):
     eval_config.max_evals = 1
 
   evaluator.evaluate(create_input_dict_fn, model_fn, eval_config, categories,
-                     FLAGS.checkpoint_dir, FLAGS.eval_dir)
+                     FLAGS.checkpoint_dir, FLAGS.eval_dir, FLAGS.evaluate_all_checkpoints)
 
 
 if __name__ == '__main__':
