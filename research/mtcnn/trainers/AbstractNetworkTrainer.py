@@ -28,7 +28,7 @@ class AbstractNetworkTrainer(object):
 		self._network = NetworkFactory.network(network_name, True)
 		self._config = edict()
 
-		self._config.BATCH_SIZE = 384
+		self._batch_size = 384
 		self._config.CLS_OHEM = True
 		self._config.CLS_OHEM_RATIO = 0.7
 		self._config.BBOX_OHEM = False
@@ -43,8 +43,8 @@ class AbstractNetworkTrainer(object):
 	def network_size(self):
 		return(self._network.network_size())
 		
-	def dataset_dir(self, dataset_dir):
-		dataset_dir = os.path.join(dataset_dir, self.network_name())
+	def dataset_dir(self, dataset_root_dir):
+		dataset_dir = os.path.join(dataset_root_dir, self.network_name())
 		tensorflow_dir = os.path.join(dataset_dir, 'tensorflow')
 		return(tensorflow_dir)
 
@@ -52,6 +52,6 @@ class AbstractNetworkTrainer(object):
 		network_train_dir = os.path.join(train_root_dir, self.network_name())
 		return(network_train_dir)
 
-	def train(self):
+	def train(self, network_name, dataset_root_dir, train_root_dir, base_learning_rate, max_number_of_epoch, log_every_n_steps):
 		raise NotImplementedError('Must be implemented by the subclass.')
 

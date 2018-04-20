@@ -21,17 +21,17 @@ Usage:
 $ python train_model.py \
 	--network_name=PNet \ 
 	--train_root_dir=/workspace/train/mtcnn \
-	--dataset_dir=/workspace/datasets/mtcnn
+	--dataset_root_dir=/workspace/datasets/mtcnn
 
 $ python train_model.py \
 	--network_name=RNet \ 
 	--train_root_dir=/workspace/train/mtcnn \
-	--dataset_dir=/workspace/datasets/mtcnn 
+	--dataset_root_dir=/workspace/datasets/mtcnn 
 
 $ python train_model.py \
 	--network_name=ONet \ 
 	--train_root_dir=/workspace/train/mtcnn \
-	--dataset_dir=/workspace/datasets/mtcnn  
+	--dataset_root_dir=/workspace/datasets/mtcnn  
 ```
 """
 
@@ -48,20 +48,23 @@ from trainers.SimpleNetworkTrainer import SimpleNetworkTrainer
 def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--network_name', type=str, help='The name of the network.', default='PNet')  
-	parser.add_argument('--dataset_dir', type=str, help='The directory where the dataset files are stored.', default=None)
+	parser.add_argument('--dataset_root_dir', type=str, help='The directory where the dataset files are stored.', default=None)
 	parser.add_argument('--train_root_dir', type=str, help='Input train root directory where model weights are saved.', default=None)
-  
+	parser.add_argument('--base_learning_rate', type=float, help='Initial learning rate.', default=0.01)
+	parser.add_argument('--max_number_of_epoch', type=int, help='The maximum number of training steps.', default=5)
+	parser.add_argument('--log_every_n_steps', type=int, help='The frequency with which logs are print.', default=200)
+
 	return(parser.parse_args(argv))
 
 def main(args):
 	if( not (args.network_name in ['PNet', 'RNet', 'ONet']) ):
 		raise ValueError('The network name should be either PNet, RNet or ONet.')
 
-	if(not args.dataset_dir):
-		raise ValueError('You must supply input dataset directory with --dataset_dir.')
+	if(not args.dataset_root_dir):
+		raise ValueError('You must supply input dataset directory with --dataset_root_dir.')
 
 	trainer = SimpleNetworkTrainer(args.network_name)
-	status = trainer.train(args.network_name, args.dataset_dir, args.train_root_dir)
+	status = trainer.train(args.network_name, args.dataset_root_dir, args.train_root_dir, args.base_learning_rate, args.max_number_of_epoch, args.log_every_n_steps)
 	if(status):
 		print(args.network_name + ' - network is trained and weights are generated at ' + args.train_root_dir)
 	else:
