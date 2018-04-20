@@ -28,6 +28,8 @@ from datetime import datetime
 from trainers.AbstractNetworkTrainer import AbstractNetworkTrainer
 from datasets.TensorFlowDataset import TensorFlowDataset
 
+from nets.NetworkFactory import NetworkFactory
+
 from losses.class_loss_ohem import class_loss_ohem
 from losses.bounding_box_loss_ohem import bounding_box_loss_ohem
 from losses.landmark_loss_ohem import landmark_loss_ohem
@@ -78,12 +80,13 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		accuracy_op = tf.reduce_mean(tf.cast(tf.equal(label_picked,pred_picked),tf.float32))
     		return accuracy_op
 
-	def _set_loss_ratio(self):
-		self._class_loss_ratio = 1.0
-		self._bbox_loss_ratio = 0.5
-		self._landmark_loss_ratio = 0.5
+	def _read_data(self, dataset_root_dir):
+		dataset_dir = self.dataset_dir(dataset_root_dir)		
+		tensorflow_file_name = os.path.join(dataset_dir, 'image_list.tfrecord')
+		self._number_of_samples = sum(1 for _ in tf.python_io.tf_record_iterator(tensorflow_file_name))
 
-	def _read_batch_data(self, tensorflow_dataset, tensorflow_file_name, image_size):
+		tensorflow_dataset = TensorFlowDataset()
+		image_size = self.network_size()
 		return(tensorflow_dataset.read_single_tfrecord(tensorflow_file_name, self._batch_size, image_size))
 
 	def train(self, network_name, dataset_root_dir, train_root_dir, base_learning_rate, max_number_of_epoch, log_every_n_steps):
@@ -92,15 +95,11 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 			os.makedirs(network_train_dir)
 
 		network_train_file_name = os.path.join(network_train_dir, self.network_name())
-		dataset_dir = self.dataset_dir(dataset_root_dir)		
-		tensorflow_file_name = os.path.join(dataset_dir, 'image_list.tfrecord')
-		num = sum(1 for _ in tf.python_io.tf_record_iterator(tensorflow_file_name))
+		image_size = self.network_size()	
+	
+		image_batch, label_batch, bbox_batch, landmark_batch = self._read_data(dataset_root_dir)
 
-		image_size = self.network_size()
-		tensorflow_dataset = TensorFlowDataset()
-		image_batch, label_batch, bbox_batch, landmark_batch = self._read_batch_data(tensorflow_dataset, tensorflow_file_name, image_size)
-
-		self._set_loss_ratio()
+		class_loss_ratio, bbox_loss_ratio, landmark_loss_ratio = NetworkFactory.loss_ratio(network_name)
 
     		input_image = tf.placeholder(tf.float32, shape=[self._batch_size, image_size, image_size, 3], name='input_image')
     		target_label = tf.placeholder(tf.float32, shape=[self._batch_size], name='target_label')
@@ -115,7 +114,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		class_accuracy_op = self._calculate_accuracy(output_class_probability, target_label)
 		L2_loss_op = tf.add_n(tf.losses.get_regularization_losses())
 
-		train_op, learning_rate_op = self._train_model(base_learning_rate, self._class_loss_ratio*class_loss_op + self._bbox_loss_ratio*bounding_box_loss_op + self._landmark_loss_ratio*landmark_loss_op + L2_loss_op, num)
+		train_op, learning_rate_op = self._train_model(base_learning_rate, class_loss_ratio*class_loss_op + bbox_loss_ratio*bounding_box_loss_op + landmark_loss_ratio*landmark_loss_op + L2_loss_op, self._number_of_samples)
 
     		init = tf.global_variables_initializer()
     		session = tf.Session()
@@ -139,7 +138,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		threads = tf.train.start_queue_runners(sess=session, coord=coordinator)
     		current_step = 0
 
-    		max_number_of_steps = int(num / self._batch_size + 1) * max_number_of_epoch
+    		max_number_of_steps = int(self._number_of_samples / self._batch_size + 1) * max_number_of_epoch
     		epoch = 0
     		session.graph.finalize()    
 
@@ -176,7 +175,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 
 					summary_writer.add_summary(summary, global_step=step)
 
-            			if( current_step * self._batch_size > num*2 ):
+            			if( current_step * self._batch_size > self._number_of_samples*2 ):
                 			epoch = epoch + 1
                 			current_step = 0
                 			saver.save(session, network_train_file_name, global_step=epoch*2)            			

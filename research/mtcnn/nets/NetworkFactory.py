@@ -52,4 +52,26 @@ class NetworkFactory(object):
         	model_root_dir = os.path.join(model_root_dir, '../data/mtcnn/train/')
 		return(model_root_dir)
 
+	@classmethod
+	def loss_ratio(cls, network_name):
+		if (network_name == 'PNet'): 
+			class_loss_ratio = 1.0
+			bbox_loss_ratio = 0.5
+			landmark_loss_ratio = 0.5
+		elif (network_name == 'RNet'): 
+			class_loss_ratio = 1.0
+			bbox_loss_ratio = 0.5
+			landmark_loss_ratio = 0.5
+		elif (network_name == 'ONet'): 
+			class_loss_ratio = 1.0
+			bbox_loss_ratio = 0.5
+			landmark_loss_ratio = 1.0
+		else: # PNet
+			class_loss_ratio = 1.0
+			bbox_loss_ratio = 0.5
+			landmark_loss_ratio = 0.5
+
+		return(class_loss_ratio, bbox_loss_ratio, landmark_loss_ratio)
+
+
 
