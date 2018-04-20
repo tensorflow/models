@@ -56,7 +56,9 @@ parameterized layers respectively for the residual tower, plus an additional 2
 layers for the policy head and 3 layers for the value head.
 
 ## Getting Started
-Please follow the [instructions](https://github.com/tensorflow/minigo/blob/master/README.md#getting-started) in original Minigo repo to set up the environment.
+This project assumes you have virtualenv, TensorFlow (>= 1.5) and two other Go-related
+packages pygtp(>=0.4) and sgf (==0.5).
+
 
 ## Training Model
 One iteration of reinforcement learning consists of the following steps:

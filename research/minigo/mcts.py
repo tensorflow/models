@@ -33,9 +33,12 @@ import coords
 import numpy as np
 
 # Exploration constant
-c_PUCT = 1.38
+c_PUCT = 1.38  # pylint: disable=invalid-name
+
+
 # Dirichlet noise, as a function of board_size
-def D_NOISE_ALPHA(board_size): return 0.03 * 361 / (board_size ** 2)
+def D_NOISE_ALPHA(board_size):  # pylint: disable=invalid-name
+  return 0.03 * 361 / (board_size ** 2)
 
 
 class DummyNode(object):
@@ -43,8 +46,10 @@ class DummyNode(object):
 
   This node is intended to be a placeholder for the root node, which would
   otherwise have no parent node. If all nodes have parents, code becomes
-  simpler."""
+  simpler.
+  """
 
+  # pylint: disable=invalid-name
   def __init__(self, board_size):
     self.board_size = board_size
     self.parent = None
@@ -64,6 +69,7 @@ class MCTSNode(object):
     (raw number between 0-N^2, with None a pass)
   parent: A parent MCTSNode.
   """
+  # pylint: disable=invalid-name
 
   def __init__(self, board_size, position, fmove=None, parent=None):
     if parent is None:
@@ -85,7 +91,7 @@ class MCTSNode(object):
     self.children = {}  # map of flattened moves to resulting MCTSNode
 
   def __repr__(self):
-    return "<MCTSNode move=%s, N=%s, to_play=%s>" % (
+    return '<MCTSNode move={}, N={}, to_play={}>'.format(
         self.position.recent[-1:], self.N, self.position.to_play)
 
   @property
@@ -124,7 +130,7 @@ class MCTSNode(object):
 
   @property
   def Q_perspective(self):
-    "Return value of position, from perspective of player to play."
+    """Return value of position, from perspective of player to play."""
     return self.Q * self.position.to_play
 
   def select_leaf(self):
@@ -174,22 +180,21 @@ class MCTSNode(object):
 
   def revert_virtual_loss(self, up_to):
     self.losses_applied -= 1
-    revert = -1 * self.position.to_play
+    revert = -self.position.to_play
     self.W += revert
     if self.parent is None or self is up_to:
       return
     self.parent.revert_virtual_loss(up_to)
 
   def revert_visits(self, up_to):
-    """Revert visit increments.
+    """Revert visit increments."""
+    # Sometimes, repeated calls to select_leaf return the same node.
+    # This is rare and we're okay with the wasted computation to evaluate
+    # the position multiple times by the dual_net. But select_leaf has the
+    # side effect of incrementing visit counts. Since we want the value to
+    # only count once for the repeatedly selected node, we also have to
+    # revert the incremented visit counts.
 
-    Sometimes, repeated calls to select_leaf return the same node.
-    This is rare and we're okay with the wasted computation to evaluate
-    the position multiple times by the dual_net. But select_leaf has the
-    side effect of incrementing visit counts. Since we want the value to
-    only count once for the repeatedly selected node, we also have to
-    revert the incremented visit counts.
-    """
     self.N -= 1
     if self.parent is None or self is up_to:
       return
@@ -231,9 +236,9 @@ class MCTSNode(object):
     self.parent.backup_value(value, up_to)
 
   def is_done(self):
-    '''True if the last two moves were Pass or if the position is at a move
-    greater than the max depth.
-    '''
+    # True if the last two moves were Pass or if the position is at a move
+    # greater than the max depth.
+
     max_depth = (self.board_size ** 2) * 1.4  # 505 moves for 19x19, 113 for 9x9
     return self.position.is_game_over() or self.position.n >= max_depth
 
@@ -243,14 +248,14 @@ class MCTSNode(object):
     self.child_prior = self.child_prior * 0.75 + dirch * 0.25
 
   def children_as_pi(self, squash=False):
-    """Returns the child visit counts as a probability distribution, pi
-    If squash is true, exponentiate the probabilities by a temperature
-    slightly larger than unity to encourage diversity in early play and
-    hopefully to move away from 3-3s
-    """
+    """Returns the child visit counts as a probability distribution, pi."""
+    # If squash is true, exponentiate the probabilities by a temperature
+    # slightly larger than unity to encourage diversity in early play and
+    # hopefully to move away from 3-3s
+
     probs = self.child_N
     if squash:
-      probs = probs ** .95
+      probs **= .95
     return probs / np.sum(probs)
 
   def most_visited_path(self):
@@ -260,12 +265,13 @@ class MCTSNode(object):
       next_kid = np.argmax(node.child_N)
       node = node.children.get(next_kid)
       if node is None:
-        output.append("GAME END")
+        output.append('GAME END')
         break
-      output.append("%s (%d) ==> " % (
-          coords.to_kgs(self.board_size,
-          coords.from_flat(self.board_size, node.fmove)), node.N))
-    output.append("Q: {:.5f}\n".format(node.Q))
+      output.append('{} ({}) ==> '.format(
+          coords.to_kgs(
+              self.board_size,
+              coords.from_flat(self.board_size, node.fmove)), node.N))
+    output.append('Q: {:.5f}\n'.format(node.Q))
     return ''.join(output)
 
   def mvp_gg(self):
@@ -275,8 +281,8 @@ class MCTSNode(object):
     while node.children and max(node.child_N) > 1:
       next_kid = np.argmax(node.child_N)
       node = node.children[next_kid]
-      output.append("%s" % coords.to_kgs(
-          self.board_size, coords.from_flat(self.board_size, node.fmove)))
+      output.append('{}'.format(coords.to_kgs(
+          self.board_size, coords.from_flat(self.board_size, node.fmove))))
     return ' '.join(output)
 
   def describe(self):
@@ -288,22 +294,25 @@ class MCTSNode(object):
     p_rel = p_delta / self.child_prior
     # Dump out some statistics
     output = []
-    output.append("{q:.4f}\n".format(q=self.Q))
+    output.append('{q:.4f}\n'.format(q=self.Q))
     output.append(self.most_visited_path())
     output.append(
-        "move:  action      Q      U      P    P-Dir    N  soft-N" +
-        "  p-delta  p-rel\n")
+        '''move:  action      Q      U      P    P-Dir    N  soft-N
+        p-delta  p-rel\n''')
     output.append(
-        "\n".join(["{!s:6}: {: .3f}, {: .3f}, {:.3f}, {:.3f}, {:.3f}, {:4d} {:.4f} {: .5f} {: .2f}".format(
-        coords.to_kgs(self.board_size, coords.from_flat(self.board_size, key)),
-        self.child_action_score[key],
-        self.child_Q[key],
-        self.child_U[key],
-        self.child_prior[key],
-        self.original_prior[key],
-        int(self.child_N[key]),
-        soft_n[key],
-        p_delta[key],
-        p_rel[key])
-        for key in sort_order][:15]))
-    return "".join(output)
+        '\n'.join([
+            '''{!s:6}: {: .3f}, {: .3f}, {:.3f}, {:.3f}, {:.3f}, {:4d} {:.4f}
+            {: .5f} {: .2f}'''.format(
+                coords.to_kgs(self.board_size, coords.from_flat(
+                    self.board_size, key)),
+                self.child_action_score[key],
+                self.child_Q[key],
+                self.child_U[key],
+                self.child_prior[key],
+                self.original_prior[key],
+                int(self.child_N[key]),
+                soft_n[key],
+                p_delta[key],
+                p_rel[key])
+            for key in sort_order][:15]))
+    return ''.join(output)

@@ -39,6 +39,7 @@ def translate_gtp_colors(gtp_color):
 
 
 class GtpInterface(object):
+
   def __init__(self, board_size):
     self.size = 9
     self.position = None
@@ -47,9 +48,9 @@ class GtpInterface(object):
 
   def set_size(self, n):
     if n != self.board_size:
-      raise ValueError(
-          ("Can't handle boardsize {n}!"
-          "Restart with env var BOARD_SIZE={n}").format(n=n))
+      raise ValueError((
+          '''Can't handle boardsize {n}!Restart with env var BOARD_SIZE={n}'''
+          ).format(n=n))
 
   def set_komi(self, komi):
     self.komi = komi
@@ -60,17 +61,17 @@ class GtpInterface(object):
       try:
         sgf = self.to_sgf()
         with open(datetime.datetime.now().strftime(
-            "%Y-%m-%d-%H:%M.sgf"), 'w') as f:
+            '%Y-%m-%d-%H:%M.sgf'), 'w') as f:
           f.write(sgf)
       except NotImplementedError:
         pass
       except:
-        print("Error saving sgf", file=sys.stderr, flush=True)
+        print('Error saving sgf', file=sys.stderr, flush=True)
     self.position = go.Position(komi=self.komi)
     self.initialize_game(self.position)
 
   def accomodate_out_of_turn(self, color):
-    if not translate_gtp_colors(color) == self.position.to_play:
+    if translate_gtp_colors(color) != self.position.to_play:
       self.position.flip_playerturn(mutate=True)
 
   def make_move(self, color, vertex):
@@ -131,10 +132,10 @@ def make_gtp_instance(board_size, read_file, readouts_per_move=100,
   gtp_engine = gtp.Engine(instance)
   if cgos_mode:
     instance = CGOSPlayer(board_size, n, seconds_per_move=5,
-                verbosity=verbosity, two_player_mode=True)
+                          verbosity=verbosity, two_player_mode=True)
   else:
     instance = MCTSPlayer(board_size, n, simulations_per_move=readouts_per_move,
                           verbosity=verbosity, two_player_mode=True)
-  name = "Somebot-" + os.path.basename(read_file)
+  name = 'Somebot-' + os.path.basename(read_file)
   gtp_engine = gtp_extensions.GTPDeluxe(instance, name=name)
   return gtp_engine

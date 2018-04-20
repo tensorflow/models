@@ -43,11 +43,13 @@ MISSING_GROUP_ID = -1
 BLACK_NAME = 'BLACK'
 WHITE_NAME = 'WHITE'
 
+
 def _check_bounds(board_size, c):
   return c[0] % board_size == c[0] and c[1] % board_size == c[1]
 
 
 def get_neighbors_diagonals(board_size):
+  """Return coordinates of neighbors and diagonals for a go board."""
   all_coords = [(i, j) for i in range(board_size) for j in range(board_size)]
   def check_bounds(c):
     return _check_bounds(board_size, c)
@@ -80,17 +82,13 @@ def place_stones(board, color, stones):
 
 
 def replay_position(board_size, position, result):
-  """Wrapper for a go.Position which replays its history.
-
-  Assumes an empty start position! (i.e. no handicap, and history must
-  be exhaustive.)
-
-  Result must be passed in, since a resign cannot be inferred from position
-  history alone.
-
-  for position_w_context in replay_position(position):
-    print(position_w_context.position)
-  """
+  """Wrapper for a go.Position which replays its history."""
+  # Assumes an empty start position! (i.e. no handicap, and history must
+  # be exhaustive.)
+  # Result must be passed in, since a resign cannot be inferred from position
+  # history alone.
+  # for position_w_context in replay_position(position):
+  #   print(position_w_context.position)
   if position.n != len(position.recent):
     raise ValueError('Position history is incomplete!')
   pos = Position(board_size=board_size, komi=position.komi)
@@ -101,6 +99,7 @@ def replay_position(board_size, position, result):
 
 
 def find_reached(board_size, board, c):
+  """Find the chain to reach c."""
   color = board[c]
   chain = set([c])
   reached = set()
@@ -138,11 +137,12 @@ def is_eyeish(board_size, board, c):
   if color is None:
     return None
   diagonal_faults = 0
-  _, diagonals = get_neighbors_diagonals[c]
+  _, all_diagonals = get_neighbors_diagonals(board_size)
+  diagonals = all_diagonals[c]
   if len(diagonals) < 4:
     diagonal_faults += 1
   for d in diagonals:
-    if not board[d] in (color, EMPTY):
+    if board[d] not in (color, EMPTY):
       diagonal_faults += 1
   if diagonal_faults > 1:
     return None
@@ -151,7 +151,8 @@ def is_eyeish(board_size, board, c):
 
 
 class Group(namedtuple('Group', ['id', 'stones', 'liberties', 'color'])):
-  """
+  """Group class.
+
   stones: a frozenset of Coordinates belonging to this group
   liberties: a frozenset of Coordinates that are empty and adjacent to
     this group.
@@ -164,6 +165,7 @@ class Group(namedtuple('Group', ['id', 'stones', 'liberties', 'color'])):
 
 
 class LibertyTracker(object):
+  """LibertyTracker class."""
 
   @staticmethod
   def from_board(board_size, board):
@@ -201,15 +203,16 @@ class LibertyTracker(object):
     # groups: a dict of group_id to groups
     # liberty_cache: a NxN numpy array of liberty counts
     self.board_size = board_size
-    self.group_index = group_index if group_index is not None else - \
-        np.ones([board_size, board_size], dtype=np.int32)
+    self.group_index = (group_index if group_index is not None else
+                        -np.ones([board_size, board_size], dtype=np.int32))
     self.groups = groups or {}
-    self.liberty_cache = liberty_cache if liberty_cache is not None else - \
-        np.zeros([board_size, board_size], dtype=np.uint8)
+    self.liberty_cache = (
+        liberty_cache if liberty_cache is not None
+        else -np.zeros([board_size, board_size], dtype=np.uint8))
     self.max_group_id = max_group_id
     self.neighbors, _ = get_neighbors_diagonals(board_size)
 
-  def __deepcopy__(self, memodict={}):
+  def __deepcopy__(self, memodict=None):
     new_group_index = np.copy(self.group_index)
     new_lib_cache = np.copy(self.liberty_cache)
     # shallow copy
@@ -254,7 +257,7 @@ class LibertyTracker(object):
     self._handle_captures(captured_stones)
 
     # suicide is illegal
-    if len(self.groups[new_group.id].liberties) == 0:
+    if self.groups[new_group.id].liberties is None:
       raise IllegalMove('Move at {} would commit suicide!\n'.format(c))
 
     return captured_stones
@@ -313,24 +316,27 @@ class Position(object):
   def __init__(self, board_size, board=None, n=0, komi=7.5, caps=(0, 0),
                lib_tracker=None, ko=None, recent=tuple(),
                board_deltas=None, to_play=BLACK):
+    """Initialize position class.
+
+    Args:
+      board_size: the go board size.
+      board: a numpy array
+      n: an int representing moves played so far
+      komi: a float, representing points given to the second player.
+      caps: a (int, int) tuple of captures for B, W.
+      lib_tracker: a LibertyTracker object
+      ko: a Move
+      recent: a tuple of PlayerMoves, such that recent[-1] is the last move.
+      board_deltas: a np.array of shape (n, go.N, go.N) representing changes
+        made to the board at each move (played move and captures).
+        Should satisfy next_pos.board - next_pos.board_deltas[0] == pos.board
+      to_play: BLACK or WHITE
     """
-    board_size: the go board size.
-    board: a numpy array
-    n: an int representing moves played so far
-    komi: a float, representing points given to the second player.
-    caps: a (int, int) tuple of captures for B, W.
-    lib_tracker: a LibertyTracker object
-    ko: a Move
-    recent: a tuple of PlayerMoves, such that recent[-1] is the last move.
-    board_deltas: a np.array of shape (n, go.N, go.N) representing changes
-      made to the board at each move (played move and captures).
-      Should satisfy next_pos.board - next_pos.board_deltas[0] == pos.board
-    to_play: BLACK or WHITE
-    """
-    assert type(recent) is tuple
+    if not isinstance(recent, tuple):
+      raise TypeError('Recent must be a tuple!')
     self.board_size = board_size
-    self.board = board if board is not None else - \
-        np.zeros([board_size, board_size], dtype=np.int8)
+    self.board = (board if board is not None else
+                  -np.zeros([board_size, board_size], dtype=np.int8))
     self.n = n
     self.komi = komi
     self.caps = caps
@@ -338,13 +344,13 @@ class Position(object):
         self.board_size, self.board)
     self.ko = ko
     self.recent = recent
-    self.board_deltas = board_deltas if board_deltas is not None else - \
-        np.zeros([0, board_size, board_size], dtype=np.int8)
+    self.board_deltas = (board_deltas if board_deltas is not None else
+                         -np.zeros([0, board_size, board_size], dtype=np.int8))
     self.to_play = to_play
     self.last_eight = None
     self.neighbors, _ = get_neighbors_diagonals(board_size)
 
-  def __deepcopy__(self, memodict={}):
+  def __deepcopy__(self, memodict=None):
     new_board = np.copy(self.board)
     new_lib_tracker = copy.deepcopy(self.lib_tracker)
     return Position(
@@ -465,10 +471,24 @@ class Position(object):
     return self.lib_tracker.liberty_cache
 
   def play_move(self, c, color=None, mutate=False):
-    # Obeys CGOS Rules of Play. In short:
-    # No suicides
-    # Chinese/area scoring
-    # Positional superko (this is very crudely approximate at the moment.)
+    """Obeys CGOS Rules of Play.
+
+    In short:
+    No suicides
+    Chinese/area scoring
+    Positional superko (this is very crudely approximate at the moment.)
+
+    Args:
+      c: the coordinate to play from.
+      color: the color of the player to play.
+      mutate:
+
+    Returns:
+      The position of next move.
+
+    Raises:
+      IllegalMove: if the input c is an illegal move.
+    """
     if color is None:
       color = self.to_play
 
@@ -481,7 +501,7 @@ class Position(object):
     if not self.is_move_legal(c):
       raise IllegalMove('{} move at {} is illegal: \n{}'.format(
           'Black' if self.to_play == BLACK else 'White',
-          coords.to_kgs(c), self))
+          coords.to_kgs(self.board_size, c), self))
 
     potential_ko = is_koish(self.board_size, self.board, c)
 
@@ -489,7 +509,7 @@ class Position(object):
     captured_stones = pos.lib_tracker.add_stone(color, c)
     place_stones(pos.board, EMPTY, captured_stones)
 
-    opp_color = color * -1
+    opp_color = -1 * color
 
     new_board_delta = np.zeros([self.board_size, self.board_size],
                                dtype=np.int8)
@@ -532,8 +552,8 @@ class Position(object):
       c = unassigned_spaces[0][0], unassigned_spaces[1][0]
       territory, borders = find_reached(self.board_size, working_board, c)
       border_colors = set(working_board[b] for b in borders)
-      X_border = BLACK in border_colors
-      O_border = WHITE in border_colors
+      X_border = BLACK in border_colors   # pylint: disable=invalid-name
+      O_border = WHITE in border_colors   # pylint: disable=invalid-name
       if X_border and not O_border:
         territory_color = BLACK
       elif O_border and not X_border:
