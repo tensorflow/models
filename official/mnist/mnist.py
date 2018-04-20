@@ -246,7 +246,6 @@ class MNISTArgParser(argparse.ArgumentParser):
     super(MNISTArgParser, self).__init__(parents=[
         parsers.BaseParser(),
         parsers.ImageModelParser(),
-        parsers.ExportParser(),
     ])
 
     self.set_defaults(
