@@ -31,7 +31,7 @@ class ONet(RNet):
 		self._network_size = 48
 		self._network_name = 'ONet'
 
-	def setup_network(self, inputs):
+	def setup_basic_network(self, inputs):
 		self._end_points = {}
 
     		with slim.arg_scope([slim.conv2d],
@@ -91,17 +91,4 @@ class ONet(RNet):
 			self._end_points[end_point] = landmark_predictions
 
 			return(class_probability, bounding_box_predictions, landmark_predictions)
-
-        		#if(self._is_training):
-            		#	class_loss = cls_ohem(class_probability, label)
-            		#	bounding_box_loss = bbox_ohem(bounding_box_predictions, bounding_box_targets, label)
-            		#	landmark_loss = landmark_ohem(landmark_predictions, landmark_targets,label)
-
-            		#	accuracy = cal_accuracy(class_probability, label)
-            		#	L2_loss = tf.add_n(slim.losses.get_regularization_losses())
-
-            		#	return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy )
-        		#else:
-            		#	return(class_probability, bounding_box_predictions, landmark_predictions)
-
 

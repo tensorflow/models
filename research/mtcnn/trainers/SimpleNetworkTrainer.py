@@ -104,13 +104,9 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		input_image = tf.placeholder(tf.float32, shape=[self._batch_size, image_size, image_size, 3], name='input_image')
     		target_label = tf.placeholder(tf.float32, shape=[self._batch_size], name='target_label')
     		target_bounding_box = tf.placeholder(tf.float32, shape=[self._batch_size, 4], name='target_bounding_box')
-    		target_landmarks = tf.placeholder(tf.float32,shape=[self._batch_size,10],name='target_landmarks')
+    		target_landmarks = tf.placeholder(tf.float32,shape=[self._batch_size,10],name='target_landmarks')		
 
-		convolution_output, bounding_box_predictions, landmark_predictions = self._network.setup_network(input_image)
-
-		output_class_probability = tf.squeeze(convolution_output, [1,2], name='class_probability')
-		output_bounding_box = tf.squeeze(bounding_box_predictions, [1,2], name='bounding_box_predictions')
-		output_landmarks = tf.squeeze(landmark_predictions, [1,2], name="landmark_predictions")
+		output_class_probability, output_bounding_box, output_landmarks = self._network.setup_training_network(input_image)
 
 		class_loss_op = class_loss_ohem(output_class_probability, target_label)
            	bounding_box_loss_op = bounding_box_loss_ohem(output_bounding_box, target_bounding_box, target_label)

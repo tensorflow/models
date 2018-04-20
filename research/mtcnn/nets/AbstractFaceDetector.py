@@ -33,7 +33,10 @@ class AbstractFaceDetector(object):
 	def network_name(self):
 		return(self._network_name)
 
-	def setup_network(self, inputs):
+	def setup_basic_network(self, inputs):
+		raise NotImplementedError('Must be implemented by the subclass.')
+
+	def setup_training_network(self, inputs):
 		raise NotImplementedError('Must be implemented by the subclass.')
 
 	def load_model(self, checkpoint_path):

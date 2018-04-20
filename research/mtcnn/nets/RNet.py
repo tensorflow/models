@@ -35,7 +35,7 @@ class RNet(AbstractFaceDetector):
 	def batch_size(self):
 		return(self._batch_size)
 
-	def setup_network(self, inputs):
+	def setup_basic_network(self, inputs):
 		self._end_points = {}
 
 		with slim.arg_scope([slim.conv2d],
@@ -88,23 +88,14 @@ class RNet(AbstractFaceDetector):
 
 			return(class_probability, bounding_box_predictions, landmark_predictions)
 
-        		#if(self._is_training):
-            		#	class_loss = cls_ohem(class_probability, label)
-            		#	bounding_box_loss = bbox_ohem(bounding_box_predictions, bbox_targets, label)
-            		#	landmark_loss = landmark_ohem(landmark_predictions, landmark_targets, label)
-
-            		#	accuracy = cal_accuracy(class_probability, label)
-            		#	L2_loss = tf.add_n(slim.losses.get_regularization_losses())
-
-            		#	return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy)
-        		#else:
-            		#	return(class_probability, bounding_box_predictions, landmark_predictions)
+	def setup_training_network(self, inputs):
+		return(self.setup_basic_network(inputs))
 
 	def load_model(self, checkpoint_path):
         	graph = tf.Graph()
         	with graph.as_default():
             		self._input_batch = tf.placeholder(tf.float32, shape=[self.batch_size(), self.network_size(), self.network_size(), 3], name='input_batch')            		
-            		self._output_class_probability, self._output_bounding_box, self._output_landmarks = self.setup_network(self._input_batch)
+            		self._output_class_probability, self._output_bounding_box, self._output_landmarks = self.setup_basic_network(self._input_batch)
 
             		self._session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
 			self._load_model_from(checkpoint_path)
