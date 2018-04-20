@@ -216,12 +216,28 @@ def main(argv):
         flags.stop_threshold, results['accuracy']):
       break
 
+  # Export the model
+  if flags.export_dir is not None:
+    wide_columns, deep_columns = build_model_columns()
+    if flags.model_type == 'wide':
+      columns = wide_columns
+    elif flags.model_type == 'deep':
+      columns = deep_columns
+    else:
+      columns = wide_columns + deep_columns
+    feature_spec = tf.feature_column.make_parse_example_spec(columns)
+    fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+        feature_spec)
+    model.export_savedmodel(flags.export_dir, fn)
+
 
 class WideDeepArgParser(argparse.ArgumentParser):
   """Argument parser for running the wide deep model."""
 
   def __init__(self):
-    super(WideDeepArgParser, self).__init__(parents=[parsers.BaseParser()])
+    super(WideDeepArgParser, self).__init__(parents=[
+        parsers.BaseParser(),
+        parsers.ExportParser()])
     self.add_argument(
         '--model_type', '-mt', type=str, default='wide_deep',
         choices=['wide', 'deep', 'wide_deep'],
