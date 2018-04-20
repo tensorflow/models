@@ -149,7 +149,7 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
           "value": float(value),
           "unit": unit,
           "global_step": global_step,
-          "timestamp": datetime.datetime.now().strftime(
+          "timestamp": datetime.datetime.utcnow().strftime(
               _DATE_TIME_FORMAT_PATTERN),
           "extras": extras}
       try:
@@ -184,7 +184,8 @@ def _gather_run_info(model_name):
   run_info = {
       "model_name": model_name,
       "machine_config": {},
-      "run_date": datetime.datetime.now().strftime(_DATE_TIME_FORMAT_PATTERN)}
+      "run_date": datetime.datetime.utcnow().strftime(
+          _DATE_TIME_FORMAT_PATTERN)}
   _collect_tensorflow_info(run_info)
   _collect_tensorflow_environment_variables(run_info)
   _collect_cpu_info(run_info)
