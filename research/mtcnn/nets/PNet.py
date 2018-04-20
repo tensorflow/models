@@ -26,8 +26,8 @@ from utils.prelu import prelu
 
 class PNet(AbstractFaceDetector):
 
-	def __init__(self, is_training=False):	
-		AbstractFaceDetector.__init__(self, is_training)	
+	def __init__(self):	
+		AbstractFaceDetector.__init__(self)	
 		self._network_size = 12
 		self._network_name = 'PNet'	
 
@@ -73,25 +73,9 @@ class PNet(AbstractFaceDetector):
         		landmark_predictions = slim.conv2d(net, num_outputs=10, kernel_size=[1,1], stride=1, scope=end_point, activation_fn=None)
 			self._end_points[end_point] = landmark_predictions
 
-        		#cls_prob_original = conv4_1 
-        		#bbox_pred_original = bbox_pred
-
-        		if(self._is_training):
-            			output_class_probability = tf.squeeze(conv4_1, [1,2], name='class_probability')
-            			output_bounding_box = tf.squeeze(bounding_box_predictions, [1,2], name='bounding_box_predictions')
-				output_landmarks = tf.squeeze(landmark_predictions, [1,2], name="landmark_predictions")
-
-             			return(output_class_probability, output_bounding_box, output_landmarks)
-        		else:
-            			output_class_probability = tf.squeeze(conv4_1, axis=0)
-            			output_bounding_box = tf.squeeze(bounding_box_predictions, axis=0)
-            			output_landmarks = tf.squeeze(landmark_predictions, axis=0)
-
-            			return(output_class_probability, output_bounding_box, output_landmarks)
+			return(conv4_1, bounding_box_predictions, landmark_predictions)
 
 	def load_model(self, checkpoint_path):
-		self._is_training = False
-
         	graph = tf.Graph()
         	with graph.as_default():
             		self._input_batch = tf.placeholder(tf.float32, name='input_batch')
@@ -99,7 +83,11 @@ class PNet(AbstractFaceDetector):
             		self._image_height = tf.placeholder(tf.int32, name='image_height')
             		image_reshape = tf.reshape(self._input_batch, [1, self._image_height, self._image_width, 3])
 
-			self._output_class_probability, self._output_bounding_box, self._output_landmarks = self.setup_network(image_reshape)
+			convolution_output, bounding_box_predictions, landmark_predictions = self.setup_network(image_reshape)
+
+       			self._output_class_probability = tf.squeeze(convolution_output, axis=0)
+       			self._output_bounding_box = tf.squeeze(bounding_box_predictions, axis=0)
+       			self._output_landmarks = tf.squeeze(landmark_predictions, axis=0)
 
 			self._session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))			
 			self._load_model_from(checkpoint_path)

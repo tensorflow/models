@@ -25,7 +25,7 @@ from nets.NetworkFactory import NetworkFactory
 class AbstractNetworkTrainer(object):
 
 	def __init__(self, network_name):
-		self._network = NetworkFactory.network(network_name, True)
+		self._network = NetworkFactory.network(network_name)
 		self._config = edict()
 
 		self._batch_size = 384

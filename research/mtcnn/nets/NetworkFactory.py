@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+
 from nets.PNet import PNet
 from nets.RNet import RNet
 from nets.ONet import ONet
@@ -27,18 +29,18 @@ class NetworkFactory(object):
 		pass
 
 	@classmethod
-	def network(cls, network_name='PNet', is_training=False):
+	def network(cls, network_name='PNet'):
 		if (network_name == 'PNet'): 
-			network_object = PNet(is_training)
+			network_object = PNet()
 			return(network_object)
 		elif (network_name == 'RNet'): 
-			network_object = RNet(is_training)
+			network_object = RNet()
 			return(network_object)
 		elif (network_name == 'ONet'): 
-			network_object = ONet(is_training)
+			network_object = ONet()
 			return(network_object)
 		else:
-			network_object = PNet(is_training)
+			network_object = PNet()
 			return(network_object)
 	@classmethod
 	def model_deploy_dir(cls):

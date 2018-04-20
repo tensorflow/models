@@ -26,8 +26,8 @@ from utils.prelu import prelu
 
 class RNet(AbstractFaceDetector):
 
-	def __init__(self, is_training=False, batch_size = 1):
-		AbstractFaceDetector.__init__(self, is_training)
+	def __init__(self, batch_size = 1):
+		AbstractFaceDetector.__init__(self)
 		self._network_size = 24
 		self._network_name = 'RNet'
 		self._batch_size = batch_size
@@ -86,21 +86,21 @@ class RNet(AbstractFaceDetector):
         		landmark_predictions = slim.fully_connected(fc1, num_outputs=10, scope=end_point, activation_fn=None)
 			self._end_points[end_point] = landmark_predictions
 
-        		if(self._is_training):
-            			class_loss = cls_ohem(class_probability, label)
-            			bounding_box_loss = bbox_ohem(bounding_box_predictions, bbox_targets, label)
-            			landmark_loss = landmark_ohem(landmark_predictions, landmark_targets, label)
+			return(class_probability, bounding_box_predictions, landmark_predictions)
 
-            			accuracy = cal_accuracy(class_probability, label)
-            			L2_loss = tf.add_n(slim.losses.get_regularization_losses())
+        		#if(self._is_training):
+            		#	class_loss = cls_ohem(class_probability, label)
+            		#	bounding_box_loss = bbox_ohem(bounding_box_predictions, bbox_targets, label)
+            		#	landmark_loss = landmark_ohem(landmark_predictions, landmark_targets, label)
 
-            			return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy)
-        		else:
-            			return(class_probability, bounding_box_predictions, landmark_predictions)
+            		#	accuracy = cal_accuracy(class_probability, label)
+            		#	L2_loss = tf.add_n(slim.losses.get_regularization_losses())
+
+            		#	return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy)
+        		#else:
+            		#	return(class_probability, bounding_box_predictions, landmark_predictions)
 
 	def load_model(self, checkpoint_path):
-		self._is_training = False
-
         	graph = tf.Graph()
         	with graph.as_default():
             		self._input_batch = tf.placeholder(tf.float32, shape=[self.batch_size(), self.network_size(), self.network_size(), 3], name='input_batch')            		

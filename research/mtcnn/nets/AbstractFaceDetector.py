@@ -21,10 +21,9 @@ import tensorflow as tf
 
 class AbstractFaceDetector(object):
 
-	def __init__(self, is_training=False):
+	def __init__(self):
 		self._network_size = 0
 		self._network_name = ''
-		self._is_training = is_training
 		self._end_points = {}
 		self._session = None
 

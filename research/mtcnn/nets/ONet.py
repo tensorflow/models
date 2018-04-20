@@ -26,8 +26,8 @@ from utils.prelu import prelu
 
 class ONet(RNet):
 
-	def __init__(self, is_training=False, batch_size = 1):
-		RNet.__init__(self, is_training, batch_size)
+	def __init__(self, batch_size = 1):
+		RNet.__init__(self, batch_size)
 		self._network_size = 48
 		self._network_name = 'ONet'
 
@@ -90,15 +90,18 @@ class ONet(RNet):
         		landmark_predictions = slim.fully_connected(fc1, num_outputs=10, scope=end_point, activation_fn=None)
 			self._end_points[end_point] = landmark_predictions
 
-        		if(self._is_training):
-            			class_loss = cls_ohem(class_probability, label)
-            			bounding_box_loss = bbox_ohem(bounding_box_predictions, bounding_box_targets, label)
-            			landmark_loss = landmark_ohem(landmark_predictions, landmark_targets,label)
+			return(class_probability, bounding_box_predictions, landmark_predictions)
 
-            			accuracy = cal_accuracy(class_probability, label)
-            			L2_loss = tf.add_n(slim.losses.get_regularization_losses())
+        		#if(self._is_training):
+            		#	class_loss = cls_ohem(class_probability, label)
+            		#	bounding_box_loss = bbox_ohem(bounding_box_predictions, bounding_box_targets, label)
+            		#	landmark_loss = landmark_ohem(landmark_predictions, landmark_targets,label)
 
-            			return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy )
-        		else:
-            			return(class_probability, bounding_box_predictions, landmark_predictions)
+            		#	accuracy = cal_accuracy(class_probability, label)
+            		#	L2_loss = tf.add_n(slim.losses.get_regularization_losses())
+
+            		#	return(class_loss, bounding_box_loss, landmark_loss, L2_loss, accuracy )
+        		#else:
+            		#	return(class_probability, bounding_box_predictions, landmark_predictions)
+
 
