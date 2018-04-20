@@ -86,7 +86,7 @@ def main(args):
 	if(status):
 		print(args.network_name + ' network dataset is generated at ' + args.target_root_dir)
 	else:
-		print('Error generating basic dataset.')
+		print('Error generating hard dataset.')
 
 if __name__ == '__main__':
 	os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 

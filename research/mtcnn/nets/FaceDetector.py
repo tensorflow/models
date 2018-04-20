@@ -25,9 +25,7 @@ import numpy as np
 from utils.nms import py_nms
 from utils.convert_to_square import convert_to_square
 
-from nets.PNet import PNet
-from nets.RNet import RNet
-from nets.ONet import ONet
+from nets.NetworkFactory import NetworkFactory
 
 class FaceDetector(object):
 
@@ -53,15 +51,15 @@ class FaceDetector(object):
 		self._threshold = [0.9, 0.6, 0.7]
 		self._scale_factor = 0.79
 
-		self._pnet = PNet()
+		self._pnet = NetworkFactory.network('PNet', False)
 		pnet_model_path = os.path.join(self._model_root_dir, self._pnet.network_name(), self._pnet.network_name())
 		self._pnet.load_model(pnet_model_path)
 
-		self._rnet = RNet()
+		self._rnet = NetworkFactory.network('RNet', False)
 		rnet_model_path = os.path.join(self._model_root_dir, self._rnet.network_name(), self._rnet.network_name())
 		self._rnet.load_model(rnet_model_path)
 
-		self._onet = ONet()
+		self._onet = NetworkFactory.network('ONet', False)
 		onet_model_path = os.path.join(self._model_root_dir, self._onet.network_name(), self._onet.network_name())
 		self._onet.load_model(onet_model_path)
 
