@@ -191,9 +191,9 @@ def export_model(model, model_type, export_dir):
   else:
     columns = wide_columns + deep_columns
   feature_spec = tf.feature_column.make_parse_example_spec(columns)
-  fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
-      feature_spec)
-  model.export_savedmodel(export_dir, fn)
+  example_input_fn = (
+      tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec))
+  model.export_savedmodel(export_dir, example_input_fn)
 
 
 def main(argv):
