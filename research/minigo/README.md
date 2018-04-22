@@ -59,7 +59,6 @@ layers for the policy head and 3 layers for the value head.
 This project assumes you have virtualenv, TensorFlow (>= 1.5) and two other Go-related
 packages pygtp(>=0.4) and sgf (==0.5).
 
-
 ## Training Model
 One iteration of reinforcement learning consists of the following steps:
  - Bootstrap: initializes a random model
@@ -88,27 +87,26 @@ One iteration of reinforcement learning consists of the following steps:
  The `--evaluation` argument is to invoke the evaluation between the latest model and the current best model.
 
 ## Testing Pipeline
-As the whole RL pipeline may takes hours to train even for a 9x9 board size, we provide a dummy model with a `--debug` mode for testing purpose.
+As the whole RL pipeline may takes hours to train even for a 9x9 board size, we provide a dummy model with a `--dummy` mode for testing purpose.
 
- Run `minigo.py` with `--debug` argument
+ Run `minigo.py` with `--dummy` argument
  ```
- python minigo.py --debug
+ python minigo.py --dummy
  ```
  The `--debug` argument is for testing purpose with a dummy model.
 
 Validation and evaluation can also be tested with the dummy model by combing their corresponding arguments with `--debug`.
-To test validation, run the following commands:
+To test validation with dummy model, run the following commands:
  ```
- python minigo.py --debug --validation
+ python minigo.py --dummy --validation
  ```
-To test evaluation, run the following commands:
+To test evaluation with dummy model, run the following commands:
  ```
- python minigo.py --debug --evaluation
+ python minigo.py --dummy --evaluation
  ```
-To test both validation and evaluation, run the following commands:
+To test both validation and evaluation with dummy model, run the following commands:
  ```
- python minigo.py --debug --validation --evaluation
+ python minigo.py --dummy --validation --evaluation
  ```
 
-## MCTS and Go features (TODO)
-Code clean up on MCTS and Go features.
+## Running Individual Step (TODO)
