@@ -174,22 +174,18 @@ class HardDataset(BasicDataset):
 		return(True)
 
 	def _generate_dataset(self, target_root_dir):
-		tensorflow_dir = os.path.join(target_root_dir, 'tensorflow')
-		if(not os.path.exists(tensorflow_dir)):
-			os.makedirs(tensorflow_dir)
-
 		tensorflow_dataset = TensorFlowDataset()
 
-		if(not tensorflow_dataset.generate(self._positive_file_name(target_root_dir), tensorflow_dir, 'positive')):
+		if(not tensorflow_dataset.generate(self._positive_file_name(target_root_dir), target_root_dir, 'positive')):
 			return(False) 
 
-		if(not tensorflow_dataset.generate(self._part_file_name(target_root_dir), tensorflow_dir, 'part')):
+		if(not tensorflow_dataset.generate(self._part_file_name(target_root_dir), target_root_dir, 'part')):
 			return(False) 
 
-		if(not tensorflow_dataset.generate(self._negative_file_name(target_root_dir), tensorflow_dir, 'negative')):
+		if(not tensorflow_dataset.generate(self._negative_file_name(target_root_dir), target_root_dir, 'negative')):
 			return(False) 
 
-		if(not tensorflow_dataset.generate(self._image_list_file_name(target_root_dir), tensorflow_dir, 'image_list')):
+		if(not tensorflow_dataset.generate(self._image_list_file_name(target_root_dir), target_root_dir, 'image_list')):
 			return(False) 
 
 		return(True)

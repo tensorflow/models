@@ -21,11 +21,13 @@ import os
 from easydict import EasyDict as edict
 
 from nets.NetworkFactory import NetworkFactory
+from datasets.TensorFlowDataset import TensorFlowDataset
 
 class AbstractNetworkTrainer(object):
 
 	def __init__(self, network_name):
 		self._network = NetworkFactory.network(network_name)
+		self._number_of_samples = 0
 		self._config = edict()
 
 		self._batch_size = 384
@@ -51,6 +53,22 @@ class AbstractNetworkTrainer(object):
 	def network_train_dir(self, train_root_dir):
 		network_train_dir = os.path.join(train_root_dir, self.network_name())
 		return(network_train_dir)
+
+	def _positive_file_name(self, dataset_dir):
+		positive_file_name = TensorFlowDataset.tensorflow_file_name(dataset_dir, 'positive')
+		return(positive_file_name)
+
+	def _part_file_name(self, dataset_dir):
+		part_file_name = TensorFlowDataset.tensorflow_file_name(dataset_dir, 'part')
+		return(part_file_name)
+
+	def _negative_file_name(self, dataset_dir):
+		negative_file_name = TensorFlowDataset.tensorflow_file_name(dataset_dir, 'negative')
+		return(negative_file_name)
+
+	def _image_list_file_name(self, dataset_dir):
+		image_list_file_name = TensorFlowDataset.tensorflow_file_name(dataset_dir, 'image_list')
+		return(image_list_file_name)
 
 	def train(self, network_name, dataset_root_dir, train_root_dir, base_learning_rate, max_number_of_epoch, log_every_n_steps):
 		raise NotImplementedError('Must be implemented by the subclass.')

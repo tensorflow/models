@@ -82,11 +82,11 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 
 	def _read_data(self, dataset_root_dir):
 		dataset_dir = self.dataset_dir(dataset_root_dir)		
-		tensorflow_file_name = os.path.join(dataset_dir, 'image_list.tfrecord')
+		tensorflow_file_name = self._image_list_file_name(dataset_dir)
 		self._number_of_samples = sum(1 for _ in tf.python_io.tf_record_iterator(tensorflow_file_name))
-
-		tensorflow_dataset = TensorFlowDataset()
+		
 		image_size = self.network_size()
+		tensorflow_dataset = TensorFlowDataset()
 		return(tensorflow_dataset.read_single_tfrecord(tensorflow_file_name, self._batch_size, image_size))
 
 	def train(self, network_name, dataset_root_dir, train_root_dir, base_learning_rate, max_number_of_epoch, log_every_n_steps):
@@ -98,7 +98,8 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		image_size = self.network_size()	
 	
 		image_batch, label_batch, bbox_batch, landmark_batch = self._read_data(dataset_root_dir)
-
+		
+		print("number_of_samples" , self._number_of_samples)
 		class_loss_ratio, bbox_loss_ratio, landmark_loss_ratio = NetworkFactory.loss_ratio(network_name)
 
     		input_image = tf.placeholder(tf.float32, shape=[self._batch_size, image_size, image_size, 3], name='input_image')

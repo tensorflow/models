@@ -17,10 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib import slim
 
 from trainers.SimpleNetworkTrainer import SimpleNetworkTrainer
 from datasets.TensorFlowDataset import TensorFlowDataset
@@ -28,8 +26,36 @@ from datasets.TensorFlowDataset import TensorFlowDataset
 
 class HardNetworkTrainer(SimpleNetworkTrainer):
 
-	def __init__(self, network_name='PNet'):	
+	def __init__(self, network_name='RNet'):	
 		SimpleNetworkTrainer.__init__(self, network_name)	
 
 	def _read_data(self, dataset_root_dir):
-		pass
+
+		dataset_dir = self.dataset_dir(dataset_root_dir)
+
+        	positive_file_name = self._positive_file_name(dataset_dir)
+	     	part_file_name = self._part_file_name(dataset_dir)
+        	negative_file_name = self._negative_file_name(dataset_dir)
+	       	image_list_file_name = self._image_list_file_name(dataset_dir)
+
+        	tensorflow_file_names = [positive_file_name, part_file_name, negative_file_name, image_list_file_name]
+
+        	positive_ratio = 1.0/6
+		part_ratio = 1.0/6
+		landmark_ratio = 1.0/6
+		negative_ratio = 3.0/6
+
+        	positive_batch_size = int(np.ceil(self._batch_size*positive_ratio))
+        	part_batch_size = int(np.ceil(self._batch_size*part_ratio))
+        	negative_batch_size = int(np.ceil(self._batch_size*negative_ratio))
+        	landmark_batch_size = int(np.ceil(self._batch_size*landmark_ratio))
+
+        	batch_sizes = [positive_batch_size, part_batch_size, negative_batch_size, landmark_batch_size]
+		
+        	for d in tensorflow_file_names:
+            		self._number_of_samples += sum(1 for _ in tf.python_io.tf_record_iterator(d))
+
+		image_size = self.network_size()
+		tensorflow_dataset = TensorFlowDataset()
+		return(tensorflow_dataset.read_multi_tfrecords(tensorflow_file_names, batch_sizes, image_size))
+

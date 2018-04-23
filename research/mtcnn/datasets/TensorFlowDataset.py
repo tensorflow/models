@@ -77,7 +77,8 @@ class TensorFlowDataset(object):
 	def data(self):
 		return(self._dataset)
 
-	def _get_output_filename(self, target_dir, target_name):
+	@classmethod
+	def tensorflow_file_name(self, target_dir, target_name):
 		target_name = target_name + '.tfrecord'
 		file_name = os.path.join(target_dir, target_name)
 		return(file_name)
@@ -174,13 +175,28 @@ class TensorFlowDataset(object):
     		landmark = tf.reshape(landmark,[batch_size,10])
     		return( image, label, roi, landmark )
 
-	def generate(self, input_file_name, target_dir, target_name):
+	def read_multi_tfrecords(self, tensorflow_file_names, batch_sizes, image_size):
+    		tensorflow_positive_file_name, tensorflow_part_file_name, tensorflow_negative_file_name, tensorflow_landmark_file_name = tensorflow_file_names
+    		positive_batch_size, part_batch_size, negative_batch_size, landmark_batch_size = batch_sizes
 
-    		tensorflow_filename = self._get_output_filename(target_dir, target_name)
-    		if( tf.gfile.Exists(tensorflow_filename) ):
-        		print('Dataset files already exist. Exiting without re-creating them.')
-	        	return(True)
+    		positive_images, pos_label, pos_roi, pos_landmark = self.read_single_tfrecord(tensorflow_positive_file_name, positive_batch_size, image_size)
+    		part_images, part_label, part_roi, part_landmark = self.read_single_tfrecord(tensorflow_part_file_name, part_batch_size, image_size)
+    		neg_image,neg_label,neg_roi,neg_landmark = self.read_single_tfrecord(tensorflow_negative_file_name, negative_batch_size, image_size)
+    		landmark_image,landmark_label,landmark_roi,landmark_landmark = self.read_single_tfrecord(tensorflow_landmark_file_name, landmark_batch_size, image_size)
+    
+    		images = tf.concat([positive_images, part_images, neg_image, landmark_image], 0, name="concat/image")
+    		labels = tf.concat([pos_label,part_label,neg_label,landmark_label],0,name="concat/label")
+    		rois = tf.concat([pos_roi,part_roi,neg_roi,landmark_roi],0,name="concat/roi")
+    		landmarks = tf.concat([pos_landmark,part_landmark,neg_landmark,landmark_landmark],0,name="concat/landmark")
 
+    		return( images, labels, rois, landmarks )
+
+	def generate(self, input_file_name, target_root_dir, target_name):
+		tensorflow_dir = os.path.join(target_root_dir, 'tensorflow')
+		if(not os.path.exists(tensorflow_dir)):
+			os.makedirs(tensorflow_dir)
+
+    		tensorflow_filename = TensorFlowDataset.tensorflow_file_name(tensorflow_dir, target_name)
 		if(not self._read_dataset(input_file_name)):
 			return(False)
 

@@ -77,12 +77,8 @@ class SimpleDataset(AbstractDataset):
 		return(True)
 
 	def _generate_dataset(self, target_root_dir):
-		tensorflow_dir = os.path.join(target_root_dir, 'tensorflow')
-		if(not os.path.exists(tensorflow_dir)):
-			os.makedirs(tensorflow_dir)
-
 		tensorflow_dataset = TensorFlowDataset()
-		if(not tensorflow_dataset.generate(self._image_list_file_name(target_root_dir), tensorflow_dir, 'image_list')):
+		if(not tensorflow_dataset.generate(self._image_list_file_name(target_root_dir), target_root_dir, 'image_list')):
 			return(False) 
 
 		return(True)
