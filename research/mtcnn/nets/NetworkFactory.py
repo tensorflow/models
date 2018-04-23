@@ -42,6 +42,34 @@ class NetworkFactory(object):
 		else:
 			network_object = PNet()
 			return(network_object)
+
+	@classmethod
+	def network_size(cls, network_name='PNet'):
+		if (network_name == 'PNet'): 			
+			network_size  = 12
+			return(network_size)
+		elif (network_name == 'RNet'): 
+			network_size  = 24
+			return(network_size)
+		elif (network_name == 'ONet'): 
+			network_size  = 48
+			return(network_size)
+		else:
+			network_size  = 12
+			return(network_size)
+
+	@classmethod
+	def previous_network(cls, network_name='PNet'):
+		if(network_name == 'ONet'):
+			previous_network = 'RNet'
+			return(previous_network)
+		elif (network_name == 'RNet'):
+			previous_network = 'PNet'
+			return(previous_network)
+		else:
+			previous_network = 'PNet'
+			return(previous_network)
+
 	@classmethod
 	def model_deploy_dir(cls):
         	model_root_dir, _ = os.path.split(os.path.realpath(__file__))

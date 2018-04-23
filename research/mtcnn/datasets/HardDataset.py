@@ -37,7 +37,7 @@ class HardDataset(BasicDataset):
 
 	def __init__(self, name):	
 		BasicDataset.__init__(self, name)	
-		self._pickle_file_name = self.name() + '.pkl'
+		self._pickle_file_name = self.network_name() + '.pkl'
 
 	def pickle_file_name(self):
 		return(self._pickle_file_name)
@@ -54,10 +54,7 @@ class HardDataset(BasicDataset):
 		if(not (len(detected_boxes) == number_of_images)):
 			return(False)
 
-		if(self.name() == 'ONet'):
-			image_size = 48
-		else:
-			image_size = 24
+		image_size = NetworkFactory.network_size(self.network_name())
 
 		positive_dir = os.path.join(target_root_dir, 'positive')
 		part_dir = os.path.join(target_root_dir, 'part')
@@ -148,14 +145,9 @@ class HardDataset(BasicDataset):
 		if(not model_train_dir):
 			model_train_dir = NetworkFactory.model_train_dir()			
 		face_detector = FaceDetector(model_train_dir)
-		if(self.name() == 'ONet'):
-			last_network = 'RNet'
-		elif (self.name() == 'RNet'):
-			last_network = 'PNet'
-		else:
-			last_network = 'PNet'
 
-		detections, landmarks = face_detector.detect_face(test_data, last_network)
+		previous_network = NetworkFactory.previous_network(self.network_name())
+		detections, landmarks = face_detector.detect_face(test_data, previous_network)
 
     		pickle_file_path = os.path.join(target_root_dir, self.pickle_file_name())
     		with open(pickle_file_path, 'wb') as f:
@@ -232,14 +224,11 @@ class HardDataset(BasicDataset):
 			return(False)
 
 		target_root_dir = os.path.expanduser(target_root_dir)
-		target_root_dir = os.path.join(target_root_dir, self.name())
+		target_root_dir = os.path.join(target_root_dir, self.network_name())
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
 
-		if(self.name() == 'ONet'):
-			image_size = 48
-		else:
-			image_size = 24
+		image_size = NetworkFactory.network_size(self.network_name())
 
 		if(not super(HardDataset, self)._generate_landmark_samples(landmark_image_dir, landmark_file_name, image_size, target_root_dir)):
 			return(False)

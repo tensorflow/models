@@ -19,11 +19,11 @@ from __future__ import print_function
 
 class AbstractDataset(object):
 
-	def __init__(self, name):
-		self._name = name
+	def __init__(self, network_name):
+		self._network_name = network_name
 
-	def name(self):
-		return(self._name)
+	def network_name(self):
+		return(self._network_name)
 
 	def generate_dataset(self, target_root_dir):
 		raise NotImplementedError('Must be implemented by the subclass.')

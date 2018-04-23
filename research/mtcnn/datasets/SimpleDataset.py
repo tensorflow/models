@@ -27,8 +27,8 @@ from datasets.TensorFlowDataset import TensorFlowDataset
 
 class SimpleDataset(AbstractDataset):
 
-	def __init__(self, name='PNet'):	
-		AbstractDataset.__init__(self, name)	
+	def __init__(self, network_name='PNet'):	
+		AbstractDataset.__init__(self, network_name)	
 	
 	def _generate_landmark_samples(self, landmark_image_dir, landmark_file_name, minimum_face, target_root_dir):
 		landmark_dataset = LandmarkDataset()		
@@ -38,7 +38,7 @@ class SimpleDataset(AbstractDataset):
 		wider_dataset = WIDERFaceDataset()		
 		return(wider_dataset.generate(annotation_image_dir, annotation_file_name, minimum_face, target_root_dir))
 
-	def _generate_image_list(self, target_root_dir):
+	def _generate_image_list(self, base_number_of_images, target_root_dir):
 		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'r')
 		positive_data = positive_file.readlines()
 
@@ -55,7 +55,6 @@ class SimpleDataset(AbstractDataset):
 
     		nums = [len(negative_data), len(positive_data), len(part_data)]
     		ratio = [3, 1, 1]
-    		base_number_of_images = 25000
 
     		if(len(negative_data) > base_number_of_images * 3 ):
         		negative_number_of_images = npr.choice(len(negative_data), size=base_number_of_images * 3, replace=True)
@@ -90,7 +89,7 @@ class SimpleDataset(AbstractDataset):
 
 		return(True)
 
-	def generate(self, annotation_image_dir, annotation_file_name, landmark_image_dir, landmark_file_name, minimum_face, target_root_dir):
+	def generate(self, annotation_image_dir, annotation_file_name, landmark_image_dir, landmark_file_name, base_number_of_images, minimum_face, target_root_dir):
 
 		if(not os.path.isfile(annotation_file_name)):
 			return(False)
@@ -103,7 +102,7 @@ class SimpleDataset(AbstractDataset):
 			return(False)
 
 		target_root_dir = os.path.expanduser(target_root_dir)
-		target_root_dir = os.path.join(target_root_dir, self.name())
+		target_root_dir = os.path.join(target_root_dir, self.network_name())
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
 
@@ -113,7 +112,7 @@ class SimpleDataset(AbstractDataset):
 		if(not self._generate_image_samples(annotation_image_dir, annotation_file_name, minimum_face, target_root_dir)):
 			return(False)
 
-		if(not self._generate_image_list(target_root_dir)):
+		if(not self._generate_image_list(base_number_of_images, target_root_dir)):
 			return(False)
 
 		if(not self._generate_dataset(target_root_dir)):

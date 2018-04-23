@@ -23,6 +23,30 @@ $ python generate_basic_dataset.py \
 	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
 	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
 	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
+	--target_root_dir=/workspace/datasets/mtcnn 
+
+$ python generate_basic_dataset.py \
+	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
+	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
+	--base_number_of_images=250000 \
+	--target_root_dir=/workspace/datasets/mtcnn 
+
+$ python generate_basic_dataset.py \
+	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
+	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
+	--target_root_dir=/workspace/datasets/mtcnn \
+	--minimum_face=12
+
+$ python generate_basic_dataset.py \
+	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
+	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
+	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
+	--base_number_of_images=250000 \
 	--target_root_dir=/workspace/datasets/mtcnn \
 	--minimum_face=12
 ```
@@ -45,6 +69,8 @@ def parse_arguments(argv):
 	parser.add_argument('--landmark_image_dir', type=str, help='Input landmark dataset training image directory.', default=None)
 	parser.add_argument('--landmark_file_name', type=str, help='Input landmark dataset annotation file.', default=None)
 
+	parser.add_argument('--base_number_of_images', type=int, help='Input base number of images.', default=25000)
+
 	parser.add_argument('--target_root_dir', type=str, help='Output directory where output images and TensorFlow data files are saved.', default=None)
 	parser.add_argument('--minimum_face', type=int, help='Minimum face size used for face detection.', default=12)
 	return(parser.parse_args(argv))
@@ -65,7 +91,7 @@ def main(args):
 		raise ValueError('You must supply output directory for storing output images and TensorFlow data files with --target_root_dir.')
 
 	simple_dataset = SimpleDataset()
-	status = simple_dataset.generate(args.annotation_image_dir, args.annotation_file_name, args.landmark_image_dir, args.landmark_file_name, args.minimum_face, args.target_root_dir)
+	status = simple_dataset.generate(args.annotation_image_dir, args.annotation_file_name, args.landmark_image_dir, args.landmark_file_name, args.base_number_of_images, args.minimum_face, args.target_root_dir)
 	if(status):
 		print('Basic dataset is generated at ' + args.target_root_dir)
 	else:
