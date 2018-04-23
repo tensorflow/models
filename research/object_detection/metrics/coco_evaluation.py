@@ -263,7 +263,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         self.add_single_ground_truth_image_info(
             image_id,
             {'groundtruth_boxes': gt_box[:num_gt_box],
-             'groundtruth_classes': gt_class[:num_det_box]})
+             'groundtruth_classes': gt_class[:num_gt_box]})
         self.add_single_detected_image_info(
             image_id,
             {'detection_boxes': det_box[:num_det_box],
