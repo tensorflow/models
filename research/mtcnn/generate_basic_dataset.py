@@ -35,7 +35,7 @@ from __future__ import print_function
 import sys
 import argparse
 
-from datasets.BasicDataset import BasicDataset
+from datasets.SimpleDataset import SimpleDataset
 
 def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
@@ -64,8 +64,8 @@ def main(args):
 	if(not args.target_root_dir):
 		raise ValueError('You must supply output directory for storing output images and TensorFlow data files with --target_root_dir.')
 
-	basic_dataset = BasicDataset()
-	status = basic_dataset.generate(args.annotation_image_dir, args.annotation_file_name, args.landmark_image_dir, args.landmark_file_name, args.minimum_face, args.target_root_dir)
+	simple_dataset = SimpleDataset()
+	status = simple_dataset.generate(args.annotation_image_dir, args.annotation_file_name, args.landmark_image_dir, args.landmark_file_name, args.minimum_face, args.target_root_dir)
 	if(status):
 		print('Basic dataset is generated at ' + args.target_root_dir)
 	else:

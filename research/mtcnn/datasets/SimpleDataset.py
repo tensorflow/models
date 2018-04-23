@@ -25,7 +25,7 @@ from datasets.LandmarkDataset import LandmarkDataset
 from datasets.WIDERFaceDataset import WIDERFaceDataset
 from datasets.TensorFlowDataset import TensorFlowDataset
 
-class BasicDataset(AbstractDataset):
+class SimpleDataset(AbstractDataset):
 
 	def __init__(self, name='PNet'):	
 		AbstractDataset.__init__(self, name)	

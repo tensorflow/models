@@ -14,6 +14,6 @@
 # ==============================================================================
 
 from datasets.AbstractDataset import AbstractDataset
-from datasets.BasicDataset import BasicDataset
+from datasets.SimpleDataset import SimpleDataset
 from datasets.HardDataset import HardDataset
 
