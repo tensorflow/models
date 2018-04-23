@@ -37,15 +37,8 @@ class HardDataset(BasicDataset):
 
 	def __init__(self, name):	
 		BasicDataset.__init__(self, name)	
-		self._pickle_file_name = self.network_name() + '.pkl'
 
-	def pickle_file_name(self):
-		return(self._pickle_file_name)
-
-	def _generate_hard_samples(self, wider_data, minimum_face, target_root_dir):
-
-		pickle_file_path = os.path.join(target_root_dir, self.pickle_file_name())
-		detected_boxes = pickle.load(open(os.path.join(pickle_file_path), 'rb'))
+	def _generate_hard_samples(self, wider_data, detected_boxes, minimum_face, target_root_dir):
 
 		image_file_names = wider_data['images']
 		generated_boxes = wider_data['bboxes']
@@ -67,9 +60,9 @@ class HardDataset(BasicDataset):
 		if(not os.path.exists(negative_dir)):
     			os.makedirs(negative_dir)
 
-		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'w')
-		part_file = open(os.path.join(target_root_dir, 'part.txt'), 'w')
-		negative_file = open(os.path.join(target_root_dir, 'negative.txt'), 'w')
+		positive_file = open(self._positive_file_name(target_root_dir), 'w')
+		part_file = open(self._part_file_name(target_root_dir), 'w')
+		negative_file = open(self._negative_file_name(target_root_dir), 'w')
 
     		negative_images = 0
     		positive_images = 0
@@ -147,28 +140,24 @@ class HardDataset(BasicDataset):
 		face_detector = FaceDetector(model_train_dir)
 
 		previous_network = NetworkFactory.previous_network(self.network_name())
-		detections, landmarks = face_detector.detect_face(test_data, previous_network)
+		detected_boxes, landmarks = face_detector.detect_face(test_data, previous_network)
 
-    		pickle_file_path = os.path.join(target_root_dir, self.pickle_file_name())
-    		with open(pickle_file_path, 'wb') as f:
-        		pickle.dump(detections, f, 1)
-		
-		return(self._generate_hard_samples(wider_data, minimum_face, target_root_dir))
+		return(self._generate_hard_samples(wider_data, detected_boxes, minimum_face, target_root_dir))
 
 	def _generate_image_list(self, target_root_dir):
-		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'r')
+		positive_file = open(self._positive_file_name(target_root_dir), 'r')
 		positive_data = positive_file.readlines()
 
-		part_file = open(os.path.join(target_root_dir, 'part.txt'), 'r')
+		part_file = open(self._part_file_name(target_root_dir), 'r')
 		part_data = part_file.readlines()
 
-		negative_file = open(os.path.join(target_root_dir, 'negative.txt'), 'r')
+		negative_file = open(self._negative_file_name(target_root_dir), 'r')
 		negative_data = negative_file.readlines()
 
-		landmark_file = open(os.path.join(target_root_dir, 'landmark.txt'), 'r')
+		landmark_file = open(self._landmark_file_name(target_root_dir), 'r')
 		landmark_data = landmark_file.readlines()
 
-		image_list_file = open(os.path.join(target_root_dir, 'image_list.txt'), 'w')
+		image_list_file = open(self._image_list_file_name(target_root_dir), 'w')
 
     		for i in np.arange(len(positive_data)):
         		image_list_file.write(positive_data[i])
@@ -191,20 +180,16 @@ class HardDataset(BasicDataset):
 
 		tensorflow_dataset = TensorFlowDataset()
 
-		file_name = os.path.join(target_root_dir, 'positive.txt')
-		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'positive')):
+		if(not tensorflow_dataset.generate(self._positive_file_name(target_root_dir), tensorflow_dir, 'positive')):
 			return(False) 
 
-		file_name = os.path.join(target_root_dir, 'part.txt')
-		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'part')):
+		if(not tensorflow_dataset.generate(self._part_file_name(target_root_dir), tensorflow_dir, 'part')):
 			return(False) 
 
-		file_name = os.path.join(target_root_dir, 'negative.txt')
-		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'negative')):
+		if(not tensorflow_dataset.generate(self._negative_file_name(target_root_dir), tensorflow_dir, 'negative')):
 			return(False) 
 
-		file_name = os.path.join(target_root_dir, 'image_list.txt')
-		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'image_list')):
+		if(not tensorflow_dataset.generate(self._image_list_file_name(target_root_dir), tensorflow_dir, 'image_list')):
 			return(False) 
 
 		return(True)

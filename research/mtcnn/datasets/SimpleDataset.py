@@ -39,19 +39,19 @@ class SimpleDataset(AbstractDataset):
 		return(wider_dataset.generate(annotation_image_dir, annotation_file_name, minimum_face, target_root_dir))
 
 	def _generate_image_list(self, base_number_of_images, target_root_dir):
-		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'r')
+		positive_file = open(self._positive_file_name(target_root_dir), 'r')
 		positive_data = positive_file.readlines()
 
-		part_file = open(os.path.join(target_root_dir, 'part.txt'), 'r')
+		part_file = open(self._part_file_name(target_root_dir), 'r')
 		part_data = part_file.readlines()
 
-		negative_file = open(os.path.join(target_root_dir, 'negative.txt'), 'r')
+		negative_file = open(self._negative_file_name(target_root_dir), 'r')
 		negative_data = negative_file.readlines()
 
-		landmark_file = open(os.path.join(target_root_dir, 'landmark.txt'), 'r')
+		landmark_file = open(self._landmark_file_name(target_root_dir), 'r')
 		landmark_data = landmark_file.readlines()
 
-		image_list_file = open(os.path.join(target_root_dir, 'image_list.txt'), 'w')
+		image_list_file = open(self._image_list_file_name(target_root_dir), 'w')
 
     		nums = [len(negative_data), len(positive_data), len(part_data)]
     		ratio = [3, 1, 1]
@@ -82,9 +82,7 @@ class SimpleDataset(AbstractDataset):
 			os.makedirs(tensorflow_dir)
 
 		tensorflow_dataset = TensorFlowDataset()
-
-		file_name = os.path.join(target_root_dir, 'image_list.txt')
-		if(not tensorflow_dataset.generate(file_name, tensorflow_dir, 'image_list')):
+		if(not tensorflow_dataset.generate(self._image_list_file_name(target_root_dir), tensorflow_dir, 'image_list')):
 			return(False) 
 
 		return(True)

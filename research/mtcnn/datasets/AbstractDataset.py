@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+
 class AbstractDataset(object):
 
 	def __init__(self, network_name):
@@ -24,6 +26,26 @@ class AbstractDataset(object):
 
 	def network_name(self):
 		return(self._network_name)
+
+	def _positive_file_name(self, target_root_dir):
+		positive_file_name = os.path.join(target_root_dir, 'positive.txt')
+		return(positive_file_name)
+
+	def _part_file_name(self, target_root_dir):
+		part_file_name = os.path.join(target_root_dir, 'part.txt')
+		return(part_file_name)
+
+	def _negative_file_name(self, target_root_dir):
+		negative_file_name = os.path.join(target_root_dir, 'negative.txt')
+		return(negative_file_name)
+
+	def _landmark_file_name(self, target_root_dir):
+		landmark_file_name = os.path.join(target_root_dir, 'landmark.txt')
+		return(landmark_file_name)
+
+	def _image_list_file_name(self, target_root_dir):
+		image_list_file_name = os.path.join(target_root_dir, 'image_list.txt')
+		return(image_list_file_name)
 
 	def generate_dataset(self, target_root_dir):
 		raise NotImplementedError('Must be implemented by the subclass.')
