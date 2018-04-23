@@ -87,7 +87,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		
 		image_size = self.network_size()
 		tensorflow_dataset = TensorFlowDataset()
-		return(tensorflow_dataset.read_single_tfrecord(tensorflow_file_name, self._batch_size, image_size))
+		return(tensorflow_dataset.read_tensorflow_file(tensorflow_file_name, self._batch_size, image_size))
 
 	def train(self, network_name, dataset_root_dir, train_root_dir, base_learning_rate, max_number_of_epoch, log_every_n_steps):
 		network_train_dir = self.network_train_dir(train_root_dir)

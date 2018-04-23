@@ -141,7 +141,7 @@ class TensorFlowDataset(object):
     		example = _convert_to_example_simple(image_example, image_data)
     		tfrecord_writer.write(example.SerializeToString())
 
-	def read_single_tfrecord(self, tensorflow_file_name, batch_size, image_size):
+	def read_tensorflow_file(self, tensorflow_file_name, batch_size, image_size):
     		filename_queue = tf.train.string_input_producer([tensorflow_file_name], shuffle=True)
 
     		reader = tf.TFRecordReader()
@@ -175,14 +175,14 @@ class TensorFlowDataset(object):
     		landmark = tf.reshape(landmark,[batch_size,10])
     		return( image, label, roi, landmark )
 
-	def read_multi_tfrecords(self, tensorflow_file_names, batch_sizes, image_size):
+	def read_tensorflow_files(self, tensorflow_file_names, batch_sizes, image_size):
     		tensorflow_positive_file_name, tensorflow_part_file_name, tensorflow_negative_file_name, tensorflow_landmark_file_name = tensorflow_file_names
     		positive_batch_size, part_batch_size, negative_batch_size, landmark_batch_size = batch_sizes
 
-    		positive_images, pos_label, pos_roi, pos_landmark = self.read_single_tfrecord(tensorflow_positive_file_name, positive_batch_size, image_size)
-    		part_images, part_label, part_roi, part_landmark = self.read_single_tfrecord(tensorflow_part_file_name, part_batch_size, image_size)
-    		neg_image,neg_label,neg_roi,neg_landmark = self.read_single_tfrecord(tensorflow_negative_file_name, negative_batch_size, image_size)
-    		landmark_image,landmark_label,landmark_roi,landmark_landmark = self.read_single_tfrecord(tensorflow_landmark_file_name, landmark_batch_size, image_size)
+    		positive_images, pos_label, pos_roi, pos_landmark = self.read_tensorflow_file(tensorflow_positive_file_name, positive_batch_size, image_size)
+    		part_images, part_label, part_roi, part_landmark = self.read_tensorflow_file(tensorflow_part_file_name, part_batch_size, image_size)
+    		neg_image,neg_label,neg_roi,neg_landmark = self.read_tensorflow_file(tensorflow_negative_file_name, negative_batch_size, image_size)
+    		landmark_image,landmark_label,landmark_roi,landmark_landmark = self.read_tensorflow_file(tensorflow_landmark_file_name, landmark_batch_size, image_size)
     
     		images = tf.concat([positive_images, part_images, neg_image, landmark_image], 0, name="concat/image")
     		labels = tf.concat([pos_label,part_label,neg_label,landmark_label],0,name="concat/label")

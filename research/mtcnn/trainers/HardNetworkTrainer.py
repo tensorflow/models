@@ -57,5 +57,5 @@ class HardNetworkTrainer(SimpleNetworkTrainer):
 
 		image_size = self.network_size()
 		tensorflow_dataset = TensorFlowDataset()
-		return(tensorflow_dataset.read_multi_tfrecords(tensorflow_file_names, batch_sizes, image_size))
+		return(tensorflow_dataset.read_tensorflow_files(tensorflow_file_names, batch_sizes, image_size))
 
