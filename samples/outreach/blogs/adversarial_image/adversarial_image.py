@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import os
 import pickle
 import argparse
@@ -30,21 +31,11 @@ MODEL_DIR = 'model'
 KEY_FN = 'key.pkl'
 MODEL_FN = 'mobilenet_v1_1.0_224/frozen_graph.pb'
 
-# These are specific to this MobileNet model:
 MODEL_INFO = {
     'input_name': 'input:0',
     'output_name': 'MobilenetV1/Predictions/Softmax:0',
     'logits_name': 'MobilenetV1/Logits/SpatialSqueeze:0'
 }
-
-
-def load_pb_as_graph_def(frozen_graph_fn):
-    graph_def = tf.GraphDef()
-
-    with open(frozen_graph_fn, 'rb') as f:
-        graph_def.ParseFromString(f.read())
-
-    return graph_def
 
 
 def main(args):
@@ -56,7 +47,9 @@ def main(args):
     a = resize(original, (224, 224, 3), mode='constant')
 
     # Load the frozen graph into the default graph.
-    graph_def = load_pb_as_graph_def(os.path.join(MODEL_DIR, MODEL_FN))
+    with open(os.path.join(MODEL_DIR, MODEL_FN), 'rb') as f:
+        graph_def = tf.GraphDef.FromString(f.read())
+
     input_, logits, prob = tf.import_graph_def(
         graph_def, name='',
         return_elements=[MODEL_INFO['input_name'], MODEL_INFO['logits_name'], MODEL_INFO['output_name']])
@@ -138,10 +131,6 @@ if __name__ == '__main__':
     parser.add_argument('img_fn')
 
     args = parser.parse_args()
-
-    img_fn = args.img_fn
-    epsilon = args.epsilon
-    n_iter = args.n_iter
 
     main(args)
 
