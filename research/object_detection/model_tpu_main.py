@@ -56,7 +56,9 @@ flags.DEFINE_integer('iterations_per_loop', 100,
 # recent checkpoint every 10 minutes by default for train_and_eval
 flags.DEFINE_string('mode', 'train',
                     'Mode to run: train, eval')
-flags.DEFINE_integer('train_batch_size', 32 * 8, 'Batch size for training.')
+flags.DEFINE_integer('train_batch_size', None, 'Batch size for training. If '
+                     'this is not provided, batch size is read from training '
+                     'config.')
 
 flags.DEFINE_string(
     'hparams_overrides', None, 'Comma-separated list of '
@@ -93,6 +95,10 @@ def main(unused_argv):
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_shards))
 
+  kwargs = {}
+  if FLAGS.train_batch_size:
+    kwargs['batch_size'] = FLAGS.train_batch_size
+
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
       hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
@@ -102,7 +108,7 @@ def main(unused_argv):
       use_tpu_estimator=True,
       use_tpu=FLAGS.use_tpu,
       num_shards=FLAGS.num_shards,
-      batch_size=FLAGS.train_batch_size)
+      **kwargs)
   estimator = train_and_eval_dict['estimator']
   train_input_fn = train_and_eval_dict['train_input_fn']
   eval_input_fn = train_and_eval_dict['eval_input_fn']
