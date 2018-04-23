@@ -45,13 +45,13 @@ class NetworkFactory(object):
 	@classmethod
 	def model_deploy_dir(cls):
         	model_root_dir, _ = os.path.split(os.path.realpath(__file__))
-        	model_root_dir = os.path.join(model_root_dir, '../data/mtcnn/deploy/')
+        	model_root_dir = os.path.join(model_root_dir, '../models/mtcnn/deploy/')
 		return(model_root_dir)
 
 	@classmethod
 	def model_train_dir(cls):
         	model_root_dir, _ = os.path.split(os.path.realpath(__file__))
-        	model_root_dir = os.path.join(model_root_dir, '../data/mtcnn/train/')
+        	model_root_dir = os.path.join(model_root_dir, '../models/mtcnn/train/')
 		return(model_root_dir)
 
 	@classmethod

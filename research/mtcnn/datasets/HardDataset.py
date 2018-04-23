@@ -28,6 +28,7 @@ from datasets.InferenceBatch import InferenceBatch
 from datasets.TensorFlowDataset import TensorFlowDataset
 
 from nets.FaceDetector import FaceDetector
+from nets.NetworkFactory import NetworkFactory
 
 from utils.convert_to_square import convert_to_square
 from utils.IoU import IoU
@@ -145,7 +146,7 @@ class HardDataset(BasicDataset):
 		test_data = InferenceBatch(wider_data['images'])
 
 		if(not model_train_dir):
-			model_train_dir = FaceDetector.model_train_dir()			
+			model_train_dir = NetworkFactory.model_train_dir()			
 		face_detector = FaceDetector(model_train_dir)
 		if(self.name() == 'ONet'):
 			last_network = 'RNet'

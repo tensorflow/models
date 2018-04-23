@@ -1,0 +1,2 @@
+model_checkpoint_path: "PNet"
+all_model_checkpoint_paths: "PNet"
