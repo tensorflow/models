@@ -66,7 +66,7 @@ def bootstrap(estimator_model_dir, trained_models_dir, params):
     estimator_model_dir: tf.estimator model directory.
     trained_models_dir: Dir to save the trained models. Here to export the first
       bootstrapped generation.
-    params: An object of hyperparameters for the model.
+    params: A MiniGoParams instance of hyperparameters for the model.
   """
   bootstrap_name = utils.generate_model_name(0)
   _ensure_dir_exists(trained_models_dir)
@@ -84,8 +84,14 @@ def selfplay(selfplay_dirs, selfplay_model, params):
 
   Args:
     selfplay_dirs: A dict to specify the directories used in selfplay.
+      selfplay_dirs = {
+          'output_dir': output_dir,
+          'holdout_dir': holdout_dir,
+          'clean_sgf': clean_sgf,
+          'full_sgf': full_sgf
+      }
     selfplay_model: The actual Dualnet runner for selfplay.
-    params: An object of hyperparameters for the model.
+    params: A MiniGoParams instance of hyperparameters for the model.
   """
   with utils.logged_timer('Playing game'):
     player = selfplay_mcts.play(
@@ -126,7 +132,7 @@ def gather(selfplay_dir, training_chunk_dir, params):
     selfplay_dir: Where to look for games. Set as 'base_dir/data/selfplay/'.
     training_chunk_dir: where to put collected games. Set as
       'base_dir/data/training_chunks/'.
-    params: An object of hyperparameters for the model.
+    params: A MiniGoParams instance of hyperparameters for the model.
   """
   # Check the selfplay data from the most recent 50 models.
   _ensure_dir_exists(training_chunk_dir)
@@ -175,19 +181,17 @@ def gather(selfplay_dir, training_chunk_dir, params):
 
 
 def train(trained_models_dir, estimator_model_dir, training_chunk_dir,
-          generation_num, params):
+          generation, params):
   """Train the latest model from gathered data.
 
   Args:
     trained_models_dir: Where to export the completed generation.
     estimator_model_dir: tf.estimator model directory.
     training_chunk_dir: Directory where gathered training chunks are.
-    generation_num: Which generation you are training.
-    params: An object of hyperparameters for the model.
+    generation: Which generation you are training.
+    params: A MiniGoParams instance of hyperparameters for the model.
   """
-  model_num, model_name = utils.get_latest_model(trained_models_dir)
-  print('Initializing from model {}'.format(model_name))
-  new_model_name = utils.generate_model_name(model_num + 1)
+  new_model_name = utils.generate_model_name(generation)
   print('New model will be {}'.format(new_model_name))
   new_model = os.path.join(trained_models_dir, new_model_name)
 
@@ -199,7 +203,7 @@ def train(trained_models_dir, estimator_model_dir, training_chunk_dir,
 
   print('Training from: {} to {}'.format(tf_records[0], tf_records[-1]))
   with utils.logged_timer('Training'):
-    dualnet.train(estimator_model_dir, tf_records, generation_num, params)
+    dualnet.train(estimator_model_dir, tf_records, generation, params)
     dualnet.export_model(estimator_model_dir, new_model)
 
 
@@ -210,7 +214,7 @@ def validate(trained_models_dir, holdout_dir, estimator_model_dir, params):
     trained_models_dir: Directories where the completed generations/models are.
     holdout_dir: Directories where holdout data are.
     estimator_model_dir: tf.estimator model directory.
-    params: An object of hyperparameters for the model.
+    params: A MiniGoParams instance of hyperparameters for the model.
   """
   model_num, _ = utils.get_latest_model(trained_models_dir)
 
@@ -231,7 +235,7 @@ def validate(trained_models_dir, holdout_dir, estimator_model_dir, params):
         tf_records.extend(
             tf.gfile.Glob(os.path.join(record_dir, '*'+_TF_RECORD_SUFFIX)))
 
-  if len(tf_records) is 0:
+  if not tf_records:
     print('No holdout dataset for validation! ' +
           'Please check your holdout directory: {}'.format(holdout_dir))
     return
@@ -249,17 +253,17 @@ def evaluate(black_model_name, black_net, white_model_name, white_net,
   """Evaluate with two models.
 
   With two DualNetRunners to play as black and white in a Go match. Two models
-  play several names, and the model that wins by a margin of 55% will be the
+  play several games, and the model that wins by a margin of 55% will be the
   winner.
 
   Args:
     black_model_name: The name of the model playing black.
-    black_net: The actual DualNetRunner model for black
+    black_net: The DualNetRunner model for black
     white_model_name: The name of the model playing white.
-    white_net: The actual DualNetRunner model for white.
+    white_net: The DualNetRunner model for white.
     evaluate_dir: Where to write the evaluation results. Set as
-      'base_dir/sgf/evaluate/'.
-    params: An object of hyperparameters for the model.
+      'base_dir/sgf/evaluate/'        .
+    params: A MiniGoParams instance of hyperparameters for the model.
 
   Returns:
     The model name of the winner.
@@ -278,23 +282,30 @@ def evaluate(black_model_name, black_net, white_model_name, white_net,
   return black_model_name if winner == go.BLACK_NAME else white_model_name
 
 
-def _set_params():
-  """Set hyperparameters from board size."""
+def _set_params(flags):
+  """Set hyperparameters from board size.
+
+  Args:
+    flags: Flags from Argparser.
+
+  Returns:
+  An MiniGoParams instance of hyperparameters.
+  """
   params = model_params.MiniGoParams()
-  k = utils.round_power_of_two(FLAGS.board_size ** 2 / 3)
+  k = utils.round_power_of_two(flags.board_size ** 2 / 3)
   params.num_filters = k  # Number of filters in the convolution layer
   params.fc_width = 2 * k  # Width of each fully connected layer
-  params.num_shared_layers = FLAGS.board_size  # Number of shared trunk layers
-  params.board_size = FLAGS.board_size  # Board size
+  params.num_shared_layers = flags.board_size  # Number of shared trunk layers
+  params.board_size = flags.board_size  # Board size
 
   # How many positions can fit on a graphics card. 256 for 9s, 16 or 32 for 19s.
-  if FLAGS.batch_size is None:
-    if FLAGS.board_size == 9:
+  if flags.batch_size is None:
+    if flags.board_size == 9:
       params.batch_size = 256
     else:
       params.batch_size = 32
   else:
-    params.batch_size = FLAGS.batch_size
+    params.batch_size = flags.batch_size
 
   return params
 
@@ -311,12 +322,11 @@ def _prepare_selfplay(
       'base_dir/data/holdout/'.
     sgf_dir: Where to write the sgf (Smart Game Format) files. Set as
       'base_dir/sgf/'.
-    params: An object of hyperparameters for the model.
+    params: A MiniGoParams instance of hyperparameters for the model.
 
   Returns:
     The directories and network model for selfplay.
   """
-  print('Playing a game with model {}'.format(model_name))
   # Set paths for the model with 'model_name'
   model_path = os.path.join(trained_models_dir, model_name)
   output_dir = os.path.join(selfplay_dir, model_name)
@@ -342,108 +352,32 @@ def _prepare_selfplay(
   return selfplay_dirs, network
 
 
-def run_single_step_only(params, dirs):
-  """Run each individual step only.
+def run_selfplay(selfplay_model, selfplay_games, dirs, params):
+  """Run selfplay to generate training data.
 
   Args:
-    params: An object of hyperparameters for the model.
-    dirs: An object of directories used in each step.
-
-  Raises:
-    ValueError: when neither of the black model and the white model is provided
-    for evaluation.
+    selfplay_model: The model name for selfplay.
+    selfplay_games: The number of selfplay games.
+    dirs: A MiniGoDirectory instance of directories used in each step.
+    params: A MiniGoParams instance of hyperparameters for the model.
   """
-  # bootstrap only
-  if FLAGS.bootstrap_only:
-    if os.path.isdir(dirs.trained_models_dir) is False:
-      print('No trained model exists! Starting from Bootstrap...')
-      print('Creating random initial weights...')
-      bootstrap(dirs.estimator_model_dir, dirs.trained_models_dir, params)
-    else:
-      print('A MiniGo models directory has been found. No need of bootstrap!')
-    return
+  selfplay_dirs, network = _prepare_selfplay(
+      selfplay_model, dirs.trained_models_dir, dirs.selfplay_dir,
+      dirs.holdout_dir, dirs.sgf_dir, params)
 
-  # self-play only, for parallelization
-  if FLAGS.selfplay_only:
-    if FLAGS.selfplay_model_name is not None:
-      selfplay_model_name = FLAGS.selfplay_model_name
-    else:
-      #  use the latest model for self-play
-      _, best_model_so_far = utils.get_latest_model(dirs.trained_models_dir)
-      selfplay_model_name = best_model_so_far
-
-    selfplay_dirs, network = _prepare_selfplay(
-        selfplay_model_name, dirs.trained_models_dir, dirs.selfplay_dir,
-        dirs.holdout_dir, dirs.sgf_dir, params)
-
-    if FLAGS.selfplay_max_games is not None:
-      max_games = FLAGS.selfplay_max_games
-    else:
-      max_games = params.max_games_per_generation
-
-    for _ in range(max_games):
-      selfplay(selfplay_dirs, network, params)
-    return  # end of self-play only
-
-  if FLAGS.gather_only:
-    print('Gathering game output...')  # gather selfplay data for training
-    print('from {} to {}'.format(dirs.selfplay_dir, dirs.training_chunk_dir))
-    gather(dirs.selfplay_dir, dirs.training_chunk_dir, params)
-    return
-
-  if FLAGS.train_only:
-    if FLAGS.train_generation_num is not None:
-      generation_num = FLAGS.train_generation_num
-    else:
-      model_num, _ = utils.get_latest_model(dirs.trained_models_dir)
-      generation_num = model_num + 1
-
-    print('Training on gathered game data...')
-    train(dirs.trained_models_dir, dirs.estimator_model_dir,
-          dirs.training_chunk_dir, generation_num, params)
-    return
-
-  if FLAGS.validation_only:
-    print('Validating on the holdout game data...')
-    validate(dirs.trained_models_dir, dirs.holdout_dir,
-             dirs.estimator_model_dir, params)
-    return
-
-  if FLAGS.evaluation_only:
-    if FLAGS.black_model_path is None or FLAGS.white_model_path is None:
-      raise ValueError(
-          'Both the black_model_path and white_model_path must be provided.')
-
-    black_model_name = os.path.basename(FLAGS.black_model_path)
-    white_model_name = os.path.basename(FLAGS.white_model_path)
-    print('Evaluate models between {} and {}'.format(
-        black_model_name, white_model_name))
-
-    if FLAGS.evaluate_dir is not None:
-      evaluate_dir = FLAGS.evaluate_dir
-    else:
-      evaluate_dir = dirs.evaluate_dir
-    _ensure_dir_exists(evaluate_dir)
-
-    with utils.logged_timer('Loading weights'):
-      black_net = dualnet.DualNetRunner(FLAGS.black_model_path, params)
-      white_net = dualnet.DualNetRunner(FLAGS.white_model_path, params)
-
-    winner = evaluate(
-        black_model_name, black_net, white_model_name, white_net,
-        evaluate_dir, params)
-    print('Winner of evaluation: {}!'.format(winner))
-    return
+  print('Self-play with model: {}'.format(selfplay_model))
+  for _ in range(selfplay_games):
+    selfplay(selfplay_dirs, network, params)
 
 
 def main(_):
   """Run the reinforcement learning loop."""
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  params = _set_params()
+  params = _set_params(FLAGS)
 
   # A dummy model for debug/testing purpose with fewer games and iterations
-  if FLAGS.dummy:
+  if FLAGS.test:
     params = model_params.DummyMiniGoParams()
     base_dir = FLAGS.base_dir + str(FLAGS.board_size) + '_size_dummy/'
   else:
@@ -452,14 +386,23 @@ def main(_):
 
   dirs = utils.MiniGoDirectory(base_dir)
 
-  # Run each single step only if specified by flags
-  if(FLAGS.bootstrap_only or FLAGS.selfplay_only or FLAGS.gather_only or
-     FLAGS.train_only or FLAGS.validation_only or FLAGS.evaluation_only):
-    run_single_step_only(params, dirs)
+  # Run selfplay only if user specifies the argument.
+  if FLAGS.selfplay_only:
+    if FLAGS.selfplay_model_name is not None:
+      selfplay_model_name = FLAGS.selfplay_model_name
+    else:
+      _, selfplay_model_name = utils.get_latest_model(dirs.trained_models_dir)
+
+    if FLAGS.selfplay_max_games is not None:
+      max_games = FLAGS.selfplay_max_games
+    else:
+      max_games = params.max_games_per_generation
+    run_selfplay(selfplay_model_name, max_games, dirs, params)
     return
 
   # Run the RL pipeline
   # if no models have been trained, start from bootstrap model
+
   if os.path.isdir(dirs.trained_models_dir) is False:
     print('No trained model exists! Starting from Bootstrap...')
     print('Creating random initial weights...')
@@ -471,19 +414,12 @@ def main(_):
   _, best_model_so_far = utils.get_latest_model(dirs.trained_models_dir)
   for rl_iter in range(params.max_iters_per_pipeline):
     print('RL_iteration: {}'.format(rl_iter))
-
     # Self-play with the best model to generate training data
-    selfplay_dirs, network = _prepare_selfplay(
-        best_model_so_far, dirs.trained_models_dir, dirs.selfplay_dir,
-        dirs.holdout_dir, dirs.sgf_dir, params)
-    for _ in range(params.max_games_per_generation):
-      selfplay(selfplay_dirs, network, params)
+    run_selfplay(
+        best_model_so_far, params.max_games_per_generation, dirs, params)
 
-      if FLAGS.validation:  # generate holdout data for validation
-        params = model_params.DummyValidationParams()
-        selfplay(selfplay_dirs, network, params)
-
-    print('Gathering game output...')  # gather selfplay data for training
+    # gather selfplay data for training
+    print('Gathering game output...')
     gather(dirs.selfplay_dir, dirs.training_chunk_dir, params)
 
     # train the next generation model
@@ -492,10 +428,10 @@ def main(_):
     train(dirs.trained_models_dir, dirs.estimator_model_dir,
           dirs.training_chunk_dir, model_num + 1, params)
 
-    if FLAGS.validation:
-      print('Validating on the holdout game data...')
-      validate(dirs.trained_models_dir, dirs.holdout_dir,
-               dirs.estimator_model_dir, params)
+    # validate the model
+    print('Validating on the holdout game data...')
+    validate(dirs.trained_models_dir, dirs.holdout_dir,
+             dirs.estimator_model_dir, params)
 
     _, current_model = utils.get_latest_model(dirs.trained_models_dir)
 
@@ -541,26 +477,14 @@ if __name__ == '__main__':
       help='Batch size for training. The default size is None')
   # Test the pipeline with a dummy model
   parser.add_argument(
-      '--dummy',
+      '--test',
       action='store_true',
       help='A boolean to test RL pipeline with a dummy model.')
-  # Run RL pipeline with validation step
-  parser.add_argument(
-      '--validation',
-      action='store_true',
-      help='A boolean to explicitly generate holdout data for validation.')
   # Run RL pipeline with the evaluation step
   parser.add_argument(
       '--evaluation',
       action='store_true',
       help='A boolean to specify evaluation in the RL pipeline.')
-
-  # Parallel run with each individual steps
-  # bootstrap only
-  parser.add_argument(
-      '--bootstrap_only',
-      action='store_true',
-      help='A boolean to run bootstrap only.')
 
   # self-play only
   parser.add_argument(
@@ -572,61 +496,13 @@ if __name__ == '__main__':
       type=str,
       default=None,
       metavar='SM',
-      help='The model used for self-play')
+      help='The model used for self-play only.')
   parser.add_argument(
       '--selfplay_max_games',
       type=int,
       default=None,
       metavar='SMG',
-      help='The number of game data self-play needs to generate')
-
-  # gather only: gather the selfplay data
-  parser.add_argument(
-      '--gather_only',
-      action='store_true',
-      help='A boolean to run gather only.')
-
-  # train only: specify which generation to train
-  parser.add_argument(
-      '--train_only',
-      action='store_true',
-      help='A boolean to run train only.')
-  parser.add_argument(
-      '--train_generation_num',
-      type=int,
-      default=None,
-      metavar='TGN',
-      help='The generation number of the model to be trained.')
-
-  # validation only: always validate the latest model
-  parser.add_argument(
-      '--validation_only',
-      action='store_true',
-      help='A boolean to run gather only.')
-
-  # evaluation only: evaluation with two models
-  parser.add_argument(
-      '--evaluation_only',
-      action='store_true',
-      help='A boolean to run gather only.')
-  parser.add_argument(
-      '--black_model_path',
-      type=str,
-      default=None,
-      metavar='BM',
-      help='Black model to be evaluated.')
-  parser.add_argument(
-      '--white_model_path',
-      type=str,
-      default=None,
-      metavar='WM',
-      help='White model to be evaluated.')
-  parser.add_argument(
-      '--evaluate_dir',
-      type=str,
-      default=None,
-      metavar='ED',
-      help='Directory to store the evaluation result.')
+      help='The number of game data self-play only needs to generate')
 
   FLAGS, unparsed = parser.parse_known_args()
   tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
