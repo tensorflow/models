@@ -317,6 +317,102 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
     self.assertFalse(coco_evaluator._detection_boxes_list)
     self.assertFalse(coco_evaluator._image_ids)
 
+  def testGetOneMAPWithMatchingGroundtruthAndDetectionsPadded(self):
+    category_list = [{
+        'id': 0,
+        'name': 'person'
+    }, {
+        'id': 1,
+        'name': 'cat'
+    }, {
+        'id': 2,
+        'name': 'dog'
+    }]
+    coco_evaluator = coco_evaluation.CocoDetectionEvaluator(category_list)
+    image_id = tf.placeholder(tf.string, shape=())
+    groundtruth_boxes = tf.placeholder(tf.float32, shape=(None, 4))
+    groundtruth_classes = tf.placeholder(tf.float32, shape=(None))
+    detection_boxes = tf.placeholder(tf.float32, shape=(None, 4))
+    detection_scores = tf.placeholder(tf.float32, shape=(None))
+    detection_classes = tf.placeholder(tf.float32, shape=(None))
+
+    eval_metric_ops = coco_evaluator.get_estimator_eval_metric_ops(
+        image_id, groundtruth_boxes, groundtruth_classes, detection_boxes,
+        detection_scores, detection_classes)
+
+    _, update_op = eval_metric_ops['DetectionBoxes_Precision/mAP']
+
+    with self.test_session() as sess:
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id:
+                  'image1',
+              groundtruth_boxes:
+                  np.array([[100., 100., 200., 200.], [-1, -1, -1, -1]]),
+              groundtruth_classes:
+                  np.array([1, -1]),
+              detection_boxes:
+                  np.array([[100., 100., 200., 200.], [0., 0., 0., 0.]]),
+              detection_scores:
+                  np.array([.8, 0.]),
+              detection_classes:
+                  np.array([1, -1])
+          })
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id:
+                  'image2',
+              groundtruth_boxes:
+                  np.array([[50., 50., 100., 100.], [-1, -1, -1, -1]]),
+              groundtruth_classes:
+                  np.array([3, -1]),
+              detection_boxes:
+                  np.array([[50., 50., 100., 100.], [0., 0., 0., 0.]]),
+              detection_scores:
+                  np.array([.7, 0.]),
+              detection_classes:
+                  np.array([3, -1])
+          })
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id:
+                  'image3',
+              groundtruth_boxes:
+                  np.array([[25., 25., 50., 50.], [10., 10., 15., 15.]]),
+              groundtruth_classes:
+                  np.array([2, 2]),
+              detection_boxes:
+                  np.array([[25., 25., 50., 50.], [10., 10., 15., 15.]]),
+              detection_scores:
+                  np.array([.95, .9]),
+              detection_classes:
+                  np.array([2, 2])
+          })
+    metrics = {}
+    for key, (value_op, _) in eval_metric_ops.iteritems():
+      metrics[key] = value_op
+    metrics = sess.run(metrics)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP@.50IOU'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP@.75IOU'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP (large)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP (medium)'],
+                           -1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP (small)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@1'], 0.75)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@10'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100 (large)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100 (medium)'],
+                           -1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100 (small)'], 1.0)
+    self.assertFalse(coco_evaluator._groundtruth_list)
+    self.assertFalse(coco_evaluator._detection_boxes_list)
+    self.assertFalse(coco_evaluator._image_ids)
+
   def testGetOneMAPWithMatchingGroundtruthAndDetectionsBatched(self):
     category_list = [{'id': 0, 'name': 'person'},
                      {'id': 1, 'name': 'cat'},

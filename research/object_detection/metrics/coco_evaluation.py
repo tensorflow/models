@@ -280,12 +280,12 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       detection_classes = tf.expand_dims(detection_classes, 0)
 
       if num_gt_boxes_per_image is None:
-        num_gt_boxes_per_image = tf.shape(groundtruth_boxes)[0:1]
+        num_gt_boxes_per_image = tf.shape(groundtruth_boxes)[1:2]
       else:
         num_gt_boxes_per_image = tf.expand_dims(num_gt_boxes_per_image, 0)
 
       if num_det_boxes_per_image is None:
-        num_det_boxes_per_image = tf.shape(detection_boxes)[0:1]
+        num_det_boxes_per_image = tf.shape(detection_boxes)[1:2]
       else:
         num_det_boxes_per_image = tf.expand_dims(num_det_boxes_per_image, 0)
     else:
@@ -636,5 +636,3 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         eval_metric_ops[metric_name] = (tf.py_func(
             value_func_factory(metric_name), [], np.float32), update_op)
     return eval_metric_ops
-
-
