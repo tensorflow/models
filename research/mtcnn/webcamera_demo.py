@@ -55,7 +55,7 @@ def parse_arguments(argv):
 	parser.add_argument('--webcamera_id', type=int, help='Webcamera ID.', default=0)
 	parser.add_argument('--threshold', type=float, help='Lower threshold value for face probability (0 to 1.0).', default=0.125)
 	parser.add_argument('--model_root_dir', type=str, help='Input model root directory where model weights are saved.', default=None)
-	parser.add_argument('--test_mode', action='store_false')
+	parser.add_argument('--test_mode', action='store_true')
 	return(parser.parse_args(argv))
 
 def main(args):
