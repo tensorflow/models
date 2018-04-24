@@ -97,7 +97,7 @@ def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose'):
           net, [stride[0] * height, stride[1] * width])
       net = tf.pad(net, spatial_pad_1, 'REFLECT')
       net = layers.conv2d(net, num_outputs, kernel_size=[3, 3], padding='valid')
-    if method == 'bilinear_upsample_conv':
+    elif method == 'bilinear_upsample_conv':
       net = tf.image.resize_bilinear(
           net, [stride[0] * height, stride[1] * width])
       net = tf.pad(net, spatial_pad_1, 'REFLECT')
