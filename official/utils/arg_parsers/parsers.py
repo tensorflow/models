@@ -60,34 +60,7 @@ from __future__ import print_function
 
 import argparse
 
-import tensorflow as tf
-
-
-# Map string to (TensorFlow dtype, default loss scale)
-DTYPE_MAP = {
-    "fp16": (tf.float16, 128),
-    "fp32": (tf.float32, 1),
-}
-
-
-def parse_dtype_info(flags):
-  """Convert dtype string to tf dtype, and set loss_scale default as needed.
-
-  Args:
-    flags: namespace object returned by arg parser.
-
-  Raises:
-    ValueError: If an invalid dtype is provided.
-  """
-  if flags.dtype in (i[0] for i in DTYPE_MAP.values()):
-    return  # Make function idempotent
-
-  try:
-    flags.dtype, default_loss_scale = DTYPE_MAP[flags.dtype]
-  except KeyError:
-    raise ValueError("Invalid dtype: {}".format(flags.dtype))
-
-  flags.loss_scale = flags.loss_scale or default_loss_scale
+from official.utils.arg_parsers import base
 
 
 class BaseParser(argparse.ArgumentParser):
@@ -111,6 +84,7 @@ class BaseParser(argparse.ArgumentParser):
                stop_threshold=True, batch_size=True, multi_gpu=True,
                hooks=True):
     super(BaseParser, self).__init__(add_help=add_help)
+    self.verbose_flags = []
 
     if data_dir:
       self.add_argument(
@@ -143,13 +117,13 @@ class BaseParser(argparse.ArgumentParser):
       )
 
     if stop_threshold:
-      self.add_argument(
+      self.verbose_flags.append(self.add_argument(
           "--stop_threshold", "-st", type=float, default=None,
           help="[default: %(default)s] If passed, training will stop at "
           "the earlier of train_epochs and when the evaluation metric is "
           "greater than or equal to stop_threshold.",
           metavar="<ST>"
-      )
+      ))
 
     if batch_size:
       self.add_argument(
@@ -165,7 +139,7 @@ class BaseParser(argparse.ArgumentParser):
       )
 
     if hooks:
-      self.add_argument(
+      self.verbose_flags.append(self.add_argument(
           "--hooks", "-hk", nargs="+", default=["LoggingTensorHook"],
           help="[default: %(default)s] A list of strings to specify the names "
                "of train hooks. "
@@ -174,7 +148,7 @@ class BaseParser(argparse.ArgumentParser):
                "ProfilerHook, ExamplesPerSecondHook, LoggingMetricHook."
                "See official.utils.logs.hooks_helper for details.",
           metavar="<HK>"
-      )
+      ))
 
 
 class PerformanceParser(argparse.ArgumentParser):
@@ -191,9 +165,10 @@ class PerformanceParser(argparse.ArgumentParser):
                intra_op=True, use_synthetic_data=True, max_train_steps=True,
                dtype=True):
     super(PerformanceParser, self).__init__(add_help=add_help)
+    self.verbose_flags = []
 
     if num_parallel_calls:
-      self.add_argument(
+      self.verbose_flags.append(self.add_argument(
           "--num_parallel_calls", "-npc",
           type=int, default=5,
           help="[default: %(default)s] The number of records that are "
@@ -202,25 +177,25 @@ class PerformanceParser(argparse.ArgumentParser):
                "sets, should be approximately the number of available CPU "
                "cores.",
           metavar="<NPC>"
-      )
+      ))
 
     if inter_op:
-      self.add_argument(
+      self.verbose_flags.append(self.add_argument(
           "--inter_op_parallelism_threads", "-inter",
           type=int, default=0,
           help="[default: %(default)s Number of inter_op_parallelism_threads "
                "to use for CPU. See TensorFlow config.proto for details.",
           metavar="<INTER>"
-      )
+      ))
 
     if intra_op:
-      self.add_argument(
+      self.verbose_flags.append(self.add_argument(
           "--intra_op_parallelism_threads", "-intra",
           type=int, default=0,
           help="[default: %(default)s Number of intra_op_parallelism_threads "
                "to use for CPU. See TensorFlow config.proto for details.",
           metavar="<INTRA>"
-      )
+      ))
 
     if use_synthetic_data:
       self.add_argument(
@@ -246,7 +221,7 @@ class PerformanceParser(argparse.ArgumentParser):
       self.add_argument(
           "--dtype", "-dt",
           default="fp32",
-          choices=list(DTYPE_MAP.keys()),
+          choices=list(base.DTYPE_MAP.keys()),
           help="[default: %(default)s] {%(choices)s} The TensorFlow datatype "
                "used for calculations. Variables may be cast to a higher"
                "precision on a case-by-case basis for numerical stability.",
@@ -326,37 +301,39 @@ class BenchmarkParser(argparse.ArgumentParser):
   def __init__(self, add_help=False, benchmark_log_dir=True,
                bigquery_uploader=True):
     super(BenchmarkParser, self).__init__(add_help=add_help)
+    self.verbose_flags = []
+
     if benchmark_log_dir:
-      self.add_argument(
+      self.verbose_flags.append(self.add_argument(
           "--benchmark_log_dir", "-bld", default=None,
           help="[default: %(default)s] The location of the benchmark logging.",
           metavar="<BLD>"
-      )
+      ))
     if bigquery_uploader:
-      self.add_argument(
+      self.verbose_flags.append(self.add_argument(
           "--gcp_project", "-gp", default=None,
           help="[default: %(default)s] The GCP project name where the benchmark"
                " will be uploaded.",
           metavar="<GP>"
-      )
-      self.add_argument(
+      ))
+      self.verbose_flags.append(self.add_argument(
           "--bigquery_data_set", "-bds", default="test_benchmark",
           help="[default: %(default)s] The Bigquery dataset name where the"
                " benchmark will be uploaded.",
           metavar="<BDS>"
-      )
-      self.add_argument(
+      ))
+      self.verbose_flags.append(self.add_argument(
           "--bigquery_run_table", "-brt", default="benchmark_run",
           help="[default: %(default)s] The Bigquery table name where the"
                " benchmark run information will be uploaded.",
           metavar="<BRT>"
-      )
-      self.add_argument(
+      ))
+      self.verbose_flags.append(self.add_argument(
           "--bigquery_metric_table", "-bmt", default="benchmark_metric",
           help="[default: %(default)s] The Bigquery table name where the"
                " benchmark metric information will be uploaded.",
           metavar="<BMT>"
-      )
+      ))
 
 
 class EagerParser(BaseParser):

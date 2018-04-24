@@ -13,15 +13,15 @@
 # limitations under the License.
 # ==============================================================================
 
-import argparse
 import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.utils.arg_parsers import base
 from official.utils.arg_parsers import parsers
 
 
-class TestParser(argparse.ArgumentParser):
+class TestParser(base.Parser):
   """Class to test canned parser functionality."""
 
   def __init__(self):
@@ -89,13 +89,11 @@ class BaseTester(unittest.TestCase):
     for dtype_str, tf_dtype, loss_scale in [["fp16", tf.float16, 128],
                                             ["fp32", tf.float32, 1]]:
       args = parser.parse_args(["--dtype", dtype_str])
-      parsers.parse_dtype_info(args)
 
       assert args.dtype == tf_dtype
       assert args.loss_scale == loss_scale
 
       args = parser.parse_args(["--dtype", dtype_str, "--loss_scale", "5"])
-      parsers.parse_dtype_info(args)
 
       assert args.loss_scale == 5
 

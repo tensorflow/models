@@ -17,13 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 import shutil
 import sys
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.utils.arg_parsers import base
 from official.utils.arg_parsers import parsers
 from official.utils.logs import hooks_helper
 from official.utils.misc import model_helpers
@@ -217,7 +217,7 @@ def main(argv):
       break
 
 
-class WideDeepArgParser(argparse.ArgumentParser):
+class WideDeepArgParser(base.Parser):
   """Argument parser for running the wide deep model."""
 
   def __init__(self):
