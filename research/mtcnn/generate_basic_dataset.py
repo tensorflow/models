@@ -19,35 +19,35 @@ Usage:
 ```shell
 
 $ python generate_basic_dataset.py \
-	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
-	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
-	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
-	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
-	--target_root_dir=/workspace/datasets/mtcnn 
+	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
+	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=./data/LFW_Landmark \
+	--landmark_file_name=./data/LFW_Landmark/trainImageList.txt \
+	--target_root_dir=./data/datasets/mtcnn 
 
 $ python generate_basic_dataset.py \
-	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
-	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
-	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
-	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
+	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
+	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=./data/LFW_Landmark \
+	--landmark_file_name=./data/LFW_Landmark/trainImageList.txt \
 	--base_number_of_images=250000 \
-	--target_root_dir=/workspace/datasets/mtcnn 
+	--target_root_dir=./data/datasets/mtcnn 
 
 $ python generate_basic_dataset.py \
-	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
-	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
-	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
-	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
-	--target_root_dir=/workspace/datasets/mtcnn \
+	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
+	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=./data/LFW_Landmark \
+	--landmark_file_name=./data/LFW_Landmark/trainImageList.txt \
+	--target_root_dir=./data/datasets/mtcnn \
 	--minimum_face=12
 
 $ python generate_basic_dataset.py \
-	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
-	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
-	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
-	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
+	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
+	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=./data/LFW_Landmark \
+	--landmark_file_name=./data/LFW_Landmark/trainImageList.txt \
 	--base_number_of_images=250000 \
-	--target_root_dir=/workspace/datasets/mtcnn \
+	--target_root_dir=./data/datasets/mtcnn \
 	--minimum_face=12
 ```
 """

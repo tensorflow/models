@@ -83,6 +83,8 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 	def _read_data(self, dataset_root_dir):
 		dataset_dir = self.dataset_dir(dataset_root_dir)		
 		tensorflow_file_name = self._image_list_file_name(dataset_dir)
+		
+		self._number_of_samples = 0
 		self._number_of_samples = sum(1 for _ in tf.python_io.tf_record_iterator(tensorflow_file_name))
 		
 		image_size = self.network_size()
@@ -121,7 +123,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		init = tf.global_variables_initializer()
     		session = tf.Session()
 
-    		saver = tf.train.Saver(max_to_keep=5)
+    		saver = tf.train.Saver(max_to_keep=1)
     		session.run(init)
 
     		tf.summary.scalar("class_loss", class_loss_op)

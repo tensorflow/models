@@ -20,20 +20,22 @@ Usage:
 
 $ python generate_hard_dataset.py \
 	--network_name=RNet \ 
-	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
-	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
-	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
-	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
-	--target_root_dir=/workspace/datasets/mtcnn \
+	--train_root_dir=./data/models/mtcnn/train \
+	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
+	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=./data/LFW_Landmark \
+	--landmark_file_name=./data/LFW_Landmark/trainImageList.txt \
+	--target_root_dir=./data/datasets/mtcnn \
 	--minimum_face=24
 
 $ python generate_hard_dataset.py \
 	--network_name=ONet \ 
-	--annotation_image_dir=/workspace/datasets/WIDER_train/images \ 
-	--annotation_file_name=/workspace/datasets/WIDER_train/wider_face_train.txt \
-	--landmark_image_dir=/workspace/datasets/LandmarkDataset \
-	--landmark_file_name=/workspace/datasets/LandmarkDataset/trainImageList.txt \
-	--target_root_dir=/workspace/datasets/mtcnn \
+	--train_root_dir=./data/models/mtcnn/train \
+	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
+	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
+	--landmark_image_dir=./data/LFW_Landmark \
+	--landmark_file_name=./data/LFW_Landmark/trainImageList.txt \
+	--target_root_dir=./data/datasets/mtcnn \
 	--minimum_face=48
 ```
 """

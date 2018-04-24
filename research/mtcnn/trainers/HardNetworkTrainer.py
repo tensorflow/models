@@ -52,6 +52,7 @@ class HardNetworkTrainer(SimpleNetworkTrainer):
 
         	batch_sizes = [positive_batch_size, part_batch_size, negative_batch_size, landmark_batch_size]
 		
+		self._number_of_samples = 0
         	for d in tensorflow_file_names:
             		self._number_of_samples += sum(1 for _ in tf.python_io.tf_record_iterator(d))
 
