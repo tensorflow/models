@@ -13,6 +13,29 @@
 # limitations under the License.
 # ==============================================================================
 
+r"""Webcamera demo.
+
+Usage:
+```shell
+
+$ python webcamera_demo.py
+
+$ python webcamera_demo.py \
+	 --webcamera_id=0 \
+	 --threshold=0.125 
+
+$ python webcamera_demo.py \
+	 --webcamera_id=0 \
+	 --threshold=0.125 \
+	 --test_mode
+
+$ python webcamera_demo.py \
+	 --webcamera_id=0 \
+	 --threshold=0.125 \
+	 --model_root_dir=/mtcnn/models/mtcnn/deploy/
+```
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -25,15 +48,26 @@ import cv2
 import numpy as np
 
 from nets.FaceDetector import FaceDetector
+from nets.NetworkFactory import NetworkFactory
 
 def parse_arguments(argv):
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--webcamera_id', type=int, help='Webcamera ID.', default=0)
 	parser.add_argument('--threshold', type=float, help='Lower threshold value for face probability (0 to 1.0).', default=0.125)
+	parser.add_argument('--model_root_dir', type=str, help='Input model root directory where model weights are saved.', default=None)
+	parser.add_argument('--test_mode', action='store_false')
 	return(parser.parse_args(argv))
 
 def main(args):
-	face_detector = FaceDetector()
+	if(args.model_root_dir):
+		model_root_dir = args.model_root_dir
+	else:
+		if(args.test_mode):
+			model_root_dir = NetworkFactory.model_train_dir()
+		else:
+			model_root_dir = NetworkFactory.model_deploy_dir()
+
+	face_detector = FaceDetector(model_root_dir)
 	webcamera = cv2.VideoCapture(args.webcamera_id)
 	webcamera.set(3, 600)
 	webcamera.set(4, 800)
