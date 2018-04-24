@@ -67,7 +67,7 @@ class WIDERFaceDataset(object):
 	def data(self):
 		return(self._data)
 
-	def read_annotation(self, annotation_image_dir, annotation_file_name):
+	def _read_annotation(self, annotation_image_dir, annotation_file_name):
 		
 		if(not os.path.isfile(annotation_file_name)):
 			return(False)
