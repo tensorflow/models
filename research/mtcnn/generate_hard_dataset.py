@@ -36,7 +36,7 @@ $ python generate_hard_dataset.py \
 	--landmark_image_dir=./data/LFW_Landmark \
 	--landmark_file_name=./data/LFW_Landmark/trainImageList.txt \
 	--target_root_dir=./data/datasets/mtcnn \
-	--minimum_face=48
+	--minimum_face=24
 ```
 """
 
