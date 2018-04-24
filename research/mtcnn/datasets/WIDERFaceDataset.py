@@ -29,7 +29,7 @@ class WIDERFaceDataset(object):
 	__part_IoU = 0.4
 	__negative_IoU = 0.3
 
-	def __init__(self, name='WIDERFace'):
+	def __init__(self, name='WIDERFaceDataset'):
 		self._name = name
 		self._is_valid = False
 		self._data = dict()
