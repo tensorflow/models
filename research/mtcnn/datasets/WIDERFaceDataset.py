@@ -25,10 +25,26 @@ from utils.IoU import IoU
 
 class WIDERFaceDataset(object):
 
+	__positive_IoU = 0.65
+	__part_IoU = 0.4
+	__negative_IoU = 0.3
+
 	def __init__(self, name='WIDERFace'):
 		self._name = name
 		self._is_valid = False
 		self._data = dict()
+
+	@classmethod
+	def positive_IoU(cls):
+		return(WIDERFaceDataset.__positive_IoU)
+
+	@classmethod
+	def part_IoU(cls):
+		return(WIDERFaceDataset.__part_IoU)
+
+	@classmethod
+	def negative_IoU(cls):
+		return(WIDERFaceDataset.__negative_IoU)
 
 	@classmethod
 	def positive_file_name(cls, target_root_dir):
@@ -100,7 +116,7 @@ class WIDERFaceDataset(object):
 		return(self.is_valid())
 
 
-	def generate(self, annotation_image_dir, annotation_file_name, minimum_face, target_root_dir):
+	def generate_samples(self, annotation_image_dir, annotation_file_name, minimum_face, target_root_dir):
 
 		positive_dir = os.path.join(target_root_dir, 'positive')
 		part_dir = os.path.join(target_root_dir, 'part')
@@ -179,7 +195,7 @@ class WIDERFaceDataset(object):
             				cropped_image = current_image[ny1: ny1 + size, nx1: nx1 + size, :]
             				resized_image = cv2.resize(cropped_image, (minimum_face, minimum_face), interpolation=cv2.INTER_LINEAR)
     
-            				if np.max(current_IoU) < 0.3:
+            				if( np.max(current_IoU) < WIDERFaceDataset.negative_IoU() ):
                 				file_path = os.path.join(negative_dir, "%s.jpg" % negative_images)
                 				negative_file.write(file_path + ' 0\n')
                 				cv2.imwrite(file_path, resized_image)
@@ -208,12 +224,12 @@ class WIDERFaceDataset(object):
             				resized_image = cv2.resize(cropped_image, (minimum_face, minimum_face), interpolation=cv2.INTER_LINEAR)
 
             				box_ = box.reshape(1, -1)
-            				if IoU(crop_box, box_) >= 0.65:
+            				if( IoU(crop_box, box_) >= WIDERFaceDataset.positive_IoU() ):
                 				file_path = os.path.join(positive_dir, "%s.jpg"%positive_images)
                 				positive_file.write(file_path + ' 1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
                 				cv2.imwrite(file_path, resized_image)
                 				positive_images += 1
-            				elif IoU(crop_box, box_) >= 0.4:
+            				elif( IoU(crop_box, box_) >= WIDERFaceDataset.part_IoU() ):
                 				file_path = os.path.join(part_dir, "%s.jpg"%part_images)
                 				part_file.write(file_path + ' -1 %.2f %.2f %.2f %.2f\n'%(offset_x1, offset_y1, offset_x2, offset_y2))
                 				cv2.imwrite(file_path, resized_image)

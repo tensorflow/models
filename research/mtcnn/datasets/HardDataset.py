@@ -41,7 +41,7 @@ class HardDataset(BasicDataset):
 	def _generate_hard_samples(self, wider_data, detected_boxes, minimum_face, target_root_dir):
 
 		image_file_names = wider_data['images']
-		generated_boxes = wider_data['bboxes']
+		ground_truth_boxes = wider_data['bboxes']
     		number_of_images = len(image_file_names)
 
 		if(not (len(detected_boxes) == number_of_images)):
@@ -68,8 +68,8 @@ class HardDataset(BasicDataset):
     		positive_images = 0
     		part_images = 0
 
-    		for image_file_path, detected_box, generated_box in zip(image_file_names, detected_boxes, generated_boxes):
-        		generated_box = np.array(generated_box, dtype=np.float32).reshape(-1, 4)
+    		for image_file_path, detected_box, ground_truth_box in zip(image_file_names, detected_boxes, ground_truth_boxes):
+        		ground_truth_box = np.array(ground_truth_box, dtype=np.float32).reshape(-1, 4)
 
         		if( detected_box.shape[0] == 0 ):
             			continue
@@ -88,11 +88,11 @@ class HardDataset(BasicDataset):
             			if( (width < minimum_face) or (x_left < 0) or (y_top < 0) or (x_right > current_image.shape[1] - 1) or (y_bottom > current_image.shape[0] - 1) ):
                 			continue
 
-            			current_IoU = IoU(box, generated_box)
+            			current_IoU = IoU(box, ground_truth_box)
             			cropped_image = current_image[y_top:y_bottom + 1, x_left:x_right + 1, :]
             			resized_image = cv2.resize(cropped_image, (image_size, image_size), interpolation=cv2.INTER_LINEAR)
 
-            			if( (np.max(current_IoU) < 0.3) and (neg_num < 60) ):
+            			if( (np.max(current_IoU) < WIDERFaceDataset.negative_IoU()) and (neg_num < 60) ):
                 			file_path = os.path.join(negative_dir, "%s.jpg" % negative_images)
                 			negative_file.write(file_path + ' 0\n')
                 			cv2.imwrite(file_path, resized_image)
@@ -100,7 +100,7 @@ class HardDataset(BasicDataset):
                 			neg_num += 1
             			else:
                 			idx = np.argmax(current_IoU)
-                			assigned_gt = generated_box[idx]
+                			assigned_gt = ground_truth_box[idx]
                 			x1, y1, x2, y2 = assigned_gt
 
                 			offset_x1 = (x1 - x_left) / float(width)
@@ -108,13 +108,13 @@ class HardDataset(BasicDataset):
                 			offset_x2 = (x2 - x_right) / float(width)
                 			offset_y2 = (y2 - y_bottom) / float(height)
 
-                			if( np.max(current_IoU) >= 0.65 ):
+                			if( np.max(current_IoU) >= WIDERFaceDataset.positive_IoU() ):
                     				file_path = os.path.join(positive_dir, "%s.jpg" % positive_images)
                     				positive_file.write(file_path + ' 1 %.2f %.2f %.2f %.2f\n' % (offset_x1, offset_y1, offset_x2, offset_y2))
                     				cv2.imwrite(file_path, resized_image)
                     				positive_images += 1
 
-                			elif( np.max(current_IoU) >= 0.4 ):
+                			elif( np.max(current_IoU) >= WIDERFaceDataset.part_IoU() ):
                     				file_path = os.path.join(part_dir, "%s.jpg" % part_images)
                     				part_file.write(file_path + ' -1 %.2f %.2f %.2f %.2f\n' % (offset_x1, offset_y1, offset_x2, offset_y2))
                     				cv2.imwrite(file_path, resized_image)

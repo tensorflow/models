@@ -27,6 +27,10 @@ from datasets.TensorFlowDataset import TensorFlowDataset
 
 class SimpleDataset(AbstractDataset):
 
+	__positive_ratio = 1
+	__part_ratio = 1
+	__negative_ratio = 3
+
 	def __init__(self, network_name='PNet'):	
 		AbstractDataset.__init__(self, network_name)	
 	
@@ -36,7 +40,7 @@ class SimpleDataset(AbstractDataset):
 		
 	def _generate_image_samples(self, annotation_image_dir, annotation_file_name, minimum_face, target_root_dir):
 		wider_dataset = WIDERFaceDataset()		
-		return(wider_dataset.generate(annotation_image_dir, annotation_file_name, minimum_face, target_root_dir))
+		return(wider_dataset.generate_samples(annotation_image_dir, annotation_file_name, minimum_face, target_root_dir))
 
 	def _generate_image_list(self, base_number_of_images, target_root_dir):
 		positive_file = open(WIDERFaceDataset.positive_file_name(target_root_dir), 'r')
@@ -53,16 +57,13 @@ class SimpleDataset(AbstractDataset):
 
 		image_list_file = open(self._image_list_file_name(target_root_dir), 'w')
 
-    		nums = [len(negative_data), len(positive_data), len(part_data)]
-    		ratio = [3, 1, 1]
-
-    		if(len(negative_data) > base_number_of_images * 3 ):
-        		negative_number_of_images = npr.choice(len(negative_data), size=base_number_of_images * 3, replace=True)
+    		if(len(negative_data) > base_number_of_images * SimpleDataset.__negative_ratio ):
+        		negative_number_of_images = npr.choice(len(negative_data), size=base_number_of_images * SimpleDataset.__negative_ratio, replace=True)
     		else:
         		negative_number_of_images = npr.choice(len(negative_data), size=len(negative_data), replace=True)
 
-    		positive_number_of_images = npr.choice(len(positive_data), size=base_number_of_images, replace=True)
-    		part_number_of_images = npr.choice(len(part_data), size=base_number_of_images, replace=True)
+    		positive_number_of_images = npr.choice(len(positive_data), size=base_number_of_images * SimpleDataset.__positive_ratio, replace=True)
+    		part_number_of_images = npr.choice(len(part_data), size=base_number_of_images * SimpleDataset.__part_ratio, replace=True)
 
     		for i in positive_number_of_images:
         		image_list_file.write(positive_data[i])
