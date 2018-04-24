@@ -39,6 +39,11 @@ class LandmarkDataset(object):
 		self._is_valid = False
 		self._landmark_data = []
 
+	@classmethod
+	def landmark_file_name(cls, target_root_dir):
+		landmark_file_name = os.path.join(target_root_dir, 'landmark.txt')
+		return(landmark_file_name)
+
 	def is_valid(self):
 		return(self._is_valid)
 
@@ -87,7 +92,7 @@ class LandmarkDataset(object):
 		if(not os.path.exists(landmark_dir)):
     			os.makedirs(landmark_dir)
 
-		landmark_file = open(os.path.join(target_root_dir, 'landmark.txt'), 'w')
+		landmark_file = open(LandmarkDataset.landmark_file_name(target_root_dir), 'w')
 
 		size = minimum_face
 		argument = True

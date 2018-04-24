@@ -78,7 +78,7 @@ class TensorFlowDataset(object):
 		return(self._dataset)
 
 	@classmethod
-	def tensorflow_file_name(self, target_dir, target_name):
+	def tensorflow_file_name(cls, target_dir, target_name):
 		target_name = target_name + '.tfrecord'
 		file_name = os.path.join(target_dir, target_name)
 		return(file_name)

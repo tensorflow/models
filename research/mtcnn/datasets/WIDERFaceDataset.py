@@ -30,6 +30,21 @@ class WIDERFaceDataset(object):
 		self._is_valid = False
 		self._data = dict()
 
+	@classmethod
+	def positive_file_name(cls, target_root_dir):
+		positive_file_name = os.path.join(target_root_dir, 'positive.txt')
+		return(positive_file_name)
+
+	@classmethod
+	def part_file_name(cls, target_root_dir):
+		part_file_name = os.path.join(target_root_dir, 'part.txt')
+		return(part_file_name)
+
+	@classmethod
+	def negative_file_name(cls, target_root_dir):
+		negative_file_name = os.path.join(target_root_dir, 'negative.txt')
+		return(negative_file_name)
+
 	def is_valid(self):
 		return(self._is_valid)
 
@@ -98,14 +113,13 @@ class WIDERFaceDataset(object):
 		if(not os.path.exists(negative_dir)):
     			os.makedirs(negative_dir)
 
-		positive_file = open(os.path.join(target_root_dir, 'positive.txt'), 'w')
+		positive_file = open(WIDERFaceDataset.positive_file_name(target_root_dir), 'w')
 		part_file = open(os.path.join(target_root_dir, 'part.txt'), 'w')
 		negative_file = open(os.path.join(target_root_dir, 'negative.txt'), 'w')
 		with open(annotation_file_name, 'r') as f:
 			annotations = f.readlines()
 
 		num = len(annotations)
-		print('Total number of images are - %d.' % num)
 
 		positive_images = 0
 		part_images = 0

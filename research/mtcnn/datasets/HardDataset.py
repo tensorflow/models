@@ -19,11 +19,11 @@ from __future__ import print_function
 
 import os
 import numpy as np
-import cPickle as pickle
 import cv2
 
 from datasets.BasicDataset import BasicDataset
 from datasets.WIDERFaceDataset import WIDERFaceDataset
+from datasets.LandmarkDataset import LandmarkDataset
 from datasets.InferenceBatch import InferenceBatch
 from datasets.TensorFlowDataset import TensorFlowDataset
 
@@ -60,9 +60,9 @@ class HardDataset(BasicDataset):
 		if(not os.path.exists(negative_dir)):
     			os.makedirs(negative_dir)
 
-		positive_file = open(self._positive_file_name(target_root_dir), 'w')
-		part_file = open(self._part_file_name(target_root_dir), 'w')
-		negative_file = open(self._negative_file_name(target_root_dir), 'w')
+		positive_file = open(WIDERFaceDataset.positive_file_name(target_root_dir), 'w')
+		part_file = open(WIDERFaceDataset.part_file_name(target_root_dir), 'w')
+		negative_file = open(WIDERFaceDataset.negative_file_name(target_root_dir), 'w')
 
     		negative_images = 0
     		positive_images = 0
@@ -145,16 +145,16 @@ class HardDataset(BasicDataset):
 		return(self._generate_hard_samples(wider_data, detected_boxes, minimum_face, target_root_dir))
 
 	def _generate_image_list(self, target_root_dir):
-		positive_file = open(self._positive_file_name(target_root_dir), 'r')
+		positive_file = open(WIDERFaceDataset.positive_file_name(target_root_dir), 'r')
 		positive_data = positive_file.readlines()
 
-		part_file = open(self._part_file_name(target_root_dir), 'r')
+		part_file = open(WIDERFaceDataset.part_file_name(target_root_dir), 'r')
 		part_data = part_file.readlines()
 
-		negative_file = open(self._negative_file_name(target_root_dir), 'r')
+		negative_file = open(WIDERFaceDataset.negative_file_name(target_root_dir), 'r')
 		negative_data = negative_file.readlines()
 
-		landmark_file = open(self._landmark_file_name(target_root_dir), 'r')
+		landmark_file = open(LandmarkDataset.landmark_file_name(target_root_dir), 'r')
 		landmark_data = landmark_file.readlines()
 
 		image_list_file = open(self._image_list_file_name(target_root_dir), 'w')
@@ -176,13 +176,13 @@ class HardDataset(BasicDataset):
 	def _generate_dataset(self, target_root_dir):
 		tensorflow_dataset = TensorFlowDataset()
 
-		if(not tensorflow_dataset.generate(self._positive_file_name(target_root_dir), target_root_dir, 'positive')):
+		if(not tensorflow_dataset.generate(WIDERFaceDataset.positive_file_name(target_root_dir), target_root_dir, 'positive')):
 			return(False) 
 
-		if(not tensorflow_dataset.generate(self._part_file_name(target_root_dir), target_root_dir, 'part')):
+		if(not tensorflow_dataset.generate(WIDERFaceDataset.part_file_name(target_root_dir), target_root_dir, 'part')):
 			return(False) 
 
-		if(not tensorflow_dataset.generate(self._negative_file_name(target_root_dir), target_root_dir, 'negative')):
+		if(not tensorflow_dataset.generate(WIDERFaceDataset.negative_file_name(target_root_dir), target_root_dir, 'negative')):
 			return(False) 
 
 		if(not tensorflow_dataset.generate(self._image_list_file_name(target_root_dir), target_root_dir, 'image_list')):
@@ -211,17 +211,26 @@ class HardDataset(BasicDataset):
 
 		image_size = NetworkFactory.network_size(self.network_name())
 
+		print('Generating landmark samples.')
 		if(not super(HardDataset, self)._generate_landmark_samples(landmark_image_dir, landmark_file_name, image_size, target_root_dir)):
+			print('Error generating landmark samples.')
 			return(False)
+		print('Generated landmark samples.')
 
+		print('Generating image samples.')
 		if(not self._generate_image_samples(annotation_file_name, annotation_image_dir, model_train_dir, minimum_face, target_root_dir)):
+			print('Error generating image samples.')
 			return(False)
+		print('Generated image samples.')
 
 		if(not self._generate_image_list(target_root_dir)):
 			return(False)
 
+		print('Generating TensorFlow dataset.')
 		if(not self._generate_dataset(target_root_dir)):
+			print('Error generating TensorFlow dataset.')
 			return(False)
+		print('Generated TensorFlow dataset.')
 
 		return(True)
 

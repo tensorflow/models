@@ -39,16 +39,16 @@ class SimpleDataset(AbstractDataset):
 		return(wider_dataset.generate(annotation_image_dir, annotation_file_name, minimum_face, target_root_dir))
 
 	def _generate_image_list(self, base_number_of_images, target_root_dir):
-		positive_file = open(self._positive_file_name(target_root_dir), 'r')
+		positive_file = open(WIDERFaceDataset.positive_file_name(target_root_dir), 'r')
 		positive_data = positive_file.readlines()
 
-		part_file = open(self._part_file_name(target_root_dir), 'r')
+		part_file = open(WIDERFaceDataset.part_file_name(target_root_dir), 'r')
 		part_data = part_file.readlines()
 
-		negative_file = open(self._negative_file_name(target_root_dir), 'r')
+		negative_file = open(WIDERFaceDataset.negative_file_name(target_root_dir), 'r')
 		negative_data = negative_file.readlines()
 
-		landmark_file = open(self._landmark_file_name(target_root_dir), 'r')
+		landmark_file = open(LandmarkDataset.landmark_file_name(target_root_dir), 'r')
 		landmark_data = landmark_file.readlines()
 
 		image_list_file = open(self._image_list_file_name(target_root_dir), 'w')
@@ -100,17 +100,26 @@ class SimpleDataset(AbstractDataset):
 		if(not os.path.exists(target_root_dir)):
 			os.makedirs(target_root_dir)
 
+		print('Generating landmark samples.')
 		if(not self._generate_landmark_samples(landmark_image_dir, landmark_file_name, minimum_face, target_root_dir)):
+			print('Error generating landmark samples.')
 			return(False)
-		
+		print('Generated landmark samples.')
+
+		print('Generating image samples.')
 		if(not self._generate_image_samples(annotation_image_dir, annotation_file_name, minimum_face, target_root_dir)):
+			print('Error generating image samples.')
 			return(False)
+		print('Generated image samples.')
 
 		if(not self._generate_image_list(base_number_of_images, target_root_dir)):
 			return(False)
 
+		print('Generating TensorFlow dataset.')
 		if(not self._generate_dataset(target_root_dir)):
+			print('Error generating TensorFlow dataset.')
 			return(False)
+		print('Generated TensorFlow dataset.')
 
 		return(True)
 
