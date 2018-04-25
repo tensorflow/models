@@ -150,9 +150,7 @@ class WIDERFaceDataset(object):
 			boxes = np.array(bbox, dtype=np.float32).reshape(-1, 4)
 
 			current_image = cv2.imread(os.path.join(annotation_image_dir, image_path + '.jpg'))
-    			height, width, channel = current_image.shape
-
-		    	annotation_number += 1        
+    			height, width, channel = current_image.shape	    	
 
 			neg_num = 0
 			while(neg_num < 50):
@@ -235,6 +233,7 @@ class WIDERFaceDataset(object):
                 				cv2.imwrite(file_path, resized_image)
                 				part_images += 1
 
+				annotation_number += 1        
 				if(annotation_number % 1000 == 0 ):
 					print('%s number of images are done - positive - %s,  part - %s, negative - %s' % (annotation_number, positive_images, part_images, negative_images))
 
