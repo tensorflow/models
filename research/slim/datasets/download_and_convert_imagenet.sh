@@ -90,7 +90,7 @@ BOUNDING_BOX_DIR="${SCRATCH_DIR}bounding_boxes/"
 echo "Finished downloading and preprocessing the ImageNet data."
 
 # Build the TFRecords version of the ImageNet data.
-BUILD_SCRIPT="${WORK_DIR}/build_imagenet_data"
+BUILD_SCRIPT="${WORK_DIR}/build_imagenet_data.py"
 OUTPUT_DIRECTORY="${DATA_DIR}"
 IMAGENET_METADATA_FILE="${WORK_DIR}/datasets/imagenet_metadata.txt"
 
