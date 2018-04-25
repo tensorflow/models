@@ -119,7 +119,7 @@ def compute_logq0_gnmax(sigma, order):
             pate.rdp_data_independent_gaussian(sigma, order))
 
   # Natural upper bounds on q0.
-  logub = min(-(1 + 1. / sigma)**2, -((order - 1) / sigma)**2, -1 / sigma**2)
+  logub = min(-(1 + 1. / sigma)**2, -((order - .99) / sigma)**2, -1 / sigma**2)
   assert _check_validity_conditions(logub)
 
   # If data-dependent bound is already better, we are done already.
