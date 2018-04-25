@@ -63,9 +63,7 @@ import argparse
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.arg_parsers import _core
-
-ArgManager = _core.ArgManager  # pylint: disable=invalid-name
+from official.utils.arg_parsers._core import ArgManager  # pylint: disable=unused-import
 
 
 # Map string to (TensorFlow dtype, default loss scale)
