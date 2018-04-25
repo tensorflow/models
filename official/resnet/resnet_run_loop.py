@@ -28,7 +28,6 @@ import os
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import resnet_model
-from official.utils.arg_parsers import base
 from official.utils.arg_parsers import parsers
 from official.utils.export import export
 from official.utils.logs import hooks_helper
@@ -457,7 +456,7 @@ def warn_on_multi_gpu_export(multi_gpu=False):
         'try exporting the SavedModel with multi-GPU mode turned off.')
 
 
-class ResnetArgParser(base.Parser):
+class ResnetArgParser(parsers.ArgManager):
   """Arguments for configuring and running a Resnet Model."""
 
   def __init__(self, resnet_size_choices=None):

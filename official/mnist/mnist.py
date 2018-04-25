@@ -22,7 +22,6 @@ import sys
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.mnist import dataset
-from official.utils.arg_parsers import base
 from official.utils.arg_parsers import parsers
 from official.utils.logs import hooks_helper
 from official.utils.misc import model_helpers
@@ -239,7 +238,7 @@ def main(argv):
     mnist_classifier.export_savedmodel(flags.export_dir, input_fn)
 
 
-class MNISTArgParser(base.Parser):
+class MNISTArgParser(parsers.ArgManager):
   """Argument parser for running MNIST model."""
 
   def __init__(self):

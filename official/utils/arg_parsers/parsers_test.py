@@ -17,11 +17,11 @@ import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.utils.arg_parsers import base
+from official.utils.arg_parsers import _core
 from official.utils.arg_parsers import parsers
 
 
-class TestParser(base.Parser):
+class TestParser(_core.ArgManager):
   """Class to test canned parser functionality."""
 
   def __init__(self):

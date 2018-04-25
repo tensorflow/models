@@ -16,13 +16,14 @@
 """Collection of parsers which are shared among the official models.
 
 The parsers in this module are intended to be used as parents to all arg
-parsers in official models. For instance, one might define a new class:
+parsers in official models. Additionally there is a manager class to support
+additional (optional) logic. For instance, one might define a new class:
 
-class ExampleParser(argparse.ArgumentParser):
+class ExampleParser(parsers.ArgManager):
   def __init__(self):
     super(ExampleParser, self).__init__(parents=[
-      arg_parsers.LocationParser(data_dir=True, model_dir=True),
-      arg_parsers.DummyParser(use_synthetic_data=True),
+      parsers.LocationParser(data_dir=True, model_dir=True),
+      parsers.DummyParser(use_synthetic_data=True),
     ])
 
     self.add_argument(
@@ -60,7 +61,18 @@ from __future__ import print_function
 
 import argparse
 
-from official.utils.arg_parsers import base
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
+from official.utils.arg_parsers import _core
+
+ArgManager = _core.ArgManager  # pylint: disable=invalid-name
+
+
+# Map string to (TensorFlow dtype, default loss scale)
+DTYPE_MAP = {
+    "fp16": (tf.float16, 128),
+    "fp32": (tf.float32, 1),
+}
 
 
 class BaseParser(argparse.ArgumentParser):
@@ -151,6 +163,28 @@ class BaseParser(argparse.ArgumentParser):
       ))
 
 
+def parse_dtype_info(flag_dict):
+  """Convert dtype string to tf dtype, and set loss_scale default as needed.
+
+  Args:
+    flag_dict: dictionary representing the underlying data of a namespace
+      object returned by the arg parser.
+  Raises:
+    ValueError: If an invalid dtype is provided.
+  """
+
+  if ("dtype" not in flag_dict or
+      flag_dict["dtype"] in (i[0] for i in DTYPE_MAP.values())):
+    return  # Make function safe without dtype flag, as well as idempotent
+
+  try:
+    flag_dict["dtype"], default_loss_scale = DTYPE_MAP[flag_dict["dtype"]]
+  except KeyError:
+    raise ValueError("Invalid dtype: {}".format(flag_dict["dtype"]))
+
+  flag_dict["loss_scale"] = flag_dict["loss_scale"] or default_loss_scale
+
+
 class PerformanceParser(argparse.ArgumentParser):
   """Default parser for specifying performance tuning arguments.
 
@@ -166,6 +200,7 @@ class PerformanceParser(argparse.ArgumentParser):
                dtype=True):
     super(PerformanceParser, self).__init__(add_help=add_help)
     self.verbose_flags = []
+    self.extra_parse_fns = [parse_dtype_info]
 
     if num_parallel_calls:
       self.verbose_flags.append(self.add_argument(
@@ -221,7 +256,7 @@ class PerformanceParser(argparse.ArgumentParser):
       self.add_argument(
           "--dtype", "-dt",
           default="fp32",
-          choices=list(base.DTYPE_MAP.keys()),
+          choices=list(DTYPE_MAP.keys()),
           help="[default: %(default)s] {%(choices)s} The TensorFlow datatype "
                "used for calculations. Variables may be cast to a higher"
                "precision on a case-by-case basis for numerical stability.",
