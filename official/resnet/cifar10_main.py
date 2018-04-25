@@ -25,6 +25,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
+from official.utils.misc import download_helpers
 
 _HEIGHT = 32
 _WIDTH = 32
@@ -44,6 +45,11 @@ _NUM_IMAGES = {
 ###############################################################################
 # Data processing
 ###############################################################################
+def download(data_dir):
+  download_helpers.download_and_extract(
+      data_dir, 'https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz')
+
+
 def get_filenames(is_training, data_dir):
   """Returns a list of filenames."""
   data_dir = os.path.join(data_dir, 'cifar-10-batches-bin')
@@ -237,6 +243,8 @@ def main(argv):
                       batch_size=128)
 
   flags = parser.parse_args(args=argv[1:])
+  if not flags.use_synthetic_data:
+    download(flags.data_dir)
 
   input_function = flags.use_synthetic_data and get_synth_input_fn() or input_fn
 
