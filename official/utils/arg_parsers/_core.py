@@ -20,6 +20,9 @@ import sys
 from typing import Union
 
 
+_HELPFUL = ["--helpful", "--help_full", "-H"]
+
+
 class ArgManager(argparse.ArgumentParser):
   """Base class for all official model parsers.
 
@@ -32,7 +35,7 @@ class ArgManager(argparse.ArgumentParser):
     # this forces --helpful below --help in the flag summary
     preemptive_parser = argparse.ArgumentParser(add_help=False)
     preemptive_parser.add_argument(
-        "--helpful", "-H", action="store_true",
+        *_HELPFUL, action="store_true",
         help="Extended list of arguments and flags for running this script.")
     self.parents = [preemptive_parser] + (parents or [])
 
@@ -61,7 +64,7 @@ class ArgManager(argparse.ArgumentParser):
     """
     args = sys.argv[1:] if args is None else args
 
-    if "--helpful" in args or "-H" in args:
+    if set(_HELPFUL).intersection(args):
       self.print_help()
       sys.exit()
 
