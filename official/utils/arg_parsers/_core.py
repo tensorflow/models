@@ -69,7 +69,7 @@ class ArgManager(argparse.ArgumentParser):
     with TemporarySilence(self.verbose_flags):
       flags = super(ArgManager, self).parse_args(args=args, namespace=namespace)
     self.secondary_arg_parsing(flags=flags)
-    return args
+    return flags
 
   def secondary_arg_parsing(self, flags):
     """Perform arbitrary secondary processing of arguments.
