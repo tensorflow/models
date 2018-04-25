@@ -101,11 +101,11 @@ def main(argv):
   train_y /= args.price_norm_factor
   test_y /= args.price_norm_factor
 
-  # Build the training dataset.
-  train = automobile_data.make_dataset(args.batch_size, train_x, train_y, True, 1000)
+  # Provide the training input dataset.
+  train_input_fn = automobile_data.make_dataset(args.batch_size, train_x, train_y, True, 1000)
 
   # Build the validation dataset.
-  test = automobile_data.make_dataset(args.batch_size, test_x, test_y)
+  test_input_fn = automobile_data.make_dataset(args.batch_size, test_x, test_y)
 
   # The first way assigns a unique weight to each category. To do this you must
   # specify the category's vocabulary (values outside this specification will
@@ -144,10 +144,10 @@ def main(argv):
       })
 
   # Train the model.
-  model.train(input_fn=automobile_data.from_dataset(train), steps=args.train_steps)
+  model.train(input_fn=train_input_fn, steps=args.train_steps)
 
   # Evaluate how the model performs on data it has not yet seen.
-  eval_result = model.evaluate(input_fn=automobile_data.from_dataset(test))
+  eval_result = model.evaluate(input_fn=test_input_fn)
 
   # Print the Root Mean Square Error (RMSE).
   print("\n" + 80 * "*")

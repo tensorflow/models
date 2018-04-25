@@ -42,11 +42,11 @@ def main(argv):
   train_y /= args.price_norm_factor
   test_y /= args.price_norm_factor
 
-  # Build the training dataset.
-  train = automobile_data.make_dataset(args.batch_size, train_x, train_y, True, 1000)
+  # Provide the training input dataset.
+  train_input_fn = automobile_data.make_dataset(args.batch_size, train_x, train_y, True, 1000)
 
-  # Build the validation dataset.
-  test = automobile_data.make_dataset(args.batch_size, test_x, test_y)
+  # Provide the validation input dataset.
+  test_input_fn = automobile_data.make_dataset(args.batch_size, test_x, test_y)
 
   feature_columns = [
       # "curb-weight" and "highway-mpg" are numeric columns.
@@ -59,10 +59,10 @@ def main(argv):
 
   # Train the model.
   # By default, the Estimators log output every 100 steps.
-  model.train(input_fn=automobile_data.from_dataset(train), steps=args.train_steps)
+  model.train(input_fn=train_input_fn, steps=args.train_steps)
 
   # Evaluate how the model performs on data it has not yet seen.
-  eval_result = model.evaluate(input_fn=automobile_data.from_dataset(test))
+  eval_result = model.evaluate(input_fn=test_input_fn)
 
   # The evaluation returns a Python dictionary. The "average_loss" key holds the
   # Mean Squared Error (MSE).
@@ -79,8 +79,9 @@ def main(argv):
       "highway-mpg": np.array([30, 40])
   }
 
-  predict = automobile_data.make_dataset(1, input_dict)
-  predict_results = model.predict(input_fn=automobile_data.from_dataset(predict))
+  # Provide the predict input dataset.
+  predict_input_fn = automobile_data.make_dataset(1, input_dict)
+  predict_results = model.predict(input_fn=predict_input_fn)
 
   # Print the prediction results.
   print("\nPrediction results:")
