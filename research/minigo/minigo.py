@@ -428,10 +428,11 @@ def main(_):
     train(dirs.trained_models_dir, dirs.estimator_model_dir,
           dirs.training_chunk_dir, model_num + 1, params)
 
-    # validate the model
-    print('Validating on the holdout game data...')
-    validate(dirs.trained_models_dir, dirs.holdout_dir,
-             dirs.estimator_model_dir, params)
+    # validate the latest model if needed
+    if FLAGS.validation:
+      print('Validating on the holdout game data...')
+      validate(dirs.trained_models_dir, dirs.holdout_dir,
+               dirs.estimator_model_dir, params)
 
     _, current_model = utils.get_latest_model(dirs.trained_models_dir)
 
@@ -480,6 +481,11 @@ if __name__ == '__main__':
       '--test',
       action='store_true',
       help='A boolean to test RL pipeline with a dummy model.')
+  # Run RL pipeline with the validation step
+  parser.add_argument(
+      '--validation',
+      action='store_true',
+      help='A boolean to specify validation in the RL pipeline.')
   # Run RL pipeline with the evaluation step
   parser.add_argument(
       '--evaluation',

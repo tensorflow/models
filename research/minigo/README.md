@@ -71,7 +71,6 @@ One iteration of reinforcement learning (RL) consists of the following steps:
  - Selfplay: plays games with the latest model or the best model so far identified by evaluation, producing data used for training
  - Gather: groups games played with the same model into larger files of tfexamples.
  - Train: trains a new model with the selfplay results from the most recent N generations.
- - Validate/Evaluate: validate/evaluate the trained model with holdout data.
 
 To run the RL pipeline, issue the following command:
  ```
@@ -106,6 +105,12 @@ Suppose the base directory argument `base_dir` is `$HOME/minigo/` and we use 9 a
     │       └── evaluate          # clean sgf files of model evaluation
     │
     └── ...
+
+## Validating Model
+To validate the trained model, issue the following command with `--validation` argument:
+ ```
+ python minigo.py --base_dir=$HOME/minigo/ --board_size=9 --batch_size=256 --validation
+ ```
 
 ## Evaluating Models
 The performance of two models are compared with evaluation step. Given two models, one plays black and the other plays white. They play several games (# of games can be configured by parameter `eval_games` in [model_params.py](model_params.py)), and the one wins by a margin of 55% will be the winner.
