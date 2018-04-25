@@ -18,14 +18,14 @@ r"""Generates a basic dataset i.e. PNet dataset.
 Usage:
 ```shell
 
-$ python generate_basic_dataset.py \
+$ python generate_simple_dataset.py \
 	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
 	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
 	--landmark_image_dir=./data/LFW_Landmark \
 	--landmark_file_name=./data/LFW_Landmark/trainImageList.txt \
 	--target_root_dir=./data/datasets/mtcnn 
 
-$ python generate_basic_dataset.py \
+$ python generate_simple_dataset.py \
 	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
 	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
 	--landmark_image_dir=./data/LFW_Landmark \
@@ -33,7 +33,7 @@ $ python generate_basic_dataset.py \
 	--base_number_of_images=250000 \
 	--target_root_dir=./data/datasets/mtcnn 
 
-$ python generate_basic_dataset.py \
+$ python generate_simple_dataset.py \
 	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
 	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
 	--landmark_image_dir=./data/LFW_Landmark \
@@ -41,7 +41,7 @@ $ python generate_basic_dataset.py \
 	--target_root_dir=./data/datasets/mtcnn \
 	--minimum_face=12
 
-$ python generate_basic_dataset.py \
+$ python generate_simple_dataset.py \
 	--annotation_image_dir=./data/WIDER_Face/WIDER_train/images \ 
 	--annotation_file_name=./data/WIDER_Face/WIDER_train/wider_face_train.txt \
 	--landmark_image_dir=./data/LFW_Landmark \
