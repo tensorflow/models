@@ -42,12 +42,12 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 	def _train_model(self, base_learning_rate, loss, data_num):
 
     		learning_rate_factor = 0.1
-    		global_step = tf.Variable(0, trainable=False)
+    		global_step = tf.Variable(0, name='global_step', trainable=False)
     		boundaries = [int(epoch * data_num / self._batch_size) for epoch in self._config.LR_EPOCH]
     		learning_rate_values = [base_learning_rate * (learning_rate_factor ** x) for x in range(0, len(self._config.LR_EPOCH) + 1)]
     		learning_rate_op = tf.train.piecewise_constant(global_step, boundaries, learning_rate_values)
     		optimizer = tf.train.MomentumOptimizer(learning_rate_op, 0.9)
-    		train_op = optimizer.minimize(loss, global_step)
+    		train_op = optimizer.minimize(loss, global_step=global_step)
 
     		return( train_op, learning_rate_op )
 
@@ -95,8 +95,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		network_train_dir = self.network_train_dir(train_root_dir)
 		if(not os.path.exists(network_train_dir)):
 			os.makedirs(network_train_dir)
-
-		network_train_file_name = os.path.join(network_train_dir, self.network_name())
+		
 		image_size = self.network_size()	
 	
 		image_batch, label_batch, bbox_batch, landmark_batch = self._read_data(dataset_root_dir)		
@@ -143,9 +142,13 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 
     		max_number_of_steps = int(self._number_of_samples / self._batch_size + 1) * max_number_of_epoch
     		epoch = 0
+
+		if( self._network.load_model(session, network_train_dir) ):		
+			print( 'Model is restored from %s.' %(self._network.model_path()) )
+		
+		network_train_file_name = os.path.join(network_train_dir, self.network_name())	
     		session.graph.finalize()    
 
-		
     		try:
         		for step in range(max_number_of_steps):
             			current_step = current_step + 1
@@ -182,7 +185,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
             			if( current_step * self._batch_size > self._number_of_samples*2 ):
                 			epoch = epoch + 1
                 			current_step = 0
-                			saver.save(session, network_train_file_name, global_step=epoch*2,  write_meta_graph=False)            			
+                			saver.save(session, network_train_file_name, global_step=epoch, write_meta_graph=False)            			
 		except tf.errors.OutOfRangeError:
        			print("Error")
 		finally:
