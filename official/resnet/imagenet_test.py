@@ -32,6 +32,11 @@ _LABEL_CLASSES = 1001
 
 class BaseTest(tf.test.TestCase):
 
+  @classmethod
+  def setUpClass(cls):  # pylint: disable=invalid-name
+    super(BaseTest, cls).setUpClass()
+    imagenet_main.define_imagenet_flags()
+
   def tearDown(self):
     super(BaseTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
