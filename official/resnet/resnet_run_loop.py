@@ -465,7 +465,6 @@ class ResnetArgParser(argparse.ArgumentParser):
         parsers.BaseParser(),
         parsers.PerformanceParser(),
         parsers.ImageModelParser(),
-        parsers.ExportParser(),
         parsers.BenchmarkParser(),
     ])
 

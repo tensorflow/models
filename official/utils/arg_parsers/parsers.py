@@ -104,12 +104,13 @@ class BaseParser(argparse.ArgumentParser):
     batch_size: Create a flag to specify the batch size.
     multi_gpu: Create a flag to allow the use of all available GPUs.
     hooks: Create a flag to specify hooks for logging.
+    export_dir: Create a flag to specify where a SavedModel should be exported.
   """
 
   def __init__(self, add_help=False, data_dir=True, model_dir=True,
                train_epochs=True, epochs_between_evals=True,
                stop_threshold=True, batch_size=True, multi_gpu=True,
-               hooks=True):
+               hooks=True, export_dir=True):
     super(BaseParser, self).__init__(add_help=add_help)
 
     if data_dir:
@@ -174,6 +175,15 @@ class BaseParser(argparse.ArgumentParser):
                "ProfilerHook, ExamplesPerSecondHook, LoggingMetricHook."
                "See official.utils.logs.hooks_helper for details.",
           metavar="<HK>"
+      )
+
+    if export_dir:
+      self.add_argument(
+          "--export_dir", "-ed",
+          help="[default: %(default)s] If set, a SavedModel serialization of "
+               "the model will be exported to this directory at the end of "
+               "training. See the README for more details and relevant links.",
+          metavar="<ED>"
       )
 
 
@@ -289,29 +299,6 @@ class ImageModelParser(argparse.ArgumentParser):
                "format will be chosen automatically based on whether TensorFlow"
                "was built for CPU or GPU.",
           metavar="<CF>"
-      )
-
-
-class ExportParser(argparse.ArgumentParser):
-  """Parsing options for exporting saved models or other graph defs.
-
-  This is a separate parser for now, but should be made part of BaseParser
-  once all models are brought up to speed.
-
-  Args:
-    add_help: Create the "--help" flag. False if class instance is a parent.
-    export_dir: Create a flag to specify where a SavedModel should be exported.
-  """
-
-  def __init__(self, add_help=False, export_dir=True):
-    super(ExportParser, self).__init__(add_help=add_help)
-    if export_dir:
-      self.add_argument(
-          "--export_dir", "-ed",
-          help="[default: %(default)s] If set, a SavedModel serialization of "
-               "the model will be exported to this directory at the end of "
-               "training. See the README for more details and relevant links.",
-          metavar="<ED>"
       )
 
 
