@@ -39,17 +39,21 @@ class FaceDetector(object):
 		self._threshold = [0.9, 0.6, 0.7]
 		self._scale_factor = 0.79
 
+		status_ok = True
 		self._pnet = NetworkFactory.network('PNet')
 		pnet_model_path = os.path.join(self._model_root_dir, self._pnet.network_name())
-		self._pnet.setup_inference_network(pnet_model_path)
+		status_ok = self._pnet.setup_inference_network(pnet_model_path) and status_ok
 
 		self._rnet = NetworkFactory.network('RNet')
 		rnet_model_path = os.path.join(self._model_root_dir, self._rnet.network_name())
-		self._rnet.setup_inference_network(rnet_model_path)
+		status_ok = self._rnet.setup_inference_network(rnet_model_path) and status_ok
 
 		self._onet = NetworkFactory.network('ONet')
 		onet_model_path = os.path.join(self._model_root_dir, self._onet.network_name())
-		self._onet.setup_inference_network(onet_model_path)
+		status_ok = self._onet.setup_inference_network(onet_model_path) and status_ok
+
+		if(not status_ok):
+			raise SystemExit		
 
     	def _generate_bbox(self, cls_map, reg, scale, threshold):
  

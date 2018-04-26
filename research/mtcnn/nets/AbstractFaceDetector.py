@@ -49,9 +49,12 @@ class AbstractFaceDetector(object):
   		else:
     			self.model_path = checkpoint_path
 
-		if(self.model_path is not None):
+		if(not self.model_path):
+			return(False)
+		else:
 			saver = tf.train.Saver()
       			saver.restore(session, self.model_path)
+			return(True)
 
 	def detect(self, data_batch):	
 		raise NotImplementedError('Must be implemented by the subclass.')

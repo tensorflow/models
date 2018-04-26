@@ -98,7 +98,7 @@ class RNet(AbstractFaceDetector):
             		self._output_class_probability, self._output_bounding_box, self._output_landmarks = self._setup_basic_network(self._input_batch)
 
             		self._session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
-			self.load_model(self._session, checkpoint_path)
+			return(self.load_model(self._session, checkpoint_path))
 
 	def detect(self, data_batch):
         	scores = []
