@@ -119,10 +119,10 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		train_op, learning_rate_op = self._train_model(base_learning_rate, class_loss_ratio*class_loss_op + bbox_loss_ratio*bounding_box_loss_op + landmark_loss_ratio*landmark_loss_op + L2_loss_op, self._number_of_samples)
 
     		init = tf.global_variables_initializer()
-    		session = tf.Session()
+    		self._session = tf.Session()
 
     		saver = tf.train.Saver(save_relative_paths=True)
-    		session.run(init)
+    		self._session.run(init)
 
     		tf.summary.scalar("class_loss", class_loss_op)
     		tf.summary.scalar("bounding_box_loss",bounding_box_loss_op)
@@ -134,20 +134,20 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		if(not os.path.exists(logs_dir)):
 			os.makedirs(logs_dir)
 
-    		summary_writer = tf.summary.FileWriter(logs_dir, session.graph)
+    		summary_writer = tf.summary.FileWriter(logs_dir, self._session.graph)
     		coordinator = tf.train.Coordinator()
 
-    		threads = tf.train.start_queue_runners(sess=session, coord=coordinator)
+    		threads = tf.train.start_queue_runners(sess=self._session, coord=coordinator)
     		current_step = 0
 
     		max_number_of_steps = int(self._number_of_samples / self._batch_size + 1) * max_number_of_epoch
     		epoch = 0
 
-		if( self._network.load_model(session, network_train_dir) ):		
+		if( self._network.load_model(self._session, network_train_dir) ):		
 			print( 'Model is restored from %s.' %(self._network.model_path()) )
 		
 		network_train_file_name = os.path.join(network_train_dir, self.network_name())	
-    		session.graph.finalize()    
+    		self._session.graph.finalize()    
 
     		try:
         		for step in range(max_number_of_steps):
@@ -156,10 +156,10 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
             			if coordinator.should_stop():
                 			break
 
-            			image_batch_array, label_batch_array, bbox_batch_array, landmark_batch_array = session.run([image_batch, label_batch, bbox_batch, landmark_batch])
+            			image_batch_array, label_batch_array, bbox_batch_array, landmark_batch_array = self._session.run([image_batch, label_batch, bbox_batch, landmark_batch])
             			image_batch_array, landmark_batch_array = self._random_flip_images(image_batch_array, label_batch_array, landmark_batch_array)
 
-             			_, _, summary = session.run(
+             			_, _, summary = self._session.run(
 							[train_op, learning_rate_op ,summary_op], 
 							feed_dict={
 								input_image:image_batch_array, 
@@ -169,7 +169,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 								})
             
             			if( (step+1) % log_every_n_steps == 0 ):
-                			current_class_loss, current_bbox_loss, current_landmark_loss, current_L2_loss, current_lr, current_accuracy = session.run(
+                			current_class_loss, current_bbox_loss, current_landmark_loss, current_L2_loss, current_lr, current_accuracy = self._session.run(
 							[class_loss_op, bounding_box_loss_op, landmark_loss_op, L2_loss_op, learning_rate_op, class_accuracy_op],
 							feed_dict={
 								input_image:image_batch_array, 
@@ -185,14 +185,14 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
             			if( current_step * self._batch_size > self._number_of_samples*2 ):
                 			epoch = epoch + 1
                 			current_step = 0
-                			saver.save(session, network_train_file_name, global_step=epoch, write_meta_graph=False)            			
+                			saver.save(self._session, network_train_file_name, global_step=epoch, write_meta_graph=False)            			
 		except tf.errors.OutOfRangeError:
        			print("Error")
 		finally:
        			coordinator.request_stop()
        			summary_writer.close()
 		coordinator.join(threads)
-		session.close()
+		self._session.close()
 
 		return(True)
 
