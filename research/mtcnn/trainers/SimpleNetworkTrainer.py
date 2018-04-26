@@ -121,7 +121,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		init = tf.global_variables_initializer()
     		self._session = tf.Session()
 
-    		saver = tf.train.Saver(save_relative_paths=True)
+    		saver = tf.train.Saver(save_relative_paths=True, max_to_keep=3)
     		self._session.run(init)
 
     		tf.summary.scalar("class_loss", class_loss_op)
