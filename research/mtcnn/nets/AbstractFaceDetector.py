@@ -42,15 +42,16 @@ class AbstractFaceDetector(object):
 	def setup_inference_network(self, checkpoint_path):
 		raise NotImplementedError('Must be implemented by the subclass.')
 
-	def _load_model_from(self, checkpoint_path):
-		self.model_path = checkpoint_path
+	def load_model(self, session, checkpoint_path):
 
-		saver = tf.train.Saver()
-       		model_dictionary = '/'.join(checkpoint_path.split('/')[:-1])
-       		check_point = tf.train.get_checkpoint_state(model_dictionary)
-       		read_state = ( check_point and check_point.model_checkpoint_path )
-       		assert  read_state, "Invalid parameter dictionary."
-      		saver.restore(self._session, checkpoint_path)
+  		if( tf.gfile.IsDirectory(checkpoint_path) ):
+    			self.model_path = tf.train.latest_checkpoint(checkpoint_path)
+  		else:
+    			self.model_path = checkpoint_path
+
+		if(self.model_path is not None):
+			saver = tf.train.Saver()
+      			saver.restore(session, self.model_path)
 
 	def detect(self, data_batch):	
 		raise NotImplementedError('Must be implemented by the subclass.')

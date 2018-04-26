@@ -40,15 +40,15 @@ class FaceDetector(object):
 		self._scale_factor = 0.79
 
 		self._pnet = NetworkFactory.network('PNet')
-		pnet_model_path = os.path.join(self._model_root_dir, self._pnet.network_name(), self._pnet.network_name())
+		pnet_model_path = os.path.join(self._model_root_dir, self._pnet.network_name())
 		self._pnet.setup_inference_network(pnet_model_path)
 
 		self._rnet = NetworkFactory.network('RNet')
-		rnet_model_path = os.path.join(self._model_root_dir, self._rnet.network_name(), self._rnet.network_name())
+		rnet_model_path = os.path.join(self._model_root_dir, self._rnet.network_name())
 		self._rnet.setup_inference_network(rnet_model_path)
 
 		self._onet = NetworkFactory.network('ONet')
-		onet_model_path = os.path.join(self._model_root_dir, self._onet.network_name(), self._onet.network_name())
+		onet_model_path = os.path.join(self._model_root_dir, self._onet.network_name())
 		self._onet.setup_inference_network(onet_model_path)
 
     	def _generate_bbox(self, cls_map, reg, scale, threshold):

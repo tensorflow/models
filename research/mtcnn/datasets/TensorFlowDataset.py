@@ -207,7 +207,7 @@ class TensorFlowDataset(object):
             			filename = image_example['filename']
             			self._add_to_tfrecord(filename, image_example, tfrecord_writer)
 				number_of_samples = number_of_samples + 1
-				if( number_of_samples % 1000 == 0):
+				if( number_of_samples % 10000 == 0):
 					print('Processed ( %s / %s ) image samples.' % ( number_of_samples, total_number_of_samples ) )
 
 		return(True)

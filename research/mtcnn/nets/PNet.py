@@ -100,7 +100,7 @@ class PNet(AbstractFaceDetector):
        			self._output_landmarks = tf.squeeze(landmark_predictions, axis=0)
 
 			self._session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))			
-			self._load_model_from(checkpoint_path)
+			self.load_model(self._session, checkpoint_path)
 
 	def detect(self, input_batch):
         	image_height, image_width, _ = input_batch.shape
