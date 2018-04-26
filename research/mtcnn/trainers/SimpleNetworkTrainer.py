@@ -99,9 +99,8 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
 		network_train_file_name = os.path.join(network_train_dir, self.network_name())
 		image_size = self.network_size()	
 	
-		image_batch, label_batch, bbox_batch, landmark_batch = self._read_data(dataset_root_dir)
-		
-		print("number_of_samples" , self._number_of_samples)
+		image_batch, label_batch, bbox_batch, landmark_batch = self._read_data(dataset_root_dir)		
+
 		class_loss_ratio, bbox_loss_ratio, landmark_loss_ratio = NetworkFactory.loss_ratio(network_name)
 
     		input_image = tf.placeholder(tf.float32, shape=[self._batch_size, image_size, image_size, 3], name='input_image')
@@ -123,7 +122,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		init = tf.global_variables_initializer()
     		session = tf.Session()
 
-    		saver = tf.train.Saver(max_to_keep=1)
+    		saver = tf.train.Saver(save_relative_paths=True)
     		session.run(init)
 
     		tf.summary.scalar("class_loss", class_loss_op)
@@ -182,7 +181,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
             			if( current_step * self._batch_size > self._number_of_samples*2 ):
                 			epoch = epoch + 1
                 			current_step = 0
-                			saver.save(session, network_train_file_name, global_step=epoch*2)            			
+                			saver.save(session, network_train_file_name, global_step=epoch*2,  write_meta_graph=False)            			
 		except tf.errors.OutOfRangeError:
        			print("Error")
 		finally:

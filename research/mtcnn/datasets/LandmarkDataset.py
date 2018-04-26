@@ -99,6 +99,7 @@ class LandmarkDataset(object):
 
 		number_of_images = 0
     		number_of_input_images = 0
+		total_number_of_input_images = len(self._landmark_data)
     		for (image_path, bounding_box, landmarkGt) in self._landmark_data:
         		F_imgs = []
         		F_landmarks = []  
@@ -125,7 +126,7 @@ class LandmarkDataset(object):
 			if argument:
             			number_of_input_images = number_of_input_images + 1
             			if( number_of_input_images % 1000 == 0 ):
-                			print( number_of_input_images, " number of input images are done.")
+                			print( '( %s / %s ) number of input images are done.' % ( number_of_input_images, total_number_of_input_images) )
 
             			x1, y1, x2, y2 = gt_box
             			gt_w = x2 - x1 + 1

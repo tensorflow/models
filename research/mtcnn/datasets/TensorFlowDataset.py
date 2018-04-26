@@ -200,11 +200,15 @@ class TensorFlowDataset(object):
 		if(not self._read_dataset(input_file_name)):
 			return(False)
 
+		total_number_of_samples = len(self._dataset)
+		number_of_samples = 0
     		with tf.python_io.TFRecordWriter(tensorflow_filename) as tfrecord_writer:
         		for i, image_example in enumerate(self._dataset):
             			filename = image_example['filename']
             			self._add_to_tfrecord(filename, image_example, tfrecord_writer)
-    		tfrecord_writer.close()
+				number_of_samples = number_of_samples + 1
+				if( number_of_samples % 1000 == 0):
+					print('Processed ( %s / %s ) image samples.' % ( number_of_samples, total_number_of_samples ) )
 
 		return(True)
 

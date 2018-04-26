@@ -71,17 +71,29 @@ class HardDataset(SimpleDataset):
 	def _generate_dataset(self, target_root_dir):
 		tensorflow_dataset = TensorFlowDataset()
 
+		print('Generating TensorFlow dataset for positive images.')
 		if(not tensorflow_dataset.generate(WIDERFaceDataset.positive_file_name(target_root_dir), target_root_dir, 'positive')):
+			print('Error generating TensorFlow dataset for positive images.')
 			return(False) 
+		print('Generated TensorFlow dataset for positive images.')
 
+		print('Generating TensorFlow dataset for partial images.')
 		if(not tensorflow_dataset.generate(WIDERFaceDataset.part_file_name(target_root_dir), target_root_dir, 'part')):
+			print('Error generating TensorFlow dataset for partial images.')		
 			return(False) 
+		print('Generated TensorFlow dataset for partial images.')
 
+		print('Generating TensorFlow dataset for negative images.')
 		if(not tensorflow_dataset.generate(WIDERFaceDataset.negative_file_name(target_root_dir), target_root_dir, 'negative')):
+			print('Error generating TensorFlow dataset for negative images.')
 			return(False) 
+		print('Generated TensorFlow dataset for negative images.')
 
+		print('Generating TensorFlow dataset for landmark images.')
 		if(not tensorflow_dataset.generate(self._image_list_file_name(target_root_dir), target_root_dir, 'image_list')):
+			print('Error generating TensorFlow dataset for landmark images.')
 			return(False) 
+		print('Generated TensorFlow dataset for landmark images.')
 
 		return(True)
 
