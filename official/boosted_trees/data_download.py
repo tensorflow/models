@@ -36,15 +36,15 @@ def parse_args():
   return parser.parse_known_args()
 
 
-def _download_higgs_data_and_save_npz():
+def _download_higgs_data_and_save_npz(data_dir):
   """Download higgs data and store as a numpy compressed file."""
   input_url = os.path.join(URL_ROOT, INPUT_FILE)
-  np_filename = os.path.join(FLAGS.data_dir, NPZ_FILE)
+  np_filename = os.path.join(data_dir, NPZ_FILE)
   if tf.gfile.Exists(np_filename):
     raise ValueError('data_dir already has the processed data file: {}'.format(
         np_filename))
-  if not tf.gfile.Exists(FLAGS.data_dir):
-    tf.gfile.MkDir(FLAGS.data_dir)
+  if not tf.gfile.Exists(data_dir):
+    tf.gfile.MkDir(data_dir)
   # 2.8 GB to download.
   try:
     print('Data downloading..')
@@ -62,7 +62,7 @@ def _download_higgs_data_and_save_npz():
 
   # Writing to temporary location then copy to the data_dir (0.8 GB).
   f = tempfile.NamedTemporaryFile()
-  np.savez(f, data=data)
+  np.savez_compressed(f, data=data)
   tf.gfile.Copy(f.name, np_filename)
   print('Data saved to: {}'.format(np_filename))
 
@@ -70,7 +70,7 @@ def _download_higgs_data_and_save_npz():
 def main(unused_argv):
   if not tf.gfile.Exists(FLAGS.data_dir):
     tf.gfile.MkDir(FLAGS.data_dir)
-  _download_higgs_data_and_save_npz()
+  _download_higgs_data_and_save_npz(FLAGS.data_dir)
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ We use Gradient Boosted Trees algorithm to distinguish the two classes.
 
 ---
 
-The code sample in this directory uses the high level `tf.estimator.Estimator` API. This API is great for fast iteration and quickly adapting models to your own datasets without major code overhauls. It allows you to move from single-worker training to distributed training, and it makes it easy to export model binaries for prediction. Here, for further simplicity and faster execution, we use a utility function `tf.contrib.estimator.boosted_trees_classifier_train_in_memory`. This utility function is especially effective when the input is provided as in-memory data sets like numpy arrays.
+The code sample uses the high level `tf.estimator.Estimator` and `tf.data.Dataset`.  These APIs are great for fast iteration and quickly adapting models to your own datasets without major code overhauls.  It allows you to move from single-worker training to distributed training, and makes it easy to export model binaries for prediction.  Here, for further simplicity and faster execution, we use a utility function `tf.contrib.estimator.boosted_trees_classifier_train_in_memory`.  This utility function is especially effective when the input is provided as in-memory data sets like numpy arrays.
 
 An input function for the `Estimator` typically uses `tf.data.Dataset` API, which can handle various data control like streaming, batching, transform and shuffling. However `boosted_trees_classifier_train_in_memory()` utility function requires that the entire data is provided as a single batch (i.e. without using `batch()` API). Thus in this practice, simply `Dataset.from_tensors()` is used to convert numpy arrays into structured tensors, and `Dataset.zip()` is used to put features and label together.
 For further references of `Dataset`, [Read more here](https://www.tensorflow.org/programmers_guide/datasets).
@@ -22,21 +22,24 @@ python data_download.py
 ```
 
 This will download a file and store the processed file under the directory designated by `--data_dir` (defaults to `/tmp/higgs_data/`). To change the target directory, set the `--data_dir` flag. The directory could be network storages that Tensorflow supports (like Google Cloud Storage, `gs://<bucket>/<path>/`).
-The file downloaded to the local temporary folder is about 2.8 GB, and the processed file is about 1.3G, so there should be enough storage to handle them.
+The file downloaded to the local temporary folder is about 2.8 GB, and the processed file is about 0.8 GB, so there should be enough storage to handle them.
 
 
 ### Training
+
+This example uses about 3 GB of RAM during training.
 You can run the code locally as follows:
 
 ```
 python train_higgs.py
 ```
 
-The model is saved to `/tmp/higgs_model` by default, which can be changed using the `--model_dir` flag. To train a new model after one, provide a new `--model_dir` value, or remove the dir set by `--model_dir` before launching.
+The model is by default saved to `/tmp/higgs_model`, which can be changed using the `--model_dir` flag.
+Note that the model_dir is cleaned up before every time training starts.
 
-Model parameters can be adjusted by flags, like `--n_trees`, `--max_depth`, `--learning_rate`.
+Model parameters can be adjusted by flags, like `--n_trees`, `--max_depth`, `--learning_rate` and so on.  Check out the code for details.
 
-The final accuacy will be around 74% and loss will be around 0.5165 over the eval set, when trained with the default parameters.
+The final accuacy will be around 74% and loss will be around 0.516 over the eval set, when trained with the default parameters.
 
 By default, the first 1 million examples among 11 millions are used for training, and the last 1 million examples are used for evaluation.
 The training/evaluation data can be selected as index ranges by flags `--train_start`, `--train_count`, `--eval_start`, `--eval_count`, etc.
@@ -46,7 +49,7 @@ The training/evaluation data can be selected as index ranges by flags `--train_s
 Run TensorBoard to inspect the details about the graph and training progression.
 
 ```
-tensorboard --logdir=/tmp/higgs_model
+tensorboard --logdir=/tmp/higgs_model  # set logdir as --model_dir set during training.
 ```
 
 ## Additional Links

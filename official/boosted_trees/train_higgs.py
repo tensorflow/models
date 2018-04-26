@@ -2,9 +2,9 @@ r"""A script that builds boosted trees over higgs data.
 
 If you haven't, please run data_download.py beforehand to prepare the data.
 
-Don't forget to clean up model_dir before each training (or give a new dir).
-Otherwise training stops immediately since n_trees is already reached in the
-existing model_dir.
+For some more details on this example, please refer to README.md as well.
+
+Note that the model_dir is cleaned up before starting the training.
 
 Usage:
 $ python train_higgs.py --n_trees=100 --max_depth=6 --learning_rate=0.1 \
@@ -21,6 +21,8 @@ $ python train_higgs.py --n_trees=100 --max_depth=6 --learning_rate=0.1 \
     --model_dir=/tmp/higgs_model --train_count=10000000
 
 Training history and metrics can be inspected using tensorboard.
+Set --logdir as the --model_dir set by flag when training
+(or the default /tmp/higgs_model).
 $ tensorboard --logdir=/tmp/higgs_model
 """
 from __future__ import absolute_import
@@ -31,65 +33,70 @@ import argparse
 import os
 import sys
 
-import numpy as np
-import tensorflow as tf
+from absl import app as absl_app
+from absl import flags
+import numpy as np  # pylint: disable=wrong-import-order
+import tensorflow as tf  # pylint: disable=wrong-import-order
+
+from official.utils.flags import core as flags_core
+
 
 NPZ_FILE = 'HIGGS.csv.gz.npz'  # numpy compressed file containing 'data' array
 
 
-def parse_args():
-  """Parses arguments and returns a tuple (known_args, unparsed_args)."""
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '--data_dir', type=str, default='/tmp/higgs_data',
-      help='Path to directory containing the higgs dataset.')
-  parser.add_argument(
-      '--model_dir', type=str, default='/tmp/higgs_model',
-      help='The directory where the model will be stored.')
-  parser.add_argument(
-      '--train_start', type=int, default=0,
+def define_train_higgs_flags():
+  """Add tree related flags as well as training/eval configuration."""
+  flags_core.define_base(stop_threshold=False, batch_size=False, num_gpu=False)
+  flags.adopt_module_key_flags(flags_core)
+
+  flags.DEFINE_integer(
+      name='train_start', default=0,
       help='Start index of train examples within the data.')
-  parser.add_argument(
-      '--train_count', type=int, default=1000000,
+  flags.DEFINE_integer(
+      name='train_count', default=1000000,
       help='Number of train examples within the data.')
-  parser.add_argument(
-      '--eval_start', type=int, default=10000000,
+  flags.DEFINE_integer(
+      name='eval_start', default=10000000,
       help='Start index of eval examples within the data.')
-  parser.add_argument(
-      '--eval_count', type=int, default=1000000,
+  flags.DEFINE_integer(
+      name='eval_count', default=1000000,
       help='Number of eval examples within the data.')
 
-  parser.add_argument(
-      '--n_trees', type=int, default=100, help='Number of trees to build.')
-  parser.add_argument(
-      '--max_depth', type=int, default=6, help='Maximum depths of each tree.')
-  parser.add_argument(
-      '--learning_rate', type=float, default=0.1,
-      help='Maximum depths of each tree.')
-  return parser.parse_known_args()
+  flags.DEFINE_integer(
+      'n_trees', default=100, help='Number of trees to build.')
+  flags.DEFINE_integer(
+      'max_depth', default=6, help='Maximum depths of each tree.')
+  flags.DEFINE_float(
+      'learning_rate', default=0.1, help='Maximum depths of each tree.')
+
+  flags_core.set_defaults(data_dir='/tmp/higgs_data',
+                          model_dir='/tmp/higgs_model')
 
 
-def read_higgs_data():
+
+def read_higgs_data(data_dir, train_start, train_count, eval_start, eval_count):
   """Reads higgs data from csv and returns train and eval data."""
-  npz_filename = os.path.join(FLAGS.data_dir, NPZ_FILE)
+  npz_filename = os.path.join(data_dir, NPZ_FILE)
   try:
     # gfile allows numpy to read data from network data sources as well.
-    with tf.gfile.Open(npz_filename) as npz_file:
+    with tf.gfile.Open(npz_filename, 'rb') as npz_file:
       with np.load(npz_file) as npz:
         data = npz['data']
   except Exception as e:
     raise RuntimeError(
         'Error loading data; use data_download.py to prepare the data:\n{}: {}'
         .format(type(e).__name__, e))
-  return (data[FLAGS.train_start:FLAGS.train_start+FLAGS.train_count],
-          data[FLAGS.eval_start:FLAGS.eval_start+FLAGS.eval_count])
+  return (data[train_start:train_start+train_count],
+          data[eval_start:eval_start+eval_count])
 
 
+# This showcases how to make input_fn when the input data is available in the
+# form of numpy arrays.
 def make_inputs_from_np_arrays(features_np, label_np):
   """Makes and returns input_fn and feature_columns from numpy arrays.
 
-  The generated input_fn will return the tuple of the dictionary of features
-  and a label, and feature_columns will consist of the list of
+  The generated input_fn will return tf.data.Dataset of feature dictionary and a
+  label, and feature_columns will consist of the list of
   tf.feature_column.BucketizedColumn.
 
   Note, for in-memory training, tf.data.Dataset should contain the whole data
@@ -106,6 +113,8 @@ def make_inputs_from_np_arrays(features_np, label_np):
   """
   num_features = features_np.shape[1]
   features_np_list = np.split(features_np, num_features, axis=1)
+  # 1-based feature names.
+  feature_names = ['feature_%02d' % (i + 1) for i in range(num_features)]
 
   # Create source feature_columns and bucketized_columns.
   def get_bucket_boundaries(feature):
@@ -113,12 +122,11 @@ def make_inputs_from_np_arrays(features_np, label_np):
     return np.unique(np.percentile(feature, range(0, 100))).tolist()
   source_columns = [
       tf.feature_column.numeric_column(
-          # 1-based feature names.
-          'feature_%02d' % (i + 1), dtype=tf.float32,
+          feature_name, dtype=tf.float32,
           # Although higgs data have no missing values, in general, default
           # could be set as 0 or some reasonable value for missing values.
           default_value=0.0)
-      for i in range(num_features)
+      for feature_name in feature_names
   ]
   bucketized_columns = [
       tf.feature_column.bucketized_column(
@@ -131,9 +139,8 @@ def make_inputs_from_np_arrays(features_np, label_np):
   def input_fn():
     """Returns features as a dictionary of numpy arrays, and a label."""
     features = {
-        # Give source column name instead for easier track.
-        source_columns[i].name: tf.constant(features_np_list[i])
-        for i in range(num_features)
+        feature_name: tf.constant(features_np_list[i])
+        for i, feature_name in enumerate(feature_names)
     }
     return tf.data.Dataset.zip((tf.data.Dataset.from_tensors(features),
                                 tf.data.Dataset.from_tensors(label_np),))
@@ -141,44 +148,74 @@ def make_inputs_from_np_arrays(features_np, label_np):
   return input_fn, bucketized_columns
 
 
-def main(unused_argv):
+def make_eval_inputs_from_np_arrays(features_np, label_np):
+  """Makes eval input as streaming batches."""
+  num_features = features_np.shape[1]
+  features_np_list = np.split(features_np, num_features, axis=1)
+  # 1-based feature names.
+  feature_names = ['feature_%02d' % (i + 1) for i in range(num_features)]
+
+  def input_fn():
+    features = {
+        feature_name: tf.constant(features_np_list[i])
+        for i, feature_name in enumerate(feature_names)
+    }
+    return tf.data.Dataset.zip(
+        (tf.data.Dataset.from_tensor_slices(features),
+         tf.data.Dataset.from_tensor_slices(label_np),)).batch(1000)
+
+  return input_fn
+
+
+def train_boosted_trees(flags_obj):
+  """Train boosted_trees estimator on HIGGS data.
+
+  Args:
+    flags_obj: An object containing parsed flag values.
+  """
+
+  # Clean up the model directory if present.
+  if tf.gfile.Exists(flags_obj.model_dir):
+    tf.gfile.DeleteRecursively(flags_obj.model_dir)
   print('## data loading..')
-  train_data, eval_data = read_higgs_data()
+  train_data, eval_data = read_higgs_data(
+      flags_obj.data_dir, flags_obj.train_start, flags_obj.train_count,
+      flags_obj.eval_start, flags_obj.eval_count)
   print('## data loaded; train: {}{}, eval: {}{}'.format(
       train_data.dtype, train_data.shape, eval_data.dtype, eval_data.shape))
   # data consists of one label column and 28 feature columns following.
   train_input_fn, feature_columns = make_inputs_from_np_arrays(
       features_np=train_data[:, 1:], label_np=train_data[:, 0:1])
-  eval_input_fn, _ = make_inputs_from_np_arrays(
+  eval_input_fn = make_eval_inputs_from_np_arrays(
       features_np=eval_data[:, 1:], label_np=eval_data[:, 0:1])
   print('## features prepared. training starts..')
-
-  # TODO(youngheek): consider remove the normalization factor part from l2.
-  l2 = 1.0 / FLAGS.train_count
 
   # Though BoostedTreesClassifier is under tf.estimator, faster in-memory
   # training is yet provided as a contrib library.
   classifier = tf.contrib.estimator.boosted_trees_classifier_train_in_memory(
       train_input_fn,
       feature_columns,
-      model_dir=FLAGS.model_dir or None,
-      n_trees=FLAGS.n_trees,
-      max_depth=FLAGS.max_depth,
-      learning_rate=FLAGS.learning_rate,
-      l2_regularization=l2)
+      model_dir=flags_obj.model_dir or None,
+      n_trees=flags_obj.n_trees,
+      max_depth=flags_obj.max_depth,
+      learning_rate=flags_obj.learning_rate)
 
   # Evaluation.
-  eval_result = classifier.evaluate(eval_input_fn, steps=1)
+  eval_result = classifier.evaluate(eval_input_fn)
 
   # Exporting the savedmodel.
-  feature_spec = tf.estimator.export.build_parsing_serving_input_receiver_fn(
-      tf.feature_column.make_parse_example_spec(feature_columns))
-  classifier.export_savedmodel(os.path.join(FLAGS.model_dir, 'export'),
-                               feature_spec)
+  if flags_obj.export_dir is not None:
+    feature_spec = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+        tf.feature_column.make_parse_example_spec(feature_columns))
+    classifier.export_savedmodel(flags_obj.export_dir, feature_spec)
+
+
+def main(_):
+  train_boosted_trees(flags.FLAGS)
 
 
 if __name__ == '__main__':
   # Training progress and eval results are shown as logging.INFO; so enables it.
   tf.logging.set_verbosity(tf.logging.INFO)
-  FLAGS, unparsed = parse_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  define_train_higgs_flags()
+  absl_app.run(main)
