@@ -35,6 +35,12 @@ import tensorflow.contrib.tensorrt as trt
 
 from official.resnet import imagenet_preprocessing  # pylint: disable=g-bad-import-order
 
+try:
+    long        # Python 2
+except NameError:
+    long = int  # Python 3
+
+
 _GPU_MEM_FRACTION = 0.50
 _WARMUP_NUM_LOOPS = 5
 _LOG_FILE = "log.txt"
