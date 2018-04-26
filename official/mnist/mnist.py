@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import sys
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
@@ -239,7 +238,7 @@ def main(argv):
     mnist_classifier.export_savedmodel(flags.export_dir, input_fn)
 
 
-class MNISTArgParser(argparse.ArgumentParser):
+class MNISTArgParser(parsers.ArgManager):
   """Argument parser for running MNIST model."""
 
   def __init__(self):

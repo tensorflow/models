@@ -23,7 +23,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
@@ -457,7 +456,7 @@ def warn_on_multi_gpu_export(multi_gpu=False):
         'try exporting the SavedModel with multi-GPU mode turned off.')
 
 
-class ResnetArgParser(argparse.ArgumentParser):
+class ResnetArgParser(parsers.ArgManager):
   """Arguments for configuring and running a Resnet Model."""
 
   def __init__(self, resnet_size_choices=None):
@@ -481,12 +480,3 @@ class ResnetArgParser(argparse.ArgumentParser):
         help='[default: %(default)s] The size of the ResNet model to use.',
         metavar='<RS>' if resnet_size_choices is None else None
     )
-
-  def parse_args(self, args=None, namespace=None):
-    args = super(ResnetArgParser, self).parse_args(
-        args=args, namespace=namespace)
-
-    # handle coupling between dtype and loss_scale
-    parsers.parse_dtype_info(args)
-
-    return args
