@@ -31,7 +31,7 @@ class ONet(RNet):
 		self._network_size = 48
 		self._network_name = 'ONet'
 
-	def setup_basic_network(self, inputs):
+	def _setup_basic_network(self, inputs):
 		self._end_points = {}
 
     		with slim.arg_scope([slim.conv2d],

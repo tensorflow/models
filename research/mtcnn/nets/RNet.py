@@ -35,7 +35,7 @@ class RNet(AbstractFaceDetector):
 	def batch_size(self):
 		return(self._batch_size)
 
-	def setup_basic_network(self, inputs):
+	def _setup_basic_network(self, inputs):
 		self._end_points = {}
 
 		with slim.arg_scope([slim.conv2d],
@@ -91,11 +91,11 @@ class RNet(AbstractFaceDetector):
 	def setup_training_network(self, inputs):
 		return(self.setup_basic_network(inputs))
 
-	def load_model(self, checkpoint_path):
+	def setup_inference_network(self, checkpoint_path):
         	graph = tf.Graph()
         	with graph.as_default():
             		self._input_batch = tf.placeholder(tf.float32, shape=[self.batch_size(), self.network_size(), self.network_size(), 3], name='input_batch')            		
-            		self._output_class_probability, self._output_bounding_box, self._output_landmarks = self.setup_basic_network(self._input_batch)
+            		self._output_class_probability, self._output_bounding_box, self._output_landmarks = self._setup_basic_network(self._input_batch)
 
             		self._session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
 			self._load_model_from(checkpoint_path)

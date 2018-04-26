@@ -31,7 +31,7 @@ class PNet(AbstractFaceDetector):
 		self._network_size = 12
 		self._network_name = 'PNet'	
 
-	def setup_basic_network(self, inputs):	
+	def _setup_basic_network(self, inputs):	
 		self._end_points = {}
 	
     		with slim.arg_scope([slim.conv2d],
@@ -76,7 +76,7 @@ class PNet(AbstractFaceDetector):
 			return(conv4_1, bounding_box_predictions, landmark_predictions)
 
 	def setup_training_network(self, inputs):
-		convolution_output, bounding_box_predictions, landmark_predictions = self.setup_basic_network(inputs)
+		convolution_output, bounding_box_predictions, landmark_predictions = self._setup_basic_network(inputs)
 
 		output_class_probability = tf.squeeze(convolution_output, [1,2], name='class_probability')
 		output_bounding_box = tf.squeeze(bounding_box_predictions, [1,2], name='bounding_box_predictions')
@@ -85,7 +85,7 @@ class PNet(AbstractFaceDetector):
 		return(output_class_probability, output_bounding_box, output_landmarks)
 
 
-	def load_model(self, checkpoint_path):
+	def setup_inference_network(self, checkpoint_path):
         	graph = tf.Graph()
         	with graph.as_default():
             		self._input_batch = tf.placeholder(tf.float32, name='input_batch')
@@ -93,7 +93,7 @@ class PNet(AbstractFaceDetector):
             		self._image_height = tf.placeholder(tf.int32, name='image_height')
             		image_reshape = tf.reshape(self._input_batch, [1, self._image_height, self._image_width, 3])
 
-			convolution_output, bounding_box_predictions, landmark_predictions = self.setup_basic_network(image_reshape)
+			convolution_output, bounding_box_predictions, landmark_predictions = self._setup_basic_network(image_reshape)
 
        			self._output_class_probability = tf.squeeze(convolution_output, axis=0)
        			self._output_bounding_box = tf.squeeze(bounding_box_predictions, axis=0)
