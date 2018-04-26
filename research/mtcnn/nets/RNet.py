@@ -89,7 +89,7 @@ class RNet(AbstractFaceDetector):
 			return(class_probability, bounding_box_predictions, landmark_predictions)
 
 	def setup_training_network(self, inputs):
-		return(self.setup_basic_network(inputs))
+		return(self._setup_basic_network(inputs))
 
 	def setup_inference_network(self, checkpoint_path):
         	graph = tf.Graph()
