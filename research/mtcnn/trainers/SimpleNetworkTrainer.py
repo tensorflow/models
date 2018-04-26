@@ -143,8 +143,11 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		max_number_of_steps = int(self._number_of_samples / self._batch_size + 1) * max_number_of_epoch
     		epoch = 0
 
-		if( self._network.load_model(self._session, network_train_dir) ):		
-			print( 'Model is restored from %s.' %(self._network.model_path()) )
+		global_step = 0
+		if( self._network.load_model(self._session, network_train_dir) ):
+			model_path = self._network.model_path()		
+			print( 'Model is restored from %s.' %( model_path ) )
+			global_step = int(os.path.basename(model_path).split('-')[1])
 		
 		network_train_file_name = os.path.join(network_train_dir, self.network_name())	
     		self._session.graph.finalize()    
@@ -180,12 +183,12 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
                 			print("%s - step - %d accuracy - %3f, class loss - %4f, bbox loss - %4f, landmark loss - %4f, L2 loss - %4f, lr - %f " 
 						% (datetime.now(), step+1, current_accuracy, current_class_loss, current_bbox_loss, current_landmark_loss, current_L2_loss, current_lr))
 
-					summary_writer.add_summary(summary, global_step=step)
+					summary_writer.add_summary(summary, global_step=(global_step + step) )
 
             			if( current_step * self._batch_size > self._number_of_samples*2 ):
                 			epoch = epoch + 1
                 			current_step = 0
-                			saver.save(self._session, network_train_file_name, global_step=epoch, write_meta_graph=False)            			
+                			saver.save(self._session, network_train_file_name, global_step=(global_step + epoch))            			
 		except tf.errors.OutOfRangeError:
        			print("Error")
 		finally:
