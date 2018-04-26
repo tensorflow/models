@@ -145,6 +145,7 @@ class SimpleNetworkTrainer(AbstractNetworkTrainer):
     		epoch = 0
     		session.graph.finalize()    
 
+		
     		try:
         		for step in range(max_number_of_steps):
             			current_step = current_step + 1

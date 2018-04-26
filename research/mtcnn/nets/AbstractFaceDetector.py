@@ -33,6 +33,9 @@ class AbstractFaceDetector(object):
 	def network_name(self):
 		return(self._network_name)
 
+	def model_path(self):
+		return(self._model_path)
+
 	def _setup_basic_network(self, inputs):
 		raise NotImplementedError('Must be implemented by the subclass.')
 
@@ -45,15 +48,15 @@ class AbstractFaceDetector(object):
 	def load_model(self, session, checkpoint_path):
 
   		if( tf.gfile.IsDirectory(checkpoint_path) ):
-    			self.model_path = tf.train.latest_checkpoint(checkpoint_path)
+    			self._model_path = tf.train.latest_checkpoint(checkpoint_path)
   		else:
-    			self.model_path = checkpoint_path
+    			self._model_path = checkpoint_path
 
-		if(not self.model_path):
+		if(not self._model_path):
 			return(False)
 		else:
 			saver = tf.train.Saver()
-      			saver.restore(session, self.model_path)
+      			saver.restore(session, self._model_path)
 			return(True)
 
 	def detect(self, data_batch):	
