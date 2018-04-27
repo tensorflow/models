@@ -353,7 +353,7 @@ class Model(object):
   def __init__(self, resnet_size, bottleneck, num_classes, num_filters,
                kernel_size,
                conv_stride, first_pool_size, first_pool_stride,
-               second_pool_size, second_pool_stride, block_sizes, block_strides,
+               block_sizes, block_strides,
                final_size, version=DEFAULT_VERSION, data_format=None,
                dtype=DEFAULT_DTYPE):
     """Creates a model for classifying an image.
@@ -371,8 +371,6 @@ class Model(object):
         If none, the first pooling layer is skipped.
       first_pool_stride: stride size for the first pooling layer. Not used
         if first_pool_size is None.
-      second_pool_size: Pool size to be used for the second pooling layer.
-      second_pool_stride: stride size for the final pooling layer
       block_sizes: A list containing n values, where n is the number of sets of
         block layers desired. Each value should be the number of blocks in the
         i-th set.
@@ -422,8 +420,6 @@ class Model(object):
     self.conv_stride = conv_stride
     self.first_pool_size = first_pool_size
     self.first_pool_stride = first_pool_stride
-    self.second_pool_size = second_pool_size
-    self.second_pool_stride = second_pool_stride
     self.block_sizes = block_sizes
     self.block_strides = block_strides
     self.final_size = final_size
