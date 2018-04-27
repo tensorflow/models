@@ -41,6 +41,7 @@ sys.path.append('..')  # Main modules reside in the parent directory.
 from absl import app
 from absl import flags
 import matplotlib
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
 import numpy as np
@@ -51,9 +52,10 @@ plt.style.use('ggplot')
 FLAGS = flags.FLAGS
 flags.DEFINE_boolean('cache', False,
                      'Read results of privacy analysis from cache.')
-flags.DEFINE_string('counts_file', '', 'Counts file.')
+flags.DEFINE_string('counts_file', None, 'Counts file.')
 flags.DEFINE_string('figures_dir', '', 'Path where figures are written to.')
 
+flags.mark_flag_as_required('counts_file')
 
 def run_analysis(votes, mechanism, noise_scale, params):
   """Computes data-dependent privacy.
@@ -90,26 +92,26 @@ def run_analysis(votes, mechanism, noise_scale, params):
 
   n = votes.shape[0]
   eps_total = np.zeros(n)
-  partition = np.full(n, None, dtype=object)
-  order_opt = np.full(n, None, dtype=float)
-  answered = np.zeros(n)
+  partition = [None] * n
+  order_opt = np.full(n, np.nan, dtype=float)
+  answered = np.zeros(n, dtype=float)
 
   rdp_cum = np.zeros(len(orders))
   rdp_sqrd_cum = np.zeros(len(orders))
   rdp_select_cum = np.zeros(len(orders))
   answered_sum = 0
 
-  for i in xrange(n):
+  for i in range(n):
     v = votes[i,]
     if mechanism == 'lnmax':
       logq_lnmax = pate.compute_logq_laplace(v, noise_scale)
       rdp_query = pate.rdp_pure_eps(logq_lnmax, 2. / noise_scale, orders)
-      rdp_sqrd = rdp_query**2
+      rdp_sqrd = rdp_query ** 2
       pr_answered = 1
     elif mechanism == 'gnmax':
       logq_gmax = pate.compute_logq_gaussian(v, noise_scale)
       rdp_query = pate.rdp_gaussian(logq_gmax, noise_scale, orders)
-      rdp_sqrd = rdp_query**2
+      rdp_sqrd = rdp_query ** 2
       pr_answered = 1
     elif mechanism == 'gnmax_conf':
       logq_step1 = pate.compute_logpr_answered(params['t'], params['sigma1'], v)
@@ -117,16 +119,19 @@ def run_analysis(votes, mechanism, noise_scale, params):
       q_step1 = np.exp(logq_step1)
       logq_step1_min = min(logq_step1, math.log1p(-q_step1))
       rdp_gnmax_step1 = pate.rdp_gaussian(logq_step1_min,
-                                          2**.5 * params['sigma1'], orders)
+                                          2 ** .5 * params['sigma1'], orders)
       rdp_gnmax_step2 = pate.rdp_gaussian(logq_step2, noise_scale, orders)
       rdp_query = rdp_gnmax_step1 + q_step1 * rdp_gnmax_step2
       # The expression below evaluates
       #     E[(cost_of_step_1 + Bernoulli(pr_of_step_2) * cost_of_step_2)^2]
       rdp_sqrd = (
-          rdp_gnmax_step1**2 + 2 * rdp_gnmax_step1 * q_step1 * rdp_gnmax_step2 +
-          q_step1 * rdp_gnmax_step2**2)
+          rdp_gnmax_step1 ** 2 + 2 * rdp_gnmax_step1 * q_step1 * rdp_gnmax_step2
+          + q_step1 * rdp_gnmax_step2 ** 2)
       rdp_select_cum += rdp_gnmax_step1
       pr_answered = q_step1
+    else:
+      raise ValueError(
+          'Mechanism must be one of ["lnmax", "gnmax", "gnmax_conf"]')
 
     rdp_cum += rdp_query
     rdp_sqrd_cum += rdp_sqrd
@@ -139,9 +144,9 @@ def run_analysis(votes, mechanism, noise_scale, params):
 
     if i > 0 and (i + 1) % 1000 == 0:
       rdp_var = rdp_sqrd_cum / i - (
-          rdp_cum / i)**2  # Ignore Bessel's correction.
+          rdp_cum / i) ** 2  # Ignore Bessel's correction.
       order_opt_idx = np.searchsorted(orders, order_opt[i])
-      eps_std = ((i + 1) * rdp_var[order_opt_idx])**.5  # Std of the sum.
+      eps_std = ((i + 1) * rdp_var[order_opt_idx]) ** .5  # Std of the sum.
       print(
           'queries = {}, E[answered] = {:.2f}, E[eps] = {:.3f} (std = {:.5f}) '
           'at order = {:.2f} (contribution from delta = {:.3f})'.format(
@@ -163,10 +168,10 @@ def print_plot_small(figures_dir, eps_lap, eps_gnmax, answered_gnmax):
   """
   xlim = 6000
   x_axis = range(0, int(xlim), 10)
-  y_lap = np.zeros(len(x_axis))
-  y_gnmax = np.full(len(x_axis), None, dtype=float)
+  y_lap = np.zeros(len(x_axis), dtype=float)
+  y_gnmax = np.full(len(x_axis), np.nan, dtype=float)
 
-  for i in xrange(len(x_axis)):
+  for i in range(len(x_axis)):
     x = x_axis[i]
     y_lap[i] = eps_lap[x]
     idx = np.searchsorted(answered_gnmax, x)
@@ -200,7 +205,7 @@ def print_plot_small(figures_dir, eps_lap, eps_gnmax, answered_gnmax):
 
 
 def print_plot_large(figures_dir, eps_lap, eps_gnmax1, answered_gnmax1,
-                     eps_gnmax2, partition_gnmax2, answered_gnmax2):
+    eps_gnmax2, partition_gnmax2, answered_gnmax2):
   """Plots a graph of LNMax vs GNMax with two parameters.
 
   Args:
@@ -220,7 +225,7 @@ def print_plot_large(figures_dir, eps_lap, eps_gnmax1, answered_gnmax1,
   y_gnmax2 = np.full(lenx, np.nan, dtype=float)
   y1_gnmax2 = np.full(lenx, np.nan, dtype=float)
 
-  for i in xrange(lenx):
+  for i in range(lenx):
     x = x_axis[i]
     y_lap[i] = eps_lap[x]
     idx1 = np.searchsorted(answered_gnmax1, x)
@@ -289,86 +294,6 @@ def print_plot_large(figures_dir, eps_lap, eps_gnmax1, answered_gnmax1,
   plt.show()
 
 
-def print_plot_partition(figures_dir, eps, partition, answered, order_opt):
-  """Plots an expert version of the privacy-per-answered-query graph.
-
-  Args:
-    figures_dir: A name of the directory where to save the plot.
-    eps: The cumulative privacy cost.
-    partition: Allocation of the privacy cost.
-    answered: Cumulative number of queries answered.
-    order_opt: The list of optimal orders.
-  """
-
-  xlim = 6000
-  x = range(0, int(xlim), 10)
-  lenx = len(x)
-  y = np.full(lenx, np.nan, dtype=float)
-  y1 = np.full(lenx, np.nan, dtype=float)
-  y2 = np.full(lenx, np.nan, dtype=float)
-  y_right = np.full(lenx, np.nan, dtype=float)
-
-  for i in xrange(lenx):
-    idx = np.searchsorted(answered, x[i])
-    if idx < len(eps):
-      y[i] = eps[idx]
-      fraction_step1, _, fraction_delta = partition[idx]
-      y1[i] = fraction_delta * y[i]
-      y2[i] = (fraction_delta + fraction_step1) * y[i]
-      y_right[i] = order_opt[idx]
-
-  # plt.close('all')
-  fig, ax = plt.subplots()
-  fig.set_figheight(4.5)
-  fig.set_figwidth(4.7)
-  l1 = ax.plot(
-      x, y, color='b', ls='-', label=r'Total privacy cost', linewidth=5).pop()
-  ax.plot(x, y1, color='b', ls='-', label=r'_nolegend_', alpha=.5, linewidth=1)
-  ax.plot(x, y2, color='b', ls='-', label=r'_nolegend_', alpha=.5, linewidth=1)
-  ax.fill_between(x, [0] * lenx, y1.tolist(), facecolor='b', alpha=.1)
-  ax.fill_between(x, y1.tolist(), y2.tolist(), facecolor='b', alpha=.2)
-  ax.fill_between(x, y2.tolist(), y.tolist(), facecolor='b', alpha=.3)
-  t1 = 300
-  ax.text(x[t1], y1[t1] * .35, r'due to $\delta$', alpha=.5, fontsize=18)
-  ax.text(
-      x[t1],
-      y1[t1] + (y2[t1] - y1[t1]) * .6,
-      r'selection ($\sigma_1$)',
-      alpha=.5,
-      fontsize=18)
-  t2 = 550
-  ax.annotate(
-      r'answering ($\sigma_2$)',
-      xy=(x[t2], (y[t2] + y2[t2]) / 2),
-      xytext=(x[200], y[t2] * 1.1),
-      arrowprops=dict(facecolor='black', shrink=0.005, alpha=.5),
-      fontsize=18,
-      alpha=.5)
-
-  ax2 = ax.twinx()
-  l2 = ax2.plot(
-      x, y_right, 'r', ls='-', label=r'Optimal order', linewidth=5,
-      alpha=.5).pop()
-  ax2.grid(False)
-  ax2.set_ylabel(r'Optimal Renyi order', fontsize=16)
-
-  plt.xticks(np.arange(0, 7000, 1000))
-  plt.xlim([0, xlim])
-  ax.set_ylim([0, 1.])
-  ax2.set_ylim([0, 200.])
-  ax.set_xlabel('Number of queries answered', fontsize=16)
-  ax.set_ylabel(r'Privacy cost $\varepsilon$ at $\delta=10^{-8}$', fontsize=16)
-
-  # Merging legends.
-  ax.legend((l1, l2), (l1.get_label(), l2.get_label()), loc=0, fontsize=13)
-
-  ax.tick_params(labelsize=14)
-  fout_name = os.path.join(figures_dir, 'partition.pdf')
-  print('Saving the graph to ' + fout_name)
-  fig.savefig(fout_name, bbox_inches='tight')
-  plt.show()
-
-
 def run_all_analyses(votes, lambda_laplace, gnmax_parameters, sigma2):
   """Sequentially runs all analyses.
 
@@ -408,15 +333,15 @@ def main(argv):
 
   # Paramaters of the GNMax
   gnmax_parameters = ({
-      't': 1000,
-      'sigma1': 500
-  }, {
-      't': 3500,
-      'sigma1': 1500
-  }, {
-      't': 5000,
-      'sigma1': 1500
-  })
+                        't': 1000,
+                        'sigma1': 500
+                      }, {
+                        't': 3500,
+                        'sigma1': 1500
+                      }, {
+                        't': 5000,
+                        'sigma1': 1500
+                      })
   sigma2 = 100  # GNMax parameters differ only in Step 1 (selection).
   ftemp_name = '/tmp/precomputed.pkl'
 
@@ -436,7 +361,7 @@ def main(argv):
 
     (eps_lap, eps_gnmax, partition_gmax,
      answered_gnmax, orders_opt_gnmax) = run_all_analyses(
-         votes, lambda_laplace, gnmax_parameters, sigma2)
+        votes, lambda_laplace, gnmax_parameters, sigma2)
 
     print('Writing to cache ' + ftemp_name)
     with open(ftemp_name, 'wb') as f:
@@ -446,8 +371,6 @@ def main(argv):
   print_plot_small(figures_dir, eps_lap, eps_gnmax[0], answered_gnmax[0])
   print_plot_large(figures_dir, eps_lap, eps_gnmax[1], answered_gnmax[1],
                    eps_gnmax[2], partition_gmax[2], answered_gnmax[2])
-  print_plot_partition(figures_dir, eps_gnmax[2], partition_gmax[2],
-                       answered_gnmax[2], orders_opt_gnmax[2])
   plt.close('all')
 
 
