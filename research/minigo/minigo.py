@@ -115,11 +115,11 @@ def selfplay(selfplay_dirs, selfplay_model, params):
   # Hold out 5% of games for evaluation.
   if random.random() < params.holdout_pct:
     fname = os.path.join(
-        selfplay_dirs['holdout_dir'], ('{}'+_TF_RECORD_SUFFIX).format(
+        selfplay_dirs['holdout_dir'], ('{}' + _TF_RECORD_SUFFIX).format(
             output_name))
   else:
     fname = os.path.join(
-        selfplay_dirs['output_dir'], ('{}'+_TF_RECORD_SUFFIX).format(
+        selfplay_dirs['output_dir'], ('{}' + _TF_RECORD_SUFFIX).format(
             output_name))
 
   preprocessing.write_tf_examples(fname, tf_examples)
@@ -236,7 +236,7 @@ def validate(trained_models_dir, holdout_dir, estimator_model_dir, params):
             tf.gfile.Glob(os.path.join(record_dir, '*'+_TF_RECORD_SUFFIX)))
 
   if not tf_records:
-    print('No holdout dataset for validation! ' +
+    print('No holdout dataset for validation! '
           'Please check your holdout directory: {}'.format(holdout_dir))
     return
 
@@ -262,7 +262,7 @@ def evaluate(black_model_name, black_net, white_model_name, white_net,
     white_model_name: The name of the model playing white.
     white_net: The DualNetRunner model for white.
     evaluate_dir: Where to write the evaluation results. Set as
-      'base_dir/sgf/evaluate/'        .
+      'base_dir/sgf/evaluate/'.
     params: A MiniGoParams instance of hyperparameters for the model.
 
   Returns:
@@ -403,7 +403,7 @@ def main(_):
   # Run the RL pipeline
   # if no models have been trained, start from bootstrap model
 
-  if os.path.isdir(dirs.trained_models_dir) is False:
+  if not os.path.isdir(dirs.trained_models_dir):
     print('No trained model exists! Starting from Bootstrap...')
     print('Creating random initial weights...')
     bootstrap(dirs.estimator_model_dir, dirs.trained_models_dir, params)
