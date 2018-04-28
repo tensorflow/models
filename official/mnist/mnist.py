@@ -62,7 +62,9 @@ def create_model(data_format):
   # (a subclass of tf.keras.Model) makes for a compact description.
   return tf.keras.Sequential(
       [
-          l.Reshape(input_shape),
+          l.Reshape(
+              target_shape=input_shape,
+              input_shape=(28 * 28,)),
           l.Conv2D(
               32,
               5,
