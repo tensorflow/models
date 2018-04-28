@@ -31,8 +31,50 @@ from official.utils.logs import logger
 
 class BenchmarkLoggerTest(tf.test.TestCase):
 
+  def test_get_default_benchmark_logger(self):
+    self.assertIsInstance(logger.get_benchmark_logger(),
+                          logger.BaseBenchmarkLogger)
+
+  def test_config_base_benchmark_logger(self):
+    logger.config_benchmark_logger("")
+    self.assertIsInstance(logger.get_benchmark_logger(),
+                          logger.BaseBenchmarkLogger)
+
+  def test_config_benchmark_file_logger(self):
+    logger.config_benchmark_logger("/tmp/abc")
+    self.assertIsInstance(logger.get_benchmark_logger(),
+                          logger.BenchmarkFileLogger)
+
+
+class BaseBenchmarkLoggerTest(tf.test.TestCase):
+
   def setUp(self):
-    super(BenchmarkLoggerTest, self).setUp()
+    super(BaseBenchmarkLoggerTest, self).setUp()
+    self._actual_log = tf.logging.info
+    self.logged_message = None
+
+    def mock_log(*args, **kwargs):
+      self.logged_message = args
+      self._actual_log(*args, **kwargs)
+
+    tf.logging.info = mock_log
+
+  def tearDown(self):
+    super(BaseBenchmarkLoggerTest, self).tearDown()
+    tf.logging.info = self._actual_log
+
+  def test_log_metric(self):
+    log = logger.BaseBenchmarkLogger()
+    log.log_metric("accuracy", 0.999, global_step=1e4, extras={"name": "value"})
+
+    expected_log_prefix = "Benchmark metric:"
+    self.assertRegexpMatches(str(self.logged_message), expected_log_prefix)
+
+
+class BenchmarkFileLoggerTest(tf.test.TestCase):
+
+  def setUp(self):
+    super(BenchmarkFileLoggerTest, self).setUp()
     # Avoid pulling extra env vars from test environment which affects the test
     # result, eg. Kokoro test has a TF_PKG env which affect the test case
     # test_collect_tensorflow_environment_variables()
@@ -40,7 +82,7 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     os.environ.clear()
 
   def tearDown(self):
-    super(BenchmarkLoggerTest, self).tearDown()
+    super(BenchmarkFileLoggerTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
     os.environ.clear()
     os.environ.update(self.original_environ)
@@ -49,12 +91,12 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     non_exist_temp_dir = os.path.join(self.get_temp_dir(), "unknown_dir")
     self.assertFalse(tf.gfile.IsDirectory(non_exist_temp_dir))
 
-    logger.BenchmarkLogger(non_exist_temp_dir)
+    logger.BenchmarkFileLogger(non_exist_temp_dir)
     self.assertTrue(tf.gfile.IsDirectory(non_exist_temp_dir))
 
   def test_log_metric(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
-    log = logger.BenchmarkLogger(log_dir)
+    log = logger.BenchmarkFileLogger(log_dir)
     log.log_metric("accuracy", 0.999, global_step=1e4, extras={"name": "value"})
 
     metric_log = os.path.join(log_dir, "metric.log")
@@ -69,7 +111,7 @@ class BenchmarkLoggerTest(tf.test.TestCase):
 
   def test_log_multiple_metrics(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
-    log = logger.BenchmarkLogger(log_dir)
+    log = logger.BenchmarkFileLogger(log_dir)
     log.log_metric("accuracy", 0.999, global_step=1e4, extras={"name": "value"})
     log.log_metric("loss", 0.02, global_step=1e4)
 
@@ -90,9 +132,9 @@ class BenchmarkLoggerTest(tf.test.TestCase):
       self.assertEqual(loss["global_step"], 1e4)
       self.assertEqual(loss["extras"], [])
 
-  def test_log_non_nubmer_value(self):
+  def test_log_non_number_value(self):
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
-    log = logger.BenchmarkLogger(log_dir)
+    log = logger.BenchmarkFileLogger(log_dir)
     const = tf.constant(1)
     log.log_metric("accuracy", const)
 
@@ -104,8 +146,8 @@ class BenchmarkLoggerTest(tf.test.TestCase):
                    "global_step": 207082,
                    "accuracy": 0.9285}
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
-    log = logger.BenchmarkLogger(log_dir)
-    log.log_estimator_evaluation_result(eval_result)
+    log = logger.BenchmarkFileLogger(log_dir)
+    log.log_evaluation_result(eval_result)
 
     metric_log = os.path.join(log_dir, "metric.log")
     self.assertTrue(tf.gfile.Exists(metric_log))
@@ -125,8 +167,8 @@ class BenchmarkLoggerTest(tf.test.TestCase):
   def test_log_evaluation_result_with_invalid_type(self):
     eval_result = "{'loss': 0.46237424, 'global_step': 207082}"
     log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
-    log = logger.BenchmarkLogger(log_dir)
-    log.log_estimator_evaluation_result(eval_result)
+    log = logger.BenchmarkFileLogger(log_dir)
+    log.log_evaluation_result(eval_result)
 
     metric_log = os.path.join(log_dir, "metric.log")
     self.assertFalse(tf.gfile.Exists(metric_log))

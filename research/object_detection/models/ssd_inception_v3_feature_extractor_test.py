@@ -25,7 +25,7 @@ class SsdInceptionV3FeatureExtractorTest(
     ssd_feature_extractor_test.SsdFeatureExtractorTestBase):
 
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
-                                is_training=True, batch_norm_trainable=True):
+                                is_training=True):
     """Constructs a SsdInceptionV3FeatureExtractor.
 
     Args:
@@ -33,16 +33,15 @@ class SsdInceptionV3FeatureExtractorTest(
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
       is_training: whether the network is in training mode.
-      batch_norm_trainable: Whether to update batch norm parameters during
-        training or not
+
     Returns:
       an ssd_inception_v3_feature_extractor.SsdInceptionV3FeatureExtractor.
     """
     min_depth = 32
-    conv_hyperparams = {}
     return ssd_inception_v3_feature_extractor.SSDInceptionV3FeatureExtractor(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, batch_norm_trainable)
+        self.conv_hyperparams_fn,
+        override_base_feature_extractor_hyperparams=True)
 
   def test_extract_features_returns_correct_shapes_128(self):
     image_height = 128

@@ -90,10 +90,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
     """
     return box_predictor_text_proto
 
-  def _add_mask_to_second_stage_box_predictor_text_proto(self):
+  def _add_mask_to_second_stage_box_predictor_text_proto(
+      self, masks_are_class_agnostic=False):
+    agnostic = 'true' if masks_are_class_agnostic else 'false'
     box_predictor_text_proto = """
       mask_rcnn_box_predictor {
         predict_instance_masks: true
+        masks_are_class_agnostic: """ + agnostic + """
         mask_height: 14
         mask_width: 14
         conv_hyperparams {
@@ -114,13 +117,14 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
     return box_predictor_text_proto
 
   def _get_second_stage_box_predictor(self, num_classes, is_training,
-                                      predict_masks):
+                                      predict_masks, masks_are_class_agnostic):
     box_predictor_proto = box_predictor_pb2.BoxPredictor()
     text_format.Merge(self._get_second_stage_box_predictor_text_proto(),
                       box_predictor_proto)
     if predict_masks:
       text_format.Merge(
-          self._add_mask_to_second_stage_box_predictor_text_proto(),
+          self._add_mask_to_second_stage_box_predictor_text_proto(
+              masks_are_class_agnostic),
           box_predictor_proto)
 
     return box_predictor_builder.build(
@@ -146,7 +150,8 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
                    hard_mining=False,
                    softmax_second_stage_classification_loss=True,
                    predict_masks=False,
-                   pad_to_max_dimension=None):
+                   pad_to_max_dimension=None,
+                   masks_are_class_agnostic=False):
 
     def image_resizer_fn(image, masks=None):
       """Fake image resizer function."""
@@ -196,7 +201,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         }
       }
     """
-    first_stage_box_predictor_arg_scope = (
+    first_stage_box_predictor_arg_scope_fn = (
         self._build_arg_scope_with_hyperparams(
             first_stage_box_predictor_hyperparams_text_proto, is_training))
 
@@ -255,8 +260,8 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         'number_of_stages': number_of_stages,
         'first_stage_anchor_generator': first_stage_anchor_generator,
         'first_stage_atrous_rate': first_stage_atrous_rate,
-        'first_stage_box_predictor_arg_scope':
-        first_stage_box_predictor_arg_scope,
+        'first_stage_box_predictor_arg_scope_fn':
+        first_stage_box_predictor_arg_scope_fn,
         'first_stage_box_predictor_kernel_size':
         first_stage_box_predictor_kernel_size,
         'first_stage_box_predictor_depth': first_stage_box_predictor_depth,
@@ -287,7 +292,8 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         self._get_second_stage_box_predictor(
             num_classes=num_classes,
             is_training=is_training,
-            predict_masks=predict_masks), **common_kwargs)
+            predict_masks=predict_masks,
+            masks_are_class_agnostic=masks_are_class_agnostic), **common_kwargs)
 
   def test_predict_gives_correct_shapes_in_inference_mode_first_stage_only(
       self):

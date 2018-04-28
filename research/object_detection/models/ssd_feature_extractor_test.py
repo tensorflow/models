@@ -26,6 +26,10 @@ from object_detection.utils import test_case
 
 class SsdFeatureExtractorTestBase(test_case.TestCase):
 
+  def conv_hyperparams_fn(self):
+    with tf.contrib.slim.arg_scope([]) as sc:
+      return sc
+
   @abstractmethod
   def _create_feature_extractor(self, depth_multiplier, pad_to_multiple,
                                 use_explicit_padding=False):

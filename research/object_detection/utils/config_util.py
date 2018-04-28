@@ -63,8 +63,10 @@ def get_spatial_image_size(image_resizer_config):
     ValueError: If the model type is not recognized.
   """
   if image_resizer_config.HasField("fixed_shape_resizer"):
-    return [image_resizer_config.fixed_shape_resizer.height,
-            image_resizer_config.fixed_shape_resizer.width]
+    return [
+        image_resizer_config.fixed_shape_resizer.height,
+        image_resizer_config.fixed_shape_resizer.width
+    ]
   if image_resizer_config.HasField("keep_aspect_ratio_resizer"):
     if image_resizer_config.keep_aspect_ratio_resizer.pad_to_max_dimension:
       return [image_resizer_config.keep_aspect_ratio_resizer.max_dimension] * 2
@@ -74,7 +76,7 @@ def get_spatial_image_size(image_resizer_config):
 
 
 def get_configs_from_pipeline_file(pipeline_config_path):
-  """Reads configuration from a pipeline_pb2.TrainEvalPipelineConfig.
+  """Reads config from a file containing pipeline_pb2.TrainEvalPipelineConfig.
 
   Args:
     pipeline_config_path: Path to pipeline_pb2.TrainEvalPipelineConfig text
@@ -89,23 +91,34 @@ def get_configs_from_pipeline_file(pipeline_config_path):
   with tf.gfile.GFile(pipeline_config_path, "r") as f:
     proto_str = f.read()
     text_format.Merge(proto_str, pipeline_config)
+  return create_configs_from_pipeline_proto(pipeline_config)
 
+
+def create_configs_from_pipeline_proto(pipeline_config):
+  """Creates a configs dictionary from pipeline_pb2.TrainEvalPipelineConfig.
+
+  Args:
+    pipeline_config: pipeline_pb2.TrainEvalPipelineConfig proto object.
+
+  Returns:
+    Dictionary of configuration objects. Keys are `model`, `train_config`,
+      `train_input_config`, `eval_config`, `eval_input_config`. Value are the
+      corresponding config objects.
+  """
   configs = {}
   configs["model"] = pipeline_config.model
   configs["train_config"] = pipeline_config.train_config
   configs["train_input_config"] = pipeline_config.train_input_reader
   configs["eval_config"] = pipeline_config.eval_config
   configs["eval_input_config"] = pipeline_config.eval_input_reader
-
   return configs
 
 
 def create_pipeline_proto_from_configs(configs):
   """Creates a pipeline_pb2.TrainEvalPipelineConfig from configs dictionary.
 
-  This function nearly performs the inverse operation of
-  get_configs_from_pipeline_file(). Instead of returning a file path, it returns
-  a `TrainEvalPipelineConfig` object.
+  This function performs the inverse operation of
+  create_configs_from_pipeline_proto().
 
   Args:
     configs: Dictionary of configs. See get_configs_from_pipeline_file().
@@ -437,7 +450,7 @@ def _get_classification_loss(model_config):
   if meta_architecture == "faster_rcnn":
     model = model_config.faster_rcnn
     classification_loss = model.second_stage_classification_loss
-  if meta_architecture == "ssd":
+  elif meta_architecture == "ssd":
     model = model_config.ssd
     classification_loss = model.loss.classification_loss
   else:

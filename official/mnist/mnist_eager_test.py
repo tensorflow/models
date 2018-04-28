@@ -40,7 +40,7 @@ def random_dataset():
 
 
 def train(defun=False):
-  model = mnist.Model(data_format())
+  model = mnist.create_model(data_format())
   if defun:
     model.call = tfe.defun(model.call)
   optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.01)
@@ -51,7 +51,7 @@ def train(defun=False):
 
 
 def evaluate(defun=False):
-  model = mnist.Model(data_format())
+  model = mnist.create_model(data_format())
   dataset = random_dataset()
   if defun:
     model.call = tfe.defun(model.call)

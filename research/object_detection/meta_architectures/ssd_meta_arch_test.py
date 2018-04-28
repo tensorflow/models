@@ -38,8 +38,7 @@ class FakeSSDFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         depth_multiplier=0,
         min_depth=0,
         pad_to_multiple=1,
-        batch_norm_trainable=True,
-        conv_hyperparams=None)
+        conv_hyperparams_fn=None)
 
   def preprocess(self, resized_inputs):
     return tf.identity(resized_inputs)
@@ -81,8 +80,10 @@ def _get_value_for_matching_key(dictionary, suffix):
 
 class SsdMetaArchTest(test_case.TestCase):
 
-  def _create_model(self, apply_hard_mining=True,
-                    normalize_loc_loss_by_codesize=False):
+  def _create_model(self,
+                    apply_hard_mining=True,
+                    normalize_loc_loss_by_codesize=False,
+                    add_background_class=True):
     is_training = False
     num_classes = 1
     mock_anchor_generator = MockAnchorGenerator2x2()
@@ -118,13 +119,29 @@ class SsdMetaArchTest(test_case.TestCase):
 
     code_size = 4
     model = ssd_meta_arch.SSDMetaArch(
-        is_training, mock_anchor_generator, mock_box_predictor, mock_box_coder,
-        fake_feature_extractor, mock_matcher, region_similarity_calculator,
-        encode_background_as_zeros, negative_class_weight, image_resizer_fn,
-        non_max_suppression_fn, tf.identity, classification_loss,
-        localization_loss, classification_loss_weight, localization_loss_weight,
-        normalize_loss_by_num_matches, hard_example_miner, add_summaries=False,
-        normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize)
+        is_training,
+        mock_anchor_generator,
+        mock_box_predictor,
+        mock_box_coder,
+        fake_feature_extractor,
+        mock_matcher,
+        region_similarity_calculator,
+        encode_background_as_zeros,
+        negative_class_weight,
+        image_resizer_fn,
+        non_max_suppression_fn,
+        tf.identity,
+        classification_loss,
+        localization_loss,
+        classification_loss_weight,
+        localization_loss_weight,
+        normalize_loss_by_num_matches,
+        hard_example_miner,
+        add_summaries=False,
+        normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
+        freeze_batchnorm=False,
+        inplace_batchnorm_update=False,
+        add_background_class=add_background_class)
     return model, num_classes, mock_anchor_generator.num_anchors(), code_size
 
   def test_preprocess_preserves_shapes_with_dynamic_input_image(self):
@@ -358,6 +375,43 @@ class SsdMetaArchTest(test_case.TestCase):
     expected_classification_loss = (batch_size * num_anchors
                                     * (num_classes+1) * np.log(2.0))
     (localization_loss, classification_loss) = self.execute_cpu(
+        graph_fn, [
+            preprocessed_input, groundtruth_boxes1, groundtruth_boxes2,
+            groundtruth_classes1, groundtruth_classes2
+        ])
+    self.assertAllClose(localization_loss, expected_localization_loss)
+    self.assertAllClose(classification_loss, expected_classification_loss)
+
+  def test_loss_results_are_correct_without_add_background_class(self):
+
+    with tf.Graph().as_default():
+      _, num_classes, num_anchors, _ = self._create_model(
+          add_background_class=False)
+
+    def graph_fn(preprocessed_tensor, groundtruth_boxes1, groundtruth_boxes2,
+                 groundtruth_classes1, groundtruth_classes2):
+      groundtruth_boxes_list = [groundtruth_boxes1, groundtruth_boxes2]
+      groundtruth_classes_list = [groundtruth_classes1, groundtruth_classes2]
+      model, _, _, _ = self._create_model(
+          apply_hard_mining=False, add_background_class=False)
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list)
+      prediction_dict = model.predict(
+          preprocessed_tensor, true_image_shapes=None)
+      loss_dict = model.loss(prediction_dict, true_image_shapes=None)
+      return (loss_dict['Loss/localization_loss'],
+              loss_dict['Loss/classification_loss'])
+
+    batch_size = 2
+    preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
+    groundtruth_boxes1 = np.array([[0, 0, .5, .5]], dtype=np.float32)
+    groundtruth_boxes2 = np.array([[0, 0, .5, .5]], dtype=np.float32)
+    groundtruth_classes1 = np.array([[0, 1]], dtype=np.float32)
+    groundtruth_classes2 = np.array([[0, 1]], dtype=np.float32)
+    expected_localization_loss = 0.0
+    expected_classification_loss = (
+        batch_size * num_anchors * (num_classes + 1) * np.log(2.0))
+    (localization_loss, classification_loss) = self.execute(
         graph_fn, [
             preprocessed_input, groundtruth_boxes1, groundtruth_boxes2,
             groundtruth_classes1, groundtruth_classes2

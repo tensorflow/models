@@ -41,14 +41,12 @@ class SsdMobilenetV2FeatureExtractorTest(
       an ssd_meta_arch.SSDFeatureExtractor object.
     """
     min_depth = 32
-    with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm) as sc:
-      conv_hyperparams = sc
     return ssd_mobilenet_v2_feature_extractor.SSDMobileNetV2FeatureExtractor(
         False,
         depth_multiplier,
         min_depth,
         pad_to_multiple,
-        conv_hyperparams,
+        self.conv_hyperparams_fn,
         use_explicit_padding=use_explicit_padding)
 
   def test_extract_features_returns_correct_shapes_128(self):
