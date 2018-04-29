@@ -27,6 +27,7 @@ import json
 import multiprocessing
 import numbers
 import os
+import threading
 
 import tensorflow as tf
 from tensorflow.python.client import device_lib
@@ -36,27 +37,48 @@ BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
-class BenchmarkLogger(object):
-  """Class to log the benchmark information to local disk."""
+# Don't use it directly. Use get_benchmark_logger to access a logger.
+_benchmark_logger = None
+_logger_lock = threading.Lock()
 
-  def __init__(self, logging_dir):
-    self._logging_dir = logging_dir
-    if not tf.gfile.IsDirectory(self._logging_dir):
-      tf.gfile.MakeDirs(self._logging_dir)
 
-  def log_estimator_evaluation_result(self, eval_results):
-    """Log the evaluation result for a estimator.
+def config_benchmark_logger(logging_dir):
+  """Config the global benchmark logger"""
+  _logger_lock.acquire()
+  try:
+    global _benchmark_logger
+    if logging_dir:
+      _benchmark_logger = BenchmarkFileLogger(logging_dir)
+    else:
+      _benchmark_logger = BaseBenchmarkLogger()
+  finally:
+    _logger_lock.release()
+  return _benchmark_logger
 
-    The evaluate result is a directory that contains metrics defined in
+
+def get_benchmark_logger():
+  if not _benchmark_logger:
+    config_benchmark_logger(None)
+
+  return _benchmark_logger
+
+
+class BaseBenchmarkLogger(object):
+  """Class to log the benchmark information to STDOUT."""
+
+  def log_evaluation_result(self, eval_results):
+    """Log the evaluation result.
+
+    The evaluate result is a dictionary that contains metrics defined in
     model_fn. It also contains a entry for global_step which contains the value
     of the global step when evaluation was performed.
 
     Args:
-      eval_results: dict, the result of evaluate() from a estimator.
+      eval_results: dict, the result of evaluate.
     """
     if not isinstance(eval_results, dict):
-      tf.logging.warning("eval_results should be directory for logging. Got %s",
-                         type(eval_results))
+      tf.logging.warning("eval_results should be dictionary for logging. "
+                         "Got %s", type(eval_results))
       return
     global_step = eval_results[tf.GraphKeys.GLOBAL_STEP]
     for key in sorted(eval_results):
@@ -81,10 +103,45 @@ class BenchmarkLogger(object):
       tf.logging.warning(
           "Metric value to log should be a number. Got %s", type(value))
       return
-    if extras:
-      extras = [{"name": k, "value": v} for k, v in sorted(extras.items())]
-    else:
-      extras = []
+    extras = _convert_to_json_dict(extras)
+
+    tf.logging.info("Benchmark metric: "
+                    "Name %s, value %d, unit %s, global_step %d, extras %s",
+                    name, value, unit, global_step, extras)
+
+  def log_run_info(self, model_name):
+    tf.logging.info("Benchmark run: %s", _gather_run_info(model_name))
+
+
+class BenchmarkFileLogger(BaseBenchmarkLogger):
+  """Class to log the benchmark information to local disk."""
+
+  def __init__(self, logging_dir):
+    super(BenchmarkFileLogger, self).__init__()
+    self._logging_dir = logging_dir
+    if not tf.gfile.IsDirectory(self._logging_dir):
+      tf.gfile.MakeDirs(self._logging_dir)
+
+  def log_metric(self, name, value, unit=None, global_step=None, extras=None):
+    """Log the benchmark metric information to local file.
+
+    Currently the logging is done in a synchronized way. This should be updated
+    to log asynchronously.
+
+    Args:
+      name: string, the name of the metric to log.
+      value: number, the value of the metric. The value will not be logged if it
+        is not a number type.
+      unit: string, the unit of the metric, E.g "image per second".
+      global_step: int, the global_step when the metric is logged.
+      extras: map of string:string, the extra information about the metric.
+    """
+    if not isinstance(value, numbers.Number):
+      tf.logging.warning(
+          "Metric value to log should be a number. Got %s", type(value))
+      return
+    extras = _convert_to_json_dict(extras)
+
     with tf.gfile.GFile(
         os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
       metric = {
@@ -92,7 +149,7 @@ class BenchmarkLogger(object):
           "value": float(value),
           "unit": unit,
           "global_step": global_step,
-          "timestamp": datetime.datetime.now().strftime(
+          "timestamp": datetime.datetime.utcnow().strftime(
               _DATE_TIME_FORMAT_PATTERN),
           "extras": extras}
       try:
@@ -110,15 +167,7 @@ class BenchmarkLogger(object):
     Args:
       model_name: string, the name of the model.
     """
-    run_info = {
-        "model_name": model_name,
-        "machine_config": {},
-        "run_date": datetime.datetime.now().strftime(_DATE_TIME_FORMAT_PATTERN)}
-    _collect_tensorflow_info(run_info)
-    _collect_tensorflow_environment_variables(run_info)
-    _collect_cpu_info(run_info)
-    _collect_gpu_info(run_info)
-    _collect_memory_info(run_info)
+    run_info = _gather_run_info(model_name)
 
     with tf.gfile.GFile(os.path.join(
         self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
@@ -128,6 +177,21 @@ class BenchmarkLogger(object):
       except (TypeError, ValueError) as e:
         tf.logging.warning("Failed to dump benchmark run info to log file: %s",
                            e)
+
+
+def _gather_run_info(model_name):
+  """Collect the benchmark run information for the local environment."""
+  run_info = {
+      "model_name": model_name,
+      "machine_config": {},
+      "run_date": datetime.datetime.utcnow().strftime(
+          _DATE_TIME_FORMAT_PATTERN)}
+  _collect_tensorflow_info(run_info)
+  _collect_tensorflow_environment_variables(run_info)
+  _collect_cpu_info(run_info)
+  _collect_gpu_info(run_info)
+  _collect_memory_info(run_info)
+  return run_info
 
 
 def _collect_tensorflow_info(run_info):
@@ -194,3 +258,10 @@ def _parse_gpu_model(physical_device_desc):
     if k.strip() == "name":
       return v.strip()
   return None
+
+
+def _convert_to_json_dict(input_dict):
+  if input_dict:
+    return [{"name": k, "value": v} for k, v in sorted(input_dict.items())]
+  else:
+    return []

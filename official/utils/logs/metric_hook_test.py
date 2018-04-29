@@ -64,12 +64,8 @@ class LoggingMetricHookTest(tf.test.TestCase):
           tensors=['t'], every_n_iter=5, every_n_secs=5)
     with self.assertRaisesRegexp(ValueError, 'xactly one of'):
       metric_hook.LoggingMetricHook(tensors=['t'])
-    with self.assertRaisesRegexp(ValueError, 'log_dir and metric_logger'):
+    with self.assertRaisesRegexp(ValueError, 'metric_logger'):
       metric_hook.LoggingMetricHook(tensors=['t'], every_n_iter=5)
-    with self.assertRaisesRegexp(ValueError, 'log_dir and metric_logger'):
-      metric_hook.LoggingMetricHook(
-          tensors=['t'], every_n_iter=5, log_dir=self._log_dir,
-          metric_logger=self._logger)
 
   def test_print_at_end_only(self):
     with tf.Graph().as_default(), tf.Session() as sess:

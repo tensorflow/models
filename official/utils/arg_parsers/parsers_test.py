@@ -26,7 +26,7 @@ class TestParser(argparse.ArgumentParser):
 
   def __init__(self):
     super(TestParser, self).__init__(parents=[
-        parsers.BaseParser(multi_gpu=True, num_gpu=False),
+        parsers.BaseParser(),
         parsers.PerformanceParser(num_parallel_calls=True, inter_op=True,
                                   intra_op=True, use_synthetic_data=True),
         parsers.ImageModelParser(data_format=True),
