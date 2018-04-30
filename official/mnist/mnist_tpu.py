@@ -23,16 +23,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import sys
+
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 # For open source environment, add parent and grandparent directories for import
-import sys
-import os
 sys.path.append(os.path.dirname(os.path.abspath(sys.path[0])))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(sys.path[0]))))
 
-from official.mnist import dataset
-from official.mnist import mnist
+from official.mnist import dataset  # pylint: wrong-import-position
+from official.mnist import mnist  # pylint: wrong-import-position
 
 # Cloud TPU Cluster Resolver flags
 tf.flags.DEFINE_string(
