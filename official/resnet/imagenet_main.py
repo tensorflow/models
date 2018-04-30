@@ -235,8 +235,6 @@ class ImagenetModel(resnet_model.Model):
         conv_stride=2,
         first_pool_size=3,
         first_pool_stride=2,
-        second_pool_size=7,
-        second_pool_stride=1,
         block_sizes=_get_block_sizes(resnet_size),
         block_strides=[1, 2, 2, 2],
         final_size=final_size,

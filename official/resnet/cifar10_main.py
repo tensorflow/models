@@ -176,8 +176,6 @@ class Cifar10Model(resnet_model.Model):
         conv_stride=1,
         first_pool_size=None,
         first_pool_stride=None,
-        second_pool_size=8,
-        second_pool_stride=1,
         block_sizes=[num_blocks] * 3,
         block_strides=[1, 2, 2],
         final_size=64,
