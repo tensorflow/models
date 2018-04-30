@@ -28,7 +28,7 @@ import sys
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-# For open source environment, add parent and grandparent directories for import
+# For open source environment, add grandparent directory for import
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(sys.path[0]))))
 
 from official.mnist import dataset  # pylint: disable=wrong-import-position
