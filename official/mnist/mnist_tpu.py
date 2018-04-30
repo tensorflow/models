@@ -25,6 +25,12 @@ from __future__ import print_function
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+# For open source environment, add parent and grandparent directories for import
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(sys.path[0])))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(sys.path[0]))))
+
 from official.mnist import dataset
 from official.mnist import mnist
 
