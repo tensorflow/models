@@ -388,15 +388,9 @@ def main(_):
 
   # Run selfplay only if user specifies the argument.
   if FLAGS.selfplay_only:
-    if FLAGS.selfplay_model_name is not None:
-      selfplay_model_name = FLAGS.selfplay_model_name
-    else:
-      _, selfplay_model_name = utils.get_latest_model(dirs.trained_models_dir)
-
-    if FLAGS.selfplay_max_games is not None:
-      max_games = FLAGS.selfplay_max_games
-    else:
-      max_games = params.max_games_per_generation
+    selfplay_model_name = FLAGS.selfplay_model_name or utils.get_latest_model(
+        dirs.trained_models_dir)[1]
+    max_games = FLAGS.selfplay_max_games or params.max_games_per_generation
     run_selfplay(selfplay_model_name, max_games, dirs, params)
     return
 
