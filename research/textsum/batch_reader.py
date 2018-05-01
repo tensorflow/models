@@ -264,4 +264,3 @@ class Batcher(object):
     """
     byte_text = ex.features.feature[key].bytes_list.value[0]
     return byte_text.decode('utf-8')
-
