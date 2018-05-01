@@ -24,7 +24,7 @@ import os
 
 import tensorflow as tf
 
-from adversarial_text.data import data_utils
+from data import data_utils
 
 
 class VatxtInput(object):
@@ -51,27 +51,16 @@ class VatxtInput(object):
                     batch.sequences[data_utils.SequenceWrapper.F_TOKEN_ID])
     self._num_states = num_states
 
-    # Once the tokens have passed through embedding and LSTM, the output Tensor
-    # shapes will be time-major, i.e. shape = (time, batch, dim). Here we make
-    # both weights and labels time-major with a transpose, and then merge the
-    # time and batch dimensions such that they are both vectors of shape
-    # (time*batch).
     w = batch.sequences[data_utils.SequenceWrapper.F_WEIGHT]
-    w = tf.transpose(w, [1, 0])
-    w = tf.reshape(w, [-1])
     self._weights = w
 
     l = batch.sequences[data_utils.SequenceWrapper.F_LABEL]
-    l = tf.transpose(l, [1, 0])
-    l = tf.reshape(l, [-1])
     self._labels = l
 
     # eos weights
     self._eos_weights = None
     if eos_id:
       ew = tf.cast(tf.equal(self._tokens, eos_id), tf.float32)
-      ew = tf.transpose(ew, [1, 0])
-      ew = tf.reshape(ew, [-1])
       self._eos_weights = ew
 
   @property

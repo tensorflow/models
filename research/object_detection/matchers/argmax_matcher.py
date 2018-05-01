@@ -26,10 +26,10 @@ This matcher is used in Fast(er)-RCNN.
 Note: matchers are used in TargetAssigners. There is a create_target_assigner
 factory function for popular implementations.
 """
-
 import tensorflow as tf
 
 from object_detection.core import matcher
+from object_detection.utils import shape_utils
 
 
 class ArgMaxMatcher(matcher.Matcher):
@@ -55,7 +55,8 @@ class ArgMaxMatcher(matcher.Matcher):
                matched_threshold,
                unmatched_threshold=None,
                negatives_lower_than_unmatched=True,
-               force_match_for_each_row=False):
+               force_match_for_each_row=False,
+               use_matmul_gather=False):
     """Construct ArgMaxMatcher.
 
     Args:
@@ -74,11 +75,15 @@ class ArgMaxMatcher(matcher.Matcher):
         at least one column (which is not guaranteed otherwise if the
         matched_threshold is high). Defaults to False. See
         argmax_matcher_test.testMatcherForceMatch() for an example.
+      use_matmul_gather: Force constructed match objects to use matrix
+        multiplication based gather instead of standard tf.gather.
+        (Default: False).
 
     Raises:
       ValueError: if unmatched_threshold is set but matched_threshold is not set
         or if unmatched_threshold > matched_threshold.
     """
+    super(ArgMaxMatcher, self).__init__(use_matmul_gather=use_matmul_gather)
     if (matched_threshold is None) and (unmatched_threshold is not None):
       raise ValueError('Need to also define matched_threshold when'
                        'unmatched_threshold is defined')
@@ -119,7 +124,9 @@ class ArgMaxMatcher(matcher.Matcher):
       Returns:
         matches:  int32 tensor indicating the row each column matches to.
       """
-      return -1 * tf.ones([tf.shape(similarity_matrix)[1]], dtype=tf.int32)
+      similarity_matrix_shape = shape_utils.combined_static_and_dynamic_shape(
+          similarity_matrix)
+      return -1 * tf.ones([similarity_matrix_shape[1]], dtype=tf.int32)
 
     def _match_when_rows_are_non_empty():
       """Performs matching when the rows of similarity matrix are non empty.
@@ -128,7 +135,7 @@ class ArgMaxMatcher(matcher.Matcher):
         matches:  int32 tensor indicating the row each column matches to.
       """
       # Matches for each column
-      matches = tf.argmax(similarity_matrix, 0)
+      matches = tf.argmax(similarity_matrix, 0, output_type=tf.int32)
 
       # Deal with matched and unmatched threshold
       if self._matched_threshold is not None:
@@ -156,23 +163,31 @@ class ArgMaxMatcher(matcher.Matcher):
                                                      -1)
 
       if self._force_match_for_each_row:
-        forced_matches_ids = tf.cast(tf.argmax(similarity_matrix, 1), tf.int32)
+        similarity_matrix_shape = shape_utils.combined_static_and_dynamic_shape(
+            similarity_matrix)
+        force_match_column_ids = tf.argmax(similarity_matrix, 1,
+                                           output_type=tf.int32)
+        force_match_column_indicators = tf.one_hot(
+            force_match_column_ids, depth=similarity_matrix_shape[1])
+        force_match_row_ids = tf.argmax(force_match_column_indicators, 0,
+                                        output_type=tf.int32)
+        force_match_column_mask = tf.cast(
+            tf.reduce_max(force_match_column_indicators, 0), tf.bool)
+        final_matches = tf.where(force_match_column_mask,
+                                 force_match_row_ids, matches)
+        return final_matches
+      else:
+        return matches
 
-        # Set matches[forced_matches_ids] = [0, ..., R], R is number of rows.
-        row_range = tf.range(tf.shape(similarity_matrix)[0])
-        col_range = tf.range(tf.shape(similarity_matrix)[1])
-        forced_matches_values = tf.cast(row_range, matches.dtype)
-        keep_matches_ids, _ = tf.setdiff1d(col_range, forced_matches_ids)
-        keep_matches_values = tf.gather(matches, keep_matches_ids)
-        matches = tf.dynamic_stitch(
-            [forced_matches_ids,
-             keep_matches_ids], [forced_matches_values, keep_matches_values])
-
-      return tf.cast(matches, tf.int32)
-
-    return tf.cond(
-        tf.greater(tf.shape(similarity_matrix)[0], 0),
-        _match_when_rows_are_non_empty, _match_when_rows_are_empty)
+    if similarity_matrix.shape.is_fully_defined():
+      if similarity_matrix.shape[0].value == 0:
+        return _match_when_rows_are_empty()
+      else:
+        return _match_when_rows_are_non_empty()
+    else:
+      return tf.cond(
+          tf.greater(tf.shape(similarity_matrix)[0], 0),
+          _match_when_rows_are_non_empty, _match_when_rows_are_empty)
 
   def _set_values_using_indicator(self, x, indicator, val):
     """Set the indicated fields of x to val.

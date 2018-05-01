@@ -137,6 +137,7 @@ def resnet_v1(inputs,
               output_stride=None,
               include_root_block=True,
               spatial_squeeze=True,
+              store_non_strided_activations=False,
               reuse=None,
               scope=None):
   """Generator for v1 ResNet models.
@@ -181,6 +182,12 @@ def resnet_v1(inputs,
         To use this parameter, the input images must be smaller than 300x300
         pixels, in which case the output logit layer does not contain spatial
         information and can be removed.
+    store_non_strided_activations: If True, we compute non-strided (undecimated)
+      activations at the last unit of each block and store them in the
+      `outputs_collections` before subsampling them. This gives us access to
+      higher resolution intermediate activations which are useful in some
+      dense prediction problems but increases 4x the computation and memory cost
+      at the last unit of each block.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -213,7 +220,8 @@ def resnet_v1(inputs,
             output_stride /= 4
           net = resnet_utils.conv2d_same(net, 64, 7, stride=2, scope='conv1')
           net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1')
-        net = resnet_utils.stack_blocks_dense(net, blocks, output_stride)
+        net = resnet_utils.stack_blocks_dense(net, blocks, output_stride,
+                                              store_non_strided_activations)
         # Convert end_points_collection into a dictionary of end_points.
         end_points = slim.utils.convert_collection_to_dict(
             end_points_collection)
@@ -264,6 +272,7 @@ def resnet_v1_50(inputs,
                  global_pool=True,
                  output_stride=None,
                  spatial_squeeze=True,
+                 store_non_strided_activations=False,
                  reuse=None,
                  scope='resnet_v1_50'):
   """ResNet-50 model of [1]. See resnet_v1() for arg and return description."""
@@ -276,6 +285,7 @@ def resnet_v1_50(inputs,
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   store_non_strided_activations=store_non_strided_activations,
                    reuse=reuse, scope=scope)
 resnet_v1_50.default_image_size = resnet_v1.default_image_size
 
@@ -286,6 +296,7 @@ def resnet_v1_101(inputs,
                   global_pool=True,
                   output_stride=None,
                   spatial_squeeze=True,
+                  store_non_strided_activations=False,
                   reuse=None,
                   scope='resnet_v1_101'):
   """ResNet-101 model of [1]. See resnet_v1() for arg and return description."""
@@ -298,6 +309,7 @@ def resnet_v1_101(inputs,
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   store_non_strided_activations=store_non_strided_activations,
                    reuse=reuse, scope=scope)
 resnet_v1_101.default_image_size = resnet_v1.default_image_size
 
@@ -307,6 +319,7 @@ def resnet_v1_152(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
+                  store_non_strided_activations=False,
                   spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v1_152'):
@@ -320,6 +333,7 @@ def resnet_v1_152(inputs,
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   store_non_strided_activations=store_non_strided_activations,
                    reuse=reuse, scope=scope)
 resnet_v1_152.default_image_size = resnet_v1.default_image_size
 
@@ -329,6 +343,7 @@ def resnet_v1_200(inputs,
                   is_training=True,
                   global_pool=True,
                   output_stride=None,
+                  store_non_strided_activations=False,
                   spatial_squeeze=True,
                   reuse=None,
                   scope='resnet_v1_200'):
@@ -342,5 +357,6 @@ def resnet_v1_200(inputs,
   return resnet_v1(inputs, blocks, num_classes, is_training,
                    global_pool=global_pool, output_stride=output_stride,
                    include_root_block=True, spatial_squeeze=spatial_squeeze,
+                   store_non_strided_activations=store_non_strided_activations,
                    reuse=reuse, scope=scope)
 resnet_v1_200.default_image_size = resnet_v1.default_image_size

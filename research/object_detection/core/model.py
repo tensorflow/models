@@ -39,6 +39,17 @@ resize/reshaping necessary (see docstring for the preprocess function).
 Output classes are always integers in the range [0, num_classes).  Any mapping
 of these integers to semantic labels is to be handled outside of this class.
 
+Images are resized in the `preprocess` method. All of `preprocess`, `predict`,
+and `postprocess` should be reentrant.
+
+The `preprocess` method runs `image_resizer_fn` that returns resized_images and
+`true_image_shapes`. Since `image_resizer_fn` can pad the images with zeros,
+true_image_shapes indicate the slices that contain the image without padding.
+This is useful for padding images to be a fixed size for batching.
+
+The `postprocess` method uses the true image shapes to clip predictions that lie
+outside of images.
+
 By default, DetectionModels produce bounding box detections; However, we support
 a handful of auxiliary annotations associated with each bounding box, namely,
 instance masks and keypoints.
@@ -58,7 +69,7 @@ class DetectionModel(object):
 
     Args:
       num_classes: number of classes.  Note that num_classes *does not* include
-      background categories that might be implicitly be predicted in various
+      background categories that might be implicitly predicted in various
       implementations.
     """
     self._num_classes = num_classes
@@ -106,12 +117,12 @@ class DetectionModel(object):
 
     This function is responsible for any scaling/shifting of input values that
     is necessary prior to running the detector on an input image.
-    It is also responsible for any resizing that might be necessary as images
-    are assumed to arrive in arbitrary sizes.  While this function could
-    conceivably be part of the predict method (below), it is often convenient
-    to keep these separate --- for example, we may want to preprocess on one
-    device, place onto a queue, and let another device (e.g., the GPU) handle
-    prediction.
+    It is also responsible for any resizing, padding that might be necessary
+    as images are assumed to arrive in arbitrary sizes.  While this function
+    could conceivably be part of the predict method (below), it is often
+    convenient to keep these separate --- for example, we may want to preprocess
+    on one device, place onto a queue, and let another device (e.g., the GPU)
+    handle prediction.
 
     A few important notes about the preprocess function:
     + We assume that this operation does not have any trainable variables nor
@@ -134,11 +145,15 @@ class DetectionModel(object):
     Returns:
       preprocessed_inputs: a [batch, height_out, width_out, channels] float32
         tensor representing a batch of images.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
     """
     pass
 
   @abstractmethod
-  def predict(self, preprocessed_inputs):
+  def predict(self, preprocessed_inputs, true_image_shapes):
     """Predict prediction tensors from inputs tensor.
 
     Outputs of this function can be passed to loss or postprocess functions.
@@ -146,6 +161,10 @@ class DetectionModel(object):
     Args:
       preprocessed_inputs: a [batch, height, width, channels] float32 tensor
         representing a batch of images.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
 
     Returns:
       prediction_dict: a dictionary holding prediction tensors to be
@@ -154,7 +173,7 @@ class DetectionModel(object):
     pass
 
   @abstractmethod
-  def postprocess(self, prediction_dict, **params):
+  def postprocess(self, prediction_dict, true_image_shapes, **params):
     """Convert predicted output tensors to final detections.
 
     Outputs adhere to the following conventions:
@@ -172,6 +191,10 @@ class DetectionModel(object):
 
     Args:
       prediction_dict: a dictionary holding prediction tensors.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
       **params: Additional keyword arguments for specific implementations of
         DetectionModel.
 
@@ -190,7 +213,7 @@ class DetectionModel(object):
     pass
 
   @abstractmethod
-  def loss(self, prediction_dict):
+  def loss(self, prediction_dict, true_image_shapes):
     """Compute scalar loss tensors with respect to provided groundtruth.
 
     Calling this function requires that groundtruth tensors have been
@@ -198,6 +221,10 @@ class DetectionModel(object):
 
     Args:
       prediction_dict: a dictionary holding predicted tensors
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
 
     Returns:
       a dictionary mapping strings (loss names) to scalar tensors representing
@@ -209,7 +236,8 @@ class DetectionModel(object):
                           groundtruth_boxes_list,
                           groundtruth_classes_list,
                           groundtruth_masks_list=None,
-                          groundtruth_keypoints_list=None):
+                          groundtruth_keypoints_list=None,
+                          groundtruth_weights_list=None):
     """Provide groundtruth tensors.
 
     Args:
@@ -230,10 +258,15 @@ class DetectionModel(object):
         shape [num_boxes, num_keypoints, 2] containing keypoints.
         Keypoints are assumed to be provided in normalized coordinates and
         missing keypoints should be encoded as NaN.
+      groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
+        [num_boxes] containing weights for groundtruth boxes.
     """
     self._groundtruth_lists[fields.BoxListFields.boxes] = groundtruth_boxes_list
     self._groundtruth_lists[
         fields.BoxListFields.classes] = groundtruth_classes_list
+    if groundtruth_weights_list:
+      self._groundtruth_lists[fields.BoxListFields.
+                              weights] = groundtruth_weights_list
     if groundtruth_masks_list:
       self._groundtruth_lists[
           fields.BoxListFields.masks] = groundtruth_masks_list
@@ -242,7 +275,7 @@ class DetectionModel(object):
           fields.BoxListFields.keypoints] = groundtruth_keypoints_list
 
   @abstractmethod
-  def restore_map(self, from_detection_checkpoint=True):
+  def restore_map(self, fine_tune_checkpoint_type='detection'):
     """Returns a map of variables to load from a foreign checkpoint.
 
     Returns a map of variable names to load from a checkpoint to variables in
@@ -254,9 +287,10 @@ class DetectionModel(object):
     the num_classes parameter.
 
     Args:
-      from_detection_checkpoint: whether to restore from a full detection
+      fine_tune_checkpoint_type: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
 
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in

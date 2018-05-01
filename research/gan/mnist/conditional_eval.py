@@ -49,6 +49,8 @@ flags.DEFINE_integer('max_number_of_evaluations', None,
                      'Number of times to run evaluation. If `None`, run '
                      'forever.')
 
+flags.DEFINE_boolean('write_to_disk', True, 'If `True`, run images to disk.')
+
 FLAGS = flags.FLAGS
 NUM_CLASSES = 10
 
@@ -60,7 +62,8 @@ def main(_, run_eval_loop=True):
 
   # Generate images.
   with tf.variable_scope('Generator'):  # Same scope as in train job.
-    images = networks.conditional_generator((noise, one_hot_labels))
+    images = networks.conditional_generator(
+        (noise, one_hot_labels), is_training=False)
 
   # Visualize images.
   reshaped_img = tfgan.eval.image_reshaper(
@@ -75,9 +78,12 @@ def main(_, run_eval_loop=True):
                         images, one_hot_labels, FLAGS.classifier_filename))
 
   # Write images to disk.
-  image_write_ops = tf.write_file(
-      '%s/%s'% (FLAGS.eval_dir, 'conditional_gan.png'),
-      tf.image.encode_png(data_provider.float_image_to_uint8(reshaped_img[0])))
+  image_write_ops = None
+  if FLAGS.write_to_disk:
+    image_write_ops = tf.write_file(
+        '%s/%s'% (FLAGS.eval_dir, 'conditional_gan.png'),
+        tf.image.encode_png(data_provider.float_image_to_uint8(
+            reshaped_img[0])))
 
   # For unit testing, use `run_eval_loop=False`.
   if not run_eval_loop: return

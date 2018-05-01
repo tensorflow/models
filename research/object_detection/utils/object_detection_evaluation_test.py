@@ -89,20 +89,140 @@ class OpenImagesV2EvaluationTest(tf.test.TestCase):
     })
     metrics = oiv2_evaluator.evaluate()
     self.assertAlmostEqual(
-        metrics['OpenImagesV2/PerformanceByCategory/AP@0.5IOU/dog'], 0.0)
+        metrics['OpenImagesV2_PerformanceByCategory/AP@0.5IOU/dog'], 0.0)
     self.assertAlmostEqual(
-        metrics['OpenImagesV2/PerformanceByCategory/AP@0.5IOU/elephant'], 0.0)
+        metrics['OpenImagesV2_PerformanceByCategory/AP@0.5IOU/elephant'], 0.0)
     self.assertAlmostEqual(
-        metrics['OpenImagesV2/PerformanceByCategory/AP@0.5IOU/cat'], 0.16666666)
-    self.assertAlmostEqual(metrics['OpenImagesV2/Precision/mAP@0.5IOU'],
+        metrics['OpenImagesV2_PerformanceByCategory/AP@0.5IOU/cat'], 0.16666666)
+    self.assertAlmostEqual(metrics['OpenImagesV2_Precision/mAP@0.5IOU'],
                            0.05555555)
     oiv2_evaluator.clear()
     self.assertFalse(oiv2_evaluator._image_ids)
 
 
-class PascalEvaluationTest(tf.test.TestCase):
+class OpenImagesDetectionChallengeEvaluatorTest(tf.test.TestCase):
 
   def test_returns_correct_metric_values(self):
+    categories = [{
+        'id': 1,
+        'name': 'cat'
+    }, {
+        'id': 2,
+        'name': 'dog'
+    }, {
+        'id': 3,
+        'name': 'elephant'
+    }]
+    oivchallenge_evaluator = (
+        object_detection_evaluation.OpenImagesDetectionChallengeEvaluator(
+            categories, group_of_weight=0.5))
+
+    image_key = 'img1'
+    groundtruth_boxes = np.array(
+        [[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]], dtype=float)
+    groundtruth_class_labels = np.array([1, 3, 1], dtype=int)
+    groundtruth_is_group_of_list = np.array([False, False, True], dtype=bool)
+    groundtruth_verified_labels = np.array([1, 2, 3], dtype=int)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels,
+            standard_fields.InputDataFields.groundtruth_group_of:
+                groundtruth_is_group_of_list,
+            standard_fields.InputDataFields.verified_labels:
+                groundtruth_verified_labels,
+        })
+    image_key = 'img2'
+    groundtruth_boxes = np.array(
+        [[10, 10, 11, 11], [500, 500, 510, 510], [10, 10, 12, 12]], dtype=float)
+    groundtruth_class_labels = np.array([1, 1, 3], dtype=int)
+    groundtruth_is_group_of_list = np.array([False, False, True], dtype=bool)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels,
+            standard_fields.InputDataFields.groundtruth_group_of:
+                groundtruth_is_group_of_list
+        })
+    image_key = 'img3'
+    groundtruth_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    groundtruth_class_labels = np.array([2], dtype=int)
+    oivchallenge_evaluator.add_single_ground_truth_image_info(
+        image_key, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels
+        })
+    image_key = 'img1'
+    detected_boxes = np.array(
+        [[10, 10, 11, 11], [100, 100, 120, 120]], dtype=float)
+    detected_class_labels = np.array([2, 2], dtype=int)
+    detected_scores = np.array([0.7, 0.8], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    image_key = 'img2'
+    detected_boxes = np.array(
+        [[10, 10, 11, 11], [100, 100, 120, 120], [100, 100, 220, 220],
+         [10, 10, 11, 11]],
+        dtype=float)
+    detected_class_labels = np.array([1, 1, 2, 3], dtype=int)
+    detected_scores = np.array([0.7, 0.8, 0.5, 0.9], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    image_key = 'img3'
+    detected_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    detected_class_labels = np.array([2], dtype=int)
+    detected_scores = np.array([0.5], dtype=float)
+    oivchallenge_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+    metrics = oivchallenge_evaluator.evaluate()
+
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/dog'],
+        0.3333333333)
+    self.assertAlmostEqual(
+        metrics[
+            'OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/elephant'],
+        0.333333333333)
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_PerformanceByCategory/AP@0.5IOU/cat'],
+        0.142857142857)
+    self.assertAlmostEqual(
+        metrics['OpenImagesChallenge2018_Precision/mAP@0.5IOU'], 0.269841269)
+
+    oivchallenge_evaluator.clear()
+    self.assertFalse(oivchallenge_evaluator._image_ids)
+
+
+class PascalEvaluationTest(tf.test.TestCase):
+
+  def test_returns_correct_metric_values_on_boxes(self):
     categories = [{'id': 1, 'name': 'cat'},
                   {'id': 2, 'name': 'dog'},
                   {'id': 3, 'name': 'elephant'}]
@@ -158,12 +278,138 @@ class PascalEvaluationTest(tf.test.TestCase):
 
     metrics = pascal_evaluator.evaluate()
     self.assertAlmostEqual(
-        metrics['PASCAL/PerformanceByCategory/AP@0.5IOU/dog'], 0.0)
+        metrics['PascalBoxes_PerformanceByCategory/AP@0.5IOU/dog'], 0.0)
     self.assertAlmostEqual(
-        metrics['PASCAL/PerformanceByCategory/AP@0.5IOU/elephant'], 0.0)
+        metrics['PascalBoxes_PerformanceByCategory/AP@0.5IOU/elephant'], 0.0)
     self.assertAlmostEqual(
-        metrics['PASCAL/PerformanceByCategory/AP@0.5IOU/cat'], 0.16666666)
-    self.assertAlmostEqual(metrics['PASCAL/Precision/mAP@0.5IOU'], 0.05555555)
+        metrics['PascalBoxes_PerformanceByCategory/AP@0.5IOU/cat'], 0.16666666)
+    self.assertAlmostEqual(metrics['PascalBoxes_Precision/mAP@0.5IOU'],
+                           0.05555555)
+    pascal_evaluator.clear()
+    self.assertFalse(pascal_evaluator._image_ids)
+
+  def test_returns_correct_metric_values_on_masks(self):
+    categories = [{'id': 1, 'name': 'cat'},
+                  {'id': 2, 'name': 'dog'},
+                  {'id': 3, 'name': 'elephant'}]
+    #  Add groundtruth
+    pascal_evaluator = (
+        object_detection_evaluation.PascalInstanceSegmentationEvaluator(
+            categories))
+    image_key1 = 'img1'
+    groundtruth_boxes1 = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
+                                  dtype=float)
+    groundtruth_class_labels1 = np.array([1, 3, 1], dtype=int)
+    groundtruth_masks_1_0 = np.array([[1, 0, 0, 0],
+                                      [1, 0, 0, 0],
+                                      [1, 0, 0, 0]], dtype=np.uint8)
+    groundtruth_masks_1_1 = np.array([[0, 0, 1, 0],
+                                      [0, 0, 1, 0],
+                                      [0, 0, 1, 0]], dtype=np.uint8)
+    groundtruth_masks_1_2 = np.array([[0, 1, 0, 0],
+                                      [0, 1, 0, 0],
+                                      [0, 1, 0, 0]], dtype=np.uint8)
+    groundtruth_masks1 = np.stack(
+        [groundtruth_masks_1_0, groundtruth_masks_1_1, groundtruth_masks_1_2],
+        axis=0)
+
+    pascal_evaluator.add_single_ground_truth_image_info(
+        image_key1, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes1,
+            standard_fields.InputDataFields.groundtruth_instance_masks:
+                groundtruth_masks1,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels1,
+            standard_fields.InputDataFields.groundtruth_difficult:
+                np.array([], dtype=bool)
+        })
+    image_key2 = 'img2'
+    groundtruth_boxes2 = np.array([[10, 10, 11, 11], [500, 500, 510, 510],
+                                   [10, 10, 12, 12]], dtype=float)
+    groundtruth_class_labels2 = np.array([1, 1, 3], dtype=int)
+    groundtruth_is_difficult_list2 = np.array([False, True, False], dtype=bool)
+    groundtruth_masks_2_0 = np.array([[1, 1, 1, 1],
+                                      [0, 0, 0, 0],
+                                      [0, 0, 0, 0]], dtype=np.uint8)
+    groundtruth_masks_2_1 = np.array([[0, 0, 0, 0],
+                                      [1, 1, 1, 1],
+                                      [0, 0, 0, 0]], dtype=np.uint8)
+    groundtruth_masks_2_2 = np.array([[0, 0, 0, 0],
+                                      [0, 0, 0, 0],
+                                      [1, 1, 1, 1]], dtype=np.uint8)
+    groundtruth_masks2 = np.stack(
+        [groundtruth_masks_2_0, groundtruth_masks_2_1, groundtruth_masks_2_2],
+        axis=0)
+    pascal_evaluator.add_single_ground_truth_image_info(
+        image_key2, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes2,
+            standard_fields.InputDataFields.groundtruth_instance_masks:
+                groundtruth_masks2,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels2,
+            standard_fields.InputDataFields.groundtruth_difficult:
+                groundtruth_is_difficult_list2
+        })
+    image_key3 = 'img3'
+    groundtruth_boxes3 = np.array([[0, 0, 1, 1]], dtype=float)
+    groundtruth_class_labels3 = np.array([2], dtype=int)
+    groundtruth_masks_3_0 = np.array([[1, 1, 1, 1],
+                                      [1, 1, 1, 1],
+                                      [1, 1, 1, 1]], dtype=np.uint8)
+    groundtruth_masks3 = np.stack([groundtruth_masks_3_0], axis=0)
+    pascal_evaluator.add_single_ground_truth_image_info(
+        image_key3, {
+            standard_fields.InputDataFields.groundtruth_boxes:
+                groundtruth_boxes3,
+            standard_fields.InputDataFields.groundtruth_instance_masks:
+                groundtruth_masks3,
+            standard_fields.InputDataFields.groundtruth_classes:
+                groundtruth_class_labels3
+        })
+
+    # Add detections
+    image_key = 'img2'
+    detected_boxes = np.array(
+        [[10, 10, 11, 11], [100, 100, 120, 120], [100, 100, 220, 220]],
+        dtype=float)
+    detected_class_labels = np.array([1, 1, 3], dtype=int)
+    detected_scores = np.array([0.7, 0.8, 0.9], dtype=float)
+    detected_masks_0 = np.array([[1, 1, 1, 1],
+                                 [0, 0, 1, 0],
+                                 [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_1 = np.array([[1, 0, 0, 0],
+                                 [1, 1, 0, 0],
+                                 [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_2 = np.array([[0, 1, 0, 0],
+                                 [0, 1, 1, 0],
+                                 [0, 1, 0, 0]], dtype=np.uint8)
+    detected_masks = np.stack(
+        [detected_masks_0, detected_masks_1, detected_masks_2], axis=0)
+
+    pascal_evaluator.add_single_detected_image_info(
+        image_key, {
+            standard_fields.DetectionResultFields.detection_boxes:
+                detected_boxes,
+            standard_fields.DetectionResultFields.detection_masks:
+                detected_masks,
+            standard_fields.DetectionResultFields.detection_scores:
+                detected_scores,
+            standard_fields.DetectionResultFields.detection_classes:
+                detected_class_labels
+        })
+
+    metrics = pascal_evaluator.evaluate()
+
+    self.assertAlmostEqual(
+        metrics['PascalMasks_PerformanceByCategory/AP@0.5IOU/dog'], 0.0)
+    self.assertAlmostEqual(
+        metrics['PascalMasks_PerformanceByCategory/AP@0.5IOU/elephant'], 0.0)
+    self.assertAlmostEqual(
+        metrics['PascalMasks_PerformanceByCategory/AP@0.5IOU/cat'], 0.16666666)
+    self.assertAlmostEqual(metrics['PascalMasks_Precision/mAP@0.5IOU'],
+                           0.05555555)
     pascal_evaluator.clear()
     self.assertFalse(pascal_evaluator._image_ids)
 
@@ -362,6 +608,11 @@ class ObjectDetectionEvaluationTest(tf.test.TestCase):
     detected_scores = np.array([0.7, 0.8, 0.9], dtype=float)
     self.od_eval.add_single_detected_image_info(
         image_key, detected_boxes, detected_scores, detected_class_labels)
+
+  def test_value_error_on_zero_classes(self):
+    with self.assertRaises(ValueError):
+      object_detection_evaluation.ObjectDetectionEvaluation(
+          num_groundtruth_classes=0)
 
   def test_add_single_ground_truth_image_info(self):
     expected_num_gt_instances_per_class = np.array([3, 1, 1], dtype=int)

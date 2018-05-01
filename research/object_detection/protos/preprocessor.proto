@@ -3,7 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 // Message for defining a preprocessing operation on input data.
-// See: //object_detection/core/preprocessor.py
+// See: //third_party/tensorflow_models/object_detection/core/preprocessor.py
 message PreprocessingStep {
   oneof preprocessing_step {
     NormalizeImage normalize_image = 1;
@@ -32,6 +32,7 @@ message PreprocessingStep {
     SSDRandomCropPadFixedAspectRatio ssd_random_crop_pad_fixed_aspect_ratio = 24;
     RandomVerticalFlip random_vertical_flip = 25;
     RandomRotation90 random_rotation90 = 26;
+    RGBtoGray rgb_to_gray = 27;
   }
 }
 
@@ -202,7 +203,7 @@ message RandomCropPadImage {
   repeated float max_padded_size_ratio = 9;
 
   // Color of the padding. If unset, will pad using average color of the input
-  // image.
+  // image. This field should be of length 3.
   repeated float pad_color = 10;
 }
 
@@ -235,6 +236,11 @@ message RandomResizeMethod {
   optional float target_height = 1;
   optional float target_width = 2;
 }
+
+// Converts the RGB image to a grayscale image. This also converts the image
+// depth from 3 to 1, unlike RandomRGBtoGray which does not change the image
+// depth.
+message RGBtoGray {}
 
 // Scales boxes from normalized coordinates to pixel coordinates.
 message ScaleBoxesToPixelCoordinates {
@@ -382,14 +388,6 @@ message SSDRandomCropPadFixedAspectRatioOperation {
 
   // Probability a crop operation is skipped.
   optional float random_coef = 7;
-
-  // Min ratio of padded image height and width to the input image's height and
-  // width. Two entries per operation.
-  repeated float min_padded_size_ratio = 8;
-
-  // Max ratio of padded image height and width to the input image's height and
-  // width. Two entries per operation.
-  repeated float max_padded_size_ratio = 9;
 }
 
 // Randomly crops and pads an image to a fixed aspect ratio according to:
@@ -402,4 +400,12 @@ message SSDRandomCropPadFixedAspectRatio {
 
   // Aspect ratio to pad to. This value is used for all crop and pad operations.
   optional float aspect_ratio = 2 [default=1.0];
+
+  // Min ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float min_padded_size_ratio = 3;
+
+  // Max ratio of padded image height and width to the input image's height and
+  // width. Two entries per operation.
+  repeated float max_padded_size_ratio = 4;
 }

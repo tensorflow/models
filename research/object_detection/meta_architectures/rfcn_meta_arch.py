@@ -21,8 +21,8 @@ The R-FCN meta architecture is similar to Faster R-CNN and only differs in the
 second stage. Hence this class inherits FasterRCNNMetaArch and overrides only
 the `_predict_second_stage` method.
 
-Similar to Faster R-CNN we allow for two modes: first_stage_only=True and
-first_stage_only=False.  In the former setting, all of the user facing methods
+Similar to Faster R-CNN we allow for two modes: number_of_stages=1 and
+number_of_stages=2.  In the former setting, all of the user facing methods
 (e.g., predict, postprocess, loss) can be used as if the model consisted
 only of the RPN, returning class agnostic proposals (these can be thought of as
 approximate detections with no associated class information).  In the latter
@@ -53,10 +53,10 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                num_classes,
                image_resizer_fn,
                feature_extractor,
-               first_stage_only,
+               number_of_stages,
                first_stage_anchor_generator,
                first_stage_atrous_rate,
-               first_stage_box_predictor_arg_scope,
+               first_stage_box_predictor_arg_scope_fn,
                first_stage_box_predictor_kernel_size,
                first_stage_box_predictor_depth,
                first_stage_minibatch_size,
@@ -75,7 +75,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                second_stage_classification_loss_weight,
                second_stage_classification_loss,
                hard_example_miner,
-               parallel_iterations=16):
+               parallel_iterations=16,
+               add_summaries=True):
     """RFCNMetaArch Constructor.
 
     Args:
@@ -90,8 +91,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         returns a rank-3 image tensor, possibly with new spatial dimensions.
         See builders/image_resizer_builder.py.
       feature_extractor: A FasterRCNNFeatureExtractor object.
-      first_stage_only:  Whether to construct only the Region Proposal Network
-        (RPN) part of the model.
+      number_of_stages:  Valid values are {1, 2}. If 1 will only construct the
+        Region Proposal Network (RPN) part of the model.
       first_stage_anchor_generator: An anchor_generator.AnchorGenerator object
         (note that currently we only support
         grid_anchor_generator.GridAnchorGenerator objects)
@@ -102,8 +103,9 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         denser resolutions.  The atrous rate is used to compensate for the
         denser feature maps by using an effectively larger receptive field.
         (This should typically be set to 1).
-      first_stage_box_predictor_arg_scope: Slim arg_scope for conv2d,
-        separable_conv2d and fully_connected ops for the RPN box predictor.
+      first_stage_box_predictor_arg_scope_fn: A function to generate tf-slim
+        arg_scope for conv2d, separable_conv2d and fully_connected ops for the
+        RPN box predictor.
       first_stage_box_predictor_kernel_size: Kernel size to use for the
         convolution op just prior to RPN box predictions.
       first_stage_box_predictor_depth: Output depth for the convolution op
@@ -155,20 +157,25 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       hard_example_miner:  A losses.HardExampleMiner object (can be None).
       parallel_iterations: (Optional) The number of iterations allowed to run
         in parallel for calls to tf.map_fn.
+      add_summaries: boolean (default: True) controlling whether summary ops
+        should be added to tensorflow graph.
+
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals`
       ValueError: If first_stage_anchor_generator is not of type
         grid_anchor_generator.GridAnchorGenerator.
     """
+    # TODO(rathodv): add_summaries is currently unused. Respect that directive
+    # in the future.
     super(RFCNMetaArch, self).__init__(
         is_training,
         num_classes,
         image_resizer_fn,
         feature_extractor,
-        first_stage_only,
+        number_of_stages,
         first_stage_anchor_generator,
         first_stage_atrous_rate,
-        first_stage_box_predictor_arg_scope,
+        first_stage_box_predictor_arg_scope_fn,
         first_stage_box_predictor_kernel_size,
         first_stage_box_predictor_depth,
         first_stage_minibatch_size,
@@ -199,14 +206,15 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                             rpn_objectness_predictions_with_background,
                             rpn_features,
                             anchors,
-                            image_shape):
-    """Predicts the output tensors from 2nd stage of FasterRCNN.
+                            image_shape,
+                            true_image_shapes):
+    """Predicts the output tensors from 2nd stage of R-FCN.
 
     Args:
-      rpn_box_encodings: 4-D float tensor of shape
+      rpn_box_encodings: 3-D float tensor of shape
         [batch_size, num_valid_anchors, self._box_coder.code_size] containing
         predicted boxes.
-      rpn_objectness_predictions_with_background: 2-D float tensor of shape
+      rpn_objectness_predictions_with_background: 3-D float tensor of shape
         [batch_size, num_valid_anchors, 2] containing class
         predictions (logits) for each of the anchors.  Note that this
         tensor *includes* background class predictions (at class index 0).
@@ -216,6 +224,10 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       anchors: 2-D float tensor of shape
         [num_anchors, self._box_coder.code_size].
       image_shape: A 1D int32 tensors of size [4] containing the image shape.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
 
     Returns:
       prediction_dict: a dictionary holding "raw" prediction tensors:
@@ -223,7 +235,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
           [total_num_proposals, num_classes, 4] representing predicted
           (final) refined box encodings, where
           total_num_proposals=batch_size*self._max_num_proposals
-        2) class_predictions_with_background: a 3-D tensor with shape
+        2) class_predictions_with_background: a 2-D tensor with shape
           [total_num_proposals, num_classes + 1] containing class
           predictions (logits) for each of the anchors, where
           total_num_proposals=batch_size*self._max_num_proposals.
@@ -247,9 +259,11 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
           [batch_size, feature_map_height, feature_map_width, depth],
           representing the box classifier features.
     """
+    image_shape_2d = tf.tile(tf.expand_dims(image_shape[1:], 0),
+                             [image_shape[0], 1])
     proposal_boxes_normalized, _, num_proposals = self._postprocess_rpn(
         rpn_box_encodings, rpn_objectness_predictions_with_background,
-        anchors, image_shape)
+        anchors, image_shape_2d, true_image_shapes)
 
     box_classifier_features = (
         self._feature_extractor.extract_box_classifier_features(
@@ -257,14 +271,16 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
             scope=self.second_stage_feature_extractor_scope))
 
     box_predictions = self._rfcn_box_predictor.predict(
-        box_classifier_features,
-        num_predictions_per_location=1,
+        [box_classifier_features],
+        num_predictions_per_location=[1],
         scope=self.second_stage_box_predictor_scope,
         proposal_boxes=proposal_boxes_normalized)
     refined_box_encodings = tf.squeeze(
-        box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+        tf.concat(box_predictions[box_predictor.BOX_ENCODINGS], axis=1), axis=1)
     class_predictions_with_background = tf.squeeze(
-        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        tf.concat(
+            box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+            axis=1),
         axis=1)
 
     absolute_proposal_boxes = ops.normalized_to_image_coordinates(

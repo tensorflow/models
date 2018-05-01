@@ -57,6 +57,13 @@ class InputDataFields(object):
     groundtruth_keypoints: ground truth keypoints.
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
     groundtruth_label_scores: groundtruth label scores.
+    groundtruth_weights: groundtruth weight factor for bounding boxes.
+    num_groundtruth_boxes: number of groundtruth boxes.
+    true_image_shapes: true shapes of images in the resized images, as resized
+      images can be padded with zeros.
+    verified_labels: list of human-verified image-level labels (note, that a
+      label can be verified both as positive and negative).
+    multiclass_scores: the label score per class for each box.
   """
   image = 'image'
   original_image = 'original_image'
@@ -79,10 +86,15 @@ class InputDataFields(object):
   groundtruth_keypoints = 'groundtruth_keypoints'
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
   groundtruth_label_scores = 'groundtruth_label_scores'
+  groundtruth_weights = 'groundtruth_weights'
+  num_groundtruth_boxes = 'num_groundtruth_boxes'
+  true_image_shape = 'true_image_shape'
+  verified_labels = 'verified_labels'
+  multiclass_scores = 'multiclass_scores'
 
 
 class DetectionResultFields(object):
-  """Naming converntions for storing the output of the detector.
+  """Naming conventions for storing the output of the detector.
 
   Attributes:
     source_id: source of the original image.
@@ -162,6 +174,7 @@ class TfExampleFields(object):
     object_is_crowd: [DEPRECATED, use object_group_of instead]
       is the object a single object or a crowd
     object_segment_area: the area of the segment.
+    object_weight: a weight factor for the object's bounding box.
     instance_masks: instance segmentation masks.
     instance_boundaries: instance boundaries.
     instance_classes: Classes for each instance segmentation mask.
@@ -194,6 +207,7 @@ class TfExampleFields(object):
   object_depiction = 'image/object/depiction'
   object_is_crowd = 'image/object/is_crowd'
   object_segment_area = 'image/object/segment/area'
+  object_weight = 'image/object/weight'
   instance_masks = 'image/segmentation/object'
   instance_boundaries = 'image/boundaries/object'
   instance_classes = 'image/segmentation/object/class'

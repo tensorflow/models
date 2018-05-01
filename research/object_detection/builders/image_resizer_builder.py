@@ -72,25 +72,39 @@ def build(image_resizer_config):
     raise ValueError('image_resizer_config not of type '
                      'image_resizer_pb2.ImageResizer.')
 
-  if image_resizer_config.WhichOneof(
-      'image_resizer_oneof') == 'keep_aspect_ratio_resizer':
+  image_resizer_oneof = image_resizer_config.WhichOneof('image_resizer_oneof')
+  if image_resizer_oneof == 'keep_aspect_ratio_resizer':
     keep_aspect_ratio_config = image_resizer_config.keep_aspect_ratio_resizer
     if not (keep_aspect_ratio_config.min_dimension <=
             keep_aspect_ratio_config.max_dimension):
       raise ValueError('min_dimension > max_dimension')
     method = _tf_resize_method(keep_aspect_ratio_config.resize_method)
-    return functools.partial(
+    image_resizer_fn = functools.partial(
         preprocessor.resize_to_range,
         min_dimension=keep_aspect_ratio_config.min_dimension,
         max_dimension=keep_aspect_ratio_config.max_dimension,
-        method=method)
-  if image_resizer_config.WhichOneof(
-      'image_resizer_oneof') == 'fixed_shape_resizer':
+        method=method,
+        pad_to_max_dimension=keep_aspect_ratio_config.pad_to_max_dimension)
+    if not keep_aspect_ratio_config.convert_to_grayscale:
+      return image_resizer_fn
+  elif image_resizer_oneof == 'fixed_shape_resizer':
     fixed_shape_resizer_config = image_resizer_config.fixed_shape_resizer
     method = _tf_resize_method(fixed_shape_resizer_config.resize_method)
-    return functools.partial(
+    image_resizer_fn = functools.partial(
         preprocessor.resize_image,
         new_height=fixed_shape_resizer_config.height,
         new_width=fixed_shape_resizer_config.width,
         method=method)
-  raise ValueError('Invalid image resizer option.')
+    if not fixed_shape_resizer_config.convert_to_grayscale:
+      return image_resizer_fn
+  else:
+    raise ValueError(
+        'Invalid image resizer option: \'%s\'.' % image_resizer_oneof)
+
+  def grayscale_image_resizer(image):
+    [resized_image, resized_image_shape] = image_resizer_fn(image)
+    grayscale_image = preprocessor.rgb_to_gray(resized_image)
+    grayscale_image_shape = tf.concat([resized_image_shape[:-1], [1]], 0)
+    return [grayscale_image, grayscale_image_shape]
+
+  return functools.partial(grayscale_image_resizer)

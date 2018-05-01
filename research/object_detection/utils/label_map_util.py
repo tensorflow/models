@@ -32,8 +32,11 @@ def _validate_label_map(label_map):
     ValueError: if label map is invalid.
   """
   for item in label_map.item:
-    if item.id < 1:
-      raise ValueError('Label map ids should be >= 1.')
+    if item.id < 0:
+      raise ValueError('Label map ids should be >= 0.')
+    if (item.id == 0 and item.name != 'background' and
+        item.display_name != 'background'):
+      raise ValueError('Label map id 0 is reserved for the background label')
 
 
 def create_category_index(categories):
@@ -53,6 +56,18 @@ def create_category_index(categories):
   for cat in categories:
     category_index[cat['id']] = cat
   return category_index
+
+
+def get_max_label_map_index(label_map):
+  """Get maximum index in label map.
+
+  Args:
+    label_map: a StringIntLabelMapProto
+
+  Returns:
+    an integer
+  """
+  return max([item.id for item in label_map.item])
 
 
 def convert_label_map_to_categories(label_map,

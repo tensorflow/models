@@ -165,7 +165,9 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
         grid.
 
     Returns:
-      boxes: a BoxList holding a collection of N anchor boxes
+      boxes_list: a list of BoxLists each holding anchor boxes corresponding to
+        the input feature map shapes.
+
     Raises:
       ValueError: if feature_map_shape_list, box_specs_list do not have the same
         length.
@@ -215,34 +217,30 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
         scale_height * self._base_anchor_size[0],
         scale_width * self._base_anchor_size[1]
     ]
-    for grid_size, scales, aspect_ratios, stride, offset in zip(
-        feature_map_shape_list, self._scales, self._aspect_ratios,
-        anchor_strides, anchor_offsets):
-      anchor_grid_list.append(
-          grid_anchor_generator.tile_anchors(
-              grid_height=grid_size[0],
-              grid_width=grid_size[1],
-              scales=scales,
-              aspect_ratios=aspect_ratios,
-              base_anchor_size=base_anchor_size,
-              anchor_stride=stride,
-              anchor_offset=offset))
-    concatenated_anchors = box_list_ops.concatenate(anchor_grid_list)
-    num_anchors = concatenated_anchors.num_boxes_static()
-    if num_anchors is None:
-      num_anchors = concatenated_anchors.num_boxes()
-    if self._clip_window is not None:
-      concatenated_anchors = box_list_ops.clip_to_window(
-          concatenated_anchors, self._clip_window, filter_nonoverlapping=False)
-      # TODO(jonathanhuang): make reshape an option for the clip_to_window op
-      concatenated_anchors.set(
-          tf.reshape(concatenated_anchors.get(), [num_anchors, 4]))
+    for feature_map_index, (grid_size, scales, aspect_ratios, stride,
+                            offset) in enumerate(
+                                zip(feature_map_shape_list, self._scales,
+                                    self._aspect_ratios, anchor_strides,
+                                    anchor_offsets)):
+      tiled_anchors = grid_anchor_generator.tile_anchors(
+          grid_height=grid_size[0],
+          grid_width=grid_size[1],
+          scales=scales,
+          aspect_ratios=aspect_ratios,
+          base_anchor_size=base_anchor_size,
+          anchor_stride=stride,
+          anchor_offset=offset)
+      if self._clip_window is not None:
+        tiled_anchors = box_list_ops.clip_to_window(
+            tiled_anchors, self._clip_window, filter_nonoverlapping=False)
+      num_anchors_in_layer = tiled_anchors.num_boxes_static()
+      if num_anchors_in_layer is None:
+        num_anchors_in_layer = tiled_anchors.num_boxes()
+      anchor_indices = feature_map_index * tf.ones([num_anchors_in_layer])
+      tiled_anchors.add_field('feature_map_index', anchor_indices)
+      anchor_grid_list.append(tiled_anchors)
 
-    stddevs_tensor = 0.01 * tf.ones(
-        [num_anchors, 4], dtype=tf.float32, name='stddevs')
-    concatenated_anchors.add_field('stddev', stddevs_tensor)
-
-    return concatenated_anchors
+    return anchor_grid_list
 
 
 def create_ssd_anchors(num_layers=6,
@@ -273,7 +271,7 @@ def create_ssd_anchors(num_layers=6,
       grid sizes passed in at generation time)
     min_scale: scale of anchors corresponding to finest resolution (float)
     max_scale: scale of anchors corresponding to coarsest resolution (float)
-    scales: As list of anchor scales to use. When not None and not emtpy,
+    scales: As list of anchor scales to use. When not None and not empty,
       min_scale and max_scale are not used.
     aspect_ratios: list or tuple of (float) aspect ratios to place on each
       grid point.

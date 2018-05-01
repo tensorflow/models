@@ -42,7 +42,7 @@ class LocalizationLossBuilderTest(tf.test.TestCase):
     self.assertTrue(isinstance(localization_loss,
                                losses.WeightedL2LocalizationLoss))
 
-  def test_build_weighted_smooth_l1_localization_loss(self):
+  def test_build_weighted_smooth_l1_localization_loss_default_delta(self):
     losses_text_proto = """
       localization_loss {
         weighted_smooth_l1 {
@@ -58,6 +58,26 @@ class LocalizationLossBuilderTest(tf.test.TestCase):
     _, localization_loss, _, _, _ = losses_builder.build(losses_proto)
     self.assertTrue(isinstance(localization_loss,
                                losses.WeightedSmoothL1LocalizationLoss))
+    self.assertAlmostEqual(localization_loss._delta, 1.0)
+
+  def test_build_weighted_smooth_l1_localization_loss_non_default_delta(self):
+    losses_text_proto = """
+      localization_loss {
+        weighted_smooth_l1 {
+          delta: 0.1
+        }
+      }
+      classification_loss {
+        weighted_softmax {
+        }
+      }
+    """
+    losses_proto = losses_pb2.Loss()
+    text_format.Merge(losses_text_proto, losses_proto)
+    _, localization_loss, _, _, _ = losses_builder.build(losses_proto)
+    self.assertTrue(isinstance(localization_loss,
+                               losses.WeightedSmoothL1LocalizationLoss))
+    self.assertAlmostEqual(localization_loss._delta, 0.1)
 
   def test_build_weighted_iou_localization_loss(self):
     losses_text_proto = """
@@ -80,7 +100,6 @@ class LocalizationLossBuilderTest(tf.test.TestCase):
     losses_text_proto = """
       localization_loss {
         weighted_smooth_l1 {
-          anchorwise_output: true
         }
       }
       classification_loss {
@@ -245,7 +264,7 @@ class ClassificationLossBuilderTest(tf.test.TestCase):
     targets = tf.constant([[[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]])
     weights = tf.constant([[1.0, 1.0]])
     loss = classification_loss(predictions, targets, weights=weights)
-    self.assertEqual(loss.shape, [1, 2])
+    self.assertEqual(loss.shape, [1, 2, 3])
 
   def test_raise_error_on_empty_config(self):
     losses_text_proto = """

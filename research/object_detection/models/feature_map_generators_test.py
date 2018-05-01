@@ -134,6 +134,34 @@ class MultiResolutionFeatureMapGeneratorTest(tf.test.TestCase):
       self.assertDictEqual(out_feature_map_shapes, expected_feature_map_shapes)
 
 
+class FPNFeatureMapGeneratorTest(tf.test.TestCase):
+
+  def test_get_expected_feature_map_shapes(self):
+    image_features = [
+        tf.random_uniform([4, 8, 8, 256], dtype=tf.float32),
+        tf.random_uniform([4, 4, 4, 256], dtype=tf.float32),
+        tf.random_uniform([4, 2, 2, 256], dtype=tf.float32),
+        tf.random_uniform([4, 1, 1, 256], dtype=tf.float32),
+    ]
+    feature_maps = feature_map_generators.fpn_top_down_feature_maps(
+        image_features=image_features, depth=128)
+
+    expected_feature_map_shapes = {
+        'top_down_feature_map_0': (4, 8, 8, 128),
+        'top_down_feature_map_1': (4, 4, 4, 128),
+        'top_down_feature_map_2': (4, 2, 2, 128),
+        'top_down_feature_map_3': (4, 1, 1, 128)
+    }
+
+    init_op = tf.global_variables_initializer()
+    with self.test_session() as sess:
+      sess.run(init_op)
+      out_feature_maps = sess.run(feature_maps)
+      out_feature_map_shapes = {key: value.shape
+                                for key, value in out_feature_maps.items()}
+      self.assertDictEqual(out_feature_map_shapes, expected_feature_map_shapes)
+
+
 class GetDepthFunctionTest(tf.test.TestCase):
 
   def test_return_min_depth_when_multiplier_is_small(self):

@@ -20,6 +20,7 @@ import tensorflow as tf
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import standard_fields as fields
+from object_detection.utils import shape_utils
 
 
 def multiclass_non_max_suppression(boxes,
@@ -31,6 +32,7 @@ def multiclass_non_max_suppression(boxes,
                                    clip_window=None,
                                    change_coordinate_frame=False,
                                    masks=None,
+                                   boundaries=None,
                                    additional_fields=None,
                                    scope=None):
   """Multi-class version of non maximum suppression.
@@ -66,6 +68,9 @@ def multiclass_non_max_suppression(boxes,
     masks: (optional) a [k, q, mask_height, mask_width] float32 tensor
       containing box masks. `q` can be either number of classes or 1 depending
       on whether a separate mask is predicted per class.
+    boundaries: (optional) a [k, q, boundary_height, boundary_width] float32
+      tensor containing box boundaries. `q` can be either number of classes or 1
+      depending on whether a separate boundary is predicted per class.
     additional_fields: (optional) If not None, a dictionary that maps keys to
       tensors whose first dimensions are all of size `k`. After non-maximum
       suppression, all tensors corresponding to the selected boxes will be
@@ -114,8 +119,10 @@ def multiclass_non_max_suppression(boxes,
     per_class_boxes_list = tf.unstack(boxes, axis=1)
     if masks is not None:
       per_class_masks_list = tf.unstack(masks, axis=1)
+    if boundaries is not None:
+      per_class_boundaries_list = tf.unstack(boundaries, axis=1)
     boxes_ids = (range(num_classes) if len(per_class_boxes_list) > 1
-                 else [0] * num_classes)
+                 else [0] * num_classes.value)
     for class_idx, boxes_idx in zip(range(num_classes), boxes_ids):
       per_class_boxes = per_class_boxes_list[boxes_idx]
       boxlist_and_class_scores = box_list.BoxList(per_class_boxes)
@@ -128,6 +135,10 @@ def multiclass_non_max_suppression(boxes,
         per_class_masks = per_class_masks_list[boxes_idx]
         boxlist_and_class_scores.add_field(fields.BoxListFields.masks,
                                            per_class_masks)
+      if boundaries is not None:
+        per_class_boundaries = per_class_boundaries_list[boxes_idx]
+        boxlist_and_class_scores.add_field(fields.BoxListFields.boundaries,
+                                           per_class_boundaries)
       if additional_fields is not None:
         for key, tensor in additional_fields.items():
           boxlist_and_class_scores.add_field(key, tensor)
@@ -194,9 +205,12 @@ def batch_multiclass_non_max_suppression(boxes,
     max_size_per_class: maximum number of retained boxes per class.
     max_total_size: maximum number of boxes retained over all classes. By
       default returns all boxes retained after capping boxes per class.
-    clip_window: A float32 tensor of the form [y_min, x_min, y_max, x_max]
-      representing the window to clip boxes to before performing non-max
-      suppression.
+    clip_window: A float32 tensor of shape [batch_size, 4]  where each entry is
+      of the form [y_min, x_min, y_max, x_max] representing the window to clip
+      boxes to before performing non-max suppression. This argument can also be
+      a tensor of shape [4] in which case, the same clip window is applied to
+      all images in the batch. If clip_widow is None, all boxes are used to
+      perform non-max suppression.
     change_coordinate_frame: Whether to normalize coordinates after clipping
       relative to clip_window (this can only be set to True if a clip_window
       is provided)
@@ -242,7 +256,9 @@ def batch_multiclass_non_max_suppression(boxes,
   if q != 1 and q != num_classes:
     raise ValueError('third dimension of boxes must be either 1 or equal '
                      'to the third dimension of scores')
-
+  if change_coordinate_frame and clip_window is None:
+    raise ValueError('if change_coordinate_frame is True, then a clip_window'
+                     'must be specified.')
   original_masks = masks
   original_additional_fields = additional_fields
   with tf.name_scope(scope, 'BatchMultiClassNonMaxSuppression'):
@@ -266,6 +282,16 @@ def batch_multiclass_non_max_suppression(boxes,
       masks_shape = tf.stack([batch_size, num_anchors, 1, 0, 0])
       masks = tf.zeros(masks_shape)
 
+    if clip_window is None:
+      clip_window = tf.stack([
+          tf.reduce_min(boxes[:, :, :, 0]),
+          tf.reduce_min(boxes[:, :, :, 1]),
+          tf.reduce_max(boxes[:, :, :, 2]),
+          tf.reduce_max(boxes[:, :, :, 3])
+      ])
+    if clip_window.shape.ndims == 1:
+      clip_window = tf.tile(tf.expand_dims(clip_window, 0), [batch_size, 1])
+
     if additional_fields is None:
       additional_fields = {}
 
@@ -283,6 +309,9 @@ def batch_multiclass_non_max_suppression(boxes,
           per_image_masks - A [num_anchors, q, mask_height, mask_width] float32
             tensor containing box masks. `q` can be either number of classes
             or 1 depending on whether a separate mask is predicted per class.
+          per_image_clip_window - A 1D float32 tensor of the form
+            [ymin, xmin, ymax, xmax] representing the window to clip the boxes
+            to.
           per_image_additional_fields - (optional) A variable number of float32
             tensors each with size [num_anchors, ...].
           per_image_num_valid_boxes - A tensor of type `int32`. A 1-D tensor of
@@ -311,9 +340,10 @@ def batch_multiclass_non_max_suppression(boxes,
       per_image_boxes = args[0]
       per_image_scores = args[1]
       per_image_masks = args[2]
+      per_image_clip_window = args[3]
       per_image_additional_fields = {
           key: value
-          for key, value in zip(additional_fields, args[3:-1])
+          for key, value in zip(additional_fields, args[4:-1])
       }
       per_image_num_valid_boxes = args[-1]
       per_image_boxes = tf.reshape(
@@ -345,7 +375,7 @@ def batch_multiclass_non_max_suppression(boxes,
           iou_thresh,
           max_size_per_class,
           max_total_size,
-          clip_window=clip_window,
+          clip_window=per_image_clip_window,
           change_coordinate_frame=change_coordinate_frame,
           masks=per_image_masks,
           additional_fields=per_image_additional_fields)
@@ -367,10 +397,10 @@ def batch_multiclass_non_max_suppression(boxes,
       num_additional_fields = len(additional_fields)
     num_nmsed_outputs = 4 + num_additional_fields
 
-    batch_outputs = tf.map_fn(
+    batch_outputs = shape_utils.static_or_dynamic_map_fn(
         _single_image_nms_fn,
-        elems=([boxes, scores, masks] + list(additional_fields.values()) +
-               [num_valid_boxes]),
+        elems=([boxes, scores, masks, clip_window] +
+               list(additional_fields.values()) + [num_valid_boxes]),
         dtype=(num_nmsed_outputs * [tf.float32] + [tf.int32]),
         parallel_iterations=parallel_iterations)
 

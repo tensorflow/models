@@ -1,0 +1,4 @@
+# Ignore all bazel-* symlinks.
+/bazel-*
+
+get_kepler.sh

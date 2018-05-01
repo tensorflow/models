@@ -54,7 +54,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         box_predictor_config=box_predictor_proto,
         is_training=False,
         num_classes=10)
-    (conv_hyperparams_actual, is_training) = box_predictor._conv_hyperparams
+    (conv_hyperparams_actual, is_training) = box_predictor._conv_hyperparams_fn
     self.assertAlmostEqual((hyperparams_proto.regularizer.
                             l1_regularizer.weight),
                            (conv_hyperparams_actual.regularizer.l1_regularizer.
@@ -83,6 +83,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         box_code_size: 3
         apply_sigmoid_to_scores: true
         class_prediction_bias_init: 4.0
+        use_depthwise: true
       }
     """
     conv_hyperparams_text_proto = """
@@ -118,6 +119,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertAlmostEqual(box_predictor._class_prediction_bias_init, 4.0)
     self.assertEqual(box_predictor.num_classes, 10)
     self.assertFalse(box_predictor._is_training)
+    self.assertTrue(box_predictor._use_depthwise)
 
   def test_construct_default_conv_box_predictor(self):
     box_predictor_text_proto = """
@@ -146,6 +148,121 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertTrue(box_predictor._use_dropout)
     self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.8)
     self.assertFalse(box_predictor._apply_sigmoid_to_scores)
+    self.assertEqual(box_predictor.num_classes, 90)
+    self.assertTrue(box_predictor._is_training)
+    self.assertFalse(box_predictor._use_depthwise)
+
+
+class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
+
+  def test_box_predictor_calls_conv_argscope_fn(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l1_regularizer {
+          weight: 0.0003
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+          mean: 0.0
+          stddev: 0.3
+        }
+      }
+      activation: RELU_6
+    """
+    hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Merge(conv_hyperparams_text_proto, hyperparams_proto)
+    def mock_conv_argscope_builder(conv_hyperparams_arg, is_training):
+      return (conv_hyperparams_arg, is_training)
+
+    box_predictor_proto = box_predictor_pb2.BoxPredictor()
+    (box_predictor_proto.weight_shared_convolutional_box_predictor
+     .conv_hyperparams.CopyFrom(hyperparams_proto))
+    box_predictor = box_predictor_builder.build(
+        argscope_fn=mock_conv_argscope_builder,
+        box_predictor_config=box_predictor_proto,
+        is_training=False,
+        num_classes=10)
+    (conv_hyperparams_actual, is_training) = box_predictor._conv_hyperparams_fn
+    self.assertAlmostEqual((hyperparams_proto.regularizer.
+                            l1_regularizer.weight),
+                           (conv_hyperparams_actual.regularizer.l1_regularizer.
+                            weight))
+    self.assertAlmostEqual((hyperparams_proto.initializer.
+                            truncated_normal_initializer.stddev),
+                           (conv_hyperparams_actual.initializer.
+                            truncated_normal_initializer.stddev))
+    self.assertAlmostEqual((hyperparams_proto.initializer.
+                            truncated_normal_initializer.mean),
+                           (conv_hyperparams_actual.initializer.
+                            truncated_normal_initializer.mean))
+    self.assertEqual(hyperparams_proto.activation,
+                     conv_hyperparams_actual.activation)
+    self.assertFalse(is_training)
+
+  def test_construct_non_default_conv_box_predictor(self):
+    box_predictor_text_proto = """
+      weight_shared_convolutional_box_predictor {
+        depth: 2
+        num_layers_before_predictor: 2
+        kernel_size: 7
+        box_code_size: 3
+        class_prediction_bias_init: 4.0
+      }
+    """
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l1_regularizer {
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+    """
+    hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Merge(conv_hyperparams_text_proto, hyperparams_proto)
+    def mock_conv_argscope_builder(conv_hyperparams_arg, is_training):
+      return (conv_hyperparams_arg, is_training)
+
+    box_predictor_proto = box_predictor_pb2.BoxPredictor()
+    text_format.Merge(box_predictor_text_proto, box_predictor_proto)
+    (box_predictor_proto.weight_shared_convolutional_box_predictor.
+     conv_hyperparams.CopyFrom(hyperparams_proto))
+    box_predictor = box_predictor_builder.build(
+        argscope_fn=mock_conv_argscope_builder,
+        box_predictor_config=box_predictor_proto,
+        is_training=False,
+        num_classes=10)
+    self.assertEqual(box_predictor._depth, 2)
+    self.assertEqual(box_predictor._num_layers_before_predictor, 2)
+    self.assertAlmostEqual(box_predictor._class_prediction_bias_init, 4.0)
+    self.assertEqual(box_predictor.num_classes, 10)
+    self.assertFalse(box_predictor._is_training)
+
+  def test_construct_default_conv_box_predictor(self):
+    box_predictor_text_proto = """
+      weight_shared_convolutional_box_predictor {
+        conv_hyperparams {
+          regularizer {
+            l1_regularizer {
+            }
+          }
+          initializer {
+            truncated_normal_initializer {
+            }
+          }
+        }
+      }"""
+    box_predictor_proto = box_predictor_pb2.BoxPredictor()
+    text_format.Merge(box_predictor_text_proto, box_predictor_proto)
+    box_predictor = box_predictor_builder.build(
+        argscope_fn=hyperparams_builder.build,
+        box_predictor_config=box_predictor_proto,
+        is_training=True,
+        num_classes=90)
+    self.assertEqual(box_predictor._depth, 0)
+    self.assertEqual(box_predictor._num_layers_before_predictor, 0)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
 
@@ -180,7 +297,7 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
         is_training=False,
         num_classes=10)
     mock_argscope_fn.assert_called_with(hyperparams_proto, False)
-    self.assertEqual(box_predictor._fc_hyperparams, 'arg_scope')
+    self.assertEqual(box_predictor._fc_hyperparams_fn, 'arg_scope')
 
   def test_non_default_mask_rcnn_box_predictor(self):
     fc_hyperparams_text_proto = """
@@ -247,6 +364,8 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
         hyperparams_pb2.Hyperparams.CONV)
     box_predictor_proto.mask_rcnn_box_predictor.predict_instance_masks = True
     box_predictor_proto.mask_rcnn_box_predictor.mask_prediction_conv_depth = 512
+    box_predictor_proto.mask_rcnn_box_predictor.mask_height = 16
+    box_predictor_proto.mask_rcnn_box_predictor.mask_width = 16
     mock_argscope_fn = mock.Mock(return_value='arg_scope')
     box_predictor = box_predictor_builder.build(
         argscope_fn=mock_argscope_fn,
@@ -298,7 +417,7 @@ class RfcnBoxPredictorBuilderTest(tf.test.TestCase):
         box_predictor_config=box_predictor_proto,
         is_training=False,
         num_classes=10)
-    (conv_hyperparams_actual, is_training) = box_predictor._conv_hyperparams
+    (conv_hyperparams_actual, is_training) = box_predictor._conv_hyperparams_fn
     self.assertAlmostEqual((hyperparams_proto.regularizer.
                             l1_regularizer.weight),
                            (conv_hyperparams_actual.regularizer.l1_regularizer.

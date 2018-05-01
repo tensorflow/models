@@ -17,6 +17,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import errors
+from tensorflow.python.framework import ops
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
@@ -152,6 +153,25 @@ class BoxListOpsTest(tf.test.TestCase):
       self.assertAllEqual(keep_indices_out, [0, 1, 2, 3, 5])
       extra_data_out = sess.run(pruned.get_field('extra_data'))
       self.assertAllEqual(extra_data_out, [[1], [2], [3], [4], [6]])
+
+  def test_prune_completely_outside_window_with_empty_boxlist(self):
+    window = tf.constant([0, 0, 9, 14], tf.float32)
+    corners = tf.zeros(shape=[0, 4], dtype=tf.float32)
+    boxes = box_list.BoxList(corners)
+    boxes.add_field('extra_data', tf.zeros(shape=[0], dtype=tf.int32))
+    pruned, keep_indices = box_list_ops.prune_completely_outside_window(boxes,
+                                                                        window)
+    pruned_boxes = pruned.get()
+    extra = pruned.get_field('extra_data')
+
+    exp_pruned_boxes = np.zeros(shape=[0, 4], dtype=np.float32)
+    exp_extra = np.zeros(shape=[0], dtype=np.int32)
+    with self.test_session() as sess:
+      pruned_boxes_out, keep_indices_out, extra_out = sess.run(
+          [pruned_boxes, keep_indices, extra])
+      self.assertAllClose(exp_pruned_boxes, pruned_boxes_out)
+      self.assertAllEqual([], keep_indices_out)
+      self.assertAllEqual(exp_extra, extra_out)
 
   def test_intersection(self):
     corners1 = tf.constant([[4.0, 3.0, 7.0, 5.0], [5.0, 6.0, 10.0, 7.0]])
@@ -490,9 +510,13 @@ class BoxListOpsTest(tf.test.TestCase):
       with self.assertRaises(ValueError):
         box_list_ops.sort_by_field(boxes, 'misc')
 
-      with self.assertRaisesWithPredicateMatch(errors.InvalidArgumentError,
-                                               'Incorrect field size'):
-        sess.run(box_list_ops.sort_by_field(boxes, 'weights').get())
+      if ops._USE_C_API:
+        with self.assertRaises(ValueError):
+          box_list_ops.sort_by_field(boxes, 'weights')
+      else:
+        with self.assertRaisesWithPredicateMatch(errors.InvalidArgumentError,
+                                                 'Incorrect field size'):
+          sess.run(box_list_ops.sort_by_field(boxes, 'weights').get())
 
   def test_visualize_boxes_in_image(self):
     image = tf.zeros((6, 4, 3))
@@ -593,6 +617,58 @@ class BoxListOpsTest(tf.test.TestCase):
       self.assertAllEqual(expected_classes, classes_out)
       self.assertAllClose(expected_scores, scores_out)
 
+  def test_select_random_box(self):
+    boxes = [[0., 0., 1., 1.],
+             [0., 1., 2., 3.],
+             [0., 2., 3., 4.]]
+
+    corners = tf.constant(boxes, dtype=tf.float32)
+    boxlist = box_list.BoxList(corners)
+    random_bbox, valid = box_list_ops.select_random_box(boxlist)
+    with self.test_session() as sess:
+      random_bbox_out, valid_out = sess.run([random_bbox, valid])
+
+    norm_small = any(
+        [np.linalg.norm(random_bbox_out - box) < 1e-6 for box in boxes])
+
+    self.assertTrue(norm_small)
+    self.assertTrue(valid_out)
+
+  def test_select_random_box_with_empty_boxlist(self):
+    corners = tf.constant([], shape=[0, 4], dtype=tf.float32)
+    boxlist = box_list.BoxList(corners)
+    random_bbox, valid = box_list_ops.select_random_box(boxlist)
+    with self.test_session() as sess:
+      random_bbox_out, valid_out = sess.run([random_bbox, valid])
+
+    expected_bbox_out = np.array([[-1., -1., -1., -1.]], dtype=np.float32)
+    self.assertAllEqual(expected_bbox_out, random_bbox_out)
+    self.assertFalse(valid_out)
+
+  def test_get_minimal_coverage_box(self):
+    boxes = [[0., 0., 1., 1.],
+             [-1., 1., 2., 3.],
+             [0., 2., 3., 4.]]
+
+    expected_coverage_box = [[-1., 0., 3., 4.]]
+
+    corners = tf.constant(boxes, dtype=tf.float32)
+    boxlist = box_list.BoxList(corners)
+    coverage_box = box_list_ops.get_minimal_coverage_box(boxlist)
+    with self.test_session() as sess:
+      coverage_box_out = sess.run(coverage_box)
+
+    self.assertAllClose(expected_coverage_box, coverage_box_out)
+
+  def test_get_minimal_coverage_box_with_empty_boxlist(self):
+    corners = tf.constant([], shape=[0, 4], dtype=tf.float32)
+    boxlist = box_list.BoxList(corners)
+    coverage_box = box_list_ops.get_minimal_coverage_box(boxlist)
+    with self.test_session() as sess:
+      coverage_box_out = sess.run(coverage_box)
+
+    self.assertAllClose([[0.0, 0.0, 1.0, 1.0]], coverage_box_out)
+
 
 class ConcatenateTest(tf.test.TestCase):
 
@@ -655,24 +731,6 @@ class ConcatenateTest(tf.test.TestCase):
 
 
 class NonMaxSuppressionTest(tf.test.TestCase):
-
-  def test_with_invalid_scores_field(self):
-    corners = tf.constant([[0, 0, 1, 1],
-                           [0, 0.1, 1, 1.1],
-                           [0, -0.1, 1, 0.9],
-                           [0, 10, 1, 11],
-                           [0, 10.1, 1, 11.1],
-                           [0, 100, 1, 101]], tf.float32)
-    boxes = box_list.BoxList(corners)
-    boxes.add_field('scores', tf.constant([.9, .75, .6, .95, .5]))
-    iou_thresh = .5
-    max_output_size = 3
-    nms = box_list_ops.non_max_suppression(
-        boxes, iou_thresh, max_output_size)
-    with self.test_session() as sess:
-      with self.assertRaisesWithPredicateMatch(
-          errors.InvalidArgumentError, 'scores has incompatible shape'):
-        sess.run(nms.get())
 
   def test_select_from_three_clusters(self):
     corners = tf.constant([[0, 0, 1, 1],
@@ -957,6 +1015,7 @@ class BoxRefinementTest(tf.test.TestCase):
       self.assertAllClose(expected_boxes, boxes_out)
       self.assertAllClose(expected_scores, scores_out)
       self.assertAllEqual(extra_field_out, [0, 1, 1])
+
 
 if __name__ == '__main__':
   tf.test.main()

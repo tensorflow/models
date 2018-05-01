@@ -35,10 +35,29 @@ class SingleClassTpFpWithDifficultBoxesTest(tf.test.TestCase):
     self.detected_boxes = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
                                    dtype=float)
     self.detected_scores = np.array([0.6, 0.8, 0.5], dtype=float)
+    detected_masks_0 = np.array([[0, 1, 1, 0],
+                                 [0, 0, 1, 0],
+                                 [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_1 = np.array([[1, 0, 0, 0],
+                                 [1, 1, 0, 0],
+                                 [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_2 = np.array([[0, 0, 0, 0],
+                                 [0, 1, 1, 0],
+                                 [0, 1, 0, 0]], dtype=np.uint8)
+    self.detected_masks = np.stack(
+        [detected_masks_0, detected_masks_1, detected_masks_2], axis=0)
     self.groundtruth_boxes = np.array([[0, 0, 1, 1], [0, 0, 10, 10]],
                                       dtype=float)
+    groundtruth_masks_0 = np.array([[1, 1, 0, 0],
+                                    [1, 1, 0, 0],
+                                    [0, 0, 0, 0]], dtype=np.uint8)
+    groundtruth_masks_1 = np.array([[0, 0, 0, 1],
+                                    [0, 0, 0, 1],
+                                    [0, 0, 0, 1]], dtype=np.uint8)
+    self.groundtruth_masks = np.stack(
+        [groundtruth_masks_0, groundtruth_masks_1], axis=0)
 
-  def test_match_to_not_difficult_box(self):
+  def test_match_to_gt_box_0(self):
     groundtruth_groundtruth_is_difficult_list = np.array([False, True],
                                                          dtype=bool)
     groundtruth_groundtruth_is_group_of_list = np.array(
@@ -52,7 +71,25 @@ class SingleClassTpFpWithDifficultBoxesTest(tf.test.TestCase):
     self.assertTrue(np.allclose(expected_scores, scores))
     self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
 
-  def test_match_to_difficult_box(self):
+  def test_mask_match_to_gt_mask_0(self):
+    groundtruth_groundtruth_is_difficult_list = np.array([False, True],
+                                                         dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array(
+        [False, False], dtype=bool)
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        self.detected_boxes,
+        self.detected_scores,
+        self.groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=self.detected_masks,
+        groundtruth_masks=self.groundtruth_masks)
+    expected_scores = np.array([0.8, 0.6, 0.5], dtype=float)
+    expected_tp_fp_labels = np.array([True, False, False], dtype=bool)
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_match_to_gt_box_1(self):
     groundtruth_groundtruth_is_difficult_list = np.array([True, False],
                                                          dtype=bool)
     groundtruth_groundtruth_is_group_of_list = np.array(
@@ -62,6 +99,24 @@ class SingleClassTpFpWithDifficultBoxesTest(tf.test.TestCase):
         groundtruth_groundtruth_is_difficult_list,
         groundtruth_groundtruth_is_group_of_list)
     expected_scores = np.array([0.8, 0.5], dtype=float)
+    expected_tp_fp_labels = np.array([False, False], dtype=bool)
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_mask_match_to_gt_mask_1(self):
+    groundtruth_groundtruth_is_difficult_list = np.array([True, False],
+                                                         dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array(
+        [False, False], dtype=bool)
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        self.detected_boxes,
+        self.detected_scores,
+        self.groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=self.detected_masks,
+        groundtruth_masks=self.groundtruth_masks)
+    expected_scores = np.array([0.6, 0.5], dtype=float)
     expected_tp_fp_labels = np.array([False, False], dtype=bool)
     self.assertTrue(np.allclose(expected_scores, scores))
     self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
@@ -81,8 +136,31 @@ class SingleClassTpFpWithGroupOfBoxesTest(tf.test.TestCase):
     self.detected_boxes = np.array(
         [[0, 0, 1, 1], [0, 0, 2, 1], [0, 0, 3, 1]], dtype=float)
     self.detected_scores = np.array([0.8, 0.6, 0.5], dtype=float)
+    detected_masks_0 = np.array([[0, 1, 1, 0],
+                                 [0, 0, 1, 0],
+                                 [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_1 = np.array([[1, 0, 0, 0],
+                                 [1, 1, 0, 0],
+                                 [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_2 = np.array([[0, 0, 0, 0],
+                                 [0, 1, 1, 0],
+                                 [0, 1, 0, 0]], dtype=np.uint8)
+    self.detected_masks = np.stack(
+        [detected_masks_0, detected_masks_1, detected_masks_2], axis=0)
+
     self.groundtruth_boxes = np.array(
         [[0, 0, 1, 1], [0, 0, 5, 5], [10, 10, 20, 20]], dtype=float)
+    groundtruth_masks_0 = np.array([[1, 0, 0, 0],
+                                    [1, 0, 0, 0],
+                                    [1, 0, 0, 0]], dtype=np.uint8)
+    groundtruth_masks_1 = np.array([[0, 0, 1, 0],
+                                    [0, 0, 1, 0],
+                                    [0, 0, 1, 0]], dtype=np.uint8)
+    groundtruth_masks_2 = np.array([[0, 1, 0, 0],
+                                    [0, 1, 0, 0],
+                                    [0, 1, 0, 0]], dtype=np.uint8)
+    self.groundtruth_masks = np.stack(
+        [groundtruth_masks_0, groundtruth_masks_1, groundtruth_masks_2], axis=0)
 
   def test_match_to_non_group_of_and_group_of_box(self):
     groundtruth_groundtruth_is_difficult_list = np.array(
@@ -95,6 +173,26 @@ class SingleClassTpFpWithGroupOfBoxesTest(tf.test.TestCase):
         self.detected_boxes, self.detected_scores, self.groundtruth_boxes,
         groundtruth_groundtruth_is_difficult_list,
         groundtruth_groundtruth_is_group_of_list)
+
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_mask_match_to_non_group_of_and_group_of_box(self):
+    groundtruth_groundtruth_is_difficult_list = np.array(
+        [False, False, False], dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array(
+        [False, True, True], dtype=bool)
+    expected_scores = np.array([0.6], dtype=float)
+    expected_tp_fp_labels = np.array([True], dtype=bool)
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        self.detected_boxes,
+        self.detected_scores,
+        self.groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=self.detected_masks,
+        groundtruth_masks=self.groundtruth_masks)
+
     self.assertTrue(np.allclose(expected_scores, scores))
     self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
 
@@ -112,35 +210,201 @@ class SingleClassTpFpWithGroupOfBoxesTest(tf.test.TestCase):
     self.assertTrue(np.allclose(expected_scores, scores))
     self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
 
+  def test_mask_match_two_to_group_of_box(self):
+    groundtruth_groundtruth_is_difficult_list = np.array(
+        [False, False, False], dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array(
+        [True, False, True], dtype=bool)
+    expected_scores = np.array([0.8], dtype=float)
+    expected_tp_fp_labels = np.array([True], dtype=bool)
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        self.detected_boxes,
+        self.detected_scores,
+        self.groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=self.detected_masks,
+        groundtruth_masks=self.groundtruth_masks)
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+
+class SingleClassTpFpWithGroupOfBoxesTestWeighted(tf.test.TestCase):
+
+  def setUp(self):
+    num_groundtruth_classes = 1
+    matching_iou_threshold = 0.5
+    nms_iou_threshold = 1.0
+    nms_max_output_boxes = 10000
+    self.group_of_weight = 0.5
+    self.eval = per_image_evaluation.PerImageEvaluation(
+        num_groundtruth_classes, matching_iou_threshold, nms_iou_threshold,
+        nms_max_output_boxes, self.group_of_weight)
+
+    self.detected_boxes = np.array(
+        [[0, 0, 1, 1], [0, 0, 2, 1], [0, 0, 3, 1]], dtype=float)
+    self.detected_scores = np.array([0.8, 0.6, 0.5], dtype=float)
+    detected_masks_0 = np.array(
+        [[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_1 = np.array(
+        [[1, 0, 0, 0], [1, 1, 0, 0], [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_2 = np.array(
+        [[0, 0, 0, 0], [0, 1, 1, 0], [0, 1, 0, 0]], dtype=np.uint8)
+    self.detected_masks = np.stack(
+        [detected_masks_0, detected_masks_1, detected_masks_2], axis=0)
+
+    self.groundtruth_boxes = np.array(
+        [[0, 0, 1, 1], [0, 0, 5, 5], [10, 10, 20, 20]], dtype=float)
+    groundtruth_masks_0 = np.array(
+        [[1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0]], dtype=np.uint8)
+    groundtruth_masks_1 = np.array(
+        [[0, 0, 1, 0], [0, 0, 1, 0], [0, 0, 1, 0]], dtype=np.uint8)
+    groundtruth_masks_2 = np.array(
+        [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]], dtype=np.uint8)
+    self.groundtruth_masks = np.stack(
+        [groundtruth_masks_0, groundtruth_masks_1, groundtruth_masks_2], axis=0)
+
+  def test_match_to_non_group_of_and_group_of_box(self):
+    groundtruth_groundtruth_is_difficult_list = np.array(
+        [False, False, False], dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array(
+        [False, True, True], dtype=bool)
+    expected_scores = np.array([0.8, 0.6], dtype=float)
+    expected_tp_fp_labels = np.array([1.0, self.group_of_weight], dtype=float)
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        self.detected_boxes, self.detected_scores, self.groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list)
+
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_mask_match_to_non_group_of_and_group_of_box(self):
+    groundtruth_groundtruth_is_difficult_list = np.array(
+        [False, False, False], dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array(
+        [False, True, True], dtype=bool)
+    expected_scores = np.array([0.6, 0.8, 0.5], dtype=float)
+    expected_tp_fp_labels = np.array(
+        [1.0, self.group_of_weight, self.group_of_weight], dtype=float)
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        self.detected_boxes,
+        self.detected_scores,
+        self.groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=self.detected_masks,
+        groundtruth_masks=self.groundtruth_masks)
+
+    tf.logging.info(
+        "test_mask_match_to_non_group_of_and_group_of_box {} {}".format(
+            tp_fp_labels, expected_tp_fp_labels))
+
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_match_two_to_group_of_box(self):
+    groundtruth_groundtruth_is_difficult_list = np.array(
+        [False, False, False], dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array(
+        [True, False, True], dtype=bool)
+    expected_scores = np.array([0.5, 0.8], dtype=float)
+    expected_tp_fp_labels = np.array([0.0, self.group_of_weight], dtype=float)
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        self.detected_boxes, self.detected_scores, self.groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list)
+
+    tf.logging.info("test_match_two_to_group_of_box {} {}".format(
+        tp_fp_labels, expected_tp_fp_labels))
+
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_mask_match_two_to_group_of_box(self):
+    groundtruth_groundtruth_is_difficult_list = np.array(
+        [False, False, False], dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array(
+        [True, False, True], dtype=bool)
+    expected_scores = np.array([0.8, 0.6, 0.5], dtype=float)
+    expected_tp_fp_labels = np.array(
+        [1.0, self.group_of_weight, self.group_of_weight], dtype=float)
+    scores, tp_fp_labels = self.eval._compute_tp_fp_for_single_class(
+        self.detected_boxes,
+        self.detected_scores,
+        self.groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=self.detected_masks,
+        groundtruth_masks=self.groundtruth_masks)
+
+    tf.logging.info("test_mask_match_two_to_group_of_box {} {}".format(
+        tp_fp_labels, expected_tp_fp_labels))
+
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
 
 class SingleClassTpFpNoDifficultBoxesTest(tf.test.TestCase):
 
   def setUp(self):
     num_groundtruth_classes = 1
-    matching_iou_threshold1 = 0.5
-    matching_iou_threshold2 = 0.1
+    matching_iou_threshold_high_iou = 0.5
+    matching_iou_threshold_low_iou = 0.1
     nms_iou_threshold = 1.0
     nms_max_output_boxes = 10000
-    self.eval1 = per_image_evaluation.PerImageEvaluation(
-        num_groundtruth_classes, matching_iou_threshold1, nms_iou_threshold,
-        nms_max_output_boxes)
+    self.eval_high_iou = per_image_evaluation.PerImageEvaluation(
+        num_groundtruth_classes, matching_iou_threshold_high_iou,
+        nms_iou_threshold, nms_max_output_boxes)
 
-    self.eval2 = per_image_evaluation.PerImageEvaluation(
-        num_groundtruth_classes, matching_iou_threshold2, nms_iou_threshold,
-        nms_max_output_boxes)
+    self.eval_low_iou = per_image_evaluation.PerImageEvaluation(
+        num_groundtruth_classes, matching_iou_threshold_low_iou,
+        nms_iou_threshold, nms_max_output_boxes)
 
     self.detected_boxes = np.array([[0, 0, 1, 1], [0, 0, 2, 2], [0, 0, 3, 3]],
                                    dtype=float)
     self.detected_scores = np.array([0.6, 0.8, 0.5], dtype=float)
+    detected_masks_0 = np.array([[0, 1, 1, 0],
+                                 [0, 0, 1, 0],
+                                 [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_1 = np.array([[1, 0, 0, 0],
+                                 [1, 1, 0, 0],
+                                 [0, 0, 0, 0]], dtype=np.uint8)
+    detected_masks_2 = np.array([[0, 0, 0, 0],
+                                 [0, 1, 1, 0],
+                                 [0, 1, 0, 0]], dtype=np.uint8)
+    self.detected_masks = np.stack(
+        [detected_masks_0, detected_masks_1, detected_masks_2], axis=0)
 
   def test_no_true_positives(self):
     groundtruth_boxes = np.array([[100, 100, 105, 105]], dtype=float)
     groundtruth_groundtruth_is_difficult_list = np.zeros(1, dtype=bool)
     groundtruth_groundtruth_is_group_of_list = np.array([False], dtype=bool)
-    scores, tp_fp_labels = self.eval1._compute_tp_fp_for_single_class(
+    scores, tp_fp_labels = self.eval_high_iou._compute_tp_fp_for_single_class(
         self.detected_boxes, self.detected_scores, groundtruth_boxes,
         groundtruth_groundtruth_is_difficult_list,
         groundtruth_groundtruth_is_group_of_list)
+    expected_scores = np.array([0.8, 0.6, 0.5], dtype=float)
+    expected_tp_fp_labels = np.array([False, False, False], dtype=bool)
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
+  def test_mask_no_true_positives(self):
+    groundtruth_boxes = np.array([[100, 100, 105, 105]], dtype=float)
+    groundtruth_masks_0 = np.array([[1, 1, 1, 1],
+                                    [1, 1, 1, 1],
+                                    [1, 1, 1, 1]], dtype=np.uint8)
+    groundtruth_masks = np.stack([groundtruth_masks_0], axis=0)
+    groundtruth_groundtruth_is_difficult_list = np.zeros(1, dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array([False], dtype=bool)
+    scores, tp_fp_labels = self.eval_high_iou._compute_tp_fp_for_single_class(
+        self.detected_boxes,
+        self.detected_scores,
+        groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=self.detected_masks,
+        groundtruth_masks=groundtruth_masks)
     expected_scores = np.array([0.8, 0.6, 0.5], dtype=float)
     expected_tp_fp_labels = np.array([False, False, False], dtype=bool)
     self.assertTrue(np.allclose(expected_scores, scores))
@@ -150,7 +414,7 @@ class SingleClassTpFpNoDifficultBoxesTest(tf.test.TestCase):
     groundtruth_boxes = np.array([[0, 0, 1, 1]], dtype=float)
     groundtruth_groundtruth_is_difficult_list = np.zeros(1, dtype=bool)
     groundtruth_groundtruth_is_group_of_list = np.array([False], dtype=bool)
-    scores, tp_fp_labels = self.eval1._compute_tp_fp_for_single_class(
+    scores, tp_fp_labels = self.eval_high_iou._compute_tp_fp_for_single_class(
         self.detected_boxes, self.detected_scores, groundtruth_boxes,
         groundtruth_groundtruth_is_difficult_list,
         groundtruth_groundtruth_is_group_of_list)
@@ -159,11 +423,32 @@ class SingleClassTpFpNoDifficultBoxesTest(tf.test.TestCase):
     self.assertTrue(np.allclose(expected_scores, scores))
     self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
 
+  def test_mask_one_true_positives_with_large_iou_threshold(self):
+    groundtruth_boxes = np.array([[0, 0, 1, 1]], dtype=float)
+    groundtruth_masks_0 = np.array([[1, 0, 0, 0],
+                                    [1, 1, 0, 0],
+                                    [0, 0, 0, 0]], dtype=np.uint8)
+    groundtruth_masks = np.stack([groundtruth_masks_0], axis=0)
+    groundtruth_groundtruth_is_difficult_list = np.zeros(1, dtype=bool)
+    groundtruth_groundtruth_is_group_of_list = np.array([False], dtype=bool)
+    scores, tp_fp_labels = self.eval_high_iou._compute_tp_fp_for_single_class(
+        self.detected_boxes,
+        self.detected_scores,
+        groundtruth_boxes,
+        groundtruth_groundtruth_is_difficult_list,
+        groundtruth_groundtruth_is_group_of_list,
+        detected_masks=self.detected_masks,
+        groundtruth_masks=groundtruth_masks)
+    expected_scores = np.array([0.8, 0.6, 0.5], dtype=float)
+    expected_tp_fp_labels = np.array([True, False, False], dtype=bool)
+    self.assertTrue(np.allclose(expected_scores, scores))
+    self.assertTrue(np.allclose(expected_tp_fp_labels, tp_fp_labels))
+
   def test_one_true_positives_with_very_small_iou_threshold(self):
     groundtruth_boxes = np.array([[0, 0, 1, 1]], dtype=float)
     groundtruth_groundtruth_is_difficult_list = np.zeros(1, dtype=bool)
     groundtruth_groundtruth_is_group_of_list = np.array([False], dtype=bool)
-    scores, tp_fp_labels = self.eval2._compute_tp_fp_for_single_class(
+    scores, tp_fp_labels = self.eval_low_iou._compute_tp_fp_for_single_class(
         self.detected_boxes, self.detected_scores, groundtruth_boxes,
         groundtruth_groundtruth_is_difficult_list,
         groundtruth_groundtruth_is_group_of_list)
@@ -177,7 +462,7 @@ class SingleClassTpFpNoDifficultBoxesTest(tf.test.TestCase):
     groundtruth_groundtruth_is_difficult_list = np.zeros(2, dtype=bool)
     groundtruth_groundtruth_is_group_of_list = np.array(
         [False, False], dtype=bool)
-    scores, tp_fp_labels = self.eval1._compute_tp_fp_for_single_class(
+    scores, tp_fp_labels = self.eval_high_iou._compute_tp_fp_for_single_class(
         self.detected_boxes, self.detected_scores, groundtruth_boxes,
         groundtruth_groundtruth_is_difficult_list,
         groundtruth_groundtruth_is_group_of_list)
@@ -272,5 +557,5 @@ class CorLocTest(tf.test.TestCase):
                                    is_class_correctly_detected_in_image))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   tf.test.main()

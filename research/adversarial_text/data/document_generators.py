@@ -26,7 +26,7 @@ import random
 
 import tensorflow as tf
 
-from adversarial_text.data import data_utils
+from data import data_utils
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
@@ -259,7 +259,7 @@ def dbpedia_documents(dataset='train',
           content=content,
           is_validation=is_validation,
           is_test=False,
-          label=int(row[0]),
+          label=int(row[0]) - 1,  # Labels should start from 0
           add_tokens=True)
 
 

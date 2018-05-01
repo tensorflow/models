@@ -15,6 +15,8 @@ The input function for the `Estimator` uses `tf.contrib.data.TextLineDataset`, w
 The `Estimator` and `Dataset` APIs are both highly encouraged for fast development and efficient training.
 
 ## Running the code
+First make sure you've [added the models folder to your Python path](/official/#running-the-models); otherwise you may encounter an error like `ImportError: No module named official.wide_deep`.
+
 ### Setup
 The [Census Income Data Set](https://archive.ics.uci.edu/ml/datasets/Census+Income) that this sample uses for training is hosted by the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/). We have provided a script that downloads and cleans the necessary files.
 
@@ -44,6 +46,37 @@ Run TensorBoard to inspect the details about the graph and training progression.
 ```
 tensorboard --logdir=/tmp/census_model
 ```
+
+## Inference with SavedModel
+You can export the model into Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format by using the argument `--export_dir`:
+
+```
+python wide_deep.py --export_dir /tmp/wide_deep_saved_model
+```
+
+After the model finishes training, use [`saved_model_cli`](https://www.tensorflow.org/programmers_guide/saved_model#cli_to_inspect_and_execute_savedmodel) to inspect and execute the SavedModel.
+
+Try the following commands to inspect the SavedModel:
+
+**Replace `${TIMESTAMP}` with the folder produced (e.g. 1524249124)**
+```
+# List possible tag_sets. Only one metagraph is saved, so there will be one option.
+saved_model_cli show --dir /tmp/wide_deep_saved_model/${TIMESTAMP}/
+
+# Show SignatureDefs for tag_set=serve. SignatureDefs define the outputs to show.
+saved_model_cli show --dir /tmp/wide_deep_saved_model/${TIMESTAMP}/ \
+    --tag_set serve --all
+```
+
+### Inference
+Let's use the model to predict the income group of two examples:
+```
+saved_model_cli run --dir /tmp/wide_deep_saved_model/${TIMESTAMP}/ \
+--tag_set serve --signature_def="predict" \
+--input_examples='examples=[{"age":[46.], "education_num":[10.], "capital_gain":[7688.], "capital_loss":[0.], "hours_per_week":[38.]}, {"age":[24.], "education_num":[13.], "capital_gain":[0.], "capital_loss":[0.], "hours_per_week":[50.]}]'
+```
+
+This will print out the predicted classes and class probabilities. Class 0 is the <=50k group and 1 is the >50k group.
 
 ## Additional Links
 

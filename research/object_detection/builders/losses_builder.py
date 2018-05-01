@@ -116,18 +116,17 @@ def build_faster_rcnn_classification_loss(loss_config):
   loss_type = loss_config.WhichOneof('classification_loss')
 
   if loss_type == 'weighted_sigmoid':
-    config = loss_config.weighted_sigmoid
-    return losses.WeightedSigmoidClassificationLoss(
-        anchorwise_output=config.anchorwise_output)
+    return losses.WeightedSigmoidClassificationLoss()
   if loss_type == 'weighted_softmax':
     config = loss_config.weighted_softmax
     return losses.WeightedSoftmaxClassificationLoss(
-        anchorwise_output=config.anchorwise_output)
+        logit_scale=config.logit_scale)
 
   # By default, Faster RCNN second stage classifier uses Softmax loss
   # with anchor-wise outputs.
+  config = loss_config.weighted_softmax
   return losses.WeightedSoftmaxClassificationLoss(
-      anchorwise_output=True)
+      logit_scale=config.logit_scale)
 
 
 def _build_localization_loss(loss_config):
@@ -148,14 +147,11 @@ def _build_localization_loss(loss_config):
   loss_type = loss_config.WhichOneof('localization_loss')
 
   if loss_type == 'weighted_l2':
-    config = loss_config.weighted_l2
-    return losses.WeightedL2LocalizationLoss(
-        anchorwise_output=config.anchorwise_output)
+    return losses.WeightedL2LocalizationLoss()
 
   if loss_type == 'weighted_smooth_l1':
-    config = loss_config.weighted_smooth_l1
     return losses.WeightedSmoothL1LocalizationLoss(
-        anchorwise_output=config.anchorwise_output)
+        loss_config.weighted_smooth_l1.delta)
 
   if loss_type == 'weighted_iou':
     return losses.WeightedIOULocalizationLoss()
@@ -181,9 +177,7 @@ def _build_classification_loss(loss_config):
   loss_type = loss_config.WhichOneof('classification_loss')
 
   if loss_type == 'weighted_sigmoid':
-    config = loss_config.weighted_sigmoid
-    return losses.WeightedSigmoidClassificationLoss(
-        anchorwise_output=config.anchorwise_output)
+    return losses.WeightedSigmoidClassificationLoss()
 
   if loss_type == 'weighted_sigmoid_focal':
     config = loss_config.weighted_sigmoid_focal
@@ -191,21 +185,18 @@ def _build_classification_loss(loss_config):
     if config.HasField('alpha'):
       alpha = config.alpha
     return losses.SigmoidFocalClassificationLoss(
-        anchorwise_output=config.anchorwise_output,
         gamma=config.gamma,
         alpha=alpha)
 
   if loss_type == 'weighted_softmax':
     config = loss_config.weighted_softmax
     return losses.WeightedSoftmaxClassificationLoss(
-        anchorwise_output=config.anchorwise_output,
         logit_scale=config.logit_scale)
 
   if loss_type == 'bootstrapped_sigmoid':
     config = loss_config.bootstrapped_sigmoid
     return losses.BootstrappedSigmoidClassificationLoss(
         alpha=config.alpha,
-        bootstrap_type=('hard' if config.hard_bootstrap else 'soft'),
-        anchorwise_output=config.anchorwise_output)
+        bootstrap_type=('hard' if config.hard_bootstrap else 'soft'))
 
   raise ValueError('Empty loss config.')

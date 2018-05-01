@@ -4,17 +4,16 @@ The Tensorflow Object Detection API currently supports three evaluation protocol
 that can be configured in `EvalConfig` by setting `metrics_set` to the
 corresponding value.
 
-## PASCAL VOC 2007 metric
+## PASCAL VOC 2007 detection metric
 
-`EvalConfig.metrics_set='pascal_voc_metrics'`
+`EvalConfig.metrics_set='pascal_voc_detection_metrics'`
 
 The commonly used mAP metric for evaluating the quality of object detectors, computed according to the protocol of the PASCAL VOC Challenge 2007.
 The protocol is available [here](http://host.robots.ox.ac.uk/pascal/VOC/voc2007/devkit_doc_07-Jun-2007.pdf).
 
+## Weighted PASCAL VOC detection metric
 
-## Weighted PASCAL VOC metric
-
-`EvalConfig.metrics_set='weighted_pascal_voc_metrics'`
+`EvalConfig.metrics_set='weighted_pascal_voc_detection_metrics'`
 
 The weighted PASCAL metric computes the mean average precision as the average
 precision when treating all classes as a single class. In comparison,
@@ -25,7 +24,21 @@ For example, the test set consists of two classes, "cat" and "dog", and there ar
 According to PASCAL VOC 2007 metric, performance on each of the two classes would contribute equally towards the final mAP value,
 while for the Weighted PASCAL VOC metric the final mAP value will be influenced by frequency of each class.
 
-## Open Images metric {#open-images}
+## PASCAL VOC 2007 instance segmentation metric
+
+`EvalConfig.metrics_set='pascal_voc_instance_segmentation_metrics'`
+
+Similar to pascal voc 2007 detection metric, but computes the intersection over
+union based on the object masks instead of object boxes.
+
+## Weighted PASCAL VOC instance segmentation metric
+
+`EvalConfig.metrics_set='weighted_pascal_voc_instance_segmentation_metrics'`
+
+Similar to the weighted pascal voc 2007 detection metric, but computes the
+intersection over union based on the object masks instead of object boxes.
+
+## Open Images detection metric {#open-images}
 
 `EvalConfig.metrics_set='open_images_metrics'`
 

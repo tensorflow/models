@@ -6,8 +6,11 @@ import "object_detection/protos/optimizer.proto";
 import "object_detection/protos/preprocessor.proto";
 
 // Message for configuring DetectionModel training jobs (train.py).
+// Next id: 25
 message TrainConfig {
-  // Input queue batch size.
+  // Effective batch size to use for training.
+  // For TPU (or sync SGD jobs), the batch size per core (or GPU) is going to be
+  // `batch_size` / number of cores (or `batch_size` / number of GPUs).
   optional uint32 batch_size = 1 [default=32];
 
   // Data augmentation options.
@@ -29,11 +32,22 @@ message TrainConfig {
   // extractor variables trained outside of object detection.
   optional string fine_tune_checkpoint = 7 [default=""];
 
+  // Type of checkpoint to restore variables from, e.g. 'classification' or
+  // 'detection'. Provides extensibility to from_detection_checkpoint.
+  // Typically used to load feature extractor variables from trained models.
+  optional string fine_tune_checkpoint_type = 22 [default=""];
+
+  // [Deprecated]: use fine_tune_checkpoint_type instead.
   // Specifies if the finetune checkpoint is from an object detection model.
   // If from an object detection model, the model being trained should have
   // the same parameters with the exception of the num_classes parameter.
   // If false, it assumes the checkpoint was a object classification model.
-  optional bool from_detection_checkpoint = 8 [default=false];
+  optional bool from_detection_checkpoint = 8 [default=false, deprecated=true];
+
+  // Whether to load all checkpoint vars that match model variable names and
+  // sizes. This option is only available if `from_detection_checkpoint` is
+  // True.
+  optional bool load_all_detection_checkpoint_vars = 19 [default = false];
 
   // Number of steps to train the DetectionModel for. If 0, will train the model
   // indefinitely.
@@ -66,4 +80,30 @@ message TrainConfig {
   // This is useful when each box can have multiple labels.
   // Note that only Sigmoid classification losses should be used.
   optional bool merge_multiple_label_boxes = 17 [default=false];
+
+  // If true, will use multiclass scores from object annotations as ground
+  // truth. Currently only compatible with annotated image inputs.
+  optional bool use_multiclass_scores = 24 [default = false];
+
+  // Whether to add regularization loss to `total_loss`. This is true by
+  // default and adds all regularization losses defined in the model to
+  // `total_loss`.
+  // Setting this option to false is very useful while debugging the model and
+  // losses.
+  optional bool add_regularization_loss = 18 [default=true];
+
+  // Maximum number of boxes used during training.
+  // Set this to at least the maximum amount of boxes in the input data.
+  // Otherwise, it may cause "Data loss: Attempted to pad to a smaller size
+  // than the input element" errors.
+  optional int32 max_number_of_boxes = 20 [default=100];
+
+  // Whether to remove padding along `num_boxes` dimension of the groundtruth
+  // tensors.
+  optional bool unpad_groundtruth_tensors = 21 [default=true];
+
+  // Whether to retain original images (i.e. not pre-processed) in the tensor
+  // dictionary, so that they can be displayed in Tensorboard. Note that this
+  // will lead to a larger memory footprint.
+  optional bool retain_original_images = 23 [default=false];
 }

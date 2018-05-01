@@ -95,6 +95,30 @@ class LabelMapUtilTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       label_map_util.load_labelmap(label_map_path)
 
+  def test_load_label_map_with_background(self):
+    label_map_string = """
+      item {
+        id:0
+        name:'background'
+      }
+      item {
+        id:2
+        name:'cat'
+      }
+      item {
+        id:1
+        name:'dog'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+
+    label_map_dict = label_map_util.get_label_map_dict(label_map_path)
+    self.assertEqual(label_map_dict['background'], 0)
+    self.assertEqual(label_map_dict['dog'], 1)
+    self.assertEqual(label_map_dict['cat'], 2)
+
   def test_keep_categories_with_unique_id(self):
     label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
     label_map_string = """
@@ -169,6 +193,12 @@ class LabelMapUtilTest(tf.test.TestCase):
         'id': 2
     }]
     self.assertListEqual(expected_categories_list, cat_no_offset)
+
+  def test_get_max_label_map_index(self):
+    num_classes = 4
+    label_map_proto = self._generate_label_map(num_classes=num_classes)
+    max_index = label_map_util.get_max_label_map_index(label_map_proto)
+    self.assertEqual(num_classes, max_index)
 
   def test_create_category_index(self):
     categories = [{'name': u'1', 'id': 1}, {'name': u'2', 'id': 2}]

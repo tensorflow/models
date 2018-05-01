@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
-"""DELF model implementation based on the following paper:
+"""DELF model implementation based on the following paper.
 
   Large-Scale Image Retrieval with Attentive Deep Local Features
   https://arxiv.org/abs/1612.06321
@@ -26,9 +25,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from nets import resnet_v1
-
 import tensorflow as tf
+
+from nets import resnet_v1
 
 slim = tf.contrib.slim
 

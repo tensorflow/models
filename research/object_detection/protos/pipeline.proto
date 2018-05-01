@@ -15,4 +15,5 @@ message TrainEvalPipelineConfig {
   optional InputReader train_input_reader = 3;
   optional EvalConfig eval_config = 4;
   optional InputReader eval_input_reader = 5;
+  extensions 1000 to max;
 }

@@ -14,9 +14,12 @@
 # ==============================================================================
 """Functions for reading and updating configuration files."""
 
+import os
 import tensorflow as tf
 
 from google.protobuf import text_format
+
+from tensorflow.python.lib.io import file_io
 
 from object_detection.protos import eval_pb2
 from object_detection.protos import input_reader_pb2
@@ -25,8 +28,55 @@ from object_detection.protos import pipeline_pb2
 from object_detection.protos import train_pb2
 
 
+def get_image_resizer_config(model_config):
+  """Returns the image resizer config from a model config.
+
+  Args:
+    model_config: A model_pb2.DetectionModel.
+
+  Returns:
+    An image_resizer_pb2.ImageResizer.
+
+  Raises:
+    ValueError: If the model type is not recognized.
+  """
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "faster_rcnn":
+    return model_config.faster_rcnn.image_resizer
+  if meta_architecture == "ssd":
+    return model_config.ssd.image_resizer
+
+  raise ValueError("Unknown model type: {}".format(meta_architecture))
+
+
+def get_spatial_image_size(image_resizer_config):
+  """Returns expected spatial size of the output image from a given config.
+
+  Args:
+    image_resizer_config: An image_resizer_pb2.ImageResizer.
+
+  Returns:
+    A list of two integers of the form [height, width]. `height` and `width` are
+    set  -1 if they cannot be determined during graph construction.
+
+  Raises:
+    ValueError: If the model type is not recognized.
+  """
+  if image_resizer_config.HasField("fixed_shape_resizer"):
+    return [
+        image_resizer_config.fixed_shape_resizer.height,
+        image_resizer_config.fixed_shape_resizer.width
+    ]
+  if image_resizer_config.HasField("keep_aspect_ratio_resizer"):
+    if image_resizer_config.keep_aspect_ratio_resizer.pad_to_max_dimension:
+      return [image_resizer_config.keep_aspect_ratio_resizer.max_dimension] * 2
+    else:
+      return [-1, -1]
+  raise ValueError("Unknown image resizer type.")
+
+
 def get_configs_from_pipeline_file(pipeline_config_path):
-  """Reads configuration from a pipeline_pb2.TrainEvalPipelineConfig.
+  """Reads config from a file containing pipeline_pb2.TrainEvalPipelineConfig.
 
   Args:
     pipeline_config_path: Path to pipeline_pb2.TrainEvalPipelineConfig text
@@ -41,23 +91,34 @@ def get_configs_from_pipeline_file(pipeline_config_path):
   with tf.gfile.GFile(pipeline_config_path, "r") as f:
     proto_str = f.read()
     text_format.Merge(proto_str, pipeline_config)
+  return create_configs_from_pipeline_proto(pipeline_config)
 
+
+def create_configs_from_pipeline_proto(pipeline_config):
+  """Creates a configs dictionary from pipeline_pb2.TrainEvalPipelineConfig.
+
+  Args:
+    pipeline_config: pipeline_pb2.TrainEvalPipelineConfig proto object.
+
+  Returns:
+    Dictionary of configuration objects. Keys are `model`, `train_config`,
+      `train_input_config`, `eval_config`, `eval_input_config`. Value are the
+      corresponding config objects.
+  """
   configs = {}
   configs["model"] = pipeline_config.model
   configs["train_config"] = pipeline_config.train_config
   configs["train_input_config"] = pipeline_config.train_input_reader
   configs["eval_config"] = pipeline_config.eval_config
   configs["eval_input_config"] = pipeline_config.eval_input_reader
-
   return configs
 
 
 def create_pipeline_proto_from_configs(configs):
   """Creates a pipeline_pb2.TrainEvalPipelineConfig from configs dictionary.
 
-  This function nearly performs the inverse operation of
-  get_configs_from_pipeline_file(). Instead of returning a file path, it returns
-  a `TrainEvalPipelineConfig` object.
+  This function performs the inverse operation of
+  create_configs_from_pipeline_proto().
 
   Args:
     configs: Dictionary of configs. See get_configs_from_pipeline_file().
@@ -72,6 +133,24 @@ def create_pipeline_proto_from_configs(configs):
   pipeline_config.eval_config.CopyFrom(configs["eval_config"])
   pipeline_config.eval_input_reader.CopyFrom(configs["eval_input_config"])
   return pipeline_config
+
+
+def save_pipeline_config(pipeline_config, directory):
+  """Saves a pipeline config text file to disk.
+
+  Args:
+    pipeline_config: A pipeline_pb2.TrainEvalPipelineConfig.
+    directory: The model directory into which the pipeline config file will be
+      saved.
+  """
+  if not file_io.file_exists(directory):
+    file_io.recursive_create_dir(directory)
+  pipeline_config_path = os.path.join(directory, "pipeline.config")
+  config_text = text_format.MessageToString(pipeline_config)
+  with tf.gfile.Open(pipeline_config_path, "wb") as f:
+    tf.logging.info("Writing pipeline config file to %s",
+                    pipeline_config_path)
+    f.write(config_text)
 
 
 def get_configs_from_multiple_files(model_config_path="",
@@ -196,6 +275,10 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
   if hparams:
     kwargs.update(hparams.values())
   for key, value in kwargs.items():
+    # pylint: disable=g-explicit-bool-comparison
+    if value == "" or value is None:
+      continue
+    # pylint: enable=g-explicit-bool-comparison
     if key == "learning_rate":
       _update_initial_learning_rate(configs, value)
       tf.logging.info("Overwriting learning rate: %f", value)
@@ -225,15 +308,20 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
       _update_input_path(configs["eval_input_config"], value)
       tf.logging.info("Overwriting eval input path: %s", value)
     if key == "label_map_path":
-      if value:
-        _update_label_map_path(configs, value)
-        tf.logging.info("Overwriting label map path: %s", value)
+      _update_label_map_path(configs, value)
+      tf.logging.info("Overwriting label map path: %s", value)
+    if key == "mask_type":
+      _update_mask_type(configs, value)
+      tf.logging.info("Overwritten mask type: %s", value)
   return configs
 
 
 def _update_initial_learning_rate(configs, learning_rate):
   """Updates `configs` to reflect the new initial learning rate.
 
+  This function updates the initial learning rate. For learning rate schedules,
+  all other defined learning rates in the pipeline config are scaled to maintain
+  their same ratio with the initial learning rate.
   The configs dictionary is updated in place, and hence not returned.
 
   Args:
@@ -271,6 +359,13 @@ def _update_initial_learning_rate(configs, learning_rate):
     manual_lr.initial_learning_rate = learning_rate
     for schedule in manual_lr.schedule:
       schedule.learning_rate *= learning_rate_scaling
+  elif learning_rate_type == "cosine_decay_learning_rate":
+    cosine_lr = optimizer_config.learning_rate.cosine_decay_learning_rate
+    learning_rate_base = cosine_lr.learning_rate_base
+    warmup_learning_rate = cosine_lr.warmup_learning_rate
+    warmup_scale_factor = warmup_learning_rate / learning_rate_base
+    cosine_lr.learning_rate_base = learning_rate
+    cosine_lr.warmup_learning_rate = warmup_scale_factor * learning_rate
   else:
     raise TypeError("Learning rate %s is not supported." % learning_rate_type)
 
@@ -355,7 +450,7 @@ def _get_classification_loss(model_config):
   if meta_architecture == "faster_rcnn":
     model = model_config.faster_rcnn
     classification_loss = model.second_stage_classification_loss
-  if meta_architecture == "ssd":
+  elif meta_architecture == "ssd":
     model = model_config.ssd
     classification_loss = model.loss.classification_loss
   else:
@@ -450,3 +545,18 @@ def _update_label_map_path(configs, label_map_path):
   """
   configs["train_input_config"].label_map_path = label_map_path
   configs["eval_input_config"].label_map_path = label_map_path
+
+
+def _update_mask_type(configs, mask_type):
+  """Updates the mask type for both train and eval input readers.
+
+  The configs dictionary is updated in place, and hence not returned.
+
+  Args:
+    configs: Dictionary of configuration objects. See outputs from
+      get_configs_from_pipeline_file() or get_configs_from_multiple_files().
+    mask_type: A string name representing a value of
+      input_reader_pb2.InstanceMaskType
+  """
+  configs["train_input_config"].mask_type = mask_type
+  configs["eval_input_config"].mask_type = mask_type

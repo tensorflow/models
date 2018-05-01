@@ -29,6 +29,14 @@ message KeepAspectRatioResizer {
 
   // Desired method when resizing image.
   optional ResizeType resize_method = 3 [default = BILINEAR];
+
+  // Whether to pad the image with zeros so the output spatial size is
+  // [max_dimension, max_dimension]. Note that the zeros are padded to the
+  // bottom and the right of the resized image.
+  optional bool pad_to_max_dimension = 4 [default = false];
+
+  // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
+  optional bool convert_to_grayscale = 5 [default = false];
 }
 
 // Configuration proto for image resizer that resizes to a fixed shape.
@@ -41,4 +49,7 @@ message FixedShapeResizer {
 
   // Desired method when resizing image.
   optional ResizeType resize_method = 3 [default = BILINEAR];
+
+  // Whether to also resize the image channels from 3 to 1 (RGB to grayscale).
+  optional bool convert_to_grayscale = 4 [default = false];
 }

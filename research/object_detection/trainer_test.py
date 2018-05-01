@@ -37,12 +37,15 @@ def get_input_function():
       [1], minval=0, maxval=NUMBER_OF_CLASSES, dtype=tf.int32)
   box_label = tf.random_uniform(
       [1, 4], minval=0.4, maxval=0.6, dtype=tf.float32)
+  multiclass_scores = tf.random_uniform(
+      [1, NUMBER_OF_CLASSES], minval=0.4, maxval=0.6, dtype=tf.float32)
 
   return {
       fields.InputDataFields.image: image,
       fields.InputDataFields.key: key,
       fields.InputDataFields.groundtruth_classes: class_label,
-      fields.InputDataFields.groundtruth_boxes: box_label
+      fields.InputDataFields.groundtruth_boxes: box_label,
+      fields.InputDataFields.multiclass_scores: multiclass_scores
   }
 
 
@@ -51,10 +54,8 @@ class FakeDetectionModel(model.DetectionModel):
 
   def __init__(self):
     super(FakeDetectionModel, self).__init__(num_classes=NUMBER_OF_CLASSES)
-    self._classification_loss = losses.WeightedSigmoidClassificationLoss(
-        anchorwise_output=True)
-    self._localization_loss = losses.WeightedSmoothL1LocalizationLoss(
-        anchorwise_output=True)
+    self._classification_loss = losses.WeightedSigmoidClassificationLoss()
+    self._localization_loss = losses.WeightedSmoothL1LocalizationLoss()
 
   def preprocess(self, inputs):
     """Input preprocessing, resizes images to 28x28.
@@ -65,14 +66,24 @@ class FakeDetectionModel(model.DetectionModel):
 
     Returns:
       preprocessed_inputs: a [batch, 28, 28, channels] float32 tensor.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
     """
-    return tf.image.resize_images(inputs, [28, 28])
+    true_image_shapes = [inputs.shape[:-1].as_list()
+                         for _ in range(inputs.shape[-1])]
+    return tf.image.resize_images(inputs, [28, 28]), true_image_shapes
 
-  def predict(self, preprocessed_inputs):
+  def predict(self, preprocessed_inputs, true_image_shapes):
     """Prediction tensors from inputs tensor.
 
     Args:
       preprocessed_inputs: a [batch, 28, 28, channels] float32 tensor.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
 
     Returns:
       prediction_dict: a dictionary holding prediction tensors to be
@@ -89,11 +100,15 @@ class FakeDetectionModel(model.DetectionModel):
         'box_encodings': tf.reshape(box_prediction, [-1, 1, 4])
     }
 
-  def postprocess(self, prediction_dict, **params):
+  def postprocess(self, prediction_dict, true_image_shapes, **params):
     """Convert predicted output tensors to final detections. Unused.
 
     Args:
       prediction_dict: a dictionary holding prediction tensors.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
       **params: Additional keyword arguments for specific implementations of
         DetectionModel.
 
@@ -107,7 +122,7 @@ class FakeDetectionModel(model.DetectionModel):
         'num_detections': None
     }
 
-  def loss(self, prediction_dict):
+  def loss(self, prediction_dict, true_image_shapes):
     """Compute scalar loss tensors with respect to provided groundtruth.
 
     Calling this function requires that groundtruth tensors have been
@@ -115,6 +130,10 @@ class FakeDetectionModel(model.DetectionModel):
 
     Args:
       prediction_dict: a dictionary holding predicted tensors
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
 
     Returns:
       a dictionary mapping strings (loss names) to scalar tensors representing
@@ -141,13 +160,14 @@ class FakeDetectionModel(model.DetectionModel):
     }
     return loss_dict
 
-  def restore_map(self, from_detection_checkpoint=True):
+  def restore_map(self, fine_tune_checkpoint_type='detection'):
     """Returns a map of variables to load from a foreign checkpoint.
 
     Args:
-      from_detection_checkpoint: whether to restore from a full detection
+      fine_tune_checkpoint_type: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
 
     Returns:
       A dict mapping variable names to variables.
@@ -180,6 +200,50 @@ class TrainerTest(tf.test.TestCase):
       }
     }
     num_steps: 2
+    """
+    train_config = train_pb2.TrainConfig()
+    text_format.Merge(train_config_text_proto, train_config)
+
+    train_dir = self.get_temp_dir()
+
+    trainer.train(
+        create_tensor_dict_fn=get_input_function,
+        create_model_fn=FakeDetectionModel,
+        train_config=train_config,
+        master='',
+        task=0,
+        num_clones=1,
+        worker_replicas=1,
+        clone_on_cpu=True,
+        ps_tasks=0,
+        worker_job_name='worker',
+        is_chief=True,
+        train_dir=train_dir)
+
+  def test_configure_trainer_with_multiclass_scores_and_train_two_steps(self):
+    train_config_text_proto = """
+    optimizer {
+      adam_optimizer {
+        learning_rate {
+          constant_learning_rate {
+            learning_rate: 0.01
+          }
+        }
+      }
+    }
+    data_augmentation_options {
+      random_adjust_brightness {
+        max_delta: 0.2
+      }
+    }
+    data_augmentation_options {
+      random_adjust_contrast {
+        min_delta: 0.7
+        max_delta: 1.1
+      }
+    }
+    num_steps: 2
+    use_multiclass_scores: true
     """
     train_config = train_pb2.TrainConfig()
     text_format.Merge(train_config_text_proto, train_config)
