@@ -55,6 +55,7 @@ installation](https://www.tensorflow.org/install).
 -   [pcl_rl](pcl_rl): code for several reinforcement learning algorithms,
     including Path Consistency Learning.
 -   [ptn](ptn): perspective transformer nets for 3D object reconstruction.
+-   [marco](marco): automating the evaluation of crystallization experiments.
 -   [qa_kg](qa_kg): module networks for question answering on knowledge graphs.
 -   [real_nvp](real_nvp): density estimation using real-valued non-volume
     preserving (real NVP) transformations.
