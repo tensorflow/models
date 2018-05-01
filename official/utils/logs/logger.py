@@ -254,7 +254,7 @@ def _collect_memory_info(run_info):
     run_info["machine_config"]["memory_total"] = vmem.total
     run_info["machine_config"]["memory_available"] = vmem.available
   except ImportError:
-    tf.logging.warn("'psutil' not imported. Memort info will not be logged.")
+    tf.logging.warn("'psutil' not imported. Memory info will not be logged.")
 
 
 def _parse_gpu_model(physical_device_desc):
