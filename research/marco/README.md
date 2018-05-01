@@ -7,7 +7,7 @@ This is a pretrained model described in the paper:
 
 This model takes images of crystallization experiments as an input:
 
-![crystal sample](https://storage.googleapis.com/marco-168219-model/002s_C6_ImagerDefaults_9.jpg)
+<img src="https://storage.googleapis.com/marco-168219-model/002s_C6_ImagerDefaults_9.jpg" alt="crystal sample" width="320" height="240" />
 
 It classifies it as belonging to one of four categories: crystals, precipitate, clear, or 'others'.
 
