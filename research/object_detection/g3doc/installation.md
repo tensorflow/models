@@ -4,7 +4,7 @@
 
 Tensorflow Object Detection API depends on the following libraries:
 
-*   Protobuf 2.6
+*   Protobuf 3+
 *   Python-tk
 *   Pillow 1.0
 *   lxml

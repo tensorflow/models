@@ -1000,8 +1000,8 @@ def random_adjust_saturation(image,
 def random_distort_color(image, color_ordering=0, preprocess_vars_cache=None):
   """Randomly distorts color.
 
-  Randomly distorts color using a combination of brightness, hue, contrast
-  and saturation changes. Makes sure the output image is still between 0 and 255.
+  Randomly distorts color using a combination of brightness, hue, contrast and
+  saturation changes. Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]

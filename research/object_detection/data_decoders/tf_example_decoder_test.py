@@ -304,6 +304,50 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(
         2, tensor_dict[fields.InputDataFields.num_groundtruth_boxes])
 
+  def testDecodeKeypoint(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    bbox_ymins = [0.0, 4.0]
+    bbox_xmins = [1.0, 5.0]
+    bbox_ymaxs = [2.0, 6.0]
+    bbox_xmaxs = [3.0, 7.0]
+    keypoint_ys = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    keypoint_xs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    example = tf.train.Example(features=tf.train.Features(feature={
+        'image/encoded': self._BytesFeature(encoded_jpeg),
+        'image/format': self._BytesFeature('jpeg'),
+        'image/object/bbox/ymin': self._FloatFeature(bbox_ymins),
+        'image/object/bbox/xmin': self._FloatFeature(bbox_xmins),
+        'image/object/bbox/ymax': self._FloatFeature(bbox_ymaxs),
+        'image/object/bbox/xmax': self._FloatFeature(bbox_xmaxs),
+        'image/object/keypoint/y': self._FloatFeature(keypoint_ys),
+        'image/object/keypoint/x': self._FloatFeature(keypoint_xs),
+    })).SerializeToString()
+
+    example_decoder = tf_example_decoder.TfExampleDecoder(num_keypoints=3)
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.groundtruth_boxes].
+                         get_shape().as_list()), [None, 4])
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.
+                                     groundtruth_keypoints].
+                         get_shape().as_list()), [None, 3, 2])
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+
+    expected_boxes = np.vstack([bbox_ymins, bbox_xmins,
+                                bbox_ymaxs, bbox_xmaxs]).transpose()
+    self.assertAllEqual(expected_boxes,
+                        tensor_dict[fields.InputDataFields.groundtruth_boxes])
+    self.assertAllEqual(
+        2, tensor_dict[fields.InputDataFields.num_groundtruth_boxes])
+
+    expected_keypoints = (
+        np.vstack([keypoint_ys, keypoint_xs]).transpose().reshape((2, 3, 2)))
+    self.assertAllEqual(expected_keypoints,
+                        tensor_dict[
+                            fields.InputDataFields.groundtruth_keypoints])
+
   def testDecodeDefaultGroundtruthWeights(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg = self._EncodeImage(image_tensor)

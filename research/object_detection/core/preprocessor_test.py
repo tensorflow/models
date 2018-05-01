@@ -2620,16 +2620,24 @@ class PreprocessorTest(tf.test.TestCase):
     distorted_images_rank = tf.rank(distorted_images)
     boxes_rank = tf.rank(boxes)
     distorted_boxes_rank = tf.rank(distorted_boxes)
+    multiclass_scores_rank = tf.rank(multiclass_scores)
+    distorted_multiclass_scores_rank = tf.rank(distorted_multiclass_scores)
 
     with self.test_session() as sess:
-      (boxes_rank_, distorted_boxes_rank_, images_rank_, distorted_images_rank_,
-       multiclass_scores_, distorted_multiclass_scores_) = sess.run([
-           boxes_rank, distorted_boxes_rank, images_rank, distorted_images_rank,
-           multiclass_scores, distorted_multiclass_scores
+      (boxes_rank_, distorted_boxes_, distorted_boxes_rank_, images_rank_,
+       distorted_images_rank_, multiclass_scores_rank_,
+       distorted_multiclass_scores_,
+       distorted_multiclass_scores_rank_) = sess.run([
+           boxes_rank, distorted_boxes, distorted_boxes_rank, images_rank,
+           distorted_images_rank, multiclass_scores_rank,
+           distorted_multiclass_scores, distorted_multiclass_scores_rank
        ])
       self.assertAllEqual(boxes_rank_, distorted_boxes_rank_)
       self.assertAllEqual(images_rank_, distorted_images_rank_)
-      self.assertAllEqual(multiclass_scores_, distorted_multiclass_scores_)
+      self.assertAllEqual(multiclass_scores_rank_,
+                          distorted_multiclass_scores_rank_)
+      self.assertAllEqual(distorted_boxes_.shape[0],
+                          distorted_multiclass_scores_.shape[0])
 
   def testSSDRandomCropPad(self):
     images = self.createTestImages()

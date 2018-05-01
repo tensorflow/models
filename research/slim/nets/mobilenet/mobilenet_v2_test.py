@@ -171,6 +171,19 @@ class MobilenetV2Test(tf.test.TestCase):
         use_explicit_padding=True)
     self.assertEqual(out.get_shape().as_list()[1:3], [14, 14])
 
+  def testBatchNormScopeDoesNotHaveIsTrainingWhenItsSetToNone(self):
+    sc = mobilenet.training_scope(is_training=None)
+    self.assertNotIn('is_training', sc[slim.arg_scope_func_key(
+        slim.batch_norm)])
+
+  def testBatchNormScopeDoesHasIsTrainingWhenItsNotNone(self):
+    sc = mobilenet.training_scope(is_training=False)
+    self.assertIn('is_training', sc[slim.arg_scope_func_key(slim.batch_norm)])
+    sc = mobilenet.training_scope(is_training=True)
+    self.assertIn('is_training', sc[slim.arg_scope_func_key(slim.batch_norm)])
+    sc = mobilenet.training_scope()
+    self.assertIn('is_training', sc[slim.arg_scope_func_key(slim.batch_norm)])
+
 
 if __name__ == '__main__':
   tf.test.main()

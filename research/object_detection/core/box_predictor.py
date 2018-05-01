@@ -308,7 +308,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
                mask_prediction_num_conv_layers=2,
                mask_prediction_conv_depth=256,
                masks_are_class_agnostic=False,
-               predict_keypoints=False):
+               predict_keypoints=False,
+               share_box_across_classes=False):
     """Constructor.
 
     Args:
@@ -341,7 +342,8 @@ class MaskRCNNBoxPredictor(BoxPredictor):
       masks_are_class_agnostic: Boolean determining if the mask-head is
         class-agnostic or not.
       predict_keypoints: Whether to predict keypoints insde detection boxes.
-
+      share_box_across_classes: Whether to share boxes across classes rather
+        than use a different box for each class.
 
     Raises:
       ValueError: If predict_instance_masks is true but conv_hyperparams is not
@@ -362,6 +364,7 @@ class MaskRCNNBoxPredictor(BoxPredictor):
     self._mask_prediction_conv_depth = mask_prediction_conv_depth
     self._masks_are_class_agnostic = masks_are_class_agnostic
     self._predict_keypoints = predict_keypoints
+    self._share_box_across_classes = share_box_across_classes
     if self._predict_keypoints:
       raise ValueError('Keypoint prediction is unimplemented.')
     if ((self._predict_instance_masks or self._predict_keypoints) and
@@ -403,10 +406,14 @@ class MaskRCNNBoxPredictor(BoxPredictor):
       flattened_image_features = slim.dropout(flattened_image_features,
                                               keep_prob=self._dropout_keep_prob,
                                               is_training=self._is_training)
+    number_of_boxes = 1
+    if not self._share_box_across_classes:
+      number_of_boxes = self._num_classes
+
     with slim.arg_scope(self._fc_hyperparams_fn()):
       box_encodings = slim.fully_connected(
           flattened_image_features,
-          self._num_classes * self._box_code_size,
+          number_of_boxes * self._box_code_size,
           activation_fn=None,
           scope='BoxEncodingPredictor')
       class_predictions_with_background = slim.fully_connected(
@@ -415,7 +422,7 @@ class MaskRCNNBoxPredictor(BoxPredictor):
           activation_fn=None,
           scope='ClassPredictor')
     box_encodings = tf.reshape(
-        box_encodings, [-1, 1, self._num_classes, self._box_code_size])
+        box_encodings, [-1, 1, number_of_boxes, self._box_code_size])
     class_predictions_with_background = tf.reshape(
         class_predictions_with_background, [-1, 1, self._num_classes + 1])
     return box_encodings, class_predictions_with_background
@@ -778,7 +785,9 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                num_layers_before_predictor,
                box_code_size,
                kernel_size=3,
-               class_prediction_bias_init=0.0):
+               class_prediction_bias_init=0.0,
+               use_dropout=False,
+               dropout_keep_prob=0.8):
     """Constructor.
 
     Args:
@@ -796,6 +805,8 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
       kernel_size: Size of final convolution kernel.
       class_prediction_bias_init: constant value to initialize bias of the last
         conv2d layer before class prediction.
+      use_dropout: Whether to apply dropout to class prediction head.
+      dropout_keep_prob: Probability of keeping activiations.
     """
     super(WeightSharedConvolutionalBoxPredictor, self).__init__(is_training,
                                                                 num_classes)
@@ -805,6 +816,8 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
     self._box_code_size = box_code_size
     self._kernel_size = kernel_size
     self._class_prediction_bias_init = class_prediction_bias_init
+    self._use_dropout = use_dropout
+    self._dropout_keep_prob = dropout_keep_prob
 
   def _predict(self, image_features, num_predictions_per_location_list):
     """Computes encoded object locations and corresponding confidences.
@@ -867,6 +880,7 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
               num_predictions_per_location * self._box_code_size,
               [self._kernel_size, self._kernel_size],
               activation_fn=None, stride=1, padding='SAME',
+              normalizer_fn=None,
               scope='BoxEncodingPredictor')
 
           for i in range(self._num_layers_before_predictor):
@@ -877,11 +891,15 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                 stride=1,
                 padding='SAME',
                 scope='ClassPredictionTower/conv2d_{}'.format(i))
+          if self._use_dropout:
+            class_predictions_net = slim.dropout(
+                class_predictions_net, keep_prob=self._dropout_keep_prob)
           class_predictions_with_background = slim.conv2d(
               class_predictions_net,
               num_predictions_per_location * num_class_slots,
               [self._kernel_size, self._kernel_size],
               activation_fn=None, stride=1, padding='SAME',
+              normalizer_fn=None,
               biases_initializer=tf.constant_initializer(
                   self._class_prediction_bias_init),
               scope='ClassPredictor')

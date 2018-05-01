@@ -80,12 +80,14 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
         num_classes=num_classes,
         conv_hyperparams_fn=conv_hyperparams_fn,
         depth=conv_box_predictor.depth,
-        num_layers_before_predictor=(conv_box_predictor.
-                                     num_layers_before_predictor),
+        num_layers_before_predictor=(
+            conv_box_predictor.num_layers_before_predictor),
         kernel_size=conv_box_predictor.kernel_size,
         box_code_size=conv_box_predictor.box_code_size,
-        class_prediction_bias_init=conv_box_predictor.class_prediction_bias_init
-    )
+        class_prediction_bias_init=conv_box_predictor.
+        class_prediction_bias_init,
+        use_dropout=conv_box_predictor.use_dropout,
+        dropout_keep_prob=conv_box_predictor.dropout_keep_probability)
     return box_predictor_object
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':
@@ -113,7 +115,9 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
             mask_rcnn_box_predictor.mask_prediction_conv_depth),
         masks_are_class_agnostic=(
             mask_rcnn_box_predictor.masks_are_class_agnostic),
-        predict_keypoints=mask_rcnn_box_predictor.predict_keypoints)
+        predict_keypoints=mask_rcnn_box_predictor.predict_keypoints,
+        share_box_across_classes=(
+            mask_rcnn_box_predictor.share_box_across_classes))
     return box_predictor_object
 
   if box_predictor_oneof == 'rfcn_box_predictor':

@@ -175,6 +175,7 @@ def expanded_conv(input_tensor,
                   depthwise_channel_multiplier=1,
                   endpoints=None,
                   use_explicit_padding=False,
+                  padding='SAME',
                   scope=None):
   """Depthwise Convolution Block with expansion.
 
@@ -214,6 +215,7 @@ def expanded_conv(input_tensor,
     use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
       inputs so that the output dimensions are the same as if 'SAME' padding
       were used.
+    padding: Padding type to use if `use_explicit_padding` is not set.
     scope: optional scope.
 
   Returns:
@@ -228,8 +230,10 @@ def expanded_conv(input_tensor,
     if  depthwise_location not in [None, 'input', 'output', 'expansion']:
       raise TypeError('%r is unknown value for depthwise_location' %
                       depthwise_location)
-    padding = 'SAME'
     if use_explicit_padding:
+      if padding != 'SAME':
+        raise TypeError('`use_explicit_padding` should only be used with '
+                        '"SAME" padding.')
       padding = 'VALID'
     depthwise_func = functools.partial(
         slim.separable_conv2d,
