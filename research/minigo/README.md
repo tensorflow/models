@@ -131,7 +131,7 @@ To test the RL pipeline with a dummy model, issue the following command:
 ## Running Self-play Only
 Self-play only option is provided to run selfplay step individually to generate training data in parallel. Issue the following command to run selfplay only with the latest trained model:
 ```
- python minigo.py --selfplay_only
+ python minigo.py --selfplay
 ```
 Other optional arguments:
    * `--selfplay_model_name`: The name of the model used for selfplay only. If not specified, the latest trained model will be used for selfplay.

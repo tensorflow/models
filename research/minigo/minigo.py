@@ -115,12 +115,10 @@ def selfplay(selfplay_dirs, selfplay_model, params):
   # Hold out 5% of games for evaluation.
   if random.random() < params.holdout_pct:
     fname = os.path.join(
-        selfplay_dirs['holdout_dir'], ('{}' + _TF_RECORD_SUFFIX).format(
-            output_name))
+        selfplay_dirs['holdout_dir'], output_name + _TF_RECORD_SUFFIX)
   else:
     fname = os.path.join(
-        selfplay_dirs['output_dir'], ('{}' + _TF_RECORD_SUFFIX).format(
-            output_name))
+        selfplay_dirs['output_dir'], output_name + _TF_RECORD_SUFFIX)
 
   preprocessing.write_tf_examples(fname, tf_examples)
 
@@ -387,7 +385,7 @@ def main(_):
   dirs = utils.MiniGoDirectory(base_dir)
 
   # Run selfplay only if user specifies the argument.
-  if FLAGS.selfplay_only:
+  if FLAGS.selfplay:
     selfplay_model_name = FLAGS.selfplay_model_name or utils.get_latest_model(
         dirs.trained_models_dir)[1]
     max_games = FLAGS.selfplay_max_games or params.max_games_per_generation
@@ -488,7 +486,7 @@ if __name__ == '__main__':
 
   # self-play only
   parser.add_argument(
-      '--selfplay_only',
+      '--selfplay',
       action='store_true',
       help='A boolean to run self-play only.')
   parser.add_argument(

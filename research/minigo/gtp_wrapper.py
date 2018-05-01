@@ -49,8 +49,7 @@ class GtpInterface(object):
   def set_size(self, n):
     if n != self.board_size:
       raise ValueError((
-          '''Can't handle boardsize {}! Please check the board size.'''
-          ).format(n))
+          "Can't handle boardsize {}! Please check the board size.").format(n))
 
   def set_komi(self, komi):
     self.komi = komi
