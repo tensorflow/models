@@ -246,12 +246,15 @@ def _collect_gpu_info(run_info):
 
 
 def _collect_memory_info(run_info):
-  # Note: psutil is not installed in the TensorFlow OSS tree.
-  # It is installable via pip.
-  import psutil   # pylint: disable=g-import-not-at-top
-  vmem = psutil.virtual_memory()
-  run_info["machine_config"]["memory_total"] = vmem.total
-  run_info["machine_config"]["memory_available"] = vmem.available
+  try:
+    # Note: psutil is not installed in the TensorFlow OSS tree.
+    # It is installable via pip.
+    import psutil   # pylint: disable=g-import-not-at-top
+    vmem = psutil.virtual_memory()
+    run_info["machine_config"]["memory_total"] = vmem.total
+    run_info["machine_config"]["memory_available"] = vmem.available
+  except ImportError:
+    tf.logging.warn("'psutil' not imported. Memort info will not be logged.")
 
 
 def _parse_gpu_model(physical_device_desc):
