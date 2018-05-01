@@ -213,15 +213,18 @@ def _collect_cpu_info(run_info):
 
   cpu_info["num_cores"] = multiprocessing.cpu_count()
 
-  # Note: cpuinfo is not installed in the TensorFlow OSS tree.
-  # It is installable via pip.
-  import cpuinfo    # pylint: disable=g-import-not-at-top
+  try:
+    # Note: cpuinfo is not installed in the TensorFlow OSS tree.
+    # It is installable via pip.
+    import cpuinfo    # pylint: disable=g-import-not-at-top
 
-  info = cpuinfo.get_cpu_info()
-  cpu_info["cpu_info"] = info["brand"]
-  cpu_info["mhz_per_cpu"] = info["hz_advertised_raw"][0] / 1.0e6
+    info = cpuinfo.get_cpu_info()
+    cpu_info["cpu_info"] = info["brand"]
+    cpu_info["mhz_per_cpu"] = info["hz_advertised_raw"][0] / 1.0e6
 
-  run_info["machine_config"]["cpu_info"] = cpu_info
+    run_info["machine_config"]["cpu_info"] = cpu_info
+  except ImportError:
+    tf.logging.warn("'cpuinfo' not imported. CPU info will not be logged.")
 
 
 def _collect_gpu_info(run_info):
