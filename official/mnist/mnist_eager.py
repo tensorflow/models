@@ -100,8 +100,6 @@ def main(argv):
   flags = parser.parse_args(args=argv[1:])
   flags_2 = flags
 
-  a=1
-
   tfe.enable_eager_execution()
 
   # Automatically determine device and data_format
