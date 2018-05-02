@@ -25,10 +25,12 @@ import sys
 import tarfile
 import urllib
 
+# pylint: disable=g-bad-import-order
 import six
 import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
-from utils import tokenizer
+from official.transformer.utils import tokenizer
 
 # Data sources for training/evaluating the transformer translation model.
 # If any of the training sources are changed, then either:

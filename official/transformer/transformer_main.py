@@ -23,17 +23,19 @@ import os
 import sys
 import tempfile
 
+# pylint: disable=g-bad-import-order
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
-import compute_bleu
-from data_download import VOCAB_FILE
-from model import transformer
-from model import model_params
-import translate
-from utils import dataset
-from utils import metrics
-from utils import tokenizer
+from official.transformer import compute_bleu
+from official.transformer import translate
+from official.transformer.data_download import VOCAB_FILE
+from official.transformer.model import model_params
+from official.transformer.model import transformer
+from official.transformer.utils import dataset
+from official.transformer.utils import metrics
+from official.transformer.utils import tokenizer
 
 DEFAULT_TRAIN_EPOCHS = 10
 BLEU_DIR = "bleu"

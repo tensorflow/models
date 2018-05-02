@@ -27,10 +27,12 @@ import re
 import sys
 import unicodedata
 
+# pylint: disable=g-bad-import-order
 import six
 import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
-from utils import metrics
+from official.transformer.utils import metrics
 
 
 class UnicodeRegex(object):

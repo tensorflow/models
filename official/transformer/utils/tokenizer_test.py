@@ -18,7 +18,7 @@ import collections
 import tempfile
 import unittest
 
-import tokenizer
+from official.transformer.utils import tokenizer
 
 
 class SubtokenizerTest(unittest.TestCase):

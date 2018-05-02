@@ -17,7 +17,7 @@
 import tempfile
 import unittest
 
-import compute_bleu
+from official.transformer import compute_bleu
 
 
 class ComputeBleuTest(unittest.TestCase):

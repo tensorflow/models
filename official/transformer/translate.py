@@ -22,13 +22,15 @@ import argparse
 import os
 import sys
 
+# pylint: disable=g-bad-import-order
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
-from data_download import VOCAB_FILE
-from model import model_params
-import transformer_main
-from utils import tokenizer
+from official.transformer import transformer_main
+from official.transformer.data_download import VOCAB_FILE
+from official.transformer.model import model_params
+from official.transformer.utils import tokenizer
 
 _DECODE_BATCH_SIZE = 32
 _EXTRA_DECODE_LENGTH = 100
@@ -177,7 +179,8 @@ def main(unused_argv):
   params.extra_decode_length = _EXTRA_DECODE_LENGTH
   params.batch_size = _DECODE_BATCH_SIZE
   estimator = tf.estimator.Estimator(
-      model_fn=transformer_main.model_fn, model_dir=FLAGS.model_dir, params=params)
+      model_fn=transformer_main.model_fn, model_dir=FLAGS.model_dir,
+      params=params)
 
   if FLAGS.text is not None:
     tf.logging.info("Translating text: %s" % FLAGS.text)

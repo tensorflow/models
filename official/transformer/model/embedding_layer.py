@@ -18,9 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from model import model_utils
+from official.transformer.model import model_utils
 
 
 class EmbeddingSharedWeights(tf.layers.Layer):
