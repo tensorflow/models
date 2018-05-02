@@ -17,16 +17,18 @@
 import tempfile
 import unittest
 
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
 from official.transformer import compute_bleu
 
 
 class ComputeBleuTest(unittest.TestCase):
 
   def _create_temp_file(self, text):
-    w = tempfile.NamedTemporaryFile(delete=False)
-    w.write(text)
-    w.close()
-    return w.name
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    with tf.gfile.Open(temp_file.name, 'w') as w:
+      w.write(text)
+    return temp_file.name
 
   def test_bleu_same(self):
     ref = self._create_temp_file("test 1 two 3\nmore tests!")

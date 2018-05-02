@@ -18,17 +18,19 @@ import collections
 import tempfile
 import unittest
 
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
 from official.transformer.utils import tokenizer
 
 
 class SubtokenizerTest(unittest.TestCase):
 
   def _init_subtokenizer(self, vocab_list):
-    w = tempfile.NamedTemporaryFile(delete=False)
-    for subtoken in vocab_list:
-      w.write("'%s'" % subtoken)
-      w.write("\n")
-    w.close()
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    with tf.gfile.Open(temp_file.name, 'w') as w:
+      for subtoken in vocab_list:
+        w.write("'%s'" % subtoken)
+        w.write("\n")
     return tokenizer.Subtokenizer(w.name, reserved_tokens=[])
 
   def test_encode(self):
