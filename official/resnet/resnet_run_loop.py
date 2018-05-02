@@ -346,7 +346,7 @@ def validate_batch_size_for_multi_gpu(batch_size):
     raise ValueError(err)
 
 
-def resnet_main(flags, model_function, input_function, shape=None):
+def resnet_main(flags, model_function, input_function, dataset, shape=None):
   """Shared main loop for ResNet Models.
 
   Args:
@@ -357,6 +357,8 @@ def resnet_main(flags, model_function, input_function, shape=None):
     input_function: the function that processes the dataset and returns a
       dataset that the estimator can train on. This will be wrapped with
       all the relevant flags for running and passed to estimator.
+    dataset: the name of the dataset for training and evaluation. This is used
+      for logging purpose.
     shape: list of ints representing the shape of the images used for training.
       This is only used if flags.export_dir is passed.
   """
@@ -398,8 +400,16 @@ def resnet_main(flags, model_function, input_function, shape=None):
           'dtype': flags.dtype
       })
 
+  hyperparams = {
+      'batch_size': flags.batch_size,
+      'dtype': flags.dtype,
+      'resnet_size': flags.resnet_size,
+      'synthetic_data': flags.use_synthetic_data,
+      'train_epochs': flags.train_epochs,
+      'version': flags.version,
+  }
   benchmark_logger = logger.config_benchmark_logger(flags.benchmark_log_dir)
-  benchmark_logger.log_run_info('resnet')
+  benchmark_logger.log_run_info('resnet', dataset, hyperparams)
 
   train_hooks = hooks_helper.get_train_hooks(
       flags.hooks,

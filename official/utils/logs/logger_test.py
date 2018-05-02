@@ -180,6 +180,32 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     self.assertEqual(run_info["tensorflow_version"]["version"], tf.VERSION)
     self.assertEqual(run_info["tensorflow_version"]["git_hash"], tf.GIT_VERSION)
 
+  def test_collect_hyperparams(self):
+    run_info = {}
+    hyperparams = {
+        "batch_size": 32,
+        "synthetic_data": True,
+        "train_epochs": 100.00,
+        "dtype": "fp16",
+        "resnet_size": 50,
+        "random_tensor": tf.constant(2.0)
+    }
+    logger._collect_hyperparams(run_info, hyperparams)
+    self.assertEqual(len(run_info["hyperparameter"]), 6)
+    self.assertEqual(run_info["hyperparameter"][0],
+                     {"name": "batch_size", "long_value": 32})
+    self.assertEqual(run_info["hyperparameter"][1],
+                     {"name": "dtype", "string_value": "fp16"})
+    self.assertEqual(run_info["hyperparameter"][2],
+                     {"name": "random_tensor", "string_value":
+                          "Tensor(\"Const:0\", shape=(), dtype=float32)"})
+    self.assertEqual(run_info["hyperparameter"][3],
+                     {"name": "resnet_size", "long_value": 50})
+    self.assertEqual(run_info["hyperparameter"][4],
+                     {"name": "synthetic_data", "bool_value": "True"})
+    self.assertEqual(run_info["hyperparameter"][5],
+                     {"name": "train_epochs", "float_value": 100.00})
+
   def test_collect_tensorflow_environment_variables(self):
     os.environ["TF_ENABLE_WINOGRAD_NONFUSED"] = "1"
     os.environ["TF_OTHER"] = "2"

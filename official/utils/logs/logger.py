@@ -109,8 +109,9 @@ class BaseBenchmarkLogger(object):
                     "Name %s, value %d, unit %s, global_step %d, extras %s",
                     name, value, unit, global_step, extras)
 
-  def log_run_info(self, model_name):
-    tf.logging.info("Benchmark run: %s", _gather_run_info(model_name))
+  def log_run_info(self, model_name, dataset_name, hyperparams):
+    tf.logging.info("Benchmark run: %s",
+                    _gather_run_info(model_name, dataset_name, hyperparams))
 
 
 class BenchmarkFileLogger(BaseBenchmarkLogger):
@@ -159,15 +160,17 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
         tf.logging.warning("Failed to dump metric to log file: "
                            "name %s, value %s, error %s", name, value, e)
 
-  def log_run_info(self, model_name):
+  def log_run_info(self, model_name, dataset_name, hyperparams):
     """Collect most of the TF runtime information for the local env.
 
     The schema of the run info follows official/benchmark/datastore/schema.
 
     Args:
       model_name: string, the name of the model.
+      dataset_name: string, the name of dataset for training and evaluation.
+      hyperparams: dict, the dictionary of hyper parameters for the model.
     """
-    run_info = _gather_run_info(model_name)
+    run_info = _gather_run_info(model_name, dataset_name, hyperparams)
 
     with tf.gfile.GFile(os.path.join(
         self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
@@ -179,15 +182,17 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
                            e)
 
 
-def _gather_run_info(model_name):
+def _gather_run_info(model_name, dataset_name, hyperparams):
   """Collect the benchmark run information for the local environment."""
   run_info = {
       "model_name": model_name,
+      "dataset": {"name": dataset_name},
       "machine_config": {},
       "run_date": datetime.datetime.utcnow().strftime(
           _DATE_TIME_FORMAT_PATTERN)}
   _collect_tensorflow_info(run_info)
   _collect_tensorflow_environment_variables(run_info)
+  _collect_hyperparams(run_info, hyperparams)
   _collect_cpu_info(run_info)
   _collect_gpu_info(run_info)
   _collect_memory_info(run_info)
@@ -198,6 +203,21 @@ def _collect_tensorflow_info(run_info):
   run_info["tensorflow_version"] = {
       "version": tf.VERSION, "git_hash": tf.GIT_VERSION}
 
+
+def _collect_hyperparams(run_info, hyperparams):
+  """Log the hyper parameter information for the benchmark run."""
+  def process_hyperparam(name, value):
+    type_check = {
+        str: {"name": name, "string_value": value},
+        int: {"name": name, "long_value": value},
+        bool: {"name": name, "bool_value": str(value)},
+        float: {"name": name, "float_value": value},
+    }
+    return type_check.get(type(value),
+                          {"name": name, "string_value": str(value)})
+  if hyperparams:
+    run_info["hyperparameter"] = [
+        process_hyperparam(k, v) for k, v in sorted(hyperparams.items())]
 
 def _collect_tensorflow_environment_variables(run_info):
   run_info["tensorflow_environment_variables"] = [

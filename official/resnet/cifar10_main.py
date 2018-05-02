@@ -239,7 +239,7 @@ def main(argv):
   input_function = flags.use_synthetic_data and get_synth_input_fn() or input_fn
 
   resnet_run_loop.resnet_main(
-      flags, cifar10_model_fn, input_function,
+      flags, cifar10_model_fn, input_function, 'CIFAR-10',
       shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])
 
 
