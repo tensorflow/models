@@ -95,7 +95,7 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
     # Construct a pretty summary of hooks.
     hook_list_str = (
         u"\ufeff  Hook:\n" + u"\n".join([u"\ufeff    {}".format(key) for key
-                                         in hooks_helper.HOOKS.keys()]))
+                                         in hooks_helper.HOOKS]))
     flags.DEFINE_spaceseplist(
         name="hooks", short_name="hk", default="LoggingTensorHook",
         help=help_wrap(
