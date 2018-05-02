@@ -98,6 +98,7 @@ def test(model, dataset):
 def main(argv):
   parser = MNISTEagerArgParser()
   flags = parser.parse_args(args=argv[1:])
+  flags_2 = flags
 
   a=1
 
@@ -105,7 +106,7 @@ def main(argv):
 
   # Automatically determine device and data_format
   (device, data_format) = ('/gpu:0', 'channels_first')
-  if flags.no_gpu or tfe.num_gpus() <= 0:
+  if flags_2.no_gpu or tfe.num_gpus() <= 0:
     (device, data_format) = ('/cpu:0', 'channels_last')
   # If data_format is defined in FLAGS, overwrite automatically set value.
   if flags.data_format is not None:
