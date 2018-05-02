@@ -27,7 +27,6 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.transformer import transformer_main
 from official.transformer.data_download import VOCAB_FILE
 from official.transformer.model import model_params
 from official.transformer.utils import tokenizer
@@ -155,6 +154,8 @@ def translate_text(estimator, subtokenizer, txt):
 
 
 def main(unused_argv):
+  from official.transformer import transformer_main
+
   tf.logging.set_verbosity(tf.logging.INFO)
 
   if FLAGS.text is None and FLAGS.file is None:
