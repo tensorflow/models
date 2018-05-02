@@ -3,7 +3,7 @@
 After your model has been trained, you should export it to a Tensorflow
 graph proto. A checkpoint will typically consist of three files:
 
-* model.ckpt-${CHECKPOINT_NUMBER}.data-00000-of-00001,
+* model.ckpt-${CHECKPOINT_NUMBER}.data-00000-of-00001
 * model.ckpt-${CHECKPOINT_NUMBER}.index
 * model.ckpt-${CHECKPOINT_NUMBER}.meta
 
