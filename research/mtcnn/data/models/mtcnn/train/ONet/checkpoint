@@ -1,0 +1,2 @@
+model_checkpoint_path: "ONet-1"
+all_model_checkpoint_paths: "ONet-1"

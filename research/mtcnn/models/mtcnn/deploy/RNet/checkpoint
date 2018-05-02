@@ -1,0 +1,2 @@
+model_checkpoint_path: "RNet"
+all_model_checkpoint_paths: "RNet"
