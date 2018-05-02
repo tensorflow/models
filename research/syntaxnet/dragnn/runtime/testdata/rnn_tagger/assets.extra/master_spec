@@ -1,0 +1,154 @@
+component {
+  name: "rnn"
+  transition_system {
+    registered_name: "shift-only"
+    parameters {
+      key: "left_to_right"
+      value: "false"
+    }
+    parameters {
+      key: "parser_skip_deterministic"
+      value: "false"
+    }
+  }
+  resource {
+    name: "words-embedding-input"
+    part {
+      file_pattern: "resources/component_0_rnn/resource_0_words-embedding-input/part_0"
+      file_format: "tf-records"
+      record_format: "syntaxnet.TokenEmbedding"
+    }
+  }
+  resource {
+    name: "words-vocab-input"
+    part {
+      file_pattern: "resources/component_0_rnn/resource_1_words-vocab-input/part_0"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "char-ngram-map"
+    part {
+      file_pattern: "resources/component_0_rnn/resource_2_char-ngram-map/part_0"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "word-map"
+    part {
+      file_pattern: "resources/component_0_rnn/resource_3_word-map/part_0"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_pattern: "resources/component_0_rnn/resource_4_label-map/part_0"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  fixed_feature {
+    name: "char_ngrams"
+    fml: "input.token { offset(-1).char-ngram(min-length=1,max-length=3,mark-boundaries=true) offset(0).char-ngram(min-length=1,max-length=3,mark-boundaries=true) offset(1).char-ngram(min-length=1,max-length=3,mark-boundaries=true) }"
+    embedding_dim: 32
+    vocabulary_size: 25788
+    size: 3
+  }
+  fixed_feature {
+    name: "words"
+    fml: "input.token.word(min-freq=2)"
+    embedding_dim: 64
+    vocabulary_size: 23769
+    size: 1
+  }
+  network_unit {
+    registered_name: "LSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "128"
+    }
+    parameters {
+      key: "omit_logits"
+      value: "true"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 1
+  attention_component: ""
+  component_builder {
+    registered_name: "DynamicComponentBuilder"
+  }
+}
+component {
+  name: "tagger"
+  transition_system {
+    registered_name: "tagger"
+    parameters {
+      key: "parser_skip_deterministic"
+      value: "false"
+    }
+  }
+  resource {
+    name: "tag-map"
+    part {
+      file_pattern: "resources/component_1_tagger/resource_0_tag-map/part_0"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "tag-to-category"
+    part {
+      file_pattern: "resources/component_1_tagger/resource_1_tag-to-category/part_0"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_pattern: "resources/component_0_rnn/resource_4_label-map/part_0"
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  linked_feature {
+    name: "recurrence"
+    fml: "bias(0)"
+    embedding_dim: 32
+    size: 1
+    source_component: "tagger"
+    source_translator: "history"
+    source_layer: "layer_0"
+  }
+  linked_feature {
+    name: "rnn"
+    fml: "input.focus"
+    embedding_dim: -1
+    size: 1
+    source_component: "rnn"
+    source_translator: "reverse-token"
+    source_layer: "layer_0"
+  }
+  network_unit {
+    registered_name: "FeedForwardNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "64,64"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 45
+  attention_component: ""
+  component_builder {
+    registered_name: "DynamicComponentBuilder"
+  }
+}

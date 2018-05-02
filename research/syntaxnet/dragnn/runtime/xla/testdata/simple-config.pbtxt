@@ -1,0 +1,17 @@
+feed {
+  id {
+    node_name: "cell/id"
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+  name: "INPUT__fixed_channel_0_index_0_ids"
+}
+fetch {
+  id {
+    node_name: "cell/lookup"
+  }
+  name: "OUTPUT__logits"
+}

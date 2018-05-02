@@ -15,6 +15,10 @@
 
 """TensorFlow ops for directed graphs."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import tensorflow as tf
 
 from syntaxnet.util import check
@@ -150,7 +154,7 @@ def ArcSourcePotentialsFromTokens(tokens, weights):
   return sources_bxnxn
 
 
-def RootPotentialsFromTokens(root, tokens, weights):
+def RootPotentialsFromTokens(root, tokens, weights_arc, weights_source):
   r"""Returns root selection potentials computed from tokens and weights.
 
   For each batch of token activations, computes a scalar potential for each root
@@ -162,7 +166,8 @@ def RootPotentialsFromTokens(root, tokens, weights):
   Args:
     root: [S] vector of activations for the artificial root token.
     tokens: [B,N,T] tensor of batched activations for root tokens.
-    weights: [S,T] matrix of weights.
+    weights_arc: [S,T] matrix of weights.
+    weights_source: [S] vector of weights.
 
     B,N may be statically-unknown, but S,T must be statically-known.  The dtype
     of all arguments must be compatible.
@@ -174,25 +179,30 @@ def RootPotentialsFromTokens(root, tokens, weights):
   # All arguments must have statically-known rank.
   check.Eq(root.get_shape().ndims, 1, 'root must be a vector')
   check.Eq(tokens.get_shape().ndims, 3, 'tokens must be rank 3')
-  check.Eq(weights.get_shape().ndims, 2, 'weights must be a matrix')
+  check.Eq(weights_arc.get_shape().ndims, 2, 'weights_arc must be a matrix')
+  check.Eq(weights_source.get_shape().ndims, 1,
+           'weights_source must be a vector')
 
   # All activation dimensions must be statically-known.
-  num_source_activations = weights.get_shape().as_list()[0]
-  num_target_activations = weights.get_shape().as_list()[1]
+  num_source_activations = weights_arc.get_shape().as_list()[0]
+  num_target_activations = weights_arc.get_shape().as_list()[1]
   check.NotNone(num_source_activations, 'unknown source activation dimension')
   check.NotNone(num_target_activations, 'unknown target activation dimension')
   check.Eq(root.get_shape().as_list()[0], num_source_activations,
-           'dimension mismatch between weights and root')
+           'dimension mismatch between weights_arc and root')
   check.Eq(tokens.get_shape().as_list()[2], num_target_activations,
-           'dimension mismatch between weights and tokens')
+           'dimension mismatch between weights_arc and tokens')
+  check.Eq(weights_source.get_shape().as_list()[0], num_source_activations,
+           'dimension mismatch between weights_arc and weights_source')
 
   # All arguments must share the same type.
-  check.Same([weights.dtype.base_dtype,
-              root.dtype.base_dtype,
-              tokens.dtype.base_dtype],
-             'dtype mismatch')
+  check.Same([
+      weights_arc.dtype.base_dtype, weights_source.dtype.base_dtype,
+      root.dtype.base_dtype, tokens.dtype.base_dtype
+  ], 'dtype mismatch')
 
   root_1xs = tf.expand_dims(root, 0)
+  weights_source_sx1 = tf.expand_dims(weights_source, 1)
 
   tokens_shape = tf.shape(tokens)
   batch_size = tokens_shape[0]
@@ -200,8 +210,11 @@ def RootPotentialsFromTokens(root, tokens, weights):
 
   # Flatten out the batch dimension so we can use a couple big matmuls.
   tokens_bnxt = tf.reshape(tokens, [-1, num_target_activations])
-  weights_targets_bnxs = tf.matmul(tokens_bnxt, weights, transpose_b=True)
+  weights_targets_bnxs = tf.matmul(tokens_bnxt, weights_arc, transpose_b=True)
   roots_1xbn = tf.matmul(root_1xs, weights_targets_bnxs, transpose_b=True)
+
+  # Add in the score for selecting the root as a source.
+  roots_1xbn += tf.matmul(root_1xs, weights_source_sx1)
 
   # Restore the batch dimension in the output.
   roots_bxn = tf.reshape(roots_1xbn, [batch_size, num_tokens])
@@ -354,3 +367,110 @@ def LabelPotentialsFromTokenPairs(sources, targets, weights):
                                transpose_b=True)
     labels_bxnxl = tf.squeeze(labels_bxnxlx1, [3])
     return labels_bxnxl
+
+
+def ValidArcAndTokenMasks(lengths, max_length, dtype=tf.float32):
+  r"""Returns 0/1 masks for valid arcs and tokens.
+
+  Args:
+    lengths: [B] vector of input sequence lengths.
+    max_length: Scalar maximum input sequence length, aka M.
+    dtype: Data type for output mask.
+
+  Returns:
+    [B,M,M] tensor A with 0/1 indicators of valid arcs.  Specifically,
+      A_{b,t,s} = t,s < lengths[b] ? 1 : 0
+    [B,M] matrix T with 0/1 indicators of valid tokens.  Specifically,
+      T_{b,t} = t < lengths[b] ? 1 : 0
+  """
+  lengths_bx1 = tf.expand_dims(lengths, 1)
+  sequence_m = tf.range(tf.cast(max_length, lengths.dtype.base_dtype))
+  sequence_1xm = tf.expand_dims(sequence_m, 0)
+
+  # Create vectors of 0/1 indicators for valid tokens.  Note that the comparison
+  # operator will broadcast from [1,M] and [B,1] to [B,M].
+  valid_token_bxm = tf.cast(sequence_1xm < lengths_bx1, dtype)
+
+  # Compute matrices of 0/1 indicators for valid arcs as the outer product of
+  # the valid token indicator vector with itself.
+  valid_arc_bxmxm = tf.matmul(
+      tf.expand_dims(valid_token_bxm, 2), tf.expand_dims(valid_token_bxm, 1))
+
+  return valid_arc_bxmxm, valid_token_bxm
+
+
+def LaplacianMatrix(lengths, arcs, forest=False):
+  r"""Returns the (root-augmented) Laplacian matrix for a batch of digraphs.
+
+  Args:
+    lengths: [B] vector of input sequence lengths.
+    arcs: [B,M,M] tensor of arc potentials where entry b,t,s is the potential of
+      the arc from s to t in the b'th digraph, while b,t,t is the potential of t
+      as a root.  Entries b,t,s where t or s >= lengths[b] are ignored.
+    forest: Whether to produce a Laplacian for trees or forests.
+
+  Returns:
+    [B,M,M] tensor L with the Laplacian of each digraph, padded with an identity
+    matrix.  More concretely, the padding entries (t or s >= lengths[b]) are:
+      L_{b,t,t} = 1.0
+      L_{b,t,s} = 0.0
+    Note that this "identity matrix padding" ensures that the determinant of
+    each padded matrix equals the determinant of the unpadded matrix.  The
+    non-padding entries (t,s < lengths[b]) depend on whether the Laplacian is
+    constructed for trees or forests.  For trees:
+      L_{b,t,0} = arcs[b,t,t]
+      L_{b,t,t} = \sum_{s < lengths[b], t != s} arcs[b,t,s]
+      L_{b,t,s} = -arcs[b,t,s]
+    For forests:
+      L_{b,t,t} = \sum_{s < lengths[b]} arcs[b,t,s]
+      L_{b,t,s} = -arcs[b,t,s]
+    See http://www.aclweb.org/anthology/D/D07/D07-1015.pdf for details, though
+    note that our matrices are transposed from their notation.
+  """
+  check.Eq(arcs.get_shape().ndims, 3, 'arcs must be rank 3')
+  dtype = arcs.dtype.base_dtype
+
+  arcs_shape = tf.shape(arcs)
+  batch_size = arcs_shape[0]
+  max_length = arcs_shape[1]
+  with tf.control_dependencies([tf.assert_equal(max_length, arcs_shape[2])]):
+    valid_arc_bxmxm, valid_token_bxm = ValidArcAndTokenMasks(
+        lengths, max_length, dtype=dtype)
+  invalid_token_bxm = tf.constant(1, dtype=dtype) - valid_token_bxm
+
+  # Zero out all invalid arcs, to avoid polluting bulk summations.
+  arcs_bxmxm = arcs * valid_arc_bxmxm
+
+  zeros_bxm = tf.zeros([batch_size, max_length], dtype)
+  if not forest:
+    # For trees, extract the root potentials and exclude them from the sums
+    # computed below.
+    roots_bxm = tf.matrix_diag_part(arcs_bxmxm)  # only defined for trees
+    arcs_bxmxm = tf.matrix_set_diag(arcs_bxmxm, zeros_bxm)
+
+  # Sum inbound arc potentials for each target token.  These sums will form
+  # the diagonal of the Laplacian matrix.  Note that these sums are zero for
+  # invalid tokens, since their arc potentials were masked out above.
+  sums_bxm = tf.reduce_sum(arcs_bxmxm, 2)
+
+  if forest:
+    # For forests, zero out the root potentials after computing the sums above
+    # so we don't cancel them out when we subtract the arc potentials.
+    arcs_bxmxm = tf.matrix_set_diag(arcs_bxmxm, zeros_bxm)
+
+  # The diagonal of the result is the combination of the arc sums, which are
+  # non-zero only on valid tokens, and the invalid token indicators, which are
+  # non-zero only on invalid tokens.  Note that the latter form the diagonal
+  # of the identity matrix padding.
+  diagonal_bxm = sums_bxm + invalid_token_bxm
+
+  # Combine sums and negative arc potentials.  Note that the off-diagonal
+  # padding entries will be zero thanks to the arc mask.
+  laplacian_bxmxm = tf.matrix_diag(diagonal_bxm) - arcs_bxmxm
+
+  if not forest:
+    # For trees, replace the first column with the root potentials.
+    roots_bxmx1 = tf.expand_dims(roots_bxm, 2)
+    laplacian_bxmxm = tf.concat([roots_bxmx1, laplacian_bxmxm[:, :, 1:]], 2)
+
+  return laplacian_bxmxm

@@ -1,4 +1,4 @@
-FROM ubuntu:16.10
+FROM ubuntu:16.04
 
 ENV SYNTAXNETDIR=/opt/tensorflow PATH=$PATH:/root/bin
 
@@ -57,10 +57,10 @@ RUN python -m pip install \
     && rm -rf /root/.cache/pip /tmp/pip*
 
 # Installs Bazel.
-RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.5.3/bazel-0.5.3-installer-linux-x86_64.sh \
-    && chmod +x bazel-0.5.3-installer-linux-x86_64.sh \
-    && JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/ ./bazel-0.5.3-installer-linux-x86_64.sh \
-    && rm ./bazel-0.5.3-installer-linux-x86_64.sh
+RUN wget --quiet https://github.com/bazelbuild/bazel/releases/download/0.11.1/bazel-0.11.1-installer-linux-x86_64.sh \
+    && chmod +x bazel-0.11.1-installer-linux-x86_64.sh \
+    && JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/ ./bazel-0.11.1-installer-linux-x86_64.sh \
+    && rm ./bazel-0.11.1-installer-linux-x86_64.sh
 
 COPY WORKSPACE $SYNTAXNETDIR/syntaxnet/WORKSPACE
 COPY tools/bazel.rc $SYNTAXNETDIR/syntaxnet/tools/bazel.rc
@@ -69,12 +69,9 @@ COPY tools/bazel.rc $SYNTAXNETDIR/syntaxnet/tools/bazel.rc
 # source. This makes it more convenient to re-compile DRAGNN / SyntaxNet for
 # development (though not as convenient as the docker-devel scripts).
 RUN cd $SYNTAXNETDIR/syntaxnet \
-    && git clone --branch r1.3 --recurse-submodules https://github.com/tensorflow/tensorflow \
+    && git clone --branch r1.8 --recurse-submodules https://github.com/tensorflow/tensorflow \
     && cd tensorflow \
-    # This line removes a bad archive target which causes Tensorflow install
-    # to fail.
-    && sed -i '\@https://github.com/google/protobuf/archive/0b059a3d8a8f8aa40dde7bea55edca4ec5dfea66.tar.gz@d' tensorflow/workspace.bzl \
-    && tensorflow/tools/ci_build/builds/configured CPU \\
+    && tensorflow/tools/ci_build/builds/configured CPU \
     && cd $SYNTAXNETDIR/syntaxnet \
     && bazel build -c opt @org_tensorflow//tensorflow:tensorflow_py
 

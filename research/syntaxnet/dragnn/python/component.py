@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Builds a DRAGNN graph for local training."""
 
 from abc import ABCMeta
@@ -21,10 +20,77 @@ from abc import abstractmethod
 import tensorflow as tf
 from tensorflow.python.platform import tf_logging as logging
 
+from dragnn.protos import export_pb2
 from dragnn.python import dragnn_ops
 from dragnn.python import network_units
+from dragnn.python import runtime_support
 from syntaxnet.util import check
 from syntaxnet.util import registry
+
+
+def build_softmax_cross_entropy_loss(logits, gold):
+  """Builds softmax cross entropy loss."""
+
+  # A gold label > -1 determines that the sentence is still
+  # in a valid state. Otherwise, the sentence has ended.
+  #
+  # We add only the valid sentences to the loss, in the following way:
+  #   1. We compute 'valid_ix', the indices in gold that contain
+  #      valid oracle actions.
+  #   2. We compute the cost function by comparing logits and gold
+  #      only for the valid indices.
+  valid = tf.greater(gold, -1)
+  valid_ix = tf.reshape(tf.where(valid), [-1])
+  valid_gold = tf.gather(gold, valid_ix)
+
+  valid_logits = tf.gather(logits, valid_ix)
+  cost = tf.reduce_sum(
+      tf.nn.sparse_softmax_cross_entropy_with_logits(
+          labels=tf.cast(valid_gold, tf.int64),
+          logits=valid_logits,
+          name='sparse_softmax_cross_entropy_with_logits'))
+
+  correct = tf.reduce_sum(
+      tf.to_int32(tf.nn.in_top_k(valid_logits, valid_gold, 1)))
+  total = tf.size(valid_gold)
+
+  return cost, correct, total, valid_logits, valid_gold
+
+
+def build_sigmoid_cross_entropy_loss(logits, gold, indices, probs):
+  """Builds sigmoid cross entropy loss."""
+
+  # Filter out entries where gold <= -1, which are batch padding entries.
+  valid = tf.greater(gold, -1)
+  valid_ix = tf.reshape(tf.where(valid), [-1])
+  valid_gold = tf.gather(gold, valid_ix)
+  valid_indices = tf.gather(indices, valid_ix)
+  valid_probs = tf.gather(probs, valid_ix)
+
+  # NB: tf.gather_nd() raises an error on CPU for out-of-bounds indices.  That's
+  # why we need to filter out the gold=-1 batch padding above.
+  valid_pairs = tf.stack([valid_indices, valid_gold], axis=1)
+  valid_logits = tf.gather_nd(logits, valid_pairs)
+  cost = tf.reduce_sum(
+      tf.nn.sigmoid_cross_entropy_with_logits(
+          labels=valid_probs,
+          logits=valid_logits,
+          name='sigmoid_cross_entropy_with_logits'))
+
+  gold_bool = valid_probs > 0.5
+  predicted_bool = valid_logits > 0.0
+  total = tf.size(gold_bool)
+  with tf.control_dependencies([
+      tf.assert_equal(
+          total, tf.size(predicted_bool), name='num_predicted_gold_mismatch')
+  ]):
+    agreement_bool = tf.logical_not(tf.logical_xor(gold_bool, predicted_bool))
+  correct = tf.reduce_sum(tf.to_int32(agreement_bool))
+
+  cost.set_shape([])
+  correct.set_shape([])
+  total.set_shape([])
+  return cost, correct, total, gold
 
 
 class NetworkState(object):
@@ -69,6 +135,13 @@ class ComponentBuilderBase(object):
 
   As part of the specification, ComponentBuilder will wrap an underlying
   NetworkUnit which generates the actual network layout.
+
+  Attributes:
+    master: dragnn.MasterBuilder that owns this component.
+    num_actions: Number of actions in the transition system.
+    name: Name of this component.
+    spec: dragnn.ComponentSpec that configures this component.
+    moving_average: True if moving-average parameters should be used.
   """
 
   __metaclass__ = ABCMeta  # required for @abstractmethod
@@ -96,16 +169,23 @@ class ComponentBuilderBase(object):
     # Extract component attributes before make_network(), so the network unit
     # can access them.
     self._attrs = {}
+    global_attr_defaults = {
+        'locally_normalize': False,
+        'output_as_probabilities': False
+    }
     if attr_defaults:
-      self._attrs = network_units.get_attrs_with_defaults(
-          self.spec.component_builder.parameters, attr_defaults)
-
+      global_attr_defaults.update(attr_defaults)
+    self._attrs = network_units.get_attrs_with_defaults(
+        self.spec.component_builder.parameters, global_attr_defaults)
+    do_local_norm = self._attrs['locally_normalize']
+    self._output_as_probabilities = self._attrs['output_as_probabilities']
     with tf.variable_scope(self.name):
       self.training_beam_size = tf.constant(
           self.spec.training_beam_size, name='TrainingBeamSize')
       self.inference_beam_size = tf.constant(
           self.spec.inference_beam_size, name='InferenceBeamSize')
-      self.locally_normalize = tf.constant(False, name='LocallyNormalize')
+      self.locally_normalize = tf.constant(
+          do_local_norm, name='LocallyNormalize')
       self._step = tf.get_variable(
           'step', [], initializer=tf.zeros_initializer(), dtype=tf.int32)
       self._total = tf.get_variable(
@@ -119,6 +199,9 @@ class ComponentBuilderBase(object):
       self.moving_average = tf.train.ExponentialMovingAverage(
           decay=self.master.hyperparams.average_weight, num_updates=self._step)
       self.avg_ops = [self.moving_average.apply(self.network.params)]
+
+    # Used to export the cell; see add_cell_input() and add_cell_output().
+    self._cell_subgraph_spec = export_pb2.CellSubgraphSpec()
 
   def make_network(self, network_unit):
     """Makes a NetworkUnitInterface object based on the network_unit spec.
@@ -276,7 +359,7 @@ class ComponentBuilderBase(object):
     Returns:
       tf.Variable object corresponding to original or averaged version.
     """
-    if var_params:
+    if var_params is not None:
       var_name = var_params.name
     else:
       check.NotNone(var_name, 'specify at least one of var_name or var_params')
@@ -341,6 +424,79 @@ class ComponentBuilderBase(object):
     """Returns the value of the component attribute with the |name|."""
     return self._attrs[name]
 
+  def has_attr(self, name):
+    """Checks whether a component attribute with the given |name| exists.
+
+    Arguments:
+       name: attribute name
+
+    Returns:
+      'true' if the name exists and 'false' otherwise.
+    """
+    return name in self._attrs
+
+  def _add_runtime_hooks(self):
+    """Adds "hook" nodes to the graph for use by the runtime, if enabled.
+
+    Does nothing if master.build_runtime_graph is False.  Subclasses should call
+    this at the end of build_*_inference().  For details on the runtime hooks,
+    see runtime_support.py.
+    """
+    if self.master.build_runtime_graph:
+      with tf.variable_scope(self.name, reuse=True):
+        runtime_support.add_hooks(self, self._cell_subgraph_spec)
+      self._cell_subgraph_spec = None  # prevent further exports
+
+  def add_cell_input(self, dtype, shape, name, input_type='TYPE_FEATURE'):
+    """Adds an input to the current CellSubgraphSpec.
+
+    Creates a tf.placeholder() with the given |dtype| and |shape|, adds it as a
+    cell input with the |name| and |input_type|, and returns the placeholder to
+    be used in place of the actual input tensor.
+
+    Args:
+      dtype: DType of the cell input.
+      shape: Static shape of the cell input.
+      name: Logical name of the cell input.
+      input_type: Name of the appropriate CellSubgraphSpec.Input.Type enum.
+
+    Returns:
+      A tensor to use in place of the actual input tensor.
+
+    Raises:
+      TypeError: If the |shape| is the wrong type.
+      RuntimeError: If the cell has already been exported.
+    """
+    if not (isinstance(shape, list) and
+            all(isinstance(dim, int) for dim in shape)):
+      raise TypeError('shape must be a list of int')
+    if not self._cell_subgraph_spec:
+      raise RuntimeError('already exported a CellSubgraphSpec')
+
+    with tf.name_scope(None):
+      tensor = tf.placeholder(
+          dtype, shape, name='{}/INPUT/{}'.format(self.name, name))
+    self._cell_subgraph_spec.input.add(
+        name=name,
+        tensor=tensor.name,
+        type=export_pb2.CellSubgraphSpec.Input.Type.Value(input_type))
+    return tensor
+
+  def add_cell_output(self, tensor, name):
+    """Adds an output to the current CellSubgraphSpec.
+
+    Args:
+      tensor: Tensor to add as a cell output.
+      name: Logical name of the cell output.
+
+    Raises:
+      RuntimeError: If the cell has already been exported.
+    """
+    if not self._cell_subgraph_spec:
+      raise RuntimeError('already exported a CellSubgraphSpec')
+
+    self._cell_subgraph_spec.output.add(name=name, tensor=tensor.name)
+
 
 def update_tensor_arrays(network_tensors, arrays):
   """Updates a list of tensor arrays from the network's output tensors.
@@ -370,6 +526,18 @@ class DynamicComponentBuilder(ComponentBuilderBase):
   so fixed and linked features can be recurrent.
   """
 
+  def __init__(self, master, component_spec):
+    """Initializes the DynamicComponentBuilder from specifications.
+
+    Args:
+      master: dragnn.MasterBuilder object.
+      component_spec: dragnn.ComponentSpec proto to be built.
+    """
+    super(DynamicComponentBuilder, self).__init__(
+        master,
+        component_spec,
+        attr_defaults={'loss_function': 'softmax_cross_entropy'})
+
   def build_greedy_training(self, state, network_states):
     """Builds a training loop for this component.
 
@@ -392,9 +560,10 @@ class DynamicComponentBuilder(ComponentBuilderBase):
     # Add 0 to training_beam_size to disable eager static evaluation.
     # This is possible because tensorflow's constant_value does not
     # propagate arithmetic operations.
-    with tf.control_dependencies([
-        tf.assert_equal(self.training_beam_size + 0, 1)]):
+    with tf.control_dependencies(
+        [tf.assert_equal(self.training_beam_size + 0, 1)]):
       stride = state.current_batch_size * self.training_beam_size
+    self.network.pre_create(stride)
 
     cost = tf.constant(0.)
     correct = tf.constant(0)
@@ -416,40 +585,35 @@ class DynamicComponentBuilder(ComponentBuilderBase):
 
         # Every layer is written to a TensorArray, so that it can be backprop'd.
         next_arrays = update_tensor_arrays(network_tensors, arrays)
+        loss_function = self.attr('loss_function')
         with tf.control_dependencies([x.flow for x in next_arrays]):
           with tf.name_scope('compute_loss'):
-            # A gold label > -1 determines that the sentence is still
-            # in a valid state. Otherwise, the sentence has ended.
-            #
-            # We add only the valid sentences to the loss, in the following way:
-            #   1. We compute 'valid_ix', the indices in gold that contain
-            #      valid oracle actions.
-            #   2. We compute the cost function by comparing logits and gold
-            #      only for the valid indices.
-            gold = dragnn_ops.emit_oracle_labels(handle, component=self.name)
-            gold.set_shape([None])
-            valid = tf.greater(gold, -1)
-            valid_ix = tf.reshape(tf.where(valid), [-1])
-            gold = tf.gather(gold, valid_ix)
-
             logits = self.network.get_logits(network_tensors)
-            logits = tf.gather(logits, valid_ix)
+            if loss_function == 'softmax_cross_entropy':
+              gold = dragnn_ops.emit_oracle_labels(handle, component=self.name)
+              new_cost, new_correct, new_total, valid_logits, valid_gold = (
+                  build_softmax_cross_entropy_loss(logits, gold))
 
-            cost += tf.reduce_sum(
-                tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    labels=tf.cast(gold, tf.int64), logits=logits))
+              if (self.eligible_for_self_norm and
+                  self.master.hyperparams.self_norm_alpha > 0):
+                log_z = tf.reduce_logsumexp(valid_logits, [1])
+                new_cost += (self.master.hyperparams.self_norm_alpha *
+                             tf.nn.l2_loss(log_z))
+            elif loss_function == 'sigmoid_cross_entropy':
+              indices, gold, probs = (
+                  dragnn_ops.emit_oracle_labels_and_probabilities(
+                      handle, component=self.name))
+              new_cost, new_correct, new_total, valid_gold = (
+                  build_sigmoid_cross_entropy_loss(logits, gold, indices,
+                                                   probs))
+            else:
+              RuntimeError("Unknown loss function '%s'" % loss_function)
 
-            if (self.eligible_for_self_norm and
-                self.master.hyperparams.self_norm_alpha > 0):
-              log_z = tf.reduce_logsumexp(logits, [1])
-              cost += (self.master.hyperparams.self_norm_alpha *
-                       tf.nn.l2_loss(log_z))
+            cost += new_cost
+            correct += new_correct
+            total += new_total
 
-            correct += tf.reduce_sum(
-                tf.to_int32(tf.nn.in_top_k(logits, gold, 1)))
-            total += tf.size(gold)
-
-        with tf.control_dependencies([cost, correct, total, gold]):
+        with tf.control_dependencies([cost, correct, total, valid_gold]):
           handle = dragnn_ops.advance_from_oracle(handle, component=self.name)
         return [handle, cost, correct, total] + next_arrays
 
@@ -480,6 +644,7 @@ class DynamicComponentBuilder(ComponentBuilderBase):
     # Normalize the objective by the total # of steps taken.
     # Note: Total could be zero by a number of reasons, including:
     #   * Oracle labels not being emitted.
+    #   * All oracle labels for a batch are unknown (-1).
     #   * No steps being taken if component is terminal at the start of a batch.
     with tf.control_dependencies([tf.assert_greater(total, 0)]):
       cost /= tf.to_float(total)
@@ -511,6 +676,7 @@ class DynamicComponentBuilder(ComponentBuilderBase):
       stride = state.current_batch_size * self.training_beam_size
     else:
       stride = state.current_batch_size * self.inference_beam_size
+    self.network.pre_create(stride)
 
     def cond(handle, *_):
       all_final = dragnn_ops.emit_all_final(handle, component=self.name)
@@ -559,6 +725,7 @@ class DynamicComponentBuilder(ComponentBuilderBase):
       for index, layer in enumerate(self.network.layers):
         network_state.activations[layer.name] = network_units.StoredActivations(
             array=arrays[index])
+    self._add_runtime_hooks()
     with tf.control_dependencies([x.flow for x in arrays]):
       return tf.identity(state.handle)
 
@@ -587,7 +754,7 @@ class DynamicComponentBuilder(ComponentBuilderBase):
       fixed_embeddings = []
       for channel_id, feature_spec in enumerate(self.spec.fixed_feature):
         fixed_embedding = network_units.fixed_feature_lookup(
-            self, state, channel_id, stride)
+            self, state, channel_id, stride, during_training)
         if feature_spec.is_constant:
           fixed_embedding.tensor = tf.stop_gradient(fixed_embedding.tensor)
         fixed_embeddings.append(fixed_embedding)
@@ -633,6 +800,12 @@ class DynamicComponentBuilder(ComponentBuilderBase):
       else:
         attention_tensor = None
 
-      return self.network.create(fixed_embeddings, linked_embeddings,
-                                 context_tensor_arrays, attention_tensor,
-                                 during_training)
+      tensors = self.network.create(fixed_embeddings, linked_embeddings,
+                                    context_tensor_arrays, attention_tensor,
+                                    during_training)
+
+      if self.master.build_runtime_graph:
+        for index, layer in enumerate(self.network.layers):
+          self.add_cell_output(tensors[index], layer.name)
+
+      return tensors

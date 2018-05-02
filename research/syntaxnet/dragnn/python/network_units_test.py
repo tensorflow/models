@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for network_units."""
 
 
@@ -25,8 +24,6 @@ from tensorflow.python.platform import googletest
 
 from dragnn.protos import spec_pb2
 from dragnn.python import network_units
-
-FLAGS = tf.app.flags.FLAGS
 
 
 class NetworkUnitsConverterTest(test_util.TensorFlowTestCase):
@@ -61,6 +58,7 @@ class MockComponent(object):
     self.spec = component_spec
     self.name = component_spec.name
     self.beam_size = 1
+    self.num_actions = 45
     self._attrs = {}
 
   def attr(self, name):
@@ -72,12 +70,13 @@ class MockComponent(object):
 
 class MockMaster(object):
 
-  def __init__(self):
+  def __init__(self, build_runtime_graph=False):
     self.spec = spec_pb2.MasterSpec()
     self.hyperparams = spec_pb2.GridPoint()
     self.lookup_component = {
         'previous': MockComponent(self, spec_pb2.ComponentSpec())
     }
+    self.build_runtime_graph = build_runtime_graph
 
 
 class MockNetwork(object):
@@ -167,6 +166,164 @@ class GetAttrsWithDefaultsTest(test_util.TensorFlowTestCase):
     _assert_attr_is_true('TRUE')
 
 
+class LstmNetworkTest(test_util.TensorFlowTestCase):
+  test_spec_1 = """
+      component {
+        name: 'bi_lstm'
+        backend { registered_name: 'TestComponent' }
+        fixed_feature {
+          name: 'words'
+          fml: 'words'
+          size: 1
+          embedding_dim: 32
+          vocabulary_size: 1079813,
+        }
+        network_unit {
+          registered_name: 'LSTMNetwork'
+          parameters {
+            key: "hidden_layer_sizes"
+            value: "128"
+          }
+        }
+      }
+    """
+
+  test_spec_linked = """
+      component {
+        name: 'bi_lstm'
+        backend { registered_name: 'TestComponent' }
+        fixed_feature {
+          name: 'words'
+          fml: 'words'
+          size: 1
+          embedding_dim: 32
+          vocabulary_size: 1079813,
+        }
+        linked_feature {
+          name: 'lstm_h'
+          fml: 'bias(0)'
+          embedding_dim: -1
+          size: 1
+          source_component: 'bi_lstm'
+          source_translator: 'history'
+          source_layer: 'lstm_h'
+        }
+        linked_feature {
+          name: 'lstm_c'
+          fml: 'bias(0)'
+          embedding_dim: -1
+          size: 1
+          source_component: 'bi_lstm'
+          source_translator: 'history'
+          source_layer: 'lstm_c'
+        }
+        network_unit {
+          registered_name: 'LSTMNetwork'
+          parameters {
+            key: "hidden_layer_sizes"
+            value: "128"
+          }
+        }
+      }
+    """
+
+  def setUp(self):
+    # Clear the graph and all existing variables.  Otherwise, variables created
+    # in different tests may collide with each other.
+    tf.reset_default_graph()
+
+  def construct_lstm_network_unit(self, master):
+    """Helper to construct a LSTMNetwork. Doesn't call create() yet."""
+    component = MockComponent(master, master.spec.component[0])
+    with tf.variable_scope('bi_lstm'):
+      lstm_network_unit = network_units.LSTMNetwork(component)
+    return lstm_network_unit
+
+  def get_context_tensor_arrays(self, lstm_network_unit):
+    context_tensor_arrays = []
+    for context_layer in lstm_network_unit.context_layers:
+      context_tensor_arrays.append(context_layer.create_array(1))
+    return context_tensor_arrays
+
+  def fixed_word_embeddings(self):
+    """Helper for returning fixed embeddings, for 1 word feature."""
+    words_tensor = tf.constant([[1.0] * 32], dtype=tf.float32)
+    return [network_units.NamedTensor(words_tensor, 'words')]
+
+  def testCanCreate(self):
+    """Smoke test that the create() function doesn't raise errors."""
+    master = MockMaster()
+    master.spec = spec_pb2.MasterSpec()
+    text_format.Parse(self.test_spec_1, master.spec)
+    lstm_network_unit = self.construct_lstm_network_unit(master)
+    with tf.variable_scope('bi_lstm', reuse=True):
+      lstm_network_unit.create(
+          self.fixed_word_embeddings(), [],
+          self.get_context_tensor_arrays(lstm_network_unit), None, True)
+
+  def testCanCreateLinked(self):
+    """Smoke test that the create() function doesn't raise errors."""
+    master = MockMaster()
+    master.spec = spec_pb2.MasterSpec()
+    text_format.Parse(self.test_spec_linked, master.spec)
+    lstm_network_unit = self.construct_lstm_network_unit(master)
+    with tf.variable_scope('bi_lstm', reuse=True):
+      lstm_network_unit.create(
+          self.fixed_word_embeddings(), [],
+          self.get_context_tensor_arrays(lstm_network_unit), None, True)
+
+  def testRuntimeConcatentatedMatrices(self):
+    """Test generation of concatenated matrices."""
+    # TODO(googleuser): Make MockComponent support runtime graph generation.
+    master = MockMaster(build_runtime_graph=False)
+    master.spec = spec_pb2.MasterSpec()
+    text_format.Parse(self.test_spec_1, master.spec)
+    lstm_network_unit = self.construct_lstm_network_unit(master)
+    with tf.variable_scope('bi_lstm', reuse=True):
+      lstm_network_unit.create(
+          self.fixed_word_embeddings(), [],
+          self.get_context_tensor_arrays(lstm_network_unit), None, False)
+      x_to_ico = lstm_network_unit.derived_params[0]()
+      h_to_ico = lstm_network_unit.derived_params[1]()
+      ico_bias = lstm_network_unit.derived_params[2]()
+
+      # Should be the word dimension (32) to 3x the hidden dimension (128).
+      self.assertEqual(x_to_ico.shape, (32, 384))
+      self.assertEqual(x_to_ico.op.name, 'bi_lstm/x_to_ico')
+
+      # Should be the hidden dimension (128) to 3x the hidden dimension (128).
+      self.assertEqual(h_to_ico.shape, (128, 384))
+      self.assertEqual(h_to_ico.op.name, 'bi_lstm/h_to_ico')
+
+      # Should be equal to the hidden dimension (128) times 3.
+      self.assertEqual(ico_bias.shape, (384,))
+      self.assertEqual(ico_bias.op.name, 'bi_lstm/ico_bias')
+
+  def testRuntimeConcatentatedMatricesLinked(self):
+    """Test generation of concatenated matrices."""
+    # TODO(googleuser): Make MockComponent support runtime graph generation.
+    master = MockMaster(build_runtime_graph=False)
+    master.spec = spec_pb2.MasterSpec()
+    text_format.Parse(self.test_spec_linked, master.spec)
+    lstm_network_unit = self.construct_lstm_network_unit(master)
+    with tf.variable_scope('bi_lstm', reuse=True):
+      lstm_network_unit.create(
+          self.fixed_word_embeddings(), [],
+          self.get_context_tensor_arrays(lstm_network_unit), None, False)
+      x_to_ico = lstm_network_unit.derived_params[0]()
+      h_to_ico = lstm_network_unit.derived_params[1]()
+      ico_bias = lstm_network_unit.derived_params[2]()
+
+      # Should be the word dimension (32) to 3x the hidden dimension (128).
+      self.assertEqual(x_to_ico.shape, (32, 384))
+
+      # Should be the hidden dimension (128) to 3x the hidden dimension (128).
+      self.assertEqual(h_to_ico.shape, (128, 384))
+
+      # Should be equal to the hidden dimension (128) times 3.
+      self.assertEqual(ico_bias.shape, (384,))
+
+
 class GatherNetworkTest(test_util.TensorFlowTestCase):
 
   def setUp(self):
@@ -214,12 +371,30 @@ class GatherNetworkTest(test_util.TensorFlowTestCase):
         network = network_units.GatherNetwork(self._component)
 
       # Construct a batch of two items with 3 and 2 steps, respectively.
-      indices = tf.constant([[1], [2], [0],  # item 1
-                             [-1], [0], [-1]],  # item 2
-                            dtype=tf.int64)
-      features = tf.constant([[1.0, 1.5], [2.0, 2.5], [3.0, 3.5],  # item 1
-                              [4.0, 4.5], [5.0, 5.5], [6.0, 6.5]],  # item 2
-                             dtype=tf.float32)
+      indices = tf.constant(
+          [
+              # item 1
+              [1],
+              [2],
+              [0],
+              # item 2
+              [-1],
+              [0],
+              [-1]
+          ],
+          dtype=tf.int64)
+      features = tf.constant(
+          [
+              # item 1
+              [1.0, 1.5],
+              [2.0, 2.5],
+              [3.0, 3.5],
+              # item 2
+              [4.0, 4.5],
+              [5.0, 5.5],
+              [6.0, 6.5]
+          ],
+          dtype=tf.float32)
 
       fixed_embeddings = []
       linked_embeddings = [
@@ -233,13 +408,16 @@ class GatherNetworkTest(test_util.TensorFlowTestCase):
       gathered = outputs[0]
 
       # Zeros will be substituted for index -1.
-      self.assertAllEqual(gathered.eval(),
-                          [[2.0, 2.5],  # gathered from 1
-                           [3.0, 3.5],  # gathered from 2
-                           [1.0, 1.5],  # gathered from 0
-                           [0.0, 0.0],  # gathered from -1
-                           [4.0, 4.5],  # gathered from 0
-                           [0.0, 0.0]])  # gathered from -1
+      self.assertAllEqual(
+          gathered.eval(),
+          [
+              [2.0, 2.5],  # gathered from 1
+              [3.0, 3.5],  # gathered from 2
+              [1.0, 1.5],  # gathered from 0
+              [0.0, 0.0],  # gathered from -1
+              [4.0, 4.5],  # gathered from 0
+              [0.0, 0.0]  # gathered from -1
+          ])
 
   def testTrainablePadding(self):
     self._component.spec.network_unit.parameters['trainable_padding'] = 'true'
@@ -248,12 +426,30 @@ class GatherNetworkTest(test_util.TensorFlowTestCase):
         network = network_units.GatherNetwork(self._component)
 
       # Construct a batch of two items with 3 and 2 steps, respectively.
-      indices = tf.constant([[1], [2], [0],  # item 1
-                             [-1], [0], [-1]],  # item 2
-                            dtype=tf.int64)
-      features = tf.constant([[1.0, 1.5], [2.0, 2.5], [3.0, 3.5],  # item 1
-                              [4.0, 4.5], [5.0, 5.5], [6.0, 6.5]],  # item 2
-                             dtype=tf.float32)
+      indices = tf.constant(
+          [
+              # item 1
+              [1],
+              [2],
+              [0],
+              # item 2
+              [-1],
+              [0],
+              [-1]
+          ],
+          dtype=tf.int64)
+      features = tf.constant(
+          [
+              # item 1
+              [1.0, 1.5],
+              [2.0, 2.5],
+              [3.0, 3.5],
+              # item 2
+              [4.0, 4.5],
+              [5.0, 5.5],
+              [6.0, 6.5]
+          ],
+          dtype=tf.float32)
 
       fixed_embeddings = []
       linked_embeddings = [
@@ -299,8 +495,8 @@ class IdentityInitializerTest(test_util.TensorFlowTestCase):
     """
     with tf.Graph().as_default(), self.test_session() as session:
       np.random.seed(4)
-      tensor = network_units.add_var_initialized('tensor', shape, 'identity',
-                                                 divisor=divisor, stddev=std)
+      tensor = network_units.add_var_initialized(
+          'tensor', shape, 'identity', divisor=divisor, stddev=std)
       session.run(tf.global_variables_initializer())
       actual = session.run(tensor)
       self.assertAllClose(actual, expected, 1e-8, 1e-8)
@@ -345,13 +541,13 @@ class IdentityInitializerTest(test_util.TensorFlowTestCase):
     divisor = 3.
     std = 1e-3
     shape = (6, 3)
-    m = divisor/shape[-1]
-    expected = [[m, 4.99951362e-04, -9.95908980e-04],
-                [m, -4.18301526e-04, -1.58457726e-03],
-                [-6.47706795e-04, m, 3.32250027e-04],
-                [-1.14747661e-03, m, -8.79869258e-05],
-                [4.25072387e-04, 3.32253141e-04, m],
-                [3.50997143e-04, -6.06887275e-04, m]]
+    m = divisor / shape[-1]
+    expected = [[m, 4.99951362e-04,
+                 -9.95908980e-04], [m, -4.18301526e-04, -1.58457726e-03],
+                [-6.47706795e-04, m,
+                 3.32250027e-04], [-1.14747661e-03, m, -8.79869258e-05],
+                [4.25072387e-04, 3.32253141e-04,
+                 m], [3.50997143e-04, -6.06887275e-04, m]]
     self.IdentityInitializerHelper(shape, expected, divisor, std)
 
   def testIdentityInitializerNonSquareRank2FirstDimSmaller(self):
@@ -368,14 +564,14 @@ class IdentityInitializerTest(test_util.TensorFlowTestCase):
     std = 1e-3
     shape = (2, 2, 6)
     m = divisor / shape[-1]
-    expected = [[[5.05617063e-05, 4.99951362e-04, -9.95908980e-04,
-                  6.93598529e-04, -4.18301526e-04, -1.58457726e-03],
-                 [-6.47706795e-04, 5.98575163e-04, 3.32250027e-04,
-                  -1.14747661e-03, 6.18669670e-04, -8.79869258e-05]],
-                [[m, m, m,
-                  3.50997143e-04, -6.06887275e-04, 1.54697930e-03],
-                 [7.23341596e-04, 4.61355667e-05, -9.82991653e-04,
-                  m, m, m]]]
+    expected = [[[
+        5.05617063e-05, 4.99951362e-04, -9.95908980e-04, 6.93598529e-04,
+        -4.18301526e-04, -1.58457726e-03
+    ], [
+        -6.47706795e-04, 5.98575163e-04, 3.32250027e-04, -1.14747661e-03,
+        6.18669670e-04, -8.79869258e-05
+    ]], [[m, m, m, 3.50997143e-04, -6.06887275e-04, 1.54697930e-03],
+         [7.23341596e-04, 4.61355667e-05, -9.82991653e-04, m, m, m]]]
     self.IdentityInitializerHelper(shape, expected, divisor, std)
 
   def testIdentityInitializerNonSquareRank4(self):
@@ -383,39 +579,109 @@ class IdentityInitializerTest(test_util.TensorFlowTestCase):
     std = 1e-3
     shape = (2, 3, 2, 8)
     m = divisor / float(shape[-1])
-    expected = [
-        [[[5.05617063e-05, 4.99951362e-04, -9.95908980e-04, 6.93598529e-04,
-           -4.18301526e-04, -1.58457726e-03, -6.47706795e-04, 5.98575163e-04],
-          [3.32250027e-04, -1.14747661e-03, 6.18669670e-04, -8.79869258e-05,
-           4.25072387e-04, 3.32253141e-04, -1.15681626e-03, 3.50997143e-04]],
-
-         [[-6.06887275e-04, 1.54697930e-03, 7.23341596e-04, 4.61355667e-05,
-           -9.82991653e-04, 5.44327377e-05, 1.59892938e-04, -1.20894820e-03],
-          [2.22336012e-03, 3.94295203e-04, 1.69235771e-03, -1.11281220e-03,
-           1.63574750e-03, -1.36096554e-03, -6.51225855e-04, 5.42451337e-04]],
-
-         [[4.80062481e-05, -2.35807360e-03, -1.10558409e-03, 8.37836356e-04,
-           2.08787085e-03, 9.14840959e-04, -2.76203355e-04, 7.96511886e-04],
-          [-1.14379858e-03, 5.09919773e-04, -1.34746032e-03, -9.36010019e-06,
-           -1.30704633e-04, 8.02086608e-04, -3.02963977e-04, 1.20200263e-03]]],
-
-        [[[-1.96745284e-04, 8.36528721e-04, 7.86602264e-04, -1.84087583e-03,
-           3.75474883e-05, 3.59280530e-05, -7.78739923e-04, 1.79410708e-04],
-          [-1.45553437e-03, 5.56185201e-04, 5.09778853e-04, 3.00445536e-04,
-           2.47658417e-03, 3.52343399e-04, 6.74710027e-05, -7.32264714e-04]],
-
-         [[m, m, m, m,
-           1.58469542e-04, 1.99008291e-03, 1.16418756e-03, 2.42660157e-04],
-          [1.37992005e-03, -5.45587063e-05, 7.95233937e-04, 1.90899627e-05,
-           m, m, m, m]],
-
-         [[-1.09712186e-03, -5.28196048e-04, -2.37977528e-03, -6.07683673e-04,
-           -1.07529014e-03, 2.02240516e-03, -5.64875314e-04, -1.54292909e-03],
-          [8.70841788e-04, -1.75210531e-04, 4.86030076e-05, 1.88646198e-04,
-           2.09313483e-04, -3.74444906e-04, 9.54698597e-04, 5.23247640e-04]]]
-    ]
+    expected = [[[[
+        5.05617063e-05, 4.99951362e-04, -9.95908980e-04, 6.93598529e-04,
+        -4.18301526e-04, -1.58457726e-03, -6.47706795e-04, 5.98575163e-04
+    ], [
+        3.32250027e-04, -1.14747661e-03, 6.18669670e-04, -8.79869258e-05,
+        4.25072387e-04, 3.32253141e-04, -1.15681626e-03, 3.50997143e-04
+    ]], [[
+        -6.06887275e-04, 1.54697930e-03, 7.23341596e-04, 4.61355667e-05,
+        -9.82991653e-04, 5.44327377e-05, 1.59892938e-04, -1.20894820e-03
+    ], [
+        2.22336012e-03, 3.94295203e-04, 1.69235771e-03, -1.11281220e-03,
+        1.63574750e-03, -1.36096554e-03, -6.51225855e-04, 5.42451337e-04
+    ]], [[
+        4.80062481e-05, -2.35807360e-03, -1.10558409e-03, 8.37836356e-04,
+        2.08787085e-03, 9.14840959e-04, -2.76203355e-04, 7.96511886e-04
+    ], [
+        -1.14379858e-03, 5.09919773e-04, -1.34746032e-03, -9.36010019e-06,
+        -1.30704633e-04, 8.02086608e-04, -3.02963977e-04, 1.20200263e-03
+    ]]], [[[
+        -1.96745284e-04, 8.36528721e-04, 7.86602264e-04, -1.84087583e-03,
+        3.75474883e-05, 3.59280530e-05, -7.78739923e-04, 1.79410708e-04
+    ], [
+        -1.45553437e-03, 5.56185201e-04, 5.09778853e-04, 3.00445536e-04,
+        2.47658417e-03, 3.52343399e-04, 6.74710027e-05, -7.32264714e-04
+    ]], [[
+        m, m, m, m, 1.58469542e-04, 1.99008291e-03, 1.16418756e-03,
+        2.42660157e-04
+    ], [
+        1.37992005e-03, -5.45587063e-05, 7.95233937e-04, 1.90899627e-05, m, m,
+        m, m
+    ]], [[
+        -1.09712186e-03, -5.28196048e-04, -2.37977528e-03, -6.07683673e-04,
+        -1.07529014e-03, 2.02240516e-03, -5.64875314e-04, -1.54292909e-03
+    ], [
+        8.70841788e-04, -1.75210531e-04, 4.86030076e-05, 1.88646198e-04,
+        2.09313483e-04, -3.74444906e-04, 9.54698597e-04, 5.23247640e-04
+    ]]]]
 
     self.IdentityInitializerHelper(shape, expected, divisor, std)
+
+
+class FeatureIdDropoutTest(test_util.TensorFlowTestCase):
+
+  def setUp(self):
+    # Clear the graph and all existing variables.  Otherwise, variables created
+    # in different tests may collide with each other.
+    tf.reset_default_graph()
+
+  def testApplyFeatureIdDropout(self):
+    channel = spec_pb2.FixedFeatureChannel()
+    text_format.Parse("""
+      vocabulary_size: 10
+      dropout_id: 8
+      dropout_keep_probability: [0.0, 0.25, 0.5, 0.75, 1.0]
+    """, channel)
+
+    with tf.Graph().as_default(), self.test_session():
+      with tf.variable_scope('test_scope'):
+        ids = tf.constant([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=tf.int64)
+        weights = tf.constant([1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype=tf.float32)
+        tensors = network_units.apply_feature_id_dropout(ids, weights, channel)
+        perturbed_ids = tensors[0].eval()
+        tf.logging.info('perturbed_ids = %s', perturbed_ids)
+
+        # Given the dropout_keep_probability values specified above:
+        #   * ID 0 is never kept.
+        #   * IDs 1-3 are randomly kept with varying probability.
+        #   * IDs 4-9 are always kept.
+        # To avoid non-determinism, we only check for specific feature IDs at
+        # the extremes (never/always kept).  Behavior in between the extremes
+        # should interpolate between the two extremes.
+        self.assertEqual(perturbed_ids[0], channel.dropout_id)
+        self.assertTrue(perturbed_ids[1] in (1, channel.dropout_id))
+        self.assertTrue(perturbed_ids[2] in (2, channel.dropout_id))
+        self.assertTrue(perturbed_ids[3] in (3, channel.dropout_id))
+        self.assertAllEqual(perturbed_ids[4:], [4, 5, 6, 7, 8, 9])
+
+  def testApplyFeatureIdDropoutSkip(self):
+    channel = spec_pb2.FixedFeatureChannel()
+    text_format.Parse("""
+      vocabulary_size: 2
+      dropout_id: 2
+      dropout_keep_probability: [0.0, 1.0]
+    """, channel)
+
+    with tf.Graph().as_default(), self.test_session():
+      with tf.variable_scope('test_scope'):
+        ids = tf.constant([0, 1], dtype=tf.int64)
+        weights = tf.constant([1, 1], dtype=tf.float32)
+        tensors = network_units.apply_feature_id_dropout(ids, weights, channel)
+        perturbed_ids, perturbed_weights = tensors[0].eval(), tensors[1].eval()
+        tf.logging.info('perturbed_ids = %s', perturbed_ids)
+        tf.logging.info('perturbed_weights = %s', perturbed_weights)
+
+        # Given the dropout_keep_probability values specified above:
+        #   * ID 0 is never kept, its weight is set to 0.
+        #   * IDs 1 are always kept.
+        # To avoid non-determinism, we only check for specific feature IDs at
+        # the extremes (never/always kept).
+        self.assertEqual(perturbed_ids[0], channel.dropout_id)
+        self.assertEqual(perturbed_weights[0], 0)
+        self.assertEqual(perturbed_ids[1], 1)
+        self.assertEqual(perturbed_weights[1], 1)
 
 
 if __name__ == '__main__':

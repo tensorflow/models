@@ -1,0 +1,126 @@
+version: 0
+alignment_bytes: 32
+is_little_endian: true
+variable {
+  name: "rnn/fixed_embedding_matrix_0/trimmed"
+  format: FORMAT_ROW_MAJOR_MATRIX
+  num_views: 25788
+  view_size: 128
+  dimension: 25788
+  dimension: 32
+}
+variable {
+  name: "rnn/fixed_embedding_matrix_1/trimmed"
+  format: FORMAT_ROW_MAJOR_MATRIX
+  num_views: 23769
+  view_size: 256
+  dimension: 23769
+  dimension: 64
+}
+variable {
+  name: "rnn/x_to_ico/matrix/blocked48"
+  format: FORMAT_COLUMN_BLOCKED_ROW_MAJOR_MATRIX
+  num_views: 1280
+  view_size: 192
+  dimension: 160
+  dimension: 384
+  dimension: 48
+}
+variable {
+  name: "rnn/h_to_ico/matrix/blocked48"
+  format: FORMAT_COLUMN_BLOCKED_ROW_MAJOR_MATRIX
+  num_views: 1024
+  view_size: 192
+  dimension: 128
+  dimension: 384
+  dimension: 48
+}
+variable {
+  name: "rnn/c2i/matrix/blocked48"
+  format: FORMAT_COLUMN_BLOCKED_ROW_MAJOR_MATRIX
+  num_views: 384
+  view_size: 192
+  dimension: 128
+  dimension: 144
+  dimension: 48
+}
+variable {
+  name: "rnn/c2o/matrix/blocked48"
+  format: FORMAT_COLUMN_BLOCKED_ROW_MAJOR_MATRIX
+  num_views: 384
+  view_size: 192
+  dimension: 128
+  dimension: 144
+  dimension: 48
+}
+variable {
+  name: "rnn/ico_bias"
+  format: FORMAT_FLAT
+  num_views: 1
+  view_size: 1536
+  dimension: 384
+}
+variable {
+  name: "tagger/bias_0"
+  format: FORMAT_FLAT
+  num_views: 1
+  view_size: 256
+  dimension: 64
+}
+variable {
+  name: "tagger/weights_0/FlexibleMatrixKernel"
+  format: FORMAT_COLUMN_BLOCKED_ROW_MAJOR_MATRIX
+  num_views: 320
+  view_size: 128
+  dimension: 160
+  dimension: 64
+  dimension: 32
+}
+variable {
+  name: "tagger/bias_1"
+  format: FORMAT_FLAT
+  num_views: 1
+  view_size: 256
+  dimension: 64
+}
+variable {
+  name: "tagger/weights_1/FlexibleMatrixKernel"
+  format: FORMAT_COLUMN_BLOCKED_ROW_MAJOR_MATRIX
+  num_views: 128
+  view_size: 128
+  dimension: 64
+  dimension: 64
+  dimension: 32
+}
+variable {
+  name: "tagger/bias_softmax"
+  format: FORMAT_FLAT
+  num_views: 1
+  view_size: 180
+  dimension: 45
+}
+variable {
+  name: "tagger/weights_softmax/FlexibleMatrixKernel"
+  format: FORMAT_COLUMN_BLOCKED_ROW_MAJOR_MATRIX
+  num_views: 64
+  view_size: 192
+  dimension: 64
+  dimension: 48
+  dimension: 48
+}
+variable {
+  name: "tagger/linked_embedding_matrix_0/weights/FlexibleMatrixKernel"
+  format: FORMAT_COLUMN_BLOCKED_ROW_MAJOR_MATRIX
+  num_views: 64
+  view_size: 128
+  dimension: 64
+  dimension: 32
+  dimension: 32
+}
+variable {
+  name: "tagger/linked_embedding_matrix_0/out_of_bounds"
+  format: FORMAT_FLAT
+  num_views: 1
+  view_size: 128
+  dimension: 32
+}

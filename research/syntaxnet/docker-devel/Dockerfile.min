@@ -3,7 +3,7 @@
 #
 # It might be more efficient to use a minimal distribution, like Alpine. But
 # the upside of this being popular is that people might already have it.
-FROM ubuntu:16.10
+FROM ubuntu:16.04
 
 ENV SYNTAXNETDIR=/opt/tensorflow PATH=$PATH:/root/bin
 

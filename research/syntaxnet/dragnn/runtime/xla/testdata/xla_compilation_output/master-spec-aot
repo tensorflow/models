@@ -1,0 +1,247 @@
+component {
+  name: "rnn"
+  transition_system {
+    registered_name: "shift-only"
+    parameters {
+      key: "left_to_right"
+      value: "false"
+    }
+    parameters {
+      key: "parser_skip_deterministic"
+      value: "false"
+    }
+  }
+  resource {
+    name: "words-embedding-input"
+    part {
+      file_format: "tf-records"
+      record_format: "syntaxnet.TokenEmbedding"
+    }
+  }
+  resource {
+    name: "words-vocab-input"
+    part {
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "char-ngram-map"
+    part {
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "word-map"
+    part {
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "frozen-graph"
+    part {
+      file_format: "proto"
+      record_format: "tensorflow.GraphDef"
+    }
+  }
+  fixed_feature {
+    name: "char_ngrams"
+    fml: "input.token { offset(-1).char-ngram(min-length=1,max-length=3,mark-boundaries=true) offset(0).char-ngram(min-length=1,max-length=3,mark-boundaries=true) offset(1).char-ngram(min-length=1,max-length=3,mark-boundaries=true) }"
+    embedding_dim: -1
+    vocabulary_size: 25788
+    size: 3
+  }
+  fixed_feature {
+    name: "words"
+    fml: "input.token.word(min-freq=2)"
+    embedding_dim: -1
+    vocabulary_size: 23769
+    size: 1
+  }
+  network_unit {
+    registered_name: "LSTMNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "128"
+    }
+    parameters {
+      key: "omit_logits"
+      value: "true"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 1
+  attention_component: ""
+  component_builder {
+    registered_name: "XlaDynamicComponent"
+  }
+  [syntaxnet.dragnn.runtime.CompilationSpec.component_spec_extension] {
+    model_name: "model_v1"
+    cell_subgraph_spec {
+      input {
+        name: "fixed_channel_0_index_0_ids"
+        tensor: "rnn/INPUT/fixed_channel_0_index_0_ids:0"
+        type: TYPE_FEATURE
+      }
+      input {
+        name: "fixed_channel_0_index_1_ids"
+        tensor: "rnn/INPUT/fixed_channel_0_index_1_ids:0"
+        type: TYPE_FEATURE
+      }
+      input {
+        name: "fixed_channel_0_index_2_ids"
+        tensor: "rnn/INPUT/fixed_channel_0_index_2_ids:0"
+        type: TYPE_FEATURE
+      }
+      input {
+        name: "fixed_channel_1_index_0_ids"
+        tensor: "rnn/INPUT/fixed_channel_1_index_0_ids:0"
+        type: TYPE_FEATURE
+      }
+      input {
+        name: "lstm_c"
+        tensor: "rnn/INPUT/lstm_c:0"
+        type: TYPE_RECURRENT
+      }
+      input {
+        name: "lstm_h"
+        tensor: "rnn/INPUT/lstm_h:0"
+        type: TYPE_RECURRENT
+      }
+      output {
+        name: "lstm_h"
+        tensor: "annotation/inference_rnn/rnn/lstm_h:0"
+      }
+      output {
+        name: "lstm_c"
+        tensor: "annotation/inference_rnn/rnn/lstm_c:0"
+      }
+      output {
+        name: "layer_0"
+        tensor: "annotation/inference_rnn/rnn/layer_0:0"
+      }
+      output {
+        name: "logits"
+        tensor: "annotation/inference_rnn/rnn/logits:0"
+      }
+    }
+  }
+}
+component {
+  name: "tagger"
+  transition_system {
+    registered_name: "tagger"
+    parameters {
+      key: "parser_skip_deterministic"
+      value: "false"
+    }
+  }
+  resource {
+    name: "tag-map"
+    part {
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "tag-to-category"
+    part {
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "label-map"
+    part {
+      file_format: "text"
+      record_format: ""
+    }
+  }
+  resource {
+    name: "frozen-graph"
+    part {
+      file_format: "proto"
+      record_format: "tensorflow.GraphDef"
+    }
+  }
+  linked_feature {
+    name: "recurrence"
+    fml: "bias(0)"
+    embedding_dim: -1
+    size: 1
+    source_component: "tagger"
+    source_translator: "history"
+    source_layer: "layer_0"
+  }
+  linked_feature {
+    name: "rnn"
+    fml: "input.focus"
+    embedding_dim: -1
+    size: 1
+    source_component: "rnn"
+    source_translator: "reverse-token"
+    source_layer: "layer_0"
+  }
+  network_unit {
+    registered_name: "FeedForwardNetwork"
+    parameters {
+      key: "hidden_layer_sizes"
+      value: "64,64"
+    }
+  }
+  backend {
+    registered_name: "SyntaxNetComponent"
+  }
+  num_actions: 45
+  attention_component: ""
+  component_builder {
+    registered_name: "XlaDynamicComponent"
+  }
+  [syntaxnet.dragnn.runtime.CompilationSpec.component_spec_extension] {
+    model_name: "model_v1"
+    cell_subgraph_spec {
+      input {
+        name: "linked_channel_0_activations"
+        tensor: "tagger/INPUT/linked_channel_0_activations:0"
+        type: TYPE_FEATURE
+      }
+      input {
+        name: "linked_channel_0_out_of_bounds"
+        tensor: "tagger/INPUT/linked_channel_0_out_of_bounds:0"
+        type: TYPE_FEATURE
+      }
+      input {
+        name: "linked_channel_1_activations"
+        tensor: "tagger/INPUT/linked_channel_1_activations:0"
+        type: TYPE_FEATURE
+      }
+      output {
+        name: "layer_0"
+        tensor: "annotation/inference_tagger/tagger/Relu:0"
+      }
+      output {
+        name: "layer_1"
+        tensor: "annotation/inference_tagger/tagger/Relu_1:0"
+      }
+      output {
+        name: "last_layer"
+        tensor: "annotation/inference_tagger/tagger/Relu_1:0"
+      }
+      output {
+        name: "logits"
+        tensor: "annotation/inference_tagger/tagger/logits:0"
+      }
+    }
+  }
+}

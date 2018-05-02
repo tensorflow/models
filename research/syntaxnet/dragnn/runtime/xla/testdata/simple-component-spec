@@ -1,0 +1,24 @@
+  name: "test_component"
+  fixed_feature {
+    embedding_dim: -1
+    size: 1
+  }
+  num_actions: 1
+
+  component_builder {
+    registered_name: "XlaAotDynamicComponent_model_v1_test_component"
+  }
+  [syntaxnet.dragnn.runtime.CompilationSpec.component_spec_extension] {
+    model_name: "model_v1"
+    cell_subgraph_spec {
+      input {
+        name: "fixed_channel_0_index_0_ids"
+        tensor: "cell/id:0"
+        type: TYPE_FEATURE
+      }
+      output {
+        name: "logits"
+        tensor: "cell/lookup:0"
+      }
+    }
+  }
