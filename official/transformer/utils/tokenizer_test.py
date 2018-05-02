@@ -31,7 +31,7 @@ class SubtokenizerTest(unittest.TestCase):
       for subtoken in vocab_list:
         w.write("'%s'" % subtoken)
         w.write("\n")
-    return tokenizer.Subtokenizer(w.name, reserved_tokens=[])
+    return tokenizer.Subtokenizer(temp_file.name, reserved_tokens=[])
 
   def test_encode(self):
     vocab_list = ["123_", "test", "ing_"]
