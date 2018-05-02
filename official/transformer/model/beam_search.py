@@ -449,7 +449,7 @@ def _shape_list(tensor):
 
   # Ensure that the shape values are not None
   dynamic_shape = tf.shape(tensor)
-  for i in range(len(shape)):
+  for i in range(len(shape)):  # pylint: disable=consider-using-enumerate
     if shape[i] is None:
       shape[i] = dynamic_shape[i]
   return shape

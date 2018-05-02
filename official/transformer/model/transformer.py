@@ -314,6 +314,18 @@ class EncoderStack(tf.layers.Layer):
     self.output_normalization = LayerNormalization(params.hidden_size)
 
   def call(self, encoder_inputs, attention_bias, inputs_padding):
+    """Return the output of the encoder layer stacks.
+
+    Args:
+      encoder_inputs: tensor with shape [batch_size, input_length, hidden_size]
+      attention_bias: bias for the encoder self-attention layer.
+        [batch_size, 1, 1, input_length]
+      inputs_padding: P
+
+    Returns:
+      Output of encoder layer stack.
+      float32 tensor with shape [batch_size, input_length, hidden_size]
+    """
     for n, layer in enumerate(self.layers):
       # Run inputs through the sublayers.
       self_attention_layer = layer[0]
@@ -359,6 +371,25 @@ class DecoderStack(tf.layers.Layer):
 
   def call(self, decoder_inputs, encoder_outputs, decoder_self_attention_bias,
            attention_bias, cache=None):
+    """Return the output of the decoder layer stacks.
+
+    Args:
+      decoder_inputs: tensor with shape [batch_size, target_length, hidden_size]
+      encoder_outputs: tensor with shape [batch_size, input_length, hidden_size]
+      decoder_self_attention_bias: bias for decoder self-attention layer.
+        [1, 1, target_len, target_length]
+      attention_bias: bias for encoder-decoder attention layer.
+        [batch_size, 1, 1, input_length]
+      cache: (Used for fast decoding) A nested dictionary storing previous
+        decoder self-attention values. The items are:
+          {layer_n: {"k": tensor with shape [batch_size, i, key_channels],
+                     "v": tensor with shape [batch_size, i, value_channels]},
+           ...}
+
+    Returns:
+      Output of decoder layer stack.
+      float32 tensor with shape [batch_size, target_length, hidden_size]
+    """
     for n, layer in enumerate(self.layers):
       self_attention_layer = layer[0]
       enc_dec_attention_layer = layer[1]

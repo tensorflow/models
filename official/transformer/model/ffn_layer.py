@@ -37,6 +37,18 @@ class FeedFowardNetwork(tf.layers.Layer):
         hidden_size, use_bias=True, name="output_layer")
 
   def call(self, x, padding=None):
+    """Return outputs of the feedforward network.
+
+    Args:
+      x: tensor with shape [batch_size, length, hidden_size]
+      padding: (optional) If set, the padding values are temporarily removed
+        from x. The padding values are placed back in the output tensor in the
+        same locations. shape [batch_size, length]
+
+    Returns:
+      Output of the feedforward network.
+      tensor with shape [batch_size, length, hidden_size]
+    """
     # Retrieve dynamically known shapes
     batch_size = tf.shape(x)[0]
     length = tf.shape(x)[1]
@@ -71,4 +83,3 @@ class FeedFowardNetwork(tf.layers.Layer):
         )
         output = tf.reshape(output, [batch_size, length, self.hidden_size])
     return output
-
