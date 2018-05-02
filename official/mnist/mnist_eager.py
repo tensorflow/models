@@ -99,6 +99,8 @@ def main(argv):
   parser = MNISTEagerArgParser()
   flags = parser.parse_args(args=argv[1:])
 
+  a=1
+
   tfe.enable_eager_execution()
 
   # Automatically determine device and data_format
