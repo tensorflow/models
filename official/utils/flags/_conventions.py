@@ -26,7 +26,8 @@ from absl import flags
 
 # This codifies help string conventions and makes it easy to update them if
 # necessary. Currently the only major effect is that help bodies start on the
-# line after flags are listed.
+# line after flags are listed. All flag definitions should wrap the text bodies
+# with help wrap when calling DEFINE_*.
 help_wrap = functools.partial(flags.text_wrap, length=80, indent="",
                               firstline_indent="\n")
 

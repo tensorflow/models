@@ -354,7 +354,8 @@ def resnet_main(flags_obj, model_function, input_function, shape=None):
   """Shared main loop for ResNet Models.
 
   Args:
-    flags_obj: An object containing parsed flags.
+    flags_obj: An object containing parsed flags. See define_resnet_flags()
+      for details.
     model_function: the function that instantiates the Model and builds the
       ops for train/eval. This will be passed directly into the estimator.
     input_function: the function that processes the dataset and returns a
