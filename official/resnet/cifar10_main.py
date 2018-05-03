@@ -42,6 +42,8 @@ _NUM_IMAGES = {
     'validation': 10000,
 }
 
+DATASET_NAME = 'CIFAR-10'
+
 
 ###############################################################################
 # Data processing
@@ -237,7 +239,7 @@ def run_cifar(flags_obj):
                     or input_fn)
 
   resnet_run_loop.resnet_main(
-      flags_obj, cifar10_model_fn, input_function,
+      flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
       shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])
 
 

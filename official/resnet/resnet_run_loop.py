@@ -331,7 +331,8 @@ def per_device_batch_size(batch_size, num_gpus):
   return int(batch_size / num_gpus)
 
 
-def resnet_main(flags_obj, model_function, input_function, shape=None):
+def resnet_main(
+    flags_obj, model_function, input_function, dataset_name, shape=None):
   """Shared main loop for ResNet Models.
 
   Args:
@@ -342,6 +343,8 @@ def resnet_main(flags_obj, model_function, input_function, shape=None):
     input_function: the function that processes the dataset and returns a
       dataset that the estimator can train on. This will be wrapped with
       all the relevant flags for running and passed to estimator.
+    dataset_name: the name of the dataset for training and evaluation. This is
+      used for logging purpose.
     shape: list of ints representing the shape of the images used for training.
       This is only used if flags_obj.export_dir is passed.
   """
@@ -381,8 +384,16 @@ def resnet_main(flags_obj, model_function, input_function, shape=None):
           'dtype': flags_core.get_tf_dtype(flags_obj)
       })
 
+  run_params = {
+      'batch_size': flags_obj.batch_size,
+      'dtype': flags_core.get_tf_dtype(flags_obj),
+      'resnet_size': flags_obj.resnet_size,
+      'resnet_version': flags_obj.version,
+      'synthetic_data': flags_obj.use_synthetic_data,
+      'train_epochs': flags_obj.train_epochs,
+  }
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
-  benchmark_logger.log_run_info('resnet')
+  benchmark_logger.log_run_info('resnet', dataset_name, run_params)
 
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,

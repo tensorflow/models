@@ -98,41 +98,41 @@
     "type": "RECORD"
   },
   {
-    "description": "The list of hyperparameters of the model.",
+    "description": "The list of parameters run with the model. It could contain hyperparameters or others.",
     "fields": [
       {
-        "description": "The name of the hyperparameter.",
+        "description": "The name of the parameter.",
         "mode": "REQUIRED",
         "name": "name",
         "type": "STRING"
       },
       {
-        "description": "The string value of the hyperparameter.",
+        "description": "The string value of the parameter.",
         "mode": "NULLABLE",
         "name": "string_value",
         "type": "STRING"
       },
       {
-        "description": "The bool value of the hyperparameter.",
+        "description": "The bool value of the parameter.",
         "mode": "NULLABLE",
         "name": "bool_value",
         "type": "STRING"
       },
       {
-        "description": "The int/long value of the hyperparameter.",
+        "description": "The int/long value of the parameter.",
         "mode": "NULLABLE",
         "name": "long_value",
         "type": "INTEGER"
       },
       {
-        "description": "The double/float value of hyperparameter.",
+        "description": "The double/float value of parameter.",
         "mode": "NULLABLE",
         "name": "float_value",
         "type": "FLOAT"
       }
     ],
     "mode": "REPEATED",
-    "name": "hyperparameter",
+    "name": "run_parameters",
     "type": "RECORD"
   },
   {
