@@ -84,7 +84,6 @@ message Ssd {
 
 
 message SsdFeatureExtractor {
-  reserved 6;
 
   // Type of ssd feature extractor.
   optional string type = 1;
