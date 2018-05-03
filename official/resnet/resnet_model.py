@@ -354,7 +354,7 @@ class Model(object):
                kernel_size,
                conv_stride, first_pool_size, first_pool_stride,
                block_sizes, block_strides,
-               final_size, version=DEFAULT_VERSION, data_format=None,
+               final_size, resnet_version=DEFAULT_VERSION, data_format=None,
                dtype=DEFAULT_DTYPE):
     """Creates a model for classifying an image.
 
@@ -377,7 +377,7 @@ class Model(object):
       block_strides: List of integers representing the desired stride size for
         each of the sets of block layers. Should be same length as block_sizes.
       final_size: The expected size of the model after the second pooling.
-      version: Integer representing which version of the ResNet network to use.
+      resnet_version: Integer representing which version of the ResNet network to use.
         See README for details. Valid values: [1, 2]
       data_format: Input format ('channels_last', 'channels_first', or None).
         If set to None, the format is dependent on whether a GPU is available.
@@ -393,7 +393,7 @@ class Model(object):
       data_format = (
           'channels_first' if tf.test.is_built_with_cuda() else 'channels_last')
 
-    self.resnet_version = version
+    self.resnet_version = resnet_version
     if version not in (1, 2):
       raise ValueError(
           'Resnet version should be 1 or 2. See README for citations.')

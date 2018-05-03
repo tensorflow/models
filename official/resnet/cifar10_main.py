@@ -140,7 +140,7 @@ class Cifar10Model(resnet_model.Model):
   """Model class with appropriate defaults for CIFAR-10 data."""
 
   def __init__(self, resnet_size, data_format=None, num_classes=_NUM_CLASSES,
-               version=resnet_model.DEFAULT_VERSION,
+               resnet_version=resnet_model.DEFAULT_VERSION,
                dtype=resnet_model.DEFAULT_DTYPE):
     """These are the parameters that work for CIFAR-10 data.
 
@@ -150,8 +150,8 @@ class Cifar10Model(resnet_model.Model):
         data format to use when setting up the model.
       num_classes: The number of output classes needed from the model. This
         enables users to extend the same model to their own datasets.
-      version: Integer representing which version of the ResNet network to use.
-        See README for details. Valid values: [1, 2]
+      resnet_version: Integer representing which version of the ResNet network
+      to use. See README for details. Valid values: [1, 2]
       dtype: The TensorFlow dtype to use for calculations.
 
     Raises:
@@ -174,7 +174,7 @@ class Cifar10Model(resnet_model.Model):
         block_sizes=[num_blocks] * 3,
         block_strides=[1, 2, 2],
         final_size=64,
-        version=version,
+        resnet_version=resnet_version,
         data_format=data_format,
         dtype=dtype
     )
@@ -211,7 +211,7 @@ def cifar10_model_fn(features, labels, mode, params):
       learning_rate_fn=learning_rate_fn,
       momentum=0.9,
       data_format=params['data_format'],
-      version=params['version'],
+      resnet_version=params['resnet_version'],
       loss_scale=params['loss_scale'],
       loss_filter_fn=loss_filter_fn,
       dtype=params['dtype']
