@@ -185,7 +185,7 @@ def validate_batch_size_for_multi_gpu(batch_size):
     raise ValueError(err)
 
 
-def main(flags_obj):
+def run_mnist(flags_obj):
   model_function = model_fn
 
   if flags_obj.multi_gpu:
@@ -249,6 +249,10 @@ def main(flags_obj):
         'image': image,
     })
     mnist_classifier.export_savedmodel(flags_obj.export_dir, input_fn)
+
+
+def main(_):
+  run_mnist(flags.FLAGS)
 
 
 if __name__ == '__main__':

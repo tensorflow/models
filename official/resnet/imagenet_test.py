@@ -289,37 +289,37 @@ class BaseTest(tf.test.TestCase):
 
   def test_imagenet_end_to_end_synthetic_v1(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '1']
     )
 
   def test_imagenet_end_to_end_synthetic_v2(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '2']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_tiny(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '1', '-rs', '18']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_tiny(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '2', '-rs', '18']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_huge(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '1', '-rs', '200']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_huge(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '2', '-rs', '200']
     )
 

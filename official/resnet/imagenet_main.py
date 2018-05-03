@@ -313,13 +313,17 @@ def define_imagenet_flags():
   flags_core.set_defaults(train_epochs=100)
 
 
-def main(flags_obj):
+def run_imagenet(flags_obj):
   input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
 
   resnet_run_loop.resnet_main(
       flags_obj, imagenet_model_fn, input_function,
       shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
+
+
+def main(_):
+  run_imagenet(flags.FLAGS)
 
 
 if __name__ == '__main__':
