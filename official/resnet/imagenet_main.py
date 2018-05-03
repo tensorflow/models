@@ -42,6 +42,7 @@ _NUM_IMAGES = {
 _NUM_TRAIN_FILES = 1024
 _SHUFFLE_BUFFER = 1500
 
+DATASET_NAME = 'ImageNet'
 
 ###############################################################################
 # Data processing
@@ -318,7 +319,7 @@ def main(flags_obj):
                     or input_fn)
 
   resnet_run_loop.resnet_main(
-      flags_obj, imagenet_model_fn, input_function, 'ImageNet',
+      flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
       shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
 
 
