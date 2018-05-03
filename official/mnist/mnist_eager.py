@@ -27,7 +27,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import sys
 import time
 
 # pylint: disable=g-bad-import-order
