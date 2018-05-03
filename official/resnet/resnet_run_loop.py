@@ -405,7 +405,7 @@ def resnet_main(
           'dtype': flags_core.get_tf_dtype(flags_obj)
       })
 
-  hyperparams = {
+  run_params = {
       'batch_size': flags_obj.batch_size,
       'dtype': flags_core.get_tf_dtype(flags_obj),
       'resnet_size': flags_obj.resnet_size,
@@ -414,7 +414,7 @@ def resnet_main(
       'train_epochs': flags_obj.train_epochs,
   }
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
-  benchmark_logger.log_run_info('resnet', dataset_name, hyperparams)
+  benchmark_logger.log_run_info('resnet', dataset_name, run_params)
 
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
