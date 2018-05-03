@@ -26,9 +26,9 @@ import os
 import tempfile
 
 # pylint: disable=g-bad-import-order
+from six.moves import xrange  # pylint: disable=redefined-builtin
 from absl import app as absl_app
 from absl import flags
-from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
