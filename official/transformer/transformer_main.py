@@ -36,10 +36,17 @@ from official.transformer.model import transformer
 from official.transformer.utils import dataset
 from official.transformer.utils import metrics
 from official.transformer.utils import tokenizer
+from official.utils.misc import model_helpers
 
 DEFAULT_TRAIN_EPOCHS = 10
 BLEU_DIR = "bleu"
 INF = int(1e9)
+
+# Dictionary containing tensors that are logged by the logging hooks. Each item
+# maps a string to the tensor name.
+TENSORS_TO_LOG = {
+    'learning_rate': 'model/get_train_op/learning_rate/learning_rate',
+    'cross_entropy_loss': 'model/cross_entropy'}
 
 
 def model_fn(features, labels, mode, params):
@@ -66,6 +73,9 @@ def model_fn(features, labels, mode, params):
         logits, targets, params.label_smoothing, params.vocab_size)
     loss = tf.reduce_sum(xentropy * weights) / tf.reduce_sum(weights)
 
+    # Save loss as named tensor that will be logged with the logging hook.
+    tf.identity(loss, 'cross_entropy')
+
     if mode == tf.estimator.ModeKeys.EVAL:
       return tf.estimator.EstimatorSpec(
           mode=mode, loss=loss, predictions={"predictions": logits},
@@ -87,6 +97,10 @@ def get_learning_rate(learning_rate, hidden_size, learning_rate_warmup_steps):
     # Apply rsqrt decay
     learning_rate *= tf.rsqrt(tf.maximum(step, warmup_steps))
 
+    # Create a named tensor that will be logged using the logging hook.
+    # The full name includes variable and names scope. In this case, the name
+    # is model/get_train_op/learning_rate/learning_rate
+    tf.identity(learning_rate, 'learning_rate')
     # Save learning rate value to TensorBoard summary.
     tf.summary.scalar("learning_rate", learning_rate)
 
@@ -168,8 +182,8 @@ def evaluate_and_log_bleu(estimator, bleu_writer, bleu_source, bleu_ref):
 
 def train_schedule(
     estimator, train_eval_iterations, single_iteration_train_steps=None,
-    single_iteration_train_epochs=None, bleu_source=None, bleu_ref=None,
-    bleu_threshold=None):
+    single_iteration_train_epochs=None, train_hooks=None, bleu_source=None,
+    bleu_ref=None, bleu_threshold=None):
   """Train and evaluate model, and optionally compute model's BLEU score.
 
   **Step vs. Epoch vs. Iteration**
@@ -198,6 +212,7 @@ def train_schedule(
     train_eval_iterations: Number of times to repeat the train+eval iteration.
     single_iteration_train_steps: Number of steps to train in one iteration.
     single_iteration_train_epochs: Number of epochs to train in one iteration.
+    train_hooks: List of hooks to pass to the estimator during training.
     bleu_source: File containing text to be translated for BLEU calculation.
     bleu_ref: File containing reference translations for BLEU calculation.
     bleu_threshold: minimum BLEU score before training is stopped.
@@ -221,7 +236,7 @@ def train_schedule(
 
   evaluate_bleu = bleu_source is not None and bleu_ref is not None
 
-  # Print out training schedule
+  # Print details of training schedule.
   print("Training schedule:")
   if single_iteration_train_epochs is not None:
     print("\t1. Train for %d epochs." % single_iteration_train_epochs)
@@ -236,7 +251,8 @@ def train_schedule(
     print("Repeat above steps %d times." % train_eval_iterations)
 
   if evaluate_bleu:
-    # Set summary writer to log bleu score.
+    # Create summary writer to log bleu score (writes values to be shown in
+    # Tensorboard).
     bleu_writer = tf.summary.FileWriter(
         os.path.join(estimator.model_dir, BLEU_DIR))
     if bleu_threshold is not None:
@@ -249,7 +265,9 @@ def train_schedule(
 
     # Train the model for single_iteration_train_steps or until the input fn
     # runs out of examples (if single_iteration_train_steps is None).
-    estimator.train(dataset.train_input_fn, steps=single_iteration_train_steps)
+    estimator.train(
+        dataset.train_input_fn, steps=single_iteration_train_steps,
+        hooks=train_hooks)
 
     eval_results = estimator.evaluate(dataset.eval_input_fn)
     print("Evaluation results (iter %d/%d):" % (i + 1, train_eval_iterations),
@@ -258,7 +276,7 @@ def train_schedule(
     if evaluate_bleu:
       uncased_score, _ = evaluate_and_log_bleu(
           estimator, bleu_writer, bleu_source, bleu_ref)
-      if bleu_threshold is not None and uncased_score > bleu_threshold:
+      if model_helpers.past_stop_threshold(bleu_threshold, uncased_score):
         bleu_writer.close()
         break
 
@@ -304,12 +322,14 @@ def main(_):
   params.epochs_between_eval = FLAGS.epochs_between_eval
   params.repeat_dataset = single_iteration_train_epochs
 
+  train_hooks = [tf.train.LoggingTensorHook(TENSORS_TO_LOG, every_n_iter=5)]
+
   estimator = tf.estimator.Estimator(
       model_fn=model_fn, model_dir=FLAGS.model_dir, params=params)
   train_schedule(
       estimator, train_eval_iterations, single_iteration_train_steps,
-      single_iteration_train_epochs, FLAGS.bleu_source, FLAGS.bleu_ref,
-      FLAGS.bleu_threshold)
+      single_iteration_train_epochs, train_hooks, FLAGS.bleu_source,
+      FLAGS.bleu_ref, FLAGS.bleu_threshold)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ The model also applies embeddings on the input and output tokens, and adds a con
     * [Training times](#training-times)
     * [Evaluation results](#evaluation-results)
   * [Detailed instructions](#detailed-instructions)
-    * [Export variables (optional)](#export-variables-optional)
+    * [Environment preparation](#environment-preparation)
     * [Download and preprocess datasets](#download-and-preprocess-datasets)
     * [Model training and evaluation](#model-training-and-evaluation)
     * [Translate using the model](#translate-using-the-model)
@@ -31,6 +31,13 @@ The model also applies embeddings on the input and output tokens, and adds a con
 Below are the commands for running the Transformer model. See the [Detailed instrutions](#detailed-instructions) for more details on running the model.
 
 ```
+cd /path/to/models/official/transformer
+
+# Ensure that PYTHONPATH is correctly defined as described in
+# https://github.com/tensorflow/models/tree/master/official#running-the-models
+# export PYTHONPATH="$PYTHONPATH:/path/to/models"
+
+# Export variables
 PARAMS=big
 DATA_DIR=$HOME/transformer/data
 MODEL_DIR=$HOME/transformer/model_$PARAMS
@@ -79,7 +86,12 @@ big | 28.9
 ## Detailed instructions
 
 
-0. ### Export variables (optional)
+0. ### Environment preparation
+
+   #### Add models repo to PYTHONPATH
+   Follow the instructions described in the [Running the models](https://github.com/tensorflow/models/tree/master/official#running-the-models) section to add the models folder to the python path.
+
+   #### Export variables (optional)
 
    Export the following variables, or modify the values in each of the snippets below:
    ```
