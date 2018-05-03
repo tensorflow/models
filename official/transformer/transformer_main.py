@@ -22,7 +22,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 import tempfile
 
@@ -43,6 +42,7 @@ from official.transformer.utils import metrics
 from official.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
+from official.utils.logs import logger
 from official.utils.misc import model_helpers
 
 DEFAULT_TRAIN_EPOCHS = 10
@@ -291,9 +291,7 @@ def train_schedule(
 
 def define_transformer_flags():
   """Add flags for running this script."""
-  # Add common flags (data_dir, model_dir, train_epochs, etc.). This is done by
-  # first adding flags to the flags_core module, then adopting them to this
-  # module.
+  # Add common flags (data_dir, model_dir, train_epochs, etc.).
   flags_core.define_base(multi_gpu=False, export_dir=False)
   flags_core.define_performance(
       num_parallel_calls=True,
@@ -303,6 +301,11 @@ def define_transformer_flags():
       max_train_steps=False,
       dtype=False
   )
+  flags_core.define_benchmark()
+
+  # Set flags from the flags_core module as "key flags" so they're listed when
+  # the '-h' flag is used. Without this line, the flags defined above are
+  # only shown in the full `--helpful` help text.
   flags.adopt_module_key_flags(flags_core)
 
   # Add transformer-specific flags
@@ -403,11 +406,14 @@ def main(_):
   if flags_obj.batch_size is not None:
     params.batch_size = flags_obj.batch_size
 
+  # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
       batch_size=params.batch_size  # for ExamplesPerSecondHook
   )
+  benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
+  benchmark_logger.log_run_info('transformer')
 
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(
