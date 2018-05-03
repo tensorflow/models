@@ -190,14 +190,14 @@ def _batch_examples(dataset, batch_size, max_length):
 
 
 def _read_and_batch_from_files(
-    file_pattern, batch_size, max_length, num_cpu_cores, shuffle, repeat):
+    file_pattern, batch_size, max_length, num_parallel_calls, shuffle, repeat):
   """Create dataset where each item is a dict of "inputs" and "targets".
 
   Args:
     file_pattern: String used to match the input TFRecord files.
     batch_size: Maximum number of tokens per batch of examples
     max_length: Maximum number of tokens per example
-    num_cpu_cores: Number of cpu cores for parallel input processing.
+    num_parallel_calls: Number of cpu cores for parallel input processing.
     shuffle: If true, randomizes order of elements.
     repeat: Number of times to repeat the dataset. If None, the dataset is
       repeated forever.
@@ -215,12 +215,12 @@ def _read_and_batch_from_files(
   # will be non-deterministic.
   dataset = dataset.apply(
       tf.contrib.data.parallel_interleave(
-          _load_records, sloppy=shuffle, cycle_length=num_cpu_cores))
+          _load_records, sloppy=shuffle, cycle_length=num_parallel_calls))
 
   # Parse each tf.Example into a dictionary
   # TODO: Look into prefetch_input_elements for performance optimization.
   dataset = dataset.map(_parse_example,
-                        num_parallel_calls=num_cpu_cores)
+                        num_parallel_calls=num_parallel_calls)
 
   # Remove examples where the input or target length exceeds the maximum length,
   dataset = dataset.filter(lambda x, y: _filter_max_length((x, y), max_length))
@@ -238,13 +238,13 @@ def train_input_fn(params):
   """Load and return dataset of batched examples for use during training."""
   file_pattern = os.path.join(getattr(params, "data_dir", ""), "*train*")
   return _read_and_batch_from_files(
-      file_pattern, params.batch_size, params.max_length, params.num_cpu_cores,
-      shuffle=True, repeat=params.repeat_dataset)
+      file_pattern, params.batch_size, params.max_length,
+      params.num_parallel_calls, shuffle=True, repeat=params.repeat_dataset)
 
 
 def eval_input_fn(params):
   """Load and return dataset of batched examples for use during evaluation."""
   file_pattern = os.path.join(getattr(params, "data_dir", ""), "*dev*")
   return _read_and_batch_from_files(
-      file_pattern, params.batch_size, params.max_length, params.num_cpu_cores,
-      shuffle=False, repeat=1)
+      file_pattern, params.batch_size, params.max_length,
+      params.num_parallel_calls, shuffle=False, repeat=1)
