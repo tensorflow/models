@@ -99,6 +99,11 @@ def test(model, dataset):
 
 
 def run_mnist_eager(flags_obj):
+  """Run MNIST training and eval loop in eager mode.
+
+  Args:
+    flags_obj: An object containing parsed flag values.
+  """
   tf.enable_eager_execution()
 
   # Automatically determine device and data_format
