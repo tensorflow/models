@@ -379,7 +379,7 @@ def resnet_main(
           'resnet_size': int(flags_obj.resnet_size),
           'data_format': flags_obj.data_format,
           'batch_size': flags_obj.batch_size,
-          'version': int(flags_obj.version),
+          'version': int(flags_obj.resnet_version),
           'loss_scale': flags_core.get_loss_scale(flags_obj),
           'dtype': flags_core.get_tf_dtype(flags_obj)
       })
@@ -388,7 +388,7 @@ def resnet_main(
       'batch_size': flags_obj.batch_size,
       'dtype': flags_core.get_tf_dtype(flags_obj),
       'resnet_size': flags_obj.resnet_size,
-      'resnet_version': flags_obj.version,
+      'resnet_version': flags_obj.resnet_version,
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
   }
@@ -456,7 +456,8 @@ def define_resnet_flags(resnet_size_choices=None):
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_enum(
-      name='version', short_name='rv', default='2', enum_values=['1', '2'],
+      name='resnet_version', short_name='rv', default='2',
+      enum_values=['1', '2'],
       help=flags_core.help_wrap(
           'Version of ResNet. (1 or 2) See README.md for details.'))
 

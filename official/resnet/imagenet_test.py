@@ -280,25 +280,25 @@ class BaseTest(tf.test.TestCase):
   def test_imagenet_end_to_end_synthetic_v1_tiny(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '1', '-rs', '18']
+        extra_flags=['-resnet_version', '1', '-resnet_size', '18']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_tiny(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '2', '-rs', '18']
+        extra_flags=['-resnet_version', '2', '-resnet_size', '18']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_huge(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '1', '-rs', '200']
+        extra_flags=['-resnet_version', '1', '-resnet_size', '200']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_huge(self):
     integration.run_synthetic(
         main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '2', '-rs', '200']
+        extra_flags=['-resnet_version', '2', '-resnet_size', '200']
     )
 
 
