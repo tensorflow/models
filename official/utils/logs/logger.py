@@ -218,7 +218,7 @@ def _collect_run_params(run_info, run_params):
                           {"name": name, "string_value": str(value)})
   if run_params:
     run_info["run_parameters"] = [
-      process_param(k, v) for k, v in sorted(run_params.items())]
+        process_param(k, v) for k, v in sorted(run_params.items())]
 
 def _collect_tensorflow_environment_variables(run_info):
   run_info["tensorflow_environment_variables"] = [
