@@ -218,6 +218,12 @@ def export_model(model, model_type, export_dir):
 
 
 def run_wide_deep(flags_obj):
+  """Run Wide-Deep training and eval loop.
+
+  Args:
+    flags_obj: An object containing parsed flag values.
+  """
+
   # Clean up the model directory if present
   shutil.rmtree(flags_obj.model_dir, ignore_errors=True)
   model = build_estimator(flags_obj.model_dir, flags_obj.model_type)

@@ -186,6 +186,12 @@ def validate_batch_size_for_multi_gpu(batch_size):
 
 
 def run_mnist(flags_obj):
+  """Run MNIST training and eval loop.
+
+  Args:
+    flags_obj: An object containing parsed flag values.
+  """
+
   model_function = model_fn
 
   if flags_obj.multi_gpu:

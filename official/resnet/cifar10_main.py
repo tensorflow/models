@@ -239,6 +239,11 @@ def define_cifar_flags():
 
 
 def run_cifar(flags_obj):
+  """Run ResNet CIFAR-10 training and eval loop.
+
+  Args:
+    flags_obj: An object containing parsed flag values.
+  """
   input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
 

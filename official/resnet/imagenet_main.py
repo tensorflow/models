@@ -314,6 +314,11 @@ def define_imagenet_flags():
 
 
 def run_imagenet(flags_obj):
+  """Run ResNet ImageNet training and eval loop.
+
+  Args:
+    flags_obj: An object containing parsed flag values.
+  """
   input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
 
