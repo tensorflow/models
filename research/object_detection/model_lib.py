@@ -325,16 +325,16 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       }
 
     eval_metric_ops = None
-    if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
+    if mode == tf.estimator.ModeKeys.EVAL:
       class_agnostic = (fields.DetectionResultFields.detection_classes
                         not in detections)
       groundtruth = _get_groundtruth_data(detection_model, class_agnostic)
       use_original_images = fields.InputDataFields.original_image in features
-      original_images = (
+      eval_images = (
           features[fields.InputDataFields.original_image] if use_original_images
           else features[fields.InputDataFields.image])
       eval_dict = eval_util.result_dict_for_single_example(
-          original_images[0:1],
+          eval_images[0:1],
           features[inputs.HASH_KEY][0],
           detections,
           groundtruth,
@@ -355,22 +355,21 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         img_summary = tf.summary.image('Detections_Left_Groundtruth_Right',
                                        detection_and_groundtruth)
 
-      if mode == tf.estimator.ModeKeys.EVAL:
-        # Eval metrics on a single example.
-        eval_metrics = eval_config.metrics_set
-        if not eval_metrics:
-          eval_metrics = ['coco_detection_metrics']
-        eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-            eval_metrics, category_index.values(), eval_dict,
-            include_metrics_per_category=False)
-        for loss_key, loss_tensor in iter(losses_dict.items()):
-          eval_metric_ops[loss_key] = tf.metrics.mean(loss_tensor)
-        for var in optimizer_summary_vars:
-          eval_metric_ops[var.op.name] = (var, tf.no_op())
-        if img_summary is not None:
-          eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
-              img_summary, tf.no_op())
-        eval_metric_ops = {str(k): v for k, v in eval_metric_ops.iteritems()}
+      # Eval metrics on a single example.
+      eval_metrics = eval_config.metrics_set
+      if not eval_metrics:
+        eval_metrics = ['coco_detection_metrics']
+      eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
+          eval_metrics, category_index.values(), eval_dict,
+          include_metrics_per_category=False)
+      for loss_key, loss_tensor in iter(losses_dict.items()):
+        eval_metric_ops[loss_key] = tf.metrics.mean(loss_tensor)
+      for var in optimizer_summary_vars:
+        eval_metric_ops[var.op.name] = (var, tf.no_op())
+      if img_summary is not None:
+        eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
+            img_summary, tf.no_op())
+      eval_metric_ops = {str(k): v for k, v in eval_metric_ops.iteritems()}
 
     if use_tpu:
       return tf.contrib.tpu.TPUEstimatorSpec(
