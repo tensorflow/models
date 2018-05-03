@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import argparse
 import os
-import sys
 
 # pylint: disable=g-bad-import-order
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -242,4 +241,4 @@ if __name__ == "__main__":
       metavar="<FO>")
 
   FLAGS, unparsed = parser.parse_known_args()
-  main(sys.argv)
+  tf.app.run()

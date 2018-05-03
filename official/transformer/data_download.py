@@ -21,7 +21,6 @@ from __future__ import print_function
 import argparse
 import os
 import random
-import sys
 import tarfile
 import urllib
 
@@ -416,4 +415,4 @@ if __name__ == "__main__":
            "closest to the target size (%d)." % _TARGET_VOCAB_SIZE)
 
   FLAGS, unparsed = parser.parse_known_args()
-  main(sys.argv)
+  tf.app.run()

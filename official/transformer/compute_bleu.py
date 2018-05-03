@@ -126,4 +126,4 @@ if __name__ == "__main__":
       metavar="<BV>")
 
   FLAGS, unparsed = parser.parse_known_args()
-  main(sys.argv)
+  tf.app.run()
