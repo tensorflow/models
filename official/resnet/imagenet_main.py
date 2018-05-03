@@ -21,8 +21,11 @@ from __future__ import print_function
 import os
 import sys
 
+from absl import app as absl_app
+from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.utils.flags import core as flags_core
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
@@ -303,23 +306,23 @@ def imagenet_model_fn(features, labels, mode, params):
   )
 
 
-def main(argv):
-  parser = resnet_run_loop.ResnetArgParser(
-      resnet_size_choices=[18, 34, 50, 101, 152, 200])
+def define_imagenet_flags():
+  resnet_run_loop.define_resnet_flags(
+      resnet_size_choices=['18', '34', '50', '101', '152', '200'])
+  flags.adopt_module_key_flags(resnet_run_loop)
+  flags_core.set_defaults(train_epochs=100)
 
-  parser.set_defaults(
-      train_epochs=100
-  )
 
-  flags = parser.parse_args(args=argv[1:])
-
-  input_function = flags.use_synthetic_data and get_synth_input_fn() or input_fn
+def main(flags_obj):
+  input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
+                    or input_fn)
 
   resnet_run_loop.resnet_main(
-      flags, imagenet_model_fn, input_function,
+      flags_obj, imagenet_model_fn, input_function,
       shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  main(argv=sys.argv)
+  define_imagenet_flags()
+  absl_app.run(main)

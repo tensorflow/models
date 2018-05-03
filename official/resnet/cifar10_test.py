@@ -37,6 +37,11 @@ class BaseTest(tf.test.TestCase):
   """Tests for the Cifar10 version of Resnet.
   """
 
+  @classmethod
+  def setUpClass(cls):  # pylint: disable=invalid-name
+    super(BaseTest, cls).setUpClass()
+    cifar10_main.define_cifar_flags()
+
   def tearDown(self):
     super(BaseTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
