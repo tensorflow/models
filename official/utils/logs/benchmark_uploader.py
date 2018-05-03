@@ -31,9 +31,13 @@ import uuid
 
 from google.cloud import bigquery
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+# pylint: disable=g-bad-import-order
+from absl import app as absl_app
+from absl import flags
+import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
-from official.utils.arg_parsers import parsers
+from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 
 
@@ -108,22 +112,22 @@ class BigQueryUploader(object):
             "Failed to upload benchmark info to bigquery: {}".format(errors))
 
 
-def main(argv):
-  parser = parsers.BenchmarkParser()
-  flags = parser.parse_args(args=argv[1:])
-  if not flags.benchmark_log_dir:
+def main(_):
+  if not flags.FLAGS.benchmark_log_dir:
     print("Usage: benchmark_uploader.py --benchmark_log_dir=/some/dir")
     sys.exit(1)
 
   uploader = BigQueryUploader(
-      flags.benchmark_log_dir,
-      gcp_project=flags.gcp_project)
+      flags.FLAGS.benchmark_log_dir,
+      gcp_project=flags.FLAGS.gcp_project)
   run_id = str(uuid.uuid4())
   uploader.upload_benchmark_run(
-      flags.bigquery_data_set, flags.bigquery_run_table, run_id)
+      flags.FLAGS.bigquery_data_set, flags.FLAGS.bigquery_run_table, run_id)
   uploader.upload_metric(
-      flags.bigquery_data_set, flags.bigquery_metric_table, run_id)
+      flags.FLAGS.bigquery_data_set, flags.FLAGS.bigquery_metric_table, run_id)
 
 
 if __name__ == "__main__":
-  main(argv=sys.argv)
+  flags_core.define_benchmark()
+  flags.adopt_module_key_flags(flags_core)
+  absl_app.run(main=main)
