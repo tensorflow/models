@@ -90,6 +90,15 @@ reporting an issue.
 
 ## Release information
 
+### April 30, 2018
+
+We have released a Faster R-CNN detector with ResNet-101 feature extractor trained on [AVA](https://research.google.com/ava/) v2.1.
+Compared with other commonly used object detectors, it changes the action classification loss function to per-class Sigmoid loss to handle boxes with multiple labels.
+The model is trained on the training split of AVA v2.1 for 1.5M iterations, it achieves mean AP of 11.25% over 60 classes on the validation split of AVA v2.1.
+For more details please refer to this [paper](https://arxiv.org/abs/1705.08421).
+
+<b>Thanks to contributors</b>: Chen Sun, David Ross
+
 ### April 2, 2018
 
 Supercharge your mobile phones with the next generation mobile object detector!
