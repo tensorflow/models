@@ -98,7 +98,12 @@ def test(model, dataset):
     tf.contrib.summary.scalar('accuracy', accuracy.result())
 
 
-def main(flags_obj):
+def run_mnist_eager(flags_obj):
+  """Run MNIST training and eval loop in eager mode.
+
+  Args:
+    flags_obj: An object containing parsed flag values.
+  """
   tf.enable_eager_execution()
 
   # Automatically determine device and data_format
@@ -191,6 +196,11 @@ def define_mnist_eager_flags():
       batch_size=100,
       train_epochs=10,
   )
+
+
+def main(_):
+  run_mnist_eager(flags.FLAGS)
+
 
 if __name__ == '__main__':
   define_mnist_eager_flags()
