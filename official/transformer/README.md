@@ -135,12 +135,12 @@ big | 28.9
    By default, the model will train for 10 epochs, and evaluate after every epoch. The training schedule may be defined through the flags:
    * Training with epochs (default):
      * `--train_epochs`: The total number of complete passes to make through the dataset
-     * `--epochs_between_eval`: The number of epochs to train between evaluations.
+     * `--epochs_between_evals`: The number of epochs to train between evaluations.
    * Training with steps:
      * `--train_steps`: sets the total number of training steps to run.
-     * `--steps_between_eval`: Number of training steps to run between evaluations.
+     * `--steps_between_evals`: Number of training steps to run between evaluations.
 
-   Only one of `train_epochs` or `train_steps` may be set. Since the default option is to evaluate the model after training for an epoch, it may take 4 or more hours between model evaluations. To get more frequent evaluations, use the flags `--train_steps=250000 --steps_between_eval=1000`.
+   Only one of `train_epochs` or `train_steps` may be set. Since the default option is to evaluate the model after training for an epoch, it may take 4 or more hours between model evaluations. To get more frequent evaluations, use the flags `--train_steps=250000 --steps_between_evals=1000`.
 
    Note: At the beginning of each training session, the training dataset is reloaded and shuffled. Stopping the training before completing an epoch may result in worse model quality, due to the chance that some examples may be seen more than others. Therefore, it is recommended to use epochs when the model quality is important.
 
@@ -149,7 +149,7 @@ big | 28.9
    Use these flags to compute the BLEU when the model evaluates:
    * `--bleu_source`: Path to file containing text to translate.
    * `--bleu_ref`: Path to file containing the reference translation.
-   * `--bleu_threshold`: Train until the BLEU score reaches this lower bound. This setting overrides the `--train_steps` and `--train_epochs` flags.
+   * `--stop_threshold`: Train until the BLEU score reaches this lower bound. This setting overrides the `--train_steps` and `--train_epochs` flags.
 
    The test source and reference files located in the `test_data` directory are extracted from the preprocessed dataset from the [NMT Seq2Seq tutorial](https://google.github.io/seq2seq/nmt/#download-data).
 

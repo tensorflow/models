@@ -166,8 +166,7 @@ def get_global_step(estimator):
   return int(estimator.latest_checkpoint().split("-")[-1])
 
 
-def evaluate_and_log_bleu(
-    estimator, bleu_writer, bleu_source, bleu_ref, vocab_file_path):
+def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file_path):
   """Calculate and record the BLEU score."""
   subtokenizer = tokenizer.Subtokenizer(vocab_file_path)
 
@@ -176,21 +175,13 @@ def evaluate_and_log_bleu(
 
   print("Bleu score (uncased):", uncased_score)
   print("Bleu score (cased):", cased_score)
-
-  summary = tf.Summary(value=[
-      tf.Summary.Value(tag="bleu/uncased", simple_value=uncased_score),
-      tf.Summary.Value(tag="bleu/cased", simple_value=cased_score),
-  ])
-
-  bleu_writer.add_summary(summary, get_global_step(estimator))
-  bleu_writer.flush()
   return uncased_score, cased_score
 
 
 def train_schedule(
     estimator, train_eval_iterations, single_iteration_train_steps=None,
-    single_iteration_train_epochs=None, train_hooks=None, bleu_source=None,
-    bleu_ref=None, bleu_threshold=None, vocab_file_path=None):
+    single_iteration_train_epochs=None, train_hooks=None, benchmark_logger=None,
+    bleu_source=None, bleu_ref=None, bleu_threshold=None, vocab_file_path=None):
   """Train and evaluate model, and optionally compute model's BLEU score.
 
   **Step vs. Epoch vs. Iteration**
@@ -220,6 +211,7 @@ def train_schedule(
     single_iteration_train_steps: Number of steps to train in one iteration.
     single_iteration_train_epochs: Number of epochs to train in one iteration.
     train_hooks: List of hooks to pass to the estimator during training.
+    benchmark_logger: a BenchmarkLogger object that logs evaluation data
     bleu_source: File containing text to be translated for BLEU calculation.
     bleu_ref: File containing reference translations for BLEU calculation.
     bleu_threshold: minimum BLEU score before training is stopped.
@@ -259,7 +251,7 @@ def train_schedule(
     print("Repeat above steps %d times." % train_eval_iterations)
 
   if evaluate_bleu:
-    # Create summary writer to log bleu score (writes values to be shown in
+    # Create summary writer to log bleu score (values can be displayed in
     # Tensorboard).
     bleu_writer = tf.summary.FileWriter(
         os.path.join(estimator.model_dir, BLEU_DIR))
@@ -280,17 +272,33 @@ def train_schedule(
     eval_results = estimator.evaluate(dataset.eval_input_fn)
     print("Evaluation results (iter %d/%d):" % (i + 1, train_eval_iterations),
           eval_results)
+    benchmark_logger.log_evaluation_result(eval_results)
 
     if evaluate_bleu:
-      uncased_score, _ = evaluate_and_log_bleu(
-          estimator, bleu_writer, bleu_source, bleu_ref, vocab_file_path)
+      uncased_score, cased_score = evaluate_and_log_bleu(
+          estimator, bleu_source, bleu_ref, vocab_file_path)
+
+      # Write bleu scores using summary writer and benchmark logger
+      global_step = get_global_step(estimator)
+      summary = tf.Summary(value=[
+        tf.Summary.Value(tag="bleu/uncased", simple_value=uncased_score),
+        tf.Summary.Value(tag="bleu/cased", simple_value=cased_score),
+      ])
+      bleu_writer.add_summary(summary, global_step)
+      bleu_writer.flush()
+      benchmark_logger.log_metric(
+          "bleu_uncased", uncased_score, global_step=global_step)
+      benchmark_logger.log_metric(
+          "bleu_cased", cased_score, global_step=global_step)
+
+      # Stop training if bleu stopping threshold is met.
       if model_helpers.past_stop_threshold(bleu_threshold, uncased_score):
         bleu_writer.close()
         break
 
 
 def define_transformer_flags():
-  """Add flags for running this script."""
+  """Add flags for running transformer_main."""
   # Add common flags (data_dir, model_dir, train_epochs, etc.).
   flags_core.define_base(multi_gpu=False, export_dir=False)
   flags_core.define_performance(
@@ -425,6 +433,7 @@ def main(_):
       single_iteration_train_steps,
       single_iteration_train_epochs,
       train_hooks,
+      benchmark_logger,
       # BLEU calculation arguments
       flags_obj.bleu_source,
       flags_obj.bleu_ref,
