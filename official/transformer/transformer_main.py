@@ -52,8 +52,8 @@ INF = int(1e9)
 # Dictionary containing tensors that are logged by the logging hooks. Each item
 # maps a string to the tensor name.
 TENSORS_TO_LOG = {
-    'learning_rate': 'model/get_train_op/learning_rate/learning_rate',
-    'cross_entropy_loss': 'model/cross_entropy'}
+    "learning_rate": "model/get_train_op/learning_rate/learning_rate",
+    "cross_entropy_loss": "model/cross_entropy"}
 
 
 def model_fn(features, labels, mode, params):
@@ -81,7 +81,7 @@ def model_fn(features, labels, mode, params):
     loss = tf.reduce_sum(xentropy * weights) / tf.reduce_sum(weights)
 
     # Save loss as named tensor that will be logged with the logging hook.
-    tf.identity(loss, 'cross_entropy')
+    tf.identity(loss, "cross_entropy")
 
     if mode == tf.estimator.ModeKeys.EVAL:
       return tf.estimator.EstimatorSpec(
@@ -107,7 +107,7 @@ def get_learning_rate(learning_rate, hidden_size, learning_rate_warmup_steps):
     # Create a named tensor that will be logged using the logging hook.
     # The full name includes variable and names scope. In this case, the name
     # is model/get_train_op/learning_rate/learning_rate
-    tf.identity(learning_rate, 'learning_rate')
+    tf.identity(learning_rate, "learning_rate")
     # Save learning rate value to TensorBoard summary.
     tf.summary.scalar("learning_rate", learning_rate)
 
@@ -281,8 +281,8 @@ def train_schedule(
       # Write bleu scores using summary writer and benchmark logger
       global_step = get_global_step(estimator)
       summary = tf.Summary(value=[
-        tf.Summary.Value(tag="bleu/uncased", simple_value=uncased_score),
-        tf.Summary.Value(tag="bleu/cased", simple_value=cased_score),
+          tf.Summary.Value(tag="bleu/uncased", simple_value=uncased_score),
+          tf.Summary.Value(tag="bleu/cased", simple_value=cased_score),
       ])
       bleu_writer.add_summary(summary, global_step)
       bleu_writer.flush()
@@ -354,8 +354,8 @@ def define_transformer_flags():
           "bleu_source file. This file is expected to be in the directory "
           "defined by --data_dir."))
 
-  flags_core.set_defaults(data_dir='/tmp/translate_ende',
-                          model_dir='/tmp/transformer_model',
+  flags_core.set_defaults(data_dir="/tmp/translate_ende",
+                          model_dir="/tmp/transformer_model",
                           batch_size=None,
                           train_epochs=None)
 
@@ -421,7 +421,7 @@ def main(_):
       batch_size=params.batch_size  # for ExamplesPerSecondHook
   )
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
-  benchmark_logger.log_run_info('transformer')
+  benchmark_logger.log_run_info("transformer")
 
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(
