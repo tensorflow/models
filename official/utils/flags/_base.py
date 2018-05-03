@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import flags
+import tensorflow as tf
 
 from official.utils.flags._conventions import help_wrap
 from official.utils.logs import hooks_helper
@@ -26,7 +27,7 @@ from official.utils.logs import hooks_helper
 
 def define_base(data_dir=True, model_dir=True, train_epochs=True,
                 epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                multi_gpu=True, hooks=True, export_dir=True):
+                multi_gpu=False, num_gpu=True, hooks=True, export_dir=True):
   """Register base flags.
 
   Args:
@@ -38,6 +39,7 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
       eval metric which should trigger the end of training.
     batch_size: Create a flag to specify the batch size.
     multi_gpu: Create a flag to allow the use of all available GPUs.
+    num_gpu: Create a flag to specify the number of GPUs used.
     hooks: Create a flag to specify hooks for logging.
     export_dir: Create a flag to specify where a SavedModel should be exported.
 
@@ -85,11 +87,21 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
         help=help_wrap("Batch size for training and evaluation."))
     key_flags.append("batch_size")
 
+  assert not (multi_gpu and num_gpu)
+
   if multi_gpu:
     flags.DEFINE_bool(
         name="multi_gpu", default=False,
         help=help_wrap("If set, run across all available GPUs."))
     key_flags.append("multi_gpu")
+
+  if num_gpu:
+    flags.DEFINE_integer(
+        name="num_gpus", short_name="ng",
+        default=1 if tf.test.is_gpu_available() else 0,
+        help=help_wrap(
+            "How many GPUs to use with the DistributionStrategies API. The "
+            "default is 1 if TensorFlow can detect a GPU, and 0 otherwise."))
 
   if hooks:
     # Construct a pretty summary of hooks.
@@ -116,3 +128,13 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
     key_flags.append("export_dir")
 
   return key_flags
+
+
+def get_num_gpus(flags_obj):
+  """Treat num_gpus=-1 as 'use all'."""
+  if flags_obj.num_gpus != -1:
+    return flags_obj.num_gpus
+
+  from tensorflow.python.client import device_lib  # pylint: disable=g-import-not-at-top
+  local_device_protos = device_lib.list_local_devices()
+  return sum([1 for d in local_device_protos if d.device_type == "GPU"])

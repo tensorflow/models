@@ -59,3 +59,13 @@ Other versions and formats:
 * [ResNet-v2-ImageNet SavedModel](http://download.tensorflow.org/models/official/resnet_v2_imagenet_savedmodel.tar.gz)
 * [ResNet-v1-ImageNet Checkpoint](http://download.tensorflow.org/models/official/resnet_v1_imagenet_checkpoint.tar.gz)
 * [ResNet-v1-ImageNet SavedModel](http://download.tensorflow.org/models/official/resnet_v1_imagenet_savedmodel.tar.gz)
+
+## Compute Devices
+Training is accomplished using the DistributionStrategies API. (https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/distribute/README.md)
+
+The appropriate distribution strategy is chosen based on the `--num_gpus` flag. By default this flag is one if TensorFlow is compiled with CUDA, and zero otherwise.
+
+num_gpus:
++ 0:  Use OneDeviceStrategy and train on CPU.
++ 1:  Use OneDeviceStrategy and train on GPU.
++ 2+: Use MirroredStrategy (data parallelism) to distribute a batch between devices.

@@ -87,7 +87,7 @@ def create_model(data_format):
 
 
 def define_mnist_flags():
-  flags_core.define_base()
+  flags_core.define_base(multi_gpu=True, num_gpu=False)
   flags_core.define_image()
   flags.adopt_module_key_flags(flags_core)
   flags_core.set_defaults(data_dir='/tmp/mnist_data',
