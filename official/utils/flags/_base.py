@@ -96,11 +96,11 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
     hook_list_str = (
         u"\ufeff  Hook:\n" + u"\n".join([u"\ufeff    {}".format(key) for key
                                          in hooks_helper.HOOKS]))
-    flags.DEFINE_spaceseplist(
+    flags.DEFINE_list(
         name="hooks", short_name="hk", default="LoggingTensorHook",
         help=help_wrap(
             u"A list of (case insensitive) strings to specify the names of "
-            u"training hooks.\n{}\n\ufeff  Example: `--hooks ProfilerHook "
+            u"training hooks.\n{}\n\ufeff  Example: `--hooks ProfilerHook,"
             u"ExamplesPerSecondHook`\n See official.utils.logs.hooks_helper "
             u"for details.".format(hook_list_str))
     )
