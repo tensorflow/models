@@ -281,11 +281,16 @@ def train_schedule(
     tf.logging.info(eval_results)
     benchmark_logger.log_evaluation_result(eval_results)
 
+    # The results from estimator.evaluate() are measured on an approximate
+    # translation, which utilize the target golden values provided. The actual
+    # bleu score must be computed using the estimator.predict() path, which
+    # outputs translations that are not based on golden values. The translations
+    # are compared to reference file to get the actual bleu score.
     if evaluate_bleu:
       uncased_score, cased_score = evaluate_and_log_bleu(
           estimator, bleu_source, bleu_ref, vocab_file_path)
 
-      # Write bleu scores using summary writer and benchmark logger
+      # Write actual bleu scores using summary writer and benchmark logger
       global_step = get_global_step(estimator)
       summary = tf.Summary(value=[
           tf.Summary.Value(tag="bleu/uncased", simple_value=uncased_score),
@@ -325,7 +330,8 @@ def define_transformer_flags():
 
   # Add transformer-specific flags
   flags.DEFINE_enum(
-      name="params", short_name="p", default="big", enum_values=["base", "big"],
+      name="params", short_name="mp", default="big",
+      enum_values=["base", "big"],
       help=flags_core.help_wrap(
           "Parameter set to use when creating and training the model."))
 
@@ -426,7 +432,9 @@ def run_transformer(flags_obj):
   )
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
   benchmark_logger.log_run_info(
-      "transformer", "wmt_translate_ende", params.__dict__)
+      model_name="transformer",
+      dataset_name="wmt_translate_ende",
+      run_params=params.__dict__)
 
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(

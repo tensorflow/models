@@ -219,21 +219,21 @@ if __name__ == "__main__":
       help=flags_core.help_wrap(
           "Directory containing Transformer model checkpoints."))
   flags.DEFINE_enum(
-      name="params", short_name="p", default="big", enum_values=["base", "big"],
+      name="params", short_name="mp", default="big", enum_values=["base", "big"],
       help=flags_core.help_wrap(
           "Parameter set to use when creating and training the model."))
 
   flags.DEFINE_string(
-      name="text", short_name="t", default=None,
+      name="text", default=None,
       help=flags_core.help_wrap(
           "Text to translate. Output will be printed to console."))
   flags.DEFINE_string(
-      name="file", short_name="f", default=None,
+      name="file", default=None,
       help=flags_core.help_wrap(
           "File containing text to translate. Translation will be printed to "
           "console and, if --file_out is provided, saved to an output file."))
   flags.DEFINE_string(
-      name="file_out", short_name="fo", default=None,
+      name="file_out", default=None,
       help=flags_core.help_wrap(
           "If --file flag is specified, save translation to this file."))
 

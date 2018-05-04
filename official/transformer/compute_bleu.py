@@ -112,12 +112,12 @@ def main(unused_argv):
 
 if __name__ == "__main__":
   flags.DEFINE_string(
-      name="translation", short_name="t", default=None,
+      name="translation", default=None,
       help=flags_core.help_wrap("File containing translated text."))
   flags.mark_flag_as_required("translation")
 
   flags.DEFINE_string(
-      name="reference", short_name="r", default=None,
+      name="reference", default=None,
       help=flags_core.help_wrap("File containing reference translation."))
   flags.mark_flag_as_required("reference")
 
