@@ -219,7 +219,8 @@ if __name__ == "__main__":
       help=flags_core.help_wrap(
           "Directory containing Transformer model checkpoints."))
   flags.DEFINE_enum(
-      name="params", short_name="mp", default="big", enum_values=["base", "big"],
+      name="params", short_name="mp", default="big",
+      enum_values=["base", "big"],
       help=flags_core.help_wrap(
           "Parameter set to use when creating and training the model."))
 
