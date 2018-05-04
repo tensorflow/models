@@ -384,10 +384,10 @@ def define_transformer_flags():
     # Ensure that bleu_source, bleu_ref, and vocab files exist.
     vocab_file_path = os.path.join(
         flags_dict["data_dir"], flags_dict["vocab_file"])
-    return (
-        tf.gfile.Exists(flags_dict["bleu_source"]) and (
-            tf.gfile.Exists(flags_dict["bleu_ref"]) and (
-                tf.gfile.Exists(vocab_file_path))))
+    return all([
+        tf.gfile.Exists(flags_dict["bleu_source"]),
+        tf.gfile.Exists(flags_dict["bleu_ref"]),
+        tf.gfile.Exists(vocab_file_path)])
 
 
 def run_transformer(flags_obj):
