@@ -378,15 +378,16 @@ def define_transformer_flags():
       message="--bleu_source, --bleu_ref, and/or --vocab_file don't exist. "
               "Please ensure that the file paths are correct.")
   def _check_bleu_files(flags_dict):
-    # Validate files only when both bleu_source and bleu_ref are defined.
+    """Validate files when bleu_source and bleu_ref are defined."""
     if flags_dict["bleu_source"] is None or flags_dict["bleu_ref"] is None:
       return True
     # Ensure that bleu_source, bleu_ref, and vocab files exist.
     vocab_file_path = os.path.join(
         flags_dict["data_dir"], flags_dict["vocab_file"])
-    return tf.gfile.Exists(flags_dict["bleu_source"]) and (
-        tf.gfile.Exists(flags_dict["bleu_ref"])) and (
-        tf.gfile.Exists(vocab_file_path))
+    return (
+        tf.gfile.Exists(flags_dict["bleu_source"]) and (
+            tf.gfile.Exists(flags_dict["bleu_ref"]) and (
+                tf.gfile.Exists(vocab_file_path))))
 
 
 def run_transformer(flags_obj):
