@@ -47,8 +47,8 @@ from official.utils.misc import model_helpers
 
 
 PARAMS_MAP = {
-  "base": model_params.TransformerBaseParams,
-  "big": model_params.TransformerBigParams,
+    "base": model_params.TransformerBaseParams,
+    "big": model_params.TransformerBigParams,
 }
 DEFAULT_TRAIN_EPOCHS = 10
 BLEU_DIR = "bleu"
@@ -251,7 +251,8 @@ def train_schedule(
   if evaluate_bleu:
     tf.logging.info("\t3. Compute BLEU score.")
     if bleu_threshold is not None:
-      tf.logging.info("Repeat above steps until the BLEU score reaches %f" % bleu_threshold)
+      tf.logging.info("Repeat above steps until the BLEU score reaches %f" %
+                      bleu_threshold)
   if not evaluate_bleu or bleu_threshold is None:
     tf.logging.info("Repeat above steps %d times." % train_eval_iterations)
 
@@ -275,8 +276,9 @@ def train_schedule(
         hooks=train_hooks)
 
     eval_results = estimator.evaluate(dataset.eval_input_fn)
-    tf.logging.info("Evaluation results (iter %d/%d):" % (i + 1, train_eval_iterations),
-          eval_results)
+    tf.logging.info("Evaluation results (iter %d/%d):" %
+                    (i + 1, train_eval_iterations))
+    tf.logging.info(eval_results)
     benchmark_logger.log_evaluation_result(eval_results)
 
     if evaluate_bleu:
@@ -383,8 +385,8 @@ def define_transformer_flags():
     vocab_file_path = os.path.join(
         flags_dict["data_dir"], flags_dict["vocab_file"])
     return tf.gfile.Exists(flags_dict["bleu_source"]) and (
-      tf.gfile.Exists(flags_dict["bleu_ref"])) and (
-      tf.gfile.Exists(vocab_file_path))
+        tf.gfile.Exists(flags_dict["bleu_ref"])) and (
+        tf.gfile.Exists(vocab_file_path))
 
 
 def run_transformer(flags_obj):
@@ -422,7 +424,8 @@ def run_transformer(flags_obj):
       batch_size=params.batch_size  # for ExamplesPerSecondHook
   )
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
-  benchmark_logger.log_run_info("transformer", "wmt_translate_ende", params.__dict__)
+  benchmark_logger.log_run_info(
+      "transformer", "wmt_translate_ende", params.__dict__)
 
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(

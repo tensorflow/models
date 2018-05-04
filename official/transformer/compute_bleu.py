@@ -27,9 +27,9 @@ import sys
 import unicodedata
 
 # pylint: disable=g-bad-import-order
+import six
 from absl import app as absl_app
 from absl import flags
-import six
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
