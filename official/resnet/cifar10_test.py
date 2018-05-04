@@ -76,7 +76,7 @@ class BaseTest(tf.test.TestCase):
         for pixel in row:
           self.assertAllClose(pixel, np.array([-1.225, 0., 1.225]), rtol=1e-3)
 
-  def cifar10_model_fn_helper(self, mode, version, dtype):
+  def cifar10_model_fn_helper(self, mode, resnet_version, dtype):
     input_fn = cifar10_main.get_synth_input_fn()
     dataset = input_fn(True, '', _BATCH_SIZE)
     iterator = dataset.make_one_shot_iterator()
@@ -87,7 +87,7 @@ class BaseTest(tf.test.TestCase):
             'resnet_size': 32,
             'data_format': 'channels_last',
             'batch_size': _BATCH_SIZE,
-            'version': version,
+            'resnet_version': resnet_version,
             'loss_scale': 128 if dtype == tf.float16 else 1,
         })
 
@@ -111,56 +111,57 @@ class BaseTest(tf.test.TestCase):
       self.assertEqual(eval_metric_ops['accuracy'][1].dtype, tf.float32)
 
   def test_cifar10_model_fn_train_mode_v1(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=1,
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, resnet_version=1,
                                  dtype=tf.float32)
 
   def test_cifar10_model_fn_trainmode__v2(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=2,
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.TRAIN, resnet_version=2,
                                  dtype=tf.float32)
 
   def test_cifar10_model_fn_eval_mode_v1(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=1,
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.EVAL, resnet_version=1,
                                  dtype=tf.float32)
 
   def test_cifar10_model_fn_eval_mode_v2(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=2,
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.EVAL, resnet_version=2,
                                  dtype=tf.float32)
 
   def test_cifar10_model_fn_predict_mode_v1(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=1,
-                                 dtype=tf.float32)
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.PREDICT,
+                                 resnet_version=1, dtype=tf.float32)
 
   def test_cifar10_model_fn_predict_mode_v2(self):
-    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=2,
-                                 dtype=tf.float32)
+    self.cifar10_model_fn_helper(tf.estimator.ModeKeys.PREDICT,
+                                 resnet_version=2, dtype=tf.float32)
 
-  def _test_cifar10model_shape(self, version):
+  def _test_cifar10model_shape(self, resnet_version):
     batch_size = 135
     num_classes = 246
 
     model = cifar10_main.Cifar10Model(32, data_format='channels_last',
-                                      num_classes=num_classes, version=version)
+                                      num_classes=num_classes,
+                                      resnet_version=resnet_version)
     fake_input = tf.random_uniform([batch_size, _HEIGHT, _WIDTH, _NUM_CHANNELS])
     output = model(fake_input, training=True)
 
     self.assertAllEqual(output.shape, (batch_size, num_classes))
 
   def test_cifar10model_shape_v1(self):
-    self._test_cifar10model_shape(version=1)
+    self._test_cifar10model_shape(resnet_version=1)
 
   def test_cifar10model_shape_v2(self):
-    self._test_cifar10model_shape(version=2)
+    self._test_cifar10model_shape(resnet_version=2)
 
   def test_cifar10_end_to_end_synthetic_v1(self):
     integration.run_synthetic(
         main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '1']
+        extra_flags=['-resnet_version', '1']
     )
 
   def test_cifar10_end_to_end_synthetic_v2(self):
     integration.run_synthetic(
         main=cifar10_main.run_cifar, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '2']
+        extra_flags=['-resnet_version', '2']
     )
 
 

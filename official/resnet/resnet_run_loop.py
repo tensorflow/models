@@ -155,8 +155,8 @@ def learning_rate_with_decay(
 
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format, version, loss_scale, loss_filter_fn=None,
-                    dtype=resnet_model.DEFAULT_DTYPE):
+                    data_format, resnet_version, loss_scale,
+                    loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -180,8 +180,8 @@ def resnet_model_fn(features, labels, mode, model_class,
     momentum: momentum term used for optimization
     data_format: Input format ('channels_last', 'channels_first', or None).
       If set to None, the format is dependent on whether a GPU is available.
-    version: Integer representing which version of the ResNet network to use.
-      See README for details. Valid values: [1, 2]
+    resnet_version: Integer representing which version of the ResNet network to
+      use. See README for details. Valid values: [1, 2]
     loss_scale: The factor to scale the loss for numerical stability. A detailed
       summary is present in the arg parser help text.
     loss_filter_fn: function that takes a string variable name and returns
@@ -200,7 +200,8 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   features = tf.cast(features, dtype)
 
-  model = model_class(resnet_size, data_format, version=version, dtype=dtype)
+  model = model_class(resnet_size, data_format, resnet_version=resnet_version,
+                      dtype=dtype)
 
   logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
@@ -379,7 +380,7 @@ def resnet_main(
           'resnet_size': int(flags_obj.resnet_size),
           'data_format': flags_obj.data_format,
           'batch_size': flags_obj.batch_size,
-          'version': int(flags_obj.version),
+          'resnet_version': int(flags_obj.resnet_version),
           'loss_scale': flags_core.get_loss_scale(flags_obj),
           'dtype': flags_core.get_tf_dtype(flags_obj)
       })
@@ -388,7 +389,7 @@ def resnet_main(
       'batch_size': flags_obj.batch_size,
       'dtype': flags_core.get_tf_dtype(flags_obj),
       'resnet_size': flags_obj.resnet_size,
-      'resnet_version': flags_obj.version,
+      'resnet_version': flags_obj.resnet_version,
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
   }
@@ -456,7 +457,8 @@ def define_resnet_flags(resnet_size_choices=None):
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_enum(
-      name='version', short_name='rv', default='2', enum_values=['1', '2'],
+      name='resnet_version', short_name='rv', default='2',
+      enum_values=['1', '2'],
       help=flags_core.help_wrap(
           'Version of ResNet. (1 or 2) See README.md for details.'))
 
