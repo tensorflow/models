@@ -205,7 +205,7 @@ class MiniGoDirectory(object):
   """The class to set up directories of MiniGo."""
 
   def __init__(self, base_dir):
-    self.trained_models_dir = os.path.join(base_dir, 'models')
+    self.trained_models_dir = os.path.join(base_dir, 'trained_models')
     self.estimator_model_dir = os.path.join(base_dir, 'estimator_model_dir/')
     self.selfplay_dir = os.path.join(base_dir, 'data/selfplay/')
     self.holdout_dir = os.path.join(base_dir, 'data/holdout/')

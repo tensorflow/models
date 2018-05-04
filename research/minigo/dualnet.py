@@ -191,24 +191,24 @@ def export_model(working_dir, model_path):
     tf.gfile.Copy(filename, destination_path)
 
 
-def train(working_dir, tf_records, generation_num, params):
+def train(working_dir, tf_records, generation, params):
   """Train the model for a specific generation.
 
   Args:
     working_dir: The model working directory to save model parameters,
       drop logs, checkpoints, and so on.
     tf_records: A list of tf_record filenames for training input.
-    generation_num: The generation to be trained.
+    generation: The generation to be trained.
     params: hyperparams of the model.
 
   Raises:
-    ValueError: if generation_num is not greater than 0.
+    ValueError: if generation is not greater than 0.
   """
-  if generation_num <= 0:
+  if generation <= 0:
     raise ValueError('Model 0 is random weights')
   estimator = tf.estimator.Estimator(
       dualnet_model.model_fn, model_dir=working_dir, params=params)
-  max_steps = (generation_num * params.examples_per_generation
+  max_steps = (generation * params.examples_per_generation
                // params.batch_size)
   profiler_hook = tf.train.ProfilerHook(output_dir=working_dir, save_secs=600)
 
