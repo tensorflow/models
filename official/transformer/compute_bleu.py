@@ -22,17 +22,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import re
 import sys
 import unicodedata
 
 # pylint: disable=g-bad-import-order
+from absl import app as absl_app
+from absl import flags
 import six
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.transformer.utils import metrics
+from official.utils.flags import core as flags_core
 
 
 class UnicodeRegex(object):
@@ -109,21 +111,22 @@ def main(unused_argv):
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--translation", "-t", type=str, default=None, required=True,
-      help="[default: %(default)s] File containing translated text.",
-      metavar="<T>")
-  parser.add_argument(
-      "--reference", "-r", type=str, default=None, required=True,
-      help="[default: %(default)s] File containing reference translation",
-      metavar="<R>")
-  parser.add_argument(
-      "--bleu_variant", "-bv", type=str, choices=["uncased", "cased"],
-      nargs="*", default=None,
-      help="Specify one or more BLEU variants to calculate (both are "
-           "calculated by default. Variants: \"cased\" or \"uncased\".",
-      metavar="<BV>")
+  flags.DEFINE_string(
+      name="translation", short_name="t", default=None,
+      help=flags_core.help_wrap("File containing translated text."))
+  flags.mark_flag_as_required("translation")
 
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run()
+  flags.DEFINE_string(
+      name="reference", short_name="r", default=None,
+      help=flags_core.help_wrap("File containing reference translation."))
+  flags.mark_flag_as_required("reference")
+
+  flags.DEFINE_multi_enum(
+      name="bleu_variant", short_name="bv", default=["uncased", "cased"],
+      enum_values=["uncased", "cased"], case_sensitive=False,
+      help=flags_core.help_wrap(
+          "Specify one or more BLEU variants to calculate. Variants: \"cased\" "
+          "or \"uncased\"."))
+
+  FLAGS = flags.FLAGS
+  absl_app.run(main)

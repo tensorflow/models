@@ -18,17 +18,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 
 # pylint: disable=g-bad-import-order
 from six.moves import xrange  # pylint: disable=redefined-builtin
+from absl import app as absl_app
+from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.transformer.data_download import VOCAB_FILE
 from official.transformer.model import model_params
 from official.transformer.utils import tokenizer
+from official.utils.flags import core as flags_core
 
 _DECODE_BATCH_SIZE = 32
 _EXTRA_DECODE_LENGTH = 100
@@ -201,44 +203,39 @@ def main(unused_argv):
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
+  # Model and vocab file flags
+  flags.DEFINE_string(
+      name="data_dir", short_name="dd", default="/tmp/translate_ende",
+      help=flags_core.help_wrap(
+          "Directory for where the translate_ende_wmt32k dataset is saved."))
+  flags.DEFINE_string(
+      name="vocab_file", short_name="vf", default=VOCAB_FILE,
+      help=flags_core.help_wrap(
+          "Name of vocabulary file containing subtokens for subtokenizing the "
+          "input text or file. This file is expected to be in the directory "
+          "defined by --data_dir."))
+  flags.DEFINE_string(
+      name="model_dir", short_name="md", default="/tmp/transformer_model",
+      help=flags_core.help_wrap(
+          "Directory containing Transformer model checkpoints."))
+  flags.DEFINE_enum(
+      name="params", short_name="p", default="big", enum_values=["base", "big"],
+      help=flags_core.help_wrap(
+          "Parameter set to use when creating and training the model."))
 
-  # Model arguments
-  parser.add_argument(
-      "--data_dir", "-dd", type=str, default="/tmp/data/translate_ende",
-      help="[default: %(default)s] Directory where vocab file is stored.",
-      metavar="<DD>")
-  parser.add_argument(
-      "--vocab_file", "-vf", type=str, default=VOCAB_FILE,
-      help="[default: %(default)s] Name of vocabulary file.",
-      metavar="<vf>")
-  parser.add_argument(
-      "--model_dir", "-md", type=str, default="/tmp/transformer_model",
-      help="[default: %(default)s] Directory containing Transformer model "
-           "checkpoints.",
-      metavar="<MD>")
-  parser.add_argument(
-      "--params", "-p", type=str, default="big", choices=["base", "big"],
-      help="[default: %(default)s] Parameter used for trained model.",
-      metavar="<P>")
+  flags.DEFINE_string(
+      name="text", short_name="t", default=None,
+      help=flags_core.help_wrap(
+          "Text to translate. Output will be printed to console."))
+  flags.DEFINE_string(
+      name="file", short_name="f", default=None,
+      help=flags_core.help_wrap(
+          "File containing text to translate. Translation will be printed to "
+          "console and, if --file_out is provided, saved to an output file."))
+  flags.DEFINE_string(
+      name="file_out", short_name="fo", default=None,
+      help=flags_core.help_wrap(
+          "If --file flag is specified, save translation to this file."))
 
-  # Flags for specifying text/file to be translated.
-  parser.add_argument(
-      "--text", "-t", type=str, default=None,
-      help="[default: %(default)s] Text to translate. Output will be printed "
-           "to console.",
-      metavar="<T>")
-  parser.add_argument(
-      "--file", "-f", type=str, default=None,
-      help="[default: %(default)s] File containing text to translate. "
-           "Translation will be printed to console and, if --file_out is "
-           "provided, saved to an output file.",
-      metavar="<F>")
-  parser.add_argument(
-      "--file_out", "-fo", type=str, default=None,
-      help="[default: %(default)s] If --file flag is specified, save "
-           "translation to this file.",
-      metavar="<FO>")
-
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run()
+  FLAGS = flags.FLAGS
+  absl_app.run(main)

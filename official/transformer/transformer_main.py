@@ -45,6 +45,11 @@ from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import model_helpers
 
+
+PARAMS_MAP = {
+  "base": model_params.TransformerBaseParams,
+  "big": model_params.TransformerBigParams,
+}
 DEFAULT_TRAIN_EPOCHS = 10
 BLEU_DIR = "bleu"
 INF = int(1e9)
@@ -173,8 +178,8 @@ def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file_path):
   uncased_score, cased_score = translate_and_compute_bleu(
       estimator, subtokenizer, bleu_source, bleu_ref)
 
-  print("Bleu score (uncased):", uncased_score)
-  print("Bleu score (cased):", cased_score)
+  tf.logging.info("Bleu score (uncased):", uncased_score)
+  tf.logging.info("Bleu score (cased):", cased_score)
   return uncased_score, cased_score
 
 
@@ -237,18 +242,18 @@ def train_schedule(
   evaluate_bleu = bleu_source is not None and bleu_ref is not None
 
   # Print details of training schedule.
-  print("Training schedule:")
+  tf.logging.info("Training schedule:")
   if single_iteration_train_epochs is not None:
-    print("\t1. Train for %d epochs." % single_iteration_train_epochs)
+    tf.logging.info("\t1. Train for %d epochs." % single_iteration_train_epochs)
   else:
-    print("\t1. Train for %d steps." % single_iteration_train_steps)
-  print("\t2. Evaluate model.")
+    tf.logging.info("\t1. Train for %d steps." % single_iteration_train_steps)
+  tf.logging.info("\t2. Evaluate model.")
   if evaluate_bleu:
-    print("\t3. Compute BLEU score.")
+    tf.logging.info("\t3. Compute BLEU score.")
     if bleu_threshold is not None:
-      print("Repeat above steps until the BLEU score reaches", bleu_threshold)
+      tf.logging.info("Repeat above steps until the BLEU score reaches %f" % bleu_threshold)
   if not evaluate_bleu or bleu_threshold is None:
-    print("Repeat above steps %d times." % train_eval_iterations)
+    tf.logging.info("Repeat above steps %d times." % train_eval_iterations)
 
   if evaluate_bleu:
     # Create summary writer to log bleu score (values can be displayed in
@@ -261,7 +266,7 @@ def train_schedule(
 
   # Loop training/evaluation/bleu cycles
   for i in xrange(train_eval_iterations):
-    print("Starting iteration", i + 1)
+    tf.logging.info("Starting iteration %d" % (i + 1))
 
     # Train the model for single_iteration_train_steps or until the input fn
     # runs out of examples (if single_iteration_train_steps is None).
@@ -270,7 +275,7 @@ def train_schedule(
         hooks=train_hooks)
 
     eval_results = estimator.evaluate(dataset.eval_input_fn)
-    print("Evaluation results (iter %d/%d):" % (i + 1, train_eval_iterations),
+    tf.logging.info("Evaluation results (iter %d/%d):" % (i + 1, train_eval_iterations),
           eval_results)
     benchmark_logger.log_evaluation_result(eval_results)
 
@@ -298,9 +303,9 @@ def train_schedule(
 
 
 def define_transformer_flags():
-  """Add flags for running transformer_main."""
+  """Add flags and flag validators for running transformer_main."""
   # Add common flags (data_dir, model_dir, train_epochs, etc.).
-  flags_core.define_base(multi_gpu=False, export_dir=False)
+  flags_core.define_base(multi_gpu=False, num_gpu=False, export_dir=False)
   flags_core.define_performance(
       num_parallel_calls=True,
       inter_op=False,
@@ -359,32 +364,35 @@ def define_transformer_flags():
                           batch_size=None,
                           train_epochs=None)
 
+  @flags.multi_flags_validator(
+      ["train_epochs", "train_steps"],
+      message="Both --train_steps and --train_epochs were set. Only one may be "
+              "defined.")
+  def _check_train_limits(flag_dict):
+    return flag_dict["train_epochs"] is None or flag_dict["train_steps"] is None
 
-def validate_flags(flags_obj):
-  """Raise ValueError if flags have invalid values."""
-  if flags_obj.train_steps is not None and flags_obj.train_epochs is not None:
-    raise ValueError("Both --train_steps and --train_epochs were set. Only one "
-                     "may be defined.")
-
-  # Make sure that the BLEU source and ref files if set
-  if flags_obj.bleu_source is not None and flags_obj.bleu_ref is not None:
-    if not tf.gfile.Exists(flags_obj.bleu_source):
-      raise ValueError(
-          "BLEU source file %s does not exist" % flags_obj.bleu_source)
-    if not tf.gfile.Exists(flags_obj.bleu_ref):
-      raise ValueError(
-          "BLEU source file %s does not exist" % flags_obj.bleu_ref)
-    # Make sure that vocab file is in the data directory defined
-    vocab_file_path = os.path.join(flags_obj.data_dir, flags_obj.vocab_file)
-    if not tf.gfile.Exists(vocab_file_path):
-      raise ValueError("Vocabulary file %s does not exist" % vocab_file_path)
+  @flags.multi_flags_validator(
+      ["data_dir", "bleu_source", "bleu_ref", "vocab_file"],
+      message="--bleu_source, --bleu_ref, and/or --vocab_file don't exist. "
+              "Please ensure that the file paths are correct.")
+  def _check_bleu_files(flags_dict):
+    # Validate files only when both bleu_source and bleu_ref are defined.
+    if flags_dict["bleu_source"] is None or flags_dict["bleu_ref"] is None:
+      return True
+    # Ensure that bleu_source, bleu_ref, and vocab files exist.
+    vocab_file_path = os.path.join(
+        flags_dict["data_dir"], flags_dict["vocab_file"])
+    return tf.gfile.Exists(flags_dict["bleu_source"]) and (
+      tf.gfile.Exists(flags_dict["bleu_ref"])) and (
+      tf.gfile.Exists(vocab_file_path))
 
 
-def main(_):
-  # Load and validate the parsed flags (stored in absl.flags.FLAGS)
-  flags_obj = flags.FLAGS
-  validate_flags(flags_obj)
+def run_transformer(flags_obj):
+  """Create tf.Estimator to train and evaluate transformer model.
 
+  Args:
+    flags_obj: Object containing parsed flag values.
+  """
   # Determine training schedule based on flags.
   if flags_obj.train_steps is not None:
     train_eval_iterations = (
@@ -399,20 +407,13 @@ def main(_):
     single_iteration_train_steps = None
     single_iteration_train_epochs = flags_obj.epochs_between_evals
 
-  # Define parameters based on flags
-  if flags_obj.params == "base":
-    params = model_params.TransformerBaseParams
-  elif flags_obj.params == "big":
-    params = model_params.TransformerBigParams
-  # No need to check for other values, because the params flag is an enum.
-
   # Add flag-defined parameters to params object
+  params = PARAMS_MAP[flags_obj.params]
   params.data_dir = flags_obj.data_dir
   params.num_parallel_calls = flags_obj.num_parallel_calls
   params.epochs_between_evals = flags_obj.epochs_between_evals
   params.repeat_dataset = single_iteration_train_epochs
-  if flags_obj.batch_size is not None:
-    params.batch_size = flags_obj.batch_size
+  params.batch_size = flags_obj.batch_size or params.batch_size
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -421,29 +422,31 @@ def main(_):
       batch_size=params.batch_size  # for ExamplesPerSecondHook
   )
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
-  benchmark_logger.log_run_info("transformer")
+  benchmark_logger.log_run_info("transformer", "wmt_translate_ende", params.__dict__)
 
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(
       model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
   train_schedule(
-      estimator,
+      estimator=estimator,
       # Training arguments
-      train_eval_iterations,
-      single_iteration_train_steps,
-      single_iteration_train_epochs,
-      train_hooks,
-      benchmark_logger,
+      train_eval_iterations=train_eval_iterations,
+      single_iteration_train_steps=single_iteration_train_steps,
+      single_iteration_train_epochs=single_iteration_train_epochs,
+      train_hooks=train_hooks,
+      benchmark_logger=benchmark_logger,
       # BLEU calculation arguments
-      flags_obj.bleu_source,
-      flags_obj.bleu_ref,
-      flags_obj.stop_threshold,
+      bleu_source=flags_obj.bleu_source,
+      bleu_ref=flags_obj.bleu_ref,
+      bleu_threshold=flags_obj.stop_threshold,
       vocab_file_path=os.path.join(flags_obj.data_dir, flags_obj.vocab_file))
 
 
-if __name__ == "__main__":
-  # Set logging level to INFO to show estimator logs
-  tf.logging.set_verbosity(tf.logging.INFO)
+def main(_):
+  run_transformer(flags.FLAGS)
 
+
+if __name__ == "__main__":
+  tf.logging.set_verbosity(tf.logging.INFO)
   define_transformer_flags()
   absl_app.run(main)

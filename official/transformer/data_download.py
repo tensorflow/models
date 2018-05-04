@@ -18,18 +18,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 import random
 import tarfile
 import urllib
 
 # pylint: disable=g-bad-import-order
+from absl import app as absl_app
+from absl import flags
 import six
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.transformer.utils import tokenizer
+from official.utils.flags import core as flags_core
 
 # Data sources for training/evaluating the transformer translation model.
 # If any of the training sources are changed, then either:
@@ -363,7 +365,6 @@ def make_dir(path):
 def main(unused_argv):
   """Obtain training and evaluation data for the Transformer model."""
   tf.logging.set_verbosity(tf.logging.INFO)
-
   make_dir(FLAGS.raw_dir)
   make_dir(FLAGS.data_dir)
 
@@ -398,21 +399,18 @@ def main(unused_argv):
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--data_dir", "-dd", type=str, default="/tmp/translate_ende",
-      help="[default: %(default)s] Directory for where the "
-           "translate_ende_wmt32k dataset is saved.",
-      metavar="<DD>")
-  parser.add_argument(
-      "--raw_dir", "-rd", type=str, default="/tmp/translate_ende_raw",
-      help="[default: %(default)s] Path where the raw data will be downloaded "
-           "and extracted.",
-      metavar="<RD>")
-  parser.add_argument(
-      "--search", action="store_true",
-      help="If set, use binary search to find the vocabulary set with size"
-           "closest to the target size (%d)." % _TARGET_VOCAB_SIZE)
-
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run()
+  flags.DEFINE_string(
+      name="data_dir", short_name="dd", default="/tmp/translate_ende",
+      help=flags_core.help_wrap(
+          "Directory for where the translate_ende_wmt32k dataset is saved."))
+  flags.DEFINE_string(
+      name="raw_dir", short_name="rd", default="/tmp/translate_ende_raw",
+      help=flags_core.help_wrap(
+          "Path where the raw data will be downloaded and extracted."))
+  flags.DEFINE_bool(
+      name="search", default=False,
+      help=flags_core.help_wrap(
+          "If set, use binary search to find the vocabulary set with size"
+          "closest to the target size (%d)." % _TARGET_VOCAB_SIZE))
+  FLAGS = flags.FLAGS
+  absl_app.run(main)
