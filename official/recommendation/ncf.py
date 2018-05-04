@@ -29,13 +29,13 @@ import os
 import sys
 import time
 
+import numpy as np
+from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 import data_download
 import ncf_dataset
 import neumf_model
-import numpy as np
-from six.moves import xrange  # pylint: disable=redefined-builtin
 
 
 def evaluate_model(est_model, user_input, item_input, gt_items, top_k):
@@ -82,8 +82,7 @@ def evaluate_model(est_model, user_input, item_input, gt_items, top_k):
 
   # Calculate NDCG score
   def _get_ndcg(ranklist, gt_item):
-    for i in range(len(ranklist)):
-      item = ranklist[i]
+    for i, item in enumerate(ranklist):
       if item == gt_item:
         return math.log(2) / math.log(i+2)
     return 0
@@ -100,10 +99,9 @@ def evaluate_model(est_model, user_input, item_input, gt_items, top_k):
     predicted_scores = all_predicted_scores[start:end]
 
     map_item_score = {}
-    for i in range(len(items)):
-      item = items[i][0]
+    for i, item in enumerate(items):
       score = predicted_scores[i][0]
-      map_item_score[item] = score
+      map_item_score[item[0]] = score
 
     # Evaluate top rank list with HR and NDCG
     ranklist = heapq.nlargest(top_k, map_item_score, key=map_item_score.get)

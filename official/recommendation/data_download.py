@@ -26,13 +26,12 @@ import collections
 import os
 import sys
 import time
-import urllib
 import zipfile
-
-import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 import numpy as np
 import pandas as pd
+from six.moves import urllib  # pylint: disable=redefined-builtin
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 USER_COLUMN = 'user_id'
 ITEM_COLUMN = 'item_id'
@@ -287,7 +286,7 @@ def main(_):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      '--data_dir', type=str, default='/tmp/ml_data',
+      '--data_dir', type=str, default='/tmp/ml_data/',
       help='Directory to download data and extract the zip.')
   parser.add_argument(
       '--dataset', type=str, default='ml-1m', choices=['ml-1m', 'ml-20m'],

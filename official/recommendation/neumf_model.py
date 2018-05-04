@@ -33,10 +33,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
-
 from six.moves import xrange  # pylint: disable=redefined-builtin
-
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 def _validate_batch_size_for_multi_gpu(batch_size):
   """For multi-gpu, batch-size must be a multiple of the number of GPUs.
