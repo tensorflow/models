@@ -26,7 +26,7 @@ installation](https://www.tensorflow.org/install).
     for visual navigation.
 -   [compression](compression): compressing and decompressing images using a
     pre-trained Residual GRU network.
--   [deeplab](deeplab): deep labelling for semantic image segmentation.
+-   [deeplab](deeplab): deep labeling for semantic image segmentation.
 -   [delf](delf): deep local features for image matching and retrieval.
 -   [differential_privacy](differential_privacy): differential privacy for training
     data.
