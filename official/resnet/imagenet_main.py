@@ -207,8 +207,8 @@ class ImagenetModel(resnet_model.Model):
         data format to use when setting up the model.
       num_classes: The number of output classes needed from the model. This
         enables users to extend the same model to their own datasets.
-      resnet_version: Integer representing which version of the ResNet network to use.
-        See README for details. Valid values: [1, 2]
+      resnet_version: Integer representing which version of the ResNet network
+      to use. See README for details. Valid values: [1, 2]
       dtype: The TensorFlow dtype to use for calculations.
     """
 
