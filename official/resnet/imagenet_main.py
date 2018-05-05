@@ -165,7 +165,7 @@ def input_fn(is_training, data_dir, global_batch_size, num_epochs=1,
     global_batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of GPUs.
-    datasets_num_private_threads: Number of threads for a private 
+    datasets_num_private_threads: Number of threads for a private
       threadpool created for all datasets computation.
 
   Returns:

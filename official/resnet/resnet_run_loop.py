@@ -72,7 +72,7 @@ def process_record_dataset(dataset, is_training, global_batch_size,
     # dataset for the appropriate number of epochs.
     # Using the fused shuffle_and_repeat method gives better performance.
     dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(
-        buffer_size=shuffle_buffer, num_epochs))
+        buffer_size=shuffle_buffer, count=num_epochs))
   else:
     dataset = dataset.repeat(num_epochs)
 

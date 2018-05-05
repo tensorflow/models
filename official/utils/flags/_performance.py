@@ -135,7 +135,7 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     flags.DEFINE_string(
         name="tf_gpu_thread_mode", short_name="gt_mode", default="global",
         help=help_wrap(
-          "Whether and how the GPU device uses its own threadpool.")
+             "Whether and how the GPU device uses its own threadpool.")
     )
 
   if tf_gpu_thread_count:
@@ -146,11 +146,11 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
 
   if datasets_num_private_threads:
     flags.DEFINE_integer(
-        name="datasets_num_private_threads", short_name="dataset_thread_count", 
+        name="datasets_num_private_threads", short_name="dataset_thread_count",
         default=None,
         help=help_wrap(
-          "Number of threads for a private threadpool created for all datasets"
-          "computation..")
+             "Number of threads for a private threadpool created for all"
+             "datasets computation..")
     )
 
   return key_flags
