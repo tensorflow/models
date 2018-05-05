@@ -39,7 +39,7 @@ _NUM_IMAGES = {
 }
 
 _NUM_TRAIN_FILES = 1024
-_SHUFFLE_BUFFER = 1500
+_SHUFFLE_BUFFER = 10000
 
 DATASET_NAME = 'ImageNet'
 
@@ -152,19 +152,21 @@ def parse_record(raw_record, is_training):
       num_channels=_NUM_CHANNELS,
       is_training=is_training)
 
-  label = tf.one_hot(tf.reshape(label, shape=[]), _NUM_CLASSES)
-
   return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+def input_fn(is_training, data_dir, global_batch_size, num_epochs=1,
+             num_gpus=1, datasets_num_private_threads=None):
   """Input function which provides batches for train or eval.
 
   Args:
     is_training: A boolean denoting whether the input is for training.
     data_dir: The directory containing the input data.
-    batch_size: The number of samples per batch.
+    global_batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
+    num_gpus: The number of GPUs.
+    datasets_num_private_threads: Number of threads for a private 
+      threadpool created for all datasets computation.
 
   Returns:
     A dataset that can be used for iteration.
@@ -177,11 +179,12 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
   # Convert to individual records
-  dataset = dataset.flat_map(tf.data.TFRecordDataset)
+  dataset = dataset.apply(tf.contrib.data.parallel_interleave(
+      tf.data.TFRecordDataset, cycle_length=10))
 
   return resnet_run_loop.process_record_dataset(
-      dataset, is_training, batch_size, _SHUFFLE_BUFFER, parse_record,
-      num_epochs
+      dataset, is_training, global_batch_size, _SHUFFLE_BUFFER, parse_record,
+      num_epochs, num_gpus, datasets_num_private_threads
   )
 
 

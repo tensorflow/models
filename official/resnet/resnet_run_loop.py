@@ -34,25 +34,29 @@ from official.utils.export import export
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import model_helpers
-
+from tensorflow.contrib.data.python.ops import threadpool
 
 ################################################################################
 # Functions for input processing.
 ################################################################################
-def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
-                           parse_record_fn, num_epochs=1):
+def process_record_dataset(dataset, is_training, global_batch_size,
+                           shuffle_buffer, parse_record_fn, num_epochs=1,
+                           num_gpus=1, datasets_num_private_threads=None):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
     dataset: A Dataset representing raw records
     is_training: A boolean denoting whether the input is for training.
-    batch_size: The number of samples per batch.
+    global_batch_size: The number of samples per batch (across devices).
     shuffle_buffer: The buffer size to use when shuffling records. A larger
       value results in better randomness, but smaller values reduce startup
       time and use less memory.
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
     num_epochs: The number of epochs to repeat the dataset.
+    num_gpus: The number of GPUs.
+    datasets_num_private_threads: Number of threads for a private 
+      threadpool created for all datasets computation.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -60,15 +64,17 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
 
   # We prefetch a batch at a time, This can help smooth out the time taken to
   # load input files as we go through shuffling and processing.
-  dataset = dataset.prefetch(buffer_size=batch_size)
+  dataset = dataset.prefetch(buffer_size=global_batch_size)
   if is_training:
     # Shuffle the records. Note that we shuffle before repeating to ensure
     # that the shuffling respects epoch boundaries.
-    dataset = dataset.shuffle(buffer_size=shuffle_buffer)
-
-  # If we are training over multiple epochs before evaluating, repeat the
-  # dataset for the appropriate number of epochs.
-  dataset = dataset.repeat(num_epochs)
+    # If we are training over multiple epochs before evaluating, repeat the
+    # dataset for the appropriate number of epochs.
+    # Using the fused shuffle_and_repeat method gives better performance.
+    dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(
+        buffer_size=shuffle_buffer, num_epochs))
+  else:
+    dataset = dataset.repeat(num_epochs)
 
   # Parse the raw records into images and labels. Testing has shown that setting
   # num_parallel_batches > 1 produces no improvement in throughput, since
@@ -76,16 +82,24 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   dataset = dataset.apply(
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training),
-          batch_size=batch_size,
-          num_parallel_batches=1))
+          batch_size=per_device_batch_size(global_batch_size, num_gpus),
+          num_parallel_batches=num_gpus,
+          drop_remainder=True))
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
   # background all of the above processing work and keep it out of the
   # critical training path. Setting buffer_size to tf.contrib.data.AUTOTUNE
-  # allows DistributionStrategies to adjust how many batches to fetch based
+  # allows TensorFlow to adjust how many batches to fetch based
   # on how many devices are present.
-  dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  dataset.prefetch(buffer_size=num_gpus)
+
+  if datasets_num_private_threads:
+    dataset = threadpool.override_threadpool(
+        dataset,
+        threadpool.PrivateThreadPool(
+            datasets_num_private_threads, 
+            display_name="input_pipeline_thread_pool"))
 
   return dataset
 
@@ -109,7 +123,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
   """
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
     images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
-    labels = tf.zeros((batch_size, num_classes), tf.int32)
+    labels = tf.zeros((batch_size), tf.int32)
     return tf.data.Dataset.from_tensors((images, labels)).repeat()
 
   return input_fn
@@ -225,8 +239,8 @@ def resnet_model_fn(features, labels, mode, model_class,
         })
 
   # Calculate loss, which includes softmax cross entropy and L2 regularization.
-  cross_entropy = tf.losses.softmax_cross_entropy(
-      logits=logits, onehot_labels=labels)
+  cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+      logits=logits, labels=labels)
 
   # Create a tensor named cross_entropy for logging purposes.
   tf.identity(cross_entropy, name='cross_entropy')
@@ -280,8 +294,7 @@ def resnet_model_fn(features, labels, mode, model_class,
     train_op = None
 
   if not tf.contrib.distribute.has_distribution_strategy():
-    accuracy = tf.metrics.accuracy(
-        tf.argmax(labels, axis=1), predictions['classes'])
+    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
   else:
     # Metrics are currently not compatible with distribution strategies during
     # training. This does not affect the overall performance of the model.
@@ -352,6 +365,9 @@ def resnet_main(
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
+  os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
+  os.environ['TF_GPU_THREAD_COUNT'] = flags_obj.tf_gpu_thread_count
+
 
   # Create session config based on values of inter_op_parallelism_threads and
   # intra_op_parallelism_threads. Note that we default to having
@@ -391,7 +407,7 @@ def resnet_main(
       'resnet_size': flags_obj.resnet_size,
       'resnet_version': flags_obj.resnet_version,
       'synthetic_data': flags_obj.use_synthetic_data,
-      'train_epochs': flags_obj.train_epochs,
+      'train_epochs': flags_obj.train_epochs
   }
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
   benchmark_logger.log_run_info('resnet', dataset_name, run_params)
@@ -404,16 +420,17 @@ def resnet_main(
   def input_fn_train():
     return input_function(
         is_training=True, data_dir=flags_obj.data_dir,
-        batch_size=per_device_batch_size(
-            flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-        num_epochs=flags_obj.epochs_between_evals)
+        global_batch_size=flags_obj.batch_size, 
+        num_epochs=flags_obj.epochs_between_evals,
+        num_gpus=flags_core.get_num_gpus(flags_obj))
 
   def input_fn_eval():
     return input_function(
         is_training=False, data_dir=flags_obj.data_dir,
-        batch_size=per_device_batch_size(
-            flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-        num_epochs=1)
+        global_batch_size=flags_obj.batch_size,
+        num_epochs=1,
+        num_gpus=flags_core.get_num_gpus(flags_obj))
+
 
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)
@@ -451,7 +468,11 @@ def resnet_main(
 def define_resnet_flags(resnet_size_choices=None):
   """Add flags and validators for ResNet."""
   flags_core.define_base()
-  flags_core.define_performance(num_parallel_calls=False)
+  flags_core.define_performance(
+    num_parallel_calls=False,
+    datasets_num_private_threads=True,
+    tf_gpu_thread_mode=True,
+    tf_gpu_thread_count=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)

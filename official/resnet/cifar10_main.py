@@ -73,7 +73,6 @@ def parse_record(raw_record, is_training):
   # The first byte represents the label, which we convert from uint8 to int32
   # and then to one-hot.
   label = tf.cast(record_vector[0], tf.int32)
-  label = tf.one_hot(label, _NUM_CLASSES)
 
   # The remaining bytes after the label represent the image, which we reshape
   # from [depth * height * width] to [depth, height, width].
@@ -107,14 +106,18 @@ def preprocess_image(image, is_training):
   return image
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+def input_fn(is_training, data_dir, global_batch_size, num_epochs=1, num_gpus=1):
   """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
     is_training: A boolean denoting whether the input is for training.
     data_dir: The directory containing the input data.
-    batch_size: The number of samples per batch.
+    global_batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
+    num_gpus: The number of GPUs.
+    datasets_num_private_threads: Number of threads for a private 
+      threadpool created for all datasets computation.
+
 
   Returns:
     A dataset that can be used for iteration.
@@ -123,8 +126,8 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   dataset = tf.data.FixedLengthRecordDataset(filenames, _RECORD_BYTES)
 
   return resnet_run_loop.process_record_dataset(
-      dataset, is_training, batch_size, _NUM_IMAGES['train'],
-      parse_record, num_epochs,
+      dataset, is_training, global_batch_size, _NUM_IMAGES['train'],
+      parse_record, num_epochs, num_gpus, datasets_num_private_threads
   )
 
 
