@@ -40,8 +40,8 @@ from tensorflow.contrib.data.python.ops import threadpool
 # Functions for input processing.
 ################################################################################
 def process_record_dataset(dataset, is_training, global_batch_size,
-                           shuffle_buffer, parse_record_fn, num_epochs=1,
-                           num_gpus=1, datasets_num_private_threads=None):
+                           shuffle_buffer, parse_record_fn, num_gpus,
+                           num_epochs=1, datasets_num_private_threads=None):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -53,8 +53,8 @@ def process_record_dataset(dataset, is_training, global_batch_size,
       time and use less memory.
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
-    num_epochs: The number of epochs to repeat the dataset.
     num_gpus: The number of GPUs.
+    num_epochs: The number of epochs to repeat the dataset.
     datasets_num_private_threads: Number of threads for a private 
       threadpool created for all datasets computation.
 
@@ -121,7 +121,9 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     An input_fn that can be used in place of a real one to return a dataset
     that can be used for iteration.
   """
-  def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
+  def input_fn(is_training, data_dir, global_batch_size, num_gpus, 
+               *args, **kwargs):  # pylint: disable=unused-argument
+    batch_size=per_device_batch_size(global_batch_size, num_gpus)
     images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
     labels = tf.zeros((batch_size), tf.int32)
     return tf.data.Dataset.from_tensors((images, labels)).repeat()
@@ -366,7 +368,7 @@ def resnet_main(
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
   os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
-  os.environ['TF_GPU_THREAD_COUNT'] = flags_obj.tf_gpu_thread_count
+  os.environ['TF_GPU_THREAD_COUNT'] = str(flags_obj.tf_gpu_thread_count)
 
 
   # Create session config based on values of inter_op_parallelism_threads and
@@ -378,13 +380,15 @@ def resnet_main(
       intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
       allow_soft_placement=True)
 
-  if flags_core.get_num_gpus(flags_obj) == 0:
+  num_gpus = flags_core.get_num_gpus(flags_obj)
+
+  if num_gpus == 0:
     distribution = tf.contrib.distribute.OneDeviceStrategy('device:CPU:0')
-  elif flags_core.get_num_gpus(flags_obj) == 1:
+  elif num_gpus == 1:
     distribution = tf.contrib.distribute.OneDeviceStrategy('device:GPU:0')
   else:
     distribution = tf.contrib.distribute.MirroredStrategy(
-        num_gpus=flags_core.get_num_gpus(flags_obj)
+        num_gpus=num_gpus
     )
 
   run_config = tf.estimator.RunConfig(train_distribute=distribution,
@@ -419,17 +423,21 @@ def resnet_main(
 
   def input_fn_train():
     return input_function(
-        is_training=True, data_dir=flags_obj.data_dir,
+        is_training=True,
+        data_dir=flags_obj.data_dir,
         global_batch_size=flags_obj.batch_size, 
+        num_gpus=num_gpus,
         num_epochs=flags_obj.epochs_between_evals,
-        num_gpus=flags_core.get_num_gpus(flags_obj))
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads)
 
   def input_fn_eval():
     return input_function(
-        is_training=False, data_dir=flags_obj.data_dir,
+        is_training=False,
+        data_dir=flags_obj.data_dir,
         global_batch_size=flags_obj.batch_size,
+        num_gpus=num_gpus,
         num_epochs=1,
-        num_gpus=flags_core.get_num_gpus(flags_obj))
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads)
 
 
   total_training_cycle = (flags_obj.train_epochs //

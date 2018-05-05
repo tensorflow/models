@@ -64,13 +64,13 @@ class BaseTest(tf.test.TestCase):
         lambda val: cifar10_main.parse_record(val, False))
     image, label = fake_dataset.make_one_shot_iterator().get_next()
 
-    self.assertAllEqual(label.shape, (10,))
+    self.assertAllEqual(label.shape, ())
     self.assertAllEqual(image.shape, (_HEIGHT, _WIDTH, _NUM_CHANNELS))
 
     with self.test_session() as sess:
       image, label = sess.run([image, label])
 
-      self.assertAllEqual(label, np.array([int(i == 7) for i in range(10)]))
+      self.assertEqual(label, 7)
 
       for row in image:
         for pixel in row:
@@ -78,7 +78,7 @@ class BaseTest(tf.test.TestCase):
 
   def cifar10_model_fn_helper(self, mode, resnet_version, dtype):
     input_fn = cifar10_main.get_synth_input_fn()
-    dataset = input_fn(True, '', _BATCH_SIZE)
+    dataset = input_fn(True, '', _BATCH_SIZE, 1)
     iterator = dataset.make_one_shot_iterator()
     features, labels = iterator.get_next()
     spec = cifar10_main.cifar10_model_fn(
