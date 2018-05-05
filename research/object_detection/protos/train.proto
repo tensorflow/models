@@ -1,0 +1,109 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+import "object_detection/protos/optimizer.proto";
+import "object_detection/protos/preprocessor.proto";
+
+// Message for configuring DetectionModel training jobs (train.py).
+// Next id: 25
+message TrainConfig {
+  // Effective batch size to use for training.
+  // For TPU (or sync SGD jobs), the batch size per core (or GPU) is going to be
+  // `batch_size` / number of cores (or `batch_size` / number of GPUs).
+  optional uint32 batch_size = 1 [default=32];
+
+  // Data augmentation options.
+  repeated PreprocessingStep data_augmentation_options = 2;
+
+  // Whether to synchronize replicas during training.
+  optional bool sync_replicas = 3 [default=false];
+
+  // How frequently to keep checkpoints.
+  optional uint32 keep_checkpoint_every_n_hours = 4 [default=1000];
+
+  // Optimizer used to train the DetectionModel.
+  optional Optimizer optimizer = 5;
+
+  // If greater than 0, clips gradients by this value.
+  optional float gradient_clipping_by_norm = 6 [default=0.0];
+
+  // Checkpoint to restore variables from. Typically used to load feature
+  // extractor variables trained outside of object detection.
+  optional string fine_tune_checkpoint = 7 [default=""];
+
+  // Type of checkpoint to restore variables from, e.g. 'classification' or
+  // 'detection'. Provides extensibility to from_detection_checkpoint.
+  // Typically used to load feature extractor variables from trained models.
+  optional string fine_tune_checkpoint_type = 22 [default=""];
+
+  // [Deprecated]: use fine_tune_checkpoint_type instead.
+  // Specifies if the finetune checkpoint is from an object detection model.
+  // If from an object detection model, the model being trained should have
+  // the same parameters with the exception of the num_classes parameter.
+  // If false, it assumes the checkpoint was a object classification model.
+  optional bool from_detection_checkpoint = 8 [default=false, deprecated=true];
+
+  // Whether to load all checkpoint vars that match model variable names and
+  // sizes. This option is only available if `from_detection_checkpoint` is
+  // True.
+  optional bool load_all_detection_checkpoint_vars = 19 [default = false];
+
+  // Number of steps to train the DetectionModel for. If 0, will train the model
+  // indefinitely.
+  optional uint32 num_steps = 9 [default=0];
+
+  // Number of training steps between replica startup.
+  // This flag must be set to 0 if sync_replicas is set to true.
+  optional float startup_delay_steps = 10 [default=15];
+
+  // If greater than 0, multiplies the gradient of bias variables by this
+  // amount.
+  optional float bias_grad_multiplier = 11 [default=0];
+
+  // Variables that should not be updated during training.
+  repeated string freeze_variables = 12;
+
+  // Number of replicas to aggregate before making parameter updates.
+  optional int32 replicas_to_aggregate = 13 [default=1];
+
+  // Maximum number of elements to store within a queue.
+  optional int32 batch_queue_capacity = 14 [default=150];
+
+  // Number of threads to use for batching.
+  optional int32 num_batch_queue_threads = 15 [default=8];
+
+  // Maximum capacity of the queue used to prefetch assembled batches.
+  optional int32 prefetch_queue_capacity = 16 [default=5];
+
+  // If true, boxes with the same coordinates will be merged together.
+  // This is useful when each box can have multiple labels.
+  // Note that only Sigmoid classification losses should be used.
+  optional bool merge_multiple_label_boxes = 17 [default=false];
+
+  // If true, will use multiclass scores from object annotations as ground
+  // truth. Currently only compatible with annotated image inputs.
+  optional bool use_multiclass_scores = 24 [default = false];
+
+  // Whether to add regularization loss to `total_loss`. This is true by
+  // default and adds all regularization losses defined in the model to
+  // `total_loss`.
+  // Setting this option to false is very useful while debugging the model and
+  // losses.
+  optional bool add_regularization_loss = 18 [default=true];
+
+  // Maximum number of boxes used during training.
+  // Set this to at least the maximum amount of boxes in the input data.
+  // Otherwise, it may cause "Data loss: Attempted to pad to a smaller size
+  // than the input element" errors.
+  optional int32 max_number_of_boxes = 20 [default=100];
+
+  // Whether to remove padding along `num_boxes` dimension of the groundtruth
+  // tensors.
+  optional bool unpad_groundtruth_tensors = 21 [default=true];
+
+  // Whether to retain original images (i.e. not pre-processed) in the tensor
+  // dictionary, so that they can be displayed in Tensorboard. Note that this
+  // will lead to a larger memory footprint.
+  optional bool retain_original_images = 23 [default=false];
+}

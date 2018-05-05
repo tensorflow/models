@@ -18,8 +18,6 @@ See http://www.cs.toronto.edu/~kriz/cifar.html.
 """
 import os
 
-from six.moves import xrange  # pylint: disable=redefined-builtin
-
 import tensorflow as tf
 
 HEIGHT = 32
@@ -39,15 +37,8 @@ class Cifar10DataSet(object):
     self.use_distortion = use_distortion
 
   def get_filenames(self):
-    if self.subset == 'train':
-      return [
-          os.path.join(self.data_dir, 'data_batch_%d.tfrecords' % i)
-          for i in xrange(1, 5)
-      ]
-    elif self.subset == 'validation':
-      return [os.path.join(self.data_dir, 'data_batch_5.tfrecords')]
-    elif self.subset == 'eval':
-      return [os.path.join(self.data_dir, 'test_batch.tfrecords')]
+    if self.subset in ['train', 'validation', 'eval']:
+      return [os.path.join(self.data_dir, self.subset + '.tfrecords')]
     else:
       raise ValueError('Invalid data subset "%s"' % self.subset)
 
@@ -66,10 +57,12 @@ class Cifar10DataSet(object):
     image.set_shape([DEPTH * HEIGHT * WIDTH])
 
     # Reshape from [depth * height * width] to [depth, height, width].
-    image = tf.transpose(tf.reshape(image, [DEPTH, HEIGHT, WIDTH]), [1, 2, 0])
+    image = tf.cast(
+        tf.transpose(tf.reshape(image, [DEPTH, HEIGHT, WIDTH]), [1, 2, 0]),
+        tf.float32)
     label = tf.cast(features['label'], tf.int32)
 
-    # Custom preprocessing .
+    # Custom preprocessing.
     image = self.preprocess(image)
 
     return image, label
@@ -81,8 +74,8 @@ class Cifar10DataSet(object):
     dataset = tf.contrib.data.TFRecordDataset(filenames).repeat()
 
     # Parse records.
-    dataset = dataset.map(self.parser, num_threads=batch_size,
-                          output_buffer_size=2 * batch_size)
+    dataset = dataset.map(
+        self.parser, num_threads=batch_size, output_buffer_size=2 * batch_size)
 
     # Potentially shuffle records.
     if self.subset == 'train':

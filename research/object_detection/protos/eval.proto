@@ -1,0 +1,75 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Message for configuring DetectionModel evaluation jobs (eval.py).
+message EvalConfig {
+  // Number of visualization images to generate.
+  optional uint32 num_visualizations = 1 [default=10];
+
+  // Number of examples to process of evaluation.
+  optional uint32 num_examples = 2 [default=5000];
+
+  // How often to run evaluation.
+  optional uint32 eval_interval_secs = 3 [default=300];
+
+  // Maximum number of times to run evaluation. If set to 0, will run forever.
+  optional uint32 max_evals = 4 [default=0];
+
+  // Whether the TensorFlow graph used for evaluation should be saved to disk.
+  optional bool save_graph = 5 [default=false];
+
+  // Path to directory to store visualizations in. If empty, visualization
+  // images are not exported (only shown on Tensorboard).
+  optional string visualization_export_dir = 6 [default=""];
+
+  // BNS name of the TensorFlow master.
+  optional string eval_master = 7 [default=""];
+
+  // Type of metrics to use for evaluation.
+  repeated string metrics_set = 8;
+
+  // Path to export detections to COCO compatible JSON format.
+  optional string export_path = 9 [default=''];
+
+  // Option to not read groundtruth labels and only export detections to
+  // COCO-compatible JSON file.
+  optional bool ignore_groundtruth = 10 [default=false];
+
+  // Use exponential moving averages of variables for evaluation.
+  // TODO(rathodv): When this is false make sure the model is constructed
+  // without moving averages in restore_fn.
+  optional bool use_moving_averages = 11 [default=false];
+
+  // Whether to evaluate instance masks.
+  // Note that since there is no evaluation code currently for instance
+  // segmenation this option is unused.
+  optional bool eval_instance_masks = 12 [default=false];
+
+  // Minimum score threshold for a detected object box to be visualized
+  optional float min_score_threshold = 13 [default=0.5];
+
+  // Maximum number of detections to visualize
+  optional int32 max_num_boxes_to_visualize = 14 [default=20];
+
+  // When drawing a single detection, each label is by default visualized as
+  // <label name> : <label score>. One can skip the name or/and score using the
+  // following fields:
+  optional bool skip_scores = 15 [default=false];
+  optional bool skip_labels = 16 [default=false];
+
+  // Whether to show groundtruth boxes in addition to detected boxes in
+  // visualizations.
+  optional bool visualize_groundtruth_boxes = 17 [default=false];
+
+  // Box color for visualizing groundtruth boxes.
+  optional string groundtruth_box_visualization_color = 18 [default="black"];
+
+  // Whether to keep image identifier in filename when exported to
+  // visualization_export_dir.
+  optional bool keep_image_id_for_visualization_export = 19 [default=false];
+
+  // Whether to retain original images (i.e. not pre-processed) in the tensor
+  // dictionary, so that they can be displayed in Tensorboard.
+  optional bool retain_original_images = 23 [default=true];
+}
