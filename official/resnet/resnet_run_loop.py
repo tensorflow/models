@@ -61,24 +61,21 @@ def process_record_dataset(dataset, is_training, global_batch_size,
   Returns:
     Dataset of (image, label) pairs ready for iteration.
   """
-
-  # We prefetch a batch at a time, This can help smooth out the time taken to
-  # load input files as we go through shuffling and processing.
-  dataset = dataset.prefetch(buffer_size=global_batch_size)
   if is_training:
     # Shuffle the records. Note that we shuffle before repeating to ensure
     # that the shuffling respects epoch boundaries.
-    # If we are training over multiple epochs before evaluating, repeat the
-    # dataset for the appropriate number of epochs.
-    # Using the fused shuffle_and_repeat method gives better performance.
-    dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(
-        buffer_size=shuffle_buffer, count=num_epochs))
-  else:
-    dataset = dataset.repeat(num_epochs)
+    dataset = dataset.shuffle(buffer_size=shuffle_buffer)
+
+  # If we are training over multiple epochs before evaluating, repeat the
+  # dataset for the appropriate number of epochs.
+  dataset = dataset.repeat(num_epochs)
 
   # Parse the raw records into images and labels. Testing has shown that setting
   # num_parallel_batches > 1 produces no improvement in throughput, since
   # batch_size is almost always much greater than the number of CPU cores.
+  # num_parallel_batches=num_gpus is better in presence of dedicated threads.
+  # Otherwise, not so great. 
+  # TODO(priya): Perhaps make this conditional on the flag?
   dataset = dataset.apply(
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training),
@@ -90,9 +87,8 @@ def process_record_dataset(dataset, is_training, global_batch_size,
   # will happen synchronously during run time. We prefetch here again to
   # background all of the above processing work and keep it out of the
   # critical training path. Setting buffer_size to tf.contrib.data.AUTOTUNE
-  # allows TensorFlow to adjust how many batches to fetch based
-  # on how many devices are present.
-  dataset.prefetch(buffer_size=num_gpus)
+  # allows TensorFlow to determine the best setting.
+  dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
 
   if datasets_num_private_threads:
     dataset = threadpool.override_threadpool(
