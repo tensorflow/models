@@ -43,6 +43,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
 import numpy as np
 import core as pate
+import random
 
 plt.style.use('ggplot')
 
@@ -53,25 +54,23 @@ flags.DEFINE_string('figures_dir', '', 'Path where figures are written to.')
 
 def plot_rdp_curve_per_example(votes, sigmas):
   orders = np.linspace(1., 100., endpoint=True, num=1000)
-  orders[0] = 1.5
+  orders[0] = 1.001
 
   fig, ax = plt.subplots()
   fig.set_figheight(4.5)
   fig.set_figwidth(4.7)
 
-  styles = [':', '-']
-  labels = ['ex1', 'ex2']
+  fig.patch.set_alpha(0)
 
   for i in xrange(votes.shape[0]):
-    print(sorted(votes[i,], reverse=True)[:10])
     for sigma in sigmas:
       logq = pate.compute_logq_gaussian(votes[i,], sigma)
       rdp = pate.rdp_gaussian(logq, sigma, orders)
       ax.plot(
           orders,
           rdp,
-          label=r'{} $\sigma$={}'.format(labels[i], int(sigma)),
-          linestyle=styles[i],
+          alpha=1.,
+          label=r'Data-dependent bound, $\sigma$={}'.format(int(sigma)),
           linewidth=5)
 
   for sigma in sigmas:
@@ -79,18 +78,49 @@ def plot_rdp_curve_per_example(votes, sigmas):
         orders,
         pate.rdp_data_independent_gaussian(sigma, orders),
         alpha=.3,
-        label=r'Data-ind bound $\sigma$={}'.format(int(sigma)),
+        label=r'Data-independent bound, $\sigma$={}'.format(int(sigma)),
         linewidth=10)
 
-  plt.yticks([0, .01])
-  plt.xlabel(r'Order $\lambda$', fontsize=16)
-  plt.ylabel(r'RDP value $\varepsilon$ at $\lambda$', fontsize=16)
+  plt.xlim(xmin=1, xmax=100)
+  plt.ylim(ymin=0)
+  plt.xticks([1, 20, 40, 60, 80, 100])
+  plt.yticks([0, .0025, .005, .0075, .01])
+  plt.xlabel(r'Order $\alpha$', fontsize=16)
+  plt.ylabel(r'RDP value $\varepsilon$ at $\alpha$', fontsize=16)
   ax.tick_params(labelsize=14)
 
-  fout_name = os.path.join(FLAGS.figures_dir, 'rdp_flow1.pdf')
-  print('Saving the graph to ' + fout_name)
-  fig.savefig(fout_name, bbox_inches='tight')
   plt.legend(loc=0, fontsize=13)
+  plt.show()
+
+
+def plot_rdp_of_sigma(v, order):
+  sigmas = np.linspace(1., 1000., endpoint=True, num=1000)
+  fig, ax = plt.subplots()
+  fig.set_figheight(4.5)
+  fig.set_figwidth(4.7)
+
+  fig.patch.set_alpha(0)
+  y = np.zeros(len(sigmas))
+
+  for i, sigma in enumerate(sigmas):
+    logq = pate.compute_logq_gaussian(v, sigma)
+    y[i] = pate.rdp_gaussian(logq, sigma, order)
+
+  ax.plot(
+      sigmas,
+      y,
+      alpha=.8,
+      linewidth=5)
+
+  plt.xlim(xmin=1, xmax=1000)
+  plt.ylim(ymin=0)
+  #plt.yticks([0, .0004, .0008, .0012])
+  ax.tick_params(labelleft='off')
+  plt.xlabel(r'Noise $\sigma$', fontsize=16)
+  plt.ylabel(r'RDP at order $\alpha={}$'.format(order), fontsize=16)
+  ax.tick_params(labelsize=14)
+
+  # plt.legend(loc=0, fontsize=13)
   plt.show()
 
 
@@ -115,29 +145,130 @@ def compute_rdp_curve(votes, threshold, sigma1, sigma2, orders,
 
 def plot_rdp_total(votes, sigmas):
   orders = np.linspace(1., 100., endpoint=True, num=100)
-  orders[0] = 1.5
+  orders[0] = 1.1
 
   fig, ax = plt.subplots()
   fig.set_figheight(4.5)
   fig.set_figwidth(4.7)
+  fig.patch.set_alpha(0)
+
+  target_answered = 2000
 
   for sigma in sigmas:
-    rdp = compute_rdp_curve(votes, 5000, 1000, sigma, orders, 2000)
+    rdp = compute_rdp_curve(votes, 5000, 1000, sigma, orders, target_answered)
     ax.plot(
         orders,
         rdp,
         alpha=.8,
-        label=r'$\sigma$={}'.format(int(sigma)),
+        label=r'Data-dependent bound, $\sigma$={}'.format(int(sigma)),
         linewidth=5)
 
-  plt.xlabel(r'Order $\lambda$', fontsize=16)
-  plt.ylabel(r'RDP value $\varepsilon$ at $\lambda$', fontsize=16)
+  # for sigma in sigmas:
+  #   ax.plot(
+  #       orders,
+  #       target_answered * pate.rdp_data_independent_gaussian(sigma, orders),
+  #       alpha=.3,
+  #       label=r'Data-independent bound, $\sigma$={}'.format(int(sigma)),
+  #       linewidth=10)
+
+
+  plt.xlim(xmin=1, xmax=100)
+  plt.ylim(ymin=0)
+  plt.xticks([1, 20, 40, 60, 80, 100])
+  plt.yticks([0, .0005, .001, .0015, .002])
+
+  plt.xlabel(r'Order $\alpha$', fontsize=16)
+  plt.ylabel(r'RDP value $\varepsilon$ at $\alpha$', fontsize=16)
   ax.tick_params(labelsize=14)
 
-  fout_name = os.path.join(FLAGS.figures_dir, 'rdp_flow2.pdf')
-  print('Saving the graph to ' + fout_name)
-  fig.savefig(fout_name, bbox_inches='tight')
   plt.legend(loc=0, fontsize=13)
+  plt.show()
+
+
+def plot_one_curve():
+  fig, ax = plt.subplots()
+  fig.set_figheight(4.5)
+  fig.set_figwidth(4.7)
+
+  fig.patch.set_alpha(0)
+
+  orders = np.linspace(1., 10., endpoint=True, num=1000)
+  orders[0] = 1.01
+
+  ax.plot(
+    orders,
+    pate.rdp_data_independent_gaussian(1., orders),
+    alpha=.5,
+    color='gray',
+    linewidth=10)
+
+  #plt.yticks([])
+  plt.xlim(xmin=1, xmax=10)
+  plt.ylim(ymin=0)
+
+  plt.show()
+
+
+def plot_two_curves():
+  orders = np.linspace(1., 100., endpoint=True, num=1000)
+  orders[0] = 1.001
+
+  fig, ax = plt.subplots()
+  fig.set_figheight(4.5)
+  fig.set_figwidth(4.7)
+  fig.patch.set_alpha(0)
+
+  ax.plot([], [])
+  ax.plot([], [])
+
+  for sigma in [100, 150]:
+    ax.plot(
+        orders,
+        pate.rdp_data_independent_gaussian(sigma, orders),
+        alpha=.3,
+        label=r'Data-independent bound, $\sigma$={}'.format(int(sigma)),
+        linewidth=10)
+
+  plt.xlim(xmin=1, xmax=100)
+  plt.ylim(ymin=0)
+  plt.xticks([1, 20, 40, 60, 80, 100])
+  plt.yticks([0, .0025, .005, .0075, .01])
+  plt.xlabel(r'Order $\alpha$', fontsize=16)
+  plt.ylabel(r'RDP value $\varepsilon$ at $\alpha$', fontsize=16)
+  ax.tick_params(labelsize=14)
+
+  plt.legend(loc=0, fontsize=13)
+  plt.show()
+
+
+def scatter_plot(votes, threshold, sigma1, sigma2, order):
+  fig, ax = plt.subplots()
+  fig.set_figheight(4.5)
+  fig.set_figwidth(4.7)
+  fig.patch.set_alpha(0)
+  x = []
+  y = []
+  for i, v in enumerate(votes):
+    if threshold is not None and sigma1 is not None:
+      q_step1 = math.exp(pate.compute_logpr_answered(threshold, sigma1, v))
+    else:
+      q_step1 = 1.
+    if random.random() < q_step1:
+      logq_step2 = pate.compute_logq_gaussian(v, sigma2)
+      x.append(max(v))
+      y.append(pate.rdp_gaussian(logq_step2, sigma2, order))
+
+  print('Selected {} queries.'.format(len(x)))
+  #data_ind = pate.rdp_data_independent_gaussian(sigma, order)
+  #plt.plot([0, 5000], [data_ind, data_ind], color='tab:blue', linestyle='-', linewidth=2)
+  ax.set_yscale('log')
+  plt.xlim(xmin=0, xmax=5000)
+  plt.ylim(ymin=1e-300, ymax=1)
+  plt.yticks([1, 1e-100, 1e-200, 1e-300])
+  plt.scatter(x, y, s = 1, alpha=0.5)
+  plt.ylabel(r'RDP at $\alpha={}$'.format(order), fontsize=16)
+  plt.xlabel(r'max count', fontsize=16)
+  ax.tick_params(labelsize=14)
   plt.show()
 
 
@@ -147,14 +278,21 @@ def main(argv):
   print('Reading raw votes from ' + fin_name)
   sys.stdout.flush()
 
+  #plot_one_curve()
+  #plot_two_curves()
+
   votes = np.load(fin_name)
   votes = votes[:12000,]  # truncate to 4000 samples
 
   v1 = [2550, 2200, 250]  # based on votes[2,]
-  v2 = [2600, 2200, 200]  # based on votes[381,]
-  plot_rdp_curve_per_example(np.array([v1, v2]), (100., 150.))
+  #v2 = [2600, 2200, 200]  # based on votes[381,]
+  #plot_rdp_curve_per_example(np.array([v1]), (100., 150.))
 
-  plot_rdp_total(votes, (100., 150.))
+  #plot_rdp_of_sigma(np.array(v1), 20.)
+
+  #plot_rdp_total(votes, (100., 150.))
+  scatter_plot(votes[:6000, ], None, None, 100, 20)
+  scatter_plot(votes[:6000, ], 3500, 1500, 100, 20)
 
 
 if __name__ == '__main__':
