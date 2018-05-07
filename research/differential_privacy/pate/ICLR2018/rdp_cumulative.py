@@ -46,6 +46,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
 import numpy as np
 import core as pate
+from six.moves import xrange  # pylint: disable=redefined-builtin
 
 plt.style.use('ggplot')
 

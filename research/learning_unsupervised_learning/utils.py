@@ -26,6 +26,7 @@ import sonnet as snt
 import itertools
 import functools
 
+from six.moves import xrange  # pylint: disable=redefined-builtin
 from tensorflow.core.framework import node_def_pb2
 from tensorflow.python.framework import device as pydev
 from tensorflow.python.framework import errors
@@ -284,4 +285,3 @@ def create_variables_in_class_scope(method):
           return out_ops
 
   return wrapper
-
