@@ -32,11 +32,16 @@ _LABEL_CLASSES = 1001
 
 class BaseTest(tf.test.TestCase):
 
+  @classmethod
+  def setUpClass(cls):  # pylint: disable=invalid-name
+    super(BaseTest, cls).setUpClass()
+    imagenet_main.define_imagenet_flags()
+
   def tearDown(self):
     super(BaseTest, self).tearDown()
     tf.gfile.DeleteRecursively(self.get_temp_dir())
 
-  def _tensor_shapes_helper(self, resnet_size, version, dtype, with_gpu):
+  def _tensor_shapes_helper(self, resnet_size, resnet_version, dtype, with_gpu):
     """Checks the tensor shapes after each phase of the ResNet model."""
     def reshape(shape):
       """Returns the expected dimensions depending on if a GPU is being used."""
@@ -54,7 +59,7 @@ class BaseTest(tf.test.TestCase):
       model = imagenet_main.ImagenetModel(
           resnet_size=resnet_size,
           data_format='channels_first' if with_gpu else 'channels_last',
-          version=version,
+          resnet_version=resnet_version,
           dtype=dtype
       )
       inputs = tf.random_uniform([1, 224, 224, 3])
@@ -90,186 +95,166 @@ class BaseTest(tf.test.TestCase):
       self.assertAllEqual(dense.shape, (1, _LABEL_CLASSES))
       self.assertAllEqual(output.shape, (1, _LABEL_CLASSES))
 
-  def tensor_shapes_helper(self, resnet_size, version, with_gpu=False):
-    self._tensor_shapes_helper(resnet_size=resnet_size, version=version,
+  def tensor_shapes_helper(self, resnet_size, resnet_version, with_gpu=False):
+    self._tensor_shapes_helper(resnet_size=resnet_size,
+                               resnet_version=resnet_version,
                                dtype=tf.float32, with_gpu=with_gpu)
-    self._tensor_shapes_helper(resnet_size=resnet_size, version=version,
+    self._tensor_shapes_helper(resnet_size=resnet_size,
+                               resnet_version=resnet_version,
                                dtype=tf.float16, with_gpu=with_gpu)
 
   def test_tensor_shapes_resnet_18_v1(self):
-    self.tensor_shapes_helper(18, version=1)
+    self.tensor_shapes_helper(18, resnet_version=1)
 
   def test_tensor_shapes_resnet_18_v2(self):
-    self.tensor_shapes_helper(18, version=2)
+    self.tensor_shapes_helper(18, resnet_version=2)
 
   def test_tensor_shapes_resnet_34_v1(self):
-    self.tensor_shapes_helper(34, version=1)
+    self.tensor_shapes_helper(34, resnet_version=1)
 
   def test_tensor_shapes_resnet_34_v2(self):
-    self.tensor_shapes_helper(34, version=2)
+    self.tensor_shapes_helper(34, resnet_version=2)
 
   def test_tensor_shapes_resnet_50_v1(self):
-    self.tensor_shapes_helper(50, version=1)
+    self.tensor_shapes_helper(50, resnet_version=1)
 
   def test_tensor_shapes_resnet_50_v2(self):
-    self.tensor_shapes_helper(50, version=2)
+    self.tensor_shapes_helper(50, resnet_version=2)
 
   def test_tensor_shapes_resnet_101_v1(self):
-    self.tensor_shapes_helper(101, version=1)
+    self.tensor_shapes_helper(101, resnet_version=1)
 
   def test_tensor_shapes_resnet_101_v2(self):
-    self.tensor_shapes_helper(101, version=2)
+    self.tensor_shapes_helper(101, resnet_version=2)
 
   def test_tensor_shapes_resnet_152_v1(self):
-    self.tensor_shapes_helper(152, version=1)
+    self.tensor_shapes_helper(152, resnet_version=1)
 
   def test_tensor_shapes_resnet_152_v2(self):
-    self.tensor_shapes_helper(152, version=2)
+    self.tensor_shapes_helper(152, resnet_version=2)
 
   def test_tensor_shapes_resnet_200_v1(self):
-    self.tensor_shapes_helper(200, version=1)
+    self.tensor_shapes_helper(200, resnet_version=1)
 
   def test_tensor_shapes_resnet_200_v2(self):
-    self.tensor_shapes_helper(200, version=2)
+    self.tensor_shapes_helper(200, resnet_version=2)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_18_with_gpu_v1(self):
-    self.tensor_shapes_helper(18, version=1, with_gpu=True)
+    self.tensor_shapes_helper(18, resnet_version=1, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_18_with_gpu_v2(self):
-    self.tensor_shapes_helper(18, version=2, with_gpu=True)
+    self.tensor_shapes_helper(18, resnet_version=2, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_34_with_gpu_v1(self):
-    self.tensor_shapes_helper(34, version=1, with_gpu=True)
+    self.tensor_shapes_helper(34, resnet_version=1, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_34_with_gpu_v2(self):
-    self.tensor_shapes_helper(34, version=2, with_gpu=True)
+    self.tensor_shapes_helper(34, resnet_version=2, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_50_with_gpu_v1(self):
-    self.tensor_shapes_helper(50, version=1, with_gpu=True)
+    self.tensor_shapes_helper(50, resnet_version=1, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_50_with_gpu_v2(self):
-    self.tensor_shapes_helper(50, version=2, with_gpu=True)
+    self.tensor_shapes_helper(50, resnet_version=2, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_101_with_gpu_v1(self):
-    self.tensor_shapes_helper(101, version=1, with_gpu=True)
+    self.tensor_shapes_helper(101, resnet_version=1, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_101_with_gpu_v2(self):
-    self.tensor_shapes_helper(101, version=2, with_gpu=True)
+    self.tensor_shapes_helper(101, resnet_version=2, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_152_with_gpu_v1(self):
-    self.tensor_shapes_helper(152, version=1, with_gpu=True)
+    self.tensor_shapes_helper(152, resnet_version=1, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_152_with_gpu_v2(self):
-    self.tensor_shapes_helper(152, version=2, with_gpu=True)
+    self.tensor_shapes_helper(152, resnet_version=2, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_200_with_gpu_v1(self):
-    self.tensor_shapes_helper(200, version=1, with_gpu=True)
+    self.tensor_shapes_helper(200, resnet_version=1, with_gpu=True)
 
   @unittest.skipUnless(tf.test.is_built_with_cuda(), 'requires GPU')
   def test_tensor_shapes_resnet_200_with_gpu_v2(self):
-    self.tensor_shapes_helper(200, version=2, with_gpu=True)
+    self.tensor_shapes_helper(200, resnet_version=2, with_gpu=True)
 
-  def _resnet_model_fn_helper(self, mode, version, dtype, multi_gpu):
+  def resnet_model_fn_helper(self, mode, resnet_version, dtype):
     """Tests that the EstimatorSpec is given the appropriate arguments."""
-    with tf.Graph().as_default() as g:
-      tf.train.create_global_step()
+    tf.train.create_global_step()
 
-      input_fn = imagenet_main.get_synth_input_fn()
-      dataset = input_fn(True, '', _BATCH_SIZE)
-      iterator = dataset.make_one_shot_iterator()
-      features, labels = iterator.get_next()
-      spec = imagenet_main.imagenet_model_fn(
-          features, labels, mode, {
-              'dtype': dtype,
-              'resnet_size': 50,
-              'data_format': 'channels_last',
-              'batch_size': _BATCH_SIZE,
-              'version': version,
-              'loss_scale': 128 if dtype == tf.float16 else 1,
-              'multi_gpu': multi_gpu,
-          })
+    input_fn = imagenet_main.get_synth_input_fn()
+    dataset = input_fn(True, '', _BATCH_SIZE)
+    iterator = dataset.make_one_shot_iterator()
+    features, labels = iterator.get_next()
+    spec = imagenet_main.imagenet_model_fn(
+        features, labels, mode, {
+            'dtype': dtype,
+            'resnet_size': 50,
+            'data_format': 'channels_last',
+            'batch_size': _BATCH_SIZE,
+            'resnet_version': resnet_version,
+            'loss_scale': 128 if dtype == tf.float16 else 1,
+        })
 
-      predictions = spec.predictions
-      self.assertAllEqual(predictions['probabilities'].shape,
-                          (_BATCH_SIZE, _LABEL_CLASSES))
-      self.assertEqual(predictions['probabilities'].dtype, tf.float32)
-      self.assertAllEqual(predictions['classes'].shape, (_BATCH_SIZE,))
-      self.assertEqual(predictions['classes'].dtype, tf.int64)
+    predictions = spec.predictions
+    self.assertAllEqual(predictions['probabilities'].shape,
+                        (_BATCH_SIZE, _LABEL_CLASSES))
+    self.assertEqual(predictions['probabilities'].dtype, tf.float32)
+    self.assertAllEqual(predictions['classes'].shape, (_BATCH_SIZE,))
+    self.assertEqual(predictions['classes'].dtype, tf.int64)
 
-      if mode != tf.estimator.ModeKeys.PREDICT:
-        loss = spec.loss
-        self.assertAllEqual(loss.shape, ())
-        self.assertEqual(loss.dtype, tf.float32)
+    if mode != tf.estimator.ModeKeys.PREDICT:
+      loss = spec.loss
+      self.assertAllEqual(loss.shape, ())
+      self.assertEqual(loss.dtype, tf.float32)
 
-      if mode == tf.estimator.ModeKeys.EVAL:
-        eval_metric_ops = spec.eval_metric_ops
-        self.assertAllEqual(eval_metric_ops['accuracy'][0].shape, ())
-        self.assertAllEqual(eval_metric_ops['accuracy'][1].shape, ())
-        self.assertEqual(eval_metric_ops['accuracy'][0].dtype, tf.float32)
-        self.assertEqual(eval_metric_ops['accuracy'][1].dtype, tf.float32)
-
-        tensors_to_check = ('initial_conv:0', 'initial_max_pool:0',
-                            'block_layer1:0', 'block_layer2:0',
-                            'block_layer3:0', 'block_layer4:0',
-                            'final_reduce_mean:0', 'final_dense:0')
-
-        for tensor_name in tensors_to_check:
-          tensor = g.get_tensor_by_name('resnet_model/' + tensor_name)
-          self.assertEqual(tensor.dtype, dtype,
-                           'Tensor {} has dtype {}, while dtype {} was '
-                           'expected'.format(tensor, tensor.dtype,
-                                             dtype))
-
-  def resnet_model_fn_helper(self, mode, version, multi_gpu=False):
-    self._resnet_model_fn_helper(mode=mode, version=version, dtype=tf.float32,
-                                 multi_gpu=multi_gpu)
-    self._resnet_model_fn_helper(mode=mode, version=version, dtype=tf.float16,
-                                 multi_gpu=multi_gpu)
+    if mode == tf.estimator.ModeKeys.EVAL:
+      eval_metric_ops = spec.eval_metric_ops
+      self.assertAllEqual(eval_metric_ops['accuracy'][0].shape, ())
+      self.assertAllEqual(eval_metric_ops['accuracy'][1].shape, ())
+      self.assertEqual(eval_metric_ops['accuracy'][0].dtype, tf.float32)
+      self.assertEqual(eval_metric_ops['accuracy'][1].dtype, tf.float32)
 
   def test_resnet_model_fn_train_mode_v1(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=1)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, resnet_version=1,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_train_mode_v2(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=2)
-
-  def test_resnet_model_fn_train_mode_multi_gpu_v1(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=1,
-                                multi_gpu=True)
-
-  def test_resnet_model_fn_train_mode_multi_gpu_v2(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, version=2,
-                                multi_gpu=True)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.TRAIN, resnet_version=2,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_eval_mode_v1(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=1)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL, resnet_version=1,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_eval_mode_v2(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL, version=2)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.EVAL, resnet_version=2,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_predict_mode_v1(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=1)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT, resnet_version=1,
+                                dtype=tf.float32)
 
   def test_resnet_model_fn_predict_mode_v2(self):
-    self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT, version=2)
+    self.resnet_model_fn_helper(tf.estimator.ModeKeys.PREDICT, resnet_version=2,
+                                dtype=tf.float32)
 
-  def _test_imagenetmodel_shape(self, version):
+  def _test_imagenetmodel_shape(self, resnet_version):
     batch_size = 135
     num_classes = 246
 
     model = imagenet_main.ImagenetModel(
         50, data_format='channels_last', num_classes=num_classes,
-        version=version)
+        resnet_version=resnet_version)
 
     fake_input = tf.random_uniform([batch_size, 224, 224, 3])
     output = model(fake_input, training=True)
@@ -277,45 +262,45 @@ class BaseTest(tf.test.TestCase):
     self.assertAllEqual(output.shape, (batch_size, num_classes))
 
   def test_imagenetmodel_shape_v1(self):
-    self._test_imagenetmodel_shape(version=1)
+    self._test_imagenetmodel_shape(resnet_version=1)
 
   def test_imagenetmodel_shape_v2(self):
-    self._test_imagenetmodel_shape(version=2)
+    self._test_imagenetmodel_shape(resnet_version=2)
 
   def test_imagenet_end_to_end_synthetic_v1(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '1']
     )
 
   def test_imagenet_end_to_end_synthetic_v2(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
         extra_flags=['-v', '2']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_tiny(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '1', '-rs', '18']
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '1', '-resnet_size', '18']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_tiny(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '2', '-rs', '18']
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '2', '-resnet_size', '18']
     )
 
   def test_imagenet_end_to_end_synthetic_v1_huge(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '1', '-rs', '200']
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '1', '-resnet_size', '200']
     )
 
   def test_imagenet_end_to_end_synthetic_v2_huge(self):
     integration.run_synthetic(
-        main=imagenet_main.main, tmp_root=self.get_temp_dir(),
-        extra_flags=['-v', '2', '-rs', '200']
+        main=imagenet_main.run_imagenet, tmp_root=self.get_temp_dir(),
+        extra_flags=['-resnet_version', '2', '-resnet_size', '200']
     )
 
 

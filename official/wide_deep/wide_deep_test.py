@@ -48,6 +48,11 @@ TEST_CSV = os.path.join(os.path.dirname(__file__), 'wide_deep_test.csv')
 class BaseTest(tf.test.TestCase):
   """Tests for Wide Deep model."""
 
+  @classmethod
+  def setUpClass(cls):  # pylint: disable=invalid-name
+    super(BaseTest, cls).setUpClass()
+    wide_deep.define_wide_deep_flags()
+
   def setUp(self):
     # Create temporary CSV file
     self.temp_dir = self.get_temp_dir()

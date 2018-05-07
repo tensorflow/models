@@ -113,7 +113,8 @@ message SsdFeatureExtractor {
   optional int32 pad_to_multiple = 5 [default = 1];
 
   // Whether to use explicit padding when extracting SSD multiresolution
-  // features. Note that this does not apply to the base feature extractor.
+  // features. This will also apply to the base feature extractor if a MobileNet
+  // architecture is used.
   optional bool use_explicit_padding = 7 [default=false];
 
   // Whether to use depthwise separable convolutions for to extract additional

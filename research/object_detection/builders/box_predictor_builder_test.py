@@ -317,6 +317,7 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
         use_dropout: true
         dropout_keep_probability: 0.8
         box_code_size: 3
+        share_box_across_classes: true
       }
     """
     hyperparams_proto = hyperparams_pb2.Hyperparams()
@@ -338,6 +339,7 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
     self.assertEqual(box_predictor._box_code_size, 3)
+    self.assertEqual(box_predictor._share_box_across_classes, True)
 
   def test_build_default_mask_rcnn_box_predictor(self):
     box_predictor_proto = box_predictor_pb2.BoxPredictor()

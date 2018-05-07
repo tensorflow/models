@@ -186,7 +186,7 @@ def analyze_gnmax_conf_data_dep(votes, threshold, sigma1, sigma2, delta):
                                    ss=rdp_ss[order_idx],
                                    delta=-math.log(delta) / (order_opt[i] - 1))
     ss_std_opt[i] = ss_std[order_idx]
-    if i > 0 and (i + 1) % 10 == 0:
+    if i > 0 and (i + 1) % 1 == 0:
       print('queries = {}, E[answered] = {:.2f}, E[eps] = {:.3f} +/- {:.3f} '
             'at order = {:.2f}. Contributions: delta = {:.3f}, step1 = {:.3f}, '
             'step2 = {:.3f}, ss = {:.3f}'.format(

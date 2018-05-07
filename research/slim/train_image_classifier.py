@@ -552,8 +552,6 @@ def main(_):
     # Merge all summaries together.
     summary_op = tf.summary.merge(list(summaries), name='summary_op')
 
-    # Add config to avoid 'could not satisfy explicit device' problem 
-    sess_config = tf.ConfigProto(allow_soft_placement=True)
 
     ###########################
     # Kicks off the training. #
@@ -569,8 +567,7 @@ def main(_):
         log_every_n_steps=FLAGS.log_every_n_steps,
         save_summaries_secs=FLAGS.save_summaries_secs,
         save_interval_secs=FLAGS.save_interval_secs,
-        sync_optimizer=optimizer if FLAGS.sync_replicas else None,
-        session_config=sess_config)
+        sync_optimizer=optimizer if FLAGS.sync_replicas else None)
 
 
 if __name__ == '__main__':

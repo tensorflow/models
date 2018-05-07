@@ -154,9 +154,6 @@ def pix2pix_generator(net,
   blocks = blocks or _default_generator_blocks()
 
   input_size = net.get_shape().as_list()
-  height, width = input_size[1], input_size[2]
-  if height != width:
-    raise ValueError('The input height must match the input width.')
 
   input_size[3] = num_outputs
 
@@ -213,7 +210,10 @@ def pix2pix_generator(net,
         end_points['decoder%d' % block_id] = net
 
   with tf.variable_scope('output'):
-    logits = layers.conv2d(net, num_outputs, [4, 4], activation_fn=None)
+    # Explicitly set the normalizer_fn to None to override any default value
+    # that may come from an arg_scope, such as pix2pix_arg_scope.
+    logits = layers.conv2d(
+        net, num_outputs, [4, 4], activation_fn=None, normalizer_fn=None)
     logits = tf.reshape(logits, input_size)
 
     end_points['logits'] = logits

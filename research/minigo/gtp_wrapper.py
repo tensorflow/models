@@ -49,8 +49,7 @@ class GtpInterface(object):
   def set_size(self, n):
     if n != self.board_size:
       raise ValueError((
-          '''Can't handle boardsize {n}!Restart with env var BOARD_SIZE={n}'''
-          ).format(n=n))
+          "Can't handle boardsize {}! Please check the board size.").format(n))
 
   def set_komi(self, komi):
     self.komi = komi
@@ -75,7 +74,7 @@ class GtpInterface(object):
       self.position.flip_playerturn(mutate=True)
 
   def make_move(self, color, vertex):
-    c = coords.from_pygtp(vertex)
+    c = coords.from_pygtp(self.board_size, vertex)
     # let's assume this never happens for now.
     # self.accomodate_out_of_turn(color)
     return self.play_move(c)
@@ -85,7 +84,7 @@ class GtpInterface(object):
     move = self.suggest_move(self.position)
     if self.should_resign():
       return gtp.RESIGN
-    return coords.to_pygtp(move)
+    return coords.to_pygtp(self.board_size, move)
 
   def final_score(self):
     return self.position.result_string()

@@ -18,7 +18,7 @@
 class MiniGoParams(object):
   """Parameters for MiniGo."""
 
-  # Go params
+  # Go board size
   board_size = 9
 
   # RL pipeline
@@ -51,6 +51,7 @@ class MiniGoParams(object):
   # the number of simultaneous leaves in MCTS
   simultaneous_leaves = 8
 
+  # holdout data for validation
   holdout_pct = 0.05  # How many games to hold out for validation
   holdout_generation = 50  # How many recent generations/models for holdout data
 
@@ -63,7 +64,7 @@ class MiniGoParams(object):
   # AGZ used the most recent 500k games, which, assuming 250 moves/game = 125M
   train_window_size = 125000000
 
-  # evaluation
+  # evaluation with two models
   eval_games = 50  # The number of games to play in evaluation
   eval_readouts = 100  # How many readouts to make per move in evaluation
   eval_verbose = 1  # How verbose the players should be in evaluation

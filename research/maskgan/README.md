@@ -5,7 +5,7 @@ ______*](https://arxiv.org/abs/1801.07736) published at ICLR 2018.
 
 ## Requirements
 
-*   TensorFlow >= v1.3
+*   TensorFlow >= v1.5
 
 ## Instructions
 

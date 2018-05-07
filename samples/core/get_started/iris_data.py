@@ -60,7 +60,7 @@ def eval_input_fn(features, labels, batch_size):
 
 
 # The remainder of this file contains a simple example of a csv parser,
-#     implemented using a the `Dataset` class.
+#     implemented using the `Dataset` class.
 
 # `tf.parse_csv` sets the types of the outputs to match the examples given in
 #     the `record_defaults` argument.

@@ -60,6 +60,7 @@ message ClassificationLoss {
   oneof classification_loss {
     WeightedSigmoidClassificationLoss weighted_sigmoid = 1;
     WeightedSoftmaxClassificationLoss weighted_softmax = 2;
+    WeightedSoftmaxClassificationAgainstLogitsLoss weighted_logits_softmax = 5;
     BootstrappedSigmoidClassificationLoss bootstrapped_sigmoid = 3;
     SigmoidFocalClassificationLoss weighted_sigmoid_focal = 4;
   }
@@ -90,6 +91,17 @@ message WeightedSoftmaxClassificationLoss {
   optional bool anchorwise_output = 1 [default=false];
   // Scale logit (input) value before calculating softmax classification loss.
   // Typically used for softmax distillation.
+  optional float logit_scale = 2 [default = 1.0];
+}
+
+// Classification loss using a softmax function over class predictions and
+// a softmax function over the groundtruth labels (assumed to be logits).
+message WeightedSoftmaxClassificationAgainstLogitsLoss {
+  // DEPRECATED, do not use.
+  optional bool anchorwise_output = 1 [default = false];
+  // Scale and softmax groundtruth logits before calculating softmax
+  // classification loss. Typically used for softmax distillation with teacher
+  // annotations stored as logits.
   optional float logit_scale = 2 [default = 1.0];
 }
 
