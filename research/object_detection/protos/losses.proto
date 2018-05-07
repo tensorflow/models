@@ -119,9 +119,10 @@ message HardExampleMiner {
   // Minimum intersection over union for an example to be discarded during NMS.
   optional float iou_threshold = 2 [default=0.7];
 
-  // Whether to use classification losses ('cls', default), localization losses
-  // ('loc') or both losses ('both'). In the case of 'both', cls_loss_weight and
-  // loc_loss_weight are used to compute weighted sum of the two losses.
+  // Whether to use classification losses ('cls'), localization losses
+  // ('loc') or both losses ('both', default). In the case of 'both',
+  // cls_loss_weight and loc_loss_weight are used to compute weighted
+  // sum of the two losses.
   enum LossType {
     BOTH = 0;
     CLASSIFICATION = 1;
