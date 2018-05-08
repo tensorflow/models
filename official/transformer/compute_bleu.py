@@ -100,14 +100,19 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
   return metrics.compute_bleu(ref_tokens, hyp_tokens) * 100
 
 
-def main(unused_argv):
-  if FLAGS.bleu_variant in ("both", "uncased"):
-    score = bleu_wrapper(FLAGS.reference, FLAGS.translation, False)
+def compute_bleu(flags_obj):
+  """Print out the BLEU scores calculated from the files defined in flags."""
+  if flags_obj.bleu_variant in ("both", "uncased"):
+    score = bleu_wrapper(flags_obj.reference, flags_obj.translation, False)
     print("Case-insensitive results:", score)
 
   if FLAGS.bleu_variant in ("both", "cased"):
-    score = bleu_wrapper(FLAGS.reference, FLAGS.translation, True)
+    score = bleu_wrapper(flags_obj.reference, flags_obj.translation, True)
     print("Case-sensitive results:", score)
+
+
+def main(unused_argv):
+  compute_bleu(flags.FLAGS)
 
 
 def define_compute_bleu_flags():

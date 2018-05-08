@@ -364,7 +364,6 @@ def make_dir(path):
 
 def main(unused_argv):
   """Obtain training and evaluation data for the Transformer model."""
-  tf.logging.set_verbosity(tf.logging.INFO)
   make_dir(FLAGS.raw_dir)
   make_dir(FLAGS.data_dir)
 
@@ -416,6 +415,7 @@ def define_data_download_flags():
 
 
 if __name__ == "__main__":
+  tf.logging.set_verbosity(tf.logging.INFO)
   define_data_download_flags()
   FLAGS = flags.FLAGS
   absl_app.run(main)
