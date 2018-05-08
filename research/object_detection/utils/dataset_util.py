@@ -134,7 +134,7 @@ def read_dataset(file_read_func, decode_func, input_files, config):
           file_read_func, cycle_length=config.num_readers,
           block_length=config.read_block_length, sloppy=True))
   if config.shuffle:
-    records_dataset.shuffle(config.shuffle_buffer_size)
+    records_dataset = records_dataset.shuffle(config.shuffle_buffer_size)
   tensor_dataset = records_dataset.map(
       decode_func, num_parallel_calls=config.num_parallel_map_calls)
   return tensor_dataset.prefetch(config.prefetch_size)
