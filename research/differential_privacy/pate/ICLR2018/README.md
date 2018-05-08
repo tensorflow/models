@@ -51,9 +51,11 @@ The output is written to the console.
 *   plot_partition.py &mdash; Script for producing partition.pdf, a detailed breakdown of privacy
 costs for Confident-GNMax with smooth sensitivity analysis (takes ~50 hours).
 
-*   rdp_flow.py and plot_ls_q.py are currently not used.
+*   plots_for_slides.py &mdash; Script for producing several plots for the slide deck. 
 
 *   download.py &mdash; Utility script for populating the data/ directory.
+
+*   plot_ls_q.py is not used.
 
 
 All Python files take flags. Run script_name.py --help for help on flags.
