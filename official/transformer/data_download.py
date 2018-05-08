@@ -24,7 +24,7 @@ import tarfile
 
 # pylint: disable=g-bad-import-order
 import six
-from six.moves.urllib.request import urlretrieve
+from six.moves import urllib
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
@@ -157,7 +157,7 @@ def download_from_url(path, url):
     filename = os.path.join(path, filename)
     tf.logging.info("Downloading from %s to %s." % (url, filename))
     inprogress_filepath = filename + ".incomplete"
-    inprogress_filepath, _ = urlretrieve(
+    inprogress_filepath, _ = urllib.request.urlretrieve(
         url, inprogress_filepath, reporthook=download_report_hook)
     # Print newline to clear the carriage return from the download progress.
     print()
