@@ -20,8 +20,8 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import absltest
-import numpy as np
 import mpmath as mp
+import numpy as np
 
 import rdp_accountant
 
@@ -32,9 +32,8 @@ class TestGaussianMoments(absltest.TestCase):
   ##############################
 
   def _pdf_gauss_mp(self, x, sigma, mean):
-    return 1. / mp.sqrt(2. * sigma ** 2 * mp.pi) * mp.exp(-(x - mean)
-                                                           ** 2 / (
-                                                              2. * sigma ** 2))
+    return 1. / mp.sqrt(2. * sigma ** 2 * mp.pi) * mp.exp(
+        -(x - mean) ** 2 / (2. * sigma ** 2))
 
   def _integral_inf_mp(self, fn):
     integral, _ = mp.quad(
@@ -78,7 +77,7 @@ class TestGaussianMoments(absltest.TestCase):
     b_numeric = self._integral_inf_mp(b_lambda_fn)
 
     if verbose:
-      z0, z1 = rdp_accountant._compute_zs(sigma, q)
+      _, z1 = rdp_accountant._compute_zs(sigma, q)
       print("z1 = ", z1)
       print("x in the Taylor series = ", q / (1 - q) * np.exp(
           (2 * z1 - 1) / (2 * sigma ** 2)))

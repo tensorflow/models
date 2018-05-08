@@ -37,13 +37,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import app
-from absl import flags
-
 import math
-import numpy as np
 import sys
 
+from absl import app
+from absl import flags
+import numpy as np
 from scipy import special
 
 FLAGS = flags.FLAGS
@@ -373,6 +372,9 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
               epsilon. Exactly one of target_eps and target_delta must be None.
   Returns:
     eps, delta, opt_order.
+
+  Raises:
+    ValueError: If target_eps and target_delta are messed up.
   """
   if target_eps is None and target_delta is None:
     raise ValueError(
@@ -390,7 +392,8 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
     return eps, target_delta, opt_order
 
 
-def main(_): pass
+def main(_):
+  pass
 
 
 if __name__ == "__main__":
