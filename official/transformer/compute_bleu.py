@@ -101,16 +101,17 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
 
 
 def main(unused_argv):
-  if FLAGS.bleu_variant is None or "uncased" in FLAGS.bleu_variant:
+  if FLAGS.bleu_variant in ("both", "uncased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, False)
     print("Case-insensitive results:", score)
 
-  if FLAGS.bleu_variant is None or "cased" in FLAGS.bleu_variant:
+  if FLAGS.bleu_variant in ("both", "cased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, True)
     print("Case-sensitive results:", score)
 
 
-if __name__ == "__main__":
+def define_compute_bleu_flags():
+  """Add flags for computing BLEU score."""
   flags.DEFINE_string(
       name="translation", default=None,
       help=flags_core.help_wrap("File containing translated text."))
@@ -121,12 +122,15 @@ if __name__ == "__main__":
       help=flags_core.help_wrap("File containing reference translation."))
   flags.mark_flag_as_required("reference")
 
-  flags.DEFINE_multi_enum(
-      name="bleu_variant", short_name="bv", default=["uncased", "cased"],
-      enum_values=["uncased", "cased"], case_sensitive=False,
+  flags.DEFINE_enum(
+      name="bleu_variant", short_name="bv", default="both",
+      enum_values=["both", "uncased", "cased"], case_sensitive=False,
       help=flags_core.help_wrap(
-          "Specify one or more BLEU variants to calculate. Variants: \"cased\" "
-          "or \"uncased\"."))
+          "Specify one or more BLEU variants to calculate. Variants: \"cased\""
+          ", \"uncased\", or \"both\"."))
 
+
+if __name__ == "__main__":
+  define_compute_bleu_flags()
   FLAGS = flags.FLAGS
   absl_app.run(main)

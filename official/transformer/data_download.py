@@ -21,10 +21,10 @@ from __future__ import print_function
 import os
 import random
 import tarfile
-import urllib
 
 # pylint: disable=g-bad-import-order
 import six
+from six.moves.urllib.request import urlretrieve
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
@@ -157,7 +157,7 @@ def download_from_url(path, url):
     filename = os.path.join(path, filename)
     tf.logging.info("Downloading from %s to %s." % (url, filename))
     inprogress_filepath = filename + ".incomplete"
-    inprogress_filepath, _ = urllib.urlretrieve(
+    inprogress_filepath, _ = urlretrieve(
         url, inprogress_filepath, reporthook=download_report_hook)
     # Print newline to clear the carriage return from the download progress.
     print()
@@ -398,7 +398,8 @@ def main(unused_argv):
     shuffle_records(fname)
 
 
-if __name__ == "__main__":
+def define_data_download_flags():
+  """Add flags specifying data download arguments."""
   flags.DEFINE_string(
       name="data_dir", short_name="dd", default="/tmp/translate_ende",
       help=flags_core.help_wrap(
@@ -412,5 +413,9 @@ if __name__ == "__main__":
       help=flags_core.help_wrap(
           "If set, use binary search to find the vocabulary set with size"
           "closest to the target size (%d)." % _TARGET_VOCAB_SIZE))
+
+
+if __name__ == "__main__":
+  define_data_download_flags()
   FLAGS = flags.FLAGS
   absl_app.run(main)

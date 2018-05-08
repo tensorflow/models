@@ -202,7 +202,8 @@ def main(unused_argv):
     translate_file(estimator, subtokenizer, input_file, output_file)
 
 
-if __name__ == "__main__":
+def define_translate_flags():
+  """Define flags used for translation script."""
   # Model and vocab file flags
   flags.DEFINE_string(
       name="data_dir", short_name="dd", default="/tmp/translate_ende",
@@ -238,5 +239,8 @@ if __name__ == "__main__":
       help=flags_core.help_wrap(
           "If --file flag is specified, save translation to this file."))
 
+
+if __name__ == "__main__":
+  define_translate_flags()
   FLAGS = flags.FLAGS
   absl_app.run(main)
