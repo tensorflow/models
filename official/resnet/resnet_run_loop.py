@@ -80,7 +80,7 @@ def process_record_dataset(dataset, is_training, global_batch_size,
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training),
           batch_size=per_device_batch_size(global_batch_size, num_gpus),
-          num_parallel_batches=num_gpus,
+          num_parallel_batches=1,
           drop_remainder=True))
 
   # Operations between the final prefetch and the get_next call to the iterator
@@ -89,13 +89,6 @@ def process_record_dataset(dataset, is_training, global_batch_size,
   # critical training path. Setting buffer_size to tf.contrib.data.AUTOTUNE
   # allows TensorFlow to determine the best setting.
   dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
-
-  if datasets_num_private_threads:
-    dataset = threadpool.override_threadpool(
-        dataset,
-        threadpool.PrivateThreadPool(
-            datasets_num_private_threads, 
-            display_name="input_pipeline_thread_pool"))
 
   return dataset
 
