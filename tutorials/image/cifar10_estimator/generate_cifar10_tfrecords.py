@@ -63,7 +63,7 @@ def _get_file_names():
 
 def read_pickle_from_file(filename):
   with tf.gfile.Open(filename, 'rb') as f:
-    data_dict = pickle.load(f)
+    data_dict = pickle.load(f,encoding='latin1')
   return data_dict
 
 
