@@ -124,14 +124,12 @@ def get_examples_per_second_hook(every_n_steps=100,
                                      warm_steps=warm_steps)
 
 
-def get_logging_metric_hook(benchmark_log_dir=None,
-                            tensors_to_log=None,
+def get_logging_metric_hook(tensors_to_log=None,
                             every_n_secs=600,
                             **kwargs):  # pylint: disable=unused-argument
   """Function to get LoggingMetricHook.
 
   Args:
-    benchmark_log_dir: `string`, directory path to save the metric log.
     tensors_to_log: List of tensor names or dictionary mapping labels to tensor
       names. If not set, log _TENSORS_TO_LOG by default.
     every_n_secs: `int`, the frequency for logging the metric. Default to every
@@ -141,7 +139,6 @@ def get_logging_metric_hook(benchmark_log_dir=None,
     Returns a ProfilerHook that writes out timelines that can be loaded into
     profiling tools like chrome://tracing.
   """
-  logger.config_benchmark_logger(benchmark_log_dir)
   if tensors_to_log is None:
     tensors_to_log = _TENSORS_TO_LOG
   return metric_hook.LoggingMetricHook(

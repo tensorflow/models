@@ -25,30 +25,19 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import os
-import sys
-import uuid
 
 from google.cloud import bigquery
 
-# pylint: disable=g-bad-import-order
-from absl import app as absl_app
-from absl import flags
 import tensorflow as tf
-# pylint: enable=g-bad-import-order
-
-from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 
 
 class BigQueryUploader(object):
-  """Upload the benchmark and metric info to BigQuery."""
+  """Upload the benchmark and metric info from JSON input to BigQuery. """
 
-  def __init__(self, logging_dir, gcp_project=None, credentials=None):
+  def __init__(self, gcp_project=None, credentials=None):
     """Initialized BigQueryUploader with proper setting.
 
     Args:
-      logging_dir: string, logging directory that contains the benchmark log.
       gcp_project: string, the name of the GCP project that the log will be
         uploaded to. The default project name will be detected from local
         environment if no value is provided.
@@ -58,11 +47,11 @@ class BigQueryUploader(object):
         google.oauth2.service_account.Credentials to load credential from local
         file for the case that the test is run out side of GCP.
     """
-    self._logging_dir = logging_dir
     self._bq_client = bigquery.Client(
         project=gcp_project, credentials=credentials)
 
-  def upload_benchmark_run(self, dataset_name, table_name, run_id):
+  def upload_benchmark_run_json(
+      self, dataset_name, table_name, run_id, run_json):
     """Upload benchmark run information to Bigquery.
 
     Args:
@@ -72,19 +61,17 @@ class BigQueryUploader(object):
         the data will be uploaded.
       run_id: string, a unique ID that will be attached to the data, usually
         this is a UUID4 format.
+      run_json: dict, the JSON data that contains the benchmark run info.
     """
-    expected_file = os.path.join(
-        self._logging_dir, logger.BENCHMARK_RUN_LOG_FILE_NAME)
-    with tf.gfile.GFile(expected_file) as f:
-      benchmark_json = json.load(f)
-      benchmark_json["model_id"] = run_id
-      table_ref = self._bq_client.dataset(dataset_name).table(table_name)
-      errors = self._bq_client.insert_rows_json(table_ref, [benchmark_json])
-      if errors:
-        tf.logging.error(
-            "Failed to upload benchmark info to bigquery: {}".format(errors))
+    run_json["model_id"] = run_id
+    table_ref = self._bq_client.dataset(dataset_name).table(table_name)
+    errors = self._bq_client.insert_rows_json(table_ref, [run_json])
+    if errors:
+      tf.logging.error(
+          "Failed to upload benchmark info to bigquery: {}".format(errors))
 
-  def upload_metric(self, dataset_name, table_name, run_id):
+  def upload_benchmark_metric_json(
+      self, dataset_name, table_name, run_id, metric_json_list):
     """Upload metric information to Bigquery.
 
     Args:
@@ -95,39 +82,73 @@ class BigQueryUploader(object):
         benchmark_run table.
       run_id: string, a unique ID that will be attached to the data, usually
         this is a UUID4 format. This should be the same as the benchmark run_id.
+      metric_json_list: list, a list of JSON object that record the metric info.
     """
-    expected_file = os.path.join(
-        self._logging_dir, logger.METRIC_LOG_FILE_NAME)
-    with tf.gfile.GFile(expected_file) as f:
+    for m in metric_json_list:
+      m["run_id"] = run_id
+    table_ref = self._bq_client.dataset(dataset_name).table(table_name)
+    errors = self._bq_client.insert_rows_json(table_ref, metric_json_list)
+    if errors:
+      tf.logging.error(
+          "Failed to upload benchmark info to bigquery: {}".format(errors))
+
+
+class BigQueryFileUploader(BigQueryUploader):
+  """Upload the benchmark and metric info from log file to BigQuery."""
+
+  def __init__(self, gcp_project=None, credentials=None):
+    """Initialized BigQueryUploader with proper setting.
+
+    Args:
+      gcp_project: string, the name of the GCP project that the log will be
+        uploaded to. The default project name will be detected from local
+        environment if no value is provided.
+      credentials: google.auth.credentials. The credential to access the
+        BigQuery service. The default service account credential will be
+        detected from local environment if no value is provided. Please use
+        google.oauth2.service_account.Credentials to load credential from local
+        file for the case that the test is run out side of GCP.
+    """
+    super(BigQueryFileUploader, self).__init__(gcp_project, credentials)
+
+  def upload_benchmark_run_file(
+      self, dataset_name, table_name, run_id, run_json_file):
+    """Upload benchmark run information to Bigquery.
+
+    Args:
+      dataset_name: string, the name of bigquery dataset where the data will be
+        uploaded.
+      table_name: string, the name of bigquery table under the dataset where
+        the data will be uploaded.
+      run_id: string, a unique ID that will be attached to the data, usually
+        this is a UUID4 format.
+      run_json_file: string, the file path that contains the run JSON data.
+    """
+    with tf.gfile.GFile(run_json_file) as f:
+      benchmark_json = json.load(f)
+      self.upload_benchmark_run_json(
+          dataset_name, table_name, run_id, benchmark_json)
+
+  def upload_metric_file(
+      self, dataset_name, table_name, run_id, metric_json_file):
+    """Upload metric information to Bigquery.
+
+    Args:
+      dataset_name: string, the name of bigquery dataset where the data will be
+        uploaded.
+      table_name: string, the name of bigquery table under the dataset where
+        the metric data will be uploaded. This is different from the
+        benchmark_run table.
+      run_id: string, a unique ID that will be attached to the data, usually
+        this is a UUID4 format. This should be the same as the benchmark run_id.
+      metric_json_file: string, the file path that contains the metric JSON
+        data.
+    """
+    with tf.gfile.GFile(metric_json_file) as f:
       lines = f.readlines()
       metrics = []
       for line in filter(lambda l: l.strip(), lines):
         metric = json.loads(line)
-        metric["run_id"] = run_id
         metrics.append(metric)
-      table_ref = self._bq_client.dataset(dataset_name).table(table_name)
-      errors = self._bq_client.insert_rows_json(table_ref, metrics)
-      if errors:
-        tf.logging.error(
-            "Failed to upload benchmark info to bigquery: {}".format(errors))
-
-
-def main(_):
-  if not flags.FLAGS.benchmark_log_dir:
-    print("Usage: benchmark_uploader.py --benchmark_log_dir=/some/dir")
-    sys.exit(1)
-
-  uploader = BigQueryUploader(
-      flags.FLAGS.benchmark_log_dir,
-      gcp_project=flags.FLAGS.gcp_project)
-  run_id = str(uuid.uuid4())
-  uploader.upload_benchmark_run(
-      flags.FLAGS.bigquery_data_set, flags.FLAGS.bigquery_run_table, run_id)
-  uploader.upload_metric(
-      flags.FLAGS.bigquery_data_set, flags.FLAGS.bigquery_metric_table, run_id)
-
-
-if __name__ == "__main__":
-  flags_core.define_benchmark()
-  flags.adopt_module_key_flags(flags_core)
-  absl_app.run(main=main)
+      self.upload_benchmark_metric_json(
+          dataset_name, table_name, run_id, metrics)
