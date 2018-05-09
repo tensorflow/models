@@ -100,11 +100,6 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
   return metrics.compute_bleu(ref_tokens, hyp_tokens) * 100
 
 
-def compute_bleu(flags_obj):
-  """Print out the BLEU scores calculated from the files defined in flags."""
-
-
-
 def main(unused_argv):
   if FLAGS.bleu_variant in ("both", "uncased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, False)
