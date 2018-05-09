@@ -215,7 +215,12 @@ def define_translate_flags():
       name="param_set", short_name="mp", default="big",
       enum_values=["base", "big"],
       help=flags_core.help_wrap(
-          "Parameter set to use when creating and training the model."))
+          "Parameter set to use when creating and training the model. The "
+          "parameters define the input shape (batch size and max length), "
+          "model configuration (size of embedding, # of hidden layers, etc.), "
+          "and various other settings. The big parameter set increases the "
+          "default batch size, embedding/hidden size, and filter size. For a "
+          "complete list of parameters, please see model/model_params.py."))
 
   flags.DEFINE_string(
       name="text", default=None,
