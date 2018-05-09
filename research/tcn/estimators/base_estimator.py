@@ -71,12 +71,10 @@ class InitFromPretrainedCheckpointHook(session_run_hook.SessionRunHook):
     # Variable filtering by given exclude_scopes.
     filtered_variables_to_restore = {}
     for v in variable_to_restore:
-      excluded = False
       for exclusion in exclusions:
         if v.name.startswith(exclusion):
-          excluded = True
           break
-      if not excluded:
+      else:
         var_name = v.name.split(':')[0]
         filtered_variables_to_restore[var_name] = v
 
@@ -94,7 +92,7 @@ class InitFromPretrainedCheckpointHook(session_run_hook.SessionRunHook):
           continue
 
       if not var_tensor.get_shape().is_compatible_with(
-          variable_shape_map[var_name]):
+              variable_shape_map[var_name]):
         # Skip init variable from ckpt if shape dismatch.
         tf.logging.info(
             'Skip init [%s] from [%s] in ckpt because shape dismatch: %s vs %s',
@@ -464,7 +462,7 @@ class BaseEstimator(object):
     estimator.evaluate(input_fn=validation_input_fn, steps=num_eval_batches)
 
   def inference(
-      self, inference_input, checkpoint_path, batch_size=None, **kwargs):
+          self, inference_input, checkpoint_path, batch_size=None, **kwargs):
     """Defines 3 of modes of inference.
 
     Inputs:
