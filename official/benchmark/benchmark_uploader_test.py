@@ -30,10 +30,10 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 try:
   from google.cloud import bigquery
+  from official.benchmark import benchmark_uploader
 except ImportError:
   bigquery = None
-
-from official.benchmark import benchmark_uploader
+  benchmark_uploader = None
 
 
 @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
