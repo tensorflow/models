@@ -40,7 +40,7 @@ from official.utils.logs import logger
 class BenchmarkLoggerTest(tf.test.TestCase):
 
   @classmethod
-  def setUpClass(cls):
+  def setUpClass(cls):  # pylint: disable=invalid-name
     super(BenchmarkLoggerTest, cls).setUpClass()
     flags_core.define_benchmark()
 
