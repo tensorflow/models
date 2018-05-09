@@ -34,8 +34,6 @@ from absl import flags
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 
-from official.benchmark import benchmark_uploader as bu
-
 METRIC_LOG_FILE_NAME = "metric.log"
 BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -61,6 +59,7 @@ def config_benchmark_logger(flag_obj=None):
     elif flag_obj.benchmark_logger_type == 'BenchmarkFileLogger':
       _benchmark_logger = BenchmarkFileLogger(flag_obj.benchmark_log_dir)
     elif flag_obj.benchmark_logger_type == 'BenchmarkBigQueryLogger':
+      from official.benchmark import benchmark_uploader as bu # pylint: disable=g-import-not-at-top
       bq_uploader = bu.BigQueryUploader(gcp_project=flag_obj.gcp_project)
       _benchmark_logger = BenchmarkBigQueryLogger(
           bigquery_uploader=bq_uploader,

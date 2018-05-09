@@ -24,9 +24,14 @@ import os
 import tempfile
 import unittest
 
-from absl.testing import flagsaver
 import mock
+from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
+
+try:
+  from google.cloud import bigquery
+except ImportError:
+  bigquery = None
 
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
@@ -50,12 +55,14 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     self.assertIsInstance(logger.get_benchmark_logger(),
                           logger.BaseBenchmarkLogger)
 
-  @flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger')
+  @flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger',
+                       benchmark_log_dir='/tmp')
   def test_config_benchmark_file_logger(self):
     logger.config_benchmark_logger()
     self.assertIsInstance(logger.get_benchmark_logger(),
                           logger.BenchmarkFileLogger)
 
+  @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
   @flagsaver.flagsaver(benchmark_logger_type='BenchmarkBigQueryLogger')
   def test_config_benchmark_bigquery_logger(self):
     logger.config_benchmark_logger()
@@ -251,6 +258,7 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     self.assertIsNotNone(run_info["machine_config"]["memory_available"])
 
 
+@unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
 class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
 
   def setUp(self):
