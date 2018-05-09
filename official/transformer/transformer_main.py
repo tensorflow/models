@@ -330,7 +330,7 @@ def define_transformer_flags():
 
   # Add transformer-specific flags
   flags.DEFINE_enum(
-      name="params", short_name="mp", default="big",
+      name="param_set", short_name="mp", default="big",
       enum_values=["base", "big"],
       help=flags_core.help_wrap(
           "Parameter set to use when creating and training the model."))
@@ -415,7 +415,7 @@ def run_transformer(flags_obj):
     single_iteration_train_epochs = flags_obj.epochs_between_evals
 
   # Add flag-defined parameters to params object
-  params = PARAMS_MAP[flags_obj.params]
+  params = PARAMS_MAP[flags_obj.param_set]
   params.data_dir = flags_obj.data_dir
   params.num_parallel_calls = flags_obj.num_parallel_calls
   params.epochs_between_evals = flags_obj.epochs_between_evals

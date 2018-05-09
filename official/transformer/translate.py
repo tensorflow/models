@@ -166,15 +166,8 @@ def main(unused_argv):
   subtokenizer = tokenizer.Subtokenizer(
       os.path.join(FLAGS.data_dir, FLAGS.vocab_file))
 
-  if FLAGS.params == "base":
-    params = model_params.TransformerBaseParams
-  elif FLAGS.params == "big":
-    params = model_params.TransformerBigParams
-  else:
-    raise ValueError("Invalid parameter set defined: %s."
-                     "Expected 'base' or 'big.'" % FLAGS.params)
-
   # Set up estimator and params
+  params = transformer_main.PARAMS_MAP[FLAGS.param_set]
   params.beam_size = _BEAM_SIZE
   params.alpha = _ALPHA
   params.extra_decode_length = _EXTRA_DECODE_LENGTH
@@ -219,7 +212,7 @@ def define_translate_flags():
       help=flags_core.help_wrap(
           "Directory containing Transformer model checkpoints."))
   flags.DEFINE_enum(
-      name="params", short_name="mp", default="big",
+      name="param_set", short_name="mp", default="big",
       enum_values=["base", "big"],
       help=flags_core.help_wrap(
           "Parameter set to use when creating and training the model."))

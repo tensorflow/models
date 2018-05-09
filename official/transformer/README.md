@@ -38,16 +38,16 @@ cd /path/to/models/official/transformer
 # export PYTHONPATH="$PYTHONPATH:/path/to/models"
 
 # Export variables
-PARAMS=big
+PARAM_SET=big
 DATA_DIR=$HOME/transformer/data
-MODEL_DIR=$HOME/transformer/model_$PARAMS
+MODEL_DIR=$HOME/transformer/model_$PARAM_SET
 
 # Download training/evaluation datasets
 python data_download.py --data_dir=$DATA_DIR
 
 # Train the model for 10 epochs, and evaluate after every epoch.
 python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --params=$PARAMS --bleu_source=test_data/newstest2014.en --bleu_ref=test_data/newstest2014.de
+    --param_set=$PARAM_SET --bleu_source=test_data/newstest2014.en --bleu_ref=test_data/newstest2014.de
 
 # Run during training in a separate process to get continuous updates,
 # or after training is complete.
@@ -55,21 +55,21 @@ tensorboard --logdir=$MODEL_DIR
 
 # Translate some text using the trained model
 python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --params=$PARAMS --text="hello world"
+    --param_set=$PARAM_SET --text="hello world"
 
 # Compute model's BLEU score using the newstest2014 dataset.
 python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --params=$PARAMS --file=test_data/newstest2014.en --file_out=translation.en
+    --param_set=$PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
 python compute_bleu.py --translation=translation.en --reference=test_data/newstest2014.de
 ```
 
 ## Benchmarks
 ### Training times
 
-Currently, both big and base params run on a single GPU. The measurements below
+Currently, both big and base parameter sets run on a single GPU. The measurements below
 are reported from running the model on a P100 GPU.
 
-Params | batches/sec | batches per epoch | time per epoch
+Param Set | batches/sec | batches per epoch | time per epoch
 --- | --- | --- | ---
 base | 4.8 | 83244 | 4 hr
 big | 1.1 | 41365 | 10 hr
@@ -77,7 +77,7 @@ big | 1.1 | 41365 | 10 hr
 ### Evaluation results
 Below are the case-insensitive BLEU scores after 10 epochs.
 
-Params | Score
+Param Set | Score
 --- | --- |
 base | 27.7
 big | 28.9
@@ -95,9 +95,9 @@ big | 28.9
 
    Export the following variables, or modify the values in each of the snippets below:
    ```
-   PARAMS=big
+   PARAM_SET=big
    DATA_DIR=$HOME/transformer/data
-   MODEL_DIR=$HOME/transformer/model_$PARAMS
+   MODEL_DIR=$HOME/transformer/model_$PARAM_SET
    ```
 
 1. ### Download and preprocess datasets
@@ -121,13 +121,13 @@ big | 28.9
 
    Command to run:
    ```
-   python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --params=$PARAMS
+   python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --param_set=$PARAM_SET
    ```
 
    Arguments:
    * `--data_dir`: This should be set to the same directory given to the `data_download`'s `data_dir` argument.
    * `--model_dir`: Directory to save Transformer model training checkpoints.
-   * `--params`: Parameter set to use when creating and training the model. Options are `base` and `big` (default).
+   * `--param_set`: Parameter set to use when creating and training the model. Options are `base` and `big` (default).
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
 
    #### Customizing training schedule
@@ -167,12 +167,12 @@ big | 28.9
 
    Command to run:
    ```
-   python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --params=$PARAMS --text="hello world"
+   python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --param_set=PARAM_SET --text="hello world"
    ```
 
    Arguments for initializing the Subtokenizer and trained model:
    * `--data_dir`: Used to locate the vocabulary file to create a Subtokenizer, which encodes the input and decodes the model output.
-   * `--model_dir` and `--params`: These parameters are used to rebuild the trained model
+   * `--model_dir` and `--param_set`: These parameters are used to rebuild the trained model
 
    Arguments for specifying what to translate:
    * `--text`: Text to translate
@@ -182,7 +182,7 @@ big | 28.9
    To translate the newstest2014 data, run:
    ```
    python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-       --params=$PARAMS --file=test_data/newstest2014.en --file_out=translation.en
+       --param_set=PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
    ```
 
    Translating the file takes around 15 minutes on a GTX1080, or 5 minutes on a P100.
