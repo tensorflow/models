@@ -15,7 +15,7 @@ dataset.
 
 The framework consists of _teachers_, the _student_ model, and the _aggregator_. The 
 teachers are models trained on disjoint subsets of the training datasets. The student
-model has access to an insensitive (i.e., public) unlabelled dataset, which is labelled by 
+model has access to an insensitive (e.g., public) unlabelled dataset, which is labelled by 
 interacting with the ensemble of teachers via the _aggregator_. The aggregator tallies 
 outputs of the teacher models, and either forwards a (noisy) aggregate to the student, or
 refuses to answer.
@@ -57,13 +57,13 @@ $ python smooth_sensitivity_test.py
 
 ## Files in this directory
 
-*   core.py --- RDP privacy accountant for several vote aggregators (GNMax,
+*   core.py &mdash; RDP privacy accountant for several vote aggregators (GNMax,
     Threshold, Laplace).
 
-*   smooth_sensitivity.py --- Smooth sensitivity analysis for GNMax and
+*   smooth_sensitivity.py &mdash; Smooth sensitivity analysis for GNMax and
     Threshold mechanisms.
 
-*   core_test.py and smooth_sensitivity_test.py --- Unit tests for the
+*   core_test.py and smooth_sensitivity_test.py &mdash; Unit tests for the
     files above.
 
 ## Contact information

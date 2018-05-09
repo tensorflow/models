@@ -82,3 +82,4 @@ help_wrap = _conventions.help_wrap
 get_num_gpus = _base.get_num_gpus
 get_tf_dtype = _performance.get_tf_dtype
 get_loss_scale = _performance.get_loss_scale
+DTYPE_MAP = _performance.DTYPE_MAP

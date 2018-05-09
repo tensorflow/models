@@ -25,8 +25,9 @@ from __future__ import print_function
 
 import os
 
+# pylint: disable=g-bad-import-order
 from absl import flags
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.resnet import resnet_model
 from official.utils.flags import core as flags_core
@@ -34,6 +35,7 @@ from official.utils.export import export
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import model_helpers
+# pylint: enable=g-bad-import-order
 
 
 ################################################################################
@@ -462,7 +464,6 @@ def define_resnet_flags(resnet_size_choices=None):
       help=flags_core.help_wrap(
           'Version of ResNet. (1 or 2) See README.md for details.'))
 
-
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
       help=flags_core.help_wrap('The size of the ResNet model to use.'))
@@ -471,3 +472,12 @@ def define_resnet_flags(resnet_size_choices=None):
     flags.DEFINE_string(**choice_kwargs)
   else:
     flags.DEFINE_enum(enum_values=resnet_size_choices, **choice_kwargs)
+
+  # The current implementation of ResNet v1 is numerically unstable when run
+  # with fp16 and will produce NaN errors soon after training begins.
+  msg = ('ResNet version 1 is not currently supported with fp16. '
+         'Please use version 2 instead.')
+  @flags.multi_flags_validator(['dtype', 'resnet_version'], message=msg)
+  def _forbid_v1_fp16(flag_values):  # pylint: disable=unused-variable
+    return (flags_core.DTYPE_MAP[flag_values['dtype']][0] != tf.float16 or
+            flag_values['resnet_version'] != '1')
