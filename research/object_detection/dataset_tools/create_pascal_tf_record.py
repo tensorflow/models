@@ -94,7 +94,10 @@ def dict_to_tf_example(data,
 
   width = int(data['size']['width'])
   height = int(data['size']['height'])
-
+  
+  if(image.size[0]!=width or image.size[1]!=height):
+      raise ValueError('Image size don not match xml size parameters')
+  
   xmin = []
   ymin = []
   xmax = []
