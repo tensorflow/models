@@ -92,28 +92,9 @@ class BigQueryUploader(object):
       tf.logging.error(
           "Failed to upload benchmark info to bigquery: {}".format(errors))
 
-
-class BigQueryFileUploader(BigQueryUploader):
-  """Upload the benchmark and metric info from log file to BigQuery."""
-
-  def __init__(self, gcp_project=None, credentials=None):
-    """Initialized BigQueryUploader with proper setting.
-
-    Args:
-      gcp_project: string, the name of the GCP project that the log will be
-        uploaded to. The default project name will be detected from local
-        environment if no value is provided.
-      credentials: google.auth.credentials. The credential to access the
-        BigQuery service. The default service account credential will be
-        detected from local environment if no value is provided. Please use
-        google.oauth2.service_account.Credentials to load credential from local
-        file for the case that the test is run out side of GCP.
-    """
-    super(BigQueryFileUploader, self).__init__(gcp_project, credentials)
-
   def upload_benchmark_run_file(
       self, dataset_name, table_name, run_id, run_json_file):
-    """Upload benchmark run information to Bigquery.
+    """Upload benchmark run information to Bigquery from input json file.
 
     Args:
       dataset_name: string, the name of bigquery dataset where the data will be
@@ -131,7 +112,7 @@ class BigQueryFileUploader(BigQueryUploader):
 
   def upload_metric_file(
       self, dataset_name, table_name, run_id, metric_json_file):
-    """Upload metric information to Bigquery.
+    """Upload metric information to Bigquery from input json file.
 
     Args:
       dataset_name: string, the name of bigquery dataset where the data will be

@@ -40,7 +40,7 @@ def main(_):
     print("Usage: benchmark_uploader.py --benchmark_log_dir=/some/dir")
     sys.exit(1)
 
-  uploader = benchmark_uploader.BigQueryFileUploader(
+  uploader = benchmark_uploader.BigQueryUploader(
       gcp_project=flags.FLAGS.gcp_project)
   run_id = str(uuid.uuid4())
   run_json_file = os.path.join(
