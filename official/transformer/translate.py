@@ -107,7 +107,8 @@ def translate_file(
       if i % batch_size == 0:
         batch_num = (i // batch_size) + 1
 
-        print("Decoding batch %d out of %d." % (batch_num, num_decode_batches))
+        tf.logging.info("Decoding batch %d out of %d." %
+                        (batch_num, num_decode_batches))
       yield _encode_and_add_eos(line, subtokenizer)
 
   def input_fn():
@@ -123,10 +124,8 @@ def translate_file(
     translations.append(translation)
 
     if print_all_translations:
-      print("Translating:")
-      print("\tInput: %s" % sorted_inputs[i])
-      print("\tOutput: %s\n" % translation)
-      print("=" * 100)
+      tf.logging.info("Translating:\n\tInput: %s\n\tOutput: %s" %
+                      (sorted_inputs[i], translation))
 
   # Write translations in the order they appeared in the original file.
   if output_file is not None:
@@ -151,7 +150,7 @@ def translate_text(estimator, subtokenizer, txt):
   predictions = estimator.predict(input_fn)
   translation = next(predictions)["outputs"]
   translation = _trim_and_decode(translation, subtokenizer)
-  print("Translation of \"%s\": \"%s\"" % (txt, translation))
+  tf.logging.info("Translation of \"%s\": \"%s\"" % (txt, translation))
 
 
 def main(unused_argv):

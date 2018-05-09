@@ -303,7 +303,7 @@ def encode_and_save_files(
   for tmp_name, final_name in zip(tmp_filepaths, filepaths):
     tf.gfile.Rename(tmp_name, final_name)
 
-  tf.logging.info("Saved %d Examples", counter)
+  tf.logging.info("Saved %d Examples", counter + 1)
   return filepaths
 
 

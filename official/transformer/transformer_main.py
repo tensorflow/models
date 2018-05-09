@@ -409,10 +409,7 @@ def run_transformer(flags_obj):
     single_iteration_train_steps = flags_obj.steps_between_evals
     single_iteration_train_epochs = None
   else:
-    if flags_obj.train_epochs is not None:
-      train_epochs = flags_obj.train_epochs
-    else:
-      train_epochs = DEFAULT_TRAIN_EPOCHS
+    train_epochs = flags_obj.train_epochs or DEFAULT_TRAIN_EPOCHS
     train_eval_iterations = train_epochs // flags_obj.epochs_between_evals
     single_iteration_train_steps = None
     single_iteration_train_epochs = flags_obj.epochs_between_evals

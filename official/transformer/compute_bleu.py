@@ -103,11 +103,11 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
 def main(unused_argv):
   if FLAGS.bleu_variant in ("both", "uncased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, False)
-    print("Case-insensitive results:", score)
+    tf.logging.info("Case-insensitive results: %f" % score)
 
   if FLAGS.bleu_variant in ("both", "cased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, True)
-    print("Case-sensitive results:", score)
+    tf.logging.info("Case-sensitive results: %f" % score)
 
 
 def define_compute_bleu_flags():
@@ -131,6 +131,7 @@ def define_compute_bleu_flags():
 
 
 if __name__ == "__main__":
+  tf.logging.set_verbosity(tf.logging.INFO)
   define_compute_bleu_flags()
   FLAGS = flags.FLAGS
   absl_app.run(main)
