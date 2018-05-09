@@ -240,9 +240,9 @@ def run_wide_deep(flags_obj):
     return input_fn(test_file, 1, False, flags_obj.batch_size)
 
   run_params = {
-    'batch_size': flags_obj.batch_size,
-    'train_epochs': flags_obj.train_epochs,
-    'model_type': flags_obj.model_type,
+      'batch_size': flags_obj.batch_size,
+      'train_epochs': flags_obj.train_epochs,
+      'model_type': flags_obj.model_type,
   }
 
   benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
