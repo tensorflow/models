@@ -1,5 +1,4 @@
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
-# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -95,7 +94,7 @@ class TestGaussianMoments(absltest.TestCase):
     return log_a_mp, log_b_mp
 
   # TEST ROUTINES
-  def _almost_equal(self, a, b, rtol, atol=0):
+  def _almost_equal(self, a, b, rtol, atol=0.):
     # Analogue of np.testing.assert_allclose(a, b, rtol, atol).
     self.assertBetween(a, b * (1 - rtol) - atol, b * (1 + rtol) + atol)
 
@@ -123,9 +122,10 @@ class TestGaussianMoments(absltest.TestCase):
     rdp_scalar = rdp_accountant.compute_rdp(0.1, 2, 10, 5)
     self.assertAlmostEqual(rdp_scalar, 0.07737, places=5)
 
-    rdp_vec = rdp_accountant.compute_rdp(0.01, 2.5, 50, [1.5, 2.5, 5, 50, 100])
+    rdp_vec = rdp_accountant.compute_rdp(0.01, 2.5, 50, [1.5, 2.5, 5, 50, 100,
+                                                         np.inf])
 
-    correct = [0.00065, 0.001085, 0.00218075, 0.023846, 167.416307]
+    correct = [0.00065, 0.001085, 0.00218075, 0.023846, 167.416307, np.inf]
     for i in range(len(rdp_vec)):
       self.assertAlmostEqual(rdp_vec[i], correct[i], places=5)
 
