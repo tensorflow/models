@@ -64,11 +64,7 @@ class BigQueryUploader(object):
       run_json: dict, the JSON data that contains the benchmark run info.
     """
     run_json["model_id"] = run_id
-    table_ref = self._bq_client.dataset(dataset_name).table(table_name)
-    errors = self._bq_client.insert_rows_json(table_ref, [run_json])
-    if errors:
-      tf.logging.error(
-          "Failed to upload benchmark info to bigquery: {}".format(errors))
+    self._upload_json(dataset_name, table_name, [run_json])
 
   def upload_benchmark_metric_json(
       self, dataset_name, table_name, run_id, metric_json_list):
@@ -86,11 +82,7 @@ class BigQueryUploader(object):
     """
     for m in metric_json_list:
       m["run_id"] = run_id
-    table_ref = self._bq_client.dataset(dataset_name).table(table_name)
-    errors = self._bq_client.insert_rows_json(table_ref, metric_json_list)
-    if errors:
-      tf.logging.error(
-          "Failed to upload benchmark info to bigquery: {}".format(errors))
+    self._upload_json(dataset_name, table_name, metric_json_list)
 
   def upload_benchmark_run_file(
       self, dataset_name, table_name, run_id, run_json_file):
@@ -133,3 +125,12 @@ class BigQueryUploader(object):
         metrics.append(metric)
       self.upload_benchmark_metric_json(
           dataset_name, table_name, run_id, metrics)
+
+  def _upload_json(self, dataset_name, table_name, json_list):
+    # Find the unique table reference based on dataset and table name, so that
+    # the data can be inserted to it.
+    table_ref = self._bq_client.dataset(dataset_name).table(table_name)
+    errors = self._bq_client.insert_rows_json(table_ref, json_list)
+    if errors:
+      tf.logging.error(
+          "Failed to upload benchmark info to bigquery: {}".format(errors))

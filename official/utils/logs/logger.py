@@ -118,15 +118,9 @@ class BaseBenchmarkLogger(object):
       global_step: int, the global_step when the metric is logged.
       extras: map of string:string, the extra information about the metric.
     """
-    if not isinstance(value, numbers.Number):
-      tf.logging.warning(
-          "Metric value to log should be a number. Got %s", type(value))
-      return
-    extras = _convert_to_json_dict(extras)
-
-    tf.logging.info("Benchmark metric: "
-                    "Name %s, value %d, unit %s, global_step %d, extras %s",
-                    name, value, unit, global_step, extras)
+    metric = _process_metric_to_json(name, value, unit, global_step, extras)
+    if metric:
+      tf.logging.info("Benchmark metric: %s", metric)
 
   def log_run_info(self, model_name, dataset_name, run_params):
     tf.logging.info("Benchmark run: %s",
@@ -156,28 +150,16 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
       global_step: int, the global_step when the metric is logged.
       extras: map of string:string, the extra information about the metric.
     """
-    if not isinstance(value, numbers.Number):
-      tf.logging.warning(
-          "Metric value to log should be a number. Got %s", type(value))
-      return
-    extras = _convert_to_json_dict(extras)
-
-    with tf.gfile.GFile(
-        os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
-      metric = {
-          "name": name,
-          "value": float(value),
-          "unit": unit,
-          "global_step": global_step,
-          "timestamp": datetime.datetime.utcnow().strftime(
-              _DATE_TIME_FORMAT_PATTERN),
-          "extras": extras}
-      try:
-        json.dump(metric, f)
-        f.write("\n")
-      except (TypeError, ValueError) as e:
-        tf.logging.warning("Failed to dump metric to log file: "
-                           "name %s, value %s, error %s", name, value, e)
+    metric = _process_metric_to_json(name, value, unit, global_step, extras)
+    if metric:
+      with tf.gfile.GFile(
+          os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
+        try:
+          json.dump(metric, f)
+          f.write("\n")
+        except (TypeError, ValueError) as e:
+          tf.logging.warning("Failed to dump metric to log file: "
+                             "name %s, value %s, error %s", name, value, e)
 
   def log_run_info(self, model_name, dataset_name, run_params):
     """Collect most of the TF runtime information for the local env.
@@ -229,23 +211,11 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
       global_step: int, the global_step when the metric is logged.
       extras: map of string:string, the extra information about the metric.
     """
-    if not isinstance(value, numbers.Number):
-      tf.logging.warning(
-          "Metric value to log should be a number. Got %s", type(value))
-      return
-    extras = _convert_to_json_dict(extras)
-
-    metric = [{
-        "name": name,
-        "value": float(value),
-        "unit": unit,
-        "global_step": global_step,
-        "timestamp": datetime.datetime.utcnow().strftime(
-            _DATE_TIME_FORMAT_PATTERN),
-        "extras": extras}]
-    self._bigquery_uploader.upload_benchmark_metric_json(
-        self._bigquery_data_set, self._bigquery_metric_table, self._run_id,
-        metric)
+    metric = _process_metric_to_json(name, value, unit, global_step, extras)
+    if metric:
+      self._bigquery_uploader.upload_benchmark_metric_json(
+          self._bigquery_data_set, self._bigquery_metric_table, self._run_id,
+          [metric])
 
   def log_run_info(self, model_name, dataset_name, run_params):
     """Collect most of the TF runtime information for the local env.
@@ -279,6 +249,24 @@ def _gather_run_info(model_name, dataset_name, run_params):
   _collect_gpu_info(run_info)
   _collect_memory_info(run_info)
   return run_info
+
+
+def _process_metric_to_json(name, value, unit=None, global_step=None, extras=None):
+  """Validate the metric data and generate JSON for insert."""
+  if not isinstance(value, numbers.Number):
+    tf.logging.warning(
+        "Metric value to log should be a number. Got %s", type(value))
+    return None
+
+  extras = _convert_to_json_dict(extras)
+  return {
+    "name": name,
+    "value": float(value),
+    "unit": unit,
+    "global_step": global_step,
+    "timestamp": datetime.datetime.utcnow().strftime(
+        _DATE_TIME_FORMAT_PATTERN),
+    "extras": extras}
 
 
 def _collect_tensorflow_info(run_info):
