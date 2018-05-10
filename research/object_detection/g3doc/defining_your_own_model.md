@@ -20,7 +20,7 @@ each of these models are responsible for implementing 5 functions:
   postprocess functions.
 * `postprocess`: Convert predicted output tensors to final detections.
 * `loss`: Compute scalar loss tensors with respect to provided groundtruth.
-* `restore`: Load a checkpoint into the Tensorflow graph.
+* `restore_map`: Load a checkpoint into the Tensorflow graph.
 
 Given a `DetectionModel` at training time, we pass each image batch through
 the following sequence of functions to compute a loss which can be optimized via
