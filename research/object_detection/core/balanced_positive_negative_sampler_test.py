@@ -19,9 +19,10 @@ import numpy as np
 import tensorflow as tf
 
 from object_detection.core import balanced_positive_negative_sampler
+from object_detection.utils import test_case
 
 
-class BalancedPositiveNegativeSamplerTest(tf.test.TestCase):
+class BalancedPositiveNegativeSamplerTest(test_case.TestCase):
 
   def test_subsample_all_examples(self):
     numpy_labels = np.random.permutation(300)
@@ -59,6 +60,28 @@ class BalancedPositiveNegativeSamplerTest(tf.test.TestCase):
       self.assertTrue(sum(np.logical_and(numpy_labels, is_sampled)) == 10)
       self.assertTrue(sum(np.logical_and(
           np.logical_not(numpy_labels), is_sampled)) == 54)
+      self.assertAllEqual(is_sampled, np.logical_and(is_sampled,
+                                                     numpy_indicator))
+
+  def test_subsample_selection_no_batch_size(self):
+    # Test random sampling when only some examples can be sampled:
+    # 1000 samples, 6 positives (5 can be sampled).
+    numpy_labels = np.arange(1000)
+    numpy_indicator = numpy_labels < 999
+    indicator = tf.constant(numpy_indicator)
+    numpy_labels = (numpy_labels - 994) >= 0
+
+    labels = tf.constant(numpy_labels)
+
+    sampler = (balanced_positive_negative_sampler.
+               BalancedPositiveNegativeSampler(0.01))
+    is_sampled = sampler.subsample(indicator, None, labels)
+    with self.test_session() as sess:
+      is_sampled = sess.run(is_sampled)
+      self.assertTrue(sum(is_sampled) == 500)
+      self.assertTrue(sum(np.logical_and(numpy_labels, is_sampled)) == 5)
+      self.assertTrue(sum(np.logical_and(
+          np.logical_not(numpy_labels), is_sampled)) == 495)
       self.assertAllEqual(is_sampled, np.logical_and(is_sampled,
                                                      numpy_indicator))
 

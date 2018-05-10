@@ -71,11 +71,10 @@ def transform_input_data(tensor_dict,
     model_preprocess_fn: model's preprocess function to apply on image tensor.
       This function must take in a 4-D float tensor and return a 4-D preprocess
       float tensor and a tensor containing the true image shape.
-    image_resizer_fn: image resizer function to apply on original image (if
-      `retain_original_image` is True) and groundtruth instance masks. This
-      function must take a 3-D float tensor of an image and a 3-D tensor of
-      instance masks and return a resized version of these along with the true
-      shapes.
+    image_resizer_fn: image resizer function to apply on groundtruth instance
+      `masks. This function must take a 3-D float tensor of an image and a 3-D
+      tensor of instance masks and return a resized version of these along with
+      the true shapes.
     num_classes: number of max classes to one-hot (or k-hot) encode the class
       labels.
     data_augmentation_fn: (optional) data augmentation function to apply on
@@ -90,10 +89,8 @@ def transform_input_data(tensor_dict,
     after applying all the transformations.
   """
   if retain_original_image:
-    original_image_resized, _ = image_resizer_fn(
-        tensor_dict[fields.InputDataFields.image])
     tensor_dict[fields.InputDataFields.original_image] = tf.cast(
-        original_image_resized, tf.uint8)
+        tensor_dict[fields.InputDataFields.image], tf.uint8)
 
   # Apply data augmentation ops.
   if data_augmentation_fn is not None:
@@ -350,7 +347,7 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
       TypeError: if the `eval_config`, `eval_input_config` or `model_config`
         are not of the correct type.
     """
-    del params
+    params = params or {}
     if not isinstance(eval_config, eval_pb2.EvalConfig):
       raise TypeError('For eval mode, the `eval_config` must be a '
                       'train_pb2.EvalConfig.')
@@ -375,7 +372,7 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
     dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         eval_input_config,
         transform_input_data_fn=transform_data_fn,
-        batch_size=1,
+        batch_size=params.get('batch_size', 1),
         num_classes=config_util.get_number_of_classes(model_config),
         spatial_image_shape=config_util.get_spatial_image_size(
             image_resizer_config))

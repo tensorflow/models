@@ -147,27 +147,30 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
               output_stride=None,
               store_non_strided_activations=True,
               scope=scope)
-      image_features = self._filter_features(image_features)
-      last_feature_map = image_features['block4']
-    with tf.variable_scope(self._fpn_scope_name, reuse=self._reuse_weights):
+          image_features = self._filter_features(image_features)
       with slim.arg_scope(self._conv_hyperparams_fn()):
-        for i in range(5, 7):
-          last_feature_map = slim.conv2d(
-              last_feature_map,
-              num_outputs=256,
-              kernel_size=[3, 3],
-              stride=2,
-              padding='SAME',
-              scope='block{}'.format(i))
-          image_features['bottomup_{}'.format(i)] = last_feature_map
-        feature_maps = feature_map_generators.fpn_top_down_feature_maps(
-            [
-                image_features[key] for key in
-                ['block2', 'block3', 'block4', 'bottomup_5', 'bottomup_6']
-            ],
-            depth=256,
-            scope='top_down_features')
-    return feature_maps.values()
+        with tf.variable_scope(self._fpn_scope_name,
+                               reuse=self._reuse_weights):
+          fpn_features = feature_map_generators.fpn_top_down_feature_maps(
+              [(key, image_features[key])
+               for key in ['block2', 'block3', 'block4']],
+              depth=256)
+          last_feature_map = fpn_features['top_down_block4']
+          coarse_features = {}
+          for i in range(5, 7):
+            last_feature_map = slim.conv2d(
+                last_feature_map,
+                num_outputs=256,
+                kernel_size=[3, 3],
+                stride=2,
+                padding='SAME',
+                scope='bottom_up_block{}'.format(i))
+            coarse_features['bottom_up_block{}'.format(i)] = last_feature_map
+    return [fpn_features['top_down_block2'],
+            fpn_features['top_down_block3'],
+            fpn_features['top_down_block4'],
+            coarse_features['bottom_up_block5'],
+            coarse_features['bottom_up_block6']]
 
 
 class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):

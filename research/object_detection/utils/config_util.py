@@ -22,6 +22,7 @@ from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io
 
 from object_detection.protos import eval_pb2
+from object_detection.protos import graph_rewriter_pb2
 from object_detection.protos import input_reader_pb2
 from object_detection.protos import model_pb2
 from object_detection.protos import pipeline_pb2
@@ -111,7 +112,25 @@ def create_configs_from_pipeline_proto(pipeline_config):
   configs["train_input_config"] = pipeline_config.train_input_reader
   configs["eval_config"] = pipeline_config.eval_config
   configs["eval_input_config"] = pipeline_config.eval_input_reader
+  if pipeline_config.HasField("graph_rewriter"):
+    configs["graph_rewriter_config"] = pipeline_config.graph_rewriter
+
   return configs
+
+
+def get_graph_rewriter_config_from_file(graph_rewriter_config_file):
+  """Parses config for graph rewriter.
+
+  Args:
+    graph_rewriter_config_file: file path to the graph rewriter config.
+
+  Returns:
+    graph_rewriter_pb2.GraphRewriter proto
+  """
+  graph_rewriter_config = graph_rewriter_pb2.GraphRewriter()
+  with tf.gfile.GFile(graph_rewriter_config_file, "r") as f:
+    text_format.Merge(f.read(), graph_rewriter_config)
+  return graph_rewriter_config
 
 
 def create_pipeline_proto_from_configs(configs):
@@ -132,6 +151,8 @@ def create_pipeline_proto_from_configs(configs):
   pipeline_config.train_input_reader.CopyFrom(configs["train_input_config"])
   pipeline_config.eval_config.CopyFrom(configs["eval_config"])
   pipeline_config.eval_input_reader.CopyFrom(configs["eval_input_config"])
+  if "graph_rewriter_config" in configs:
+    pipeline_config.graph_rewriter.CopyFrom(configs["graph_rewriter_config"])
   return pipeline_config
 
 
@@ -157,7 +178,8 @@ def get_configs_from_multiple_files(model_config_path="",
                                     train_config_path="",
                                     train_input_config_path="",
                                     eval_config_path="",
-                                    eval_input_config_path=""):
+                                    eval_input_config_path="",
+                                    graph_rewriter_config_path=""):
   """Reads training configuration from multiple config files.
 
   Args:
@@ -166,6 +188,7 @@ def get_configs_from_multiple_files(model_config_path="",
     train_input_config_path: Path to input_reader_pb2.InputReader.
     eval_config_path: Path to eval_pb2.EvalConfig.
     eval_input_config_path: Path to input_reader_pb2.InputReader.
+    graph_rewriter_config_path: Path to graph_rewriter_pb2.GraphRewriter.
 
   Returns:
     Dictionary of configuration objects. Keys are `model`, `train_config`,
@@ -202,6 +225,10 @@ def get_configs_from_multiple_files(model_config_path="",
     with tf.gfile.GFile(eval_input_config_path, "r") as f:
       text_format.Merge(f.read(), eval_input_config)
       configs["eval_input_config"] = eval_input_config
+
+  if graph_rewriter_config_path:
+    configs["graph_rewriter_config"] = get_graph_rewriter_config_from_file(
+        graph_rewriter_config_path)
 
   return configs
 

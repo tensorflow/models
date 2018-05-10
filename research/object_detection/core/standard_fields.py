@@ -132,6 +132,7 @@ class BoxListFields(object):
     boundaries: boundaries per bounding box.
     keypoints: keypoints per bounding box.
     keypoint_heatmaps: keypoint heatmaps per bounding box.
+    is_crowd: is_crowd annotation per bounding box.
   """
   boxes = 'boxes'
   classes = 'classes'
@@ -142,6 +143,7 @@ class BoxListFields(object):
   boundaries = 'boundaries'
   keypoints = 'keypoints'
   keypoint_heatmaps = 'keypoint_heatmaps'
+  is_crowd = 'is_crowd'
 
 
 class TfExampleFields(object):

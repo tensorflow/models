@@ -185,8 +185,9 @@ def fpn_top_down_feature_maps(image_features, depth, scope=None):
   See https://arxiv.org/abs/1612.03144 for details.
 
   Args:
-    image_features: list of image feature tensors. Spatial resolutions of
-      succesive tensors must reduce exactly by a factor of 2.
+    image_features: list of tuples of (tensor_name, image_feature_tensor).
+      Spatial resolutions of succesive tensors must reduce exactly by a factor
+      of 2.
     depth: depth of output feature maps.
     scope: A scope name to wrap this op under.
 
@@ -194,32 +195,31 @@ def fpn_top_down_feature_maps(image_features, depth, scope=None):
     feature_maps: an OrderedDict mapping keys (feature map names) to
       tensors where each tensor has shape [batch, height_i, width_i, depth_i].
   """
-  with tf.variable_scope(
-      scope, 'top_down', image_features):
+  with tf.name_scope(scope, 'top_down'):
     num_levels = len(image_features)
     output_feature_maps_list = []
     output_feature_map_keys = []
     with slim.arg_scope(
-        [slim.conv2d],
-        activation_fn=None, normalizer_fn=None, padding='SAME', stride=1):
+        [slim.conv2d], padding='SAME', stride=1):
       top_down = slim.conv2d(
-          image_features[-1],
-          depth, [1, 1], scope='projection_%d' % num_levels)
+          image_features[-1][1],
+          depth, [1, 1], activation_fn=None, normalizer_fn=None,
+          scope='projection_%d' % num_levels)
       output_feature_maps_list.append(top_down)
       output_feature_map_keys.append(
-          'top_down_feature_map_%d' % (num_levels - 1))
+          'top_down_%s' % image_features[-1][0])
 
       for level in reversed(range(num_levels - 1)):
         top_down = ops.nearest_neighbor_upsampling(top_down, 2)
         residual = slim.conv2d(
-            image_features[level], depth, [1, 1],
+            image_features[level][1], depth, [1, 1],
+            activation_fn=None, normalizer_fn=None,
             scope='projection_%d' % (level + 1))
-        top_down = 0.5 * top_down + 0.5 * residual
+        top_down += residual
         output_feature_maps_list.append(slim.conv2d(
             top_down,
             depth, [3, 3],
-            activation_fn=None,
             scope='smoothing_%d' % (level + 1)))
-        output_feature_map_keys.append('top_down_feature_map_%d' % level)
+        output_feature_map_keys.append('top_down_%s' % image_features[level][0])
       return collections.OrderedDict(
           reversed(zip(output_feature_map_keys, output_feature_maps_list)))

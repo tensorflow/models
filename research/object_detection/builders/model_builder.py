@@ -180,8 +180,8 @@ def _build_ssd_model(ssd_config, is_training, add_summaries,
   non_max_suppression_fn, score_conversion_fn = post_processing_builder.build(
       ssd_config.post_processing)
   (classification_loss, localization_loss, classification_weight,
-   localization_weight,
-   hard_example_miner) = losses_builder.build(ssd_config.loss)
+   localization_weight, hard_example_miner,
+   random_example_sampler) = losses_builder.build(ssd_config.loss)
   normalize_loss_by_num_matches = ssd_config.normalize_loss_by_num_matches
   normalize_loc_loss_by_codesize = ssd_config.normalize_loc_loss_by_codesize
 
@@ -208,7 +208,8 @@ def _build_ssd_model(ssd_config, is_training, add_summaries,
       normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
       freeze_batchnorm=ssd_config.freeze_batchnorm,
       inplace_batchnorm_update=ssd_config.inplace_batchnorm_update,
-      add_background_class=add_background_class)
+      add_background_class=add_background_class,
+      random_example_sampler=random_example_sampler)
 
 
 def _build_faster_rcnn_feature_extractor(
