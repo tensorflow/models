@@ -27,14 +27,11 @@ import json
 import multiprocessing
 import numbers
 import os
-try:
-    import thread  # py2
-except ImportError:
-    import _thread as thread  # py3
 import threading
 import uuid
 
 from absl import flags
+from six.moves import _thread as thread
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 
