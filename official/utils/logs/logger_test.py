@@ -22,6 +22,7 @@ from __future__ import print_function
 import json
 import os
 import tempfile
+import time
 import unittest
 
 import mock
@@ -291,6 +292,9 @@ class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
         "timestamp": mock.ANY,
         "extras": [{"name": "name", "value": "value"}]
     }]
+    # log_metric will call upload_benchmark_metric_json in a separate thread.
+    # Give it some grace period for the new thread before assert.
+    time.sleep(1)
     self.mock_bq_uploader.upload_benchmark_metric_json.assert_called_once_with(
         "dataset", "metric_table", "run_id", expected_metric_json)
 

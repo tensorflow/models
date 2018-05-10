@@ -27,6 +27,10 @@ import json
 import multiprocessing
 import numbers
 import os
+try:
+    import thread  # py2
+except ImportError:
+    import _thread as thread  # py3
 import threading
 import uuid
 
@@ -213,9 +217,14 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
     """
     metric = _process_metric_to_json(name, value, unit, global_step, extras)
     if metric:
-      self._bigquery_uploader.upload_benchmark_metric_json(
-          self._bigquery_data_set, self._bigquery_metric_table, self._run_id,
-          [metric])
+      # Starting new thread for bigquery upload in case it might take long time
+      # and impact the benchmark and performance measurement.
+      thread.start_new_thread(
+          self._bigquery_uploader.upload_benchmark_metric_json,
+          (self._bigquery_data_set,
+           self._bigquery_metric_table,
+           self._run_id,
+           [metric]))
 
   def log_run_info(self, model_name, dataset_name, run_params):
     """Collect most of the TF runtime information for the local env.
@@ -229,10 +238,14 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
         include hyperparameters or other params that are important for the run.
     """
     run_info = _gather_run_info(model_name, dataset_name, run_params)
-    self._bigquery_uploader.upload_benchmark_run_json(
-        self._bigquery_data_set, self._bigquery_run_table, self._run_id,
-        run_info)
-
+    # Starting new thread for bigquery upload in case it might take long time
+    # and impact the benchmark and performance measurement.
+    thread.start_new_thread(
+        self._bigquery_uploader.upload_benchmark_run_json,
+        (self._bigquery_data_set,
+         self._bigquery_run_table,
+         self._run_id,
+         run_info))
 
 def _gather_run_info(model_name, dataset_name, run_params):
   """Collect the benchmark run information for the local environment."""
