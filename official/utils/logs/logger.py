@@ -251,7 +251,8 @@ def _gather_run_info(model_name, dataset_name, run_params):
   return run_info
 
 
-def _process_metric_to_json(name, value, unit=None, global_step=None, extras=None):
+def _process_metric_to_json(
+    name, value, unit=None, global_step=None, extras=None):
   """Validate the metric data and generate JSON for insert."""
   if not isinstance(value, numbers.Number):
     tf.logging.warning(
@@ -260,13 +261,13 @@ def _process_metric_to_json(name, value, unit=None, global_step=None, extras=Non
 
   extras = _convert_to_json_dict(extras)
   return {
-    "name": name,
-    "value": float(value),
-    "unit": unit,
-    "global_step": global_step,
-    "timestamp": datetime.datetime.utcnow().strftime(
-        _DATE_TIME_FORMAT_PATTERN),
-    "extras": extras}
+      "name": name,
+      "value": float(value),
+      "unit": unit,
+      "global_step": global_step,
+      "timestamp": datetime.datetime.utcnow().strftime(
+          _DATE_TIME_FORMAT_PATTERN),
+      "extras": extras}
 
 
 def _collect_tensorflow_info(run_info):
