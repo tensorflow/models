@@ -424,6 +424,7 @@ class Model(object):
     self.block_strides = block_strides
     self.final_size = final_size
     self.dtype = dtype
+    self.pre_activation = resnet_version == 2
 
   def _custom_dtype_getter(self, getter, name, shape=None, dtype=DEFAULT_DTYPE,
                            *args, **kwargs):
@@ -518,8 +519,11 @@ class Model(object):
             strides=self.block_strides[i], training=training,
             name='block_layer{}'.format(i + 1), data_format=self.data_format)
 
-      inputs = batch_norm(inputs, training, self.data_format)
-      inputs = tf.nn.relu(inputs)
+      # Only apply the BN and ReLU for model that does pre_activation in each
+      # building/bottleneck block, eg resnet V2.
+      if self.pre_activation:
+        inputs = batch_norm(inputs, training, self.data_format)
+        inputs = tf.nn.relu(inputs)
 
       # The current top layer has shape
       # `batch_size x pool_size x pool_size x final_size`.
