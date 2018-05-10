@@ -9,6 +9,7 @@ diff data/text_data2 data/text_data
 import struct
 import sys
 
+import six
 import tensorflow as tf
 from tensorflow.core.example import example_pb2
 
@@ -32,7 +33,15 @@ def _binary_to_text():
     tf_example = example_pb2.Example.FromString(tf_example_str)
     examples = []
     for key in tf_example.features.feature:
-      examples.append('%s=%s' % (key, tf_example.features.feature[key].bytes_list.value[0]))
+      value = tf_example.features.feature[key].bytes_list.value[0]
+
+      # Convert to byte strings (PY2) or unicode strings (PY3)
+      if six.PY2:
+        key = key.encode('utf-8')
+      else:
+        value = value.decode('utf-8')
+
+      examples.append('%s=%s' % (key, value))
     writer.write('%s\n' % '\t'.join(examples))
   reader.close()
   writer.close()
@@ -45,6 +54,8 @@ def _text_to_binary():
     tf_example = example_pb2.Example()
     for feature in inp.strip().split('\t'):
       (k, v) = feature.split('=')
+      if six.PY3:
+        v = v.encode('utf-8')
       tf_example.features.feature[k].bytes_list.value.extend([v])
     tf_example_str = tf_example.SerializeToString()
     str_len = len(tf_example_str)
