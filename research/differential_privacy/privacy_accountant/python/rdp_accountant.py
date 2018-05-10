@@ -16,9 +16,11 @@
 
 Functionality for computing Renyi differential privacy of an additive Gaussian
 mechanism with sampling. Its public interface consists of two methods:
-    compute_rdp(q, sigma, T, order) computes RDP with sampling probability q,
-                                    noise sigma, T steps at a given order.
-    get_privacy_spent computes delta (or eps) given RDP and eps (or delta).
+  compute_rdp(q, sigma, T, orders) computes RDP with the sampling rate q,
+                                   noise sigma, T steps at the list of orders.
+  get_privacy_spent(orders, rdp, target_eps, target_delta) computes delta
+                                   (or eps) given RDP at multiple orders and
+                                   a target value for eps (or delta).
 
 Example use:
 
@@ -26,22 +28,22 @@ Suppose that we have run an algorithm with parameters, an array of
 (q1, sigma1, T1) ... (qk, sigma_k, Tk), and we wish to compute eps for a given
 delta. The example code would be:
 
-max_order = 32
-orders = range(2, max_order + 1)
-rdp = np.zeros_like(orders, dtype=float)
-for q, sigma, T in parameters:
-  rdp += rdp_accountant.compute_rdp(q, sigma, T, orders)
-eps, _, opt_order = rdp_accountant.get_privacy_spent(rdp, target_delta=delta)
+  max_order = 32
+  orders = range(2, max_order + 1)
+  rdp = np.zeros_like(orders, dtype=float)
+  for q, sigma, T in parameters:
+   rdp += rdp_accountant.compute_rdp(q, sigma, T, orders)
+  eps, _, opt_order = rdp_accountant.get_privacy_spent(rdp, target_delta=delta)
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import math
 import sys
 
 from absl import app
 from absl import flags
+import math
 import numpy as np
 from scipy import special
 
@@ -168,6 +170,7 @@ def _compute_log_a_frac(q, sigma, alpha):
 
 
 def _compute_log_a(q, sigma, alpha):
+  """Compute log(A_alpha) for any positive finite alpha."""
   if float(alpha).is_integer():
     return _compute_log_a_int(q, sigma, int(alpha))
   else:
@@ -196,7 +199,7 @@ def _compute_zs(sigma, q):
 
 
 def _compute_log_b0(sigma, q, alpha, z1):
-  """Return an approximation to B0 or None if failed to converge."""
+  """Return an approximation to log(B0) or None if failed to converge."""
   z0, _ = _compute_zs(sigma, q)
   s, log_term, log_b0, k, sign, max_log_term = 0, 1., 0, 0, 1, -np.inf
   # Keep adding new terms until precision is no longer preserved.
@@ -315,7 +318,20 @@ def _compute_eps(orders, rdp, delta):
   return eps[idx_opt], orders_vec[idx_opt]
 
 
-def _compute_rdp(q, sigma, steps, alpha):
+def _compute_rdp(q, sigma, alpha):
+  """Compute RDP of the Gaussian mechanism with sampling at order alpha.
+
+  Args:
+    q: The sampling rate.
+    sigma: The std of the additive Gaussian noise.
+    alpha: The order at which RDP is computed.
+
+  Returns:
+    RDP at alpha, can be np.inf.
+  """
+  if np.isinf(alpha):
+    return np.inf
+
   log_moment_a = _compute_log_a(q, sigma, alpha - 1)
 
   log_bound_b = _log_bound_b_elementary(q, alpha - 1)  # does not require sigma
@@ -335,15 +351,15 @@ def _compute_rdp(q, sigma, steps, alpha):
             _log_print(log_bound_b2), _log_print(log_bound_b)))
       log_bound_b = min(log_bound_b, log_bound_b2)
 
-  return max(log_moment_a, log_bound_b) * steps / (alpha - 1)
+  return max(log_moment_a, log_bound_b) / (alpha - 1)
 
 
 def compute_rdp(q, sigma, steps, orders):
   """Compute RDP of Gaussian mechanism with sampling for given parameters.
 
   Args:
-    q: The sampling ratio.
-    sigma: The noise sigma.
+    q: The sampling rate.
+    sigma: The std of the additive Gaussian noise.
     steps: The number of steps.
     orders: An array (or a scalar) of RDP orders.
 
@@ -352,12 +368,11 @@ def compute_rdp(q, sigma, steps, orders):
   """
 
   if np.isscalar(orders):
-    return _compute_rdp(q, sigma, steps, orders)
+    rdp = _compute_rdp(q, sigma, orders)
   else:
-    rdp = np.zeros_like(orders, dtype=float)
-    for i, order in enumerate(orders):
-      rdp[i] = _compute_rdp(q, sigma, steps, order)
-    return rdp
+    rdp = np.array([_compute_rdp(q, sigma, order) for order in orders])
+
+  return rdp * steps
 
 
 def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
@@ -365,7 +380,7 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
 
   Args:
     orders: An array (or a scalar) of RDP orders.
-    rdp: An array of RDP values.
+    rdp: An array of RDP values. Must be of the same length as the orders list.
     target_eps: If not None, the epsilon for which we compute the corresponding
               delta.
     target_delta: If not None, the delta for which we compute the corresponding
