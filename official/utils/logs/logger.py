@@ -215,7 +215,9 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
     metric = _process_metric_to_json(name, value, unit, global_step, extras)
     if metric:
       # Starting new thread for bigquery upload in case it might take long time
-      # and impact the benchmark and performance measurement.
+      # and impact the benchmark and performance measurement. Starting a new
+      # thread might have potential performance impact for model that run on
+      # CPU.
       thread.start_new_thread(
           self._bigquery_uploader.upload_benchmark_metric_json,
           (self._bigquery_data_set,
@@ -236,7 +238,8 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
     """
     run_info = _gather_run_info(model_name, dataset_name, run_params)
     # Starting new thread for bigquery upload in case it might take long time
-    # and impact the benchmark and performance measurement.
+    # and impact the benchmark and performance measurement. Starting a new
+    # thread might have potential performance impact for model that run on CPU.
     thread.start_new_thread(
         self._bigquery_uploader.upload_benchmark_run_json,
         (self._bigquery_data_set,
