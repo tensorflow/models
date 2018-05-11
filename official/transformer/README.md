@@ -19,6 +19,7 @@ The model also applies embeddings on the input and output tokens, and adds a con
     * [Model training and evaluation](#model-training-and-evaluation)
     * [Translate using the model](#translate-using-the-model)
     * [Compute official BLEU score](#compute-official-bleu-score)
+    * [TPU](#tpu)
   * [Implementation overview](#implementation-overview)
     * [Model Definition](#model-definition)
     * [Model Estimator](#model-estimator)
@@ -199,6 +200,10 @@ big | 28.9
    * `--translation`: Path to file containing generated translations.
    * `--reference`: Path to file containing reference translations.
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
+
+5. ### TPU
+   TPU support for this version of Transformer is experimental. Currently it is present for
+   demonstration purposes only, but will be optimized in the coming weeks.
 
 ## Implementation overview
 
