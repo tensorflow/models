@@ -175,7 +175,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
   # Convert to individual records
-  # TODO(guptapriya): Should we make this cycle_length a flag similar to 
+  # TODO(guptapriya): Should we make this cycle_length a flag similar to
   # num_parallel_calls?
   dataset = dataset.apply(tf.contrib.data.parallel_interleave(
       tf.data.TFRecordDataset, cycle_length=10))
