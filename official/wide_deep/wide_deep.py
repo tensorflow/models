@@ -245,7 +245,7 @@ def run_wide_deep(flags_obj):
       'model_type': flags_obj.model_type,
   }
 
-  benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
+  benchmark_logger = logger.config_benchmark_logger(flags_obj)
   benchmark_logger.log_run_info('wide_deep', 'Census Income', run_params)
 
   loss_prefix = LOSS_PREFIX.get(flags_obj.model_type, '')
