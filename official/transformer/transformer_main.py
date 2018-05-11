@@ -433,7 +433,7 @@ def run_transformer(flags_obj):
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
       batch_size=params.batch_size  # for ExamplesPerSecondHook
   )
-  benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
+  benchmark_logger = logger.config_benchmark_logger(flags_obj)
   benchmark_logger.log_run_info(
       model_name="transformer",
       dataset_name="wmt_translate_ende",
