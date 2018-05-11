@@ -45,30 +45,30 @@ class BenchmarkLoggerTest(tf.test.TestCase):
     super(BenchmarkLoggerTest, cls).setUpClass()
     flags_core.define_benchmark()
 
-  @flagsaver.flagsaver(benchmark_logger_type='foo')
   def test_get_default_benchmark_logger(self):
-    self.assertIsInstance(logger.get_benchmark_logger(),
-                          logger.BaseBenchmarkLogger)
+    with flagsaver.flagsaver(benchmark_logger_type='foo'):
+      self.assertIsInstance(logger.get_benchmark_logger(),
+                            logger.BaseBenchmarkLogger)
 
-  @flagsaver.flagsaver(benchmark_logger_type='BaseBenchmarkLogger')
   def test_config_base_benchmark_logger(self):
-    logger.config_benchmark_logger()
-    self.assertIsInstance(logger.get_benchmark_logger(),
-                          logger.BaseBenchmarkLogger)
+    with flagsaver.flagsaver(benchmark_logger_type='BaseBenchmarkLogger'):
+      logger.config_benchmark_logger()
+      self.assertIsInstance(logger.get_benchmark_logger(),
+                            logger.BaseBenchmarkLogger)
 
-  @flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger',
-                       benchmark_log_dir='/tmp')
   def test_config_benchmark_file_logger(self):
-    logger.config_benchmark_logger()
-    self.assertIsInstance(logger.get_benchmark_logger(),
-                          logger.BenchmarkFileLogger)
+    with flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger',
+                             benchmark_log_dir='/tmp'):
+      logger.config_benchmark_logger()
+      self.assertIsInstance(logger.get_benchmark_logger(),
+                            logger.BenchmarkFileLogger)
 
   @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
-  @flagsaver.flagsaver(benchmark_logger_type='BenchmarkBigQueryLogger')
   def test_config_benchmark_bigquery_logger(self):
-    logger.config_benchmark_logger()
-    self.assertIsInstance(logger.get_benchmark_logger(),
-                          logger.BenchmarkBigQueryLogger)
+    with flagsaver.flagsaver(benchmark_logger_type='BenchmarkBigQueryLogger'):
+      logger.config_benchmark_logger()
+      self.assertIsInstance(logger.get_benchmark_logger(),
+                            logger.BenchmarkBigQueryLogger)
 
 
 class BaseBenchmarkLoggerTest(tf.test.TestCase):
