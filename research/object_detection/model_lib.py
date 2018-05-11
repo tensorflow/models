@@ -48,8 +48,8 @@ MODEL_BUILD_UTIL_MAP = {
 }
 
 
-def _get_groundtruth_data(detection_model, class_agnostic):
-  """Extracts groundtruth data from detection_model.
+def _prepare_groundtruth_for_eval(detection_model, class_agnostic):
+  """Extracts groundtruth data from detection_model and prepares it for eval.
 
   Args:
     detection_model: A `DetectionModel` object.
@@ -63,6 +63,8 @@ def _get_groundtruth_data(detection_model, class_agnostic):
       'groundtruth_classes': [num_boxes] int64 tensor of 1-indexed classes.
       'groundtruth_masks': 3D float32 tensor of instance masks (if provided in
         groundtruth)
+      'groundtruth_is_crowd': [num_boxes] bool tensor indicating is_crowd
+        annotations (if provided in groundtruth).
     class_agnostic: Boolean indicating whether detections are class agnostic.
   """
   input_data_fields = fields.InputDataFields()
@@ -86,6 +88,9 @@ def _get_groundtruth_data(detection_model, class_agnostic):
   if detection_model.groundtruth_has_field(fields.BoxListFields.masks):
     groundtruth[input_data_fields.groundtruth_instance_masks] = (
         detection_model.groundtruth_lists(fields.BoxListFields.masks)[0])
+  if detection_model.groundtruth_has_field(fields.BoxListFields.is_crowd):
+    groundtruth[input_data_fields.groundtruth_is_crowd] = (
+        detection_model.groundtruth_lists(fields.BoxListFields.is_crowd)[0])
   return groundtruth
 
 
@@ -224,13 +229,16 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       gt_keypoints_list = None
       if fields.InputDataFields.groundtruth_keypoints in labels:
         gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
+      if fields.InputDataFields.groundtruth_is_crowd in labels:
+        gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
       detection_model.provide_groundtruth(
           groundtruth_boxes_list=gt_boxes_list,
           groundtruth_classes_list=gt_classes_list,
           groundtruth_masks_list=gt_masks_list,
           groundtruth_keypoints_list=gt_keypoints_list,
           groundtruth_weights_list=labels[
-              fields.InputDataFields.groundtruth_weights])
+              fields.InputDataFields.groundtruth_weights],
+          groundtruth_is_crowd_list=gt_is_crowd_list)
 
     preprocessed_images = features[fields.InputDataFields.image]
     prediction_dict = detection_model.predict(
@@ -328,7 +336,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
     if mode == tf.estimator.ModeKeys.EVAL:
       class_agnostic = (fields.DetectionResultFields.detection_classes
                         not in detections)
-      groundtruth = _get_groundtruth_data(detection_model, class_agnostic)
+      groundtruth = _prepare_groundtruth_for_eval(
+          detection_model, class_agnostic)
       use_original_images = fields.InputDataFields.original_image in features
       eval_images = (
           features[fields.InputDataFields.original_image] if use_original_images
@@ -339,7 +348,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           detections,
           groundtruth,
           class_agnostic=class_agnostic,
-          scale_to_absolute=False)
+          scale_to_absolute=True)
 
       if class_agnostic:
         category_index = label_map_util.create_class_agnostic_category_index()
@@ -360,8 +369,10 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       if not eval_metrics:
         eval_metrics = ['coco_detection_metrics']
       eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-          eval_metrics, category_index.values(), eval_dict,
-          include_metrics_per_category=False)
+          eval_metrics,
+          category_index.values(),
+          eval_dict,
+          include_metrics_per_category=eval_config.include_metrics_per_category)
       for loss_key, loss_tensor in iter(losses_dict.items()):
         eval_metric_ops[loss_key] = tf.metrics.mean(loss_tensor)
       for var in optimizer_summary_vars:
@@ -528,6 +539,7 @@ def create_train_and_eval_specs(train_input_fn,
                                 train_steps,
                                 eval_steps,
                                 eval_on_train_data=False,
+                                eval_on_train_steps=None,
                                 final_exporter_name='Servo',
                                 eval_spec_name='eval'):
   """Creates a `TrainSpec` and `EvalSpec`s.
@@ -542,6 +554,8 @@ def create_train_and_eval_specs(train_input_fn,
     eval_steps: Number of eval steps.
     eval_on_train_data: Whether to evaluate model on training data. Default is
       False.
+    eval_on_train_steps: Number of eval steps for training data. If not given,
+      uses eval_steps.
     final_exporter_name: String name given to `FinalExporter`.
     eval_spec_name: String name given to main `EvalSpec`.
 
@@ -569,7 +583,7 @@ def create_train_and_eval_specs(train_input_fn,
     eval_specs.append(
         tf.estimator.EvalSpec(
             name='eval_on_train', input_fn=eval_on_train_input_fn,
-            steps=eval_steps))
+            steps=eval_on_train_steps or eval_steps))
 
   return train_spec, eval_specs
 

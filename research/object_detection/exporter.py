@@ -197,6 +197,9 @@ def _add_output_tensor_nodes(postprocessed_tensors,
       containing scores for the detected boxes.
     * detection_classes: float32 tensor of shape [batch_size, num_boxes]
       containing class predictions for the detected boxes.
+    * detection_keypoints: (Optional) float32 tensor of shape
+      [batch_size, num_boxes, num_keypoints, 2] containing keypoints for each
+      detection box.
     * detection_masks: (Optional) float32 tensor of shape
       [batch_size, num_boxes, mask_height, mask_width] containing masks for each
       detection box.
@@ -220,6 +223,7 @@ def _add_output_tensor_nodes(postprocessed_tensors,
   scores = postprocessed_tensors.get(detection_fields.detection_scores)
   classes = postprocessed_tensors.get(
       detection_fields.detection_classes) + label_id_offset
+  keypoints = postprocessed_tensors.get(detection_fields.detection_keypoints)
   masks = postprocessed_tensors.get(detection_fields.detection_masks)
   num_detections = postprocessed_tensors.get(detection_fields.num_detections)
   outputs = {}
@@ -231,6 +235,9 @@ def _add_output_tensor_nodes(postprocessed_tensors,
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(
       num_detections, name=detection_fields.num_detections)
+  if keypoints is not None:
+    outputs[detection_fields.detection_keypoints] = tf.identity(
+        keypoints, name=detection_fields.detection_keypoints)
   if masks is not None:
     outputs[detection_fields.detection_masks] = tf.identity(
         masks, name=detection_fields.detection_masks)

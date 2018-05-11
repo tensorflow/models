@@ -253,6 +253,7 @@ class ModelLibTest(tf.test.TestCase):
     pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
     train_steps = 20
     eval_steps = 10
+    eval_on_train_steps = 15
     train_and_eval_dict = model_lib.create_estimator_and_inputs(
         run_config,
         hparams,
@@ -274,6 +275,7 @@ class ModelLibTest(tf.test.TestCase):
         train_steps,
         eval_steps,
         eval_on_train_data=True,
+        eval_on_train_steps=eval_on_train_steps,
         final_exporter_name='exporter',
         eval_spec_name='holdout')
     self.assertEqual(train_steps, train_spec.max_steps)
@@ -281,7 +283,7 @@ class ModelLibTest(tf.test.TestCase):
     self.assertEqual(eval_steps, eval_specs[0].steps)
     self.assertEqual('holdout', eval_specs[0].name)
     self.assertEqual('exporter', eval_specs[0].exporters[0].name)
-    self.assertEqual(eval_steps, eval_specs[1].steps)
+    self.assertEqual(eval_on_train_steps, eval_specs[1].steps)
     self.assertEqual('eval_on_train', eval_specs[1].name)
 
   def test_experiment(self):

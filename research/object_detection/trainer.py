@@ -231,10 +231,10 @@ def train(create_tensor_dict_fn,
     worker_job_name: Name of the worker job.
     is_chief: Whether this replica is the chief replica.
     train_dir: Directory to write checkpoints and training summaries to.
-    graph_hook_fn: Optional function that is called after the training graph is
-      completely built. This is helpful to perform additional changes to the
-      training graph such as optimizing batchnorm. The function should modify
-      the default graph.
+    graph_hook_fn: Optional function that is called after the inference graph is
+      built (before optimization). This is helpful to perform additional changes
+      to the training graph such as adding FakeQuant ops. The function should
+      modify the default graph.
   """
 
   detection_model = create_model_fn()
@@ -274,6 +274,10 @@ def train(create_tensor_dict_fn,
                                  train_config=train_config)
     clones = model_deploy.create_clones(deploy_config, model_fn, [input_queue])
     first_clone_scope = clones[0].scope
+
+    if graph_hook_fn:
+      with tf.device(deploy_config.variables_device()):
+        graph_hook_fn()
 
     # Gather update_ops from the first clone. These contain, for example,
     # the updates for the batch_norm variables created by model_fn.
@@ -327,10 +331,6 @@ def train(create_tensor_dict_fn,
       update_op = tf.group(*update_ops, name='update_barrier')
       with tf.control_dependencies([update_op]):
         train_tensor = tf.identity(total_loss, name='train_op')
-
-    if graph_hook_fn:
-      with tf.device(deploy_config.variables_device()):
-        graph_hook_fn()
 
     # Add summaries.
     for model_var in slim.get_model_variables():

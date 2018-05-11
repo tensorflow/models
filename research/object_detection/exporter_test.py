@@ -34,7 +34,8 @@ slim = tf.contrib.slim
 
 class FakeModel(model.DetectionModel):
 
-  def __init__(self, add_detection_masks=False):
+  def __init__(self, add_detection_keypoints=False, add_detection_masks=False):
+    self._add_detection_keypoints = add_detection_keypoints
     self._add_detection_masks = add_detection_masks
 
   def preprocess(self, inputs):
@@ -57,6 +58,9 @@ class FakeModel(model.DetectionModel):
                                             [1, 0]], tf.float32),
           'num_detections': tf.constant([2, 1], tf.float32)
       }
+      if self._add_detection_keypoints:
+        postprocessed_tensors['detection_keypoints'] = tf.constant(
+            np.arange(48).reshape([2, 2, 6, 2]), tf.float32)
       if self._add_detection_masks:
         postprocessed_tensors['detection_masks'] = tf.constant(
             np.arange(64).reshape([2, 2, 4, 4]), tf.float32)
@@ -270,7 +274,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter.export_inference_graph(
           input_type='image_tensor',
@@ -283,6 +288,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       inference_graph.get_tensor_by_name('detection_boxes:0')
       inference_graph.get_tensor_by_name('detection_scores:0')
       inference_graph.get_tensor_by_name('detection_classes:0')
+      inference_graph.get_tensor_by_name('detection_keypoints:0')
       inference_graph.get_tensor_by_name('detection_masks:0')
       inference_graph.get_tensor_by_name('num_detections:0')
 
@@ -311,6 +317,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       inference_graph.get_tensor_by_name('detection_classes:0')
       inference_graph.get_tensor_by_name('num_detections:0')
       with self.assertRaises(KeyError):
+        inference_graph.get_tensor_by_name('detection_keypoints:0')
         inference_graph.get_tensor_by_name('detection_masks:0')
 
   def test_export_and_run_inference_with_image_tensor(self):
@@ -323,7 +330,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
@@ -338,11 +346,13 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       boxes = inference_graph.get_tensor_by_name('detection_boxes:0')
       scores = inference_graph.get_tensor_by_name('detection_scores:0')
       classes = inference_graph.get_tensor_by_name('detection_classes:0')
+      keypoints = inference_graph.get_tensor_by_name('detection_keypoints:0')
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
-      (boxes_np, scores_np, classes_np, masks_np, num_detections_np) = sess.run(
-          [boxes, scores, classes, masks, num_detections],
-          feed_dict={image_tensor: np.ones((2, 4, 4, 3)).astype(np.uint8)})
+      (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
+       num_detections_np) = sess.run(
+           [boxes, scores, classes, keypoints, masks, num_detections],
+           feed_dict={image_tensor: np.ones((2, 4, 4, 3)).astype(np.uint8)})
       self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                       [0.5, 0.5, 0.8, 0.8]],
                                      [[0.5, 0.5, 1.0, 1.0],
@@ -351,6 +361,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                       [0.9, 0.0]])
       self.assertAllClose(classes_np, [[1, 2],
                                        [2, 1]])
+      self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
       self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
       self.assertAllClose(num_detections_np, [2, 1])
 
@@ -376,7 +387,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
@@ -396,13 +408,14 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       boxes = inference_graph.get_tensor_by_name('detection_boxes:0')
       scores = inference_graph.get_tensor_by_name('detection_scores:0')
       classes = inference_graph.get_tensor_by_name('detection_classes:0')
+      keypoints = inference_graph.get_tensor_by_name('detection_keypoints:0')
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
       for image_str in [jpg_image_str, png_image_str]:
         image_str_batch_np = np.hstack([image_str]* 2)
-        (boxes_np, scores_np, classes_np, masks_np,
+        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
          num_detections_np) = sess.run(
-             [boxes, scores, classes, masks, num_detections],
+             [boxes, scores, classes, keypoints, masks, num_detections],
              feed_dict={image_str_tensor: image_str_batch_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -412,6 +425,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.9, 0.0]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
+        self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
         self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
         self.assertAllClose(num_detections_np, [2, 1])
 
@@ -425,7 +439,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
@@ -447,12 +462,14 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       boxes = inference_graph.get_tensor_by_name('detection_boxes:0')
       scores = inference_graph.get_tensor_by_name('detection_scores:0')
       classes = inference_graph.get_tensor_by_name('detection_classes:0')
+      keypoints = inference_graph.get_tensor_by_name('detection_keypoints:0')
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
       with self.assertRaisesRegexp(tf.errors.InvalidArgumentError,
                                    'TensorArray.*shape'):
-        sess.run([boxes, scores, classes, masks, num_detections],
-                 feed_dict={image_str_tensor: image_str_batch_np})
+        sess.run(
+            [boxes, scores, classes, keypoints, masks, num_detections],
+            feed_dict={image_str_tensor: image_str_batch_np})
 
   def test_export_and_run_inference_with_tf_example(self):
     tmp_dir = self.get_temp_dir()
@@ -464,7 +481,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         'frozen_inference_graph.pb')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
@@ -481,11 +499,13 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       boxes = inference_graph.get_tensor_by_name('detection_boxes:0')
       scores = inference_graph.get_tensor_by_name('detection_scores:0')
       classes = inference_graph.get_tensor_by_name('detection_classes:0')
+      keypoints = inference_graph.get_tensor_by_name('detection_keypoints:0')
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
-      (boxes_np, scores_np, classes_np, masks_np, num_detections_np) = sess.run(
-          [boxes, scores, classes, masks, num_detections],
-          feed_dict={tf_example: tf_example_np})
+      (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
+       num_detections_np) = sess.run(
+           [boxes, scores, classes, keypoints, masks, num_detections],
+           feed_dict={tf_example: tf_example_np})
       self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                       [0.5, 0.5, 0.8, 0.8]],
                                      [[0.5, 0.5, 1.0, 1.0],
@@ -494,6 +514,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                       [0.9, 0.0]])
       self.assertAllClose(classes_np, [[1, 2],
                                        [2, 1]])
+      self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
       self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
       self.assertAllClose(num_detections_np, [2, 1])
 
@@ -508,7 +529,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     tf.gfile.MakeDirs(output_directory)
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       detection_model = model_builder.build(pipeline_config.model,
@@ -541,11 +563,13 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       boxes = inference_graph.get_tensor_by_name('detection_boxes:0')
       scores = inference_graph.get_tensor_by_name('detection_scores:0')
       classes = inference_graph.get_tensor_by_name('detection_classes:0')
+      keypoints = inference_graph.get_tensor_by_name('detection_keypoints:0')
       masks = inference_graph.get_tensor_by_name('detection_masks:0')
       num_detections = inference_graph.get_tensor_by_name('num_detections:0')
-      (boxes_np, scores_np, classes_np, masks_np, num_detections_np) = sess.run(
-          [boxes, scores, classes, masks, num_detections],
-          feed_dict={tf_example: tf_example_np})
+      (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
+       num_detections_np) = sess.run(
+           [boxes, scores, classes, keypoints, masks, num_detections],
+           feed_dict={tf_example: tf_example_np})
       self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                       [0.5, 0.5, 0.8, 0.8]],
                                      [[0.5, 0.5, 1.0, 1.0],
@@ -554,6 +578,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                       [0.9, 0.0]])
       self.assertAllClose(classes_np, [[1, 2],
                                        [2, 1]])
+      self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
       self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
       self.assertAllClose(num_detections_np, [2, 1])
 
@@ -592,7 +617,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
 
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
@@ -618,14 +644,16 @@ class ExportInferenceGraphTest(tf.test.TestCase):
             signature.outputs['detection_scores'].name)
         classes = od_graph.get_tensor_by_name(
             signature.outputs['detection_classes'].name)
+        keypoints = od_graph.get_tensor_by_name(
+            signature.outputs['detection_keypoints'].name)
         masks = od_graph.get_tensor_by_name(
             signature.outputs['detection_masks'].name)
         num_detections = od_graph.get_tensor_by_name(
             signature.outputs['num_detections'].name)
 
-        (boxes_np, scores_np, classes_np, masks_np,
+        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
          num_detections_np) = sess.run(
-             [boxes, scores, classes, masks, num_detections],
+             [boxes, scores, classes, keypoints, masks, num_detections],
              feed_dict={tf_example: tf_example_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -635,6 +663,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.9, 0.0]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
+        self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
         self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
         self.assertAllClose(num_detections_np, [2, 1])
 
@@ -648,7 +677,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     tf.gfile.MakeDirs(output_directory)
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       detection_model = model_builder.build(pipeline_config.model,
@@ -694,14 +724,16 @@ class ExportInferenceGraphTest(tf.test.TestCase):
             signature.outputs['detection_scores'].name)
         classes = od_graph.get_tensor_by_name(
             signature.outputs['detection_classes'].name)
+        keypoints = od_graph.get_tensor_by_name(
+            signature.outputs['detection_keypoints'].name)
         masks = od_graph.get_tensor_by_name(
             signature.outputs['detection_masks'].name)
         num_detections = od_graph.get_tensor_by_name(
             signature.outputs['num_detections'].name)
 
-        (boxes_np, scores_np, classes_np, masks_np,
+        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
          num_detections_np) = sess.run(
-             [boxes, scores, classes, masks, num_detections],
+             [boxes, scores, classes, keypoints, masks, num_detections],
              feed_dict={tf_example: tf_example_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -711,6 +743,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.9, 0.0]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
+        self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
         self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
         self.assertAllClose(num_detections_np, [2, 1])
 
@@ -725,7 +758,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
 
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
@@ -745,11 +779,12 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         boxes = od_graph.get_tensor_by_name('detection_boxes:0')
         scores = od_graph.get_tensor_by_name('detection_scores:0')
         classes = od_graph.get_tensor_by_name('detection_classes:0')
+        keypoints = od_graph.get_tensor_by_name('detection_keypoints:0')
         masks = od_graph.get_tensor_by_name('detection_masks:0')
         num_detections = od_graph.get_tensor_by_name('num_detections:0')
-        (boxes_np, scores_np, classes_np, masks_np,
+        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
          num_detections_np) = sess.run(
-             [boxes, scores, classes, masks, num_detections],
+             [boxes, scores, classes, keypoints, masks, num_detections],
              feed_dict={tf_example: tf_example_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -759,6 +794,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.9, 0.0]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
+        self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
         self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
         self.assertAllClose(num_detections_np, [2, 1])
 
@@ -773,7 +809,8 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     tf.gfile.MakeDirs(output_directory)
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(add_detection_masks=True)
+      mock_builder.return_value = FakeModel(
+          add_detection_keypoints=True, add_detection_masks=True)
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       pipeline_config.eval_config.use_moving_averages = False
       detection_model = model_builder.build(pipeline_config.model,
@@ -803,11 +840,12 @@ class ExportInferenceGraphTest(tf.test.TestCase):
         boxes = od_graph.get_tensor_by_name('detection_boxes:0')
         scores = od_graph.get_tensor_by_name('detection_scores:0')
         classes = od_graph.get_tensor_by_name('detection_classes:0')
+        keypoints = od_graph.get_tensor_by_name('detection_keypoints:0')
         masks = od_graph.get_tensor_by_name('detection_masks:0')
         num_detections = od_graph.get_tensor_by_name('num_detections:0')
-        (boxes_np, scores_np, classes_np, masks_np,
+        (boxes_np, scores_np, classes_np, keypoints_np, masks_np,
          num_detections_np) = sess.run(
-             [boxes, scores, classes, masks, num_detections],
+             [boxes, scores, classes, keypoints, masks, num_detections],
              feed_dict={tf_example: tf_example_np})
         self.assertAllClose(boxes_np, [[[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.8, 0.8]],
@@ -817,6 +855,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                         [0.9, 0.0]])
         self.assertAllClose(classes_np, [[1, 2],
                                          [2, 1]])
+        self.assertAllClose(keypoints_np, np.arange(48).reshape([2, 2, 6, 2]))
         self.assertAllClose(masks_np, np.arange(64).reshape([2, 2, 4, 4]))
         self.assertAllClose(num_detections_np, [2, 1])
 

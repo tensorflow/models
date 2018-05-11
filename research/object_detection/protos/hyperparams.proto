@@ -38,6 +38,10 @@ message Hyperparams {
   // BatchNorm hyperparameters. If this parameter is NOT set then BatchNorm is
   // not applied!
   optional BatchNorm batch_norm = 5;
+
+  // Whether depthwise convolutions should be regularized. If this parameter is
+  // NOT set then the conv hyperparams will default to the parent scope.
+  optional bool regularize_depthwise = 6 [default = false];
 }
 
 // Proto with one-of field for regularizers.

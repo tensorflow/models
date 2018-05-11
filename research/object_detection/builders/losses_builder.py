@@ -15,6 +15,7 @@
 
 """A function to build localization and classification losses from config."""
 
+from object_detection.core import balanced_positive_negative_sampler as sampler
 from object_detection.core import losses
 from object_detection.protos import losses_pb2
 
@@ -34,9 +35,12 @@ def build(loss_config):
     classification_weight: Classification loss weight.
     localization_weight: Localization loss weight.
     hard_example_miner: Hard example miner object.
+    random_example_sampler: BalancedPositiveNegativeSampler object.
 
   Raises:
     ValueError: If hard_example_miner is used with sigmoid_focal_loss.
+    ValueError: If random_example_sampler is getting non-positive value as
+      desired positive example fraction.
   """
   classification_loss = _build_classification_loss(
       loss_config.classification_loss)
@@ -54,9 +58,16 @@ def build(loss_config):
         loss_config.hard_example_miner,
         classification_weight,
         localization_weight)
-  return (classification_loss, localization_loss,
-          classification_weight,
-          localization_weight, hard_example_miner)
+  random_example_sampler = None
+  if loss_config.HasField('random_example_sampler'):
+    if loss_config.random_example_sampler.positive_sample_fraction <= 0:
+      raise ValueError('RandomExampleSampler should not use non-positive'
+                       'value as positive sample fraction.')
+    random_example_sampler = sampler.BalancedPositiveNegativeSampler(
+        positive_fraction=loss_config.random_example_sampler.
+        positive_sample_fraction)
+  return (classification_loss, localization_loss, classification_weight,
+          localization_weight, hard_example_miner, random_example_sampler)
 
 
 def build_hard_example_miner(config,
