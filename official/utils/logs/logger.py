@@ -30,8 +30,8 @@ import os
 import threading
 import uuid
 
-from absl import flags
 from six.moves import _thread as thread
+from absl import flags
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 
