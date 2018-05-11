@@ -39,7 +39,7 @@ _NUM_IMAGES = {
 }
 
 _NUM_TRAIN_FILES = 1024
-_SHUFFLE_BUFFER = 1500
+_SHUFFLE_BUFFER = 10000
 
 DATASET_NAME = 'ImageNet'
 
@@ -152,8 +152,6 @@ def parse_record(raw_record, is_training):
       num_channels=_NUM_CHANNELS,
       is_training=is_training)
 
-  label = tf.one_hot(tf.reshape(label, shape=[]), _NUM_CLASSES)
-
   return image, label
 
 
@@ -177,6 +175,10 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
   # Convert to individual records
+  # TODO(guptapriya): Should we make this cycle_length a flag similar to 
+  # num_parallel_calls?
+  dataset = dataset.apply(tf.contrib.data.parallel_interleave(
+      tf.data.TFRecordDataset, cycle_length=10))
   dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
   return resnet_run_loop.process_record_dataset(
