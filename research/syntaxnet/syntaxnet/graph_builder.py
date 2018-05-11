@@ -22,6 +22,7 @@ import syntaxnet.load_parser_ops
 from tensorflow.python.ops import control_flow_ops as cf
 from tensorflow.python.ops import state_ops
 from tensorflow.python.platform import tf_logging as logging
+from tensorflow.python.training import saver as tf_saver
 
 from syntaxnet.ops import gen_parser_ops
 
@@ -572,5 +573,6 @@ class GreedyParser(object):
         for key in variables_to_save.keys():
           if not key.endswith('avg_var'):
             del variables_to_save[key]
-      self.saver = tf.train.Saver(variables_to_save)
+      self.saver = tf.train.Saver(
+          variables_to_save, builder=tf_saver.BaseSaverBuilder())
     return self.saver

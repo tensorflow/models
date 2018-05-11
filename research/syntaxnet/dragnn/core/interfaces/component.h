@@ -21,6 +21,7 @@
 #include "dragnn/components/util/bulk_feature_extractor.h"
 #include "dragnn/core/input_batch_cache.h"
 #include "dragnn/core/interfaces/transition_state.h"
+#include "dragnn/core/util/label.h"
 #include "dragnn/protos/spec.pb.h"
 #include "dragnn/protos/trace.pb.h"
 #include "syntaxnet/registry.h"
@@ -120,6 +121,18 @@ class Component : public RegisterableClass<Component> {
       const vector<const float *> &per_channel_embeddings,
       float *embedding_output) = 0;
 
+  // Directly computes the embedding matrix for all channels, advancing the
+  // component via the oracle until it is terminal. This call takes a vector
+  // of float matrices containing embeddings, one per channel, in channel order.
+  // This function outputs a densified right-ragged tensor.
+  virtual void BulkEmbedDenseFixedFeatures(
+      const vector<const float *> &per_channel_embeddings,
+      float *embedding_output, int embedding_output_size,
+      int32 *offset_array_output, int offset_array_size) = 0;
+
+  // Gets the expected size of the data matrix for BulkEmbedDenseFixedFeatures.
+  virtual int BulkDenseFeatureSize() const = 0;
+
   // Extracts and returns the vector of LinkFeatures for the specified
   // channel. Note: these are NOT translated.
   virtual std::vector<LinkFeatures> GetRawLinkFeatures(
@@ -127,7 +140,8 @@ class Component : public RegisterableClass<Component> {
 
   // Returns a vector of oracle labels for each element in the beam and
   // batch.
-  virtual std::vector<std::vector<int>> GetOracleLabels() const = 0;
+  virtual std::vector<std::vector<std::vector<Label>>> GetOracleLabels()
+      const = 0;
 
   // Annotate the underlying data object with the results of this Component's
   // calculation.

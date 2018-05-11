@@ -54,10 +54,13 @@ limitations under the License.
 #define SYNTAXNET_REGISTRY_H_
 
 #include <string.h>
+#include <memory>
 #include <string>
-#include <vector>
 
-#include "syntaxnet/utils.h"
+#include "syntaxnet/base.h"
+#include "tensorflow/core/lib/core/errors.h"
+#include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/platform/logging.h"
 
 namespace syntaxnet {
 
@@ -74,6 +77,9 @@ class ComponentMetadata {
 
   // Returns component name.
   const char *name() const { return name_; }
+
+  // Returns a human-readable description of this.
+  string DebugString() const;
 
   // Metadata objects can be linked in a list.
   ComponentMetadata *link() const { return link_; }
@@ -107,7 +113,16 @@ class RegistryMetadata : public ComponentMetadata {
   // Registers a component registry in the master registry.
   static void Register(RegistryMetadata *registry);
 
+  // Validates the registry; returns non-OK if there are duplicate component
+  // names of the same type. Situations where this can happen include accidental
+  // class name collisions, and linking in two different multiarch versions
+  // of the same component. Repeated calls uses the original result.
+  static tensorflow::Status Validate();
+
  private:
+  // Implementation for validating the registry.
+  static tensorflow::Status ValidateImpl();
+
   // Location of list of components in registry.
   ComponentMetadata **components_;
 };
@@ -157,14 +172,21 @@ struct ComponentRegistry {
     T *object_;
   };
 
-  // Finds registrar for named component in registry.
-  const Registrar *GetComponent(const char *type) const {
+  // Finds registrar for named component in registry, returning null if not
+  // found.
+  const Registrar *GetComponentOrNull(const char *type) const {
     Registrar *r = components;
     while (r != nullptr && strcmp(type, r->type()) != 0) r = r->next();
-    if (r == nullptr) {
+    return r;
+  }
+
+  // Finds registrar for named component in registry, raising errors on failure.
+  const Registrar *GetComponent(const char *type) const {
+    const Registrar *result = GetComponentOrNull(type);
+    if (result == nullptr) {
       LOG(FATAL) << "Unknown " << name << " component: '" << type << "'.";
     }
-    return r;
+    return result;
   }
 
   // Finds a named component in the registry.
@@ -196,7 +218,24 @@ class RegisterableClass {
   typedef ComponentRegistry<Factory> Registry;
 
   // Creates a new component instance.
-  static T *Create(const string &type) { return registry()->Lookup(type)(); }
+  static T *Create(const string &type) {
+    TF_CHECK_OK(syntaxnet::RegistryMetadata::Validate());
+    return registry()->Lookup(type)();
+  }
+
+  static tensorflow::Status CreateOrError(const string &type,
+                                          std::unique_ptr<T> *result) {
+    TF_RETURN_IF_ERROR(syntaxnet::RegistryMetadata::Validate());
+    const typename Registry::Registrar *component =
+        registry()->GetComponentOrNull(type.c_str());
+    if (component == nullptr) {
+      return tensorflow::errors::NotFound("Unknown ", registry()->name, ": ",
+                                          type);
+    } else {
+      result->reset(component->object()());
+      return tensorflow::Status::OK();
+    }
+  }
 
   // Returns registry for class.
   static Registry *registry() { return &registry_; }
