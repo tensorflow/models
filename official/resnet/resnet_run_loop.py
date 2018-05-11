@@ -79,7 +79,8 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
       tf.contrib.data.map_and_batch(
           lambda value: parse_record_fn(value, is_training),
           batch_size=batch_size,
-          num_parallel_batches=1))
+          num_parallel_batches=1,
+          drop_remainder=True))
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
@@ -111,7 +112,7 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
   """
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
     images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
-    labels = tf.zeros((batch_size, num_classes), tf.int32)
+    labels = tf.zeros((batch_size), tf.int32)
     return tf.data.Dataset.from_tensors((images, labels)).repeat()
 
   return input_fn
@@ -227,8 +228,8 @@ def resnet_model_fn(features, labels, mode, model_class,
         })
 
   # Calculate loss, which includes softmax cross entropy and L2 regularization.
-  cross_entropy = tf.losses.softmax_cross_entropy(
-      logits=logits, onehot_labels=labels)
+  cross_entropy = tf.losses.sparse_softmax_cross_entropy(
+      logits=logits, labels=labels)
 
   # Create a tensor named cross_entropy for logging purposes.
   tf.identity(cross_entropy, name='cross_entropy')
@@ -282,8 +283,7 @@ def resnet_model_fn(features, labels, mode, model_class,
     train_op = None
 
   if not tf.contrib.distribute.has_distribution_strategy():
-    accuracy = tf.metrics.accuracy(
-        tf.argmax(labels, axis=1), predictions['classes'])
+    accuracy = tf.metrics.accuracy(labels, predictions['classes'])
   else:
     # Metrics are currently not compatible with distribution strategies during
     # training. This does not affect the overall performance of the model.
