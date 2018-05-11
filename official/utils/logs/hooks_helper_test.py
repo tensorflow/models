@@ -60,8 +60,7 @@ class BaseTest(unittest.TestCase):
 
   def test_get_logging_metric_hook(self):
     test_hook_name = 'LoggingMetricHook'
-    self.validate_train_hook_name(test_hook_name, 'loggingmetrichook',
-                                  benchmark_log_dir='/tmp')
+    self.validate_train_hook_name(test_hook_name, 'loggingmetrichook')
 
 if __name__ == '__main__':
   tf.test.main()

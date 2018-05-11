@@ -28,7 +28,10 @@ import multiprocessing
 import numbers
 import os
 import threading
+import uuid
 
+from six.moves import _thread as thread
+from absl import flags
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 
@@ -36,21 +39,39 @@ METRIC_LOG_FILE_NAME = "metric.log"
 BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
 
+FLAGS = flags.FLAGS
 
 # Don't use it directly. Use get_benchmark_logger to access a logger.
 _benchmark_logger = None
 _logger_lock = threading.Lock()
 
 
-def config_benchmark_logger(logging_dir):
+def config_benchmark_logger(flag_obj=None):
   """Config the global benchmark logger"""
   _logger_lock.acquire()
   try:
     global _benchmark_logger
-    if logging_dir:
-      _benchmark_logger = BenchmarkFileLogger(logging_dir)
-    else:
+    if not flag_obj:
+      flag_obj = FLAGS
+
+    if (not hasattr(flag_obj, 'benchmark_logger_type') or
+        flag_obj.benchmark_logger_type == 'BaseBenchmarkLogger'):
       _benchmark_logger = BaseBenchmarkLogger()
+    elif flag_obj.benchmark_logger_type == 'BenchmarkFileLogger':
+      _benchmark_logger = BenchmarkFileLogger(flag_obj.benchmark_log_dir)
+    elif flag_obj.benchmark_logger_type == 'BenchmarkBigQueryLogger':
+      from official.benchmark import benchmark_uploader as bu # pylint: disable=g-import-not-at-top
+      bq_uploader = bu.BigQueryUploader(gcp_project=flag_obj.gcp_project)
+      _benchmark_logger = BenchmarkBigQueryLogger(
+          bigquery_uploader=bq_uploader,
+          bigquery_data_set=flag_obj.bigquery_data_set,
+          bigquery_run_table=flag_obj.bigquery_run_table,
+          bigquery_metric_table=flag_obj.bigquery_metric_table,
+          run_id=str(uuid.uuid4()))
+    else:
+      raise ValueError('Unrecognized benchmark_logger_type: %s',
+                       flag_obj.benchmark_logger_type)
+
   finally:
     _logger_lock.release()
   return _benchmark_logger
@@ -58,8 +79,7 @@ def config_benchmark_logger(logging_dir):
 
 def get_benchmark_logger():
   if not _benchmark_logger:
-    config_benchmark_logger(None)
-
+    config_benchmark_logger()
   return _benchmark_logger
 
 
@@ -99,15 +119,9 @@ class BaseBenchmarkLogger(object):
       global_step: int, the global_step when the metric is logged.
       extras: map of string:string, the extra information about the metric.
     """
-    if not isinstance(value, numbers.Number):
-      tf.logging.warning(
-          "Metric value to log should be a number. Got %s", type(value))
-      return
-    extras = _convert_to_json_dict(extras)
-
-    tf.logging.info("Benchmark metric: "
-                    "Name %s, value %d, unit %s, global_step %d, extras %s",
-                    name, value, unit, global_step, extras)
+    metric = _process_metric_to_json(name, value, unit, global_step, extras)
+    if metric:
+      tf.logging.info("Benchmark metric: %s", metric)
 
   def log_run_info(self, model_name, dataset_name, run_params):
     tf.logging.info("Benchmark run: %s",
@@ -137,28 +151,16 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
       global_step: int, the global_step when the metric is logged.
       extras: map of string:string, the extra information about the metric.
     """
-    if not isinstance(value, numbers.Number):
-      tf.logging.warning(
-          "Metric value to log should be a number. Got %s", type(value))
-      return
-    extras = _convert_to_json_dict(extras)
-
-    with tf.gfile.GFile(
-        os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
-      metric = {
-          "name": name,
-          "value": float(value),
-          "unit": unit,
-          "global_step": global_step,
-          "timestamp": datetime.datetime.utcnow().strftime(
-              _DATE_TIME_FORMAT_PATTERN),
-          "extras": extras}
-      try:
-        json.dump(metric, f)
-        f.write("\n")
-      except (TypeError, ValueError) as e:
-        tf.logging.warning("Failed to dump metric to log file: "
-                           "name %s, value %s, error %s", name, value, e)
+    metric = _process_metric_to_json(name, value, unit, global_step, extras)
+    if metric:
+      with tf.gfile.GFile(
+          os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a") as f:
+        try:
+          json.dump(metric, f)
+          f.write("\n")
+        except (TypeError, ValueError) as e:
+          tf.logging.warning("Failed to dump metric to log file: "
+                             "name %s, value %s, error %s", name, value, e)
 
   def log_run_info(self, model_name, dataset_name, run_params):
     """Collect most of the TF runtime information for the local env.
@@ -183,6 +185,68 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
                            e)
 
 
+class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
+  """Class to log the benchmark information to BigQuery data store."""
+
+  def __init__(self,
+               bigquery_uploader,
+               bigquery_data_set,
+               bigquery_run_table,
+               bigquery_metric_table,
+               run_id):
+    super(BenchmarkBigQueryLogger, self).__init__()
+    self._bigquery_uploader = bigquery_uploader
+    self._bigquery_data_set = bigquery_data_set
+    self._bigquery_run_table = bigquery_run_table
+    self._bigquery_metric_table = bigquery_metric_table
+    self._run_id = run_id
+
+  def log_metric(self, name, value, unit=None, global_step=None, extras=None):
+    """Log the benchmark metric information to bigquery.
+
+    Args:
+      name: string, the name of the metric to log.
+      value: number, the value of the metric. The value will not be logged if it
+        is not a number type.
+      unit: string, the unit of the metric, E.g "image per second".
+      global_step: int, the global_step when the metric is logged.
+      extras: map of string:string, the extra information about the metric.
+    """
+    metric = _process_metric_to_json(name, value, unit, global_step, extras)
+    if metric:
+      # Starting new thread for bigquery upload in case it might take long time
+      # and impact the benchmark and performance measurement. Starting a new
+      # thread might have potential performance impact for model that run on
+      # CPU.
+      thread.start_new_thread(
+          self._bigquery_uploader.upload_benchmark_metric_json,
+          (self._bigquery_data_set,
+           self._bigquery_metric_table,
+           self._run_id,
+           [metric]))
+
+  def log_run_info(self, model_name, dataset_name, run_params):
+    """Collect most of the TF runtime information for the local env.
+
+    The schema of the run info follows official/benchmark/datastore/schema.
+
+    Args:
+      model_name: string, the name of the model.
+      dataset_name: string, the name of dataset for training and evaluation.
+      run_params: dict, the dictionary of parameters for the run, it could
+        include hyperparameters or other params that are important for the run.
+    """
+    run_info = _gather_run_info(model_name, dataset_name, run_params)
+    # Starting new thread for bigquery upload in case it might take long time
+    # and impact the benchmark and performance measurement. Starting a new
+    # thread might have potential performance impact for model that run on CPU.
+    thread.start_new_thread(
+        self._bigquery_uploader.upload_benchmark_run_json,
+        (self._bigquery_data_set,
+         self._bigquery_run_table,
+         self._run_id,
+         run_info))
+
 def _gather_run_info(model_name, dataset_name, run_params):
   """Collect the benchmark run information for the local environment."""
   run_info = {
@@ -198,6 +262,25 @@ def _gather_run_info(model_name, dataset_name, run_params):
   _collect_gpu_info(run_info)
   _collect_memory_info(run_info)
   return run_info
+
+
+def _process_metric_to_json(
+    name, value, unit=None, global_step=None, extras=None):
+  """Validate the metric data and generate JSON for insert."""
+  if not isinstance(value, numbers.Number):
+    tf.logging.warning(
+        "Metric value to log should be a number. Got %s", type(value))
+    return None
+
+  extras = _convert_to_json_dict(extras)
+  return {
+      "name": name,
+      "value": float(value),
+      "unit": unit,
+      "global_step": global_step,
+      "timestamp": datetime.datetime.utcnow().strftime(
+          _DATE_TIME_FORMAT_PATTERN),
+      "extras": extras}
 
 
 def _collect_tensorflow_info(run_info):
