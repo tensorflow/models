@@ -18,18 +18,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
-import sys
 
 # pylint: disable=g-bad-import-order
 from six.moves import xrange  # pylint: disable=redefined-builtin
+from absl import app as absl_app
+from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.transformer.data_download import VOCAB_FILE
 from official.transformer.model import model_params
 from official.transformer.utils import tokenizer
+from official.utils.flags import core as flags_core
 
 _DECODE_BATCH_SIZE = 32
 _EXTRA_DECODE_LENGTH = 100
@@ -106,7 +107,8 @@ def translate_file(
       if i % batch_size == 0:
         batch_num = (i // batch_size) + 1
 
-        print("Decoding batch %d out of %d." % (batch_num, num_decode_batches))
+        tf.logging.info("Decoding batch %d out of %d." %
+                        (batch_num, num_decode_batches))
       yield _encode_and_add_eos(line, subtokenizer)
 
   def input_fn():
@@ -122,10 +124,8 @@ def translate_file(
     translations.append(translation)
 
     if print_all_translations:
-      print("Translating:")
-      print("\tInput: %s" % sorted_inputs[i])
-      print("\tOutput: %s\n" % translation)
-      print("=" * 100)
+      tf.logging.info("Translating:\n\tInput: %s\n\tOutput: %s" %
+                      (sorted_inputs[i], translation))
 
   # Write translations in the order they appeared in the original file.
   if output_file is not None:
@@ -150,7 +150,7 @@ def translate_text(estimator, subtokenizer, txt):
   predictions = estimator.predict(input_fn)
   translation = next(predictions)["outputs"]
   translation = _trim_and_decode(translation, subtokenizer)
-  print("Translation of \"%s\": \"%s\"" % (txt, translation))
+  tf.logging.info("Translation of \"%s\": \"%s\"" % (txt, translation))
 
 
 def main(unused_argv):
@@ -166,15 +166,8 @@ def main(unused_argv):
   subtokenizer = tokenizer.Subtokenizer(
       os.path.join(FLAGS.data_dir, FLAGS.vocab_file))
 
-  if FLAGS.params == "base":
-    params = model_params.TransformerBaseParams
-  elif FLAGS.params == "big":
-    params = model_params.TransformerBigParams
-  else:
-    raise ValueError("Invalid parameter set defined: %s."
-                     "Expected 'base' or 'big.'" % FLAGS.params)
-
   # Set up estimator and params
+  params = transformer_main.PARAMS_MAP[FLAGS.param_set]
   params.beam_size = _BEAM_SIZE
   params.alpha = _ALPHA
   params.extra_decode_length = _EXTRA_DECODE_LENGTH
@@ -201,45 +194,50 @@ def main(unused_argv):
     translate_file(estimator, subtokenizer, input_file, output_file)
 
 
+def define_translate_flags():
+  """Define flags used for translation script."""
+  # Model and vocab file flags
+  flags.DEFINE_string(
+      name="data_dir", short_name="dd", default="/tmp/translate_ende",
+      help=flags_core.help_wrap(
+          "Directory for where the translate_ende_wmt32k dataset is saved."))
+  flags.DEFINE_string(
+      name="vocab_file", short_name="vf", default=VOCAB_FILE,
+      help=flags_core.help_wrap(
+          "Name of vocabulary file containing subtokens for subtokenizing the "
+          "input text or file. This file is expected to be in the directory "
+          "defined by --data_dir."))
+  flags.DEFINE_string(
+      name="model_dir", short_name="md", default="/tmp/transformer_model",
+      help=flags_core.help_wrap(
+          "Directory containing Transformer model checkpoints."))
+  flags.DEFINE_enum(
+      name="param_set", short_name="mp", default="big",
+      enum_values=["base", "big"],
+      help=flags_core.help_wrap(
+          "Parameter set to use when creating and training the model. The "
+          "parameters define the input shape (batch size and max length), "
+          "model configuration (size of embedding, # of hidden layers, etc.), "
+          "and various other settings. The big parameter set increases the "
+          "default batch size, embedding/hidden size, and filter size. For a "
+          "complete list of parameters, please see model/model_params.py."))
+
+  flags.DEFINE_string(
+      name="text", default=None,
+      help=flags_core.help_wrap(
+          "Text to translate. Output will be printed to console."))
+  flags.DEFINE_string(
+      name="file", default=None,
+      help=flags_core.help_wrap(
+          "File containing text to translate. Translation will be printed to "
+          "console and, if --file_out is provided, saved to an output file."))
+  flags.DEFINE_string(
+      name="file_out", default=None,
+      help=flags_core.help_wrap(
+          "If --file flag is specified, save translation to this file."))
+
+
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-
-  # Model arguments
-  parser.add_argument(
-      "--data_dir", "-dd", type=str, default="/tmp/data/translate_ende",
-      help="[default: %(default)s] Directory where vocab file is stored.",
-      metavar="<DD>")
-  parser.add_argument(
-      "--vocab_file", "-vf", type=str, default=VOCAB_FILE,
-      help="[default: %(default)s] Name of vocabulary file.",
-      metavar="<vf>")
-  parser.add_argument(
-      "--model_dir", "-md", type=str, default="/tmp/transformer_model",
-      help="[default: %(default)s] Directory containing Transformer model "
-           "checkpoints.",
-      metavar="<MD>")
-  parser.add_argument(
-      "--params", "-p", type=str, default="big", choices=["base", "big"],
-      help="[default: %(default)s] Parameter used for trained model.",
-      metavar="<P>")
-
-  # Flags for specifying text/file to be translated.
-  parser.add_argument(
-      "--text", "-t", type=str, default=None,
-      help="[default: %(default)s] Text to translate. Output will be printed "
-           "to console.",
-      metavar="<T>")
-  parser.add_argument(
-      "--file", "-f", type=str, default=None,
-      help="[default: %(default)s] File containing text to translate. "
-           "Translation will be printed to console and, if --file_out is "
-           "provided, saved to an output file.",
-      metavar="<F>")
-  parser.add_argument(
-      "--file_out", "-fo", type=str, default=None,
-      help="[default: %(default)s] If --file flag is specified, save "
-           "translation to this file.",
-      metavar="<FO>")
-
-  FLAGS, unparsed = parser.parse_known_args()
-  main(sys.argv)
+  define_translate_flags()
+  FLAGS = flags.FLAGS
+  absl_app.run(main)
