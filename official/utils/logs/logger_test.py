@@ -57,11 +57,13 @@ class BenchmarkLoggerTest(tf.test.TestCase):
                             logger.BaseBenchmarkLogger)
 
   def test_config_benchmark_file_logger(self):
-    with flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger',
-                             benchmark_log_dir='/tmp'):
-      logger.config_benchmark_logger()
-      self.assertIsInstance(logger.get_benchmark_logger(),
-                            logger.BenchmarkFileLogger)
+    # Set the benchmark_log_dir first since the benchmark_logger_type will need
+    # the value to be set when it does the validation.
+    with flagsaver.flagsaver(benchmark_log_dir='/tmp'):
+      with flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger'):
+        logger.config_benchmark_logger()
+        self.assertIsInstance(logger.get_benchmark_logger(),
+                              logger.BenchmarkFileLogger)
 
   @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
   def test_config_benchmark_bigquery_logger(self):
