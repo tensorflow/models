@@ -503,6 +503,8 @@ class Model(object):
           inputs=inputs, filters=self.num_filters, kernel_size=self.kernel_size,
           strides=self.conv_stride, data_format=self.data_format)
       inputs = tf.identity(inputs, 'initial_conv')
+      inputs = batch_norm(inputs, training, self.data_format)
+      inputs = tf.nn.relu(inputs)
 
       if self.first_pool_size:
         inputs = tf.layers.max_pooling2d(
