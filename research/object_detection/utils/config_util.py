@@ -22,6 +22,7 @@ from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io
 
 from object_detection.protos import eval_pb2
+from object_detection.protos import graph_rewriter_pb2
 from object_detection.protos import input_reader_pb2
 from object_detection.protos import model_pb2
 from object_detection.protos import pipeline_pb2
@@ -63,8 +64,10 @@ def get_spatial_image_size(image_resizer_config):
     ValueError: If the model type is not recognized.
   """
   if image_resizer_config.HasField("fixed_shape_resizer"):
-    return [image_resizer_config.fixed_shape_resizer.height,
-            image_resizer_config.fixed_shape_resizer.width]
+    return [
+        image_resizer_config.fixed_shape_resizer.height,
+        image_resizer_config.fixed_shape_resizer.width
+    ]
   if image_resizer_config.HasField("keep_aspect_ratio_resizer"):
     if image_resizer_config.keep_aspect_ratio_resizer.pad_to_max_dimension:
       return [image_resizer_config.keep_aspect_ratio_resizer.max_dimension] * 2
@@ -74,7 +77,7 @@ def get_spatial_image_size(image_resizer_config):
 
 
 def get_configs_from_pipeline_file(pipeline_config_path):
-  """Reads configuration from a pipeline_pb2.TrainEvalPipelineConfig.
+  """Reads config from a file containing pipeline_pb2.TrainEvalPipelineConfig.
 
   Args:
     pipeline_config_path: Path to pipeline_pb2.TrainEvalPipelineConfig text
@@ -89,23 +92,52 @@ def get_configs_from_pipeline_file(pipeline_config_path):
   with tf.gfile.GFile(pipeline_config_path, "r") as f:
     proto_str = f.read()
     text_format.Merge(proto_str, pipeline_config)
+  return create_configs_from_pipeline_proto(pipeline_config)
 
+
+def create_configs_from_pipeline_proto(pipeline_config):
+  """Creates a configs dictionary from pipeline_pb2.TrainEvalPipelineConfig.
+
+  Args:
+    pipeline_config: pipeline_pb2.TrainEvalPipelineConfig proto object.
+
+  Returns:
+    Dictionary of configuration objects. Keys are `model`, `train_config`,
+      `train_input_config`, `eval_config`, `eval_input_config`. Value are the
+      corresponding config objects.
+  """
   configs = {}
   configs["model"] = pipeline_config.model
   configs["train_config"] = pipeline_config.train_config
   configs["train_input_config"] = pipeline_config.train_input_reader
   configs["eval_config"] = pipeline_config.eval_config
   configs["eval_input_config"] = pipeline_config.eval_input_reader
+  if pipeline_config.HasField("graph_rewriter"):
+    configs["graph_rewriter_config"] = pipeline_config.graph_rewriter
 
   return configs
+
+
+def get_graph_rewriter_config_from_file(graph_rewriter_config_file):
+  """Parses config for graph rewriter.
+
+  Args:
+    graph_rewriter_config_file: file path to the graph rewriter config.
+
+  Returns:
+    graph_rewriter_pb2.GraphRewriter proto
+  """
+  graph_rewriter_config = graph_rewriter_pb2.GraphRewriter()
+  with tf.gfile.GFile(graph_rewriter_config_file, "r") as f:
+    text_format.Merge(f.read(), graph_rewriter_config)
+  return graph_rewriter_config
 
 
 def create_pipeline_proto_from_configs(configs):
   """Creates a pipeline_pb2.TrainEvalPipelineConfig from configs dictionary.
 
-  This function nearly performs the inverse operation of
-  get_configs_from_pipeline_file(). Instead of returning a file path, it returns
-  a `TrainEvalPipelineConfig` object.
+  This function performs the inverse operation of
+  create_configs_from_pipeline_proto().
 
   Args:
     configs: Dictionary of configs. See get_configs_from_pipeline_file().
@@ -119,6 +151,8 @@ def create_pipeline_proto_from_configs(configs):
   pipeline_config.train_input_reader.CopyFrom(configs["train_input_config"])
   pipeline_config.eval_config.CopyFrom(configs["eval_config"])
   pipeline_config.eval_input_reader.CopyFrom(configs["eval_input_config"])
+  if "graph_rewriter_config" in configs:
+    pipeline_config.graph_rewriter.CopyFrom(configs["graph_rewriter_config"])
   return pipeline_config
 
 
@@ -144,7 +178,8 @@ def get_configs_from_multiple_files(model_config_path="",
                                     train_config_path="",
                                     train_input_config_path="",
                                     eval_config_path="",
-                                    eval_input_config_path=""):
+                                    eval_input_config_path="",
+                                    graph_rewriter_config_path=""):
   """Reads training configuration from multiple config files.
 
   Args:
@@ -153,6 +188,7 @@ def get_configs_from_multiple_files(model_config_path="",
     train_input_config_path: Path to input_reader_pb2.InputReader.
     eval_config_path: Path to eval_pb2.EvalConfig.
     eval_input_config_path: Path to input_reader_pb2.InputReader.
+    graph_rewriter_config_path: Path to graph_rewriter_pb2.GraphRewriter.
 
   Returns:
     Dictionary of configuration objects. Keys are `model`, `train_config`,
@@ -189,6 +225,10 @@ def get_configs_from_multiple_files(model_config_path="",
     with tf.gfile.GFile(eval_input_config_path, "r") as f:
       text_format.Merge(f.read(), eval_input_config)
       configs["eval_input_config"] = eval_input_config
+
+  if graph_rewriter_config_path:
+    configs["graph_rewriter_config"] = get_graph_rewriter_config_from_file(
+        graph_rewriter_config_path)
 
   return configs
 
@@ -437,7 +477,7 @@ def _get_classification_loss(model_config):
   if meta_architecture == "faster_rcnn":
     model = model_config.faster_rcnn
     classification_loss = model.second_stage_classification_loss
-  if meta_architecture == "ssd":
+  elif meta_architecture == "ssd":
     model = model_config.ssd
     classification_loss = model.loss.classification_loss
   else:

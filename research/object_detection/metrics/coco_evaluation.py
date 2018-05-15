@@ -202,27 +202,45 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     return box_metrics
 
   def get_estimator_eval_metric_ops(self, image_id, groundtruth_boxes,
-                                    groundtruth_classes, detection_boxes,
-                                    detection_scores, detection_classes):
+                                    groundtruth_classes,
+                                    detection_boxes,
+                                    detection_scores, detection_classes,
+                                    groundtruth_is_crowd=None,
+                                    num_gt_boxes_per_image=None,
+                                    num_det_boxes_per_image=None):
     """Returns a dictionary of eval metric ops to use with `tf.EstimatorSpec`.
 
     Note that once value_op is called, the detections and groundtruth added via
     update_op are cleared.
 
+    This function can take in groundtruth and detections for a batch of images,
+    or for a single image. For the latter case, the batch dimension for input
+    tensors need not be present.
+
     Args:
-      image_id: Unique string/integer identifier for the image.
-      groundtruth_boxes: float32 tensor of shape [num_boxes, 4] containing
-        `num_boxes` groundtruth boxes of the format
+      image_id: string/integer tensor of shape [batch] with unique identifiers
+        for the images.
+      groundtruth_boxes: float32 tensor of shape [batch, num_boxes, 4]
+        containing `num_boxes` groundtruth boxes of the format
         [ymin, xmin, ymax, xmax] in absolute image coordinates.
-      groundtruth_classes: int32 tensor of shape [num_boxes] containing
+      groundtruth_classes: int32 tensor of shape [batch, num_boxes] containing
         1-indexed groundtruth classes for the boxes.
-      detection_boxes: float32 tensor of shape [num_boxes, 4] containing
+      detection_boxes: float32 tensor of shape [batch, num_boxes, 4] containing
         `num_boxes` detection boxes of the format [ymin, xmin, ymax, xmax]
         in absolute image coordinates.
-      detection_scores: float32 tensor of shape [num_boxes] containing
+      detection_scores: float32 tensor of shape [batch, num_boxes] containing
         detection scores for the boxes.
-      detection_classes: int32 tensor of shape [num_boxes] containing
+      detection_classes: int32 tensor of shape [batch, num_boxes] containing
         1-indexed detection classes for the boxes.
+      groundtruth_is_crowd: bool tensor of shape [batch, num_boxes] containing
+        is_crowd annotations. This field is optional, and if not passed, then
+        all boxes are treated as *not* is_crowd.
+      num_gt_boxes_per_image: int32 tensor of shape [batch] containing the
+        number of groundtruth boxes per image. If None, will assume no padding
+        in groundtruth tensors.
+      num_det_boxes_per_image: int32 tensor of shape [batch] containing the
+        number of detection boxes per image. If None, will assume no padding in
+        the detection tensors.
 
     Returns:
       a dictionary of metric names to tuple of value_op and update_op that can
@@ -231,28 +249,75 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       guarantee correct behaviour.
     """
     def update_op(
-        image_id,
-        groundtruth_boxes,
-        groundtruth_classes,
-        detection_boxes,
-        detection_scores,
-        detection_classes):
-      self.add_single_ground_truth_image_info(
-          image_id,
-          {'groundtruth_boxes': groundtruth_boxes,
-           'groundtruth_classes': groundtruth_classes})
-      self.add_single_detected_image_info(
-          image_id,
-          {'detection_boxes': detection_boxes,
-           'detection_scores': detection_scores,
-           'detection_classes': detection_classes})
+        image_id_batched,
+        groundtruth_boxes_batched,
+        groundtruth_classes_batched,
+        groundtruth_is_crowd_batched,
+        num_gt_boxes_per_image,
+        detection_boxes_batched,
+        detection_scores_batched,
+        detection_classes_batched,
+        num_det_boxes_per_image):
+      """Update operation for adding batch of images to Coco evaluator."""
+
+      for (image_id, gt_box, gt_class, gt_is_crowd, num_gt_box, det_box,
+           det_score, det_class, num_det_box) in zip(
+               image_id_batched, groundtruth_boxes_batched,
+               groundtruth_classes_batched, groundtruth_is_crowd_batched,
+               num_gt_boxes_per_image,
+               detection_boxes_batched, detection_scores_batched,
+               detection_classes_batched, num_det_boxes_per_image):
+        self.add_single_ground_truth_image_info(
+            image_id,
+            {'groundtruth_boxes': gt_box[:num_gt_box],
+             'groundtruth_classes': gt_class[:num_gt_box],
+             'groundtruth_is_crowd': gt_is_crowd[:num_gt_box]})
+        self.add_single_detected_image_info(
+            image_id,
+            {'detection_boxes': det_box[:num_det_box],
+             'detection_scores': det_score[:num_det_box],
+             'detection_classes': det_class[:num_det_box]})
+
+    if groundtruth_is_crowd is None:
+      groundtruth_is_crowd = tf.zeros_like(groundtruth_classes, dtype=tf.bool)
+    if not image_id.shape.as_list():
+      # Apply a batch dimension to all tensors.
+      image_id = tf.expand_dims(image_id, 0)
+      groundtruth_boxes = tf.expand_dims(groundtruth_boxes, 0)
+      groundtruth_classes = tf.expand_dims(groundtruth_classes, 0)
+      groundtruth_is_crowd = tf.expand_dims(groundtruth_is_crowd, 0)
+      detection_boxes = tf.expand_dims(detection_boxes, 0)
+      detection_scores = tf.expand_dims(detection_scores, 0)
+      detection_classes = tf.expand_dims(detection_classes, 0)
+
+      if num_gt_boxes_per_image is None:
+        num_gt_boxes_per_image = tf.shape(groundtruth_boxes)[1:2]
+      else:
+        num_gt_boxes_per_image = tf.expand_dims(num_gt_boxes_per_image, 0)
+
+      if num_det_boxes_per_image is None:
+        num_det_boxes_per_image = tf.shape(detection_boxes)[1:2]
+      else:
+        num_det_boxes_per_image = tf.expand_dims(num_det_boxes_per_image, 0)
+    else:
+      if num_gt_boxes_per_image is None:
+        num_gt_boxes_per_image = tf.tile(
+            tf.shape(groundtruth_boxes)[1:2],
+            multiples=tf.shape(groundtruth_boxes)[0:1])
+      if num_det_boxes_per_image is None:
+        num_det_boxes_per_image = tf.tile(
+            tf.shape(detection_boxes)[1:2],
+            multiples=tf.shape(detection_boxes)[0:1])
 
     update_op = tf.py_func(update_op, [image_id,
                                        groundtruth_boxes,
                                        groundtruth_classes,
+                                       groundtruth_is_crowd,
+                                       num_gt_boxes_per_image,
                                        detection_boxes,
                                        detection_scores,
-                                       detection_classes], [])
+                                       detection_classes,
+                                       num_det_boxes_per_image], [])
     metric_names = ['DetectionBoxes_Precision/mAP',
                     'DetectionBoxes_Precision/mAP@.50IOU',
                     'DetectionBoxes_Precision/mAP@.75IOU',
@@ -492,7 +557,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                                     groundtruth_classes,
                                     groundtruth_instance_masks,
                                     detection_scores, detection_classes,
-                                    detection_masks):
+                                    detection_masks, groundtruth_is_crowd=None):
     """Returns a dictionary of eval metric ops to use with `tf.EstimatorSpec`.
 
     Note that once value_op is called, the detections and groundtruth added via
@@ -515,6 +580,9 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
       detection_masks: uint8 tensor array of shape
         [num_boxes, image_height, image_width] containing instance masks
         corresponding to the boxes. The elements of the array must be in {0, 1}.
+      groundtruth_is_crowd: bool tensor of shape [batch, num_boxes] containing
+        is_crowd annotations. This field is optional, and if not passed, then
+        all boxes are treated as *not* is_crowd.
 
     Returns:
       a dictionary of metric names to tuple of value_op and update_op that can
@@ -527,6 +595,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         groundtruth_boxes,
         groundtruth_classes,
         groundtruth_instance_masks,
+        groundtruth_is_crowd,
         detection_scores,
         detection_classes,
         detection_masks):
@@ -534,17 +603,21 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
           image_id,
           {'groundtruth_boxes': groundtruth_boxes,
            'groundtruth_classes': groundtruth_classes,
-           'groundtruth_instance_masks': groundtruth_instance_masks})
+           'groundtruth_instance_masks': groundtruth_instance_masks,
+           'groundtruth_is_crowd': groundtruth_is_crowd})
       self.add_single_detected_image_info(
           image_id,
           {'detection_scores': detection_scores,
            'detection_classes': detection_classes,
            'detection_masks': detection_masks})
 
+    if groundtruth_is_crowd is None:
+      groundtruth_is_crowd = tf.zeros_like(groundtruth_classes, dtype=tf.bool)
     update_op = tf.py_func(update_op, [image_id,
                                        groundtruth_boxes,
                                        groundtruth_classes,
                                        groundtruth_instance_masks,
+                                       groundtruth_is_crowd,
                                        detection_scores,
                                        detection_classes,
                                        detection_masks], [])
@@ -583,5 +656,3 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         eval_metric_ops[metric_name] = (tf.py_func(
             value_func_factory(metric_name), [], np.float32), update_op)
     return eval_metric_ops
-
-

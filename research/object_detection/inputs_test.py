@@ -482,7 +482,7 @@ class DataTransformationFnTest(tf.test.TestCase):
     self.assertAllEqual(transformed_inputs[
         fields.InputDataFields.original_image].dtype, tf.uint8)
     self.assertAllEqual(transformed_inputs[
-        fields.InputDataFields.original_image].shape, [8, 8, 3])
+        fields.InputDataFields.original_image].shape, [4, 4, 3])
     self.assertAllEqual(transformed_inputs[
         fields.InputDataFields.groundtruth_instance_masks].shape, [2, 8, 8])
 

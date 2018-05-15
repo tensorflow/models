@@ -93,6 +93,26 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertProtoEquals(pipeline_config.eval_input_reader,
                            configs["eval_input_config"])
 
+  def test_create_configs_from_pipeline_proto(self):
+    """Tests creating configs dictionary from pipeline proto."""
+
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.model.faster_rcnn.num_classes = 10
+    pipeline_config.train_config.batch_size = 32
+    pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
+    pipeline_config.eval_config.num_examples = 20
+    pipeline_config.eval_input_reader.queue_capacity = 100
+
+    configs = config_util.create_configs_from_pipeline_proto(pipeline_config)
+    self.assertProtoEquals(pipeline_config.model, configs["model"])
+    self.assertProtoEquals(pipeline_config.train_config,
+                           configs["train_config"])
+    self.assertProtoEquals(pipeline_config.train_input_reader,
+                           configs["train_input_config"])
+    self.assertProtoEquals(pipeline_config.eval_config, configs["eval_config"])
+    self.assertProtoEquals(pipeline_config.eval_input_reader,
+                           configs["eval_input_config"])
+
   def test_create_pipeline_proto_from_configs(self):
     """Tests that proto can be reconstructed from configs dictionary."""
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")

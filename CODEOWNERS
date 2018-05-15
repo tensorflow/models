@@ -11,7 +11,7 @@
 /research/compression/ @nmjohn
 /research/deeplab/ @aquariusjay @yknzhu @gpapan
 /research/delf/ @andrefaraujo
-/research/differential_privacy/ @panyx0718 @mironov
+/research/differential_privacy/ @ilyamironov @ananthr
 /research/domain_adaptation/ @bousmalis @dmrd
 /research/gan/ @joel-shor
 /research/im2txt/ @cshallue
@@ -22,6 +22,7 @@
 /research/lexnet_nc/ @vered1986 @waterson
 /research/lfads/ @jazcollins @susillo
 /research/lm_1b/ @oriolvinyals @panyx0718
+/research/marco/ @vincentvanhoucke
 /research/maskgan/ @a-dai
 /research/namignizer/ @knathanieltucker
 /research/neural_gpu/ @lukaszkaiser
@@ -44,7 +45,7 @@
 /research/transformer/ @daviddao
 /research/video_prediction/ @cbfinn
 /research/fivo/ @dieterichlawson
-/samples/ @MarkDaoust
+/samples/ @MarkDaoust @lamberta
 /samples/languages/java/ @asimshankar
 /tutorials/embedding/ @zffchen78 @a-dai
 /tutorials/image/ @sherrym @shlens

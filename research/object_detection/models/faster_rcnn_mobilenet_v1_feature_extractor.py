@@ -14,12 +14,42 @@
 # ==============================================================================
 
 """Mobilenet v1 Faster R-CNN implementation."""
+import numpy as np
+
 import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
+from object_detection.utils import shape_utils
 from nets import mobilenet_v1
 
 slim = tf.contrib.slim
+
+
+def _get_mobilenet_conv_no_last_stride_defs(conv_depth_ratio_in_percentage):
+  if conv_depth_ratio_in_percentage not in [25, 50, 75, 100]:
+    raise ValueError(
+        'Only the following ratio percentages are supported: 25, 50, 75, 100')
+  conv_depth_ratio_in_percentage = float(conv_depth_ratio_in_percentage) / 100.0
+  channels = np.array([
+      32, 64, 128, 128, 256, 256, 512, 512, 512, 512, 512, 512, 1024, 1024
+  ], dtype=np.float32)
+  channels = (channels * conv_depth_ratio_in_percentage).astype(np.int32)
+  return [
+      mobilenet_v1.Conv(kernel=[3, 3], stride=2, depth=channels[0]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[1]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=2, depth=channels[2]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[3]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=2, depth=channels[4]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[5]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=2, depth=channels[6]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[7]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[8]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[9]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[10]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[11]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[12]),
+      mobilenet_v1.DepthSepConv(kernel=[3, 3], stride=1, depth=channels[13])
+  ]
 
 
 class FasterRCNNMobilenetV1FeatureExtractor(
@@ -33,7 +63,9 @@ class FasterRCNNMobilenetV1FeatureExtractor(
                reuse_weights=None,
                weight_decay=0.0,
                depth_multiplier=1.0,
-               min_depth=16):
+               min_depth=16,
+               skip_last_stride=False,
+               conv_depth_ratio_in_percentage=100):
     """Constructor.
 
     Args:
@@ -44,6 +76,9 @@ class FasterRCNNMobilenetV1FeatureExtractor(
       weight_decay: See base class.
       depth_multiplier: float depth multiplier for feature extractor.
       min_depth: minimum feature extractor depth.
+      skip_last_stride: Skip the last stride if True.
+      conv_depth_ratio_in_percentage: Conv depth ratio in percentage. Only
+        applied if skip_last_stride is True.
 
     Raises:
       ValueError: If `first_stage_features_stride` is not 8 or 16.
@@ -52,6 +87,8 @@ class FasterRCNNMobilenetV1FeatureExtractor(
       raise ValueError('`first_stage_features_stride` must be 8 or 16.')
     self._depth_multiplier = depth_multiplier
     self._min_depth = min_depth
+    self._skip_last_stride = skip_last_stride
+    self._conv_depth_ratio_in_percentage = conv_depth_ratio_in_percentage
     super(FasterRCNNMobilenetV1FeatureExtractor, self).__init__(
         is_training, first_stage_features_stride, batch_norm_trainable,
         reuse_weights, weight_decay)
@@ -91,24 +128,27 @@ class FasterRCNNMobilenetV1FeatureExtractor(
     """
 
     preprocessed_inputs.get_shape().assert_has_rank(4)
-    shape_assert = tf.Assert(
-        tf.logical_and(tf.greater_equal(tf.shape(preprocessed_inputs)[1], 33),
-                       tf.greater_equal(tf.shape(preprocessed_inputs)[2], 33)),
-        ['image size must at least be 33 in both height and width.'])
+    preprocessed_inputs = shape_utils.check_min_image_dim(
+        min_dim=33, image_tensor=preprocessed_inputs)
 
-    with tf.control_dependencies([shape_assert]):
-      with slim.arg_scope(
-          mobilenet_v1.mobilenet_v1_arg_scope(
-              is_training=self._train_batch_norm,
-              weight_decay=self._weight_decay)):
-        with tf.variable_scope('MobilenetV1',
-                               reuse=self._reuse_weights) as scope:
-          _, activations = mobilenet_v1.mobilenet_v1_base(
-              preprocessed_inputs,
-              final_endpoint='Conv2d_11_pointwise',
-              min_depth=self._min_depth,
-              depth_multiplier=self._depth_multiplier,
-              scope=scope)
+    with slim.arg_scope(
+        mobilenet_v1.mobilenet_v1_arg_scope(
+            is_training=self._train_batch_norm,
+            weight_decay=self._weight_decay)):
+      with tf.variable_scope('MobilenetV1',
+                             reuse=self._reuse_weights) as scope:
+        params = {}
+        if self._skip_last_stride:
+          params['conv_defs'] = _get_mobilenet_conv_no_last_stride_defs(
+              conv_depth_ratio_in_percentage=self.
+              _conv_depth_ratio_in_percentage)
+        _, activations = mobilenet_v1.mobilenet_v1_base(
+            preprocessed_inputs,
+            final_endpoint='Conv2d_11_pointwise',
+            min_depth=self._min_depth,
+            depth_multiplier=self._depth_multiplier,
+            scope=scope,
+            **params)
     return activations['Conv2d_11_pointwise'], activations
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
@@ -127,6 +167,11 @@ class FasterRCNNMobilenetV1FeatureExtractor(
     """
     net = proposal_feature_maps
 
+    conv_depth = 1024
+    if self._skip_last_stride:
+      conv_depth_ratio = float(self._conv_depth_ratio_in_percentage) / 100.0
+      conv_depth = int(float(conv_depth) * conv_depth_ratio)
+
     depth = lambda d: max(int(d * 1.0), 16)
     with tf.variable_scope('MobilenetV1', reuse=self._reuse_weights):
       with slim.arg_scope(
@@ -137,13 +182,13 @@ class FasterRCNNMobilenetV1FeatureExtractor(
             [slim.conv2d, slim.separable_conv2d], padding='SAME'):
           net = slim.separable_conv2d(
               net,
-              depth(1024), [3, 3],
+              depth(conv_depth), [3, 3],
               depth_multiplier=1,
               stride=2,
               scope='Conv2d_12_pointwise')
           return slim.separable_conv2d(
               net,
-              depth(1024), [3, 3],
+              depth(conv_depth), [3, 3],
               depth_multiplier=1,
               stride=1,
               scope='Conv2d_13_pointwise')

@@ -60,6 +60,9 @@ message InputReader {
   // Number of parallel decode ops to apply.
   optional uint32 num_parallel_map_calls = 14 [default = 64];
 
+  // Number of groundtruth keypoints per object.
+  optional uint32 num_keypoints = 16 [default = 0];
+
   // Whether to load groundtruth instance masks.
   optional bool load_instance_masks = 7 [default = false];
 

@@ -27,6 +27,7 @@ from __future__ import print_function
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.logs import hooks
+from official.utils.logs import logger
 from official.utils.logs import metric_hook
 
 _TENSORS_TO_LOG = dict((x, x) for x in ['learning_rate',
@@ -123,14 +124,12 @@ def get_examples_per_second_hook(every_n_steps=100,
                                      warm_steps=warm_steps)
 
 
-def get_logging_metric_hook(benchmark_log_dir=None,
-                            tensors_to_log=None,
+def get_logging_metric_hook(tensors_to_log=None,
                             every_n_secs=600,
                             **kwargs):  # pylint: disable=unused-argument
   """Function to get LoggingMetricHook.
 
   Args:
-    benchmark_log_dir: `string`, directory path to save the metric log.
     tensors_to_log: List of tensor names or dictionary mapping labels to tensor
       names. If not set, log _TENSORS_TO_LOG by default.
     every_n_secs: `int`, the frequency for logging the metric. Default to every
@@ -140,13 +139,11 @@ def get_logging_metric_hook(benchmark_log_dir=None,
     Returns a ProfilerHook that writes out timelines that can be loaded into
     profiling tools like chrome://tracing.
   """
-  if benchmark_log_dir is None:
-    raise ValueError("metric_log_dir should be provided to use metric logger")
   if tensors_to_log is None:
     tensors_to_log = _TENSORS_TO_LOG
   return metric_hook.LoggingMetricHook(
       tensors=tensors_to_log,
-      log_dir=benchmark_log_dir,
+      metric_logger=logger.get_benchmark_logger(),
       every_n_secs=every_n_secs)
 
 

@@ -72,4 +72,7 @@ message EvalConfig {
   // Whether to retain original images (i.e. not pre-processed) in the tensor
   // dictionary, so that they can be displayed in Tensorboard.
   optional bool retain_original_images = 23 [default=true];
+
+  // If True, additionally include per-category metrics.
+  optional bool include_metrics_per_category = 24 [default=false];
 }

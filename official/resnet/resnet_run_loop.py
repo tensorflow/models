@@ -23,17 +23,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+# pylint: disable=g-bad-import-order
+from absl import flags
+import tensorflow as tf
 
 from official.resnet import resnet_model
-from official.utils.arg_parsers import parsers
+from official.utils.flags import core as flags_core
 from official.utils.export import export
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import model_helpers
+# pylint: enable=g-bad-import-order
 
 
 ################################################################################
@@ -155,8 +157,8 @@ def learning_rate_with_decay(
 
 def resnet_model_fn(features, labels, mode, model_class,
                     resnet_size, weight_decay, learning_rate_fn, momentum,
-                    data_format, version, loss_scale, loss_filter_fn=None,
-                    dtype=resnet_model.DEFAULT_DTYPE):
+                    data_format, resnet_version, loss_scale,
+                    loss_filter_fn=None, dtype=resnet_model.DEFAULT_DTYPE):
   """Shared functionality for different resnet model_fns.
 
   Initializes the ResnetModel representing the model layers
@@ -180,8 +182,8 @@ def resnet_model_fn(features, labels, mode, model_class,
     momentum: momentum term used for optimization
     data_format: Input format ('channels_last', 'channels_first', or None).
       If set to None, the format is dependent on whether a GPU is available.
-    version: Integer representing which version of the ResNet network to use.
-      See README for details. Valid values: [1, 2]
+    resnet_version: Integer representing which version of the ResNet network to
+      use. See README for details. Valid values: [1, 2]
     loss_scale: The factor to scale the loss for numerical stability. A detailed
       summary is present in the arg parser help text.
     loss_filter_fn: function that takes a string variable name and returns
@@ -200,7 +202,8 @@ def resnet_model_fn(features, labels, mode, model_class,
 
   features = tf.cast(features, dtype)
 
-  model = model_class(resnet_size, data_format, version=version, dtype=dtype)
+  model = model_class(resnet_size, data_format, resnet_version=resnet_version,
+                      dtype=dtype)
 
   logits = model(features, mode == tf.estimator.ModeKeys.TRAIN)
 
@@ -331,19 +334,22 @@ def per_device_batch_size(batch_size, num_gpus):
   return int(batch_size / num_gpus)
 
 
-def resnet_main(flags, model_function, input_function, shape=None):
+def resnet_main(
+    flags_obj, model_function, input_function, dataset_name, shape=None):
   """Shared main loop for ResNet Models.
 
   Args:
-    flags: FLAGS object that contains the params for running. See
-      ResnetArgParser for created flags.
+    flags_obj: An object containing parsed flags. See define_resnet_flags()
+      for details.
     model_function: the function that instantiates the Model and builds the
       ops for train/eval. This will be passed directly into the estimator.
     input_function: the function that processes the dataset and returns a
       dataset that the estimator can train on. This will be wrapped with
       all the relevant flags for running and passed to estimator.
+    dataset_name: the name of the dataset for training and evaluation. This is
+      used for logging purpose.
     shape: list of ints representing the shape of the images used for training.
-      This is only used if flags.export_dir is passed.
+      This is only used if flags_obj.export_dir is passed.
   """
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
@@ -354,122 +360,123 @@ def resnet_main(flags, model_function, input_function, shape=None):
   # allow_soft_placement = True, which is required for multi-GPU and not
   # harmful for other modes.
   session_config = tf.ConfigProto(
-      inter_op_parallelism_threads=flags.inter_op_parallelism_threads,
-      intra_op_parallelism_threads=flags.intra_op_parallelism_threads,
+      inter_op_parallelism_threads=flags_obj.inter_op_parallelism_threads,
+      intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
       allow_soft_placement=True)
 
-  if flags.num_gpus == 0:
+  if flags_core.get_num_gpus(flags_obj) == 0:
     distribution = tf.contrib.distribute.OneDeviceStrategy('device:CPU:0')
-  elif flags.num_gpus == 1:
+  elif flags_core.get_num_gpus(flags_obj) == 1:
     distribution = tf.contrib.distribute.OneDeviceStrategy('device:GPU:0')
   else:
     distribution = tf.contrib.distribute.MirroredStrategy(
-        num_gpus=flags.num_gpus
+        num_gpus=flags_core.get_num_gpus(flags_obj)
     )
 
   run_config = tf.estimator.RunConfig(train_distribute=distribution,
                                       session_config=session_config)
 
   classifier = tf.estimator.Estimator(
-      model_fn=model_function, model_dir=flags.model_dir, config=run_config,
+      model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
       params={
-          'resnet_size': flags.resnet_size,
-          'data_format': flags.data_format,
-          'batch_size': flags.batch_size,
-          'version': flags.version,
-          'loss_scale': flags.loss_scale,
-          'dtype': flags.dtype
+          'resnet_size': int(flags_obj.resnet_size),
+          'data_format': flags_obj.data_format,
+          'batch_size': flags_obj.batch_size,
+          'resnet_version': int(flags_obj.resnet_version),
+          'loss_scale': flags_core.get_loss_scale(flags_obj),
+          'dtype': flags_core.get_tf_dtype(flags_obj)
       })
 
-  if flags.benchmark_log_dir is not None:
-    benchmark_logger = logger.BenchmarkLogger(flags.benchmark_log_dir)
-    benchmark_logger.log_run_info('resnet')
-  else:
-    benchmark_logger = None
+  run_params = {
+      'batch_size': flags_obj.batch_size,
+      'dtype': flags_core.get_tf_dtype(flags_obj),
+      'resnet_size': flags_obj.resnet_size,
+      'resnet_version': flags_obj.resnet_version,
+      'synthetic_data': flags_obj.use_synthetic_data,
+      'train_epochs': flags_obj.train_epochs,
+  }
+  benchmark_logger = logger.config_benchmark_logger(flags_obj)
+  benchmark_logger.log_run_info('resnet', dataset_name, run_params)
 
-  for _ in range(flags.train_epochs // flags.epochs_between_evals):
-    train_hooks = hooks_helper.get_train_hooks(
-        flags.hooks,
-        batch_size=flags.batch_size,
-        benchmark_log_dir=flags.benchmark_log_dir)
+  train_hooks = hooks_helper.get_train_hooks(
+      flags_obj.hooks,
+      batch_size=flags_obj.batch_size)
 
-    print('Starting a training cycle.')
+  def input_fn_train():
+    return input_function(
+        is_training=True, data_dir=flags_obj.data_dir,
+        batch_size=per_device_batch_size(
+            flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+        num_epochs=flags_obj.epochs_between_evals)
 
-    def input_fn_train():
-      return input_function(
-          is_training=True,
-          data_dir=flags.data_dir,
-          batch_size=per_device_batch_size(flags.batch_size, flags.num_gpus),
-          num_epochs=flags.epochs_between_evals,
-      )
+  def input_fn_eval():
+    return input_function(
+        is_training=False, data_dir=flags_obj.data_dir,
+        batch_size=per_device_batch_size(
+            flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
+        num_epochs=1)
+
+  total_training_cycle = (flags_obj.train_epochs //
+                          flags_obj.epochs_between_evals)
+  for cycle_index in range(total_training_cycle):
+    tf.logging.info('Starting a training cycle: %d/%d',
+                    cycle_index, total_training_cycle)
 
     classifier.train(input_fn=input_fn_train, hooks=train_hooks,
-                     max_steps=flags.max_train_steps)
+                     max_steps=flags_obj.max_train_steps)
 
-    print('Starting to evaluate.')
-    # Evaluate the model and print results
-    def input_fn_eval():
-      return input_function(
-          is_training=False,
-          data_dir=flags.data_dir,
-          batch_size=per_device_batch_size(flags.batch_size, flags.num_gpus),
-          num_epochs=1,
-      )
+    tf.logging.info('Starting to evaluate.')
 
-    # flags.max_train_steps is generally associated with testing and profiling.
-    # As a result it is frequently called with synthetic data, which will
-    # iterate forever. Passing steps=flags.max_train_steps allows the eval
-    # (which is generally unimportant in those circumstances) to terminate.
+    # flags_obj.max_train_steps is generally associated with testing and
+    # profiling. As a result it is frequently called with synthetic data, which
+    # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
+    # eval (which is generally unimportant in those circumstances) to terminate.
     # Note that eval will run for max_train_steps each loop, regardless of the
     # global_step count.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
-                                       steps=flags.max_train_steps)
-    print(eval_results)
+                                       steps=flags_obj.max_train_steps)
 
-    if benchmark_logger:
-      benchmark_logger.log_estimator_evaluation_result(eval_results)
+    benchmark_logger.log_evaluation_result(eval_results)
 
     if model_helpers.past_stop_threshold(
-        flags.stop_threshold, eval_results['accuracy']):
+        flags_obj.stop_threshold, eval_results['accuracy']):
       break
 
-  if flags.export_dir is not None:
+  if flags_obj.export_dir is not None:
     # Exports a saved model for the given classifier.
     input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-        shape, batch_size=flags.batch_size)
-    classifier.export_savedmodel(flags.export_dir, input_receiver_fn)
+        shape, batch_size=flags_obj.batch_size)
+    classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn)
 
 
-class ResnetArgParser(argparse.ArgumentParser):
-  """Arguments for configuring and running a Resnet Model."""
+def define_resnet_flags(resnet_size_choices=None):
+  """Add flags and validators for ResNet."""
+  flags_core.define_base()
+  flags_core.define_performance(num_parallel_calls=False)
+  flags_core.define_image()
+  flags_core.define_benchmark()
+  flags.adopt_module_key_flags(flags_core)
 
-  def __init__(self, resnet_size_choices=None):
-    super(ResnetArgParser, self).__init__(parents=[
-        parsers.BaseParser(multi_gpu=False),
-        parsers.PerformanceParser(num_parallel_calls=False),
-        parsers.ImageModelParser(),
-        parsers.ExportParser(),
-        parsers.BenchmarkParser(),
-    ])
+  flags.DEFINE_enum(
+      name='resnet_version', short_name='rv', default='2',
+      enum_values=['1', '2'],
+      help=flags_core.help_wrap(
+          'Version of ResNet. (1 or 2) See README.md for details.'))
 
-    self.add_argument(
-        '--version', '-v', type=int, choices=[1, 2],
-        default=resnet_model.DEFAULT_VERSION,
-        help='Version of ResNet. (1 or 2) See README.md for details.'
-    )
+  choice_kwargs = dict(
+      name='resnet_size', short_name='rs', default='50',
+      help=flags_core.help_wrap('The size of the ResNet model to use.'))
 
-    self.add_argument(
-        '--resnet_size', '-rs', type=int, default=50,
-        choices=resnet_size_choices,
-        help='[default: %(default)s] The size of the ResNet model to use.',
-        metavar='<RS>' if resnet_size_choices is None else None
-    )
+  if resnet_size_choices is None:
+    flags.DEFINE_string(**choice_kwargs)
+  else:
+    flags.DEFINE_enum(enum_values=resnet_size_choices, **choice_kwargs)
 
-  def parse_args(self, args=None, namespace=None):
-    args = super(ResnetArgParser, self).parse_args(
-        args=args, namespace=namespace)
-
-    # handle coupling between dtype and loss_scale
-    parsers.parse_dtype_info(args)
-
-    return args
+  # The current implementation of ResNet v1 is numerically unstable when run
+  # with fp16 and will produce NaN errors soon after training begins.
+  msg = ('ResNet version 1 is not currently supported with fp16. '
+         'Please use version 2 instead.')
+  @flags.multi_flags_validator(['dtype', 'resnet_version'], message=msg)
+  def _forbid_v1_fp16(flag_values):  # pylint: disable=unused-variable
+    return (flags_core.DTYPE_MAP[flag_values['dtype']][0] != tf.float16 or
+            flag_values['resnet_version'] != '1')

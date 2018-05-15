@@ -65,6 +65,16 @@ resnet_arg_scope = resnet_utils.resnet_arg_scope
 slim = tf.contrib.slim
 
 
+class NoOpScope(object):
+  """No-op context manager."""
+
+  def __enter__(self):
+    return None
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    return False
+
+
 @slim.add_arg_scope
 def bottleneck(inputs,
                depth,
@@ -169,7 +179,9 @@ def resnet_v1(inputs,
       is a resnet_utils.Block object describing the units in the block.
     num_classes: Number of predicted classes for classification tasks.
       If 0 or None, we return the features before the logit layer.
-    is_training: whether batch_norm layers are in training mode.
+    is_training: whether batch_norm layers are in training mode. If this is set
+      to None, the callers can specify slim.batch_norm's is_training parameter
+      from an outer slim.arg_scope.
     global_pool: If True, we perform global average pooling before computing the
       logits. Set to True for image classification, False for dense prediction.
     output_stride: If None, then the output will be computed at the nominal
@@ -211,7 +223,8 @@ def resnet_v1(inputs,
     with slim.arg_scope([slim.conv2d, bottleneck,
                          resnet_utils.stack_blocks_dense],
                         outputs_collections=end_points_collection):
-      with slim.arg_scope([slim.batch_norm], is_training=is_training):
+      with (slim.arg_scope([slim.batch_norm], is_training=is_training)
+            if is_training is not None else NoOpScope()):
         net = inputs
         if include_root_block:
           if output_stride is not None:

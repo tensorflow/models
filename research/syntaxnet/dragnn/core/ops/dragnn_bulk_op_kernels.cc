@@ -20,6 +20,7 @@
 
 #include "dragnn/core/ops/compute_session_op.h"
 #include "dragnn/core/resource_container.h"
+#include "dragnn/core/util/label.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 #include "tensorflow/core/framework/numeric_types.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -40,10 +41,10 @@ using tensorflow::DataType;
 using tensorflow::OpKernel;
 using tensorflow::OpKernelConstruction;
 using tensorflow::OpKernelContext;
-using tensorflow::quint8;
 using tensorflow::Status;
 using tensorflow::Tensor;
 using tensorflow::TensorShape;
+using tensorflow::quint8;
 using tensorflow::uint8;
 
 namespace syntaxnet {
@@ -335,11 +336,19 @@ class BulkEmbedFixedFeatures : public ComputeSessionOp {
       embeddings[channel] =
           context->input(embeddings_index).flat<float>().data();
     }
+    int batch_size;
+    if (pad_to_batch_ == -1) {
+      batch_size = session->BatchSize(component_name());
+    } else {
+      batch_size = pad_to_batch_;
+    }
+    VLOG(2) << "batch size: " << batch_size;
+
     Tensor *embedding_vectors;
     OP_REQUIRES_OK(context,
                    context->allocate_output(
                        1,
-                       TensorShape({pad_to_steps_ * pad_to_batch_ *
+                       TensorShape({pad_to_steps_ * batch_size *
                                         session->BeamSize(component_name()),
                                     embedding_size}),
                        &embedding_vectors));
@@ -348,8 +357,8 @@ class BulkEmbedFixedFeatures : public ComputeSessionOp {
                                                      &num_steps_tensor));
     embedding_vectors->flat<float>().setZero();
     int output_size = embedding_vectors->NumElements();
-    session->BulkEmbedFixedFeatures(component_name(), pad_to_batch_,
-                                    pad_to_steps_, output_size, embeddings,
+    session->BulkEmbedFixedFeatures(component_name(), batch_size, pad_to_steps_,
+                                    output_size, embeddings,
                                     embedding_vectors->flat<float>().data());
     num_steps_tensor->scalar<int32>()() = pad_to_steps_;
   }
@@ -371,6 +380,74 @@ REGISTER_KERNEL_BUILDER(Name("BulkEmbedFixedFeatures").Device(DEVICE_CPU),
                         BulkEmbedFixedFeatures);
 
 // See docstring in dragnn_bulk_ops.cc.
+class BulkEmbedDenseFixedFeatures : public ComputeSessionOp {
+ public:
+  explicit BulkEmbedDenseFixedFeatures(OpKernelConstruction *context)
+      : ComputeSessionOp(context) {
+    OP_REQUIRES_OK(context, context->GetAttr("num_channels", &num_channels_));
+
+    // The input vector's zeroth element is the state handle, and the remaining
+    // num_channels_ elements are tensors of float embeddings, one per channel.
+    std::vector<DataType> input_types(num_channels_ + 1, DT_FLOAT);
+    input_types[0] = DT_STRING;
+    const std::vector<DataType> output_types = {DT_STRING, DT_FLOAT, DT_INT32};
+    OP_REQUIRES_OK(context, context->MatchSignature(input_types, output_types));
+  }
+
+  bool OutputsHandle() const override { return true; }
+  bool RequiresComponentName() const override { return true; }
+
+  void ComputeWithState(OpKernelContext *context,
+                        ComputeSession *session) override {
+    const auto &spec = session->Spec(component_name());
+    int embedding_size = 0;
+    std::vector<const float *> embeddings(num_channels_);
+    for (int channel = 0; channel < num_channels_; ++channel) {
+      const int embeddings_index = channel + 1;
+      embedding_size += context->input(embeddings_index).shape().dim_size(1) *
+                        spec.fixed_feature(channel).size();
+      embeddings[channel] =
+          context->input(embeddings_index).flat<float>().data();
+    }
+
+    auto component = session->GetReadiedComponent(component_name());
+    int data_tensor_size = component->BulkDenseFeatureSize();
+    Tensor *embedding_vectors;
+    OP_REQUIRES_OK(context,
+                   context->allocate_output(
+                       1, TensorShape({data_tensor_size, embedding_size}),
+                       &embedding_vectors));
+    Tensor *offset_array_tensor;
+    OP_REQUIRES(context, component->BeamSize() == 1,
+                tensorflow::errors::FailedPrecondition("Beam must be 1."));
+    OP_REQUIRES_OK(context, context->allocate_output(
+                                2, TensorShape({component->BatchSize() + 1}),
+                                &offset_array_tensor));
+    embedding_vectors->flat<float>().setZero();
+    int output_size = embedding_vectors->NumElements();
+    int offset_array_size = offset_array_tensor->NumElements();
+    component->BulkEmbedDenseFixedFeatures(
+        embeddings, embedding_vectors->flat<float>().data(), output_size,
+        offset_array_tensor->flat<int32>().data(), offset_array_size);
+  }
+
+ private:
+  // Number of fixed feature channels.
+  int num_channels_;
+
+  // Will pad output to this many batch elements.
+  int pad_to_batch_;
+
+  // Will pad output to this many steps.
+  int pad_to_steps_;
+
+  TF_DISALLOW_COPY_AND_ASSIGN(BulkEmbedDenseFixedFeatures);
+};
+
+REGISTER_KERNEL_BUILDER(Name("BulkEmbedDenseFixedFeatures").Device(DEVICE_CPU),
+                        BulkEmbedDenseFixedFeatures);
+
+// See docstring in dragnn_bulk_ops.cc.
 class BulkAdvanceFromOracle : public ComputeSessionOp {
  public:
   explicit BulkAdvanceFromOracle(OpKernelConstruction *context)
@@ -388,7 +465,9 @@ class BulkAdvanceFromOracle : public ComputeSessionOp {
     const int batch_size = session->BatchSize(component_name());
     const int beam_size = session->BeamSize(component_name());
     const int num_items = batch_size * beam_size;
-    vector<vector<vector<int32>>> gold;
+
+    // Nested vector of size step_count * batch_size * beam_size * label_count.
+    vector<vector<vector<vector<Label>>>> gold;
 
     int num_steps = 0;
     while (!session->IsTerminal(component_name())) {
@@ -408,8 +487,12 @@ class BulkAdvanceFromOracle : public ComputeSessionOp {
     for (int batch_ix = 0; batch_ix < batch_size; ++batch_ix) {
       for (int beam_ix = 0; beam_ix < beam_size; ++beam_ix, ++item) {
         for (int step = 0; step < num_steps; ++step) {
+          // The default transition system behavior is a one-hot multi-class
+          // prediction, so there is only one gold label. If there are more than
+          // one gold labels, the code assumes they are equally valid, and we
+          // arbitrarily pick the first one.
           gold_output->vec<int32>()(item * num_steps + step) =
-              step < gold.size() ? gold[step][batch_ix][beam_ix] : -1;
+              step < gold.size() ? gold[step][batch_ix][beam_ix][0].id : -1;
         }
       }
     }

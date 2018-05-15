@@ -138,19 +138,19 @@ class FPNFeatureMapGeneratorTest(tf.test.TestCase):
 
   def test_get_expected_feature_map_shapes(self):
     image_features = [
-        tf.random_uniform([4, 8, 8, 256], dtype=tf.float32),
-        tf.random_uniform([4, 4, 4, 256], dtype=tf.float32),
-        tf.random_uniform([4, 2, 2, 256], dtype=tf.float32),
-        tf.random_uniform([4, 1, 1, 256], dtype=tf.float32),
+        ('block2', tf.random_uniform([4, 8, 8, 256], dtype=tf.float32)),
+        ('block3', tf.random_uniform([4, 4, 4, 256], dtype=tf.float32)),
+        ('block4', tf.random_uniform([4, 2, 2, 256], dtype=tf.float32)),
+        ('block5', tf.random_uniform([4, 1, 1, 256], dtype=tf.float32))
     ]
     feature_maps = feature_map_generators.fpn_top_down_feature_maps(
         image_features=image_features, depth=128)
 
     expected_feature_map_shapes = {
-        'top_down_feature_map_0': (4, 8, 8, 128),
-        'top_down_feature_map_1': (4, 4, 4, 128),
-        'top_down_feature_map_2': (4, 2, 2, 128),
-        'top_down_feature_map_3': (4, 1, 1, 128)
+        'top_down_block2': (4, 8, 8, 128),
+        'top_down_block3': (4, 4, 4, 128),
+        'top_down_block4': (4, 2, 2, 128),
+        'top_down_block5': (4, 1, 1, 128)
     }
 
     init_op = tf.global_variables_initializer()

@@ -69,10 +69,13 @@ def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
                             in tensor_dict)
   include_keypoints = (fields.InputDataFields.groundtruth_keypoints
                        in tensor_dict)
+  include_multiclass_scores = (fields.InputDataFields.multiclass_scores
+                               in tensor_dict)
   if data_augmentation_options:
     tensor_dict = preprocessor.preprocess(
         tensor_dict, data_augmentation_options,
         func_arg_map=preprocessor.get_default_func_arg_map(
+            include_multiclass_scores=include_multiclass_scores,
             include_instance_masks=include_instance_masks,
             include_keypoints=include_keypoints))
 
@@ -85,7 +88,10 @@ def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
   return input_queue
 
 
-def get_inputs(input_queue, num_classes, merge_multiple_label_boxes=False):
+def get_inputs(input_queue,
+               num_classes,
+               merge_multiple_label_boxes=False,
+               use_multiclass_scores=False):
   """Dequeues batch and constructs inputs to object detection model.
 
   Args:
@@ -95,6 +101,8 @@ def get_inputs(input_queue, num_classes, merge_multiple_label_boxes=False):
       or not. Defaults to false. Merged boxes are represented with a single
       box and a k-hot encoding of the multiple labels associated with the
       boxes.
+    use_multiclass_scores: Whether to use multiclass scores instead of
+      groundtruth_classes.
 
   Returns:
     images: a list of 3-D float tensor of images.
@@ -123,9 +131,19 @@ def get_inputs(input_queue, num_classes, merge_multiple_label_boxes=False):
     classes_gt = tf.cast(read_data[fields.InputDataFields.groundtruth_classes],
                          tf.int32)
     classes_gt -= label_id_offset
+
+    if merge_multiple_label_boxes and use_multiclass_scores:
+      raise ValueError(
+          'Using both merge_multiple_label_boxes and use_multiclass_scores is'
+          'not supported'
+      )
+
     if merge_multiple_label_boxes:
       location_gt, classes_gt, _ = util_ops.merge_boxes_with_multiple_labels(
           location_gt, classes_gt, num_classes)
+    elif use_multiclass_scores:
+      classes_gt = tf.cast(read_data[fields.InputDataFields.multiclass_scores],
+                           tf.float32)
     else:
       classes_gt = util_ops.padded_one_hot_encoding(
           indices=classes_gt, depth=num_classes, left_pad=0)
@@ -155,7 +173,8 @@ def _create_losses(input_queue, create_model_fn, train_config):
    groundtruth_masks_list, groundtruth_keypoints_list, _) = get_inputs(
        input_queue,
        detection_model.num_classes,
-       train_config.merge_multiple_label_boxes)
+       train_config.merge_multiple_label_boxes,
+       train_config.use_multiclass_scores)
 
   preprocessed_images = []
   true_image_shapes = []
@@ -183,9 +202,19 @@ def _create_losses(input_queue, create_model_fn, train_config):
     tf.losses.add_loss(loss_tensor)
 
 
-def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
-          num_clones, worker_replicas, clone_on_cpu, ps_tasks, worker_job_name,
-          is_chief, train_dir, graph_hook_fn=None):
+def train(create_tensor_dict_fn,
+          create_model_fn,
+          train_config,
+          master,
+          task,
+          num_clones,
+          worker_replicas,
+          clone_on_cpu,
+          ps_tasks,
+          worker_job_name,
+          is_chief,
+          train_dir,
+          graph_hook_fn=None):
   """Training function for detection models.
 
   Args:
@@ -202,10 +231,10 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     worker_job_name: Name of the worker job.
     is_chief: Whether this replica is the chief replica.
     train_dir: Directory to write checkpoints and training summaries to.
-    graph_hook_fn: Optional function that is called after the training graph is
-      completely built. This is helpful to perform additional changes to the
-      training graph such as optimizing batchnorm. The function should modify
-      the default graph.
+    graph_hook_fn: Optional function that is called after the inference graph is
+      built (before optimization). This is helpful to perform additional changes
+      to the training graph such as adding FakeQuant ops. The function should
+      modify the default graph.
   """
 
   detection_model = create_model_fn()
@@ -245,6 +274,10 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
                                  train_config=train_config)
     clones = model_deploy.create_clones(deploy_config, model_fn, [input_queue])
     first_clone_scope = clones[0].scope
+
+    if graph_hook_fn:
+      with tf.device(deploy_config.variables_device()):
+        graph_hook_fn()
 
     # Gather update_ops from the first clone. These contain, for example,
     # the updates for the batch_norm variables created by model_fn.
@@ -298,10 +331,6 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
       update_op = tf.group(*update_ops, name='update_barrier')
       with tf.control_dependencies([update_op]):
         train_tensor = tf.identity(total_loss, name='train_op')
-
-    if graph_hook_fn:
-      with tf.device(deploy_config.variables_device()):
-        graph_hook_fn()
 
     # Add summaries.
     for model_var in slim.get_model_variables():

@@ -32,10 +32,6 @@ parser.add_argument('--price_norm_factor', default=1000., type=float,
                     help='price normalization factor')
 
 
-def from_dataset(ds):
-    return lambda: ds.make_one_shot_iterator().get_next()
-
-
 def main(argv):
   """Builds, trains, and evaluates the model."""
   args = parser.parse_args(argv[1:])
@@ -45,17 +41,11 @@ def main(argv):
   train_y /= args.price_norm_factor
   test_y /= args.price_norm_factor
 
-  # Build the training dataset.
-  train = (
-      automobile_data.make_dataset(train_x, train_y)
-      # Shuffling with a buffer larger than the data set ensures
-      # that the examples are well mixed.
-      .shuffle(1000).batch(args.batch_size)
-      # Repeat forever
-      .repeat())
+  # Provide the training input dataset.
+  train_input_fn = automobile_data.make_dataset(args.batch_size, train_x, train_y, True, 1000)
 
-  # Build the validation dataset.
-  test = automobile_data.make_dataset(test_x, test_y).batch(args.batch_size)
+  # Provide the validation input dataset.
+  test_input_fn = automobile_data.make_dataset(args.batch_size, test_x, test_y)
 
   # The following code demonstrates two of the ways that `feature_columns` can
   # be used to build a model with categorical inputs.
@@ -93,10 +83,10 @@ def main(argv):
 
   # Train the model.
   # By default, the Estimators log output every 100 steps.
-  model.train(input_fn=from_dataset(train), steps=args.train_steps)
+  model.train(input_fn=train_input_fn, steps=args.train_steps)
 
   # Evaluate how the model performs on data it has not yet seen.
-  eval_result = model.evaluate(input_fn=from_dataset(test))
+  eval_result = model.evaluate(input_fn=test_input_fn)
 
   # The evaluation returns a Python dictionary. The "average_loss" key holds the
   # Mean Squared Error (MSE).
