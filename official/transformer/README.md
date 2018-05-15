@@ -54,12 +54,12 @@ python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
 tensorboard --logdir=$MODEL_DIR
 
 # Translate some text using the trained model
-python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --param_set=$PARAM_SET --text="hello world"
+python translate.py --model_dir=$MODEL_DIR --param_set=$PARAM_SET \
+    --text="hello world"
 
 # Compute model's BLEU score using the newstest2014 dataset.
-python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --param_set=$PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
+python translate.py --model_dir=$MODEL_DIR --param_set=$PARAM_SET \
+    --file=test_data/newstest2014.en --file_out=translation.en
 python compute_bleu.py --translation=translation.en --reference=test_data/newstest2014.de
 ```
 
@@ -171,7 +171,6 @@ big | 28.9
    ```
 
    Arguments for initializing the Subtokenizer and trained model:
-   * `--data_dir`: Used to locate the vocabulary file to create a Subtokenizer, which encodes the input and decodes the model output.
    * `--model_dir` and `--param_set`: These parameters are used to rebuild the trained model
 
    Arguments for specifying what to translate:
@@ -181,8 +180,8 @@ big | 28.9
 
    To translate the newstest2014 data, run:
    ```
-   python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-       --param_set=PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
+   python translate.py --model_dir=$MODEL_DIR --param_set=PARAM_SET \
+       --file=test_data/newstest2014.en --file_out=translation.en
    ```
 
    Translating the file takes around 15 minutes on a GTX1080, or 5 minutes on a P100.
