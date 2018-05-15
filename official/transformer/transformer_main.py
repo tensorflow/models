@@ -81,9 +81,12 @@ def model_fn(features, labels, mode, params):
     logits = output
 
     # Calculate model loss.
+    # xentropy contains the cross entropy loss of every nonpadding token in the
+    # targets.
     xentropy, weights = metrics.padded_cross_entropy_loss(
         logits, targets, params.label_smoothing, params.vocab_size)
-    loss = tf.reduce_sum(xentropy * weights) / tf.reduce_sum(weights)
+    # Compute the weighted mean of the cross entropy losses
+    loss = tf.reduce_sum(xentropy) / tf.reduce_sum(weights)
 
     # Save loss as named tensor that will be logged with the logging hook.
     tf.identity(loss, "cross_entropy")
