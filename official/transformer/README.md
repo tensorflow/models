@@ -199,6 +199,95 @@ big | 28.9
    * `--reference`: Path to file containing reference translations.
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
 
+## Export trained model
+To export the model as a Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format, use the argument `--export_dir` when running `transformer_main.py`. A folder will be created in the directory with the name as the timestamp (e.g. $EXPORT_DIR/1526427396).
+
+```
+EXPORT_DIR=$HOME/transformer/saved_model
+python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
+  --param_set=$PARAM_SET --export_model=$EXPORT_DIR
+```
+
+To inspect the SavedModel, use saved_model_cli:
+```
+SAVED_MODEL_DIR=$EXPORT_DIR/{TIMESTAMP}  # replace {TIMESTAMP} with the name of the folder created
+saved_model_cli show --dir=$SAVED_MODEL_DIR  --all
+```
+
+### Example translation
+Let's translate **"hello world!"**, **"goodbye world."**, and **"Would you like some pie?"**.
+
+The SignatureDef for "translate" is:
+
+    signature_def['translate']:
+        The given SavedModel SignatureDef contains the following input(s):
+          inputs['inputs'] tensor_info:
+              dtype: DT_INT64
+              shape: (-1, -1)
+              name: Placeholder:0
+        The given SavedModel SignatureDef contains the following output(s):
+          outputs['outputs'] tensor_info:
+              dtype: DT_INT32
+              shape: (-1, -1)
+              name: model/Transformer/strided_slice_19:0
+          outputs['scores'] tensor_info:
+              dtype: DT_FLOAT
+              shape: (-1)
+              name: model/Transformer/strided_slice_20:0
+
+Using the translate SignatureDef requires three steps:
+
+1. #### Encode the inputs to an integer array.
+   This can be done using `utils.tokenizer.Subtokenizer`, and the vocab file in the SavedModel assets (`$SAVED_MODEL_DIR/assets.extra/vocab.txt`).
+
+   ```
+   from official.transformer.utils.tokenizer import Subtokenizer
+   s = Subtokenizer(PATH_TO_VOCAB_FILE)
+   print(s.encode("hello world!", add_eos=True))
+   ```
+
+   The encoded inputs are:
+   * `"hello world!" = [6170, 3731, 178, 207, 1]`
+   * `"goodbye world." = [15431, 13966, 36, 178, 3, 1]`
+   * `"Would you like some pie?" = [9092, 72, 155, 202, 19851, 102, 1]`
+
+2. #### Run `saved_model_cli` to obtain the predicted translations
+   The encoded inputs should be padded so that they are the same length. The padding token is `0`.
+   ```
+   ENCODED_INPUTS="[[26228, 145, 178, 1, 0, 0, 0], \
+                   [15431, 13966, 36, 178, 3, 1, 0], \
+                   [9092, 72, 155, 202, 19851, 102, 1]]"
+   ```
+
+   Now, use the `run` command with `saved_model_cli` to get the outputs.
+
+   ```
+   saved_model_cli run --dir=$SAVED_MODEL_DIR --tag_set=serve --signature_def=translate \
+     --input_expr="inputs=$ENCODED_INPUTS"
+   ```
+
+   The outputs will look similar to:
+   ```
+   Result for output key outputs:
+   [[18744   145   297     1     0     0     0     0     0     0     0     0
+         0     0]
+    [ 5450  4642    21    11   297     3     1     0     0     0     0     0
+         0     0]
+    [25940    22    66   103 21713    31   102     1     0     0     0     0
+         0     0]]
+   Result for output key scores:
+   [-1.5493642 -1.4032784 -3.252089 ]
+   ```
+
+3. #### Decode the outputs to strings.
+   Use the `Subtokenizer` and vocab file as described in step 1 to decode the integer arrays.
+   ```
+   from official.transformer.utils.tokenizer import Subtokenizer
+   s = Subtokenizer(PATH_TO_VOCAB_FILE)
+   print(s.decode([18744, 145, 297, 1]))
+   ```
+
+
 ## Implementation overview
 
 A brief look at each component in the code:
