@@ -39,6 +39,7 @@ from official.transformer.model import transformer
 from official.transformer.utils import dataset
 from official.transformer.utils import metrics
 from official.transformer.utils import tokenizer
+from official.utils.export import export
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -465,10 +466,8 @@ def run_transformer(flags_obj):
       vocab_file=flags_obj.vocab_file)
 
   if flags_obj.export_dir:
-    def serving_input_fn():
-      features = tf.placeholder(tf.int64, [None, None])
-      return tf.estimator.export.TensorServingInputReceiver(features, features)
-
+    serving_input_fn = export.build_tensor_serving_input_receiver_fn(
+        shape=[None], dtype=tf.int64, batch_size=None)
     # Export saved model, and save the vocab file as an extra asset. The vocab
     # file is saved to allow consistent input encoding and output decoding.
     # (See the "Export trained model" section in the README for an example of
