@@ -70,6 +70,18 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_integer(
     'task', 0, 'Task id of the replica running the training.')
 
+# Flags governing inter/intra op
+tf.app.flags.DEFINE_integer('num_inter_threads', 0,
+                                'Number of threads to use for inter-op parallelism. If '
+                                'set to 0, the system will pick an appropriate number.')
+tf.app.flags.DEFINE_integer('num_intra_threads', 0,
+                                'Number of threads to use for intra-op parallelism. If '
+                                'set to 0, the system will pick an appropriate number.')
+
+tf.app.flags.DEFINE_string(
+    'variable_update', '',
+    'specify method for managing variables: horovod.')
+
 ######################
 # Optimization Flags #
 ######################
@@ -160,6 +172,16 @@ tf.app.flags.DEFINE_float(
     'The decay to use for the moving average.'
     'If left as None, then moving averages are not used.')
 
+tf.app.flags.DEFINE_float(
+    'warmup_learning_rate', 0.01, 
+    'Initial learning rate for warmup stage.')
+tf.app.flags.DEFINE_integer(
+    'warmup_epochs', 0,
+    'Number of epochs for warmup stage.')
+tf.app.flags.DEFINE_float(
+    'power', 1.0,
+    'power for polynomial decay learning rate.')
+
 #######################
 # Dataset Flags #
 #######################
@@ -219,6 +241,8 @@ tf.app.flags.DEFINE_boolean(
 
 FLAGS = tf.app.flags.FLAGS
 
+_USE_DEFAULT = 0
+
 
 def _configure_learning_rate(num_samples_per_epoch, global_step):
   """Configures the learning rate.
@@ -238,17 +262,21 @@ def _configure_learning_rate(num_samples_per_epoch, global_step):
   if FLAGS.sync_replicas:
     decay_steps /= FLAGS.replicas_to_aggregate
 
+  if FLAGS.variable_update == "horovod":
+    import horovod.tensorflow as hvd
+    decay_steps = int(decay_steps / hvd.size())
+
   if FLAGS.learning_rate_decay_type == 'exponential':
-    return tf.train.exponential_decay(FLAGS.learning_rate,
+    learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                       global_step,
                                       decay_steps,
                                       FLAGS.learning_rate_decay_factor,
                                       staircase=True,
                                       name='exponential_decay_learning_rate')
   elif FLAGS.learning_rate_decay_type == 'fixed':
-    return tf.constant(FLAGS.learning_rate, name='fixed_learning_rate')
+    learning_rate = tf.constant(FLAGS.learning_rate, name='fixed_learning_rate')
   elif FLAGS.learning_rate_decay_type == 'polynomial':
-    return tf.train.polynomial_decay(FLAGS.learning_rate,
+    learning_rate = tf.train.polynomial_decay(FLAGS.learning_rate,
                                      global_step,
                                      decay_steps,
                                      FLAGS.end_learning_rate,
@@ -258,6 +286,24 @@ def _configure_learning_rate(num_samples_per_epoch, global_step):
   else:
     raise ValueError('learning_rate_decay_type [%s] was not recognized',
                      FLAGS.learning_rate_decay_type)
+
+  if FLAGS.warmup_epochs > 0:
+    warmup_steps = int(FLAGS.warmup_epochs * num_samples_per_epoch / FLAGS.batch_size)
+    if FLAGS.variable_update == "horovod":
+        warmup_steps = int(warmup_steps / hvd.size())
+    
+    def warmup_decay(warmup_lr, global_step, warmup_steps, warmup_end_lr):
+      from tensorflow.python.ops import math_ops
+      p = tf.cast(global_step,tf.float32) / tf.cast(warmup_steps,tf.float32)
+      diff = math_ops.subtract(warmup_end_lr, warmup_lr)
+      res = math_ops.add(warmup_lr, math_ops.multiply(diff, p))
+      return res
+
+    learning_rate = tf.cond(global_step < warmup_steps,
+            lambda: warmup_decay(FLAGS.warmup_learning_rate, global_step, warmup_steps, FLAGS.learning_rate),
+            lambda: learning_rate)
+
+  return learning_rate
 
 
 def _configure_optimizer(learning_rate):
@@ -309,6 +355,10 @@ def _configure_optimizer(learning_rate):
     optimizer = tf.train.GradientDescentOptimizer(learning_rate)
   else:
     raise ValueError('Optimizer [%s] was not recognized', FLAGS.optimizer)
+
+  if FLAGS.variable_update == "horovod":
+    import horovod.tensorflow as hvd
+    optimizer = hvd.DistributedOptimizer(optimizer)
   return optimizer
 
 
@@ -381,6 +431,10 @@ def main(_):
   if not FLAGS.dataset_dir:
     raise ValueError('You must supply the dataset directory with --dataset_dir')
 
+  if FLAGS.variable_update == "horovod":
+    import horovod.tensorflow as hvd
+    hvd.init()
+
   tf.logging.set_verbosity(tf.logging.INFO)
   with tf.Graph().as_default():
     #######################
@@ -424,11 +478,18 @@ def main(_):
     # Create a dataset provider that loads data from the dataset #
     ##############################################################
     with tf.device(deploy_config.inputs_device()):
+      if FLAGS.variable_update == "horovod":
+        import horovod.tensorflow as hvd
+        # Set different seeds for shuffle queue, so that different workers
+        # start to read different input files. 
+        # it's copied from tf_cnn_benchmarks/benchmark_cnn.py.
+        seed_value = 1234 + int(hvd.rank())
       provider = slim.dataset_data_provider.DatasetDataProvider(
           dataset,
           num_readers=FLAGS.num_readers,
           common_queue_capacity=20 * FLAGS.batch_size,
-          common_queue_min=10 * FLAGS.batch_size)
+          common_queue_min=10 * FLAGS.batch_size,
+          seed=seed_value if FLAGS.variable_update == "horovod" else None)
       [image, label] = provider.get(['image', 'label'])
       label -= FLAGS.labels_offset
 
@@ -550,22 +611,36 @@ def main(_):
     # Merge all summaries together.
     summary_op = tf.summary.merge(list(summaries), name='summary_op')
 
+    config=tf.ConfigProto()
+    config.intra_op_parallelism_threads = FLAGS.num_intra_threads
+    config.inter_op_parallelism_threads = FLAGS.num_inter_threads
+
+    if FLAGS.variable_update == "horovod":
+      import horovod.tensorflow as hvd
+      local_init_op_ = hvd.broadcast_global_variables(0)
+      is_chief = hvd.rank() == 0
+    else:
+      local_init_op_ = _USE_DEFAULT
+      is_chief = FLAGS.task == 0
+
     ###########################
     # Kicks off the training. #
     ###########################
     slim.learning.train(
         train_tensor,
-        logdir=FLAGS.train_dir,
+        logdir=FLAGS.train_dir if is_chief else None,
         master=FLAGS.master,
-        is_chief=(FLAGS.task == 0),
+        # all horovod workers are 'chiefs'
+        is_chief=is_chief or FLAGS.variable_update == "horovod",
         init_fn=_get_init_fn(),
-        summary_op=summary_op,
+        local_init_op= local_init_op_,
+        summary_op=summary_op if is_chief else _USE_DEFAULT,
+        session_config=config,
         number_of_steps=FLAGS.max_number_of_steps,
         log_every_n_steps=FLAGS.log_every_n_steps,
         save_summaries_secs=FLAGS.save_summaries_secs,
         save_interval_secs=FLAGS.save_interval_secs,
         sync_optimizer=optimizer if FLAGS.sync_replicas else None)
-
 
 if __name__ == '__main__':
   tf.app.run()
