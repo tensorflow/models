@@ -43,25 +43,27 @@ cd /path/to/models/official/transformer
 PARAM_SET=big
 DATA_DIR=$HOME/transformer/data
 MODEL_DIR=$HOME/transformer/model_$PARAM_SET
+VOCAB_FILE=$DATA_DIR/vocab.ende.32768
 
 # Download training/evaluation datasets
 python data_download.py --data_dir=$DATA_DIR
 
 # Train the model for 10 epochs, and evaluate after every epoch.
 python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --param_set=$PARAM_SET --bleu_source=test_data/newstest2014.en --bleu_ref=test_data/newstest2014.de
+    --vocab_file=$VOCAB_FILE --param_set=$PARAM_SET \
+    --bleu_source=test_data/newstest2014.en --bleu_ref=test_data/newstest2014.de
 
 # Run during training in a separate process to get continuous updates,
 # or after training is complete.
 tensorboard --logdir=$MODEL_DIR
 
 # Translate some text using the trained model
-python translate.py --model_dir=$MODEL_DIR --param_set=$PARAM_SET \
-    --text="hello world"
+python translate.py --model_dir=$MODEL_DIR --vocab_file=$VOCAB_FILE \
+    --param_set=$PARAM_SET --text="hello world"
 
 # Compute model's BLEU score using the newstest2014 dataset.
-python translate.py --model_dir=$MODEL_DIR --param_set=$PARAM_SET \
-    --file=test_data/newstest2014.en --file_out=translation.en
+python translate.py --model_dir=$MODEL_DIR --vocab_file=$VOCAB_FILE \
+    --param_set=$PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
 python compute_bleu.py --translation=translation.en --reference=test_data/newstest2014.de
 ```
 
@@ -100,6 +102,7 @@ big | 28.9
    PARAM_SET=big
    DATA_DIR=$HOME/transformer/data
    MODEL_DIR=$HOME/transformer/model_$PARAM_SET
+   VOCAB_FILE=$DATA_DIR/vocab.ende.32768
    ```
 
 1. ### Download and preprocess datasets
@@ -123,12 +126,14 @@ big | 28.9
 
    Command to run:
    ```
-   python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --param_set=$PARAM_SET
+   python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
+       --vocab_file=$VOCAB_FILE --param_set=$PARAM_SET
    ```
 
    Arguments:
    * `--data_dir`: This should be set to the same directory given to the `data_download`'s `data_dir` argument.
    * `--model_dir`: Directory to save Transformer model training checkpoints.
+   * `--vocab_file`: Path to subtoken vacbulary file. If data_download was used, you may find the file in `data_dir`.
    * `--param_set`: Parameter set to use when creating and training the model. Options are `base` and `big` (default).
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
 
@@ -169,11 +174,13 @@ big | 28.9
 
    Command to run:
    ```
-   python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --param_set=PARAM_SET --text="hello world"
+   python translate.py --model_dir=$MODEL_DIR --vocab_file=$VOCAB_FILE \
+       --param_set=$PARAM_SET --text="hello world"
    ```
 
    Arguments for initializing the Subtokenizer and trained model:
    * `--model_dir` and `--param_set`: These parameters are used to rebuild the trained model
+   * `--vocab_file`: Path to subtoken vacbulary file. If data_download was used, you may find the file in `data_dir`.
 
    Arguments for specifying what to translate:
    * `--text`: Text to translate
@@ -182,8 +189,8 @@ big | 28.9
 
    To translate the newstest2014 data, run:
    ```
-   python translate.py --model_dir=$MODEL_DIR --param_set=PARAM_SET \
-       --file=test_data/newstest2014.en --file_out=translation.en
+   python translate.py --model_dir=$MODEL_DIR --vocab_file=$VOCAB_FILE \
+       --param_set=$PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
    ```
 
    Translating the file takes around 15 minutes on a GTX1080, or 5 minutes on a P100.
@@ -207,7 +214,7 @@ To export the model as a Tensorflow [SavedModel](https://www.tensorflow.org/prog
 ```
 EXPORT_DIR=$HOME/transformer/saved_model
 python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-  --param_set=$PARAM_SET --export_model=$EXPORT_DIR
+  --vocab_file=$VOCAB_FILE --param_set=$PARAM_SET --export_model=$EXPORT_DIR
 ```
 
 To inspect the SavedModel, use saved_model_cli:

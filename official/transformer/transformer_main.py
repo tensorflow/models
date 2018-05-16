@@ -34,7 +34,6 @@ import tensorflow as tf
 
 from official.transformer import compute_bleu
 from official.transformer import translate
-from official.transformer.data_download import VOCAB_FILE as DEFAULT_VOCAB_FILE
 from official.transformer.model import model_params
 from official.transformer.model import transformer
 from official.transformer.utils import dataset
@@ -53,13 +52,6 @@ PARAMS_MAP = {
 DEFAULT_TRAIN_EPOCHS = 10
 INF = int(1e9)
 BLEU_DIR = "bleu"
-
-# During the first run of transformer_main.py, the vocabulary file from data_dir
-# will be copied to the model_dir, and renamed to VOCAB_FILE_NAME. In subsequent
-# runs, if a vocab file exists in the data directory, that file must have the
-# same contents as the vocab file in model_dir. This helps to ensure that a
-# consistent vocabulary is maintained.
-VOCAB_FILE = "vocab.txt"
 
 # Dictionary containing tensors that are logged by the logging hooks. Each item
 # maps a string to the tensor name.
@@ -186,10 +178,9 @@ def get_global_step(estimator):
   return int(estimator.latest_checkpoint().split("-")[-1])
 
 
-def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref):
+def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file):
   """Calculate and record the BLEU score."""
-  vocab_file_path = os.path.join(estimator.model_dir, VOCAB_FILE)
-  subtokenizer = tokenizer.Subtokenizer(vocab_file_path)
+  subtokenizer = tokenizer.Subtokenizer(vocab_file)
 
   uncased_score, cased_score = translate_and_compute_bleu(
       estimator, subtokenizer, bleu_source, bleu_ref)
@@ -202,7 +193,7 @@ def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref):
 def train_schedule(
     estimator, train_eval_iterations, single_iteration_train_steps=None,
     single_iteration_train_epochs=None, train_hooks=None, benchmark_logger=None,
-    bleu_source=None, bleu_ref=None, bleu_threshold=None):
+    bleu_source=None, bleu_ref=None, bleu_threshold=None, vocab_file=None):
   """Train and evaluate model, and optionally compute model's BLEU score.
 
   **Step vs. Epoch vs. Iteration**
@@ -236,6 +227,7 @@ def train_schedule(
     bleu_source: File containing text to be translated for BLEU calculation.
     bleu_ref: File containing reference translations for BLEU calculation.
     bleu_threshold: minimum BLEU score before training is stopped.
+    vocab_file: Path to vocab file that will be used to subtokenize bleu_source.
 
   Raises:
     ValueError: if both or none of single_iteration_train_steps and
@@ -303,7 +295,7 @@ def train_schedule(
     # are compared to reference file to get the actual bleu score.
     if evaluate_bleu:
       uncased_score, cased_score = evaluate_and_log_bleu(
-          estimator, bleu_source, bleu_ref)
+          estimator, bleu_source, bleu_ref, vocab_file)
 
       # Write actual bleu scores using summary writer and benchmark logger
       global_step = get_global_step(estimator)
@@ -370,22 +362,23 @@ def define_transformer_flags():
       name="bleu_source", short_name="bls", default=None,
       help=flags_core.help_wrap(
           "Path to source file containing text translate when calculating the "
-          "official BLEU score. --bleu_source, --bleu_ref, and --vocab_file "
-          "must be set. Use the flag --stop_threshold to stop the script based "
-          "on the uncased BLEU score."))
+          "official BLEU score. Both --bleu_source and --bleu_ref must be set. "
+          "Use the flag --stop_threshold to stop the script based on the "
+          "uncased BLEU score."))
   flags.DEFINE_string(
       name="bleu_ref", short_name="blr", default=None,
       help=flags_core.help_wrap(
           "Path to source file containing text translate when calculating the "
-          "official BLEU score. --bleu_source, --bleu_ref, and --vocab_file "
-          "must be set. Use the flag --stop_threshold to stop the script based "
-          "on the uncased BLEU score."))
+          "official BLEU score. Both --bleu_source and --bleu_ref must be set. "
+          "Use the flag --stop_threshold to stop the script based on the "
+          "uncased BLEU score."))
   flags.DEFINE_string(
-      name="vocab_file", short_name="vf", default=DEFAULT_VOCAB_FILE,
+      name="vocab_file", short_name="vf", default=None,
       help=flags_core.help_wrap(
-          "Name of vocabulary file containing subtokens for subtokenizing the "
-          "bleu_source file. This file is expected to be in the directory "
-          "defined by --data_dir."))
+          "Path to subtoken vocabulary file. If data_download.py was used to "
+          "download and encode the training data, look in the data_dir to find "
+          "the vocab file."))
+  flags.mark_flag_as_required("vocab_file")
 
   flags_core.set_defaults(data_dir="/tmp/translate_ende",
                           model_dir="/tmp/transformer_model",
@@ -411,25 +404,10 @@ def define_transformer_flags():
         tf.gfile.Exists(flags_dict["bleu_source"]),
         tf.gfile.Exists(flags_dict["bleu_ref"])])
 
-  @flags.multi_flags_validator(
-      ["data_dir", "model_dir", "vocab_file"],
-      message="Please ensure that the --vocab_file exists in --data_dir. If it "
-              "exists, please make sure the contents match that of the vocab "
-              "file in --model_dir.")
-  def _check_vocab_file(flags_dict):
-    """Ensure that vocab files exist and are consistent."""
-    data_vocab = os.path.join(
-        flags_dict["data_dir"], flags_dict["vocab_file"])
-    model_vocab = os.path.join(flags_dict["model_dir"], VOCAB_FILE)
-
-    # If both exist, then make sure the vocab files are the same.
-    if tf.gfile.Exists(data_vocab) and tf.gfile.Exists(model_vocab):
-      with tf.gfile.Open(data_vocab) as d:
-        with tf.gfile.Open(model_vocab) as m:
-          return m.read() == d.read()
-
-    # At least one must exist.
-    return tf.gfile.Exists(data_vocab) or tf.gfile.Exists(model_vocab)
+  @flags.validator("vocab_file", "File set by --vocab_file does not exist.")
+  def _check_vocab_file(vocab_file):
+    """Ensure that vocab file exists."""
+    return tf.gfile.Exists(vocab_file)
 
 
 def run_transformer(flags_obj):
@@ -438,14 +416,6 @@ def run_transformer(flags_obj):
   Args:
     flags_obj: Object containing parsed flag values.
   """
-  # Copy vocab file to model_dir if it doesn't already exist. If the model dir
-  # has a vocab file, it has been validated by _check_vocab_file.
-  model_vocab = os.path.join(flags_obj.model_dir, VOCAB_FILE)
-  if not tf.gfile.Exists(model_vocab):
-    data_vocab = os.path.join(flags_obj.data_dir, flags_obj.vocab_file)
-    tf.gfile.MakeDirs(flags_obj.model_dir)
-    tf.gfile.Copy(data_vocab, model_vocab)
-
   # Determine training schedule based on flags.
   if flags_obj.train_steps is not None:
     train_eval_iterations = (
@@ -492,7 +462,8 @@ def run_transformer(flags_obj):
       # BLEU calculation arguments
       bleu_source=flags_obj.bleu_source,
       bleu_ref=flags_obj.bleu_ref,
-      bleu_threshold=flags_obj.stop_threshold)
+      bleu_threshold=flags_obj.stop_threshold,
+      vocab_file=flags_obj.vocab_file)
 
   if flags_obj.export_dir:
     serving_input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
@@ -500,7 +471,7 @@ def run_transformer(flags_obj):
     })
     estimator.export_savedmodel(
         flags_obj.export_dir, serving_input_fn, as_text=True,
-        assets_extra={VOCAB_FILE: model_vocab})
+        assets_extra={"vocab.txt": flags_obj.vocab_file})
 
 
 def main(_):

@@ -27,7 +27,6 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.transformer.data_download import VOCAB_FILE
 from official.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
 
@@ -162,8 +161,7 @@ def main(unused_argv):
                     "flags --text or --file.")
     return
 
-  vocab_file = os.path.join(FLAGS.model_dir, transformer_main.VOCAB_FILE)
-  subtokenizer = tokenizer.Subtokenizer(vocab_file)
+  subtokenizer = tokenizer.Subtokenizer(FLAGS.vocab_file)
 
   # Set up estimator and params
   params = transformer_main.PARAMS_MAP[FLAGS.param_set]
@@ -210,6 +208,13 @@ def define_translate_flags():
           "and various other settings. The big parameter set increases the "
           "default batch size, embedding/hidden size, and filter size. For a "
           "complete list of parameters, please see model/model_params.py."))
+  flags.DEFINE_string(
+      name="vocab_file", short_name="vf", default=None,
+      help=flags_core.help_wrap(
+          "Path to subtoken vocabulary file. If data_download.py was used to "
+          "download and encode the training data, look in the data_dir to find "
+          "the vocab file."))
+  flags.mark_flag_as_required("vocab_file")
 
   flags.DEFINE_string(
       name="text", default=None,
