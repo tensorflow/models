@@ -19,6 +19,8 @@ The model also applies embeddings on the input and output tokens, and adds a con
     * [Model training and evaluation](#model-training-and-evaluation)
     * [Translate using the model](#translate-using-the-model)
     * [Compute official BLEU score](#compute-official-bleu-score)
+  * [Export trained model](#export-trained-model)
+    * [Example translation](#example-translation)
   * [Implementation overview](#implementation-overview)
     * [Model Definition](#model-definition)
     * [Model Estimator](#model-estimator)
@@ -235,9 +237,9 @@ The SignatureDef for "translate" is:
               shape: (-1)
               name: model/Transformer/strided_slice_20:0
 
-Using the translate SignatureDef requires three steps:
+Follow the steps below to use the translate signature def:
 
-1. #### Encode the inputs to an integer array.
+1. #### Encode the inputs to integer arrays.
    This can be done using `utils.tokenizer.Subtokenizer`, and the vocab file in the SavedModel assets (`$SAVED_MODEL_DIR/assets.extra/vocab.txt`).
 
    ```
@@ -280,12 +282,17 @@ Using the translate SignatureDef requires three steps:
    ```
 
 3. #### Decode the outputs to strings.
-   Use the `Subtokenizer` and vocab file as described in step 1 to decode the integer arrays.
+   Use the `Subtokenizer` and vocab file as described in step 1 to decode the output integer arrays.
    ```
    from official.transformer.utils.tokenizer import Subtokenizer
    s = Subtokenizer(PATH_TO_VOCAB_FILE)
    print(s.decode([18744, 145, 297, 1]))
    ```
+   The decoded outputs from above are:
+   * `[18744, 145, 297, 1] = "Hallo Welt<EOS>"`
+   * `[5450, 4642, 21, 11, 297, 3, 1] = "Abschied von der Welt.<EOS>"`
+   * `[25940, 22, 66, 103, 21713, 31, 102, 1] = "Möchten Sie einen Kuchen?<EOS>"`
+
 
 
 ## Implementation overview
