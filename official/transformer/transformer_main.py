@@ -86,7 +86,7 @@ def model_fn(features, labels, mode, params):
           tf.estimator.ModeKeys.PREDICT,
           predictions=output,
           export_outputs={
-            'translate': tf.estimator.export.PredictOutput(output)
+              "translate": tf.estimator.export.PredictOutput(output)
           }
       )
 
@@ -495,7 +495,7 @@ def run_transformer(flags_obj):
 
   if flags_obj.export_dir:
     serving_input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
-      'inputs': tf.placeholder(tf.int64, [None, None])
+        "inputs": tf.placeholder(tf.int64, [None, None])
     })
     estimator.export_savedmodel(
         flags_obj.export_dir, serving_input_fn, as_text=True,
