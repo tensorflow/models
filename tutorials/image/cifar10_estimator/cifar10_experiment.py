@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,26 +33,18 @@ import functools
 import itertools
 import os
 
-import numpy as np
-import six
-from six.moves import xrange  # pylint: disable=redefined-builtin
-
-import tensorflow as tf
-from tensorflow.contrib.training.python.training import hparam
-
 import cifar10
 import cifar10_model
 import cifar10_utils
+import numpy as np
+import six
+from six.moves import xrange  # pylint: disable=redefined-builtin
+import tensorflow as tf
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
-def serving_input_fn():
-    inputs = {'image': tf.placeholder(tf.float32, [None, cifar10.HEIGHT, cifar10.WIDTH, cifar10.DEPTH])}
-    features = inputs # as-is
-    return tf.estimator.export.ServingInputReceiver(features, inputs)
-
-def get_model_fn(num_gpus, variable_strategy, num_workers, is_chief):
+def get_model_fn(num_gpus, variable_strategy, num_workers):
   """Returns a function that will build the resnet model."""
 
   def _resnet_model_fn(features, labels, mode, params):
@@ -113,29 +105,21 @@ def get_model_fn(num_gpus, variable_strategy, num_workers, is_chief):
       with tf.variable_scope('resnet', reuse=bool(i != 0)):
         with tf.name_scope('tower_%d' % i) as name_scope:
           with tf.device(device_setter):
-            if mode == tf.estimator.ModeKeys.PREDICT:
-              preds = _tower_fn_pred(
-                  is_training, tower_features["image"],
-                  data_format, params.num_layers, params.batch_norm_decay,
-                  params.batch_norm_epsilon)
-              tower_preds.append(preds)
-            else:
-              loss, gradvars, preds = _tower_fn(
-                  is_training, weight_decay, tower_features[i], tower_labels[i],
-                  data_format, params.num_layers, params.batch_norm_decay,
-                  params.batch_norm_epsilon)
-
-              tower_losses.append(loss)
-              tower_gradvars.append(gradvars)
-              tower_preds.append(preds)
-              if i == 0:
-                # Only trigger batch_norm moving mean and variance update from
-                # the 1st tower. Ideally, we should grab the updates from all
-                # towers but these stats accumulate extremely fast so we can
-                # ignore the other stats from the other towers without
-                # significant detriment.
-                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS,
-                                               name_scope)
+            loss, gradvars, preds = _tower_fn(
+                is_training, weight_decay, tower_features[i], tower_labels[i],
+                data_format, params.num_layers, params.batch_norm_decay,
+                params.batch_norm_epsilon)
+            tower_losses.append(loss)
+            tower_gradvars.append(gradvars)
+            tower_preds.append(preds)
+            if i == 0:
+              # Only trigger batch_norm moving mean and variance update from
+              # the 1st tower. Ideally, we should grab the updates from all
+              # towers but these stats accumulate extremely fast so we can
+              # ignore the other stats from the other towers without
+              # significant detriment.
+              update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS,
+                                             name_scope)
 
     # Now compute global loss and gradients.
     gradvars = []
@@ -188,8 +172,16 @@ def get_model_fn(num_gpus, variable_strategy, num_workers, is_chief):
       if params.sync:
         optimizer = tf.train.SyncReplicasOptimizer(
             optimizer, replicas_to_aggregate=num_workers)
-        sync_replicas_hook = optimizer.make_session_run_hook(is_chief)
+        sync_replicas_hook = optimizer.make_session_run_hook(params.is_chief)
         train_hooks.append(sync_replicas_hook)
+
+      # Create single grouped train op
+      train_op = [
+          optimizer.apply_gradients(
+              gradvars, global_step=tf.train.get_global_step())
+      ]
+      train_op.extend(update_ops)
+      train_op = tf.group(*train_op)
 
       predictions = {
           'classes':
@@ -197,30 +189,11 @@ def get_model_fn(num_gpus, variable_strategy, num_workers, is_chief):
           'probabilities':
               tf.concat([p['probabilities'] for p in tower_preds], axis=0)
       }
-      export_outputs = {
-          "serving": tf.estimator.export.PredictOutput(predictions)
+      stacked_labels = tf.concat(labels, axis=0)
+      metrics = {
+          'accuracy':
+              tf.metrics.accuracy(stacked_labels, predictions['classes'])
       }
-
-      if mode != tf.estimator.ModeKeys.PREDICT:
-        # Create single grouped train op
-        train_op = [
-            optimizer.apply_gradients(
-                gradvars, global_step=tf.train.get_global_step())
-        ]
-        train_op.extend(update_ops)
-        train_op = tf.group(*train_op)
-
-        stacked_labels = tf.concat(labels, axis=0)
-        metrics = {
-            'accuracy':
-                tf.metrics.accuracy(stacked_labels, predictions['classes'])
-        }
-      else:
-        return tf.estimator.EstimatorSpec(
-            mode=mode,
-            predictions=predictions,
-            export_outputs=export_outputs
-        )
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
@@ -277,36 +250,6 @@ def _tower_fn(is_training, weight_decay, feature, label, data_format,
   return tower_loss, zip(tower_grad, model_params), tower_pred
 
 
-def _tower_fn_pred(is_training, feature, data_format,
-              num_layers, batch_norm_decay, batch_norm_epsilon):
-  """Build computation tower (Resnet) for prediction.
-
-  Args:
-    is_training: true if is training graph.
-    feature: a Tensor.
-    data_format: channels_last (NHWC) or channels_first (NCHW).
-    num_layers: number of layers, an int.
-    batch_norm_decay: decay for batch normalization, a float.
-    batch_norm_epsilon: epsilon for batch normalization, a float.
-
-  Returns:
-    tower predictions.
-
-  """
-  model = cifar10_model.ResNetCifar10(
-      num_layers,
-      batch_norm_decay=batch_norm_decay,
-      batch_norm_epsilon=batch_norm_epsilon,
-      is_training=is_training,
-      data_format=data_format)
-  logits = model.forward_pass(feature, input_data_format='channels_last')
-  tower_pred = {
-      'classes': tf.argmax(input=logits, axis=1),
-      'probabilities': tf.nn.softmax(logits)
-  }
-  return tower_pred
-
-
 def input_fn(data_dir,
              subset,
              num_shards,
@@ -349,63 +292,100 @@ def input_fn(data_dir,
     return feature_shards, label_shards
 
 
+def get_experiment_fn(data_dir,
+                      num_gpus,
+                      variable_strategy,
+                      use_distortion_for_training=True):
+  """Returns an Experiment function.
 
-def main(hparams):
+  Experiments perform training on several workers in parallel,
+  in other words experiments know how to invoke train and eval in a sensible
+  fashion for distributed training. Arguments passed directly to this
+  function are not tunable, all other arguments should be passed within
+  tf.HParams, passed to the enclosed function.
+
+  Args:
+      data_dir: str. Location of the data for input_fns.
+      num_gpus: int. Number of GPUs on each worker.
+      variable_strategy: String. CPU to use CPU as the parameter server
+      and GPU to use the GPUs as the parameter server.
+      use_distortion_for_training: bool. See cifar10.Cifar10DataSet.
+  Returns:
+      A function (tf.estimator.RunConfig, tf.contrib.training.HParams) ->
+      tf.contrib.learn.Experiment.
+
+      Suitable for use by tf.contrib.learn.learn_runner, which will run various
+      methods on Experiment (train, evaluate) based on information
+      about the current runner in `run_config`.
+  """
+
+  def _experiment_fn(run_config, hparams):
+    """Returns an Experiment."""
+    # Create estimator.
+    train_input_fn = functools.partial(
+        input_fn,
+        data_dir,
+        subset='train',
+        num_shards=num_gpus,
+        batch_size=hparams.train_batch_size,
+        use_distortion_for_training=use_distortion_for_training)
+
+    eval_input_fn = functools.partial(
+        input_fn,
+        data_dir,
+        subset='eval',
+        batch_size=hparams.eval_batch_size,
+        num_shards=num_gpus)
+
+    num_eval_examples = cifar10.Cifar10DataSet.num_examples_per_epoch('eval')
+    if num_eval_examples % hparams.eval_batch_size != 0:
+      raise ValueError(
+          'validation set size must be multiple of eval_batch_size')
+
+    train_steps = hparams.train_steps
+    eval_steps = num_eval_examples // hparams.eval_batch_size
+ 
+    classifier = tf.estimator.Estimator(
+        model_fn=get_model_fn(num_gpus, variable_strategy,
+                              run_config.num_worker_replicas or 1),
+        config=run_config,
+        params=hparams)
+
+    # Create experiment.
+    return tf.contrib.learn.Experiment(
+        classifier,
+        train_input_fn=train_input_fn,
+        eval_input_fn=eval_input_fn,
+        train_steps=train_steps,
+        eval_steps=eval_steps)
+
+  return _experiment_fn
+
+
+def main(job_dir, data_dir, num_gpus, variable_strategy,
+         use_distortion_for_training, log_device_placement, num_intra_threads,
+         **hparams):
   # The env variable is on deprecation path, default is set to off.
   os.environ['TF_SYNC_ON_FINISH'] = '0'
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
-  # Create estimator.
-  train_input_fn = functools.partial(
-      input_fn,
-      hparams.data_dir,
-      subset='train',
-      num_shards=hparams.num_gpus,
-      batch_size=hparams.train_batch_size,
-      use_distortion_for_training=hparams.use_distortion_for_training)
+  # Session configuration.
+  sess_config = tf.ConfigProto(
+      allow_soft_placement=True,
+      log_device_placement=log_device_placement,
+      intra_op_parallelism_threads=num_intra_threads,
+      gpu_options=tf.GPUOptions(force_gpu_compatible=True))
 
-  eval_input_fn = functools.partial(
-      input_fn,
-      hparams.data_dir,
-      subset='eval',
-      batch_size=hparams.eval_batch_size,
-      num_shards=hparams.num_gpus)
+  config = cifar10_utils.RunConfig(
+      session_config=sess_config, model_dir=job_dir)
+  tf.contrib.learn.learn_runner.run(
+      get_experiment_fn(data_dir, num_gpus, variable_strategy,
+                        use_distortion_for_training),
+      run_config=config,
+      hparams=tf.contrib.training.HParams(
+          is_chief=config.is_chief,
+          **hparams))
 
-  num_eval_examples = cifar10.Cifar10DataSet.num_examples_per_epoch('eval')
-  if num_eval_examples % hparams.eval_batch_size != 0:
-    raise ValueError(
-        'validation set size must be multiple of eval_batch_size')
-
-  train_spec = tf.estimator.TrainSpec(train_input_fn,
-                                      max_steps=hparams.train_steps
-                                      )
-
-  # exporter = tf.estimator.FinalExporter('cifar10',
-  exporter = tf.estimator.LatestExporter('cifar10',
-          serving_input_fn)
-  eval_steps = num_eval_examples // hparams.eval_batch_size
-  eval_spec = tf.estimator.EvalSpec(eval_input_fn,
-                                    steps=eval_steps,
-                                    exporters=[exporter],
-                                    name='cifar10-eval',
-                                    #throttle_secs=100,
-                                    )
-
-  run_config = tf.estimator.RunConfig()
-  run_config = run_config.replace(model_dir=hparams.job_dir)
-
-  print("model_dir: {}".format(run_config.model_dir))
-
-  estimator = tf.estimator.Estimator(
-      model_fn=get_model_fn(hparams.num_gpus, hparams.variable_strategy,
-                            run_config.num_worker_replicas or 1, is_chief=run_config.is_chief),
-      config=run_config,
-      params=hparams)
-
-
-  tf.estimator.train_and_evaluate(estimator,
-                                  train_spec,
-                                  eval_spec)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -503,7 +483,7 @@ if __name__ == '__main__':
       type=str,
       default=None,
       help="""\
-      If not set, the data format best for the training device is used.
+      If not set, the data format best for the training device is used. 
       Allowed values: channels_first (NCHW) channels_last (NHWC).\
       """)
   parser.add_argument(
@@ -538,5 +518,4 @@ if __name__ == '__main__':
   if args.num_gpus != 0 and args.eval_batch_size % args.num_gpus != 0:
     raise ValueError('--eval-batch-size must be multiple of --num-gpus.')
 
-  hparams=hparam.HParams(**args.__dict__)
-  main(hparams)
+  main(**vars(args))

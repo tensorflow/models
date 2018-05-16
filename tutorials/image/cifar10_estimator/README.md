@@ -9,6 +9,11 @@ evaluate a CIFAR-10 ResNet model on:
 * A single host with multiple GPUs;
 * Multiple hosts with CPU or multiple GPUs;
 
+**NOTE:**
+
+`cifar10_main.py` uses the recommended `tf.estimator.train_and_evalute` way,
+if you want to know or try `Experiment` API, run command with `cifar10_experiment.py` instead.
+
 Before trying to run the model we highly encourage you to read all the README.
 
 ## Prerequisite
@@ -112,18 +117,18 @@ or check [tensorflow/ecosystem](https://github.com/tensorflow/ecosystem) for
 instructions about how to set up a Cluster.
 
 The `TF_CONFIG` will be used by the `RunConfig` to know the existing hosts and
-their task: `master`, `ps` or `worker`.
+their task: `ps`, `chief`, `worker` or `evaluator`.
 
 Here's an example of `TF_CONFIG`.
 
 ```python
-cluster = {'master': ['master-ip:8000'],
-           'ps': ['ps-ip:8000'],
+cluster = {'ps': ['ps-ip:8000'],
+           'chief': ['chief-ip:8000'],
            'worker': ['worker-ip:8000']}
 
 TF_CONFIG = json.dumps(
   {'cluster': cluster,
-   'task': {'type': master, 'index': 0},
+   'task': {'type': evaluator, 'index': 0},
    'model_dir': 'gs://<bucket_path>/<dir_path>',
    'environment': 'cloud'
   })
@@ -132,9 +137,9 @@ TF_CONFIG = json.dumps(
 *Cluster*
 
 A cluster spec, which is basically a dictionary that describes all of the tasks
-in the cluster. More about it [here](https://www.tensorflow.org/deploy/distributed).
+in the cluster. More about it [here](https://www.tensorflow.org/api_docs/python/tf/estimator/RunConfig).
 
-In this cluster spec we are defining a cluster with 1 master, 1 ps and 1 worker.
+In this cluster spec we are defining a cluster with 1 ps, 1 chief and 1 worker.
 
 * `ps`: saves the parameters among all workers. All workers can
    read/write/update the parameters for model via ps. As some models are
@@ -143,8 +148,10 @@ In this cluster spec we are defining a cluster with 1 master, 1 ps and 1 worker.
 
 * `worker`: does the training.
 
-* `master`: basically a special worker, it does training, but also restores and
-   saves checkpoints and do evaluation.
+* `chief`: basically a special worker, it does training, but also restores and
+   saves checkpoints.
+
+**NOTE:** we could define and run `evaluator` task, but `evaluator` is not part of training cluster.
 
 *Task*
 
@@ -153,8 +160,8 @@ is the master on index 0 on the cluster spec, the task will be different for
 each node. An example of the `TF_CONFIG` for a worker would be:
 
 ```python
-cluster = {'master': ['master-ip:8000'],
-           'ps': ['ps-ip:8000'],
+cluster = {'ps': ['ps-ip:8000'],
+           'chief': ['chief-ip:8000'],
            'worker': ['worker-ip:8000']}
 
 TF_CONFIG = json.dumps(
