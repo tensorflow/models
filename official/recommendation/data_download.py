@@ -33,7 +33,7 @@ import pandas as pd
 from six.moves import urllib  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-import constants  # pylint: disable=g-bad-import-order
+from official.recommendation import constants  # pylint: disable=g-bad-import-order
 
 # URL to download dataset
 _DATA_URL = "http://files.grouplens.org/datasets/movielens/"
