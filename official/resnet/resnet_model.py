@@ -505,8 +505,9 @@ class Model(object):
       inputs = tf.identity(inputs, 'initial_conv')
 
       # We do not include batch normalization or activation functions in V2
-      # conv1 because the first ResNet unit will perform these for both paths.
-      # Cf. Appendix of [2].
+      # for the initial conv1 because the first ResNet unit will perform these
+      # for both the shortcut and non-shortcut paths as part of the first
+      # block's projection. Cf. Appendix of [2].
       if self.resnet_version == 1:
         inputs = batch_norm(inputs, training, self.data_format)
         inputs = tf.nn.relu(inputs)
