@@ -63,8 +63,7 @@ TENSORS_TO_LOG = {
 def model_fn(features, labels, mode, params):
   """Defines how to train, evaluate and predict from the transformer model."""
   with tf.variable_scope("model"):
-    inputs = features['inputs'] if isinstance(features, dict) else features
-    targets = labels
+    inputs, targets = features, labels
 
     # Create model and get output logits.
     model = transformer.Transformer(params, mode == tf.estimator.ModeKeys.TRAIN)
@@ -466,9 +465,9 @@ def run_transformer(flags_obj):
       vocab_file=flags_obj.vocab_file)
 
   if flags_obj.export_dir:
-    serving_input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
-        "inputs": tf.placeholder(tf.int64, [None, None])
-    })
+    def serving_input_fn():
+      features = tf.placeholder(tf.int64, [None, None])
+      return tf.estimator.export.TensorServingInputReceiver(features, features)
 
     # Export saved model, and save the vocab file as an extra asset. The vocab
     # file is saved to allow consistent input encoding and output decoding.

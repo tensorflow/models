@@ -230,7 +230,7 @@ The SignatureDef for "translate" is:
 
     signature_def['translate']:
         The given SavedModel SignatureDef contains the following input(s):
-          inputs['inputs'] tensor_info:
+          inputs['input'] tensor_info:
               dtype: DT_INT64
               shape: (-1, -1)
               name: Placeholder:0
@@ -272,7 +272,7 @@ Follow the steps below to use the translate signature def:
 
    ```
    saved_model_cli run --dir=$SAVED_MODEL_DIR --tag_set=serve --signature_def=translate \
-     --input_expr="inputs=$ENCODED_INPUTS"
+     --input_expr="input=$ENCODED_INPUTS"
    ```
 
    The outputs will look similar to:
