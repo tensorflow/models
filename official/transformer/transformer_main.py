@@ -417,6 +417,7 @@ def define_transformer_flags():
               "exists, please make sure the contents match that of the vocab "
               "file in --model_dir.")
   def _check_vocab_file(flags_dict):
+    """Ensure that vocab files exist and are consistent."""
     data_vocab = os.path.join(
         flags_dict["data_dir"], flags_dict["vocab_file"])
     model_vocab = os.path.join(flags_dict["model_dir"], VOCAB_FILE)
