@@ -476,7 +476,7 @@ def run_transformer(flags_obj):
     # Since the model itself does not use the vocab file, this file is saved as
     # an extra asset rather than a core asset.
     estimator.export_savedmodel(
-        flags_obj.export_dir, serving_input_fn, as_text=True,
+        flags_obj.export_dir, serving_input_fn,
         assets_extra={"vocab.txt": flags_obj.vocab_file})
 
 
