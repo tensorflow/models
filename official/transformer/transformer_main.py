@@ -438,7 +438,7 @@ def run_transformer(flags_obj):
     flags_obj: Object containing parsed flag values.
   """
   # Copy vocab file to model_dir if it doesn't already exist. If the model dir
-  # already has a vocab file, it has already been validated by _check_vocab_file
+  # has a vocab file, it has been validated by _check_vocab_file.
   model_vocab = os.path.join(flags_obj.model_dir, VOCAB_FILE)
   if not tf.gfile.Exists(model_vocab):
     data_vocab = os.path.join(flags_obj.data_dir, flags_obj.vocab_file)
