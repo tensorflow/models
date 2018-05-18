@@ -30,6 +30,7 @@ The Example proto contains the following fields:
   image/segmentation/class/format: semantic segmentation file format.
 """
 import collections
+import six
 import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
@@ -125,7 +126,10 @@ def _bytes_list_feature(values):
   Returns:
     A TF-Feature.
   """
-  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[values]))
+  def norm2bytes(value):
+      return value.encode() if isinstance(value, str) and six.PY3 else value
+
+  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[norm2bytes(values)]))
 
 
 def image_seg_to_tfexample(image_data, filename, height, width, seg_data):

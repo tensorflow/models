@@ -30,12 +30,14 @@ from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
 from object_detection.models import faster_rcnn_inception_v2_feature_extractor as frcnn_inc_v2
 from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
+from object_detection.models import faster_rcnn_pnas_feature_extractor as frcnn_pnas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
 from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
 from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
 from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
 from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
+from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.protos import model_pb2
 
 # A map of names to SSD feature extractors.
@@ -43,6 +45,7 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_inception_v2': SSDInceptionV2FeatureExtractor,
     'ssd_inception_v3': SSDInceptionV3FeatureExtractor,
     'ssd_mobilenet_v1': SSDMobileNetV1FeatureExtractor,
+    'ssd_mobilenet_v2': SSDMobileNetV2FeatureExtractor,
     'ssd_resnet50_v1_fpn': ssd_resnet_v1_fpn.SSDResnet50V1FpnFeatureExtractor,
     'ssd_resnet101_v1_fpn': ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
     'ssd_resnet152_v1_fpn': ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
@@ -53,6 +56,8 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
 FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
     'faster_rcnn_nas':
     frcnn_nas.FasterRCNNNASFeatureExtractor,
+    'faster_rcnn_pnas':
+    frcnn_pnas.FasterRCNNPNASFeatureExtractor,
     'faster_rcnn_inception_resnet_v2':
     frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor,
     'faster_rcnn_inception_v2':
@@ -66,7 +71,8 @@ FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
 }
 
 
-def build(model_config, is_training, add_summaries=True):
+def build(model_config, is_training, add_summaries=True,
+          add_background_class=True):
   """Builds a DetectionModel based on the model config.
 
   Args:
@@ -74,7 +80,10 @@ def build(model_config, is_training, add_summaries=True):
       DetectionModel.
     is_training: True if this model is being built for training purposes.
     add_summaries: Whether to add tensorflow summaries in the model graph.
-
+    add_background_class: Whether to add an implicit background class to one-hot
+      encodings of groundtruth labels. Set to false if using groundtruth labels
+      with an explicit background class or using multiclass scores instead of
+      truth in the case of distillation. Ignored in the case of faster_rcnn.
   Returns:
     DetectionModel based on the config.
 
@@ -85,7 +94,8 @@ def build(model_config, is_training, add_summaries=True):
     raise ValueError('model_config not of type model_pb2.DetectionModel.')
   meta_architecture = model_config.WhichOneof('model')
   if meta_architecture == 'ssd':
-    return _build_ssd_model(model_config.ssd, is_training, add_summaries)
+    return _build_ssd_model(model_config.ssd, is_training, add_summaries,
+                            add_background_class)
   if meta_architecture == 'faster_rcnn':
     return _build_faster_rcnn_model(model_config.faster_rcnn, is_training,
                                     add_summaries)
@@ -111,23 +121,25 @@ def _build_ssd_feature_extractor(feature_extractor_config, is_training,
   depth_multiplier = feature_extractor_config.depth_multiplier
   min_depth = feature_extractor_config.min_depth
   pad_to_multiple = feature_extractor_config.pad_to_multiple
-  batch_norm_trainable = feature_extractor_config.batch_norm_trainable
   use_explicit_padding = feature_extractor_config.use_explicit_padding
   use_depthwise = feature_extractor_config.use_depthwise
   conv_hyperparams = hyperparams_builder.build(
       feature_extractor_config.conv_hyperparams, is_training)
+  override_base_feature_extractor_hyperparams = (
+      feature_extractor_config.override_base_feature_extractor_hyperparams)
 
   if feature_type not in SSD_FEATURE_EXTRACTOR_CLASS_MAP:
     raise ValueError('Unknown ssd feature_extractor: {}'.format(feature_type))
 
   feature_extractor_class = SSD_FEATURE_EXTRACTOR_CLASS_MAP[feature_type]
-  return feature_extractor_class(is_training, depth_multiplier, min_depth,
-                                 pad_to_multiple, conv_hyperparams,
-                                 batch_norm_trainable, reuse_weights,
-                                 use_explicit_padding, use_depthwise)
+  return feature_extractor_class(
+      is_training, depth_multiplier, min_depth, pad_to_multiple,
+      conv_hyperparams, reuse_weights, use_explicit_padding, use_depthwise,
+      override_base_feature_extractor_hyperparams)
 
 
-def _build_ssd_model(ssd_config, is_training, add_summaries):
+def _build_ssd_model(ssd_config, is_training, add_summaries,
+                     add_background_class=True):
   """Builds an SSD detection model based on the model config.
 
   Args:
@@ -135,9 +147,13 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       SSDMetaArch.
     is_training: True if this model is being built for training purposes.
     add_summaries: Whether to add tf summaries in the model.
-
+    add_background_class: Whether to add an implicit background class to one-hot
+      encodings of groundtruth labels. Set to false if using groundtruth labels
+      with an explicit background class or using multiclass scores instead of
+      truth in the case of distillation.
   Returns:
     SSDMetaArch based on the config.
+
   Raises:
     ValueError: If ssd_config.type is not recognized (i.e. not registered in
       model_class_map).
@@ -145,8 +161,9 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
   num_classes = ssd_config.num_classes
 
   # Feature extractor
-  feature_extractor = _build_ssd_feature_extractor(ssd_config.feature_extractor,
-                                                   is_training)
+  feature_extractor = _build_ssd_feature_extractor(
+      feature_extractor_config=ssd_config.feature_extractor,
+      is_training=is_training)
 
   box_coder = box_coder_builder.build(ssd_config.box_coder)
   matcher = matcher_builder.build(ssd_config.matcher)
@@ -163,8 +180,8 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
   non_max_suppression_fn, score_conversion_fn = post_processing_builder.build(
       ssd_config.post_processing)
   (classification_loss, localization_loss, classification_weight,
-   localization_weight,
-   hard_example_miner) = losses_builder.build(ssd_config.loss)
+   localization_weight, hard_example_miner,
+   random_example_sampler) = losses_builder.build(ssd_config.loss)
   normalize_loss_by_num_matches = ssd_config.normalize_loss_by_num_matches
   normalize_loc_loss_by_codesize = ssd_config.normalize_loc_loss_by_codesize
 
@@ -188,11 +205,16 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       normalize_loss_by_num_matches,
       hard_example_miner,
       add_summaries=add_summaries,
-      normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize)
+      normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
+      freeze_batchnorm=ssd_config.freeze_batchnorm,
+      inplace_batchnorm_update=ssd_config.inplace_batchnorm_update,
+      add_background_class=add_background_class,
+      random_example_sampler=random_example_sampler)
 
 
 def _build_faster_rcnn_feature_extractor(
-    feature_extractor_config, is_training, reuse_weights=None):
+    feature_extractor_config, is_training, reuse_weights=None,
+    inplace_batchnorm_update=False):
   """Builds a faster_rcnn_meta_arch.FasterRCNNFeatureExtractor based on config.
 
   Args:
@@ -200,6 +222,11 @@ def _build_faster_rcnn_feature_extractor(
       faster_rcnn.proto.
     is_training: True if this feature extractor is being built for training.
     reuse_weights: if the feature extractor should reuse weights.
+    inplace_batchnorm_update: Whether to update batch_norm inplace during
+      training. This is required for batch norm to work correctly on TPUs. When
+      this is false, user must add a control dependency on
+      tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+      norm moving average parameters.
 
   Returns:
     faster_rcnn_meta_arch.FasterRCNNFeatureExtractor based on config.
@@ -207,6 +234,8 @@ def _build_faster_rcnn_feature_extractor(
   Raises:
     ValueError: On invalid feature extractor type.
   """
+  if inplace_batchnorm_update:
+    raise ValueError('inplace batchnorm updates not supported.')
   feature_type = feature_extractor_config.type
   first_stage_features_stride = (
       feature_extractor_config.first_stage_features_stride)
@@ -236,6 +265,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
 
   Returns:
     FasterRCNNMetaArch based on the config.
+
   Raises:
     ValueError: If frcnn_config.type is not recognized (i.e. not registered in
       model_class_map).
@@ -244,14 +274,15 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   image_resizer_fn = image_resizer_builder.build(frcnn_config.image_resizer)
 
   feature_extractor = _build_faster_rcnn_feature_extractor(
-      frcnn_config.feature_extractor, is_training)
+      frcnn_config.feature_extractor, is_training,
+      frcnn_config.inplace_batchnorm_update)
 
   number_of_stages = frcnn_config.number_of_stages
   first_stage_anchor_generator = anchor_generator_builder.build(
       frcnn_config.first_stage_anchor_generator)
 
   first_stage_atrous_rate = frcnn_config.first_stage_atrous_rate
-  first_stage_box_predictor_arg_scope = hyperparams_builder.build(
+  first_stage_box_predictor_arg_scope_fn = hyperparams_builder.build(
       frcnn_config.first_stage_box_predictor_conv_hyperparams, is_training)
   first_stage_box_predictor_kernel_size = (
       frcnn_config.first_stage_box_predictor_kernel_size)
@@ -304,8 +335,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       'number_of_stages': number_of_stages,
       'first_stage_anchor_generator': first_stage_anchor_generator,
       'first_stage_atrous_rate': first_stage_atrous_rate,
-      'first_stage_box_predictor_arg_scope':
-      first_stage_box_predictor_arg_scope,
+      'first_stage_box_predictor_arg_scope_fn':
+      first_stage_box_predictor_arg_scope_fn,
       'first_stage_box_predictor_kernel_size':
       first_stage_box_predictor_kernel_size,
       'first_stage_box_predictor_depth': first_stage_box_predictor_depth,

@@ -131,6 +131,12 @@ message FasterRcnn {
   // to use sigmoid loss and enable merge_multiple_label_boxes.
   // If not specified, Softmax loss is used as default.
   optional ClassificationLoss second_stage_classification_loss = 29;
+
+  // Whether to update batch_norm inplace during training. This is required
+  // for batch norm to work correctly on TPUs. When this is false, user must add
+  // a control dependency on tf.GraphKeys.UPDATE_OPS for train/loss op in order
+  // to update the batch norm moving average parameters.
+  optional bool inplace_batchnorm_update = 30 [default = false];
 }
 
 

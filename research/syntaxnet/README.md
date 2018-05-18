@@ -60,10 +60,10 @@ The simplest way to get started with DRAGNN is by loading our Docker container.
 [Here](g3doc/CLOUD.md) is a tutorial for running the DRAGNN container on
 [GCP](https://cloud.google.com) (just as applicable to your own computer).
 
-### Ubuntu 16.10+ binary installation
+### Ubuntu 16.04+ binary installation
 
 _This process takes ~5 minutes, but is only compatible with Linux using GNU libc
-3.4.22 and above (e.g. Ubuntu 16.10)._
+3.4.22 and above (e.g. Ubuntu 16.04)._
 
 Binary wheel packages are provided for TensorFlow and SyntaxNet. If you do not
 need to write new binary TensorFlow ops, these should suffice.
@@ -92,9 +92,9 @@ source. You'll need to install:
 
 *   python 2.7:
     *   Python 3 support is not available yet
-*   bazel 0.5.4:
+*   bazel 0.11.1:
     *   Follow the instructions [here](http://bazel.build/docs/install.html)
-    *   Alternately, Download bazel 0.5.4 <.deb> from
+    *   Alternately, Download bazel 0.11.1 <.deb> from
         [https://github.com/bazelbuild/bazel/releases](https://github.com/bazelbuild/bazel/releases)
         for your system configuration.
     *   Install it using the command: sudo dpkg -i <.deb file>
@@ -105,14 +105,14 @@ source. You'll need to install:
 *   protocol buffers, with a version supported by TensorFlow:
     *   check your protobuf version with `pip freeze | grep protobuf`
     *   upgrade to a supported version with `pip install -U protobuf==3.3.0`
+*   autograd, with a version supported by TensorFlow:
+    *   `pip install -U autograd==1.1.13`
 *   mock, the testing package:
     *   `pip install mock`
 *   asciitree, to draw parse trees on the console for the demo:
     *   `pip install asciitree`
 *   numpy, package for scientific computing:
     *   `pip install numpy`
-*   autograd 1.1.13, for automatic differentiation (not yet compatible with autograd v1.2 rewrite):
-    *   `pip install autograd==1.1.13`
 *   pygraphviz to visualize traces and parse trees:
     *   `apt-get install -y graphviz libgraphviz-dev`
     *   `pip install pygraphviz

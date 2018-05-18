@@ -19,7 +19,9 @@ In the table below, we list each such pre-trained model including:
   aware that these timings depend highly on one's specific hardware
   configuration (these timings were performed using an Nvidia
   GeForce GTX TITAN X card) and should be treated more as relative timings in
-  many cases.
+  many cases. Also note that desktop GPU timing does not always reflect mobile
+  run time. For example Mobilenet V2 is faster on mobile devices than Mobilenet
+  V1, but is slightly slower on desktop GPU.
 * detector performance on subset of the COCO validation set or Open Images test split as measured by the dataset-specific mAP measure.
   Here, higher is better, and we only report bounding box mAP rounded to the
   nearest integer.
@@ -68,6 +70,8 @@ Some remarks on frozen inference graphs:
 | Model name  | Speed (ms) | COCO mAP[^1] | Outputs |
 | ------------ | :--------------: | :--------------: | :-------------: |
 | [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2017_11_17.tar.gz) | 30 | 21 | Boxes |
+| [ssd_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz) | 31 | 22 | Boxes |
+| [ssdlite_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssdlite_mobilenet_v2_coco_2018_05_09.tar.gz) | 27 | 22 | Boxes |
 | [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2017_11_17.tar.gz) | 42 | 24 | Boxes |
 | [faster_rcnn_inception_v2_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_v2_coco_2018_01_28.tar.gz) | 58 | 28 | Boxes |
 | [faster_rcnn_resnet50_coco](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet50_coco_2018_01_28.tar.gz) | 89 | 30 | Boxes |
@@ -88,7 +92,7 @@ Some remarks on frozen inference graphs:
 
 ## Kitti-trained models {#kitti-models}
 
-Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 (ms) | Outputs
+Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 | Outputs
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
 [faster_rcnn_resnet101_kitti](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_kitti_2018_01_28.tar.gz) | 79  | 87              | Boxes
 
@@ -98,6 +102,13 @@ Model name                                                                      
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
 [faster_rcnn_inception_resnet_v2_atrous_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_oid_2018_01_28.tar.gz) | 727 | 37              | Boxes
 [faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid](http://download.tensorflow.org/models/object_detection/faster_rcnn_inception_resnet_v2_atrous_lowproposals_oid_2018_01_28.tar.gz) | 347  |               | Boxes
+
+
+## AVA v2.1 trained models {#ava-models}
+
+Model name                                                                                                                                                        | Speed (ms) | Pascal mAP@0.5 | Outputs
+----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---: | :-------------: | :-----:
+[faster_rcnn_resnet101_ava_v2.1](http://download.tensorflow.org/models/object_detection/faster_rcnn_resnet101_ava_v2.1_2018_04_30.tar.gz) | 93  | 11              | Boxes
 
 
 [^1]: See [MSCOCO evaluation protocol](http://cocodataset.org/#detections-eval).

@@ -59,6 +59,14 @@ def _update_optimizer_with_manual_step_learning_rate(
     schedule.learning_rate = initial_learning_rate * learning_rate_scaling**i
 
 
+def _update_optimizer_with_cosine_decay_learning_rate(
+    optimizer, learning_rate, warmup_learning_rate):
+  """Adds a new cosine decay learning rate."""
+  cosine_lr = optimizer.learning_rate.cosine_decay_learning_rate
+  cosine_lr.learning_rate_base = learning_rate
+  cosine_lr.warmup_learning_rate = warmup_learning_rate
+
+
 class ConfigUtilTest(tf.test.TestCase):
 
   def test_get_configs_from_pipeline_file(self):
@@ -85,6 +93,26 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertProtoEquals(pipeline_config.eval_input_reader,
                            configs["eval_input_config"])
 
+  def test_create_configs_from_pipeline_proto(self):
+    """Tests creating configs dictionary from pipeline proto."""
+
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.model.faster_rcnn.num_classes = 10
+    pipeline_config.train_config.batch_size = 32
+    pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
+    pipeline_config.eval_config.num_examples = 20
+    pipeline_config.eval_input_reader.queue_capacity = 100
+
+    configs = config_util.create_configs_from_pipeline_proto(pipeline_config)
+    self.assertProtoEquals(pipeline_config.model, configs["model"])
+    self.assertProtoEquals(pipeline_config.train_config,
+                           configs["train_config"])
+    self.assertProtoEquals(pipeline_config.train_input_reader,
+                           configs["train_input_config"])
+    self.assertProtoEquals(pipeline_config.eval_config, configs["eval_config"])
+    self.assertProtoEquals(pipeline_config.eval_input_reader,
+                           configs["eval_input_config"])
+
   def test_create_pipeline_proto_from_configs(self):
     """Tests that proto can be reconstructed from configs dictionary."""
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
@@ -100,6 +128,23 @@ class ConfigUtilTest(tf.test.TestCase):
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
     pipeline_config_reconstructed = (
         config_util.create_pipeline_proto_from_configs(configs))
+    self.assertEqual(pipeline_config, pipeline_config_reconstructed)
+
+  def test_save_pipeline_config(self):
+    """Tests that the pipeline config is properly saved to disk."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.model.faster_rcnn.num_classes = 10
+    pipeline_config.train_config.batch_size = 32
+    pipeline_config.train_input_reader.label_map_path = "path/to/label_map"
+    pipeline_config.eval_config.num_examples = 20
+    pipeline_config.eval_input_reader.queue_capacity = 100
+
+    config_util.save_pipeline_config(pipeline_config, self.get_temp_dir())
+    configs = config_util.get_configs_from_pipeline_file(
+        os.path.join(self.get_temp_dir(), "pipeline.config"))
+    pipeline_config_reconstructed = (
+        config_util.create_pipeline_proto_from_configs(configs))
+
     self.assertEqual(pipeline_config, pipeline_config_reconstructed)
 
   def test_get_configs_from_multiple_files(self):
@@ -154,6 +199,7 @@ class ConfigUtilTest(tf.test.TestCase):
     """Asserts successful updating of all learning rate schemes."""
     original_learning_rate = 0.7
     learning_rate_scaling = 0.1
+    warmup_learning_rate = 0.07
     hparams = tf.contrib.training.HParams(learning_rate=0.15)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
@@ -200,6 +246,24 @@ class ConfigUtilTest(tf.test.TestCase):
     for i, schedule in enumerate(manual_lr.schedule):
       self.assertAlmostEqual(hparams.learning_rate * learning_rate_scaling**i,
                              schedule.learning_rate)
+
+    # Cosine decay learning rate.
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    optimizer = getattr(pipeline_config.train_config.optimizer, optimizer_name)
+    _update_optimizer_with_cosine_decay_learning_rate(optimizer,
+                                                      original_learning_rate,
+                                                      warmup_learning_rate)
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(configs, hparams)
+    optimizer = getattr(configs["train_config"].optimizer, optimizer_name)
+    cosine_lr = optimizer.learning_rate.cosine_decay_learning_rate
+
+    self.assertAlmostEqual(hparams.learning_rate, cosine_lr.learning_rate_base)
+    warmup_scale_factor = warmup_learning_rate / original_learning_rate
+    self.assertAlmostEqual(hparams.learning_rate * warmup_scale_factor,
+                           cosine_lr.warmup_learning_rate)
 
   def testRMSPropWithNewLearingRate(self):
     """Tests new learning rates for RMSProp Optimizer."""

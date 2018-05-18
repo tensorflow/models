@@ -3,6 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 import "object_detection/protos/eval.proto";
+import "object_detection/protos/graph_rewriter.proto";
 import "object_detection/protos/input_reader.proto";
 import "object_detection/protos/model.proto";
 import "object_detection/protos/train.proto";
@@ -15,5 +16,6 @@ message TrainEvalPipelineConfig {
   optional InputReader train_input_reader = 3;
   optional EvalConfig eval_config = 4;
   optional InputReader eval_input_reader = 5;
+  optional GraphRewriter graph_rewriter = 6;
   extensions 1000 to max;
 }

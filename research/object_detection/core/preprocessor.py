@@ -233,7 +233,7 @@ def _rgb_to_grayscale(images, name=None):
     rgb_weights = [0.2989, 0.5870, 0.1140]
     rank_1 = tf.expand_dims(tf.rank(images) - 1, 0)
     gray_float = tf.reduce_sum(
-        flt_image * rgb_weights, rank_1, keepdims=True)
+        flt_image * rgb_weights, rank_1, keep_dims=True)
     gray_float.set_shape(images.get_shape()[:-1].concatenate([1]))
     return tf.image.convert_image_dtype(gray_float, orig_dtype, name=name)
 
@@ -272,6 +272,7 @@ def normalize_image(image, original_minval, original_maxval, target_minval,
 def retain_boxes_above_threshold(boxes,
                                  labels,
                                  label_scores,
+                                 multiclass_scores=None,
                                  masks=None,
                                  keypoints=None,
                                  threshold=0.0):
@@ -288,6 +289,9 @@ def retain_boxes_above_threshold(boxes,
       classes.
     label_scores: float32 tensor of shape [num_instance] representing the
       score for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     masks: (optional) rank 3 float32 tensor with shape
       [num_instances, height, width] containing instance masks. The masks are of
       the same height, width as the input `image`.
@@ -301,8 +305,10 @@ def retain_boxes_above_threshold(boxes,
     retianed_labels: [num_retained_instance]
     retained_label_scores: [num_retained_instance]
 
-    If masks, or keypoints are not None, the function also returns:
+    If multiclass_scores, masks, or keypoints are not None, the function also
+      returns:
 
+    retained_multiclass_scores: [num_retained_instance, num_classes]
     retained_masks: [num_retained_instance, height, width]
     retained_keypoints: [num_retained_instance, num_keypoints, 2]
   """
@@ -315,6 +321,10 @@ def retain_boxes_above_threshold(boxes,
     retained_labels = tf.gather(labels, indices)
     retained_label_scores = tf.gather(label_scores, indices)
     result = [retained_boxes, retained_labels, retained_label_scores]
+
+    if multiclass_scores is not None:
+      retained_multiclass_scores = tf.gather(multiclass_scores, indices)
+      result.append(retained_multiclass_scores)
 
     if masks is not None:
       retained_masks = tf.gather(masks, indices)
@@ -726,7 +736,7 @@ def random_pixel_value_scale(image,
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     minval: lower ratio of scaling pixel values.
     maxval: upper ratio of scaling pixel values.
     seed: random seed.
@@ -749,7 +759,7 @@ def random_pixel_value_scale(image,
         preprocess_vars_cache)
 
     image = tf.multiply(image, color_coef)
-    image = tf.clip_by_value(image, 0.0, 1.0)
+    image = tf.clip_by_value(image, 0.0, 255.0)
 
   return image
 
@@ -815,7 +825,7 @@ def random_rgb_to_gray(image,
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     probability: the probability of returning a grayscale image.
             The probability should be a number between [0, 1].
     seed: random seed.
@@ -852,11 +862,11 @@ def random_adjust_brightness(image,
                              preprocess_vars_cache=None):
   """Randomly adjusts brightness.
 
-  Makes sure the output image is still between 0 and 1.
+  Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     max_delta: how much to change the brightness. A value between [0, 1).
     seed: random seed.
     preprocess_vars_cache: PreprocessorCache object that records previously
@@ -876,8 +886,8 @@ def random_adjust_brightness(image,
         preprocessor_cache.PreprocessorCache.ADJUST_BRIGHTNESS,
         preprocess_vars_cache)
 
-    image = tf.image.adjust_brightness(image, delta)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+    image = tf.image.adjust_brightness(image / 255, delta) * 255
+    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
 
 
@@ -888,11 +898,11 @@ def random_adjust_contrast(image,
                            preprocess_vars_cache=None):
   """Randomly adjusts contrast.
 
-  Makes sure the output image is still between 0 and 1.
+  Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     min_delta: see max_delta.
     max_delta: how much to change the contrast. Contrast will change with a
                value between min_delta and max_delta. This value will be
@@ -913,8 +923,8 @@ def random_adjust_contrast(image,
         generator_func,
         preprocessor_cache.PreprocessorCache.ADJUST_CONTRAST,
         preprocess_vars_cache)
-    image = tf.image.adjust_contrast(image, contrast_factor)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+    image = tf.image.adjust_contrast(image / 255, contrast_factor) * 255
+    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
 
 
@@ -924,11 +934,11 @@ def random_adjust_hue(image,
                       preprocess_vars_cache=None):
   """Randomly adjusts hue.
 
-  Makes sure the output image is still between 0 and 1.
+  Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     max_delta: change hue randomly with a value between 0 and max_delta.
     seed: random seed.
     preprocess_vars_cache: PreprocessorCache object that records previously
@@ -945,8 +955,8 @@ def random_adjust_hue(image,
     delta = _get_or_create_preprocess_rand_vars(
         generator_func, preprocessor_cache.PreprocessorCache.ADJUST_HUE,
         preprocess_vars_cache)
-    image = tf.image.adjust_hue(image, delta)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+    image = tf.image.adjust_hue(image / 255, delta) * 255
+    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
 
 
@@ -957,11 +967,11 @@ def random_adjust_saturation(image,
                              preprocess_vars_cache=None):
   """Randomly adjusts saturation.
 
-  Makes sure the output image is still between 0 and 1.
+  Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     min_delta: see max_delta.
     max_delta: how much to change the saturation. Saturation will change with a
                value between min_delta and max_delta. This value will be
@@ -982,20 +992,20 @@ def random_adjust_saturation(image,
         generator_func,
         preprocessor_cache.PreprocessorCache.ADJUST_SATURATION,
         preprocess_vars_cache)
-    image = tf.image.adjust_saturation(image, saturation_factor)
-    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+    image = tf.image.adjust_saturation(image / 255, saturation_factor) * 255
+    image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
 
 
 def random_distort_color(image, color_ordering=0, preprocess_vars_cache=None):
   """Randomly distorts color.
 
-  Randomly distorts color using a combination of brightness, hue, contrast
-  and saturation changes. Makes sure the output image is still between 0 and 1.
+  Randomly distorts color using a combination of brightness, hue, contrast and
+  saturation changes. Makes sure the output image is still between 0 and 255.
 
   Args:
     image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
-           with pixel values varying between [0, 1].
+           with pixel values varying between [0, 255].
     color_ordering: Python int, a type of distortion (valid values: 0, 1).
     preprocess_vars_cache: PreprocessorCache object that records previously
                            performed augmentations. Updated in-place. If this
@@ -1097,6 +1107,7 @@ def _strict_random_crop_image(image,
                               boxes,
                               labels,
                               label_scores=None,
+                              multiclass_scores=None,
                               masks=None,
                               keypoints=None,
                               min_object_covered=1.0,
@@ -1123,6 +1134,9 @@ def _strict_random_crop_image(image,
     labels: rank 1 int32 tensor containing the object classes.
     label_scores: (optional) float32 tensor of shape [num_instances]
       representing the score for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
@@ -1147,8 +1161,11 @@ def _strict_random_crop_image(image,
            Boxes are in normalized form.
     labels: new labels.
 
-    If label_scores, masks, or keypoints is not None, the function also returns:
+    If label_scores, multiclass_scores, masks, or keypoints is not None, the
+    function also returns:
     label_scores: rank 1 float32 tensor with shape [num_instances].
+    multiclass_scores: rank 2 float32 tensor with shape
+                       [num_instances, num_classes]
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
     keypoints: rank 3 float32 tensor with shape
@@ -1195,6 +1212,9 @@ def _strict_random_crop_image(image,
     if label_scores is not None:
       boxlist.add_field('label_scores', label_scores)
 
+    if multiclass_scores is not None:
+      boxlist.add_field('multiclass_scores', multiclass_scores)
+
     im_boxlist = box_list.BoxList(im_box_rank2)
 
     # remove boxes that are outside cropped image
@@ -1218,6 +1238,10 @@ def _strict_random_crop_image(image,
     if label_scores is not None:
       new_label_scores = overlapping_boxlist.get_field('label_scores')
       result.append(new_label_scores)
+
+    if multiclass_scores is not None:
+      new_multiclass_scores = overlapping_boxlist.get_field('multiclass_scores')
+      result.append(new_multiclass_scores)
 
     if masks is not None:
       masks_of_boxes_inside_window = tf.gather(masks, inside_window_ids)
@@ -1247,6 +1271,7 @@ def random_crop_image(image,
                       boxes,
                       labels,
                       label_scores=None,
+                      multiclass_scores=None,
                       masks=None,
                       keypoints=None,
                       min_object_covered=1.0,
@@ -1282,6 +1307,9 @@ def random_crop_image(image,
     labels: rank 1 int32 tensor containing the object classes.
     label_scores: (optional) float32 tensor of shape [num_instances].
       representing the score for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
@@ -1311,9 +1339,11 @@ def random_crop_image(image,
            form.
     labels: new labels.
 
-    If label_scores, masks, or keypoints are not None, the function also
-    returns:
-    label_scores: new scores.
+    If label_scores, multiclass_scores, masks, or keypoints is not None, the
+    function also returns:
+    label_scores: rank 1 float32 tensor with shape [num_instances].
+    multiclass_scores: rank 2 float32 tensor with shape
+                       [num_instances, num_classes]
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
     keypoints: rank 3 float32 tensor with shape
@@ -1326,6 +1356,7 @@ def random_crop_image(image,
         boxes,
         labels,
         label_scores=label_scores,
+        multiclass_scores=multiclass_scores,
         masks=masks,
         keypoints=keypoints,
         min_object_covered=min_object_covered,
@@ -1348,6 +1379,8 @@ def random_crop_image(image,
 
     if label_scores is not None:
       outputs.append(label_scores)
+    if multiclass_scores is not None:
+      outputs.append(multiclass_scores)
     if masks is not None:
       outputs.append(masks)
     if keypoints is not None:
@@ -1481,6 +1514,7 @@ def random_crop_pad_image(image,
                           boxes,
                           labels,
                           label_scores=None,
+                          multiclass_scores=None,
                           min_object_covered=1.0,
                           aspect_ratio_range=(0.75, 1.33),
                           area_range=(0.1, 1.0),
@@ -1512,6 +1546,9 @@ def random_crop_pad_image(image,
            Each row is in the form of [ymin, xmin, ymax, xmax].
     labels: rank 1 int32 tensor containing the object classes.
     label_scores: rank 1 float32 containing the label scores.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     min_object_covered: the cropped image must cover at least this fraction of
                         at least one of the input bounding boxes.
     aspect_ratio_range: allowed range for aspect ratio of cropped image.
@@ -1543,6 +1580,9 @@ def random_crop_pad_image(image,
     cropped_labels: cropped labels.
     if label_scores is not None also returns:
     cropped_label_scores: cropped label scores.
+    if multiclass_scores is not None also returns:
+    cropped_multiclass_scores: cropped_multiclass_scores.
+
   """
   image_size = tf.shape(image)
   image_height = image_size[0]
@@ -1552,6 +1592,7 @@ def random_crop_pad_image(image,
       boxes=boxes,
       labels=labels,
       label_scores=label_scores,
+      multiclass_scores=multiclass_scores,
       min_object_covered=min_object_covered,
       aspect_ratio_range=aspect_ratio_range,
       area_range=area_range,
@@ -1580,9 +1621,15 @@ def random_crop_pad_image(image,
 
   cropped_padded_output = (padded_image, padded_boxes, cropped_labels)
 
+  index = 3
   if label_scores is not None:
-    cropped_label_scores = result[3]
+    cropped_label_scores = result[index]
     cropped_padded_output += (cropped_label_scores,)
+    index += 1
+
+  if multiclass_scores is not None:
+    cropped_multiclass_scores = result[index]
+    cropped_padded_output += (cropped_multiclass_scores,)
 
   return cropped_padded_output
 
@@ -1591,6 +1638,7 @@ def random_crop_to_aspect_ratio(image,
                                 boxes,
                                 labels,
                                 label_scores=None,
+                                multiclass_scores=None,
                                 masks=None,
                                 keypoints=None,
                                 aspect_ratio=1.0,
@@ -1618,6 +1666,9 @@ def random_crop_to_aspect_ratio(image,
     labels: rank 1 int32 tensor containing the object classes.
     label_scores: (optional) float32 tensor of shape [num_instances]
       representing the score for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
@@ -1639,12 +1690,15 @@ def random_crop_to_aspect_ratio(image,
            Boxes are in normalized form.
     labels: new labels.
 
-    If label_scores, masks, or keypoints is not None, the function also returns:
-    label_scores: new label scores.
+    If label_scores, masks, keypoints, or multiclass_scores is not None, the
+    function also returns:
+    label_scores: rank 1 float32 tensor with shape [num_instances].
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
     keypoints: rank 3 float32 tensor with shape
                [num_instances, num_keypoints, 2]
+    multiclass_scores: rank 2 float32 tensor with shape
+                       [num_instances, num_classes]
 
   Raises:
     ValueError: If image is not a 3D tensor.
@@ -1698,6 +1752,9 @@ def random_crop_to_aspect_ratio(image,
     if label_scores is not None:
       boxlist.add_field('label_scores', label_scores)
 
+    if multiclass_scores is not None:
+      boxlist.add_field('multiclass_scores', multiclass_scores)
+
     im_boxlist = box_list.BoxList(tf.expand_dims(im_box, 0))
 
     # remove boxes whose overlap with the image is less than overlap_thresh
@@ -1718,6 +1775,10 @@ def random_crop_to_aspect_ratio(image,
     if label_scores is not None:
       new_label_scores = overlapping_boxlist.get_field('label_scores')
       result.append(new_label_scores)
+
+    if multiclass_scores is not None:
+      new_multiclass_scores = overlapping_boxlist.get_field('multiclass_scores')
+      result.append(new_multiclass_scores)
 
     if masks is not None:
       masks_inside_window = tf.gather(masks, keep_ids)
@@ -1784,8 +1845,7 @@ def random_pad_to_aspect_ratio(image,
            Boxes are in normalized form.
     labels: new labels.
 
-    If label_scores, masks, or keypoints is not None, the function also returns:
-    label_scores: new label scores.
+    If masks, or keypoints is not None, the function also returns:
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
     keypoints: rank 3 float32 tensor with shape
@@ -1821,8 +1881,10 @@ def random_pad_to_aspect_ratio(image,
     max_width = tf.maximum(
         max_padded_size_ratio[1] * image_width, target_width)
 
-    min_scale = tf.maximum(min_height / target_height, min_width / target_width)
     max_scale = tf.minimum(max_height / target_height, max_width / target_width)
+    min_scale = tf.minimum(
+        max_scale,
+        tf.maximum(min_height / target_height, min_width / target_width))
 
     generator_func = functools.partial(tf.random_uniform, [],
                                        min_scale, max_scale, seed=seed)
@@ -1831,8 +1893,8 @@ def random_pad_to_aspect_ratio(image,
         preprocessor_cache.PreprocessorCache.PAD_TO_ASPECT_RATIO,
         preprocess_vars_cache)
 
-    target_height = scale * target_height
-    target_width = scale * target_width
+    target_height = tf.round(scale * target_height)
+    target_width = tf.round(scale * target_width)
 
     new_image = tf.image.pad_to_bounding_box(
         image, 0, 0, tf.to_int32(target_height), tf.to_int32(target_width))
@@ -2261,14 +2323,14 @@ def resize_image(image,
       'ResizeImage',
       values=[image, new_height, new_width, method, align_corners]):
     new_image = tf.image.resize_images(
-        image, [new_height, new_width],
+        image, tf.stack([new_height, new_width]),
         method=method,
         align_corners=align_corners)
     image_shape = shape_utils.combined_static_and_dynamic_shape(image)
     result = [new_image]
     if masks is not None:
       num_instances = tf.shape(masks)[0]
-      new_size = tf.constant([new_height, new_width], dtype=tf.int32)
+      new_size = tf.stack([new_height, new_width])
       def resize_masks_branch():
         new_masks = tf.expand_dims(masks, 3)
         new_masks = tf.image.resize_nearest_neighbor(
@@ -2277,7 +2339,11 @@ def resize_image(image,
         return new_masks
 
       def reshape_masks_branch():
-        new_masks = tf.reshape(masks, [0, new_size[0], new_size[1]])
+        # The shape function will be computed for both branches of the
+        # condition, regardless of which branch is actually taken. Make sure
+        # that we don't trigger an assertion in the shape function when trying
+        # to reshape a non empty tensor into an empty one.
+        new_masks = tf.reshape(masks, [-1, new_size[0], new_size[1]])
         return new_masks
 
       masks = tf.cond(num_instances > 0, resize_masks_branch,
@@ -2350,6 +2416,7 @@ def ssd_random_crop(image,
                     boxes,
                     labels,
                     label_scores=None,
+                    multiclass_scores=None,
                     masks=None,
                     keypoints=None,
                     min_object_covered=(0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0),
@@ -2374,6 +2441,9 @@ def ssd_random_crop(image,
            Each row is in the form of [ymin, xmin, ymax, xmax].
     labels: rank 1 int32 tensor containing the object classes.
     label_scores: rank 1 float32 tensor containing the scores.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
@@ -2403,8 +2473,11 @@ def ssd_random_crop(image,
            Boxes are in normalized form.
     labels: new labels.
 
-    If label_scores, masks, or keypoints is not None, the function also returns:
-    label_scores: new label scores.
+    If label_scores, multiclass_scores, masks, or keypoints  is not None, the
+    function also returns:
+    label_scores: rank 1 float32 tensor with shape [num_instances].
+    multiclass_scores: rank 2 float32 tensor with shape
+                       [num_instances, num_classes]
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
     keypoints: rank 3 float32 tensor with shape
@@ -2422,13 +2495,18 @@ def ssd_random_crop(image,
     Returns: A tuple containing image, boxes, labels, keypoints (if not None),
              and masks (if not None).
     """
+
     i = 3
     image, boxes, labels = selected_result[:i]
     selected_label_scores = None
+    selected_multiclass_scores = None
     selected_masks = None
     selected_keypoints = None
     if label_scores is not None:
       selected_label_scores = selected_result[i]
+      i += 1
+    if multiclass_scores is not None:
+      selected_multiclass_scores = selected_result[i]
       i += 1
     if masks is not None:
       selected_masks = selected_result[i]
@@ -2441,6 +2519,7 @@ def ssd_random_crop(image,
         boxes=boxes,
         labels=labels,
         label_scores=selected_label_scores,
+        multiclass_scores=selected_multiclass_scores,
         masks=selected_masks,
         keypoints=selected_keypoints,
         min_object_covered=min_object_covered[index],
@@ -2453,8 +2532,8 @@ def ssd_random_crop(image,
 
   result = _apply_with_random_selector_tuples(
       tuple(
-          t for t in (image, boxes, labels, label_scores, masks, keypoints)
-          if t is not None),
+          t for t in (image, boxes, labels, label_scores, multiclass_scores,
+                      masks, keypoints) if t is not None),
       random_crop_selector,
       num_cases=len(min_object_covered),
       preprocess_vars_cache=preprocess_vars_cache,
@@ -2466,6 +2545,7 @@ def ssd_random_crop_pad(image,
                         boxes,
                         labels,
                         label_scores=None,
+                        multiclass_scores=None,
                         min_object_covered=(0.1, 0.3, 0.5, 0.7, 0.9, 1.0),
                         aspect_ratio_range=((0.5, 2.0),) * 6,
                         area_range=((0.1, 1.0),) * 6,
@@ -2492,6 +2572,9 @@ def ssd_random_crop_pad(image,
     labels: rank 1 int32 tensor containing the object classes.
     label_scores: float32 tensor of shape [num_instances] representing the
       score for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     min_object_covered: the cropped image must cover at least this fraction of
                         at least one of the input bounding boxes.
     aspect_ratio_range: allowed range for aspect ratio of cropped image.
@@ -2525,17 +2608,23 @@ def ssd_random_crop_pad(image,
   """
 
   def random_crop_pad_selector(image_boxes_labels, index):
+    """Random crop preprocessing helper."""
     i = 3
     image, boxes, labels = image_boxes_labels[:i]
     selected_label_scores = None
+    selected_multiclass_scores = None
     if label_scores is not None:
       selected_label_scores = image_boxes_labels[i]
+      i += 1
+    if multiclass_scores is not None:
+      selected_multiclass_scores = image_boxes_labels[i]
 
     return random_crop_pad_image(
         image,
         boxes,
         labels,
-        selected_label_scores,
+        label_scores=selected_label_scores,
+        multiclass_scores=selected_multiclass_scores,
         min_object_covered=min_object_covered[index],
         aspect_ratio_range=aspect_ratio_range[index],
         area_range=area_range[index],
@@ -2548,7 +2637,8 @@ def ssd_random_crop_pad(image,
         preprocess_vars_cache=preprocess_vars_cache)
 
   return _apply_with_random_selector_tuples(
-      tuple(t for t in (image, boxes, labels, label_scores) if t is not None),
+      tuple(t for t in (image, boxes, labels, label_scores, multiclass_scores)
+            if t is not None),
       random_crop_pad_selector,
       num_cases=len(min_object_covered),
       preprocess_vars_cache=preprocess_vars_cache,
@@ -2560,6 +2650,7 @@ def ssd_random_crop_fixed_aspect_ratio(
     boxes,
     labels,
     label_scores=None,
+    multiclass_scores=None,
     masks=None,
     keypoints=None,
     min_object_covered=(0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0),
@@ -2587,6 +2678,9 @@ def ssd_random_crop_fixed_aspect_ratio(
     labels: rank 1 int32 tensor containing the object classes.
     label_scores: (optional) float32 tensor of shape [num_instances]
       representing the score for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
@@ -2616,8 +2710,11 @@ def ssd_random_crop_fixed_aspect_ratio(
            Boxes are in normalized form.
     labels: new labels.
 
-    If masks or keypoints is not None, the function also returns:
+    If mulitclass_scores, masks, or keypoints is not None, the function also
+      returns:
 
+    multiclass_scores: rank 2 float32 tensor with shape
+                       [num_instances, num_classes]
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
     keypoints: rank 3 float32 tensor with shape
@@ -2626,29 +2723,46 @@ def ssd_random_crop_fixed_aspect_ratio(
   aspect_ratio_range = ((aspect_ratio, aspect_ratio),) * len(area_range)
 
   crop_result = ssd_random_crop(
-      image, boxes, labels, label_scores, masks, keypoints, min_object_covered,
-      aspect_ratio_range, area_range, overlap_thresh, random_coef, seed,
-      preprocess_vars_cache)
+      image,
+      boxes,
+      labels,
+      label_scores=label_scores,
+      multiclass_scores=multiclass_scores,
+      masks=masks,
+      keypoints=keypoints,
+      min_object_covered=min_object_covered,
+      aspect_ratio_range=aspect_ratio_range,
+      area_range=area_range,
+      overlap_thresh=overlap_thresh,
+      random_coef=random_coef,
+      seed=seed,
+      preprocess_vars_cache=preprocess_vars_cache)
   i = 3
   new_image, new_boxes, new_labels = crop_result[:i]
   new_label_scores = None
+  new_multiclass_scores = None
   new_masks = None
   new_keypoints = None
   if label_scores is not None:
     new_label_scores = crop_result[i]
+    i += 1
+  if multiclass_scores is not None:
+    new_multiclass_scores = crop_result[i]
     i += 1
   if masks is not None:
     new_masks = crop_result[i]
     i += 1
   if keypoints is not None:
     new_keypoints = crop_result[i]
+
   result = random_crop_to_aspect_ratio(
       new_image,
       new_boxes,
       new_labels,
-      new_label_scores,
-      new_masks,
-      new_keypoints,
+      label_scores=new_label_scores,
+      multiclass_scores=new_multiclass_scores,
+      masks=new_masks,
+      keypoints=new_keypoints,
       aspect_ratio=aspect_ratio,
       seed=seed,
       preprocess_vars_cache=preprocess_vars_cache)
@@ -2661,6 +2775,7 @@ def ssd_random_crop_pad_fixed_aspect_ratio(
     boxes,
     labels,
     label_scores=None,
+    multiclass_scores=None,
     masks=None,
     keypoints=None,
     min_object_covered=(0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0),
@@ -2692,6 +2807,9 @@ def ssd_random_crop_pad_fixed_aspect_ratio(
     labels: rank 1 int32 tensor containing the object classes.
     label_scores: (optional) float32 tensor of shape [num_instances]
       representing the score for each box.
+    multiclass_scores: (optional) float32 tensor of shape
+      [num_instances, num_classes] representing the score for each box for each
+      class.
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
@@ -2726,35 +2844,53 @@ def ssd_random_crop_pad_fixed_aspect_ratio(
            Boxes are in normalized form.
     labels: new labels.
 
-    If masks or keypoints is not None, the function also returns:
+    If multiclass_scores, masks, or keypoints is not None, the function also
+    returns:
 
+    multiclass_scores: rank 2 with shape [num_instances, num_classes]
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
     keypoints: rank 3 float32 tensor with shape
                [num_instances, num_keypoints, 2]
   """
   crop_result = ssd_random_crop(
-      image, boxes, labels, label_scores, masks, keypoints, min_object_covered,
-      aspect_ratio_range, area_range, overlap_thresh, random_coef, seed,
-      preprocess_vars_cache)
+      image,
+      boxes,
+      labels,
+      label_scores=label_scores,
+      multiclass_scores=multiclass_scores,
+      masks=masks,
+      keypoints=keypoints,
+      min_object_covered=min_object_covered,
+      aspect_ratio_range=aspect_ratio_range,
+      area_range=area_range,
+      overlap_thresh=overlap_thresh,
+      random_coef=random_coef,
+      seed=seed,
+      preprocess_vars_cache=preprocess_vars_cache)
   i = 3
   new_image, new_boxes, new_labels = crop_result[:i]
   new_label_scores = None
+  new_multiclass_scores = None
   new_masks = None
   new_keypoints = None
   if label_scores is not None:
     new_label_scores = crop_result[i]
+    i += 1
+  if multiclass_scores is not None:
+    new_multiclass_scores = crop_result[i]
     i += 1
   if masks is not None:
     new_masks = crop_result[i]
     i += 1
   if keypoints is not None:
     new_keypoints = crop_result[i]
+
   result = random_pad_to_aspect_ratio(
       new_image,
       new_boxes,
-      new_masks,
-      new_keypoints,
+      masks=new_masks,
+      keypoints=new_keypoints,
       aspect_ratio=aspect_ratio,
       min_padded_size_ratio=min_padded_size_ratio,
       max_padded_size_ratio=max_padded_size_ratio,
@@ -2762,15 +2898,20 @@ def ssd_random_crop_pad_fixed_aspect_ratio(
       preprocess_vars_cache=preprocess_vars_cache)
 
   result = list(result)
-  if new_label_scores is not None:
-    result.insert(2, new_label_scores)
+  i = 3
   result.insert(2, new_labels)
+  if new_label_scores is not None:
+    result.insert(i, new_label_scores)
+    i += 1
+  if multiclass_scores is not None:
+    result.insert(i, new_multiclass_scores)
   result = tuple(result)
 
   return result
 
 
 def get_default_func_arg_map(include_label_scores=False,
+                             include_multiclass_scores=False,
                              include_instance_masks=False,
                              include_keypoints=False):
   """Returns the default mapping from a preprocessor function to its args.
@@ -2778,6 +2919,8 @@ def get_default_func_arg_map(include_label_scores=False,
   Args:
     include_label_scores: If True, preprocessing functions will modify the
       label scores, too.
+    include_multiclass_scores: If True, preprocessing functions will modify the
+      multiclass scores, too.
     include_instance_masks: If True, preprocessing functions will modify the
       instance masks, too.
     include_keypoints: If True, preprocessing functions will modify the
@@ -2789,6 +2932,10 @@ def get_default_func_arg_map(include_label_scores=False,
   groundtruth_label_scores = None
   if include_label_scores:
     groundtruth_label_scores = (fields.InputDataFields.groundtruth_label_scores)
+
+  multiclass_scores = None
+  if include_multiclass_scores:
+    multiclass_scores = (fields.InputDataFields.multiclass_scores)
 
   groundtruth_instance_masks = None
   if include_instance_masks:
@@ -2805,21 +2952,25 @@ def get_default_func_arg_map(include_label_scores=False,
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
           groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          groundtruth_keypoints,
+      ),
       random_vertical_flip: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
           groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          groundtruth_keypoints,
+      ),
       random_rotation90: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
           groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          groundtruth_keypoints,
+      ),
       random_pixel_value_scale: (fields.InputDataFields.image,),
       random_image_scale: (
           fields.InputDataFields.image,
-          groundtruth_instance_masks,),
+          groundtruth_instance_masks,
+      ),
       random_rgb_to_gray: (fields.InputDataFields.image,),
       random_adjust_brightness: (fields.InputDataFields.image,),
       random_adjust_contrast: (fields.InputDataFields.image,),
@@ -2827,53 +2978,61 @@ def get_default_func_arg_map(include_label_scores=False,
       random_adjust_saturation: (fields.InputDataFields.image,),
       random_distort_color: (fields.InputDataFields.image,),
       random_jitter_boxes: (fields.InputDataFields.groundtruth_boxes,),
-      random_crop_image: (
-          fields.InputDataFields.image,
-          fields.InputDataFields.groundtruth_boxes,
-          fields.InputDataFields.groundtruth_classes,
-          groundtruth_label_scores,
-          groundtruth_instance_masks,
-          groundtruth_keypoints,),
+      random_crop_image: (fields.InputDataFields.image,
+                          fields.InputDataFields.groundtruth_boxes,
+                          fields.InputDataFields.groundtruth_classes,
+                          groundtruth_label_scores, multiclass_scores,
+                          groundtruth_instance_masks, groundtruth_keypoints),
       random_pad_image: (fields.InputDataFields.image,
                          fields.InputDataFields.groundtruth_boxes),
       random_crop_pad_image: (fields.InputDataFields.image,
                               fields.InputDataFields.groundtruth_boxes,
                               fields.InputDataFields.groundtruth_classes,
-                              groundtruth_label_scores),
+                              groundtruth_label_scores,
+                              multiclass_scores),
       random_crop_to_aspect_ratio: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
           fields.InputDataFields.groundtruth_classes,
           groundtruth_label_scores,
+          multiclass_scores,
           groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          groundtruth_keypoints,
+      ),
       random_pad_to_aspect_ratio: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
           groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          groundtruth_keypoints,
+      ),
       random_black_patches: (fields.InputDataFields.image,),
       retain_boxes_above_threshold: (
           fields.InputDataFields.groundtruth_boxes,
           fields.InputDataFields.groundtruth_classes,
           groundtruth_label_scores,
+          multiclass_scores,
           groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          groundtruth_keypoints,
+      ),
       image_to_float: (fields.InputDataFields.image,),
       random_resize_method: (fields.InputDataFields.image,),
       resize_to_range: (
           fields.InputDataFields.image,
-          groundtruth_instance_masks,),
+          groundtruth_instance_masks,
+      ),
       resize_to_min_dimension: (
           fields.InputDataFields.image,
-          groundtruth_instance_masks,),
+          groundtruth_instance_masks,
+      ),
       scale_boxes_to_pixel_coordinates: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
-          groundtruth_keypoints,),
+          groundtruth_keypoints,
+      ),
       resize_image: (
           fields.InputDataFields.image,
-          groundtruth_instance_masks,),
+          groundtruth_instance_masks,
+      ),
       subtract_channel_mean: (fields.InputDataFields.image,),
       one_hot_encoding: (fields.InputDataFields.groundtruth_image_classes,),
       rgb_to_gray: (fields.InputDataFields.image,),
@@ -2882,26 +3041,29 @@ def get_default_func_arg_map(include_label_scores=False,
           fields.InputDataFields.groundtruth_boxes,
           fields.InputDataFields.groundtruth_classes,
           groundtruth_label_scores,
+          multiclass_scores,
           groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          groundtruth_keypoints
+      ),
       ssd_random_crop_pad: (fields.InputDataFields.image,
                             fields.InputDataFields.groundtruth_boxes,
                             fields.InputDataFields.groundtruth_classes,
-                            groundtruth_label_scores),
+                            groundtruth_label_scores,
+                            multiclass_scores),
       ssd_random_crop_fixed_aspect_ratio: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
-          fields.InputDataFields.groundtruth_classes,
-          groundtruth_label_scores,
-          groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          fields.InputDataFields.groundtruth_classes, groundtruth_label_scores,
+          multiclass_scores, groundtruth_instance_masks, groundtruth_keypoints),
       ssd_random_crop_pad_fixed_aspect_ratio: (
           fields.InputDataFields.image,
           fields.InputDataFields.groundtruth_boxes,
           fields.InputDataFields.groundtruth_classes,
           groundtruth_label_scores,
+          multiclass_scores,
           groundtruth_instance_masks,
-          groundtruth_keypoints,),
+          groundtruth_keypoints,
+      ),
   }
 
   return prep_func_arg_map

@@ -180,26 +180,24 @@ def pad_to_multiple(tensor, multiple):
     padded_tensor_width = int(
         math.ceil(float(tensor_width) / multiple) * multiple)
 
-  if (padded_tensor_height == tensor_height and
-      padded_tensor_width == tensor_width):
-    return tensor
-
   if tensor_depth is None:
     tensor_depth = tf.shape(tensor)[3]
 
   # Use tf.concat instead of tf.pad to preserve static shape
-  height_pad = tf.zeros([
-      batch_size, padded_tensor_height - tensor_height, tensor_width,
-      tensor_depth
-  ])
-  padded_tensor = tf.concat([tensor, height_pad], 1)
-  width_pad = tf.zeros([
-      batch_size, padded_tensor_height, padded_tensor_width - tensor_width,
-      tensor_depth
-  ])
-  padded_tensor = tf.concat([padded_tensor, width_pad], 2)
+  if padded_tensor_height != tensor_height:
+    height_pad = tf.zeros([
+        batch_size, padded_tensor_height - tensor_height, tensor_width,
+        tensor_depth
+    ])
+    tensor = tf.concat([tensor, height_pad], 1)
+  if padded_tensor_width != tensor_width:
+    width_pad = tf.zeros([
+        batch_size, padded_tensor_height, padded_tensor_width - tensor_width,
+        tensor_depth
+    ])
+    tensor = tf.concat([tensor, width_pad], 2)
 
-  return padded_tensor
+  return tensor
 
 
 def padded_one_hot_encoding(indices, depth, left_pad):
@@ -657,7 +655,7 @@ def position_sensitive_crop_regions(image,
     position_sensitive_features = tf.add_n(image_crops) / len(image_crops)
     # Then average over spatial positions within the bins.
     position_sensitive_features = tf.reduce_mean(
-        position_sensitive_features, [1, 2], keepdims=True)
+        position_sensitive_features, [1, 2], keep_dims=True)
   else:
     # Reorder height/width to depth channel.
     block_size = bin_crop_size[0]
@@ -776,8 +774,8 @@ def nearest_neighbor_upsampling(input_tensor, scale):
 
   Nearest neighbor upsampling function that maps input tensor with shape
   [batch_size, height, width, channels] to [batch_size, height * scale
-  , width * scale, channels]. This implementation only uses reshape and tile to
-  make it compatible with certain hardware.
+  , width * scale, channels]. This implementation only uses reshape and
+  broadcasting to make it TPU compatible.
 
   Args:
     input_tensor: A float32 tensor of size [batch, height_in, width_in,
@@ -787,13 +785,14 @@ def nearest_neighbor_upsampling(input_tensor, scale):
     data_up: A float32 tensor of size
       [batch, height_in*scale, width_in*scale, channels].
   """
-  shape = shape_utils.combined_static_and_dynamic_shape(input_tensor)
-  shape_before_tile = [shape[0], shape[1], 1, shape[2], 1, shape[3]]
-  shape_after_tile = [shape[0], shape[1] * scale, shape[2] * scale, shape[3]]
-  data_reshaped = tf.reshape(input_tensor, shape_before_tile)
-  resized_tensor = tf.tile(data_reshaped, [1, 1, scale, 1, scale, 1])
-  resized_tensor = tf.reshape(resized_tensor, shape_after_tile)
-  return resized_tensor
+  with tf.name_scope('nearest_neighbor_upsampling'):
+    (batch_size, height, width,
+     channels) = shape_utils.combined_static_and_dynamic_shape(input_tensor)
+    output_tensor = tf.reshape(
+        input_tensor, [batch_size, height, 1, width, 1, channels]) * tf.ones(
+            [1, 1, scale, 1, scale, 1], dtype=input_tensor.dtype)
+    return tf.reshape(output_tensor,
+                      [batch_size, height * scale, width * scale, channels])
 
 
 def matmul_gather_on_zeroth_axis(params, indices, scope=None):

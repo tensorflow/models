@@ -1,3 +1,6 @@
+# Mobilenet_v2
+For Mobilenet V2 see this file [mobilenet/README.md]
+
 # MobileNet_v1
 
 [MobileNets](https://arxiv.org/abs/1704.04861) are small, low-latency, low-power models parameterized to meet the resource constraints of a variety of use cases. They can be built upon for classification, detection, embeddings and segmentation similar to how other popular large scale models, such as Inception, are used. MobileNets can be run efficiently on mobile devices with [TensorFlow Mobile](https://www.tensorflow.org/mobile/).
@@ -55,7 +58,7 @@ The linked model tar files contain the following:
 * Converted [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/) flatbuffer model
 
 Note that quantized model GraphDefs are still float models, they just have FakeQuantization
-operation embedded to simulate quantization. These are converted by [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/) 
+operation embedded to simulate quantization. These are converted by [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/)
 to be fully quantized. The final effect of quantization can be seen by comparing the frozen fake
 quantized graph to the size of the TFLite flatbuffer, i.e. The TFLite flatbuffer is about 1/4
 the size.
@@ -68,7 +71,7 @@ Here is an example of how to download the MobileNet_v1_1.0_224 checkpoint:
 $ CHECKPOINT_DIR=/tmp/checkpoints
 $ mkdir ${CHECKPOINT_DIR}
 $ wget http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_224.tgz
-$ tar -xvf mobilenet_v1_1.0_224.tar.gz
+$ tar -xvf mobilenet_v1_1.0_224.tgz
 $ mv mobilenet_v1_1.0_224.ckpt.* ${CHECKPOINT_DIR}
 ```
 
@@ -127,4 +130,3 @@ $ ./bazel-bin/mobilenet_v1_eval --dataset_dir "path/to/dataset" --checkpoint_dir
 ```
 
 The resulting float and quantized models can be run on-device via [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/).
-

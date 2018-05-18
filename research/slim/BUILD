@@ -201,10 +201,11 @@ py_library(
         ":cyclegan",
         ":inception",
         ":lenet",
-        ":mobilenet_v1",
+        ":mobilenet",
         ":nasnet",
         ":overfeat",
         ":pix2pix",
+        ":pnasnet",
         ":resnet_v1",
         ":resnet_v2",
         ":vgg",
@@ -429,25 +430,30 @@ py_library(
     ],
 )
 
-py_binary(
-    name = "mobilenet_v1_train",
-    srcs = ["nets/mobilenet_v1_train.py"],
+py_library(
+    name = "mobilenet_v2",
+    srcs = glob(["nets/mobilenet/*.py"]),
+    srcs_version = "PY2AND3",
     deps = [
-        ":dataset_factory",
-        ":mobilenet_v1",
-        ":preprocessing_factory",
-        # "//tensorflow"
+        # "//tensorflow",
     ],
 )
 
-py_binary(
-    name = "mobilenet_v1_eval",
-    srcs = ["nets/mobilenet_v1_eval.py"],
+py_test(
+    name = "mobilenet_v2_test",
+    srcs = ["nets/mobilenet/mobilenet_v2_test.py"],
+    srcs_version = "PY2AND3",
     deps = [
-        ":dataset_factory",
+        ":mobilenet",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "mobilenet",
+    deps = [
         ":mobilenet_v1",
-        ":preprocessing_factory",
-        # "//tensorflow"
+        ":mobilenet_v2",
     ],
 )
 
@@ -460,6 +466,28 @@ py_test(
     deps = [
         ":mobilenet_v1",
         # "//numpy",
+        # "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "mobilenet_v1_train",
+    srcs = ["nets/mobilenet_v1_train.py"],
+    deps = [
+        ":dataset_factory",
+        ":mobilenet_v1",
+        ":preprocessing_factory",
+        # "//tensorflow",
+    ],
+)
+
+py_binary(
+    name = "mobilenet_v1_eval",
+    srcs = ["nets/mobilenet_v1_eval.py"],
+    deps = [
+        ":dataset_factory",
+        ":mobilenet_v1",
+        ":preprocessing_factory",
         # "//tensorflow",
     ],
 )
@@ -502,6 +530,29 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         ":nasnet",
+        # "//tensorflow",
+    ],
+)
+
+py_library(
+    name = "pnasnet",
+    srcs = ["nets/nasnet/pnasnet.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":nasnet",
+        ":nasnet_utils",
+        # "//tensorflow",
+    ],
+)
+
+py_test(
+    name = "pnasnet_test",
+    size = "large",
+    srcs = ["nets/nasnet/pnasnet_test.py"],
+    shard_count = 4,
+    srcs_version = "PY2AND3",
+    deps = [
+        ":pnasnet",
         # "//tensorflow",
     ],
 )

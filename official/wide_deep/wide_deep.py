@@ -17,11 +17,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
+import os
 import shutil
-import sys
 
-import tensorflow as tf
+from absl import app as absl_app
+from absl import flags
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
+from official.utils.flags import core as flags_core
+from official.utils.logs import hooks_helper
+from official.utils.logs import logger
+from official.utils.misc import model_helpers
+
 
 _CSV_COLUMNS = [
     'age', 'workclass', 'fnlwgt', 'education', 'education_num',
@@ -33,38 +40,32 @@ _CSV_COLUMNS = [
 _CSV_COLUMN_DEFAULTS = [[0], [''], [0], [''], [0], [''], [''], [''], [''], [''],
                         [0], [0], [0], [''], ['']]
 
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    '--model_dir', type=str, default='/tmp/census_model',
-    help='Base directory for the model.')
-
-parser.add_argument(
-    '--model_type', type=str, default='wide_deep',
-    help="Valid model types: {'wide', 'deep', 'wide_deep'}.")
-
-parser.add_argument(
-    '--train_epochs', type=int, default=40, help='Number of training epochs.')
-
-parser.add_argument(
-    '--epochs_per_eval', type=int, default=2,
-    help='The number of training epochs to run between evaluations.')
-
-parser.add_argument(
-    '--batch_size', type=int, default=40, help='Number of examples per batch.')
-
-parser.add_argument(
-    '--train_data', type=str, default='/tmp/census_data/adult.data',
-    help='Path to the training data.')
-
-parser.add_argument(
-    '--test_data', type=str, default='/tmp/census_data/adult.test',
-    help='Path to the test data.')
-
 _NUM_EXAMPLES = {
     'train': 32561,
     'validation': 16281,
 }
+
+
+LOSS_PREFIX = {'wide': 'linear/', 'deep': 'dnn/'}
+
+
+def define_wide_deep_flags():
+  """Add supervised learning flags, as well as wide-deep model type."""
+  flags_core.define_base()
+  flags_core.define_benchmark()
+
+  flags.adopt_module_key_flags(flags_core)
+
+  flags.DEFINE_enum(
+      name="model_type", short_name="mt", default="wide_deep",
+      enum_values=['wide', 'deep', 'wide_deep'],
+      help="Select model topology.")
+
+  flags_core.set_defaults(data_dir='/tmp/census_data',
+                          model_dir='/tmp/census_model',
+                          train_epochs=40,
+                          epochs_between_evals=2,
+                          batch_size=40)
 
 
 def build_model_columns():
@@ -170,8 +171,8 @@ def build_estimator(model_dir, model_type):
 def input_fn(data_file, num_epochs, shuffle, batch_size):
   """Generate an input function for the Estimator."""
   assert tf.gfile.Exists(data_file), (
-      '%s not found. Please make sure you have either run data_download.py or '
-      'set both arguments --train_data and --test_data.' % data_file)
+      '%s not found. Please make sure you have run data_download.py and '
+      'set the --data_dir argument to the correct path.' % data_file)
 
   def parse_csv(value):
     print('Parsing', data_file)
@@ -195,28 +196,94 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
   return dataset
 
 
-def main(unused_argv):
+def export_model(model, model_type, export_dir):
+  """Export to SavedModel format.
+
+  Args:
+    model: Estimator object
+    model_type: string indicating model type. "wide", "deep" or "wide_deep"
+    export_dir: directory to export the model.
+  """
+  wide_columns, deep_columns = build_model_columns()
+  if model_type == 'wide':
+    columns = wide_columns
+  elif model_type == 'deep':
+    columns = deep_columns
+  else:
+    columns = wide_columns + deep_columns
+  feature_spec = tf.feature_column.make_parse_example_spec(columns)
+  example_input_fn = (
+      tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec))
+  model.export_savedmodel(export_dir, example_input_fn)
+
+
+def run_wide_deep(flags_obj):
+  """Run Wide-Deep training and eval loop.
+
+  Args:
+    flags_obj: An object containing parsed flag values.
+  """
+
   # Clean up the model directory if present
-  shutil.rmtree(FLAGS.model_dir, ignore_errors=True)
-  model = build_estimator(FLAGS.model_dir, FLAGS.model_type)
+  shutil.rmtree(flags_obj.model_dir, ignore_errors=True)
+  model = build_estimator(flags_obj.model_dir, flags_obj.model_type)
 
-  # Train and evaluate the model every `FLAGS.epochs_per_eval` epochs.
-  for n in range(FLAGS.train_epochs // FLAGS.epochs_per_eval):
-    model.train(input_fn=lambda: input_fn(
-        FLAGS.train_data, FLAGS.epochs_per_eval, True, FLAGS.batch_size))
+  train_file = os.path.join(flags_obj.data_dir, 'adult.data')
+  test_file = os.path.join(flags_obj.data_dir, 'adult.test')
 
-    results = model.evaluate(input_fn=lambda: input_fn(
-        FLAGS.test_data, 1, False, FLAGS.batch_size))
+  # Train and evaluate the model every `flags.epochs_between_evals` epochs.
+  def train_input_fn():
+    return input_fn(
+        train_file, flags_obj.epochs_between_evals, True, flags_obj.batch_size)
+
+  def eval_input_fn():
+    return input_fn(test_file, 1, False, flags_obj.batch_size)
+
+  run_params = {
+      'batch_size': flags_obj.batch_size,
+      'train_epochs': flags_obj.train_epochs,
+      'model_type': flags_obj.model_type,
+  }
+
+  benchmark_logger = logger.config_benchmark_logger(flags_obj)
+  benchmark_logger.log_run_info('wide_deep', 'Census Income', run_params)
+
+  loss_prefix = LOSS_PREFIX.get(flags_obj.model_type, '')
+  train_hooks = hooks_helper.get_train_hooks(
+      flags_obj.hooks, batch_size=flags_obj.batch_size,
+      tensors_to_log={'average_loss': loss_prefix + 'head/truediv',
+                      'loss': loss_prefix + 'head/weighted_loss/Sum'})
+
+  # Train and evaluate the model every `flags.epochs_between_evals` epochs.
+  for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
+    model.train(input_fn=train_input_fn, hooks=train_hooks)
+    results = model.evaluate(input_fn=eval_input_fn)
 
     # Display evaluation metrics
-    print('Results at epoch', (n + 1) * FLAGS.epochs_per_eval)
-    print('-' * 60)
+    tf.logging.info('Results at epoch %d / %d',
+                    (n + 1) * flags_obj.epochs_between_evals,
+                    flags_obj.train_epochs)
+    tf.logging.info('-' * 60)
 
     for key in sorted(results):
-      print('%s: %s' % (key, results[key]))
+      tf.logging.info('%s: %s' % (key, results[key]))
+
+    benchmark_logger.log_evaluation_result(results)
+
+    if model_helpers.past_stop_threshold(
+        flags_obj.stop_threshold, results['accuracy']):
+      break
+
+  # Export the model
+  if flags_obj.export_dir is not None:
+    export_model(model, flags_obj.model_type, flags_obj.export_dir)
+
+
+def main(_):
+  run_wide_deep(flags.FLAGS)
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  define_wide_deep_flags()
+  absl_app.run(main)

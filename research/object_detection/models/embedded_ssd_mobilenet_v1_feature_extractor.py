@@ -17,16 +17,16 @@
 
 import tensorflow as tf
 
+from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
-from object_detection.models import ssd_mobilenet_v1_feature_extractor
+from object_detection.utils import context_manager
 from object_detection.utils import ops
 from nets import mobilenet_v1
 
 slim = tf.contrib.slim
 
 
-class EmbeddedSSDMobileNetV1FeatureExtractor(
-    ssd_mobilenet_v1_feature_extractor.SSDMobileNetV1FeatureExtractor):
+class EmbeddedSSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
   """Embedded-friendly SSD Feature Extractor using MobilenetV1 features.
 
   This feature extractor is similar to SSD MobileNetV1 feature extractor, and
@@ -49,11 +49,11 @@ class EmbeddedSSDMobileNetV1FeatureExtractor(
                depth_multiplier,
                min_depth,
                pad_to_multiple,
-               conv_hyperparams,
-               batch_norm_trainable=True,
+               conv_hyperparams_fn,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
     """MobileNetV1 Feature Extractor for Embedded-friendly SSD Models.
 
     Args:
@@ -62,15 +62,16 @@ class EmbeddedSSDMobileNetV1FeatureExtractor(
       min_depth: minimum feature extractor depth.
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to. For EmbeddedSSD it must be set to 1.
-      conv_hyperparams: tf slim arg_scope for conv2d and separable_conv2d ops.
-      batch_norm_trainable:  Whether to update batch norm parameters during
-        training or not. When training with a small batch size
-        (e.g. 1), it is desirable to disable batch norm update and use
-        pretrained batch norm params.
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
 
     Raises:
       ValueError: upon invalid `pad_to_multiple` values.
@@ -81,8 +82,23 @@ class EmbeddedSSDMobileNetV1FeatureExtractor(
 
     super(EmbeddedSSDMobileNetV1FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, batch_norm_trainable, reuse_weights,
-        use_explicit_padding, use_depthwise)
+        conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise,
+        override_base_feature_extractor_hyperparams)
+
+  def preprocess(self, resized_inputs):
+    """SSD preprocessing.
+
+    Maps pixel values to the range [-1, 1].
+
+    Args:
+      resized_inputs: a [batch, height, width, channels] float tensor
+        representing a batch of images.
+
+    Returns:
+      preprocessed_inputs: a [batch, height, width, channels] float tensor
+        representing a batch of images.
+    """
+    return (2.0 / 255.0) * resized_inputs - 1.0
 
   def extract_features(self, preprocessed_inputs):
     """Extract features from preprocessed inputs.
@@ -124,16 +140,25 @@ class EmbeddedSSDMobileNetV1FeatureExtractor(
         'use_depthwise': self._use_depthwise,
     }
 
-    with slim.arg_scope(self._conv_hyperparams):
-      with slim.arg_scope([slim.batch_norm], fused=False):
-        with tf.variable_scope('MobilenetV1',
-                               reuse=self._reuse_weights) as scope:
-          _, image_features = mobilenet_v1.mobilenet_v1_base(
-              ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
-              final_endpoint='Conv2d_13_pointwise',
-              min_depth=self._min_depth,
-              depth_multiplier=self._depth_multiplier,
-              scope=scope)
+    with tf.variable_scope('MobilenetV1',
+                           reuse=self._reuse_weights) as scope:
+      with slim.arg_scope(
+          mobilenet_v1.mobilenet_v1_arg_scope(is_training=None)):
+        with (slim.arg_scope(self._conv_hyperparams_fn())
+              if self._override_base_feature_extractor_hyperparams
+              else context_manager.IdentityContextManager()):
+        # TODO(skligys): Enable fused batch norm once quantization supports it.
+          with slim.arg_scope([slim.batch_norm], fused=False):
+            _, image_features = mobilenet_v1.mobilenet_v1_base(
+                ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
+                final_endpoint='Conv2d_13_pointwise',
+                min_depth=self._min_depth,
+                depth_multiplier=self._depth_multiplier,
+                use_explicit_padding=self._use_explicit_padding,
+                scope=scope)
+      with slim.arg_scope(self._conv_hyperparams_fn()):
+        # TODO(skligys): Enable fused batch norm once quantization supports it.
+        with slim.arg_scope([slim.batch_norm], fused=False):
           feature_maps = feature_map_generators.multi_resolution_feature_maps(
               feature_map_layout=feature_map_layout,
               depth_multiplier=self._depth_multiplier,

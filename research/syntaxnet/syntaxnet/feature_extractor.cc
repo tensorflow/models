@@ -101,6 +101,13 @@ int GenericFeatureFunction::GetIntParameter(const string &name,
                                 tensorflow::strings::safe_strto32);
 }
 
+double GenericFeatureFunction::GetFloatParameter(const string &name,
+                                                 double default_value) const {
+  const string value = GetParameter(name);
+  return utils::ParseUsing<double>(value, default_value,
+                                   tensorflow::strings::safe_strtod);
+}
+
 bool GenericFeatureFunction::GetBoolParameter(const string &name,
                                               bool default_value) const {
   const string value = GetParameter(name);

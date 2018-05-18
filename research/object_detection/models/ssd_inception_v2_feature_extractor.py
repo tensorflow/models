@@ -33,11 +33,11 @@ class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                depth_multiplier,
                min_depth,
                pad_to_multiple,
-               conv_hyperparams,
-               batch_norm_trainable=True,
+               conv_hyperparams_fn,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
     """InceptionV2 Feature Extractor for SSD Models.
 
     Args:
@@ -46,20 +46,30 @@ class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       min_depth: minimum feature extractor depth.
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
-      conv_hyperparams: tf slim arg_scope for conv2d and separable_conv2d ops.
-      batch_norm_trainable: Whether to update batch norm parameters during
-        training or not. When training with a small batch size
-        (e.g. 1), it is desirable to disable batch norm update and use
-        pretrained batch norm params.
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False.
       use_depthwise: Whether to use depthwise convolutions. Default is False.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
+
+    Raises:
+      ValueError: If `override_base_feature_extractor_hyperparams` is False.
     """
     super(SSDInceptionV2FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, batch_norm_trainable, reuse_weights,
-        use_explicit_padding, use_depthwise)
+        conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise,
+        override_base_feature_extractor_hyperparams)
+    if not self._override_base_feature_extractor_hyperparams:
+      raise ValueError('SSD Inception V2 feature extractor always uses'
+                       'scope returned by `conv_hyperparams_fn` for both the '
+                       'base feature extractor and the additional layers '
+                       'added since there is no arg_scope defined for the base '
+                       'feature extractor.')
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -97,7 +107,7 @@ class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         'use_depthwise': self._use_depthwise,
     }
 
-    with slim.arg_scope(self._conv_hyperparams):
+    with slim.arg_scope(self._conv_hyperparams_fn()):
       with tf.variable_scope('InceptionV2',
                              reuse=self._reuse_weights) as scope:
         _, image_features = inception_v2.inception_v2_base(

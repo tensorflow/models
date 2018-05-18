@@ -17,6 +17,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import errors
+from tensorflow.python.framework import ops
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
@@ -509,9 +510,13 @@ class BoxListOpsTest(tf.test.TestCase):
       with self.assertRaises(ValueError):
         box_list_ops.sort_by_field(boxes, 'misc')
 
-      with self.assertRaisesWithPredicateMatch(errors.InvalidArgumentError,
-                                               'Incorrect field size'):
-        sess.run(box_list_ops.sort_by_field(boxes, 'weights').get())
+      if ops._USE_C_API:
+        with self.assertRaises(ValueError):
+          box_list_ops.sort_by_field(boxes, 'weights')
+      else:
+        with self.assertRaisesWithPredicateMatch(errors.InvalidArgumentError,
+                                                 'Incorrect field size'):
+          sess.run(box_list_ops.sort_by_field(boxes, 'weights').get())
 
   def test_visualize_boxes_in_image(self):
     image = tf.zeros((6, 4, 3))
@@ -726,21 +731,6 @@ class ConcatenateTest(tf.test.TestCase):
 
 
 class NonMaxSuppressionTest(tf.test.TestCase):
-
-  def test_with_invalid_scores_field(self):
-    corners = tf.constant([[0, 0, 1, 1],
-                           [0, 0.1, 1, 1.1],
-                           [0, -0.1, 1, 0.9],
-                           [0, 10, 1, 11],
-                           [0, 10.1, 1, 11.1],
-                           [0, 100, 1, 101]], tf.float32)
-    boxes = box_list.BoxList(corners)
-    boxes.add_field('scores', tf.constant([.9, .75, .6, .95, .5]))
-    iou_thresh = .5
-    max_output_size = 3
-    with self.assertRaisesWithPredicateMatch(ValueError,
-                                             'Dimensions must be equal'):
-      box_list_ops.non_max_suppression(boxes, iou_thresh, max_output_size)
 
   def test_select_from_three_clusters(self):
     corners = tf.constant([[0, 0, 1, 1],

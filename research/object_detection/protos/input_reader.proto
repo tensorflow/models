@@ -51,11 +51,17 @@ message InputReader {
   // Number of reader instances to create.
   optional uint32 num_readers = 6 [default=32];
 
+  // Number of records to read from each reader at once.
+  optional uint32 read_block_length = 15 [default=32];
+
   // Number of decoded records to prefetch before batching.
   optional uint32 prefetch_size = 13 [default = 512];
 
   // Number of parallel decode ops to apply.
   optional uint32 num_parallel_map_calls = 14 [default = 64];
+
+  // Number of groundtruth keypoints per object.
+  optional uint32 num_keypoints = 16 [default = 0];
 
   // Whether to load groundtruth instance masks.
   optional bool load_instance_masks = 7 [default = false];

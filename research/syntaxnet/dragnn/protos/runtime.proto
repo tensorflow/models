@@ -16,7 +16,7 @@ message MasterPerformanceSettings {
 
   // Maximum size of the free list in the SessionStatePool.  NB: The default
   // value may occasionally change.
-  optional uint64 session_state_pool_max_free_states = 1 [default = 4];
+  optional uint64 session_state_pool_max_free_states = 1 [default = 16];
 }
 
 // As above, but for component-specific performance tuning settings.

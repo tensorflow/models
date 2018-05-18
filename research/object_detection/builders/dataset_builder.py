@@ -30,8 +30,8 @@ from object_detection.protos import input_reader_pb2
 from object_detection.utils import dataset_util
 
 
-def _get_padding_shapes(dataset, max_num_boxes, num_classes,
-                        spatial_image_shape):
+def _get_padding_shapes(dataset, max_num_boxes=None, num_classes=None,
+                        spatial_image_shape=None):
   """Returns shapes to pad dataset tensors to before batching.
 
   Args:
@@ -41,13 +41,21 @@ def _get_padding_shapes(dataset, max_num_boxes, num_classes,
     num_classes: Number of classes in the dataset needed to compute shapes for
       padding.
     spatial_image_shape: A list of two integers of the form [height, width]
-      containing expected spatial shape of the imaage.
+      containing expected spatial shape of the image.
 
   Returns:
     A dictionary keyed by fields.InputDataFields containing padding shapes for
     tensors in the dataset.
+
+  Raises:
+    ValueError: If groundtruth classes is neither rank 1 nor rank 2.
   """
-  height, width = spatial_image_shape
+
+  if not spatial_image_shape or spatial_image_shape == [-1, -1]:
+    height, width = None, None
+  else:
+    height, width = spatial_image_shape  # pylint: disable=unpacking-non-sequence
+
   padding_shapes = {
       fields.InputDataFields.image: [height, width, 3],
       fields.InputDataFields.source_id: [],
@@ -55,9 +63,6 @@ def _get_padding_shapes(dataset, max_num_boxes, num_classes,
       fields.InputDataFields.key: [],
       fields.InputDataFields.groundtruth_difficult: [max_num_boxes],
       fields.InputDataFields.groundtruth_boxes: [max_num_boxes, 4],
-      fields.InputDataFields.groundtruth_classes: [
-          max_num_boxes, num_classes
-      ],
       fields.InputDataFields.groundtruth_instance_masks: [max_num_boxes, height,
                                                           width],
       fields.InputDataFields.groundtruth_is_crowd: [max_num_boxes],
@@ -67,8 +72,25 @@ def _get_padding_shapes(dataset, max_num_boxes, num_classes,
       fields.InputDataFields.num_groundtruth_boxes: [],
       fields.InputDataFields.groundtruth_label_types: [max_num_boxes],
       fields.InputDataFields.groundtruth_label_scores: [max_num_boxes],
-      fields.InputDataFields.true_image_shape: [3]
+      fields.InputDataFields.true_image_shape: [3],
+      fields.InputDataFields.multiclass_scores: [
+          max_num_boxes, num_classes + 1 if num_classes is not None else None],
   }
+  # Determine whether groundtruth_classes are integers or one-hot encodings, and
+  # apply batching appropriately.
+  classes_shape = dataset.output_shapes[
+      fields.InputDataFields.groundtruth_classes]
+  if len(classes_shape) == 1:  # Class integers.
+    padding_shapes[fields.InputDataFields.groundtruth_classes] = [max_num_boxes]
+  elif len(classes_shape) == 2:  # One-hot or k-hot encoding.
+    padding_shapes[fields.InputDataFields.groundtruth_classes] = [
+        max_num_boxes, num_classes]
+  else:
+    raise ValueError('Groundtruth classes must be a rank 1 tensor (classes) or '
+                     'rank 2 tensor (one-hot encodings)')
+
+  if fields.InputDataFields.original_image in dataset.output_shapes:
+    padding_shapes[fields.InputDataFields.original_image] = [None, None, 3]
   if fields.InputDataFields.groundtruth_keypoints in dataset.output_shapes:
     tensor_shape = dataset.output_shapes[fields.InputDataFields.
                                          groundtruth_keypoints]
@@ -87,28 +109,25 @@ def _get_padding_shapes(dataset, max_num_boxes, num_classes,
 
 
 def build(input_reader_config, transform_input_data_fn=None,
-          batch_size=1, max_num_boxes=None, num_classes=None,
+          batch_size=None, max_num_boxes=None, num_classes=None,
           spatial_image_shape=None):
   """Builds a tf.data.Dataset.
 
   Builds a tf.data.Dataset by applying the `transform_input_data_fn` on all
-  records. Optionally, if `batch_size` > 1 and `max_num_boxes`, `num_classes`
-  and `spatial_image_shape` are not None, returns a padded batched
-  tf.data.Dataset.
+  records. Applies a padded batch to the resulting dataset.
 
   Args:
     input_reader_config: A input_reader_pb2.InputReader object.
     transform_input_data_fn: Function to apply to all records, or None if
       no extra decoding is required.
-    batch_size: Batch size. If not None, returns a padded batch dataset.
-    max_num_boxes: Max number of groundtruth boxes needed to computes shapes for
-      padding. This is only used if batch_size is greater than 1.
+    batch_size: Batch size. If None, batching is not performed.
+    max_num_boxes: Max number of groundtruth boxes needed to compute shapes for
+      padding. If None, will use a dynamic shape.
     num_classes: Number of classes in the dataset needed to compute shapes for
-      padding. This is only used if batch_size is greater than 1.
-    spatial_image_shape: a list of two integers of the form [height, width]
+      padding. If None, will use a dynamic shape.
+    spatial_image_shape: A list of two integers of the form [height, width]
       containing expected spatial shape of the image after applying
-      transform_input_data_fn. This is needed to compute shapes for padding and
-      only used if batch_size is greater than 1.
+      transform_input_data_fn. If None, will use dynamic shapes.
 
   Returns:
     A tf.data.Dataset based on the input_reader_config.
@@ -116,8 +135,6 @@ def build(input_reader_config, transform_input_data_fn=None,
   Raises:
     ValueError: On invalid input reader proto.
     ValueError: If no input paths are specified.
-    ValueError: If batch_size > 1 and any of (max_num_boxes, num_classes,
-      spatial_image_shape) is None.
   """
   if not isinstance(input_reader_config, input_reader_pb2.InputReader):
     raise ValueError('input_reader_config not of type '
@@ -147,14 +164,7 @@ def build(input_reader_config, transform_input_data_fn=None,
         functools.partial(tf.data.TFRecordDataset, buffer_size=8 * 1000 * 1000),
         process_fn, config.input_path[:], input_reader_config)
 
-    if batch_size > 1:
-      if num_classes is None:
-        raise ValueError('`num_classes` must be set when batch_size > 1.')
-      if max_num_boxes is None:
-        raise ValueError('`max_num_boxes` must be set when batch_size > 1.')
-      if spatial_image_shape is None:
-        raise ValueError('`spatial_image_shape` must be set when batch_size > '
-                         '1 .')
+    if batch_size:
       padding_shapes = _get_padding_shapes(dataset, max_num_boxes, num_classes,
                                            spatial_image_shape)
       dataset = dataset.apply(

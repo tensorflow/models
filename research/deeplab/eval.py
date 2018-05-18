@@ -17,6 +17,7 @@
 See model.py for more details and usage.
 """
 
+import six
 import math
 import tensorflow as tf
 from deeplab import common
@@ -50,8 +51,8 @@ flags.DEFINE_integer('eval_interval_secs', 60 * 5,
                      'How often (in seconds) to run evaluation.')
 
 # For `xception_65`, use atrous_rates = [12, 24, 36] if output_stride = 8, or
-# rates = [6, 12, 18] if output_stride = 16. Note one could use different
-# atrous_rates/output_stride during training/evaluation.
+# rates = [6, 12, 18] if output_stride = 16. For `mobilenet_v2`, use None. Note
+# one could use different atrous_rates/output_stride during training/evaluation.
 flags.DEFINE_multi_integer('atrous_rates', None,
                            'Atrous rates for atrous spatial pyramid pooling.')
 
@@ -125,7 +126,7 @@ def main(unused_argv):
     weights = tf.to_float(tf.not_equal(labels, dataset.ignore_label))
 
     # Set ignore_label regions to label 0, because metrics.mean_iou requires
-    # range of labels = [0, dataset.num_classes). Note the ignore_lable regions
+    # range of labels = [0, dataset.num_classes). Note the ignore_label regions
     # are not evaluated since the corresponding regions contain weights = 0.
     labels = tf.where(
         tf.equal(labels, dataset.ignore_label), tf.zeros_like(labels), labels)
@@ -144,7 +145,7 @@ def main(unused_argv):
     metrics_to_values, metrics_to_updates = (
         tf.contrib.metrics.aggregate_metric_map(metric_map))
 
-    for metric_name, metric_value in metrics_to_values.iteritems():
+    for metric_name, metric_value in six.iteritems(metrics_to_values):
       slim.summaries.add_scalar_summary(
           metric_value, metric_name, print_summary=True)
 
@@ -163,7 +164,7 @@ def main(unused_argv):
         checkpoint_dir=FLAGS.checkpoint_dir,
         logdir=FLAGS.eval_logdir,
         num_evals=num_batches,
-        eval_op=metrics_to_updates.values(),
+        eval_op=list(metrics_to_updates.values()),
         max_number_of_evaluations=num_eval_iters,
         eval_interval_secs=FLAGS.eval_interval_secs)
 

@@ -23,9 +23,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-import dataset
-import mnist
+import os
+import sys
+
+import tensorflow as tf  # pylint: disable=g-bad-import-order
+
+# For open source environment, add grandparent directory for import
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(sys.path[0]))))
+
+from official.mnist import dataset  # pylint: disable=wrong-import-position
+from official.mnist import mnist  # pylint: disable=wrong-import-position
 
 # Cloud TPU Cluster Resolver flags
 tf.flags.DEFINE_string(
@@ -45,11 +52,6 @@ tf.flags.DEFINE_string(
     "metadata.")
 
 # Model specific parameters
-tf.flags.DEFINE_string(
-    "master", default=None,
-    help="GRPC URL of the master (e.g. grpc://ip.address.of.tpu:8470). You "
-    "must specify either this flag or --tpu_name.")
-
 tf.flags.DEFINE_string("data_dir", "",
                        "Path to directory containing the MNIST dataset")
 tf.flags.DEFINE_string("model_dir", None, "Estimator model_dir")
@@ -86,7 +88,7 @@ def model_fn(features, labels, mode, params):
   if isinstance(image, dict):
     image = features["image"]
 
-  model = mnist.Model("channels_last")
+  model = mnist.create_model("channels_last")
   logits = model(image, training=(mode == tf.estimator.ModeKeys.TRAIN))
   loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
 
@@ -137,7 +139,10 @@ def main(argv):
   tf.logging.set_verbosity(tf.logging.INFO)
 
   tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-            FLAGS.tpu, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
+      FLAGS.tpu,
+      zone=FLAGS.tpu_zone,
+      project=FLAGS.gcp_project
+  )
 
   run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,

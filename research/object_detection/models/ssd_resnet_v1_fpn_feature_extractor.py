@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
+from object_detection.utils import context_manager
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from nets import resnet_v1
@@ -36,14 +37,14 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                depth_multiplier,
                min_depth,
                pad_to_multiple,
-               conv_hyperparams,
+               conv_hyperparams_fn,
                resnet_base_fn,
                resnet_scope_name,
                fpn_scope_name,
-               batch_norm_trainable=True,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
     """SSD FPN feature extractor based on Resnet v1 architecture.
 
     Args:
@@ -53,27 +54,28 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       min_depth: minimum feature extractor depth. UNUSED Currently.
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
-      conv_hyperparams: tf slim arg_scope for conv2d and separable_conv2d ops.
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
       resnet_base_fn: base resnet network to use.
       resnet_scope_name: scope name under which to construct resnet
       fpn_scope_name: scope name under which to construct the feature pyramid
         network.
-      batch_norm_trainable: Whether to update batch norm parameters during
-        training or not. When training with a small batch size
-        (e.g. 1), it is desirable to disable batch norm update and use
-        pretrained batch norm params.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
       use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
 
     Raises:
       ValueError: On supplying invalid arguments for unused arguments.
     """
     super(_SSDResnetV1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, batch_norm_trainable, reuse_weights,
-        use_explicit_padding)
+        conv_hyperparams_fn, reuse_weights, use_explicit_padding,
+        override_base_feature_extractor_hyperparams)
     if self._depth_multiplier != 1.0:
       raise ValueError('Only depth 1.0 is supported, found: {}'.
                        format(self._depth_multiplier))
@@ -133,36 +135,42 @@ class _SSDResnetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     with tf.variable_scope(
         self._resnet_scope_name, reuse=self._reuse_weights) as scope:
       with slim.arg_scope(resnet_v1.resnet_arg_scope()):
-        _, image_features = self._resnet_base_fn(
-            inputs=ops.pad_to_multiple(preprocessed_inputs,
-                                       self._pad_to_multiple),
-            num_classes=None,
-            is_training=self._is_training and self._batch_norm_trainable,
-            global_pool=False,
-            output_stride=None,
-            store_non_strided_activations=True,
-            scope=scope)
-      image_features = self._filter_features(image_features)
-      last_feature_map = image_features['block4']
-    with tf.variable_scope(self._fpn_scope_name, reuse=self._reuse_weights):
-      with slim.arg_scope(self._conv_hyperparams):
-        for i in range(5, 7):
-          last_feature_map = slim.conv2d(
-              last_feature_map,
-              num_outputs=256,
-              kernel_size=[3, 3],
-              stride=2,
-              padding='SAME',
-              scope='block{}'.format(i))
-          image_features['bottomup_{}'.format(i)] = last_feature_map
-        feature_maps = feature_map_generators.fpn_top_down_feature_maps(
-            [
-                image_features[key] for key in
-                ['block2', 'block3', 'block4', 'bottomup_5', 'bottomup_6']
-            ],
-            depth=256,
-            scope='top_down_features')
-    return feature_maps.values()
+        with (slim.arg_scope(self._conv_hyperparams_fn())
+              if self._override_base_feature_extractor_hyperparams else
+              context_manager.IdentityContextManager()):
+          _, image_features = self._resnet_base_fn(
+              inputs=ops.pad_to_multiple(preprocessed_inputs,
+                                         self._pad_to_multiple),
+              num_classes=None,
+              is_training=None,
+              global_pool=False,
+              output_stride=None,
+              store_non_strided_activations=True,
+              scope=scope)
+          image_features = self._filter_features(image_features)
+      with slim.arg_scope(self._conv_hyperparams_fn()):
+        with tf.variable_scope(self._fpn_scope_name,
+                               reuse=self._reuse_weights):
+          fpn_features = feature_map_generators.fpn_top_down_feature_maps(
+              [(key, image_features[key])
+               for key in ['block2', 'block3', 'block4']],
+              depth=256)
+          last_feature_map = fpn_features['top_down_block4']
+          coarse_features = {}
+          for i in range(5, 7):
+            last_feature_map = slim.conv2d(
+                last_feature_map,
+                num_outputs=256,
+                kernel_size=[3, 3],
+                stride=2,
+                padding='SAME',
+                scope='bottom_up_block{}'.format(i))
+            coarse_features['bottom_up_block{}'.format(i)] = last_feature_map
+    return [fpn_features['top_down_block2'],
+            fpn_features['top_down_block3'],
+            fpn_features['top_down_block4'],
+            coarse_features['bottom_up_block5'],
+            coarse_features['bottom_up_block6']]
 
 
 class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
@@ -172,33 +180,36 @@ class SSDResnet50V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                depth_multiplier,
                min_depth,
                pad_to_multiple,
-               conv_hyperparams,
-               batch_norm_trainable=True,
+               conv_hyperparams_fn,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
-    """Resnet50 v1 FPN Feature Extractor for SSD Models.
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
+    """SSD Resnet50 V1 FPN feature extractor based on Resnet v1 architecture.
 
     Args:
       is_training: whether the network is in training mode.
       depth_multiplier: float depth multiplier for feature extractor.
-      min_depth: minimum feature extractor depth.
+        UNUSED currently.
+      min_depth: minimum feature extractor depth. UNUSED Currently.
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
-      conv_hyperparams: tf slim arg_scope for conv2d and separable_conv2d ops.
-      batch_norm_trainable: Whether to update batch norm parameters during
-        training or not. When training with a small batch size
-        (e.g. 1), it is desirable to disable batch norm update and use
-        pretrained batch norm params.
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
       use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
     """
     super(SSDResnet50V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, resnet_v1.resnet_v1_50, 'resnet_v1_50', 'fpn',
-        batch_norm_trainable, reuse_weights, use_explicit_padding)
+        conv_hyperparams_fn, resnet_v1.resnet_v1_50, 'resnet_v1_50', 'fpn',
+        reuse_weights, use_explicit_padding,
+        override_base_feature_extractor_hyperparams)
 
 
 class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
@@ -208,33 +219,36 @@ class SSDResnet101V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                depth_multiplier,
                min_depth,
                pad_to_multiple,
-               conv_hyperparams,
-               batch_norm_trainable=True,
+               conv_hyperparams_fn,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
-    """Resnet101 v1 FPN Feature Extractor for SSD Models.
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
+    """SSD Resnet101 V1 FPN feature extractor based on Resnet v1 architecture.
 
     Args:
       is_training: whether the network is in training mode.
       depth_multiplier: float depth multiplier for feature extractor.
-      min_depth: minimum feature extractor depth.
+        UNUSED currently.
+      min_depth: minimum feature extractor depth. UNUSED Currently.
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
-      conv_hyperparams: tf slim arg_scope for conv2d and separable_conv2d ops.
-      batch_norm_trainable: Whether to update batch norm parameters during
-        training or not. When training with a small batch size
-        (e.g. 1), it is desirable to disable batch norm update and use
-        pretrained batch norm params.
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
       use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
     """
     super(SSDResnet101V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, resnet_v1.resnet_v1_101, 'resnet_v1_101', 'fpn',
-        batch_norm_trainable, reuse_weights, use_explicit_padding)
+        conv_hyperparams_fn, resnet_v1.resnet_v1_101, 'resnet_v1_101', 'fpn',
+        reuse_weights, use_explicit_padding,
+        override_base_feature_extractor_hyperparams)
 
 
 class SSDResnet152V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
@@ -244,30 +258,33 @@ class SSDResnet152V1FpnFeatureExtractor(_SSDResnetV1FpnFeatureExtractor):
                depth_multiplier,
                min_depth,
                pad_to_multiple,
-               conv_hyperparams,
-               batch_norm_trainable=True,
+               conv_hyperparams_fn,
                reuse_weights=None,
                use_explicit_padding=False,
-               use_depthwise=False):
-    """Resnet152 v1 FPN Feature Extractor for SSD Models.
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
+    """SSD Resnet152 V1 FPN feature extractor based on Resnet v1 architecture.
 
     Args:
       is_training: whether the network is in training mode.
       depth_multiplier: float depth multiplier for feature extractor.
-      min_depth: minimum feature extractor depth.
+        UNUSED currently.
+      min_depth: minimum feature extractor depth. UNUSED Currently.
       pad_to_multiple: the nearest multiple to zero pad the input height and
         width dimensions to.
-      conv_hyperparams: tf slim arg_scope for conv2d and separable_conv2d ops.
-      batch_norm_trainable: Whether to update batch norm parameters during
-        training or not. When training with a small batch size
-        (e.g. 1), it is desirable to disable batch norm update and use
-        pretrained batch norm params.
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
       reuse_weights: Whether to reuse variables. Default is None.
       use_explicit_padding: Whether to use explicit padding when extracting
         features. Default is False. UNUSED currently.
       use_depthwise: Whether to use depthwise convolutions. UNUSED currently.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
     """
     super(SSDResnet152V1FpnFeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
-        conv_hyperparams, resnet_v1.resnet_v1_152, 'resnet_v1_152', 'fpn',
-        batch_norm_trainable, reuse_weights, use_explicit_padding)
+        conv_hyperparams_fn, resnet_v1.resnet_v1_152, 'resnet_v1_152', 'fpn',
+        reuse_weights, use_explicit_padding,
+        override_base_feature_extractor_hyperparams)

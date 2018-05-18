@@ -136,6 +136,13 @@ class OpsTestPadToMultiple(tf.test.TestCase):
       padded_tensor_out = sess.run(padded_tensor)
     self.assertEqual((1, 2, 2, 1), padded_tensor_out.shape)
 
+  def test_non_square_padding(self):
+    tensor = tf.constant([[[[0.], [0.]]]])
+    padded_tensor = ops.pad_to_multiple(tensor, 2)
+    with self.test_session() as sess:
+      padded_tensor_out = sess.run(padded_tensor)
+    self.assertEqual((1, 2, 2, 1), padded_tensor_out.shape)
+
   def test_padding(self):
     tensor = tf.constant([[[[0.], [0.]], [[0.], [0.]]]])
     padded_tensor = ops.pad_to_multiple(tensor, 4)
@@ -840,7 +847,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     # All channels are equal so position-sensitive crop and resize should
     # work as the usual crop and resize for just one channel.
     crop = tf.image.crop_and_resize(image, boxes, box_ind, crop_size)
-    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
+    crop_and_pool = tf.reduce_mean(crop, [1, 2], keep_dims=True)
 
     ps_crop_and_pool = ops.position_sensitive_crop_regions(
         tiled_image,
@@ -866,7 +873,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     # When a single bin is used, position-sensitive crop and pool should be
     # the same as non-position sensitive crop and pool.
     crop = tf.image.crop_and_resize(image, boxes, box_ind, crop_size)
-    crop_and_pool = tf.reduce_mean(crop, [1, 2], keepdims=True)
+    crop_and_pool = tf.reduce_mean(crop, [1, 2], keep_dims=True)
 
     ps_crop_and_pool = ops.position_sensitive_crop_regions(
         image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=True)
@@ -1054,7 +1061,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
       ps_crop = ops.position_sensitive_crop_regions(
           image, boxes, box_ind, crop_size, num_spatial_bins, global_pool=False)
       ps_crop_and_pool = tf.reduce_mean(
-          ps_crop, reduction_indices=(1, 2), keepdims=True)
+          ps_crop, reduction_indices=(1, 2), keep_dims=True)
 
       with self.test_session() as sess:
         output = sess.run(ps_crop_and_pool)

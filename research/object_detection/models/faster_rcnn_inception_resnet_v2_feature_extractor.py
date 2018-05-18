@@ -105,12 +105,10 @@ class FasterRCNNInceptionResnetV2FeatureExtractor(
                           is_training=self._train_batch_norm):
         with tf.variable_scope('InceptionResnetV2',
                                reuse=self._reuse_weights) as scope:
-          rpn_feature_map, _ = (
-              inception_resnet_v2.inception_resnet_v2_base(
-                  preprocessed_inputs, final_endpoint='PreAuxLogits',
-                  scope=scope, output_stride=self._first_stage_features_stride,
-                  align_feature_maps=True))
-    return rpn_feature_map
+          return inception_resnet_v2.inception_resnet_v2_base(
+              preprocessed_inputs, final_endpoint='PreAuxLogits',
+              scope=scope, output_stride=self._first_stage_features_stride,
+              align_feature_maps=True)
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.

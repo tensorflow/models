@@ -35,7 +35,7 @@ class FasterRcnnNASFeatureExtractorTest(tf.test.TestCase):
         first_stage_features_stride=16)
     preprocessed_inputs = tf.random_uniform(
         [1, 299, 299, 3], maxval=255, dtype=tf.float32)
-    rpn_feature_map = feature_extractor.extract_proposal_features(
+    rpn_feature_map, _ = feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope='TestScope')
     features_shape = tf.shape(rpn_feature_map)
 
@@ -50,7 +50,7 @@ class FasterRcnnNASFeatureExtractorTest(tf.test.TestCase):
         first_stage_features_stride=16)
     preprocessed_inputs = tf.random_uniform(
         [1, 224, 224, 3], maxval=255, dtype=tf.float32)
-    rpn_feature_map = feature_extractor.extract_proposal_features(
+    rpn_feature_map, _ = feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope='TestScope')
     features_shape = tf.shape(rpn_feature_map)
 
@@ -65,7 +65,7 @@ class FasterRcnnNASFeatureExtractorTest(tf.test.TestCase):
         first_stage_features_stride=16)
     preprocessed_inputs = tf.random_uniform(
         [1, 112, 112, 3], maxval=255, dtype=tf.float32)
-    rpn_feature_map = feature_extractor.extract_proposal_features(
+    rpn_feature_map, _ = feature_extractor.extract_proposal_features(
         preprocessed_inputs, scope='TestScope')
     features_shape = tf.shape(rpn_feature_map)
 

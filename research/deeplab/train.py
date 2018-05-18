@@ -17,6 +17,7 @@
 See model.py for more details and usage.
 """
 
+import six
 import tensorflow as tf
 from deeplab import common
 from deeplab import model
@@ -66,7 +67,10 @@ flags.DEFINE_integer('save_interval_secs', 1200,
 flags.DEFINE_integer('save_summaries_secs', 600,
                      'How often, in seconds, we compute the summaries.')
 
-# Settings for training strategry.
+flags.DEFINE_boolean('save_summaries_images', False,
+                     'Save sample inputs, labels, and semantic predictions as images to summary.')
+
+# Settings for training strategy.
 
 flags.DEFINE_enum('learning_policy', 'poly', ['poly', 'step'],
                   'Learning rate policy for training.')
@@ -118,6 +122,9 @@ flags.DEFINE_string('tf_initial_checkpoint', None,
 flags.DEFINE_boolean('initialize_last_layer', True,
                      'Initialize the last layer.')
 
+flags.DEFINE_boolean('last_layers_contain_logits_only', False,
+                     'Only consider logits as last layers or not.')
+
 flags.DEFINE_integer('slow_start_step', 0,
                      'Training model with small learning rate for few steps.')
 
@@ -139,8 +146,8 @@ flags.DEFINE_float('scale_factor_step_size', 0.25,
                    'Scale factor step size for data augmentation.')
 
 # For `xception_65`, use atrous_rates = [12, 24, 36] if output_stride = 8, or
-# rates = [6, 12, 18] if output_stride = 16. Note one could use different
-# atrous_rates/output_stride during training/evaluation.
+# rates = [6, 12, 18] if output_stride = 16. For `mobilenet_v2`, use None. Note
+# one could use different atrous_rates/output_stride during training/evaluation.
 flags.DEFINE_multi_integer('atrous_rates', None,
                            'Atrous rates for atrous spatial pyramid pooling.')
 
@@ -177,6 +184,10 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
   """
   samples = inputs_queue.dequeue()
 
+  # add name to input and label nodes so we can add to summary
+  samples[common.IMAGE] = tf.identity(samples[common.IMAGE], name = common.IMAGE)
+  samples[common.LABEL] = tf.identity(samples[common.LABEL], name = common.LABEL)
+
   model_options = common.ModelOptions(
       outputs_to_num_classes=outputs_to_num_classes,
       crop_size=FLAGS.train_crop_size,
@@ -190,7 +201,13 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
       is_training=True,
       fine_tune_batch_norm=FLAGS.fine_tune_batch_norm)
 
-  for output, num_classes in outputs_to_num_classes.iteritems():
+  # add name to graph node so we can add to summary
+  outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE] = tf.identity( 
+    outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE],
+    name = common.OUTPUT_TYPE
+  )
+
+  for output, num_classes in six.iteritems(outputs_to_num_classes):
     train_utils.add_softmax_cross_entropy_loss_for_each_scale(
         outputs_to_scales_to_logits[output],
         samples[common.LABEL],
@@ -217,7 +234,7 @@ def main(unused_argv):
   assert FLAGS.train_batch_size % config.num_clones == 0, (
       'Training batch size not divisble by number of clones (GPUs).')
 
-  clone_batch_size = FLAGS.train_batch_size / config.num_clones
+  clone_batch_size = int(FLAGS.train_batch_size / config.num_clones)
 
   # Get dataset-dependent information.
   dataset = segmentation_dataset.get_dataset(
@@ -226,7 +243,7 @@ def main(unused_argv):
   tf.gfile.MakeDirs(FLAGS.train_logdir)
   tf.logging.info('Training on %s set', FLAGS.train_split)
 
-  with tf.Graph().as_default():
+  with tf.Graph().as_default() as graph:
     with tf.device(config.inputs_device()):
       samples = input_generator.get(
           dataset,
@@ -267,6 +284,22 @@ def main(unused_argv):
     for model_var in slim.get_model_variables():
       summaries.add(tf.summary.histogram(model_var.op.name, model_var))
 
+    # Add summaries for images, labels, semantic predictions
+    if FLAGS.save_summaries_images:
+        summary_image = graph.get_tensor_by_name(
+            ('%s/%s:0' % (first_clone_scope, common.IMAGE)).strip('/'))
+        summaries.add(tf.summary.image('samples/%s' % common.IMAGE, summary_image))
+
+        summary_label = tf.cast(graph.get_tensor_by_name(
+            ('%s/%s:0' % (first_clone_scope, common.LABEL)).strip('/')),
+            tf.uint8)
+        summaries.add(tf.summary.image('samples/%s' % common.LABEL, summary_label))
+
+        predictions = tf.cast(tf.expand_dims(tf.argmax(graph.get_tensor_by_name( 
+            ('%s/%s:0' % (first_clone_scope, common.OUTPUT_TYPE)).strip('/')),
+            3), -1), tf.uint8)
+        summaries.add(tf.summary.image('samples/%s' % common.OUTPUT_TYPE, predictions))
+
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
       summaries.add(tf.summary.scalar('losses/%s' % loss.op.name, loss))
@@ -292,7 +325,7 @@ def main(unused_argv):
       summaries.add(tf.summary.scalar('total_loss', total_loss))
 
       # Modify the gradients for biases and last layer variables.
-      last_layers = model.get_extra_layer_scopes()
+      last_layers = model.get_extra_layer_scopes(FLAGS.last_layers_contain_logits_only)
       grad_mult = train_utils.get_model_gradient_multipliers(
           last_layers, FLAGS.last_layer_gradient_multiplier)
       if grad_mult:

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Component builders for non-recurrent networks in DRAGNN."""
 
 
@@ -51,10 +50,8 @@ def fetch_linked_embedding(comp, network_states, feature_spec):
                   feature_spec.name)
   source = comp.master.lookup_component[feature_spec.source_component]
 
-  return network_units.NamedTensor(
-      network_states[source.name].activations[
-          feature_spec.source_layer].bulk_tensor,
-      feature_spec.name)
+  return network_units.NamedTensor(network_states[source.name].activations[
+      feature_spec.source_layer].bulk_tensor, feature_spec.name)
 
 
 def _validate_embedded_fixed_features(comp):
@@ -63,17 +60,20 @@ def _validate_embedded_fixed_features(comp):
     check.Gt(feature.embedding_dim, 0,
              'Embeddings requested for non-embedded feature: %s' % feature)
     if feature.is_constant:
-      check.IsTrue(feature.HasField('pretrained_embedding_matrix'),
-                   'Constant embeddings must be pretrained: %s' % feature)
+      check.IsTrue(
+          feature.HasField('pretrained_embedding_matrix'),
+          'Constant embeddings must be pretrained: %s' % feature)
 
 
-def fetch_differentiable_fixed_embeddings(comp, state, stride):
+def fetch_differentiable_fixed_embeddings(comp, state, stride, during_training):
   """Looks up fixed features with separate, differentiable, embedding lookup.
 
   Args:
     comp: Component whose fixed features we wish to look up.
     state: live MasterState object for the component.
     stride: Tensor containing current batch * beam size.
+    during_training: True if this is being called from a training code path.
+      This controls, e.g., the use of feature ID dropout.
 
   Returns:
     state handle: updated state handle to be used after this call
@@ -93,6 +93,11 @@ def fetch_differentiable_fixed_embeddings(comp, state, stride):
                                   'differentiable')
     tf.logging.info('[%s] Adding %s fixed feature "%s"', comp.name,
                     differentiable_or_constant, feature_spec.name)
+
+    if during_training and feature_spec.dropout_id >= 0:
+      ids[channel], weights[channel] = network_units.apply_feature_id_dropout(
+          ids[channel], weights[channel], feature_spec)
+
     size = stride * num_steps * feature_spec.size
     fixed_embedding = network_units.embedding_lookup(
         comp.get_variable(network_units.fixed_embeddings_name(channel)),
@@ -105,16 +110,22 @@ def fetch_differentiable_fixed_embeddings(comp, state, stride):
   return state.handle, fixed_embeddings
 
 
-def fetch_fast_fixed_embeddings(comp, state):
+def fetch_fast_fixed_embeddings(comp,
+                                state,
+                                pad_to_batch=None,
+                                pad_to_steps=None):
   """Looks up fixed features with fast, non-differentiable, op.
 
   Since BulkFixedEmbeddings is non-differentiable with respect to the
   embeddings, the idea is to call this function only when the graph is
-  not being used for training.
+  not being used for training. If the function is being called with fixed step
+  and batch sizes, it will use the most efficient possible extractor.
 
   Args:
     comp: Component whose fixed features we wish to look up.
     state: live MasterState object for the component.
+    pad_to_batch: Optional; the number of batch elements to pad to.
+    pad_to_steps: Optional; the number of steps to pad to.
 
   Returns:
     state handle: updated state handle to be used after this call
@@ -126,17 +137,48 @@ def fetch_fast_fixed_embeddings(comp, state):
     return state.handle, []
   tf.logging.info('[%s] Adding %d fast fixed features', comp.name, num_channels)
 
-  state.handle, bulk_embeddings, _ = dragnn_ops.bulk_fixed_embeddings(
-      state.handle, [
-          comp.get_variable(network_units.fixed_embeddings_name(c))
-          for c in range(num_channels)
-      ],
-      component=comp.name)
+  features = [
+      comp.get_variable(network_units.fixed_embeddings_name(c))
+      for c in range(num_channels)
+  ]
 
-  bulk_embeddings = network_units.NamedTensor(bulk_embeddings,
-                                              'bulk-%s-fixed-features' %
-                                              comp.name)
+  if pad_to_batch is not None and pad_to_steps is not None:
+    # If we have fixed padding numbers, we can use 'bulk_embed_fixed_features',
+    # which is the fastest embedding extractor.
+    state.handle, bulk_embeddings, _ = dragnn_ops.bulk_embed_fixed_features(
+        state.handle,
+        features,
+        component=comp.name,
+        pad_to_batch=pad_to_batch,
+        pad_to_steps=pad_to_steps)
+  else:
+    state.handle, bulk_embeddings, _ = dragnn_ops.bulk_fixed_embeddings(
+        state.handle, features, component=comp.name)
+
+  bulk_embeddings = network_units.NamedTensor(
+      bulk_embeddings, 'bulk-%s-fixed-features' % comp.name)
   return state.handle, [bulk_embeddings]
+
+
+def fetch_dense_ragged_embeddings(comp, state):
+  """Gets embeddings in RaggedTensor format."""
+  _validate_embedded_fixed_features(comp)
+  num_channels = len(comp.spec.fixed_feature)
+  if not num_channels:
+    return state.handle, []
+  tf.logging.info('[%s] Adding %d fast fixed features', comp.name, num_channels)
+
+  features = [
+      comp.get_variable(network_units.fixed_embeddings_name(c))
+      for c in range(num_channels)
+  ]
+
+  state.handle, data, offsets = dragnn_ops.bulk_embed_dense_fixed_features(
+      state.handle, features, component=comp.name)
+
+  data = network_units.NamedTensor(data, 'dense-%s-data' % comp.name)
+  offsets = network_units.NamedTensor(offsets, 'dense-%s-offsets' % comp.name)
+  return state.handle, [data, offsets]
 
 
 def extract_fixed_feature_ids(comp, state, stride):
@@ -194,8 +236,10 @@ def update_network_states(comp, tensors, network_states, stride):
   with tf.name_scope(comp.name + '/stored_act'):
     for index, network_tensor in enumerate(tensors):
       network_state.activations[comp.network.layers[index].name] = (
-          network_units.StoredActivations(tensor=network_tensor, stride=stride,
-                                          dim=comp.network.layers[index].dim))
+          network_units.StoredActivations(
+              tensor=network_tensor,
+              stride=stride,
+              dim=comp.network.layers[index].dim))
 
 
 def build_cross_entropy_loss(logits, gold):
@@ -205,7 +249,7 @@ def build_cross_entropy_loss(logits, gold):
 
   Args:
     logits: float Tensor of scores.
-    gold: int Tensor of one-hot labels.
+    gold: int Tensor of gold label ids.
 
   Returns:
     cost, correct, total: the total cost, the total number of correctly
@@ -251,9 +295,10 @@ class BulkFeatureExtractorComponentBuilder(component.ComponentBuilderBase):
     """
     logging.info('Building component: %s', self.spec.name)
     stride = state.current_batch_size * self.training_beam_size
+    self.network.pre_create(stride)
     with tf.variable_scope(self.name, reuse=True):
       state.handle, fixed_embeddings = fetch_differentiable_fixed_embeddings(
-          self, state, stride)
+          self, state, stride, True)
 
     linked_embeddings = [
         fetch_linked_embedding(self, network_states, spec)
@@ -307,14 +352,29 @@ class BulkFeatureExtractorComponentBuilder(component.ComponentBuilderBase):
       stride = state.current_batch_size * self.training_beam_size
     else:
       stride = state.current_batch_size * self.inference_beam_size
+    self.network.pre_create(stride)
 
     with tf.variable_scope(self.name, reuse=True):
       if during_training:
         state.handle, fixed_embeddings = fetch_differentiable_fixed_embeddings(
-            self, state, stride)
+            self, state, stride, during_training)
       else:
-        state.handle, fixed_embeddings = fetch_fast_fixed_embeddings(self,
-                                                                     state)
+        if 'use_densors' in self.spec.network_unit.parameters:
+          state.handle, fixed_embeddings = fetch_dense_ragged_embeddings(
+              self, state)
+        else:
+          if ('padded_batch_size' in self.spec.network_unit.parameters and
+              'padded_sentence_length' in self.spec.network_unit.parameters):
+            state.handle, fixed_embeddings = fetch_fast_fixed_embeddings(
+                self,
+                state,
+                pad_to_batch=-1,
+                pad_to_steps=int(self.spec.network_unit.parameters[
+                    'padded_sentence_length']))
+
+          else:
+            state.handle, fixed_embeddings = fetch_fast_fixed_embeddings(
+                self, state)
 
     linked_embeddings = [
         fetch_linked_embedding(self, network_states, spec)
@@ -331,6 +391,7 @@ class BulkFeatureExtractorComponentBuilder(component.ComponentBuilderBase):
           stride=stride)
 
     update_network_states(self, tensors, network_states, stride)
+    self._add_runtime_hooks()
     return state.handle
 
 
@@ -367,7 +428,9 @@ class BulkFeatureIdExtractorComponentBuilder(component.ComponentBuilderBase):
   def build_greedy_inference(self, state, network_states,
                              during_training=False):
     """See base class."""
-    return self._extract_feature_ids(state, network_states, during_training)
+    handle = self._extract_feature_ids(state, network_states, during_training)
+    self._add_runtime_hooks()
+    return handle
 
   def _extract_feature_ids(self, state, network_states, during_training):
     """Extracts feature IDs and advances a batch using the oracle path.
@@ -387,6 +450,7 @@ class BulkFeatureIdExtractorComponentBuilder(component.ComponentBuilderBase):
       stride = state.current_batch_size * self.training_beam_size
     else:
       stride = state.current_batch_size * self.inference_beam_size
+    self.network.pre_create(stride)
 
     with tf.variable_scope(self.name, reuse=True):
       state.handle, ids = extract_fixed_feature_ids(self, state, stride)
@@ -438,17 +502,21 @@ class BulkAnnotatorComponentBuilder(component.ComponentBuilderBase):
     ]
 
     stride = state.current_batch_size * self.training_beam_size
+    self.network.pre_create(stride)
     with tf.variable_scope(self.name, reuse=True):
       network_tensors = self.network.create([], linked_embeddings, None, None,
                                             True, stride)
 
     update_network_states(self, network_tensors, network_states, stride)
 
-    logits = self.network.get_logits(network_tensors)
     state.handle, gold = dragnn_ops.bulk_advance_from_oracle(
         state.handle, component=self.name)
-
-    cost, correct, total = build_cross_entropy_loss(logits, gold)
+    cost, correct, total = self.network.compute_bulk_loss(
+        stride, network_tensors, gold)
+    if cost is None:
+      # The network does not have a custom bulk loss; default to softmax.
+      logits = self.network.get_logits(network_tensors)
+      cost, correct, total = build_cross_entropy_loss(logits, gold)
     cost = self.add_regularizer(cost)
 
     return state.handle, cost, correct, total
@@ -483,13 +551,24 @@ class BulkAnnotatorComponentBuilder(component.ComponentBuilderBase):
       stride = state.current_batch_size * self.training_beam_size
     else:
       stride = state.current_batch_size * self.inference_beam_size
+    self.network.pre_create(stride)
 
     with tf.variable_scope(self.name, reuse=True):
-      network_tensors = self.network.create(
-          [], linked_embeddings, None, None, during_training, stride)
+      network_tensors = self.network.create([], linked_embeddings, None, None,
+                                            during_training, stride)
 
     update_network_states(self, network_tensors, network_states, stride)
 
-    logits = self.network.get_logits(network_tensors)
-    return dragnn_ops.bulk_advance_from_prediction(
+    logits = self.network.get_bulk_predictions(stride, network_tensors)
+    if logits is None:
+      # The network does not produce custom bulk predictions; default to logits.
+      logits = self.network.get_logits(network_tensors)
+      logits = tf.cond(self.locally_normalize,
+                       lambda: tf.nn.log_softmax(logits), lambda: logits)
+      if self._output_as_probabilities:
+        logits = tf.nn.softmax(logits)
+    handle = dragnn_ops.bulk_advance_from_prediction(
         state.handle, logits, component=self.name)
+
+    self._add_runtime_hooks()
+    return handle

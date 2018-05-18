@@ -29,6 +29,7 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 * Jonathan Huang, github: [jch1](https://github.com/jch1)
 * Vivek Rathod, github: [tombstone](https://github.com/tombstone)
+* Ronny Votel, github: [ronnyvotel](https://github.com/ronnyvotel)
 * Derek Chow, github: [derekjchow](https://github.com/derekjchow)
 * Chen Sun, github: [jesu9](https://github.com/jesu9)
 * Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
@@ -88,6 +89,25 @@ reporting an issue.
 
 
 ## Release information
+
+### April 30, 2018
+
+We have released a Faster R-CNN detector with ResNet-101 feature extractor trained on [AVA](https://research.google.com/ava/) v2.1.
+Compared with other commonly used object detectors, it changes the action classification loss function to per-class Sigmoid loss to handle boxes with multiple labels.
+The model is trained on the training split of AVA v2.1 for 1.5M iterations, it achieves mean AP of 11.25% over 60 classes on the validation split of AVA v2.1.
+For more details please refer to this [paper](https://arxiv.org/abs/1705.08421).
+
+<b>Thanks to contributors</b>: Chen Sun, David Ross
+
+### April 2, 2018
+
+Supercharge your mobile phones with the next generation mobile object detector!
+We are adding support for MobileNet V2 with SSDLite presented in
+[MobileNetV2: Inverted Residuals and Linear Bottlenecks](https://arxiv.org/abs/1801.04381).
+This model is 35% faster than Mobilenet V1 SSD on a Google Pixel phone CPU (200ms vs. 270ms) at the same accuracy.
+Along with the model definition, we are also releasing a model checkpoint trained on the COCO dataset.
+
+<b>Thanks to contributors</b>: Menglong Zhu, Mark Sandler, Zhichao Lu, Vivek Rathod, Jonathan Huang
 
 ### February 9, 2018
 

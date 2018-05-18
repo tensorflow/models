@@ -399,7 +399,7 @@ class NasNetABaseCell(object):
 
   @tf.contrib.framework.add_arg_scope  # No public API. For internal use only.
   def _apply_drop_path(self, net, current_step=None,
-                       use_summaries=True, drop_connect_version='v3'):
+                       use_summaries=False, drop_connect_version='v3'):
     """Apply drop_path regularization.
 
     Args:

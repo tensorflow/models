@@ -44,6 +44,7 @@ A local training job using `xception_65` can be run with the following command:
 # From tensorflow/models/research/
 python deeplab/train.py \
     --logtostderr \
+    --training_number_of_steps=30000 \
     --train_split="train" \
     --model_variant="xception_65" \
     --atrous_rates=6 \
@@ -54,7 +55,8 @@ python deeplab/train.py \
     --train_crop_size=513 \
     --train_crop_size=513 \
     --train_batch_size=1 \
-    --tf_initial_checkpoints=${PATH_TO_INITIAL_CHECKPOINT} \
+    --dataset="pascal_voc_seg" \
+    --tf_initial_checkpoint=${PATH_TO_INITIAL_CHECKPOINT} \
     --train_logdir=${PATH_TO_TRAIN_DIR} \
     --dataset_dir=${PATH_TO_DATASET}
 ```
@@ -65,11 +67,14 @@ directory in which training checkpoints and events will be written to, and
 ${PATH_TO_DATASET} is the directory in which the PASCAL VOC 2012 dataset
 resides.
 
-Note that for {train,eval,vis}.py:
+**Note that for {train,eval,vis}.py:**
 
-1.  We use small batch size during training. The users could change it based on
-    the available GPU memory and also set `fine_tune_batch_norm` to be False or
-    True depending on the use case.
+1.  In order to reproduce our results, one needs to use large batch size (> 12),
+    and set fine_tune_batch_norm = True. Here, we simply use small batch size
+    during training for the purpose of demonstration. If the users have limited
+    GPU memory at hand, please fine-tune from our provided checkpoints whose
+    batch norm parameters have been trained, and use smaller learning rate with
+    fine_tune_batch_norm = False.
 
 2.  The users should change atrous_rates from [6, 12, 18] to [12, 24, 36] if
     setting output_stride=8.
@@ -93,6 +98,7 @@ python deeplab/eval.py \
     --decoder_output_stride=4 \
     --eval_crop_size=513 \
     --eval_crop_size=513 \
+    --dataset="pascal_voc_seg" \
     --checkpoint_dir=${PATH_TO_CHECKPOINT} \
     --eval_logdir=${PATH_TO_EVAL_DIR} \
     --dataset_dir=${PATH_TO_DATASET}
@@ -119,6 +125,7 @@ python deeplab/vis.py \
     --decoder_output_stride=4 \
     --vis_crop_size=513 \
     --vis_crop_size=513 \
+    --dataset="pascal_voc_seg" \
     --checkpoint_dir=${PATH_TO_CHECKPOINT} \
     --vis_logdir=${PATH_TO_VIS_DIR} \
     --dataset_dir=${PATH_TO_DATASET}
