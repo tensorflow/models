@@ -12,6 +12,8 @@ If you are on a version of TensorFlow earlier than 1.4, please [update your inst
 
 Below is a list of the models available.
 
+[boosted_trees](boosted_trees): A Gradient Boosted Trees model to classify higgs boson process from HIGGS Data Set.
+
 [mnist](mnist): A basic model to classify digits from the MNIST dataset.
 
 [resnet](resnet): A deep residual network that can be used to classify both CIFAR-10 and ImageNet's dataset of 1000 classes.
