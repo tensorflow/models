@@ -39,6 +39,7 @@ import numpy as np  # pylint: disable=wrong-import-order
 import tensorflow as tf  # pylint: disable=wrong-import-order
 
 from official.utils.flags import core as flags_core
+from official.utils.flags._conventions import help_wrap
 
 
 NPZ_FILE = 'HIGGS.csv.gz.npz'  # numpy compressed file containing 'data' array
@@ -51,23 +52,24 @@ def define_train_higgs_flags():
 
   flags.DEFINE_integer(
       name='train_start', default=0,
-      help='Start index of train examples within the data.')
+      help=help_wrap('Start index of train examples within the data.'))
   flags.DEFINE_integer(
       name='train_count', default=1000000,
-      help='Number of train examples within the data.')
+      help=help_wrap('Number of train examples within the data.'))
   flags.DEFINE_integer(
       name='eval_start', default=10000000,
-      help='Start index of eval examples within the data.')
+      help=help_wrap('Start index of eval examples within the data.'))
   flags.DEFINE_integer(
       name='eval_count', default=1000000,
-      help='Number of eval examples within the data.')
+      help=help_wrap('Number of eval examples within the data.'))
 
   flags.DEFINE_integer(
-      'n_trees', default=100, help='Number of trees to build.')
+      'n_trees', default=100, help=help_wrap('Number of trees to build.'))
   flags.DEFINE_integer(
-      'max_depth', default=6, help='Maximum depths of each tree.')
+      'max_depth', default=6, help=help_wrap('Maximum depths of each tree.'))
   flags.DEFINE_float(
-      'learning_rate', default=0.1, help='Maximum depths of each tree.')
+      'learning_rate', default=0.1,
+      help=help_wrap('Maximum depths of each tree.'))
 
   flags_core.set_defaults(data_dir='/tmp/higgs_data',
                           model_dir='/tmp/higgs_model')

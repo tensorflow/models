@@ -52,6 +52,38 @@ Run TensorBoard to inspect the details about the graph and training progression.
 tensorboard --logdir=/tmp/higgs_model  # set logdir as --model_dir set during training.
 ```
 
+## Inference with SavedModel
+You can export the model into Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format by using the argument `--export_dir`:
+
+```
+python train_higgs.py --export_dir /tmp/higgs_boosted_trees_saved_model
+```
+
+After the model finishes training, use [`saved_model_cli`](https://www.tensorflow.org/programmers_guide/saved_model#cli_to_inspect_and_execute_savedmodel) to inspect and execute the SavedModel.
+
+Try the following commands to inspect the SavedModel:
+
+**Replace `${TIMESTAMP}` with the folder produced (e.g. 1524249124)**
+```
+# List possible tag_sets. Only one metagraph is saved, so there will be one option.
+saved_model_cli show --dir /tmp/higgs_boosted_trees_saved_model/${TIMESTAMP}/
+
+# Show SignatureDefs for tag_set=serve. SignatureDefs define the outputs to show.
+saved_model_cli show --dir /tmp/higgs_boosted_trees_saved_model/${TIMESTAMP}/ \
+    --tag_set serve --all
+```
+
+### Inference
+Let's use the model to predict the income group of two examples:
+
+```
+saved_model_cli run --dir /tmp/boosted_trees_higgs_saved_model/${TIMESTAMP}/ \
+    --tag_set serve --signature_def="predict" \
+    --input_examples='examples=[{"feature_01":[0.8692932],"feature_02":[-0.6350818],"feature_03":[0.2256903],"feature_04":[0.3274701],"feature_05":[-0.6899932],"feature_06":[0.7542022],"feature_07":[-0.2485731],"feature_08":[-1.0920639],"feature_09":[0.0],"feature_10":[1.3749921],"feature_11":[-0.6536742],"feature_12":[0.9303491],"feature_13":[1.1074361],"feature_14":[1.1389043],"feature_15":[-1.5781983],"feature_16":[-1.0469854],"feature_17":[0.0],"feature_18":[0.6579295],"feature_19":[-0.0104546],"feature_20":[-0.0457672],"feature_21":[3.1019614],"feature_22":[1.3537600],"feature_23":[0.9795631],"feature_24":[0.9780762],"feature_25":[0.9200048],"feature_26":[0.7216575],"feature_27":[0.9887509],"feature_28":[0.8766783]}, {"feature_01":[1.5958393],"feature_02":[-0.6078107],"feature_03":[0.0070749],"feature_04":[1.8184496],"feature_05":[-0.1119060],"feature_06":[0.8475499],"feature_07":[-0.5664370],"feature_08":[1.5812393],"feature_09":[2.1730762],"feature_10":[0.7554210],"feature_11":[0.6431096],"feature_12":[1.4263668],"feature_13":[0.0],"feature_14":[0.9216608],"feature_15":[-1.1904324],"feature_16":[-1.6155890],"feature_17":[0.0],"feature_18":[0.6511141],"feature_19":[-0.6542270],"feature_20":[-1.2743449],"feature_21":[3.1019614],"feature_22":[0.8237606],"feature_23":[0.9381914],"feature_24":[0.9717582],"feature_25":[0.7891763],"feature_26":[0.4305533],"feature_27":[0.9613569],"feature_28":[0.9578179]}]'
+```
+
+This will print out the predicted classes and class probabilities.
+
 ## Additional Links
 
 If you are interested in distributed training, take a look at [Distributed TensorFlow](https://www.tensorflow.org/deploy/distributed).
