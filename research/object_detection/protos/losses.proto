@@ -20,6 +20,9 @@ message Loss {
 
   // Localization loss weight.
   optional float localization_weight = 5 [default=1.0];
+
+  // If not left to default, applies random example sampling.
+  optional RandomExampleSampler random_example_sampler = 6;
 }
 
 // Configuration for bounding box localization loss function.
@@ -121,7 +124,7 @@ message BootstrappedSigmoidClassificationLoss {
   optional bool anchorwise_output = 3 [default=false];
 }
 
-// Configuation for hard example miner.
+// Configuration for hard example miner.
 message HardExampleMiner {
   // Maximum number of hard examples to be selected per image (prior to
   // enforcing max negative to positive ratio constraint).  If set to 0,
@@ -151,4 +154,11 @@ message HardExampleMiner {
   // positive anchors and thus not bias the model towards having at least one
   // detection per image.
   optional int32 min_negatives_per_image = 5 [default=0];
+}
+
+// Configuration for random example sampler.
+message RandomExampleSampler {
+  // The desired fraction of positive samples in batch when applying random
+  // example sampling.
+  optional float positive_sample_fraction = 1 [default = 0.01];
 }

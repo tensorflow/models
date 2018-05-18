@@ -424,6 +424,7 @@ class Model(object):
     self.block_strides = block_strides
     self.final_size = final_size
     self.dtype = dtype
+    self.pre_activation = resnet_version == 2
 
   def _custom_dtype_getter(self, getter, name, shape=None, dtype=DEFAULT_DTYPE,
                            *args, **kwargs):
@@ -503,6 +504,14 @@ class Model(object):
           strides=self.conv_stride, data_format=self.data_format)
       inputs = tf.identity(inputs, 'initial_conv')
 
+      # We do not include batch normalization or activation functions in V2
+      # for the initial conv1 because the first ResNet unit will perform these
+      # for both the shortcut and non-shortcut paths as part of the first
+      # block's projection. Cf. Appendix of [2].
+      if self.resnet_version == 1:
+        inputs = batch_norm(inputs, training, self.data_format)
+        inputs = tf.nn.relu(inputs)
+
       if self.first_pool_size:
         inputs = tf.layers.max_pooling2d(
             inputs=inputs, pool_size=self.first_pool_size,
@@ -518,8 +527,11 @@ class Model(object):
             strides=self.block_strides[i], training=training,
             name='block_layer{}'.format(i + 1), data_format=self.data_format)
 
-      inputs = batch_norm(inputs, training, self.data_format)
-      inputs = tf.nn.relu(inputs)
+      # Only apply the BN and ReLU for model that does pre_activation in each
+      # building/bottleneck block, eg resnet V2.
+      if self.pre_activation:
+        inputs = batch_norm(inputs, training, self.data_format)
+        inputs = tf.nn.relu(inputs)
 
       # The current top layer has shape
       # `batch_size x pool_size x pool_size x final_size`.

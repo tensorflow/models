@@ -22,17 +22,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import re
 import sys
 import unicodedata
 
 # pylint: disable=g-bad-import-order
 import six
+from absl import app as absl_app
+from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.transformer.utils import metrics
+from official.utils.flags import core as flags_core
 
 
 class UnicodeRegex(object):
@@ -99,31 +101,37 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
 
 
 def main(unused_argv):
-  if FLAGS.bleu_variant is None or "uncased" in FLAGS.bleu_variant:
+  if FLAGS.bleu_variant in ("both", "uncased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, False)
-    print("Case-insensitive results:", score)
+    tf.logging.info("Case-insensitive results: %f" % score)
 
-  if FLAGS.bleu_variant is None or "cased" in FLAGS.bleu_variant:
+  if FLAGS.bleu_variant in ("both", "cased"):
     score = bleu_wrapper(FLAGS.reference, FLAGS.translation, True)
-    print("Case-sensitive results:", score)
+    tf.logging.info("Case-sensitive results: %f" % score)
+
+
+def define_compute_bleu_flags():
+  """Add flags for computing BLEU score."""
+  flags.DEFINE_string(
+      name="translation", default=None,
+      help=flags_core.help_wrap("File containing translated text."))
+  flags.mark_flag_as_required("translation")
+
+  flags.DEFINE_string(
+      name="reference", default=None,
+      help=flags_core.help_wrap("File containing reference translation."))
+  flags.mark_flag_as_required("reference")
+
+  flags.DEFINE_enum(
+      name="bleu_variant", short_name="bv", default="both",
+      enum_values=["both", "uncased", "cased"], case_sensitive=False,
+      help=flags_core.help_wrap(
+          "Specify one or more BLEU variants to calculate. Variants: \"cased\""
+          ", \"uncased\", or \"both\"."))
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--translation", "-t", type=str, default=None, required=True,
-      help="[default: %(default)s] File containing translated text.",
-      metavar="<T>")
-  parser.add_argument(
-      "--reference", "-r", type=str, default=None, required=True,
-      help="[default: %(default)s] File containing reference translation",
-      metavar="<R>")
-  parser.add_argument(
-      "--bleu_variant", "-bv", type=str, choices=["uncased", "cased"],
-      nargs="*", default=None,
-      help="Specify one or more BLEU variants to calculate (both are "
-           "calculated by default. Variants: \"cased\" or \"uncased\".",
-      metavar="<BV>")
-
-  FLAGS, unparsed = parser.parse_known_args()
-  main(sys.argv)
+  tf.logging.set_verbosity(tf.logging.INFO)
+  define_compute_bleu_flags()
+  FLAGS = flags.FLAGS
+  absl_app.run(main)

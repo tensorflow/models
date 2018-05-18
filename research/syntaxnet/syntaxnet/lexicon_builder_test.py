@@ -23,15 +23,12 @@ import tensorflow as tf
 
 import syntaxnet.load_parser_ops
 
-from tensorflow.python.framework import test_util
-from tensorflow.python.platform import googletest
 from tensorflow.python.platform import tf_logging as logging
 
 from syntaxnet import sentence_pb2
 from syntaxnet import task_spec_pb2
+from syntaxnet import test_flags
 from syntaxnet.ops import gen_parser_ops
-
-FLAGS = tf.app.flags.FLAGS
 
 CONLL_DOC1 = u'''1 बात _ n NN _ _ _ _ _
 2 गलत _ adj JJ _ _ _ _ _
@@ -75,15 +72,11 @@ CHAR_NGRAMS = u'''^ अ  ^ अभ  ^ आ  ^ आन  ^ इ  ^ इस $  ^ क  ^ 
 COMMENTS = u'# Line with fake comments.'
 
 
-class LexiconBuilderTest(test_util.TensorFlowTestCase):
+class LexiconBuilderTest(tf.test.TestCase):
 
   def setUp(self):
-    if not hasattr(FLAGS, 'test_srcdir'):
-      FLAGS.test_srcdir = ''
-    if not hasattr(FLAGS, 'test_tmpdir'):
-      FLAGS.test_tmpdir = tf.test.get_temp_dir()
-    self.corpus_file = os.path.join(FLAGS.test_tmpdir, 'documents.conll')
-    self.context_file = os.path.join(FLAGS.test_tmpdir, 'context.pbtxt')
+    self.corpus_file = os.path.join(test_flags.temp_dir(), 'documents.conll')
+    self.context_file = os.path.join(test_flags.temp_dir(), 'context.pbtxt')
 
   def AddInput(self, name, file_pattern, record_format, context):
     inp = context.input.add()
@@ -106,7 +99,8 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
                  'category-map', 'label-map', 'prefix-table',
                  'suffix-table', 'tag-to-category', 'char-map',
                  'char-ngram-map'):
-      self.AddInput(name, os.path.join(FLAGS.test_tmpdir, name), '', context)
+      self.AddInput(name, os.path.join(test_flags.temp_dir(), name), '',
+                    context)
     logging.info('Writing context to: %s', self.context_file)
     with open(self.context_file, 'w') as f:
       f.write(str(context))
@@ -140,7 +134,7 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
       self.assertTrue(last)
 
   def ValidateTagToCategoryMap(self):
-    with open(os.path.join(FLAGS.test_tmpdir, 'tag-to-category'), 'r') as f:
+    with open(os.path.join(test_flags.temp_dir(), 'tag-to-category'), 'r') as f:
       entries = [line.strip().split('\t') for line in f.readlines()]
     for tag, category in entries:
       self.assertIn(tag, TAGS)
@@ -148,7 +142,7 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
 
   def LoadMap(self, map_name):
     loaded_map = {}
-    with open(os.path.join(FLAGS.test_tmpdir, map_name), 'r') as f:
+    with open(os.path.join(test_flags.temp_dir(), map_name), 'r') as f:
       for line in f:
         entries = line.strip().split(' ')
         if len(entries) >= 2:
@@ -237,4 +231,4 @@ class LexiconBuilderTest(test_util.TensorFlowTestCase):
 
 
 if __name__ == '__main__':
-  googletest.main()
+  tf.test.main()

@@ -33,9 +33,9 @@ ComputeSessionPool::ComputeSessionPool(const MasterSpec &master_spec,
       num_unique_sessions_(0) {
   // Create a default component builder function. This function looks up
   // components in the component registry and returns them.
-  component_builder_ = [](
-      const string &component_name,
-      const string &backend_type) -> std::unique_ptr<Component> {
+  component_builder_ =
+      [](const string &component_name,
+         const string &backend_type) -> std::unique_ptr<Component> {
     VLOG(2) << "Creating component " << component_name << " with backend "
             << backend_type;
     std::unique_ptr<Component> component(Component::Create(backend_type));
@@ -45,7 +45,7 @@ ComputeSessionPool::ComputeSessionPool(const MasterSpec &master_spec,
   // Create a default session builder function. This function returns a
   // ComputeSessionImpl that uses the currently set component_builder_
   // function to create its components.
-  session_builder_ = [this]() {
+  session_builder_ = [this]() EXCLUSIVE_LOCKS_REQUIRED(lock_) {
     return std::unique_ptr<ComputeSession>(
         new ComputeSessionImpl(num_unique_sessions_, this->component_builder_));
   };
@@ -75,20 +75,28 @@ void ComputeSessionPool::SetComponentBuilder(
 }
 
 std::unique_ptr<ComputeSession> ComputeSessionPool::GetSession() {
-  mutex_lock lock(lock_);
   std::unique_ptr<ComputeSession> session_ptr;
-  if (sessions_.empty()) {
-    // There are no available sessions, so create and initialize one.
+  bool is_new = false;
+  {
+    // This mutex effectively single-threads the application at this point,
+    // since all ComputeSessions must call here; to minimize impact, we
+    // subscope it.
+    mutex_lock lock(lock_);
+    if (!sessions_.empty()) {
+      VLOG(2) << "Reusing session from pool of size " << sessions_.size();
+      session_ptr = std::move(sessions_.back());
+      sessions_.pop_back();
+    } else {
+      session_ptr = session_builder_();
+      is_new = true;
+      num_unique_sessions_++;
+    }
+  }
+
+  if (is_new) {
     VLOG(2) << "Creating new session.";
-    session_ptr = session_builder_();
-    num_unique_sessions_++;
     session_ptr->Init(master_spec_, hyperparams_);
   } else {
-    // Get the last free session, and remove it from the free sessions vector.
-    VLOG(2) << "Reusing session from pool of size " << sessions_.size();
-    session_ptr = std::move(sessions_.back());
-    sessions_.pop_back();
-
     session_ptr->ResetSession();
   }
   return session_ptr;

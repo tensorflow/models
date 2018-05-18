@@ -55,7 +55,8 @@ def build(box_coder_config):
         ])
   if (box_coder_config.WhichOneof('box_coder_oneof') ==
       'mean_stddev_box_coder'):
-    return mean_stddev_box_coder.MeanStddevBoxCoder()
+    return mean_stddev_box_coder.MeanStddevBoxCoder(
+        stddev=box_coder_config.mean_stddev_box_coder.stddev)
   if box_coder_config.WhichOneof('box_coder_oneof') == 'square_box_coder':
     return square_box_coder.SquareBoxCoder(scale_factors=[
         box_coder_config.square_box_coder.y_scale,

@@ -22,28 +22,55 @@ from __future__ import print_function
 import json
 import os
 import tempfile
+import time
 import unittest
 
+import mock
+from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+try:
+  from google.cloud import bigquery
+except ImportError:
+  bigquery = None
+
+from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 
 
 class BenchmarkLoggerTest(tf.test.TestCase):
 
+  @classmethod
+  def setUpClass(cls):  # pylint: disable=invalid-name
+    super(BenchmarkLoggerTest, cls).setUpClass()
+    flags_core.define_benchmark()
+
   def test_get_default_benchmark_logger(self):
-    self.assertIsInstance(logger.get_benchmark_logger(),
-                          logger.BaseBenchmarkLogger)
+    with flagsaver.flagsaver(benchmark_logger_type='foo'):
+      self.assertIsInstance(logger.get_benchmark_logger(),
+                            logger.BaseBenchmarkLogger)
 
   def test_config_base_benchmark_logger(self):
-    logger.config_benchmark_logger("")
-    self.assertIsInstance(logger.get_benchmark_logger(),
-                          logger.BaseBenchmarkLogger)
+    with flagsaver.flagsaver(benchmark_logger_type='BaseBenchmarkLogger'):
+      logger.config_benchmark_logger()
+      self.assertIsInstance(logger.get_benchmark_logger(),
+                            logger.BaseBenchmarkLogger)
 
   def test_config_benchmark_file_logger(self):
-    logger.config_benchmark_logger("/tmp/abc")
-    self.assertIsInstance(logger.get_benchmark_logger(),
-                          logger.BenchmarkFileLogger)
+    # Set the benchmark_log_dir first since the benchmark_logger_type will need
+    # the value to be set when it does the validation.
+    with flagsaver.flagsaver(benchmark_log_dir='/tmp'):
+      with flagsaver.flagsaver(benchmark_logger_type='BenchmarkFileLogger'):
+        logger.config_benchmark_logger()
+        self.assertIsInstance(logger.get_benchmark_logger(),
+                              logger.BenchmarkFileLogger)
+
+  @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
+  def test_config_benchmark_bigquery_logger(self):
+    with flagsaver.flagsaver(benchmark_logger_type='BenchmarkBigQueryLogger'):
+      logger.config_benchmark_logger()
+      self.assertIsInstance(logger.get_benchmark_logger(),
+                            logger.BenchmarkBigQueryLogger)
 
 
 class BaseBenchmarkLoggerTest(tf.test.TestCase):
@@ -232,6 +259,47 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     logger._collect_memory_info(run_info)
     self.assertIsNotNone(run_info["machine_config"]["memory_total"])
     self.assertIsNotNone(run_info["machine_config"]["memory_available"])
+
+
+@unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
+class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
+
+  def setUp(self):
+    super(BenchmarkBigQueryLoggerTest, self).setUp()
+    # Avoid pulling extra env vars from test environment which affects the test
+    # result, eg. Kokoro test has a TF_PKG env which affect the test case
+    # test_collect_tensorflow_environment_variables()
+    self.original_environ = dict(os.environ)
+    os.environ.clear()
+
+    self.mock_bq_uploader = mock.MagicMock()
+    self.logger = logger.BenchmarkBigQueryLogger(
+        self.mock_bq_uploader, "dataset", "run_table", "metric_table",
+        "run_id")
+
+  def tearDown(self):
+    super(BenchmarkBigQueryLoggerTest, self).tearDown()
+    tf.gfile.DeleteRecursively(self.get_temp_dir())
+    os.environ.clear()
+    os.environ.update(self.original_environ)
+
+  def test_log_metric(self):
+    self.logger.log_metric(
+        "accuracy", 0.999, global_step=1e4, extras={"name": "value"})
+    expected_metric_json = [{
+        "name": "accuracy",
+        "value": 0.999,
+        "unit": None,
+        "global_step": 1e4,
+        "timestamp": mock.ANY,
+        "extras": [{"name": "name", "value": "value"}]
+    }]
+    # log_metric will call upload_benchmark_metric_json in a separate thread.
+    # Give it some grace period for the new thread before assert.
+    time.sleep(1)
+    self.mock_bq_uploader.upload_benchmark_metric_json.assert_called_once_with(
+        "dataset", "metric_table", "run_id", expected_metric_json)
+
 
 if __name__ == "__main__":
   tf.test.main()

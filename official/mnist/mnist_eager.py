@@ -107,7 +107,7 @@ def run_mnist_eager(flags_obj):
 
   # Automatically determine device and data_format
   (device, data_format) = ('/gpu:0', 'channels_first')
-  if flags_obj.no_gpu or tf.test.is_gpu_available():
+  if flags_obj.no_gpu or not tf.test.is_gpu_available():
     (device, data_format) = ('/cpu:0', 'channels_last')
   # If data_format is defined in FLAGS, overwrite automatically set value.
   if flags_obj.data_format is not None:

@@ -14,7 +14,7 @@ The model also applies embeddings on the input and output tokens, and adds a con
     * [Training times](#training-times)
     * [Evaluation results](#evaluation-results)
   * [Detailed instructions](#detailed-instructions)
-    * [Export variables (optional)](#export-variables-optional)
+    * [Environment preparation](#environment-preparation)
     * [Download and preprocess datasets](#download-and-preprocess-datasets)
     * [Model training and evaluation](#model-training-and-evaluation)
     * [Translate using the model](#translate-using-the-model)
@@ -31,16 +31,23 @@ The model also applies embeddings on the input and output tokens, and adds a con
 Below are the commands for running the Transformer model. See the [Detailed instrutions](#detailed-instructions) for more details on running the model.
 
 ```
-PARAMS=big
+cd /path/to/models/official/transformer
+
+# Ensure that PYTHONPATH is correctly defined as described in
+# https://github.com/tensorflow/models/tree/master/official#running-the-models
+# export PYTHONPATH="$PYTHONPATH:/path/to/models"
+
+# Export variables
+PARAM_SET=big
 DATA_DIR=$HOME/transformer/data
-MODEL_DIR=$HOME/transformer/model_$PARAMS
+MODEL_DIR=$HOME/transformer/model_$PARAM_SET
 
 # Download training/evaluation datasets
 python data_download.py --data_dir=$DATA_DIR
 
 # Train the model for 10 epochs, and evaluate after every epoch.
 python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --params=$PARAMS --bleu_source=test_data/newstest2014.en --bleu_ref=test_data/newstest2014.de
+    --param_set=$PARAM_SET --bleu_source=test_data/newstest2014.en --bleu_ref=test_data/newstest2014.de
 
 # Run during training in a separate process to get continuous updates,
 # or after training is complete.
@@ -48,21 +55,21 @@ tensorboard --logdir=$MODEL_DIR
 
 # Translate some text using the trained model
 python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --params=$PARAMS --text="hello world"
+    --param_set=$PARAM_SET --text="hello world"
 
 # Compute model's BLEU score using the newstest2014 dataset.
 python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-    --params=$PARAMS --file=test_data/newstest2014.en --file_out=translation.en
+    --param_set=$PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
 python compute_bleu.py --translation=translation.en --reference=test_data/newstest2014.de
 ```
 
 ## Benchmarks
 ### Training times
 
-Currently, both big and base params run on a single GPU. The measurements below
+Currently, both big and base parameter sets run on a single GPU. The measurements below
 are reported from running the model on a P100 GPU.
 
-Params | batches/sec | batches per epoch | time per epoch
+Param Set | batches/sec | batches per epoch | time per epoch
 --- | --- | --- | ---
 base | 4.8 | 83244 | 4 hr
 big | 1.1 | 41365 | 10 hr
@@ -70,7 +77,7 @@ big | 1.1 | 41365 | 10 hr
 ### Evaluation results
 Below are the case-insensitive BLEU scores after 10 epochs.
 
-Params | Score
+Param Set | Score
 --- | --- |
 base | 27.7
 big | 28.9
@@ -79,13 +86,18 @@ big | 28.9
 ## Detailed instructions
 
 
-0. ### Export variables (optional)
+0. ### Environment preparation
+
+   #### Add models repo to PYTHONPATH
+   Follow the instructions described in the [Running the models](https://github.com/tensorflow/models/tree/master/official#running-the-models) section to add the models folder to the python path.
+
+   #### Export variables (optional)
 
    Export the following variables, or modify the values in each of the snippets below:
    ```
-   PARAMS=big
+   PARAM_SET=big
    DATA_DIR=$HOME/transformer/data
-   MODEL_DIR=$HOME/transformer/model_$PARAMS
+   MODEL_DIR=$HOME/transformer/model_$PARAM_SET
    ```
 
 1. ### Download and preprocess datasets
@@ -109,13 +121,13 @@ big | 28.9
 
    Command to run:
    ```
-   python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --params=$PARAMS
+   python transformer_main.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --param_set=$PARAM_SET
    ```
 
    Arguments:
    * `--data_dir`: This should be set to the same directory given to the `data_download`'s `data_dir` argument.
    * `--model_dir`: Directory to save Transformer model training checkpoints.
-   * `--params`: Parameter set to use when creating and training the model. Options are `base` and `big` (default).
+   * `--param_set`: Parameter set to use when creating and training the model. Options are `base` and `big` (default).
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
 
    #### Customizing training schedule
@@ -123,12 +135,12 @@ big | 28.9
    By default, the model will train for 10 epochs, and evaluate after every epoch. The training schedule may be defined through the flags:
    * Training with epochs (default):
      * `--train_epochs`: The total number of complete passes to make through the dataset
-     * `--epochs_between_eval`: The number of epochs to train between evaluations.
+     * `--epochs_between_evals`: The number of epochs to train between evaluations.
    * Training with steps:
      * `--train_steps`: sets the total number of training steps to run.
-     * `--steps_between_eval`: Number of training steps to run between evaluations.
+     * `--steps_between_evals`: Number of training steps to run between evaluations.
 
-   Only one of `train_epochs` or `train_steps` may be set. Since the default option is to evaluate the model after training for an epoch, it may take 4 or more hours between model evaluations. To get more frequent evaluations, use the flags `--train_steps=250000 --steps_between_eval=1000`.
+   Only one of `train_epochs` or `train_steps` may be set. Since the default option is to evaluate the model after training for an epoch, it may take 4 or more hours between model evaluations. To get more frequent evaluations, use the flags `--train_steps=250000 --steps_between_evals=1000`.
 
    Note: At the beginning of each training session, the training dataset is reloaded and shuffled. Stopping the training before completing an epoch may result in worse model quality, due to the chance that some examples may be seen more than others. Therefore, it is recommended to use epochs when the model quality is important.
 
@@ -137,7 +149,7 @@ big | 28.9
    Use these flags to compute the BLEU when the model evaluates:
    * `--bleu_source`: Path to file containing text to translate.
    * `--bleu_ref`: Path to file containing the reference translation.
-   * `--bleu_threshold`: Train until the BLEU score reaches this lower bound. This setting overrides the `--train_steps` and `--train_epochs` flags.
+   * `--stop_threshold`: Train until the BLEU score reaches this lower bound. This setting overrides the `--train_steps` and `--train_epochs` flags.
 
    The test source and reference files located in the `test_data` directory are extracted from the preprocessed dataset from the [NMT Seq2Seq tutorial](https://google.github.io/seq2seq/nmt/#download-data).
 
@@ -155,12 +167,12 @@ big | 28.9
 
    Command to run:
    ```
-   python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --params=$PARAMS --text="hello world"
+   python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR --param_set=PARAM_SET --text="hello world"
    ```
 
    Arguments for initializing the Subtokenizer and trained model:
    * `--data_dir`: Used to locate the vocabulary file to create a Subtokenizer, which encodes the input and decodes the model output.
-   * `--model_dir` and `--params`: These parameters are used to rebuild the trained model
+   * `--model_dir` and `--param_set`: These parameters are used to rebuild the trained model
 
    Arguments for specifying what to translate:
    * `--text`: Text to translate
@@ -170,7 +182,7 @@ big | 28.9
    To translate the newstest2014 data, run:
    ```
    python translate.py --data_dir=$DATA_DIR --model_dir=$MODEL_DIR \
-       --params=$PARAMS --file=test_data/newstest2014.en --file_out=translation.en
+       --param_set=PARAM_SET --file=test_data/newstest2014.en --file_out=translation.en
    ```
 
    Translating the file takes around 15 minutes on a GTX1080, or 5 minutes on a P100.

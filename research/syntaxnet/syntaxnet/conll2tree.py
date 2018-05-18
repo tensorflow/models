@@ -17,6 +17,8 @@
 import collections
 import re
 
+from absl import app
+from absl import flags
 import asciitree
 import tensorflow as tf
 
@@ -26,7 +28,6 @@ from tensorflow.python.platform import tf_logging as logging
 from syntaxnet import sentence_pb2
 from syntaxnet.ops import gen_parser_ops
 
-flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('task_context',
@@ -88,16 +89,16 @@ def main(unused_argv):
         sentence.ParseFromString(d)
         tr = asciitree.LeftAligned()
         d = to_dict(sentence)
-        print('Input: %s' % sentence.text)
-        print('Parse:')
+        print 'Input: %s' % sentence.text
+        print 'Parse:'
         tr_str = tr(d)
         pat = re.compile(r'\s*@\d+$')
         for tr_ln in tr_str.splitlines():
-          print(pat.sub('', tr_ln))
+          print pat.sub('', tr_ln)
 
       if finished:
         break
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main)

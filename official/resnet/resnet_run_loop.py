@@ -395,13 +395,12 @@ def resnet_main(
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
   }
-  benchmark_logger = logger.config_benchmark_logger(flags_obj.benchmark_log_dir)
+  benchmark_logger = logger.config_benchmark_logger(flags_obj)
   benchmark_logger.log_run_info('resnet', dataset_name, run_params)
 
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
-      batch_size=flags_obj.batch_size,
-      benchmark_log_dir=flags_obj.benchmark_log_dir)
+      batch_size=flags_obj.batch_size)
 
   def input_fn_train():
     return input_function(

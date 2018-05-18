@@ -492,8 +492,8 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
         detection_boxes,
         detection_scores,
         detection_classes,
-        num_gt_boxes_per_image,
-        num_det_boxes_per_image)
+        num_gt_boxes_per_image=num_gt_boxes_per_image,
+        num_det_boxes_per_image=num_det_boxes_per_image)
 
     _, update_op = eval_metric_ops['DetectionBoxes_Precision/mAP']
 

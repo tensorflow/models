@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Creates an estimator to train the Transformer model."""
+"""Train and evaluate the Transformer model.
+
+See README for description of setting the training schedule and evaluating the
+BLEU score.
+"""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import os
-import sys
 import tempfile
 
 # pylint: disable=g-bad-import-order
 from six.moves import xrange  # pylint: disable=redefined-builtin
+from absl import app as absl_app
+from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -36,10 +40,25 @@ from official.transformer.model import transformer
 from official.transformer.utils import dataset
 from official.transformer.utils import metrics
 from official.transformer.utils import tokenizer
+from official.utils.flags import core as flags_core
+from official.utils.logs import hooks_helper
+from official.utils.logs import logger
+from official.utils.misc import model_helpers
 
+
+PARAMS_MAP = {
+    "base": model_params.TransformerBaseParams,
+    "big": model_params.TransformerBigParams,
+}
 DEFAULT_TRAIN_EPOCHS = 10
 BLEU_DIR = "bleu"
 INF = int(1e9)
+
+# Dictionary containing tensors that are logged by the logging hooks. Each item
+# maps a string to the tensor name.
+TENSORS_TO_LOG = {
+    "learning_rate": "model/get_train_op/learning_rate/learning_rate",
+    "cross_entropy_loss": "model/cross_entropy"}
 
 
 def model_fn(features, labels, mode, params):
@@ -62,9 +81,15 @@ def model_fn(features, labels, mode, params):
     logits = output
 
     # Calculate model loss.
+    # xentropy contains the cross entropy loss of every nonpadding token in the
+    # targets.
     xentropy, weights = metrics.padded_cross_entropy_loss(
         logits, targets, params.label_smoothing, params.vocab_size)
-    loss = tf.reduce_sum(xentropy * weights) / tf.reduce_sum(weights)
+    # Compute the weighted mean of the cross entropy losses
+    loss = tf.reduce_sum(xentropy) / tf.reduce_sum(weights)
+
+    # Save loss as named tensor that will be logged with the logging hook.
+    tf.identity(loss, "cross_entropy")
 
     if mode == tf.estimator.ModeKeys.EVAL:
       return tf.estimator.EstimatorSpec(
@@ -87,6 +112,10 @@ def get_learning_rate(learning_rate, hidden_size, learning_rate_warmup_steps):
     # Apply rsqrt decay
     learning_rate *= tf.rsqrt(tf.maximum(step, warmup_steps))
 
+    # Create a named tensor that will be logged using the logging hook.
+    # The full name includes variable and names scope. In this case, the name
+    # is model/get_train_op/learning_rate/learning_rate
+    tf.identity(learning_rate, "learning_rate")
     # Save learning rate value to TensorBoard summary.
     tf.summary.scalar("learning_rate", learning_rate)
 
@@ -145,31 +174,22 @@ def get_global_step(estimator):
   return int(estimator.latest_checkpoint().split("-")[-1])
 
 
-def evaluate_and_log_bleu(estimator, bleu_writer, bleu_source, bleu_ref):
+def evaluate_and_log_bleu(estimator, bleu_source, bleu_ref, vocab_file_path):
   """Calculate and record the BLEU score."""
-  subtokenizer = tokenizer.Subtokenizer(
-      os.path.join(FLAGS.data_dir, FLAGS.vocab_file))
+  subtokenizer = tokenizer.Subtokenizer(vocab_file_path)
 
   uncased_score, cased_score = translate_and_compute_bleu(
       estimator, subtokenizer, bleu_source, bleu_ref)
 
-  print("Bleu score (uncased):", uncased_score)
-  print("Bleu score (cased):", cased_score)
-
-  summary = tf.Summary(value=[
-      tf.Summary.Value(tag="bleu/uncased", simple_value=uncased_score),
-      tf.Summary.Value(tag="bleu/cased", simple_value=cased_score),
-  ])
-
-  bleu_writer.add_summary(summary, get_global_step(estimator))
-  bleu_writer.flush()
+  tf.logging.info("Bleu score (uncased):", uncased_score)
+  tf.logging.info("Bleu score (cased):", cased_score)
   return uncased_score, cased_score
 
 
 def train_schedule(
     estimator, train_eval_iterations, single_iteration_train_steps=None,
-    single_iteration_train_epochs=None, bleu_source=None, bleu_ref=None,
-    bleu_threshold=None):
+    single_iteration_train_epochs=None, train_hooks=None, benchmark_logger=None,
+    bleu_source=None, bleu_ref=None, bleu_threshold=None, vocab_file_path=None):
   """Train and evaluate model, and optionally compute model's BLEU score.
 
   **Step vs. Epoch vs. Iteration**
@@ -198,9 +218,12 @@ def train_schedule(
     train_eval_iterations: Number of times to repeat the train+eval iteration.
     single_iteration_train_steps: Number of steps to train in one iteration.
     single_iteration_train_epochs: Number of epochs to train in one iteration.
+    train_hooks: List of hooks to pass to the estimator during training.
+    benchmark_logger: a BenchmarkLogger object that logs evaluation data
     bleu_source: File containing text to be translated for BLEU calculation.
     bleu_ref: File containing reference translations for BLEU calculation.
     bleu_threshold: minimum BLEU score before training is stopped.
+    vocab_file_path: Path to vocabulary file used to subtokenize bleu_source.
 
   Raises:
     ValueError: if both or none of single_iteration_train_steps and
@@ -221,22 +244,24 @@ def train_schedule(
 
   evaluate_bleu = bleu_source is not None and bleu_ref is not None
 
-  # Print out training schedule
-  print("Training schedule:")
+  # Print details of training schedule.
+  tf.logging.info("Training schedule:")
   if single_iteration_train_epochs is not None:
-    print("\t1. Train for %d epochs." % single_iteration_train_epochs)
+    tf.logging.info("\t1. Train for %d epochs." % single_iteration_train_epochs)
   else:
-    print("\t1. Train for %d steps." % single_iteration_train_steps)
-  print("\t2. Evaluate model.")
+    tf.logging.info("\t1. Train for %d steps." % single_iteration_train_steps)
+  tf.logging.info("\t2. Evaluate model.")
   if evaluate_bleu:
-    print("\t3. Compute BLEU score.")
+    tf.logging.info("\t3. Compute BLEU score.")
     if bleu_threshold is not None:
-      print("Repeat above steps until the BLEU score reaches", bleu_threshold)
+      tf.logging.info("Repeat above steps until the BLEU score reaches %f" %
+                      bleu_threshold)
   if not evaluate_bleu or bleu_threshold is None:
-    print("Repeat above steps %d times." % train_eval_iterations)
+    tf.logging.info("Repeat above steps %d times." % train_eval_iterations)
 
   if evaluate_bleu:
-    # Set summary writer to log bleu score.
+    # Create summary writer to log bleu score (values can be displayed in
+    # Tensorboard).
     bleu_writer = tf.summary.FileWriter(
         os.path.join(estimator.model_dir, BLEU_DIR))
     if bleu_threshold is not None:
@@ -245,145 +270,201 @@ def train_schedule(
 
   # Loop training/evaluation/bleu cycles
   for i in xrange(train_eval_iterations):
-    print("Starting iteration", i + 1)
+    tf.logging.info("Starting iteration %d" % (i + 1))
 
     # Train the model for single_iteration_train_steps or until the input fn
     # runs out of examples (if single_iteration_train_steps is None).
-    estimator.train(dataset.train_input_fn, steps=single_iteration_train_steps)
+    estimator.train(
+        dataset.train_input_fn, steps=single_iteration_train_steps,
+        hooks=train_hooks)
 
     eval_results = estimator.evaluate(dataset.eval_input_fn)
-    print("Evaluation results (iter %d/%d):" % (i + 1, train_eval_iterations),
-          eval_results)
+    tf.logging.info("Evaluation results (iter %d/%d):" %
+                    (i + 1, train_eval_iterations))
+    tf.logging.info(eval_results)
+    benchmark_logger.log_evaluation_result(eval_results)
 
+    # The results from estimator.evaluate() are measured on an approximate
+    # translation, which utilize the target golden values provided. The actual
+    # bleu score must be computed using the estimator.predict() path, which
+    # outputs translations that are not based on golden values. The translations
+    # are compared to reference file to get the actual bleu score.
     if evaluate_bleu:
-      uncased_score, _ = evaluate_and_log_bleu(
-          estimator, bleu_writer, bleu_source, bleu_ref)
-      if bleu_threshold is not None and uncased_score > bleu_threshold:
+      uncased_score, cased_score = evaluate_and_log_bleu(
+          estimator, bleu_source, bleu_ref, vocab_file_path)
+
+      # Write actual bleu scores using summary writer and benchmark logger
+      global_step = get_global_step(estimator)
+      summary = tf.Summary(value=[
+          tf.Summary.Value(tag="bleu/uncased", simple_value=uncased_score),
+          tf.Summary.Value(tag="bleu/cased", simple_value=cased_score),
+      ])
+      bleu_writer.add_summary(summary, global_step)
+      bleu_writer.flush()
+      benchmark_logger.log_metric(
+          "bleu_uncased", uncased_score, global_step=global_step)
+      benchmark_logger.log_metric(
+          "bleu_cased", cased_score, global_step=global_step)
+
+      # Stop training if bleu stopping threshold is met.
+      if model_helpers.past_stop_threshold(bleu_threshold, uncased_score):
         bleu_writer.close()
         break
 
 
-def main(_):
-  # Set logging level to INFO to display training progress (logged by the
-  # estimator)
-  tf.logging.set_verbosity(tf.logging.INFO)
+def define_transformer_flags():
+  """Add flags and flag validators for running transformer_main."""
+  # Add common flags (data_dir, model_dir, train_epochs, etc.).
+  flags_core.define_base(multi_gpu=False, num_gpu=False, export_dir=False)
+  flags_core.define_performance(
+      num_parallel_calls=True,
+      inter_op=False,
+      intra_op=False,
+      synthetic_data=False,
+      max_train_steps=False,
+      dtype=False
+  )
+  flags_core.define_benchmark()
 
-  if FLAGS.params == "base":
-    params = model_params.TransformerBaseParams
-  elif FLAGS.params == "big":
-    params = model_params.TransformerBigParams
-  else:
-    raise ValueError("Invalid parameter set defined: %s."
-                     "Expected 'base' or 'big.'" % FLAGS.params)
+  # Set flags from the flags_core module as "key flags" so they're listed when
+  # the '-h' flag is used. Without this line, the flags defined above are
+  # only shown in the full `--helpful` help text.
+  flags.adopt_module_key_flags(flags_core)
 
+  # Add transformer-specific flags
+  flags.DEFINE_enum(
+      name="param_set", short_name="mp", default="big",
+      enum_values=["base", "big"],
+      help=flags_core.help_wrap(
+          "Parameter set to use when creating and training the model. The "
+          "parameters define the input shape (batch size and max length), "
+          "model configuration (size of embedding, # of hidden layers, etc.), "
+          "and various other settings. The big parameter set increases the "
+          "default batch size, embedding/hidden size, and filter size. For a "
+          "complete list of parameters, please see model/model_params.py."))
+
+  # Flags for training with steps (may be used for debugging)
+  flags.DEFINE_integer(
+      name="train_steps", short_name="ts", default=None,
+      help=flags_core.help_wrap("The number of steps used to train."))
+  flags.DEFINE_integer(
+      name="steps_between_evals", short_name="sbe", default=1000,
+      help=flags_core.help_wrap(
+          "The Number of training steps to run between evaluations. This is "
+          "used if --train_steps is defined."))
+
+  # BLEU score computation
+  flags.DEFINE_string(
+      name="bleu_source", short_name="bls", default=None,
+      help=flags_core.help_wrap(
+          "Path to source file containing text translate when calculating the "
+          "official BLEU score. --bleu_source, --bleu_ref, and --vocab_file "
+          "must be set. Use the flag --stop_threshold to stop the script based "
+          "on the uncased BLEU score."))
+  flags.DEFINE_string(
+      name="bleu_ref", short_name="blr", default=None,
+      help=flags_core.help_wrap(
+          "Path to source file containing text translate when calculating the "
+          "official BLEU score. --bleu_source, --bleu_ref, and --vocab_file "
+          "must be set. Use the flag --stop_threshold to stop the script based "
+          "on the uncased BLEU score."))
+  flags.DEFINE_string(
+      name="vocab_file", short_name="vf", default=VOCAB_FILE,
+      help=flags_core.help_wrap(
+          "Name of vocabulary file containing subtokens for subtokenizing the "
+          "bleu_source file. This file is expected to be in the directory "
+          "defined by --data_dir."))
+
+  flags_core.set_defaults(data_dir="/tmp/translate_ende",
+                          model_dir="/tmp/transformer_model",
+                          batch_size=None,
+                          train_epochs=None)
+
+  @flags.multi_flags_validator(
+      ["train_epochs", "train_steps"],
+      message="Both --train_steps and --train_epochs were set. Only one may be "
+              "defined.")
+  def _check_train_limits(flag_dict):
+    return flag_dict["train_epochs"] is None or flag_dict["train_steps"] is None
+
+  @flags.multi_flags_validator(
+      ["data_dir", "bleu_source", "bleu_ref", "vocab_file"],
+      message="--bleu_source, --bleu_ref, and/or --vocab_file don't exist. "
+              "Please ensure that the file paths are correct.")
+  def _check_bleu_files(flags_dict):
+    """Validate files when bleu_source and bleu_ref are defined."""
+    if flags_dict["bleu_source"] is None or flags_dict["bleu_ref"] is None:
+      return True
+    # Ensure that bleu_source, bleu_ref, and vocab files exist.
+    vocab_file_path = os.path.join(
+        flags_dict["data_dir"], flags_dict["vocab_file"])
+    return all([
+        tf.gfile.Exists(flags_dict["bleu_source"]),
+        tf.gfile.Exists(flags_dict["bleu_ref"]),
+        tf.gfile.Exists(vocab_file_path)])
+
+
+def run_transformer(flags_obj):
+  """Create tf.Estimator to train and evaluate transformer model.
+
+  Args:
+    flags_obj: Object containing parsed flag values.
+  """
   # Determine training schedule based on flags.
-  if FLAGS.train_steps is not None and FLAGS.train_epochs is not None:
-    raise ValueError("Both --train_steps and --train_epochs were set. Only one "
-                     "may be defined.")
-  if FLAGS.train_steps is not None:
-    train_eval_iterations = FLAGS.train_steps // FLAGS.steps_between_eval
-    single_iteration_train_steps = FLAGS.steps_between_eval
+  if flags_obj.train_steps is not None:
+    train_eval_iterations = (
+        flags_obj.train_steps // flags_obj.steps_between_evals)
+    single_iteration_train_steps = flags_obj.steps_between_evals
     single_iteration_train_epochs = None
   else:
-    if FLAGS.train_epochs is None:
-      FLAGS.train_epochs = DEFAULT_TRAIN_EPOCHS
-    train_eval_iterations = FLAGS.train_epochs // FLAGS.epochs_between_eval
+    train_epochs = flags_obj.train_epochs or DEFAULT_TRAIN_EPOCHS
+    train_eval_iterations = train_epochs // flags_obj.epochs_between_evals
     single_iteration_train_steps = None
-    single_iteration_train_epochs = FLAGS.epochs_between_eval
-
-  # Make sure that the BLEU source and ref files if set
-  if FLAGS.bleu_source is not None and FLAGS.bleu_ref is not None:
-    if not tf.gfile.Exists(FLAGS.bleu_source):
-      raise ValueError("BLEU source file %s does not exist" % FLAGS.bleu_source)
-    if not tf.gfile.Exists(FLAGS.bleu_ref):
-      raise ValueError("BLEU source file %s does not exist" % FLAGS.bleu_ref)
+    single_iteration_train_epochs = flags_obj.epochs_between_evals
 
   # Add flag-defined parameters to params object
-  params.data_dir = FLAGS.data_dir
-  params.num_cpu_cores = FLAGS.num_cpu_cores
-  params.epochs_between_eval = FLAGS.epochs_between_eval
+  params = PARAMS_MAP[flags_obj.param_set]
+  params.data_dir = flags_obj.data_dir
+  params.num_parallel_calls = flags_obj.num_parallel_calls
+  params.epochs_between_evals = flags_obj.epochs_between_evals
   params.repeat_dataset = single_iteration_train_epochs
+  params.batch_size = flags_obj.batch_size or params.batch_size
 
+  # Create hooks that log information about the training and metric values
+  train_hooks = hooks_helper.get_train_hooks(
+      flags_obj.hooks,
+      tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
+      batch_size=params.batch_size  # for ExamplesPerSecondHook
+  )
+  benchmark_logger = logger.config_benchmark_logger(flags_obj)
+  benchmark_logger.log_run_info(
+      model_name="transformer",
+      dataset_name="wmt_translate_ende",
+      run_params=params.__dict__)
+
+  # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(
-      model_fn=model_fn, model_dir=FLAGS.model_dir, params=params)
+      model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
   train_schedule(
-      estimator, train_eval_iterations, single_iteration_train_steps,
-      single_iteration_train_epochs, FLAGS.bleu_source, FLAGS.bleu_ref,
-      FLAGS.bleu_threshold)
+      estimator=estimator,
+      # Training arguments
+      train_eval_iterations=train_eval_iterations,
+      single_iteration_train_steps=single_iteration_train_steps,
+      single_iteration_train_epochs=single_iteration_train_epochs,
+      train_hooks=train_hooks,
+      benchmark_logger=benchmark_logger,
+      # BLEU calculation arguments
+      bleu_source=flags_obj.bleu_source,
+      bleu_ref=flags_obj.bleu_ref,
+      bleu_threshold=flags_obj.stop_threshold,
+      vocab_file_path=os.path.join(flags_obj.data_dir, flags_obj.vocab_file))
+
+
+def main(_):
+  run_transformer(flags.FLAGS)
 
 
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--data_dir", "-dd", type=str, default="/tmp/translate_ende",
-      help="[default: %(default)s] Directory containing training and "
-           "evaluation data, and vocab file used for encoding.",
-      metavar="<DD>")
-  parser.add_argument(
-      "--vocab_file", "-vf", type=str, default=VOCAB_FILE,
-      help="[default: %(default)s] Name of vocabulary file.",
-      metavar="<vf>")
-  parser.add_argument(
-      "--model_dir", "-md", type=str, default="/tmp/transformer_model",
-      help="[default: %(default)s] Directory to save Transformer model "
-           "training checkpoints",
-      metavar="<MD>")
-  parser.add_argument(
-      "--params", "-p", type=str, default="big", choices=["base", "big"],
-      help="[default: %(default)s] Parameter set to use when creating and "
-           "training the model.",
-      metavar="<P>")
-  parser.add_argument(
-      "--num_cpu_cores", "-nc", type=int, default=4,
-      help="[default: %(default)s] Number of CPU cores to use in the input "
-           "pipeline.",
-      metavar="<NC>")
-
-  # Flags for training with epochs. (default)
-  parser.add_argument(
-      "--train_epochs", "-te", type=int, default=None,
-      help="The number of epochs used to train. If both --train_epochs and "
-           "--train_steps are not set, the model will train for %d epochs." %
-      DEFAULT_TRAIN_EPOCHS,
-      metavar="<TE>")
-  parser.add_argument(
-      "--epochs_between_eval", "-ebe", type=int, default=1,
-      help="[default: %(default)s] The number of training epochs to run "
-           "between evaluations.",
-      metavar="<TE>")
-
-  # Flags for training with steps (may be used for debugging)
-  parser.add_argument(
-      "--train_steps", "-ts", type=int, default=None,
-      help="Total number of training steps. If both --train_epochs and "
-           "--train_steps are not set, the model will train for %d epochs." %
-      DEFAULT_TRAIN_EPOCHS,
-      metavar="<TS>")
-  parser.add_argument(
-      "--steps_between_eval", "-sbe", type=int, default=1000,
-      help="[default: %(default)s] Number of training steps to run between "
-           "evaluations.",
-      metavar="<SBE>")
-
-  # BLEU score computation
-  parser.add_argument(
-      "--bleu_source", "-bs", type=str, default=None,
-      help="Path to source file containing text translate when calculating the "
-           "official BLEU score. Both --bleu_source and --bleu_ref must be "
-           "set. The BLEU score will be calculated during model evaluation.",
-      metavar="<BS>")
-  parser.add_argument(
-      "--bleu_ref", "-br", type=str, default=None,
-      help="Path to file containing the reference translation for calculating "
-           "the official BLEU score. Both --bleu_source and --bleu_ref must be "
-           "set. The BLEU score will be calculated during model evaluation.",
-      metavar="<BR>")
-  parser.add_argument(
-      "--bleu_threshold", "-bt", type=float, default=None,
-      help="Stop training when the uncased BLEU score reaches this value. "
-           "Setting this overrides the total number of steps or epochs set by "
-           "--train_steps or --train_epochs.",
-      metavar="<BT>")
-
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  tf.logging.set_verbosity(tf.logging.INFO)
+  define_transformer_flags()
+  absl_app.run(main)

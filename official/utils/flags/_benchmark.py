@@ -36,6 +36,14 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
 
   key_flags = []
 
+  flags.DEFINE_enum(
+      name="benchmark_logger_type", default="BaseBenchmarkLogger",
+      enum_values=["BaseBenchmarkLogger", "BenchmarkFileLogger",
+                   "BenchmarkBigQueryLogger"],
+      help=help_wrap("The type of benchmark logger to use. Defaults to using "
+                     "BaseBenchmarkLogger which logs to STDOUT. Different "
+                     "loggers will require other flags to be able to work."))
+
   if benchmark_log_dir:
     flags.DEFINE_string(
         name="benchmark_log_dir", short_name="bld", default=None,
@@ -64,4 +72,14 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
         help=help_wrap("The Bigquery table name where the benchmark metric "
                        "information will be uploaded."))
 
-    return key_flags
+  @flags.multi_flags_validator(
+      ["benchmark_logger_type", "benchmark_log_dir"],
+      message="--benchmark_logger_type=BenchmarkFileLogger will require "
+              "--benchmark_log_dir being set")
+  def _check_benchmark_log_dir(flags_dict):
+    benchmark_logger_type = flags_dict["benchmark_logger_type"]
+    if benchmark_logger_type == "BenchmarkFileLogger":
+      return flags_dict["benchmark_log_dir"]
+    return True
+
+  return key_flags

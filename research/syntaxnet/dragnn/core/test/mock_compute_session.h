@@ -62,13 +62,14 @@ class MockComputeSession : public ComputeSession {
   MOCK_METHOD2(GetTranslatedLinkFeatures,
                std::vector<LinkFeatures>(const string &component_name,
                                          int channel_id));
-  MOCK_METHOD1(EmitOracleLabels,
-               std::vector<std::vector<int>>(const string &component_name));
+  MOCK_METHOD1(EmitOracleLabels, std::vector<std::vector<std::vector<Label>>>(
+                                     const string &component_name));
   MOCK_METHOD1(IsTerminal, bool(const string &component_name));
   MOCK_METHOD1(FinalizeData, void(const string &component_name));
   MOCK_METHOD0(GetSerializedPredictions, std::vector<string>());
   MOCK_METHOD0(GetTraceProtos, std::vector<MasterTrace>());
   MOCK_METHOD1(SetInputData, void(const std::vector<string> &data));
+  MOCK_METHOD0(GetInputBatchCache, InputBatchCache *());
   MOCK_METHOD0(ResetSession, void());
   MOCK_METHOD1(SetTracing, void(bool tracing_on));
   MOCK_CONST_METHOD0(Id, int());

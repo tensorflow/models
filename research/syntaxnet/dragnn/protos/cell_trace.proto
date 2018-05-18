@@ -1,0 +1,76 @@
+syntax = "proto2";
+
+import "dragnn/protos/trace.proto";
+
+package syntaxnet.dragnn.runtime;
+
+// Trace of a network cell computation (e.g., an LSTM cell).
+// NEXT ID: 4
+message CellTrace {
+  extend ComponentStepTrace {
+    // Cell computations that occurred in the step.  It's possible that there is
+    // more than one cell per component (e.g., a bi-LSTM component).
+    repeated CellTrace step_trace_extension = 169167178;
+  }
+
+  // Name of the cell.
+  optional string name = 1;
+
+  // Tensors making up the cell.  Note that this only includes local variables
+  // (e.g., activation vectors), not global constants (e.g., weight matrices).
+  repeated CellTensorTrace tensor = 2;
+
+  // Operations making up the cell.  Note that the operation inputs may refer to
+  // global constants that are not present in |tensor|.
+  repeated CellOperationTrace operation = 3;
+}
+
+// Trace of a tensor in a cell computation.
+// NEXT ID: 7
+message CellTensorTrace {
+  // Possible orderings of the dimensions.
+  enum Order {
+    ORDER_UNKNOWN = 0;       // unspecified or unknown
+    ORDER_ROW_MAJOR = 1;     // row-major: dimension 0 has largest stride
+    ORDER_COLUMN_MAJOR = 2;  // column-major: dimension 0 has smallest stride
+  }
+
+  // Name of the tensor (e.g., "annotation/inference_rnn/split:1").
+  optional string name = 1;
+
+  // Data type of the tensor (e.g., "DT_FLOAT").
+  optional string type = 2;
+
+  // Dimensions of the tensor (e.g., [1, 65]).
+  repeated int32 dimension = 3;
+
+  // Alignment-padded dimensions of the tensor (e.g., [1, 96]).
+  repeated int32 aligned_dimension = 4;
+
+  // Ordering of the tensor values.
+  optional Order order = 5 [default = ORDER_UNKNOWN];
+
+  // Block of alignment-padded values.  For simplicity, values of all types are
+  // converted to double (via C++ conversion rules).  Use |aligned_dimension| to
+  // traverse the values, but note that |dimension| bounds the valid region.
+  repeated double value = 6;
+}
+
+// Trace of an operation in a cell computation.
+// NEXT ID: 6
+message CellOperationTrace {
+  // Name of the operation (e.g., "annotation/inference_rnn/MatMul").
+  optional string name = 1;
+
+  // High-level type of the operation (e.g., "MatMul").
+  optional string type = 2;
+
+  // Kernel that implements the operation, if applicable (e.g., "AvxFltMatMul").
+  optional string kernel = 3;
+
+  // Names of input tensors of the operation, in order.
+  repeated string input = 4;
+
+  // Names of output tensors of the operation, in order.
+  repeated string output = 5;
+}

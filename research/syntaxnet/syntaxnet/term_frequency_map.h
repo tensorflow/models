@@ -24,6 +24,8 @@ limitations under the License.
 #include <vector>
 
 #include "syntaxnet/utils.h"
+#include "tensorflow/core/lib/core/status.h"
+
 
 namespace syntaxnet {
 
@@ -51,6 +53,9 @@ class TermFrequencyMap {
   // Returns the term associated with the given index.
   const string &GetTerm(int index) const { return term_data_[index].first; }
 
+  // Returns the frequency associated with the given index.
+  int64 GetFrequency(int index) const { return term_data_[index].second; }
+
   // Increases the frequency of the given term by 1, creating a new entry if
   // necessary, and returns the index of the term.
   int Increment(const string &term);
@@ -59,14 +64,19 @@ class TermFrequencyMap {
   void Clear();
 
   // Loads a frequency mapping from the given file, which must have been created
-  // by an earlier call to Save().  After loading, the term indices are
-  // guaranteed to be ordered in descending order of frequency (breaking ties
-  // arbitrarily).  However, any new terms inserted after loading do not
-  // maintain this sorting invariant.
+  // by an earlier call to Save().  On error, returns non-OK.
+  //
+  // After loading, the term indices are guaranteed to be ordered in descending
+  // order of frequency (breaking ties arbitrarily).  However, any new terms
+  // inserted after loading do not maintain this sorting invariant.
   //
   // Only loads terms with frequency >= min_frequency.  If max_num_terms <= 0,
   // then all qualifying terms are loaded; otherwise, max_num_terms terms with
   // maximal frequency are loaded (breaking ties arbitrarily).
+  tensorflow::Status TryLoad(const string &filename, int min_frequency,
+                             int max_num_terms);
+
+  // Like TryLoad(), but fails on error.
   void Load(const string &filename, int min_frequency, int max_num_terms);
 
   // Saves a frequency mapping to the given file.
@@ -74,7 +84,8 @@ class TermFrequencyMap {
 
  private:
   // Hashtable for term-to-index mapping.
-  typedef std::unordered_map<string, int> TermIndex;
+  using TermIndex =  std::unordered_map<string, int>;
+
 
   // Sorting functor for term data.
   struct SortByFrequencyThenTerm;

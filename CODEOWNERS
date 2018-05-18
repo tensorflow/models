@@ -45,7 +45,7 @@
 /research/transformer/ @daviddao
 /research/video_prediction/ @cbfinn
 /research/fivo/ @dieterichlawson
-/samples/ @MarkDaoust
+/samples/ @MarkDaoust @lamberta
 /samples/languages/java/ @asimshankar
 /tutorials/embedding/ @zffchen78 @a-dai
 /tutorials/image/ @sherrym @shlens
