@@ -121,14 +121,14 @@ with "deeplab".
 
 ### March 22, 2018
 
-Release checkpoints using MobileNet-V2 as network backbone and pretrained on
+Released checkpoints using MobileNet-V2 as network backbone and pretrained on
 PASCAL VOC 2012 and Cityscapes.
 
 
 ### March 5, 2018
 
 First release of DeepLab in TensorFlow including deeper Xception network
-backbone. Include chekcpoints that have been pretrained on PASCAL VOC 2012
+backbone. Included chekcpoints that have been pretrained on PASCAL VOC 2012
 and Cityscapes.
 
 ## References
