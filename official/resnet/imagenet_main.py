@@ -179,7 +179,6 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   # num_parallel_calls?
   dataset = dataset.apply(tf.contrib.data.parallel_interleave(
       tf.data.TFRecordDataset, cycle_length=10))
-  dataset = dataset.flat_map(tf.data.TFRecordDataset)
 
   return resnet_run_loop.process_record_dataset(
       dataset, is_training, batch_size, _SHUFFLE_BUFFER, parse_record,
