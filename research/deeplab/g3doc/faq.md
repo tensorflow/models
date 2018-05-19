@@ -60,6 +60,12 @@ sh local_test_mobilenetv2.sh
 First, make sure you could reproduce the results with our provided setting.
 After that, you could start to make a new change one at a time to help debug.
 ___
+Q8: What value of `eval_crop_size` should I use?
+
+A: Our model uses whole-image inference, meaning that we need to set `eval_crop_size` equal to `output_stride` * k + 1, where k is an integer and set k so that the resulting `eval_crop_size` is slightly larger the largest
+image dimension in the dataset. For example, we have `eval_crop_size` = 513x513 for PASCAL dataset whose largest image dimension is 512. Similarly, we set `eval_crop_size` = 1025x2049 for Cityscapes images whose
+image dimension is all equal to 1024x2048.
+___
 
 ## References
 

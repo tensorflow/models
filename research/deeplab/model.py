@@ -64,6 +64,10 @@ _CONCAT_PROJECTION_SCOPE = 'concat_projection'
 _DECODER_SCOPE = 'decoder'
 
 
+def get_merged_logits_scope():
+  return _MERGED_LOGITS_SCOPE
+
+
 def get_extra_layer_scopes(last_layers_contain_logits_only=False):
   """Gets the scopes for extra layers.
 
@@ -358,6 +362,7 @@ def _extract_features(images,
       output_stride=model_options.output_stride,
       multi_grid=model_options.multi_grid,
       model_variant=model_options.model_variant,
+      depth_multiplier=model_options.depth_multiplier,
       weight_decay=weight_decay,
       reuse=reuse,
       is_training=is_training,

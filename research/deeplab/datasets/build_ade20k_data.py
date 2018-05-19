@@ -13,10 +13,11 @@
 # limitations under the License.
 # ==============================================================================
 
+"""Converts ADE20K data to TFRecord file format with Example protos."""
+
 import math
 import os
 import random
-import string
 import sys
 import build_data
 import tensorflow as tf
@@ -44,12 +45,13 @@ tf.app.flags.DEFINE_string(
 
 tf.app.flags.DEFINE_string(
     'output_dir', './ADE20K/tfrecord',
-    'Path to save converted SSTable of Tensorflow example')
+    'Path to save converted tfrecord of Tensorflow example')
 
 _NUM_SHARDS = 4
 
+
 def _convert_dataset(dataset_split, dataset_dir, dataset_label_dir):
-  """ Converts the ADE20k dataset into into tfrecord format (SSTable).
+  """Converts the ADE20k dataset into into tfrecord format.
 
   Args:
     dataset_split: Dataset split (e.g., train, val).
@@ -65,7 +67,7 @@ def _convert_dataset(dataset_split, dataset_dir, dataset_label_dir):
   seg_names = []
   for f in img_names:
     # get the filename without the extension
-    basename = os.path.basename(f).split(".")[0]
+    basename = os.path.basename(f).split('.')[0]
     # cover its corresponding *_seg.png
     seg = os.path.join(dataset_label_dir, basename+'.png')
     seg_names.append(seg)
@@ -104,10 +106,13 @@ def _convert_dataset(dataset_split, dataset_dir, dataset_label_dir):
     sys.stdout.write('\n')
     sys.stdout.flush()
 
+
 def main(unused_argv):
   tf.gfile.MakeDirs(FLAGS.output_dir)
-  _convert_dataset('train', FLAGS.train_image_folder, FLAGS.train_image_label_folder)
+  _convert_dataset(
+      'train', FLAGS.train_image_folder, FLAGS.train_image_label_folder)
   _convert_dataset('val', FLAGS.val_image_folder, FLAGS.val_image_label_folder)
+
 
 if __name__ == '__main__':
   tf.app.run()

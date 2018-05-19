@@ -13,8 +13,7 @@ convert ADE20K semantic segmentation dataset to TFRecord.
 bash download_and_convert_ade20k.sh
 ```
 
-The converted dataset will be saved at
-./deeplab/datasets/ADE20K/tfrecord
+The converted dataset will be saved at ./deeplab/datasets/ADE20K/tfrecord
 
 ## Recommended Directory Structure for Training and Evaluation
 
@@ -23,7 +22,7 @@ The converted dataset will be saved at
    - build_data.py
    - build_ade20k_data.py
    - download_and_convert_ade20k.sh
-   + ADE20K 
+   + ADE20K
      + tfrecord
     + exp
       + train_on_train_set
@@ -83,20 +82,20 @@ which the ADE20K dataset resides (the `tfrecord` above)
 
 **Note that for train.py:**
 
-1.  In order to fine tune the BN layers, one needs to use large batch size (> 12),
-    and set fine_tune_batch_norm = True. Here, we simply use small batch size
-    during training for the purpose of demonstration. If the users have limited
-    GPU memory at hand, please fine-tune from our provided checkpoints whose
-    batch norm parameters have been trained, and use smaller learning rate with
-    fine_tune_batch_norm = False.
+1.  In order to fine tune the BN layers, one needs to use large batch size (>
+    12), and set fine_tune_batch_norm = True. Here, we simply use small batch
+    size during training for the purpose of demonstration. If the users have
+    limited GPU memory at hand, please fine-tune from our provided checkpoints
+    whose batch norm parameters have been trained, and use smaller learning rate
+    with fine_tune_batch_norm = False.
 
-2. User should fine tune the `min_resize_value` and `max_resize_value` to get
-   better result. Note that `resize_factor` has to be equal to `output_stride`.
+2.  User should fine tune the `min_resize_value` and `max_resize_value` to get
+    better result. Note that `resize_factor` has to be equal to `output_stride`.
 
-2.  The users should change atrous_rates from [6, 12, 18] to [12, 24, 36] if
+3.  The users should change atrous_rates from [6, 12, 18] to [12, 24, 36] if
     setting output_stride=8.
 
-3.  The users could skip the flag, `decoder_output_stride`, if you do not want
+4.  The users could skip the flag, `decoder_output_stride`, if you do not want
     to use the decoder structure.
 
 Currently there are no fine-tuned checkpoint for the ADE20K dataset.

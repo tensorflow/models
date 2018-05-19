@@ -104,13 +104,26 @@ Misc:
 
 To get help with issues you may encounter while using the DeepLab Tensorflow
 implementation, create a new question on
-[StackOverflow](https://stackoverflow.com/) with the tags "tensorflow" and
-"deeplab".
+[StackOverflow](https://stackoverflow.com/) with the tag "tensorflow".
 
 Please report bugs (i.e., broken code, not usage questions) to the
 tensorflow/models GitHub [issue
 tracker](https://github.com/tensorflow/models/issues), prefixing the issue name
 with "deeplab".
+
+## Change Logs
+
+### March 22, 2018
+
+Release checkpoints using MobileNet-V2 as network backbone and pretrained on
+PASCAL VOC 2012 and Cityscapes.
+
+
+### March 5, 2018
+
+First release of DeepLab in TensorFlow including deeper Xception network
+backbone. Include chekcpoints that have been pretrained on PASCAL VOC 2012
+and Cityscapes.
 
 ## References
 
