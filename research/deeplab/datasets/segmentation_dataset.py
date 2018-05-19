@@ -69,7 +69,10 @@ _ITEMS_TO_DESCRIPTIONS = {
 DatasetDescriptor = collections.namedtuple(
     'DatasetDescriptor',
     ['splits_to_sizes',   # Splits of the dataset into training, val, and test.
-     'num_classes',   # Number of semantic classes.
+     'num_classes',   # Number of semantic classes, including the background
+                      # class (if exists). For example, there are 20
+                      # foreground classes + 1 background class in the PASCAL
+                      # VOC 2012 dataset. Thus, we set num_classes=21.
      'ignore_label',  # Ignore label value.
     ]
 )
@@ -96,12 +99,12 @@ _PASCAL_VOC_SEG_INFORMATION = DatasetDescriptor(
 # These number (i.e., 'train'/'test') seems to have to be hard coded
 # You are required to figure it out for your training/testing example.
 _ADE20K_INFORMATION = DatasetDescriptor(
-    splits_to_sizes = {
-        'train': 20210, # num of samples in images/training
-        'val': 2000, # num of samples in images/validation
+    splits_to_sizes={
+        'train': 20210,  # num of samples in images/training
+        'val': 2000,  # num of samples in images/validation
     },
-    num_classes=150,
-    ignore_label=255,
+    num_classes=151,
+    ignore_label=0,
 )
 
 

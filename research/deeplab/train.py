@@ -68,7 +68,8 @@ flags.DEFINE_integer('save_summaries_secs', 600,
                      'How often, in seconds, we compute the summaries.')
 
 flags.DEFINE_boolean('save_summaries_images', False,
-                     'Save sample inputs, labels, and semantic predictions as images to summary.')
+                     'Save sample inputs, labels, and semantic predictions as '
+                     'images to summary.')
 
 # Settings for training strategy.
 
@@ -184,9 +185,11 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
   """
   samples = inputs_queue.dequeue()
 
-  # add name to input and label nodes so we can add to summary
-  samples[common.IMAGE] = tf.identity(samples[common.IMAGE], name = common.IMAGE)
-  samples[common.LABEL] = tf.identity(samples[common.LABEL], name = common.LABEL)
+  # Add name to input and label nodes so we can add to summary.
+  samples[common.IMAGE] = tf.identity(
+      samples[common.IMAGE], name=common.IMAGE)
+  samples[common.LABEL] = tf.identity(
+      samples[common.LABEL], name=common.LABEL)
 
   model_options = common.ModelOptions(
       outputs_to_num_classes=outputs_to_num_classes,
@@ -201,11 +204,11 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
       is_training=True,
       fine_tune_batch_norm=FLAGS.fine_tune_batch_norm)
 
-  # add name to graph node so we can add to summary
-  outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE] = tf.identity( 
-    outputs_to_scales_to_logits[common.OUTPUT_TYPE][model._MERGED_LOGITS_SCOPE],
-    name = common.OUTPUT_TYPE
-  )
+  # Add name to graph node so we can add to summary.
+  output_type_dict = outputs_to_scales_to_logits[common.OUTPUT_TYPE]
+  output_type_dict[model.get_merged_logits_scope()] = tf.identity(
+      output_type_dict[model.get_merged_logits_scope()],
+      name=common.OUTPUT_TYPE)
 
   for output, num_classes in six.iteritems(outputs_to_num_classes):
     train_utils.add_softmax_cross_entropy_loss_for_each_scale(
@@ -234,7 +237,7 @@ def main(unused_argv):
   assert FLAGS.train_batch_size % config.num_clones == 0, (
       'Training batch size not divisble by number of clones (GPUs).')
 
-  clone_batch_size = int(FLAGS.train_batch_size / config.num_clones)
+  clone_batch_size = FLAGS.train_batch_size // config.num_clones
 
   # Get dataset-dependent information.
   dataset = segmentation_dataset.get_dataset(
@@ -286,19 +289,27 @@ def main(unused_argv):
 
     # Add summaries for images, labels, semantic predictions
     if FLAGS.save_summaries_images:
-        summary_image = graph.get_tensor_by_name(
-            ('%s/%s:0' % (first_clone_scope, common.IMAGE)).strip('/'))
-        summaries.add(tf.summary.image('samples/%s' % common.IMAGE, summary_image))
+      summary_image = graph.get_tensor_by_name(
+          ('%s/%s:0' % (first_clone_scope, common.IMAGE)).strip('/'))
+      summaries.add(
+          tf.summary.image('samples/%s' % common.IMAGE, summary_image))
 
-        summary_label = tf.cast(graph.get_tensor_by_name(
-            ('%s/%s:0' % (first_clone_scope, common.LABEL)).strip('/')),
-            tf.uint8)
-        summaries.add(tf.summary.image('samples/%s' % common.LABEL, summary_label))
+      first_clone_label = graph.get_tensor_by_name(
+          ('%s/%s:0' % (first_clone_scope, common.LABEL)).strip('/'))
+      # Scale up summary image pixel values for better visualization.
+      pixel_scaling = max(1, 255 // dataset.num_classes)
+      summary_label = tf.cast(first_clone_label * pixel_scaling, tf.uint8)
+      summaries.add(
+          tf.summary.image('samples/%s' % common.LABEL, summary_label))
 
-        predictions = tf.cast(tf.expand_dims(tf.argmax(graph.get_tensor_by_name( 
-            ('%s/%s:0' % (first_clone_scope, common.OUTPUT_TYPE)).strip('/')),
-            3), -1), tf.uint8)
-        summaries.add(tf.summary.image('samples/%s' % common.OUTPUT_TYPE, predictions))
+      first_clone_output = graph.get_tensor_by_name(
+          ('%s/%s:0' % (first_clone_scope, common.OUTPUT_TYPE)).strip('/'))
+      predictions = tf.expand_dims(tf.argmax(first_clone_output, 3), -1)
+
+      summary_predictions = tf.cast(predictions * pixel_scaling, tf.uint8)
+      summaries.add(
+          tf.summary.image(
+              'samples/%s' % common.OUTPUT_TYPE, summary_predictions))
 
     # Add summaries for losses.
     for loss in tf.get_collection(tf.GraphKeys.LOSSES, first_clone_scope):
@@ -325,7 +336,8 @@ def main(unused_argv):
       summaries.add(tf.summary.scalar('total_loss', total_loss))
 
       # Modify the gradients for biases and last layer variables.
-      last_layers = model.get_extra_layer_scopes(FLAGS.last_layers_contain_logits_only)
+      last_layers = model.get_extra_layer_scopes(
+          FLAGS.last_layers_contain_logits_only)
       grad_mult = train_utils.get_model_gradient_multipliers(
           last_layers, FLAGS.last_layer_gradient_multiplier)
       if grad_mult:
