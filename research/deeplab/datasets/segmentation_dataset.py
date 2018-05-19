@@ -103,8 +103,8 @@ _ADE20K_INFORMATION = DatasetDescriptor(
         'train': 20210,  # num of samples in images/training
         'val': 2000,  # num of samples in images/validation
     },
-    num_classes=150,
-    ignore_label=255,
+    num_classes=151,
+    ignore_label=0,
 )
 
 
