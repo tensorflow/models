@@ -13,8 +13,7 @@ convert ADE20K semantic segmentation dataset to TFRecord.
 bash download_and_convert_ade20k.sh
 ```
 
-The converted dataset will be saved at
-./deeplab/datasets/ADE20K/tfrecord
+The converted dataset will be saved at ./deeplab/datasets/ADE20K/tfrecord
 
 ## Recommended Directory Structure for Training and Evaluation
 
@@ -23,7 +22,7 @@ The converted dataset will be saved at
    - build_data.py
    - build_ade20k_data.py
    - download_and_convert_ade20k.sh
-   + ADE20K 
+   + ADE20K
      + tfrecord
     + exp
       + train_on_train_set
@@ -50,7 +49,7 @@ A local training job using `xception_65` can be run with the following command:
 # From tensorflow/models/research/
 python deeplab/train.py \
     --logtostderr \
-    --training_number_of_steps=50000 \
+    --training_number_of_steps=90000 \
     --train_split="train" \
     --model_variant="xception_65" \
     --atrous_rates=6 \
@@ -61,21 +60,16 @@ python deeplab/train.py \
     --train_crop_size=513 \
     --train_crop_size=513 \
     --train_batch_size=4 \
-    --min_resize_value=350 \
-    --max_resize_value=500 \
+    --min_resize_value=513 \
+    --max_resize_value=513 \
     --resize_factor=16 \
-    --fine_tune_batch_norm=False \
     --dataset="ade20k" \
-    --initialize_last_layer=False \
-    --last_layers_contain_logits_only=True \
     --tf_initial_checkpoint=${PATH_TO_INITIAL_CHECKPOINT} \
     --train_logdir=${PATH_TO_TRAIN_DIR}\
     --dataset_dir=${PATH_TO_DATASET}
 ```
 
 where ${PATH\_TO\_INITIAL\_CHECKPOINT} is the path to the initial checkpoint.
-For example, if you are using the deeplabv3\_pascal\_train\_aug checkppoint, you
-will set this to `/path/to/deeplabv3\_pascal\_train\_aug/model.ckpt`.
 ${PATH\_TO\_TRAIN\_DIR} is the directory in which training checkpoints and
 events will be written to (it is recommended to set it to the
 `train_on_train_set/train` above), and ${PATH\_TO\_DATASET} is the directory in
@@ -83,23 +77,21 @@ which the ADE20K dataset resides (the `tfrecord` above)
 
 **Note that for train.py:**
 
-1.  In order to fine tune the BN layers, one needs to use large batch size (> 12),
-    and set fine_tune_batch_norm = True. Here, we simply use small batch size
-    during training for the purpose of demonstration. If the users have limited
-    GPU memory at hand, please fine-tune from our provided checkpoints whose
-    batch norm parameters have been trained, and use smaller learning rate with
-    fine_tune_batch_norm = False.
+1.  In order to fine tune the BN layers, one needs to use large batch size (>
+    12), and set fine_tune_batch_norm = True. Here, we simply use small batch
+    size during training for the purpose of demonstration. If the users have
+    limited GPU memory at hand, please fine-tune from our provided checkpoints
+    whose batch norm parameters have been trained, and use smaller learning rate
+    with fine_tune_batch_norm = False.
 
-2. User should fine tune the `min_resize_value` and `max_resize_value` to get
-   better result. Note that `resize_factor` has to be equal to `output_stride`.
+2.  User should fine tune the `min_resize_value` and `max_resize_value` to get
+    better result. Note that `resize_factor` has to be equal to `output_stride`.
 
-2.  The users should change atrous_rates from [6, 12, 18] to [12, 24, 36] if
+3.  The users should change atrous_rates from [6, 12, 18] to [12, 24, 36] if
     setting output_stride=8.
 
-3.  The users could skip the flag, `decoder_output_stride`, if you do not want
+4.  The users could skip the flag, `decoder_output_stride`, if you do not want
     to use the decoder structure.
-
-Currently there are no fine-tuned checkpoint for the ADE20K dataset.
 
 ## Running Tensorboard
 

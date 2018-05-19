@@ -95,6 +95,7 @@ ORIGINAL_IMAGE = 'original_image'
 # Test set name.
 TEST_SET = 'test'
 
+
 class ModelOptions(
     collections.namedtuple('ModelOptions', [
         'outputs_to_num_classes',
@@ -109,7 +110,8 @@ class ModelOptions(
         'decoder_output_stride',
         'decoder_use_separable_conv',
         'logits_kernel_size',
-        'model_variant'
+        'model_variant',
+        'depth_multiplier',
     ])):
   """Immutable class to hold model options."""
 
@@ -139,4 +141,4 @@ class ModelOptions(
         FLAGS.aspp_with_batch_norm, FLAGS.aspp_with_separable_conv,
         FLAGS.multi_grid, FLAGS.decoder_output_stride,
         FLAGS.decoder_use_separable_conv, FLAGS.logits_kernel_size,
-        FLAGS.model_variant)
+        FLAGS.model_variant, FLAGS.depth_multiplier)

@@ -111,7 +111,7 @@ class DeeplabModelTest(tf.test.TestCase):
         for output in outputs_to_num_classes:
           scales_to_logits = outputs_to_scales_to_logits[output]
           # Expect only one output.
-          self.assertEquals(len(scales_to_logits), 1)
+          self.assertEqual(len(scales_to_logits), 1)
           for logits in scales_to_logits.values():
             self.assertTrue(logits.any())
 
