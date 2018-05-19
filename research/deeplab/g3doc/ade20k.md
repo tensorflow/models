@@ -49,7 +49,7 @@ A local training job using `xception_65` can be run with the following command:
 # From tensorflow/models/research/
 python deeplab/train.py \
     --logtostderr \
-    --training_number_of_steps=50000 \
+    --training_number_of_steps=90000 \
     --train_split="train" \
     --model_variant="xception_65" \
     --atrous_rates=6 \
@@ -60,21 +60,16 @@ python deeplab/train.py \
     --train_crop_size=513 \
     --train_crop_size=513 \
     --train_batch_size=4 \
-    --min_resize_value=350 \
-    --max_resize_value=500 \
+    --min_resize_value=513 \
+    --max_resize_value=513 \
     --resize_factor=16 \
-    --fine_tune_batch_norm=False \
     --dataset="ade20k" \
-    --initialize_last_layer=False \
-    --last_layers_contain_logits_only=True \
     --tf_initial_checkpoint=${PATH_TO_INITIAL_CHECKPOINT} \
     --train_logdir=${PATH_TO_TRAIN_DIR}\
     --dataset_dir=${PATH_TO_DATASET}
 ```
 
 where ${PATH\_TO\_INITIAL\_CHECKPOINT} is the path to the initial checkpoint.
-For example, if you are using the deeplabv3\_pascal\_train\_aug checkppoint, you
-will set this to `/path/to/deeplabv3\_pascal\_train\_aug/model.ckpt`.
 ${PATH\_TO\_TRAIN\_DIR} is the directory in which training checkpoints and
 events will be written to (it is recommended to set it to the
 `train_on_train_set/train` above), and ${PATH\_TO\_DATASET} is the directory in
@@ -97,8 +92,6 @@ which the ADE20K dataset resides (the `tfrecord` above)
 
 4.  The users could skip the flag, `decoder_output_stride`, if you do not want
     to use the decoder structure.
-
-Currently there are no fine-tuned checkpoint for the ADE20K dataset.
 
 ## Running Tensorboard
 
