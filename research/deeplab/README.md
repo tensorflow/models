@@ -113,6 +113,12 @@ with "deeplab".
 
 ## Change Logs
 
+### May 18, 2018
+1. Added builders for ResNet-v1 and Xception model variants.
+2. Added ADE20K support, including colormap and pretrained Xception_65 checkpoint.
+3. Fixed a bug on using non-default depth_multiplier for MobileNet-v2.
+
+
 ### March 22, 2018
 
 Release checkpoints using MobileNet-V2 as network backbone and pretrained on
