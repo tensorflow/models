@@ -1,0 +1,29 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build',
+  '-t', 'gcr.io/$PROJECT_ID/models-gpu:$COMMIT_SHA',
+  '-t', 'gcr.io/$PROJECT_ID/models-gpu:latest',
+  '-f', 'Dockerfile.gpu',
+  '.'
+  ]
+  
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build',
+  '-t', 'gcr.io/$PROJECT_ID/models:$COMMIT_SHA',
+  '-t', 'gcr.io/$PROJECT_ID/models:latest',
+  '-f', 'Dockerfile.cpu',
+  '.'
+  ]
+
+# Building GPU images require additional memory.
+options:
+  machineType: 'N1_HIGHCPU_8'
+
+# List of images to be pushed as part of this build.  
+images:
+  - 'gcr.io/$PROJECT_ID/models:latest'
+  - 'gcr.io/$PROJECT_ID/models:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/models-gpu:latest'
+  - 'gcr.io/$PROJECT_ID/models-gpu:$COMMIT_SHA'
+
+
