@@ -5,10 +5,6 @@ This folder contains machine learning models implemented by researchers in
 respective authors. To propose a model for inclusion, please submit a pull
 request.
 
-Currently, the models are compatible with TensorFlow 1.0 or later. If you are
-running TensorFlow 0.12 or earlier, please [upgrade your
-installation](https://www.tensorflow.org/install).
-
 ## Models
 
 -   [adversarial_crypto](adversarial_crypto): protecting communications with
