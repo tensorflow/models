@@ -94,7 +94,7 @@ def data_preprocessing(train_fname, test_fname, test_neg_fname, num_negatives):
   # Load training positive instances into memory for later train data generation
   train_data = load_data(train_fname)
   # Get total number of users in the dataset
-  num_users = len(np.unique(np.array(train_data)[:,0]))
+  num_users = len(np.unique(np.array(train_data)[:, 0]))
 
   # Process test dataset to csv file
   test_ratings = load_data(test_fname)
@@ -102,7 +102,7 @@ def data_preprocessing(train_fname, test_fname, test_neg_fname, num_negatives):
   # Get the total number of items in both train dataset and test dataset (the
   # whole dataset)
   num_items = len(
-      set(np.array(train_data)[:,1]) | set(np.array(test_ratings)[:,1]))
+      set(np.array(train_data)[:, 1]) | set(np.array(test_ratings)[:, 1]))
 
   # Generate test instances for each user
   true_items, all_items = [], []
