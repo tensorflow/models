@@ -82,8 +82,8 @@ Checkpoint name                       | Network backbone | Pretrained dataset   
 ------------------------------------- | :--------------: | :-------------------------------------: | :----------------------------------------------: | :-----:
 xception_ade20k_train                 | Xception_65      | ImageNet <br> ADE20K training set       | [6, 12, 18] for OS=16 <br> [12, 24, 36] for OS=8 | OS = 4
 
-Checkpoint name                                                                                                                  | Eval OS   | Eval scales                 | Left-right Flip |  mIOU                 | Pixel-wise Accuracy | File Size
--------------------------------------------------------------------------------------------------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :------------: | :----------------------------: | :-------:
+Checkpoint name                       | Eval OS   | Eval scales                 | Left-right Flip |  mIOU                 | Pixel-wise Accuracy | File Size
+------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :-------------------: | :-------:
 [xception_ade20k_train](http://download.tensorflow.org/models/deeplabv3_xception_ade20k_train_2018_05_14.tar.gz)              | 16 | [0.5:0.25:1.75] | Yes     | 43.54% (val) | 81.74% (val) | 439MB
 
 ## Checkpoints pretrained on ImageNet
