@@ -41,12 +41,12 @@ _TOP_K = 10  # Top-k list for evaluation
 _EVAL_BATCH_SIZE = 100
 
 
-def evaluate_model(est_model, batch_size, num_gpus, gt_items, all_items,
+def evaluate_model(estimator, batch_size, num_gpus, true_items, all_items,
                    num_parallel_calls):
   """Model evaluation with HR and NDCG metrics.
 
-  The evaluation protocol is to rank the test interacted item (ground truth
-  (gt)) among the randomly chosen 100 items that are not interacted by the user.
+  The evaluation protocol is to rank the test interacted item (truth items)
+  among the randomly chosen 100 items that are not interacted by the user.
   The performance of the ranked list is judged by Hit Ratio (HR) and Normalized
   Discounted Cumulative Gain (NDCG).
 
@@ -57,10 +57,10 @@ def evaluate_model(est_model, batch_size, num_gpus, gt_items, all_items,
   and the average scores are reported.
 
   Args:
-    est_model: The Estimator.
+    estimator: The Estimator.
     batch_size: An integer, the batch size specified by user.
     num_gpus: An integer, the number of gpus specified by user.
-    gt_items: A list of test items (ground truth) for HR and NDCG calculation.
+    true_items: A list of test items (true items) for HR and NDCG calculation.
       Each item is for one user.
     all_items: A nested list. Each entry is the 101 items (1 ground truth item
       and 100 negative items) for one user.
@@ -78,21 +78,21 @@ def evaluate_model(est_model, batch_size, num_gpus, gt_items, all_items,
         num_parallel_calls=num_parallel_calls)
 
   # Get predictions
-  predictions = est_model.predict(input_fn=pred_input_fn)
+  predictions = estimator.predict(input_fn=pred_input_fn)
   all_predicted_scores = [p[constants.RATING] for p in predictions]
 
   # Calculate HR score
-  def _get_hr(ranklist, gt_item):
-    return 1 if gt_item in ranklist else 0
+  def _get_hr(ranklist, true_item):
+    return 1 if true_item in ranklist else 0
 
   # Calculate NDCG score
-  def _get_ndcg(ranklist, gt_item):
-    if gt_item in ranklist:
-      return math.log(2) / math.log(ranklist.index(gt_item) + 2)
+  def _get_ndcg(ranklist, true_item):
+    if true_item in ranklist:
+      return math.log(2) / math.log(ranklist.index(true_item) + 2)
     return 0
 
   hits, ndcgs = [], []
-  num_users = len(gt_items)
+  num_users = len(true_items)
   # Reshape the predicted scores and each user takes one row
   predicted_scores_list = np.asarray(
       all_predicted_scores).reshape(num_users, -1)
@@ -108,9 +108,9 @@ def evaluate_model(est_model, batch_size, num_gpus, gt_items, all_items,
 
     # Evaluate top rank list with HR and NDCG
     ranklist = heapq.nlargest(_TOP_K, map_item_score, key=map_item_score.get)
-    gt_item = gt_items[i]
-    hr = _get_hr(ranklist, gt_item)
-    ndcg = _get_ndcg(ranklist, gt_item)
+    true_item = true_items[i]
+    hr = _get_hr(ranklist, true_item)
+    ndcg = _get_ndcg(ranklist, true_item)
     hits.append(hr)
     ndcgs.append(ndcg)
 
@@ -155,10 +155,10 @@ def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
 
   run_config = tf.estimator.RunConfig(train_distribute=distribution)
 
-  est_model = tf.keras.estimator.model_to_estimator(
+  estimator = tf.keras.estimator.model_to_estimator(
       keras_model=keras_model, model_dir=model_dir, config=run_config)
 
-  return est_model
+  return estimator
 
 
 def per_device_batch_size(batch_size, num_gpus):
@@ -210,9 +210,9 @@ def main(_):
   tf.logging.info("Creating Estimator from Keras model...")
   keras_model = neumf_model.NeuMF(
       ncf_dataset.num_users, ncf_dataset.num_items, FLAGS.num_factors,
-      ast.literal_eval(FLAGS.layers), FLAGS.batch_size, FLAGS.reg_mf)
+      ast.literal_eval(FLAGS.layers), FLAGS.batch_size, FLAGS.mf_regularization)
   num_gpus = get_num_gpus(FLAGS.num_gpus)
-  est_model = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
+  estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
 
   # Training and evaluation cycle
   def train_input_fn():
@@ -228,14 +228,14 @@ def main(_):
 
     # Train the model
     train_cycle_begin = time.time()
-    est_model.train(input_fn=train_input_fn,
+    estimator.train(input_fn=train_input_fn,
                     hooks=[tf.train.ProfilerHook(save_steps=10000)])
     train_cycle_end = time.time()
 
     # Evaluate the model
     eval_cycle_begin = time.time()
     hr, ndcg = evaluate_model(
-        est_model, FLAGS.batch_size, num_gpus, ncf_dataset.eval_gt_items,
+        estimator, FLAGS.batch_size, num_gpus, ncf_dataset.eval_true_items,
         ncf_dataset.eval_all_items, FLAGS.num_parallel_calls)
     eval_cycle_end = time.time()
 
@@ -276,7 +276,7 @@ if __name__ == "__main__":
       "--layers", nargs="?", default="[64,32,16,8]",
       help="Size of hidden layers for MLP.")
   parser.add_argument(
-      "--reg_mf", type=float, default=0,
+      "--mf_regularization", type=float, default=0,
       help="Regularization for MF embeddings.")
   parser.add_argument(
       "--num_neg", type=int, default=4,

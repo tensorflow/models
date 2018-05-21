@@ -85,7 +85,7 @@ def process_movielens(ratings, sort=True):
   return ratings
 
 
-def load_movielens_1million(file_name, sort=True):
+def load_movielens_1_million(file_name, sort=True):
   """Load the MovieLens 1 million dataset.
 
   The file has no header row, and each line is in the following format:
@@ -109,7 +109,7 @@ def load_movielens_1million(file_name, sort=True):
   return process_movielens(ratings, sort=sort)
 
 
-def load_movielens_20million(file_name, sort=True):
+def load_movielens_20_million(file_name, sort=True):
   """Load the MovieLens 20 million dataset.
 
   Each line of this file after the header row represents one rating of one movie
@@ -153,10 +153,10 @@ def load_file_to_df(file_name, sort=True):
   dataset_name = os.path.basename(file_name).split(".")[0]
   # ml-1m with extension .dat
   file_extension = ".dat"
-  func = load_movielens_1million
+  func = load_movielens_1_million
   if dataset_name == "ml-20m":
     file_extension = ".csv"
-    func = load_movielens_20million
+    func = load_movielens_20_million
   ratings_file = os.path.join(file_name, "ratings" + file_extension)
   return func(ratings_file, sort=sort)
 

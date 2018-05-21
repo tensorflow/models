@@ -37,7 +37,7 @@ class NCFDataSet(object):
   """A class containing data information for model training and evaluation."""
 
   def __init__(self, train_data, num_users, num_items, num_negatives,
-               gt_items, all_items):
+               true_items, all_items):
     """Initialize NCFDataset class.
 
     Args:
@@ -46,7 +46,7 @@ class NCFDataSet(object):
       num_items: An integer, the number of items in training dataset.
       num_negatives: An integer, the number of negative instances for each user
         in train dataset.
-      gt_items: A list, the ground truth (positive) items of users for
+      true_items: A list, the ground truth (positive) items of users for
         evaluation. Each entry is a latest positive instance for one user.
       all_items: A nested list, all items for evaluation, and each entry is the
         evaluation items for one user.
@@ -55,13 +55,13 @@ class NCFDataSet(object):
     self.num_users = num_users
     self.num_items = num_items
     self.num_negatives = num_negatives
-    self.eval_gt_items = gt_items
+    self.eval_true_items = true_items
     self.eval_all_items = all_items
 
 
 def load_data(file_name):
-  """Load data from a csv file."""
-  lines = open(file_name, "r").readlines()
+  """Load data from a csv file which splits on \t."""
+  lines = tf.gfile.Open(file_name, "r").readlines()
 
   # Process the file line by line
   def _process_line(line):
@@ -93,27 +93,32 @@ def data_preprocessing(train_fname, test_fname, test_neg_fname, num_negatives):
   """
   # Load training positive instances into memory for later train data generation
   train_data = load_data(train_fname)
-  num_users = max(train_data, key=lambda x: x[0])[0] + 1
-  num_items = max(train_data, key=lambda x: x[1])[1] + 1
+  # Get total number of users in the dataset
+  num_users = len(np.unique(np.array(train_data)[:,0]))
 
   # Process test dataset to csv file
   test_ratings = load_data(test_fname)
   test_negatives = load_data(test_neg_fname)
+  # Get the total number of items in both train dataset and test dataset (the
+  # whole dataset)
+  num_items = len(
+      set(np.array(train_data)[:,1]) | set(np.array(test_ratings)[:,1]))
+
   # Generate test instances for each user
-  gt_items, all_items = [], []
+  true_items, all_items = [], []
   all_test_data = []
   for idx in range(num_users):
     items = test_negatives[idx]
     rating = test_ratings[idx]
     user = rating[0]  # User
-    gt_item = rating[1]  # Positive item as ground truth
+    true_item = rating[1]  # Positive item as ground truth
 
     # All items with first 100 as negative and last one positive
-    items.append(gt_item)
-    users = np.full(len(items), user, dtype="int32")
+    items.append(true_item)
+    users = np.full(len(items), user, dtype=np.int32)
 
     users_items = list(zip(users, items))  # User-item list
-    gt_items.append(gt_item)  # all ground truth items
+    true_items.append(true_item)  # all ground truth items
     all_items.append(items)  # All items (including positive and negative items)
     all_test_data.extend(users_items)  # Generate test dataset
 
@@ -123,7 +128,7 @@ def data_preprocessing(train_fname, test_fname, test_neg_fname, num_negatives):
 
   # Create NCFDataset object
   ncf_dataset = NCFDataSet(
-      train_data, num_users, num_items, num_negatives, gt_items, all_items)
+      train_data, num_users, num_items, num_negatives, true_items, all_items)
 
   return ncf_dataset
 

@@ -43,7 +43,7 @@ class NeuMF(tf.keras.models.Model):
   """Neural matrix factorization (NeuMF) model for recommendations."""
 
   def __init__(self, num_users, num_items, mf_dim, model_layers, batch_size,
-               reg_mf=0):
+               mf_regularization=0):
     """Initialize NeuMF model.
 
     Args:
@@ -54,7 +54,8 @@ class NeuMF(tf.keras.models.Model):
         Note that the first layer is the concatenation of user and item
         embeddings. So model_layers[0]//2 is the embedding size for MLP.
       batch_size: An integer for the batch size.
-      reg_mf: A floating number, the regularization for MF embeddings.
+      mf_regularization: A floating number, the regularization for MF
+        embeddings.
 
     Raises:
       ValueError: if the first model layer is not even.
@@ -64,9 +65,9 @@ class NeuMF(tf.keras.models.Model):
 
     # Input variables
     user_input = tf.keras.layers.Input(
-        shape=(1,), dtype="int32", name=constants.USER)
+        shape=(1,), dtype=tf.int32, name=constants.USER)
     item_input = tf.keras.layers.Input(
-        shape=(1,), dtype="int32", name=constants.ITEM)
+        shape=(1,), dtype=tf.int32, name=constants.ITEM)
 
     # Initializer for embedding layer
     embedding_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
@@ -75,13 +76,13 @@ class NeuMF(tf.keras.models.Model):
         num_users,
         mf_dim,
         embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(reg_mf),
+        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
         input_length=1)
     mf_embedding_item = tf.keras.layers.Embedding(
         num_items,
         mf_dim,
         embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(reg_mf),
+        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
         input_length=1)
 
     mlp_embedding_user = tf.keras.layers.Embedding(
