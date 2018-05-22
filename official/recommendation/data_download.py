@@ -21,19 +21,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import collections
 import os
 import sys
 import time
 import zipfile
 
+from absl import app as absl_app
+from absl import flags
 import numpy as np
 import pandas as pd
 from six.moves import urllib  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-from official.recommendation import constants  # pylint: disable=g-bad-import-order
+# pylint: disable=g-bad-import-order
+from official.recommendation import constants
+from official.utils.flags import core as flags_core
 
 # URL to download dataset
 _DATA_URL = "http://files.grouplens.org/datasets/movielens/"
@@ -335,14 +338,23 @@ def main(_):
     parse_file_to_csv(FLAGS.data_dir, FLAGS.dataset)
 
 
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      "--data_dir", type=str, default="/tmp/movielens-data/",
-      help="Directory to download data and extract the zip.")
-  parser.add_argument(
-      "--dataset", type=str, default="ml-1m", choices=["ml-1m", "ml-20m"],
-      help="Dataset to be trained and evaluated.")
+def define_data_download_flags():
+  """Add flags specifying data download arguments."""
+  flags.DEFINE_string(
+      name="data_dir", short_name="dd", default="/tmp/movielens-data/",
+      help=flags_core.help_wrap(
+          "Directory to download and extract data."))
 
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(argv=[sys.argv[0]] + unparsed)
+  flags.DEFINE_enum(
+      name="dataset", short_name="ds", default="ml-1m",
+      enum_values=["ml-1m", "ml-20m"], case_sensitive=False,
+      help=flags_core.help_wrap(
+          "Dataset to be trained and evaluated. Two datasets are available "
+          "for now: ml-1m and ml-20m."))
+
+
+if __name__ == "__main__":
+  tf.logging.set_verbosity(tf.logging.INFO)
+  define_data_download_flags()
+  FLAGS = flags.FLAGS
+  absl_app.run(main)
