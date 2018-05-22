@@ -37,7 +37,6 @@ PRETRAINED_CHECKPOINT_DIR=/tmp/checkpoints
 
 # Where the training (fine-tuned) checkpoint and logs will be saved to.
 TRAIN_DIR=/tmp/${DATASET_NAME}-models/${NETWORK_NAME}
-#rm -Rf ${TRAIN_DIR}
 
 # Where the dataset is saved to.
 DATASET_DIR=/tmp/${DATASET_NAME}
@@ -56,36 +55,36 @@ if [ ! -f ${PRETRAINED_CHECKPOINT_DIR}/resnet_v1_50.ckpt ]; then
   rm resnet_v1_50_2016_08_28.tar.gz
 fi
 
-## Fine-tune 100 steps to learn the data ranges.
-#python train_image_classifier.py \
-#  --train_dir=${TRAIN_DIR} \
-#  --dataset_name=${DATASET_NAME} \
-#  --dataset_split_name=train \
-#  --dataset_dir=${DATASET_DIR} \
-#  --checkpoint_path=${PRETRAINED_CHECKPOINT_DIR}/${NETWORK_NAME}.ckpt \
-#  --ignore_missing_vars \
-#  --model_name=${NETWORK_NAME} \
-#  --labels_offset=1 \
-#  --max_number_of_steps=100 \
-#  --batch_size=64 \
-#  --learning_rate=0.00001 \
-#  --save_interval_secs=60 \
-#  --save_summaries_secs=60 \
-#  --log_every_n_steps=100 \
-#  --optimizer=rmsprop \
-#  --weight_decay=0.00004 \
-#  --quantize
-#
-## Run evaluation.
-#python eval_image_classifier.py \
-#  --checkpoint_path=${TRAIN_DIR} \
-#  --eval_dir=${TRAIN_DIR} \
-#  --dataset_name=${DATASET_NAME} \
-#  --dataset_split_name=validation \
-#  --dataset_dir=${DATASET_DIR} \
-#  --model_name=${NETWORK_NAME} \
-#  --labels_offset=1 \
-#  --quantize
+# Fine-tune 100 steps to learn the data ranges.
+python train_image_classifier.py \
+  --train_dir=${TRAIN_DIR} \
+  --dataset_name=${DATASET_NAME} \
+  --dataset_split_name=train \
+  --dataset_dir=${DATASET_DIR} \
+  --checkpoint_path=${PRETRAINED_CHECKPOINT_DIR}/${NETWORK_NAME}.ckpt \
+  --ignore_missing_vars \
+  --model_name=${NETWORK_NAME} \
+  --labels_offset=1 \
+  --max_number_of_steps=100 \
+  --batch_size=64 \
+  --learning_rate=0.00001 \
+  --save_interval_secs=60 \
+  --save_summaries_secs=60 \
+  --log_every_n_steps=100 \
+  --optimizer=rmsprop \
+  --weight_decay=0.00004 \
+  --quantize
+
+# Run evaluation.
+python eval_image_classifier.py \
+  --checkpoint_path=${TRAIN_DIR} \
+  --eval_dir=${TRAIN_DIR} \
+  --dataset_name=${DATASET_NAME} \
+  --dataset_split_name=validation \
+  --dataset_dir=${DATASET_DIR} \
+  --model_name=${NETWORK_NAME} \
+  --labels_offset=1 \
+  --quantize
 
 # Export an inference graph.
 python export_inference_graph.py \
