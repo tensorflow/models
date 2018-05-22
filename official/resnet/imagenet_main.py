@@ -174,9 +174,11 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     # Shuffle the input files
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
-  # Convert to individual records
-  # TODO(guptapriya): Should we make this cycle_length a flag similar to
-  # num_parallel_calls?
+  # Convert to individual records.
+  # cycle_length = 10 means 10 files will be read and deserialized in parallel.
+  # This number is low enough to not cause too much contention on small systems
+  # but high enough to provide the benefits of parallelization. You may want
+  # to increase this number if you have a large number of CPU cores.
   dataset = dataset.apply(tf.contrib.data.parallel_interleave(
       tf.data.TFRecordDataset, cycle_length=10))
 
