@@ -217,6 +217,10 @@ tf.app.flags.DEFINE_boolean(
     'ignore_missing_vars', False,
     'When restoring a checkpoint would ignore missing variables.')
 
+tf.app.flags.DEFINE_boolean(
+    'quantize', False,
+    'Insert FakeQuant ops to perform quantized training.')
+
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -259,6 +263,14 @@ def _configure_learning_rate(num_samples_per_epoch, global_step):
     raise ValueError('learning_rate_decay_type [%s] was not recognized',
                      FLAGS.learning_rate_decay_type)
 
+def _get_quant_delay():
+  if FLAGS.checkpoint_path:
+    # We can start quantizing immediately if we are finetuning.
+    return 0
+  else:
+    # We need to wait for the model to train a bit before we quantize if we are
+    # training from scratch.
+    return 250000
 
 def _configure_optimizer(learning_rate):
   """Configures the optimizer used for training.
@@ -471,6 +483,14 @@ def main(_):
 
     clones = model_deploy.create_clones(deploy_config, clone_fn, [batch_queue])
     first_clone_scope = deploy_config.clone_scope(0)
+
+    # Call rewriter to produce graph with fake quant ops and folded batch norms
+    # quant_delay delays start of quantization till quant_delay steps, allowing
+    # for better model accuracy.
+    if FLAGS.quantize:
+      tf.contrib.quantize.create_training_graph(quant_delay=_get_quant_delay())
+      tf.contrib.layers.summarize_collection('quant_vars')
+
     # Gather update_ops from the first clone. These contain, for example,
     # the updates for the batch_norm variables created by network_fn.
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)

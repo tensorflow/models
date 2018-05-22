@@ -79,6 +79,10 @@ tf.app.flags.DEFINE_float(
 tf.app.flags.DEFINE_integer(
     'eval_image_size', None, 'Eval image size')
 
+tf.app.flags.DEFINE_boolean(
+    'quantize', False,
+    'Insert FakeQuant ops to perform quantized training.')
+
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -137,6 +141,9 @@ def main(_):
     # Define the model #
     ####################
     logits, _ = network_fn(images)
+
+    if FLAGS.quantize:
+      tf.contrib.quantize.create_eval_graph()
 
     if FLAGS.moving_average_decay:
       variable_averages = tf.train.ExponentialMovingAverage(

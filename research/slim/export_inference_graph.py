@@ -96,6 +96,10 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_string(
     'dataset_dir', '', 'Directory to save intermediate dataset files to')
 
+tf.app.flags.DEFINE_boolean(
+    'quantize', False,
+    'Insert FakeQuant ops to perform quantized training.')
+
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -115,6 +119,10 @@ def main(_):
                                  shape=[FLAGS.batch_size, image_size,
                                         image_size, 3])
     network_fn(placeholder)
+
+    if FLAGS.quantize:
+      tf.contrib.quantize.create_eval_graph(graph)
+
     graph_def = graph.as_graph_def()
     with gfile.GFile(FLAGS.output_file, 'wb') as f:
       f.write(graph_def.SerializeToString())
