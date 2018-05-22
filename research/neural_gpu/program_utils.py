@@ -16,9 +16,13 @@
 
 import contextlib
 import sys
-import StringIO
 import random
 import os
+
+try:
+  import StringIO
+except ImportError:
+  from io import StringIO
 
 class ListType(object):
   def __init__(self, arg):
