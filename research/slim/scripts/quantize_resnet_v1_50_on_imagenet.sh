@@ -145,7 +145,9 @@ dot -Tpdf -O ${TRAIN_DIR}/${NETWORK_NAME}.quantized.dot
 echo "** Generated quantized TF-Lite model: ${TRAIN_DIR}/${NETWORK_NAME}.quantized.tflite"
 
 # Test the TF-Lite model with the example "label_image" application. 
-# Note this ResNet does not have a background class so reported classes need to be shifted up by one index.
+#  There are two issues:
+#  1) This ResNet does not have a background class so reported classes need to be shifted up by one index.
+#  2) This ResNet expects VGG-preprocessing so you should do mean channel subtraction (see "preprocessing/vgg_preprocessing.py"). 
 (cd ${TENSORFLOW_DIR}; bazel run --config=opt //tensorflow/contrib/lite/examples/label_image:label_image -- \
   --tflite_model=${TRAIN_DIR}/${NETWORK_NAME}.quantized.tflite \
   --image=${TENSORFLOW_DIR}/tensorflow/contrib/lite/examples/label_image/testdata/grace_hopper.bmp \
