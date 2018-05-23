@@ -25,12 +25,12 @@ import heapq
 import math
 import os
 
+# pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
 import numpy as np
 import tensorflow as tf
 
-# pylint: disable=g-bad-import-order
 from official.recommendation import constants
 from official.recommendation import dataset
 from official.recommendation import neumf_model

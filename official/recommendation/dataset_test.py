@@ -17,14 +17,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.recommendation import dataset
 
-_TRAIN_FNAME = "unittest_data/test_train_ratings.csv"
-_TEST_FNAME = "unittest_data/test_eval_ratings.csv"
-_TEST_NEG_FNAME = "unittest_data/test_eval_negative.csv"
+_TRAIN_FNAME = os.path.join(
+    os.path.dirname(__file__), "unittest_data/test_train_ratings.csv")
+_TEST_FNAME = os.path.join(
+    os.path.dirname(__file__), "unittest_data/test_eval_ratings.csv")
+_TEST_NEG_FNAME = os.path.join(
+    os.path.dirname(__file__), "unittest_data/test_eval_negative.csv")
 _NUM_NEG = 4
 
 
