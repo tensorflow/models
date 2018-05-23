@@ -111,9 +111,11 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     that can be used for iteration.
   """
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
-    images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
-    labels = tf.zeros((batch_size), tf.int32)
-    return tf.data.Dataset.from_tensors((images, labels)).repeat()
+    def fn():
+      images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
+      labels = tf.zeros((batch_size), tf.int32)
+      return (images, labels)
+    return tf.contrib.data.SyntheticDataset(fn)
 
   return input_fn
 
