@@ -26,10 +26,11 @@ import math
 import os
 
 # pylint: disable=g-bad-import-order
+import numpy as np
 from absl import app as absl_app
 from absl import flags
-import numpy as np
 import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
 from official.recommendation import constants
 from official.recommendation import dataset
