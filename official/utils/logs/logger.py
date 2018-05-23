@@ -375,3 +375,19 @@ def _convert_to_json_dict(input_dict):
     return [{"name": k, "value": v} for k, v in sorted(input_dict.items())]
   else:
     return []
+
+
+class MockBenchmarkLogger(object):
+  """This is a mock logger that can be used in dependent tests."""
+
+  def __init__(self):
+    self.logged_metric = []
+
+  def log_metric(self, name, value, unit=None, global_step=None,
+                 extras=None):
+    self.logged_metric.append({
+        "name": name,
+        "value": float(value),
+        "unit": unit,
+        "global_step": global_step,
+        "extras": extras})

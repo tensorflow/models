@@ -120,8 +120,8 @@ def get_examples_per_second_hook(every_n_steps=100,
     profiling tools like chrome://tracing.
   """
   return hooks.ExamplesPerSecondHook(
-      batch_size=batch_size, metric_logger=logger.get_benchmark_logger(),
-      every_n_steps=every_n_steps, warm_steps=warm_steps)
+      batch_size=batch_size, every_n_steps=every_n_steps,
+      warm_steps=warm_steps, metric_logger=logger.get_benchmark_logger())
 
 
 def get_logging_metric_hook(tensors_to_log=None,
