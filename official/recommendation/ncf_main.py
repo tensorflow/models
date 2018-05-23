@@ -101,10 +101,6 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset):
       return math.log(2) / math.log(ranklist.index(true_item) + 2)
     return 0
 
-  # Return estimator's last checkpoint as global_step for estimator
-  def _get_global_step(estimator):
-    return int(estimator.latest_checkpoint().split("-")[-1])
-
   hits, ndcgs = [], []
   num_users = len(ncf_dataset.eval_true_items)
   # Reshape the predicted scores and each user takes one row
@@ -130,7 +126,7 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset):
 
   # Get average HR and NDCG scores
   hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-  global_step = _get_global_step(estimator)
+  global_step = estimator.get_variable_value(tf.GraphKeys.GLOBAL_STEP)
   eval_results = {
       _HR_KEY: hr,
       _NDCG_KEY: ndcg,
@@ -217,9 +213,12 @@ def main(_):
 
   # Create NeuMF model and convert it to Estimator
   tf.logging.info("Creating Estimator from Keras model...")
+  layers = [int(layer) for layer in FLAGS.layers]
+  mlp_regularization = [float(reg) for reg in FLAGS.mlp_regularization]
   keras_model = neumf_model.NeuMF(
       ncf_dataset.num_users, ncf_dataset.num_items, FLAGS.num_factors,
-      FLAGS.layers, FLAGS.batch_size, FLAGS.mf_regularization)
+      layers, FLAGS.batch_size, FLAGS.mf_regularization,
+      mlp_regularization)
   num_gpus = flags_core.get_num_gpus(FLAGS)
   estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
 
@@ -301,40 +300,52 @@ def define_ncf_flags():
 
   # Add ncf-specific flags
   flags.DEFINE_enum(
-      name="dataset", short_name="ds", default="ml-1m",
+      name="dataset", default="ml-1m",
       enum_values=["ml-1m", "ml-20m"], case_sensitive=False,
       help=flags_core.help_wrap(
-          "Dataset to be trained and evaluated. Two datasets are "
-          "available for now: ml-1m and ml-20m."))
+          "Dataset to be trained and evaluated."))
 
   flags.DEFINE_integer(
-      name="num_factors", short_name="nf", default=8,
+      name="num_factors", default=8,
       help=flags_core.help_wrap("The Embedding size of MF model."))
 
+  # Set the default as a list of strings to be consistent with input arguments
   flags.DEFINE_list(
-      name="layers", short_name="ly", default=[64, 32, 16, 8],
-      help=flags_core.help_wrap("The size of hidden layers for MLP."))
+      name="layers", default=["64", "32", "16", "8"],
+      help=flags_core.help_wrap(
+          "The sizes of hidden layers for MLP. Example "
+          "to specify different sizes of MLP layers: --layers=32,16,8,4"))
 
   flags.DEFINE_float(
-      name="mf_regularization", short_name="mr", default=0.0,
-      help=flags_core.help_wrap("The Regularization for MF embeddings."))
+      name="mf_regularization", default=0.,
+      help=flags_core.help_wrap(
+          "The regularization factor for MF embeddings. The factor is used by "
+          "regularizer which allows to apply penalties on layer parameters or "
+          "layer activity during optimization."))
+
+  flags.DEFINE_list(
+      name="mlp_regularization", default=["0.", "0.", "0.", "0."],
+      help=flags_core.help_wrap(
+          "The regularization factor for each MLP layer. See ml_regularization "
+          "help for more info about regularization factor."))
 
   flags.DEFINE_integer(
-      name="num_neg", short_name="nn", default=4,
+      name="num_neg", default=4,
       help=flags_core.help_wrap(
           "The Number of negative instances to pair with a positive instance."))
 
   flags.DEFINE_float(
-      name="learning_rate", short_name="lr", default=0.001,
+      name="learning_rate", default=0.001,
       help=flags_core.help_wrap("The learning rate."))
 
   flags.DEFINE_float(
-      name="hr_threshold", short_name="ht", default=None,
+      name="hr_threshold", default=None,
       help=flags_core.help_wrap(
           "If passed, training will stop when the evaluation metric HR is "
           "greater than or equal to hr_threshold. For dataset ml-1m, the "
-          "desired hr_threshold is 0.68; For dataset ml-20m, the threshold can "
-          "be set as 0.95."))
+          "desired hr_threshold is 0.68 which is the result from the paper; "
+          "For dataset ml-20m, the threshold can be set as 0.95 which is "
+          "achieved by MLPerf implementation."))
 
 
 if __name__ == "__main__":

@@ -342,16 +342,16 @@ def main(_):
 def define_data_download_flags():
   """Add flags specifying data download arguments."""
   flags.DEFINE_string(
-      name="data_dir", short_name="dd", default="/tmp/movielens-data/",
+      name="data_dir", default="/tmp/movielens-data/",
       help=flags_core.help_wrap(
           "Directory to download and extract data."))
 
   flags.DEFINE_enum(
-      name="dataset", short_name="ds", default="ml-1m",
+      name="dataset", default="ml-1m",
       enum_values=["ml-1m", "ml-20m"], case_sensitive=False,
       help=flags_core.help_wrap(
           "Dataset to be trained and evaluated. Two datasets are available "
-          "for now: ml-1m and ml-20m."))
+          ": ml-1m and ml-20m."))
 
 
 if __name__ == "__main__":
