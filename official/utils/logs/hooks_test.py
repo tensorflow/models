@@ -82,12 +82,13 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
       self.assertFalse(self._logger.logged_metric)
 
     # Add additional run to verify proper reset when called multiple times.
+    prev_log_len = len(self._logger.logged_metric)
     mon_sess.run(self.train_op)
     global_step_val = sess.run(self.global_step)
     if every_n_steps == 1 and global_step_val > warm_steps:
-      self._assert_metrics()
+      self.assertEqual(len(self._logger.logged_metric), prev_log_len + 2)
     else:
-      self.assertFalse(self._logger.logged_metric)
+      self.assertEqual(len(self._logger.logged_metric), prev_log_len)
 
     hook.end(sess)
 
