@@ -88,7 +88,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # critical training path. Setting buffer_size to tf.contrib.data.AUTOTUNE
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
-  dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
 
   return dataset
 
