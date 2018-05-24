@@ -39,7 +39,7 @@ _NUM_IMAGES = {
 }
 
 _NUM_TRAIN_FILES = 1024
-_SHUFFLE_BUFFER = 1500
+_SHUFFLE_BUFFER = 10000
 
 DATASET_NAME = 'ImageNet'
 
@@ -152,8 +152,6 @@ def parse_record(raw_record, is_training):
       num_channels=_NUM_CHANNELS,
       is_training=is_training)
 
-  label = tf.one_hot(tf.reshape(label, shape=[]), _NUM_CLASSES)
-
   return image, label
 
 
@@ -176,8 +174,13 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     # Shuffle the input files
     dataset = dataset.shuffle(buffer_size=_NUM_TRAIN_FILES)
 
-  # Convert to individual records
-  dataset = dataset.flat_map(tf.data.TFRecordDataset)
+  # Convert to individual records.
+  # cycle_length = 10 means 10 files will be read and deserialized in parallel.
+  # This number is low enough to not cause too much contention on small systems
+  # but high enough to provide the benefits of parallelization. You may want
+  # to increase this number if you have a large number of CPU cores.
+  dataset = dataset.apply(tf.contrib.data.parallel_interleave(
+      tf.data.TFRecordDataset, cycle_length=10))
 
   return resnet_run_loop.process_record_dataset(
       dataset, is_training, batch_size, _SHUFFLE_BUFFER, parse_record,
