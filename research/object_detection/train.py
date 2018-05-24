@@ -82,6 +82,26 @@ flags.DEFINE_string('input_config_path', '',
 flags.DEFINE_string('model_config_path', '',
                     'Path to a model_pb2.DetectionModel config file.')
 
+# Performance tuning specific to MKL
+flags.DEFINE_boolean('mkl', False, 'If true, set MKL environment variables.')
+flags.DEFINE_integer('kmp_blocktime', 1,
+                     'The time, in milliseconds, that a thread should wait, '
+                     'after completing the execution of a parallel region, '
+                     'before sleeping')
+flags.DEFINE_string('kmp_affinity', 'granularity=fine,verbose,compact,1,0',
+                    'Restricts execution of certain threads (virtual execution '
+                    'units) to a subset of the physical processing units in a '
+                    'multiprocessor computer.')
+flags.DEFINE_integer('kmp_settings', 1,
+                     'If set to 1, MKL settings will be printed.')
+
+flags.DEFINE_integer('num_intra_threads', 0,
+                     'Number of threads to use for intra-op parallelism. If '
+                     'set to 0, the system will pick an appropriate number.')
+flags.DEFINE_integer('num_inter_threads', 0,
+                     'Number of threads to use for inter-op parallelism. If '
+                     'set to 0, the system will pick an appropriate number.')
+
 FLAGS = flags.FLAGS
 
 
@@ -159,6 +179,14 @@ def main(_):
     is_chief = (task_info.type == 'master')
     master = server.target
 
+  # Sets environment variables for MKL
+  if FLAGS.mkl:
+    os.environ['KMP_BLOCKTIME'] = str(FLAGS.kmp_blocktime)
+    os.environ['KMP_SETTINGS'] = str(FLAGS.kmp_settings)
+    os.environ['KMP_AFFINITY'] = FLAGS.kmp_affinity
+    if FLAGS.num_intra_threads > 0:
+      os.environ['OMP_NUM_THREADS'] = str(FLAGS.num_intra_threads)
+
   graph_rewriter_fn = None
   if 'graph_rewriter_config' in configs:
     graph_rewriter_fn = graph_rewriter_builder.build(
@@ -177,7 +205,9 @@ def main(_):
       worker_job_name,
       is_chief,
       FLAGS.train_dir,
-      graph_hook_fn=graph_rewriter_fn)
+      graph_hook_fn=graph_rewriter_fn,
+      inter_op=FLAGS.num_inter_threads,
+      intra_op=FLAGS.num_intra_threads)
 
 
 if __name__ == '__main__':

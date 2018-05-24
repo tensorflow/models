@@ -214,7 +214,9 @@ def train(create_tensor_dict_fn,
           worker_job_name,
           is_chief,
           train_dir,
-          graph_hook_fn=None):
+          graph_hook_fn=None,
+          inter_op=0,
+          intra_op=0):
   """Training function for detection models.
 
   Args:
@@ -235,6 +237,10 @@ def train(create_tensor_dict_fn,
       built (before optimization). This is helpful to perform additional changes
       to the training graph such as adding FakeQuant ops. The function should
       modify the default graph.
+    inter_op: Number of threads to use for inter-op parallelism. If set to 0,
+              the system will pick an appropriate number.
+    intra_op: Number of threads to use for intra-op parallelism. If set to 0,
+              the system will pick an appropriate number.
   """
 
   detection_model = create_model_fn()
@@ -353,7 +359,9 @@ def train(create_tensor_dict_fn,
 
     # Soft placement allows placing on CPU ops without GPU implementation.
     session_config = tf.ConfigProto(allow_soft_placement=True,
-                                    log_device_placement=False)
+                                    log_device_placement=False,
+                                    inter_op_parallelism_threads=inter_op,
+                                    intra_op_parallelism_threads=intra_op)
 
     # Save checkpoints regularly.
     keep_checkpoint_every_n_hours = train_config.keep_checkpoint_every_n_hours

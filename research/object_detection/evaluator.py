@@ -150,7 +150,8 @@ def get_evaluators(eval_config, categories):
 
 
 def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
-             checkpoint_dir, eval_dir, graph_hook_fn=None, evaluator_list=None):
+             checkpoint_dir, eval_dir, inter_op=0, intra_op=0,
+             graph_hook_fn=None, evaluator_list=None):
   """Evaluation function for detection models.
 
   Args:
@@ -271,6 +272,8 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
       master=eval_config.eval_master,
       save_graph=eval_config.save_graph,
       save_graph_dir=(eval_dir if eval_config.save_graph else ''),
+      inter_op=inter_op,
+      intra_op=intra_op,
       losses_dict=losses_dict)
 
   return metrics

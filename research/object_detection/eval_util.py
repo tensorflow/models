@@ -206,6 +206,8 @@ def _run_checkpoint_once(tensor_dict,
                          master='',
                          save_graph=False,
                          save_graph_dir='',
+                         inter_op=0,
+                         intra_op=0,
                          losses_dict=None):
   """Evaluates metrics defined in evaluators and returns summaries.
 
@@ -246,6 +248,10 @@ def _run_checkpoint_once(tensor_dict,
     save_graph_dir: where to store the Tensorflow graph on disk. If save_graph
       is True this must be non-empty.
     losses_dict: optional dictionary of scalar detection losses.
+    inter_op: Number of threads to use for inter-op parallelism. If set to 0,
+      the system will pick an appropriate number.
+    intra_op: Number of threads to use for intra-op parallelism. If set to 0,
+      the system will pick an appropriate number.
 
   Returns:
     global_step: the count of global steps.
@@ -258,7 +264,9 @@ def _run_checkpoint_once(tensor_dict,
   """
   if save_graph and not save_graph_dir:
     raise ValueError('`save_graph_dir` must be defined.')
-  sess = tf.Session(master, graph=tf.get_default_graph())
+  config = tf.ConfigProto(inter_op_parallelism_threads=inter_op,
+                          intra_op_parallelism_threads=intra_op)
+  sess = tf.Session(master, graph=tf.get_default_graph(), config=config)
   sess.run(tf.global_variables_initializer())
   sess.run(tf.local_variables_initializer())
   sess.run(tf.tables_initializer())
@@ -344,6 +352,8 @@ def repeated_checkpoint_run(tensor_dict,
                             master='',
                             save_graph=False,
                             save_graph_dir='',
+                            inter_op=0,
+                            intra_op=0,
                             losses_dict=None):
   """Periodically evaluates desired tensors using checkpoint_dirs or restore_fn.
 
@@ -423,6 +433,8 @@ def repeated_checkpoint_run(tensor_dict,
                                                   restore_fn, num_batches,
                                                   master, save_graph,
                                                   save_graph_dir,
+                                                  inter_op=inter_op,
+                                                  intra_op=intra_op,
                                                   losses_dict=losses_dict)
       write_metrics(metrics, global_step, summary_dir)
     number_of_evaluations += 1
