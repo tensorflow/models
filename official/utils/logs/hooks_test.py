@@ -71,6 +71,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
 
     for _ in range(every_n_steps):
       mon_sess.run(self.train_op)
+      # Nothing should be in the list yet
       self.assertFalse(self._logger.logged_metric)
 
     mon_sess.run(self.train_op)
@@ -79,6 +80,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
     if global_step_val > warm_steps:
       self._assert_metrics()
     else:
+      # Nothing should be in the list yet
       self.assertFalse(self._logger.logged_metric)
 
     # Add additional run to verify proper reset when called multiple times.
@@ -86,8 +88,10 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
     mon_sess.run(self.train_op)
     global_step_val = sess.run(self.global_step)
     if every_n_steps == 1 and global_step_val > warm_steps:
+      # Each time, we log two additional metrics. Did exactly 2 get added?
       self.assertEqual(len(self._logger.logged_metric), prev_log_len + 2)
     else:
+      # No change in the size of the metric list.
       self.assertEqual(len(self._logger.logged_metric), prev_log_len)
 
     hook.end(sess)
@@ -119,6 +123,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
     sess.run(tf.global_variables_initializer())
 
     mon_sess.run(self.train_op)
+    # Nothing should be in the list yet
     self.assertFalse(self._logger.logged_metric)
     time.sleep(every_n_secs)
 
