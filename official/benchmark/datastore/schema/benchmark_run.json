@@ -6,6 +6,12 @@
     "type": "STRING"
   },
   {
+    "description": "The status of the run for the benchmark. Eg, running, failed, success",
+    "mode": "NULLABLE",
+    "name": "status",
+    "type": "STRING"
+  },
+  {
     "description": "The name of the model, E.g ResNet50, LeNet-5 etc.",
     "mode": "REQUIRED",
     "name": "model_name",
