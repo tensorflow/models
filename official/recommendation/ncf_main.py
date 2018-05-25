@@ -207,6 +207,10 @@ def main(_):
   neg_fname = os.path.join(
       FLAGS.data_dir, FLAGS.dataset + "-" + constants.TEST_NEG_FILENAME)
 
+  assert os.path.exists(train_fname), (
+      "Run data_download.py first to download and extract {} dataset".format(
+          FLAGS.dataset))
+
   tf.logging.info("Data preprocessing...")
   ncf_dataset = dataset.data_preprocessing(
       train_fname, test_fname, neg_fname, FLAGS.num_neg)
@@ -326,7 +330,7 @@ def define_ncf_flags():
   flags.DEFINE_list(
       name="mlp_regularization", default=["0.", "0.", "0.", "0."],
       help=flags_core.help_wrap(
-          "The regularization factor for each MLP layer. See ml_regularization "
+          "The regularization factor for each MLP layer. See mf_regularization "
           "help for more info about regularization factor."))
 
   flags.DEFINE_integer(

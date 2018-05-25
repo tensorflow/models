@@ -310,6 +310,10 @@ def main(_):
 
   make_dir(FLAGS.data_dir)
 
+  assert FLAGS.dataset, (
+      "Please specify which dataset to download. "
+      "Two datasets are available: ml-1m and ml-20m.")
+
   # Download the zip dataset
   dataset_zip = FLAGS.dataset + ".zip"
   file_path = os.path.join(FLAGS.data_dir, dataset_zip)
@@ -347,7 +351,7 @@ def define_data_download_flags():
           "Directory to download and extract data."))
 
   flags.DEFINE_enum(
-      name="dataset", default="ml-1m",
+      name="dataset", default=None,
       enum_values=["ml-1m", "ml-20m"], case_sensitive=False,
       help=flags_core.help_wrap(
           "Dataset to be trained and evaluated. Two datasets are available "
