@@ -25,7 +25,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from tensorflow.python.training import monitored_session  # pylint: disable=g-bad-import-order
 
 from official.utils.logs import hooks
-from official.utils.testing import mock
+from official.utils.testing import mock_lib
 
 
 tf.logging.set_verbosity(tf.logging.DEBUG)
@@ -36,7 +36,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
 
   def setUp(self):
     """Mock out logging calls to verify if correct info is being monitored."""
-    self._logger = mock.MockBenchmarkLogger()
+    self._logger = mock_lib.MockBenchmarkLogger()
 
     self.graph = tf.Graph()
     with self.graph.as_default():
@@ -71,8 +71,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
 
     for _ in range(every_n_steps):
       mon_sess.run(self.train_op)
-      # Nothing should be in the list yet
-      self.assertFalse(self._logger.logged_metric)
+      self.assertEmpty(self._logger.logged_metric)
 
     mon_sess.run(self.train_op)
     global_step_val = sess.run(self.global_step)
@@ -80,8 +79,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
     if global_step_val > warm_steps:
       self._assert_metrics()
     else:
-      # Nothing should be in the list yet
-      self.assertFalse(self._logger.logged_metric)
+      self.assertEmpty(self._logger.logged_metric)
 
     # Add additional run to verify proper reset when called multiple times.
     prev_log_len = len(self._logger.logged_metric)
@@ -123,8 +121,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
     sess.run(tf.global_variables_initializer())
 
     mon_sess.run(self.train_op)
-    # Nothing should be in the list yet
-    self.assertFalse(self._logger.logged_metric)
+    self.assertEmpty(self._logger.logged_metric)
     time.sleep(every_n_secs)
 
     mon_sess.run(self.train_op)
