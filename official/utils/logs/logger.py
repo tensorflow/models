@@ -247,6 +247,7 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
          self._run_id,
          run_info))
 
+
 def _gather_run_info(model_name, dataset_name, run_params):
   """Collect the benchmark run information for the local environment."""
   run_info = {
@@ -376,18 +377,3 @@ def _convert_to_json_dict(input_dict):
   else:
     return []
 
-
-class MockBenchmarkLogger(object):
-  """This is a mock logger that can be used in dependent tests."""
-
-  def __init__(self):
-    self.logged_metric = []
-
-  def log_metric(self, name, value, unit=None, global_step=None,
-                 extras=None):
-    self.logged_metric.append({
-        "name": name,
-        "value": float(value),
-        "unit": unit,
-        "global_step": global_step,
-        "extras": extras})

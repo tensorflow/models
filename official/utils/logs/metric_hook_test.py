@@ -24,8 +24,8 @@ import time
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 from tensorflow.python.training import monitored_session  # pylint: disable=g-bad-import-order
 
-from official.utils.logs import logger
 from official.utils.logs import metric_hook
+from official.utils.testing import mock
 
 
 class LoggingMetricHookTest(tf.test.TestCase):
@@ -35,7 +35,7 @@ class LoggingMetricHookTest(tf.test.TestCase):
     super(LoggingMetricHookTest, self).setUp()
 
     self._log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
-    self._logger = logger.MockBenchmarkLogger()
+    self._logger = mock.MockBenchmarkLogger()
 
   def tearDown(self):
     super(LoggingMetricHookTest, self).tearDown()

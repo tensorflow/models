@@ -25,7 +25,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from tensorflow.python.training import monitored_session  # pylint: disable=g-bad-import-order
 
 from official.utils.logs import hooks
-from official.utils.logs import logger
+from official.utils.testing import mock
 
 
 tf.logging.set_verbosity(tf.logging.DEBUG)
@@ -36,7 +36,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
 
   def setUp(self):
     """Mock out logging calls to verify if correct info is being monitored."""
-    self._logger = logger.MockBenchmarkLogger()
+    self._logger = mock.MockBenchmarkLogger()
 
     self.graph = tf.Graph()
     with self.graph.as_default():
