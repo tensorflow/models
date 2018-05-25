@@ -34,4 +34,3 @@ class MockBenchmarkLogger(object):
         "unit": unit,
         "global_step": global_step,
         "extras": extras})
-
