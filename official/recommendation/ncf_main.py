@@ -21,28 +21,32 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
-import ast
 import heapq
 import math
 import os
-import sys
-import time
-
-import numpy as np
-import tensorflow as tf
 
 # pylint: disable=g-bad-import-order
+import numpy as np
+from absl import app as absl_app
+from absl import flags
+import tensorflow as tf
+# pylint: enable=g-bad-import-order
+
 from official.recommendation import constants
 from official.recommendation import dataset
 from official.recommendation import neumf_model
+from official.utils.flags import core as flags_core
+from official.utils.logs import hooks_helper
+from official.utils.logs import logger
+from official.utils.misc import model_helpers
 
 _TOP_K = 10  # Top-k list for evaluation
-_EVAL_BATCH_SIZE = 100
+# keys for evaluation metrics
+_HR_KEY = "HR"
+_NDCG_KEY = "NDCG"
 
 
-def evaluate_model(estimator, batch_size, num_gpus, true_items, all_items,
-                   num_parallel_calls):
+def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset):
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -60,22 +64,28 @@ def evaluate_model(estimator, batch_size, num_gpus, true_items, all_items,
     estimator: The Estimator.
     batch_size: An integer, the batch size specified by user.
     num_gpus: An integer, the number of gpus specified by user.
-    true_items: A list of test items (true items) for HR and NDCG calculation.
-      Each item is for one user.
-    all_items: A nested list. Each entry is the 101 items (1 ground truth item
-      and 100 negative items) for one user.
-    num_parallel_calls: An integer, number of cpu cores for parallel input
-      processing in input_fn.
+    ncf_dataset: An NCFDataSet object, which contains the information about
+      test/eval dataset, such as:
+      eval_true_items, which is a list of test items (true items) for HR and
+        NDCG calculation. Each item is for one user.
+      eval_all_items, which is a nested list. Each entry is the 101 items
+        (1 ground truth item and 100 negative items) for one user.
 
   Returns:
-    hit: An integer, the average HR scores for all users.
-    ndcg: An integer, the average NDCG scores for all users.
+    eval_results: A dict of evaluation results for benchmark logging.
+      eval_results = {
+        _HR_KEY: hr,
+        _NDCG_KEY: ndcg,
+        tf.GraphKeys.GLOBAL_STEP: global_step
+      }
+      where hr is an integer indicating the average HR scores across all users,
+      ndcg is an integer representing the average NDCG scores across all users,
+      and global_step is the global step
   """
   # Define prediction input function
   def pred_input_fn():
     return dataset.input_fn(
-        False, per_device_batch_size(batch_size, num_gpus),
-        num_parallel_calls=num_parallel_calls)
+        False, per_device_batch_size(batch_size, num_gpus), ncf_dataset)
 
   # Get predictions
   predictions = estimator.predict(input_fn=pred_input_fn)
@@ -92,13 +102,13 @@ def evaluate_model(estimator, batch_size, num_gpus, true_items, all_items,
     return 0
 
   hits, ndcgs = [], []
-  num_users = len(true_items)
+  num_users = len(ncf_dataset.eval_true_items)
   # Reshape the predicted scores and each user takes one row
   predicted_scores_list = np.asarray(
       all_predicted_scores).reshape(num_users, -1)
 
   for i in range(num_users):
-    items = all_items[i]
+    items = ncf_dataset.eval_all_items[i]
     predicted_scores = predicted_scores_list[i]
     # Map item and score for each user
     map_item_score = {}
@@ -108,7 +118,7 @@ def evaluate_model(estimator, batch_size, num_gpus, true_items, all_items,
 
     # Evaluate top rank list with HR and NDCG
     ranklist = heapq.nlargest(_TOP_K, map_item_score, key=map_item_score.get)
-    true_item = true_items[i]
+    true_item = ncf_dataset.eval_true_items[i]
     hr = _get_hr(ranklist, true_item)
     ndcg = _get_ndcg(ranklist, true_item)
     hits.append(hr)
@@ -116,17 +126,13 @@ def evaluate_model(estimator, batch_size, num_gpus, true_items, all_items,
 
   # Get average HR and NDCG scores
   hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-  return hr, ndcg
-
-
-def get_num_gpus(num_gpus):
-  """Treat num_gpus=-1 as "use all"."""
-  if num_gpus != -1:
-    return num_gpus
-
-  from tensorflow.python.client import device_lib  # pylint: disable=g-import-not-at-top
-  local_device_protos = device_lib.list_local_devices()
-  return sum([1 for d in local_device_protos if d.device_type == "GPU"])
+  global_step = estimator.get_variable_value(tf.GraphKeys.GLOBAL_STEP)
+  eval_results = {
+      _HR_KEY: hr,
+      _NDCG_KEY: ndcg,
+      tf.GraphKeys.GLOBAL_STEP: global_step
+  }
+  return eval_results
 
 
 def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
@@ -139,7 +145,6 @@ def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
 
   Returns:
     est_model: The converted Estimator.
-
   """
   # TODO(b/79866338): update GradientDescentOptimizer with AdamOptimizer
   optimizer = tf.train.GradientDescentOptimizer(
@@ -201,100 +206,154 @@ def main(_):
       FLAGS.data_dir, FLAGS.dataset + "-" + constants.TEST_RATINGS_FILENAME)
   neg_fname = os.path.join(
       FLAGS.data_dir, FLAGS.dataset + "-" + constants.TEST_NEG_FILENAME)
-  t1 = time.time()
+
+  assert os.path.exists(train_fname), (
+      "Run data_download.py first to download and extract {} dataset".format(
+          FLAGS.dataset))
+
+  tf.logging.info("Data preprocessing...")
   ncf_dataset = dataset.data_preprocessing(
       train_fname, test_fname, neg_fname, FLAGS.num_neg)
-  tf.logging.info("Data preprocessing: {:.1f} s".format(time.time() - t1))
 
   # Create NeuMF model and convert it to Estimator
   tf.logging.info("Creating Estimator from Keras model...")
+  layers = [int(layer) for layer in FLAGS.layers]
+  mlp_regularization = [float(reg) for reg in FLAGS.mlp_regularization]
   keras_model = neumf_model.NeuMF(
       ncf_dataset.num_users, ncf_dataset.num_items, FLAGS.num_factors,
-      ast.literal_eval(FLAGS.layers), FLAGS.batch_size, FLAGS.mf_regularization)
-  num_gpus = get_num_gpus(FLAGS.num_gpus)
+      layers, FLAGS.batch_size, FLAGS.mf_regularization,
+      mlp_regularization)
+  num_gpus = flags_core.get_num_gpus(FLAGS)
   estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
+
+  # Create hooks that log information about the training and metric values
+  train_hooks = hooks_helper.get_train_hooks(
+      FLAGS.hooks,
+      batch_size=FLAGS.batch_size  # for ExamplesPerSecondHook
+  )
+  run_params = {
+      "batch_size": FLAGS.batch_size,
+      "number_factors": FLAGS.num_factors,
+      "hr_threshold": FLAGS.hr_threshold,
+      "train_epochs": FLAGS.train_epochs,
+  }
+  benchmark_logger = logger.config_benchmark_logger(FLAGS)
+  benchmark_logger.log_run_info(
+      model_name="recommendation",
+      dataset_name=FLAGS.dataset,
+      run_params=run_params)
 
   # Training and evaluation cycle
   def train_input_fn():
     return dataset.input_fn(
         True, per_device_batch_size(FLAGS.batch_size, num_gpus),
-        FLAGS.epochs_between_evals, ncf_dataset, FLAGS.num_parallel_calls)
+        ncf_dataset, FLAGS.epochs_between_evals)
 
-  total_training_cycle = (FLAGS.train_epochs //
-                          FLAGS.epochs_between_evals)
+  total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
+
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
-        cycle_index, total_training_cycle - 1))
+        cycle_index + 1, total_training_cycle))
 
     # Train the model
-    train_cycle_begin = time.time()
-    estimator.train(input_fn=train_input_fn,
-                    hooks=[tf.train.ProfilerHook(save_steps=10000)])
-    train_cycle_end = time.time()
+    estimator.train(input_fn=train_input_fn, hooks=train_hooks)
 
     # Evaluate the model
-    eval_cycle_begin = time.time()
-    hr, ndcg = evaluate_model(
-        estimator, FLAGS.batch_size, num_gpus, ncf_dataset.eval_true_items,
-        ncf_dataset.eval_all_items, FLAGS.num_parallel_calls)
-    eval_cycle_end = time.time()
+    eval_results = evaluate_model(
+        estimator, FLAGS.batch_size, num_gpus, ncf_dataset)
 
-    # Log the train time, evaluation time, and HR and NDCG results.
+    # Benchmark the evaluation results
+    benchmark_logger.log_evaluation_result(eval_results)
+    # Log the HR and NDCG results.
+    hr = eval_results[_HR_KEY]
+    ndcg = eval_results[_NDCG_KEY]
     tf.logging.info(
-        "Iteration {} [{:.1f} s]: HR = {:.4f}, NDCG = {:.4f}, [{:.1f} s]"
-        .format(cycle_index, train_cycle_end - train_cycle_begin, hr, ndcg,
-                eval_cycle_end - eval_cycle_begin))
+        "Iteration {}: HR = {:.4f}, NDCG = {:.4f}".format(
+            cycle_index + 1, hr, ndcg))
 
-  # Remove temporary files
-  os.remove(constants.TRAIN_DATA)
-  os.remove(constants.TEST_DATA)
+    # If some evaluation threshold is met
+    if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
+      break
+
+  # Clear the session explicitly to avoid session delete error
+  tf.keras.backend.clear_session()
+
+
+def define_ncf_flags():
+  """Add flags for running ncf_main."""
+  # Add common flags
+  flags_core.define_base(export_dir=False)
+  flags_core.define_performance(
+      num_parallel_calls=False,
+      inter_op=False,
+      intra_op=False,
+      synthetic_data=False,
+      max_train_steps=False,
+      dtype=False
+  )
+  flags_core.define_benchmark()
+
+  flags.adopt_module_key_flags(flags_core)
+
+  flags_core.set_defaults(
+      model_dir="/tmp/ncf/",
+      data_dir="/tmp/movielens-data/",
+      train_epochs=2,
+      batch_size=256,
+      hooks="ProfilerHook")
+
+  # Add ncf-specific flags
+  flags.DEFINE_enum(
+      name="dataset", default="ml-1m",
+      enum_values=["ml-1m", "ml-20m"], case_sensitive=False,
+      help=flags_core.help_wrap(
+          "Dataset to be trained and evaluated."))
+
+  flags.DEFINE_integer(
+      name="num_factors", default=8,
+      help=flags_core.help_wrap("The Embedding size of MF model."))
+
+  # Set the default as a list of strings to be consistent with input arguments
+  flags.DEFINE_list(
+      name="layers", default=["64", "32", "16", "8"],
+      help=flags_core.help_wrap(
+          "The sizes of hidden layers for MLP. Example "
+          "to specify different sizes of MLP layers: --layers=32,16,8,4"))
+
+  flags.DEFINE_float(
+      name="mf_regularization", default=0.,
+      help=flags_core.help_wrap(
+          "The regularization factor for MF embeddings. The factor is used by "
+          "regularizer which allows to apply penalties on layer parameters or "
+          "layer activity during optimization."))
+
+  flags.DEFINE_list(
+      name="mlp_regularization", default=["0.", "0.", "0.", "0."],
+      help=flags_core.help_wrap(
+          "The regularization factor for each MLP layer. See mf_regularization "
+          "help for more info about regularization factor."))
+
+  flags.DEFINE_integer(
+      name="num_neg", default=4,
+      help=flags_core.help_wrap(
+          "The Number of negative instances to pair with a positive instance."))
+
+  flags.DEFINE_float(
+      name="learning_rate", default=0.001,
+      help=flags_core.help_wrap("The learning rate."))
+
+  flags.DEFINE_float(
+      name="hr_threshold", default=None,
+      help=flags_core.help_wrap(
+          "If passed, training will stop when the evaluation metric HR is "
+          "greater than or equal to hr_threshold. For dataset ml-1m, the "
+          "desired hr_threshold is 0.68 which is the result from the paper; "
+          "For dataset ml-20m, the threshold can be set as 0.95 which is "
+          "achieved by MLPerf implementation."))
 
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
-  parser = argparse.ArgumentParser()
-
-  parser.add_argument(
-      "--model_dir", nargs="?", default="/tmp/ncf/",
-      help="Model directory.")
-  parser.add_argument(
-      "--data_dir", nargs="?", default="/tmp/movielens-data/",
-      help="Input data directory. Should be the same as downloaded data dir.")
-  parser.add_argument(
-      "--dataset", nargs="?", default="ml-1m", choices=["ml-1m", "ml-20m"],
-      help="Choose a dataset.")
-  parser.add_argument(
-      "--train_epochs", type=int, default=20,
-      help="Number of epochs.")
-  parser.add_argument(
-      "--batch_size", type=int, default=256,
-      help="Batch size.")
-  parser.add_argument(
-      "--num_factors", type=int, default=8,
-      help="Embedding size of MF model.")
-  parser.add_argument(
-      "--layers", nargs="?", default="[64,32,16,8]",
-      help="Size of hidden layers for MLP.")
-  parser.add_argument(
-      "--mf_regularization", type=float, default=0,
-      help="Regularization for MF embeddings.")
-  parser.add_argument(
-      "--num_neg", type=int, default=4,
-      help="Number of negative instances to pair with a positive instance.")
-  parser.add_argument(
-      "--num_parallel_calls", type=int, default=8,
-      help="Number of parallel calls.")
-  parser.add_argument(
-      "--epochs_between_evals", type=int, default=1,
-      help="Number of epochs between model evaluation.")
-  parser.add_argument(
-      "--learning_rate", type=float, default=0.001,
-      help="Learning rate.")
-  parser.add_argument(
-      "--num_gpus", type=int, default=1 if tf.test.is_gpu_available() else 0,
-      help="How many GPUs to use with the DistributionStrategies API. The "
-           "default is 1 if TensorFlow can detect a GPU, and 0 otherwise.")
-
-  FLAGS, unparsed = parser.parse_known_args()
-  with tf.Graph().as_default():
-    tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  define_ncf_flags()
+  FLAGS = flags.FLAGS
+  absl_app.run(main)
