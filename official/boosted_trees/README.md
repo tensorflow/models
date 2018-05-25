@@ -39,7 +39,7 @@ Note that the model_dir is cleaned up before every time training starts.
 
 Model parameters can be adjusted by flags, like `--n_trees`, `--max_depth`, `--learning_rate` and so on.  Check out the code for details.
 
-The final accuacy will be around 74% and loss will be around 0.516 over the eval set, when trained with the default parameters.
+The final accuracy will be around 74% and loss will be around 0.516 over the eval set, when trained with the default parameters.
 
 By default, the first 1 million examples among 11 millions are used for training, and the last 1 million examples are used for evaluation.
 The training/evaluation data can be selected as index ranges by flags `--train_start`, `--train_count`, `--eval_start`, `--eval_count`, etc.
