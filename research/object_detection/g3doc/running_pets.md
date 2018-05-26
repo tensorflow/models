@@ -259,7 +259,7 @@ your local machine:
 # GCS bucket.
 gcloud auth application-default login
 
-tensorboard --logdir=gs://${YOUR_GCS_BUCKET}
+tensorboard --logdir=gs://${YOUR_GCS_BUCKET}/train
 ```
 
 Once Tensorboard is running, navigate to `localhost:6006` from your favourite
