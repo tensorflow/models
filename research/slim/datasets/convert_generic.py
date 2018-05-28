@@ -39,10 +39,10 @@ from datasets import dataset_utils
 _NUM_VALIDATION = 0
 
 # The percentage of images in the validation set.
-_VALIDATION_PERCENTAGE = 10.0
+_VALIDATION_PERCENTAGE = 20.0
 
 # Seed for repeatability.
-_RANDOM_SEED = 0
+_RANDOM_SEED = 7
 
 # The number of samples per shard for a given dataset split.
 _MAX_NUM_PER_SHARD = 40960
@@ -70,7 +70,7 @@ class ImageReader(object):
                      feed_dict={self._decode_jpeg_data: image_data})
     assert len(image.shape) == 3
     assert image.shape[2] == 3
-    return image
+    return( image )
 
 
 def _get_filenames_and_classes(source_dir, dataset_dir):
@@ -99,13 +99,13 @@ def _get_filenames_and_classes(source_dir, dataset_dir):
       path = os.path.join(directory, filename)
       photo_filenames.append(path)
 
-  return photo_filenames, sorted(class_names)
+  return( photo_filenames, sorted(class_names) )
 
 
 def _get_dataset_filename(dataset_dir, split_name, shard_id):
   output_filename = 'generic_%s_%05d-of-%05d.tfrecord' % (
       split_name, shard_id, _NUM_SHARDS)
-  return os.path.join(dataset_dir, output_filename)
+  return( os.path.join(dataset_dir, output_filename) )
 
 
 def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
@@ -137,9 +137,9 @@ def _convert_dataset(split_name, filenames, class_names_to_ids, dataset_dir):
           start_ndx = shard_id * number_per_shard
           end_ndx = min((shard_id+1) * number_per_shard, len(filenames))
           for i in range(start_ndx, end_ndx):
-            sys.stdout.write('\r>> Converting image %d/%d shard %d' % (
-                i+1, len(filenames), shard_id))
-            sys.stdout.flush()
+            if( i % 1000 == 0 ):
+            	sys.stdout.write('\rConverting image %d/%d from shard %d' % (i, len(filenames), shard_id))
+            	sys.stdout.flush()
 
             # Read the filename:
             image_data = tf.gfile.FastGFile(filenames[i], 'rb').read()
@@ -162,8 +162,8 @@ def _dataset_exists(dataset_dir):
       output_filename = _get_dataset_filename(
           dataset_dir, split_name, shard_id)
       if not tf.gfile.Exists(output_filename):
-        return False
-  return True
+        return( False )
+  return( True )
 
 def create_metadata_file(photo_filenames, class_names, dataset_dir):
   global _NUM_VALIDATION
@@ -174,7 +174,7 @@ def create_metadata_file(photo_filenames, class_names, dataset_dir):
   no_of_validation_images = _NUM_VALIDATION  
   no_of_training_images = total_images - no_of_validation_images
   no_of_classes = len(class_names)
-  if( (no_of_classes <=0) or (no_of_validation_images <= 0) or (no_of_training_images <= 0) ):
+  if( (no_of_classes <=0) or  ( (no_of_validation_images <= 0) and (no_of_training_images <= 0) ) ):
       return(False) 
  
   dataset_metadata = {}
@@ -185,7 +185,7 @@ def create_metadata_file(photo_filenames, class_names, dataset_dir):
 
   return(True)
 
-def run(source_dir, dataset_dir):
+def run(source_dir, dataset_dir, validation_percentage):
   """Runs the conversion operation.
 
   Args:
@@ -202,7 +202,6 @@ def run(source_dir, dataset_dir):
   photo_filenames, class_names = _get_filenames_and_classes(source_dir, dataset_dir)
 
   global _NUM_SHARDS  
-
   _NUM_SHARDS = int(math.ceil(len(photo_filenames) / float(_MAX_NUM_PER_SHARD)))
   _NUM_SHARDS = max(_NUM_SHARDS, _MIN_NUM_SHARDS)
   if( _NUM_SHARDS%2 != 0):
@@ -211,6 +210,10 @@ def run(source_dir, dataset_dir):
   if _dataset_exists(dataset_dir):
     print('Dataset files already exist. Exiting without re-creating them.')
     return
+
+  global _VALIDATION_PERCENTAGE
+  if(not ( (validation_percentage < 0.0) or (validation_percentage > 100.0) ) ):
+    _VALIDATION_PERCENTAGE = validation_percentage
 
   if(not create_metadata_file(photo_filenames, class_names, dataset_dir)):
     print('Error creating the metadata file.')
@@ -225,11 +228,15 @@ def run(source_dir, dataset_dir):
   training_filenames = photo_filenames[_NUM_VALIDATION:]
 
   # First, convert the training and validation sets.
-  _convert_dataset('validation', validation_filenames, class_names_to_ids, dataset_dir)
-  _convert_dataset('train', training_filenames, class_names_to_ids, dataset_dir)
+  if(len(validation_filenames) > 0):
+    _convert_dataset('validation', validation_filenames, class_names_to_ids, dataset_dir)
+
+  if(len(training_filenames) > 0):
+    _convert_dataset('train', training_filenames, class_names_to_ids, dataset_dir)
 
   # Finally, write the labels file:
   labels_to_class_names = dict(zip(range(len(class_names)), class_names))
   dataset_utils.write_label_file(labels_to_class_names, dataset_dir)
 
   print('\nFinished converting the generic dataset.')
+

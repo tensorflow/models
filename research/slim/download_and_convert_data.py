@@ -63,14 +63,19 @@ tf.app.flags.DEFINE_string(
     None,
     'The directory where the output TFRecords and temporary files are saved.')
 
+tf.app.flags.DEFINE_float(
+    'validation_percentage', 20.0, 'The percentage of total input images used for network validation.')
 
 def main(_):
   if not FLAGS.dataset_name:
     raise ValueError('You must supply the dataset name with --dataset_name')
   if not FLAGS.dataset_dir:
     raise ValueError('You must supply the dataset directory with --dataset_dir')
+
   if (FLAGS.dataset_name == 'generic') and (not FLAGS.source_dir):
     raise ValueError('You must supply the input source directory with --source_dir')
+  if (FLAGS.dataset_name == 'generic') and ( (FLAGS.validation_percentage < 0.0) or (FLAGS.validation_percentage > 100.0) ):
+    raise ValueError('You must supply non negative validation percentage less than or equal to 100.0')
 
   if FLAGS.dataset_name == 'cifar10':
     download_and_convert_cifar10.run(FLAGS.dataset_dir)
@@ -79,10 +84,11 @@ def main(_):
   elif FLAGS.dataset_name == 'mnist':
     download_and_convert_mnist.run(FLAGS.dataset_dir)
   elif FLAGS.dataset_name == 'generic':
-    convert_generic.run(FLAGS.source_dir, FLAGS.dataset_dir)
+    convert_generic.run(FLAGS.source_dir, FLAGS.dataset_dir, FLAGS.validation_percentage)
   else:
     raise ValueError(
         'dataset_name [%s] was not recognized.' % FLAGS.dataset_name)
 
 if __name__ == '__main__':
   tf.app.run()
+
