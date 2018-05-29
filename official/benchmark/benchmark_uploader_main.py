@@ -55,7 +55,7 @@ def main(_):
       flags.FLAGS.bigquery_data_set, flags.FLAGS.bigquery_metric_table, run_id,
       metric_json_file)
   # Assume the run finished successfully before user invoke the upload script.
-  uploader.update_run_status(
+  uploader.insert_run_status(
       flags.FLAGS.bigquery_data_set, flags.FLAGS.bigquery_run_status_table,
       run_id, "success")
 
