@@ -36,6 +36,7 @@ import numpy as np
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
 from official.utils.flags._conventions import help_wrap

@@ -44,7 +44,6 @@ def _download_higgs_data_and_save_npz(data_dir):
   try:
     tf.logging.info("Data downloading...")
     temp_filename, _ = urllib.request.urlretrieve(input_url)
-
     # Reading and parsing 11 million csv lines takes 2~3 minutes.
     tf.logging.info("Data processing... taking multiple minutes...")
     with gzip.open(temp_filename, "rb") as csv_file:
@@ -54,7 +53,7 @@ def _download_higgs_data_and_save_npz(data_dir):
           names=["c%02d" % i for i in range(29)]  # label + 28 features.
       ).as_matrix()
   finally:
-    os.remove(temp_filename)
+    tf.gfile.Remove(temp_filename)
 
   # Writing to temporary location then copy to the data_dir (0.8 GB).
   f = tempfile.NamedTemporaryFile()
