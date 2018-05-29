@@ -231,7 +231,7 @@ def _configure_learning_rate(num_samples_per_epoch, global_step):
     A `Tensor` representing the learning rate.
 
   Raises:
-    ValueError: if
+    ValueError: if FLAGS.learning_rate_decay_type is not recognized.
   """
   decay_steps = int(num_samples_per_epoch / FLAGS.batch_size *
                     FLAGS.num_epochs_per_decay)
