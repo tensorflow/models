@@ -214,27 +214,6 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     self.assertTrue(tf.gfile.Exists(run_log))
     with tf.gfile.GFile(run_log) as f:
       run_info = json.loads(f.readline())
-      self.assertEqual(run_info["status"], "running")
-      self.assertEqual(run_info["model_name"], "model_name")
-      self.assertEqual(run_info["dataset"], "dataset_name")
-      self.assertEqual(run_info["run_info"], "run_value")
-
-  @mock.patch("official.utils.logs.logger._gather_run_info")
-  def test_on_finish(self, mock_gather_run_info):
-    log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
-    log = logger.BenchmarkFileLogger(log_dir)
-    run_info = {"model_name": "model_name",
-                "dataset": "dataset_name",
-                "run_info": "run_value"}
-    mock_gather_run_info.return_value = run_info
-    log.log_run_info("model_name", "dataset_name", {})
-    log.on_finish()
-
-    run_log = os.path.join(log_dir, "benchmark_run.log")
-    self.assertTrue(tf.gfile.Exists(run_log))
-    with tf.gfile.GFile(run_log) as f:
-      run_info = json.loads(f.readline())
-      self.assertEqual(run_info["status"], "success")
       self.assertEqual(run_info["model_name"], "model_name")
       self.assertEqual(run_info["dataset"], "dataset_name")
       self.assertEqual(run_info["run_info"], "run_value")
@@ -313,8 +292,8 @@ class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
 
     self.mock_bq_uploader = mock.MagicMock()
     self.logger = logger.BenchmarkBigQueryLogger(
-        self.mock_bq_uploader, "dataset", "run_table", "metric_table",
-        "run_id")
+        self.mock_bq_uploader, "dataset", "run_table", "run_status_table",
+        "metric_table", "run_id")
 
   def tearDown(self):
     super(BenchmarkBigQueryLoggerTest, self).tearDown()
@@ -339,13 +318,28 @@ class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
     self.mock_bq_uploader.upload_benchmark_metric_json.assert_called_once_with(
         "dataset", "metric_table", "run_id", expected_metric_json)
 
+  @mock.patch("official.utils.logs.logger._gather_run_info")
+  def test_log_run_info(self, mock_gather_run_info):
+    run_info = {"model_name": "model_name",
+                "dataset": "dataset_name",
+                "run_info": "run_value"}
+    mock_gather_run_info.return_value = run_info
+    self.logger.log_run_info("model_name", "dataset_name", {})
+    # log_metric will call upload_benchmark_metric_json in a separate thread.
+    # Give it some grace period for the new thread before assert.
+    time.sleep(1)
+    self.mock_bq_uploader.upload_benchmark_run_json.assert_called_once_with(
+        "dataset", "run_table", "run_id", run_info)
+    self.mock_bq_uploader.insert_run_status.assert_called_once_with(
+        "dataset", "run_status_table", "run_id", "running")
+
   def test_on_finish(self):
     self.logger.on_finish()
     # log_metric will call upload_benchmark_metric_json in a separate thread.
     # Give it some grace period for the new thread before assert.
     time.sleep(1)
     self.mock_bq_uploader.update_run_status.assert_called_once_with(
-        "dataset", "run_table", "run_id", "success")
+        "dataset", "run_status_table", "run_id", "success")
 
 
 if __name__ == "__main__":

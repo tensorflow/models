@@ -133,10 +133,18 @@ class BigQueryUploader(object):
       tf.logging.error(
           "Failed to upload benchmark info to bigquery: {}".format(errors))
 
+  def insert_run_status(self, dataset_name, table_name, run_id, run_status):
+    """Insert the run status in to Bigquery run status table."""
+    query = ("INSERT {ds}.{tb} "
+             "(run_id, status) "
+             "VALUES('{rid}', '{status}')").format(
+                 ds=dataset_name, tb=table_name, rid=run_id, status=run_status)
+    self._bq_client.query(query=query).result()
+
   def update_run_status(self, dataset_name, table_name, run_id, run_status):
-    """Update the run status in to Bigquery run record."""
+    """Update the run status in in Bigquery run status table."""
     query = ("UPDATE {ds}.{tb} "
              "SET status = '{status}' "
              "WHERE run_id = '{rid}'").format(
                  ds=dataset_name, tb=table_name, status=run_status, rid=run_id)
-    self._bq_client.query(query=query)
+    self._bq_client.query(query=query).result()
