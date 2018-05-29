@@ -51,7 +51,7 @@ To run all unit tests:
 
 ```
 cd research/attention_ocr/python
-python -m unittest discover -p  '*_test.py'
+CUDA_VISIBLE_DEVICES=1 python -m unittest discover -p  '*_test.py'
 ```
 
 To train from scratch:
