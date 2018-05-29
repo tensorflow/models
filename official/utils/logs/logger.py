@@ -127,6 +127,9 @@ class BaseBenchmarkLogger(object):
     tf.logging.info("Benchmark run: %s",
                     _gather_run_info(model_name, dataset_name, run_params))
 
+  def on_finish(self):
+    pass
+
 
 class BenchmarkFileLogger(BaseBenchmarkLogger):
   """Class to log the benchmark information to local disk."""
@@ -174,6 +177,7 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
         include hyperparameters or other params that are important for the run.
     """
     run_info = _gather_run_info(model_name, dataset_name, run_params)
+    run_info["status"] = "running"
 
     with tf.gfile.GFile(os.path.join(
         self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
@@ -183,6 +187,17 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
       except (TypeError, ValueError) as e:
         tf.logging.warning("Failed to dump benchmark run info to log file: %s",
                            e)
+
+  def on_finish(self):
+    """Update the run log file with status 'success'."""
+    with tf.gfile.GFile(os.path.join(
+        self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "r") as f:
+      run_info = json.load(f)
+    run_info["status"] = "success"
+    with tf.gfile.GFile(os.path.join(
+        self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
+      json.dump(run_info, f)
+      f.write("\n")
 
 
 class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
@@ -237,6 +252,7 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
         include hyperparameters or other params that are important for the run.
     """
     run_info = _gather_run_info(model_name, dataset_name, run_params)
+    run_info["status"] = "running"
     # Starting new thread for bigquery upload in case it might take long time
     # and impact the benchmark and performance measurement. Starting a new
     # thread might have potential performance impact for model that run on CPU.
@@ -246,6 +262,14 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
          self._bigquery_run_table,
          self._run_id,
          run_info))
+
+  def on_finish(self):
+    thread.start_new_thread(
+        self._bigquery_uploader.update_run_status,
+        (self._bigquery_data_set,
+         self._bigquery_run_table,
+         self._run_id,
+         "success"))
 
 
 def _gather_run_info(model_name, dataset_name, run_params):

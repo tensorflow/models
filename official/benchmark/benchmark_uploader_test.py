@@ -102,6 +102,14 @@ class BigQueryUploaderTest(tf.test.TestCase):
     self.mock_client.insert_rows_json.assert_called_once_with(
         self.mock_table, expected_params)
 
+  def test_update_run_status(self):
+    self.benchmark_uploader.update_run_status(
+        'dataset', 'table', 'run_id', 'status')
+    expected_query = ('UPDATE dataset.table '
+                      'SET status = \'status\' '
+                      'WHERE run_id = \'run_id\'')
+    self.mock_client.query.assert_called_once_with(query=expected_query)
+
 
 if __name__ == '__main__':
   tf.test.main()
