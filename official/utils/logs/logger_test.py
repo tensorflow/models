@@ -347,12 +347,12 @@ class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
         "dataset", "run_status_table", "run_id", "running")
 
   def test_on_finish(self):
-    self.logger.on_finish()
+    self.logger.on_finish(logger.RUN_STATUS_SUCCESS)
     # log_metric will call upload_benchmark_metric_json in a separate thread.
     # Give it some grace period for the new thread before assert.
     time.sleep(1)
     self.mock_bq_uploader.update_run_status.assert_called_once_with(
-        "dataset", "run_status_table", "run_id", "success")
+        "dataset", "run_status_table", "run_id", logger.RUN_STATUS_SUCCESS)
 
 
 if __name__ == "__main__":

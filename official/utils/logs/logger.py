@@ -144,7 +144,7 @@ class BaseBenchmarkLogger(object):
     tf.logging.info("Benchmark run: %s",
                     _gather_run_info(model_name, dataset_name, run_params))
 
-  def on_finish(self):
+  def on_finish(self, status):
     pass
 
 
@@ -204,7 +204,7 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
         tf.logging.warning("Failed to dump benchmark run info to log file: %s",
                            e)
 
-  def on_finish(self):
+  def on_finish(self, status):
     pass
 
 
@@ -278,13 +278,13 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
          self._run_id,
          RUN_STATUS_RUNNING))
 
-  def on_finish(self):
+  def on_finish(self, status):
     thread.start_new_thread(
         self._bigquery_uploader.update_run_status,
         (self._bigquery_data_set,
          self._bigquery_run_status_table,
          self._run_id,
-         RUN_STATUS_SUCCESS))
+         status))
 
 
 def _gather_run_info(model_name, dataset_name, run_params):
