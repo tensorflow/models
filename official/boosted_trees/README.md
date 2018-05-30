@@ -18,7 +18,7 @@ First make sure you've [added the models folder to your Python path](/official/#
 The [HIGGS Data Set](https://archive.ics.uci.edu/ml/datasets/HIGGS) that this sample uses for training is hosted by the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/). We have provided a script that downloads and cleans the necessary files.
 
 ```
-python -m official.boosted_trees.data_download  # in the github cloned directory
+python data_download.py
 ```
 
 This will download a file and store the processed file under the directory designated by `--data_dir` (defaults to `/tmp/higgs_data/`). To change the target directory, set the `--data_dir` flag. The directory could be network storages that Tensorflow supports (like Google Cloud Storage, `gs://<bucket>/<path>/`).
@@ -31,7 +31,7 @@ This example uses about 3 GB of RAM during training.
 You can run the code locally as follows:
 
 ```
-python -m official.boosted_trees.train_higgs
+python train_higgs.py
 ```
 
 The model is by default saved to `/tmp/higgs_model`, which can be changed using the `--model_dir` flag.
@@ -56,7 +56,7 @@ tensorboard --logdir=/tmp/higgs_model  # set logdir as --model_dir set during tr
 You can export the model into Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format by using the argument `--export_dir`:
 
 ```
-python -m official.boosted_trees.train_higgs --export_dir /tmp/higgs_boosted_trees_saved_model
+python train_higgs.py --export_dir /tmp/higgs_boosted_trees_saved_model
 ```
 
 After the model finishes training, use [`saved_model_cli`](https://www.tensorflow.org/programmers_guide/saved_model#cli_to_inspect_and_execute_savedmodel) to inspect and execute the SavedModel.
