@@ -1,0 +1,64 @@
+item {
+  id: 1
+  name: 'penny-indian'
+}
+
+item {
+  id: 2
+  name: 'penny-wheat'
+}
+
+item {
+  id: 3
+  name: 'penny-lincoln'
+}
+
+item {
+  id: 4
+  name: 'penny-shield'
+}
+
+item {
+  id: 5
+  name: 'nickel-liberty'
+}
+
+item {
+  id: 6
+  name: 'nickel-buffalo'
+}
+
+item {
+  id: 7
+  name: 'nickel-jefferson'
+}
+
+item {
+  id: 8
+  name: 'dime-liberty-seated'
+}
+
+item {
+  id: 9
+  name: 'dime-barber'
+}
+
+item {
+  id: 10
+  name: 'dime-mercury'
+}
+
+item {
+  id: 11
+  name: 'dime-roosevelt'
+}
+
+item {
+  id: 12
+  name: 'quarter-washington'
+}
+
+item {
+  id: 13
+  name: 'quarter-bicentennial'
+}
