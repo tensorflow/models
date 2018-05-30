@@ -79,7 +79,7 @@ class BaseTest(tf.test.TestCase):
 
     # Check feature_names.
     self.assertAllEqual(feature_names,
-                        ['feature_%02d' % (i+1) for i in range(28)])
+                        ["feature_%02d" % (i+1) for i in range(28)])
 
     # Check feature columns.
     self.assertEqual(28, len(feature_columns))

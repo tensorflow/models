@@ -169,7 +169,7 @@ def _make_csv_serving_input_receiver_fn(column_names, column_defaults):
   def serving_input_receiver_fn():
     csv = tf.placeholder(dtype=tf.string, shape=[None], name="csv")
     features = dict(zip(column_names, tf.decode_csv(csv, column_defaults)))
-    receiver_tensors = {"csv": csv}
+    receiver_tensors = {"inputs": csv}
     return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
 
   return serving_input_receiver_fn
