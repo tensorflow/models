@@ -376,7 +376,8 @@ def resnet_main(
   run_config = tf.estimator.RunConfig(train_distribute=distribution,
                                       session_config=session_config)
 
-  classifier = tf.estimator.Estimator(
+  # classifier = tf.estimator.Estimator(
+  classifier = model_helpers.StrawmanEstimator(
       model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
       params={
           'resnet_size': int(flags_obj.resnet_size),

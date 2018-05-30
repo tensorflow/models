@@ -73,13 +73,29 @@ class ExamplesPerSecondHook(tf.train.SessionRunHook):
     self._total_steps = 0
     self._batch_size = batch_size
     self._warm_steps = warm_steps
+    self._train_op = None
+
+  def specify_train_op(self, train_op):
+    self._train_op = train_op
 
   def begin(self):
     """Called once before using the session to check global step."""
-    self._global_step_tensor = tf.train.get_global_step()
-    if self._global_step_tensor is None:
+    if self._train_op is None:
+      raise ValueError("train op not passed to hook.")
+
+    global_step_tensor = tf.train.get_global_step()
+
+    if global_step_tensor is None:
       raise RuntimeError(
           "Global step should be created to use StepCounterHook.")
+
+    # One nice thing about this pattern is that it isn't limited to global
+    # step tensor; and tensor can easily be forcibly evaluated AFTER the train
+    # step has occured.
+    with tf.control_dependencies([self._train_op]):
+      self._global_step_tensor = tf.identity(
+          global_step_tensor, "shadow_global_step")
+
 
   def before_run(self, run_context):  # pylint: disable=unused-argument
     """Called before each call to run().

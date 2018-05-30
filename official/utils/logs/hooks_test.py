@@ -65,6 +65,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
         every_n_steps=every_n_steps,
         warm_steps=warm_steps,
         metric_logger=self._logger)
+    hook.specify_train_op(self.train_op)
     hook.begin()
     mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
     sess.run(tf.global_variables_initializer())
@@ -118,6 +119,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
         every_n_steps=None,
         every_n_secs=every_n_secs,
         metric_logger=self._logger)
+    hook.specify_train_op(self.train_op)
     hook.begin()
     mon_sess = monitored_session._HookedSession(sess, [hook])  # pylint: disable=protected-access
     sess.run(tf.global_variables_initializer())
