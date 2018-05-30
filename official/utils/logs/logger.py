@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import datetime
 import json
 import multiprocessing
@@ -38,6 +39,9 @@ from tensorflow.python.client import device_lib
 METRIC_LOG_FILE_NAME = "metric.log"
 BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
+RUN_STATUS_SUCCESS = "success"
+RUN_STATUS_FAILURE = "failure"
+RUN_STATUS_RUNNING = "running"
 
 FLAGS = flags.FLAGS
 
@@ -82,6 +86,18 @@ def get_benchmark_logger():
   if not _benchmark_logger:
     config_benchmark_logger()
   return _benchmark_logger
+
+
+@contextlib.contextmanager
+def benchmark_context(benchmark_logger):
+  """Context of benchmark, which will update status of the run accordingly."""
+  try:
+    yield
+    benchmark_logger.on_finish(RUN_STATUS_SUCCESS)
+  except Exception:  # pylint: disable=broad-except
+    # Catch all the exception, update the run status to be failure, and re-raise
+    benchmark_logger.on_finish(RUN_STATUS_FAILURE)
+    raise
 
 
 class BaseBenchmarkLogger(object):
@@ -260,7 +276,7 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
         (self._bigquery_data_set,
          self._bigquery_run_status_table,
          self._run_id,
-         "running"))
+         RUN_STATUS_RUNNING))
 
   def on_finish(self):
     thread.start_new_thread(
@@ -268,7 +284,7 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
         (self._bigquery_data_set,
          self._bigquery_run_status_table,
          self._run_id,
-         "success"))
+         RUN_STATUS_SUCCESS))
 
 
 def _gather_run_info(model_name, dataset_name, run_params):

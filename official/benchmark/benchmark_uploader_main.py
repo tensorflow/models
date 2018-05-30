@@ -57,7 +57,7 @@ def main(_):
   # Assume the run finished successfully before user invoke the upload script.
   uploader.insert_run_status(
       flags.FLAGS.bigquery_data_set, flags.FLAGS.bigquery_run_status_table,
-      run_id, "success")
+      run_id, logger.RUN_STATUS_SUCCESS)
 
 
 if __name__ == "__main__":

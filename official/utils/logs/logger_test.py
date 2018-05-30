@@ -72,6 +72,19 @@ class BenchmarkLoggerTest(tf.test.TestCase):
       self.assertIsInstance(logger.get_benchmark_logger(),
                             logger.BenchmarkBigQueryLogger)
 
+  def test_benchmark_context(self):
+    mock_logger = mock.MagicMock()
+    with logger.benchmark_context(mock_logger):
+      tf.logging.info("start benchmarking")
+    mock_logger.on_finish.assert_called_once_with(logger.RUN_STATUS_SUCCESS)
+
+  def test_benchmark_context_failure(self):
+    mock_logger = mock.MagicMock()
+    with self.assertRaises(RuntimeError):
+      with logger.benchmark_context(mock_logger):
+        raise RuntimeError("training error")
+    mock_logger.on_finish.assert_called_once_with(logger.RUN_STATUS_FAILURE)
+
 
 class BaseBenchmarkLoggerTest(tf.test.TestCase):
 

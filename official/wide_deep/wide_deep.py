@@ -254,25 +254,26 @@ def run_wide_deep(flags_obj):
       tensors_to_log={'average_loss': loss_prefix + 'head/truediv',
                       'loss': loss_prefix + 'head/weighted_loss/Sum'})
 
-  # Train and evaluate the model every `flags.epochs_between_evals` epochs.
-  for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
-    model.train(input_fn=train_input_fn, hooks=train_hooks)
-    results = model.evaluate(input_fn=eval_input_fn)
+  with logger.benchmark_context(benchmark_logger):
+    # Train and evaluate the model every `flags.epochs_between_evals` epochs.
+    for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
+      model.train(input_fn=train_input_fn, hooks=train_hooks)
+      results = model.evaluate(input_fn=eval_input_fn)
 
-    # Display evaluation metrics
-    tf.logging.info('Results at epoch %d / %d',
-                    (n + 1) * flags_obj.epochs_between_evals,
-                    flags_obj.train_epochs)
-    tf.logging.info('-' * 60)
+      # Display evaluation metrics
+      tf.logging.info('Results at epoch %d / %d',
+                      (n + 1) * flags_obj.epochs_between_evals,
+                      flags_obj.train_epochs)
+      tf.logging.info('-' * 60)
 
-    for key in sorted(results):
-      tf.logging.info('%s: %s' % (key, results[key]))
+      for key in sorted(results):
+        tf.logging.info('%s: %s' % (key, results[key]))
 
-    benchmark_logger.log_evaluation_result(results)
+      benchmark_logger.log_evaluation_result(results)
 
-    if model_helpers.past_stop_threshold(
-        flags_obj.stop_threshold, results['accuracy']):
-      break
+      if model_helpers.past_stop_threshold(
+          flags_obj.stop_threshold, results['accuracy']):
+        break
 
   # Export the model
   if flags_obj.export_dir is not None:

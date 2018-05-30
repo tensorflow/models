@@ -445,19 +445,20 @@ def run_transformer(flags_obj):
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(
       model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
-  train_schedule(
-      estimator=estimator,
-      # Training arguments
-      train_eval_iterations=train_eval_iterations,
-      single_iteration_train_steps=single_iteration_train_steps,
-      single_iteration_train_epochs=single_iteration_train_epochs,
-      train_hooks=train_hooks,
-      benchmark_logger=benchmark_logger,
-      # BLEU calculation arguments
-      bleu_source=flags_obj.bleu_source,
-      bleu_ref=flags_obj.bleu_ref,
-      bleu_threshold=flags_obj.stop_threshold,
-      vocab_file_path=os.path.join(flags_obj.data_dir, flags_obj.vocab_file))
+  with logger.benchmark_context(benchmark_logger):
+    train_schedule(
+        estimator=estimator,
+        # Training arguments
+        train_eval_iterations=train_eval_iterations,
+        single_iteration_train_steps=single_iteration_train_steps,
+        single_iteration_train_epochs=single_iteration_train_epochs,
+        train_hooks=train_hooks,
+        benchmark_logger=benchmark_logger,
+        # BLEU calculation arguments
+        bleu_source=flags_obj.bleu_source,
+        bleu_ref=flags_obj.bleu_ref,
+        bleu_threshold=flags_obj.stop_threshold,
+        vocab_file_path=os.path.join(flags_obj.data_dir, flags_obj.vocab_file))
 
 
 def main(_):
