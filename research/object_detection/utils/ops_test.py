@@ -838,7 +838,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     image_shape = [1, 3, 3, 4]
     crop_size = [2, 2]
 
-    image = tf.constant(range(1, 3 * 3 + 1), dtype=tf.float32,
+    image = tf.constant(tuple(range(1, 3 * 3 + 1)), dtype=tf.float32,
                         shape=[1, 3, 3, 1])
     tiled_image = tf.tile(image, [1, 1, 1, image_shape[3]])
     boxes = tf.random_uniform((3, 4))
@@ -929,7 +929,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     num_boxes = 2
 
     # First channel is 1's, second channel is 2's, etc.
-    image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
+    image = tf.constant(tuple(range(1, 3 * 2 + 1)) * 6, dtype=tf.float32,
                         shape=image_shape)
     boxes = tf.random_uniform((num_boxes, 4))
     box_ind = tf.constant([0, 0], dtype=tf.int32)
@@ -967,7 +967,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     image_shape = [2, 2, 2, 4]
     crop_size = [2, 2]
 
-    image = tf.constant(range(1, 2 * 2 * 4  + 1) * 2, dtype=tf.float32,
+    image = tf.constant(tuple(range(1, 2 * 2 * 4 + 1)) * 2, dtype=tf.float32,
                         shape=image_shape)
 
     # First box contains whole image, and second box contains only first row.
@@ -1025,7 +1025,7 @@ class OpsTestPositionSensitiveCropRegions(tf.test.TestCase):
     num_boxes = 2
 
     # First channel is 1's, second channel is 2's, etc.
-    image = tf.constant(range(1, 3 * 2 + 1) * 6, dtype=tf.float32,
+    image = tf.constant(tuple(range(1, 3 * 2 + 1)) * 6, dtype=tf.float32,
                         shape=image_shape)
     boxes = tf.random_uniform((num_boxes, 4))
     box_ind = tf.constant([0, 0], dtype=tf.int32)

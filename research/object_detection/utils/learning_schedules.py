@@ -157,7 +157,7 @@ def manual_stepping(global_step, boundaries, rates, warmup=False):
 
   if warmup and boundaries:
     slope = (rates[1] - rates[0]) * 1.0 / boundaries[0]
-    warmup_steps = range(boundaries[0])
+    warmup_steps = list(range(boundaries[0]))
     warmup_rates = [rates[0] + slope * step for step in warmup_steps]
     boundaries = warmup_steps + boundaries
     rates = warmup_rates + rates[1:]
@@ -165,7 +165,7 @@ def manual_stepping(global_step, boundaries, rates, warmup=False):
     boundaries = [0] + boundaries
   num_boundaries = len(boundaries)
   rate_index = tf.reduce_max(tf.where(tf.greater_equal(global_step, boundaries),
-                                      range(num_boundaries),
+                                      list(range(num_boundaries)),
                                       [0] * num_boundaries))
   return tf.reduce_sum(rates * tf.one_hot(rate_index, depth=num_boundaries),
                        name='learning_rate')
