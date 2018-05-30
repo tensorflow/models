@@ -41,6 +41,7 @@ class ExamplesPerSecondHookTest(tf.test.TestCase):
   global_step value should be from run_context
   (global_step = run_context.session.run(global_step_tensor)
   """
+
   def setUp(self):
     """Mock out logging calls to verify if correct info is being monitored."""
     self._logger = mock_lib.MockBenchmarkLogger()
