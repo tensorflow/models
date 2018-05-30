@@ -1,0 +1,26 @@
+<annotation>
+	<folder>train</folder>
+	<filename>2010_cent_obverse.jpg</filename>
+	<path>/Users/mbolaris/git/tensorflow/models/research/object_detection/coin_detector/images/train/2010_cent_obverse.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>276</width>
+		<height>276</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>penny-lincoln</name>
+		<pose>Unspecified</pose>
+		<truncated>1</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1</xmin>
+			<ymin>1</ymin>
+			<xmax>275</xmax>
+			<ymax>276</ymax>
+		</bndbox>
+	</object>
+</annotation>
