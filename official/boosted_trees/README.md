@@ -74,15 +74,36 @@ saved_model_cli show --dir /tmp/higgs_boosted_trees_saved_model/${TIMESTAMP}/ \
 ```
 
 ### Inference
-Let's use the model to predict the income group of two examples:
+Let's use the model to predict the income group of two examples.
+Note that this model exports SavedModel with the custom parsing module that accepts csv lines as features. (Each line is an example with 28 columns; be careful to not add a label column, unlike in the training data.)
 
 ```
 saved_model_cli run --dir /tmp/boosted_trees_higgs_saved_model/${TIMESTAMP}/ \
     --tag_set serve --signature_def="predict" \
-    --input_examples='examples=[{"feature_01":[0.8692932],"feature_02":[-0.6350818],"feature_03":[0.2256903],"feature_04":[0.3274701],"feature_05":[-0.6899932],"feature_06":[0.7542022],"feature_07":[-0.2485731],"feature_08":[-1.0920639],"feature_09":[0.0],"feature_10":[1.3749921],"feature_11":[-0.6536742],"feature_12":[0.9303491],"feature_13":[1.1074361],"feature_14":[1.1389043],"feature_15":[-1.5781983],"feature_16":[-1.0469854],"feature_17":[0.0],"feature_18":[0.6579295],"feature_19":[-0.0104546],"feature_20":[-0.0457672],"feature_21":[3.1019614],"feature_22":[1.3537600],"feature_23":[0.9795631],"feature_24":[0.9780762],"feature_25":[0.9200048],"feature_26":[0.7216575],"feature_27":[0.9887509],"feature_28":[0.8766783]}, {"feature_01":[1.5958393],"feature_02":[-0.6078107],"feature_03":[0.0070749],"feature_04":[1.8184496],"feature_05":[-0.1119060],"feature_06":[0.8475499],"feature_07":[-0.5664370],"feature_08":[1.5812393],"feature_09":[2.1730762],"feature_10":[0.7554210],"feature_11":[0.6431096],"feature_12":[1.4263668],"feature_13":[0.0],"feature_14":[0.9216608],"feature_15":[-1.1904324],"feature_16":[-1.6155890],"feature_17":[0.0],"feature_18":[0.6511141],"feature_19":[-0.6542270],"feature_20":[-1.2743449],"feature_21":[3.1019614],"feature_22":[0.8237606],"feature_23":[0.9381914],"feature_24":[0.9717582],"feature_25":[0.7891763],"feature_26":[0.4305533],"feature_27":[0.9613569],"feature_28":[0.9578179]}]'
+    --input_exprs='inputs=["0.869293,-0.635082,0.225690,0.327470,-0.689993,0.754202,-0.248573,-1.092064,0.0,1.374992,-0.653674,0.930349,1.107436,1.138904,-1.578198,-1.046985,0.0,0.657930,-0.010455,-0.045767,3.101961,1.353760,0.979563,0.978076,0.920005,0.721657,0.988751,0.876678", "1.595839,-0.607811,0.007075,1.818450,-0.111906,0.847550,-0.566437,1.581239,2.173076,0.755421,0.643110,1.426367,0.0,0.921661,-1.190432,-1.615589,0.0,0.651114,-0.654227,-1.274345,3.101961,0.823761,0.938191,0.971758,0.789176,0.430553,0.961357,0.957818"]'
 ```
 
-This will print out the predicted classes and class probabilities.
+This will print out the predicted classes and class probabilities. Something like:
+
+```
+Result for output key class_ids:
+[[1]
+ [0]]
+Result for output key classes:
+[['1']
+ ['0']]
+Result for output key logistic:
+[[0.6440273 ]
+ [0.10902369]]
+Result for output key logits:
+[[ 0.59288704]
+ [-2.1007526 ]]
+Result for output key probabilities:
+[[0.3559727 0.6440273]
+ [0.8909763 0.1090237]]
+```
+
+Please note that "predict" signature_def gives out different (more detailed) results than "classification" or "serving_default".
 
 ## Additional Links
 

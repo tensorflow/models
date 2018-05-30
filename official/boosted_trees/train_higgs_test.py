@@ -73,8 +73,13 @@ class BaseTest(tf.test.TestCase):
     train_data, _ = train_higgs.read_higgs_data(
         self.data_dir,
         train_start=0, train_count=15, eval_start=15, eval_count=5)
-    input_fn, feature_columns = train_higgs.make_inputs_from_np_arrays(
-        features_np=train_data[:, 1:], label_np=train_data[:, 0:1])
+    (input_fn, feature_names,
+     feature_columns) = train_higgs.make_inputs_from_np_arrays(
+         features_np=train_data[:, 1:], label_np=train_data[:, 0:1])
+
+    # Check feature_names.
+    self.assertAllEqual(feature_names,
+                        ["feature_%02d" % (i+1) for i in range(28)])
 
     # Check feature columns.
     self.assertEqual(28, len(feature_columns))
@@ -86,7 +91,6 @@ class BaseTest(tf.test.TestCase):
       self.assertIsInstance(feature_column, bucketized_column_type)
       # At least 2 boundaries.
       self.assertGreaterEqual(len(feature_column.boundaries), 2)
-    feature_names = ["feature_%02d" % (i+1) for i in range(28)]
     # Tests that the source column names of the bucketized columns match.
     self.assertAllEqual(feature_names,
                         [col.source_column.name for col in feature_columns])
