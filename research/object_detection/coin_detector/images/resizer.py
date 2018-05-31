@@ -16,7 +16,7 @@ dir_path = os.getcwd()
 for filename in os.listdir(dir_path):
     # If the images are not .JPG images, change the line below to match the image type.
     if filename.endswith(".jpg"):
-        print('resizing ' + filename)
+
         image = cv2.imread(filename)
         
         print(image.shape)
@@ -24,11 +24,15 @@ for filename in os.listdir(dir_path):
         if image.shape[1] > 1024:
             r = 1024 / image.shape[1]
             dim = (1024, int(image.shape[0] * r))
+            print('resizing ' + filename)
             resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)    
             cv2.imwrite(filename, resized)
         elif image.shape[0] > 1024:
             r = 1024 / image.shape[0]
             dim = (int(image.shape[01] * r), 1024)
+            print('resizing ' + filename)
             resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
             cv2.imwrite(filename, resized)
+        else:
+            print('not resizing ' + filename)
 
