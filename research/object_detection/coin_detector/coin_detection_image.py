@@ -108,7 +108,7 @@ vis_util.visualize_boxes_and_labels_on_image_array(
     category_index,
     use_normalized_coordinates=True,
     line_thickness=2,
-    min_score_thresh=0.70)
+    min_score_thresh=0.50)
 
 # All the results have been drawn on image. Now display the image.
 cv2.imshow('Object detector', image)
