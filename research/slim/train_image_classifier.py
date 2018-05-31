@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow.core.protobuf import saver_pb2
+
 from datasets import dataset_factory
 from deployment import model_deploy
 from nets import nets_factory
@@ -555,11 +557,14 @@ def main(_):
     # Add config to avoid 'could not satisfy explicit device' problem 
     sess_config = tf.ConfigProto(allow_soft_placement=True)
 
+    # new saver
+    saver = tf.train.Saver(write_version = saver_pb2.SaverDef.V1)
     ###########################
     # Kicks off the training. #
     ###########################
     slim.learning.train(
         train_tensor,
+        saver=saver,
         logdir=FLAGS.train_dir,
         master=FLAGS.master,
         is_chief=(FLAGS.task == 0),
