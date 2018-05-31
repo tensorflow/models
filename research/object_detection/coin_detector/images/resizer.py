@@ -29,7 +29,7 @@ for filename in os.listdir(dir_path):
             cv2.imwrite(filename, resized)
         elif image.shape[0] > 1024:
             r = 1024 / image.shape[0]
-            dim = (int(image.shape[01] * r), 1024)
+            dim = (int(image.shape[1] * r), 1024)
             print('resizing ' + filename)
             resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
             cv2.imwrite(filename, resized)
