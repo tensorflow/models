@@ -18,5 +18,17 @@ for filename in os.listdir(dir_path):
     if filename.endswith(".jpg"):
         print('resizing ' + filename)
         image = cv2.imread(filename)
-        resized = cv2.resize(image,None,fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
-        cv2.imwrite(filename,resized)
+        
+        print(image.shape)
+        
+        if image.shape[1] > 1024:
+            r = 1024 / image.shape[1]
+            dim = (1024, int(image.shape[0] * r))
+            resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)    
+            cv2.imwrite(filename, resized)
+        elif image.shape[0] > 1024:
+            r = 1024 / image.shape[0]
+            dim = (int(image.shape[01] * r), 1024)
+            resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+            cv2.imwrite(filename, resized)
+
