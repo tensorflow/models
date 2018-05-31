@@ -80,7 +80,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
           lambda value: parse_record_fn(value, is_training),
           batch_size=batch_size,
           num_parallel_batches=1,
-          drop_remainder=True))
+          drop_remainder=False))
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
