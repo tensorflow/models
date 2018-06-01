@@ -427,11 +427,11 @@ def resnet_main(
     tf.logging.info('Starting to evaluate.')
 
     # flags_obj.max_train_steps is generally associated with testing and
-    # profiling. As a result it is frequently called with synthetic data,
-    # which will iterate forever. Passing steps=flags_obj.max_train_steps
-    # allows the eval (which is generally unimportant in those circumstances)
-    # to terminate. Note that eval will run for max_train_steps each loop,
-    # regardless of the global_step count.
+    # profiling. As a result it is frequently called with synthetic data, which
+    # will iterate forever. Passing steps=flags_obj.max_train_steps allows the
+    # eval (which is generally unimportant in those circumstances) to terminate.
+    # Note that eval will run for max_train_steps each loop, regardless of the
+    # global_step count.
     eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                        steps=flags_obj.max_train_steps)
 

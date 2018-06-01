@@ -436,7 +436,7 @@ def run_transformer(flags_obj):
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
       batch_size=params.batch_size  # for ExamplesPerSecondHook
   )
-  benchmark_logger = logger.config_benchmark_logger(flags_obj)
+  benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info(
       model_name="transformer",
       dataset_name="wmt_translate_ende",
@@ -445,24 +445,25 @@ def run_transformer(flags_obj):
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(
       model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
-  with logger.benchmark_context(benchmark_logger):
-    train_schedule(
-        estimator=estimator,
-        # Training arguments
-        train_eval_iterations=train_eval_iterations,
-        single_iteration_train_steps=single_iteration_train_steps,
-        single_iteration_train_epochs=single_iteration_train_epochs,
-        train_hooks=train_hooks,
-        benchmark_logger=benchmark_logger,
-        # BLEU calculation arguments
-        bleu_source=flags_obj.bleu_source,
-        bleu_ref=flags_obj.bleu_ref,
-        bleu_threshold=flags_obj.stop_threshold,
-        vocab_file_path=os.path.join(flags_obj.data_dir, flags_obj.vocab_file))
+
+  train_schedule(
+      estimator=estimator,
+      # Training arguments
+      train_eval_iterations=train_eval_iterations,
+      single_iteration_train_steps=single_iteration_train_steps,
+      single_iteration_train_epochs=single_iteration_train_epochs,
+      train_hooks=train_hooks,
+      benchmark_logger=benchmark_logger,
+      # BLEU calculation arguments
+      bleu_source=flags_obj.bleu_source,
+      bleu_ref=flags_obj.bleu_ref,
+      bleu_threshold=flags_obj.stop_threshold,
+      vocab_file_path=os.path.join(flags_obj.data_dir, flags_obj.vocab_file))
 
 
 def main(_):
-  run_transformer(flags.FLAGS)
+  with logger.benchmark_context(flags.FLAGS):
+    run_transformer(flags.FLAGS)
 
 
 if __name__ == "__main__":

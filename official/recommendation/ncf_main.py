@@ -198,6 +198,11 @@ def per_device_batch_size(batch_size, num_gpus):
 
 
 def main(_):
+  with logger.benchmark_context(FLAGS):
+    run_ncf(FLAGS)
+
+
+def run_ncf(_):
   # Data preprocessing
   # The file name of training and test dataset
   train_fname = os.path.join(
@@ -237,7 +242,7 @@ def main(_):
       "hr_threshold": FLAGS.hr_threshold,
       "train_epochs": FLAGS.train_epochs,
   }
-  benchmark_logger = logger.config_benchmark_logger(FLAGS)
+  benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info(
       model_name="recommendation",
       dataset_name=FLAGS.dataset,
@@ -251,30 +256,29 @@ def main(_):
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
 
-  with logger.benchmark_context(benchmark_logger):
-    for cycle_index in range(total_training_cycle):
-      tf.logging.info("Starting a training cycle: {}/{}".format(
-          cycle_index + 1, total_training_cycle))
+  for cycle_index in range(total_training_cycle):
+    tf.logging.info("Starting a training cycle: {}/{}".format(
+        cycle_index + 1, total_training_cycle))
 
-      # Train the model
-      estimator.train(input_fn=train_input_fn, hooks=train_hooks)
+    # Train the model
+    estimator.train(input_fn=train_input_fn, hooks=train_hooks)
 
-      # Evaluate the model
-      eval_results = evaluate_model(
-          estimator, FLAGS.batch_size, num_gpus, ncf_dataset)
+    # Evaluate the model
+    eval_results = evaluate_model(
+        estimator, FLAGS.batch_size, num_gpus, ncf_dataset)
 
-      # Benchmark the evaluation results
-      benchmark_logger.log_evaluation_result(eval_results)
-      # Log the HR and NDCG results.
-      hr = eval_results[_HR_KEY]
-      ndcg = eval_results[_NDCG_KEY]
-      tf.logging.info(
-          "Iteration {}: HR = {:.4f}, NDCG = {:.4f}".format(
-              cycle_index + 1, hr, ndcg))
+    # Benchmark the evaluation results
+    benchmark_logger.log_evaluation_result(eval_results)
+    # Log the HR and NDCG results.
+    hr = eval_results[_HR_KEY]
+    ndcg = eval_results[_NDCG_KEY]
+    tf.logging.info(
+        "Iteration {}: HR = {:.4f}, NDCG = {:.4f}".format(
+            cycle_index + 1, hr, ndcg))
 
-      # If some evaluation threshold is met
-      if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
-        break
+    # If some evaluation threshold is met
+    if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
+      break
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
