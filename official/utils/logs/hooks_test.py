@@ -32,14 +32,10 @@ tf.logging.set_verbosity(tf.logging.DEBUG)
 class ExamplesPerSecondHookTest(tf.test.TestCase):
   """Tests for the ExamplesPerSecondHook.
 
-  In this test, we explicitly run global_step tensor after train_op in order to
-  grab the correct global step value. This is to correct for discrepancies in
-  reported global step when running on GPUs. As in the after_run functions in
-  ExamplesPerSecondHook, the global step from run_results
-  (global_step = run_values.results) is not always correct and taken as the
-  stale global_step (which may be 1 off the correct value). The exact
-  global_step value should be from run_context
-  (global_step = run_context.session.run(global_step_tensor)
+  In the test, we explicitly run global_step tensor after train_op in order to
+  keep the global_step value and the train_op (which increase the glboal_step
+  by 1) consistent. This is to correct the discrepancies in reported global_step
+  value when running on GPUs.
   """
 
   def setUp(self):
