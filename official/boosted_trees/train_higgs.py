@@ -210,7 +210,8 @@ def train_boosted_trees(flags_obj):
   benchmark_logger.log_run_info(
       model_name="boosted_trees",
       dataset_name="higgs",
-      run_params=run_params)
+      run_params=run_params,
+      test_id=flags_obj.benchmark_test_id)
 
   # Though BoostedTreesClassifier is under tf.estimator, faster in-memory
   # training is yet provided as a contrib library.

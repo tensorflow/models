@@ -241,7 +241,8 @@ def main(_):
   benchmark_logger.log_run_info(
       model_name="recommendation",
       dataset_name=FLAGS.dataset,
-      run_params=run_params)
+      run_params=run_params,
+      test_id=FLAGS.benchmark_test_id)
 
   # Training and evaluation cycle
   def train_input_fn():

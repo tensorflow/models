@@ -396,7 +396,8 @@ def resnet_main(
       'train_epochs': flags_obj.train_epochs,
   }
   benchmark_logger = logger.config_benchmark_logger(flags_obj)
-  benchmark_logger.log_run_info('resnet', dataset_name, run_params)
+  benchmark_logger.log_run_info('resnet', dataset_name, run_params,
+                                test_id=flags_obj.benchmark_test_id)
 
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,

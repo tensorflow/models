@@ -440,7 +440,8 @@ def run_transformer(flags_obj):
   benchmark_logger.log_run_info(
       model_name="transformer",
       dataset_name="wmt_translate_ende",
-      run_params=params.__dict__)
+      run_params=params.__dict__,
+      test_id=flags_obj.benchmark_test_id)
 
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(
