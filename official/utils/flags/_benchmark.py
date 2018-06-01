@@ -44,7 +44,7 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
                      "BaseBenchmarkLogger which logs to STDOUT. Different "
                      "loggers will require other flags to be able to work."))
   flags.DEFINE_string(
-      name="benchmark_test_id", short_name="bti",
+      name="benchmark_test_id", short_name="bti", default=None,
       help=help_wrap("The unique test ID of the benchmark run. It could be the "
                      "combination of key parameters. It is hardware "
                      "independent and could be used compare the performance "
