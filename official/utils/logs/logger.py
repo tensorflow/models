@@ -27,10 +27,10 @@ import json
 import multiprocessing
 import numbers
 import os
-import requests
 import threading
 import uuid
 
+import requests
 from six.moves import _thread as thread
 from absl import flags
 import tensorflow as tf
