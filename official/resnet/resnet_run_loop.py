@@ -395,7 +395,8 @@ def resnet_main(
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
   }
-  benchmark_logger = logger.config_benchmark_logger(flags_obj)
+
+  benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info('resnet', dataset_name, run_params,
                                 test_id=flags_obj.benchmark_test_id)
 
@@ -416,7 +417,6 @@ def resnet_main(
         batch_size=per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1)
-
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)
   for cycle_index in range(total_training_cycle):
