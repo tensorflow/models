@@ -89,8 +89,9 @@ def get_benchmark_logger():
 
 
 @contextlib.contextmanager
-def benchmark_context(benchmark_logger):
+def benchmark_context(flag_obj):
   """Context of benchmark, which will update status of the run accordingly."""
+  benchmark_logger = config_benchmark_logger(flag_obj)
   try:
     yield
     benchmark_logger.on_finish(RUN_STATUS_SUCCESS)

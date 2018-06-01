@@ -25,6 +25,7 @@ from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
+from official.utils.logs import logger
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
 
@@ -236,14 +237,14 @@ def run_cifar(flags_obj):
   """
   input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
-
   resnet_run_loop.resnet_main(
       flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
       shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])
 
 
 def main(_):
-  run_cifar(flags.FLAGS)
+  with logger.benchmark_context(flags.FLAGS):
+    run_cifar(flags.FLAGS)
 
 
 if __name__ == '__main__':
