@@ -26,7 +26,7 @@ PATH_TO_CKPT = os.path.join(CWD_PATH,MODEL_NAME,'frozen_inference_graph.pb')
 PATH_TO_LABELS = os.path.join(CWD_PATH,'training','labelmap.pbtxt')
 
 # Number of classes the object detector can identify
-NUM_CLASSES = 6
+NUM_CLASSES = 13
 
 ## Load the label map.
 # Label maps map indices to category names, so that when our convolution
