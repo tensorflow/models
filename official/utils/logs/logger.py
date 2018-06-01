@@ -36,12 +36,16 @@ from absl import flags
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 
+from official.utils.logs import cloud_lib
+
 METRIC_LOG_FILE_NAME = "metric.log"
 BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
+GCP_TEST_ENV = "GCP"
 RUN_STATUS_SUCCESS = "success"
 RUN_STATUS_FAILURE = "failure"
 RUN_STATUS_RUNNING = "running"
+
 
 FLAGS = flags.FLAGS
 
@@ -141,9 +145,10 @@ class BaseBenchmarkLogger(object):
     if metric:
       tf.logging.info("Benchmark metric: %s", metric)
 
-  def log_run_info(self, model_name, dataset_name, run_params):
+  def log_run_info(self, model_name, dataset_name, run_params, test_id=None):
     tf.logging.info("Benchmark run: %s",
-                    _gather_run_info(model_name, dataset_name, run_params))
+                    _gather_run_info(model_name, dataset_name, run_params,
+                                     test_id))
 
   def on_finish(self, status):
     pass
@@ -183,7 +188,7 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
           tf.logging.warning("Failed to dump metric to log file: "
                              "name %s, value %s, error %s", name, value, e)
 
-  def log_run_info(self, model_name, dataset_name, run_params):
+  def log_run_info(self, model_name, dataset_name, run_params, test_id=None):
     """Collect most of the TF runtime information for the local env.
 
     The schema of the run info follows official/benchmark/datastore/schema.
@@ -193,8 +198,10 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
       dataset_name: string, the name of dataset for training and evaluation.
       run_params: dict, the dictionary of parameters for the run, it could
         include hyperparameters or other params that are important for the run.
+      test_id: string, the unique name of the test run by the combination of key
+        parameters, eg batch size, num of GPU. It is hardware independent.
     """
-    run_info = _gather_run_info(model_name, dataset_name, run_params)
+    run_info = _gather_run_info(model_name, dataset_name, run_params, test_id)
 
     with tf.gfile.GFile(os.path.join(
         self._logging_dir, BENCHMARK_RUN_LOG_FILE_NAME), "w") as f:
@@ -251,7 +258,7 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
            self._run_id,
            [metric]))
 
-  def log_run_info(self, model_name, dataset_name, run_params):
+  def log_run_info(self, model_name, dataset_name, run_params, test_id=None):
     """Collect most of the TF runtime information for the local env.
 
     The schema of the run info follows official/benchmark/datastore/schema.
@@ -261,8 +268,10 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
       dataset_name: string, the name of dataset for training and evaluation.
       run_params: dict, the dictionary of parameters for the run, it could
         include hyperparameters or other params that are important for the run.
+      test_id: string, the unique name of the test run by the combination of key
+        parameters, eg batch size, num of GPU. It is hardware independent.
     """
-    run_info = _gather_run_info(model_name, dataset_name, run_params)
+    run_info = _gather_run_info(model_name, dataset_name, run_params, test_id)
     # Starting new thread for bigquery upload in case it might take long time
     # and impact the benchmark and performance measurement. Starting a new
     # thread might have potential performance impact for model that run on CPU.
@@ -288,12 +297,13 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
          status))
 
 
-def _gather_run_info(model_name, dataset_name, run_params):
+def _gather_run_info(model_name, dataset_name, run_params, test_id):
   """Collect the benchmark run information for the local environment."""
   run_info = {
       "model_name": model_name,
       "dataset": {"name": dataset_name},
       "machine_config": {},
+      "test_id": test_id,
       "run_date": datetime.datetime.utcnow().strftime(
           _DATE_TIME_FORMAT_PATTERN)}
   _collect_tensorflow_info(run_info)
@@ -302,6 +312,7 @@ def _gather_run_info(model_name, dataset_name, run_params):
   _collect_cpu_info(run_info)
   _collect_gpu_info(run_info)
   _collect_memory_info(run_info)
+  _collect_test_environment(run_info)
   return run_info
 
 
@@ -401,6 +412,13 @@ def _collect_memory_info(run_info):
     run_info["machine_config"]["memory_available"] = vmem.available
   except ImportError:
     tf.logging.warn("'psutil' not imported. Memory info will not be logged.")
+
+
+def _collect_test_environment(run_info):
+  """Detect the local environment, eg GCE, AWS or DGX, etc."""
+  if cloud_lib.on_gcp():
+    run_info["test_environment"] = GCP_TEST_ENV
+  # TODO(scottzhu): Add more testing env detection for other platform
 
 
 def _parse_gpu_model(physical_device_desc):

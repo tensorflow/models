@@ -246,7 +246,8 @@ def run_wide_deep(flags_obj):
   }
 
   benchmark_logger = logger.get_benchmark_logger()
-  benchmark_logger.log_run_info('wide_deep', 'Census Income', run_params)
+  benchmark_logger.log_run_info('wide_deep', 'Census Income', run_params,
+                                test_id=flags_obj.benchmark_test_id)
 
   loss_prefix = LOSS_PREFIX.get(flags_obj.model_type, '')
   train_hooks = hooks_helper.get_train_hooks(
