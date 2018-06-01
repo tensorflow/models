@@ -203,6 +203,7 @@ def main(_):
 
 
 def run_ncf(_):
+  """Run NCF training and eval loop."""
   # Data preprocessing
   # The file name of training and test dataset
   train_fname = os.path.join(
