@@ -436,7 +436,7 @@ def run_transformer(flags_obj):
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
       batch_size=params.batch_size  # for ExamplesPerSecondHook
   )
-  benchmark_logger = logger.config_benchmark_logger(flags_obj)
+  benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info(
       model_name="transformer",
       dataset_name="wmt_translate_ende",
@@ -445,6 +445,7 @@ def run_transformer(flags_obj):
   # Train and evaluate transformer model
   estimator = tf.estimator.Estimator(
       model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
+
   train_schedule(
       estimator=estimator,
       # Training arguments
@@ -461,7 +462,8 @@ def run_transformer(flags_obj):
 
 
 def main(_):
-  run_transformer(flags.FLAGS)
+  with logger.benchmark_context(flags.FLAGS):
+    run_transformer(flags.FLAGS)
 
 
 if __name__ == "__main__":

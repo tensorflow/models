@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import datetime
 import json
 import multiprocessing
@@ -38,6 +39,9 @@ from tensorflow.python.client import device_lib
 METRIC_LOG_FILE_NAME = "metric.log"
 BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
+RUN_STATUS_SUCCESS = "success"
+RUN_STATUS_FAILURE = "failure"
+RUN_STATUS_RUNNING = "running"
 
 FLAGS = flags.FLAGS
 
@@ -66,6 +70,7 @@ def config_benchmark_logger(flag_obj=None):
           bigquery_uploader=bq_uploader,
           bigquery_data_set=flag_obj.bigquery_data_set,
           bigquery_run_table=flag_obj.bigquery_run_table,
+          bigquery_run_status_table=flag_obj.bigquery_run_status_table,
           bigquery_metric_table=flag_obj.bigquery_metric_table,
           run_id=str(uuid.uuid4()))
     else:
@@ -81,6 +86,19 @@ def get_benchmark_logger():
   if not _benchmark_logger:
     config_benchmark_logger()
   return _benchmark_logger
+
+
+@contextlib.contextmanager
+def benchmark_context(flag_obj):
+  """Context of benchmark, which will update status of the run accordingly."""
+  benchmark_logger = config_benchmark_logger(flag_obj)
+  try:
+    yield
+    benchmark_logger.on_finish(RUN_STATUS_SUCCESS)
+  except Exception:  # pylint: disable=broad-except
+    # Catch all the exception, update the run status to be failure, and re-raise
+    benchmark_logger.on_finish(RUN_STATUS_FAILURE)
+    raise
 
 
 class BaseBenchmarkLogger(object):
@@ -126,6 +144,9 @@ class BaseBenchmarkLogger(object):
   def log_run_info(self, model_name, dataset_name, run_params):
     tf.logging.info("Benchmark run: %s",
                     _gather_run_info(model_name, dataset_name, run_params))
+
+  def on_finish(self, status):
+    pass
 
 
 class BenchmarkFileLogger(BaseBenchmarkLogger):
@@ -184,6 +205,9 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
         tf.logging.warning("Failed to dump benchmark run info to log file: %s",
                            e)
 
+  def on_finish(self, status):
+    pass
+
 
 class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
   """Class to log the benchmark information to BigQuery data store."""
@@ -192,12 +216,14 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
                bigquery_uploader,
                bigquery_data_set,
                bigquery_run_table,
+               bigquery_run_status_table,
                bigquery_metric_table,
                run_id):
     super(BenchmarkBigQueryLogger, self).__init__()
     self._bigquery_uploader = bigquery_uploader
     self._bigquery_data_set = bigquery_data_set
     self._bigquery_run_table = bigquery_run_table
+    self._bigquery_run_status_table = bigquery_run_status_table
     self._bigquery_metric_table = bigquery_metric_table
     self._run_id = run_id
 
@@ -246,6 +272,20 @@ class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
          self._bigquery_run_table,
          self._run_id,
          run_info))
+    thread.start_new_thread(
+        self._bigquery_uploader.insert_run_status,
+        (self._bigquery_data_set,
+         self._bigquery_run_status_table,
+         self._run_id,
+         RUN_STATUS_RUNNING))
+
+  def on_finish(self, status):
+    thread.start_new_thread(
+        self._bigquery_uploader.update_run_status,
+        (self._bigquery_data_set,
+         self._bigquery_run_status_table,
+         self._run_id,
+         status))
 
 
 def _gather_run_info(model_name, dataset_name, run_params):

@@ -198,6 +198,12 @@ def per_device_batch_size(batch_size, num_gpus):
 
 
 def main(_):
+  with logger.benchmark_context(FLAGS):
+    run_ncf(FLAGS)
+
+
+def run_ncf(_):
+  """Run NCF training and eval loop."""
   # Data preprocessing
   # The file name of training and test dataset
   train_fname = os.path.join(
@@ -237,7 +243,7 @@ def main(_):
       "hr_threshold": FLAGS.hr_threshold,
       "train_epochs": FLAGS.train_epochs,
   }
-  benchmark_logger = logger.config_benchmark_logger(FLAGS)
+  benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info(
       model_name="recommendation",
       dataset_name=FLAGS.dataset,
