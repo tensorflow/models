@@ -30,19 +30,17 @@ import os
 import threading
 import uuid
 
-import requests
 from six.moves import _thread as thread
 from absl import flags
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 
+from official.utils.logs import cloud_lib
+
 METRIC_LOG_FILE_NAME = "metric.log"
 BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
 _DATE_TIME_FORMAT_PATTERN = "%Y-%m-%dT%H:%M:%S.%fZ"
-
 GCP_TEST_ENV = "GCP"
-GCP_METADATA_URL = "http://metadata/computeMetadata/v1/instance/hostname"
-GCP_METADATA_HEADER = {"Metadata-Flavor": "Google"}
 
 FLAGS = flags.FLAGS
 
@@ -377,8 +375,7 @@ def _collect_memory_info(run_info):
 
 def _collect_test_environment(run_info):
   """Detect the local environment, eg GCE, AWS or DGX, etc."""
-  response = requests.get(GCP_METADATA_URL, headers=GCP_METADATA_HEADER)
-  if response.status_code == 200:
+  if cloud_lib.on_gcp():
     run_info["test_environment"] = GCP_TEST_ENV
   # TODO(scottzhu): Add more testing env detection for other platform
 

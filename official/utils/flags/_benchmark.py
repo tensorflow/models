@@ -48,7 +48,9 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
       help=help_wrap("The unique test ID of the benchmark run. It could be the "
                      "combination of key parameters. It is hardware "
                      "independent and could be used compare the performance "
-                     "between different test runs."))
+                     "between different test runs. This flag is designed for "
+                     "human consumption, and does not have any impact within "
+                     "the system."))
 
   if benchmark_log_dir:
     flags.DEFINE_string(
