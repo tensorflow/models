@@ -6,8 +6,6 @@ import sys
 import glob
 import tensorflow as tf
 import time
-#import matplotlib
-#matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 from PIL import Image
 
@@ -21,33 +19,16 @@ if tf.__version__ < '1.4.0':
 from utils import label_map_util
 from utils import visualization_utils as vis_util
 
-# What model to run.
-#MODEL_NAME = 'ssd_mobilenet_v1_coco_2017_11_17'
-#MODEL_NAME = 'ssd_inception_v2_coco_2017_11_17'
-#MODEL_NAME = 'faster_rcnn_inception_v2_coco_2018_01_28'
-#MODEL_NAME = 'faster_rcnn_resnet101_lowproposals_coco_2018_01_28'
-#MODEL_NAME = 'faster_rcnn_resnet101_coco_2018_01_28'
-
-
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-#PATH_TO_CKPT = '/home/ziyiyang/Client/swift/depot/src/third_party/tensorflow/models/research/object_detection/my_train/frozen_inference_graph.pb'
-PATH_TO_CKPT = '/home/ziyiyang/Client/swift/depot/src/third_party/tensorflow/models/research/object_detection/my_train/model.ckpt'
-#PATH_TO_CKPT = '/home/ziyiyang/Client/swift/depot/src/third_party/tensorflow/models/research/object_detection/ssd_mobilenet_v1_coco_2017_11_17/model.ckpt'
-PATH_TO_GRAPH = 'src/third_party/tensorflow/models/research/object_detection/my_train/graph.pbtxt'
+PATH_TO_CKPT = '/home/deepdot/Dataset/check_point/model.ckpt'
 
 # List of the strings that is used to add correct label for each box.
 PATH_TO_LABELS = "/home/deepdot/Dataset/Budweiser/label_map.pbtxt"
-#PATH_TO_LABELS = "src/third_party/tensorflow/models/research/object_detection/data/mscoco_label_map.pbtxt"
 
 NUM_CLASSES = 30
 
 
 detection_graph = tf.Graph()
-#with detection_graph.as_default():
-    #with open(PATH_TO_GRAPH, 'rb') as f:
-        #graph_def = tf.GraphDef()
-        #graph_def.ParseFromString(f.read())
-        #tf.import_graph_def(graph_def, name='')
 
 print("Successfully loaded the model.")
 
@@ -64,7 +45,6 @@ def load_image_into_numpy_array(image):
 
 PATH_TO_TEST_IMAGES_DIR = 'test_images'
 TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(i)) for i in range(1, 3) ]
-PATH_TO_TEST_IMAGES_DIR = '/home/xiangxin/Downloads/test_image/test'
 PATH_TO_TEST_IMAGES_DIR = '/home/deepdot/Dataset/Budweiser/top1000/images/'
 TEST_IMAGE_PATHS = glob.glob(PATH_TO_TEST_IMAGES_DIR + '/02*.jpg')
 
@@ -74,8 +54,7 @@ IMAGE_SIZE = (12, 8)
 def run_inference_for_single_image(image, graph):
     with graph.as_default():
         with tf.Session() as sess:
-            #saver = tf.train.import_meta_graph('src/third_party/tensorflow/models/research/object_detection/ssd_mobilenet_v1_coco_2017_11_17/model.ckpt.meta')
-            saver = tf.train.import_meta_graph('src/third_party/tensorflow/models/research/object_detection/my_train/model.ckpt.meta')
+            saver = tf.train.import_meta_graph(PATH_TO_CKPT + '.meta')
             saver.restore(sess, PATH_TO_CKPT)
             # Get handles to input and output tensors
             ops = tf.get_default_graph().get_operations()
