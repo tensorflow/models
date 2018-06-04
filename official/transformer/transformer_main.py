@@ -46,8 +46,8 @@ from official.utils.export import export
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
-
 
 PARAMS_MAP = {
     "tiny": model_params.TINY_PARAMS,
@@ -396,7 +396,7 @@ def define_transformer_flags():
           "must be static (e.g. running on TPU), this setting will be ignored "
           "and static batching will always be used."))
 
-  # Flags for training with steps (may be used for debugging)
+# Flags for training with steps (may be used for debugging)
   flags.DEFINE_integer(
       name="train_steps", short_name="ts", default=None,
       help=flags_core.help_wrap("The number of steps used to train."))
@@ -473,7 +473,8 @@ def construct_estimator(flags_obj, params, schedule_manager):
     An estimator object to be used for training and eval.
   """
   if not params["use_tpu"]:
-    distribution_strategy = model_helpers.get_distribution_strategy(flags_obj)
+    distribution_strategy = distribution_utils.get_distribution_strategy(
+        flags_obj)
     return tf.estimator.Estimator(
         model_fn=model_fn, model_dir=flags_obj.model_dir, params=params,
         config=tf.estimator.RunConfig(train_distribute=distribution_strategy))
@@ -520,11 +521,17 @@ def run_transformer(flags_obj):
 
   params["tpu"] = flags_obj.tpu
   params["use_tpu"] = bool(flags_obj.tpu)  # was a tpu specified.
-  params["batch_size"] = flags_obj.batch_size or (
-      params["default_batch_size_tpu"] if params["use_tpu"]
-      else params["default_batch_size"])
   params["static_batch"] = flags_obj.static_batch or params["use_tpu"]
   params["allow_ffn_pad"] = not params["use_tpu"]
+
+  # Set batch size parameter, which depends on TPU and distribution settings.
+  if params["use_tpu"]:
+    params["batch_size"] = (
+        flags_obj.batch_size or params["default_batch_size_tpu"])
+  else:
+    params["batch_size"] = distribution_utils.per_device_batch_size(
+        flags_obj.batch_size or params["default_batch_size"],
+        flags_obj.num_gpus)
 
   schedule_manager = schedule.Manager(
       train_steps=flags_obj.train_steps,

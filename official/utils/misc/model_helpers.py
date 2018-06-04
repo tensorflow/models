@@ -22,8 +22,6 @@ import numbers
 
 import tensorflow as tf
 
-from official.utils.flags import core as flags_core
-
 
 def past_stop_threshold(stop_threshold, eval_metric):
   """Return a boolean representing whether a model should be stopped.
@@ -55,14 +53,3 @@ def past_stop_threshold(stop_threshold, eval_metric):
     return True
 
   return False
-
-
-def get_distribution_strategy(flags_obj):
-  """Return a DistributionStrategy for running the model."""
-  if flags_core.get_num_gpus(flags_obj) == 0:
-    return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
-  elif flags_core.get_num_gpus(flags_obj) == 1:
-    return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
-  else:
-    return tf.contrib.distribute.MirroredStrategy(
-        num_gpus=flags_core.get_num_gpus(flags_obj))

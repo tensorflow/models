@@ -84,7 +84,11 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
   if batch_size:
     flags.DEFINE_integer(
         name="batch_size", short_name="bs", default=32,
-        help=help_wrap("Batch size for training and evaluation."))
+        help=help_wrap("Batch size for training and evaluation. When using "
+                       "multiple gpus, this is the global batch size for "
+                       "all devices. For example, if the batch size is 32 "
+                       "and there are 4 GPUs, each GPU will get 8 examples on "
+                       "each step."))
     key_flags.append("batch_size")
 
   assert not (multi_gpu and num_gpu)
