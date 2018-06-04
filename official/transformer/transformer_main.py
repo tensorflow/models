@@ -52,8 +52,12 @@ from official.utils.misc import model_helpers
 PARAMS_MAP = {
     "tiny": model_params.TINY_PARAMS,
     "base": model_params.BASE_PARAMS,
+    "base_multi_gpu": model_params.BASE_MULTI_GPU_PARAMS,
     "big": model_params.BIG_PARAMS,
+    "big_multi_gpu": model_params.BIG_MULTI_GPU_PARAMS,
 }
+
+
 DEFAULT_TRAIN_EPOCHS = 10
 INF = int(1e9)
 BLEU_DIR = "bleu"
@@ -373,7 +377,7 @@ def define_transformer_flags():
   # Add transformer-specific flags
   flags.DEFINE_enum(
       name="param_set", short_name="mp", default="big",
-      enum_values=["base", "big", "tiny"],
+      enum_values=PARAMS_MAP.keys(),
       help=flags_core.help_wrap(
           "Parameter set to use when creating and training the model. The "
           "parameters define the input shape (batch size and max length), "
@@ -469,8 +473,10 @@ def construct_estimator(flags_obj, params, schedule_manager):
     An estimator object to be used for training and eval.
   """
   if not params["use_tpu"]:
+    distribution_strategy = model_helpers.get_distribution_strategy(flags_obj)
     return tf.estimator.Estimator(
-        model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
+        model_fn=model_fn, model_dir=flags_obj.model_dir, params=params,
+        config=tf.estimator.RunConfig(train_distribute=distribution_strategy))
 
   tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
       tpu=flags_obj.tpu,

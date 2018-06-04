@@ -377,17 +377,10 @@ def resnet_main(
       intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
       allow_soft_placement=True)
 
-  if flags_core.get_num_gpus(flags_obj) == 0:
-    distribution = tf.contrib.distribute.OneDeviceStrategy('device:CPU:0')
-  elif flags_core.get_num_gpus(flags_obj) == 1:
-    distribution = tf.contrib.distribute.OneDeviceStrategy('device:GPU:0')
-  else:
-    distribution = tf.contrib.distribute.MirroredStrategy(
-        num_gpus=flags_core.get_num_gpus(flags_obj)
-    )
+  distribution_strategy = model_helpers.get_distribution_strategy(flags_obj)
 
-  run_config = tf.estimator.RunConfig(train_distribute=distribution,
-                                      session_config=session_config)
+  run_config = tf.estimator.RunConfig(
+      train_distribute=distribution_strategy, session_config=session_config)
 
   classifier = tf.estimator.Estimator(
       model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
@@ -409,7 +402,7 @@ def resnet_main(
       'train_epochs': flags_obj.train_epochs,
   }
   if flags_obj.use_synthetic_data:
-    dataset_name = dataset_name + "-synthetic"
+    dataset_name = dataset_name + '-synthetic'
 
   benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info('resnet', dataset_name, run_params,

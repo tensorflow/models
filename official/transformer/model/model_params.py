@@ -68,6 +68,18 @@ BIG_PARAMS.update(dict(
     num_heads=16,
 ))
 
+BASE_MULTI_GPU_PARAMS = dict(BASE_PARAMS)
+BASE_MULTI_GPU_PARAMS.update(
+    default_batch_size=4096,
+    learning_rate_warmup_steps=8000
+)
+
+BIG_MULTI_GPU_PARAMS = dict(BIG_PARAMS)
+BIG_MULTI_GPU_PARAMS.update(
+    layer_postprocess_dropout=0.3,
+    learning_rate_warmup_steps=8000
+)
+
 TINY_PARAMS = dict(BASE_PARAMS)
 TINY_PARAMS.update(dict(
     default_batch_size=1024,
