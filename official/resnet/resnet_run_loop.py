@@ -395,6 +395,8 @@ def resnet_main(
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
   }
+  if flags_obj.use_synthetic_data:
+    dataset_name = dataset_name + "-synthetic"
 
   benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info('resnet', dataset_name, run_params,
