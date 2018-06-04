@@ -32,7 +32,7 @@ def require_cloud_storage(flag_names):
   """
   msg = "TPU requires GCS path for {}".format(", ".join(flag_names))
   @flags.multi_flags_validator(["tpu"] + flag_names, message=msg)
-  def _path_check(flag_values):
+  def _path_check(flag_values):  # pylint: disable=missing-docstring
     if flag_values["tpu"] is None:
       return True
 

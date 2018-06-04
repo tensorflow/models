@@ -30,13 +30,13 @@ _TRAIN, _EVAL = tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL
 
 
 NUM_EXAMPLES = {
-  tf.estimator.ModeKeys.TRAIN: 4572160,
-  # # Examples that are too long are filtered out, thus the total is less
-  # # than the total number of lines.
-  # 2399123 +  # news-commentary-v12.de-en
-  # 1920209 +  # commoncrawl.de-en
-  # 270769,    # europarl-v7.de-en
-  tf.estimator.ModeKeys.EVAL: 3000,  # newstest2013
+    tf.estimator.ModeKeys.TRAIN: 4572160,
+    # # Examples that are too long are filtered out, thus the total is less
+    # # than the total number of lines.
+    # 2399123 +  # news-commentary-v12.de-en
+    # 1920209 +  # commoncrawl.de-en
+    # 270769,    # europarl-v7.de-en
+    tf.estimator.ModeKeys.EVAL: 3000,  # newstest2013
 }
 
 
