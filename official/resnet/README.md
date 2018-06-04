@@ -60,3 +60,18 @@ num_gpus:
 + 0:  Use OneDeviceStrategy and train on CPU.
 + 1:  Use OneDeviceStrategy and train on GPU.
 + 2+: Use MirroredStrategy (data parallelism) to distribute a batch between devices.
+
+### Pre-trained model
+You can download 190 MB pre-trained versions of ResNet-50. Reported accuracies are top-1 single-crop accuracy for the ImageNet validation set. Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
+
+ResNet-50 v2 (Accuracy 76.05%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_savedmodel.tar.gz)
+
+ResNet-50 v2 (fp16, Accuracy 75.56%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_savedmodel.tar.gz)
+
+ResNet-50 v1 (Accuracy 75.91%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_savedmodel.tar.gz)
