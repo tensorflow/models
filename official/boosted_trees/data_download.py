@@ -12,7 +12,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import gzip
 import os
 import tempfile
 
@@ -46,9 +45,10 @@ def _download_higgs_data_and_save_npz(data_dir):
     temp_filename, _ = urllib.request.urlretrieve(input_url)
     # Reading and parsing 11 million csv lines takes 2~3 minutes.
     tf.logging.info("Data processing... taking multiple minutes...")
-    with gzip.open(temp_filename, "rb") as csv_file:
+    with tf.gfile.Open(temp_filename, "rb") as f:
       data = pd.read_csv(
-          csv_file,
+          filepath_or_buffer=f,
+          compression="gzip",
           dtype=np.float32,
           names=["c%02d" % i for i in range(29)]  # label + 28 features.
       ).as_matrix()
