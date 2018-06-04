@@ -134,8 +134,8 @@ def translate_file(
                        "file.")
     tf.logging.info("Writing to file %s" % output_file)
     with tf.gfile.Open(output_file, "w") as f:
-      for index in xrange(len(sorted_keys)):
-        f.write("%s\n" % translations[sorted_keys[index]])
+      for index, key in enumerate(sorted_keys):
+        f.write("%s\n" % translations[key])
 
 
 def translate_text(estimator, subtokenizer, txt):
@@ -168,10 +168,10 @@ def main(unused_argv):
 
   # Set up estimator and params
   params = transformer_main.PARAMS_MAP[FLAGS.param_set]
-  params.beam_size = _BEAM_SIZE
-  params.alpha = _ALPHA
-  params.extra_decode_length = _EXTRA_DECODE_LENGTH
-  params.batch_size = _DECODE_BATCH_SIZE
+  params["beam_size"] = _BEAM_SIZE
+  params["alpha"] = _ALPHA
+  params["extra_decode_length"] = _EXTRA_DECODE_LENGTH
+  params["batch_size"] = _DECODE_BATCH_SIZE
   estimator = tf.estimator.Estimator(
       model_fn=transformer_main.model_fn, model_dir=FLAGS.model_dir,
       params=params)
