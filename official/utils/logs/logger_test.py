@@ -66,7 +66,8 @@ class BenchmarkLoggerTest(tf.test.TestCase):
                               logger.BenchmarkFileLogger)
 
   @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
-  def test_config_benchmark_bigquery_logger(self):
+  @mock.patch.object(bigquery, "Client")
+  def test_config_benchmark_bigquery_logger(self, mock_bigquery_client):
     with flagsaver.flagsaver(benchmark_logger_type='BenchmarkBigQueryLogger'):
       logger.config_benchmark_logger()
       self.assertIsInstance(logger.get_benchmark_logger(),
