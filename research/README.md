@@ -70,5 +70,7 @@ request.
     summarization.
 -   [transformer](transformer): spatial transformer network, which allows the
     spatial manipulation of data within the network.
+-   [vid2depth](vid2depth): learning depth and ego-motion unsupervised from
+    raw monocular video.
 -   [video_prediction](video_prediction): predicting future video frames with
     neural advection.
