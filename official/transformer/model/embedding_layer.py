@@ -74,13 +74,16 @@ class EmbeddingSharedWeights(tf.layers.Layer):
 
       if self.method == "gather":
         embeddings = tf.gather(self.shared_weights, x)
+        embeddings *= tf.expand_dims(mask, -1)
       else:  # matmul
         embeddings = tpu_utils.embedding_matmul(
             embedding_table=self.shared_weights,
             values=tf.cast(x, dtype=tf.int32),
             mask=mask
         )
-      embeddings *= tf.expand_dims(mask, -1)
+        # embedding_matmul already zeros out masked positions, so
+        # `embeddings *= tf.expand_dims(mask, -1)` is unnecessary.
+
 
       # Scale embedding by the sqrt of the hidden size
       embeddings *= self.hidden_size ** 0.5
