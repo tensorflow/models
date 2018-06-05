@@ -27,8 +27,6 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.transformer.data_download import VOCAB_FILE
-from official.transformer.model import model_params
 from official.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
 
@@ -163,8 +161,7 @@ def main(unused_argv):
                     "flags --text or --file.")
     return
 
-  subtokenizer = tokenizer.Subtokenizer(
-      os.path.join(FLAGS.data_dir, FLAGS.vocab_file))
+  subtokenizer = tokenizer.Subtokenizer(FLAGS.vocab_file)
 
   # Set up estimator and params
   params = transformer_main.PARAMS_MAP[FLAGS.param_set]
@@ -196,17 +193,7 @@ def main(unused_argv):
 
 def define_translate_flags():
   """Define flags used for translation script."""
-  # Model and vocab file flags
-  flags.DEFINE_string(
-      name="data_dir", short_name="dd", default="/tmp/translate_ende",
-      help=flags_core.help_wrap(
-          "Directory for where the translate_ende_wmt32k dataset is saved."))
-  flags.DEFINE_string(
-      name="vocab_file", short_name="vf", default=VOCAB_FILE,
-      help=flags_core.help_wrap(
-          "Name of vocabulary file containing subtokens for subtokenizing the "
-          "input text or file. This file is expected to be in the directory "
-          "defined by --data_dir."))
+  # Model flags
   flags.DEFINE_string(
       name="model_dir", short_name="md", default="/tmp/transformer_model",
       help=flags_core.help_wrap(
@@ -221,6 +208,13 @@ def define_translate_flags():
           "and various other settings. The big parameter set increases the "
           "default batch size, embedding/hidden size, and filter size. For a "
           "complete list of parameters, please see model/model_params.py."))
+  flags.DEFINE_string(
+      name="vocab_file", short_name="vf", default=None,
+      help=flags_core.help_wrap(
+          "Path to subtoken vocabulary file. If data_download.py was used to "
+          "download and encode the training data, look in the data_dir to find "
+          "the vocab file."))
+  flags.mark_flag_as_required("vocab_file")
 
   flags.DEFINE_string(
       name="text", default=None,
