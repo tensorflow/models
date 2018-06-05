@@ -82,7 +82,7 @@ def model_fn(features, labels, mode, params):
         raise NotImplementedError("Prediction is not yet supported on TPUs.")
       return tf.estimator.EstimatorSpec(
           tf.estimator.ModeKeys.PREDICT,
-          predictions=output,
+          predictions=logits,
           export_outputs={
               "translate": tf.estimator.export.PredictOutput(logits)
           })
