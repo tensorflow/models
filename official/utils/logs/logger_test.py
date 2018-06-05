@@ -66,11 +66,29 @@ class BenchmarkLoggerTest(tf.test.TestCase):
                               logger.BenchmarkFileLogger)
 
   @unittest.skipIf(bigquery is None, 'Bigquery dependency is not installed.')
-  def test_config_benchmark_bigquery_logger(self):
+  @mock.patch.object(bigquery, "Client")
+  def test_config_benchmark_bigquery_logger(self, mock_bigquery_client):
     with flagsaver.flagsaver(benchmark_logger_type='BenchmarkBigQueryLogger'):
       logger.config_benchmark_logger()
       self.assertIsInstance(logger.get_benchmark_logger(),
                             logger.BenchmarkBigQueryLogger)
+
+  @mock.patch("official.utils.logs.logger.config_benchmark_logger")
+  def test_benchmark_context(self, mock_config_benchmark_logger):
+    mock_logger = mock.MagicMock()
+    mock_config_benchmark_logger.return_value = mock_logger
+    with logger.benchmark_context(None):
+      tf.logging.info("start benchmarking")
+    mock_logger.on_finish.assert_called_once_with(logger.RUN_STATUS_SUCCESS)
+
+  @mock.patch("official.utils.logs.logger.config_benchmark_logger")
+  def test_benchmark_context_failure(self, mock_config_benchmark_logger):
+    mock_logger = mock.MagicMock()
+    mock_config_benchmark_logger.return_value = mock_logger
+    with self.assertRaises(RuntimeError):
+      with logger.benchmark_context(None):
+        raise RuntimeError("training error")
+    mock_logger.on_finish.assert_called_once_with(logger.RUN_STATUS_FAILURE)
 
 
 class BaseBenchmarkLoggerTest(tf.test.TestCase):
@@ -200,6 +218,24 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     metric_log = os.path.join(log_dir, "metric.log")
     self.assertFalse(tf.gfile.Exists(metric_log))
 
+  @mock.patch("official.utils.logs.logger._gather_run_info")
+  def test_log_run_info(self, mock_gather_run_info):
+    log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
+    log = logger.BenchmarkFileLogger(log_dir)
+    run_info = {"model_name": "model_name",
+                "dataset": "dataset_name",
+                "run_info": "run_value"}
+    mock_gather_run_info.return_value = run_info
+    log.log_run_info("model_name", "dataset_name", {})
+
+    run_log = os.path.join(log_dir, "benchmark_run.log")
+    self.assertTrue(tf.gfile.Exists(run_log))
+    with tf.gfile.GFile(run_log) as f:
+      run_info = json.loads(f.readline())
+      self.assertEqual(run_info["model_name"], "model_name")
+      self.assertEqual(run_info["dataset"], "dataset_name")
+      self.assertEqual(run_info["run_info"], "run_value")
+
   def test_collect_tensorflow_info(self):
     run_info = {}
     logger._collect_tensorflow_info(run_info)
@@ -274,8 +310,8 @@ class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
 
     self.mock_bq_uploader = mock.MagicMock()
     self.logger = logger.BenchmarkBigQueryLogger(
-        self.mock_bq_uploader, "dataset", "run_table", "metric_table",
-        "run_id")
+        self.mock_bq_uploader, "dataset", "run_table", "run_status_table",
+        "metric_table", "run_id")
 
   def tearDown(self):
     super(BenchmarkBigQueryLoggerTest, self).tearDown()
@@ -299,6 +335,29 @@ class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
     time.sleep(1)
     self.mock_bq_uploader.upload_benchmark_metric_json.assert_called_once_with(
         "dataset", "metric_table", "run_id", expected_metric_json)
+
+  @mock.patch("official.utils.logs.logger._gather_run_info")
+  def test_log_run_info(self, mock_gather_run_info):
+    run_info = {"model_name": "model_name",
+                "dataset": "dataset_name",
+                "run_info": "run_value"}
+    mock_gather_run_info.return_value = run_info
+    self.logger.log_run_info("model_name", "dataset_name", {})
+    # log_metric will call upload_benchmark_metric_json in a separate thread.
+    # Give it some grace period for the new thread before assert.
+    time.sleep(1)
+    self.mock_bq_uploader.upload_benchmark_run_json.assert_called_once_with(
+        "dataset", "run_table", "run_id", run_info)
+    self.mock_bq_uploader.insert_run_status.assert_called_once_with(
+        "dataset", "run_status_table", "run_id", "running")
+
+  def test_on_finish(self):
+    self.logger.on_finish(logger.RUN_STATUS_SUCCESS)
+    # log_metric will call upload_benchmark_metric_json in a separate thread.
+    # Give it some grace period for the new thread before assert.
+    time.sleep(1)
+    self.mock_bq_uploader.update_run_status.assert_called_once_with(
+        "dataset", "run_status_table", "run_id", logger.RUN_STATUS_SUCCESS)
 
 
 if __name__ == "__main__":

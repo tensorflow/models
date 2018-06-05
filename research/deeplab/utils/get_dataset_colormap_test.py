@@ -70,6 +70,22 @@ class VisualizationUtilTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       get_dataset_colormap.create_label_colormap('unsupported_dataset')
 
+  def testUnExpectedLabelDimensionForLabelToADE20KColorImage(self):
+    label = np.array([250])
+    with self.assertRaises(ValueError):
+      get_dataset_colormap.label_to_color_image(
+          label, get_dataset_colormap.get_ade20k_name())
+
+  def testFirstColorInADE20KColorMap(self):
+    label = np.array([[1, 3], [10, 20]])
+    expected_result = np.array([
+        [[120, 120, 120], [6, 230, 230]],
+        [[4, 250, 7], [204, 70, 3]]
+    ])
+    colored_label = get_dataset_colormap.label_to_color_image(
+        label, get_dataset_colormap.get_ade20k_name())
+    self.assertTrue(np.array_equal(colored_label, expected_result))
+
 
 if __name__ == '__main__':
   tf.test.main()

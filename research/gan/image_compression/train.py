@@ -20,7 +20,8 @@ from __future__ import division
 from __future__ import print_function
 
 
-
+from absl import flags
+from absl import logging
 import tensorflow as tf
 
 import data_provider
@@ -29,7 +30,6 @@ import summaries
 
 
 tfgan = tf.contrib.gan
-flags = tf.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('batch_size', 32, 'The number of images in each batch.')
@@ -212,6 +212,6 @@ def _get_gan_model(generator_inputs, generated_data, real_data,
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   tf.app.run()
 

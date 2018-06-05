@@ -24,12 +24,13 @@ import tensorflow as tf
 class FeedFowardNetwork(tf.layers.Layer):
   """Fully connected feedforward network."""
 
-  def __init__(self, hidden_size, filter_size, relu_dropout, train):
+  def __init__(self, hidden_size, filter_size, relu_dropout, train, allow_pad):
     super(FeedFowardNetwork, self).__init__()
     self.hidden_size = hidden_size
     self.filter_size = filter_size
     self.relu_dropout = relu_dropout
     self.train = train
+    self.allow_pad = allow_pad
 
     self.filter_dense_layer = tf.layers.Dense(
         filter_size, use_bias=True, activation=tf.nn.relu, name="filter_layer")
@@ -42,13 +43,16 @@ class FeedFowardNetwork(tf.layers.Layer):
     Args:
       x: tensor with shape [batch_size, length, hidden_size]
       padding: (optional) If set, the padding values are temporarily removed
-        from x. The padding values are placed back in the output tensor in the
-        same locations. shape [batch_size, length]
+        from x (provided self.allow_pad is set). The padding values are placed
+        back in the output tensor in the same locations.
+        shape [batch_size, length]
 
     Returns:
       Output of the feedforward network.
       tensor with shape [batch_size, length, hidden_size]
     """
+    padding = None if not self.allow_pad else padding
+
     # Retrieve dynamically known shapes
     batch_size = tf.shape(x)[0]
     length = tf.shape(x)[1]

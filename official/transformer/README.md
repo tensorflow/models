@@ -19,6 +19,7 @@ The model also applies embeddings on the input and output tokens, and adds a con
     * [Model training and evaluation](#model-training-and-evaluation)
     * [Translate using the model](#translate-using-the-model)
     * [Compute official BLEU score](#compute-official-bleu-score)
+    * [TPU](#tpu)
   * [Export trained model](#export-trained-model)
     * [Example translation](#example-translation)
   * [Implementation overview](#implementation-overview)
@@ -207,6 +208,10 @@ big | 28.9
    * `--translation`: Path to file containing generated translations.
    * `--reference`: Path to file containing reference translations.
    * Use the `--help` or `-h` flag to get a full list of possible arguments.
+   
+5. ### TPU
+   TPU support for this version of Transformer is experimental. Currently it is present for
+   demonstration purposes only, but will be optimized in the coming weeks.
 
 ## Export trained model
 To export the model as a Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format, use the argument `--export_dir` when running `transformer_main.py`. A folder will be created in the directory with the name as the timestamp (e.g. $EXPORT_DIR/1526427396).
@@ -299,8 +304,6 @@ Follow the steps below to use the translate signature def:
    * `[18744, 145, 297, 1] = "Hallo Welt<EOS>"`
    * `[5450, 4642, 21, 11, 297, 3, 1] = "Abschied von der Welt.<EOS>"`
    * `[25940, 22, 66, 103, 21713, 31, 102, 1] = "Möchten Sie einen Kuchen?<EOS>"`
-
-
 
 ## Implementation overview
 

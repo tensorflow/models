@@ -1,8 +1,9 @@
 # TensorFlow DeepLab Model Zoo
 
-We provide deeplab models pretrained on PASCAL VOC 2012 and Cityscapes datasets
-for reproducing our results, as well as some checkpoints that are only
-pretrained on ImageNet for training your own models.
+We provide deeplab models pretrained several datasets, including (1) PASCAL VOC
+2012, (2) Cityscapes, and (3) ADE20K for reproducing our results, as well as
+some checkpoints that are only pretrained on ImageNet for training your own
+models.
 
 ## DeepLab models trained on PASCAL VOC 2012
 
@@ -69,6 +70,22 @@ Checkpoint name                                                                 
 [mobilenetv2_coco_cityscapes_trainfine](http://download.tensorflow.org/models/deeplabv3_mnv2_cityscapes_train_2018_02_05.tar.gz) | 16 <br> 8 | [1.0] <br> [0.75:0.25:1.25] | No <br> Yes     | 21.27B <br> 433.24B   | 0.8 <br> 51.12 | 70.71% (val) <br> 73.57% (val) | 23MB
 [xception_cityscapes_trainfine](http://download.tensorflow.org/models/deeplabv3_cityscapes_train_2018_02_06.tar.gz)              | 16 <br> 8 | [1.0] <br> [0.75:0.25:1.25] | No <br> Yes     | 418.64B <br> 8677.92B | 5.0 <br> 422.8 | 78.79% (val) <br> 80.42% (val) | 439MB
 
+## DeepLab models trained on ADE20K
+
+### Model details
+
+We provide some checkpoints that have been pretrained on ADE20K training set.
+Note that the model has only been pretrained on ImageNet, following the
+dataset rule.
+
+Checkpoint name                       | Network backbone | Pretrained dataset                      | ASPP                                             | Decoder
+------------------------------------- | :--------------: | :-------------------------------------: | :----------------------------------------------: | :-----:
+xception_ade20k_train                 | Xception_65      | ImageNet <br> ADE20K training set       | [6, 12, 18] for OS=16 <br> [12, 24, 36] for OS=8 | OS = 4
+
+Checkpoint name                       | Eval OS   | Eval scales                 | Left-right Flip |  mIOU                 | Pixel-wise Accuracy | File Size
+------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :-------------------: | :-------:
+[xception_ade20k_train](http://download.tensorflow.org/models/deeplabv3_xception_ade20k_train_2018_05_14.tar.gz)              | 16 | [0.5:0.25:1.75] | Yes     | 43.54% (val) | 81.74% (val) | 439MB
+
 ## Checkpoints pretrained on ImageNet
 
 Un-tar'ed directory includes:
@@ -84,15 +101,24 @@ one could use this for training your own models.
     [MobileNet-V2](https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet)
     for details.
 
-*   xception: We adapt the original Xception model to the task of semantic
-    segmentation with the following changes: (1) more layers, (2) all max
-    pooling operations are replaced by strided (atrous) separable convolutions,
-    and (3) extra batch-norm and ReLU after each 3x3 depthwise convolution are
-    added.
+*   xception_{41,65,71}: We adapt the original Xception model to the task of
+    semantic segmentation with the following changes: (1) more layers, (2) all
+    max pooling operations are replaced by strided (atrous) separable
+    convolutions, and (3) extra batch-norm and ReLU after each 3x3 depthwise
+    convolution are added. We provide three Xception model variants with
+    different network depths.
+
+*   resnet_v1_{50,101}_beta: We modify the original ResNet-101 [10], similar to
+    PSPNet [11] by replacing the first 7x7 convolution with three 3x3
+    convolutions. See resnet_v1_beta.py for more details.
 
 Model name                                                                             | File Size
 -------------------------------------------------------------------------------------- | :-------:
-[xception](http://download.tensorflow.org/models/deeplabv3_xception_2018_01_04.tar.gz) | 447MB
+[xception_41](http://download.tensorflow.org/models/xception_41_2018_05_09.tar.gz ) | 288MB
+[xception_65](http://download.tensorflow.org/models/deeplabv3_xception_2018_01_04.tar.gz) | 447MB
+[xception_71](http://download.tensorflow.org/models/xception_71_2018_05_09.tar.gz  ) | 474MB
+[resnet_v1_50_beta](http://download.tensorflow.org/models/resnet_v1_50_2018_05_04.tar.gz)      | 274MB
+[resnet_v1_101_beta](http://download.tensorflow.org/models/resnet_v1_101_2018_05_04.tar.gz)    | 477MB
 
 ## References
 
@@ -132,3 +158,16 @@ Model name                                                                      
 9.  **ImageNet Large Scale Visual Recognition Challenge**<br />
     Olga Russakovsky, Jia Deng, Hao Su, Jonathan Krause, Sanjeev Satheesh, Sean Ma, Zhiheng Huang, Andrej Karpathy, Aditya Khosla, Michael Bernstein, Alexander C. Berg, Li Fei-Fei<br />
     [[link]](http://www.image-net.org/). IJCV, 2015.
+
+10. **Deep Residual Learning for Image Recognition**<br />
+    Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun<br />
+    [[link]](https://arxiv.org/abs/1512.03385). CVPR, 2016.
+
+11. **Pyramid Scene Parsing Network**<br />
+    Hengshuang Zhao, Jianping Shi, Xiaojuan Qi, Xiaogang Wang, Jiaya Jia<br />
+    [[link]](https://arxiv.org/abs/1612.01105). In CVPR, 2017.
+
+12. **Scene Parsing through ADE20K Dataset**<br />
+    Bolei Zhou, Hang Zhao, Xavier Puig, Sanja Fidler, Adela Barriuso, Antonio Torralba<br />
+    [[link]](http://groups.csail.mit.edu/vision/datasets/ADE20K/). In CVPR,
+    2017.
