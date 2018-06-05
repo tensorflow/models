@@ -11,11 +11,11 @@ Project website: [https://sites.google.com/view/vid2depth](https://sites.google.
 ArXiv: [https://arxiv.org/pdf/1802.05522.pdf](https://arxiv.org/pdf/1802.05522.pdf)
 
 <p align="center">
-<a href="http://sites.google.com/corp/view/vid2depth"><img src='https://storage.googleapis.com/vid2depth/media/sample_video_small.gif'></a>
+<a href="https://sites.google.com/view/vid2depth"><img src='https://storage.googleapis.com/vid2depth/media/sample_video_small.gif'></a>
 </p>
 
 <p align="center">
-<a href="http://sites.google.com/corp/view/vid2depth"><img src='https://storage.googleapis.com/vid2depth/media/approach.png' width=400></a>
+<a href="https://sites.google.com/view/vid2depth"><img src='https://storage.googleapis.com/vid2depth/media/approach.png' width=400></a>
 </p>
 
 ## 1. Installation
