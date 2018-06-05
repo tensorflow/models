@@ -19,16 +19,22 @@ from __future__ import division
 from __future__ import print_function
 
 
+from absl import flags
+from absl.testing import parameterized
 import tensorflow as tf
 import eval  # pylint:disable=redefined-builtin
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 mock = tf.test.mock
 
 
-class EvalTest(tf.test.TestCase):
+class EvalTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _test_build_graph_helper(self, eval_real_images, conditional_eval):
+  @parameterized.named_parameters(
+      ('RealData', True, False),
+      ('GeneratedData', False, False),
+      ('GeneratedDataConditional', False, True))
+  def test_build_graph(self, eval_real_images, conditional_eval):
     FLAGS.eval_real_images = eval_real_images
     FLAGS.conditional_eval = conditional_eval
     # Mock `frechet_inception_distance` and `inception_score`, which are
@@ -39,15 +45,6 @@ class EvalTest(tf.test.TestCase):
         mock_fid.return_value = 1.0
         mock_iscore.return_value = 1.0
         eval.main(None, run_eval_loop=False)
-
-  def test_build_graph_realdata(self):
-    self._test_build_graph_helper(True, False)
-
-  def test_build_graph_generateddata(self):
-    self._test_build_graph_helper(False, False)
-
-  def test_build_graph_generateddataconditional(self):
-    self._test_build_graph_helper(False, True)
 
 
 if __name__ == '__main__':

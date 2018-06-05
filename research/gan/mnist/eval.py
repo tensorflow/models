@@ -20,13 +20,14 @@ from __future__ import print_function
 
 
 
+from absl import app
+from absl import flags
 import tensorflow as tf
 
 import data_provider
 import networks
 import util
 
-flags = tf.flags
 FLAGS = flags.FLAGS
 tfgan = tf.contrib.gan
 
@@ -100,4 +101,4 @@ def main(_, run_eval_loop=True):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main)

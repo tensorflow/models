@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import app
+from absl import flags
 import tensorflow as tf
 
 import data_provider
@@ -25,8 +27,7 @@ import networks
 import util
 
 
-flags = tf.flags
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 tfgan = tf.contrib.gan
 
 flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
@@ -155,4 +156,4 @@ def _get_generated_data(num_images_generated, conditional_eval, num_classes):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main)
