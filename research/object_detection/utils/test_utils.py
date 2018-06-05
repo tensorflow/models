@@ -138,3 +138,36 @@ def create_random_boxes(num_boxes, max_height, max_width):
   boxes[:, 3] = np.maximum(x_1, x_2)
 
   return boxes.astype(np.float32)
+
+
+def first_rows_close_as_set(a, b, k=None, rtol=1e-6, atol=1e-6):
+  """Checks if first K entries of two lists are close, up to permutation.
+
+  Inputs to this assert are lists of items which can be compared via
+  numpy.allclose(...) and can be sorted.
+
+  Args:
+    a: list of items which can be compared via numpy.allclose(...) and are
+      sortable.
+    b: list of items which can be compared via numpy.allclose(...) and are
+      sortable.
+    k: a non-negative integer.  If not provided, k is set to be len(a).
+    rtol: relative tolerance.
+    atol: absolute tolerance.
+
+  Returns:
+    boolean, True if input lists a and b have the same length and
+    the first k entries of the inputs satisfy numpy.allclose() after
+    sorting entries.
+  """
+  if not isinstance(a, list) or not isinstance(b, list) or len(a) != len(b):
+    return False
+  if not k:
+    k = len(a)
+  k = min(k, len(a))
+  a_sorted = sorted(a[:k])
+  b_sorted = sorted(b[:k])
+  return all([
+      np.allclose(entry_a, entry_b, rtol, atol)
+      for (entry_a, entry_b) in zip(a_sorted, b_sorted)
+  ])

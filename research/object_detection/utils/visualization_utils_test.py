@@ -48,6 +48,9 @@ class VisualizationUtilsTest(tf.test.TestCase):
     image = np.concatenate((imu, imd), axis=0)
     return image
 
+  def create_test_image_with_five_channels(self):
+    return np.full([100, 200, 5], 255, dtype=np.uint8)
+
   def test_draw_bounding_box_on_image(self):
     test_image = self.create_colorful_test_image()
     test_image = Image.fromarray(test_image)
@@ -143,6 +146,32 @@ class VisualizationUtilsTest(tf.test.TestCase):
           logging.info('Writing output image %d to %s', i, output_file)
           image_pil = Image.fromarray(images_with_boxes_np[i, ...])
           image_pil.save(output_file)
+
+  def test_draw_bounding_boxes_on_image_tensors_with_additional_channels(self):
+    """Tests the case where input image tensor has more than 3 channels."""
+    category_index = {1: {'id': 1, 'name': 'dog'}}
+    image_np = self.create_test_image_with_five_channels()
+    images_np = np.stack((image_np, image_np), axis=0)
+
+    with tf.Graph().as_default():
+      images_tensor = tf.constant(value=images_np, dtype=tf.uint8)
+      boxes = tf.constant(0, dtype=tf.float32, shape=[2, 0, 4])
+      classes = tf.constant(0, dtype=tf.int64, shape=[2, 0])
+      scores = tf.constant(0, dtype=tf.float32, shape=[2, 0])
+      images_with_boxes = (
+          visualization_utils.draw_bounding_boxes_on_image_tensors(
+              images_tensor,
+              boxes,
+              classes,
+              scores,
+              category_index,
+              min_score_thresh=0.2))
+
+      with self.test_session() as sess:
+        sess.run(tf.global_variables_initializer())
+
+        final_images_np = sess.run(images_with_boxes)
+        self.assertEqual((2, 100, 200, 3), final_images_np.shape)
 
   def test_draw_keypoints_on_image(self):
     test_image = self.create_colorful_test_image()
