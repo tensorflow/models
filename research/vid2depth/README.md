@@ -6,9 +6,9 @@ Reza Mahjourian, Martin Wicke, Anelia Angelova
 
 CVPR 2018
 
-Project website: [http://sites.google.com/corp/view/vid2depth](https://sites.google.com/corp/view/vid2depth)
+Project website: [https://sites.google.com/view/vid2depth](https://sites.google.com/view/vid2depth)
 
-ArXiv: [https://arxiv.org/abs/1802.05522](https://arxiv.org/abs/1802.05522)
+ArXiv: [https://arxiv.org/pdf/1802.05522.pdf](https://arxiv.org/pdf/1802.05522.pdf)
 
 <p align="center">
 <a href="http://sites.google.com/corp/view/vid2depth"><img src='https://storage.googleapis.com/vid2depth/media/sample_video_small.gif'></a>
