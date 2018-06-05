@@ -11,7 +11,7 @@ Project website: [http://sites.google.com/corp/view/vid2depth](https://sites.goo
 ArXiv: [https://arxiv.org/abs/1802.05522](https://arxiv.org/abs/1802.05522)
 
 <p align="center">
-<a href="http://sites.google.com/corp/view/vid2depth"><img src='https://storage.googleapis.com/vid2depth/media/sample_video.gif'></a>
+<a href="http://sites.google.com/corp/view/vid2depth"><img src='https://storage.googleapis.com/vid2depth/media/sample_video_small.gif'></a>
 </p>
 
 <p align="center">
