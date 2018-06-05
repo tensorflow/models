@@ -33,10 +33,19 @@ def generator(input_images):
 
   Returns:
     Returns generated image batch.
+
+  Raises:
+    ValueError: If shape of last dimension (channels) is not defined.
   """
   input_images.shape.assert_has_rank(4)
+  input_size = input_images.shape.as_list()
+  channels = input_size[-1]
+  if channels is None:
+    raise ValueError(
+        'Last dimension shape must be known but is None: %s' % input_size)
   with tf.contrib.framework.arg_scope(cyclegan.cyclegan_arg_scope()):
-    output_images, _ = cyclegan.cyclegan_generator_resnet(input_images)
+    output_images, _ = cyclegan.cyclegan_generator_resnet(input_images,
+                                                          num_outputs=channels)
   return output_images
 
 
