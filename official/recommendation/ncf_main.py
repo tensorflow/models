@@ -146,8 +146,7 @@ def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
   Returns:
     est_model: The converted Estimator.
   """
-  # TODO(b/79866338): update GradientDescentOptimizer with AdamOptimizer
-  optimizer = tf.train.GradientDescentOptimizer(
+  optimizer = tf.train.AdamOptimizer(
       learning_rate=FLAGS.learning_rate)
   keras_model.compile(optimizer=optimizer, loss="binary_crossentropy")
 
