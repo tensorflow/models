@@ -133,9 +133,11 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
 
   # Write to CSV file which contains three columns:
   # "wav_filename", "wav_filesize", "transcript".
+  csv_file_path = os.path.join(output_dir, output_file)
   df = pandas.DataFrame(
       data=files, columns=["wav_filename", "wav_filesize", "transcript"])
-  df.to_csv(os.path.join(output_dir, output_file), index=False)
+  df.to_csv(csv_file_path, index=False, sep="\t")
+  tf.logging.info("Successfully generated csv file {}".format(csv_file_path))
 
 
 def download_and_process_entire_dataset(directory):
