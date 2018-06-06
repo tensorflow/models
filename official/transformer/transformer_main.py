@@ -362,7 +362,7 @@ def define_transformer_flags():
       num_parallel_calls=True,
       inter_op=False,
       intra_op=False,
-      synthetic_data=False,
+      synthetic_data=True,
       max_train_steps=False,
       dtype=False
   )
@@ -523,6 +523,8 @@ def run_transformer(flags_obj):
   params["use_tpu"] = bool(flags_obj.tpu)  # was a tpu specified.
   params["static_batch"] = flags_obj.static_batch or params["use_tpu"]
   params["allow_ffn_pad"] = not params["use_tpu"]
+
+  params["use_synthetic_datda"] = flags_obj.use_synthetic_data
 
   # Set batch size parameter, which depends on TPU and distribution settings.
   if params["use_tpu"]:

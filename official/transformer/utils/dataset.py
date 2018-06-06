@@ -251,9 +251,21 @@ def _read_and_batch_from_files(
   return dataset
 
 
+def _generate_synthetic_data(params):
+  batch = length = int(math.sqrt(params["batch_size"]))
+  dataset = tf.data.Dataset.from_tensors(tf.ones([batch, length], tf.int64))
+  dataset = dataset.map(lambda x: (x, x))
+  dataset = dataset.cache()
+  dataset = dataset.repeat(1000)
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  return dataset
+
+
 def train_input_fn(params):
   """Load and return dataset of batched examples for use during training."""
   file_pattern = os.path.join(params.get("data_dir", ""), "*train*")
+  if params.get("use_synthetic_data", False):
+    return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
       file_pattern, params["batch_size"], params["max_length"],
       params["num_parallel_calls"], shuffle=True,
@@ -263,7 +275,11 @@ def train_input_fn(params):
 def eval_input_fn(params):
   """Load and return dataset of batched examples for use during evaluation."""
   file_pattern = os.path.join(params.get("data_dir", ""), "*dev*")
+  if params.get("use_synthetic_data", False):
+    return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
       file_pattern, params["batch_size"], params["max_length"],
       params["num_parallel_calls"], shuffle=False, repeat=1,
       static_batch=params["static_batch"])
+
+
