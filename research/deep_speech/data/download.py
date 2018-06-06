@@ -19,24 +19,18 @@ from __future__ import division
 from __future__ import print_function
 
 import codecs
-import csv
 import fnmatch
 import os
-import sys
 import tarfile
 import tempfile
 import unicodedata
 
+from absl import app as absl_app
 from absl import flags as absl_flags
+import pandas
 from six.moves import urllib
 from sox import Transformer
 import tensorflow as tf
-
-FLAGS = absl_flags.FLAGS
-
-absl_flags.DEFINE_string(
-    "data_dir", "/tmp/librispeech_data",
-    "Directory to download data and extract the tarball")
 
 LIBRI_SPEECH_URLS = {
     "train-clean-100":
@@ -58,6 +52,7 @@ LIBRI_SPEECH_URLS = {
 
 def download_and_extract(directory, url):
   """Download and extract the given split of dataset.
+
   Args:
     directory: the directory where to extract the tarball.
     url: the url to download the data file.
@@ -65,22 +60,25 @@ def download_and_extract(directory, url):
 
   if not tf.gfile.Exists(directory):
     tf.gfile.MakeDirs(directory)
+
   _, tar_filepath = tempfile.mkstemp(suffix=".tar.gz")
-  tf.logging.info("Downloading %s to %s" % (url, tar_filepath))
-  urllib.request.urlretrieve(url, tar_filepath)
-  with tarfile.open(tar_filepath, "r") as tar:
-    try:
+  try:
+    tf.logging.info("Downloading %s to %s" % (url, tar_filepath))
+    urllib.request.urlretrieve(url, tar_filepath)
+    with tarfile.open(tar_filepath, "r") as tar:
       tar.extractall(directory)
-    finally:
-      tf.gfile.Remove(tar_filepath)
+  finally:
+    tf.gfile.Remove(tar_filepath)
 
 
 def convert_audio_and_split_transcript(input_dir, source_name, target_name,
                                        output_dir, output_file):
   """Convert FLAC to WAV and split the transcript.
 
-  For audio file, convert the format from FLAC to WAV using the sox.Transformer library.
-  For transcripts, each line contains the sequence id and the corresponding transcript (separated by space):
+  For audio file, convert the format from FLAC to WAV using the sox.Transformer
+  library.
+  For transcripts, each line contains the sequence id and the corresponding
+  transcript (separated by space):
   Input data format: seq-id transcript_of_seq-id
   For example:
    1-2-0 transcript_of_1-2-0.flac
@@ -96,7 +94,8 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
   Args:
     input_dir: the directory which holds the input dataset.
     source_name: the name of the specified dataset. e.g. test-clean
-    target_name: the directory name for the newly generated audio files. e.g. test-clean-wav
+    target_name: the directory name for the newly generated audio files.
+                 e.g. test-clean-wav
     output_dir: the directory to place the newly generated csv files.
     output_file: the name of the newly generated csv file. e.g. test-clean.csv
   """
@@ -117,7 +116,7 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
       trans_file = os.path.join(root, filename)
       with codecs.open(trans_file, "r", "utf-8") as fin:
         for line in fin:
-          seqid, transcript = line.split(' ', 1)
+          seqid, transcript = line.split(" ", 1)
           # We do a encode-decode transformation here because the output type
           # of encode is a bytes object, we need convert it to string.
           transcript = unicodedata.normalize("NFKD", transcript).encode(
@@ -134,16 +133,9 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
 
   # Write to CSV file which contains three columns:
   # "wav_filename", "wav_filesize", "transcript".
-  with open(os.path.join(output_dir, output_file), "w") as csvfile:
-    fieldnames = ["wav_filename", "wav_filesize", "transcript"]
-    writer = csv.DictWriter(csvfile, delimiter="\t", fieldnames=fieldnames)
-    writer.writeheader()
-    for item in files:
-      writer.writerow({
-          "wav_filename": item[0],
-          "wav_filesize": item[1],
-          "transcript": item[2]
-      })
+  df = pandas.DataFrame(
+      data=files, columns=["wav_filename", "wav_filesize", "transcript"])
+  df.to_csv(os.path.join(output_dir, output_file), index=False)
 
 
 def download_and_process_entire_dataset(directory):
@@ -156,12 +148,22 @@ def download_and_process_entire_dataset(directory):
         dataset_dir + "/LibriSpeech", dataset + ".csv")
 
 
+def define_data_download_flags():
+  """Define flags for data downloading."""
+  absl_flags.DEFINE_string(
+      "data_dir", "/tmp/librispeech_data",
+      "Directory to download data and extract the tarball")
+
+
 def main(_):
   if not tf.gfile.Exists(FLAGS.data_dir):
     tf.gfile.MakeDirs(FLAGS.data_dir)
   download_and_process_entire_dataset(FLAGS.data_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
-  tf.app.run()
+  define_data_download_flags()
+  FLAGS = absl_flags.FLAGS
+  absl_app.run(main)
+
