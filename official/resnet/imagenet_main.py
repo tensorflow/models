@@ -25,6 +25,7 @@ from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
+from official.utils.logs import logger
 from official.resnet import imagenet_preprocessing
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
@@ -321,7 +322,8 @@ def run_imagenet(flags_obj):
 
 
 def main(_):
-  run_imagenet(flags.FLAGS)
+  with logger.benchmark_context(flags.FLAGS):
+    run_imagenet(flags.FLAGS)
 
 
 if __name__ == '__main__':

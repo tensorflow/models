@@ -35,13 +35,15 @@ _TENSORS_TO_LOG = dict((x, x) for x in ['learning_rate',
                                         'train_accuracy'])
 
 
-def get_train_hooks(name_list, **kwargs):
+def get_train_hooks(name_list, use_tpu=False, **kwargs):
   """Factory for getting a list of TensorFlow hooks for training by name.
 
   Args:
     name_list: a list of strings to name desired hook classes. Allowed:
       LoggingTensorHook, ProfilerHook, ExamplesPerSecondHook, which are defined
       as keys in HOOKS
+    use_tpu: Boolean of whether computation occurs on a TPU. This will disable
+      hooks altogether.
     **kwargs: a dictionary of arguments to the hooks.
 
   Returns:
@@ -52,6 +54,11 @@ def get_train_hooks(name_list, **kwargs):
   """
 
   if not name_list:
+    return []
+
+  if use_tpu:
+    tf.logging.warning("hooks_helper received name_list `{}`, but a TPU is "
+                       "specified. No hooks will be used.".format(name_list))
     return []
 
   train_hooks = []
@@ -119,9 +126,9 @@ def get_examples_per_second_hook(every_n_steps=100,
     Returns a ProfilerHook that writes out timelines that can be loaded into
     profiling tools like chrome://tracing.
   """
-  return hooks.ExamplesPerSecondHook(every_n_steps=every_n_steps,
-                                     batch_size=batch_size,
-                                     warm_steps=warm_steps)
+  return hooks.ExamplesPerSecondHook(
+      batch_size=batch_size, every_n_steps=every_n_steps,
+      warm_steps=warm_steps, metric_logger=logger.get_benchmark_logger())
 
 
 def get_logging_metric_hook(tensors_to_log=None,

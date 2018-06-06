@@ -57,7 +57,8 @@ class Transformer(object):
     self.params = params
 
     self.embedding_softmax_layer = embedding_layer.EmbeddingSharedWeights(
-        params.vocab_size, params.hidden_size)
+        params["vocab_size"], params["hidden_size"],
+        method="matmul" if params["tpu"] else "gather")
     self.encoder_stack = EncoderStack(params, train)
     self.decoder_stack = DecoderStack(params, train)
 
@@ -79,7 +80,7 @@ class Transformer(object):
     # Variance scaling is used here because it seems to work in many problems.
     # Other reasonable initializers may also work just as well.
     initializer = tf.variance_scaling_initializer(
-        self.params.initializer_gain, mode="fan_avg", distribution="uniform")
+        self.params["initializer_gain"], mode="fan_avg", distribution="uniform")
     with tf.variable_scope("Transformer", initializer=initializer):
       # Calculate attention bias for encoder self-attention and decoder
       # multi-headed attention layers.
@@ -116,12 +117,12 @@ class Transformer(object):
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
         pos_encoding = model_utils.get_position_encoding(
-            length, self.params.hidden_size)
+            length, self.params["hidden_size"])
         encoder_inputs = embedded_inputs + pos_encoding
 
       if self.train:
         encoder_inputs = tf.nn.dropout(
-            encoder_inputs, 1 - self.params.layer_postprocess_dropout)
+            encoder_inputs, 1 - self.params["layer_postprocess_dropout"])
 
       return self.encoder_stack(encoder_inputs, attention_bias, inputs_padding)
 
@@ -149,10 +150,10 @@ class Transformer(object):
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
         decoder_inputs += model_utils.get_position_encoding(
-            length, self.params.hidden_size)
+            length, self.params["hidden_size"])
       if self.train:
         decoder_inputs = tf.nn.dropout(
-            decoder_inputs, 1 - self.params.layer_postprocess_dropout)
+            decoder_inputs, 1 - self.params["layer_postprocess_dropout"])
 
       # Run values
       decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
@@ -167,7 +168,7 @@ class Transformer(object):
     """Returns a decoding function that calculates logits of the next tokens."""
 
     timing_signal = model_utils.get_position_encoding(
-        max_decode_length + 1, self.params.hidden_size)
+        max_decode_length + 1, self.params["hidden_size"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
         max_decode_length)
 
@@ -206,7 +207,7 @@ class Transformer(object):
     """Return predicted sequence."""
     batch_size = tf.shape(encoder_outputs)[0]
     input_length = tf.shape(encoder_outputs)[1]
-    max_decode_length = input_length + self.params.extra_decode_length
+    max_decode_length = input_length + self.params["extra_decode_length"]
 
     symbols_to_logits_fn = self._get_symbols_to_logits_fn(max_decode_length)
 
@@ -216,9 +217,9 @@ class Transformer(object):
     # Create cache storing decoder attention values for each layer.
     cache = {
         "layer_%d" % layer: {
-            "k": tf.zeros([batch_size, 0, self.params.hidden_size]),
-            "v": tf.zeros([batch_size, 0, self.params.hidden_size]),
-        } for layer in range(self.params.num_hidden_layers)}
+            "k": tf.zeros([batch_size, 0, self.params["hidden_size"]]),
+            "v": tf.zeros([batch_size, 0, self.params["hidden_size"]]),
+        } for layer in range(self.params["num_hidden_layers"])}
 
     # Add encoder output and attention bias to the cache.
     cache["encoder_outputs"] = encoder_outputs
@@ -229,9 +230,9 @@ class Transformer(object):
         symbols_to_logits_fn=symbols_to_logits_fn,
         initial_ids=initial_ids,
         initial_cache=cache,
-        vocab_size=self.params.vocab_size,
-        beam_size=self.params.beam_size,
-        alpha=self.params.alpha,
+        vocab_size=self.params["vocab_size"],
+        beam_size=self.params["beam_size"],
+        alpha=self.params["alpha"],
         max_decode_length=max_decode_length,
         eos_id=EOS_ID)
 
@@ -268,11 +269,11 @@ class PrePostProcessingWrapper(object):
 
   def __init__(self, layer, params, train):
     self.layer = layer
-    self.postprocess_dropout = params.layer_postprocess_dropout
+    self.postprocess_dropout = params["layer_postprocess_dropout"]
     self.train = train
 
     # Create normalization layer
-    self.layer_norm = LayerNormalization(params.hidden_size)
+    self.layer_norm = LayerNormalization(params["hidden_size"])
 
   def __call__(self, x, *args, **kwargs):
     # Preprocessing: apply layer normalization
@@ -299,19 +300,21 @@ class EncoderStack(tf.layers.Layer):
   def __init__(self, params, train):
     super(EncoderStack, self).__init__()
     self.layers = []
-    for _ in range(params.num_hidden_layers):
+    for _ in range(params["num_hidden_layers"]):
       # Create sublayers for each layer.
       self_attention_layer = attention_layer.SelfAttention(
-          params.hidden_size, params.num_heads, params.attention_dropout, train)
+          params["hidden_size"], params["num_heads"],
+          params["attention_dropout"], train)
       feed_forward_network = ffn_layer.FeedFowardNetwork(
-          params.hidden_size, params.filter_size, params.relu_dropout, train)
+          params["hidden_size"], params["filter_size"],
+          params["relu_dropout"], train, params["allow_ffn_pad"])
 
       self.layers.append([
           PrePostProcessingWrapper(self_attention_layer, params, train),
           PrePostProcessingWrapper(feed_forward_network, params, train)])
 
     # Create final layer normalization layer.
-    self.output_normalization = LayerNormalization(params.hidden_size)
+    self.output_normalization = LayerNormalization(params["hidden_size"])
 
   def call(self, encoder_inputs, attention_bias, inputs_padding):
     """Return the output of the encoder layer stacks.
@@ -354,20 +357,23 @@ class DecoderStack(tf.layers.Layer):
   def __init__(self, params, train):
     super(DecoderStack, self).__init__()
     self.layers = []
-    for _ in range(params.num_hidden_layers):
+    for _ in range(params["num_hidden_layers"]):
       self_attention_layer = attention_layer.SelfAttention(
-          params.hidden_size, params.num_heads, params.attention_dropout, train)
+          params["hidden_size"], params["num_heads"],
+          params["attention_dropout"], train)
       enc_dec_attention_layer = attention_layer.Attention(
-          params.hidden_size, params.num_heads, params.attention_dropout, train)
+          params["hidden_size"], params["num_heads"],
+          params["attention_dropout"], train)
       feed_forward_network = ffn_layer.FeedFowardNetwork(
-          params.hidden_size, params.filter_size, params.relu_dropout, train)
+          params["hidden_size"], params["filter_size"],
+          params["relu_dropout"], train, params["allow_ffn_pad"])
 
       self.layers.append([
           PrePostProcessingWrapper(self_attention_layer, params, train),
           PrePostProcessingWrapper(enc_dec_attention_layer, params, train),
           PrePostProcessingWrapper(feed_forward_network, params, train)])
 
-    self.output_normalization = LayerNormalization(params.hidden_size)
+    self.output_normalization = LayerNormalization(params["hidden_size"])
 
   def call(self, decoder_inputs, encoder_outputs, decoder_self_attention_bias,
            attention_bias, cache=None):

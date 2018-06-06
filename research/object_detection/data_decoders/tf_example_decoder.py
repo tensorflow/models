@@ -112,7 +112,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                label_map_proto_file=None,
                use_display_name=False,
                dct_method='',
-               num_keypoints=0):
+               num_keypoints=0,
+               num_additional_channels=0):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -133,6 +134,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         are ['INTEGER_FAST', 'INTEGER_ACCURATE']. The hint may be ignored, for
         example, the jpeg library does not have that specific option.
       num_keypoints: the number of keypoints per object.
+      num_additional_channels: how many additional channels to use.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
@@ -178,15 +180,28 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         'image/object/weight':
             tf.VarLenFeature(tf.float32),
     }
+    # We are checking `dct_method` instead of passing it directly in order to
+    # ensure TF version 1.6 compatibility.
     if dct_method:
       image = slim_example_decoder.Image(
           image_key='image/encoded',
           format_key='image/format',
           channels=3,
           dct_method=dct_method)
+      additional_channel_image = slim_example_decoder.Image(
+          image_key='image/additional_channels/encoded',
+          format_key='image/format',
+          channels=1,
+          repeated=True,
+          dct_method=dct_method)
     else:
       image = slim_example_decoder.Image(
           image_key='image/encoded', format_key='image/format', channels=3)
+      additional_channel_image = slim_example_decoder.Image(
+          image_key='image/additional_channels/encoded',
+          format_key='image/format',
+          channels=1,
+          repeated=True)
     self.items_to_handlers = {
         fields.InputDataFields.image:
             image,
@@ -211,6 +226,13 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         fields.InputDataFields.groundtruth_weights: (
             slim_example_decoder.Tensor('image/object/weight')),
     }
+    if num_additional_channels > 0:
+      self.keys_to_features[
+          'image/additional_channels/encoded'] = tf.FixedLenFeature(
+              (num_additional_channels,), tf.string)
+      self.items_to_handlers[
+          fields.InputDataFields.
+          image_additional_channels] = additional_channel_image
     self._num_keypoints = num_keypoints
     if num_keypoints > 0:
       self.keys_to_features['image/object/keypoint/x'] = (
@@ -294,6 +316,9 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         [None] indicating if the boxes enclose a crowd.
 
     Optional:
+      fields.InputDataFields.image_additional_channels - 3D uint8 tensor of
+        shape [None, None, num_additional_channels]. 1st dim is height; 2nd dim
+        is width; 3rd dim is the number of additional channels.
       fields.InputDataFields.groundtruth_difficult - 1D bool tensor of shape
         [None] indicating if the boxes represent `difficult` instances.
       fields.InputDataFields.groundtruth_group_of - 1D bool tensor of shape
@@ -315,6 +340,12 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     tensor_dict[fields.InputDataFields.image].set_shape([None, None, 3])
     tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
         tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
+
+    if fields.InputDataFields.image_additional_channels in tensor_dict:
+      channels = tensor_dict[fields.InputDataFields.image_additional_channels]
+      channels = tf.squeeze(channels, axis=3)
+      channels = tf.transpose(channels, perm=[1, 2, 0])
+      tensor_dict[fields.InputDataFields.image_additional_channels] = channels
 
     def default_groundtruth_weights():
       return tf.ones(

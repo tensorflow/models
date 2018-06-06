@@ -243,21 +243,24 @@ class SsdMetaArchTest(test_case.TestCase):
                     (batch_size, None, None, 3),
                     (None, None, None, 3)]
 
-    expected_boxes = np.array([[[0, 0, .5, .5],
-                                [0, .5, .5, 1],
-                                [.5, 0, 1, .5],
-                                [0, 0, 0, 0],   # pruned prediction
-                                [0, 0, 0, 0]],  # padding
-                               [[0, 0, .5, .5],
-                                [0, .5, .5, 1],
-                                [.5, 0, 1, .5],
-                                [0, 0, 0, 0],  # pruned prediction
-                                [0, 0, 0, 0]]  # padding
-                              ])
-    expected_scores = np.array([[0, 0, 0, 0, 0],
-                                [0, 0, 0, 0, 0]])
-    expected_classes = np.array([[0, 0, 0, 0, 0],
-                                 [0, 0, 0, 0, 0]])
+    expected_boxes = [
+        [
+            [0, 0, .5, .5],
+            [0, .5, .5, 1],
+            [.5, 0, 1, .5],
+            [0, 0, 0, 0],  # pruned prediction
+            [0, 0, 0, 0]
+        ],  # padding
+        [
+            [0, 0, .5, .5],
+            [0, .5, .5, 1],
+            [.5, 0, 1, .5],
+            [0, 0, 0, 0],  # pruned prediction
+            [0, 0, 0, 0]
+        ]
+    ]  # padding
+    expected_scores = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
+    expected_classes = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
     expected_num_detections = np.array([3, 3])
 
     for input_shape in input_shapes:
@@ -282,7 +285,11 @@ class SsdMetaArchTest(test_case.TestCase):
                                       input_placeholder:
                                       np.random.uniform(
                                           size=(batch_size, 2, 2, 3))})
-      self.assertAllClose(detections_out['detection_boxes'], expected_boxes)
+      for image_idx in range(batch_size):
+        self.assertTrue(
+            test_utils.first_rows_close_as_set(
+                detections_out['detection_boxes'][image_idx].tolist(),
+                expected_boxes[image_idx]))
       self.assertAllClose(detections_out['detection_scores'], expected_scores)
       self.assertAllClose(detections_out['detection_classes'], expected_classes)
       self.assertAllClose(detections_out['num_detections'],
@@ -429,7 +436,7 @@ class SsdMetaArchTest(test_case.TestCase):
 
   def test_restore_map_for_detection_ckpt(self):
     model, _, _, _ = self._create_model()
-    model.predict(tf.constant(np.array([[[0, 0], [1, 1]], [[1, 0], [0, 1]]],
+    model.predict(tf.constant(np.array([[[[0, 0], [1, 1]], [[1, 0], [0, 1]]]],
                                        dtype=np.float32)),
                   true_image_shapes=None)
     init_op = tf.global_variables_initializer()

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
+"""Tests for boosted_tree."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -22,16 +22,16 @@ import tempfile
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
-
-from official.utils.testing import integration
+# pylint: disable=g-bad-import-order
 from official.boosted_trees import train_higgs
+from official.utils.testing import integration
+
+TEST_CSV = os.path.join(os.path.dirname(__file__), "train_higgs_test.csv")
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
-
-TEST_CSV = os.path.join(os.path.dirname(__file__), 'train_higgs_test.csv')
 
 class BaseTest(tf.test.TestCase):
   """Tests for Wide Deep model."""
@@ -45,7 +45,7 @@ class BaseTest(tf.test.TestCase):
     # Create temporary CSV file
     self.data_dir = self.get_temp_dir()
     data = pd.read_csv(
-        TEST_CSV, dtype=np.float32, names=['c%02d' % i for i in range(29)]
+        TEST_CSV, dtype=np.float32, names=["c%02d" % i for i in range(29)]
     ).as_matrix()
     self.input_npz = os.path.join(self.data_dir, train_higgs.NPZ_FILE)
     # numpy.savez doesn't take gfile.Gfile, so need to write down and copy.
@@ -56,9 +56,9 @@ class BaseTest(tf.test.TestCase):
   def test_read_higgs_data(self):
     """Tests read_higgs_data() function."""
     # Error when a wrong data_dir is given.
-    with self.assertRaisesRegexp(RuntimeError, 'Error loading data.*'):
+    with self.assertRaisesRegexp(RuntimeError, "Error loading data.*"):
       train_data, eval_data = train_higgs.read_higgs_data(
-          self.data_dir + 'non-existing-path',
+          self.data_dir + "non-existing-path",
           train_start=0, train_count=15, eval_start=15, eval_count=5)
 
     # Loading fine with the correct data_dir.
@@ -73,20 +73,24 @@ class BaseTest(tf.test.TestCase):
     train_data, _ = train_higgs.read_higgs_data(
         self.data_dir,
         train_start=0, train_count=15, eval_start=15, eval_count=5)
-    input_fn, feature_columns = train_higgs.make_inputs_from_np_arrays(
-        features_np=train_data[:, 1:], label_np=train_data[:, 0:1])
+    (input_fn, feature_names,
+     feature_columns) = train_higgs.make_inputs_from_np_arrays(
+         features_np=train_data[:, 1:], label_np=train_data[:, 0:1])
+
+    # Check feature_names.
+    self.assertAllEqual(feature_names,
+                        ["feature_%02d" % (i+1) for i in range(28)])
 
     # Check feature columns.
     self.assertEqual(28, len(feature_columns))
     bucketized_column_type = type(
         tf.feature_column.bucketized_column(
-            tf.feature_column.numeric_column('feature_01'),
+            tf.feature_column.numeric_column("feature_01"),
             boundaries=[0, 1, 2]))  # dummy boundaries.
     for feature_column in feature_columns:
       self.assertIsInstance(feature_column, bucketized_column_type)
       # At least 2 boundaries.
       self.assertGreaterEqual(len(feature_column.boundaries), 2)
-    feature_names = ['feature_%02d' % (i+1) for i in range(28)]
     # Tests that the source column names of the bucketized columns match.
     self.assertAllEqual(feature_names,
                         [col.source_column.name for col in feature_columns])
@@ -113,39 +117,39 @@ class BaseTest(tf.test.TestCase):
 
   def test_end_to_end(self):
     """Tests end-to-end running."""
-    model_dir = os.path.join(self.get_temp_dir(), 'model')
+    model_dir = os.path.join(self.get_temp_dir(), "model")
     integration.run_synthetic(
         main=train_higgs.main, tmp_root=self.get_temp_dir(), extra_flags=[
-            '--data_dir', self.data_dir,
-            '--model_dir', model_dir,
-            '--n_trees', '5',
-            '--train_start', '0',
-            '--train_count', '12',
-            '--eval_start', '12',
-            '--eval_count', '8',
+            "--data_dir", self.data_dir,
+            "--model_dir", model_dir,
+            "--n_trees", "5",
+            "--train_start", "0",
+            "--train_count", "12",
+            "--eval_start", "12",
+            "--eval_count", "8",
         ],
         synth=False, max_train=None)
-    self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, 'checkpoint')))
+    self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, "checkpoint")))
 
   def test_end_to_end_with_export(self):
     """Tests end-to-end running."""
-    model_dir = os.path.join(self.get_temp_dir(), 'model')
-    export_dir = os.path.join(self.get_temp_dir(), 'export')
+    model_dir = os.path.join(self.get_temp_dir(), "model")
+    export_dir = os.path.join(self.get_temp_dir(), "export")
     integration.run_synthetic(
         main=train_higgs.main, tmp_root=self.get_temp_dir(), extra_flags=[
-            '--data_dir', self.data_dir,
-            '--model_dir', model_dir,
-            '--export_dir', export_dir,
-            '--n_trees', '5',
-            '--train_start', '0',
-            '--train_count', '12',
-            '--eval_start', '12',
-            '--eval_count', '8',
+            "--data_dir", self.data_dir,
+            "--model_dir", model_dir,
+            "--export_dir", export_dir,
+            "--n_trees", "5",
+            "--train_start", "0",
+            "--train_count", "12",
+            "--eval_start", "12",
+            "--eval_count", "8",
         ],
         synth=False, max_train=None)
-    self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, 'checkpoint')))
+    self.assertTrue(tf.gfile.Exists(os.path.join(model_dir, "checkpoint")))
     self.assertTrue(tf.gfile.Exists(os.path.join(export_dir)))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   tf.test.main()

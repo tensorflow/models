@@ -18,9 +18,6 @@ TRAIN_RATINGS_FILENAME = 'train-ratings.csv'
 TEST_RATINGS_FILENAME = 'test-ratings.csv'
 TEST_NEG_FILENAME = 'test-negative.csv'
 
-TRAIN_DATA = 'train_data.csv'
-TEST_DATA = 'test_data.csv'
-
 USER = "user_id"
 ITEM = "item_id"
 RATING = "rating"

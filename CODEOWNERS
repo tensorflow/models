@@ -44,6 +44,7 @@
 /research/tensorrt/ @karmel
 /research/textsum/ @panyx0718 @peterjliu
 /research/transformer/ @daviddao
+/research/vid2depth/ @rezama
 /research/video_prediction/ @cbfinn
 /research/fivo/ @dieterichlawson
 /samples/ @MarkDaoust @lamberta

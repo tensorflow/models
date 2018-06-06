@@ -2128,7 +2128,8 @@ def resize_to_range(image,
                     max_dimension=None,
                     method=tf.image.ResizeMethod.BILINEAR,
                     align_corners=False,
-                    pad_to_max_dimension=False):
+                    pad_to_max_dimension=False,
+                    per_channel_pad_value=(0, 0, 0)):
   """Resizes an image so its dimensions are within the provided value.
 
   The output size can be described by two cases:
@@ -2153,6 +2154,8 @@ def resize_to_range(image,
       so the resulting image is of the spatial size
       [max_dimension, max_dimension]. If masks are included they are padded
       similarly.
+    per_channel_pad_value: A tuple of per-channel scalar value to use for
+      padding. By default pads zeros.
 
   Returns:
     Note that the position of the resized_image_shape changes based on whether
@@ -2181,8 +2184,20 @@ def resize_to_range(image,
         image, new_size[:-1], method=method, align_corners=align_corners)
 
     if pad_to_max_dimension:
-      new_image = tf.image.pad_to_bounding_box(
-          new_image, 0, 0, max_dimension, max_dimension)
+      channels = tf.unstack(new_image, axis=2)
+      if len(channels) != len(per_channel_pad_value):
+        raise ValueError('Number of channels must be equal to the length of '
+                         'per-channel pad value.')
+      new_image = tf.stack(
+          [
+              tf.pad(
+                  channels[i], [[0, max_dimension - new_size[0]],
+                                [0, max_dimension - new_size[1]]],
+                  constant_values=per_channel_pad_value[i])
+              for i in range(len(channels))
+          ],
+          axis=2)
+      new_image.set_shape([max_dimension, max_dimension, 3])
 
     result = [new_image]
     if masks is not None:

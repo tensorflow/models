@@ -52,6 +52,9 @@ class ImageResizerBuilderTest(tf.test.TestCase):
         min_dimension: 10
         max_dimension: 20
         pad_to_max_dimension: true
+        per_channel_pad_value: 3
+        per_channel_pad_value: 4
+        per_channel_pad_value: 5
       }
     """
     input_shape = (50, 25, 3)

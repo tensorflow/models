@@ -25,6 +25,7 @@ import tensorflow as tf
 
 from object_detection import eval_util
 from object_detection import inputs
+from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
 from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
@@ -289,7 +290,11 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       total_loss = tf.add_n(losses, name='total_loss')
       losses_dict['Loss/total_loss'] = total_loss
 
-    if mode in [tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL]:
+      if 'graph_rewriter_config' in configs:
+        graph_rewriter_fn = graph_rewriter_builder.build(
+            configs['graph_rewriter_config'], is_training=is_training)
+        graph_rewriter_fn()
+
       # TODO(rathodv): Stop creating optimizer summary vars in EVAL mode once we
       # can write learning rate summaries on TPU without host calls.
       global_step = tf.train.get_or_create_global_step()
@@ -333,6 +338,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       }
 
     eval_metric_ops = None
+    scaffold = None
     if mode == tf.estimator.ModeKeys.EVAL:
       class_agnostic = (fields.DetectionResultFields.detection_classes
                         not in detections)
@@ -360,7 +366,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         detection_and_groundtruth = (
             vis_utils.draw_side_by_side_evaluation_image(
                 eval_dict, category_index, max_boxes_to_draw=20,
-                min_score_thresh=0.2))
+                min_score_thresh=0.2,
+                use_normalized_coordinates=False))
         img_summary = tf.summary.image('Detections_Left_Groundtruth_Right',
                                        detection_and_groundtruth)
 
@@ -382,6 +389,16 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
             img_summary, tf.no_op())
       eval_metric_ops = {str(k): v for k, v in eval_metric_ops.iteritems()}
 
+      if eval_config.use_moving_averages:
+        variable_averages = tf.train.ExponentialMovingAverage(0.0)
+        variables_to_restore = variable_averages.variables_to_restore()
+        keep_checkpoint_every_n_hours = (
+            train_config.keep_checkpoint_every_n_hours)
+        saver = tf.train.Saver(
+            variables_to_restore,
+            keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours)
+        scaffold = tf.train.Scaffold(saver=saver)
+
     if use_tpu:
       return tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
@@ -398,7 +415,8 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           loss=total_loss,
           train_op=train_op,
           eval_metric_ops=eval_metric_ops,
-          export_outputs=export_outputs)
+          export_outputs=export_outputs,
+          scaffold=scaffold)
 
   return model_fn
 

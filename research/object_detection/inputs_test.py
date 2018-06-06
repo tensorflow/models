@@ -398,6 +398,33 @@ def _fake_image_resizer_fn(image, mask):
 
 class DataTransformationFnTest(tf.test.TestCase):
 
+  def test_combine_additional_channels_if_present(self):
+    image = np.random.rand(4, 4, 3).astype(np.float32)
+    additional_channels = np.random.rand(4, 4, 2).astype(np.float32)
+    tensor_dict = {
+        fields.InputDataFields.image:
+            tf.constant(image),
+        fields.InputDataFields.image_additional_channels:
+            tf.constant(additional_channels),
+        fields.InputDataFields.groundtruth_classes:
+            tf.constant(np.array([1, 1], np.int32))
+    }
+
+    input_transformation_fn = functools.partial(
+        inputs.transform_input_data,
+        model_preprocess_fn=_fake_model_preprocessor_fn,
+        image_resizer_fn=_fake_image_resizer_fn,
+        num_classes=1)
+    with self.test_session() as sess:
+      transformed_inputs = sess.run(
+          input_transformation_fn(tensor_dict=tensor_dict))
+    self.assertAllEqual(transformed_inputs[fields.InputDataFields.image].dtype,
+                        tf.float32)
+    self.assertAllEqual(transformed_inputs[fields.InputDataFields.image].shape,
+                        [4, 4, 5])
+    self.assertAllClose(transformed_inputs[fields.InputDataFields.image],
+                        np.concatenate((image, additional_channels), axis=2))
+
   def test_returns_correct_class_label_encodings(self):
     tensor_dict = {
         fields.InputDataFields.image:

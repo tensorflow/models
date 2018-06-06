@@ -402,8 +402,9 @@ class SSDMetaArch(model.DetectionModel):
               im_width=image_shape[2]))
       prediction_dict = self._box_predictor.predict(
           feature_maps, self._anchor_generator.num_anchors_per_location())
-      box_encodings = tf.squeeze(
-          tf.concat(prediction_dict['box_encodings'], axis=1), axis=2)
+      box_encodings = tf.concat(prediction_dict['box_encodings'], axis=1)
+      if box_encodings.shape.ndims == 4 and box_encodings.shape[2] == 1:
+        box_encodings = tf.squeeze(box_encodings, axis=2)
       class_predictions_with_background = tf.concat(
           prediction_dict['class_predictions_with_background'], axis=1)
       predictions_dict = {

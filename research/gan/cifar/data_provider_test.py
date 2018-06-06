@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
 import numpy as np
 
 import tensorflow as tf
@@ -31,7 +32,7 @@ class DataProviderTest(tf.test.TestCase):
 
   def test_cifar10_train_set(self):
     dataset_dir = os.path.join(
-        tf.flags.FLAGS.test_srcdir,
+        flags.FLAGS.test_srcdir,
         'google3/third_party/tensorflow_models/gan/cifar/testdata')
 
     batch_size = 4

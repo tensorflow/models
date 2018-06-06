@@ -69,6 +69,11 @@ def _update_optimizer_with_cosine_decay_learning_rate(
 
 class ConfigUtilTest(tf.test.TestCase):
 
+  def _create_and_load_test_configs(self, pipeline_config):
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    _write_config(pipeline_config, pipeline_config_path)
+    return config_util.get_configs_from_pipeline_file(pipeline_config_path)
+
   def test_get_configs_from_pipeline_file(self):
     """Test that proto configs can be read from pipeline config file."""
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
@@ -307,6 +312,34 @@ class ConfigUtilTest(tf.test.TestCase):
     new_batch_size = configs["train_config"].batch_size
     self.assertEqual(1, new_batch_size)  # Clipped to 1.0.
 
+  def testOverwriteBatchSizeWithKeyValue(self):
+    """Tests that batch size is overwritten based on key/value."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.train_config.batch_size = 2
+    configs = self._create_and_load_test_configs(pipeline_config)
+    hparams = tf.contrib.training.HParams(**{"train_config.batch_size": 10})
+    configs = config_util.merge_external_params_with_configs(configs, hparams)
+    new_batch_size = configs["train_config"].batch_size
+    self.assertEqual(10, new_batch_size)
+
+  def testKeyValueOverrideBadKey(self):
+    """Tests that overwriting with a bad key causes an exception."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    configs = self._create_and_load_test_configs(pipeline_config)
+    hparams = tf.contrib.training.HParams(**{"train_config.no_such_field": 10})
+    with self.assertRaises(ValueError):
+      config_util.merge_external_params_with_configs(configs, hparams)
+
+  def testOverwriteBatchSizeWithBadValueType(self):
+    """Tests that overwriting with a bad valuye type causes an exception."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.train_config.batch_size = 2
+    configs = self._create_and_load_test_configs(pipeline_config)
+    # Type should be an integer, but we're passing a string "10".
+    hparams = tf.contrib.training.HParams(**{"train_config.batch_size": "10"})
+    with self.assertRaises(TypeError):
+      config_util.merge_external_params_with_configs(configs, hparams)
+
   def testNewMomentumOptimizerValue(self):
     """Tests that new momentum value is updated appropriately."""
     original_momentum_value = 0.4
@@ -500,6 +533,19 @@ class ConfigUtilTest(tf.test.TestCase):
         configs, mask_type=new_mask_type)
     self.assertEqual(new_mask_type, configs["train_input_config"].mask_type)
     self.assertEqual(new_mask_type, configs["eval_input_config"].mask_type)
+
+  def testUseMovingAverageForEval(self):
+    use_moving_averages_orig = False
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_config.use_moving_averages = use_moving_averages_orig
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    configs = config_util.merge_external_params_with_configs(
+        configs, eval_with_moving_averages=True)
+    self.assertEqual(True, configs["eval_config"].use_moving_averages)
 
   def  test_get_image_resizer_config(self):
     """Tests that number of classes can be retrieved."""

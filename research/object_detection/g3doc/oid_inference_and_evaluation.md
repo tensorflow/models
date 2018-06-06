@@ -93,7 +93,7 @@ mkdir ${SPLIT}_tfrecords
 
 PYTHONPATH=$PYTHONPATH:$(readlink -f ..) \
 python -m object_detection/dataset_tools/create_oid_tf_record \
-  --input_annotations_csv 2017_07/$SPLIT/annotations-human-bbox.csv \
+  --input_box_annotations_csv 2017_07/$SPLIT/annotations-human-bbox.csv \
   --input_images_directory raw_images_${SPLIT} \
   --input_label_map ../object_detection/data/oid_bbox_trainable_label_map.pbtxt \
   --output_tf_record_path_prefix ${SPLIT}_tfrecords/$SPLIT.tfrecord \
@@ -214,7 +214,7 @@ tf_record_input_reader: { input_path: '${SPLIT}_detections.tfrecord@${NUM_SHARDS
 " > ${SPLIT}_eval_metrics/${SPLIT}_input_config.pbtxt
 
 echo "
-metrics_set: 'open_images_metrics'
+metrics_set: 'open_images_V2_detection_metrics'
 " > ${SPLIT}_eval_metrics/${SPLIT}_eval_config.pbtxt
 ```
 

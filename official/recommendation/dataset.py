@@ -17,17 +17,11 @@
 Load the training dataset and evaluation dataset from csv file into memory.
 Prepare input for model training and evaluation.
 """
-import time
-
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 from official.recommendation import constants  # pylint: disable=g-bad-import-order
-
-# The column names and types of csv file
-_CSV_COLUMN_NAMES = [constants.USER, constants.ITEM, constants.RATING]
-_CSV_TYPES = [[0], [0], [0]]
 
 # The buffer size for shuffling train dataset.
 _SHUFFLE_BUFFER_SIZE = 1024
@@ -37,7 +31,7 @@ class NCFDataSet(object):
   """A class containing data information for model training and evaluation."""
 
   def __init__(self, train_data, num_users, num_items, num_negatives,
-               true_items, all_items):
+               true_items, all_items, all_eval_data):
     """Initialize NCFDataset class.
 
     Args:
@@ -50,6 +44,7 @@ class NCFDataSet(object):
         evaluation. Each entry is a latest positive instance for one user.
       all_items: A nested list, all items for evaluation, and each entry is the
         evaluation items for one user.
+      all_eval_data: A numpy array of eval/test dataset.
     """
     self.train_data = train_data
     self.num_users = num_users
@@ -57,10 +52,11 @@ class NCFDataSet(object):
     self.num_negatives = num_negatives
     self.eval_true_items = true_items
     self.eval_all_items = all_items
+    self.all_eval_data = all_eval_data
 
 
 def load_data(file_name):
-  """Load data from a csv file which splits on \t."""
+  """Load data from a csv file which splits on tab key."""
   lines = tf.gfile.Open(file_name, "r").readlines()
 
   # Process the file line by line
@@ -122,13 +118,11 @@ def data_preprocessing(train_fname, test_fname, test_neg_fname, num_negatives):
     all_items.append(items)  # All items (including positive and negative items)
     all_test_data.extend(users_items)  # Generate test dataset
 
-  # Save test dataset into csv file
-  np.savetxt(constants.TEST_DATA, np.asarray(all_test_data).astype(int),
-             fmt="%i", delimiter=",")
-
   # Create NCFDataset object
   ncf_dataset = NCFDataSet(
-      train_data, num_users, num_items, num_negatives, true_items, all_items)
+      train_data, num_users, num_items, num_negatives, true_items, all_items,
+      np.asarray(all_test_data)
+  )
 
   return ncf_dataset
 
@@ -144,6 +138,9 @@ def generate_train_dataset(train_data, num_items, num_negatives):
     num_items: An integer, the number of items in positive training instances.
     num_negatives: An integer, the number of negative training instances
       following positive training instances. It is 4 by default.
+
+  Returns:
+    A numpy array of training dataset.
   """
   all_train_data = []
   # A set with user-item tuples
@@ -158,13 +155,10 @@ def generate_train_dataset(train_data, num_items, num_negatives):
         j = np.random.randint(num_items)
       all_train_data.append([u, j, 0])
 
-  # Save the train dataset into a csv file
-  np.savetxt(constants.TRAIN_DATA, np.asarray(all_train_data).astype(int),
-             fmt="%i", delimiter=",")
+  return np.asarray(all_train_data)
 
 
-def input_fn(training, batch_size, repeat=1, ncf_dataset=None,
-             num_parallel_calls=1):
+def input_fn(training, batch_size, ncf_dataset, repeat=1):
   """Input function for model training and evaluation.
 
   The train input consists of 1 positive instance (user and item have
@@ -176,55 +170,39 @@ def input_fn(training, batch_size, repeat=1, ncf_dataset=None,
   Args:
     training: A boolean flag for training mode.
     batch_size: An integer, batch size for training and evaluation.
+    ncf_dataset: An NCFDataSet object, which contains the information about
+      training and test data.
     repeat: An integer, how many times to repeat the dataset.
-    ncf_dataset: An NCFDataSet object, which contains the information to
-      generate negative training instances.
-    num_parallel_calls: An integer, number of cpu cores for parallel input
-      processing.
 
   Returns:
     dataset: A tf.data.Dataset object containing examples loaded from the files.
   """
-  # Default test file name
-  file_name = constants.TEST_DATA
-
   # Generate random negative instances for training in each epoch
   if training:
-    t1 = time.time()
-    generate_train_dataset(
+    train_data = generate_train_dataset(
         ncf_dataset.train_data, ncf_dataset.num_items,
         ncf_dataset.num_negatives)
-    file_name = constants.TRAIN_DATA
-    tf.logging.info(
-        "Generating training instances: {:.1f}s".format(time.time() - t1))
+    # Get train features and labels
+    train_features = [
+        (constants.USER, np.expand_dims(train_data[:, 0], axis=1)),
+        (constants.ITEM, np.expand_dims(train_data[:, 1], axis=1))
+    ]
+    train_labels = [
+        (constants.RATING, np.expand_dims(train_data[:, 2], axis=1))]
 
-  # Create a dataset containing the text lines.
-  dataset = tf.data.TextLineDataset(file_name)
-
-  # Test dataset only has two fields while train dataset has three
-  num_cols = len(_CSV_COLUMN_NAMES) - 1
-  # Shuffle the dataset for training
-  if training:
+    dataset = tf.data.Dataset.from_tensor_slices(
+        (dict(train_features), dict(train_labels))
+    )
     dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
-    num_cols += 1
+  else:
+    # Create eval/test dataset
+    test_user = ncf_dataset.all_eval_data[:, 0]
+    test_item = ncf_dataset.all_eval_data[:, 1]
+    test_features = [
+        (constants.USER, np.expand_dims(test_user, axis=1)),
+        (constants.ITEM, np.expand_dims(test_item, axis=1))]
 
-  def _parse_csv(line):
-    """Parse each line of the csv file."""
-    # Decode the line into its fields
-    fields = tf.decode_csv(line, record_defaults=_CSV_TYPES[0:num_cols])
-    fields = [tf.expand_dims(field, axis=0) for field in fields]
-
-    # Pack the result into a dictionary
-    features = dict(zip(_CSV_COLUMN_NAMES[0:num_cols], fields))
-    # Separate the labels from the features for training
-    if training:
-      labels = features.pop(constants.RATING)
-      return features, labels
-    # Return features only for test/prediction
-    return features
-
-  # Parse each line into a dictionary
-  dataset = dataset.map(_parse_csv, num_parallel_calls=num_parallel_calls)
+    dataset = tf.data.Dataset.from_tensor_slices(dict(test_features))
 
   # Repeat and batch the dataset
   dataset = dataset.repeat(repeat)

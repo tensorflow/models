@@ -315,11 +315,13 @@ def draw_bounding_boxes_on_image_tensors(images,
                                          instance_masks=None,
                                          keypoints=None,
                                          max_boxes_to_draw=20,
-                                         min_score_thresh=0.2):
+                                         min_score_thresh=0.2,
+                                         use_normalized_coordinates=True):
   """Draws bounding boxes, masks, and keypoints on batch of image tensors.
 
   Args:
-    images: A 4D uint8 image tensor of shape [N, H, W, C].
+    images: A 4D uint8 image tensor of shape [N, H, W, C]. If C > 3, additional
+      channels will be ignored.
     boxes: [N, max_detections, 4] float32 tensor of detection boxes.
     classes: [N, max_detections] int tensor of detection classes. Note that
       classes are 1-indexed.
@@ -332,12 +334,17 @@ def draw_bounding_boxes_on_image_tensors(images,
       with keypoints.
     max_boxes_to_draw: Maximum number of boxes to draw on an image. Default 20.
     min_score_thresh: Minimum score threshold for visualization. Default 0.2.
+    use_normalized_coordinates: Whether to assume boxes and kepoints are in
+      normalized coordinates (as opposed to absolute coordiantes).
+      Default is True.
 
   Returns:
     4D image tensor of type uint8, with boxes drawn on top.
   """
+  # Additional channels are being ignored.
+  images = images[:, :, :, 0:3]
   visualization_keyword_args = {
-      'use_normalized_coordinates': True,
+      'use_normalized_coordinates': use_normalized_coordinates,
       'max_boxes_to_draw': max_boxes_to_draw,
       'min_score_thresh': min_score_thresh,
       'agnostic_mode': False,
@@ -382,7 +389,8 @@ def draw_bounding_boxes_on_image_tensors(images,
 def draw_side_by_side_evaluation_image(eval_dict,
                                        category_index,
                                        max_boxes_to_draw=20,
-                                       min_score_thresh=0.2):
+                                       min_score_thresh=0.2,
+                                       use_normalized_coordinates=True):
   """Creates a side-by-side image with detections and groundtruth.
 
   Bounding boxes (and instance masks, if available) are visualized on both
@@ -394,6 +402,9 @@ def draw_side_by_side_evaluation_image(eval_dict,
     category_index: A category index (dictionary) produced from a labelmap.
     max_boxes_to_draw: The maximum number of boxes to draw for detections.
     min_score_thresh: The minimum score threshold for showing detections.
+    use_normalized_coordinates: Whether to assume boxes and kepoints are in
+      normalized coordinates (as opposed to absolute coordiantes).
+      Default is True.
 
   Returns:
     A [1, H, 2 * W, C] uint8 tensor. The subimage on the left corresponds to
@@ -425,7 +436,8 @@ def draw_side_by_side_evaluation_image(eval_dict,
       instance_masks=instance_masks,
       keypoints=keypoints,
       max_boxes_to_draw=max_boxes_to_draw,
-      min_score_thresh=min_score_thresh)
+      min_score_thresh=min_score_thresh,
+      use_normalized_coordinates=use_normalized_coordinates)
   images_with_groundtruth = draw_bounding_boxes_on_image_tensors(
       eval_dict[input_data_fields.original_image],
       tf.expand_dims(eval_dict[input_data_fields.groundtruth_boxes], axis=0),
@@ -439,7 +451,8 @@ def draw_side_by_side_evaluation_image(eval_dict,
       instance_masks=groundtruth_instance_masks,
       keypoints=None,
       max_boxes_to_draw=None,
-      min_score_thresh=0.0)
+      min_score_thresh=0.0,
+      use_normalized_coordinates=use_normalized_coordinates)
   return tf.concat([images_with_detections, images_with_groundtruth], axis=2)
 
 

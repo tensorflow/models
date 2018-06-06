@@ -80,7 +80,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
           lambda value: parse_record_fn(value, is_training),
           batch_size=batch_size,
           num_parallel_batches=1,
-          drop_remainder=True))
+          drop_remainder=False))
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
@@ -88,7 +88,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # critical training path. Setting buffer_size to tf.contrib.data.AUTOTUNE
   # allows DistributionStrategies to adjust how many batches to fetch based
   # on how many devices are present.
-  dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
 
   return dataset
 
@@ -395,8 +395,12 @@ def resnet_main(
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
   }
-  benchmark_logger = logger.config_benchmark_logger(flags_obj)
-  benchmark_logger.log_run_info('resnet', dataset_name, run_params)
+  if flags_obj.use_synthetic_data:
+    dataset_name = dataset_name + "-synthetic"
+
+  benchmark_logger = logger.get_benchmark_logger()
+  benchmark_logger.log_run_info('resnet', dataset_name, run_params,
+                                test_id=flags_obj.benchmark_test_id)
 
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
@@ -415,7 +419,6 @@ def resnet_main(
         batch_size=per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1)
-
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)
   for cycle_index in range(total_training_cycle):

@@ -117,13 +117,17 @@ def read_dataset(file_read_func, decode_func, input_files, config):
     A tf.data.Dataset based on config.
   """
   # Shard, shuffle, and read files.
-  filenames = tf.concat([tf.matching_files(pattern) for pattern in input_files],
-                        0)
-  filename_dataset = tf.data.Dataset.from_tensor_slices(filenames)
+  filenames = tf.gfile.Glob(input_files)
+  num_readers = config.num_readers
+  if num_readers > len(filenames):
+    num_readers = len(filenames)
+    tf.logging.warning('num_readers has been reduced to %d to match input file '
+                       'shards.' % num_readers)
+  filename_dataset = tf.data.Dataset.from_tensor_slices(tf.unstack(filenames))
   if config.shuffle:
     filename_dataset = filename_dataset.shuffle(
         config.filenames_shuffle_buffer_size)
-  elif config.num_readers > 1:
+  elif num_readers > 1:
     tf.logging.warning('`shuffle` is false, but the input data stream is '
                        'still slightly shuffled since `num_readers` > 1.')
 
@@ -131,8 +135,10 @@ def read_dataset(file_read_func, decode_func, input_files, config):
 
   records_dataset = filename_dataset.apply(
       tf.contrib.data.parallel_interleave(
-          file_read_func, cycle_length=config.num_readers,
-          block_length=config.read_block_length, sloppy=config.shuffle))
+          file_read_func,
+          cycle_length=num_readers,
+          block_length=config.read_block_length,
+          sloppy=config.shuffle))
   if config.shuffle:
     records_dataset = records_dataset.shuffle(config.shuffle_buffer_size)
   tensor_dataset = records_dataset.map(
