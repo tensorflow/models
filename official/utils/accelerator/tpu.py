@@ -90,7 +90,8 @@ def embedding_matmul(embedding_table, values, mask, name='embedding_matmul'):
   The matrix to be multiplied by the embedding table Tensor is constructed
   via an implementation of scatter based on broadcasting embedding indices
   and performing an equality comparison against a broadcasted
-  range(num_embedding_table_rows).
+  range(num_embedding_table_rows). All masked positions will produce an
+  embedding vector of zeros.
 
   Args:
     embedding_table: Tensor of embedding table.

@@ -48,6 +48,7 @@ class TPUBaseTester(tf.test.TestCase):
 
   def _test_embedding(self, embedding_dim, vocab_size,
                       sequence_length, batch_size, seed):
+    """Test that matmul embedding matches embedding lookup (gather)."""
 
     with self.test_session():
       embedding_table, values, mask = self.construct_embedding_and_values(
@@ -68,6 +69,7 @@ class TPUBaseTester(tf.test.TestCase):
 
   def _test_masking(self, embedding_dim, vocab_size,
                     sequence_length, batch_size, seed):
+    """Test that matmul embedding properly zeros masked positions."""
     with self.test_session():
       embedding_table, values, mask = self.construct_embedding_and_values(
           embedding_dim=embedding_dim,
