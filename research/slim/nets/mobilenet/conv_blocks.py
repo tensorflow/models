@@ -321,7 +321,7 @@ def split_conv(input_tensor,
   """Creates a split convolution.
 
   Split convolution splits the input and output into
-  'num_blocks' blocks of approximately the same size each,
+  'num_ways' blocks of approximately the same size each,
   and only connects $i$-th input to $i$ output.
 
   Args:
