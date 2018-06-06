@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Test TPU optimized matmul embedding."""
 
 import numpy as np
 import tensorflow as tf
@@ -20,12 +21,12 @@ from official.utils.accelerator import tpu as tpu_utils
 
 
 TEST_CASES = [
-  dict(embedding_dim=256, vocab_size=1000, sequence_length=64,
-       batch_size=32, seed=54131),
-  dict(embedding_dim=8, vocab_size=15, sequence_length=12,
-       batch_size=256, seed=536413),
-  dict(embedding_dim=2048, vocab_size=512, sequence_length=50,
-       batch_size=8, seed=35124)
+    dict(embedding_dim=256, vocab_size=1000, sequence_length=64,
+         batch_size=32, seed=54131),
+    dict(embedding_dim=8, vocab_size=15, sequence_length=12,
+         batch_size=256, seed=536413),
+    dict(embedding_dim=2048, vocab_size=512, sequence_length=50,
+         batch_size=8, seed=35124)
 ]
 
 
@@ -66,7 +67,7 @@ class TPUBaseTester(tf.test.TestCase):
       self.assertAllClose(embedding, matmul_embedding)
 
   def _test_masking(self, embedding_dim, vocab_size,
-      sequence_length, batch_size, seed):
+                    sequence_length, batch_size, seed):
     with self.test_session():
       embedding_table, values, mask = self.construct_embedding_and_values(
           embedding_dim=embedding_dim,
