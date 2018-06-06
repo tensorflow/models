@@ -75,7 +75,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # dataset for the appropriate number of epochs.
   dataset = dataset.repeat(num_epochs)
 
-  if is_training and num_gpus is not None and num_gpus > 0:
+  if is_training and num_gpus and examples_per_epoch:
     total_examples = num_epochs * examples_per_epoch
     # Force the number of batches to be divisible by the number of devices.
     # This prevents some devices from receiving batches while others do not,
