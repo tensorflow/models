@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# ==============================================================================
 """tf.data.Dataset interface to the LibriSpeech dataset."""
 
 from __future__ import absolute_import
@@ -56,37 +57,62 @@ LIBRI_SPEECH_URLS = {
 
 
 def download_and_extract(directory, url):
-  """Download (and unzip) the given split of the dataset."""
+  """Download and extract the given split of dataset.
+  Args:
+    directory: the directory where to extract the tarball.
+    url: the url to download the data file.
+  """
+
   if not tf.gfile.Exists(directory):
     tf.gfile.MakeDirs(directory)
   _, tar_filepath = tempfile.mkstemp(suffix=".tar.gz")
-  print("Downloading %s to %s" % (url, tar_filepath))
+  tf.logging.info("Downloading %s to %s" % (url, tar_filepath))
   urllib.request.urlretrieve(url, tar_filepath)
   with tarfile.open(tar_filepath, "r") as tar:
     try:
       tar.extractall(directory)
     finally:
-      os.remove(tar_filepath)
+      tf.gfile.Remove(tar_filepath)
 
 
 def convert_audio_and_split_transcript(input_dir, source_name, target_name,
                                        output_dir, output_file):
-  """Convert FLAC to WAV and split the transcript."""
-  print("Preprocessing audio and transcript for %s" % source_name)
+  """Convert FLAC to WAV and split the transcript.
+
+  For audio file, convert the format from FLAC to WAV using the sox.Transformer library.
+  For transcripts, each line contains the sequence id and the corresponding transcript (separated by space):
+  Input data format: seq-id transcript_of_seq-id
+  For example:
+   1-2-0 transcript_of_1-2-0.flac
+   1-2-1 transcript_of_1-2-1.flac
+   ...
+
+  Each sequence id has a corresponding .flac file.
+  Parse the transcript file and generate a new csv file which has three columns:
+  "wav_filename": the absolute path to a wav file.
+  "wav_filesize": the size of the corresponding wav file.
+  "transcript": the transcript for this audio segement.
+
+  Args:
+    input_dir: the directory which holds the input dataset.
+    source_name: the name of the specified dataset. e.g. test-clean
+    target_name: the directory name for the newly generated audio files. e.g. test-clean-wav
+    output_dir: the directory to place the newly generated csv files.
+    output_file: the name of the newly generated csv file. e.g. test-clean.csv
+  """
+
+  tf.logging.info("Preprocessing audio and transcript for %s" % source_name)
   source_dir = os.path.join(input_dir, source_name)
   target_dir = os.path.join(input_dir, target_name)
 
-  if not os.path.exists(target_dir):
-    os.makedirs(target_dir)
+  if not tf.gfile.Exists(target_dir):
+    tf.gfile.MakeDirs(target_dir)
 
-  # Each transcript file has the following format:
-  # seq-id transcript_of_seq-id
-  # For example:
-  # 1-2-0 transcript_of_1-2-0.flac
-  # 1-2-1 transcript_of_1-2-1.flac
-  # ....
   files = []
-  for root, _, filenames in os.walk(source_dir):
+  tfm = Transformer()
+  # Convert all FLAC file into WAV format. At the same time, generate the csv
+  # file.
+  for root, _, filenames in tf.gfile.Walk(source_dir):
     for filename in fnmatch.filter(filenames, "*.trans.txt"):
       trans_file = os.path.join(root, filename)
       with codecs.open(trans_file, "r", "utf-8") as fin:
@@ -98,13 +124,13 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
           # Convert FLAC to WAV.
           flac_file = os.path.join(root, seqid + ".flac")
           wav_file = os.path.join(target_dir, seqid + ".wav")
-          if not os.path.exists(wav_file):
-            Transformer().build(flac_file, wav_file)
+          if not tf.gfile.Exists(wav_file):
+            tfm.build(flac_file, wav_file)
           wav_filesize = os.path.getsize(wav_file)
 
           files.append((os.path.abspath(wav_file), wav_filesize, transcript))
 
-  # Write to CSV file which contains columns:
+  # Write to CSV file which contains three columns:
   # "wav_filename", "wav_filesize", "transcript".
   with open(os.path.join(output_dir, output_file), "w") as csvfile:
     fieldnames = ["wav_filename", "wav_filesize", "transcript"]
@@ -129,10 +155,11 @@ def download_and_process_entire_dataset(directory):
 
 
 def main(_):
-  if not os.path.exists(FLAGS.data_dir):
-    os.makedirs(FLAGS.data_dir)
+  if not tf.gfile.Exists(FLAGS.data_dir):
+    tf.gfile.MakeDirs(FLAGS.data_dir)
   download_and_process_entire_dataset(FLAGS.data_dir)
 
 
 if __name__ == '__main__':
+  tf.logging.set_verbosity(tf.logging.INFO)
   tf.app.run()
