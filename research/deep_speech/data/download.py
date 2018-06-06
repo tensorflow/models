@@ -118,6 +118,8 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
       with codecs.open(trans_file, "r", "utf-8") as fin:
         for line in fin:
           seqid, transcript = line.split(' ', 1)
+          # We do a encode-decode transformation here because the output type
+          # of encode is a bytes object, we need convert it to string.
           transcript = unicodedata.normalize("NFKD", transcript).encode(
               "ascii", "ignore").decode("ascii", "ignore").strip().lower()
 
