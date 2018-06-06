@@ -14,13 +14,9 @@
 # ==============================================================================
 """Functions specific to running TensorFlow on TPUs."""
 
-import time
-
 import tensorflow as tf
-from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import embedding_ops
 from tensorflow.python.ops import math_ops
 
 
@@ -84,7 +80,7 @@ def construct_scalar_host_call(metric_dict, model_dir, prefix=""):
   return host_call_fn, [global_step_tensor] + other_tensors
 
 
-def embedding_matmul(embedding_table, values, mask, name='embedding_matmul'):
+def embedding_matmul(embedding_table, values, mask, name="embedding_matmul"):
   """Performs embedding lookup via a matmul.
 
   The matrix to be multiplied by the embedding table Tensor is constructed
@@ -105,7 +101,7 @@ def embedding_matmul(embedding_table, values, mask, name='embedding_matmul'):
   """
 
   with ops.name_scope(name):
-    n_embeddings, embedding_dim = embedding_table.get_shape().as_list()
+    n_embeddings, embedding_dim = embedding_table.get_shape().as_list()  # pylint: disable=unused-variable
     batch_size, padded_size = values.shape.as_list()
 
     emb_idcs = array_ops.tile(
