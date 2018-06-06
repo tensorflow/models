@@ -33,7 +33,7 @@ import tensorflow as tf
 
 FLAGS = absl_flags.FLAGS
 
-absl_flags.DEFINE_multi_string(
+absl_flags.DEFINE_string(
     "data_dir", "/tmp/librispeech_data",
     "Directory to download data and extract the tarball")
 
@@ -91,7 +91,7 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
       trans_file = os.path.join(root, filename)
       with codecs.open(trans_file, "r", "utf-8") as fin:
         for line in fin:
-          seqid, transcript = line.split(maxsplit=1)
+          seqid, transcript = line.split(' ', 1)
           transcript = unicodedata.normalize("NFKD", transcript).encode(
               "ascii", "ignore").decode("ascii", "ignore").strip().lower()
 
