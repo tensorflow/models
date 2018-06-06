@@ -162,7 +162,7 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
     self._logging_dir = logging_dir
     if not tf.gfile.IsDirectory(self._logging_dir):
       tf.gfile.MakeDirs(self._logging_dir)
-    self._metric_file_fh = tf.gfile.GFile(
+    self._metric_file_handler = tf.gfile.GFile(
         os.path.join(self._logging_dir, METRIC_LOG_FILE_NAME), "a")
 
   def log_metric(self, name, value, unit=None, global_step=None, extras=None):
@@ -182,9 +182,9 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
     metric = _process_metric_to_json(name, value, unit, global_step, extras)
     if metric:
       try:
-        json.dump(metric, self._metric_file_fh)
-        self._metric_file_fh.write("\n")
-        self._metric_file_fh.flush()
+        json.dump(metric, self._metric_file_handler)
+        self._metric_file_handler.write("\n")
+        self._metric_file_handler.flush()
       except (TypeError, ValueError) as e:
         tf.logging.warning("Failed to dump metric to log file: "
                            "name %s, value %s, error %s", name, value, e)
@@ -214,8 +214,8 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
                            e)
 
   def on_finish(self, status):
-    self._metric_file_fh.flush()
-    self._metric_file_fh.close()
+    self._metric_file_handler.flush()
+    self._metric_file_handler.close()
 
 
 class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
