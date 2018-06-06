@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
 import codecs
 import csv
 import fnmatch
@@ -27,15 +26,16 @@ import tarfile
 import tempfile
 import unicodedata
 
+from absl import flags as absl_flags
 from six.moves import urllib
 from sox import Transformer
 import tensorflow as tf
 
-parser = argparse.ArgumentParser()
+FLAGS = absl_flags.FLAGS
 
-parser.add_argument(
-    '--data_dir', type=str, default='/tmp/librispeech_data',
-    help='Directory to download data and extract the tarball')
+absl_flags.DEFINE_multi_string(
+    "data_dir", "/tmp/librispeech_data",
+    "Directory to download data and extract the tarball")
 
 LIBRI_SPEECH_URLS = {
     "train-clean-100":
@@ -62,10 +62,11 @@ def download_and_extract(directory, url):
   _, tar_filepath = tempfile.mkstemp(suffix=".tar.gz")
   print("Downloading %s to %s" % (url, tar_filepath))
   urllib.request.urlretrieve(url, tar_filepath)
-  tar = tarfile.open(tar_filepath, "r")
-  tar.extractall(directory)
-  tar.close()
-  os.remove(tar_filepath)
+  with tarfile.open(tar_filepath, "r") as tar:
+    try:
+      tar.extractall(directory)
+    finally:
+      os.remove(tar_filepath)
 
 
 def convert_audio_and_split_transcript(input_dir, source_name, target_name,
@@ -90,7 +91,7 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
       trans_file = os.path.join(root, filename)
       with codecs.open(trans_file, "r", "utf-8") as fin:
         for line in fin:
-          seqid, transcript = line.split()[0], " ".join(line.split()[1:])
+          seqid, transcript = line.split(maxsplit=1)
           transcript = unicodedata.normalize("NFKD", transcript).encode(
               "ascii", "ignore").decode("ascii", "ignore").strip().lower()
 
@@ -134,5 +135,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-  FLAGS, unparsed = parser.parse_known_args()
-  tf.app.run(argv=[sys.argv[0]] + unparsed)
+  tf.app.run()
