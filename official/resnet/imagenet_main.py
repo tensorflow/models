@@ -192,7 +192,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
       parse_record_fn=parse_record,
       num_epochs=num_epochs,
       num_gpus=num_gpus,
-      examples_per_epoch= _NUM_IMAGES['train'] if is_training else None
+      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None
   )
 
 
