@@ -156,7 +156,7 @@ def parse_record(raw_record, is_training):
   return image, label
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
   """Input function which provides batches for train or eval.
 
   Args:
@@ -164,6 +164,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
+    num_gpus: The number of gpus used for training.
 
   Returns:
     A dataset that can be used for iteration.
@@ -184,8 +185,14 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
       tf.data.TFRecordDataset, cycle_length=10))
 
   return resnet_run_loop.process_record_dataset(
-      dataset, is_training, batch_size, _SHUFFLE_BUFFER, parse_record,
-      num_epochs
+      dataset=dataset,
+      is_training=is_training,
+      batch_size=batch_size,
+      shuffle_buffer=_SHUFFLE_BUFFER,
+      parse_record_fn=parse_record,
+      num_epochs=num_epochs,
+      num_gpus=num_gpus,
+      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None
   )
 
 
