@@ -524,7 +524,7 @@ def run_transformer(flags_obj):
   params["static_batch"] = flags_obj.static_batch or params["use_tpu"]
   params["allow_ffn_pad"] = not params["use_tpu"]
 
-  params["use_synthetic_datda"] = flags_obj.use_synthetic_data
+  params["use_synthetic_data"] = flags_obj.use_synthetic_data
 
   # Set batch size parameter, which depends on TPU and distribution settings.
   if params["use_tpu"]:
