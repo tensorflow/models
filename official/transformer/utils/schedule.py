@@ -19,11 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import time
 
 import tensorflow as tf
-
-from official.transformer.utils import dataset
 
 
 _TRAIN, _EVAL = tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL
@@ -123,7 +120,6 @@ class Manager(object):
 
     Args:
       num_epochs: An integer of the number of epochs to convert to steps.
-      batch_size: The mini-batch size used.
       mode: The estimator ModeKey of the computation
 
     Returns:
