@@ -16,6 +16,7 @@
 """Tests for object_detection.utils.dataset_util."""
 
 import os
+import numpy as np
 import tensorflow as tf
 
 from object_detection.protos import input_reader_pb2
@@ -31,6 +32,13 @@ class DatasetUtilTest(tf.test.TestCase):
       path = self._path_template % i
       with tf.gfile.Open(path, 'wb') as f:
         f.write('\n'.join([str(i + 1), str((i + 1) * 10)]))
+
+    self._shuffle_path_template = os.path.join(self.get_temp_dir(),
+                                               'shuffle_%s.txt')
+    for i in range(2):
+      path = self._shuffle_path_template % i
+      with tf.gfile.Open(path, 'wb') as f:
+        f.write('\n'.join([str(i)] * 5))
 
   def _get_dataset_next(self, files, config, batch_size):
     def decode_func(value):
@@ -77,6 +85,43 @@ class DatasetUtilTest(tf.test.TestCase):
       self.assertAllEqual(sess.run(data),
                           [[1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 1, 10, 2, 20, 3,
                             30, 4, 40, 5, 50]])
+
+  def test_reduce_num_reader(self):
+    config = input_reader_pb2.InputReader()
+    config.num_readers = 10
+    config.shuffle = False
+
+    data = self._get_dataset_next([self._path_template % '*'], config,
+                                  batch_size=20)
+    with self.test_session() as sess:
+      self.assertAllEqual(sess.run(data),
+                          [[1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 1, 10, 2, 20, 3,
+                            30, 4, 40, 5, 50]])
+
+  def test_enable_shuffle(self):
+    config = input_reader_pb2.InputReader()
+    config.num_readers = 1
+    config.shuffle = True
+
+    data = self._get_dataset_next(
+        [self._shuffle_path_template % '*'], config, batch_size=10)
+    expected_non_shuffle_output = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+
+    with self.test_session() as sess:
+      self.assertTrue(
+          np.any(np.not_equal(sess.run(data), expected_non_shuffle_output)))
+
+  def test_disable_shuffle_(self):
+    config = input_reader_pb2.InputReader()
+    config.num_readers = 1
+    config.shuffle = False
+
+    data = self._get_dataset_next(
+        [self._shuffle_path_template % '*'], config, batch_size=10)
+    expected_non_shuffle_output = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+
+    with self.test_session() as sess:
+      self.assertAllEqual(sess.run(data), [expected_non_shuffle_output])
 
   def test_read_dataset_single_epoch(self):
     config = input_reader_pb2.InputReader()

@@ -39,12 +39,14 @@ EVAL_METRICS_CLASS_DICT = {
         object_detection_evaluation.PascalInstanceSegmentationEvaluator,
     'weighted_pascal_voc_instance_segmentation_metrics':
         object_detection_evaluation.WeightedPascalInstanceSegmentationEvaluator,
-    'open_images_detection_metrics':
+    'open_images_V2_detection_metrics':
         object_detection_evaluation.OpenImagesDetectionEvaluator,
     'coco_detection_metrics':
         coco_evaluation.CocoDetectionEvaluator,
     'coco_mask_metrics':
         coco_evaluation.CocoMaskEvaluator,
+    'oid_challenge_object_detection_metrics':
+        object_detection_evaluation.OpenImagesDetectionChallengeEvaluator,
 }
 
 EVAL_DEFAULT_METRIC = 'pascal_voc_detection_metrics'

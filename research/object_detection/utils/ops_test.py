@@ -1100,6 +1100,16 @@ class ReframeBoxMasksToImageMasksTest(tf.test.TestCase):
       np_image_masks = sess.run(image_masks)
       self.assertAllClose(np_image_masks, np_expected_image_masks)
 
+  def testZeroBoxMasks(self):
+    box_masks = tf.zeros([0, 3, 3], dtype=tf.float32)
+    boxes = tf.zeros([0, 4], dtype=tf.float32)
+    image_masks = ops.reframe_box_masks_to_image_masks(box_masks, boxes,
+                                                       image_height=4,
+                                                       image_width=4)
+    with self.test_session() as sess:
+      np_image_masks = sess.run(image_masks)
+      self.assertAllEqual(np_image_masks.shape, np.array([0, 4, 4]))
+
   def testMaskIsCenteredInImageWhenBoxIsCentered(self):
     box_masks = tf.constant([[[1, 1],
                               [1, 1]]], dtype=tf.float32)

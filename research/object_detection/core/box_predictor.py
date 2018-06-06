@@ -79,10 +79,12 @@ class BoxPredictor(object):
 
     Returns:
       A dictionary containing at least the following tensors.
-        box_encodings: A list of float tensors of shape
-          [batch_size, num_anchors_i, q, code_size] representing the location of
-          the objects, where q is 1 or the number of classes. Each entry in the
-          list corresponds to a feature map in the input `image_features` list.
+        box_encodings: A list of float tensors. Each entry in the list
+          corresponds to a feature map in the input `image_features` list. All
+          tensors in the list have one of the two following shapes:
+          a. [batch_size, num_anchors_i, q, code_size] representing the location
+            of the objects, where q is 1 or the number of classes.
+          b. [batch_size, num_anchors_i, code_size].
         class_predictions_with_background: A list of float tensors of shape
           [batch_size, num_anchors_i, num_classes + 1] representing the class
           predictions for the proposals. Each entry in the list corresponds to a
@@ -120,10 +122,12 @@ class BoxPredictor(object):
 
     Returns:
       A dictionary containing at least the following tensors.
-        box_encodings: A list of float tensors of shape
-          [batch_size, num_anchors_i, q, code_size] representing the location of
-          the objects, where q is 1 or the number of classes. Each entry in the
-          list corresponds to a feature map in the input `image_features` list.
+        box_encodings: A list of float tensors. Each entry in the list
+          corresponds to a feature map in the input `image_features` list. All
+          tensors in the list have one of the two following shapes:
+          a. [batch_size, num_anchors_i, q, code_size] representing the location
+            of the objects, where q is 1 or the number of classes.
+          b. [batch_size, num_anchors_i, code_size].
         class_predictions_with_background: A list of float tensors of shape
           [batch_size, num_anchors_i, num_classes + 1] representing the class
           predictions for the proposals. Each entry in the list corresponds to a
@@ -765,6 +769,13 @@ class ConvolutionalBoxPredictor(BoxPredictor):
     }
 
 
+# TODO(rathodv): Replace with slim.arg_scope_func_key once its available
+# externally.
+def _arg_scope_func_key(op):
+  """Returns a key that can be used to index arg_scope dictionary."""
+  return getattr(op, '_key_op', str(op))
+
+
 # TODO(rathodv): Merge the implementation with ConvolutionalBoxPredictor above
 # since they are very similar.
 class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
@@ -773,8 +784,12 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
   Defines the box predictor as defined in
   https://arxiv.org/abs/1708.02002. This class differs from
   ConvolutionalBoxPredictor in that it shares weights and biases while
-  predicting from different feature maps.  Separate multi-layer towers are
-  constructed for the box encoding and class predictors respectively.
+  predicting from different feature maps. However, batch_norm parameters are not
+  shared because the statistics of the activations vary among the different
+  feature maps.
+
+  Also note that separate multi-layer towers are constructed for the box
+  encoding and class predictors respectively.
   """
 
   def __init__(self,
@@ -833,13 +848,14 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
 
     Returns:
       box_encodings: A list of float tensors of shape
-        [batch_size, num_anchors_i, q, code_size] representing the location of
-        the objects, where q is 1 or the number of classes. Each entry in the
-        list corresponds to a feature map in the input `image_features` list.
+        [batch_size, num_anchors_i, code_size] representing the location of
+        the objects. Each entry in the list corresponds to a feature map in the
+        input `image_features` list.
       class_predictions_with_background: A list of float tensors of shape
         [batch_size, num_anchors_i, num_classes + 1] representing the class
         predictions for the proposals. Each entry in the list corresponds to a
         feature map in the input `image_features` list.
+
 
     Raises:
       ValueError: If the image feature maps do not have the same number of
@@ -858,15 +874,18 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                        'channels, found: {}'.format(feature_channels))
     box_encodings_list = []
     class_predictions_list = []
-    for (image_feature, num_predictions_per_location) in zip(
-        image_features, num_predictions_per_location_list):
+    for feature_index, (image_feature,
+                        num_predictions_per_location) in enumerate(
+                            zip(image_features,
+                                num_predictions_per_location_list)):
       # Add a slot for the background class.
       with tf.variable_scope('WeightSharedConvolutionalBoxPredictor',
                              reuse=tf.AUTO_REUSE):
         num_class_slots = self.num_classes + 1
         box_encodings_net = image_feature
         class_predictions_net = image_feature
-        with slim.arg_scope(self._conv_hyperparams_fn()):
+        with slim.arg_scope(self._conv_hyperparams_fn()) as sc:
+          apply_batch_norm = _arg_scope_func_key(slim.batch_norm) in sc
           for i in range(self._num_layers_before_predictor):
             box_encodings_net = slim.conv2d(
                 box_encodings_net,
@@ -874,14 +893,22 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                 [self._kernel_size, self._kernel_size],
                 stride=1,
                 padding='SAME',
-                scope='BoxEncodingPredictionTower/conv2d_{}'.format(i))
+                activation_fn=None,
+                normalizer_fn=(tf.identity if apply_batch_norm else None),
+                scope='BoxPredictionTower/conv2d_{}'.format(i))
+            if apply_batch_norm:
+              box_encodings_net = slim.batch_norm(
+                  box_encodings_net,
+                  scope='BoxPredictionTower/conv2d_{}/BatchNorm/feature_{}'.
+                  format(i, feature_index))
+            box_encodings_net = tf.nn.relu6(box_encodings_net)
           box_encodings = slim.conv2d(
               box_encodings_net,
               num_predictions_per_location * self._box_code_size,
               [self._kernel_size, self._kernel_size],
               activation_fn=None, stride=1, padding='SAME',
               normalizer_fn=None,
-              scope='BoxEncodingPredictor')
+              scope='BoxPredictor')
 
           for i in range(self._num_layers_before_predictor):
             class_predictions_net = slim.conv2d(
@@ -890,7 +917,15 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                 [self._kernel_size, self._kernel_size],
                 stride=1,
                 padding='SAME',
+                activation_fn=None,
+                normalizer_fn=(tf.identity if apply_batch_norm else None),
                 scope='ClassPredictionTower/conv2d_{}'.format(i))
+            if apply_batch_norm:
+              class_predictions_net = slim.batch_norm(
+                  class_predictions_net,
+                  scope='ClassPredictionTower/conv2d_{}/BatchNorm/feature_{}'
+                  .format(i, feature_index))
+            class_predictions_net = tf.nn.relu6(class_predictions_net)
           if self._use_dropout:
             class_predictions_net = slim.dropout(
                 class_predictions_net, keep_prob=self._dropout_keep_prob)
@@ -912,7 +947,7 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                                        combined_feature_map_shape[1] *
                                        combined_feature_map_shape[2] *
                                        num_predictions_per_location,
-                                       1, self._box_code_size]))
+                                       self._box_code_size]))
           box_encodings_list.append(box_encodings)
           class_predictions_with_background = tf.reshape(
               class_predictions_with_background,

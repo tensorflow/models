@@ -56,12 +56,15 @@ def transform_input_data(tensor_dict,
   """A single function that is responsible for all input data transformations.
 
   Data transformation functions are applied in the following order.
-  1. data_augmentation_fn (optional): applied on tensor_dict.
-  2. model_preprocess_fn: applied only on image tensor in tensor_dict.
-  3. image_resizer_fn: applied on original image and instance mask tensor in
+  1. If key fields.InputDataFields.image_additional_channels is present in
+     tensor_dict, the additional channels will be merged into
+     fields.InputDataFields.image.
+  2. data_augmentation_fn (optional): applied on tensor_dict.
+  3. model_preprocess_fn: applied only on image tensor in tensor_dict.
+  4. image_resizer_fn: applied on original image and instance mask tensor in
      tensor_dict.
-  4. one_hot_encoding: applied to classes tensor in tensor_dict.
-  5. merge_multiple_boxes (optional): when groundtruth boxes are exactly the
+  5. one_hot_encoding: applied to classes tensor in tensor_dict.
+  6. merge_multiple_boxes (optional): when groundtruth boxes are exactly the
      same they can be merged into a single box with an associated k-hot class
      label.
 
@@ -88,6 +91,11 @@ def transform_input_data(tensor_dict,
     A dictionary keyed by fields.InputDataFields containing the tensors obtained
     after applying all the transformations.
   """
+  if fields.InputDataFields.image_additional_channels in tensor_dict:
+    channels = tensor_dict[fields.InputDataFields.image_additional_channels]
+    tensor_dict[fields.InputDataFields.image] = tf.concat(
+        [tensor_dict[fields.InputDataFields.image], channels], axis=2)
+
   if retain_original_image:
     tensor_dict[fields.InputDataFields.original_image] = tf.cast(
         tensor_dict[fields.InputDataFields.image], tf.uint8)
