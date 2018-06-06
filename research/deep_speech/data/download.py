@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 # ==============================================================================
-"""tf.data.Dataset interface to the LibriSpeech dataset."""
+"""Download and preprocess LibriSpeech dataset for DeepSpeech model."""
 
 from __future__ import absolute_import
 from __future__ import division
