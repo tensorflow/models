@@ -20,18 +20,15 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from official.utils.flags import core as flags_core
 
-
-def get_distribution_strategy(flags_obj):
+def get_distribution_strategy(num_gpus):
   """Return a DistributionStrategy for running the model."""
-  if flags_core.get_num_gpus(flags_obj) == 0:
+  if num_gpus == 0:
     return tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
-  elif flags_core.get_num_gpus(flags_obj) == 1:
+  elif num_gpus == 1:
     return tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
   else:
-    return tf.contrib.distribute.MirroredStrategy(
-        num_gpus=flags_core.get_num_gpus(flags_obj))
+    return tf.contrib.distribute.MirroredStrategy(num_gpus=num_gpus)
 
 
 def per_device_batch_size(batch_size, num_gpus):

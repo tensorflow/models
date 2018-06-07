@@ -474,7 +474,7 @@ def construct_estimator(flags_obj, params, schedule_manager):
   """
   if not params["use_tpu"]:
     distribution_strategy = distribution_utils.get_distribution_strategy(
-        flags_obj)
+        flags_core.get_num_gpus(flags_obj))
     return tf.estimator.Estimator(
         model_fn=model_fn, model_dir=flags_obj.model_dir, params=params,
         config=tf.estimator.RunConfig(train_distribute=distribution_strategy))
