@@ -357,7 +357,7 @@ def run_loop(
 def define_transformer_flags():
   """Add flags and flag validators for running transformer_main."""
   # Add common flags (data_dir, model_dir, train_epochs, etc.).
-  flags_core.define_base(multi_gpu=False, num_gpu=False)
+  flags_core.define_base(multi_gpu=False)
   flags_core.define_performance(
       num_parallel_calls=True,
       inter_op=False,
