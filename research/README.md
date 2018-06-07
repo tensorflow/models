@@ -39,7 +39,7 @@ request.
 -   [lfads](lfads): sequential variational autoencoder for analyzing
     neuroscience data.
 -   [lm_1b](lm_1b): language modeling on the one billion word benchmark.
--	[lm_commonsense](lm_commonsense): commonsense reasoning using language models.
+-   [lm_commonsense](lm_commonsense): commonsense reasoning using language models.
 -   [maskgan](maskgan): text generation with GANs.
 -   [namignizer](namignizer): recognize and generate names.
 -   [neural_gpu](neural_gpu): highly parallel neural computer.
