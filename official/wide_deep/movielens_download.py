@@ -14,7 +14,9 @@
 # ==============================================================================
 
 import os
+import sys
 import tempfile
+import zipfile
 
 from absl import app as absl_app
 from absl import flags
@@ -26,6 +28,8 @@ from official.utils.flags import core as flags_core
 
 # URL to download dataset
 _DATA_URL = "http://files.grouplens.org/datasets/movielens/ml-latest.zip"
+_FILES = ["movies.csv", "links.csv", "genome-scores.csv", "genome-tags.csv",
+          "tags.csv", "ratings.csv", "README.txt"]
 
 
 def download_and_extract(data_dir):
@@ -35,22 +39,36 @@ def download_and_extract(data_dir):
   filename = _DATA_URL.split('/')[-1]
   filepath = os.path.join(data_dir, filename)
 
-  if not tf.gfile.Exists(filepath):
+  skip = all([tf.gfile.Exists(os.path.join(data_dir, i)) for i in _FILES])
+
+  if not skip:
+    if tf.gfile.Exists(data_dir):
+      tf.gfile.DeleteRecursively(data_dir)
+    tf.gfile.MakeDirs(data_dir)
+
     def _progress(count, block_size, total_size):
       sys.stdout.write("\r>> Downloading {} {:.1f}%".format(
-          file_path, 100.0 * count * block_size / total_size))
+          filename, 100.0 * count * block_size / total_size))
       sys.stdout.flush()
 
-    temp_filename, _ = urllib.request.urlretrieve(
-        url=_DATA_URL, reporthook=_progress)
-    statinfo = os.stat(temp_filename)
-    print(temp_filename)
-    print(statinfo)
+    try:
+      temp_filepath, _ = urllib.request.urlretrieve(
+          url=_DATA_URL, reporthook=_progress)
+      print()
 
+      with tempfile.TemporaryDirectory() as temp_dir:
+        zipfile.ZipFile(temp_filepath, "r").extractall(temp_dir)
+        assert set(os.listdir(temp_dir)) == {"ml-latest"}
+        files = os.listdir(os.path.join(temp_dir, "ml-latest"))
+        assert set(files) == set(_FILES)
+        for i in files:
+          tf.gfile.Copy(os.path.join(temp_dir, "ml-latest", i),
+                        os.path.join(data_dir, i))
+          print(i.ljust(20), "copied")
 
+    finally:
+      tf.gfile.Remove(temp_filepath)
 
-from urllib import request
-request.urlretrieve()
 
 def define_data_download_flags():
   """Add flags specifying data download arguments."""
@@ -60,8 +78,8 @@ def define_data_download_flags():
           "Directory to download and extract data."))
 
 
-def main(flags_obj):
-  download_and_extract(flags_obj.data_dir)
+def main(_):
+  download_and_extract(flags.FLAGS.data_dir)
 
 
 if __name__ == "__main__":
