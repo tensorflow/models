@@ -527,13 +527,11 @@ def run_transformer(flags_obj):
   params["use_synthetic_data"] = flags_obj.use_synthetic_data
 
   # Set batch size parameter, which depends on TPU and distribution settings.
-  if params["use_tpu"]:
-    params["batch_size"] = (
-        flags_obj.batch_size or params["default_batch_size_tpu"])
-  else:
+  params["batch_size"] = (
+      flags_obj.batch_size or params["default_batch_size_tpu"])
+  if not params["use_tpu"]:
     params["batch_size"] = distribution_utils.per_device_batch_size(
-        flags_obj.batch_size or params["default_batch_size"],
-        flags_obj.num_gpus)
+        params["batch_size"], flags_core.get_num_gpus(flags_obj))
 
   schedule_manager = schedule.Manager(
       train_steps=flags_obj.train_steps,
