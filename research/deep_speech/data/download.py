@@ -21,6 +21,7 @@ from __future__ import print_function
 import codecs
 import fnmatch
 import os
+import sys
 import tarfile
 import tempfile
 import unicodedata
@@ -62,9 +63,20 @@ def download_and_extract(directory, url):
     tf.gfile.MakeDirs(directory)
 
   _, tar_filepath = tempfile.mkstemp(suffix=".tar.gz")
+
   try:
     tf.logging.info("Downloading %s to %s" % (url, tar_filepath))
-    urllib.request.urlretrieve(url, tar_filepath)
+
+    def _progress(count, block_size, total_size):
+      sys.stdout.write("\r>> Downloading {} {:.1f}%".format(
+          tar_filepath, 100.0 * count * block_size / total_size))
+      sys.stdout.flush()
+
+    urllib.request.urlretrieve(url, tar_filepath, _progress)
+    print()
+    statinfo = os.stat(tar_filepath)
+    tf.logging.info(
+        "Successfully downloaded %s, size(bytes): %d" % (url, statinfo.st_size))
     with tarfile.open(tar_filepath, "r") as tar:
       tar.extractall(directory)
   finally:
@@ -140,9 +152,18 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
   tf.logging.info("Successfully generated csv file {}".format(csv_file_path))
 
 
-def download_and_process_entire_dataset(directory):
-  """Download and pre-process all the LibriSpeech data."""
-  for dataset in LIBRI_SPEECH_URLS:
+def download_and_process_datasets(directory, datasets):
+  """Download and pre-process the specified list of LibriSpeech dataset.
+
+  Args:
+    directory: the directory to put all the downloaded and preprocessed data.
+    datasets: list of dataset names that will be downloaded and processed.
+  """
+
+  tf.logging.info("Preparing LibriSpeech dataset: {}".format(
+      ",".join(datasets)))
+  for dataset in datasets:
+    tf.logging.info("Preparing dataset %s", dataset)
     dataset_dir = os.path.join(directory, dataset)
     download_and_extract(dataset_dir, LIBRI_SPEECH_URLS[dataset])
     convert_audio_and_split_transcript(
@@ -155,12 +176,29 @@ def define_data_download_flags():
   absl_flags.DEFINE_string(
       "data_dir", "/tmp/librispeech_data",
       "Directory to download data and extract the tarball")
+  absl_flags.DEFINE_bool("train_only", False,
+                         "If true, only download the training set")
+  absl_flags.DEFINE_bool("dev_only", False,
+                         "If true, only download the dev set")
+  absl_flags.DEFINE_bool("test_only", False,
+                         "If true, only download the test set")
 
 
 def main(_):
   if not tf.gfile.Exists(FLAGS.data_dir):
     tf.gfile.MakeDirs(FLAGS.data_dir)
-  download_and_process_entire_dataset(FLAGS.data_dir)
+
+  if FLAGS.train_only:
+    download_and_process_datasets(
+        FLAGS.data_dir,
+        ["train-clean-100", "train-clean-360", "train-other-500"])
+  elif FLAGS.dev_only:
+    download_and_process_datasets(FLAGS.data_dir, ["dev-clean", "dev-other"])
+  elif FLAGS.test_only:
+    download_and_process_datasets(FLAGS.data_dir, ["test-clean", "test-other"])
+  else:
+    # By default we download the entire dataset.
+    download_and_process_datasets(FLAGS.data_dir, LIBRI_SPEECH_URLS.keys())
 
 
 if __name__ == "__main__":
@@ -168,4 +206,3 @@ if __name__ == "__main__":
   define_data_download_flags()
   FLAGS = absl_flags.FLAGS
   absl_app.run(main)
-
