@@ -16,14 +16,13 @@
 
 import collections
 import tempfile
-import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.transformer.utils import tokenizer
 
 
-class SubtokenizerTest(unittest.TestCase):
+class SubtokenizerTest(tf.test.TestCase):
 
   def _init_subtokenizer(self, vocab_list):
     temp_file = tempfile.NamedTemporaryFile(delete=False)
@@ -55,7 +54,7 @@ class SubtokenizerTest(unittest.TestCase):
     self.assertEqual([u"testing", u"123"], token_list)
 
 
-class StringHelperTest(unittest.TestCase):
+class StringHelperTest(tf.test.TestCase):
 
   def test_split_string_to_tokens(self):
     text = "test? testing 123."
@@ -180,4 +179,4 @@ class StringHelperTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  unittest.main()
+  tf.test.main()
