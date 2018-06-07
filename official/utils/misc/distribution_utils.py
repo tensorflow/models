@@ -63,6 +63,6 @@ def per_device_batch_size(batch_size, num_gpus):
     err = ("When running with multiple GPUs, batch size "
            "must be a multiple of the number of available GPUs. Found {} "
            "GPUs with a batch size of {}; try --batch_size={} instead."
-           ).format(num_gpus, batch_size, batch_size - remainder)
+          ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
   return int(batch_size / num_gpus)

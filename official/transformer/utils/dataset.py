@@ -283,5 +283,3 @@ def eval_input_fn(params):
       file_pattern, params["batch_size"], params["max_length"],
       params["num_parallel_calls"], shuffle=False, repeat=1,
       static_batch=params["static_batch"])
-
-
