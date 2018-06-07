@@ -348,7 +348,7 @@ def resnet_main(
       allow_soft_placement=True)
 
   distribution_strategy = distribution_utils.get_distribution_strategy(
-      flags_core.get_num_gpus(flags_obj))
+      flags_core.get_num_gpus(flags_obj), use_hierarchical_copy=True)
 
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy, session_config=session_config)

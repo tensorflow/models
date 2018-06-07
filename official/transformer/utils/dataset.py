@@ -248,11 +248,12 @@ def _read_and_batch_from_files(
   dataset = dataset.repeat(repeat)
 
   # Prefetch the next element to improve speed of input pipeline.
-  dataset = dataset.prefetch(1)
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
   return dataset
 
 
 def _generate_synthetic_data(params):
+  """Create synthetic data based on the parameter batch size."""
   batch = length = int(math.sqrt(params["batch_size"]))
   dataset = tf.data.Dataset.from_tensors(tf.ones([batch, length], tf.int64))
   dataset = dataset.map(lambda x: (x, x))
