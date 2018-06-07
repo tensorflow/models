@@ -15,14 +15,13 @@
 """Test functions in compute_blue.py."""
 
 import tempfile
-import unittest
 
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.transformer import compute_bleu
 
 
-class ComputeBleuTest(unittest.TestCase):
+class ComputeBleuTest(tf.test.TestCase):
 
   def _create_temp_file(self, text):
     temp_file = tempfile.NamedTemporaryFile(delete=False)
@@ -62,4 +61,4 @@ class ComputeBleuTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  unittest.main()
+  tf.test.main()
