@@ -17,12 +17,19 @@
 Note that, Keras Callbacks provide two levels (batch and epoch level) to
 record the internal states and statistics during model training. So in the
 following customized callbacks, we also provide two levels for benchmark:
-batch_based and epoch_based. Users can specify the `--benchmark_level` to
-choose benchmark level.
+`batch_based` and `epoch_based`. Users can specify the `--benchmark_level` to
+choose benchmark level. This is similar to the `every_n_seconds` and
+`every_n_steps` options in tensorflow Estimator hooks.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import time
+
 # pylint: disable=g-bad-import-order
 import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
 from official.utils.logs import logger
 
@@ -129,13 +136,12 @@ class LoggingMetricCallback(tf.keras.callbacks.Callback):
     self._global_step = 0
 
   def on_batch_end(self, batch, logs=None):
-    """Log metrics after each batch.
-
-    `val_acc` and `val_loss` can only be obtained after each epoch.
-    """
+    """Log metrics after each batch."""
     self._global_step += 1
     if self._batch_based:
       for metric in self._metrics.keys():
+        # `val_acc` and `val_loss` can only be obtained after each epoch.
+        metric = metric.strip().lower()
         if metric not in ["val_acc", "val_loss"]:
           self._logger.log_metric(
               _METRICS_TO_LOG[metric],
@@ -146,6 +152,7 @@ class LoggingMetricCallback(tf.keras.callbacks.Callback):
     """Log metrics after each epoch."""
     if self._epoch_based:
       for metric in self._metrics.keys():
+        metric = metric.strip().lower()
         self._logger.log_metric(
             _METRICS_TO_LOG[metric],
             logs.get(metric),
