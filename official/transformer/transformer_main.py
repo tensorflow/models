@@ -396,7 +396,7 @@ def define_transformer_flags():
           "must be static (e.g. running on TPU), this setting will be ignored "
           "and static batching will always be used."))
 
-# Flags for training with steps (may be used for debugging)
+  # Flags for training with steps (may be used for debugging)
   flags.DEFINE_integer(
       name="train_steps", short_name="ts", default=None,
       help=flags_core.help_wrap("The number of steps used to train."))
