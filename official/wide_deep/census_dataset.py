@@ -69,7 +69,7 @@ def _download_and_clean_file(filename, url):
   tf.gfile.Remove(temp_file)
 
 
-def _download(data_dir):
+def download(data_dir):
   if not tf.gfile.Exists(data_dir):
     tf.gfile.MkDir(data_dir)
 
@@ -189,7 +189,7 @@ def define_data_download_flags():
 
 
 def main(_):
-  _download(flags.FLAGS.data_dir)
+  download(flags.FLAGS.data_dir)
 
 
 if __name__ == '__main__':
