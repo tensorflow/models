@@ -45,6 +45,8 @@ class ExamplesPerSecondCallback(tf.keras.callbacks.Callback):
   """ExamplesPerSecond callback.
 
   This callback records the average examples per second during training.
+
+  Add every_n_steps, with only batch based
   """
 
   def __init__(self, batch_size=None, epoch_size=None, batch_based=None,
