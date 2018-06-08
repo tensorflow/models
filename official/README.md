@@ -46,13 +46,14 @@ If you would like to make any fixes or improvements to the models, please [submi
 
 ## New Models
 
-The team is actively working to add new models to the repository. Every model should follow the following guidelines, to uphold the our objectives of readable, usable, and maintainable code.
+The team is actively working to add new models to the repository. Every model should follow the following guidelines, to uphold the
+our objectives of readable, usable, and maintainable code.
 
 **General guidelines**
 * Code should be well documented and tested.
 * Runnable from a blank environment with relative ease.
 * Trainable on: single GPU/CPU (baseline), multiple GPUs, TPU
-* Compatible with Python 2 and 3 (using [six](https://pythonhosted.org/six/) when neessary)
+* Compatible with Python 2 and 3 (using [six](https://pythonhosted.org/six/) when necessary)
 
 **Implementation guidelines**
 
