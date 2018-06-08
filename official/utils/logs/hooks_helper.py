@@ -143,8 +143,7 @@ def get_logging_metric_hook(tensors_to_log=None,
       10 mins.
 
   Returns:
-    Returns a ProfilerHook that writes out timelines that can be loaded into
-    profiling tools like chrome://tracing.
+    Returns a LoggingMetricHook that saves tensor values in a JSON format.
   """
   if tensors_to_log is None:
     tensors_to_log = _TENSORS_TO_LOG

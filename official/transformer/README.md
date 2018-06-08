@@ -37,7 +37,7 @@ Below are the commands for running the Transformer model. See the [Detailed inst
 cd /path/to/models/official/transformer
 
 # Ensure that PYTHONPATH is correctly defined as described in
-# https://github.com/tensorflow/models/tree/master/official#running-the-models
+# https://github.com/tensorflow/models/tree/master/official#requirements
 # export PYTHONPATH="$PYTHONPATH:/path/to/models"
 
 # Export variables
@@ -94,7 +94,7 @@ big | 28.9
 0. ### Environment preparation
 
    #### Add models repo to PYTHONPATH
-   Follow the instructions described in the [Running the models](https://github.com/tensorflow/models/tree/master/official#running-the-models) section to add the models folder to the python path.
+   Follow the instructions described in the [Requirements](https://github.com/tensorflow/models/tree/master/official#requirements) section to add the models folder to the python path.
 
    #### Export variables (optional)
 
