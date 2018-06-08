@@ -30,7 +30,7 @@ import tensorflow as tf
 from official.utils.flags import core as flags_core
 
 
-_RATINGS = "ratings_small.csv"
+_RATINGS = "ratings.csv"
 _METADATA = "movies_metadata.csv"
 _FILES = ["credits.csv", "keywords.csv", "links.csv", "links_small.csv",
           _METADATA, _RATINGS, "ratings_small.csv"]
@@ -79,6 +79,8 @@ def read_and_process_data(data_dir):
   metadata = metadata[metadata["movieId"].isin(ratings["movieId"])]
   ratings = ratings[ratings["movieId"].isin(metadata["movieId"])]
 
+  metadata['budget'] = metadata['budget'].astype('float')
+
   metadata['genres'] = metadata['genres'].fillna('[]').apply(
       ast.literal_eval).apply(
       lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
@@ -91,6 +93,8 @@ def read_and_process_data(data_dir):
       lambda x: x[0] if len(x) > 0 else 'NA')
   metadata['genres_1'] = metadata['genres'].apply(
       lambda x: x[1] if len(x) > 1 else 'NA')
+
+  metadata["original_language"] = metadata["original_language"].fillna("unknown")
 
   metadata['year'] = pd.to_datetime(
       metadata['release_date'], errors='coerce').apply(
@@ -105,7 +109,7 @@ def construct_feature_columns(metadata, ratings):
   user_ids = sorted(ratings['userId'].unique())
   movie_ids = sorted(ratings['movieId'].unique())
 
-  bucketed_budgets = list(metadata['budget'].astype("int").quantile(
+  bucketed_budgets = list(metadata['budget'].quantile(
       np.linspace(0.05, 1., num=19, endpoint=False)).unique())
 
   fc_user_id = tf.feature_column.categorical_column_with_vocabulary_list(
@@ -117,7 +121,7 @@ def construct_feature_columns(metadata, ratings):
 
   # Bucket budgets
   fc_budget = tf.feature_column.bucketized_column(
-      tf.feature_column.numeric_column('budget'), boundaries = bucketed_budgets)
+      tf.feature_column.numeric_column('budget'), boundaries=bucketed_budgets)
 
   fc_genres_0, fc_genres_1 = [
     tf.feature_column.indicator_column(
@@ -134,8 +138,8 @@ def construct_feature_columns(metadata, ratings):
       tf.feature_column.numeric_column('year'),
       boundaries = [1800] + list(range(1940, 2010, 10)))
 
-  return [fc_user_id, fc_user_embedding, fc_genres_0, fc_budget, fc_genres_1,
-          fc_original_language, fc_year]
+  return [fc_movie_embedding, fc_user_embedding, fc_genres_0, fc_budget,
+          fc_genres_1, fc_original_language, fc_year]
 
 
 
@@ -144,7 +148,8 @@ def get_input_fns(data_dir, repeat=1, batch_size=32):
   feature_columns = construct_feature_columns(metadata, ratings)
 
   def model_column_fn():
-    return feature_columns
+    # There are no wide columns. Only deep columns for now.
+    return [], feature_columns
 
   movie_columns = ['movieId', 'year', 'original_language',
                    'genres_0', 'genres_1', 'budget']

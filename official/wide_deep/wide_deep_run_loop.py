@@ -51,29 +51,37 @@ def build_estimator(model_dir, model_type, model_column_fn):
   wide_columns, deep_columns = model_column_fn()
   hidden_units = [100, 75, 50, 25]
 
-  # Create a tf.estimator.RunConfig to ensure the model is run on CPU, which
-  # trains faster than GPU for this model.
-  run_config = tf.estimator.RunConfig().replace(
-      session_config=tf.ConfigProto(device_count={'GPU': 0}))
+  return tf.estimator.DNNRegressor(
+      model_dir=model_dir,
+      feature_columns=deep_columns,
+      hidden_units=hidden_units,
+      optimizer=tf.train.AdamOptimizer(),
+      dropout=0.4,
+      loss_reduction=tf.losses.Reduction.SUM_OVER_BATCH_SIZE)
 
-  if model_type == 'wide':
-    return tf.estimator.LinearClassifier(
-        model_dir=model_dir,
-        feature_columns=wide_columns,
-        config=run_config)
-  elif model_type == 'deep':
-    return tf.estimator.DNNClassifier(
-        model_dir=model_dir,
-        feature_columns=deep_columns,
-        hidden_units=hidden_units,
-        config=run_config)
-  else:
-    return tf.estimator.DNNLinearCombinedClassifier(
-        model_dir=model_dir,
-        linear_feature_columns=wide_columns,
-        dnn_feature_columns=deep_columns,
-        dnn_hidden_units=hidden_units,
-        config=run_config)
+  # # Create a tf.estimator.RunConfig to ensure the model is run on CPU, which
+  # # trains faster than GPU for this model.
+  # run_config = tf.estimator.RunConfig().replace(
+  #     session_config=tf.ConfigProto(device_count={'GPU': 0}))
+  #
+  # if model_type == 'wide':
+  #   return tf.estimator.LinearClassifier(
+  #       model_dir=model_dir,
+  #       feature_columns=wide_columns,
+  #       config=run_config)
+  # elif model_type == 'deep':
+  #   return tf.estimator.DNNClassifier(
+  #       model_dir=model_dir,
+  #       feature_columns=deep_columns,
+  #       hidden_units=hidden_units,
+  #       config=run_config)
+  # else:
+  #   return tf.estimator.DNNLinearCombinedClassifier(
+  #       model_dir=model_dir,
+  #       linear_feature_columns=wide_columns,
+  #       dnn_feature_columns=deep_columns,
+  #       dnn_hidden_units=hidden_units,
+  #       config=run_config)
 
 
 def export_model(model, model_type, export_dir, model_column_fn):
@@ -116,8 +124,11 @@ def run_loop(name, train_input_fn, eval_input_fn, model_column_fn, flags_obj):
   loss_prefix = LOSS_PREFIX.get(flags_obj.model_type, '')
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks, batch_size=flags_obj.batch_size,
-      tensors_to_log={'average_loss': loss_prefix + 'head/truediv',
-                      'loss': loss_prefix + 'head/weighted_loss/Sum'})
+      tensors_to_log={
+                      # 'average_loss': loss_prefix + 'head/truediv',
+                      # 'loss': loss_prefix + 'head/weighted_loss/Sum'
+                      })
+  train_hooks = []
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
@@ -135,9 +146,9 @@ def run_loop(name, train_input_fn, eval_input_fn, model_column_fn, flags_obj):
 
     benchmark_logger.log_evaluation_result(results)
 
-    if model_helpers.past_stop_threshold(
-        flags_obj.stop_threshold, results['accuracy']):
-      break
+    # if model_helpers.past_stop_threshold(
+    #     flags_obj.stop_threshold, results['accuracy']):
+    #   break
 
   # Export the model
   if flags_obj.export_dir is not None:

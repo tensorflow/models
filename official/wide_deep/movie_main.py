@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
+
 import os
 
 from absl import app as absl_app
@@ -21,47 +22,40 @@ import tensorflow as tf
 
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
-from official.wide_deep import census_dataset
+from official.wide_deep import movie_dataset
 from official.wide_deep import wide_deep_run_loop
 
 
-def define_census_flags():
+def define_movie_flags():
   wide_deep_run_loop.define_wide_deep_flags()
   flags.adopt_module_key_flags(wide_deep_run_loop)
-  flags_core.set_defaults(data_dir='/tmp/census_data',
-                          model_dir='/tmp/census_model',
-                          train_epochs=40,
-                          epochs_between_evals=2,
-                          batch_size=40)
+  flags_core.set_defaults(data_dir="/tmp/kaggle-movies/",
+                          model_dir='/tmp/movie_model',
+                          train_epochs=50,
+                          epochs_between_evals=5,
+                          batch_size=256)
 
 
-def run_census(flags_obj):
-  census_dataset.download(flags_obj.data_dir)
-
-  train_file = os.path.join(flags_obj.data_dir, 'adult.data')
-  test_file = os.path.join(flags_obj.data_dir, 'adult.test')
-
-  # Train and evaluate the model every `flags.epochs_between_evals` epochs.
-  def train_input_fn():
-    return census_dataset.input_fn(
-        train_file, flags_obj.epochs_between_evals, True, flags_obj.batch_size)
-
-  def eval_input_fn():
-    return census_dataset.input_fn(test_file, 1, False, flags_obj.batch_size)
+def run_movie(flags_obj):
+  movie_dataset.download_and_extract(flags_obj.data_dir)
+  train_input_fn, eval_input_fn, model_column_fn = movie_dataset.get_input_fns(
+      flags_obj.data_dir, repeat=flags_obj.epochs_between_evals,
+      batch_size=flags_obj.batch_size,
+  )
 
   wide_deep_run_loop.run_loop(
-      name="Census Income", train_input_fn=train_input_fn,
+      name="Kaggle Movies", train_input_fn=train_input_fn,
       eval_input_fn=eval_input_fn,
-      model_column_fn=census_dataset.build_model_columns,
+      model_column_fn=model_column_fn,
       flags_obj=flags_obj)
 
 
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
-    run_census(flags.FLAGS)
+    run_movie(flags.FLAGS)
 
 
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  define_census_flags()
+  define_movie_flags()
   absl_app.run(main)
