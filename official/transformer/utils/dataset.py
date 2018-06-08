@@ -265,8 +265,8 @@ def _generate_synthetic_data(params):
 
 def train_input_fn(params):
   """Load and return dataset of batched examples for use during training."""
-  file_pattern = os.path.join(params.get("data_dir", ""), "*train*")
-  if params.get("use_synthetic_data", False):
+  file_pattern = os.path.join(params["data_dir"] or "", "*train*")
+  if params["use_synthetic_data"]:
     return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
       file_pattern, params["batch_size"], params["max_length"],
@@ -276,8 +276,8 @@ def train_input_fn(params):
 
 def eval_input_fn(params):
   """Load and return dataset of batched examples for use during evaluation."""
-  file_pattern = os.path.join(params.get("data_dir", ""), "*dev*")
-  if params.get("use_synthetic_data", False):
+  file_pattern = os.path.join(params["data_dir"] or "", "*dev*")
+  if params["use_synthetic_data"]:
     return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
       file_pattern, params["batch_size"], params["max_length"],
