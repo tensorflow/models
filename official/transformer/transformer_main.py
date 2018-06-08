@@ -189,8 +189,11 @@ def get_train_op_and_metrics(loss, params):
     tvars = tf.trainable_variables()
     gradients = optimizer.compute_gradients(
         loss, tvars, colocate_gradients_with_ops=True)
-    train_op = optimizer.apply_gradients(
+    minimize_op = optimizer.apply_gradients(
         gradients, global_step=global_step, name="train")
+
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    train_op = tf.group(minimize_op, update_ops)
 
     metrics = {"learning_rate": learning_rate}
 

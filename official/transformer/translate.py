@@ -132,8 +132,8 @@ def translate_file(
                        "file.")
     tf.logging.info("Writing to file %s" % output_file)
     with tf.gfile.Open(output_file, "w") as f:
-      for index, key in enumerate(sorted_keys):
-        f.write("%s\n" % translations[key])
+      for index in range(len(sorted_keys)):
+        f.write("%s\n" % translations[sorted_keys[index]])
 
 
 def translate_text(estimator, subtokenizer, txt):
