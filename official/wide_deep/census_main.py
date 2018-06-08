@@ -34,6 +34,7 @@ def define_census_flags():
                           epochs_between_evals=2,
                           batch_size=40)
 
+
 def run_census(flags_obj):
   census_dataset.download(flags_obj.data_dir)
 
@@ -48,8 +49,11 @@ def run_census(flags_obj):
   def eval_input_fn():
     return census_dataset.input_fn(test_file, 1, False, flags_obj.batch_size)
 
-  wide_deep_run_loop.run_loop(name="Census Income", train_input_fn=train_input_fn, model_column_fn=census_dataset.build_model_columns,
-                              eval_input_fn=eval_input_fn, flags_obj=flags_obj)
+  wide_deep_run_loop.run_loop(
+      name="Census Income", train_input_fn=train_input_fn,
+      model_column_fn=census_dataset.build_model_columns,
+      eval_input_fn=eval_input_fn, flags_obj=flags_obj)
+
 
 def main(_):
   with logger.benchmark_context(flags.FLAGS):
