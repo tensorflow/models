@@ -12,8 +12,13 @@ from pydl.pydlutils import bspline
 from third_party.robust_mean import robust_mean
 
 
+class InsufficientPointsError(Exception):
+  """Indicates that insufficient points were available for spline fitting."""
+  pass
+
+
 class SplineError(Exception):
-  """Error when fitting a Kepler spline."""
+  """Indicates an error in the underlying spline-fitting implementation."""
   pass
 
 
@@ -40,7 +45,17 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
     spline: The values of the fitted spline corresponding to the input time
         values.
     mask: Boolean mask indicating the points used to fit the final spline.
+
+  Raises:
+    InsufficientPointsError: If there were insufficient points (after removing
+        outliers) for spline fitting.
+    SplineError: If the spline could not be fit, for example if the breakpoint
+        spacing is too small.
   """
+  if len(time) < 4:
+    raise InsufficientPointsError(
+        "Cannot fit a spline on less than 4 points. Got %d points." % len(time))
+
   # Rescale time into [0, 1].
   t_min = np.min(time)
   t_max = np.max(time)
@@ -58,15 +73,25 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
       mask = np.ones_like(time, dtype=np.bool)  # Try to fit all points.
     else:
       # Choose points where the absolute deviation from the median residual is
-      # less than 3*sigma, where sigma is a robust estimate of the standard
-      # deviation of the residuals from the previous spline.
+      # less than outlier_cut*sigma, where sigma is a robust estimate of the
+      # standard deviation of the residuals from the previous spline.
       residuals = flux - spline
-      _, _, new_mask = robust_mean.robust_mean(residuals, cut=outlier_cut)
+      new_mask = robust_mean.robust_mean(residuals, cut=outlier_cut)[2]
 
       if np.all(new_mask == mask):
         break  # Spline converged.
 
       mask = new_mask
+
+    if np.sum(mask) < 4:
+      # Fewer than 4 points after removing outliers. We could plausibly return
+      # the spline from the previous iteration because it was fit with at least
+      # 4 points. However, since the outliers were such a significant fraction
+      # of the curve, the spline from the previous iteration is probably junk,
+      # and we consider this a fatal error.
+      raise InsufficientPointsError(
+          "Cannot fit a spline on less than 4 points. After removing "
+          "outliers, got %d points." % np.sum(mask))
 
     try:
       with warnings.catch_warnings():
@@ -86,6 +111,31 @@ def kepler_spline(time, flux, bkspace=1.5, maxiter=5, outlier_cut=3):
           "points to fit the spline in one of the intervals." % e)
 
   return spline, mask
+
+
+class SplineMetadata(object):
+  """Metadata about a spline fit.
+
+  Attributes:
+    light_curve_mask: List of boolean numpy arrays indicating which points in
+        the light curve were used to fit the best-fit spline.
+    bkspace: The break-point spacing used for the best-fit spline.
+    bad_bkspaces: List of break-point spacing values that failed.
+    likelihood_term: The likelihood term of the Bayesian Information Criterion;
+        -2*ln(L), where L is the likelihood of the data given the model.
+    penalty_term: The penalty term for the number of parameters in the
+        Bayesian Information Criterion.
+    bic: The value of the Bayesian Information Criterion; equal to
+        likelihood_term + penalty_coeff * penalty_term.
+  """
+
+  def __init__(self):
+    self.light_curve_mask = None
+    self.bkspace = None
+    self.bad_bkspaces = []
+    self.likelihood_term = None
+    self.penalty_term = None
+    self.bic = None
 
 
 def choose_kepler_spline(all_time,
@@ -125,52 +175,65 @@ def choose_kepler_spline(all_time,
   Returns:
     spline: List of numpy arrays; values of the best-fit spline corresponding to
         to the input flux arrays.
-    spline_mask: List of boolean numpy arrays indicating which points in the
-        flux arrays were used to fit the best-fit spline.
-    bkspace: The break-point spacing used for the best-fit spline.
-    bad_bkspaces: List of break-point spacing values that failed.
+    metadata: Object containing metadata about the spline fit.
   """
-  # Compute the assumed standard deviation of Gaussian white noise about the
-  # spline model.
-  abs_deviations = np.concatenate([np.abs(f[1:] - f[:-1]) for f in all_flux])
-  sigma = np.median(abs_deviations) * 1.48 / np.sqrt(2)
-
-  best_bic = None
+  # Initialize outputs.
   best_spline = None
-  best_spline_mask = None
-  best_bkspace = None
-  bad_bkspaces = []
+  metadata = SplineMetadata()
+
+  # Compute the assumed standard deviation of Gaussian white noise about the
+  # spline model. We assume that each flux value f[i] is a Gaussian random
+  # variable f[i] ~ N(s[i], sigma^2), where s is the value of the true spline
+  # model and sigma is the constant standard deviation for all flux values.
+  # Moreover, we assume that s[i] ~= s[i+1]. Therefore,
+  # (f[i+1] - f[i]) / sqrt(2) ~ N(0, sigma^2).
+  scaled_diffs = np.concatenate([np.diff(f) / np.sqrt(2) for f in all_flux])
+  if not scaled_diffs.size:
+    best_spline = [np.array([np.nan] * len(f)) for f in all_flux]
+    metadata.light_curve_mask = [
+        np.zeros_like(f, dtype=np.bool) for f in all_flux
+    ]
+    return best_spline, metadata
+
+  # Compute the median absoute deviation as a robust estimate of sigma. The
+  # conversion factor of 1.48 takes the median absolute deviation to the
+  # standard deviation of a normal distribution. See, e.g.
+  # https://www.mathworks.com/help/stats/mad.html.
+  sigma = np.median(np.abs(scaled_diffs)) * 1.48
+
   for bkspace in bkspaces:
     nparams = 0  # Total number of free parameters in the piecewise spline.
     npoints = 0  # Total number of data points used to fit the piecewise spline.
     ssr = 0  # Sum of squared residuals between the model and the spline.
 
     spline = []
-    spline_mask = []
+    light_curve_mask = []
     bad_bkspace = False  # Indicates that the current bkspace should be skipped.
     for time, flux in zip(all_time, all_flux):
-      # Don't fit a spline on less than 4 points.
-      if len(time) < 4:
-        spline.append(flux)
-        spline_mask.append(np.ones_like(flux, dtype=np.bool))
-        continue
-
       # Fit B-spline to this light-curve segment.
       try:
         spline_piece, mask = kepler_spline(
             time, flux, bkspace=bkspace, maxiter=maxiter)
-
-      # It's expected to get a SplineError occasionally for small values of
-      # bkspace.
+      except InsufficientPointsError as e:
+        # It's expected to occasionally see intervals with insufficient points,
+        # especially if periodic signals have been removed from the light curve.
+        # Skip this interval, but continue fitting the spline.
+        if verbose:
+          warnings.warn(str(e))
+        spline.append(np.array([np.nan] * len(flux)))
+        light_curve_mask.append(np.zeros_like(flux, dtype=np.bool))
+        continue
       except SplineError as e:
+        # It's expected to get a SplineError occasionally for small values of
+        # bkspace. Skip this bkspace.
         if verbose:
           warnings.warn("Bad bkspace %.4f: %s" % (bkspace, e))
-        bad_bkspaces.append(bkspace)
+        metadata.bad_bkspaces.append(bkspace)
         bad_bkspace = True
         break
 
       spline.append(spline_piece)
-      spline_mask.append(mask)
+      light_curve_mask.append(mask)
 
       # Accumulate the number of free parameters.
       total_time = np.max(time) - np.min(time)
@@ -181,7 +244,7 @@ def choose_kepler_spline(all_time,
       npoints += np.sum(mask)
       ssr += np.sum((flux[mask] - spline_piece[mask])**2)
 
-    if bad_bkspace:
+    if bad_bkspace or not npoints:
       continue
 
     # The following term is -2*ln(L), where L is the likelihood of the data
@@ -189,13 +252,26 @@ def choose_kepler_spline(all_time,
     # Gaussian with mean 0 and standard deviation sigma.
     likelihood_term = npoints * np.log(2 * np.pi * sigma**2) + ssr / sigma**2
 
+    # Penalty term for the number of parameters used to fit the model.
+    penalty_term = nparams * np.log(npoints)
+
     # Bayesian information criterion.
-    bic = likelihood_term + penalty_coeff * nparams * np.log(npoints)
+    bic = likelihood_term + penalty_coeff * penalty_term
 
-    if best_bic is None or bic < best_bic:
-      best_bic = bic
+    if best_spline is None or bic < metadata.bic:
       best_spline = spline
-      best_spline_mask = spline_mask
-      best_bkspace = bkspace
+      metadata.light_curve_mask = light_curve_mask
+      metadata.bkspace = bkspace
+      metadata.likelihood_term = likelihood_term
+      metadata.penalty_term = penalty_term
+      metadata.bic = bic
 
-  return best_spline, best_spline_mask, best_bkspace, bad_bkspaces
+  if best_spline is None:
+    # All bkspaces resulted in a SplineError, or all light curve intervals had
+    # insufficient points.
+    best_spline = [np.array([np.nan] * len(f)) for f in all_flux]
+    metadata.light_curve_mask = [
+        np.zeros_like(f, dtype=np.bool) for f in all_flux
+    ]
+
+  return best_spline, metadata
