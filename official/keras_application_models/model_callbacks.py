@@ -27,9 +27,7 @@ from __future__ import print_function
 
 import time
 
-# pylint: disable=g-bad-import-order
-import tensorflow as tf
-# pylint: enable=g-bad-import-order
+import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.logs import logger
 

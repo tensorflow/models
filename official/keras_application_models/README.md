@@ -1,9 +1,11 @@
 # Keras Application Models Benchmark
 ## Overview
-This provides a single scaffold to benchmark the nine Keras built-in application [models](https://keras.io/applications/). All the models are for image classification application, and include:
+This provides a single scaffold to benchmark the nine Keras built-in application [models](https://keras.io/applications/). All the models are for image classification applications, and include:
+
  - Xception
  - VGG16
  - VGG19
+ - ResNet50
  - InceptionV3
  - InceptionResNetV2
  - MobileNet
@@ -11,10 +13,10 @@ This provides a single scaffold to benchmark the nine Keras built-in application
  - NASNet
 
 ## Dataset
-ImageNet data is used for the benchmark. To begin, you will need to download the ImageNet dataset and convert it to TFRecord format. Follow along with the [Inception guide](https://github.com/tensorflow/models/tree/master/research/inception#getting-started) in order to prepare the dataset.
+ImageNet dataset is used for the benchmark. To begin, you will need to download the ImageNet dataset and convert it to TFRecord format. Follow along with the [Inception guide](https://github.com/tensorflow/models/tree/master/research/inception#getting-started) in order to prepare the dataset.
 
 ## Callbacks
-Two customized callbacks are provided for model benchmark: ExamplesPerSecondCallback and LoggingMetricCallback. For each callback, `epoch_based` and `batch_based` options are available to set the benchmark level. Check [model_callbacks.py](model_callbacks.py) for more details.
+Two custom callbacks are provided for model benchmarking: ExamplesPerSecondCallback and LoggingMetricCallback. For each callback, `epoch_based` and `batch_based` options are available to set the benchmark level. Check [model_callbacks.py](model_callbacks.py) for more details.
 
 ## Running Code
 To benchmark a model, use `--model` to specify the model name, and issue the following command:
@@ -27,5 +29,3 @@ Arguments:
   * `--callbacks`: To specify a list of callbacks.
 
 Use the `--help` or `-h` flag to get a full list of possible arguments.
-
-## Benchmark Results (TODO)

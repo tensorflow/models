@@ -132,15 +132,17 @@ def main(_):
   model = keras_model(weights=None)
 
   image_size = get_default_image_size(FLAGS.model)
+  dataset_name = "ImageNet"
   if FLAGS.use_synthetic_data:
     tf.logging.info("Using synthetic dataset...")
+    dataset_name += "_synthetic"
     batch_size = resnet_run_loop.per_device_batch_size(
         FLAGS.batch_size, flags_core.get_num_gpus(FLAGS))
     train_dataset = generate_synthetic_input_dataset(image_size, batch_size)
     val_dataset = generate_synthetic_input_dataset(image_size, batch_size)
   else:
     # Use the actual ImageNet dataset (TODO)
-    pass
+    raise ValueError("Only synthetic dataset is supported!")
 
   # If run with multiple GPUs
   num_gpus = flags_core.get_num_gpus(FLAGS)
@@ -162,7 +164,7 @@ def main(_):
   benchmark_logger = logger.config_benchmark_logger(FLAGS)
   benchmark_logger.log_run_info(
       model_name=FLAGS.model,
-      dataset_name="ImageNet",
+      dataset_name=dataset,
       run_params=run_params)
 
   if FLAGS.use_synthetic_data:
@@ -181,8 +183,8 @@ def main(_):
       epochs=FLAGS.train_epochs,
       callbacks=callbacks,
       validation_data=val_dataset,
-      steps_per_epoch=int(np.ceil(train_num_images / float(batch_size))),
-      validation_steps=int(np.ceil(val_num_images / float(batch_size)))
+      steps_per_epoch=int(np.ceil(train_num_images / batch_size)),
+      validation_steps=int(np.ceil(val_num_images / batch_size))
   )
 
   tf.logging.info("Logging the evaluation results...")
@@ -218,7 +220,11 @@ def define_keras_benchmark_flags():
       name="model", default="resnet",
       enum_values=MODELS.keys(), case_sensitive=False,
       help=flags_core.help_wrap(
-          "Model to be benchmarked. Check MODELS for all available models."))
+          "Model to be benchmarked."))
+  model_name_msg = "model should be a key in the `MODELS` dictionary."
+  @flags.validator(flag_name="model", message=model_name_msg)
+  def _check_model_name(model):
+    return model in MODELS.keys()
 
   flags.DEFINE_enum(
       name="benchmark_level", default="epoch_based",
