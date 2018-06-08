@@ -136,20 +136,23 @@ class LightCurveUtilTest(absltest.TestCase):
     all_time = [
         np.arange(0, 10, dtype=np.float),
         np.arange(10, 20, dtype=np.float),
+        np.arange(20, 30, dtype=np.float),
     ]
     all_masked_time = [
         np.array([0, 1, 2, 3, 8, 9], dtype=np.float),  # No 4, 5, 6, 7
         np.array([10, 11, 12, 13, 14, 15, 16], dtype=np.float),  # No 17, 18, 19
+        np.array([], dtype=np.float)
     ]
     all_masked_spline = [2 * t + 100 for t in all_masked_time]
 
     interp_spline = util.interpolate_masked_spline(all_time, all_masked_time,
                                                    all_masked_spline)
-    self.assertLen(interp_spline, 2)
+    self.assertLen(interp_spline, 3)
     self.assertSequenceAlmostEqual(
         [100, 102, 104, 106, 108, 110, 112, 114, 116, 118], interp_spline[0])
     self.assertSequenceAlmostEqual(
         [120, 122, 124, 126, 128, 130, 132, 132, 132, 132], interp_spline[1])
+    self.assertTrue(np.all(np.isnan(interp_spline[2])))
 
   def testCountTransitPoints(self):
     time = np.concatenate([
