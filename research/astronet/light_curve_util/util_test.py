@@ -65,43 +65,63 @@ class LightCurveUtilTest(absltest.TestCase):
     self.assertSequenceAlmostEqual(expected, tfold)
 
   def testSplit(self):
+    # Single segment.
+    all_time = np.concatenate([np.arange(0, 1, 0.1), np.arange(1.5, 2, 0.1)])
+    all_flux = np.ones(15)
+
+    # Gap width 0.5.
+    split_time, split_flux = util.split(all_time, all_flux, gap_width=0.5)
+    self.assertLen(split_time, 2)
+    self.assertLen(split_flux, 2)
+    self.assertSequenceAlmostEqual(np.arange(0, 1, 0.1), split_time[0])
+    self.assertSequenceAlmostEqual(np.ones(10), split_flux[0])
+    self.assertSequenceAlmostEqual(np.arange(1.5, 2, 0.1), split_time[1])
+    self.assertSequenceAlmostEqual(np.ones(5), split_flux[1])
+
+    # Multi segment.
     all_time = [
         np.concatenate([
             np.arange(0, 1, 0.1),
             np.arange(1.5, 2, 0.1),
             np.arange(3, 4, 0.1)
-        ])
+        ]),
+        np.arange(4, 5, 0.1)
     ]
-    all_flux = [np.array([1] * 25)]
+    all_flux = [np.ones(25), np.ones(10)]
+
+    self.assertEqual(len(all_time), 2)
+    self.assertEqual(len(all_time[0]), 25)
+    self.assertEqual(len(all_time[1]), 10)
+
+    self.assertEqual(len(all_flux), 2)
+    self.assertEqual(len(all_flux[0]), 25)
+    self.assertEqual(len(all_flux[1]), 10)
 
     # Gap width 0.5.
     split_time, split_flux = util.split(all_time, all_flux, gap_width=0.5)
-    self.assertLen(split_time, 3)
-    self.assertLen(split_flux, 3)
-    self.assertSequenceAlmostEqual(
-        [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], split_time[0])
-    self.assertSequenceAlmostEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                   split_flux[0])
-    self.assertSequenceAlmostEqual([1.5, 1.6, 1.7, 1.8, 1.9], split_time[1])
-    self.assertSequenceAlmostEqual([1, 1, 1, 1, 1], split_flux[1])
-    self.assertSequenceAlmostEqual(
-        [3., 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9], split_time[2])
-    self.assertSequenceAlmostEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                   split_flux[2])
+    self.assertLen(split_time, 4)
+    self.assertLen(split_flux, 4)
+    self.assertSequenceAlmostEqual(np.arange(0, 1, 0.1), split_time[0])
+    self.assertSequenceAlmostEqual(np.ones(10), split_flux[0])
+    self.assertSequenceAlmostEqual(np.arange(1.5, 2, 0.1), split_time[1])
+    self.assertSequenceAlmostEqual(np.ones(5), split_flux[1])
+    self.assertSequenceAlmostEqual(np.arange(3, 4, 0.1), split_time[2])
+    self.assertSequenceAlmostEqual(np.ones(10), split_flux[2])
+    self.assertSequenceAlmostEqual(np.arange(4, 5, 0.1), split_time[3])
+    self.assertSequenceAlmostEqual(np.ones(10), split_flux[3])
 
     # Gap width 1.0.
     split_time, split_flux = util.split(all_time, all_flux, gap_width=1)
-    self.assertLen(split_time, 2)
-    self.assertLen(split_flux, 2)
+    self.assertLen(split_time, 3)
+    self.assertLen(split_flux, 3)
     self.assertSequenceAlmostEqual([
         0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.5, 1.6, 1.7, 1.8, 1.9
     ], split_time[0])
-    self.assertSequenceAlmostEqual(
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], split_flux[0])
-    self.assertSequenceAlmostEqual(
-        [3., 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9], split_time[1])
-    self.assertSequenceAlmostEqual([1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                   split_flux[1])
+    self.assertSequenceAlmostEqual(np.ones(15), split_flux[0])
+    self.assertSequenceAlmostEqual(np.arange(3, 4, 0.1), split_time[1])
+    self.assertSequenceAlmostEqual(np.ones(10), split_flux[1])
+    self.assertSequenceAlmostEqual(np.arange(4, 5, 0.1), split_time[2])
+    self.assertSequenceAlmostEqual(np.ones(10), split_flux[2])
 
   def testRemoveEvents(self):
     time = np.arange(20, dtype=np.float)

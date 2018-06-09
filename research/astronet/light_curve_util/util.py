@@ -59,11 +59,8 @@ def split(all_time, all_flux, gap_width=0.75):
     out_time: List of numpy arrays; the split time arrays.
     out_flux: List of numpy arrays; the split flux arrays.
   """
-  all_time = np.array(all_time)
-  all_flux = np.array(all_flux)
-
   # Handle single-segment inputs.
-  if all_time.ndim == 1:
+  if isinstance(all_time, np.ndarray) and all_time.ndim == 1:
     all_time = [all_time]
     all_flux = [all_flux]
 
@@ -101,11 +98,8 @@ def remove_events(all_time, all_flux, events, width_factor=1.0):
     output_flux: Numpy array or list of numpy arrays; the flux arrays with
         events removed.
   """
-  all_time = np.array(all_time)
-  all_flux = np.array(all_flux)
-
   # Handle single-segment inputs.
-  if all_time.ndim == 1:
+  if isinstance(all_time, np.ndarray) and all_time.ndim == 1:
     all_time = [all_time]
     all_flux = [all_flux]
     single_segment = True
