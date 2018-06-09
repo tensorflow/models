@@ -54,41 +54,40 @@ class BoxLabelManager:
         """" Return the coordinates of the best label box and store it.
 
                 Args:
-                    _bounding_box: first box
-                    _label_width: second box
-                    _label_height:
+                    _bounding_box: a bounding box
+                    _label_width: label width
+                    _label_height: label height
 
                 Returns:
-                    A bounding box for the label as [left, top, right, bottom]
+                    A bounding box for the label as [x_left, y_top, x_right, y_bottom]
 
                 """
 
         # Add the bounding box, for fun ;-)
         self.bounding_boxes.append(_bounding_box)
 
-        left   = _bounding_box[0]
-        right  = _bounding_box[2]
-        top    = _bounding_box[1]
-        bottom = _bounding_box[3]
+        x_left   = _bounding_box[0]
+        x_right  = _bounding_box[2]
+        y_top    = _bounding_box[1]
+        y_bottom = _bounding_box[3]
 
         # Keep the initial propose
-        first_proposal = [ left , top - _label_height, left + _label_width , top]
+        first_proposal = [ x_left , y_top - _label_height, x_left + _label_width , y_top]
 
         # The offset will slide the box propose to the right or to the left
         x_offset = 0
-        stay_in_the_loop =  True
-        while stay_in_the_loop:
+        while x_offset < (x_right-x_left)-_label_width:
 
             #
             # Proposal 1
             #
             # First label box proposal, top/left
 
-            proposal_label_box =  [ left + x_offset, top - _label_height, left + _label_width + x_offset, top]
+            proposal_label_box =  [ x_left + x_offset, y_top - _label_height, x_left + _label_width + x_offset, y_top]
 
-
-            # Surface if over an existing label box 30% of area
-            if self.isOverALabel(proposal_label_box)< MAX_COVERING:
+            # Surface if over an existing label box MAX_COVERING (0.2 is the default value equivalent to 20%)
+            # of label area
+            if self.overLabelPercentage(proposal_label_box)< MAX_COVERING:
                 # We are done
                 self.label_bounding_boxes.append(proposal_label_box)
                 return proposal_label_box
@@ -97,8 +96,8 @@ class BoxLabelManager:
             # Proposal 2
             #
             # Second proposal, bottom/left
-            proposal_label_box = [left + x_offset, bottom , left + _label_width + x_offset, bottom + _label_height]
-            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
+            proposal_label_box = [x_left + x_offset, y_bottom , x_left + _label_width + x_offset, y_bottom + _label_height]
+            if self.overLabelPercentage(proposal_label_box) < MAX_COVERING:
                 # We are done
                 self.label_bounding_boxes.append(proposal_label_box)
                 return proposal_label_box
@@ -107,8 +106,8 @@ class BoxLabelManager:
             # Proposal 3
             #
             # Third proposal, top/right
-            proposal_label_box = [right-_label_width - x_offset, top - _label_height, right - x_offset, top]
-            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
+            proposal_label_box = [x_right-_label_width - x_offset, y_op - _label_height, x_right - x_offset, y_top]
+            if self.overLabelPercentage(proposal_label_box) < MAX_COVERING:
                 # We are done
                 self.label_bounding_boxes.append(proposal_label_box)
                 return proposal_label_box
@@ -117,28 +116,25 @@ class BoxLabelManager:
             # Proposal 4
             #
             # Third proposal, bottom/right
-            proposal_label_box = [right-_label_width - x_offset, bottom , right - x_offset, bottom + _label_height]
-            if self.isOverALabel(proposal_label_box) < MAX_COVERING:
+            proposal_label_box = [x_right-_label_width - x_offset, bottom , x_right - x_offset, y_bottom + _label_height]
+            if self.overLabelPercentage(proposal_label_box) < MAX_COVERING:
                 # We are done
                 self.label_bounding_boxes.append(proposal_label_box)
                 return proposal_label_box
 
             x_offset = x_offset + 20
-            if x_offset < (right - left) - _label_width:
-                stay_in_the_loop = False
-
-        # End of the while
 
         # Last chance
         # Rectangle is as height as the image (95%)
-        if (bottom - top) > (0.95 * self.image_height):
+        if (y_bottom - y_top) > (0.95 * self.image_height):
             # Inside the rectangle
-            first_proposal = [left, top, left + _label_width, top + _label_height]
+            first_proposal = [x_left, y_top, x_left + _label_width, y_top + _label_height]
+
 
         return first_proposal
 
-    # Does the box proposal over an existing label ?
-    def isOverALabel(self, _label_box):
+    # Compute overlap value
+    def overLabelPercentage(self, _label_box):
         iou = 0
         if (_label_box[0] < 0) or (_label_box[2]>self.image_width) or \
             (_label_box[1] < 0) or (_label_box[3] > self.image_height):
@@ -161,16 +157,6 @@ class BoxLabelManager:
             The value of IOU as a float
 
         """
-
-        # Is there an intersection
-        if (max (boxA[0], boxA[2]) < min((boxB[0], boxB[2]))):
-            return 0
-        if (max (boxB[0], boxB[2]) < min((boxA[0], boxA[2]))):
-            return 0
-        if (max (boxA[1], boxA[3]) < min((boxB[1], boxB[3]))):
-            return 0
-        if (max (boxB[1], boxB[3]) < min((boxA[1], boxA[3]))):
-            return 0
 
         # determine the (x, y)-coordinates of the intersection rectangle
         xA = max(boxA[0], boxB[0])
