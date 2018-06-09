@@ -227,7 +227,7 @@ def draw_bounding_box_on_image(image,
             draw.text((proposal_box[0] + margin, proposal_box[1] + margin), display_str, fill='black', font=font)
 
     else:
-        # Use a simple algo, label top or botton of the bounding box
+        # Use a simple algo, label top or bottom of the bounding box
         if (top / im_height < 0.1):
             draw.rectangle(
                 [(left, bottom + text_height + 2 * margin), (left + text_width,
