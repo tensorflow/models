@@ -42,7 +42,8 @@ from official.utils.misc import model_helpers
 # Functions for input processing.
 ################################################################################
 def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
-                           parse_record_fn, num_epochs=1):
+                           parse_record_fn, num_epochs=1, num_gpus=None,
+                           examples_per_epoch=None):
   """Given a Dataset with raw records, return an iterator over the records.
 
   Args:
@@ -55,6 +56,8 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
     num_epochs: The number of epochs to repeat the dataset.
+    num_gpus: The number of gpus used for training.
+    examples_per_epoch: The number of examples in an epoch.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -72,6 +75,16 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
   # dataset for the appropriate number of epochs.
   dataset = dataset.repeat(num_epochs)
 
+  if is_training and num_gpus and examples_per_epoch:
+    total_examples = num_epochs * examples_per_epoch
+    # Force the number of batches to be divisible by the number of devices.
+    # This prevents some devices from receiving batches while others do not,
+    # which can lead to a lockup. This case will soon be handled directly by
+    # distribution strategies, at which point this .take() operation will no
+    # longer be needed.
+    total_batches = total_examples // batch_size // num_gpus * num_gpus
+    dataset.take(total_batches * batch_size)
+
   # Parse the raw records into images and labels. Testing has shown that setting
   # num_parallel_batches > 1 produces no improvement in throughput, since
   # batch_size is almost always much greater than the number of CPU cores.
@@ -80,7 +93,7 @@ def process_record_dataset(dataset, is_training, batch_size, shuffle_buffer,
           lambda value: parse_record_fn(value, is_training),
           batch_size=batch_size,
           num_parallel_batches=1,
-          drop_remainder=True))
+          drop_remainder=False))
 
   # Operations between the final prefetch and the get_next call to the iterator
   # will happen synchronously during run time. We prefetch here again to
@@ -395,8 +408,12 @@ def resnet_main(
       'synthetic_data': flags_obj.use_synthetic_data,
       'train_epochs': flags_obj.train_epochs,
   }
-  benchmark_logger = logger.config_benchmark_logger(flags_obj)
-  benchmark_logger.log_run_info('resnet', dataset_name, run_params)
+  if flags_obj.use_synthetic_data:
+    dataset_name = dataset_name + "-synthetic"
+
+  benchmark_logger = logger.get_benchmark_logger()
+  benchmark_logger.log_run_info('resnet', dataset_name, run_params,
+                                test_id=flags_obj.benchmark_test_id)
 
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
@@ -407,7 +424,8 @@ def resnet_main(
         is_training=True, data_dir=flags_obj.data_dir,
         batch_size=per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
-        num_epochs=flags_obj.epochs_between_evals)
+        num_epochs=flags_obj.epochs_between_evals,
+        num_gpus=flags_core.get_num_gpus(flags_obj))
 
   def input_fn_eval():
     return input_function(

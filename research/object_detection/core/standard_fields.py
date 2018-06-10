@@ -34,6 +34,7 @@ class InputDataFields(object):
 
   Attributes:
     image: image.
+    image_additional_channels: additional channels.
     original_image: image in the original input size.
     key: unique key corresponding to image.
     source_id: source of the original image.
@@ -66,6 +67,7 @@ class InputDataFields(object):
     multiclass_scores: the label score per class for each box.
   """
   image = 'image'
+  image_additional_channels = 'image_additional_channels'
   original_image = 'original_image'
   key = 'key'
   source_id = 'source_id'
@@ -161,6 +163,8 @@ class TfExampleFields(object):
     height: height of image in pixels, e.g. 462
     width: width of image in pixels, e.g. 581
     source_id: original source of the image
+    image_class_text: image-level label in text format
+    image_class_label: image-level label in numerical format
     object_class_text: labels in text format, e.g. ["person", "cat"]
     object_class_label: labels in numbers, e.g. [16, 8]
     object_bbox_xmin: xmin coordinates of groundtruth box, e.g. 10, 30
@@ -195,6 +199,8 @@ class TfExampleFields(object):
   height = 'image/height'
   width = 'image/width'
   source_id = 'image/source_id'
+  image_class_text = 'image/class/text'
+  image_class_label = 'image/class/label'
   object_class_text = 'image/object/class/text'
   object_class_label = 'image/object/class/label'
   object_bbox_ymin = 'image/object/bbox/ymin'

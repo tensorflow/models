@@ -19,13 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 
+from absl import app
+from absl import flags
 import tensorflow as tf
 
 import data_provider
 import networks
 import util
 
-flags = tf.flags
 tfgan = tf.contrib.gan
 
 
@@ -107,4 +108,4 @@ def _get_generator_inputs(num_images_per_class, num_classes, noise_dims):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main)

@@ -19,17 +19,22 @@ from __future__ import division
 from __future__ import print_function
 
 
+from absl import flags
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 import train
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 mock = tf.test.mock
 
 
-class TrainTest(tf.test.TestCase):
+class TrainTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _test_build_graph_helper(self, weight_factor):
+  @parameterized.named_parameters(
+      ('NoAdversarialLoss', 0.0),
+      ('AdversarialLoss', 1.0))
+  def test_build_graph(self, weight_factor):
     FLAGS.max_number_of_steps = 0
     FLAGS.weight_factor = weight_factor
 
@@ -44,12 +49,6 @@ class TrainTest(tf.test.TestCase):
     with mock.patch.object(train, 'data_provider') as mock_data_provider:
       mock_data_provider.provide_data.return_value = mock_imgs
       train.main(None)
-
-  def test_build_graph_noadversarialloss(self):
-    self._test_build_graph_helper(0.0)
-
-  def test_build_graph_adversarialloss(self):
-    self._test_build_graph_helper(1.0)
 
 
 if __name__ == '__main__':

@@ -26,6 +26,7 @@ from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.protos import box_predictor_pb2
 from object_detection.protos import hyperparams_pb2
 from object_detection.protos import post_processing_pb2
+from object_detection.utils import test_utils
 
 slim = tf.contrib.slim
 BOX_CODE_SIZE = 4
@@ -650,8 +651,11 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     with self.test_session() as sess:
       proposals_out = sess.run(proposals)
-      self.assertAllClose(proposals_out['detection_boxes'],
-                          expected_proposal_boxes)
+      for image_idx in range(batch_size):
+        self.assertTrue(
+            test_utils.first_rows_close_as_set(
+                proposals_out['detection_boxes'][image_idx].tolist(),
+                expected_proposal_boxes[image_idx]))
       self.assertAllClose(proposals_out['detection_scores'],
                           expected_proposal_scores)
       self.assertAllEqual(proposals_out['num_detections'],
@@ -810,7 +814,7 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
   def test_loss_full(self):
     model = self._build_model(
         is_training=True, number_of_stages=2, second_stage_batch_size=6)
-    batch_size = 2
+    batch_size = 3
     anchors = tf.constant(
         [[0, 0, 16, 16],
          [0, 16, 16, 32],
@@ -822,42 +826,44 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
          BOX_CODE_SIZE], dtype=tf.float32)
     # use different numbers for the objectness category to break ties in
     # order of boxes returned by NMS
-    rpn_objectness_predictions_with_background = tf.constant([
-        [[-10, 13],
-         [10, -10],
-         [10, -11],
-         [-10, 12]],
-        [[10, -10],
-         [-10, 13],
-         [-10, 12],
-         [10, -11]]], dtype=tf.float32)
+    rpn_objectness_predictions_with_background = tf.constant(
+        [[[-10, 13], [10, -10], [10, -11], [-10, 12]], [[10, -10], [-10, 13], [
+            -10, 12
+        ], [10, -11]], [[10, -10], [-10, 13], [-10, 12], [10, -11]]],
+        dtype=tf.float32)
     image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
 
-    num_proposals = tf.constant([6, 6], dtype=tf.int32)
+    num_proposals = tf.constant([6, 6, 6], dtype=tf.int32)
     proposal_boxes = tf.constant(
-        2 * [[[0, 0, 16, 16],
-              [0, 16, 16, 32],
-              [16, 0, 32, 16],
-              [16, 16, 32, 32],
-              [0, 0, 16, 16],
-              [0, 16, 16, 32]]], dtype=tf.float32)
+        3 * [[[0, 0, 16, 16], [0, 16, 16, 32], [16, 0, 32, 16],
+              [16, 16, 32, 32], [0, 0, 16, 16], [0, 16, 16, 32]]],
+        dtype=tf.float32)
     refined_box_encodings = tf.zeros(
         (batch_size * model.max_num_proposals,
          model.num_classes,
          BOX_CODE_SIZE), dtype=tf.float32)
     class_predictions_with_background = tf.constant(
-        [[-10, 10, -10],  # first image
-         [10, -10, -10],
-         [10, -10, -10],
-         [-10, -10, 10],
-         [-10, 10, -10],
-         [10, -10, -10],
-         [10, -10, -10],  # second image
-         [-10, 10, -10],
-         [-10, 10, -10],
-         [10, -10, -10],
-         [10, -10, -10],
-         [-10, 10, -10]], dtype=tf.float32)
+        [
+            [-10, 10, -10],  # first image
+            [10, -10, -10],
+            [10, -10, -10],
+            [-10, -10, 10],
+            [-10, 10, -10],
+            [10, -10, -10],
+            [10, -10, -10],  # second image
+            [-10, 10, -10],
+            [-10, 10, -10],
+            [10, -10, -10],
+            [10, -10, -10],
+            [-10, 10, -10],
+            [10, -10, -10],  # third image
+            [-10, 10, -10],
+            [-10, 10, -10],
+            [10, -10, -10],
+            [10, -10, -10],
+            [-10, 10, -10]
+        ],
+        dtype=tf.float32)
 
     mask_predictions_logits = 20 * tf.ones((batch_size *
                                             model.max_num_proposals,
@@ -867,18 +873,29 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
 
     groundtruth_boxes_list = [
         tf.constant([[0, 0, .5, .5], [.5, .5, 1, 1]], dtype=tf.float32),
-        tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32)]
-    groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
-                                tf.constant([[1, 0], [1, 0]], dtype=tf.float32)]
+        tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32),
+        tf.constant([[0, .5, .5, 1], [.5, 0, 1, 1]], dtype=tf.float32)
+    ]
+    groundtruth_classes_list = [
+        tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
+        tf.constant([[1, 0], [1, 0]], dtype=tf.float32),
+        tf.constant([[1, 0], [0, 1]], dtype=tf.float32)
+    ]
 
     # Set all elements of groundtruth mask to 1.0. In this case all proposal
     # crops of the groundtruth masks should return a mask that covers the entire
     # proposal. Thus, if mask_predictions_logits element values are all greater
     # than 20, the loss should be zero.
-    groundtruth_masks_list = [tf.convert_to_tensor(np.ones((2, 32, 32)),
-                                                   dtype=tf.float32),
-                              tf.convert_to_tensor(np.ones((2, 32, 32)),
-                                                   dtype=tf.float32)]
+    groundtruth_masks_list = [
+        tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32),
+        tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32),
+        tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32)
+    ]
+    groundtruth_weights_list = [
+        tf.constant([1, 1], dtype=tf.float32),
+        tf.constant([1, 1], dtype=tf.float32),
+        tf.constant([1, 0], dtype=tf.float32)
+    ]
     prediction_dict = {
         'rpn_box_encodings': rpn_box_encodings,
         'rpn_objectness_predictions_with_background':
@@ -892,9 +909,11 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         'mask_predictions': mask_predictions_logits
     }
     _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(groundtruth_boxes_list,
-                              groundtruth_classes_list,
-                              groundtruth_masks_list)
+    model.provide_groundtruth(
+        groundtruth_boxes_list,
+        groundtruth_classes_list,
+        groundtruth_masks_list,
+        groundtruth_weights_list=groundtruth_weights_list)
     loss_dict = model.loss(prediction_dict, true_image_shapes)
 
     with self.test_session() as sess:

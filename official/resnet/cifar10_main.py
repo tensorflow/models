@@ -25,6 +25,7 @@ from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
+from official.utils.logs import logger
 from official.resnet import resnet_model
 from official.resnet import resnet_run_loop
 
@@ -106,7 +107,7 @@ def preprocess_image(image, is_training):
   return image
 
 
-def input_fn(is_training, data_dir, batch_size, num_epochs=1):
+def input_fn(is_training, data_dir, batch_size, num_epochs=1, num_gpus=None):
   """Input_fn using the tf.data input pipeline for CIFAR-10 dataset.
 
   Args:
@@ -114,6 +115,7 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
     data_dir: The directory containing the input data.
     batch_size: The number of samples per batch.
     num_epochs: The number of epochs to repeat the dataset.
+    num_gpus: The number of gpus used for training.
 
   Returns:
     A dataset that can be used for iteration.
@@ -122,8 +124,14 @@ def input_fn(is_training, data_dir, batch_size, num_epochs=1):
   dataset = tf.data.FixedLengthRecordDataset(filenames, _RECORD_BYTES)
 
   return resnet_run_loop.process_record_dataset(
-      dataset, is_training, batch_size, _NUM_IMAGES['train'],
-      parse_record, num_epochs,
+      dataset=dataset,
+      is_training=is_training,
+      batch_size=batch_size,
+      shuffle_buffer=_NUM_IMAGES['train'],
+      parse_record_fn=parse_record,
+      num_epochs=num_epochs,
+      num_gpus=num_gpus,
+      examples_per_epoch=_NUM_IMAGES['train'] if is_training else None
   )
 
 
@@ -236,14 +244,14 @@ def run_cifar(flags_obj):
   """
   input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
-
   resnet_run_loop.resnet_main(
       flags_obj, cifar10_model_fn, input_function, DATASET_NAME,
       shape=[_HEIGHT, _WIDTH, _NUM_CHANNELS])
 
 
 def main(_):
-  run_cifar(flags.FLAGS)
+  with logger.benchmark_context(flags.FLAGS):
+    run_cifar(flags.FLAGS)
 
 
 if __name__ == '__main__':

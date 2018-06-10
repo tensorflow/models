@@ -1,3 +1,17 @@
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 r"""A script that builds boosted trees over higgs data.
 
 If you haven't, please run data_download.py beforehand to prepare the data.
@@ -64,9 +78,9 @@ def read_higgs_data(data_dir, train_start, train_count, eval_start, eval_count):
     with tf.gfile.Open(npz_filename, "rb") as npz_file:
       with np.load(npz_file) as npz:
         data = npz["data"]
-  except Exception as e:
+  except tf.errors.NotFoundError as e:
     raise RuntimeError(
-        "Error loading data; use data_download.py to prepare the data:\n{}: {}"
+        "Error loading data; use data_download.py to prepare the data.\n{}: {}"
         .format(type(e).__name__, e))
   return (data[train_start:train_start+train_count],
           data[eval_start:eval_start+eval_count])
@@ -91,6 +105,7 @@ def make_inputs_from_np_arrays(features_np, label_np):
 
   Returns:
     input_fn: A function returning a Dataset of feature dict and label.
+    feature_names: A list of feature names.
     feature_column: A list of tf.feature_column.BucketizedColumn.
   """
   num_features = features_np.shape[1]
@@ -127,7 +142,7 @@ def make_inputs_from_np_arrays(features_np, label_np):
     return tf.data.Dataset.zip((tf.data.Dataset.from_tensors(features),
                                 tf.data.Dataset.from_tensors(label_np),))
 
-  return input_fn, bucketized_columns
+  return input_fn, feature_names, bucketized_columns
 
 
 def make_eval_inputs_from_np_arrays(features_np, label_np):
@@ -149,6 +164,31 @@ def make_eval_inputs_from_np_arrays(features_np, label_np):
   return input_fn
 
 
+def _make_csv_serving_input_receiver_fn(column_names, column_defaults):
+  """Returns serving_input_receiver_fn for csv.
+
+  The input arguments are relevant to `tf.decode_csv()`.
+
+  Args:
+    column_names: a list of column names in the order within input csv.
+    column_defaults: a list of default values with the same size of
+        column_names. Each entity must be either a list of one scalar, or an
+        empty list to denote the corresponding column is required.
+        e.g. [[""], [2.5], []] indicates the third column is required while
+            the first column must be string and the second must be float/double.
+
+  Returns:
+    a serving_input_receiver_fn that handles csv for serving.
+  """
+  def serving_input_receiver_fn():
+    csv = tf.placeholder(dtype=tf.string, shape=[None], name="csv")
+    features = dict(zip(column_names, tf.decode_csv(csv, column_defaults)))
+    receiver_tensors = {"inputs": csv}
+    return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
+
+  return serving_input_receiver_fn
+
+
 def train_boosted_trees(flags_obj):
   """Train boosted_trees estimator on HIGGS data.
 
@@ -164,9 +204,8 @@ def train_boosted_trees(flags_obj):
       flags_obj.eval_start, flags_obj.eval_count)
   tf.logging.info("## Data loaded; train: {}{}, eval: {}{}".format(
       train_data.dtype, train_data.shape, eval_data.dtype, eval_data.shape))
-
   # Data consists of one label column followed by 28 feature columns.
-  train_input_fn, feature_columns = make_inputs_from_np_arrays(
+  train_input_fn, feature_names, feature_columns = make_inputs_from_np_arrays(
       features_np=train_data[:, 1:], label_np=train_data[:, 0:1])
   eval_input_fn = make_eval_inputs_from_np_arrays(
       features_np=eval_data[:, 1:], label_np=eval_data[:, 0:1])
@@ -185,7 +224,8 @@ def train_boosted_trees(flags_obj):
   benchmark_logger.log_run_info(
       model_name="boosted_trees",
       dataset_name="higgs",
-      run_params=run_params)
+      run_params=run_params,
+      test_id=flags_obj.benchmark_test_id)
 
   # Though BoostedTreesClassifier is under tf.estimator, faster in-memory
   # training is yet provided as a contrib library.
@@ -202,11 +242,14 @@ def train_boosted_trees(flags_obj):
   # Benchmark the evaluation results
   benchmark_logger.log_evaluation_result(eval_results)
 
-  # Exporting the savedmodel.
+  # Exporting the savedmodel with csv parsing.
   if flags_obj.export_dir is not None:
-    feature_spec = tf.estimator.export.build_parsing_serving_input_receiver_fn(
-        tf.feature_column.make_parse_example_spec(feature_columns))
-    classifier.export_savedmodel(flags_obj.export_dir, feature_spec)
+    classifier.export_savedmodel(
+        flags_obj.export_dir,
+        _make_csv_serving_input_receiver_fn(
+            column_names=feature_names,
+            # columns are all floats.
+            column_defaults=[[0.0]] * len(feature_names)))
 
 
 def main(_):
@@ -216,6 +259,7 @@ def main(_):
 def define_train_higgs_flags():
   """Add tree related flags as well as training/eval configuration."""
   flags_core.define_base(stop_threshold=False, batch_size=False, num_gpu=False)
+  flags_core.define_benchmark()
   flags.adopt_module_key_flags(flags_core)
 
   flags.DEFINE_integer(

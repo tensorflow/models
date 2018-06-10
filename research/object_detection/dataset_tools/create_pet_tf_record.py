@@ -33,11 +33,13 @@ import os
 import random
 import re
 
+import contextlib2
 from lxml import etree
 import numpy as np
 import PIL.Image
 import tensorflow as tf
 
+from object_detection.dataset_tools import tf_record_creation_util
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
@@ -52,6 +54,8 @@ flags.DEFINE_boolean('faces_only', True, 'If True, generates bounding boxes '
                      'in the latter case, the resulting files are much larger.')
 flags.DEFINE_string('mask_type', 'png', 'How to represent instance '
                     'segmentation masks. Options are "png" or "numerical".')
+flags.DEFINE_integer('num_shards', 10, 'Number of TFRecord shards')
+
 FLAGS = flags.FLAGS
 
 
@@ -208,6 +212,7 @@ def dict_to_tf_example(data,
 
 
 def create_tf_record(output_filename,
+                     num_shards,
                      label_map_dict,
                      annotations_dir,
                      image_dir,
@@ -218,6 +223,7 @@ def create_tf_record(output_filename,
 
   Args:
     output_filename: Path to where output file is saved.
+    num_shards: Number of shards for output file.
     label_map_dict: The label map dictionary.
     annotations_dir: Directory where annotation files are stored.
     image_dir: Directory where image files are stored.
@@ -227,34 +233,36 @@ def create_tf_record(output_filename,
     mask_type: 'numerical' or 'png'. 'png' is recommended because it leads to
       smaller file sizes.
   """
-  writer = tf.python_io.TFRecordWriter(output_filename)
-  for idx, example in enumerate(examples):
-    if idx % 100 == 0:
-      logging.info('On image %d of %d', idx, len(examples))
-    xml_path = os.path.join(annotations_dir, 'xmls', example + '.xml')
-    mask_path = os.path.join(annotations_dir, 'trimaps', example + '.png')
+  with contextlib2.ExitStack() as tf_record_close_stack:
+    output_tfrecords = tf_record_creation_util.open_sharded_output_tfrecords(
+        tf_record_close_stack, output_filename, num_shards)
+    for idx, example in enumerate(examples):
+      if idx % 100 == 0:
+        logging.info('On image %d of %d', idx, len(examples))
+      xml_path = os.path.join(annotations_dir, 'xmls', example + '.xml')
+      mask_path = os.path.join(annotations_dir, 'trimaps', example + '.png')
 
-    if not os.path.exists(xml_path):
-      logging.warning('Could not find %s, ignoring example.', xml_path)
-      continue
-    with tf.gfile.GFile(xml_path, 'r') as fid:
-      xml_str = fid.read()
-    xml = etree.fromstring(xml_str)
-    data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
+      if not os.path.exists(xml_path):
+        logging.warning('Could not find %s, ignoring example.', xml_path)
+        continue
+      with tf.gfile.GFile(xml_path, 'r') as fid:
+        xml_str = fid.read()
+      xml = etree.fromstring(xml_str)
+      data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
 
-    try:
-      tf_example = dict_to_tf_example(
-          data,
-          mask_path,
-          label_map_dict,
-          image_dir,
-          faces_only=faces_only,
-          mask_type=mask_type)
-      writer.write(tf_example.SerializeToString())
-    except ValueError:
-      logging.warning('Invalid example: %s, ignoring.', xml_path)
-
-  writer.close()
+      try:
+        tf_example = dict_to_tf_example(
+            data,
+            mask_path,
+            label_map_dict,
+            image_dir,
+            faces_only=faces_only,
+            mask_type=mask_type)
+        if tf_example:
+          shard_idx = idx % num_shards
+          output_tfrecords[shard_idx].write(tf_example.SerializeToString())
+      except ValueError:
+        logging.warning('Invalid example: %s, ignoring.', xml_path)
 
 
 # TODO(derekjchow): Add test for pet/PASCAL main files.
@@ -279,15 +287,16 @@ def main(_):
   logging.info('%d training and %d validation examples.',
                len(train_examples), len(val_examples))
 
-  train_output_path = os.path.join(FLAGS.output_dir, 'pet_train.record')
-  val_output_path = os.path.join(FLAGS.output_dir, 'pet_val.record')
-  if FLAGS.faces_only:
+  train_output_path = os.path.join(FLAGS.output_dir, 'pet_faces_train.record')
+  val_output_path = os.path.join(FLAGS.output_dir, 'pet_faces_val.record')
+  if not FLAGS.faces_only:
     train_output_path = os.path.join(FLAGS.output_dir,
-                                     'pet_train_with_masks.record')
+                                     'pets_fullbody_with_masks_train.record')
     val_output_path = os.path.join(FLAGS.output_dir,
-                                   'pet_val_with_masks.record')
+                                   'pets_fullbody_with_masks_val.record')
   create_tf_record(
       train_output_path,
+      FLAGS.num_shards,
       label_map_dict,
       annotations_dir,
       image_dir,
@@ -296,6 +305,7 @@ def main(_):
       mask_type=FLAGS.mask_type)
   create_tf_record(
       val_output_path,
+      FLAGS.num_shards,
       label_map_dict,
       annotations_dir,
       image_dir,

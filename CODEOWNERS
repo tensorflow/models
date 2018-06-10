@@ -22,6 +22,7 @@
 /research/lexnet_nc/ @vered1986 @waterson
 /research/lfads/ @jazcollins @susillo
 /research/lm_1b/ @oriolvinyals @panyx0718
+/research/lm_commonsense/ @thtrieu
 /research/marco/ @vincentvanhoucke
 /research/maskgan/ @a-dai
 /research/morph_net/ @gariel-google
@@ -44,6 +45,7 @@
 /research/tensorrt/ @karmel
 /research/textsum/ @panyx0718 @peterjliu
 /research/transformer/ @daviddao
+/research/vid2depth/ @rezama
 /research/video_prediction/ @cbfinn
 /research/fivo/ @dieterichlawson
 /samples/ @MarkDaoust @lamberta

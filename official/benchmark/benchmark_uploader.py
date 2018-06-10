@@ -27,6 +27,7 @@ from __future__ import print_function
 import json
 
 from google.cloud import bigquery
+from google.cloud import exceptions
 
 import tensorflow as tf
 
@@ -132,3 +133,25 @@ class BigQueryUploader(object):
     if errors:
       tf.logging.error(
           "Failed to upload benchmark info to bigquery: {}".format(errors))
+
+  def insert_run_status(self, dataset_name, table_name, run_id, run_status):
+    """Insert the run status in to Bigquery run status table."""
+    query = ("INSERT {ds}.{tb} "
+             "(run_id, status) "
+             "VALUES('{rid}', '{status}')").format(
+                 ds=dataset_name, tb=table_name, rid=run_id, status=run_status)
+    try:
+      self._bq_client.query(query=query).result()
+    except exceptions.GoogleCloudError as e:
+      tf.logging.error("Failed to insert run status: %s", e)
+
+  def update_run_status(self, dataset_name, table_name, run_id, run_status):
+    """Update the run status in in Bigquery run status table."""
+    query = ("UPDATE {ds}.{tb} "
+             "SET status = '{status}' "
+             "WHERE run_id = '{rid}'").format(
+                 ds=dataset_name, tb=table_name, status=run_status, rid=run_id)
+    try:
+      self._bq_client.query(query=query).result()
+    except exceptions.GoogleCloudError as e:
+      tf.logging.error("Failed to update run status: %s", e)

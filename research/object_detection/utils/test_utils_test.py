@@ -68,6 +68,22 @@ class TestUtilsTest(tf.test.TestCase):
     self.assertTrue(boxes[:, 2].max() <= max_height)
     self.assertTrue(boxes[:, 3].max() <= max_width)
 
+  def test_first_rows_close_as_set(self):
+    a = [1, 2, 3, 0, 0]
+    b = [3, 2, 1, 0, 0]
+    k = 3
+    self.assertTrue(test_utils.first_rows_close_as_set(a, b, k))
+
+    a = [[1, 2], [1, 4], [0, 0]]
+    b = [[1, 4 + 1e-9], [1, 2], [0, 0]]
+    k = 2
+    self.assertTrue(test_utils.first_rows_close_as_set(a, b, k))
+
+    a = [[1, 2], [1, 4], [0, 0]]
+    b = [[1, 4 + 1e-9], [2, 2], [0, 0]]
+    k = 2
+    self.assertFalse(test_utils.first_rows_close_as_set(a, b, k))
+
 
 if __name__ == '__main__':
   tf.test.main()

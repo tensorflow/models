@@ -135,7 +135,7 @@ class SsdMobilenetV2FeatureExtractorTest(
     self.check_feature_extractor_variables_under_scope(
         depth_multiplier, pad_to_multiple, scope_name)
 
-  def test_nofused_batchnorm(self):
+  def test_has_fused_batchnorm(self):
     image_height = 40
     image_width = 40
     depth_multiplier = 1
@@ -146,8 +146,8 @@ class SsdMobilenetV2FeatureExtractorTest(
                                                        pad_to_multiple)
     preprocessed_image = feature_extractor.preprocess(image_placeholder)
     _ = feature_extractor.extract_features(preprocessed_image)
-    self.assertFalse(any(op.type == 'FusedBatchNorm'
-                         for op in tf.get_default_graph().get_operations()))
+    self.assertTrue(any(op.type == 'FusedBatchNorm'
+                        for op in tf.get_default_graph().get_operations()))
 
 
 if __name__ == '__main__':

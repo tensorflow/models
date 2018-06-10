@@ -43,6 +43,14 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
       help=help_wrap("The type of benchmark logger to use. Defaults to using "
                      "BaseBenchmarkLogger which logs to STDOUT. Different "
                      "loggers will require other flags to be able to work."))
+  flags.DEFINE_string(
+      name="benchmark_test_id", short_name="bti", default=None,
+      help=help_wrap("The unique test ID of the benchmark run. It could be the "
+                     "combination of key parameters. It is hardware "
+                     "independent and could be used compare the performance "
+                     "between different test runs. This flag is designed for "
+                     "human consumption, and does not have any impact within "
+                     "the system."))
 
   if benchmark_log_dir:
     flags.DEFINE_string(
@@ -65,6 +73,12 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
         name="bigquery_run_table", short_name="brt", default="benchmark_run",
         help=help_wrap("The Bigquery table name where the benchmark run "
                        "information will be uploaded."))
+
+    flags.DEFINE_string(
+        name="bigquery_run_status_table", short_name="brst",
+        default="benchmark_run_status",
+        help=help_wrap("The Bigquery table name where the benchmark run "
+                       "status information will be uploaded."))
 
     flags.DEFINE_string(
         name="bigquery_metric_table", short_name="bmt",

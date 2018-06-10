@@ -69,6 +69,10 @@ message InputReader {
   // Type of instance mask.
   optional InstanceMaskType mask_type = 10 [default = NUMERICAL_MASKS];
 
+  // Whether to use the display name when decoding examples. This is only used
+  // when mapping class text strings to integers.
+  optional bool use_display_name = 17 [default = false];
+
   oneof input_reader {
     TFRecordInputReader tf_record_input_reader = 8;
     ExternalInputReader external_input_reader = 9;

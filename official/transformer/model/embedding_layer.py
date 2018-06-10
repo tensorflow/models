@@ -21,15 +21,31 @@ from __future__ import print_function
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.transformer.model import model_utils
+from official.utils.accelerator import tpu as tpu_utils
 
 
 class EmbeddingSharedWeights(tf.layers.Layer):
   """Calculates input embeddings and pre-softmax linear with shared weights."""
 
-  def __init__(self, vocab_size, hidden_size):
+  def __init__(self, vocab_size, hidden_size, method="gather"):
+    """Specify characteristic parameters of embedding layer.
+
+    Args:
+      vocab_size: Number of tokens in the embedding. (Typically ~32,000)
+      hidden_size: Dimensionality of the embedding. (Typically 512 or 1024)
+      method: Strategy for performing embedding lookup. "gather" uses tf.gather
+        which performs well on CPUs and GPUs, but very poorly on TPUs. "matmul"
+        one-hot encodes the indicies and formulates the embedding as a sparse
+        matrix multiplication. The matmul formulation is wasteful as it does
+        extra work, however matrix multiplication is very fast on TPUs which
+        makes "matmul" considerably faster than "gather" on TPUs.
+    """
     super(EmbeddingSharedWeights, self).__init__()
     self.vocab_size = vocab_size
     self.hidden_size = hidden_size
+    if method not in ("gather", "matmul"):
+      raise ValueError("method {} must be 'gather' or 'matmul'".format(method))
+    self.method = method
 
   def build(self, _):
     with tf.variable_scope("embedding_and_softmax", reuse=tf.AUTO_REUSE):
@@ -53,18 +69,27 @@ class EmbeddingSharedWeights(tf.layers.Layer):
         locations of the padding tokens in x.
     """
     with tf.name_scope("embedding"):
-      embeddings = tf.gather(self.shared_weights, x)
+      # Create binary mask of size [batch_size, length]
+      mask = tf.to_float(tf.not_equal(x, 0))
+
+      if self.method == "gather":
+        embeddings = tf.gather(self.shared_weights, x)
+        embeddings *= tf.expand_dims(mask, -1)
+      else:  # matmul
+        embeddings = tpu_utils.embedding_matmul(
+            embedding_table=self.shared_weights,
+            values=tf.cast(x, dtype=tf.int32),
+            mask=mask
+        )
+        # embedding_matmul already zeros out masked positions, so
+        # `embeddings *= tf.expand_dims(mask, -1)` is unnecessary.
+
 
       # Scale embedding by the sqrt of the hidden size
       embeddings *= self.hidden_size ** 0.5
 
-      # Create binary array of size [batch_size, length]
-      # where 1 = padding, 0 = not padding
-      padding = model_utils.get_padding(x)
-
-      # Set all padding embedding values to 0
-      embeddings *= tf.expand_dims(1 - padding, -1)
       return embeddings
+
 
   def linear(self, x):
     """Computes logits by running x through a linear layer.

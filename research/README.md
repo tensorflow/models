@@ -39,6 +39,7 @@ request.
 -   [lfads](lfads): sequential variational autoencoder for analyzing
     neuroscience data.
 -   [lm_1b](lm_1b): language modeling on the one billion word benchmark.
+-   [lm_commonsense](lm_commonsense): commonsense reasoning using language models.
 -   [maskgan](maskgan): text generation with GANs.
 -   [namignizer](namignizer): recognize and generate names.
 -   [neural_gpu](neural_gpu): highly parallel neural computer.
@@ -70,5 +71,7 @@ request.
     summarization.
 -   [transformer](transformer): spatial transformer network, which allows the
     spatial manipulation of data within the network.
+-   [vid2depth](vid2depth): learning depth and ego-motion unsupervised from
+    raw monocular video.
 -   [video_prediction](video_prediction): predicting future video frames with
     neural advection.

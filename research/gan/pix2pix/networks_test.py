@@ -49,6 +49,19 @@ class Pix2PixTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError, 'must have rank 4'):
       networks.generator(tf.zeros([28, 28, 3]))
 
+  def test_generator_run_multi_channel(self):
+    img_batch = tf.zeros([3, 128, 128, 5])
+    model_output = networks.generator(img_batch)
+    with self.test_session() as sess:
+      sess.run(tf.global_variables_initializer())
+      sess.run(model_output)
+
+  def test_generator_invalid_channels(self):
+    with self.assertRaisesRegexp(
+        ValueError, 'Last dimension shape must be known but is None'):
+      img = tf.placeholder(tf.float32, shape=[4, 32, 32, None])
+      networks.generator(img)
+
   def test_discriminator_run(self):
     img_batch = tf.zeros([3, 70, 70, 3])
     disc_output = networks.discriminator(img_batch)
