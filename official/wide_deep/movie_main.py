@@ -40,7 +40,7 @@ def run_movie(flags_obj):
   movie_dataset.download_and_extract(flags_obj.data_dir)
   train_input_fn, eval_input_fn, model_column_fn = movie_dataset.get_input_fns(
       flags_obj.data_dir, repeat=flags_obj.epochs_between_evals,
-      batch_size=flags_obj.batch_size,
+      batch_size=flags_obj.batch_size, small=False
   )
 
   wide_deep_run_loop.run_loop(

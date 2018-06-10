@@ -133,6 +133,7 @@ def run_loop(name, train_input_fn, eval_input_fn, model_column_fn, flags_obj):
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
     model.train(input_fn=train_input_fn, hooks=train_hooks)
+    input("train complete...")
     results = model.evaluate(input_fn=eval_input_fn)
 
     # Display evaluation metrics

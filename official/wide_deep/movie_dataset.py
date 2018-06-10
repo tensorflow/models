@@ -14,6 +14,7 @@
 # ==============================================================================
 
 import ast
+import hashlib
 import os
 import subprocess
 import sys
@@ -24,6 +25,7 @@ from absl import app as absl_app
 from absl import flags
 import numpy as np
 import pandas as pd
+import six
 from six.moves import urllib  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
@@ -31,11 +33,31 @@ from official.utils.flags import core as flags_core
 
 
 _RATINGS = "ratings.csv"
+_RATINGS_SMALL = "ratings_small.csv"
 _METADATA = "movies_metadata.csv"
 _FILES = ["credits.csv", "keywords.csv", "links.csv", "links_small.csv",
-          _METADATA, _RATINGS, "ratings_small.csv"]
+          _METADATA, "ratings.csv", "ratings_small.csv"]
 _ZIP = "the-movies-dataset.zip"
 
+
+_BUFFER_SUBDIR = "data_buffer"
+_FEATURE_MAP = {
+  "userId": tf.FixedLenFeature([1], dtype=tf.int64),
+  'movieId': tf.FixedLenFeature([1], dtype=tf.int64),
+  'year': tf.FixedLenFeature([1], dtype=tf.int64),
+  'original_language': tf.FixedLenFeature([], dtype=tf.string),
+  'genres_0': tf.FixedLenFeature([], dtype=tf.string),
+  'genres_1': tf.FixedLenFeature([], dtype=tf.string),
+  'budget': tf.FixedLenFeature([1], dtype=tf.float32),
+  'rating': tf.FixedLenFeature([1], dtype=tf.float32)
+}
+
+_BUFFER_SIZE = {
+  "small_train": 6797296,
+  "small_eval": 1699301,
+  "train": 1738258785,
+  "eval": 434556365
+}
 
 
 def download_and_extract(data_dir):
@@ -63,8 +85,9 @@ def download_and_extract(data_dir):
         print(i.ljust(20), "copied")
 
 
-def read_and_process_data(data_dir):
-  with tf.gfile.Open(os.path.join(data_dir, _RATINGS)) as f:
+def read_and_process_data(data_dir, small=True):
+  _ratings_file = _RATINGS_SMALL if small else _RATINGS
+  with tf.gfile.Open(os.path.join(data_dir, _ratings_file)) as f:
     ratings = pd.read_csv(f)
 
   with tf.gfile.Open(os.path.join(data_dir, _METADATA)) as f:
@@ -142,9 +165,51 @@ def construct_feature_columns(metadata, ratings):
           fc_genres_1, fc_original_language, fc_year]
 
 
+def _write_to_buffer(dataframe, buffer_path, columns):
+  if tf.gfile.Exists(buffer_path):
+    expected_size = _BUFFER_SIZE[os.path.split(buffer_path)[1]]
+    actual_size = os.stat(buffer_path).st_size
+    if expected_size == actual_size:
+      return
+    tf.logging.warning(
+        "Existing buffer {} has size {}. Expected size {}. Deleting and "
+        "rebuilding buffer.".format(buffer_path, actual_size, expected_size))
+    tf.gfile.Remove(buffer_path)
 
-def get_input_fns(data_dir, repeat=1, batch_size=32):
-  ratings, metadata = read_and_process_data(data_dir)
+  tf.logging.info("Constructing {}".format(buffer_path))
+  with tf.python_io.TFRecordWriter(buffer_path) as writer:
+    for row in dataframe.itertuples():
+      i = getattr(row, "Index")
+      features = {}
+      for key in columns:
+        value = getattr(row, key)
+        if isinstance(value, int):
+          features[key] = tf.train.Feature(
+              int64_list=tf.train.Int64List(value=[value]))
+        elif isinstance(value, float):
+          features[key] = tf.train.Feature(
+              float_list=tf.train.FloatList(value=[value]))
+        elif isinstance(value, six.text_type):
+          if not isinstance(value, six.binary_type):
+            value = value.encode("utf-8")
+          features[key] = tf.train.Feature(
+              bytes_list=tf.train.BytesList(value=[value]))
+        else:
+          raise ValueError("Unknown type.")
+      example = tf.train.Example(features=tf.train.Features(feature=features))
+      writer.write(example.SerializeToString())
+      if (i + 1) % 50000 == 0:
+        tf.logging.info(
+            "{}/{} examples written.".format(str(i+1).ljust(8), len(dataframe)))
+
+
+def _deserialize(example_serialized):
+  features = tf.parse_single_example(example_serialized, _FEATURE_MAP)
+  return features, features['rating']
+
+
+def get_input_fns(data_dir, small=True, repeat=1, batch_size=32):
+  ratings, metadata = read_and_process_data(data_dir, small)
   feature_columns = construct_feature_columns(metadata, ratings)
 
   def model_column_fn():
@@ -155,6 +220,7 @@ def get_input_fns(data_dir, repeat=1, batch_size=32):
                    'genres_0', 'genres_1', 'budget']
 
   merged_data = pd.merge(ratings, metadata[movie_columns], on='movieId')
+  all_columns = ["userId"] + movie_columns + ['rating']
 
   train_df=merged_data.sample(frac=0.8,random_state=0)
   eval_df=merged_data.drop(train_df.index)
@@ -162,25 +228,33 @@ def get_input_fns(data_dir, repeat=1, batch_size=32):
   train_df = train_df.reset_index(drop=True)
   eval_df = eval_df.reset_index(drop=True)
 
-  def _construct_input_fn(dataframe, repeat=1, batch_size=1, shuffle=False):
+  tf.logging.info("Training: {} examples".format(len(train_df)))
+  tf.logging.info("Eval:     {} examples".format(len(eval_df)))
+
+  buffer_dir = os.path.join(data_dir, _BUFFER_SUBDIR)
+  tf.gfile.MakeDirs(buffer_dir)
+
+  def _construct_input_fn(dataframe, buffer_name, repeat=1, batch_size=1):
+    buffer_path = os.path.join(buffer_dir, buffer_name)
+    _write_to_buffer(
+        dataframe=dataframe, buffer_path=buffer_path, columns=all_columns)
+
     def input_fn():
-      dataset = tf.data.Dataset.from_tensor_slices(dict(dataframe))
-      if shuffle:
-        dataset = dataset.shuffle(dataframe.shape[0])
+      dataset = tf.data.TFRecordDataset(buffer_path)
       dataset = dataset.repeat(repeat)
-
-      dataset = dataset.apply(
-          tf.contrib.data.map_and_batch(
-              lambda features: (features, features['rating']),
-              batch_size=batch_size,
-              num_parallel_batches=1,
-              drop_remainder=False))
-
+      dataset = dataset.map(_deserialize)
+      dataset = dataset.batch(batch_size)
       return dataset.prefetch(1)
+
     return input_fn
 
-  train_input_fn = _construct_input_fn(train_df, repeat, batch_size, True)
-  eval_input_fn = _construct_input_fn(eval_df, 1, batch_size, False)
+  prefix = "small_" if small else ""
+  train_input_fn = _construct_input_fn(
+      dataframe=train_df, buffer_name="{}train".format(prefix),
+      repeat=repeat, batch_size=batch_size)
+  eval_input_fn = _construct_input_fn(
+      dataframe=eval_df, buffer_name="{}eval".format(prefix),
+      repeat=repeat, batch_size=batch_size)
 
   return train_input_fn, eval_input_fn, model_column_fn
 
@@ -191,11 +265,20 @@ def define_data_download_flags():
       name="data_dir", default="/tmp/kaggle-movies/",
       help=flags_core.help_wrap(
           "Directory to download and extract data."))
+  flags.DEFINE_boolean(
+      name="construct_buffers", short_name="buffer",
+      default=False, help=flags_core.help_wrap(
+          "Construct binary files for the dataset pipeline now rather than at "
+          "the start of training."))
 
 
 def main(_):
   download_and_extract(flags.FLAGS.data_dir)
-  get_input_fns(flags.FLAGS.data_dir)
+  if flags.FLAGS.construct_buffers:
+    tf.logging.info("Constructing small dataset buffers.")
+    get_input_fns(flags.FLAGS.data_dir, small=True)
+    tf.logging.info("Constructing large dataset buffers.")
+    get_input_fns(flags.FLAGS.data_dir, small=False)
 
 
 if __name__ == "__main__":
