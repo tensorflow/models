@@ -1,0 +1,26 @@
+<annotation>
+	<folder>staging</folder>
+	<filename>H_g42L5CSQK2t0lia4Zmp3FI7QYM2KhuOh4krtFDERI.jpg</filename>
+	<path>/home/mbolaris/git/coin_detector/models/research/object_detection/coin_detector/images/staging/H_g42L5CSQK2t0lia4Zmp3FI7QYM2KhuOh4krtFDERI.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>640</width>
+		<height>853</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>nickel-buffalo</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>74</xmin>
+			<ymin>180</ymin>
+			<xmax>611</xmax>
+			<ymax>687</ymax>
+		</bndbox>
+	</object>
+</annotation>

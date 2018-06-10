@@ -1,0 +1,26 @@
+<annotation>
+	<folder>staging</folder>
+	<filename>ZJqwyxrdXaxD8_0DMy7MqW8QdyebOd5_hjv7vx5kVoQ.jpg</filename>
+	<path>/home/mbolaris/git/coin_detector/models/research/object_detection/coin_detector/images/staging/ZJqwyxrdXaxD8_0DMy7MqW8QdyebOd5_hjv7vx5kVoQ.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>575</width>
+		<height>1024</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>nickel-jefferson</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>109</xmin>
+			<ymin>327</ymin>
+			<xmax>477</xmax>
+			<ymax>685</ymax>
+		</bndbox>
+	</object>
+</annotation>
