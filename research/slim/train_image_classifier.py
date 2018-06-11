@@ -173,6 +173,9 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_string(
     'dataset_dir', None, 'The directory where the dataset files are stored.')
 
+tf.app.flags.DEFINE_boolean(
+    'use_raw_data', False, 'If true, uses raw image data for training.')
+
 tf.app.flags.DEFINE_integer(
     'labels_offset', 0,
     'An offset for the labels in the dataset. This flag is primarily used to '
@@ -414,13 +417,14 @@ def main(_):
         weight_decay=FLAGS.weight_decay,
         is_training=True)
 
+    use_augmented_data = not FLAGS.use_raw_data
     #####################################
     # Select the preprocessing function #
     #####################################
     preprocessing_name = FLAGS.preprocessing_name or FLAGS.model_name
     image_preprocessing_fn = preprocessing_factory.get_preprocessing(
         preprocessing_name,
-        is_training=True)
+        is_training=use_augmented_data)
 
     ##############################################################
     # Create a dataset provider that loads data from the dataset #
