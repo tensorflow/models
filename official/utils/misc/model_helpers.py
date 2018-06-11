@@ -74,6 +74,7 @@ def generate_synthetic_data(
   Returns:
     Dataset of tensors or tuples of tensors (if label_shape is set).
   """
+  # TODO(kathywu): Replace with SyntheticDataset once it is in contrib.
   element = input_element = nest.map_structure(
       lambda s: tf.constant(input_value, input_dtype, s), input_shape)
 
