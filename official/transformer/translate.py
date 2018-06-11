@@ -54,10 +54,10 @@ def _get_sorted_inputs(filename):
   input_lens = [(i, len(line.split())) for i, line in enumerate(inputs)]
   sorted_input_lens = sorted(input_lens, key=lambda x: x[1], reverse=True)
 
-  sorted_inputs = []
-  sorted_keys = {}
+  sorted_inputs = [None] * len(sorted_input_lens)
+  sorted_keys = [0] * len(sorted_input_lens)
   for i, (index, _) in enumerate(sorted_input_lens):
-    sorted_inputs.append(inputs[index])
+    sorted_inputs[i] = inputs[index]
     sorted_keys[index] = i
   return sorted_inputs, sorted_keys
 
@@ -132,8 +132,8 @@ def translate_file(
                        "file.")
     tf.logging.info("Writing to file %s" % output_file)
     with tf.gfile.Open(output_file, "w") as f:
-      for index in range(len(sorted_keys)):
-        f.write("%s\n" % translations[sorted_keys[index]])
+      for i in sorted_keys:
+        f.write("%s\n" % translations[i])
 
 
 def translate_text(estimator, subtokenizer, txt):
