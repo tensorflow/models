@@ -34,14 +34,14 @@ TEST_METADATA_CSV = os.path.join(
     os.path.dirname(__file__), "movie_test_metadata.csv")
 
 TEST_INPUT_VALUES = {
-  "movieId": [15602],
-  "rating": [1.],
-  "budget": [0.],
-  "genres_1": b"Comedy",
-  "genres_0": b"Romance",
-  "original_language": b"en",
-  "userId": [7],
-  "year": [1995]
+    "movieId": [15602],
+    "rating": [1.],
+    "budget": [0.],
+    "genres_1": b"Comedy",
+    "genres_0": b"Romance",
+    "original_language": b"en",
+    "userId": [7],
+    "year": [1995]
 }
 
 
@@ -85,13 +85,12 @@ class BaseTest(tf.test.TestCase):
     integration.run_synthetic(
         main=movie_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=[
-          "--data_dir", self.get_temp_dir(),
-          "--download_if_missing=false",
-          "--train_epochs", "1"
+            "--data_dir", self.get_temp_dir(),
+            "--download_if_missing=false",
+            "--train_epochs", "1"
         ],
         synth=False, max_train=None)
 
 
 if __name__ == "__main__":
   tf.test.main()
-

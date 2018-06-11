@@ -21,10 +21,12 @@ from __future__ import print_function
 import os
 import sys
 
+# pylint: disable=wrong-import-order
 from absl import app as absl_app
 from absl import flags
 from six.moves import urllib
 import tensorflow as tf
+# pylint: enable=wrong-import-order
 
 from official.utils.flags import core as flags_core
 

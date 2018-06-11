@@ -26,6 +26,7 @@ import sys
 import tempfile
 import zipfile
 
+# pylint: disable=wrong-import-order
 from absl import app as absl_app
 from absl import flags
 import numpy as np
@@ -33,6 +34,7 @@ import pandas as pd
 import six
 from six.moves import urllib  # pylint: disable=redefined-builtin
 import tensorflow as tf
+# pylint: enable=wrong-import-order
 
 from official.utils.flags import core as flags_core
 
@@ -80,7 +82,8 @@ def download_and_extract(data_dir):
       tf.gfile.DeleteRecursively(data_dir)
     tf.gfile.MakeDirs(data_dir)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    temp_dir = tempfile.mkdtemp()
+    try:
       subprocess.call(args=["kaggle", "datasets", "download", "-d",
                             "rounakbanik/the-movies-dataset", "-p", temp_dir])
       tf.gfile.Remove(os.path.join(temp_dir, _ZIP))
@@ -89,6 +92,8 @@ def download_and_extract(data_dir):
       for i in files:
         tf.gfile.Copy(os.path.join(temp_dir, i), os.path.join(data_dir, i))
         print(i.ljust(20), "copied")
+    finally:
+      tf.gfile.DeleteRecursively(temp_dir)
 
 
 def read_and_process_data(data_dir, small=True):
@@ -103,7 +108,7 @@ def read_and_process_data(data_dir, small=True):
   metadata.rename(columns={"id": "movieId"}, inplace=True)
   metadata["movieId"] = pd.to_numeric(metadata["movieId"], downcast="integer",
                                       errors="coerce")
-  metadata = metadata[pd.notna(metadata["movieId"])]
+  metadata = metadata[pd.notnull(metadata["movieId"])]
   metadata["movieId"] = metadata["movieId"].astype("int")
 
   metadata = metadata[metadata["movieId"].isin(ratings["movieId"])]
