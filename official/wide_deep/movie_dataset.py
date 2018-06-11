@@ -14,6 +14,10 @@
 # ==============================================================================
 """Download Kaggle movie dataset and construct input_fn."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import ast
 import hashlib
 import os

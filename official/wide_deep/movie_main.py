@@ -14,6 +14,10 @@
 # ==============================================================================
 """Train DNN on Kaggle movie dataset."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 
 from absl import app as absl_app
@@ -69,7 +73,10 @@ def run_movie(flags_obj):
   Args:
     flags_obj: Object containing user specified flags.
   """
-  movie_dataset.download_and_extract(flags_obj.data_dir)
+
+  if flags_obj.download_if_missing:
+    movie_dataset.download_and_extract(flags_obj.data_dir)
+
   train_input_fn, eval_input_fn, model_column_fn = movie_dataset.get_input_fns(
       flags_obj.data_dir, repeat=flags_obj.epochs_between_evals,
       batch_size=flags_obj.batch_size, small=flags_obj.small_dataset

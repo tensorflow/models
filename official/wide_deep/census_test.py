@@ -74,7 +74,7 @@ class BaseTest(tf.test.TestCase):
     dataset = census_dataset.input_fn(self.input_csv, 1, False, 1)
     features, labels = dataset.make_one_shot_iterator().get_next()
 
-    with tf.Session() as sess:
+    with self.test_session() as sess:
       features, labels = sess.run((features, labels))
 
       # Compare the two features dictionaries.
@@ -131,6 +131,7 @@ class BaseTest(tf.test.TestCase):
         extra_flags=[
             '--data_dir', self.get_temp_dir(),
             '--model_type', 'wide',
+            '--download_if_missing=false'
         ],
         synth=False, max_train=None)
 
@@ -140,6 +141,7 @@ class BaseTest(tf.test.TestCase):
         extra_flags=[
             '--data_dir', self.get_temp_dir(),
             '--model_type', 'deep',
+            '--download_if_missing=false'
         ],
         synth=False, max_train=None)
 
@@ -149,6 +151,7 @@ class BaseTest(tf.test.TestCase):
         extra_flags=[
             '--data_dir', self.get_temp_dir(),
             '--model_type', 'wide_deep',
+            '--download_if_missing=false'
         ],
         synth=False, max_train=None)
 

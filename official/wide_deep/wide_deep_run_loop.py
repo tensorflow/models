@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Core run logic for TensorFlow Wide & Deep Tutorial using tf.estimator API."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -44,6 +45,9 @@ def define_wide_deep_flags():
       name="model_type", short_name="mt", default="wide_deep",
       enum_values=['wide', 'deep', 'wide_deep'],
       help="Select model topology.")
+  flags.DEFINE_boolean(
+      name="download_if_missing", default=False, help=flags_core.help_wrap(
+          "Download data to data_dir if it is not already present."))
 
 
 def export_model(model, model_type, export_dir, model_column_fn):

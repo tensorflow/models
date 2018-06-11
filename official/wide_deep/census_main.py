@@ -72,7 +72,8 @@ def run_census(flags_obj):
   Args:
     flags_obj: Object containing user specified flags.
   """
-  census_dataset.download(flags_obj.data_dir)
+  if flags_obj.download_if_missing:
+    census_dataset.download(flags_obj.data_dir)
 
   train_file = os.path.join(flags_obj.data_dir, 'adult.data')
   test_file = os.path.join(flags_obj.data_dir, 'adult.test')
