@@ -22,6 +22,8 @@ import os
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.testing import integration
+from official.wide_deep import census_dataset
+from official.wide_deep import census_main
 from official.wide_deep import wide_deep_run_loop
 
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -42,7 +44,7 @@ TEST_INPUT_VALUES = {
     'occupation': 'abc',
 }
 
-TEST_CSV = os.path.join(os.path.dirname(__file__), 'wide_deep_test.csv')
+TEST_CSV = os.path.join(os.path.dirname(__file__), 'census_test.csv')
 
 
 class BaseTest(tf.test.TestCase):
@@ -51,7 +53,7 @@ class BaseTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
-    wide_deep_run_loop.define_wide_deep_flags()
+    census_main.define_census_flags()
 
   def setUp(self):
     # Create temporary CSV file
@@ -69,7 +71,7 @@ class BaseTest(tf.test.TestCase):
         test_csv.write(test_csv_contents)
 
   def test_input_fn(self):
-    dataset = wide_deep_run_loop.input_fn(self.input_csv, 1, False, 1)
+    dataset = census_dataset.input_fn(self.input_csv, 1, False, 1)
     features, labels = dataset.make_one_shot_iterator().get_next()
 
     with tf.Session() as sess:
@@ -91,12 +93,14 @@ class BaseTest(tf.test.TestCase):
 
   def build_and_test_estimator(self, model_type):
     """Ensure that model trains and minimizes loss."""
-    model = wide_deep_run_loop.build_estimator(self.temp_dir, model_type)
+    model = census_main.build_estimator(
+        self.temp_dir, model_type,
+        model_column_fn=census_dataset.build_model_columns)
 
     # Train for 1 step to initialize model and evaluate initial loss
     def get_input_fn(num_epochs, shuffle, batch_size):
       def input_fn():
-        return wide_deep_run_loop.input_fn(
+        return census_dataset.input_fn(
             TEST_CSV, num_epochs=num_epochs, shuffle=shuffle,
             batch_size=batch_size)
       return input_fn
@@ -123,7 +127,8 @@ class BaseTest(tf.test.TestCase):
 
   def test_end_to_end_wide(self):
     integration.run_synthetic(
-        main=wide_deep_run_loop.main, tmp_root=self.get_temp_dir(), extra_flags=[
+        main=census_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=[
             '--data_dir', self.get_temp_dir(),
             '--model_type', 'wide',
         ],
@@ -131,7 +136,8 @@ class BaseTest(tf.test.TestCase):
 
   def test_end_to_end_deep(self):
     integration.run_synthetic(
-        main=wide_deep_run_loop.main, tmp_root=self.get_temp_dir(), extra_flags=[
+        main=census_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=[
             '--data_dir', self.get_temp_dir(),
             '--model_type', 'deep',
         ],
@@ -139,7 +145,8 @@ class BaseTest(tf.test.TestCase):
 
   def test_end_to_end_wide_deep(self):
     integration.run_synthetic(
-        main=wide_deep_run_loop.main, tmp_root=self.get_temp_dir(), extra_flags=[
+        main=census_main.main, tmp_root=self.get_temp_dir(),
+        extra_flags=[
             '--data_dir', self.get_temp_dir(),
             '--model_type', 'wide_deep',
         ],

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Example code for TensorFlow Wide & Deep Tutorial using tf.estimator API."""
+"""Core run logic for TensorFlow Wide & Deep Tutorial using tf.estimator API."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -46,44 +46,6 @@ def define_wide_deep_flags():
       help="Select model topology.")
 
 
-def build_estimator(model_dir, model_type, model_column_fn):
-  """Build an estimator appropriate for the given model type."""
-  wide_columns, deep_columns = model_column_fn()
-  hidden_units = [100, 75, 50, 25]
-
-  return tf.estimator.DNNRegressor(
-      model_dir=model_dir,
-      feature_columns=deep_columns,
-      hidden_units=hidden_units,
-      optimizer=tf.train.AdamOptimizer(),
-      dropout=0.4,
-      loss_reduction=tf.losses.Reduction.SUM_OVER_BATCH_SIZE)
-
-  # # Create a tf.estimator.RunConfig to ensure the model is run on CPU, which
-  # # trains faster than GPU for this model.
-  # run_config = tf.estimator.RunConfig().replace(
-  #     session_config=tf.ConfigProto(device_count={'GPU': 0}))
-  #
-  # if model_type == 'wide':
-  #   return tf.estimator.LinearClassifier(
-  #       model_dir=model_dir,
-  #       feature_columns=wide_columns,
-  #       config=run_config)
-  # elif model_type == 'deep':
-  #   return tf.estimator.DNNClassifier(
-  #       model_dir=model_dir,
-  #       feature_columns=deep_columns,
-  #       hidden_units=hidden_units,
-  #       config=run_config)
-  # else:
-  #   return tf.estimator.DNNLinearCombinedClassifier(
-  #       model_dir=model_dir,
-  #       linear_feature_columns=wide_columns,
-  #       dnn_feature_columns=deep_columns,
-  #       dnn_hidden_units=hidden_units,
-  #       config=run_config)
-
-
 def export_model(model, model_type, export_dir, model_column_fn):
   """Export to SavedModel format.
 
@@ -105,11 +67,14 @@ def export_model(model, model_type, export_dir, model_column_fn):
   model.export_savedmodel(export_dir, example_input_fn)
 
 
-def run_loop(name, train_input_fn, eval_input_fn, model_column_fn, flags_obj):
+def run_loop(name, train_input_fn, eval_input_fn, model_column_fn,
+             build_estimator_fn, flags_obj, tensors_to_log, early_stop=False):
+  """Define training loop."""
   # Clean up the model directory if present
   shutil.rmtree(flags_obj.model_dir, ignore_errors=True)
-  model = build_estimator(
-      flags_obj.model_dir, flags_obj.model_type, model_column_fn)
+  model = build_estimator_fn(
+      model_dir=flags_obj.model_dir, model_type=flags_obj.model_type,
+      model_column_fn=model_column_fn)
 
   run_params = {
       'batch_size': flags_obj.batch_size,
@@ -122,18 +87,16 @@ def run_loop(name, train_input_fn, eval_input_fn, model_column_fn, flags_obj):
                                 test_id=flags_obj.benchmark_test_id)
 
   loss_prefix = LOSS_PREFIX.get(flags_obj.model_type, '')
+  tensors_to_log = {k: v.format(loss_prefix=loss_prefix)
+                    for k, v in tensors_to_log.items()}
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks, batch_size=flags_obj.batch_size,
-      tensors_to_log={
-                      # 'average_loss': loss_prefix + 'head/truediv',
-                      # 'loss': loss_prefix + 'head/weighted_loss/Sum'
-                      })
-  train_hooks = []
+      tensors_to_log=tensors_to_log)
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):
     model.train(input_fn=train_input_fn, hooks=train_hooks)
-    input("train complete...")
+
     results = model.evaluate(input_fn=eval_input_fn)
 
     # Display evaluation metrics
@@ -147,9 +110,9 @@ def run_loop(name, train_input_fn, eval_input_fn, model_column_fn, flags_obj):
 
     benchmark_logger.log_evaluation_result(results)
 
-    # if model_helpers.past_stop_threshold(
-    #     flags_obj.stop_threshold, results['accuracy']):
-    #   break
+    if early_stop and model_helpers.past_stop_threshold(
+        flags_obj.stop_threshold, results['accuracy']):
+      break
 
   # Export the model
   if flags_obj.export_dir is not None:

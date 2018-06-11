@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Train DNN on census income dataset."""
 
 import os
 
@@ -35,7 +36,42 @@ def define_census_flags():
                           batch_size=40)
 
 
+def build_estimator(model_dir, model_type, model_column_fn):
+  """Build an estimator appropriate for the given model type."""
+  wide_columns, deep_columns = model_column_fn()
+  hidden_units = [100, 75, 50, 25]
+
+  # Create a tf.estimator.RunConfig to ensure the model is run on CPU, which
+  # trains faster than GPU for this model.
+  run_config = tf.estimator.RunConfig().replace(
+      session_config=tf.ConfigProto(device_count={'GPU': 0}))
+
+  if model_type == 'wide':
+    return tf.estimator.LinearClassifier(
+        model_dir=model_dir,
+        feature_columns=wide_columns,
+        config=run_config)
+  elif model_type == 'deep':
+    return tf.estimator.DNNClassifier(
+        model_dir=model_dir,
+        feature_columns=deep_columns,
+        hidden_units=hidden_units,
+        config=run_config)
+  else:
+    return tf.estimator.DNNLinearCombinedClassifier(
+        model_dir=model_dir,
+        linear_feature_columns=wide_columns,
+        dnn_feature_columns=deep_columns,
+        dnn_hidden_units=hidden_units,
+        config=run_config)
+
+
 def run_census(flags_obj):
+  """Construct all necessary functions and call run_loop.
+
+  Args:
+    flags_obj: Object containing user specified flags.
+  """
   census_dataset.download(flags_obj.data_dir)
 
   train_file = os.path.join(flags_obj.data_dir, 'adult.data')
@@ -49,11 +85,19 @@ def run_census(flags_obj):
   def eval_input_fn():
     return census_dataset.input_fn(test_file, 1, False, flags_obj.batch_size)
 
+  tensors_to_log = {
+      'average_loss': '{loss_prefix}head/truediv',
+      'loss': '{loss_prefix}head/weighted_loss/Sum'
+  }
+
   wide_deep_run_loop.run_loop(
       name="Census Income", train_input_fn=train_input_fn,
       eval_input_fn=eval_input_fn,
       model_column_fn=census_dataset.build_model_columns,
-      flags_obj=flags_obj)
+      build_estimator_fn=build_estimator,
+      flags_obj=flags_obj,
+      tensors_to_log=tensors_to_log,
+      early_stop=True)
 
 
 def main(_):
