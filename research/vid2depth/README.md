@@ -62,7 +62,7 @@ You will need to register in order to download the data.  Download the following
 * leftImg8bit_sequence_trainvaltest.zip
 * camera_trainvaltest.zip
 
-### Download Bike dataset (17GB) (optional)
+### Download Bike dataset (34GB) (optional)
 
 ```shell
 mkdir -p ~/vid2depth/bike-uncompressed
