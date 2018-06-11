@@ -72,9 +72,10 @@ BIG_PARAMS.update(
     num_heads=16,
 )
 
+# Parameters for running the model in multi gpu. These should not change the
+# params that modify the model shape (such as the hidden_size or num_heads).
 BASE_MULTI_GPU_PARAMS = BASE_PARAMS.copy()
 BASE_MULTI_GPU_PARAMS.update(
-    default_batch_size=4096,
     learning_rate_warmup_steps=8000
 )
 
@@ -84,6 +85,7 @@ BIG_MULTI_GPU_PARAMS.update(
     learning_rate_warmup_steps=8000
 )
 
+# Parameters for testing the model
 TINY_PARAMS = BASE_PARAMS.copy()
 TINY_PARAMS.update(
     default_batch_size=1024,

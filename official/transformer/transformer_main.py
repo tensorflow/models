@@ -52,9 +52,7 @@ from official.utils.misc import model_helpers
 PARAMS_MAP = {
     "tiny": model_params.TINY_PARAMS,
     "base": model_params.BASE_PARAMS,
-    "base_multi_gpu": model_params.BASE_MULTI_GPU_PARAMS,
     "big": model_params.BIG_PARAMS,
-    "big_multi_gpu": model_params.BIG_MULTI_GPU_PARAMS,
 }
 
 
@@ -360,14 +358,15 @@ def run_loop(
 def define_transformer_flags():
   """Add flags and flag validators for running transformer_main."""
   # Add common flags (data_dir, model_dir, train_epochs, etc.).
-  flags_core.define_base(multi_gpu=False)
+  flags_core.define_base()
   flags_core.define_performance(
       num_parallel_calls=True,
       inter_op=False,
       intra_op=False,
       synthetic_data=True,
       max_train_steps=False,
-      dtype=False
+      dtype=False,
+      all_reduce_alg=True
   )
   flags_core.define_benchmark()
   flags_core.define_device(tpu=True)
@@ -430,7 +429,6 @@ def define_transformer_flags():
           "Path to subtoken vocabulary file. If data_download.py was used to "
           "download and encode the training data, look in the data_dir to find "
           "the vocab file."))
-  flags.mark_flag_as_required("vocab_file")
 
   flags_core.set_defaults(data_dir="/tmp/translate_ende",
                           model_dir="/tmp/transformer_model",
@@ -459,7 +457,8 @@ def define_transformer_flags():
   @flags.validator("vocab_file", "File set by --vocab_file does not exist.")
   def _check_vocab_file(vocab_file):
     """Ensure that vocab file exists."""
-    return tf.gfile.Exists(vocab_file)
+    if vocab_file:
+      return tf.gfile.Exists(vocab_file)
 
   flags_core.require_cloud_storage(["data_dir", "model_dir"])
 
@@ -477,7 +476,7 @@ def construct_estimator(flags_obj, params, schedule_manager):
   """
   if not params["use_tpu"]:
     distribution_strategy = distribution_utils.get_distribution_strategy(
-        flags_core.get_num_gpus(flags_obj), use_hierarchical_copy=True)
+        flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
     return tf.estimator.Estimator(
         model_fn=model_fn, model_dir=flags_obj.model_dir, params=params,
         config=tf.estimator.RunConfig(train_distribute=distribution_strategy))
@@ -516,8 +515,16 @@ def run_transformer(flags_obj):
   Args:
     flags_obj: Object containing parsed flag values.
   """
+  num_gpus = flags_core.get_num_gpus(flags_obj)
+
   # Add flag-defined parameters to params object
   params = PARAMS_MAP[flags_obj.param_set]
+  if num_gpus > 1:
+    if flags_obj.param_set == "big":
+      params = model_params.BIG_MULTI_GPU_PARAMS
+    elif flags_obj.param_set == "base":
+      params = model_params.BASE_MULTI_GPU_PARAMS
+
   params["data_dir"] = flags_obj.data_dir
   params["model_dir"] = flags_obj.model_dir
   params["num_parallel_calls"] = flags_obj.num_parallel_calls
@@ -534,7 +541,7 @@ def run_transformer(flags_obj):
       flags_obj.batch_size or params["default_batch_size_tpu"])
   if not params["use_tpu"]:
     params["batch_size"] = distribution_utils.per_device_batch_size(
-        params["batch_size"], flags_core.get_num_gpus(flags_obj))
+        params["batch_size"], num_gpus)
 
   schedule_manager = schedule.Manager(
       train_steps=flags_obj.train_steps,

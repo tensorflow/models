@@ -56,6 +56,8 @@ import os
 
 import tensorflow as tf
 
+from official.utils.misc import model_helpers
+
 # Use the number of training files as the shuffle buffer.
 _FILE_SHUFFLE_BUFFER = 100
 # Buffer size for reading records from a TFRecord file. Each training file is
@@ -255,12 +257,14 @@ def _read_and_batch_from_files(
 def _generate_synthetic_data(params):
   """Create synthetic data based on the parameter batch size."""
   batch = length = int(math.sqrt(params["batch_size"]))
-  dataset = tf.data.Dataset.from_tensors(tf.ones([batch, length], tf.int64))
-  dataset = dataset.map(lambda x: (x, x))
-  dataset = dataset.cache()
-  dataset = dataset.repeat(1000)
-  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
-  return dataset
+  return model_helpers.generate_synthetic_data(
+      input_shape=tf.TensorShape([batch, length]),
+      input_value=1,
+      input_dtype=tf.int32,
+      label_shape=tf.TensorShape([batch, length]),
+      label_value=1,
+      label_dtype=tf.int32,
+  )
 
 
 def train_input_fn(params):

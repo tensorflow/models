@@ -125,9 +125,11 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     that can be used for iteration.
   """
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
-    images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
-    labels = tf.zeros((batch_size), tf.int32)
-    return tf.data.Dataset.from_tensors((images, labels)).repeat()
+    return model_helpers.generate_synthetic_data(
+        input_shape=tf.TensorShape([batch_size, height, width, num_channels]),
+        input_dtype=tf.float32,
+        label_shape=tf.TensorShape([batch_size]),
+        label_dtype=tf.int32)
 
   return input_fn
 
@@ -348,7 +350,7 @@ def resnet_main(
       allow_soft_placement=True)
 
   distribution_strategy = distribution_utils.get_distribution_strategy(
-      flags_core.get_num_gpus(flags_obj), use_hierarchical_copy=True)
+      flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
 
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy, session_config=session_config)
