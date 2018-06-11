@@ -203,7 +203,7 @@ def _write_to_buffer(dataframe, buffer_path, columns):
         elif isinstance(value, float):
           features[key] = tf.train.Feature(
               float_list=tf.train.FloatList(value=[value]))
-        elif isinstance(value, six.text_type):
+        elif isinstance(value, (six.text_type, six.binary_type)):
           if not isinstance(value, six.binary_type):
             value = value.encode("utf-8")
           features[key] = tf.train.Feature(
