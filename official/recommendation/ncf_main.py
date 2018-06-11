@@ -86,7 +86,8 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset):
   # Define prediction input function
   def pred_input_fn():
     return dataset.input_fn(
-        False, per_device_batch_size(batch_size, num_gpus), ncf_dataset)
+        False, distribution_utils.per_device_batch_size(batch_size, num_gpus),
+        ncf_dataset)
 
   # Get predictions
   predictions = estimator.predict(input_fn=pred_input_fn)

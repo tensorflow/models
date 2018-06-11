@@ -21,7 +21,6 @@ from __future__ import print_function
 import os
 
 # pylint: disable=g-bad-import-order
-from six.moves import xrange  # pylint: disable=redefined-builtin
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
