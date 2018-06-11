@@ -158,7 +158,9 @@ def learning_rate_with_decay(
   initial_learning_rate = 0.1 * batch_size / batch_denom
   batches_per_epoch = num_images / batch_size
 
-  # Multiply the learning rate by 0.1 at 100, 150, and 200 epochs.
+  # Reduce the learning rate at certain epochs.
+  # CIFAR-10: divide by 10 at epoch 100, 150, and 200
+  # ImageNet: divide by 10 at epoch 30, 60, 80, and 90
   boundaries = [int(batches_per_epoch * epoch) for epoch in boundary_epochs]
   vals = [initial_learning_rate * decay for decay in decay_rates]
 
