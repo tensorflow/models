@@ -1,6 +1,6 @@
 # Using flags in official models
 
-1. **All common flags must be incoroprated in the models.**
+1. **All common flags must be incorporated in the models.**
 
    Common flags (i.e. batch_size, model_dir, etc.) are provided by various flag definition functions,
    and channeled through `official.utils.flags.core`. For instance to define common supervised
@@ -57,25 +57,8 @@
 
      # Do not mutate flags_obj
      # if flags_obj.loss_scale is None:
+     #   flags_obj.loss_scale = DTYPE_MAP[flags_obj.dtype][1] # Don't do this
 
-         research/WORKSPACE
-         research/events.out.tfevents.1525199036.kathywu.mtv.corp.google.com
-         research/lm_1b/WORKSPACE
-         research/lm_1b/bazel-bin
-         research/lm_1b/bazel-genfiles
-         research/lm_1b/bazel-lm_1b
-         research/lm_1b/bazel-out
-         research/lm_1b/bazel-testlogs
-         research/lm_1b/data/
-         research/lm_1b/lm_1b/
-         research/test.txt
-         research/textsum/data/text_data
-         research/textsum/data/training-0
-         research/textsum/eh.txt
-         research/textsum/idk.txt
-         research/textsum/idk2.txt
-         research/textsum/idk4.txt
-   #   flags_obj.loss_scale = DTYPE_MAP[flags_obj.dtype][1] # Don't do this
      print(get_loss_scale(flags_obj))
      ...
    ```
