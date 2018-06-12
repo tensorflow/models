@@ -60,6 +60,7 @@ file.
 ```bash
 git clone https://github.com/cocodataset/cocoapi.git
 cd cocoapi/PythonAPI
+python3 setup.py install
 make
 cp -r pycocotools <path_to_tensorflow>/models/research/
 ```
