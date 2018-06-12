@@ -38,6 +38,7 @@ from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
 _TOP_K = 10  # Top-k list for evaluation
@@ -85,7 +86,8 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset):
   # Define prediction input function
   def pred_input_fn():
     return dataset.input_fn(
-        False, per_device_batch_size(batch_size, num_gpus), ncf_dataset)
+        False, distribution_utils.per_device_batch_size(batch_size, num_gpus),
+        ncf_dataset)
 
   # Get predictions
   predictions = estimator.predict(input_fn=pred_input_fn)
@@ -165,37 +167,6 @@ def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
   return estimator
 
 
-def per_device_batch_size(batch_size, num_gpus):
-  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
-
-  Note that this should eventually be handled by DistributionStrategies
-  directly. Multi-GPU support is currently experimental, however,
-  so doing the work here until that feature is in place.
-
-  Args:
-    batch_size: Global batch size to be divided among devices. This should be
-      equal to num_gpus times the single-GPU batch_size for multi-gpu training.
-    num_gpus: How many GPUs are used with DistributionStrategies.
-
-  Returns:
-    Batch size per device.
-
-  Raises:
-    ValueError: if batch_size is not divisible by number of devices
-  """
-  if num_gpus <= 1:
-    return batch_size
-
-  remainder = batch_size % num_gpus
-  if remainder:
-    err = ("When running with multiple GPUs, batch size "
-           "must be a multiple of the number of available GPUs. Found {} "
-           "GPUs with a batch size of {}; try --batch_size={} instead."
-          ).format(num_gpus, batch_size, batch_size - remainder)
-    raise ValueError(err)
-  return int(batch_size / num_gpus)
-
-
 def main(_):
   with logger.benchmark_context(FLAGS):
     run_ncf(FLAGS)
@@ -252,7 +223,8 @@ def run_ncf(_):
   # Training and evaluation cycle
   def train_input_fn():
     return dataset.input_fn(
-        True, per_device_batch_size(FLAGS.batch_size, num_gpus),
+        True,
+        distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
         ncf_dataset, FLAGS.epochs_between_evals)
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
@@ -295,7 +267,8 @@ def define_ncf_flags():
       intra_op=False,
       synthetic_data=False,
       max_train_steps=False,
-      dtype=False
+      dtype=False,
+      all_reduce_alg=False
   )
   flags_core.define_benchmark()
 

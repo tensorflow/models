@@ -27,7 +27,7 @@ from official.utils.logs import hooks_helper
 
 def define_base(data_dir=True, model_dir=True, train_epochs=True,
                 epochs_between_evals=True, stop_threshold=True, batch_size=True,
-                multi_gpu=False, num_gpu=True, hooks=True, export_dir=True):
+                num_gpu=True, hooks=True, export_dir=True):
   """Register base flags.
 
   Args:
@@ -38,7 +38,6 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
     stop_threshold: Create a flag to specify a threshold accuracy or other
       eval metric which should trigger the end of training.
     batch_size: Create a flag to specify the batch size.
-    multi_gpu: Create a flag to allow the use of all available GPUs.
     num_gpu: Create a flag to specify the number of GPUs used.
     hooks: Create a flag to specify hooks for logging.
     export_dir: Create a flag to specify where a SavedModel should be exported.
@@ -84,16 +83,12 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
   if batch_size:
     flags.DEFINE_integer(
         name="batch_size", short_name="bs", default=32,
-        help=help_wrap("Batch size for training and evaluation."))
+        help=help_wrap("Batch size for training and evaluation. When using "
+                       "multiple gpus, this is the global batch size for "
+                       "all devices. For example, if the batch size is 32 "
+                       "and there are 4 GPUs, each GPU will get 8 examples on "
+                       "each step."))
     key_flags.append("batch_size")
-
-  assert not (multi_gpu and num_gpu)
-
-  if multi_gpu:
-    flags.DEFINE_bool(
-        name="multi_gpu", default=False,
-        help=help_wrap("If set, run across all available GPUs."))
-    key_flags.append("multi_gpu")
 
   if num_gpu:
     flags.DEFINE_integer(

@@ -21,7 +21,6 @@ from __future__ import print_function
 import os
 
 # pylint: disable=g-bad-import-order
-from six.moves import xrange  # pylint: disable=redefined-builtin
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
@@ -54,10 +53,10 @@ def _get_sorted_inputs(filename):
   input_lens = [(i, len(line.split())) for i, line in enumerate(inputs)]
   sorted_input_lens = sorted(input_lens, key=lambda x: x[1], reverse=True)
 
-  sorted_inputs = []
-  sorted_keys = {}
+  sorted_inputs = [None] * len(sorted_input_lens)
+  sorted_keys = [0] * len(sorted_input_lens)
   for i, (index, _) in enumerate(sorted_input_lens):
-    sorted_inputs.append(inputs[index])
+    sorted_inputs[i] = inputs[index]
     sorted_keys[index] = i
   return sorted_inputs, sorted_keys
 
@@ -132,8 +131,8 @@ def translate_file(
                        "file.")
     tf.logging.info("Writing to file %s" % output_file)
     with tf.gfile.Open(output_file, "w") as f:
-      for index, key in enumerate(sorted_keys):
-        f.write("%s\n" % translations[key])
+      for i in sorted_keys:
+        f.write("%s\n" % translations[i])
 
 
 def translate_text(estimator, subtokenizer, txt):

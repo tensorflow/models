@@ -14,8 +14,12 @@
 # ==============================================================================
 """Defines Transformer model parameters."""
 
+from collections import defaultdict
 
-BASE_PARAMS = dict(
+
+BASE_PARAMS = defaultdict(
+    lambda: None,  # Set default value to None.
+
     # Input params
     default_batch_size=2048,  # Maximum number of tokens per batch of examples.
     default_batch_size_tpu=32768,
@@ -56,8 +60,8 @@ BASE_PARAMS = dict(
     allow_ffn_pad=True,
 )
 
-BIG_PARAMS = dict(BASE_PARAMS)
-BIG_PARAMS.update(dict(
+BIG_PARAMS = BASE_PARAMS.copy()
+BIG_PARAMS.update(
     default_batch_size=4096,
 
     # default batch size is smaller than for BASE_PARAMS due to memory limits.
@@ -66,13 +70,27 @@ BIG_PARAMS.update(dict(
     hidden_size=1024,
     filter_size=4096,
     num_heads=16,
-))
+)
 
-TINY_PARAMS = dict(BASE_PARAMS)
-TINY_PARAMS.update(dict(
+# Parameters for running the model in multi gpu. These should not change the
+# params that modify the model shape (such as the hidden_size or num_heads).
+BASE_MULTI_GPU_PARAMS = BASE_PARAMS.copy()
+BASE_MULTI_GPU_PARAMS.update(
+    learning_rate_warmup_steps=8000
+)
+
+BIG_MULTI_GPU_PARAMS = BIG_PARAMS.copy()
+BIG_MULTI_GPU_PARAMS.update(
+    layer_postprocess_dropout=0.3,
+    learning_rate_warmup_steps=8000
+)
+
+# Parameters for testing the model
+TINY_PARAMS = BASE_PARAMS.copy()
+TINY_PARAMS.update(
     default_batch_size=1024,
     default_batch_size_tpu=1024,
     hidden_size=32,
     num_heads=4,
     filter_size=256,
-))
+)

@@ -44,7 +44,8 @@ def get_loss_scale(flags_obj):
 
 
 def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
-                       synthetic_data=True, max_train_steps=True, dtype=True):
+                       synthetic_data=True, max_train_steps=True, dtype=True,
+                       all_reduce_alg=True):
   """Register flags for specifying performance tuning arguments.
 
   Args:
@@ -128,5 +129,13 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
         return True  # null case is handled in get_loss_scale()
 
       return loss_scale > 0
+
+  if all_reduce_alg:
+    flags.DEFINE_string(
+        name="all_reduce_alg", short_name="ara", default=None,
+        help=help_wrap("Defines the algorithm to use for performing all-reduce."
+                       "See tf.contrib.distribute.AllReduceCrossTowerOps for "
+                       "more details and available options."))
+
 
   return key_flags

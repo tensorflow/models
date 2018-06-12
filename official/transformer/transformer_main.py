@@ -46,14 +46,16 @@ from official.utils.export import export
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
-
 
 PARAMS_MAP = {
     "tiny": model_params.TINY_PARAMS,
     "base": model_params.BASE_PARAMS,
     "big": model_params.BIG_PARAMS,
 }
+
+
 DEFAULT_TRAIN_EPOCHS = 10
 INF = int(1e9)
 BLEU_DIR = "bleu"
@@ -185,8 +187,11 @@ def get_train_op_and_metrics(loss, params):
     tvars = tf.trainable_variables()
     gradients = optimizer.compute_gradients(
         loss, tvars, colocate_gradients_with_ops=True)
-    train_op = optimizer.apply_gradients(
+    minimize_op = optimizer.apply_gradients(
         gradients, global_step=global_step, name="train")
+
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    train_op = tf.group(minimize_op, update_ops)
 
     metrics = {"learning_rate": learning_rate}
 
@@ -353,14 +358,15 @@ def run_loop(
 def define_transformer_flags():
   """Add flags and flag validators for running transformer_main."""
   # Add common flags (data_dir, model_dir, train_epochs, etc.).
-  flags_core.define_base(multi_gpu=False, num_gpu=False)
+  flags_core.define_base()
   flags_core.define_performance(
       num_parallel_calls=True,
       inter_op=False,
       intra_op=False,
-      synthetic_data=False,
+      synthetic_data=True,
       max_train_steps=False,
-      dtype=False
+      dtype=False,
+      all_reduce_alg=True
   )
   flags_core.define_benchmark()
   flags_core.define_device(tpu=True)
@@ -373,7 +379,7 @@ def define_transformer_flags():
   # Add transformer-specific flags
   flags.DEFINE_enum(
       name="param_set", short_name="mp", default="big",
-      enum_values=["base", "big", "tiny"],
+      enum_values=PARAMS_MAP.keys(),
       help=flags_core.help_wrap(
           "Parameter set to use when creating and training the model. The "
           "parameters define the input shape (batch size and max length), "
@@ -423,7 +429,6 @@ def define_transformer_flags():
           "Path to subtoken vocabulary file. If data_download.py was used to "
           "download and encode the training data, look in the data_dir to find "
           "the vocab file."))
-  flags.mark_flag_as_required("vocab_file")
 
   flags_core.set_defaults(data_dir="/tmp/translate_ende",
                           model_dir="/tmp/transformer_model",
@@ -452,7 +457,8 @@ def define_transformer_flags():
   @flags.validator("vocab_file", "File set by --vocab_file does not exist.")
   def _check_vocab_file(vocab_file):
     """Ensure that vocab file exists."""
-    return tf.gfile.Exists(vocab_file)
+    if vocab_file:
+      return tf.gfile.Exists(vocab_file)
 
   flags_core.require_cloud_storage(["data_dir", "model_dir"])
 
@@ -469,8 +475,11 @@ def construct_estimator(flags_obj, params, schedule_manager):
     An estimator object to be used for training and eval.
   """
   if not params["use_tpu"]:
+    distribution_strategy = distribution_utils.get_distribution_strategy(
+        flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
     return tf.estimator.Estimator(
-        model_fn=model_fn, model_dir=flags_obj.model_dir, params=params)
+        model_fn=model_fn, model_dir=flags_obj.model_dir, params=params,
+        config=tf.estimator.RunConfig(train_distribute=distribution_strategy))
 
   tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
       tpu=flags_obj.tpu,
@@ -506,19 +515,33 @@ def run_transformer(flags_obj):
   Args:
     flags_obj: Object containing parsed flag values.
   """
+  num_gpus = flags_core.get_num_gpus(flags_obj)
+
   # Add flag-defined parameters to params object
   params = PARAMS_MAP[flags_obj.param_set]
+  if num_gpus > 1:
+    if flags_obj.param_set == "big":
+      params = model_params.BIG_MULTI_GPU_PARAMS
+    elif flags_obj.param_set == "base":
+      params = model_params.BASE_MULTI_GPU_PARAMS
+
   params["data_dir"] = flags_obj.data_dir
   params["model_dir"] = flags_obj.model_dir
   params["num_parallel_calls"] = flags_obj.num_parallel_calls
 
   params["tpu"] = flags_obj.tpu
   params["use_tpu"] = bool(flags_obj.tpu)  # was a tpu specified.
-  params["batch_size"] = flags_obj.batch_size or (
-      params["default_batch_size_tpu"] if params["use_tpu"]
-      else params["default_batch_size"])
   params["static_batch"] = flags_obj.static_batch or params["use_tpu"]
   params["allow_ffn_pad"] = not params["use_tpu"]
+
+  params["use_synthetic_data"] = flags_obj.use_synthetic_data
+
+  # Set batch size parameter, which depends on TPU and distribution settings.
+  params["batch_size"] = (
+      flags_obj.batch_size or params["default_batch_size_tpu"])
+  if not params["use_tpu"]:
+    params["batch_size"] = distribution_utils.per_device_batch_size(
+        params["batch_size"], num_gpus)
 
   schedule_manager = schedule.Manager(
       train_steps=flags_obj.train_steps,

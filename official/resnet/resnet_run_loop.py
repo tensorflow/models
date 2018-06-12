@@ -34,6 +34,7 @@ from official.utils.flags import core as flags_core
 from official.utils.export import export
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 # pylint: enable=g-bad-import-order
 
@@ -124,9 +125,11 @@ def get_synth_input_fn(height, width, num_channels, num_classes):
     that can be used for iteration.
   """
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):  # pylint: disable=unused-argument
-    images = tf.zeros((batch_size, height, width, num_channels), tf.float32)
-    labels = tf.zeros((batch_size), tf.int32)
-    return tf.data.Dataset.from_tensors((images, labels)).repeat()
+    return model_helpers.generate_synthetic_data(
+        input_shape=tf.TensorShape([batch_size, height, width, num_channels]),
+        input_dtype=tf.float32,
+        label_shape=tf.TensorShape([batch_size]),
+        label_dtype=tf.int32)
 
   return input_fn
 
@@ -318,37 +321,6 @@ def resnet_model_fn(features, labels, mode, model_class,
       eval_metric_ops=metrics)
 
 
-def per_device_batch_size(batch_size, num_gpus):
-  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
-
-  Note that this should eventually be handled by DistributionStrategies
-  directly. Multi-GPU support is currently experimental, however,
-  so doing the work here until that feature is in place.
-
-  Args:
-    batch_size: Global batch size to be divided among devices. This should be
-      equal to num_gpus times the single-GPU batch_size for multi-gpu training.
-    num_gpus: How many GPUs are used with DistributionStrategies.
-
-  Returns:
-    Batch size per device.
-
-  Raises:
-    ValueError: if batch_size is not divisible by number of devices
-  """
-  if num_gpus <= 1:
-    return batch_size
-
-  remainder = batch_size % num_gpus
-  if remainder:
-    err = ('When running with multiple GPUs, batch size '
-           'must be a multiple of the number of available GPUs. Found {} '
-           'GPUs with a batch size of {}; try --batch_size={} instead.'
-          ).format(num_gpus, batch_size, batch_size - remainder)
-    raise ValueError(err)
-  return int(batch_size / num_gpus)
-
-
 def resnet_main(
     flags_obj, model_function, input_function, dataset_name, shape=None):
   """Shared main loop for ResNet Models.
@@ -379,17 +351,11 @@ def resnet_main(
       intra_op_parallelism_threads=flags_obj.intra_op_parallelism_threads,
       allow_soft_placement=True)
 
-  if flags_core.get_num_gpus(flags_obj) == 0:
-    distribution = tf.contrib.distribute.OneDeviceStrategy('device:CPU:0')
-  elif flags_core.get_num_gpus(flags_obj) == 1:
-    distribution = tf.contrib.distribute.OneDeviceStrategy('device:GPU:0')
-  else:
-    distribution = tf.contrib.distribute.MirroredStrategy(
-        num_gpus=flags_core.get_num_gpus(flags_obj)
-    )
+  distribution_strategy = distribution_utils.get_distribution_strategy(
+      flags_core.get_num_gpus(flags_obj), flags_obj.all_reduce_alg)
 
-  run_config = tf.estimator.RunConfig(train_distribute=distribution,
-                                      session_config=session_config)
+  run_config = tf.estimator.RunConfig(
+      train_distribute=distribution_strategy, session_config=session_config)
 
   classifier = tf.estimator.Estimator(
       model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
@@ -411,7 +377,7 @@ def resnet_main(
       'train_epochs': flags_obj.train_epochs,
   }
   if flags_obj.use_synthetic_data:
-    dataset_name = dataset_name + "-synthetic"
+    dataset_name = dataset_name + '-synthetic'
 
   benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info('resnet', dataset_name, run_params,
@@ -424,7 +390,7 @@ def resnet_main(
   def input_fn_train():
     return input_function(
         is_training=True, data_dir=flags_obj.data_dir,
-        batch_size=per_device_batch_size(
+        batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=flags_obj.epochs_between_evals,
         num_gpus=flags_core.get_num_gpus(flags_obj))
@@ -432,7 +398,7 @@ def resnet_main(
   def input_fn_eval():
     return input_function(
         is_training=False, data_dir=flags_obj.data_dir,
-        batch_size=per_device_batch_size(
+        batch_size=distribution_utils.per_device_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1)
 
