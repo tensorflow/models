@@ -191,6 +191,8 @@ def run_ncf(_):
   ncf_dataset = dataset.data_preprocessing(
       train_fname, test_fname, neg_fname, FLAGS.num_neg)
 
+  flags_core.apply_clean(flags.FLAGS)
+
   # Create NeuMF model and convert it to Estimator
   tf.logging.info("Creating Estimator from Keras model...")
   layers = [int(layer) for layer in FLAGS.layers]

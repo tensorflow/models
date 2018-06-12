@@ -48,6 +48,8 @@ _CSV_COLUMNS = [
 _CSV_COLUMN_DEFAULTS = [[0], [''], [0], [''], [0], [''], [''], [''], [''], [''],
                         [0], [0], [0], [''], ['']]
 
+_HASH_BUCKET_SIZE = 1000
+
 _NUM_EXAMPLES = {
     'train': 32561,
     'validation': 16281,
@@ -73,8 +75,7 @@ def _download_and_clean_file(filename, url):
 
 def download(data_dir):
   """Download census data if it is not already present."""
-  if not tf.gfile.Exists(data_dir):
-    tf.gfile.MkDir(data_dir)
+  tf.gfile.MakeDirs(data_dir)
 
   training_file_path = os.path.join(data_dir, TRAINING_FILE)
   if not tf.gfile.Exists(training_file_path):
@@ -87,7 +88,7 @@ def download(data_dir):
 
 def build_model_columns():
   """Builds a set of wide and deep feature columns."""
-  # Continuous columns
+  # Continuous variable columns
   age = tf.feature_column.numeric_column('age')
   education_num = tf.feature_column.numeric_column('education_num')
   capital_gain = tf.feature_column.numeric_column('capital_gain')
@@ -131,7 +132,7 @@ def build_model_columns():
 
   crossed_columns = [
       tf.feature_column.crossed_column(
-          ['education', 'occupation'], hash_bucket_size=1000),
+          ['education', 'occupation'], hash_bucket_size=_HASH_BUCKET_SIZE),
       tf.feature_column.crossed_column(
           [age_buckets, 'education', 'occupation'], hash_bucket_size=1000),
   ]
@@ -162,11 +163,12 @@ def input_fn(data_file, num_epochs, shuffle, batch_size):
       'set the --data_dir argument to the correct path.' % data_file)
 
   def parse_csv(value):
-    print('Parsing', data_file)
+    tf.logging.info('Parsing {}'.format(data_file))
     columns = tf.decode_csv(value, record_defaults=_CSV_COLUMN_DEFAULTS)
     features = dict(zip(_CSV_COLUMNS, columns))
     labels = features.pop('income_bracket')
-    return features, tf.equal(labels, '>50K')
+    classes = tf.equal(labels, '>50K')  # binary classification
+    return features, classes
 
   # Extract lines from input files using the Dataset API.
   dataset = tf.data.TextLineDataset(data_file)

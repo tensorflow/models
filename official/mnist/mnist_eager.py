@@ -104,6 +104,7 @@ def run_mnist_eager(flags_obj):
     flags_obj: An object containing parsed flag values.
   """
   tf.enable_eager_execution()
+  flags_core.apply_clean(flags.FLAGS)
 
   # Automatically determine device and data_format
   (device, data_format) = ('/gpu:0', 'channels_first')

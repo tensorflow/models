@@ -66,7 +66,7 @@ class BaseTest(tf.test.TestCase):
       test_csv_contents = temp_csv.read()
 
     # Used for end-to-end tests.
-    for fname in ['adult.data', 'adult.test']:
+    for fname in [census_dataset.TRAINING_FILE, census_dataset.EVAL_FILE]:
       with tf.gfile.Open(os.path.join(self.temp_dir, fname), 'w') as test_csv:
         test_csv.write(test_csv_contents)
 

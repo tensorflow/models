@@ -25,7 +25,7 @@ from official.utils.flags._conventions import help_wrap
 from official.utils.logs import hooks_helper
 
 
-def define_base(data_dir=True, model_dir=True, train_epochs=True,
+def define_base(data_dir=True, model_dir=True, clean=True, train_epochs=True,
                 epochs_between_evals=True, stop_threshold=True, batch_size=True,
                 num_gpu=True, hooks=True, export_dir=True):
   """Register base flags.
@@ -58,6 +58,12 @@ def define_base(data_dir=True, model_dir=True, train_epochs=True,
         name="model_dir", short_name="md", default="/tmp",
         help=help_wrap("The location of the model checkpoint files."))
     key_flags.append("model_dir")
+
+  if clean:
+    flags.DEFINE_boolean(
+        name="clean", default=False,
+        help=help_wrap("If set, model_dir will be removed if it exists."))
+    key_flags.append("clean")
 
   if train_epochs:
     flags.DEFINE_integer(
@@ -133,3 +139,9 @@ def get_num_gpus(flags_obj):
   from tensorflow.python.client import device_lib  # pylint: disable=g-import-not-at-top
   local_device_protos = device_lib.list_local_devices()
   return sum([1 for d in local_device_protos if d.device_type == "GPU"])
+
+def apply_clean(flags_obj):
+  if flags_obj.clean and tf.gfile.Exists(flags_obj.model_dir):
+    tf.logging.info("--clean flag set. Removing existing model dir: {}".format(
+        flags_obj.model_dir))
+    tf.gfile.DeleteRecursively(flags_obj.model_dir)

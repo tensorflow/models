@@ -75,8 +75,8 @@ def run_census(flags_obj):
   if flags_obj.download_if_missing:
     census_dataset.download(flags_obj.data_dir)
 
-  train_file = os.path.join(flags_obj.data_dir, 'adult.data')
-  test_file = os.path.join(flags_obj.data_dir, 'adult.test')
+  train_file = os.path.join(flags_obj.data_dir, census_dataset.TRAINING_FILE)
+  test_file = os.path.join(flags_obj.data_dir, census_dataset.EVAL_FILE)
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   def train_input_fn():
