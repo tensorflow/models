@@ -13,6 +13,8 @@ DEFAULT_DTYPE = tf.float32
 CASTABLE_TYPES = (tf.float16,)
 ALLOWED_TYPES = (DEFAULT_DTYPE,) + CASTABLE_TYPES
 
+FEATURE_PYRAMID_DIMENSION = 256
+
 def batch_norm(inputs, training, data_format):
   """Performs a batch normalization using a standard set of parameters."""
   # We set fused=True for a significant performance boost. See
@@ -483,14 +485,54 @@ def resnet_backbone(inputs, training, bottleneck, num_classes,
 
     return output
 
-def fpn_graph(feature_pyramid, data_format):
-  C1, C2, C3, C4, C5 = feature_pyramid[0], feature_pyramid[1], \
+def fpn_graph(feature_pyramid, top_down_feature_dimension, data_format):
+  """creates the top down feature pyramid from bottom up feature pyramid
+  Args:
+    feature_pyramid:
+    top_down_feature_dimension:
+    data_format:
+
+  return:
+  """
+  _, C2, C3, C4, C5 = feature_pyramid[0], feature_pyramid[1], \
                        feature_pyramid[2], feature_pyramid[3], \
                        feature_pyramid[4]
 
+  P5 = conv2d_fixed_padding(C5, filters=FEATURE_PYRAMID_DIMENSION,
+                            kernel_size=(1,1), strides=(1,1),
+                            data_format=data_format)
+  P4 = tf.add(
+      tf.keras.layers.UpSampling2D(size=(2,2), data_format=data_format)(P5),
+      conv2d_fixed_padding(C4, filters=FEATURE_PYRAMID_DIMENSION,
+                           kernel_size=(1,1), strides=(1,1),
+                           data_format=data_format))
+  P3 = tf.add(
+      tf.keras.layers.UpSampling2D(size=(2,2), data_format=data_format)(P4),
+      conv2d_fixed_padding(C3, filters=FEATURE_PYRAMID_DIMENSION,
+                           kernel_size=(1,1), strides=(1,1),
+                           data_format=data_format))
+  P2 = tf.add(
+      tf.keras.layers.UpSampling2D(size=(2,2), data_format=data_format)(P3),
+      conv2d_fixed_padding(C2, filters=FEATURE_PYRAMID_DIMENSION,
+                           kernel_size=(1,1), strides=(1,1),
+                           data_format=data_format))
 
+  P5 = conv2d_fixed_padding(P5, filters=FEATURE_PYRAMID_DIMENSION,
+                            kernel_size=(3,3), strides=(1,1),
+                            data_format=data_format)
+  P4 = conv2d_fixed_padding(P4, filters=FEATURE_PYRAMID_DIMENSION,
+                            kernel_size=(3,3), strides=(1,1),
+                            data_format=data_format)
+  P3 = conv2d_fixed_padding(P3, filters=FEATURE_PYRAMID_DIMENSION,
+                            kernel_size=(3,3), strides=(1,1),
+                            data_format=data_format)
+  P2 = conv2d_fixed_padding(P2, filters=FEATURE_PYRAMID_DIMENSION,
+                            kernel_size=(3,3), strides=(1,1),
+                            data_format=data_format)
+  P6 = tf.layers.max_pooling2d(P5, pool_size=(1,1), strides=(2,2),
+                               data_format=data_format)
 
-
+  return [P2, P3, P4, P5, P6]
 
 
 class MaskRCNN(object):
