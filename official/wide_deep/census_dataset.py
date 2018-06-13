@@ -134,7 +134,7 @@ def build_model_columns():
       tf.feature_column.crossed_column(
           ['education', 'occupation'], hash_bucket_size=_HASH_BUCKET_SIZE),
       tf.feature_column.crossed_column(
-          [age_buckets, 'education', 'occupation'], hash_bucket_size=1000),
+          [age_buckets, 'education', 'occupation'], hash_bucket_size=_HASH_BUCKET_SIZE),
   ]
 
   wide_columns = base_columns + crossed_columns

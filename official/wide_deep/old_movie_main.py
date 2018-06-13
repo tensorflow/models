@@ -24,9 +24,9 @@ from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
 
-from official.datasets import movielens
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
+from official.wide_deep import old_movie_dataset
 from official.wide_deep import movielens_dataset
 from official.wide_deep import wide_deep_run_loop
 
@@ -34,12 +34,12 @@ from official.wide_deep import wide_deep_run_loop
 def define_movie_flags():
   """Define flags for movie dataset training."""
   wide_deep_run_loop.define_wide_deep_flags()
-  flags.DEFINE_enum(
-      name="dataset", default=None,
-      enum_values=movielens.DATASETS, case_sensitive=False,
-      help=flags_core.help_wrap("Dataset to be trained and evaluated."))
+  flags.DEFINE_boolean(
+      name="small_dataset", short_name="small", default=False,
+      help=flags_core.help_wrap("Use a smaller dataset (~45K examples) instead "
+                                "of the full (~12M examples) dataset."))
   flags.adopt_module_key_flags(wide_deep_run_loop)
-  flags_core.set_defaults(data_dir="/tmp/movielens-data/",
+  flags_core.set_defaults(data_dir="/tmp/kaggle-movies/",
                           model_dir='/tmp/movie_model',
                           model_type="deep",
                           train_epochs=50,
@@ -47,7 +47,7 @@ def define_movie_flags():
                           batch_size=256)
 
   @flags.validator("stop_threshold",
-                   message="stop_threshold not supported for movielens model")
+                   message="stop_threshold not supported for movie model")
   def _no_stop(stop_threshold):
     return stop_threshold is None
 
@@ -56,7 +56,7 @@ def build_estimator(model_dir, model_type, model_column_fn):
   """Build an estimator appropriate for the given model type."""
   if model_type != "deep":
     raise NotImplementedError("movie dataset only supports `deep` model_type")
-  _, deep_columns = model_column_fn()
+  wide_columns, deep_columns = model_column_fn()
   hidden_units = [128, 128, 128]
 
   return tf.estimator.DNNRegressor(
@@ -75,17 +75,21 @@ def run_movie(flags_obj):
     flags_obj: Object containing user specified flags.
   """
 
-  train_input_fn, eval_input_fn, model_column_fn = \
-    movielens_dataset.construct_input_fns(
-        dataset="ml-1m", data_dir="/tmp/movielens-data/",
-        batch_size=flags_obj.batch_size, repeat=flags_obj.epochs_between_evals)
+  # if flags_obj.download_if_missing:
+  #   old_movie_dataset.download_and_extract(flags_obj.data_dir)
+  #
+  # train_input_fn, eval_input_fn, model_column_fn = old_movie_dataset.get_input_fns(
+  #     flags_obj.data_dir, repeat=flags_obj.epochs_between_evals,
+  #     batch_size=flags_obj.batch_size, small=flags_obj.small_dataset
+  # )
+  train_input_fn, eval_input_fn, model_column_fn = movielens_dataset.construct_input_fns(dataset="ml-1m", data_dir="/tmp/movielens-data/")
 
   tensors_to_log = {
-    'loss': '{loss_prefix}head/weighted_loss/value'
+      'loss': '{loss_prefix}head/weighted_loss/value'
   }
 
   wide_deep_run_loop.run_loop(
-      name="MovieLens", train_input_fn=train_input_fn,
+      name="Kaggle Movies", train_input_fn=train_input_fn,
       eval_input_fn=eval_input_fn,
       model_column_fn=model_column_fn,
       build_estimator_fn=build_estimator,

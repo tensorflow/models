@@ -22,16 +22,16 @@ import os
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.testing import integration
-from official.wide_deep import movie_dataset
-from official.wide_deep import movie_main
+from official.wide_deep import old_movie_dataset
+from official.wide_deep import old_movie_main
 from official.wide_deep import wide_deep_run_loop
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 TEST_RATINGS_CSV = os.path.join(
-    os.path.dirname(__file__), "movie_test_ratings.csv")
+    os.path.dirname(__file__), "old_movie_test_ratings.csv")
 TEST_METADATA_CSV = os.path.join(
-    os.path.dirname(__file__), "movie_test_metadata.csv")
+    os.path.dirname(__file__), "old_movie_test_metadata.csv")
 
 TEST_INPUT_VALUES = {
     "movieId": [15602],
@@ -51,7 +51,7 @@ class BaseTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
-    movie_main.define_movie_flags()
+    old_movie_main.define_movie_flags()
 
   def setUp(self):
     # Create temporary CSV file
@@ -64,7 +64,7 @@ class BaseTest(tf.test.TestCase):
     tf.gfile.Copy(TEST_METADATA_CSV, self.metadata_csv)
 
   def test_input_fn(self):
-    train_input_fn, _, _ = movie_dataset.get_input_fns(
+    train_input_fn, _, _ = old_movie_dataset.get_input_fns(
         self.temp_dir, repeat=1,
         batch_size=8, small=False
     )
@@ -83,7 +83,7 @@ class BaseTest(tf.test.TestCase):
 
   def test_end_to_end_deep(self):
     integration.run_synthetic(
-        main=movie_main.main, tmp_root=self.get_temp_dir(),
+        main=old_movie_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=[
             "--data_dir", self.get_temp_dir(),
             "--download_if_missing=false",
