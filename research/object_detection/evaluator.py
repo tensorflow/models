@@ -239,11 +239,11 @@ def evaluate(create_input_dict_fn, create_model_fn, eval_config, categories,
           keep_image_id_for_visualization_export)
     return result_dict, result_losses_dict
 
+  if graph_hook_fn: graph_hook_fn()
+
   variables_to_restore = tf.global_variables()
   global_step = tf.train.get_or_create_global_step()
   variables_to_restore.append(global_step)
-
-  if graph_hook_fn: graph_hook_fn()
 
   if eval_config.use_moving_averages:
     variable_averages = tf.train.ExponentialMovingAverage(0.0)
