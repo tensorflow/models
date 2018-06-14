@@ -282,7 +282,7 @@ def get_random_scale(min_scale_factor, max_scale_factor, step_size):
   return shuffled_scale_factors[0]
 
 
-def randomly_scale_image_and_label(image, label=None, scale=1.0):
+def randomly_augment_image_and_label(image, label=None, scale=1.0, gamma=1.0, gain=1.0, hue_delta=0.0):
   """Randomly scales image and label.
 
   Args:
@@ -305,6 +305,10 @@ def randomly_scale_image_and_label(image, label=None, scale=1.0):
       tf.expand_dims(image, 0),
       new_dim,
       align_corners=True), [0])
+
+  image = tf.image.adjust_gamma(image, gamma=gamma, gain=gain)
+  image = tf.image.adjust_hue(image, hue_delta)
+
   if label is not None:
     label = tf.squeeze(tf.image.resize_nearest_neighbor(
         tf.expand_dims(label, 0),
