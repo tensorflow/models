@@ -19,30 +19,43 @@ from __future__ import print_function
 
 import os
 
+import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.datasets import movielens
 from official.utils.testing import integration
-from official.wide_deep import old_movie_dataset
-from official.wide_deep import old_movie_main
+from official.wide_deep import movielens_dataset
+from official.wide_deep import movielens_main
 from official.wide_deep import wide_deep_run_loop
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
-TEST_RATINGS_CSV = os.path.join(
-    os.path.dirname(__file__), "old_movie_test_ratings.csv")
-TEST_METADATA_CSV = os.path.join(
-    os.path.dirname(__file__), "old_movie_test_metadata.csv")
 
 TEST_INPUT_VALUES = {
-    "movieId": [15602],
-    "rating": [1.],
-    "budget": [0.],
-    "genres_1": b"Comedy",
-    "genres_0": b"Romance",
-    "original_language": b"en",
-    "userId": [7],
-    "year": [1995]
+  "genres": np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+  "user_id": [3],
+  "item_id": [4],
 }
+
+TEST_ITEM_DATA = """item_id,titles,genres
+1,Movie_1,Comedy|Romance
+2,Movie_2,Adventure|Children's
+3,Movie_3,Comedy|Drama
+4,Movie_4,Comedy
+5,Movie_5,Action|Crime|Thriller
+6,Movie_6,Action
+7,Movie_7,Action|Adventure|Thriller"""
+
+TEST_RATING_DATA = """user_id,item_id,rating,timestamp
+1,2,5,978300760
+1,3,3,978302109
+1,6,3,978301968
+2,1,4,978300275
+2,7,5,978824291
+3,1,3,978302268
+3,4,5,978302039
+3,5,5,978300719
+"""
 
 
 class BaseTest(tf.test.TestCase):
@@ -51,23 +64,29 @@ class BaseTest(tf.test.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(BaseTest, cls).setUpClass()
-    old_movie_main.define_movie_flags()
+    movielens_main.define_movie_flags()
 
   def setUp(self):
     # Create temporary CSV file
     self.temp_dir = self.get_temp_dir()
+    tf.gfile.MakeDirs(os.path.join(self.temp_dir, movielens.ML_1M))
 
-    self.ratings_csv = os.path.join(self.temp_dir, "ratings.csv")
-    self.metadata_csv = os.path.join(self.temp_dir, "movies_metadata.csv")
+    self.ratings_csv = os.path.join(
+        self.temp_dir, movielens.ML_1M, movielens.RATINGS_FILE)
+    self.item_csv = os.path.join(
+        self.temp_dir, movielens.ML_1M, movielens.MOVIES_FILE)
 
-    tf.gfile.Copy(TEST_RATINGS_CSV, self.ratings_csv)
-    tf.gfile.Copy(TEST_METADATA_CSV, self.metadata_csv)
+    with tf.gfile.Open(self.ratings_csv, "w") as f:
+      f.write(TEST_RATING_DATA)
+
+    with tf.gfile.Open(self.item_csv, "w") as f:
+      f.write(TEST_ITEM_DATA)
+
 
   def test_input_fn(self):
-    train_input_fn, _, _ = old_movie_dataset.get_input_fns(
-        self.temp_dir, repeat=1,
-        batch_size=8, small=False
-    )
+    train_input_fn, _, _ = movielens_dataset.construct_input_fns(
+        dataset=movielens.ML_1M, data_dir=self.temp_dir, batch_size=8, repeat=1)
+
     dataset = train_input_fn()
     features, labels = dataset.make_one_shot_iterator().get_next()
 
@@ -77,17 +96,18 @@ class BaseTest(tf.test.TestCase):
       # Compare the two features dictionaries.
       for key in TEST_INPUT_VALUES:
         self.assertTrue(key in features)
-        self.assertEqual(TEST_INPUT_VALUES[key], features[key][0])
+        self.assertAllClose(TEST_INPUT_VALUES[key], features[key][0])
 
-      self.assertEqual(labels[0], [1.])
+      self.assertAllClose(labels[0], [1.0])
 
   def test_end_to_end_deep(self):
     integration.run_synthetic(
-        main=old_movie_main.main, tmp_root=self.get_temp_dir(),
+        main=movielens_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=[
-            "--data_dir", self.get_temp_dir(),
-            "--download_if_missing=false",
-            "--train_epochs", "1"
+          "--data_dir", self.get_temp_dir(),
+          "--download_if_missing=false",
+          "--train_epochs", "1",
+          "--epochs_between_evals", "1"
         ],
         synth=False, max_train=None)
 

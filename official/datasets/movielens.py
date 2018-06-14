@@ -42,8 +42,8 @@ ML_1M = "ml-1m"
 ML_20M = "ml-20m"
 DATASETS = [ML_1M, ML_20M]
 
-_RATINGS_FILE = "ratings.csv"
-_MOVIES_FILE = "movies.csv"
+RATINGS_FILE = "ratings.csv"
+MOVIES_FILE = "movies.csv"
 
 # URL to download dataset
 _DATA_URL = "http://files.grouplens.org/datasets/movielens/"
@@ -97,7 +97,7 @@ def _download_and_clean(dataset, data_dir):
 
   data_subdir = os.path.join(data_dir, dataset)
 
-  expected_files = ["{}.zip".format(dataset), _RATINGS_FILE, _MOVIES_FILE]
+  expected_files = ["{}.zip".format(dataset), RATINGS_FILE, MOVIES_FILE]
 
   tf.gfile.MakeDirs(data_subdir)
   if set(expected_files).intersection(
@@ -180,12 +180,12 @@ def _regularize_1m_dataset(temp_dir):
 
   _write_csv(
       input_path=os.path.join(working_dir, "ratings.dat"),
-      output_path=os.path.join(temp_dir, _RATINGS_FILE),
+      output_path=os.path.join(temp_dir, RATINGS_FILE),
       names=RATING_COLUMNS, skip_first=False, separator="::")
 
   _write_csv(
       input_path=os.path.join(working_dir, "movies.dat"),
-      output_path=os.path.join(temp_dir, _MOVIES_FILE),
+      output_path=os.path.join(temp_dir, MOVIES_FILE),
       names=MOVIE_COLUMNS, skip_first=False, separator="::")
 
   tf.gfile.DeleteRecursively(working_dir)
@@ -214,12 +214,12 @@ def _regularize_20m_dataset(temp_dir):
 
   _write_csv(
       input_path=os.path.join(working_dir, "ratings.csv"),
-      output_path=os.path.join(temp_dir, _RATINGS_FILE),
+      output_path=os.path.join(temp_dir, RATINGS_FILE),
       names=RATING_COLUMNS, skip_first=True, separator=",")
 
   _write_csv(
       input_path=os.path.join(working_dir, "movies.csv"),
-      output_path=os.path.join(temp_dir, _MOVIES_FILE),
+      output_path=os.path.join(temp_dir, MOVIES_FILE),
       names=MOVIE_COLUMNS, skip_first=True, separator=",")
 
   tf.gfile.DeleteRecursively(working_dir)
@@ -233,10 +233,10 @@ def download(dataset, data_dir):
 
 
 def csv_to_joint_dataframe(data_dir, dataset):
-  with tf.gfile.Open(os.path.join(data_dir, dataset, _RATINGS_FILE)) as f:
+  with tf.gfile.Open(os.path.join(data_dir, dataset, RATINGS_FILE)) as f:
     ratings = pd.read_csv(f, encoding="utf-8")
 
-  with tf.gfile.Open(os.path.join(data_dir, dataset, _MOVIES_FILE)) as f:
+  with tf.gfile.Open(os.path.join(data_dir, dataset, MOVIES_FILE)) as f:
     movies = pd.read_csv(f, encoding="utf-8")
 
   df = ratings.merge(movies, on=ITEM_COLUMN)

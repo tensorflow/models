@@ -103,21 +103,27 @@ def _df_to_input_fn(df, name, dataset, data_dir, batch_size, repeat, shuffle):
   return input_fn
 
 
-def construct_input_fns(dataset, data_dir, batch_size=16, repeat=1):
-  # This is an arduous check, but it can save considerable time.
-  existing_buffers = all([
-      tf.gfile.Exists(_buffer_path(data_dir, dataset, "train")),
-      tf.gfile.Stat(_buffer_path(data_dir, dataset, "train")).length ==
-      _BUFFER_SIZE[dataset]["train"],
-      tf.gfile.Exists(_buffer_path(data_dir, dataset, "eval")),
-      tf.gfile.Stat(_buffer_path(data_dir, dataset, "eval")).length ==
-      _BUFFER_SIZE[dataset]["eval"],
-  ])
+def _check_buffers(data_dir, dataset):
+  train_path = os.path.join(data_dir, _BUFFER_SUBDIR,
+                            "{}_{}_buffer".format(dataset, "train"))
+  eval_path = os.path.join(data_dir, _BUFFER_SUBDIR,
+                           "{}_{}_buffer".format(dataset, "eval"))
 
-  if existing_buffers:
+  if not tf.gfile.Exists(train_path) or not tf.gfile.Exists(eval_path):
+    return False
+
+  return all([
+    tf.gfile.Stat(_buffer_path(data_dir, dataset, "train")).length ==
+    _BUFFER_SIZE[dataset]["train"],
+    tf.gfile.Stat(_buffer_path(data_dir, dataset, "eval")).length ==
+    _BUFFER_SIZE[dataset]["eval"],
+    ])
+
+
+def construct_input_fns(dataset, data_dir, batch_size=16, repeat=1):
+  if _check_buffers(data_dir, dataset):
     train_df, eval_df = None, None
   else:
-    movielens.download(dataset=dataset, data_dir=data_dir)
     df = movielens.csv_to_joint_dataframe(dataset=dataset, data_dir=data_dir)
     df = movielens.integerize_genres(dataframe=df)
     df = df.drop(columns=[movielens.TITLE_COLUMN])

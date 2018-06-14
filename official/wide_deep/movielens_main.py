@@ -63,9 +63,9 @@ def build_estimator(model_dir, model_type, model_column_fn):
       model_dir=model_dir,
       feature_columns=deep_columns,
       hidden_units=hidden_units,
-      optimizer=tf.train.AdamOptimizer(learning_rate=1e-7),
+      optimizer=tf.train.AdamOptimizer(),
       activation_fn=tf.nn.sigmoid,
-      dropout=0.5,
+      dropout=0.3,
       loss_reduction=tf.losses.Reduction.MEAN)
 
 
@@ -76,13 +76,16 @@ def run_movie(flags_obj):
     flags_obj: Object containing user specified flags.
   """
 
+  if flags_obj.download_if_missing:
+    movielens.download(dataset=dataset, data_dir=data_dir)
+
   train_input_fn, eval_input_fn, model_column_fn = \
     movielens_dataset.construct_input_fns(
         dataset=flags_obj.dataset, data_dir="/tmp/movielens-data/",
         batch_size=flags_obj.batch_size, repeat=flags_obj.epochs_between_evals)
 
   tensors_to_log = {
-    # 'loss': '{loss_prefix}head/weighted_loss/value'
+    'loss': '{loss_prefix}head/weighted_loss/value'
   }
 
   wide_deep_run_loop.run_loop(
