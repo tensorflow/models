@@ -27,13 +27,17 @@ import tensorflow as tf
 def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
   """Write a dataframe to a binary file for a dataset to consume."""
   if tf.gfile.Exists(buffer_path):
-    actual_size = os.stat(buffer_path).st_size
+    actual_size = tf.gfile.Stat(buffer_path).length
     if expected_size == actual_size:
       return
     tf.logging.warning(
         "Existing buffer {} has size {}. Expected size {}. Deleting and "
         "rebuilding buffer.".format(buffer_path, actual_size, expected_size))
     tf.gfile.Remove(buffer_path)
+
+  if dataframe is None:
+    raise ValueError(
+        "dataframe was None but a valid existing buffer was not found.")
 
   tf.gfile.MakeDirs(os.path.split(buffer_path)[0])
 

@@ -42,7 +42,7 @@ _FEATURE_MAP = {
 
 _BUFFER_SIZE = {
     movielens.ML_1M: {"train": 107978119, "eval": 26994538},
-    movielens.ML_20M: {}
+    movielens.ML_20M: {"train": 2175203810, "eval": 543802008}
 }
 
 _USER_EMBEDDING_DIM = 8
@@ -68,12 +68,16 @@ def build_model_columns(dataset):
 
 def _deserialize(examples_serialized):
   features = tf.parse_example(examples_serialized, _FEATURE_MAP)
-  return features, features[movielens.RATING_COLUMN]
+  return features, features[movielens.RATING_COLUMN] / movielens.MAX_RATING
 
 
-def _df_to_input_fn(df, name, dataset, data_dir, batch_size, repeat):
-  buffer_path = os.path.join(data_dir, _BUFFER_SUBDIR,
-                             "{}_{}_buffer".format(dataset, name))
+def _buffer_path(data_dir, dataset, name):
+  return os.path.join(data_dir, _BUFFER_SUBDIR,
+                      "{}_{}_buffer".format(dataset, name))
+
+
+def _df_to_input_fn(df, name, dataset, data_dir, batch_size, repeat, shuffle):
+  buffer_path = _buffer_path(data_dir, dataset, name)
   expected_size = _BUFFER_SIZE[dataset].get(name)
 
   file_io.write_to_buffer(
@@ -84,7 +88,9 @@ def _df_to_input_fn(df, name, dataset, data_dir, batch_size, repeat):
     dataset = tf.data.TFRecordDataset(buffer_path)
     # batch comes before map because map can deserialize multiple examples.
     dataset = dataset.batch(batch_size)
-    dataset = dataset.map(_deserialize, num_parallel_calls=4)
+    dataset = dataset.map(_deserialize, num_parallel_calls=16)
+    if shuffle:
+      dataset = dataset.shuffle(shuffle)
 
     dataset = dataset.repeat(repeat)
     return dataset.prefetch(1)
@@ -93,23 +99,36 @@ def _df_to_input_fn(df, name, dataset, data_dir, batch_size, repeat):
 
 
 def construct_input_fns(dataset, data_dir, batch_size=16, repeat=1):
-  movielens.download(dataset=dataset, data_dir=data_dir)
-  df = movielens.csv_to_joint_dataframe(dataset=dataset, data_dir=data_dir)
-  df = movielens.integerize_genres(dataframe=df)
-  df = df.drop(columns=[movielens.TITLE_COLUMN])
+  existing_buffers = all([
+      tf.gfile.Exists(_buffer_path(data_dir, dataset, "train")),
+      tf.gfile.Stat(_buffer_path(data_dir, dataset, "train")).length ==
+      _BUFFER_SIZE[dataset]["train"],
+      tf.gfile.Exists(_buffer_path(data_dir, dataset, "eval")),
+      tf.gfile.Stat(_buffer_path(data_dir, dataset, "eval")).length ==
+      _BUFFER_SIZE[dataset]["eval"],
+  ])
 
-  train_df = df.sample(frac=0.8, random_state=0)
-  eval_df = df.drop(train_df.index)
+  if existing_buffers:
+    train_df, eval_df = None, None
+  else:
+    movielens.download(dataset=dataset, data_dir=data_dir)
+    df = movielens.csv_to_joint_dataframe(dataset=dataset, data_dir=data_dir)
+    df = movielens.integerize_genres(dataframe=df)
+    df = df.drop(columns=[movielens.TITLE_COLUMN])
 
-  train_df = train_df.reset_index(drop=True)
-  eval_df = eval_df.reset_index(drop=True)
+    train_df = df.sample(frac=0.8, random_state=0)
+    eval_df = df.drop(train_df.index)
+
+    train_df = train_df.reset_index(drop=True)
+    eval_df = eval_df.reset_index(drop=True)
 
   train_input_fn = _df_to_input_fn(
       df=train_df, name="train", dataset=dataset, data_dir=data_dir,
-      batch_size=batch_size, repeat=repeat)
+      batch_size=batch_size, repeat=repeat,
+      shuffle=movielens.NUM_RATINGS[dataset])
   eval_input_fn = _df_to_input_fn(
       df=eval_df, name="eval", dataset=dataset, data_dir=data_dir,
-      batch_size=batch_size, repeat=repeat)
+      batch_size=batch_size, repeat=repeat, shuffle=None)
   model_column_fn = functools.partial(build_model_columns, dataset=dataset)
   return train_input_fn, eval_input_fn, model_column_fn
 

@@ -75,6 +75,15 @@ NUM_USER_IDS = {
 # Both the 1m and 20m datasets use the same movie set.
 NUM_ITEM_IDS = 3952
 
+MAX_RATING = 5
+
+
+NUM_RATINGS = {
+  ML_1M: 1000209,
+  ML_20M: 20000263
+}
+
+
 def _download_and_clean(dataset, data_dir):
   """Download MovieLens dataset in a standard format.
 
