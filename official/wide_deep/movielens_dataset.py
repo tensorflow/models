@@ -23,6 +23,7 @@ import os
 
 from absl import app as absl_app
 from absl import flags
+import numpy as np
 import tensorflow as tf
 
 from official.datasets import movielens
@@ -45,25 +46,29 @@ _BUFFER_SIZE = {
     movielens.ML_20M: {"train": 2175203810, "eval": 543802008}
 }
 
-_USER_EMBEDDING_DIM = 8
-_ITEM_EMBEDDING_DIM = 32
+_USER_EMBEDDING_DIM = 16
+_ITEM_EMBEDDING_DIM = 64
 
 def build_model_columns(dataset):
   """Builds a set of wide and deep feature columns."""
   user_id = tf.feature_column.categorical_column_with_vocabulary_list(
       movielens.USER_COLUMN, range(1, movielens.NUM_USER_IDS[dataset]))
   user_embedding = tf.feature_column.embedding_column(
-      user_id, _USER_EMBEDDING_DIM)
+      user_id, _USER_EMBEDDING_DIM, max_norm=np.sqrt(_USER_EMBEDDING_DIM))
 
   item_id = tf.feature_column.categorical_column_with_vocabulary_list(
       movielens.ITEM_COLUMN, range(1, movielens.NUM_ITEM_IDS))
   item_embedding = tf.feature_column.embedding_column(
-      item_id, _ITEM_EMBEDDING_DIM)
+      item_id, _ITEM_EMBEDDING_DIM, max_norm=np.sqrt(_ITEM_EMBEDDING_DIM))
 
   time = tf.feature_column.numeric_column(movielens.TIMESTAMP_COLUMN)
   genres = tf.feature_column.numeric_column(movielens.GENRE_COLUMN,
                                             shape=(movielens.N_GENRE, ), dtype=tf.uint8)
-  return [], [user_embedding, item_embedding, time, genres]
+
+  deep_columns = [user_embedding, item_embedding, time, genres]
+  wide_columns = []
+
+  return wide_columns, deep_columns
 
 
 def _deserialize(examples_serialized):
@@ -99,6 +104,7 @@ def _df_to_input_fn(df, name, dataset, data_dir, batch_size, repeat, shuffle):
 
 
 def construct_input_fns(dataset, data_dir, batch_size=16, repeat=1):
+  # This is an arduous check, but it can save considerable time.
   existing_buffers = all([
       tf.gfile.Exists(_buffer_path(data_dir, dataset, "train")),
       tf.gfile.Stat(_buffer_path(data_dir, dataset, "train")).length ==

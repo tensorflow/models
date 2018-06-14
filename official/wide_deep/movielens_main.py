@@ -35,7 +35,7 @@ def define_movie_flags():
   """Define flags for movie dataset training."""
   wide_deep_run_loop.define_wide_deep_flags()
   flags.DEFINE_enum(
-      name="dataset", default=None,
+      name="dataset", default=movielens.ML_1M,
       enum_values=movielens.DATASETS, case_sensitive=False,
       help=flags_core.help_wrap("Dataset to be trained and evaluated."))
   flags.adopt_module_key_flags(wide_deep_run_loop)
@@ -57,13 +57,13 @@ def build_estimator(model_dir, model_type, model_column_fn):
   if model_type != "deep":
     raise NotImplementedError("movie dataset only supports `deep` model_type")
   _, deep_columns = model_column_fn()
-  hidden_units = [128, 128, 128]
+  hidden_units = [256, 256, 256, 128]
 
   return tf.estimator.DNNRegressor(
       model_dir=model_dir,
       feature_columns=deep_columns,
       hidden_units=hidden_units,
-      optimizer=tf.train.AdamOptimizer(),
+      optimizer=tf.train.AdamOptimizer(learning_rate=1e-7),
       activation_fn=tf.nn.sigmoid,
       dropout=0.5,
       loss_reduction=tf.losses.Reduction.MEAN)
@@ -82,7 +82,7 @@ def run_movie(flags_obj):
         batch_size=flags_obj.batch_size, repeat=flags_obj.epochs_between_evals)
 
   tensors_to_log = {
-    'loss': '{loss_prefix}head/weighted_loss/value'
+    # 'loss': '{loss_prefix}head/weighted_loss/value'
   }
 
   wide_deep_run_loop.run_loop(
