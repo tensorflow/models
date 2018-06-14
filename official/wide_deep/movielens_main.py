@@ -77,7 +77,7 @@ def run_movie(flags_obj):
   """
 
   if flags_obj.download_if_missing:
-    movielens.download(dataset=dataset, data_dir=data_dir)
+    movielens.download(dataset=flags_obj.dataset, data_dir=flags_obj.data_dir)
 
   train_input_fn, eval_input_fn, model_column_fn = \
     movielens_dataset.construct_input_fns(
@@ -85,7 +85,7 @@ def run_movie(flags_obj):
         batch_size=flags_obj.batch_size, repeat=flags_obj.epochs_between_evals)
 
   tensors_to_log = {
-    'loss': '{loss_prefix}head/weighted_loss/value'
+      'loss': '{loss_prefix}head/weighted_loss/value'
   }
 
   wide_deep_run_loop.run_loop(

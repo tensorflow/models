@@ -32,9 +32,9 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 TEST_INPUT_VALUES = {
-  "genres": np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-  "user_id": [3],
-  "item_id": [4],
+    "genres": np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    "user_id": [3],
+    "item_id": [4],
 }
 
 TEST_ITEM_DATA = """item_id,titles,genres
@@ -104,10 +104,10 @@ class BaseTest(tf.test.TestCase):
     integration.run_synthetic(
         main=movielens_main.main, tmp_root=self.get_temp_dir(),
         extra_flags=[
-          "--data_dir", self.get_temp_dir(),
-          "--download_if_missing=false",
-          "--train_epochs", "1",
-          "--epochs_between_evals", "1"
+            "--data_dir", self.get_temp_dir(),
+            "--download_if_missing=false",
+            "--train_epochs", "1",
+            "--epochs_between_evals", "1"
         ],
         synth=False, max_train=None)
 

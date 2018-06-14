@@ -33,12 +33,12 @@ from official.utils.flags import core as flags_core
 
 _BUFFER_SUBDIR = "wide_deep_buffer"
 _FEATURE_MAP = {
-  movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-  movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-  movielens.TIMESTAMP_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-  movielens.GENRE_COLUMN: tf.FixedLenFeature(
-      [movielens.N_GENRE], dtype=tf.int64),
-  movielens.RATING_COLUMN: tf.FixedLenFeature([1], dtype=tf.float32),
+    movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+    movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+    movielens.TIMESTAMP_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+    movielens.GENRE_COLUMN: tf.FixedLenFeature(
+        [movielens.N_GENRE], dtype=tf.int64),
+    movielens.RATING_COLUMN: tf.FixedLenFeature([1], dtype=tf.float32),
 }
 
 _BUFFER_SIZE = {
@@ -62,8 +62,8 @@ def build_model_columns(dataset):
       item_id, _ITEM_EMBEDDING_DIM, max_norm=np.sqrt(_ITEM_EMBEDDING_DIM))
 
   time = tf.feature_column.numeric_column(movielens.TIMESTAMP_COLUMN)
-  genres = tf.feature_column.numeric_column(movielens.GENRE_COLUMN,
-                                            shape=(movielens.N_GENRE, ), dtype=tf.uint8)
+  genres = tf.feature_column.numeric_column(
+      movielens.GENRE_COLUMN, shape=(movielens.N_GENRE,), dtype=tf.uint8)
 
   deep_columns = [user_embedding, item_embedding, time, genres]
   wide_columns = []
@@ -113,11 +113,11 @@ def _check_buffers(data_dir, dataset):
     return False
 
   return all([
-    tf.gfile.Stat(_buffer_path(data_dir, dataset, "train")).length ==
-    _BUFFER_SIZE[dataset]["train"],
-    tf.gfile.Stat(_buffer_path(data_dir, dataset, "eval")).length ==
-    _BUFFER_SIZE[dataset]["eval"],
-    ])
+      tf.gfile.Stat(_buffer_path(data_dir, dataset, "train")).length ==
+      _BUFFER_SIZE[dataset]["train"],
+      tf.gfile.Stat(_buffer_path(data_dir, dataset, "eval")).length ==
+      _BUFFER_SIZE[dataset]["eval"],
+  ])
 
 
 def construct_input_fns(dataset, data_dir, batch_size=16, repeat=1):

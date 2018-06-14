@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Convenience functions for managing dataset file buffers."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -71,5 +72,3 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
       if (i + 1) % 50000 == 0:
         tf.logging.info(
             "{}/{} examples written.".format(str(i+1).ljust(8), len(dataframe)))
-
-

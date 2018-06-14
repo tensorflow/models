@@ -67,8 +67,8 @@ MOVIE_COLUMNS = [ITEM_COLUMN, TITLE_COLUMN, GENRE_COLUMN]
 
 # Note: Users are indexed [1, k], not [0, k-1]
 NUM_USER_IDS = {
-  ML_1M: 6040,
-  ML_20M: 138493,
+    ML_1M: 6040,
+    ML_20M: 138493,
 }
 
 # Note: Users are indexed [1, k], not [0, k-1]
@@ -79,8 +79,8 @@ MAX_RATING = 5
 
 
 NUM_RATINGS = {
-  ML_1M: 1000209,
-  ML_20M: 20000263
+    ML_1M: 1000209,
+    ML_20M: 20000263
 }
 
 
