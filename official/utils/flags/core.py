@@ -71,7 +71,7 @@ define_base = register_key_flags_in_core(_base.define_base)
 # Remove options not relevant for Eager from define_base().
 define_base_eager = register_key_flags_in_core(functools.partial(
     _base.define_base, epochs_between_evals=False, stop_threshold=False,
-    multi_gpu=False, hooks=False))
+    hooks=False))
 define_benchmark = register_key_flags_in_core(_benchmark.define_benchmark)
 define_device = register_key_flags_in_core(_device.define_device)
 define_image = register_key_flags_in_core(_misc.define_image)
