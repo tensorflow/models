@@ -113,6 +113,11 @@ with "deeplab".
 
 ## Change Logs
 
+### May 26, 2018
+
+Updated ADE20K pretrained checkpoint.
+
+
 ### May 18, 2018
 1.  Added builders for ResNet-v1 and Xception model variants.
 1.  Added ADE20K support, including colormap and pretrained Xception_65 checkpoint.
