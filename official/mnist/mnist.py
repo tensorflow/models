@@ -197,7 +197,9 @@ def run_mnist(flags_obj):
     # randomness, while smaller sizes use less memory. MNIST is a small
     # enough dataset that we can easily shuffle the full epoch.
     ds = dataset.train(flags_obj.data_dir)
-    ds = ds.cache().shuffle(buffer_size=50000).batch(flags_obj.batch_size)
+    ds = ds.cache().shuffle(buffer_size=50000).batch(
+        distribution_utils.per_device_batch_size(
+            flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)))
 
     # Iterate through the dataset a set number (`epochs_between_evals`) of times
     # during each training session.
@@ -206,7 +208,9 @@ def run_mnist(flags_obj):
 
   def eval_input_fn():
     return dataset.test(flags_obj.data_dir).batch(
-        flags_obj.batch_size).make_one_shot_iterator().get_next()
+        distribution_utils.per_device_batch_size(
+            flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)
+        )).make_one_shot_iterator().get_next()
 
   # Set up hook that outputs training logs every 100 steps.
   train_hooks = hooks_helper.get_train_hooks(
