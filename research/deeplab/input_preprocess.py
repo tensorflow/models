@@ -34,6 +34,15 @@ def preprocess_image_and_label(image,
                                min_scale_factor=1.,
                                max_scale_factor=1.,
                                scale_factor_step_size=0,
+                               min_gain=1.,
+                               max_gain=1.,
+                               gain_step_size=0,
+                               min_gamma=1.,
+                               max_gamma=1.,
+                               gamma_step_size=0,
+                               min_hue_delta=0.,
+                               max_hue_delta=0.,
+                               hue_delta_step_size=0,
                                ignore_label=255,
                                is_training=True,
                                model_variant=None):
@@ -97,8 +106,14 @@ def preprocess_image_and_label(image,
   # Data augmentation by randomly scaling the inputs.
   scale = preprocess_utils.get_random_scale(
       min_scale_factor, max_scale_factor, scale_factor_step_size)
-  processed_image, label = preprocess_utils.randomly_scale_image_and_label(
-      processed_image, label, scale)
+
+  # Data augmentation by adjusting gamma, gain, and hue
+  gamma = preprocess_utils.get_random_scale(min_gamma, max_gamma, gamma_step_size)
+  gain = preprocess_utils.get_random_scale(min_gain, max_gain, gain_step_size)
+  hue_delta = preprocess_utils.get_random_scale(min_hue_delta, max_hue_delta, hue_delta_step_size)
+
+  processed_image, label = preprocess_utils.randomly_augment_image_and_label(
+      processed_image, label, scale=scale, gamma=gamma, gain=gain, hue_delta=hue_delta)
   processed_image.set_shape([None, None, 3])
 
   # Pad image and label to have dimensions >= [crop_height, crop_width]

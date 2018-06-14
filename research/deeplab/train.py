@@ -137,6 +137,8 @@ flags.DEFINE_float('slow_start_learning_rate', 1e-4,
 flags.DEFINE_boolean('fine_tune_batch_norm', True,
                      'Fine tune the batch norm parameters or not.')
 
+# Data augmentation by scaling
+
 flags.DEFINE_float('min_scale_factor', 0.5,
                    'Mininum scale factor for data augmentation.')
 
@@ -145,6 +147,39 @@ flags.DEFINE_float('max_scale_factor', 2.,
 
 flags.DEFINE_float('scale_factor_step_size', 0.25,
                    'Scale factor step size for data augmentation.')
+
+# Data augmentation by power law (gamma) adjustment
+
+flags.DEFINE_float('min_gain', 1.0,
+                   'Mininum power law gain for data augmentation.')
+
+flags.DEFINE_float('max_gain', 1.0,
+                   'Maximum power law gain for data augmentation.')
+
+flags.DEFINE_float('gain_step_size', 0.0,
+                   'Power law gain step size for data augmentation.')
+
+flags.DEFINE_float('min_gamma', 1.0,
+                   'Mininum power law gamma for data augmentation.')
+
+flags.DEFINE_float('max_gamma', 1.0,
+                   'Maximum power law gamma for data augmentation.')
+
+flags.DEFINE_float('gamma_step_size', 0.0,
+                   'Power law gamma step size for data augmentation.')
+
+# Data augmentation by hue adjustment
+
+flags.DEFINE_float('min_hue_delta', 0.0,
+                   'Mininum hue adjustment for data augmentation.')
+
+flags.DEFINE_float('max_hue_delta', 0.0,
+                   'Maximum hue adjustment for data augmentation.')
+
+flags.DEFINE_float('hue_delta_step_size', 0.0,
+                   'Hue adjustment step size for data augmentation.')
+
+# For `xception_65`, use atrous_rates = [12, 24, 36] if output_stride = 8, or
 
 # For `xception_65`, use atrous_rates = [12, 24, 36] if output_stride = 8, or
 # rates = [6, 12, 18] if output_stride = 16. For `mobilenet_v2`, use None. Note
@@ -258,6 +293,15 @@ def main(unused_argv):
           min_scale_factor=FLAGS.min_scale_factor,
           max_scale_factor=FLAGS.max_scale_factor,
           scale_factor_step_size=FLAGS.scale_factor_step_size,
+          min_gain=FLAGS.min_gain,
+          max_gain=FLAGS.max_gain,
+          gain_step_size=FLAGS.gain_step_size,
+          min_gamma=FLAGS.min_gamma,
+          max_gamma=FLAGS.max_gamma,
+          gamma_step_size=FLAGS.gamma_step_size,
+          min_hue_delta=FLAGS.min_hue_delta,
+          max_hue_delta=FLAGS.max_hue_delta,
+          hue_delta_step_size=FLAGS.hue_delta_step_size,
           dataset_split=FLAGS.train_split,
           is_training=True,
           model_variant=FLAGS.model_variant)
