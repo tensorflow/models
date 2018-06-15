@@ -12,15 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Callbacks for Keras built-in application models.
-
-Note that, Keras Callbacks provide two levels (batch and epoch level) to
-record the internal states and statistics during model training. So in the
-following customized callbacks, we also provide two levels for benchmark:
-`batch_based` and `epoch_based`. Users can specify the `--benchmark_level` to
-choose benchmark level. This is similar to the `every_n_seconds` and
-`every_n_steps` options in tensorflow Estimator hooks.
-"""
+"""Callbacks for Keras built-in application models."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -48,7 +40,7 @@ class ExamplesPerSecondCallback(tf.keras.callbacks.Callback):
   """ExamplesPerSecond callback.
 
   This callback records the average_examples_per_sec and
-  current_examples_per_sec after each batch during training.
+  current_examples_per_sec during training.
   """
 
   def __init__(self, batch_size, every_n_steps=1, metric_logger=None):
