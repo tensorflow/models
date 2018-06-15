@@ -37,9 +37,14 @@ class _GarbageCollector(object):
     self.temp_buffers.append(filepath)
 
   def __del__(self):
-    for i in self.temp_buffers:
-      if tf.gfile.Exists(i):
-        tf.gfile.Remove(i)
+    try:
+      # ensure tensorflow module hasn't been destructed.
+      import tensorflow as tf
+      for i in self.temp_buffers:
+        if tf.gfile.Exists(i):
+          tf.gfile.Remove(i)
+    except:
+      pass
 
 _GARBAGE_COLLECTOR = _GarbageCollector()
 

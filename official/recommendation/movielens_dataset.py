@@ -55,6 +55,21 @@ _FEATURE_MAP = {
   movielens.RATING_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
 }
 
+_FEATURE_MAP_EVAL = {
+  movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+  movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+}
+
+_COLUMNS = [movielens.USER_COLUMN, movielens.ITEM_COLUMN,
+           movielens.RATING_COLUMN]
+_EVAL_COLUMNS = _COLUMNS[:2]
+
+
+_EVAL_BUFFER_SIZE = {
+  movielens.ML_1M: 34130690,
+  movielens.ML_20M: 800961490,
+}
+
 
 def generate_train_eval_data(df, original_users, original_items):
   """Generate the dataset for model training and evaluation.
@@ -341,9 +356,16 @@ def generate_train_dataset(train_data, num_items, num_negatives):
 
 
 
+def _deserialize_train(examples_serialized):
+  features = tf.parse_example(examples_serialized, _FEATURE_MAP)
+  return features, features[movielens.RATING_COLUMN]
 
 
-def input_fn(training, batch_size, ncf_dataset, data_dir, repeat=1):
+def _deserialize_eval(examples_serialized):
+  return tf.parse_example(examples_serialized, _FEATURE_MAP_EVAL)
+
+
+def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset, repeat=1):
   """Input function for model training and evaluation.
 
   The train input consists of 1 positive instance (user and item have
@@ -369,51 +391,44 @@ def input_fn(training, batch_size, ncf_dataset, data_dir, repeat=1):
         ncf_dataset.train_data, ncf_dataset.num_items,
         ncf_dataset.num_negatives)
 
-    columns = [movielens.USER_COLUMN, movielens.ITEM_COLUMN,
-               movielens.RATING_COLUMN]
-    df = pd.DataFrame(data=train_data, columns=columns)
+    df = pd.DataFrame(data=train_data, columns=_COLUMNS)
 
     if data_dir.startswith("gs://"):
       buffer_dir = os.path.join(data_dir, _BUFFER_SUBDIR)
     else:
       buffer_dir = None
 
-    buffer_path = file_io.write_to_temp_buffer(df, buffer_dir, columns)
-    print(buffer_path)
-    input("...")
+    buffer_path = file_io.write_to_temp_buffer(df, buffer_dir, _COLUMNS)
+    map_fn = _deserialize_train
+
+  else:
+    # raise NotImplementedError
+
+    df = pd.DataFrame(ncf_dataset.all_eval_data, columns=_EVAL_COLUMNS)
+    buffer_path = os.path.join(
+        data_dir, _BUFFER_SUBDIR, dataset + "_eval_buffer")
+
+    file_io.write_to_buffer(
+        dataframe=df, buffer_path=buffer_path, columns=_EVAL_COLUMNS,
+        expected_size=_EVAL_BUFFER_SIZE[dataset])
+    map_fn = _deserialize_eval
 
 
-    # # Get train features and labels
-    # train_features = [
-    #   (constants.USER, np.expand_dims(train_data[:, 0], axis=1)),
-    #   (constants.ITEM, np.expand_dims(train_data[:, 1], axis=1))
-    # ]
-    # train_labels = [
-    #   (constants.RATING, np.expand_dims(train_data[:, 2], axis=1))]
+  def input_fn():
+    dataset = tf.data.TFRecordDataset(buffer_path)
+    dataset = dataset.map(map_fn, num_parallel_calls=16)
+    if training:
+      dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
 
-    # dataset = tf.data.Dataset.from_tensor_slices(
-    #     (dict(train_features), dict(train_labels))
-    # )
-    # dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
+    # Repeat and batch the dataset
+    dataset = dataset.repeat(repeat)
+    dataset = dataset.batch(batch_size)
 
-#   else:
-#     # Create eval/test dataset
-#     test_user = ncf_dataset.all_eval_data[:, 0]
-#     test_item = ncf_dataset.all_eval_data[:, 1]
-#     test_features = [
-#       (constants.USER, np.expand_dims(test_user, axis=1)),
-#       (constants.ITEM, np.expand_dims(test_item, axis=1))]
-#
-#     dataset = tf.data.Dataset.from_tensor_slices(dict(test_features))
-#
-#   # Repeat and batch the dataset
-#   dataset = dataset.repeat(repeat)
-#   dataset = dataset.batch(batch_size)
-#
-#   # Prefetch to improve speed of input pipeline.
-#   dataset = dataset.prefetch(1)
-#   return dataset
+    # Prefetch to improve speed of input pipeline.
+    dataset = dataset.prefetch(1)
+    return dataset
 
+  return input_fn
 
 
 
@@ -426,7 +441,7 @@ def main(_):
   construct_train_eval_csv(flags.FLAGS.data_dir, flags.FLAGS.dataset)
 
   ncf_dataset = data_preprocessing(data_dir=flags.FLAGS.data_dir, dataset=flags.FLAGS.dataset, num_negatives=3)
-  input_fn(True, 16, ncf_dataset, flags.FLAGS.data_dir, repeat=1)
+  get_input_fn(False, 16, ncf_dataset, flags.FLAGS.data_dir, flags.FLAGS.dataset, repeat=1)
 
 
 if __name__ == "__main__":
