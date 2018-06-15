@@ -344,25 +344,18 @@ def generate_train_dataset(train_data, num_items, num_negatives):
   return np.asarray(all_train_data)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 def _deserialize_train(examples_serialized):
   features = tf.parse_example(examples_serialized, _FEATURE_MAP)
-  return features, features[movielens.RATING_COLUMN]
+  train_features = {
+    movielens.USER_COLUMN: features[movielens.USER_COLUMN],
+    movielens.ITEM_COLUMN: features[movielens.ITEM_COLUMN],
+  }
+  return train_features, features[movielens.RATING_COLUMN]
 
 
 def _deserialize_eval(examples_serialized):
-  return tf.parse_example(examples_serialized, _FEATURE_MAP_EVAL)
+  features = tf.parse_example(examples_serialized, _FEATURE_MAP_EVAL)
+  return features
 
 
 def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset, repeat=1):
@@ -402,8 +395,6 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset, repeat=1)
     map_fn = _deserialize_train
 
   else:
-    # raise NotImplementedError
-
     df = pd.DataFrame(ncf_dataset.all_eval_data, columns=_EVAL_COLUMNS)
     buffer_path = os.path.join(
         data_dir, _BUFFER_SUBDIR, dataset + "_eval_buffer")
@@ -416,24 +407,19 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset, repeat=1)
 
   def input_fn():
     dataset = tf.data.TFRecordDataset(buffer_path)
-    dataset = dataset.map(map_fn, num_parallel_calls=16)
     if training:
       dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
 
-    # Repeat and batch the dataset
-    dataset = dataset.repeat(repeat)
     dataset = dataset.batch(batch_size)
+    dataset = dataset.map(map_fn, num_parallel_calls=16)
+    dataset = dataset.repeat(repeat)
 
     # Prefetch to improve speed of input pipeline.
     dataset = dataset.prefetch(1)
     return dataset
 
+  input_fn()
   return input_fn
-
-
-
-
-
 
 
 def main(_):

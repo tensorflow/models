@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import atexit
 import multiprocessing
 import os
 import tempfile
@@ -36,17 +37,18 @@ class _GarbageCollector(object):
   def register(self, filepath):
     self.temp_buffers.append(filepath)
 
-  def __del__(self):
+  def purge(self):
     try:
-      # ensure tensorflow module hasn't been destructed.
-      import tensorflow as tf
       for i in self.temp_buffers:
         if tf.gfile.Exists(i):
           tf.gfile.Remove(i)
-    except:
-      pass
+          tf.logging.info("Buffer file {} removed".format(i))
+    except Exception as E:
+      tf.logging.error("Failed to cleanup buffer files: {}".format(E))
+
 
 _GARBAGE_COLLECTOR = _GarbageCollector()
+atexit.register(_GARBAGE_COLLECTOR.purge)
 
 # More powerful machines benefit from larger scale maps.
 _DISK_WRITE_THRESHOLD = int(125000  * multiprocessing.cpu_count())

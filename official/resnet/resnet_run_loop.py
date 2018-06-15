@@ -387,6 +387,7 @@ def resnet_main(
 
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
+      model_dir=flags_obj.model_dir,
       batch_size=flags_obj.batch_size)
 
   def input_fn_train():

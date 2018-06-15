@@ -94,8 +94,8 @@ def run_loop(name, train_input_fn, eval_input_fn, model_column_fn,
   tensors_to_log = {k: v.format(loss_prefix=loss_prefix)
                     for k, v in tensors_to_log.items()}
   train_hooks = hooks_helper.get_train_hooks(
-      flags_obj.hooks, batch_size=flags_obj.batch_size,
-      tensors_to_log=tensors_to_log)
+      flags_obj.hooks, model_dir=flags_obj.model_dir,
+      batch_size=flags_obj.batch_size, tensors_to_log=tensors_to_log)
 
   # Train and evaluate the model every `flags.epochs_between_evals` epochs.
   for n in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):

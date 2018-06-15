@@ -581,6 +581,7 @@ def run_transformer(flags_obj):
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
+      model_dir=flags_obj.model_dir,
       tensors_to_log=TENSORS_TO_LOG,  # used for logging hooks
       batch_size=schedule_manager.batch_size,  # for ExamplesPerSecondHook
       use_tpu=params["use_tpu"]  # Not all hooks can run with TPUs

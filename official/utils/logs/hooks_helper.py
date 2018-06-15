@@ -94,10 +94,11 @@ def get_logging_tensor_hook(every_n_iter=100, tensors_to_log=None, **kwargs):  #
       every_n_iter=every_n_iter)
 
 
-def get_profiler_hook(save_steps=1000, **kwargs):  # pylint: disable=unused-argument
+def get_profiler_hook(model_dir, save_steps=1000, **kwargs):  # pylint: disable=unused-argument
   """Function to get ProfilerHook.
 
   Args:
+    model_dir: The directory to save the profile traces to.
     save_steps: `int`, print profile traces every N steps.
     **kwargs: a dictionary of arguments to ProfilerHook.
 
@@ -105,7 +106,7 @@ def get_profiler_hook(save_steps=1000, **kwargs):  # pylint: disable=unused-argu
     Returns a ProfilerHook that writes out timelines that can be loaded into
     profiling tools like chrome://tracing.
   """
-  return tf.train.ProfilerHook(save_steps=save_steps)
+  return tf.train.ProfilerHook(save_steps=save_steps, output_dir=model_dir)
 
 
 def get_examples_per_second_hook(every_n_steps=100,
