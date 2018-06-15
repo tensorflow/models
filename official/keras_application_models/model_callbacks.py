@@ -31,9 +31,12 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.utils.logs import logger
 
-CALLBACKS = ["examplespersecondcallback", "loggingmetriccallback"]
-
-_METRICS_TO_LOG = {
+# Metrics to log after each batch and epoch
+_PER_BATCH_METRICS = {
+    "loss": "train_loss",
+    "acc": "train_accuracy",
+}
+_PER_EPOCH_METRICS = {
     "loss": "train_loss",
     "acc": "train_accuracy",
     "val_loss": "loss",
@@ -44,116 +47,126 @@ _METRICS_TO_LOG = {
 class ExamplesPerSecondCallback(tf.keras.callbacks.Callback):
   """ExamplesPerSecond callback.
 
-  This callback records the average examples per second during training.
-
-  Add every_n_steps, with only batch based
+  This callback records the average_examples_per_sec and
+  current_examples_per_sec after each batch during training.
   """
 
-  def __init__(self, batch_size=None, epoch_size=None, batch_based=None,
-               epoch_based=None, metric_logger=None):
-    if (batch_based is None) == (epoch_based is None):
-      raise ValueError("Exactly one of batch_based "
-                       "and epoch_based should be provided.")
-
-    if batch_based and (batch_size is None):
-      raise ValueError("batch_size should be provided for "
-                       "batch_based benchmark.")
-
-    if epoch_based and (epoch_size is None):
-      raise ValueError("epoch_size should be provided for "
-                       "epoch_based benchmark.")
-
-    self._batch_based = batch_based
-    self._epoch_based = epoch_based
+  def __init__(self, batch_size, every_n_steps=1, metric_logger=None):
     self._batch_size = batch_size
-    self._epoch_size = epoch_size
-
+    self._every_n_steps = every_n_steps
     self._logger = metric_logger or logger.BaseBenchmarkLogger()
+    self._global_step = 0
+    super(ExamplesPerSecondCallback, self).__init__()
 
   def on_train_begin(self, logs=None):
-    self._global_step = 0
-    # For batch_based
-    if self._batch_based:
-      self._train_time_batch_based = 0
-    else:  # For epoch_based
-      self._epochs = 0
-      self._train_time_epoch_based = 0
+    self._train_time = 0
+    self._batch_times = []
 
   def on_batch_begin(self, batch, logs=None):
-    if self._batch_based:
-      self._time_start_batch_based = time.time()
+    self._time_start = time.time()
 
   def on_batch_end(self, batch, logs=None):
     self._global_step += 1
-    if self._batch_based:
-      self._train_time_batch_based += time.time() - self._time_start_batch_based
-      examples_per_sec_batch_based = self._batch_size * (
-          self._global_step / self._train_time_batch_based)
+
+    elapsed_time = time.time() - self._time_start
+    self._train_time += elapsed_time
+    self._batch_times.append(elapsed_time)
+
+    if self._global_step % self._every_n_steps == 0:
+      average_examples_per_sec = self._batch_size * (
+          self._global_step / self._train_time)
       self._logger.log_metric(
-          "examples_per_sec_batch_based",
-          examples_per_sec_batch_based,
+          "average_examples_per_sec", average_examples_per_sec,
           global_step=self._global_step)
 
-  def on_epoch_begin(self, epoch, logs=None):
-    if self._epoch_based:
-      self._time_start_epoch_based = time.time()
-
-  def on_epoch_end(self, epoch, logs=None):
-    if self._epoch_based:
-      self._epochs += 1
-      self._train_time_epoch_based += time.time() - self._time_start_epoch_based
-      examples_per_sec_epoch_based = self._epoch_size * (
-          self._epochs / self._train_time_epoch_based)
+      # Get the total elapsed time of the last n steps
+      n_batch_time = sum(self._batch_times[-self._every_n_steps:])
+      current_examples_per_sec = self._batch_size * (
+          self._every_n_steps / n_batch_time)
       self._logger.log_metric(
-          "examples_per_sec_epoch_based",
-          examples_per_sec_epoch_based,
+          "current_examples_per_sec", current_examples_per_sec,
           global_step=self._global_step)
 
 
 class LoggingMetricCallback(tf.keras.callbacks.Callback):
   """LoggingMetric callback.
 
-  By default, four metrics are logged: train accuracy, train loss, evaluation
-  accuracy and evaluation loss. Check _METRICS_TO_LOG for details.
+  Log the predefined _PER_BATCH_METRICS after each batch, and log the predefined
+  _PER_EPOCH_METRICS after each epoch.
   """
 
-  def __init__(self, metrics=None, batch_based=None, epoch_based=None,
-               metric_logger=None):
-    if (batch_based is None) == (epoch_based is None):
-      raise ValueError("Exactly one of batch_based "
-                       "and epoch_based should be provided.")
-
-    self._batch_based = batch_based
-    self._epoch_based = epoch_based
-
+  def __init__(self, metric_logger=None):
     self._logger = metric_logger or logger.BaseBenchmarkLogger()
-    self._metrics = metrics or _METRICS_TO_LOG
-    for metric in self._metrics:
-      if metric.strip().lower() not in _METRICS_TO_LOG.keys():
-        raise ValueError("Unrecognized metric requested: {}".format(metric))
-
-  def on_train_begin(self, logs=None):
+    self._per_batch_metrics = _PER_BATCH_METRICS
+    self._per_epoch_metrics = _PER_EPOCH_METRICS
     self._global_step = 0
+    super(LoggingMetricCallback, self).__init__()
 
   def on_batch_end(self, batch, logs=None):
     """Log metrics after each batch."""
     self._global_step += 1
-    if self._batch_based:
-      for metric in self._metrics.keys():
-        # `val_acc` and `val_loss` can only be obtained after each epoch.
-        metric = metric.strip().lower()
-        if metric not in ["val_acc", "val_loss"]:
-          self._logger.log_metric(
-              _METRICS_TO_LOG[metric],
-              logs.get(metric),
-              global_step=self._global_step)
+    for metric in _PER_BATCH_METRICS:
+      self._logger.log_metric(
+          _PER_BATCH_METRICS[metric],
+          logs.get(metric),
+          global_step=self._global_step)
 
   def on_epoch_end(self, epoch, logs=None):
     """Log metrics after each epoch."""
-    if self._epoch_based:
-      for metric in self._metrics.keys():
-        metric = metric.strip().lower()
-        self._logger.log_metric(
-            _METRICS_TO_LOG[metric],
-            logs.get(metric),
-            global_step=self._global_step)
+    for metric in _PER_EPOCH_METRICS:
+      self._logger.log_metric(
+          _PER_EPOCH_METRICS[metric],
+          logs.get(metric),
+          global_step=self._global_step)
+
+
+def get_model_callbacks(name_list, **kwargs):
+  """Factory for getting a list of TensorFlow hooks for training by name.
+
+  Args:
+    name_list: a list of strings to name desired callback classes. Allowed:
+      ExamplesPerSecondCallback, LoggingMetricCallback, which are defined
+      as keys in CALLBACKS.
+    **kwargs: a dictionary of arguments to the callbacks.
+
+  Returns:
+    list of instantiated callbacks, ready to be used in a classifier.train call.
+
+  Raises:
+    ValueError: if an unrecognized name is passed.
+  """
+
+  if not name_list:
+    return []
+
+  callbacks = []
+  for name in name_list:
+    callback_name = CALLBACKS.get(name.strip().lower())
+    if callback_name is None:
+      raise ValueError(
+          "Unrecognized training callback requested: {}".format(name))
+    else:
+      callbacks.append(callback_name(**kwargs))
+
+  return callbacks
+
+
+def get_examples_per_second_callback(
+    every_n_steps=1, batch_size=32, metric_logger=None, **kwargs):  # pylint: disable=unused-argument
+  """Function to get ExamplesPerSecondCallback."""
+  return ExamplesPerSecondCallback(
+      batch_size=batch_size, every_n_steps=every_n_steps,
+      metric_logger=metric_logger or logger.get_benchmark_logger())
+
+
+def get_logging_metric_callback(metric_logger=None, **kwargs):  # pylint: disable=unused-argument
+  """Function to get LoggingMetricCallback."""
+  return LoggingMetricCallback(
+      metric_logger=metric_logger or logger.get_benchmark_logger())
+
+
+# A dictionary to map the callback name and its corresponding function
+CALLBACKS = {
+    "examplespersecondcallback": get_examples_per_second_callback,
+    "loggingmetriccallback": get_logging_metric_callback,
+}

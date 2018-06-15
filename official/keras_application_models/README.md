@@ -25,7 +25,6 @@ python benchmark_main.py --model=resnet
 ```
 Arguments:
   * `--model`: Which model to be benchmarked. The model name is defined as the keys of `MODELS` in [benchmark_main.py](benchmark_main.py).
-  * `--benchmark_level`: In which level to benchmark the model. Two options are provided: `epoch_based` and `batch_based`.
   * `--callbacks`: To specify a list of callbacks.
 
 Use the `--help` or `-h` flag to get a full list of possible arguments.
