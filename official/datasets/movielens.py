@@ -232,9 +232,13 @@ def download(dataset, data_dir):
     _ = [_download_and_clean(d, data_dir) for d in DATASETS]
 
 
-def csv_to_joint_dataframe(data_dir, dataset):
+def ratings_csv_to_dataframe(data_dir, dataset):
   with tf.gfile.Open(os.path.join(data_dir, dataset, RATINGS_FILE)) as f:
-    ratings = pd.read_csv(f, encoding="utf-8")
+    return pd.read_csv(f, encoding="utf-8")
+
+
+def csv_to_joint_dataframe(data_dir, dataset):
+  ratings = ratings_csv_to_dataframe(data_dir, dataset)
 
   with tf.gfile.Open(os.path.join(data_dir, dataset, MOVIES_FILE)) as f:
     movies = pd.read_csv(f, encoding="utf-8")

@@ -146,6 +146,7 @@ def construct_input_fns(dataset, data_dir, batch_size=16, repeat=1):
 
 
 def main(_):
+  movielens.download(dataset=flags.FLAGS.dataset, data_dir=flags.FLAGS.data_dir)
   construct_input_fns(flags.FLAGS.dataset, flags.FLAGS.data_dir)
 
 if __name__ == "__main__":
