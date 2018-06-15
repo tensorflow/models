@@ -34,7 +34,6 @@ import tensorflow as tf
 
 from official.datasets import movielens
 from official.recommendation import constants
-from official.recommendation import dataset
 from official.recommendation import movielens_dataset
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
