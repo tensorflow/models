@@ -98,8 +98,7 @@ DECODER_END_POINTS = 'decoder_end_points'
 # A dictionary from network name to a map of end point features.
 networks_to_feature_maps = {
     'mobilenet_v2': {
-        # The provided checkpoint does not include decoder module.
-        DECODER_END_POINTS: None,
+        DECODER_END_POINTS: ['layer_4/depthwise_output'],
     },
     'resnet_v1_50': {
         DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
@@ -211,8 +210,7 @@ def extract_features(images,
                      regularize_depthwise=False,
                      preprocess_images=True,
                      num_classes=None,
-                     global_pool=False,
-                     use_bounded_activations=False):
+                     global_pool=False):
   """Extracts features by the particular model_variant.
 
   Args:
@@ -237,8 +235,6 @@ def extract_features(images,
       to None for dense prediction tasks.
     global_pool: Global pooling for image classification task. Defaults to
       False, since dense prediction tasks do not use this.
-    use_bounded_activations: Whether or not to use bounded activations. Bounded
-      activations better lend themselves to quantized inference.
 
   Returns:
     features: A tensor of size [batch, feature_height, feature_width,
@@ -255,8 +251,7 @@ def extract_features(images,
         weight_decay=weight_decay,
         batch_norm_decay=0.95,
         batch_norm_epsilon=1e-5,
-        batch_norm_scale=True,
-        activation_fn=tf.nn.relu6 if use_bounded_activations else tf.nn.relu)
+        batch_norm_scale=True)
     features, end_points = get_network(
         model_variant, preprocess_images, arg_scope)(
             inputs=images,
@@ -266,8 +261,7 @@ def extract_features(images,
             output_stride=output_stride,
             multi_grid=multi_grid,
             reuse=reuse,
-            scope=name_scope[model_variant],
-            use_bounded_activations=use_bounded_activations)
+            scope=name_scope[model_variant])
   elif 'xception' in model_variant:
     arg_scope = arg_scopes_map[model_variant](
         weight_decay=weight_decay,

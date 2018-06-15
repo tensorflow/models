@@ -53,7 +53,6 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
                     is_training=True,
                     global_pool=True,
                     output_stride=None,
-                    store_non_strided_activations=False,
                     multi_grid=None,
                     reuse=None,
                     scope='resnet_v1_small'):
@@ -84,7 +83,6 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
         output_stride=output_stride,
         root_block_fn=functools.partial(
             resnet_v1_beta.root_block_fn_for_beta_variant),
-        store_non_strided_activations=store_non_strided_activations,
         reuse=reuse,
         scope=scope)
 

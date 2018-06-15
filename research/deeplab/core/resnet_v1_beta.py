@@ -44,8 +44,7 @@ def bottleneck(inputs,
                unit_rate=1,
                rate=1,
                outputs_collections=None,
-               scope=None,
-               use_bounded_activations=True):
+               scope=None):
   """Bottleneck residual unit variant with BN after convolutions.
 
   This is the original residual unit proposed in [1]. See Fig. 1(a) of [2] for
@@ -65,8 +64,6 @@ def bottleneck(inputs,
     rate: An integer, rate for atrous convolution.
     outputs_collections: Collection to add the ResNet unit output.
     scope: Optional variable_scope.
-    use_bounded_activations: Whether or not to use bounded activations. Bounded
-      activations better lend themselves to quantized inference.
 
   Returns:
     The ResNet unit's output.
@@ -81,7 +78,7 @@ def bottleneck(inputs,
           depth,
           [1, 1],
           stride=stride,
-          activation_fn=tf.nn.relu6 if use_bounded_activations else None,
+          activation_fn=None,
           scope='shortcut')
 
     residual = slim.conv2d(inputs, depth_bottleneck, [1, 1], stride=1,
@@ -90,13 +87,7 @@ def bottleneck(inputs,
                                         rate=rate*unit_rate, scope='conv2')
     residual = slim.conv2d(residual, depth, [1, 1], stride=1,
                            activation_fn=None, scope='conv3')
-
-    if use_bounded_activations:
-      # Use clip_by_value to simulate bandpass activation.
-      residual = tf.clip_by_value(residual, -6.0, 6.0)
-      output = tf.nn.relu6(shortcut + residual)
-    else:
-      output = tf.nn.relu(shortcut + residual)
+    output = tf.nn.relu(shortcut + residual)
 
     return slim.utils.collect_named_outputs(outputs_collections,
                                             sc.name,
@@ -129,8 +120,6 @@ def resnet_v1_beta(inputs,
                    global_pool=True,
                    output_stride=None,
                    root_block_fn=None,
-                   store_non_strided_activations=False,
-                   use_bounded_activations=False,
                    reuse=None,
                    scope=None):
   """Generator for v1 ResNet models (beta variant).
@@ -159,14 +148,6 @@ def resnet_v1_beta(inputs,
     root_block_fn: The function consisting of convolution operations applied to
       the root input. If root_block_fn is None, use the original setting of
       RseNet-v1, which is simply one convolution with 7x7 kernel and stride=2.
-    store_non_strided_activations: If True, we compute non-strided (undecimated)
-      activations at the last unit of each block and store them in the
-      `outputs_collections` before subsampling them. This gives us access to
-      higher resolution intermediate activations which are useful in some
-      dense prediction problems but increases 4x the computation and memory cost
-      at the last unit of each block.
-    use_bounded_activations: Whether or not to use bounded activations. Bounded
-      activations better lend themselves to quantized inference.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -196,35 +177,32 @@ def resnet_v1_beta(inputs,
     with slim.arg_scope([slim.conv2d, bottleneck,
                          resnet_utils.stack_blocks_dense],
                         outputs_collections=end_points_collection):
-      with slim.arg_scope(
-          [bottleneck], use_bounded_activations=use_bounded_activations):
-        if is_training is not None:
-          arg_scope = slim.arg_scope([slim.batch_norm], is_training=is_training)
-        else:
-          arg_scope = slim.arg_scope([])
-        with arg_scope:
-          net = inputs
-          if output_stride is not None:
-            if output_stride % 4 != 0:
-              raise ValueError('The output_stride needs to be a multiple of 4.')
-            output_stride /= 4
-          net = root_block_fn(net)
-          net = slim.max_pool2d(net, 3, stride=2, padding='SAME', scope='pool1')
-          net = resnet_utils.stack_blocks_dense(net, blocks, output_stride,
-                                                store_non_strided_activations)
+      if is_training is not None:
+        arg_scope = slim.arg_scope([slim.batch_norm], is_training=is_training)
+      else:
+        arg_scope = slim.arg_scope([])
+      with arg_scope:
+        net = inputs
+        if output_stride is not None:
+          if output_stride % 4 != 0:
+            raise ValueError('The output_stride needs to be a multiple of 4.')
+          output_stride /= 4
+        net = root_block_fn(net)
+        net = slim.max_pool2d(net, 3, stride=2, padding='SAME', scope='pool1')
+        net = resnet_utils.stack_blocks_dense(net, blocks, output_stride)
 
-          if global_pool:
-            # Global average pooling.
-            net = tf.reduce_mean(net, [1, 2], name='pool5', keepdims=True)
-          if num_classes is not None:
-            net = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
-                              normalizer_fn=None, scope='logits')
-          # Convert end_points_collection into a dictionary of end_points.
-          end_points = slim.utils.convert_collection_to_dict(
-              end_points_collection)
-          if num_classes is not None:
-            end_points['predictions'] = slim.softmax(net, scope='predictions')
-          return net, end_points
+        if global_pool:
+          # Global average pooling.
+          net = tf.reduce_mean(net, [1, 2], name='pool5', keepdims=True)
+        if num_classes is not None:
+          net = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
+                            normalizer_fn=None, scope='logits')
+        # Convert end_points_collection into a dictionary of end_points.
+        end_points = slim.utils.convert_collection_to_dict(
+            end_points_collection)
+        if num_classes is not None:
+          end_points['predictions'] = slim.softmax(net, scope='predictions')
+        return net, end_points
 
 
 def resnet_v1_beta_block(scope, base_depth, num_units, stride):
@@ -258,9 +236,7 @@ def resnet_v1_50(inputs,
                  is_training=None,
                  global_pool=False,
                  output_stride=None,
-                 store_non_strided_activations=False,
                  multi_grid=None,
-                 use_bounded_activations=False,
                  reuse=None,
                  scope='resnet_v1_50'):
   """Resnet v1 50.
@@ -275,15 +251,7 @@ def resnet_v1_50(inputs,
     output_stride: If None, then the output will be computed at the nominal
       network stride. If output_stride is not None, it specifies the requested
       ratio of input to output spatial resolution.
-    store_non_strided_activations: If True, we compute non-strided (undecimated)
-      activations at the last unit of each block and store them in the
-      `outputs_collections` before subsampling them. This gives us access to
-      higher resolution intermediate activations which are useful in some
-      dense prediction problems but increases 4x the computation and memory cost
-      at the last unit of each block.
     multi_grid: Employ a hierarchy of different atrous rates within network.
-    use_bounded_activations: Whether or not to use bounded activations. Bounded
-      activations better lend themselves to quantized inference.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -328,10 +296,8 @@ def resnet_v1_50(inputs,
       is_training=is_training,
       global_pool=global_pool,
       output_stride=output_stride,
-      store_non_strided_activations=store_non_strided_activations,
       reuse=reuse,
-      scope=scope,
-      use_bounded_activations=use_bounded_activations)
+      scope=scope)
 
 
 def resnet_v1_50_beta(inputs,
@@ -339,9 +305,7 @@ def resnet_v1_50_beta(inputs,
                       is_training=None,
                       global_pool=False,
                       output_stride=None,
-                      store_non_strided_activations=False,
                       multi_grid=None,
-                      use_bounded_activations=False,
                       reuse=None,
                       scope='resnet_v1_50'):
   """Resnet v1 50 beta variant.
@@ -360,15 +324,7 @@ def resnet_v1_50_beta(inputs,
     output_stride: If None, then the output will be computed at the nominal
       network stride. If output_stride is not None, it specifies the requested
       ratio of input to output spatial resolution.
-    store_non_strided_activations: If True, we compute non-strided (undecimated)
-      activations at the last unit of each block and store them in the
-      `outputs_collections` before subsampling them. This gives us access to
-      higher resolution intermediate activations which are useful in some
-      dense prediction problems but increases 4x the computation and memory cost
-      at the last unit of each block.
     multi_grid: Employ a hierarchy of different atrous rates within network.
-    use_bounded_activations: Whether or not to use bounded activations. Bounded
-      activations better lend themselves to quantized inference.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -414,10 +370,8 @@ def resnet_v1_50_beta(inputs,
       global_pool=global_pool,
       output_stride=output_stride,
       root_block_fn=functools.partial(root_block_fn_for_beta_variant),
-      store_non_strided_activations=store_non_strided_activations,
       reuse=reuse,
-      scope=scope,
-      use_bounded_activations=use_bounded_activations)
+      scope=scope)
 
 
 def resnet_v1_101(inputs,
@@ -425,9 +379,7 @@ def resnet_v1_101(inputs,
                   is_training=None,
                   global_pool=False,
                   output_stride=None,
-                  store_non_strided_activations=False,
                   multi_grid=None,
-                  use_bounded_activations=False,
                   reuse=None,
                   scope='resnet_v1_101'):
   """Resnet v1 101.
@@ -442,15 +394,7 @@ def resnet_v1_101(inputs,
     output_stride: If None, then the output will be computed at the nominal
       network stride. If output_stride is not None, it specifies the requested
       ratio of input to output spatial resolution.
-    store_non_strided_activations: If True, we compute non-strided (undecimated)
-      activations at the last unit of each block and store them in the
-      `outputs_collections` before subsampling them. This gives us access to
-      higher resolution intermediate activations which are useful in some
-      dense prediction problems but increases 4x the computation and memory cost
-      at the last unit of each block.
     multi_grid: Employ a hierarchy of different atrous rates within network.
-    use_bounded_activations: Whether or not to use bounded activations. Bounded
-      activations better lend themselves to quantized inference.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -495,10 +439,8 @@ def resnet_v1_101(inputs,
       is_training=is_training,
       global_pool=global_pool,
       output_stride=output_stride,
-      store_non_strided_activations=store_non_strided_activations,
       reuse=reuse,
-      scope=scope,
-      use_bounded_activations=use_bounded_activations)
+      scope=scope)
 
 
 def resnet_v1_101_beta(inputs,
@@ -506,9 +448,7 @@ def resnet_v1_101_beta(inputs,
                        is_training=None,
                        global_pool=False,
                        output_stride=None,
-                       store_non_strided_activations=False,
                        multi_grid=None,
-                       use_bounded_activations=False,
                        reuse=None,
                        scope='resnet_v1_101'):
   """Resnet v1 101 beta variant.
@@ -527,15 +467,7 @@ def resnet_v1_101_beta(inputs,
     output_stride: If None, then the output will be computed at the nominal
       network stride. If output_stride is not None, it specifies the requested
       ratio of input to output spatial resolution.
-    store_non_strided_activations: If True, we compute non-strided (undecimated)
-      activations at the last unit of each block and store them in the
-      `outputs_collections` before subsampling them. This gives us access to
-      higher resolution intermediate activations which are useful in some
-      dense prediction problems but increases 4x the computation and memory cost
-      at the last unit of each block.
     multi_grid: Employ a hierarchy of different atrous rates within network.
-    use_bounded_activations: Whether or not to use bounded activations. Bounded
-      activations better lend themselves to quantized inference.
     reuse: whether or not the network and its variables should be reused. To be
       able to reuse 'scope' must be given.
     scope: Optional variable_scope.
@@ -581,7 +513,5 @@ def resnet_v1_101_beta(inputs,
       global_pool=global_pool,
       output_stride=output_stride,
       root_block_fn=functools.partial(root_block_fn_for_beta_variant),
-      store_non_strided_activations=store_non_strided_activations,
-      use_bounded_activations=use_bounded_activations,
       reuse=reuse,
       scope=scope)
