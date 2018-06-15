@@ -76,14 +76,6 @@ class KeplerSplineTest(absltest.TestCase):
     with self.assertRaises(kepler_spline.InsufficientPointsError):
       kepler_spline.kepler_spline(time, flux, bkspace=0.5)
 
-    # 4 points, but one point is an outlier.
-    time = np.array([0.1, 0.2, 0.3, 0.4])
-    flux = np.sin(time)
-    flux[2] = 1000
-
-    with self.assertRaises(kepler_spline.InsufficientPointsError):
-      kepler_spline.kepler_spline(time, flux, bkspace=0.5)
-
 
 class ChooseKeplerSplineTest(absltest.TestCase):
 
