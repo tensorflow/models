@@ -173,6 +173,8 @@ def run_ncf(_):
   """Run NCF training and eval loop."""
   if FLAGS.download_if_missing:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
+    movielens_dataset.construct_train_eval_csv(
+        data_dir=FLAGS.data_dir, dataset=FLAGS.dataset)
 
   tf.logging.info("Data preprocessing...")
   ncf_dataset = movielens_dataset.data_preprocessing(
