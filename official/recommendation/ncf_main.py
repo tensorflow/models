@@ -287,7 +287,7 @@ def define_ncf_flags():
           "Dataset to be trained and evaluated."))
 
   flags.DEFINE_boolean(
-      name="download_if_missing", default=False, help=flags_core.help_wrap(
+      name="download_if_missing", default=True, help=flags_core.help_wrap(
           "Download data to data_dir if it is not already present."))
 
   flags.DEFINE_integer(
