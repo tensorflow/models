@@ -71,7 +71,7 @@ def per_device_batch_size(batch_size, num_gpus):
     raise ValueError(err)
   return int(batch_size / num_gpus)
 
-def run_model(_):
+def run_model():
   """Run training and eval loop."""
 
   tf.logging.info("Creating Estimator from Keras model...")
@@ -79,7 +79,7 @@ def run_model(_):
 
   keras_model = sentiment_model.CNN(
       FLAGS.embedding_dim, FLAGS.vocabulary_size, FLAGS.sentence_length,
-      FLAGS.cnn_filters, num_class, FLAGS.dropout_rate, 0.0)
+      FLAGS.cnn_filters, num_class, FLAGS.dropout_rate)
   num_gpus = flags_core.get_num_gpus(FLAGS)
   estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
 
@@ -119,16 +119,15 @@ def run_model(_):
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)
-    # Log the HR and NDCG results.
-    tf.logging.info(
-        "Iteration {}".format(eval_results))
+
+    tf.logging.info("Iteration {}".format(eval_results))
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
 
 def main(_):
   with logger.benchmark_context(FLAGS):
-    run_model(FLAGS)
+    run_model()
 
 def define_flags():
   """Add flags to run sentiment_main.py"""
@@ -162,7 +161,7 @@ def define_flags():
   flags.DEFINE_integer(
       name="vocabulary_size", default=6000,
       help=flags_core.help_wrap(
-          "The number of the most frequent words to be used from the corpus."))
+          "The number of the most frequent tokens to be used from the corpus."))
 
   flags.DEFINE_integer(
       name="sentence_length", default=200,
