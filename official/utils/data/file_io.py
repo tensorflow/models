@@ -43,15 +43,14 @@ class _GarbageCollector(object):
         if tf.gfile.Exists(i):
           tf.gfile.Remove(i)
           tf.logging.info("Buffer file {} removed".format(i))
-    except Exception as E:
-      tf.logging.error("Failed to cleanup buffer files: {}".format(E))
+    except Exception as e:
+      tf.logging.error("Failed to cleanup buffer files: {}".format(e))
 
 
 _GARBAGE_COLLECTOR = _GarbageCollector()
 atexit.register(_GARBAGE_COLLECTOR.purge)
 
-# More powerful machines benefit from larger scale maps.
-_DISK_WRITE_THRESHOLD = int(125000  * multiprocessing.cpu_count())
+_ROWS_PER_CORE = 50000
 
 
 def write_to_temp_buffer(dataframe, buffer_folder, columns):
@@ -65,37 +64,58 @@ def write_to_temp_buffer(dataframe, buffer_folder, columns):
   return buffer_path
 
 
-def _to_bytes(key_value_list):
-  features = {}
-  for key, value in key_value_list:
-    if isinstance(value, int):
-      features[key] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=[value]))
-    elif isinstance(value, float):
-      features[key] = tf.train.Feature(
-          float_list=tf.train.FloatList(value=[value]))
-    elif isinstance(value, np.ndarray) and value.dtype.kind == "i":
-      value = value.astype(np.int64)
-      assert len(value.shape) == 1
-      features[key] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=value))
-    elif isinstance(value, (six.text_type, six.binary_type)):
-      if not isinstance(value, six.binary_type):
-        value = value.encode("utf-8")
-      features[key] = tf.train.Feature(
-          bytes_list=tf.train.BytesList(value=[value]))
+def iter_shard_dataframe(df, rows_per_core=1000):
+  num_cores = multiprocessing.cpu_count()
+  n = len(df)
+  num_blocks = int(np.ceil(n / num_cores / rows_per_core))
+  max_batch_size = num_cores * rows_per_core
+  for i in range(num_blocks):
+    min_index = i * max_batch_size
+    max_index = min([(i + 1) * max_batch_size, n])
+    df_shard = df[min_index:max_index]
+    n_shard = len(df_shard)
+    boundaries = np.linspace(0, n_shard, num_cores + 1, dtype=np.int64)
+    yield [df_shard[boundaries[j]:boundaries[j+1]] for j in range(num_cores)]
+
+
+def _shard_dict_to_examples(shard_dict):
+  n = [i for i in shard_dict.values()][0].shape[0]
+  feature_list = [{} for _ in range(n)]
+  for column, values in shard_dict.items():
+    if len(values.shape) == 1:
+      values = np.reshape(values, values.shape + (1,))
+
+    if values.dtype.kind == "i":
+      feature_map = lambda x: tf.train.Feature(
+          int64_list=tf.train.Int64List(value=x))
+    elif values.dtype.kind == "f":
+      feature_map = lambda x: tf.train.Feature(
+          float_list=tf.train.FloatList(value=x))
     else:
-      raise ValueError("Unknown type.")
-  example = tf.train.Example(features=tf.train.Features(feature=features))
-  example_bytes = example.SerializeToString()
-  return example_bytes
+      raise ValueError("Invalid dtype")
+    for i in range(n):
+      feature_list[i][column] = feature_map(values[i])
+  examples = [
+      tf.train.Example(features=tf.train.Features(feature=example_features))
+    for example_features in feature_list
+  ]
+
+  return [e.SerializeToString() for e in examples]
 
 
-def _write_to_disk(key_value_list, pool, writer):
-    serialized_rows = pool.map(_to_bytes, key_value_list)
-    for example_bytes in serialized_rows:
-      writer.write(example_bytes)
-
+def _serialize_shards(df_shards, columns, pool, writer):
+  map_inputs = [{c: shard[c].values for c in columns} for shard in df_shards]
+  for inp in map_inputs:
+    assert len(set([v.shape[0] for v in inp.values()])) == 1
+    for val in inp.values():
+      assert hasattr(val, "dtype")
+      assert hasattr(val.dtype, "kind")
+      assert val.dtype.kind in ("i", "f")
+      assert len(val.shape) in (1, 2)
+  shard_bytes = pool.map(_shard_dict_to_examples, map_inputs)
+  for s in shard_bytes:
+    for example in s:
+      writer.write(example)
 
 def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
   """Write a dataframe to a binary file for a dataset to consume."""
@@ -116,21 +136,15 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
 
   tf.logging.info("Constructing TFRecordDataset buffer: {}".format(buffer_path))
 
+  count = 0
   with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
     with tf.python_io.TFRecordWriter(buffer_path) as writer:
-      data_rows = []
-      count = 0
-      for row in dataframe.itertuples():
-        data_rows.append([(key, getattr(row, key)) for key in columns])
-        count += 1
-        # It is necessary to periodically process the accumulated data to avoid
-        # excessive memory consumption.
-        if len(data_rows) == _DISK_WRITE_THRESHOLD:
-          _write_to_disk(data_rows, pool, writer)
-          data_rows = []
-          tf.logging.info("{}/{} examples written."
-                          .format(str(count).ljust(8), len(dataframe)))
-      _write_to_disk(data_rows, pool, writer)
-      tf.logging.info("Buffer write complete.")
+      for df_shards in iter_shard_dataframe(df=dataframe,
+                                            rows_per_core=_ROWS_PER_CORE):
+        _serialize_shards(df_shards, columns, pool, writer)
+        count += sum([len(s) for s in df_shards])
+        tf.logging.info("{}/{} examples written."
+                        .format(str(count).ljust(8), len(dataframe)))
 
+  tf.logging.info("Buffer write complete.")
   return buffer_path

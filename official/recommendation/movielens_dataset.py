@@ -21,23 +21,25 @@ from __future__ import print_function
 import collections
 import functools
 import os
-import pandas as pd
 import tempfile
 import time
 
 from absl import app as absl_app
 from absl import flags
 import numpy as np
+import pandas as pd
 from six.moves import xrange
 import tensorflow as tf
 
 from official.datasets import movielens
-from official.recommendation import  constants
 from official.utils.data import file_io
 from official.utils.flags import core as flags_core
 
 
 _BUFFER_SUBDIR = "ncf_recommendation_buffer"
+_TRAIN_RATINGS_FILENAME = 'train-ratings.csv'
+_TEST_RATINGS_FILENAME = 'test-ratings.csv'
+_TEST_NEG_FILENAME = 'test-negative.csv'
 
 # The number of negative examples attached with a positive example
 # in training dataset. It is set as 100 in the paper.
@@ -50,24 +52,24 @@ _MIN_NUM_RATINGS = 20
 _SHUFFLE_BUFFER_SIZE = 1024
 
 _FEATURE_MAP = {
-  movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-  movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-  movielens.RATING_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+    movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+    movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+    movielens.RATING_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
 }
 
 _FEATURE_MAP_EVAL = {
-  movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-  movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+    movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
+    movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
 }
 
 _COLUMNS = [movielens.USER_COLUMN, movielens.ITEM_COLUMN,
-           movielens.RATING_COLUMN]
+            movielens.RATING_COLUMN]
 _EVAL_COLUMNS = _COLUMNS[:2]
 
 
 _EVAL_BUFFER_SIZE = {
-  movielens.ML_1M: 34130690,
-  movielens.ML_20M: 800961490,
+    movielens.ML_1M: 34130690,
+    movielens.ML_20M: 800961490,
 }
 
 
@@ -139,9 +141,9 @@ def generate_train_eval_data(df, original_users, original_items):
 def _csv_buffer_paths(data_dir, dataset):
   buffer_dir = os.path.join(data_dir, _BUFFER_SUBDIR)
   return (
-    os.path.join(buffer_dir, dataset + "-" + constants.TRAIN_RATINGS_FILENAME),
-    os.path.join(buffer_dir, dataset + "-" + constants.TEST_RATINGS_FILENAME),
-    os.path.join(buffer_dir, dataset + "-" + constants.TEST_NEG_FILENAME)
+      os.path.join(buffer_dir, dataset + "-" + _TRAIN_RATINGS_FILENAME),
+      os.path.join(buffer_dir, dataset + "-" + _TEST_RATINGS_FILENAME),
+      os.path.join(buffer_dir, dataset + "-" + _TEST_NEG_FILENAME)
   )
 
 
@@ -217,7 +219,7 @@ class NCFDataSet(object):
   """A class containing data information for model training and evaluation."""
 
   def __init__(self, train_data, num_users, num_items, num_negatives,
-      true_items, all_items, all_eval_data):
+               true_items, all_items, all_eval_data):
     """Initialize NCFDataset class.
 
     Args:
@@ -347,8 +349,8 @@ def generate_train_dataset(train_data, num_items, num_negatives):
 def _deserialize_train(examples_serialized):
   features = tf.parse_example(examples_serialized, _FEATURE_MAP)
   train_features = {
-    movielens.USER_COLUMN: features[movielens.USER_COLUMN],
-    movielens.ITEM_COLUMN: features[movielens.ITEM_COLUMN],
+      movielens.USER_COLUMN: features[movielens.USER_COLUMN],
+      movielens.ITEM_COLUMN: features[movielens.ITEM_COLUMN],
   }
   return train_features, features[movielens.RATING_COLUMN]
 
@@ -427,7 +429,7 @@ def main(_):
   construct_train_eval_csv(flags.FLAGS.data_dir, flags.FLAGS.dataset)
 
   ncf_dataset = data_preprocessing(data_dir=flags.FLAGS.data_dir, dataset=flags.FLAGS.dataset, num_negatives=3)
-  get_input_fn(False, 16, ncf_dataset, flags.FLAGS.data_dir, flags.FLAGS.dataset, repeat=1)
+  get_input_fn(True, 16, ncf_dataset, flags.FLAGS.data_dir, flags.FLAGS.dataset, repeat=1)
 
 
 if __name__ == "__main__":

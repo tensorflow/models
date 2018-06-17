@@ -143,7 +143,7 @@ def construct_input_fns(dataset, data_dir, batch_size=16, repeat=1):
       df=eval_df, name="eval", dataset=dataset, data_dir=data_dir,
       batch_size=batch_size, repeat=repeat, shuffle=None)
   model_column_fn = functools.partial(build_model_columns, dataset=dataset)
-  print(train_df)
+
   train_input_fn()
   return train_input_fn, eval_input_fn, model_column_fn
 

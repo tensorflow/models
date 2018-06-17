@@ -33,7 +33,6 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.datasets import movielens
-from official.recommendation import constants
 from official.recommendation import movielens_dataset
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
@@ -88,7 +87,7 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
 
   # Get predictions
   predictions = estimator.predict(input_fn=pred_input_fn)
-  all_predicted_scores = [p[constants.RATING] for p in predictions]
+  all_predicted_scores = [p[movielens.RATING_COLUMN] for p in predictions]
 
   # Calculate HR score
   def _get_hr(ranklist, true_item):
