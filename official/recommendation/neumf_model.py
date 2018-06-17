@@ -37,7 +37,6 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
-from official.recommendation import constants  # pylint: disable=g-bad-import-order
 
 
 class NeuMF(tf.keras.models.Model):
