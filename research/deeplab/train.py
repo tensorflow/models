@@ -101,6 +101,8 @@ flags.DEFINE_float('momentum', 0.9, 'The momentum value to use')
 flags.DEFINE_integer('train_batch_size', 8,
                      'The number of images in each batch during training.')
 
+# For weight_decay, use 0.00004 for MobileNet-V2 or Xcpetion model variants.
+# Use 0.0001 for ResNet model variants.
 flags.DEFINE_float('weight_decay', 0.00004,
                    'The value of the weight decay for training.')
 
@@ -206,8 +208,8 @@ def _build_deeplab(inputs_queue, outputs_to_num_classes, ignore_label):
 
   # Add name to graph node so we can add to summary.
   output_type_dict = outputs_to_scales_to_logits[common.OUTPUT_TYPE]
-  output_type_dict[model.get_merged_logits_scope()] = tf.identity(
-      output_type_dict[model.get_merged_logits_scope()],
+  output_type_dict[model.MERGED_LOGITS_SCOPE] = tf.identity(
+      output_type_dict[model.MERGED_LOGITS_SCOPE],
       name=common.OUTPUT_TYPE)
 
   for output, num_classes in six.iteritems(outputs_to_num_classes):

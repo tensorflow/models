@@ -84,7 +84,7 @@ xception_ade20k_train                 | Xception_65      | ImageNet <br> ADE20K 
 
 Checkpoint name                       | Eval OS   | Eval scales                 | Left-right Flip |  mIOU                 | Pixel-wise Accuracy | File Size
 ------------------------------------- | :-------: | :-------------------------: | :-------------: | :-------------------: | :-------------------: | :-------:
-[xception_ade20k_train](http://download.tensorflow.org/models/deeplabv3_xception_ade20k_train_2018_05_14.tar.gz)              | 16 | [0.5:0.25:1.75] | Yes     | 43.54% (val) | 81.74% (val) | 439MB
+[xception_ade20k_train](http://download.tensorflow.org/models/deeplabv3_xception_ade20k_train_2018_05_29.tar.gz)              | 8 | [0.5:0.25:1.75] | Yes     | 45.65% (val) | 82.52% (val) | 439MB
 
 ## Checkpoints pretrained on ImageNet
 
