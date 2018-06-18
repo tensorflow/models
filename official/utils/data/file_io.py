@@ -31,6 +31,13 @@ import tensorflow as tf
 
 
 class _GarbageCollector(object):
+  """Deletes temporary buffer files at exit.
+
+  Certain tasks (such as NCF Recommendation) require writing buffers to
+  temporary files. (Which may be local or distributed.) It is not generally safe
+  to delete these files during operation, but they should be cleaned up. This
+  class keeps track of temporary files created, and deletes them at exit.
+  """
   def __init__(self):
     self.temp_buffers = []
 
@@ -65,6 +72,22 @@ def write_to_temp_buffer(dataframe, buffer_folder, columns):
 
 
 def iter_shard_dataframe(df, rows_per_core=1000):
+  """Two way shard of a dataframe.
+
+  This function evenly shards a dataframe so that it can be mapped efficiently.
+  It yields a list of dataframes with length equal to the number of CPU cores,
+  with each dataframe having rows_per_core rows. (Except for the last batch
+  which may have fewer rows in the dataframes.) Passing vectorized inputs to
+  a multiprocessing pool is much more effecient than iterating through a
+  dataframe in serial and passing a list of inputs to the pool.
+
+  Args:
+    df: Pandas dataframe to be sharded.
+    rows_per_core: Number of rows in each shard.
+
+  Returns:
+    A list of dataframe shards.
+  """
   num_cores = multiprocessing.cpu_count()
   n = len(df)
   num_blocks = int(np.ceil(n / num_cores / rows_per_core))
@@ -79,6 +102,7 @@ def iter_shard_dataframe(df, rows_per_core=1000):
 
 
 def _shard_dict_to_examples(shard_dict):
+  """Converts a dict of arrays into a list of example bytes."""
   n = [i for i in shard_dict.values()][0].shape[0]
   feature_list = [{} for _ in range(n)]
   for column, values in shard_dict.items():
@@ -97,14 +121,25 @@ def _shard_dict_to_examples(shard_dict):
       feature_list[i][column] = feature_map(values[i])
   examples = [
       tf.train.Example(features=tf.train.Features(feature=example_features))
-    for example_features in feature_list
+      for example_features in feature_list
   ]
 
   return [e.SerializeToString() for e in examples]
 
 
 def _serialize_shards(df_shards, columns, pool, writer):
+  """Map sharded dataframes to bytes, and write them to a buffer.
+
+  Args:
+    df_shards: A list of pandas dataframes. (Should be of similar size)
+    columns: The dataframe columns to be serialized.
+    pool: A multiprocessing pool to serialize in parallel.
+    writer: A TFRecordWriter to write the serialized shards.
+  """
   map_inputs = [{c: shard[c].values for c in columns} for shard in df_shards]
+
+  # Failure within pools is very irksome. Thus, it is better to thoroughly check
+  # inputs in the main process.
   for inp in map_inputs:
     assert len(set([v.shape[0] for v in inp.values()])) == 1
     for val in inp.values():
@@ -118,7 +153,18 @@ def _serialize_shards(df_shards, columns, pool, writer):
       writer.write(example)
 
 def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
-  """Write a dataframe to a binary file for a dataset to consume."""
+  """Write a dataframe to a binary file for a dataset to consume.
+
+  Args:
+    dataframe: The pandas dataframe to be serialized.
+    buffer_path: The path where the serialized results will be written.
+    columns: The dataframe columns to be serialized.
+    expected_size: The size in bytes of the serialized results. This is used to
+      lazily construct the buffer.
+
+  Returns:
+    The path of the buffer.
+  """
   if tf.gfile.Exists(buffer_path) and tf.gfile.Stat(buffer_path).length > 0:
     actual_size = tf.gfile.Stat(buffer_path).length
     if expected_size == actual_size:

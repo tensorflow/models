@@ -38,12 +38,12 @@ class DatasetTest(tf.test.TestCase):
     # Create temporary CSV file
     self.temp_dir = self.get_temp_dir()
     tf.gfile.MakeDirs(os.path.join(self.temp_dir,
-                                 movielens_dataset._BUFFER_SUBDIR))
+                                   movielens_dataset._BUFFER_SUBDIR))
 
     path_map = {
-      "test_train_ratings.csv": "ml-1m-train-ratings.csv",
-      "test_eval_ratings.csv": "ml-1m-test-ratings.csv",
-      "test_eval_negative.csv": "ml-1m-test-negative.csv"
+        "test_train_ratings.csv": "ml-1m-train-ratings.csv",
+        "test_eval_ratings.csv": "ml-1m-test-ratings.csv",
+        "test_eval_negative.csv": "ml-1m-test-negative.csv"
     }
 
     for src, dest in path_map.items():

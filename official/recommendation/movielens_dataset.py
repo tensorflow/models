@@ -360,7 +360,8 @@ def _deserialize_eval(examples_serialized):
   return features
 
 
-def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset, repeat=1):
+def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
+                 repeat=1):
   """Input function for model training and evaluation.
 
   The train input consists of 1 positive instance (user and item have
@@ -407,7 +408,7 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset, repeat=1)
     map_fn = _deserialize_eval
 
 
-  def input_fn():
+  def input_fn():  # pylint: disable=missing-docstring
     dataset = tf.data.TFRecordDataset(buffer_path)
     if training:
       dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
@@ -417,19 +418,15 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset, repeat=1)
     dataset = dataset.repeat(repeat)
 
     # Prefetch to improve speed of input pipeline.
-    dataset = dataset.prefetch(1)
+    dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
     return dataset
 
-  input_fn()
   return input_fn
 
 
 def main(_):
   movielens.download(dataset=flags.FLAGS.dataset, data_dir=flags.FLAGS.data_dir)
   construct_train_eval_csv(flags.FLAGS.data_dir, flags.FLAGS.dataset)
-
-  ncf_dataset = data_preprocessing(data_dir=flags.FLAGS.data_dir, dataset=flags.FLAGS.dataset, num_negatives=3)
-  get_input_fn(True, 16, ncf_dataset, flags.FLAGS.data_dir, flags.FLAGS.dataset, repeat=1)
 
 
 if __name__ == "__main__":

@@ -83,6 +83,7 @@ def _buffer_path(data_dir, dataset, name):
 
 
 def _df_to_input_fn(df, name, dataset, data_dir, batch_size, repeat, shuffle):
+  """Serialize a dataframe and write it to a buffer file."""
   buffer_path = _buffer_path(data_dir, dataset, name)
   expected_size = _BUFFER_SIZE[dataset].get(name)
 
@@ -122,6 +123,7 @@ def _check_buffers(data_dir, dataset):
 
 
 def construct_input_fns(dataset, data_dir, batch_size=16, repeat=1):
+  """Construct train and test input functions, as well as the column fn."""
   if _check_buffers(data_dir, dataset):
     train_df, eval_df = None, None
   else:

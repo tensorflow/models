@@ -32,7 +32,8 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 TEST_INPUT_VALUES = {
-    "genres": np.array([0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    "genres": np.array(
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
     "user_id": [3],
     "item_id": [4],
 }

@@ -140,11 +140,22 @@ def _download_and_clean(dataset, data_dir):
 
 
 def _write_csv(input_path, output_path, names, skip_first, separator=","):
+  """Transform csv to a regularized format.
+
+  Args:
+    input_path: The path of the raw csv.
+    output_path: The path of the cleaned csv.
+    names: The csv column names.
+    skip_first: Boolean of whether to skip the first line of the raw csv.
+    separator: Character used to separate fields in the raw csv.
+  """
   if six.PY2:
     names = [n.decode("utf-u") for n in names]
 
   with tf.gfile.Open(output_path, "wb") as f_out, \
       tf.gfile.Open(input_path, "rb") as f_in:
+
+    # Write column names to the csv.
     f_out.write(",".join(names).encode("utf-8"))
     f_out.write(b"\n")
     for i, line in enumerate(f_in):
@@ -250,6 +261,14 @@ def csv_to_joint_dataframe(data_dir, dataset):
 
 
 def integerize_genres(dataframe):
+  """Replace genre string with a binary vector.
+
+  Args:
+    dataframe: a pandas dataframe of movie data.
+
+  Returns:
+    The transformed dataframe.
+  """
   def _map_fn(entry):
     entry.replace("Children's", "Children")  # naming difference.
     movie_genres = entry.split("|")
