@@ -187,7 +187,8 @@ def choose_kepler_spline(all_time,
   # model and sigma is the constant standard deviation for all flux values.
   # Moreover, we assume that s[i] ~= s[i+1]. Therefore,
   # (f[i+1] - f[i]) / sqrt(2) ~ N(0, sigma^2).
-  scaled_diffs = np.concatenate([np.diff(f) / np.sqrt(2) for f in all_flux])
+  scaled_diffs = [np.diff(f) / np.sqrt(2) for f in all_flux]
+  scaled_diffs = np.concatenate(scaled_diffs) if scaled_diffs else np.array([])
   if not scaled_diffs.size:
     best_spline = [np.array([np.nan] * len(f)) for f in all_flux]
     metadata.light_curve_mask = [
