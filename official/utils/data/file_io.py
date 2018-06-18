@@ -183,7 +183,8 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
   tf.logging.info("Constructing TFRecordDataset buffer: {}".format(buffer_path))
 
   count = 0
-  with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
+  pool = multiprocessing.Pool(multiprocessing.cpu_count())
+  try:
     with tf.python_io.TFRecordWriter(buffer_path) as writer:
       for df_shards in iter_shard_dataframe(df=dataframe,
                                             rows_per_core=_ROWS_PER_CORE):
@@ -191,6 +192,8 @@ def write_to_buffer(dataframe, buffer_path, columns, expected_size=None):
         count += sum([len(s) for s in df_shards])
         tf.logging.info("{}/{} examples written."
                         .format(str(count).ljust(8), len(dataframe)))
+  finally:
+    pool.terminate()
 
   tf.logging.info("Buffer write complete.")
   return buffer_path

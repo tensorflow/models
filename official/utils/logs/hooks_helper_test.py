@@ -36,7 +36,7 @@ class BaseTest(unittest.TestCase):
   def test_raise_in_invalid_names(self):
     invalid_names = ['StepCounterHook', 'StopAtStepHook']
     with self.assertRaises(ValueError):
-      hooks_helper.get_train_hooks(invalid_names, model_dir="",batch_size=256)
+      hooks_helper.get_train_hooks(invalid_names, model_dir="", batch_size=256)
 
   def validate_train_hook_name(self,
                                test_hook_name,
