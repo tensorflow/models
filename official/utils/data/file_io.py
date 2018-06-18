@@ -88,8 +88,9 @@ def iter_shard_dataframe(df, rows_per_core=1000):
   Returns:
     A list of dataframe shards.
   """
-  num_cores = multiprocessing.cpu_count()
   n = len(df)
+  num_cores = min([multiprocessing.cpu_count(), n])
+
   num_blocks = int(np.ceil(n / num_cores / rows_per_core))
   max_batch_size = num_cores * rows_per_core
   for i in range(num_blocks):
@@ -136,11 +137,14 @@ def _serialize_shards(df_shards, columns, pool, writer):
     pool: A multiprocessing pool to serialize in parallel.
     writer: A TFRecordWriter to write the serialized shards.
   """
-  map_inputs = [{c: shard[c].values for c in columns} for shard in df_shards]
+  # Pandas does not store columns of arrays as nd arrays. stack remedies this.
+  map_inputs = [{c: np.stack(shard[c].values, axis=0) for c in columns}
+                for shard in df_shards]
 
   # Failure within pools is very irksome. Thus, it is better to thoroughly check
   # inputs in the main process.
   for inp in map_inputs:
+    # Check that all fields have the same number of rows.
     assert len(set([v.shape[0] for v in inp.values()])) == 1
     for val in inp.values():
       assert hasattr(val, "dtype")

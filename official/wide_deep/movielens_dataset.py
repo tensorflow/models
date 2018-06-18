@@ -75,7 +75,6 @@ def build_model_columns(dataset):
 
 def _deserialize(examples_serialized):
   features = tf.parse_example(examples_serialized, _FEATURE_MAP)
-  print(features)
   return features, features[movielens.RATING_COLUMN] / movielens.MAX_RATING
 
 
