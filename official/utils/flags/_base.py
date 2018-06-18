@@ -139,9 +139,3 @@ def get_num_gpus(flags_obj):
   from tensorflow.python.client import device_lib  # pylint: disable=g-import-not-at-top
   local_device_protos = device_lib.list_local_devices()
   return sum([1 for d in local_device_protos if d.device_type == "GPU"])
-
-def apply_clean(flags_obj):
-  if flags_obj.clean and tf.gfile.Exists(flags_obj.model_dir):
-    tf.logging.info("--clean flag set. Removing existing model dir: {}".format(
-        flags_obj.model_dir))
-    tf.gfile.DeleteRecursively(flags_obj.model_dir)

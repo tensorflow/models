@@ -179,7 +179,7 @@ def run_ncf(_):
   ncf_dataset = movielens_dataset.data_preprocessing(
       FLAGS.data_dir, FLAGS.dataset, FLAGS.num_neg)
 
-  flags_core.apply_clean(flags.FLAGS)
+  model_helpers.apply_clean(flags.FLAGS)
 
   # Create NeuMF model and convert it to Estimator
   tf.logging.info("Creating Estimator from Keras model...")

@@ -339,7 +339,7 @@ def resnet_main(
       This is only used if flags_obj.export_dir is passed.
   """
 
-  flags_core.apply_clean(flags.FLAGS)
+  model_helpers.apply_clean(flags.FLAGS)
 
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'

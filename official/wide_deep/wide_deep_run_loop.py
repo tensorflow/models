@@ -75,7 +75,7 @@ def export_model(model, model_type, export_dir, model_column_fn):
 def run_loop(name, train_input_fn, eval_input_fn, model_column_fn,
              build_estimator_fn, flags_obj, tensors_to_log, early_stop=False):
   """Define training loop."""
-  flags_core.apply_clean(flags.FLAGS)
+  model_helpers.apply_clean(flags.FLAGS)
   model = build_estimator_fn(
       model_dir=flags_obj.model_dir, model_type=flags_obj.model_type,
       model_column_fn=model_column_fn)

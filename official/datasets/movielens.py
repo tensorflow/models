@@ -38,6 +38,7 @@ import tensorflow as tf
 
 from official.utils.flags import core as flags_core
 
+
 ML_1M = "ml-1m"
 ML_20M = "ml-20m"
 DATASETS = [ML_1M, ML_20M]
@@ -77,7 +78,6 @@ NUM_ITEM_IDS = 3952
 
 MAX_RATING = 5
 
-
 NUM_RATINGS = {
     ML_1M: 1000209,
     ML_20M: 20000263
@@ -93,7 +93,8 @@ def _download_and_clean(dataset, data_dir):
   whole number ratings while the 20m dataset allows half integer ratings.
   """
   if dataset not in DATASETS:
-    raise ValueError("dataset must be one of: {}".format(",".join(DATASETS)))
+    raise ValueError("dataset {} is not in {{{}}}".format(
+        dataset, ",".join(DATASETS)))
 
   data_subdir = os.path.join(data_dir, dataset)
 
@@ -139,7 +140,7 @@ def _download_and_clean(dataset, data_dir):
     tf.gfile.DeleteRecursively(temp_dir)
 
 
-def _write_csv(input_path, output_path, names, skip_first, separator=","):
+def _transform_csv(input_path, output_path, names, skip_first, separator=","):
   """Transform csv to a regularized format.
 
   Args:
@@ -189,12 +190,12 @@ def _regularize_1m_dataset(temp_dir):
   """
   working_dir = os.path.join(temp_dir, ML_1M)
 
-  _write_csv(
+  _transform_csv(
       input_path=os.path.join(working_dir, "ratings.dat"),
       output_path=os.path.join(temp_dir, RATINGS_FILE),
       names=RATING_COLUMNS, skip_first=False, separator="::")
 
-  _write_csv(
+  _transform_csv(
       input_path=os.path.join(working_dir, "movies.dat"),
       output_path=os.path.join(temp_dir, MOVIES_FILE),
       names=MOVIE_COLUMNS, skip_first=False, separator="::")
@@ -223,12 +224,12 @@ def _regularize_20m_dataset(temp_dir):
   """
   working_dir = os.path.join(temp_dir, ML_20M)
 
-  _write_csv(
+  _transform_csv(
       input_path=os.path.join(working_dir, "ratings.csv"),
       output_path=os.path.join(temp_dir, RATINGS_FILE),
       names=RATING_COLUMNS, skip_first=True, separator=",")
 
-  _write_csv(
+  _transform_csv(
       input_path=os.path.join(working_dir, "movies.csv"),
       output_path=os.path.join(temp_dir, MOVIES_FILE),
       names=MOVIE_COLUMNS, skip_first=True, separator=",")

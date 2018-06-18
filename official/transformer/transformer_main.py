@@ -576,7 +576,7 @@ def run_transformer(flags_obj):
 
   params["repeat_dataset"] = schedule_manager.repeat_dataset
 
-  flags_core.apply_clean(flags.FLAGS)
+  model_helpers.apply_clean(flags.FLAGS)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(

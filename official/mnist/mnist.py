@@ -159,7 +159,7 @@ def run_mnist(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
-  flags_core.apply_clean(flags_obj)
+  model_helpers.apply_clean(flags_obj)
   model_function = model_fn
 
   # Get number of GPUs as defined by the --num_gpus flags and the number of

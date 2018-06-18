@@ -67,8 +67,8 @@ def write_to_temp_buffer(dataframe, buffer_folder, columns):
     tf.gfile.MakeDirs(buffer_folder)
     buffer_path = os.path.join(buffer_folder, str(uuid.uuid4()))
   _GARBAGE_COLLECTOR.register(buffer_path)
-  write_to_buffer(dataframe, buffer_path, columns)
-  return buffer_path
+
+  return write_to_buffer(dataframe, buffer_path, columns)
 
 
 def iter_shard_dataframe(df, rows_per_core=1000):
