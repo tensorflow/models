@@ -51,8 +51,8 @@ class ExamplesPerSecondCallback(tf.keras.callbacks.Callback):
     super(ExamplesPerSecondCallback, self).__init__()
 
   def on_train_begin(self, logs=None):
-    self._train_time = 0
-    self._batch_times = []
+    self._train_start_time = time.time()
+    self._last_recorded_time = time.time()
 
   def on_batch_begin(self, batch, logs=None):
     self._time_start = time.time()
@@ -64,25 +64,21 @@ class ExamplesPerSecondCallback(tf.keras.callbacks.Callback):
     every_n_steps.
     """
     self._global_step += 1
-
-    elapsed_time = time.time() - self._time_start
-    self._train_time += elapsed_time
-    self._batch_times.append(elapsed_time)
+    current_time = time.time()
 
     if self._global_step % self._every_n_steps == 0:
       average_examples_per_sec = self._batch_size * (
-          self._global_step / self._train_time)
+          self._global_step / (current_time - self._train_start_time))
       self._logger.log_metric(
           "average_examples_per_sec", average_examples_per_sec,
           global_step=self._global_step)
 
-      # Get the total elapsed time of the last n steps
-      n_batch_time = sum(self._batch_times[-self._every_n_steps:])
       current_examples_per_sec = self._batch_size * (
-          self._every_n_steps / n_batch_time)
+          self._every_n_steps / (current_time - self._last_recorded_time))
       self._logger.log_metric(
           "current_examples_per_sec", current_examples_per_sec,
           global_step=self._global_step)
+      self._last_recorded_time = current_time  # Update last_recorded_time
 
 
 class LoggingMetricCallback(tf.keras.callbacks.Callback):

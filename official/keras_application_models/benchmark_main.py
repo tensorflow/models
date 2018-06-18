@@ -132,7 +132,7 @@ def main(_):
 
 def define_keras_benchmark_flags():
   """Add flags for keras built-in application models."""
-  flags_core.define_base()
+  flags_core.define_base(hooks=False)
   flags_core.define_performance()
   flags_core.define_image()
   flags_core.define_benchmark()
@@ -141,7 +141,6 @@ def define_keras_benchmark_flags():
   flags_core.set_defaults(
       data_format="channels_last",
       use_synthetic_data=True,
-      hooks=False,
       train_epochs=2)
 
   flags.DEFINE_enum(
