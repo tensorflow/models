@@ -152,6 +152,30 @@ class LightCurveUtilTest(absltest.TestCase):
     self.assertSequenceAlmostEqual([10, 17, 18], output_time[1])
     self.assertSequenceAlmostEqual([100, 170, 180], output_flux[1])
 
+    # One segment totally removed with include_empty_segments = True.
+    time = [np.arange(5, dtype=np.float), np.arange(10, 20, dtype=np.float)]
+    flux = [10 * t for t in time]
+    events = [periodic_event.Event(period=10, duration=2, t0=2.5)]
+    output_time, output_flux = util.remove_events(
+        time, flux, events, width_factor=3, include_empty_segments=True)
+    self.assertLen(output_time, 2)
+    self.assertLen(output_flux, 2)
+    self.assertSequenceEqual([], output_time[0])
+    self.assertSequenceEqual([], output_flux[0])
+    self.assertSequenceAlmostEqual([16, 17, 18, 19], output_time[1])
+    self.assertSequenceAlmostEqual([160, 170, 180, 190], output_flux[1])
+
+    # One segment totally removed with include_empty_segments = False.
+    time = [np.arange(5, dtype=np.float), np.arange(10, 20, dtype=np.float)]
+    flux = [10 * t for t in time]
+    events = [periodic_event.Event(period=10, duration=2, t0=2.5)]
+    output_time, output_flux = util.remove_events(
+        time, flux, events, width_factor=3, include_empty_segments=False)
+    self.assertLen(output_time, 1)
+    self.assertLen(output_flux, 1)
+    self.assertSequenceAlmostEqual([16, 17, 18, 19], output_time[0])
+    self.assertSequenceAlmostEqual([160, 170, 180, 190], output_flux[0])
+
   def testInterpolateMaskedSpline(self):
     all_time = [
         np.arange(0, 10, dtype=np.float),
