@@ -24,14 +24,14 @@ import os
 import tempfile
 import time
 
-# pylint: disable=g-bad-import-order
+# pylint: disable=wrong-import-order
 from absl import app as absl_app
 from absl import flags
 import numpy as np
 import pandas as pd
 from six.moves import xrange
 import tensorflow as tf
-# pylint: enable=g-bad-import-order
+# pylint: enable=wrong-import-order
 
 from official.datasets import movielens
 from official.utils.data import file_io
