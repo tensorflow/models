@@ -81,7 +81,7 @@ def run_movie(flags_obj):
 
   train_input_fn, eval_input_fn, model_column_fn = \
     movielens_dataset.construct_input_fns(
-        dataset=flags_obj.dataset, data_dir="/tmp/movielens-data/",
+        dataset=flags_obj.dataset, data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size, repeat=flags_obj.epochs_between_evals)
 
   tensors_to_log = {
