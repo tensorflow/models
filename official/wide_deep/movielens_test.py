@@ -103,9 +103,9 @@ class BaseTest(tf.test.TestCase):
 
   def test_end_to_end_deep(self):
     integration.run_synthetic(
-        main=movielens_main.main, tmp_root=self.get_temp_dir(),
+        main=movielens_main.main, tmp_root=self.temp_dir,
         extra_flags=[
-            "--data_dir", self.get_temp_dir(),
+            "--data_dir", self.temp_dir,
             "--download_if_missing=false",
             "--train_epochs", "1",
             "--epochs_between_evals", "1"
