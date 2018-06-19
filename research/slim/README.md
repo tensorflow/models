@@ -25,6 +25,11 @@ Maintainers of TF-slim:
   github: [nathansilberman](https://github.com/nathansilberman)
 * Sergio Guadarrama, github: [sguada](https://github.com/sguada)
 
+## Citation
+"TensorFlow-Slim image classification model library"
+N. Silberman and S. Guadarrama, 2016.
+https://github.com/tensorflow/models/tree/master/research/slim
+
 ## Table of contents
 
 <a href="#Install">Installation and setup</a><br>
