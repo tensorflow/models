@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import multiprocessing
 
 # pylint: disable=wrong-import-order
@@ -82,30 +83,31 @@ _FEATURE_MAP = {
 }
 
 
-class FixedCoreCount(object):
+@contextlib.contextmanager
+def fixed_core_count(cpu_count):
   """Override CPU count.
 
   file_io.py uses the cpu_count function to scale to the size of the instance.
   However, this is not desirable for testing because it can make the test flaky.
   Instead, this context manager fixes the count for more robust testing.
+
+  Args:
+    cpu_count: How many cores multiprocessing claims to have.
+
+  Yields:
+    Nothing. (for context manager only)
   """
-
-  def __init__(self, cpu_count=2):
-    self.cpu_count = cpu_count
-
-  def __enter__(self):
-    self.old_count_fn = multiprocessing.cpu_count
-    multiprocessing.cpu_count = lambda: self.cpu_count
-
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    multiprocessing.cpu_count = self.old_count_fn
+  old_count_fn = multiprocessing.cpu_count
+  multiprocessing.cpu_count = lambda: cpu_count
+  yield
+  multiprocessing.cpu_count = old_count_fn
 
 
 class BaseTest(tf.test.TestCase):
 
   def _test_sharding(self, row_count, cpu_count, expected):
     df = pd.DataFrame({_DUMMY_COL: list(range(row_count))})
-    with FixedCoreCount(cpu_count):
+    with fixed_core_count(cpu_count):
       shards = list(file_io.iter_shard_dataframe(df, _ROWS_PER_CORE))
     result = [[j[_DUMMY_COL].tolist() for j in i] for i in shards]
     self.assertAllEqual(expected, result)
@@ -134,22 +136,20 @@ class BaseTest(tf.test.TestCase):
   def test_large_rows_large_core(self):
     self._test_sharding(**_TEST_CASES[7])
 
-  def _serialize_deserialize(self, num_cores=1):
-    n = 20
-
-    np.random.seed(34523)
+  def _serialize_deserialize(self, num_cores=1, num_rows=20):
+    np.random.seed(1)
     df = pd.DataFrame({
         # Serialization order is only deterministic for num_cores=1. raw_row is
         # used in validation after the deserialization.
-        _RAW_ROW: np.array(range(n), dtype=np.int64),
-        _DUMMY_COL: np.random.randint(0, 35, size=(n,)),
+        _RAW_ROW: np.array(range(num_rows), dtype=np.int64),
+        _DUMMY_COL: np.random.randint(0, 35, size=(num_rows,)),
         _DUMMY_VEC_COL: [
             np.array([np.random.random() for _ in range(_DUMMY_VEC_LEN)])
-            for i in range(n)  # pylint: disable=unused-variable
+            for i in range(num_rows)  # pylint: disable=unused-variable
         ]
     })
 
-    with FixedCoreCount(num_cores):
+    with fixed_core_count(num_cores):
       buffer_path = file_io.write_to_temp_buffer(
           df, self.get_temp_dir(), [_RAW_ROW, _DUMMY_COL, _DUMMY_VEC_COL])
 
@@ -160,7 +160,7 @@ class BaseTest(tf.test.TestCase):
 
       data_iter = dataset.make_one_shot_iterator()
       seen_rows = set()
-      for i in range(n+5):
+      for i in range(num_rows+5):
         row = data_iter.get_next()
         try:
           row_id, val_0, val_1 = sess.run(
@@ -172,9 +172,9 @@ class BaseTest(tf.test.TestCase):
           self.assertEqual(val_0, df[_DUMMY_COL][row_id])
           self.assertAllClose(val_1, df[_DUMMY_VEC_COL][row_id])
 
-          self.assertLess(i, n, msg="Too many rows.")
+          self.assertLess(i, num_rows, msg="Too many rows.")
         except tf.errors.OutOfRangeError:
-          self.assertGreaterEqual(i, n, msg="Too few rows.")
+          self.assertGreaterEqual(i, num_rows, msg="Too few rows.")
 
     file_io._GARBAGE_COLLECTOR.purge()
     assert not tf.gfile.Exists(buffer_path)
