@@ -97,8 +97,8 @@ source. You'll need to install:
     *   Alternately, Download bazel 0.11.1 <.deb> from
         [https://github.com/bazelbuild/bazel/releases](https://github.com/bazelbuild/bazel/releases)
         for your system configuration.
-    *   Install it using the command: sudo dpkg -i <.deb file>
-    *   Check for the bazel version by typing: bazel version
+    *   Install it using the command: `sudo dpkg -i <.deb file>`
+    *   Check for the bazel version by typing: `bazel version`
 *   swig:
     *   `apt-get install swig` on Ubuntu
     *   `brew install swig` on OSX
@@ -276,7 +276,7 @@ input {
   Part {
     file_pattern: './wsj-tagged.conll'
   }
-}
+}PPPPPP
 ```
 
 Then we can use `--input=wsj-data --output=wsj-data-tagged` on the command line
