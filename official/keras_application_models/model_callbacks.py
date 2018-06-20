@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Callbacks for Keras built-in application models."""
+"""Callbacks for Keras built-in application models.
+
+Note that, in the callbacks, the global_step is initialized in the __init__ of
+each callback rather than on_train_begin. As on_train_begin gets called in
+the fit_loop, and it will be reset with each call to fit(). To keep the
+global_step persistent across all training sessions, it should be initialized in
+the __init__.
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -47,7 +54,7 @@ class ExamplesPerSecondCallback(tf.keras.callbacks.Callback):
     self._batch_size = batch_size
     self._every_n_steps = every_n_steps
     self._logger = metric_logger or logger.BaseBenchmarkLogger()
-    self._global_step = 0
+    self._global_step = 0  # Initialize it in __init__
     super(ExamplesPerSecondCallback, self).__init__()
 
   def on_train_begin(self, logs=None):
@@ -92,7 +99,7 @@ class LoggingMetricCallback(tf.keras.callbacks.Callback):
     self._logger = metric_logger or logger.BaseBenchmarkLogger()
     self._per_batch_metrics = _PER_BATCH_METRICS
     self._per_epoch_metrics = _PER_EPOCH_METRICS
-    self._global_step = 0
+    self._global_step = 0  # Initialize it in __init__
     super(LoggingMetricCallback, self).__init__()
 
   def on_batch_end(self, batch, logs=None):
