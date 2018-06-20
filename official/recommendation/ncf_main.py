@@ -32,8 +32,8 @@ from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.recommendation import constants
-from official.recommendation import dataset
+from official.datasets import movielens
+from official.recommendation import movielens_dataset
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
@@ -47,7 +47,7 @@ _HR_KEY = "HR"
 _NDCG_KEY = "NDCG"
 
 
-def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset):
+def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -71,6 +71,7 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset):
         NDCG calculation. Each item is for one user.
       eval_all_items, which is a nested list. Each entry is the 101 items
         (1 ground truth item and 100 negative items) for one user.
+    pred_input_fn: The input function for the test data.
 
   Returns:
     eval_results: A dict of evaluation results for benchmark logging.
@@ -83,15 +84,10 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset):
       ndcg is an integer representing the average NDCG scores across all users,
       and global_step is the global step
   """
-  # Define prediction input function
-  def pred_input_fn():
-    return dataset.input_fn(
-        False, distribution_utils.per_device_batch_size(batch_size, num_gpus),
-        ncf_dataset)
 
   # Get predictions
   predictions = estimator.predict(input_fn=pred_input_fn)
-  all_predicted_scores = [p[constants.RATING] for p in predictions]
+  all_predicted_scores = [p[movielens.RATING_COLUMN] for p in predictions]
 
   # Calculate HR score
   def _get_hr(ranklist, true_item):
@@ -174,22 +170,16 @@ def main(_):
 
 def run_ncf(_):
   """Run NCF training and eval loop."""
-  # Data preprocessing
-  # The file name of training and test dataset
-  train_fname = os.path.join(
-      FLAGS.data_dir, FLAGS.dataset + "-" + constants.TRAIN_RATINGS_FILENAME)
-  test_fname = os.path.join(
-      FLAGS.data_dir, FLAGS.dataset + "-" + constants.TEST_RATINGS_FILENAME)
-  neg_fname = os.path.join(
-      FLAGS.data_dir, FLAGS.dataset + "-" + constants.TEST_NEG_FILENAME)
-
-  assert os.path.exists(train_fname), (
-      "Run data_download.py first to download and extract {} dataset".format(
-          FLAGS.dataset))
+  if FLAGS.download_if_missing:
+    movielens.download(FLAGS.dataset, FLAGS.data_dir)
+    movielens_dataset.construct_train_eval_csv(
+        data_dir=FLAGS.data_dir, dataset=FLAGS.dataset)
 
   tf.logging.info("Data preprocessing...")
-  ncf_dataset = dataset.data_preprocessing(
-      train_fname, test_fname, neg_fname, FLAGS.num_neg)
+  ncf_dataset = movielens_dataset.data_preprocessing(
+      FLAGS.data_dir, FLAGS.dataset, FLAGS.num_neg)
+
+  model_helpers.apply_clean(flags.FLAGS)
 
   # Create NeuMF model and convert it to Estimator
   tf.logging.info("Creating Estimator from Keras model...")
@@ -205,6 +195,7 @@ def run_ncf(_):
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
       FLAGS.hooks,
+      model_dir=FLAGS.model_dir,
       batch_size=FLAGS.batch_size  # for ExamplesPerSecondHook
   )
   run_params = {
@@ -221,11 +212,17 @@ def run_ncf(_):
       test_id=FLAGS.benchmark_test_id)
 
   # Training and evaluation cycle
-  def train_input_fn():
-    return dataset.input_fn(
+  def get_train_input_fn():
+    return movielens_dataset.get_input_fn(
         True,
         distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, FLAGS.epochs_between_evals)
+        ncf_dataset, FLAGS.data_dir, FLAGS.dataset, FLAGS.epochs_between_evals)
+
+  def get_pred_input_fn():
+    return movielens_dataset.get_input_fn(
+        False,
+        distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
+        ncf_dataset, FLAGS.data_dir, FLAGS.dataset, 1)
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
 
@@ -234,11 +231,11 @@ def run_ncf(_):
         cycle_index + 1, total_training_cycle))
 
     # Train the model
-    estimator.train(input_fn=train_input_fn, hooks=train_hooks)
+    estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks)
 
     # Evaluate the model
     eval_results = evaluate_model(
-        estimator, FLAGS.batch_size, num_gpus, ncf_dataset)
+        estimator, FLAGS.batch_size, num_gpus, ncf_dataset, get_pred_input_fn())
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)
@@ -287,6 +284,10 @@ def define_ncf_flags():
       enum_values=["ml-1m", "ml-20m"], case_sensitive=False,
       help=flags_core.help_wrap(
           "Dataset to be trained and evaluated."))
+
+  flags.DEFINE_boolean(
+      name="download_if_missing", default=True, help=flags_core.help_wrap(
+          "Download data to data_dir if it is not already present."))
 
   flags.DEFINE_integer(
       name="num_factors", default=8,

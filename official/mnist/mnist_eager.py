@@ -39,6 +39,7 @@ import tensorflow.contrib.eager as tfe
 from official.mnist import dataset as mnist_dataset
 from official.mnist import mnist
 from official.utils.flags import core as flags_core
+from official.utils.misc import model_helpers
 
 
 def loss(logits, labels):
@@ -104,6 +105,7 @@ def run_mnist_eager(flags_obj):
     flags_obj: An object containing parsed flag values.
   """
   tf.enable_eager_execution()
+  model_helpers.apply_clean(flags.FLAGS)
 
   # Automatically determine device and data_format
   (device, data_format) = ('/gpu:0', 'channels_first')

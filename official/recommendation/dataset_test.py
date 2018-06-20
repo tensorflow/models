@@ -18,25 +18,43 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import shutil
 
 import numpy as np
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.recommendation import dataset
+# from official.recommendation import dataset
+from official.datasets import movielens
+from official.recommendation import movielens_dataset
 
-_TRAIN_FNAME = os.path.join(
-    os.path.dirname(__file__), "unittest_data/test_train_ratings.csv")
 _TEST_FNAME = os.path.join(
     os.path.dirname(__file__), "unittest_data/test_eval_ratings.csv")
-_TEST_NEG_FNAME = os.path.join(
-    os.path.dirname(__file__), "unittest_data/test_eval_negative.csv")
+
 _NUM_NEG = 4
 
 
 class DatasetTest(tf.test.TestCase):
+  def setUp(self):
+    # Create temporary CSV file
+    self.temp_dir = self.get_temp_dir()
+    tf.gfile.MakeDirs(os.path.join(self.temp_dir,
+                                   movielens_dataset._BUFFER_SUBDIR))
+
+    path_map = {
+        "test_train_ratings.csv": "ml-1m-train-ratings.csv",
+        "test_eval_ratings.csv": "ml-1m-test-ratings.csv",
+        "test_eval_negative.csv": "ml-1m-test-negative.csv"
+    }
+
+    for src, dest in path_map.items():
+      src = os.path.join(os.path.dirname(__file__), "unittest_data", src)
+      dest = os.path.join(self.temp_dir, movielens_dataset._BUFFER_SUBDIR, dest)
+      with tf.gfile.Open(src, "r") as f_in, tf.gfile.Open(dest, "w") as f_out:
+        f_out.write(f_in.read())
+
 
   def test_load_data(self):
-    data = dataset.load_data(_TEST_FNAME)
+    data = movielens_dataset.load_data(_TEST_FNAME)
     self.assertEqual(len(data), 2)
 
     self.assertEqual(data[0][0], 0)
@@ -46,8 +64,8 @@ class DatasetTest(tf.test.TestCase):
     self.assertEqual(data[-1][2], 1)
 
   def test_data_preprocessing(self):
-    ncf_dataset = dataset.data_preprocessing(
-        _TRAIN_FNAME, _TEST_FNAME, _TEST_NEG_FNAME, _NUM_NEG)
+    ncf_dataset = movielens_dataset.data_preprocessing(
+        self.temp_dir, movielens.ML_1M, _NUM_NEG)
 
     # Check train data preprocessing
     self.assertAllEqual(np.array(ncf_dataset.train_data)[:, 2],
@@ -75,10 +93,10 @@ class DatasetTest(tf.test.TestCase):
 
   def test_generate_train_dataset(self):
     # Check train dataset
-    ncf_dataset = dataset.data_preprocessing(
-        _TRAIN_FNAME, _TEST_FNAME, _TEST_NEG_FNAME, _NUM_NEG)
+    ncf_dataset = movielens_dataset.data_preprocessing(
+        self.temp_dir, movielens.ML_1M, _NUM_NEG)
 
-    train_dataset = dataset.generate_train_dataset(
+    train_dataset = movielens_dataset.generate_train_dataset(
         ncf_dataset.train_data, ncf_dataset.num_items, _NUM_NEG)
 
     # Each user has 1 positive instance followed by _NUM_NEG negative instances

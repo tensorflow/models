@@ -84,3 +84,10 @@ def generate_synthetic_data(
     element = (input_element, label_element)
 
   return tf.data.Dataset.from_tensors(element).repeat()
+
+
+def apply_clean(flags_obj):
+  if flags_obj.clean and tf.gfile.Exists(flags_obj.model_dir):
+    tf.logging.info("--clean flag set. Removing existing model dir: {}".format(
+        flags_obj.model_dir))
+    tf.gfile.DeleteRecursively(flags_obj.model_dir)

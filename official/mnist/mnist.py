@@ -159,6 +159,7 @@ def run_mnist(flags_obj):
   Args:
     flags_obj: An object containing parsed flag values.
   """
+  model_helpers.apply_clean(flags_obj)
   model_function = model_fn
 
   # Get number of GPUs as defined by the --num_gpus flags and the number of
@@ -210,7 +211,8 @@ def run_mnist(flags_obj):
 
   # Set up hook that outputs training logs every 100 steps.
   train_hooks = hooks_helper.get_train_hooks(
-      flags_obj.hooks, batch_size=flags_obj.batch_size)
+      flags_obj.hooks, model_dir=flags_obj.model_dir,
+      batch_size=flags_obj.batch_size)
 
   # Train and evaluate model.
   for _ in range(flags_obj.train_epochs // flags_obj.epochs_between_evals):

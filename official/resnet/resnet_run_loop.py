@@ -339,6 +339,8 @@ def resnet_main(
       This is only used if flags_obj.export_dir is passed.
   """
 
+  model_helpers.apply_clean(flags.FLAGS)
+
   # Using the Winograd non-fused algorithms provides a small performance boost.
   os.environ['TF_ENABLE_WINOGRAD_NONFUSED'] = '1'
 
@@ -385,6 +387,7 @@ def resnet_main(
 
   train_hooks = hooks_helper.get_train_hooks(
       flags_obj.hooks,
+      model_dir=flags_obj.model_dir,
       batch_size=flags_obj.batch_size)
 
   def input_fn_train():
