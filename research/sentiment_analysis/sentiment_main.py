@@ -12,23 +12,15 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from data import dataset
-from data.dataset import imdb
 import sentiment_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 
-def evaluate_model(estimator, num_gpus):
-  # Define prediction input function
-  def pred_input_fn():
-    return dataset.input_fn(
-        FLAGS.dataset, True, per_device_batch_size(FLAGS.batch_size, num_gpus),
-        FLAGS.vocabulary_size, FLAGS.sentence_length)
-
-  return estimator.evaluate(input_fn=pred_input_fn)
 
 def convert_keras_to_estimator(keras_model, num_gpus, model_dir=None):
-  keras_model.compile(optimizer='rmsprop', loss="categorical_crossentropy", metrics=['accuracy'])
+  keras_model.compile(optimizer='rmsprop',
+                      loss="categorical_crossentropy", metrics=['accuracy'])
 
   if num_gpus == 0:
     distribution = tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
@@ -67,21 +59,33 @@ def per_device_batch_size(batch_size, num_gpus):
     err = ("When running with multiple GPUs, batch size "
            "must be a multiple of the number of available GPUs. Found {} "
            "GPUs with a batch size of {}; try --batch_size={} instead."
-          ).format(num_gpus, batch_size, batch_size - remainder)
+           ).format(num_gpus, batch_size, batch_size - remainder)
     raise ValueError(err)
   return int(batch_size / num_gpus)
+
+import tensorflow as tf
+import numpy as np
+from data.util import to_dataset, pad_sentence, START_CHAR, OOV_CHAR
+
 
 def run_model():
   """Run training and eval loop."""
 
-  tf.logging.info("Creating Estimator from Keras model...")
-  num_class = imdb.NUM_CLASS
+  num_class = dataset.get_num_class(FLAGS.dataset)
+
+  tf.logging.info("Loading the dataset...")
+
+  train_input_fn, eval_input_fn = dataset.construct_input_fns(
+      FLAGS.dataset, FLAGS.batch_size, FLAGS.vocabulary_size,
+      FLAGS.sentence_length, repeat=FLAGS.epochs_between_evals)
 
   keras_model = sentiment_model.CNN(
       FLAGS.embedding_dim, FLAGS.vocabulary_size, FLAGS.sentence_length,
       FLAGS.cnn_filters, num_class, FLAGS.dropout_rate)
   num_gpus = flags_core.get_num_gpus(FLAGS)
-  estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
+  tf.logging.info("Creating Estimator from Keras model...")
+  estimator = convert_keras_to_estimator(
+      keras_model, num_gpus, FLAGS.model_dir)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -100,11 +104,6 @@ def run_model():
       test_id=FLAGS.benchmark_test_id)
 
   # Training and evaluation cycle
-  def train_input_fn():
-    return dataset.input_fn(
-        FLAGS.dataset, True, per_device_batch_size(FLAGS.batch_size, num_gpus),
-        FLAGS.vocabulary_size, FLAGS.sentence_length, repeat=FLAGS.epochs_between_evals)
-
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
 
   for cycle_index in range(total_training_cycle):
@@ -115,7 +114,7 @@ def run_model():
     estimator.train(input_fn=train_input_fn, hooks=train_hooks)
 
     # Evaluate the model
-    eval_results = evaluate_model(estimator, num_gpus)
+    eval_results = estimator.evaluate(input_fn=eval_input_fn)
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)
@@ -125,9 +124,11 @@ def run_model():
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
 
+
 def main(_):
   with logger.benchmark_context(FLAGS):
     run_model()
+
 
 def define_flags():
   """Add flags to run sentiment_main.py"""
@@ -149,7 +150,7 @@ def define_flags():
       model_dir=None,
       train_epochs=30,
       batch_size=30,
-      hooks="ProfilerHook")
+      hooks="")
 
   # Add domain-specific flags
   flags.DEFINE_enum(
