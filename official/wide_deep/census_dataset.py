@@ -118,7 +118,7 @@ def build_model_columns():
 
   # To show an example of hashing:
   occupation = tf.feature_column.categorical_column_with_hash_bucket(
-      'occupation', hash_bucket_size=1000)
+      'occupation', hash_bucket_size=_HASH_BUCKET_SIZE)
 
   # Transformations.
   age_buckets = tf.feature_column.bucketized_column(
