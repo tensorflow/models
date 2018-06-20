@@ -276,7 +276,7 @@ input {
   Part {
     file_pattern: './wsj-tagged.conll'
   }
-}PPPPPP
+}
 ```
 
 Then we can use `--input=wsj-data --output=wsj-data-tagged` on the command line
