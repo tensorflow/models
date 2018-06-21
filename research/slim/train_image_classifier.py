@@ -223,6 +223,15 @@ tf.app.flags.DEFINE_boolean(
     'ignore_missing_vars', False,
     'When restoring a checkpoint would ignore missing variables.')
 
+##########################
+# GPU Partitioning Flags #
+##########################
+
+tf.app.flags.DEFINE_float(
+    'gpu_training_partition', 1.0,
+    'The maximum partition from the overall GPU memory used for training'
+    'If left as None, then the entire GPU is dedicated for training only.')
+
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -560,6 +569,10 @@ def main(_):
     # Merge all summaries together.
     summary_op = tf.summary.merge(list(summaries), name='summary_op')
 
+    # Set the GPU partitioning into a ConfigProto Object to be passed to slim.learning.train
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=FLAGS.gpu_training_partition)
+    gpu_config = tf.ConfigProto(gpu_options=gpu_options)
+
     ###########################
     # Kicks off the training. #
     ###########################
@@ -574,6 +587,7 @@ def main(_):
         log_every_n_steps=FLAGS.log_every_n_steps,
         save_summaries_secs=FLAGS.save_summaries_secs,
         save_interval_secs=FLAGS.save_interval_secs,
+        session_config=gpu_config,
         sync_optimizer=optimizer if FLAGS.sync_replicas else None)
 
 
