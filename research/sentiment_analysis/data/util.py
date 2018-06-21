@@ -22,5 +22,5 @@ def to_dataset(x, y, batch_size, repeat):
   dataset = dataset.batch(batch_size)
 
   # Prefetch to improve speed of input pipeline.
-  dataset = dataset.prefetch(1)
+  dataset = dataset.prefetch(10)
   return dataset

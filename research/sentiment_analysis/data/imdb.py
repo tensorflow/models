@@ -25,11 +25,14 @@ def construct_input_fns(vocabulary_size, sentence_length, batch_size, repeat=1):
                                                                               index_from=OOV_CHAR + 1)
 
   def train_input_fn():
-    return to_dataset(np.array([pad_sentence(s, sentence_length) for s in _x_train]),
-                      np.eye(NUM_CLASS)[_y_train], batch_size, repeat)
+    dataset = to_dataset(np.array([pad_sentence(s, sentence_length) for s in _x_train]),
+                         np.eye(NUM_CLASS)[_y_train], batch_size, repeat)
+    dataset = dataset.shuffle(len(_x_train), reshuffle_each_iteration=True)
+    return dataset
 
   def eval_input_fn():
-    return to_dataset(np.array([pad_sentence(s, sentence_length) for s in _x_test]),
-                      np.eye(NUM_CLASS)[_y_test], batch_size, repeat)
+    dataset = to_dataset(np.array([pad_sentence(s, sentence_length) for s in _x_test]),
+                         np.eye(NUM_CLASS)[_y_test], batch_size, repeat)
+    return dataset
 
   return train_input_fn, eval_input_fn

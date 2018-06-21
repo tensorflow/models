@@ -19,8 +19,8 @@ from official.utils.logs import logger
 
 
 def convert_keras_to_estimator(keras_model, num_gpus, model_dir=None):
-  keras_model.compile(optimizer='rmsprop',
-                      loss="categorical_crossentropy", metrics=['accuracy'])
+  keras_model.compile(optimizer="rmsprop",
+                      loss="categorical_crossentropy", metrics=["accuracy"])
 
   if num_gpus == 0:
     distribution = tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
@@ -154,8 +154,8 @@ def define_flags():
 
   # Add domain-specific flags
   flags.DEFINE_enum(
-      name="dataset", default="imdb",
-      enum_values=["imdb"], case_sensitive=False,
+      name="dataset", default=dataset.DATASET_IMDB,
+      enum_values=[dataset.DATASET_IMDB], case_sensitive=False,
       help=flags_core.help_wrap(
           "Dataset to be trained and evaluated."))
 
