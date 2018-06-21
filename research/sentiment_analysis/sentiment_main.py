@@ -16,19 +16,15 @@ import sentiment_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
+from official.utils.misc import distribution_utils
 
 
 def convert_keras_to_estimator(keras_model, num_gpus, model_dir=None):
   keras_model.compile(optimizer="rmsprop",
                       loss="categorical_crossentropy", metrics=["accuracy"])
 
-  if num_gpus == 0:
-    distribution = tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
-  elif num_gpus == 1:
-    distribution = tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
-  else:
-    distribution = tf.contrib.distribute.MirroredStrategy(num_gpus=num_gpus)
-
+  distribution = distribution_utils.get_distribution_strategy(
+      num_gpus, all_reduce_alg=None)
   run_config = tf.estimator.RunConfig(train_distribute=distribution)
 
   estimator = tf.keras.estimator.model_to_estimator(
