@@ -25,7 +25,7 @@ Example usage:
     ./train \
         --logtostderr \
         --train_dir=path/to/train_dir \
-        --pipeline_config_path=pipeline_config.pbtxt
+        --pipeline_config_path=pipeline_config.config
 
 2) Three configuration files can be provided: a model_pb2.DetectionModel
 configuration file to define what type of DetectionModel is being trained, an

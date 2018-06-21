@@ -27,7 +27,7 @@ Example usage:
         --logtostderr \
         --checkpoint_dir=path/to/checkpoint_dir \
         --eval_dir=path/to/eval_dir \
-        --pipeline_config_path=pipeline_config.pbtxt
+        --pipeline_config_path=pipeline_config.config
 
 2) Three configuration files may be provided: a model_pb2.DetectionModel
 configuration file to define what type of DetectionModel is being evaluated, an
