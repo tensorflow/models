@@ -1,5 +1,8 @@
-"""The model makes use of concatenation of two CNN layers with different kernel sizes.
-`sentiment_model.py` for more details about the models.
+"""The main module for sentiment analysis.
+
+The model makes use of concatenation of two CNN layers
+with different kernel sizes.
+See `sentiment_model.py` for more details about the models.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -8,18 +11,20 @@ from __future__ import print_function
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
-import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from data import dataset
-import sentiment_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
+import sentiment_model
+import tensorflow as tf
 
 
 def convert_keras_to_estimator(keras_model, num_gpus, model_dir=None):
+  """Convert keras model into tensorflow estimator."""
+
   keras_model.compile(optimizer="rmsprop",
                       loss="categorical_crossentropy", metrics=["accuracy"])
 
@@ -33,74 +38,45 @@ def convert_keras_to_estimator(keras_model, num_gpus, model_dir=None):
   return estimator
 
 
-def per_device_batch_size(batch_size, num_gpus):
-  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
-  Note that this should eventually be handled by DistributionStrategies
-  directly. Multi-GPU support is currently experimental, however,
-  so doing the work here until that feature is in place.
-  Args:
-    batch_size: Global batch size to be divided among devices. This should be
-      equal to num_gpus times the single-GPU batch_size for multi-gpu training.
-    num_gpus: How many GPUs are used with DistributionStrategies.
-  Returns:
-    Batch size per device.
-  Raises:
-    ValueError: if batch_size is not divisible by number of devices
-  """
-  if num_gpus <= 1:
-    return batch_size
-
-  remainder = batch_size % num_gpus
-  if remainder:
-    err = ("When running with multiple GPUs, batch size "
-           "must be a multiple of the number of available GPUs. Found {} "
-           "GPUs with a batch size of {}; try --batch_size={} instead."
-           ).format(num_gpus, batch_size, batch_size - remainder)
-    raise ValueError(err)
-  return int(batch_size / num_gpus)
-
-import tensorflow as tf
-import numpy as np
-from data.util import to_dataset, pad_sentence, START_CHAR, OOV_CHAR
-
-
-def run_model():
+def run_model(flags_obj):
   """Run training and eval loop."""
 
-  num_class = dataset.get_num_class(FLAGS.dataset)
+  num_class = dataset.get_num_class(flags_obj.dataset)
 
   tf.logging.info("Loading the dataset...")
 
   train_input_fn, eval_input_fn = dataset.construct_input_fns(
-      FLAGS.dataset, FLAGS.batch_size, FLAGS.vocabulary_size,
-      FLAGS.sentence_length, repeat=FLAGS.epochs_between_evals)
+      flags_obj.dataset, flags_obj.batch_size, flags_obj.vocabulary_size,
+      flags_obj.sentence_length, repeat=flags_obj.epochs_between_evals)
 
   keras_model = sentiment_model.CNN(
-      FLAGS.embedding_dim, FLAGS.vocabulary_size, FLAGS.sentence_length,
-      FLAGS.cnn_filters, num_class, FLAGS.dropout_rate)
+      flags_obj.embedding_dim, flags_obj.vocabulary_size,
+      flags_obj.sentence_length,
+      flags_obj.cnn_filters, num_class, flags_obj.dropout_rate)
   num_gpus = flags_core.get_num_gpus(FLAGS)
   tf.logging.info("Creating Estimator from Keras model...")
   estimator = convert_keras_to_estimator(
-      keras_model, num_gpus, FLAGS.model_dir)
+      keras_model, num_gpus, flags_obj.model_dir)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
-      FLAGS.hooks,
-      batch_size=FLAGS.batch_size  # for ExamplesPerSecondHook
+      flags_obj.hooks,
+      batch_size=flags_obj.batch_size  # for ExamplesPerSecondHook
   )
   run_params = {
-      "batch_size": FLAGS.batch_size,
-      "train_epochs": FLAGS.train_epochs,
+      "batch_size": flags_obj.batch_size,
+      "train_epochs": flags_obj.train_epochs,
   }
   benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info(
       model_name="sentiment_analysis",
-      dataset_name=FLAGS.dataset,
+      dataset_name=flags_obj.dataset,
       run_params=run_params,
-      test_id=FLAGS.benchmark_test_id)
+      test_id=flags_obj.benchmark_test_id)
 
   # Training and evaluation cycle
-  total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
+  total_training_cycle = flags_obj.train_epochs\
+    // flags_obj.epochs_between_evals
 
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
@@ -123,11 +99,12 @@ def run_model():
 
 def main(_):
   with logger.benchmark_context(FLAGS):
-    run_model()
+    run_model(FLAGS)
 
 
 def define_flags():
-  """Add flags to run sentiment_main.py"""
+  """Add flags to run the main function."""
+
   # Add common flags
   flags_core.define_base(export_dir=False)
   flags_core.define_performance(
@@ -163,7 +140,8 @@ def define_flags():
   flags.DEFINE_integer(
       name="sentence_length", default=200,
       help=flags_core.help_wrap(
-          "The number of words in each sentence. Longer sentences get cut, shorter ones padded."))
+          "The number of words in each sentence. Longer sentences get cut,"
+          "shorter ones padded."))
 
   flags.DEFINE_integer(
       name="embedding_dim", default=256,
