@@ -71,11 +71,12 @@ class Cifar10DataSet(object):
     """Read the images and labels from 'filenames'."""
     filenames = self.get_filenames()
     # Repeat infinitely.
-    dataset = tf.contrib.data.TFRecordDataset(filenames).repeat()
+    dataset = tf.data.TFRecordDataset(filenames).repeat()
 
     # Parse records.
     dataset = dataset.map(
-        self.parser, num_threads=batch_size, output_buffer_size=2 * batch_size)
+        self.parser, num_parallel_calls=batch_size) #, prefetch(2 * batch_size))
+
 
     # Potentially shuffle records.
     if self.subset == 'train':
