@@ -8,11 +8,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
-# pylint: enable=g-bad-import-order
-
 from data import dataset
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper

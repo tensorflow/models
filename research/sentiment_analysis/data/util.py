@@ -9,7 +9,7 @@ OOV_CHAR = 3
 def pad_sentence(sen, sentence_length):
   sen = sen[:sentence_length]
   if len(sen) < sentence_length:
-    sen = np.pad(sen, (0, sentence_length - len(sen)), 'constant',
+    sen = np.pad(sen, (0, sentence_length - len(sen)), "constant",
                  constant_values=(START_CHAR, END_CHAR))
   return sen
 

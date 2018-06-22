@@ -1,6 +1,6 @@
 import data.imdb as imdb
 
-DATASET_IMDB = 'imdb'
+DATASET_IMDB = "imdb"
 
 
 def construct_input_fns(dataset, batch_size, vocabulary_size,
@@ -26,7 +26,7 @@ def construct_input_fns(dataset, batch_size, vocabulary_size,
         vocabulary_size, sentence_length, batch_size, repeat=repeat)
     return train_input_fn, eval_input_fn
   else:
-    raise ValueError('unsupported dataset: ' + dataset)
+    raise ValueError("unsupported dataset: " + dataset)
 
 
 def get_num_class(dataset):
@@ -43,4 +43,4 @@ def get_num_class(dataset):
   if dataset == DATASET_IMDB:
     return imdb.NUM_CLASS
   else:
-    raise ValueError('unsupported dataset: ' + dataset)
+    raise ValueError("unsupported dataset: " + dataset)
