@@ -18,6 +18,8 @@ def construct_input_fns(dataset, batch_size, vocabulary_size,
     repeat: The number of epoch.
   Raises:
     ValueError: if the dataset value is not valid.
+  Returns:
+    A tuple of training and evaluation input function.
   """
   if dataset == DATASET_IMDB:
     train_input_fn, eval_input_fn = imdb.construct_input_fns(
@@ -35,6 +37,8 @@ def get_num_class(dataset):
       Currently only imdb is supported.
   Raises:
     ValueError: if the dataset value is not valid.
+  Returns:
+    str: The dataset name.
   """
   if dataset == DATASET_IMDB:
     return imdb.NUM_CLASS

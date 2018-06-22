@@ -17,6 +17,8 @@ def construct_input_fns(vocabulary_size, sentence_length,
     repeat: The number of epoch.
   Raises:
     ValueError: if the dataset value is not valid.
+  Returns:
+    A tuple of training and evaluation input function.
   """
   (x_train, y_train), (x_test, y_test) = tf.keras.datasets.imdb.load_data(
       path="imdb.npz",

@@ -135,7 +135,8 @@ def define_flags():
   flags.DEFINE_integer(
       name="vocabulary_size", default=6000,
       help=flags_core.help_wrap(
-          "The number of the most frequent tokens to be used from the corpus."))
+          "The number of the most frequent tokens"
+          "to be used from the corpus."))
 
   flags.DEFINE_integer(
       name="sentence_length", default=200,
