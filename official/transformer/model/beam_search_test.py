@@ -33,8 +33,8 @@ class BeamSearchHelperTests(tf.test.TestCase):
     self.assertAllEqual([7, 3, 4, 2, 5], shape)
 
   def test_shape_list(self):
-    y = tf.constant(4.0)
-    x = tf.ones([7, tf.to_int32(tf.sqrt(y)), 2, 5])
+    y = tf.placeholder(dtype=tf.int32, shape=[])
+    x = tf.ones([7, y, 2, 5])
     shape = beam_search._shape_list(x)
     self.assertIsInstance(shape[0], int)
     self.assertIsInstance(shape[1], tf.Tensor)
