@@ -79,6 +79,19 @@ class KeplerSplineTest(absltest.TestCase):
 
 class ChooseKeplerSplineTest(absltest.TestCase):
 
+  def testEmptyInput(self):
+    # Logarithmically sample candidate break point spacings.
+    bkspaces = np.logspace(np.log10(0.5), np.log10(5), num=20)
+
+    spline, metadata = kepler_spline.choose_kepler_spline(
+        all_time=[],
+        all_flux=[],
+        bkspaces=bkspaces,
+        penalty_coeff=1.0,
+        verbose=False)
+    np.testing.assert_array_equal(spline, [])
+    np.testing.assert_array_equal(metadata.light_curve_mask, [])
+
   def testNoPoints(self):
     all_time = [np.array([])]
     all_flux = [np.array([])]
