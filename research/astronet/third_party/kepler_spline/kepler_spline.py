@@ -159,8 +159,7 @@ def choose_kepler_spline(all_time,
 
   Args:
     all_time: List of 1D numpy arrays; the time values of the light curve.
-    all_flux: List of 1D numpy arrays; the flux (brightness) values of the light
-        curve.
+    all_flux: List of 1D numpy arrays; the flux values of the light curve.
     bkspaces: List of break-point spacings to try.
     maxiter: Maximum number of attempts to fit each spline after removing badly
         fit points.
@@ -276,3 +275,48 @@ def choose_kepler_spline(all_time,
     ]
 
   return best_spline, metadata
+
+
+def fit_kepler_spline(all_time,
+                      all_flux,
+                      bkspace_min=0.5,
+                      bkspace_max=20,
+                      bkspace_num=20,
+                      maxiter=5,
+                      penalty_coeff=1.0,
+                      verbose=True):
+  """Fits a Kepler spline with logarithmically-sampled breakpoint spacings.
+
+  Args:
+    all_time: List of 1D numpy arrays; the time values of the light curve.
+    all_flux: List of 1D numpy arrays; the flux values of the light curve.
+    bkspace_min: Minimum breakpoint spacing to try.
+    bkspace_max: Maximum breakpoint spacing to try.
+    bkspace_num: Number of breakpoint spacings to try.
+    maxiter: Maximum number of attempts to fit each spline after removing badly
+        fit points.
+    penalty_coeff: Coefficient of the penalty term for using more parameters in
+        the Bayesian Information Criterion. Decreasing this value will allow
+        more parameters to be used (i.e. smaller break-point spacing), and
+        vice-versa.
+    verbose: Whether to log individual spline errors. Note that if bkspaces
+        contains many values (particularly small ones) then this may cause
+        logging pollution if calling this function for many light curves.
+
+  Returns:
+    spline: List of numpy arrays; values of the best-fit spline corresponding to
+        to the input flux arrays.
+    metadata: Object containing metadata about the spline fit.
+  """
+  # Logarithmically sample bkspace_num candidate break point spacings between
+  # bkspace_min and bkspace_max.
+  bkspaces = np.logspace(
+      np.log10(bkspace_min), np.log10(bkspace_max), num=bkspace_num)
+
+  return choose_kepler_spline(
+      all_time,
+      all_flux,
+      bkspaces,
+      maxiter=maxiter,
+      penalty_coeff=penalty_coeff,
+      verbose=verbose)
