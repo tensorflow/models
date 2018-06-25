@@ -49,6 +49,15 @@ message TrainConfig {
   // True.
   optional bool load_all_detection_checkpoint_vars = 19 [default = false];
 
+  // Whether to load all optimizer variables
+  optional bool load_all_optimizer_checkpoint_vars = 25 [default=true];
+
+  // Whether to load all moving average variables
+  optional bool load_all_moving_average_checkpoint_vars = 26 [default=true];
+
+  // Whether to load global step
+  optional bool include_global_step = 27 [default=true];
+
   // Number of steps to train the DetectionModel for. If 0, will train the model
   // indefinitely.
   optional uint32 num_steps = 9 [default=0];
