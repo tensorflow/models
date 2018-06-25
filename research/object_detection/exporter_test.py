@@ -66,7 +66,7 @@ class FakeModel(model.DetectionModel):
             np.arange(64).reshape([2, 2, 4, 4]), tf.float32)
     return postprocessed_tensors
 
-  def restore_map(self, checkpoint_path, fine_tune_checkpoint_type):
+  def restore_map(self, fine_tune_checkpoint_type):
     pass
 
   def loss(self, prediction_dict, true_image_shapes):
@@ -128,6 +128,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='image_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -149,6 +150,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='image_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory,
@@ -180,6 +182,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='tf_example',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -199,6 +202,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='encoded_image_string_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -254,6 +258,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = True
       exporter.export_inference_graph(
           input_type='image_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -279,6 +284,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter.export_inference_graph(
           input_type='image_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -306,6 +312,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter.export_inference_graph(
           input_type='image_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -336,9 +343,31 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='image_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
+
+  # def test_export_and_run_inference_with_uint_image_tensor(self):
+  #   tmp_dir = self.get_temp_dir()
+  #   trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+  #   self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+  #                                         use_moving_averages=True)
+  #   output_directory = os.path.join(tmp_dir, 'output')
+  #   inference_graph_path = os.path.join(output_directory,
+  #                                       'frozen_inference_graph.pb')
+  #   with mock.patch.object(
+  #       model_builder, 'build', autospec=True) as mock_builder:
+  #     mock_builder.return_value = FakeModel(
+  #         add_detection_keypoints=True, add_detection_masks=True)
+  #     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+  #     pipeline_config.eval_config.use_moving_averages = False
+  #     exporter.export_inference_graph(
+  #         input_type='image_tensor',
+  #         data_type='uint',
+  #         pipeline_config=pipeline_config,
+  #         trained_checkpoint_prefix=trained_checkpoint_prefix,
+  #         output_directory=output_directory)
 
     inference_graph = self._load_inference_graph(inference_graph_path)
     with self.test_session(graph=inference_graph) as sess:
@@ -393,6 +422,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='encoded_image_string_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -445,6 +475,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='encoded_image_string_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -487,6 +518,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='tf_example',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -537,6 +569,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                             is_training=False)
       outputs, _ = exporter._build_detection_graph(
           input_type='tf_example',
+          data_type='uint',
           detection_model=detection_model,
           input_shape=None,
           output_collection_name='inference_op',
@@ -594,6 +627,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter.export_inference_graph(
           input_type='image_tensor',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -623,6 +657,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='tf_example',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -685,6 +720,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                             is_training=False)
       outputs, placeholder_tensor = exporter._build_detection_graph(
           input_type='tf_example',
+          data_type='uint',
           detection_model=detection_model,
           input_shape=None,
           output_collection_name='inference_op',
@@ -764,6 +800,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       pipeline_config.eval_config.use_moving_averages = False
       exporter.export_inference_graph(
           input_type='tf_example',
+          data_type='uint',
           pipeline_config=pipeline_config,
           trained_checkpoint_prefix=trained_checkpoint_prefix,
           output_directory=output_directory)
@@ -817,6 +854,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
                                             is_training=False)
       exporter._build_detection_graph(
           input_type='tf_example',
+          data_type='uint',
           detection_model=detection_model,
           input_shape=None,
           output_collection_name='inference_op',

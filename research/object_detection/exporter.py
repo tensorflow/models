@@ -29,6 +29,8 @@ from tensorflow.python.training import saver as saver_lib
 from object_detection.builders import model_builder
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
+from object_detection.utils import config_util
+from object_detection.builders import graph_rewriter_builder
 
 slim = tf.contrib.slim
 
@@ -123,12 +125,16 @@ def replace_variable_values_with_moving_averages(graph,
       write_saver.save(sess, new_checkpoint_file)
 
 
-def _image_tensor_input_placeholder(input_shape=None):
+def _image_tensor_input_placeholder(input_shape=None, data_type=None):
   """Returns input placeholder and a 4-D uint8 image tensor."""
   if input_shape is None:
     input_shape = (None, None, None, 3)
+  if data_type == 'uint':
+    data_type = tf.uint8
+  if data_type == 'float':
+    data_type = tf.float32
   input_tensor = tf.placeholder(
-      dtype=tf.uint8, shape=input_shape, name='image_tensor')
+      dtype=data_type, shape=input_shape, name='image_tensor')
   return input_tensor, input_tensor
 
 
@@ -186,7 +192,8 @@ input_placeholder_fn_map = {
 
 
 def _add_output_tensor_nodes(postprocessed_tensors,
-                             output_collection_name='inference_op'):
+                             output_collection_name='inference_op',
+                             no_postprocess=False):
   """Adds output nodes for detection boxes and scores.
 
   Adds the following nodes for output tensors -
@@ -217,35 +224,44 @@ def _add_output_tensor_nodes(postprocessed_tensors,
   Returns:
     A tensor dict containing the added output tensor nodes.
   """
-  detection_fields = fields.DetectionResultFields
-  label_id_offset = 1
-  boxes = postprocessed_tensors.get(detection_fields.detection_boxes)
-  scores = postprocessed_tensors.get(detection_fields.detection_scores)
-  classes = postprocessed_tensors.get(
-      detection_fields.detection_classes) + label_id_offset
-  keypoints = postprocessed_tensors.get(detection_fields.detection_keypoints)
-  masks = postprocessed_tensors.get(detection_fields.detection_masks)
-  num_detections = postprocessed_tensors.get(detection_fields.num_detections)
-  outputs = {}
-  outputs[detection_fields.detection_boxes] = tf.identity(
-      boxes, name=detection_fields.detection_boxes)
-  outputs[detection_fields.detection_scores] = tf.identity(
-      scores, name=detection_fields.detection_scores)
-  outputs[detection_fields.detection_classes] = tf.identity(
-      classes, name=detection_fields.detection_classes)
-  outputs[detection_fields.num_detections] = tf.identity(
-      num_detections, name=detection_fields.num_detections)
-  if keypoints is not None:
-    outputs[detection_fields.detection_keypoints] = tf.identity(
-        keypoints, name=detection_fields.detection_keypoints)
-  if masks is not None:
-    outputs[detection_fields.detection_masks] = tf.identity(
-        masks, name=detection_fields.detection_masks)
-  for output_key in outputs:
-    tf.add_to_collection(output_collection_name, outputs[output_key])
-  if masks is not None:
-    tf.add_to_collection(output_collection_name,
-                         outputs[detection_fields.detection_masks])
+  if not no_postprocess:
+    detection_fields = fields.DetectionResultFields
+    label_id_offset = 1
+    boxes = postprocessed_tensors.get(detection_fields.detection_boxes)
+    scores = postprocessed_tensors.get(detection_fields.detection_scores)
+    classes = postprocessed_tensors.get(
+        detection_fields.detection_classes) + label_id_offset
+    keypoints = postprocessed_tensors.get(detection_fields.detection_keypoints)
+    masks = postprocessed_tensors.get(detection_fields.detection_masks)
+    num_detections = postprocessed_tensors.get(detection_fields.num_detections)
+    outputs = {}
+    outputs[detection_fields.detection_boxes] = tf.identity(
+        boxes, name=detection_fields.detection_boxes)
+    outputs[detection_fields.detection_scores] = tf.identity(
+        scores, name=detection_fields.detection_scores)
+    outputs[detection_fields.detection_classes] = tf.identity(
+        classes, name=detection_fields.detection_classes)
+    outputs[detection_fields.num_detections] = tf.identity(
+        num_detections, name=detection_fields.num_detections)
+    if keypoints is not None:
+      outputs[detection_fields.detection_keypoints] = tf.identity(
+          keypoints, name=detection_fields.detection_keypoints)
+    if masks is not None:
+      outputs[detection_fields.detection_masks] = tf.identity(
+          masks, name=detection_fields.detection_masks)
+    for output_key in outputs:
+      tf.add_to_collection(output_collection_name, outputs[output_key])
+    if masks is not None:
+      tf.add_to_collection(output_collection_name,
+                           outputs[detection_fields.detection_masks])
+  else:
+    #Todo: only implemented for ssd
+    detection_fields = fields.DetectionResultFields
+    class_predictions_with_background =tf.identity(postprocessed_tensors.get(detection_fields.class_predictions_with_background)
+                                                   ,name=detection_fields.class_predictions_with_background)
+    box_encodings = tf.identity(postprocessed_tensors.get(detection_fields.box_encodings),name=detection_fields.box_encodings)
+    outputs={detection_fields.class_predictions_with_background:class_predictions_with_background,
+             detection_fields.box_encodings:box_encodings}
   return outputs
 
 
@@ -324,38 +340,58 @@ def write_graph_and_checkpoint(inference_graph_def,
       saver.save(sess, model_path)
 
 
-def _get_outputs_from_inputs(input_tensors, detection_model,
-                             output_collection_name):
-  inputs = tf.to_float(input_tensors)
-  preprocessed_inputs, true_image_shapes = detection_model.preprocess(inputs)
+def _get_outputs_from_inputs(input_tensors,
+                             input_shape,
+                             detection_model,
+                             output_collection_name,
+                             no_preprocess=False,
+                             no_postprocess=False):
+  if not no_preprocess:
+    preprocessed_inputs, true_image_shapes = detection_model.preprocess(input_tensors)
+  else:
+    true_image_shapes = [1, input_shape[1],input_shape[2], 3]
+    preprocessed_inputs = input_tensors
   output_tensors = detection_model.predict(
       preprocessed_inputs, true_image_shapes)
-  postprocessed_tensors = detection_model.postprocess(
-      output_tensors, true_image_shapes)
+  if not no_postprocess:
+    postprocessed_tensors = detection_model.postprocess(
+        output_tensors, true_image_shapes)
+  else:
+    postprocessed_tensors = output_tensors
   return _add_output_tensor_nodes(postprocessed_tensors,
-                                  output_collection_name)
+                                  output_collection_name,
+                                  no_postprocess)
 
 
-def _build_detection_graph(input_type, detection_model, input_shape,
-                           output_collection_name, graph_hook_fn):
+def _build_detection_graph(input_type, data_type, detection_model, input_shape,
+                           output_collection_name, graph_hook_fn,
+                           no_preprocess=False, no_postprocess=False):
   """Build the detection graph."""
   if input_type not in input_placeholder_fn_map:
     raise ValueError('Unknown input type: {}'.format(input_type))
-  placeholder_args = {}
+  placeholder_args= {}
+  if input_type == 'image_tensor':
+    placeholder_args['data_type'] = data_type
   if input_shape is not None:
     if input_type != 'image_tensor':
       raise ValueError('Can only specify input shape for `image_tensor` '
                        'inputs.')
-    placeholder_args['input_shape'] = input_shape
+    if input_type == 'image_tensor':
+      placeholder_args['input_shape'] = input_shape
   placeholder_tensor, input_tensors = input_placeholder_fn_map[input_type](
       **placeholder_args)
+  if data_type !='float' and (not no_preprocess):
+    input_tensors = tf.to_float(input_tensors)
   outputs = _get_outputs_from_inputs(
       input_tensors=input_tensors,
+      input_shape=input_shape,
       detection_model=detection_model,
-      output_collection_name=output_collection_name)
+      output_collection_name=output_collection_name,
+      no_preprocess=no_preprocess,
+      no_postprocess=no_postprocess)
 
   # Add global step to the graph.
-  slim.get_or_create_global_step()
+  tf.train.get_or_create_global_step()
 
   if graph_hook_fn: graph_hook_fn()
 
@@ -363,6 +399,7 @@ def _build_detection_graph(input_type, detection_model, input_shape,
 
 
 def _export_inference_graph(input_type,
+                            data_type,
                             detection_model,
                             use_moving_averages,
                             trained_checkpoint_prefix,
@@ -370,7 +407,9 @@ def _export_inference_graph(input_type,
                             additional_output_tensor_names=None,
                             input_shape=None,
                             output_collection_name='inference_op',
-                            graph_hook_fn=None):
+                            graph_hook_fn=None,
+                            no_preprocess=False,
+                            no_postprocess=False):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
   frozen_graph_path = os.path.join(output_directory,
@@ -380,10 +419,13 @@ def _export_inference_graph(input_type,
 
   outputs, placeholder_tensor = _build_detection_graph(
       input_type=input_type,
+      data_type=data_type,
       detection_model=detection_model,
       input_shape=input_shape,
       output_collection_name=output_collection_name,
-      graph_hook_fn=graph_hook_fn)
+      graph_hook_fn=graph_hook_fn,
+      no_preprocess=no_preprocess,
+      no_postprocess=no_postprocess)
 
   saver_kwargs = {}
   if use_moving_averages:
@@ -429,12 +471,15 @@ def _export_inference_graph(input_type,
 
 
 def export_inference_graph(input_type,
+                           data_type,
                            pipeline_config,
                            trained_checkpoint_prefix,
                            output_directory,
                            input_shape=None,
                            output_collection_name='inference_op',
-                           additional_output_tensor_names=None):
+                           additional_output_tensor_names=None,
+                           no_preprocess=False,
+                           no_postprocess=False):
   """Exports inference graph for the model specified in the pipeline config.
 
   Args:
@@ -445,19 +490,44 @@ def export_inference_graph(input_type,
     output_directory: Path to write outputs.
     input_shape: Sets a fixed shape for an `image_tensor` input. If not
       specified, will default to [None, None, None, 3].
+    data_type: The type of input data. Can be one of [`uint`, `float`]
     output_collection_name: Name of collection to add output tensors to.
       If None, does not add output tensors to a collection.
     additional_output_tensor_names: list of additional output
       tensors to include in the frozen graph.
+    graph_hook_fn: Optional function that is called after the inference graph is
+      built (before optimization). This is helpful to perform additional changes
+      to the training graph such as adding FakeQuant ops. The function should
+      modify the default graph.
+    no_preprocess: Optional boolean choice which determines whether to export preprocess
+      subgraph to final frozen graph file
+    no_postprocess: Optional boolean choice which determines whether to export postprocess
+      subgraph to final frozen graph file
   """
   detection_model = model_builder.build(pipeline_config.model,
                                         is_training=False)
-  _export_inference_graph(input_type, detection_model,
+  configs = config_util.create_configs_from_pipeline_proto(pipeline_config)
+  if configs['model'].WhichOneof('model') != 'ssd' and (no_preprocess or no_postprocess):
+    raise NotImplementedError("Arguments no_preprocess or no_postprocess is only ready for ssd architectures")
+  if (no_preprocess or no_postprocess):
+    if input_shape is None:
+      raise AssertionError('You should explicitly add --input_shape for supporting no_preprocess')
+    if input_shape[1] is None:
+      raise AssertionError('You should explicitly add height size in --input_shape for supporting no_preprocess')
+    if input_shape[2] is None:
+      raise AssertionError('You should explicitly add width size in --input_shape for supporting no_preprocess')
+  graph_rewriter_fn = None
+  if 'graph_rewriter_config' in configs:
+    graph_rewriter_fn = graph_rewriter_builder.build(
+        configs['graph_rewriter_config'], is_training=False)
+  _export_inference_graph(input_type, data_type, detection_model,
                           pipeline_config.eval_config.use_moving_averages,
                           trained_checkpoint_prefix,
                           output_directory, additional_output_tensor_names,
                           input_shape, output_collection_name,
-                          graph_hook_fn=None)
+                          graph_hook_fn=graph_rewriter_fn,
+                          no_preprocess=no_preprocess,
+                          no_postprocess=no_postprocess)
   pipeline_config.eval_config.use_moving_averages = False
   config_text = text_format.MessageToString(pipeline_config)
   with tf.gfile.Open(

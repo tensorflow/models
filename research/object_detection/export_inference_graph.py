@@ -102,6 +102,8 @@ flags = tf.app.flags
 flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '
                     'one of [`image_tensor`, `encoded_image_string_tensor`, '
                     '`tf_example`]')
+flags.DEFINE_string('data_type', 'uint',
+                    'Data type of input node. Can be one of [`uint`, `float`]')
 flags.DEFINE_string('input_shape', None,
                     'If input_type is `image_tensor`, this can explicitly set '
                     'the shape of this input tensor to a fixed size. The '
@@ -120,6 +122,10 @@ flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
 flags.DEFINE_string('config_override', '',
                     'pipeline_pb2.TrainEvalPipelineConfig '
                     'text proto to override pipeline_config_path.')
+flags.DEFINE_boolean('no_preprocess', False,
+                     'Don\'t export post processing to final graph')
+flags.DEFINE_boolean('no_postprocess', False,
+                     'Don\'t export post processing to final graph')
 tf.app.flags.mark_flag_as_required('pipeline_config_path')
 tf.app.flags.mark_flag_as_required('trained_checkpoint_prefix')
 tf.app.flags.mark_flag_as_required('output_directory')
@@ -138,9 +144,11 @@ def main(_):
     ]
   else:
     input_shape = None
-  exporter.export_inference_graph(FLAGS.input_type, pipeline_config,
+  exporter.export_inference_graph(FLAGS.input_type, FLAGS.data_type, pipeline_config,
                                   FLAGS.trained_checkpoint_prefix,
-                                  FLAGS.output_directory, input_shape)
+                                  FLAGS.output_directory, input_shape,
+                                  no_preprocess=FLAGS.no_preprocess,
+                                  no_postprocess=FLAGS.no_postprocess)
 
 
 if __name__ == '__main__':
