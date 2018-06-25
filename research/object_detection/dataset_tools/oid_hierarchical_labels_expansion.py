@@ -21,6 +21,7 @@ Example usage:
 
 import json
 import sys
+import six
 
 
 def _update_dict(initial_dict, update):
@@ -31,7 +32,7 @@ def _update_dict(initial_dict, update):
    update: updated dictionary.
   """
 
-  for key, value_list in update.iteritems():
+  for key, value_list in six.iteritems(update):
     if key in initial_dict:
       initial_dict[key].extend(value_list)
     else:
@@ -66,7 +67,7 @@ def _build_plain_hierarchy(hierarchy, skip_root=False):
   if not skip_root:
     all_keyed_parent[hierarchy['LabelName']] = all_children
     all_children = [hierarchy['LabelName']] + all_children
-    for child, _ in all_keyed_child.iteritems():
+    for child, _ in six.iteritems(all_keyed_child):
       all_keyed_child[child].append(hierarchy['LabelName'])
     all_keyed_child[hierarchy['LabelName']] = []
 
@@ -144,9 +145,9 @@ class OIDHierarchicalLabelsExpansion(object):
 def main(argv):
 
   if len(argv) < 4:
-    print """Missing arguments. \n
+    print("""Missing arguments. \n
              Usage: ./hierarchical_labels_expansion <path to JSON hierarchy>
-             <input csv file> <output csv file> [optional]labels_file"""
+             <input csv file> <output csv file> [optional]labels_file""")
     return
   with open(argv[1]) as f:
     hierarchy = json.load(f)

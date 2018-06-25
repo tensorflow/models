@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import functools
 import os
+import six
 
 import tensorflow as tf
 
@@ -278,7 +279,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
       losses_dict = detection_model.loss(
           prediction_dict, features[fields.InputDataFields.true_image_shape])
-      losses = [loss_tensor for loss_tensor in losses_dict.itervalues()]
+      losses = [loss_tensor for loss_tensor in six.itervalues(losses_dict)]
       if train_config.add_regularization_loss:
         regularization_losses = tf.get_collection(
             tf.GraphKeys.REGULARIZATION_LOSSES)
@@ -387,7 +388,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       if img_summary is not None:
         eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
             img_summary, tf.no_op())
-      eval_metric_ops = {str(k): v for k, v in eval_metric_ops.iteritems()}
+      eval_metric_ops = {str(k): v for k, v in six.iteritems(eval_metric_ops)}
 
       if eval_config.use_moving_averages:
         variable_averages = tf.train.ExponentialMovingAverage(0.0)

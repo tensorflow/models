@@ -35,6 +35,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
 import argparse
 import pandas as pd
 from google.protobuf import text_format
@@ -73,7 +74,7 @@ def _swap_labelmap_dict(labelmap_dict):
   Returns:
     A dictionary mapping class name to class numerical id.
   """
-  return dict((v, k) for k, v in labelmap_dict.iteritems())
+  return dict((v, k) for k, v in six.iteritems(labelmap_dict))
 
 
 def main(parsed_args):

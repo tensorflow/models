@@ -489,7 +489,7 @@ class SsdMetaArchTest(test_case.TestCase):
       with self.test_session(graph=test_graph_detection) as sess:
         saver.restore(sess, saved_model_path)
         for var in sess.run(tf.report_uninitialized_variables()):
-          self.assertNotIn('FeatureExtractor', var)
+          self.assertNotIn('FeatureExtractor'.encode('utf-8'), var)
 
   def test_load_all_det_checkpoint_vars(self):
     test_graph_detection = tf.Graph()
@@ -513,7 +513,7 @@ class SsdMetaArchTest(test_case.TestCase):
     with tf.Graph().as_default():
       _, num_classes, num_anchors, _ = self._create_model(
           random_example_sampling=True)
-    print num_classes, num_anchors
+    print(num_classes, num_anchors)
 
     def graph_fn(preprocessed_tensor, groundtruth_boxes1, groundtruth_boxes2,
                  groundtruth_classes1, groundtruth_classes2):

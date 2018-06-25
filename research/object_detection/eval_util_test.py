@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
 import tensorflow as tf
 
 
@@ -71,7 +72,7 @@ class EvalUtilTest(tf.test.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op)
       metrics = sess.run(metrics)
@@ -91,7 +92,7 @@ class EvalUtilTest(tf.test.TestCase):
 
     with self.test_session() as sess:
       metrics = {}
-      for key, (value_op, _) in metric_ops.iteritems():
+      for key, (value_op, _) in six.iteritems(metric_ops):
         metrics[key] = value_op
       sess.run(update_op_boxes)
       sess.run(update_op_masks)

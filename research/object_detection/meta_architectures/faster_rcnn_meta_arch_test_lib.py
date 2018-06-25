@@ -1438,8 +1438,8 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       with self.test_session(graph=test_graph_classification) as sess:
         saver.restore(sess, saved_model_path)
         for var in sess.run(tf.report_uninitialized_variables()):
-          self.assertNotIn(model.first_stage_feature_extractor_scope, var)
-          self.assertNotIn(model.second_stage_feature_extractor_scope, var)
+          self.assertNotIn(model.first_stage_feature_extractor_scope.encode('utf-8'), var)
+          self.assertNotIn(model.second_stage_feature_extractor_scope.encode('utf-8'), var)
 
   def test_restore_map_for_detection_ckpt(self):
     # Define first detection graph and save variables.
@@ -1480,10 +1480,10 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       with self.test_session(graph=test_graph_detection2) as sess:
         saver.restore(sess, saved_model_path)
         uninitialized_vars_list = sess.run(tf.report_uninitialized_variables())
-        self.assertIn('another_variable', uninitialized_vars_list)
+        self.assertIn('another_variable'.encode('utf-8'), uninitialized_vars_list)
         for var in uninitialized_vars_list:
-          self.assertNotIn(model2.first_stage_feature_extractor_scope, var)
-          self.assertNotIn(model2.second_stage_feature_extractor_scope, var)
+          self.assertNotIn(model2.first_stage_feature_extractor_scope.encode('utf-8'), var)
+          self.assertNotIn(model2.second_stage_feature_extractor_scope.encode('utf-8'), var)
 
   def test_load_all_det_checkpoint_vars(self):
     test_graph_detection = tf.Graph()

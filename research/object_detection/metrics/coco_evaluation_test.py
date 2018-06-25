@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
 import numpy as np
 import tensorflow as tf
 from object_detection.core import standard_fields
@@ -296,7 +297,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
                    detection_classes: np.array([2])
                })
     metrics = {}
-    for key, (value_op, _) in eval_metric_ops.iteritems():
+    for key, (value_op, _) in six.iteritems(eval_metric_ops):
       metrics[key] = value_op
     metrics = sess.run(metrics)
     self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
@@ -392,7 +393,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
                   np.array([2, 2])
           })
     metrics = {}
-    for key, (value_op, _) in eval_metric_ops.iteritems():
+    for key, (value_op, _) in six.iteritems(eval_metric_ops):
       metrics[key] = value_op
     metrics = sess.run(metrics)
     self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
@@ -450,7 +451,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
                    detection_classes: np.array([[1], [3], [2]])
                })
     metrics = {}
-    for key, (value_op, _) in eval_metric_ops.iteritems():
+    for key, (value_op, _) in six.iteritems(eval_metric_ops):
       metrics[key] = value_op
     metrics = sess.run(metrics)
     self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
@@ -520,7 +521,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
                    num_det_boxes_per_image: np.array([1, 1, 2]),
                })
     metrics = {}
-    for key, (value_op, _) in eval_metric_ops.iteritems():
+    for key, (value_op, _) in six.iteritems(eval_metric_ops):
       metrics[key] = value_op
     metrics = sess.run(metrics)
     self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
@@ -701,7 +702,7 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
                                            mode='constant')
                })
     metrics = {}
-    for key, (value_op, _) in eval_metric_ops.iteritems():
+    for key, (value_op, _) in six.iteritems(eval_metric_ops):
       metrics[key] = value_op
     metrics = sess.run(metrics)
     self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP'], 1.0)
