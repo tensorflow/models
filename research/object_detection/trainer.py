@@ -297,7 +297,7 @@ def train(create_tensor_dict_fn,
       training_optimizer, optimizer_summary_vars = optimizer_builder.build(
           train_config.optimizer)
       for var in optimizer_summary_vars:
-        tf.summary.scalar(var.op.name, var, family='LearningRate')
+          global_summaries.add(tf.summary.scalar(var.op.name, var, family='LearningRate'))
 
     sync_optimizer = None
     if train_config.sync_replicas:
