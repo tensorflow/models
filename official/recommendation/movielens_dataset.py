@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import collections
 import functools
+import multiprocessing
 import os
 import tempfile
 import time
@@ -297,6 +298,24 @@ def data_preprocessing(data_dir, dataset, num_negatives):
   return ncf_dataset
 
 
+def _construct_false_negatives(user_block, num_negatives, num_items):
+  positive_set = set(user_block[:, 1])
+  n = user_block.shape[0]
+  user = user_block[0, 0]
+
+  output = []
+
+  for i in range(n):
+    output.append(user_block[i, :].tolist())
+    for _ in range(num_negatives):
+      j = np.random.randint(num_items)
+      while j in positive_set:
+        j = np.random.randint(num_items)
+      output.append([user, j, 0])
+
+  return np.asarray(output)
+
+
 def generate_train_dataset(train_data, num_items, num_negatives):
   """Generate train dataset for each epoch.
 
@@ -312,20 +331,28 @@ def generate_train_dataset(train_data, num_items, num_negatives):
   Returns:
     A numpy array of training dataset.
   """
-  all_train_data = []
-  # A set with user-item tuples
-  train_data_set = set((u, i) for u, i, _ in train_data)
-  for u, i, _ in train_data:
-    # Positive instance
-    all_train_data.append([u, i, 1])
-    # Negative instances, randomly generated
-    for _ in xrange(num_negatives):
-      j = np.random.randint(num_items)
-      while (u, j) in train_data_set:
-        j = np.random.randint(num_items)
-      all_train_data.append([u, j, 0])
 
-  return np.asarray(all_train_data)
+  data_array = np.array(train_data)
+
+  # While there are more efficient algorithms for binning, partitioning in numpy
+  # rather than pure python more than makes up for the extra log(n) even for the
+  # ml-20m dataset.
+  sort_indicies = np.argsort(data_array[:, 0])
+
+  data_array = data_array[sort_indicies, :]
+
+  delta = data_array[1:, 0] - data_array[:-1, 0]
+  boundaries = [0] + (np.argwhere(delta)[:, 0] + 1).tolist() + [data_array.shape[0]]
+  user_blocks = [data_array[boundaries[i]:boundaries[i+1]] for i in range(len(boundaries) - 1)]
+
+  map_fn = functools.partial(_construct_false_negatives,
+                             num_negatives=num_negatives, num_items=num_items)
+
+  pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+  output_blocks = pool.map(map_fn, user_blocks)
+  pool.terminate()
+
+  return np.concatenate(output_blocks, axis=0)
 
 
 def _deserialize_train(x):
