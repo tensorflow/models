@@ -35,6 +35,7 @@ import tensorflow as tf
 
 from official.datasets import movielens
 from official.utils.data import file_io
+from official.utils.data import buffer
 from official.utils.flags import core as flags_core
 
 
@@ -357,6 +358,12 @@ def _deserialize_train(examples_serialized):
   return train_features, features[movielens.RATING_COLUMN]
 
 
+def _deserialize_train_new(x):
+  return ({movielens.USER_COLUMN: tf.reshape(x[0], (-1, 1)),
+           movielens.ITEM_COLUMN: tf.reshape(x[1], (-1, 1))},
+          {movielens.RATING_COLUMN: tf.reshape(x[2], (-1, 1))})
+
+
 def _deserialize_eval(examples_serialized):
   features = tf.parse_example(examples_serialized, _FEATURE_MAP_EVAL)
   return features
@@ -389,34 +396,52 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
         ncf_dataset.train_data, ncf_dataset.num_items,
         ncf_dataset.num_negatives)
 
-    df = pd.DataFrame(data=train_data, columns=_COLUMNS)
+    data = train_data
+    columns = _COLUMNS
 
-    if data_dir.startswith("gs://"):
-      buffer_dir = os.path.join(data_dir, _BUFFER_SUBDIR)
-    else:
-      buffer_dir = None
-
-    buffer_path = file_io.write_to_temp_buffer(df, buffer_dir, _COLUMNS)
-    map_fn = _deserialize_train
+    # print(train_data)
+    # print(train_data.shape)
+    # print(train_data.dtype)
+    # input("...")
+    # import sys
+    # sys.exit()
+    # df = pd.DataFrame(data=train_data, columns=_COLUMNS)
+    #
+    # if data_dir.startswith("gs://"):
+    #   buffer_dir = os.path.join(data_dir, _BUFFER_SUBDIR)
+    # else:
+    #   buffer_dir = None
+    #
+    # buffer_path = file_io.write_to_temp_buffer(df, buffer_dir, _COLUMNS)
+    map_fn = _deserialize_train_new
 
   else:
-    df = pd.DataFrame(ncf_dataset.all_eval_data, columns=_EVAL_COLUMNS)
-    buffer_path = os.path.join(
-        data_dir, _BUFFER_SUBDIR, dataset + "_eval_buffer")
+    data = ncf_dataset.all_eval_data
+    columns=_EVAL_COLUMNS
+    input("...")
 
-    file_io.write_to_buffer(
-        dataframe=df, buffer_path=buffer_path, columns=_EVAL_COLUMNS,
-        expected_size=_EVAL_BUFFER_SIZE[dataset])
-    map_fn = _deserialize_eval
+    # df = pd.DataFrame(ncf_dataset.all_eval_data, columns=_EVAL_COLUMNS)
+    # buffer_path = os.path.join(
+    #     data_dir, _BUFFER_SUBDIR, dataset + "_eval_buffer")
+    #
+    # file_io.write_to_buffer(
+    #     dataframe=df, buffer_path=buffer_path, columns=_EVAL_COLUMNS,
+    #     expected_size=_EVAL_BUFFER_SIZE[dataset])
+    # map_fn = _deserialize_eval
 
-
+  print(training)
+  print(data)
+  print(columns)
   def input_fn():  # pylint: disable=missing-docstring
-    dataset = tf.data.TFRecordDataset(buffer_path)
+    dataset = buffer.array_to_dataset(source_array=data, in_memory=False)
+    # dataset = tf.data.TFRecordDataset(buffer_path)
     if training:
       dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
 
-    dataset = dataset.batch(batch_size)
+
     dataset = dataset.map(map_fn, num_parallel_calls=16)
+    dataset = dataset.batch(batch_size)
+    # dataset = dataset.map(map_fn, num_parallel_calls=16)
     dataset = dataset.repeat(repeat)
 
     # Prefetch to improve speed of input pipeline.
