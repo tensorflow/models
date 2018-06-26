@@ -29,7 +29,8 @@ _SUPPORTED_RNNS = {
 
 
 def _conv_bn_layer(cnn_input, filters, kernel_size, strides, layer_id):
-  """2D convolution + batch normalization layer
+  """2D convolution + batch normalization layer.
+
   Args:
     cnn_input: input data for convolution layer.
     filters: an integer, number of output filters in the convolution.
@@ -50,8 +51,9 @@ def _conv_bn_layer(cnn_input, filters, kernel_size, strides, layer_id):
 
 
 def _rnn_layer(input_data, rnn_cell, rnn_hidden_size, layer_id, rnn_activation,
-              is_batch_norm, is_bidirectional):
+               is_batch_norm, is_bidirectional):
   """Defines a batch normalization + rnn layer.
+
   Args:
     input_data: input tensors for the current layer.
     rnn_cell: RNN cell instance to use.
@@ -85,19 +87,26 @@ def _ctc_lambda_func(args):
   return tf.keras.backend.ctc_batch_cost(
       labels, y_pred, input_length, label_length)
 
+
 def _cal_ctc_input_length(args):
   """Compute the actual input length after convolution.
 
   Basically, we need to know the scaled input_length after conv layers.
   new_input_length = old_input_length * ctc_time_steps / max_time_steps
+
+  Args:
+    args: the input args to compute ctc input length.
+
+  Returns:
+    ctc_input_length, which is required for ctc loss calculation.
   """
-  input_length, input_data, y_pred= args
+  input_length, input_data, y_pred = args
   max_time_steps = tf.shape(input_data)[1]
   ctc_time_steps = tf.shape(y_pred)[1]
   ctc_input_length = tf.multiply(
-    tf.to_float(input_length), tf.to_float(ctc_time_steps))
+      tf.to_float(input_length), tf.to_float(ctc_time_steps))
   ctc_input_length = tf.to_int32(tf.floordiv(
-    ctc_input_length, tf.to_float(max_time_steps)))
+      ctc_input_length, tf.to_float(max_time_steps)))
   return ctc_input_length
 
 
@@ -106,7 +115,8 @@ class DeepSpeech(tf.keras.models.Model):
 
   def __init__(self, input_shape, num_rnn_layers, rnn_type, is_bidirectional,
                rnn_hidden_size, rnn_activation, num_classes, use_bias):
-    """Initialize DeepSpeech2 model.
+    """Initialize DeepSpeech model.
+
     Args:
       input_shape: an tuple to indicate the dimension of input dataset. It has
         the format of [time_steps(T), feature_bins(F), channel(1)]

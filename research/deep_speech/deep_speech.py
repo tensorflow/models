@@ -12,36 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Deep Speech
+"""Main entry to train and evaluation Deep Speech model.
 """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 # pylint: disable=g-bad-import-order
-import numpy as np
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
-# pylint: enable=g-bad-import-order
 
 import deep_speech_model
 import data.dataset as dataset
-from official.utils.export import export
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
-from official.utils.misc import model_helpers
 
 
-def convert_keras_to_estimator(keras_model, num_gpus, flags_obj):
+def convert_keras_to_estimator(keras_model, num_gpus):
   """Configure and convert keras model to Estimator.
+
   Args:
     keras_model: A Keras model object.
     num_gpus: An integer, the number of gpus.
-    flags_obj: An object containing parsed flags. See define_resnet_flags()
-      for details.
+
   Returns:
     estimator: The converted Estimator.
   """
@@ -54,7 +50,7 @@ def convert_keras_to_estimator(keras_model, num_gpus, flags_obj):
   distribution_strategy = distribution_utils.get_distribution_strategy(
       num_gpus)
   run_config = tf.estimator.RunConfig(
-      train_distribute=distribution_strategy, session_config=session_config)
+      train_distribute=distribution_strategy)
 
   estimator = tf.keras.estimator.model_to_estimator(
       keras_model=keras_model, model_dir=flags_obj.model_dir, config=run_config)
@@ -91,7 +87,8 @@ def run_deep_speech(_):
   # Number of label classes. Label string is "abcdefghijklmnopqrstuvwxyz' -"
   num_classes = len(train_speech_dataset.speech_labels)
 
-  # Input shape of each data example: [time_steps (T), feature_bins(F), channel(C)]
+  # Input shape of each data example:
+  # [time_steps (T), feature_bins(F), channel(C)]
   # Channel is set as 1 by default.
   input_shape = (None, train_speech_dataset.num_feature_bins, 1)
 
@@ -116,7 +113,7 @@ def run_deep_speech(_):
       "rnn_hidden_layers": flags_obj.rnn_hidden_layers,
       "rnn_activation": flags_obj.rnn_activation,
       "rnn_type": flags_obj.rnn_type,
-      "is_bidirectional":flags_obj.is_bidirectional,
+      "is_bidirectional": flags_obj.is_bidirectional,
       "use_bias": flags_obj.use_bias
   }
 
@@ -136,7 +133,7 @@ def run_deep_speech(_):
     return dataset.input_fn(
         True, per_device_batch_size, train_speech_dataset)
 
-  def input_fn_eval():
+  def input_fn_eval():  # #pylint: disable=unused-variable
     return dataset.input_fn(
         False, per_device_batch_size, eval_speech_dataset)
 
@@ -159,12 +156,6 @@ def run_deep_speech(_):
     # if model_helpers.past_stop_threshold(
     #   flags_obj.stop_threshold, eval_results["accuracy"]):
     #   break
-
-  if flags_obj.export_dir is not None:
-    # Exports a saved model for the given classifier.
-    input_receiver_fn = export.build_tensor_serving_input_receiver_fn(
-        shape, batch_size=flags_obj.batch_size)
-    classifier.export_savedmodel(flags_obj.export_dir, input_receiver_fn)
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
