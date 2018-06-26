@@ -330,17 +330,17 @@ def generate_train_dataset(train_data, num_items, num_negatives):
 
 def _deserialize_train(x):
   # Give tf explicit shape definitions.
-  users = tf.reshape(x[0], (1,))
-  items = tf.reshape(x[1], (1,))
-  features = tf.reshape(x[2], (1,))
+  users = tf.reshape(x[:, 0], (-1, 1))
+  items = tf.reshape(x[:, 1], (-1, 1))
+  features = tf.reshape(x[:, 2], (-1, 1))
 
   return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}, features
 
 
 def _deserialize_eval(x):
   # Give tf explicit shape definitions.
-  users = tf.reshape(x[0], (1,))
-  items = tf.reshape(x[1], (1,))
+  users = tf.reshape(x[:, 0], (-1, 1))
+  items = tf.reshape(x[:, 1], (-1, 1))
 
   return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}
 
@@ -380,14 +380,15 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
     map_fn = _deserialize_eval
 
   def input_fn():  # pylint: disable=missing-docstring
-    dataset = buffer.array_to_dataset(source_array=data, in_memory=True)
+    dataset = buffer.array_to_dataset(source_array=data, in_memory=False)
 
     if training:
       dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
 
 
-    dataset = dataset.map(map_fn, num_parallel_calls=16)
     dataset = dataset.batch(batch_size)
+    dataset = dataset.map(map_fn, num_parallel_calls=16)
+
     dataset = dataset.repeat(repeat)
 
     # Prefetch to improve speed of input pipeline.
