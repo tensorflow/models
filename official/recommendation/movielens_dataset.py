@@ -380,7 +380,9 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
     map_fn = _deserialize_eval
 
   def input_fn():  # pylint: disable=missing-docstring
-    dataset = buffer.array_to_dataset(source_array=data, in_memory=False)
+    dataset = buffer.array_to_dataset(
+        source_array=data, in_memory=False, decode_procs=4,
+        decode_batch_size=256)
 
     if training:
       dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)

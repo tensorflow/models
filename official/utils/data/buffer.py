@@ -238,7 +238,7 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
         chunk = x_view[i * rows_per_chunk:(i+1) * rows_per_chunk].tobytes()
         f.write(chunk)
 
-  def to_dataset(self, decode_procs=2):
+  def to_dataset(self, decode_procs=2, decode_batch_size=None):
     """Create a Dataset from the underlying buffer file.
 
     Args:
@@ -258,14 +258,22 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
 
     dataset = tf.data.FixedLengthRecordDataset(
         filenames=self._buffer_path, record_bytes=self.bytes_per_row)
-    dataset = dataset.map(self.make_decode_fn(multi_row=False),
-                          num_parallel_calls=decode_procs)
+
+    if decode_batch_size:
+      dataset = dataset.batch(batch_size=decode_batch_size)
+      dataset = dataset.map(self.make_decode_fn(multi_row=True),
+                            num_parallel_calls=decode_procs)
+      dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
+    else:
+      dataset = dataset.map(self.make_decode_fn(multi_row=False),
+                            num_parallel_calls=decode_procs)
 
     return dataset
 
 
 def array_to_dataset(source_array, in_memory=False, chunk_size=None,
-                     in_place=None, decode_procs=None, rows_per_yield=None):
+                     in_place=None, decode_procs=None, rows_per_yield=None,
+                     decode_batch_size=None):
   """Helper function to expose view classes."""
   kwarg_dict = {"source_array": source_array}
   if in_memory:
@@ -275,5 +283,6 @@ def array_to_dataset(source_array, in_memory=False, chunk_size=None,
         rows_per_yield=rows_per_yield, decode_procs=decode_procs)
   if chunk_size is not None:
     kwarg_dict["chunk_size"] = chunk_size
+  kwarg_dict["decode_batch_size"] = decode_batch_size
   return _FileBackedArrayBytesView(**kwarg_dict).to_dataset(
       decode_procs=decode_procs)
