@@ -190,7 +190,7 @@ def make_in_memory_buffer_experiment(in_place=False):
 
   with section_timer as t:
     t.name_section("define_dataset")
-    dataset = array_view.to_dataset()
+    dataset = array_view.to_dataset(decode_procs=8, rows_per_yield=128)
 
   with section_timer as t:
     t.name_section("consume")
@@ -209,7 +209,7 @@ def make_file_buffer_experiment():
 
   with section_timer as t:
     t.name_section("define_dataset")
-    dataset = array_view.to_dataset()
+    dataset = array_view.to_dataset(decode_procs=8, decode_batch_size=32)
 
   with section_timer as t:
     t.name_section("consume")
@@ -227,7 +227,7 @@ def pretty_print(timings, name):
 
 
 def main():
-  pretty_print(make_simple_tfrecord_experiment(), "Simple TFRecords.")
+  # pretty_print(make_simple_tfrecord_experiment(), "Simple TFRecords.")
   num_cores=min([multiprocessing.cpu_count(), 8])
   pretty_print(make_tfrecord_parallel_experiment(num_cores=num_cores),
                "Parallel TFRecords (num_cores: {})".format(num_cores))

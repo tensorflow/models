@@ -287,6 +287,5 @@ def array_to_dataset(source_array, in_memory=False, chunk_size=None,
         rows_per_yield=rows_per_yield, decode_procs=decode_procs)
   if chunk_size is not None:
     kwarg_dict["chunk_size"] = chunk_size
-  kwarg_dict["decode_batch_size"] = decode_batch_size
   return _FileBackedArrayBytesView(**kwarg_dict).to_dataset(
-      decode_procs=decode_procs)
+      decode_procs=decode_procs, decode_batch_size=decode_batch_size)
