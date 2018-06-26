@@ -54,27 +54,6 @@ _MIN_NUM_RATINGS = 20
 # The buffer size for shuffling train dataset.
 _SHUFFLE_BUFFER_SIZE = 1024
 
-_FEATURE_MAP = {
-    movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-    movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-    movielens.RATING_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-}
-
-_FEATURE_MAP_EVAL = {
-    movielens.USER_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-    movielens.ITEM_COLUMN: tf.FixedLenFeature([1], dtype=tf.int64),
-}
-
-_COLUMNS = [movielens.USER_COLUMN, movielens.ITEM_COLUMN,
-            movielens.RATING_COLUMN]
-_EVAL_COLUMNS = _COLUMNS[:2]
-
-
-_EVAL_BUFFER_SIZE = {
-    movielens.ML_1M: 34130690,
-    movielens.ML_20M: 800961490,
-}
-
 
 def generate_train_eval_data(df, original_users, original_items):
   """Generate the dataset for model training and evaluation.
@@ -349,24 +328,21 @@ def generate_train_dataset(train_data, num_items, num_negatives):
   return np.asarray(all_train_data)
 
 
-def _deserialize_train(examples_serialized):
-  features = tf.parse_example(examples_serialized, _FEATURE_MAP)
-  train_features = {
-      movielens.USER_COLUMN: features[movielens.USER_COLUMN],
-      movielens.ITEM_COLUMN: features[movielens.ITEM_COLUMN],
-  }
-  return train_features, features[movielens.RATING_COLUMN]
+def _deserialize_train(x):
+  # Give tf explicit shape definitions.
+  users = tf.reshape(x[0], (1,))
+  items = tf.reshape(x[1], (1,))
+  features = tf.reshape(x[2], (1,))
+
+  return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}, features
 
 
-def _deserialize_train_new(x):
-  return ({movielens.USER_COLUMN: tf.reshape(x[0], (-1, 1)),
-           movielens.ITEM_COLUMN: tf.reshape(x[1], (-1, 1))},
-          {movielens.RATING_COLUMN: tf.reshape(x[2], (-1, 1))})
+def _deserialize_eval(x):
+  # Give tf explicit shape definitions.
+  users = tf.reshape(x[0], (1,))
+  items = tf.reshape(x[1], (1,))
 
-
-def _deserialize_eval(examples_serialized):
-  features = tf.parse_example(examples_serialized, _FEATURE_MAP_EVAL)
-  return features
+  return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}
 
 
 def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
@@ -397,51 +373,21 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
         ncf_dataset.num_negatives)
 
     data = train_data
-    columns = _COLUMNS
-
-    # print(train_data)
-    # print(train_data.shape)
-    # print(train_data.dtype)
-    # input("...")
-    # import sys
-    # sys.exit()
-    # df = pd.DataFrame(data=train_data, columns=_COLUMNS)
-    #
-    # if data_dir.startswith("gs://"):
-    #   buffer_dir = os.path.join(data_dir, _BUFFER_SUBDIR)
-    # else:
-    #   buffer_dir = None
-    #
-    # buffer_path = file_io.write_to_temp_buffer(df, buffer_dir, _COLUMNS)
-    map_fn = _deserialize_train_new
+    map_fn = _deserialize_train
 
   else:
     data = ncf_dataset.all_eval_data
-    columns=_EVAL_COLUMNS
-    input("...")
+    map_fn = _deserialize_eval
 
-    # df = pd.DataFrame(ncf_dataset.all_eval_data, columns=_EVAL_COLUMNS)
-    # buffer_path = os.path.join(
-    #     data_dir, _BUFFER_SUBDIR, dataset + "_eval_buffer")
-    #
-    # file_io.write_to_buffer(
-    #     dataframe=df, buffer_path=buffer_path, columns=_EVAL_COLUMNS,
-    #     expected_size=_EVAL_BUFFER_SIZE[dataset])
-    # map_fn = _deserialize_eval
-
-  print(training)
-  print(data)
-  print(columns)
   def input_fn():  # pylint: disable=missing-docstring
-    dataset = buffer.array_to_dataset(source_array=data, in_memory=False)
-    # dataset = tf.data.TFRecordDataset(buffer_path)
+    dataset = buffer.array_to_dataset(source_array=data, in_memory=True)
+
     if training:
       dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
 
 
     dataset = dataset.map(map_fn, num_parallel_calls=16)
     dataset = dataset.batch(batch_size)
-    # dataset = dataset.map(map_fn, num_parallel_calls=16)
     dataset = dataset.repeat(repeat)
 
     # Prefetch to improve speed of input pipeline.
