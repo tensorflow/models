@@ -259,12 +259,16 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
     dataset = tf.data.FixedLengthRecordDataset(
         filenames=self._buffer_path, record_bytes=self.bytes_per_row)
 
-    if decode_batch_size:
+    if decode_batch_size and decode_batch_size > 1:
       dataset = dataset.batch(batch_size=decode_batch_size)
       dataset = dataset.map(self.make_decode_fn(multi_row=True),
                             num_parallel_calls=decode_procs)
+
+      # See note above about this unbatching method vs. tf.contrib.data.unbatch
       dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
     else:
+      tf.logging.warning("Decoding records one at a time. Setting "
+                         "`decode_batch_size` can improve performance.")
       dataset = dataset.map(self.make_decode_fn(multi_row=False),
                             num_parallel_calls=decode_procs)
 
