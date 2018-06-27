@@ -25,6 +25,7 @@ import heapq
 import math
 import multiprocessing
 import os
+import signal
 
 # pylint: disable=g-bad-import-order
 import numpy as np
@@ -216,7 +217,11 @@ def run_ncf(_):
   # For unknown reasons, multiprocessing is interacting badly with estimator.
   # defining the worker pool at the start and reusing it seems to prevent
   # lockups.
-  pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+  def init_worker():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+  pool = multiprocessing.Pool(processes=multiprocessing.cpu_count(),
+                              initializer=init_worker)
 
   # Training and evaluation cycle
   def get_train_input_fn():
