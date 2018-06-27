@@ -117,8 +117,8 @@ python seq2species/run_training.py --train_files ${TFRECORD}
 --logdir $HOME/seq2species
 ```
 This will output [TensorBoard
-summaries](https://www.tensorflow.org/programmers_guide/summaries_and_tensorboard), [TensorFlow
-checkpoints](https://www.tensorflow.org/programmers_guide/variables#checkpoint_files), Seq2LabelModelInfo and
+summaries](https://www.tensorflow.org/guide/summaries_and_tensorboard), [TensorFlow
+checkpoints](https://www.tensorflow.org/guide/variables#checkpoint_files), Seq2LabelModelInfo and
 Seq2LabelExperimentMeasures metadata to the logdir `$HOME/seq2species`.
 
 ### Preprocessed Seq2Species Data

@@ -214,7 +214,7 @@ big | 28.9
    demonstration purposes only, but will be optimized in the coming weeks.
 
 ## Export trained model
-To export the model as a Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format, use the argument `--export_dir` when running `transformer_main.py`. A folder will be created in the directory with the name as the timestamp (e.g. $EXPORT_DIR/1526427396).
+To export the model as a Tensorflow [SavedModel](https://www.tensorflow.org/guide/saved_model) format, use the argument `--export_dir` when running `transformer_main.py`. A folder will be created in the directory with the name as the timestamp (e.g. $EXPORT_DIR/1526427396).
 
 ```
 EXPORT_DIR=$HOME/transformer/saved_model

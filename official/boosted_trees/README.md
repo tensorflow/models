@@ -9,7 +9,7 @@ We use Gradient Boosted Trees algorithm to distinguish the two classes.
 The code sample uses the high level `tf.estimator.Estimator` and `tf.data.Dataset`.  These APIs are great for fast iteration and quickly adapting models to your own datasets without major code overhauls.  It allows you to move from single-worker training to distributed training, and makes it easy to export model binaries for prediction.  Here, for further simplicity and faster execution, we use a utility function `tf.contrib.estimator.boosted_trees_classifier_train_in_memory`.  This utility function is especially effective when the input is provided as in-memory data sets like numpy arrays.
 
 An input function for the `Estimator` typically uses `tf.data.Dataset` API, which can handle various data control like streaming, batching, transform and shuffling. However `boosted_trees_classifier_train_in_memory()` utility function requires that the entire data is provided as a single batch (i.e. without using `batch()` API). Thus in this practice, simply `Dataset.from_tensors()` is used to convert numpy arrays into structured tensors, and `Dataset.zip()` is used to put features and label together.
-For further references of `Dataset`, [Read more here](https://www.tensorflow.org/programmers_guide/datasets).
+For further references of `Dataset`, [Read more here](https://www.tensorflow.org/guide/datasets).
 
 ## Running the code
 First make sure you've [added the models folder to your Python path](/official/#running-the-models); otherwise you may encounter an error like `ImportError: No module named official.boosted_trees`.
@@ -53,13 +53,13 @@ tensorboard --logdir=/tmp/higgs_model  # set logdir as --model_dir set during tr
 ```
 
 ## Inference with SavedModel
-You can export the model into Tensorflow [SavedModel](https://www.tensorflow.org/programmers_guide/saved_model) format by using the argument `--export_dir`:
+You can export the model into Tensorflow [SavedModel](https://www.tensorflow.org/guide/saved_model) format by using the argument `--export_dir`:
 
 ```
 python train_higgs.py --export_dir /tmp/higgs_boosted_trees_saved_model
 ```
 
-After the model finishes training, use [`saved_model_cli`](https://www.tensorflow.org/programmers_guide/saved_model#cli_to_inspect_and_execute_savedmodel) to inspect and execute the SavedModel.
+After the model finishes training, use [`saved_model_cli`](https://www.tensorflow.org/guide/saved_model#cli_to_inspect_and_execute_savedmodel) to inspect and execute the SavedModel.
 
 Try the following commands to inspect the SavedModel:
 
