@@ -1,0 +1,12 @@
+{
+  "updates": {
+    "env": {
+      "name": "RoboschoolHumanoid-v1",
+      "obs_dims": [44],
+      "action_dim": 17,
+      "reward_scale":1.0,
+      "discount":0.99,
+      "max_frames": 1000
+    }
+  }
+}
