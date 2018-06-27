@@ -1,0 +1,12 @@
+{
+  "updates": {
+    "env": {
+      "name": "HalfCheetah-v1",
+      "obs_dims": [17],
+      "action_dim": 6,
+      "reward_scale":1.0,
+      "discount":0.99,
+      "max_frames": 1000
+    }
+  }
+}
