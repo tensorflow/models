@@ -12,23 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Main entry to train and evaluation Deep Speech model.
-"""
+"""Main entry to train and evaluate DeepSpeech model."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
+# pylint: enable=g-bad-import-order
 
-import deep_speech_model
 import data.dataset as dataset
+import deep_speech_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
+
+# Default vocabulary file
+_VOCABULARY_FILE = os.path.join(
+    os.path.dirname(__file__), "data/vocabulary.txt")
 
 
 def convert_keras_to_estimator(keras_model, num_gpus):
@@ -36,14 +41,18 @@ def convert_keras_to_estimator(keras_model, num_gpus):
 
   Args:
     keras_model: A Keras model object.
-    num_gpus: An integer, the number of gpus.
+    num_gpus: An integer, the number of GPUs.
 
   Returns:
     estimator: The converted Estimator.
   """
-  optimizer = tf.keras.optimizers.SGD(
-      lr=flags_obj.learning_rate, momentum=flags_obj.momentum,
-      decay=flags_obj.l2, nesterov=True)
+  # keras optimizer is not compatible with distribution strategy.
+  # Use tf optimizer instead
+  optimizer = tf.train.MomentumOptimizer(
+      learning_rate=flags_obj.learning_rate, momentum=flags_obj.momentum,
+      use_nesterov=True)
+
+  # ctc_loss is wrapped as a Lambda layer in the model.
   keras_model.compile(
       optimizer=optimizer, loss={"ctc_loss": lambda y_true, y_pred: y_pred})
 
@@ -71,20 +80,16 @@ def generate_dataset(data_dir):
   return speech_dataset
 
 
-def main(_):
-  with logger.benchmark_context(flags_obj):
-    run_deep_speech(flags_obj)
-
-
 def run_deep_speech(_):
   """Run deep speech training and eval loop."""
   # Data preprocessing
   # The file name of training and test dataset
   tf.logging.info("Data preprocessing...")
+
   train_speech_dataset = generate_dataset(flags_obj.train_data_dir)
   eval_speech_dataset = generate_dataset(flags_obj.eval_data_dir)
 
-  # Number of label classes. Label string is "abcdefghijklmnopqrstuvwxyz' -"
+  # Number of label classes. Label string is "[a-z]' -"
   num_classes = len(train_speech_dataset.speech_labels)
 
   # Input shape of each data example:
@@ -98,8 +103,6 @@ def run_deep_speech(_):
       input_shape, flags_obj.rnn_hidden_layers, flags_obj.rnn_type,
       flags_obj.is_bidirectional, flags_obj.rnn_hidden_size,
       flags_obj.rnn_activation, num_classes, flags_obj.use_bias)
-  # Check model structure
-  tf.logging.info(keras_model.summary(line_length=100))
 
   # Convert to estimator
   num_gpus = flags_core.get_num_gpus(flags_obj)
@@ -131,11 +134,11 @@ def run_deep_speech(_):
 
   def input_fn_train():
     return dataset.input_fn(
-        True, per_device_batch_size, train_speech_dataset)
+        per_device_batch_size, train_speech_dataset)
 
   def input_fn_eval():  # #pylint: disable=unused-variable
     return dataset.input_fn(
-        False, per_device_batch_size, eval_speech_dataset)
+        per_device_batch_size, eval_speech_dataset)
 
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)
@@ -152,9 +155,14 @@ def run_deep_speech(_):
     #     estimator, keras_model, data_set.speech_labels, [], input_fn_eval)
 
     # benchmark_logger.log_evaluation_result(eval_results)
-
-    # if model_helpers.past_stop_threshold(
-    #   flags_obj.stop_threshold, eval_results["accuracy"]):
+    # If some evaluation threshold is met
+        # Log the HR and NDCG results.
+    # wer = eval_results[_WER_KEY]
+    # cer = eval_results[_CER_KEY]
+    # tf.logging.info(
+    #     "Iteration {}: WER = {:.2f}, CER = {:.2f}".format(
+    #         cycle_index + 1, wer, cer))
+    # if model_helpers.past_stop_threshold(FLAGS.wer_threshold, wer):
     #   break
 
   # Clear the session explicitly to avoid session delete error
@@ -164,7 +172,9 @@ def run_deep_speech(_):
 def define_deep_speech_flags():
   """Add flags for run_deep_speech."""
   # Add common flags
-  flags_core.define_base()
+  flags_core.define_base(
+      data_dir=False  # we use train_data_dir and eval_data_dir instead
+  )
   flags_core.define_performance(
       num_parallel_calls=False,
       inter_op=False,
@@ -180,17 +190,19 @@ def define_deep_speech_flags():
       model_dir="/tmp/deep_speech_model/",
       export_dir="/tmp/deep_speech_saved_model/",
       train_epochs=10,
-      batch_size=2,
+      batch_size=32,
       hooks="")
 
   # Deep speech flags
   flags.DEFINE_string(
-      name="train_data_dir", default="/tmp/libri-speech/train-data",
-      help=flags_core.help_wrap("The file path of train dataset."))
+      name="train_data_dir",
+      default="/tmp/librispeech_data/test-clean/LibriSpeech/test-clean-20.csv",
+      help=flags_core.help_wrap("The csv file path of train dataset."))
 
   flags.DEFINE_string(
-      name="eval_data_dir", default="/tmp/libri-speech/eval-data",
-      help=flags_core.help_wrap("The file path of evaluation dataset."))
+      name="eval_data_dir",
+      default="/tmp/librispeech_data/test-clean/LibriSpeech/test-clean-20.csv",
+      help=flags_core.help_wrap("The csv file path of evaluation dataset."))
 
   flags.DEFINE_integer(
       name="sample_rate", default=16000,
@@ -205,7 +217,7 @@ def define_deep_speech_flags():
       help=flags_core.help_wrap("The frame step."))
 
   flags.DEFINE_string(
-      name="vocabulary_file", default="/tmp/libri-speech/vocabulary.txt",
+      name="vocabulary_file", default=_VOCABULARY_FILE,
       help=flags_core.help_wrap("The file path of vocabulary file."))
 
   # RNN related flags
@@ -219,25 +231,22 @@ def define_deep_speech_flags():
 
   flags.DEFINE_bool(
       name="use_bias", default=True,
-      help=flags_core.help_wrap(
-          "Use bias in the last fc layer"))
+      help=flags_core.help_wrap("Use bias in the last fully-connected layer"))
 
   flags.DEFINE_bool(
       name="is_bidirectional", default=True,
-      help=flags_core.help_wrap(
-          "If rnn unit is bidirectional"))
+      help=flags_core.help_wrap("If rnn unit is bidirectional"))
 
   flags.DEFINE_enum(
       name="rnn_type", default="gru",
-      enum_values=["gru", "rnn", "lstm"], case_sensitive=False,
-      help=flags_core.help_wrap(
-          "Type of RNN cell."))
+      enum_values=deep_speech_model.SUPPORTED_RNNS.keys(),
+      case_sensitive=False,
+      help=flags_core.help_wrap("Type of RNN cell."))
 
   flags.DEFINE_enum(
       name="rnn_activation", default="tanh",
       enum_values=["tanh", "relu"], case_sensitive=False,
-      help=flags_core.help_wrap(
-          "Type of the activation within RNN."))
+      help=flags_core.help_wrap("Type of the activation within RNN."))
 
   # Training related flags
   flags.DEFINE_float(
@@ -248,9 +257,19 @@ def define_deep_speech_flags():
       name="momentum", default=0.9,
       help=flags_core.help_wrap("Momentum to accelerate SGD optimizer."))
 
+  # Evaluation metrics threshold
   flags.DEFINE_float(
-      name="l2", default=0,
-      help=flags_core.help_wrap("L2 penalty (decay of SGD optimizer)."))
+      name="wer_threshold", default=None,
+      help=flags_core.help_wrap(
+          "If passed, training will stop when the evaluation metric WER is "
+          "greater than or equal to wer_threshold. For libri speech dataset "
+          "the desired wer_threshold is 0.23 which is the result achieved by "
+          "MLPerf implementation."))
+
+
+def main(_):
+  with logger.benchmark_context(flags_obj):
+    run_deep_speech(flags_obj)
 
 
 if __name__ == "__main__":
