@@ -193,7 +193,7 @@ def build_dataset(file_pattern,
         table_initializer, default_value=-1)
 
   def _example_parser(serialized_example):
-    """Parses a single tf.Example into image and label tensors."""
+    """Parses a single tf.Example into feature and label tensors."""
     # Set specifications for parsing the features.
     data_fields = {
         feature_name: tf.FixedLenFeature([feature.length], tf.float32)
