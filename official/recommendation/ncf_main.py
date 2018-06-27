@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import heapq
 import math
+import multiprocessing
 import os
 
 # pylint: disable=g-bad-import-order
@@ -211,12 +212,24 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
+  # TODO(robieta): Find out why.
+  # For unknown reasons, multiprocessing is interacting badly with estimator.
+  # defining the worker pool at the start and reusing it seems to prevent
+  # lockups.
+  pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+
   # Training and evaluation cycle
   def get_train_input_fn():
+    tf.logging.info("Generating training data.")
+    train_data = movielens_dataset.generate_train_dataset(
+        ncf_dataset.train_data, ncf_dataset.num_items,
+        ncf_dataset.num_negatives, pool)
     return movielens_dataset.get_input_fn(
         True,
         distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, FLAGS.data_dir, FLAGS.dataset, FLAGS.epochs_between_evals)
+        ncf_dataset, FLAGS.data_dir, FLAGS.dataset, FLAGS.epochs_between_evals,
+        train_data
+    )
 
   def get_pred_input_fn():
     return movielens_dataset.get_input_fn(
@@ -252,6 +265,7 @@ def run_ncf(_):
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
+  pool.terminate()
 
 
 def define_ncf_flags():

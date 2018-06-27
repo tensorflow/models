@@ -316,7 +316,7 @@ def _construct_false_negatives(user_block, num_negatives, num_items):
   return np.asarray(output)
 
 
-def generate_train_dataset(train_data, num_items, num_negatives):
+def generate_train_dataset(train_data, num_items, num_negatives, pool):
   """Generate train dataset for each epoch.
 
   Given positive training instances, randomly generate negative instances to
@@ -348,9 +348,7 @@ def generate_train_dataset(train_data, num_items, num_negatives):
   map_fn = functools.partial(_construct_false_negatives,
                              num_negatives=num_negatives, num_items=num_items)
 
-  pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
   output_blocks = pool.map(map_fn, user_blocks)
-  pool.terminate()
 
   return np.concatenate(output_blocks, axis=0)
 
@@ -373,7 +371,7 @@ def _deserialize_eval(x):
 
 
 def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
-                 repeat=1):
+                 repeat=1, train_data=None):
   """Input function for model training and evaluation.
 
   The train input consists of 1 positive instance (user and item have
@@ -394,11 +392,6 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
   """
   # Generate random negative instances for training in each epoch
   if training:
-    tf.logging.info("Generating training data.")
-    train_data = generate_train_dataset(
-        ncf_dataset.train_data, ncf_dataset.num_items,
-        ncf_dataset.num_negatives)
-
     data = train_data
     map_fn = _deserialize_train
 
