@@ -51,6 +51,38 @@ def _cleanup_buffer_file(path):
         "Failed to cleanup temp file {}. Exception: {}".format(path, e))
 
 
+class _CleanupManager(object):
+  """Prevent buildup over the course of execution.
+
+  This module is responsible for creating large blocks of bytes, either as
+  buffer files or bytes in memory. Over the course of a long execution, these
+  artifacts can accumulate and cause various issues. The purpose of this class
+  is to provide an interface for a user to indicate that a view is no longer
+  needed, and may be spun down. Otherwise they will be cleaned up at program
+  exit.
+  """
+  def __init__(self):
+    self.views = {}
+
+  def register(self, name, view):
+    if name in self.views:
+      raise ValueError("Name '{}' is already registered. Call `cleanup()` to "
+                       "reuse namespaces.".format(name))
+    self.views[name] = view
+
+  def cleanup(self, name):
+    if name not in self.views:
+      return
+
+    view, self.views[name] = self.views[name], None
+    del view
+
+
+_CLEANUP_MANAGER = _CleanupManager()
+def cleanup(name):
+  return _CLEANUP_MANAGER.cleanup(name=name)
+
+
 class _ArrayBytesView(object):
   """Helper class for moving numpy array data into TensorFlow Datasets."""
 
@@ -81,6 +113,7 @@ class _ArrayBytesView(object):
     x_view = memoryview(source_array)
     assert x_view.nbytes % self._rows == 0
     self._bytes_per_row = int(x_view.nbytes / self._rows)
+    del x_view
 
   def make_decode_fn(self, multi_row):
     """Construct a decode function to be passed to tf.data.Dataset.map().
@@ -219,6 +252,9 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
     _, self._buffer_path = tempfile.mkstemp()
     atexit.register(_cleanup_buffer_file, path=self._buffer_path)
     self._write_buffer(source_array=source_array, chunk_size=chunk_size)
+
+  def __del__(self):
+    _cleanup_buffer_file(path=self._buffer_path)
 
   def _write_buffer(self, source_array, chunk_size):
     if tf.gfile.Stat(self._buffer_path).length != 0:
