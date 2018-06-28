@@ -79,7 +79,7 @@ class _CleanupManager(object):
     view, self.views[name] = self.views[name], None
     view.cleanup()
     del view
-    del self.views[name]
+    self.views.pop(name)
 
   def purge(self):
     view_names = list(self.views.keys())
@@ -194,7 +194,7 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
     del x_view
 
   def to_dataset(self, decode_procs=2, decode_batch_size=16,
-                 batches_to_read_buffer=1):
+                 batches_to_read_buffer=1, extra_map_fn=None, unbatch=True):
     """Create a Dataset from the underlying buffer file.
 
     Args:
@@ -222,22 +222,27 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
 
     def deserialize(input_bytes):
       flat_row = tf.decode_raw(input_bytes, out_type=tf_dtype)
-      return tf.reshape(flat_row, (-1,) + row_shape[1:])
+      output = tf.reshape(flat_row, (-1,) + row_shape[1:])
+      if extra_map_fn:
+        output = extra_map_fn(output)
+      return output
 
     dataset = dataset.map(deserialize, num_parallel_calls=decode_procs)
 
-    # TODO: determine why unbatch() incurs an overhead at dataset creation.
-    # dataset = dataset.apply(tf.contrib.data.unbatch())
+    if unbatch:
+      # TODO: determine why unbatch() incurs an overhead at dataset creation.
+      # dataset = dataset.apply(tf.contrib.data.unbatch())
 
-    # flat_map() and from_tensor_slices are used instead of apply() and
-    # unbatch() until the performance difference can be resolved.
-    dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
+      # flat_map() and from_tensor_slices are used instead of apply() and
+      # unbatch() until the performance difference can be resolved.
+      dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
 
     return dataset
 
 
 def array_to_dataset(source_array, decode_procs=2, decode_batch_size=16,
-                     batches_to_read_buffer=1, namespace=None):
+                     batches_to_read_buffer=1, extra_map_fn=None, unbatch=True,
+                     namespace=None):
   """Helper function to expose view class."""
   if namespace is None:
     namespace = str(uuid.uuid4().hex)
@@ -247,4 +252,6 @@ def array_to_dataset(source_array, decode_procs=2, decode_batch_size=16,
 
   return view.to_dataset(decode_procs=decode_procs,
                          decode_batch_size=decode_batch_size,
-                         batches_to_read_buffer=batches_to_read_buffer)
+                         batches_to_read_buffer=batches_to_read_buffer,
+                         extra_map_fn=extra_map_fn,
+                         unbatch=unbatch)
