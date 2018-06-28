@@ -193,12 +193,11 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
           "chunk_size will be rounded up to write one row at a time."
             .format(chunk_size, self.bytes_per_row))
 
-    x_view = memoryview(source_array)
+    bytes_per_write = self.bytes_per_row * rows_per_chunk
     with tf.gfile.Open(self._buffer_path, "wb") as f:
       for i in range(int(np.ceil(self.rows / rows_per_chunk))):
-        chunk = x_view[i * rows_per_chunk:(i+1) * rows_per_chunk].tobytes()
+        chunk = bytes(source_array.data[i * bytes_per_write:(i+1) * bytes_per_write])
         f.write(chunk)
-    del x_view
 
   def to_dataset(self, decode_procs=2, decode_batch_size=16,
                  extra_map_fn=None, unbatch=True):
