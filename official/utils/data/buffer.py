@@ -136,7 +136,7 @@ class _ArrayBytesView(object):
       nbytes = int(np.product(x_view.shape) * x_view.itemsize)
 
     assert nbytes % self._rows == 0
-    self._bytes_per_row = int(x_view.nbytes / self._rows)
+    self._bytes_per_row = int(nbytes / self._rows)
     del x_view
 
   def cleanup(self):
