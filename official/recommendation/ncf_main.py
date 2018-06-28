@@ -228,9 +228,6 @@ def run_ncf(_):
   pool = multiprocessing.Pool(processes=multiprocessing.cpu_count(),
                               initializer=init_worker)
 
-  buffer.cleanup(_TRAIN_VIEW_NAME)
-  buffer.cleanup(_EVAL_VIEW_NAME)
-
   # Training and evaluation cycle
   def get_train_input_fn():
     tf.logging.info("Generating training data.")
@@ -254,6 +251,9 @@ def run_ncf(_):
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
+
+    buffer.cleanup(_TRAIN_VIEW_NAME)
+    buffer.cleanup(_EVAL_VIEW_NAME)
 
     # Train the model
     estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks)
