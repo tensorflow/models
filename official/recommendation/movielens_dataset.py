@@ -401,7 +401,7 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1, train_d
   def input_fn():  # pylint: disable=missing-docstring
     dataset = buffer.array_to_dataset(
         source_array=data, decode_procs=8, decode_batch_size=1024,
-        namespace=namespace)
+        batches_to_read_buffer=16, namespace=namespace)
 
     if training:
       dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)

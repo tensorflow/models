@@ -79,9 +79,11 @@ class _CleanupManager(object):
     view, self.views[name] = self.views[name], None
     view.cleanup()
     del view
+    del self.views[name]
 
   def purge(self):
-    for i in self.views:
+    view_names = list(self.views.keys())
+    for i in view_names:
       try:
         self.cleanup(i)
       except Exception as e:
@@ -191,7 +193,8 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
         f.write(chunk)
     del x_view
 
-  def to_dataset(self, decode_procs=2, decode_batch_size=16):
+  def to_dataset(self, decode_procs=2, decode_batch_size=16,
+                 batches_to_read_buffer=1):
     """Create a Dataset from the underlying buffer file.
 
     Args:
@@ -211,7 +214,7 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
 
     dataset = tf.data.FixedLengthRecordDataset(
         filenames=self._buffer_path, record_bytes=self.bytes_per_row,
-        buffer_size=decode_procs * decode_batch_size * self.bytes_per_row)
+        buffer_size=decode_procs * decode_batch_size * self.bytes_per_row * batches_to_read_buffer)
     dataset = dataset.batch(batch_size=decode_batch_size)
 
     tf_dtype = self._tf_dtype
@@ -234,7 +237,7 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
 
 
 def array_to_dataset(source_array, decode_procs=2, decode_batch_size=16,
-                     namespace=None):
+                     batches_to_read_buffer=1, namespace=None):
   """Helper function to expose view class."""
   if namespace is None:
     namespace = str(uuid.uuid4().hex)
@@ -243,4 +246,5 @@ def array_to_dataset(source_array, decode_procs=2, decode_batch_size=16,
   _CLEANUP_MANAGER.register(name=namespace, view=view)
 
   return view.to_dataset(decode_procs=decode_procs,
-                         decode_batch_size=decode_batch_size)
+                         decode_batch_size=decode_batch_size,
+                         batches_to_read_buffer=batches_to_read_buffer)
