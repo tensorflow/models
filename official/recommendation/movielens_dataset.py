@@ -370,8 +370,7 @@ def _deserialize_eval(x):
   return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}
 
 
-def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
-                 repeat=1, train_data=None):
+def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1, train_data=None):
   """Input function for model training and evaluation.
 
   The train input consists of 1 positive instance (user and item have
@@ -401,8 +400,8 @@ def get_input_fn(training, batch_size, ncf_dataset, data_dir, dataset,
 
   def input_fn():  # pylint: disable=missing-docstring
     dataset = buffer.array_to_dataset(
-        source_array=data, in_memory=False, decode_procs=4,
-        decode_batch_size=256)
+        source_array=data, decode_procs=8, decode_batch_size=1024,
+        namespace=namespace)
 
     if training:
       dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)

@@ -37,6 +37,7 @@ import tensorflow as tf
 from official.datasets import movielens
 from official.recommendation import movielens_dataset
 from official.recommendation import neumf_model
+from official.utils.data import buffer
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -47,6 +48,10 @@ _TOP_K = 10  # Top-k list for evaluation
 # keys for evaluation metrics
 _HR_KEY = "HR"
 _NDCG_KEY = "NDCG"
+
+# Used for intermediate garbage collection.
+_TRAIN_VIEW_NAME = "ncf_training"
+_EVAL_VIEW_NAME = "ncf_eval"
 
 
 def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
@@ -223,6 +228,9 @@ def run_ncf(_):
   pool = multiprocessing.Pool(processes=multiprocessing.cpu_count(),
                               initializer=init_worker)
 
+  buffer.cleanup(_TRAIN_VIEW_NAME)
+  buffer.cleanup(_EVAL_VIEW_NAME)
+
   # Training and evaluation cycle
   def get_train_input_fn():
     tf.logging.info("Generating training data.")
@@ -230,17 +238,16 @@ def run_ncf(_):
         ncf_dataset.train_data, ncf_dataset.num_items,
         ncf_dataset.num_negatives, pool)
     return movielens_dataset.get_input_fn(
-        True,
+        _TRAIN_VIEW_NAME, True,
         distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, FLAGS.data_dir, FLAGS.dataset, FLAGS.epochs_between_evals,
-        train_data
+        ncf_dataset, FLAGS.epochs_between_evals, train_data
     )
 
   def get_pred_input_fn():
     return movielens_dataset.get_input_fn(
-        False,
+        _EVAL_VIEW_NAME, False,
         distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, FLAGS.data_dir, FLAGS.dataset, 1)
+        ncf_dataset, 1)
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
 

@@ -15,6 +15,7 @@
 
 import atexit
 import tempfile
+import uuid
 
 import numpy as np
 import tensorflow as tf
@@ -46,6 +47,7 @@ def _cleanup_buffer_file(path):
   try:
     if tf.gfile.Exists(path):
       tf.gfile.Remove(path)
+      tf.logging.info("Buffer file {} removed".format(path))
   except Exception as e:
     tf.logging.error(
         "Failed to cleanup temp file {}. Exception: {}".format(path, e))
@@ -75,12 +77,24 @@ class _CleanupManager(object):
       return
 
     view, self.views[name] = self.views[name], None
+    view.cleanup()
     del view
+
+  def purge(self):
+    for i in self.views:
+      try:
+        self.cleanup(i)
+      except Exception as e:
+        tf.logging.error("Failed to cleanup view: {} Continuing.".format(e))
 
 
 _CLEANUP_MANAGER = _CleanupManager()
 def cleanup(name):
   return _CLEANUP_MANAGER.cleanup(name=name)
+
+def purge():
+  _CLEANUP_MANAGER.purge()
+atexit.register(purge)
 
 
 class _ArrayBytesView(object):
@@ -102,6 +116,7 @@ class _ArrayBytesView(object):
     assert source_array.shape[0] > 0
     assert source_array.dtype.name in _NP_DTYPE_MAP
     assert source_array.dtype.name in _TF_DTYPE_MAP
+    assert source_array.flags.c_contiguous
 
     self._rows = source_array.shape[0]
     self._row_shape = (1,) + source_array.shape[1:]
@@ -115,28 +130,8 @@ class _ArrayBytesView(object):
     self._bytes_per_row = int(x_view.nbytes / self._rows)
     del x_view
 
-  def make_decode_fn(self, multi_row):
-    """Construct a decode function to be passed to tf.data.Dataset.map().
-
-    Args:
-      multi_row: Boolean of whether the .map() expects multiple rows of data
-        in the input tensor (multi_row=True), in which case the decode should
-        respect this and return a multi-row decoded tensor. Otherwise map should
-        simply return a static sized single row tensor.
-    """
-    tf_dtype = self._tf_dtype
-    row_shape = self.row_shape
-
-    if multi_row:
-      def deserialize(input_bytes):
-        flat_row = tf.decode_raw(input_bytes, out_type=tf_dtype)
-        return tf.reshape(flat_row, (-1,) + row_shape[1:])
-    else:
-      def deserialize(input_bytes):
-        flat_row = tf.decode_raw(input_bytes, out_type=tf_dtype)
-        return tf.reshape(flat_row, row_shape[1:])
-
-    return deserialize
+  def cleanup(self):
+    pass
 
   @property
   def rows(self):
@@ -153,85 +148,6 @@ class _ArrayBytesView(object):
   @property
   def tf_dtype(self):
     return self._tf_dtype
-
-
-class _InMemoryArrayBytesView(_ArrayBytesView):
-  """Helper class to construct TensorFlow datasets from NumPy data in memory."""
-
-  def __init__(self, source_array, in_place=False):
-    """Construct view into array buffer, and enforce ownership if necessary.
-
-    Args:
-      source_array: NumPy array to be converted into a dataset.
-      in_place: Boolean of whether to use the existing source array buffer
-        (true) or create a copy and release the source array (false).
-    """
-    super(_InMemoryArrayBytesView, self).__init__(source_array)
-
-    if in_place and not source_array.flags.owndata:
-      # NumPy arrays are fundamentally a bunch of helper methods sitting on
-      # top of a large byte buffer. This allows useful things like two arrays
-      # sharing the same memory, or efficient non-copy slices along the major
-      # dimension, but for this case it means that another part of the program
-      # could manipulate the underlying data in unexpected ways. As a result
-      # this case is explicitly not supported.
-      raise OSError("Refusing to use memory in place, as input array does not "
-                    "own it's own buffer.")
-
-    # TODO(robieta): Not exactly sure how to handle this, so disallowing for now.
-    assert not source_array.flags.writebackifcopy
-
-    if not in_place:
-      source_array = np.copy(source_array)
-
-    source_array.setflags(write=False)
-
-    # TODO(robieta): check to see if garbage collection of x can be an issue
-    self._x_view = memoryview(source_array)
-
-  def to_dataset(self, rows_per_yield=None, decode_procs=2):
-    """Create a Dataset from buffer using a generator to encoded bytes.
-
-    Args:
-      rows_per_yield: Number of rows worth of bytes to return for each next()
-        call. Higher rows_per_yield makes it less likely that python generator
-        speed will bottleneck performance.
-      decode_procs: Number of parallel decoding map workers called in the
-        constructed dataset. Two is often significantly faster than one, but
-        very little marginal benefit has been observed above two.
-    """
-    rows_per_yield = rows_per_yield or _DEFAULT_ROWS_PER_YIELD
-
-    # grab variables for explicit definition rather than including attribute
-    # lookups in the function.
-    x_view = self._x_view
-    rows = self.rows
-    num_loops = int(np.ceil(rows / rows_per_yield))
-
-    def row_bytes_generator():
-      for i in range(num_loops):
-        yield x_view[i * rows_per_yield:(i+1) * rows_per_yield].tobytes()
-
-    dataset = tf.data.Dataset.from_generator(
-        row_bytes_generator, output_types=tf.string)
-    dataset = dataset.map(self.make_decode_fn(multi_row=True),
-                          num_parallel_calls=decode_procs)
-
-    # An alternative to always unbatching is to make rows_per_yield equal to
-    # the dataset batch size so that the decode operation automatically produces
-    # correctly sized batches. While this can be faster (by ~25%), this dataset
-    # is already quite fast and linking the decode and batch operations in such
-    # a way makes the resultant dataset less flexible. If there is a significant
-    # bottleneck an option can be added use the decode as a batch operation, and
-    # make rows_per_yield batch aware.
-
-    # TODO: determine why unbatch() incurs an overhead at dataset creation.
-    # dataset = dataset.apply(tf.contrib.data.unbatch())
-
-    # flat_map() and from_tensor_slices are used instead of apply() and
-    # unbatch() until the performance difference can be resolved.
-    dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
-    return dataset
 
 
 class _FileBackedArrayBytesView(_ArrayBytesView):
@@ -253,7 +169,7 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
     atexit.register(_cleanup_buffer_file, path=self._buffer_path)
     self._write_buffer(source_array=source_array, chunk_size=chunk_size)
 
-  def __del__(self):
+  def cleanup(self):
     _cleanup_buffer_file(path=self._buffer_path)
 
   def _write_buffer(self, source_array, chunk_size):
@@ -273,8 +189,9 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
       for i in range(int(np.ceil(self.rows / rows_per_chunk))):
         chunk = x_view[i * rows_per_chunk:(i+1) * rows_per_chunk].tobytes()
         f.write(chunk)
+    del x_view
 
-  def to_dataset(self, decode_procs=2, decode_batch_size=None):
+  def to_dataset(self, decode_procs=2, decode_batch_size=16):
     """Create a Dataset from the underlying buffer file.
 
     Args:
@@ -293,35 +210,37 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
                     .format(actual_length, expected_length))
 
     dataset = tf.data.FixedLengthRecordDataset(
-        filenames=self._buffer_path, record_bytes=self.bytes_per_row)
+        filenames=self._buffer_path, record_bytes=self.bytes_per_row,
+        buffer_size=decode_procs * decode_batch_size * self.bytes_per_row)
+    dataset = dataset.batch(batch_size=decode_batch_size)
 
-    if decode_batch_size and decode_batch_size > 1:
-      dataset = dataset.batch(batch_size=decode_batch_size)
-      dataset = dataset.map(self.make_decode_fn(multi_row=True),
-                            num_parallel_calls=decode_procs)
+    tf_dtype = self._tf_dtype
+    row_shape = self.row_shape
 
-      # See note above about this unbatching method vs. tf.contrib.data.unbatch
-      dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
-    else:
-      tf.logging.warning("Decoding records one at a time. Setting "
-                         "`decode_batch_size` can improve performance.")
-      dataset = dataset.map(self.make_decode_fn(multi_row=False),
-                            num_parallel_calls=decode_procs)
+    def deserialize(input_bytes):
+      flat_row = tf.decode_raw(input_bytes, out_type=tf_dtype)
+      return tf.reshape(flat_row, (-1,) + row_shape[1:])
+
+    dataset = dataset.map(deserialize, num_parallel_calls=decode_procs)
+
+    # TODO: determine why unbatch() incurs an overhead at dataset creation.
+    # dataset = dataset.apply(tf.contrib.data.unbatch())
+
+    # flat_map() and from_tensor_slices are used instead of apply() and
+    # unbatch() until the performance difference can be resolved.
+    dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
 
     return dataset
 
 
-def array_to_dataset(source_array, in_memory=False, chunk_size=None,
-                     in_place=None, decode_procs=None, rows_per_yield=None,
-                     decode_batch_size=None):
-  """Helper function to expose view classes."""
-  kwarg_dict = {"source_array": source_array}
-  if in_memory:
-    if in_place is not None:
-      kwarg_dict["in_place": in_place]
-    return _InMemoryArrayBytesView(**kwarg_dict).to_dataset(
-        rows_per_yield=rows_per_yield, decode_procs=decode_procs)
-  if chunk_size is not None:
-    kwarg_dict["chunk_size"] = chunk_size
-  return _FileBackedArrayBytesView(**kwarg_dict).to_dataset(
-      decode_procs=decode_procs, decode_batch_size=decode_batch_size)
+def array_to_dataset(source_array, decode_procs=2, decode_batch_size=16,
+                     namespace=None):
+  """Helper function to expose view class."""
+  if namespace is None:
+    namespace = str(uuid.uuid4().hex)
+
+  view = _FileBackedArrayBytesView(source_array=source_array)
+  _CLEANUP_MANAGER.register(name=namespace, view=view)
+
+  return view.to_dataset(decode_procs=decode_procs,
+                         decode_batch_size=decode_batch_size)
