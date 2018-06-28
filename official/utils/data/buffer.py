@@ -18,6 +18,7 @@ import tempfile
 import uuid
 
 import numpy as np
+import six
 import tensorflow as tf
 
 # I'm sure these already exist somewhere, but for now this is expedient.
@@ -128,7 +129,13 @@ class _ArrayBytesView(object):
     self._tf_dtype = _TF_DTYPE_MAP[source_array.dtype.name]
 
     x_view = memoryview(source_array)
-    assert x_view.nbytes % self._rows == 0
+
+    if six.PY3:
+      nbytes = x_view.nbytes
+    else:
+      nbytes = int(np.product(x_view.shape) * x_view.itemsize)
+
+    assert nbytes % self._rows == 0
     self._bytes_per_row = int(x_view.nbytes / self._rows)
     del x_view
 
