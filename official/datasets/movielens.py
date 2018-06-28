@@ -151,7 +151,7 @@ def _transform_csv(input_path, output_path, names, skip_first, separator=","):
     separator: Character used to separate fields in the raw csv.
   """
   if six.PY2:
-    names = [n.decode("utf-u") for n in names]
+    names = [n.decode("utf-8") for n in names]
 
   with tf.gfile.Open(output_path, "wb") as f_out, \
       tf.gfile.Open(input_path, "rb") as f_in:

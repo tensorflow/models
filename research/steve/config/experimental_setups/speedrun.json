@@ -1,0 +1,11 @@
+{
+  "updates": {
+    "policy_config": {
+      "frames_per_update": false
+    },
+    "*model_config":{
+      "frames_per_update": false,
+      "pretrain_n": false
+    }
+  }
+}

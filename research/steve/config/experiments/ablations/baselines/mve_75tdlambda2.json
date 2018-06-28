@@ -1,0 +1,10 @@
+{
+  "inherits": ["config/algos/mve_tdlambda.json", "config/envs/humanoid.json"],
+  "updates":{
+    "policy_config": {
+      "value_expansion": {
+        "lambda_return": 0.75
+      }
+    }
+  }
+}

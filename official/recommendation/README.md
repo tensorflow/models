@@ -43,7 +43,7 @@ In both datasets, the timestamp is represented in seconds since midnight Coordin
 ### Download and preprocess dataset
 To download the dataset, please install Pandas package first. Then issue the following command:
 ```
-python data_download.py
+python movielens_dataset.py
 ```
 Arguments:
   * `--data_dir`: Directory where to download and save the preprocessed data. By default, it is `/tmp/movielens-data/`.
