@@ -27,7 +27,7 @@ from official.utils.data import buffer
 
 
 _BATCH_SIZE = 512
-_NUM_BATCHES = 5000
+_NUM_BATCHES = 15000
 _NUM_PTS = _BATCH_SIZE * _NUM_BATCHES
 _NUM_COLS = 6
 _DUMMY_KEY = "a"  # TFRecords has to include keys, so using a one letter ascii
@@ -231,8 +231,6 @@ def main():
   num_cores=min([multiprocessing.cpu_count(), 8])
   pretty_print(make_tfrecord_parallel_experiment(num_cores=num_cores),
                "Parallel TFRecords (num_cores: {})".format(num_cores))
-  pretty_print(make_in_memory_buffer_experiment(False), "NumPy Buffer (in-memory, copy)")
-  pretty_print(make_in_memory_buffer_experiment(True), "NumPy Buffer (in-memory, in-place)")
   pretty_print(make_file_buffer_experiment(), "NumPy Buffer (file backed)")
 
 

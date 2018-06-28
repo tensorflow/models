@@ -194,7 +194,7 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
     del x_view
 
   def to_dataset(self, decode_procs=2, decode_batch_size=16,
-                 batches_to_read_buffer=1, extra_map_fn=None, unbatch=True):
+                 extra_map_fn=None, unbatch=True):
     """Create a Dataset from the underlying buffer file.
 
     Args:
@@ -214,7 +214,7 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
 
     dataset = tf.data.FixedLengthRecordDataset(
         filenames=self._buffer_path, record_bytes=self.bytes_per_row,
-        buffer_size=decode_procs * decode_batch_size * self.bytes_per_row * batches_to_read_buffer)
+        buffer_size=decode_procs * decode_batch_size * self.bytes_per_row * 2)
     dataset = dataset.batch(batch_size=decode_batch_size)
 
     tf_dtype = self._tf_dtype
@@ -230,18 +230,19 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
     dataset = dataset.map(deserialize, num_parallel_calls=decode_procs)
 
     if unbatch:
-      # TODO: determine why unbatch() incurs an overhead at dataset creation.
-      # dataset = dataset.apply(tf.contrib.data.unbatch())
-
-      # flat_map() and from_tensor_slices are used instead of apply() and
-      # unbatch() until the performance difference can be resolved.
-      dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
+      # This is equivalent to:
+      #     dataset = dataset.flat_map(tf.data.Dataset.from_tensor_slices)
+      # The apply() + unbatch() approach incurs a ~ 2 second overhead when
+      # the dataset is defined, but executes significantly faster than the
+      # from_tensor_slices() approach, and is therefore generally worth the
+      # wait.
+      dataset = dataset.apply(tf.contrib.data.unbatch())
 
     return dataset
 
 
 def array_to_dataset(source_array, decode_procs=2, decode_batch_size=16,
-                     batches_to_read_buffer=1, extra_map_fn=None, unbatch=True,
+                     extra_map_fn=None, unbatch=True,
                      namespace=None):
   """Helper function to expose view class."""
   if namespace is None:
@@ -252,6 +253,5 @@ def array_to_dataset(source_array, decode_procs=2, decode_batch_size=16,
 
   return view.to_dataset(decode_procs=decode_procs,
                          decode_batch_size=decode_batch_size,
-                         batches_to_read_buffer=batches_to_read_buffer,
                          extra_map_fn=extra_map_fn,
                          unbatch=unbatch)
