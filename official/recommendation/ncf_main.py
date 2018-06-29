@@ -54,7 +54,7 @@ _TRAIN_VIEW_NAME = "ncf_training"
 _EVAL_VIEW_NAME = "ncf_eval"
 
 
-def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
+def evaluate_model(estimator, model_dir, ncf_dataset, pred_input_fn):
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -70,8 +70,7 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
 
   Args:
     estimator: The Estimator.
-    batch_size: An integer, the batch size specified by user.
-    num_gpus: An integer, the number of gpus specified by user.
+    model_dir: The model directory of the estimator.
     ncf_dataset: An NCFDataSet object, which contains the information about
       test/eval dataset, such as:
       eval_true_items, which is a list of test items (true items) for HR and
@@ -137,6 +136,7 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
       _NDCG_KEY: ndcg,
       tf.GraphKeys.GLOBAL_STEP: global_step
   }
+
   return eval_results
 
 
@@ -230,6 +230,7 @@ def run_ncf(_):
 
   # Training and evaluation cycle
   def get_train_input_fn():
+    # Generate random negative instances for training in each epoch
     tf.logging.info("Generating training data.")
     train_data = movielens_dataset.generate_train_dataset(
         ncf_dataset.train_data, ncf_dataset.num_items,
@@ -252,7 +253,9 @@ def run_ncf(_):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
 
-    buffer.cleanup(_TRAIN_VIEW_NAME)
+    buffer.cleanup(_TRAIN_VIEW_NAME + "_users")
+    buffer.cleanup(_TRAIN_VIEW_NAME + "_items")
+    buffer.cleanup(_TRAIN_VIEW_NAME + "_labels")
     buffer.cleanup(_EVAL_VIEW_NAME)
 
     # Train the model
@@ -260,7 +263,7 @@ def run_ncf(_):
 
     # Evaluate the model
     eval_results = evaluate_model(
-        estimator, FLAGS.batch_size, num_gpus, ncf_dataset, get_pred_input_fn())
+        estimator, FLAGS.model_dir, ncf_dataset, get_pred_input_fn())
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)

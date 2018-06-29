@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Create TensorFlow Datasets from NumPy binary buffers."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -27,25 +28,28 @@ import tensorflow as tf
 
 # I'm sure these already exist somewhere, but for now this is expedient.
 _NP_DTYPE_MAP = {
-  "uint8": np.uint8,
-  "int8": np.int8,
-  "int64": np.int64,
-  "float32": np.float32,
+    "uint8": np.uint8,
+    "uint16": np.uint16,
+    "uint64": np.uint64,
+    "int8": np.int8,
+    "int32": np.int32,
+    "int64": np.int64,
+    "float32": np.float32,
 }
 
 _TF_DTYPE_MAP = {
-  "uint8": tf.uint8,
-  "int8": tf.int8,
-  "int64": tf.int64,
-  "float32": tf.float32,
+    "uint8": tf.uint8,
+    "uint16": tf.uint16,
+    "uint64": tf.uint64,
+    "int8": tf.int8,
+    "int32": tf.int32,
+    "int64": tf.int64,
+    "float32": tf.float32,
 }
 
 # NumPy arrays are written to the underlying file in chunks to prevent
 # I/O latency from bottlenecking.
 _DEFAULT_CHUNK_SIZE = 1024 ** 2  # 1 MB
-
-# Performance parameter for in-memory dataset creation.
-_DEFAULT_ROWS_PER_YIELD = 16
 
 
 def _cleanup_buffer_file(path):
@@ -119,7 +123,7 @@ class _ArrayBytesView(object):
       source_array: NumPy array to be converted into a dataset.
     """
     assert isinstance(source_array, np.ndarray)
-    assert len(source_array.shape) > 0
+    assert source_array.shape
     assert source_array.shape[0] > 0
     assert source_array.dtype.name in _NP_DTYPE_MAP
     assert source_array.dtype.name in _TF_DTYPE_MAP
@@ -186,6 +190,12 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
     _cleanup_buffer_file(path=self._buffer_path)
 
   def _write_buffer(self, source_array, chunk_size):
+    """Dump NumPy array bytes to be used as the basis of a dataset.
+
+    Args:
+      source_array: NumPy array to be converted into a dataset.
+      chunk_size: The number of bytes written in a pass.
+    """
     if tf.gfile.Stat(self._buffer_path).length != 0:
       raise OSError("Buffer file {} exists and is not empty."
                     .format(self._buffer_path))
@@ -195,12 +205,13 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
       tf.logging.warning(
           "chunk_size {} is less than the size of a single row ({} bytes). "
           "chunk_size will be rounded up to write one row at a time."
-            .format(chunk_size, self.bytes_per_row))
+          .format(chunk_size, self.bytes_per_row))
 
     bytes_per_write = self.bytes_per_row * rows_per_chunk
     with tf.gfile.Open(self._buffer_path, "wb") as f:
       for i in range(int(np.ceil(self.rows / rows_per_chunk))):
-        chunk = bytes(source_array.data[i * bytes_per_write:(i+1) * bytes_per_write])
+        chunk = bytes(
+            source_array.data[i * bytes_per_write:(i+1) * bytes_per_write])
         f.write(chunk)
 
   def to_dataset(self, decode_procs=2, decode_batch_size=16,
@@ -254,7 +265,23 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
 def array_to_dataset(source_array, decode_procs=2, decode_batch_size=16,
                      extra_map_fn=None, unbatch=True,
                      namespace=None):
-  """Helper function to expose view class."""
+  """Helper function to expose view class.
+
+  Args:
+    source_array: NumPy array to be converted into a dataset.
+    decode_procs: Number of parallel byte arrays to decode into tensors.
+    decode_batch_size: Number of rows worth of bytes to decode in a single
+      decode batch.
+    extra_map_fn: A map function to be applied after the raw bytes are decoded.
+      performing a map during this step is generally more efficient than
+      unbatching, performing a per element map, and then batching to the final
+      batch size.
+    unbatch: Whether to return single rows as elements (True) or batches of rows
+      (False) where the batch size is the decode_batch_size.
+    namespace: A key for the binary file that backs this dataset. This key is
+      used to signal that a dataset will no longer be used, and allow cleanup
+      of tempfiles throughout training.
+  """
   if namespace is None:
     namespace = str(uuid.uuid4().hex)
 

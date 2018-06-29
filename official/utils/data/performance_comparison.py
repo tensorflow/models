@@ -19,11 +19,11 @@ from __future__ import print_function
 
 import atexit
 import multiprocessing
+import tempfile
 import timeit
 
 import numpy as np
 import pandas as pd
-import tempfile
 
 import tensorflow as tf
 
@@ -38,7 +38,7 @@ _DUMMY_KEY = "a"  # TFRecords has to include keys, so using a one letter ascii
                   # key helps performance.
 
 _FEATURE_MAP = {
-  _DUMMY_KEY: tf.FixedLenFeature([_NUM_COLS], dtype=tf.int64),
+    _DUMMY_KEY: tf.FixedLenFeature([_NUM_COLS], dtype=tf.int64),
 }
 
 
@@ -221,6 +221,7 @@ def make_file_buffer_experiment():
 
   return section_timer.section_times
 
+
 def pretty_print(timings, name):
   print(name)
   print("Total: {:.2f}".format(sum([i for i in timings.values()])))
@@ -230,12 +231,28 @@ def pretty_print(timings, name):
   print()
 
 
+
+def shuffle_test():
+  x = np.arange(0, 1000, 1, dtype=np.int32)
+  dataset = buffer.array_to_dataset(source_array=x, decode_procs=2, unbatch=False, namespace="shuffle_test")
+  dataset = dataset.apply(tf.contrib.data.unbatch())
+  dataset = dataset.shuffle(4)
+  dataset = dataset.batch(16)
+
+  with tf.Session().as_default() as sess:
+    get_next = dataset.make_one_shot_iterator().get_next()
+    for _ in range(4):
+      result = sess.run(get_next)
+      print(result)
+
+
 def main():
+  # pretty_print(make_file_buffer_experiment(), "NumPy Buffer (file backed)")
+  # num_cores = min([multiprocessing.cpu_count(), 8])
+  # pretty_print(make_tfrecord_parallel_experiment(num_cores=num_cores),
+  #              "Parallel TFRecords (num_cores: {})".format(num_cores))
   # pretty_print(make_simple_tfrecord_experiment(), "Simple TFRecords.")
-  num_cores=min([multiprocessing.cpu_count(), 8])
-  pretty_print(make_tfrecord_parallel_experiment(num_cores=num_cores),
-               "Parallel TFRecords (num_cores: {})".format(num_cores))
-  pretty_print(make_file_buffer_experiment(), "NumPy Buffer (file backed)")
+  shuffle_test()
 
 
 if __name__ == "__main__":

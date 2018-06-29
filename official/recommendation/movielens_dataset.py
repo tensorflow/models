@@ -235,6 +235,7 @@ def load_data(file_name):
     return [int(col) for col in line.split("\t")]
 
   data = [_process_line(line) for line in lines]
+
   return data
 
 
@@ -306,14 +307,14 @@ def _construct_false_negatives(user_block, num_negatives, num_items):
   output = []
 
   for i in range(n):
-    output.append(user_block[i, :].tolist())
+    output.append(int(user_block[i, 1]))
     for _ in range(num_negatives):
       j = np.random.randint(num_items)
       while j in positive_set:
         j = np.random.randint(num_items)
-      output.append([user, j, 0])
+      output.append(j)
 
-  return np.asarray(output)
+  return user * np.ones((n * (1 + num_negatives),), dtype=np.int32), output
 
 
 def generate_train_dataset(train_data, num_items, num_negatives, pool):
@@ -331,6 +332,7 @@ def generate_train_dataset(train_data, num_items, num_negatives, pool):
   Returns:
     A numpy array of training dataset.
   """
+  assert num_items <= np.iinfo(np.uint16).max
 
   data_array = np.array(train_data)
 
@@ -342,27 +344,36 @@ def generate_train_dataset(train_data, num_items, num_negatives, pool):
   data_array = data_array[sort_indicies, :]
 
   delta = data_array[1:, 0] - data_array[:-1, 0]
-  boundaries = [0] + (np.argwhere(delta)[:, 0] + 1).tolist() + [data_array.shape[0]]
-  user_blocks = [data_array[boundaries[i]:boundaries[i+1]] for i in range(len(boundaries) - 1)]
+  boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
+                [data_array.shape[0]])
+  user_blocks = [data_array[boundaries[i]:boundaries[i+1]]
+                 for i in range(len(boundaries) - 1)]
+
+  assert len(user_blocks) <= np.iinfo(np.int32).max
 
   map_fn = functools.partial(_construct_false_negatives,
                              num_negatives=num_negatives, num_items=num_items)
 
   output_blocks = pool.map(map_fn, user_blocks)
 
-  return np.concatenate(output_blocks, axis=0)
+  users = np.concatenate([i[0] for i in output_blocks])
+  items = np.concatenate([np.array(i[1], dtype=np.uint16)
+                          for i in output_blocks])
+  labels = np.zeros(users.shape, dtype=np.uint8)
+  labels[0::(num_negatives + 1)] = 1
+
+  return {"users": users, "items": items, "labels": labels}
 
 
-def _deserialize_train(x):
-  # Give tf explicit shape definitions.
-  users = tf.reshape(x[:, 0], (-1, 1))
-  items = tf.reshape(x[:, 1], (-1, 1))
-  features = tf.reshape(x[:, 2], (-1, 1))
+def _format_training(users, items, labels):
+  # Give tensorflow explicit shape definitions.
+  users = tf.reshape(users, (-1, 1))
+  items = tf.reshape(items, (-1, 1))
+  labels = tf.reshape(labels, (-1, 1))
+  return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}, labels
 
-  return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}, features
 
-
-def _deserialize_eval(x):
+def _format_eval(x):
   # Give tf explicit shape definitions.
   users = tf.reshape(x[:, 0], (-1, 1))
   items = tf.reshape(x[:, 1], (-1, 1))
@@ -370,7 +381,8 @@ def _deserialize_eval(x):
   return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}
 
 
-def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1, train_data=None):
+def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
+                 train_data=None):
   """Input function for model training and evaluation.
 
   The train input consists of 1 positive instance (user and item have
@@ -380,31 +392,49 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1, train_d
   instances. Together with positive instances, they form a new train dataset.
 
   Args:
+    namespace: Key for managing buffer files.
     training: A boolean flag for training mode.
     batch_size: An integer, batch size for training and evaluation.
     ncf_dataset: An NCFDataSet object, which contains the information about
       training and test data.
     repeat: An integer, how many times to repeat the dataset.
+    train_data: Data with generated false negatives.
 
   Returns:
     dataset: A tf.data.Dataset object containing examples loaded from the files.
   """
-  # Generate random negative instances for training in each epoch
+
   if training:
     data = train_data
-    map_fn = _deserialize_train
 
   else:
     data = ncf_dataset.all_eval_data
-    map_fn = _deserialize_eval
 
   def input_fn():  # pylint: disable=missing-docstring
-    dataset = buffer.array_to_dataset(
-        source_array=data, decode_procs=8, decode_batch_size=batch_size,
-        unbatch=False, extra_map_fn=map_fn, namespace=namespace)
-
     if training:
-      dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
+      users = data["users"]
+      items = data["items"]
+      labels = data["labels"]
+
+      user_dataset = buffer.array_to_dataset(
+          source_array=users, decode_procs=3, decode_batch_size=batch_size,
+          unbatch=False, namespace=namespace + "_users")
+      item_dataset = buffer.array_to_dataset(
+          source_array=items, decode_procs=3, decode_batch_size=batch_size,
+          unbatch=False, namespace=namespace + "_items")
+      label_dataset = buffer.array_to_dataset(
+          source_array=labels, decode_procs=3, decode_batch_size=batch_size,
+          unbatch=False, namespace=namespace + "_labels")
+
+      dataset = tf.data.Dataset.zip((user_dataset, item_dataset, label_dataset))
+      dataset = dataset.map(_format_training)
+    else:
+      dataset = buffer.array_to_dataset(
+          source_array=data, decode_procs=8, decode_batch_size=batch_size,
+          unbatch=False, extra_map_fn=_format_eval, namespace=namespace)
+
+    # if training:
+    #   dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
 
     dataset = dataset.repeat(repeat)
 
