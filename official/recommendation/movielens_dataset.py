@@ -416,18 +416,26 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
       items = data["items"]
       labels = data["labels"]
 
+      # Using different integer types for the various model inputs significantly
+      # reduces memory consumption.
       user_dataset = buffer.array_to_dataset(
-          source_array=users, decode_procs=3, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_users")
+          source_array=users, decode_procs=4, decode_batch_size=batch_size,
+          unbatch=False, namespace=namespace + "_users").prefetch(8)
       item_dataset = buffer.array_to_dataset(
-          source_array=items, decode_procs=3, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_items")
+          source_array=items, decode_procs=4, decode_batch_size=batch_size,
+          unbatch=False, namespace=namespace + "_items").prefetch(8)
       label_dataset = buffer.array_to_dataset(
-          source_array=labels, decode_procs=3, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_labels")
+          source_array=labels, decode_procs=4, decode_batch_size=batch_size,
+          unbatch=False, namespace=namespace + "_labels").prefetch(8)
 
-      dataset = tf.data.Dataset.zip((user_dataset, item_dataset, label_dataset))
-      dataset = dataset.map(_format_training)
+      # zip() must wait for all datasets to produce a batch, so prefetching is
+      # necessary to handle stragglers.
+      dataset = tf.data.Dataset.zip((
+        user_dataset,
+        item_dataset,
+        label_dataset,
+      ))
+      dataset = dataset.map(_format_training, num_parallel_calls=8)
     else:
       dataset = buffer.array_to_dataset(
           source_array=data, decode_procs=8, decode_batch_size=batch_size,

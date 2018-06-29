@@ -67,9 +67,9 @@ class NeuMF(tf.keras.models.Model):
 
     # Input variables
     user_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.int32, name=movielens.USER_COLUMN)
+        shape=(1,), dtype=tf.uint32, name=movielens.USER_COLUMN)
     item_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.int32, name=movielens.ITEM_COLUMN)
+        shape=(1,), dtype=tf.uint16, name=movielens.ITEM_COLUMN)
 
     # Initializer for embedding layer
     embedding_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
