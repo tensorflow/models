@@ -198,6 +198,49 @@ def construct_train_eval_csv(data_dir, dataset):
   tf.logging.info("Test negatives is {}".format(test_negs_file))
 
 
+def _construct_false_negatives(user_block, num_negatives, num_items):
+  try:
+    positive_set = set(user_block[:, 1])
+    n = user_block.shape[0]
+    user = user_block[0, 0]
+
+    output = []
+
+    for i in range(n):
+      output.append(int(user_block[i, 1]))
+      for _ in range(num_negatives):
+        j = np.random.randint(num_items)
+        while j in positive_set:
+          j = np.random.randint(num_items)
+        output.append(j)
+
+    return user * np.ones((n * (1 + num_negatives),), dtype=np.int32), output
+  except KeyboardInterrupt:
+    # If the main thread receives a keyboard interrupt, it will be passed to the
+    # worker processes. This block allows the workers to exit gracefully without
+    # polluting the "real" stack trace.
+    return None, None
+
+
+def _concatenate_and_shuffle(output_blocks, num_negatives):
+  try:
+    users = np.concatenate([i[0] for i in output_blocks])
+    items = np.concatenate([np.array(i[1], dtype=np.uint16)
+                            for i in output_blocks])
+    labels = np.zeros(users.shape, dtype=np.uint8)
+    labels[0::(num_negatives + 1)] = 1
+
+    shuffle_indicies = np.random.permutation(users.shape[0])
+
+    return {
+      "users": users[shuffle_indicies],
+      "items": items[shuffle_indicies],
+      "labels": labels[shuffle_indicies]
+    }
+  except KeyboardInterrupt:
+    return
+
+
 class NCFDataSet(object):
   """A class containing data information for model training and evaluation."""
 
@@ -217,13 +260,89 @@ class NCFDataSet(object):
         evaluation items for one user.
       all_eval_data: A numpy array of eval/test dataset.
     """
-    self.train_data = train_data
+    # TODO(robieta): remove
+    self._train_data = train_data
+
     self.num_users = num_users
     self.num_items = num_items
     self.num_negatives = num_negatives
     self.eval_true_items = true_items
     self.eval_all_items = all_items
     self.all_eval_data = all_eval_data
+
+    self._train_user_blocks = None
+    self._precompute(train_data)
+
+    self._negative_generation_tasks = []
+    self._concat_and_shuffle_tasks = []
+
+  def _precompute(self, train_data):
+    assert self.num_items <= np.iinfo(np.uint16).max
+    assert self.num_users <= np.iinfo(np.int32).max
+
+    data_array = np.array(train_data, dtype=np.int32)
+
+    # While there are more efficient algorithms for binning, partitioning in
+    # NumPy rather than pure python more than makes up for the extra log(n)
+    # even for the ml-20m dataset. (And it's only done once.)
+    sort_indicies = np.argsort(data_array[:, 0])
+
+    data_array = data_array[sort_indicies, :]
+
+    delta = data_array[1:, 0] - data_array[:-1, 0]
+    boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
+                  [data_array.shape[0]])
+    self._train_user_blocks = [data_array[boundaries[i]:boundaries[i+1]]
+                               for i in range(len(boundaries) - 1)]
+
+  def start_generation(self, pool):
+    map_fn = functools.partial(
+        _construct_false_negatives, num_negatives=self.num_negatives,
+        num_items=self.num_items)
+
+    self._negative_generation_tasks.append(
+        pool.map_async(map_fn, self._train_user_blocks))
+
+  def start_concat_and_shuffle(self, pool):
+    if not self._negative_generation_tasks:
+      raise ValueError("No false negative generation tasks are present.")
+
+    result = self._negative_generation_tasks.pop(0)
+    result.wait()
+
+    if not result.ready():
+      raise ValueError("False negative generation did not complete.")
+
+    if not result.successful():
+      raise ValueError("Error encountered during false negative generation.")
+
+    output_blocks = result.get()
+    apply_fn = functools.partial(_concatenate_and_shuffle,
+                                 num_negatives=self.num_negatives)
+    self._concat_and_shuffle_tasks.append(
+        pool.apply_async(apply_fn, [output_blocks]))
+
+  def get_train_data(self):
+    # """Generate train dataset for each epoch.
+    #
+    # Given positive training instances, randomly generate negative instances to
+    # form the training dataset.
+    #
+    # Args:
+    #   train_data: A list of positive training instances.
+    #   num_items: An integer, the number of items in positive training instances.
+    #   num_negatives: An integer, the number of negative training instances
+    #     following positive training instances. It is 4 by default.
+    #
+    # Returns:
+    #   A numpy array of training dataset.
+    # """
+    if not self._concat_and_shuffle_tasks:
+      raise ValueError("No finalizing (concat and shuffle) tasks are queued.")
+
+    return self._concat_and_shuffle_tasks.pop(0).get(3600)
+
+
 
 
 def load_data(file_name):
@@ -299,72 +418,6 @@ def data_preprocessing(data_dir, dataset, num_negatives):
   return ncf_dataset
 
 
-def _construct_false_negatives(user_block, num_negatives, num_items):
-  positive_set = set(user_block[:, 1])
-  n = user_block.shape[0]
-  user = user_block[0, 0]
-
-  output = []
-
-  for i in range(n):
-    output.append(int(user_block[i, 1]))
-    for _ in range(num_negatives):
-      j = np.random.randint(num_items)
-      while j in positive_set:
-        j = np.random.randint(num_items)
-      output.append(j)
-
-  return user * np.ones((n * (1 + num_negatives),), dtype=np.int32), output
-
-
-def generate_train_dataset(train_data, num_items, num_negatives, pool):
-  """Generate train dataset for each epoch.
-
-  Given positive training instances, randomly generate negative instances to
-  form the training dataset.
-
-  Args:
-    train_data: A list of positive training instances.
-    num_items: An integer, the number of items in positive training instances.
-    num_negatives: An integer, the number of negative training instances
-      following positive training instances. It is 4 by default.
-
-  Returns:
-    A numpy array of training dataset.
-  """
-  assert num_items <= np.iinfo(np.uint16).max
-
-  data_array = np.array(train_data)
-
-  # While there are more efficient algorithms for binning, partitioning in numpy
-  # rather than pure python more than makes up for the extra log(n) even for the
-  # ml-20m dataset.
-  sort_indicies = np.argsort(data_array[:, 0])
-
-  data_array = data_array[sort_indicies, :]
-
-  delta = data_array[1:, 0] - data_array[:-1, 0]
-  boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
-                [data_array.shape[0]])
-  user_blocks = [data_array[boundaries[i]:boundaries[i+1]]
-                 for i in range(len(boundaries) - 1)]
-
-  assert len(user_blocks) <= np.iinfo(np.int32).max
-
-  map_fn = functools.partial(_construct_false_negatives,
-                             num_negatives=num_negatives, num_items=num_items)
-
-  output_blocks = pool.map(map_fn, user_blocks)
-
-  users = np.concatenate([i[0] for i in output_blocks])
-  items = np.concatenate([np.array(i[1], dtype=np.uint16)
-                          for i in output_blocks])
-  labels = np.zeros(users.shape, dtype=np.uint8)
-  labels[0::(num_negatives + 1)] = 1
-
-  return {"users": users, "items": items, "labels": labels}
-
-
 def _format_training(users, items, labels):
   # Give tensorflow explicit shape definitions.
   users = tf.reshape(users, (-1, 1))
@@ -420,13 +473,13 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
       # reduces memory consumption.
       user_dataset = buffer.array_to_dataset(
           source_array=users, decode_procs=4, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_users").prefetch(8)
+          unbatch=False, namespace=namespace + "_users").prefetch(16)
       item_dataset = buffer.array_to_dataset(
           source_array=items, decode_procs=4, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_items").prefetch(8)
+          unbatch=False, namespace=namespace + "_items").prefetch(16)
       label_dataset = buffer.array_to_dataset(
           source_array=labels, decode_procs=4, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_labels").prefetch(8)
+          unbatch=False, namespace=namespace + "_labels").prefetch(16)
 
       # zip() must wait for all datasets to produce a batch, so prefetching is
       # necessary to handle stragglers.
@@ -435,7 +488,7 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
         item_dataset,
         label_dataset,
       ))
-      dataset = dataset.map(_format_training, num_parallel_calls=8)
+      dataset = dataset.map(_format_training, num_parallel_calls=16)
     else:
       dataset = buffer.array_to_dataset(
           source_array=data, decode_procs=8, decode_batch_size=batch_size,
@@ -447,7 +500,14 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
     dataset = dataset.repeat(repeat)
 
     # Prefetch to improve speed of input pipeline.
-    dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+    # Generally
+    #   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
+    # is recommended to allow DistributionStrategies to scale the input
+    # pipeline. However because batches are very small (tens of KB) and are
+    # processed very quickly, manually setting a high buffer size yields
+    # better performance.
+    dataset = dataset.prefetch(buffer_size=64)
+
     return dataset
 
   return input_fn
