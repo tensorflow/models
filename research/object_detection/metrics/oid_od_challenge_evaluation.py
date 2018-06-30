@@ -15,12 +15,10 @@
 r"""Runs evaluation using OpenImages groundtruth and predictions.
 
 Example usage:
-python \
-models/research/object_detection/metrics/oid_vrd_challenge_evaluation.py \
+python models/research/object_detection/metrics/oid_od_challenge_evaluation.py \
     --input_annotations_boxes=/path/to/input/annotations-human-bbox.csv \
     --input_annotations_labels=/path/to/input/annotations-label.csv \
     --input_class_labelmap=/path/to/input/class_labelmap.pbtxt \
-    --input_relationship_labelmap=/path/to/input/relationship_labelmap.pbtxt \
     --input_predictions=/path/to/input/predictions.csv \
     --output_metrics=/path/to/output/metric.csv \
 
@@ -40,9 +38,9 @@ import pandas as pd
 from google.protobuf import text_format
 
 from object_detection.metrics import io_utils
-from object_detection.metrics import oid_vrd_challenge_evaluation_utils as utils
+from object_detection.metrics import oid_od_challenge_evaluation_utils as utils
 from object_detection.protos import string_int_label_map_pb2
-from object_detection.utils import vrd_evaluation
+from object_detection.utils import object_detection_evaluation
 
 
 def _load_labelmap(labelmap_path):
@@ -52,7 +50,8 @@ def _load_labelmap(labelmap_path):
     labelmap_path: Path to the labelmap.
 
   Returns:
-    A dictionary mapping class name to class numerical id.
+    A dictionary mapping class name to class numerical id
+    A list with dictionaries, one dictionary per category.
   """
 
   label_map = string_int_label_map_pb2.StringIntLabelMap()
@@ -60,75 +59,55 @@ def _load_labelmap(labelmap_path):
     label_map_string = fid.read()
     text_format.Merge(label_map_string, label_map)
   labelmap_dict = {}
+  categories = []
   for item in label_map.item:
     labelmap_dict[item.name] = item.id
-  return labelmap_dict
-
-
-def _swap_labelmap_dict(labelmap_dict):
-  """Swaps keys and labels in labelmap.
-
-  Args:
-    labelmap_dict: Input dictionary.
-
-  Returns:
-    A dictionary mapping class name to class numerical id.
-  """
-  return dict((v, k) for k, v in labelmap_dict.iteritems())
+    categories.append({'id': item.id, 'name': item.name})
+  return labelmap_dict, categories
 
 
 def main(parsed_args):
   all_box_annotations = pd.read_csv(parsed_args.input_annotations_boxes)
   all_label_annotations = pd.read_csv(parsed_args.input_annotations_labels)
+  all_label_annotations.rename(
+      columns={'Confidence': 'ConfidenceImageLabel'}, inplace=True)
   all_annotations = pd.concat([all_box_annotations, all_label_annotations])
 
-  class_label_map = _load_labelmap(parsed_args.input_class_labelmap)
-  relationship_label_map = _load_labelmap(
-      parsed_args.input_relationship_labelmap)
-
-  relation_evaluator = vrd_evaluation.VRDRelationDetectionEvaluator()
-  phrase_evaluator = vrd_evaluation.VRDPhraseDetectionEvaluator()
+  class_label_map, categories = _load_labelmap(parsed_args.input_class_labelmap)
+  challenge_evaluator = (
+      object_detection_evaluation.OpenImagesDetectionChallengeEvaluator(
+          categories))
 
   for _, groundtruth in enumerate(all_annotations.groupby('ImageID')):
     image_id, image_groundtruth = groundtruth
-    groundtruth_dictionary = utils.build_groundtruth_vrd_dictionary(
-        image_groundtruth, class_label_map, relationship_label_map)
-
-    relation_evaluator.add_single_ground_truth_image_info(
+    groundtruth_dictionary = utils.build_groundtruth_boxes_dictionary(
+        image_groundtruth, class_label_map)
+    challenge_evaluator.add_single_ground_truth_image_info(
         image_id, groundtruth_dictionary)
-    phrase_evaluator.add_single_ground_truth_image_info(image_id,
-                                                        groundtruth_dictionary)
 
   all_predictions = pd.read_csv(parsed_args.input_predictions)
   for _, prediction_data in enumerate(all_predictions.groupby('ImageID')):
     image_id, image_predictions = prediction_data
-    prediction_dictionary = utils.build_predictions_vrd_dictionary(
-        image_predictions, class_label_map, relationship_label_map)
+    prediction_dictionary = utils.build_predictions_dictionary(
+        image_predictions, class_label_map)
+    challenge_evaluator.add_single_detected_image_info(image_id,
+                                                       prediction_dictionary)
 
-    relation_evaluator.add_single_detected_image_info(image_id,
-                                                      prediction_dictionary)
-    phrase_evaluator.add_single_detected_image_info(image_id,
-                                                    prediction_dictionary)
-
-  relation_metrics = relation_evaluator.evaluate(
-      relationships=_swap_labelmap_dict(relationship_label_map))
-  phrase_metrics = phrase_evaluator.evaluate(
-      relationships=_swap_labelmap_dict(relationship_label_map))
+  metrics = challenge_evaluator.evaluate()
 
   with open(parsed_args.output_metrics, 'w') as fid:
-    io_utils.write_csv(fid, relation_metrics)
-    io_utils.write_csv(fid, phrase_metrics)
+    io_utils.write_csv(fid, metrics)
 
 
 if __name__ == '__main__':
 
   parser = argparse.ArgumentParser(
-      description=
-      'Evaluate Open Images Visual Relationship Detection predictions.')
+      description='Evaluate Open Images Object Detection Challenge predictions.'
+  )
   parser.add_argument(
       '--input_annotations_boxes',
       required=True,
-      help='File with groundtruth vrd annotations.')
+      help='File with groundtruth boxes annotations.')
   parser.add_argument(
       '--input_annotations_labels',
       required=True,
@@ -141,12 +120,7 @@ if __name__ == '__main__':
   parser.add_argument(
       '--input_class_labelmap',
       required=True,
-      help="""OpenImages Challenge labelmap; note: it is expected to include
-      attributes.""")
-  parser.add_argument(
-      '--input_relationship_labelmap',
-      required=True,
-      help="""OpenImages Challenge relationship labelmap.""")
+      help='Open Images Challenge labelmap.')
   parser.add_argument(
       '--output_metrics', required=True, help='Output file with csv metrics')
 

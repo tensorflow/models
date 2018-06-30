@@ -525,8 +525,8 @@ class OpenImagesDetectionChallengeEvaluator(OpenImagesDetectionEvaluator):
         standard_fields.InputDataFields.groundtruth_classes: integer numpy array
           of shape [num_boxes] containing 1-indexed groundtruth classes for the
           boxes.
-        standard_fields.InputDataFields.verified_labels: integer 1D numpy array
-          containing all classes for which labels are verified.
+        standard_fields.InputDataFields.groundtruth_image_classes: integer 1D
+          numpy array containing all classes for which labels are verified.
         standard_fields.InputDataFields.groundtruth_group_of: Optional length
           M numpy boolean array denoting whether a groundtruth box contains a
           group of instances.
@@ -541,7 +541,7 @@ class OpenImagesDetectionChallengeEvaluator(OpenImagesDetectionEvaluator):
         self._label_id_offset)
     self._evaluatable_labels[image_id] = np.unique(
         np.concatenate(((groundtruth_dict.get(
-            standard_fields.InputDataFields.verified_labels,
+            standard_fields.InputDataFields.groundtruth_image_classes,
             np.array([], dtype=int)) - self._label_id_offset),
                         groundtruth_classes)))
 
@@ -839,6 +839,9 @@ class ObjectDetectionEvaluation(object):
       if self.use_weighted_mean_ap:
         all_scores = np.append(all_scores, scores)
         all_tp_fp_labels = np.append(all_tp_fp_labels, tp_fp_labels)
+      print 'Scores and tpfp per class label: {}'.format(class_index)
+      print tp_fp_labels
+      print scores
       precision, recall = metrics.compute_precision_recall(
           scores, tp_fp_labels, self.num_gt_instances_per_class[class_index])
       self.precisions_per_class.append(precision)

@@ -152,7 +152,8 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
                    softmax_second_stage_classification_loss=True,
                    predict_masks=False,
                    pad_to_max_dimension=None,
-                   masks_are_class_agnostic=False):
+                   masks_are_class_agnostic=False,
+                   use_matmul_crop_and_resize=False):
 
     def image_resizer_fn(image, masks=None):
       """Fake image resizer function."""
@@ -287,7 +288,9 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         second_stage_classification_loss_weight,
         'second_stage_classification_loss':
         second_stage_classification_loss,
-        'hard_example_miner': hard_example_miner}
+        'hard_example_miner': hard_example_miner,
+        'use_matmul_crop_and_resize': use_matmul_crop_and_resize
+    }
 
     return self._get_model(
         self._get_second_stage_box_predictor(
@@ -465,14 +468,16 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       for key in expected_shapes:
         self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
 
-  def test_predict_gives_correct_shapes_in_train_mode_both_stages(self):
+  def _test_predict_gives_correct_shapes_in_train_mode_both_stages(
+      self, use_matmul_crop_and_resize=False):
     test_graph = tf.Graph()
     with test_graph.as_default():
       model = self._build_model(
           is_training=True,
           number_of_stages=2,
           second_stage_batch_size=7,
-          predict_masks=False)
+          predict_masks=False,
+          use_matmul_crop_and_resize=use_matmul_crop_and_resize)
 
       batch_size = 2
       image_size = 10
@@ -534,6 +539,13 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         self.assertAllEqual(
             tensor_dict_out['rpn_objectness_predictions_with_background'].shape,
             (2, num_anchors_out, 2))
+
+  def test_predict_gives_correct_shapes_in_train_mode_both_stages(self):
+    self._test_predict_gives_correct_shapes_in_train_mode_both_stages()
+
+  def test_predict_gives_correct_shapes_in_train_mode_matmul_crop_resize(self):
+    self._test_predict_gives_correct_shapes_in_train_mode_both_stages(
+        use_matmul_crop_and_resize=True)
 
   def _test_postprocess_first_stage_only_inference_mode(
       self, pad_to_max_dimension=None):

@@ -137,6 +137,11 @@ message FasterRcnn {
   // a control dependency on tf.GraphKeys.UPDATE_OPS for train/loss op in order
   // to update the batch norm moving average parameters.
   optional bool inplace_batchnorm_update = 30 [default = false];
+
+  // Force the use of matrix multiplication based crop and resize instead of
+  // standard tf.image.crop_and_resize while computing second stage input
+  // feature maps.
+  optional bool use_matmul_crop_and_resize = 31 [default = false];
 }
 
 

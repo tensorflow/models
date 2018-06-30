@@ -72,6 +72,8 @@ Extras:
       Inference and evaluation on the Open Images dataset</a><br>
   * <a href='g3doc/instance_segmentation.md'>
       Run an instance segmentation model</a><br>
+  * <a href='g3doc/challenge_evaluation.md'>
+      Run the evaluation for the Open Images Challenge 2018.</a><br>
 
 ## Getting Help
 
@@ -89,6 +91,20 @@ reporting an issue.
 
 
 ## Release information
+
+### June 25, 2018
+
+Additional evaluation tools for the [Open Images Challenge 2018](https://storage.googleapis.com/openimages/web/challenge.html) are out.
+Check out our short tutorial on data preparation and running evaluation [here](g3doc/challenge_evaluation.md)!
+
+<b>Thanks to contributors</b>: Alina Kuznetsova
+
+### June 5, 2018
+
+We have released the implementation of evaluation metrics for both tracks of the [Open Images Challenge 2018](https://storage.googleapis.com/openimages/web/challenge.html) as a part of the Object Detection API - see the [evaluation protocols](g3doc/evaluation_protocols.md) for more details.
+Additionally, we have released a tool for hierarchical labels expansion for the Open Images Challenge: check out [oid_hierarchical_labels_expansion.py](dataset_tools/oid_hierarchical_labels_expansion.py).
+
+<b>Thanks to contributors</b>: Alina Kuznetsova, Vittorio Ferrari, Jasper Uijlings
 
 ### April 30, 2018
 

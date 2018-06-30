@@ -134,6 +134,26 @@ class ExportInferenceGraphTest(tf.test.TestCase):
       self.assertTrue(os.path.exists(os.path.join(
           output_directory, 'saved_model', 'saved_model.pb')))
 
+  def test_write_inference_graph(self):
+    tmp_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(tmp_dir, 'model.ckpt')
+    self._save_checkpoint_from_mock_model(trained_checkpoint_prefix,
+                                          use_moving_averages=False)
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      output_directory = os.path.join(tmp_dir, 'output')
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      pipeline_config.eval_config.use_moving_averages = False
+      exporter.export_inference_graph(
+          input_type='image_tensor',
+          pipeline_config=pipeline_config,
+          trained_checkpoint_prefix=trained_checkpoint_prefix,
+          output_directory=output_directory,
+          write_inference_graph=True)
+      self.assertTrue(os.path.exists(os.path.join(
+          output_directory, 'inference_graph.pbtxt')))
+
   def test_export_graph_with_fixed_size_image_tensor_input(self):
     input_shape = [1, 320, 320, 3]
 

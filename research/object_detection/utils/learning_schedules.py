@@ -90,9 +90,6 @@ def cosine_decay_with_warmup(global_step,
     ValueError: if warmup_learning_rate is larger than learning_rate_base,
       or if warmup_steps is larger than total_steps.
   """
-  if learning_rate_base < warmup_learning_rate:
-    raise ValueError('learning_rate_base must be larger '
-                     'or equal to warmup_learning_rate.')
   if total_steps < warmup_steps:
     raise ValueError('total_steps must be larger or equal to '
                      'warmup_steps.')
@@ -104,6 +101,9 @@ def cosine_decay_with_warmup(global_step,
     learning_rate = tf.where(global_step > warmup_steps + hold_base_rate_steps,
                              learning_rate, learning_rate_base)
   if warmup_steps > 0:
+    if learning_rate_base < warmup_learning_rate:
+      raise ValueError('learning_rate_base must be larger or equal to '
+                       'warmup_learning_rate.')
     slope = (learning_rate_base - warmup_learning_rate) / warmup_steps
     warmup_rate = slope * tf.cast(global_step,
                                   tf.float32) + warmup_learning_rate

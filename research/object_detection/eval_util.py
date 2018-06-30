@@ -556,8 +556,16 @@ def result_dict_for_single_example(image,
 
   if groundtruth:
     if input_data_fields.groundtruth_instance_masks in groundtruth:
+      masks = groundtruth[input_data_fields.groundtruth_instance_masks]
+      masks = tf.expand_dims(masks, 3)
+      masks = tf.image.resize_images(
+          masks,
+          image_shape[1:3],
+          method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+          align_corners=True)
+      masks = tf.squeeze(masks, 3)
       groundtruth[input_data_fields.groundtruth_instance_masks] = tf.cast(
-          groundtruth[input_data_fields.groundtruth_instance_masks], tf.uint8)
+          masks, tf.uint8)
     output_dict.update(groundtruth)
     if scale_to_absolute:
       groundtruth_boxes = groundtruth[input_data_fields.groundtruth_boxes]
@@ -641,5 +649,3 @@ def get_eval_metric_ops_for_evaluators(evaluation_metrics,
                        'Found {} in the evaluation metrics'.format(metric))
 
   return eval_metric_ops
-
-
