@@ -18,10 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import atexit
 import collections
 import functools
 import multiprocessing
 import os
+import pickle
 import tempfile
 import time
 
@@ -198,23 +200,31 @@ def construct_train_eval_csv(data_dir, dataset):
   tf.logging.info("Test negatives is {}".format(test_negs_file))
 
 
-def _construct_false_negatives(user_block, num_negatives, num_items):
+def _construct_false_negatives(shard_path, num_negatives, num_items, output_dir):
   try:
-    positive_set = set(user_block[:, 1])
-    n = user_block.shape[0]
-    user = user_block[0, 0]
+    with tf.gfile.Open(shard_path, "rb") as f:
+      user_blocks = pickle.load(f)
 
     output = []
+    for user, positive_items in user_blocks:
+      positive_set = set(positive_items)
+      n = positive_items.shape[0]
 
-    for i in range(n):
-      output.append(int(user_block[i, 1]))
-      for _ in range(num_negatives):
-        j = np.random.randint(num_items)
-        while j in positive_set:
+      items = []
+      for i in range(n):
+        items.append(int(positive_items[i]))
+        for _ in range(num_negatives):
           j = np.random.randint(num_items)
-        output.append(j)
+          while j in positive_set:
+            j = np.random.randint(num_items)
+          items.append(j)
+      output.append((user, items))
+    output_name = os.path.split(shard_path)[1].replace(".pickle", "_processed.pickle")
+    with tf.gfile.Open(os.path.join(output_dir, output_name), "wb") as f:
+      pickle.dump(output, f)
 
-    return user * np.ones((n * (1 + num_negatives),), dtype=np.int32), output
+    return os.path.join(output_dir, output_name)
+
   except KeyboardInterrupt:
     # If the main thread receives a keyboard interrupt, it will be passed to the
     # worker processes. This block allows the workers to exit gracefully without
@@ -222,21 +232,35 @@ def _construct_false_negatives(user_block, num_negatives, num_items):
     return None, None
 
 
-def _concatenate_and_shuffle(output_blocks, num_negatives):
+def _concatenate_and_shuffle(processed_shard_paths, num_negatives):
   try:
-    users = np.concatenate([i[0] for i in output_blocks])
-    items = np.concatenate([np.array(i[1], dtype=np.uint16)
-                            for i in output_blocks])
+    user_item_pairs = []
+    for fpath in processed_shard_paths:
+      with tf.gfile.Open(fpath, "rb") as f:
+        user_item_pairs.extend(pickle.load(f))
+      tf.gfile.Remove(fpath)
+
+    user_vecs, item_vecs = [], []
+    for user, items in user_item_pairs:
+      user_vecs.append(user * np.ones((len(items),), dtype=np.int32))
+      item_vecs.append(np.array(items, dtype=np.uint16))
+
+    users = np.concatenate(user_vecs)
+    items = np.concatenate(item_vecs)
     labels = np.zeros(users.shape, dtype=np.uint8)
     labels[0::(num_negatives + 1)] = 1
 
     shuffle_indicies = np.random.permutation(users.shape[0])
 
-    return {
-      "users": users[shuffle_indicies],
-      "items": items[shuffle_indicies],
-      "labels": labels[shuffle_indicies]
-    }
+    users = users[shuffle_indicies]
+    items = items[shuffle_indicies]
+    labels = labels[shuffle_indicies]
+
+    save_dir = os.path.split(processed_shard_paths[0])[0]
+    for array, fname in [(users, "users.npy"), (items, "items.npy"), (labels, "labels.npy")]:
+      with tf.gfile.Open(os.path.join(save_dir, fname), "wb") as f:
+        np.save(f, array)
+    return save_dir
   except KeyboardInterrupt:
     return
 
@@ -261,7 +285,7 @@ class NCFDataSet(object):
       all_eval_data: A numpy array of eval/test dataset.
     """
     # TODO(robieta): remove
-    self._train_data = train_data
+    # self._train_data = train_data
 
     self.num_users = num_users
     self.num_items = num_items
@@ -270,7 +294,10 @@ class NCFDataSet(object):
     self.eval_all_items = all_items
     self.all_eval_data = all_eval_data
 
-    self._train_user_blocks = None
+    self.num_block_shards = 1024
+    self._shard_dir = tempfile.mkdtemp()
+    self._user_block_shards = []
+    atexit.register(tf.gfile.DeleteRecursively, dirname=self._shard_dir)
     self._precompute(train_data)
 
     self._negative_generation_tasks = []
@@ -292,16 +319,33 @@ class NCFDataSet(object):
     delta = data_array[1:, 0] - data_array[:-1, 0]
     boundaries = ([0] + (np.argwhere(delta)[:, 0] + 1).tolist() +
                   [data_array.shape[0]])
-    self._train_user_blocks = [data_array[boundaries[i]:boundaries[i+1]]
-                               for i in range(len(boundaries) - 1)]
+    user_blocks = [data_array[boundaries[i]:boundaries[i+1]]
+                   for i in range(len(boundaries) - 1)]
+
+    for i in user_blocks:
+      assert len(set(i[:, 0])) == 1
+      assert np.allclose(i[:, 2], 1)
+
+    user_blocks = [(i[0, 0], i[:, 1]) for i in user_blocks]
+    grouped_blocks = [[] for _ in range(self.num_block_shards)]
+    for i, block in enumerate(user_blocks):
+      grouped_blocks[i % self.num_block_shards].append(block)
+
+    for i, block in enumerate(grouped_blocks):
+      _, fpath = tempfile.mkstemp(prefix=str(i).zfill(5) + "_",
+                                  suffix=".pickle", dir=self._shard_dir)
+      with tf.gfile.Open(fpath, "wb") as f:
+        pickle.dump(block, f)
+      self._user_block_shards.append(fpath)
 
   def start_generation(self, pool):
+    output_dir = tempfile.mkdtemp(dir=self._shard_dir)
     map_fn = functools.partial(
         _construct_false_negatives, num_negatives=self.num_negatives,
-        num_items=self.num_items)
+        num_items=self.num_items, output_dir=output_dir)
 
     self._negative_generation_tasks.append(
-        pool.map_async(map_fn, self._train_user_blocks))
+        pool.map_async(map_fn, self._user_block_shards))
 
   def start_concat_and_shuffle(self, pool):
     if not self._negative_generation_tasks:
@@ -316,11 +360,13 @@ class NCFDataSet(object):
     if not result.successful():
       raise ValueError("Error encountered during false negative generation.")
 
-    output_blocks = result.get()
+    processed_shard_paths = result.get()
+
     apply_fn = functools.partial(_concatenate_and_shuffle,
                                  num_negatives=self.num_negatives)
+
     self._concat_and_shuffle_tasks.append(
-        pool.apply_async(apply_fn, [output_blocks]))
+        pool.apply_async(apply_fn, [processed_shard_paths]))
 
   def get_train_data(self):
     # """Generate train dataset for each epoch.
@@ -340,9 +386,14 @@ class NCFDataSet(object):
     if not self._concat_and_shuffle_tasks:
       raise ValueError("No finalizing (concat and shuffle) tasks are queued.")
 
-    return self._concat_and_shuffle_tasks.pop(0).get(3600)
+    save_dir = self._concat_and_shuffle_tasks.pop(0).get(3600)
+    output = {}
+    for name in ["users", "items", "labels"]:
+      with tf.gfile.Open(os.path.join(save_dir, name + ".npy"), "rb") as f:
+        output[name] = np.load(f)
+    tf.gfile.DeleteRecursively(save_dir)
 
-
+    return output
 
 
 def load_data(file_name):
