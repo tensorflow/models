@@ -256,12 +256,8 @@ def run_ncf(_):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
 
-    ncf_dataset.start_concat_and_shuffle(pool=pool)
+    ncf_dataset.stage_results()
     ncf_dataset.start_generation(pool=pool)
-    if cycle_index == 0:
-      ncf_dataset.start_generation(pool=pool)
-    elif cycle_index == 1:
-      ncf_dataset.start_concat_and_shuffle(pool=pool)
 
     buffer.cleanup(_TRAIN_VIEW_NAME + "_users")
     buffer.cleanup(_TRAIN_VIEW_NAME + "_items")
