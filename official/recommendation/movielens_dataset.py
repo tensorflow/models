@@ -210,7 +210,7 @@ def _construct_false_negatives(shard_path, num_negatives, num_items, output_dir)
   with tf.gfile.Open(shard_path, "rb") as f:
     user_blocks = pickle.load(f)
 
-  output = []
+  user_item_pairs = []
   for user, positive_items in user_blocks:
     positive_set = set(positive_items)
     n = positive_items.shape[0]
@@ -223,7 +223,18 @@ def _construct_false_negatives(shard_path, num_negatives, num_items, output_dir)
         while j in positive_set:
           j = np.random.randint(num_items)
         items.append(j)
-    output.append((user, items))
+    user_item_pairs.append((user, items))
+
+  user_item_pairs = [
+    (u * np.ones(len(i), dtype=np.int32), np.array(i, dtype=np.uint16))
+    for u, i in user_item_pairs]
+  user_block = np.concatenate([pair[0] for pair in user_item_pairs])
+  item_block = np.concatenate([pair[1] for pair in user_item_pairs])
+  output = {
+    "user_block": user_block,
+    "item_block": item_block
+  }
+
   output_name = os.path.split(shard_path)[1].replace(".pickle", "_processed.pickle")
   with tf.gfile.Open(os.path.join(output_dir, output_name), "wb") as f:
     pickle.dump(output, f)
@@ -246,14 +257,10 @@ def _reduce_fn(queue, num_shards, n_total, num_negatives, output_dir):
     fpath = queue.get()
 
     with tf.gfile.Open(fpath, "rb") as f:
-      user_item_pairs = pickle.load(f)
+      blocks = pickle.load(f)
 
-    user_item_pairs = [
-      (u * np.ones(len(i), dtype=np.int32), np.array(i, dtype=np.uint16))
-      for u, i in user_item_pairs]
-
-    user_block = np.concatenate([pair[0] for pair in user_item_pairs])
-    item_block = np.concatenate([pair[1] for pair in user_item_pairs])
+    user_block = blocks["user_block"]
+    item_block = blocks["item_block"]
     label_block = np.zeros(user_block.shape, dtype=np.int8)
     label_block[0::num_negatives] = 1
     block_size = int(user_block.shape[0])
@@ -298,75 +305,7 @@ def _false_negative_map_fn(parameters, num_negatives, num_items, output_dir,
     # worker processes. This block allows the workers to exit gracefully without
     # polluting the "real" stack trace.
     return None
-  # except Exception as e:
-  #   print(e)
 
-
-
-
-# def _construct_false_negatives(shard_path, num_negatives, num_items, output_dir):
-#   try:
-#     with tf.gfile.Open(shard_path, "rb") as f:
-#       user_blocks = pickle.load(f)
-#
-#     output = []
-#     for user, positive_items in user_blocks:
-#       positive_set = set(positive_items)
-#       n = positive_items.shape[0]
-#
-#       items = []
-#       for i in range(n):
-#         items.append(int(positive_items[i]))
-#         for _ in range(num_negatives):
-#           j = np.random.randint(num_items)
-#           while j in positive_set:
-#             j = np.random.randint(num_items)
-#           items.append(j)
-#       output.append((user, items))
-#     output_name = os.path.split(shard_path)[1].replace(".pickle", "_processed.pickle")
-#     with tf.gfile.Open(os.path.join(output_dir, output_name), "wb") as f:
-#       pickle.dump(output, f)
-#
-#     return os.path.join(output_dir, output_name)
-#
-#   except KeyboardInterrupt:
-#     # If the main thread receives a keyboard interrupt, it will be passed to the
-#     # worker processes. This block allows the workers to exit gracefully without
-#     # polluting the "real" stack trace.
-#     return None, None
-#
-#
-# def _concatenate_and_shuffle(processed_shard_paths, num_negatives):
-#   try:
-#     user_item_pairs = []
-#     for fpath in processed_shard_paths:
-#       with tf.gfile.Open(fpath, "rb") as f:
-#         user_item_pairs.extend(pickle.load(f))
-#       tf.gfile.Remove(fpath)
-#
-#     user_vecs, item_vecs = [], []
-#     for user, items in user_item_pairs:
-#       user_vecs.append(user * np.ones((len(items),), dtype=np.int32))
-#       item_vecs.append(np.array(items, dtype=np.uint16))
-#
-#     users = np.concatenate(user_vecs)
-#     items = np.concatenate(item_vecs)
-#     labels = np.zeros(users.shape, dtype=np.uint8)
-#     labels[0::(num_negatives + 1)] = 1
-#
-#     shuffle_indicies = np.random.permutation(users.shape[0])
-#
-#     users = users[shuffle_indicies]
-#     items = items[shuffle_indicies]
-#     labels = labels[shuffle_indicies]
-#
-#     save_dir = os.path.split(processed_shard_paths[0])[0]
-#     for array, fname in [(users, "users.npy"), (items, "items.npy"), (labels, "labels.npy")]:
-#       with tf.gfile.Open(os.path.join(save_dir, fname), "wb") as f:
-#         np.save(f, array)
-#     return save_dir
-#   except KeyboardInterrupt:
-#     return
 
 
 class NCFDataSet(object):
