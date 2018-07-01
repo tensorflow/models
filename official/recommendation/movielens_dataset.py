@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import atexit
 import collections
+import contextlib
 import functools
 import multiprocessing
 import os
@@ -206,40 +207,7 @@ def construct_train_eval_csv(data_dir, dataset):
 
 
 
-def _construct_false_negatives(shard_path, num_negatives, num_items, output_dir):
-  with tf.gfile.Open(shard_path, "rb") as f:
-    user_blocks = pickle.load(f)
 
-  user_item_pairs = []
-  for user, positive_items in user_blocks:
-    positive_set = set(positive_items)
-    n = positive_items.shape[0]
-
-    items = []
-    for i in range(n):
-      items.append(int(positive_items[i]))
-      for _ in range(num_negatives):
-        j = np.random.randint(num_items)
-        while j in positive_set:
-          j = np.random.randint(num_items)
-        items.append(j)
-    user_item_pairs.append((user, items))
-
-  user_item_pairs = [
-    (u * np.ones(len(i), dtype=np.int32), np.array(i, dtype=np.uint16))
-    for u, i in user_item_pairs]
-  user_block = np.concatenate([pair[0] for pair in user_item_pairs])
-  item_block = np.concatenate([pair[1] for pair in user_item_pairs])
-  output = {
-    "user_block": user_block,
-    "item_block": item_block
-  }
-
-  output_name = os.path.split(shard_path)[1].replace(".pickle", "_processed.pickle")
-  with tf.gfile.Open(os.path.join(output_dir, output_name), "wb") as f:
-    pickle.dump(output, f)
-
-  return os.path.join(output_dir, output_name)
 
 def _reduce_fn(queue, num_shards, n_total, num_negatives, output_dir):
   processed = 0
@@ -256,7 +224,7 @@ def _reduce_fn(queue, num_shards, n_total, num_negatives, output_dir):
 
     fpath = queue.get()
 
-    with tf.gfile.Open(fpath, "rb") as f:
+    with open(fpath, "rb") as f:
       blocks = pickle.load(f)
 
     user_block = blocks["user_block"]
@@ -280,31 +248,48 @@ def _reduce_fn(queue, num_shards, n_total, num_negatives, output_dir):
     "labels": labels,
   }
 
-def _false_negative_map_fn(parameters, num_negatives, num_items, output_dir,
-                           input_queue, output_queue):
+def _false_negative_map_fn(shard_path, num_negatives, num_items, output_dir, output_queue):
   try:
-    if parameters.get("reduce"):
-      n_total = parameters["num_train_positives"] * (1 + num_negatives)
-      result = _reduce_fn(queue=output_queue, n_total=n_total,
-                          num_negatives=num_negatives,
-                          num_shards=parameters["num_shards"],
-                          output_dir=output_dir)
-      tf.gfile.DeleteRecursively(output_dir)
-      return result
+    with tf.gfile.Open(shard_path, "rb") as f:
+      user_blocks = pickle.load(f)
 
-    if not input_queue.qsize():
-      return
+    user_item_pairs = []
+    for user, positive_items in user_blocks:
+      positive_set = set(positive_items)
+      n = positive_items.shape[0]
 
-    shard_path = input_queue.get()
-    processed_shard_path = _construct_false_negatives(
-        shard_path=shard_path, num_negatives=num_negatives, num_items=num_items,
-        output_dir=output_dir)
-    output_queue.put(processed_shard_path)
+      items = []
+      for i in range(n):
+        items.append(positive_items[i])
+        for _ in range(num_negatives):
+          j = np.random.randint(num_items)
+          while j in positive_set:
+            j = np.random.randint(num_items)
+          items.append(j)
+      user_item_pairs.append((user, items))
+
+    user_item_pairs = [
+      (u * np.ones(len(i), dtype=np.int32), np.array(i, dtype=np.uint16))
+      for u, i in user_item_pairs]
+    user_block = np.concatenate([pair[0] for pair in user_item_pairs])
+    item_block = np.concatenate([pair[1] for pair in user_item_pairs])
+    output = {
+      "user_block": user_block,
+      "item_block": item_block
+    }
+
+    write_path = os.path.join(output_dir, os.path.split(shard_path)[1])
+    with tf.gfile.Open(write_path, "wb") as f:
+      pickle.dump(output, f)
+
+    output_queue.put(write_path)
+
   except KeyboardInterrupt:
     # If the main thread receives a keyboard interrupt, it will be passed to the
     # worker processes. This block allows the workers to exit gracefully without
     # polluting the "real" stack trace.
-    return None
+    return
+
 
 
 
@@ -384,45 +369,69 @@ class NCFDataSet(object):
         pickle.dump(block, f)
       self._user_block_shards.append(fpath)
 
-  def start_generation(self, pool):
-    output_dir = tempfile.mkdtemp(dir=self._shard_dir)
-    # The multiprocessing pool does not effectively deal with straglers, and
-    # will schedule tasks behind the "reduce" worker even when there are idle
-    # workers, causing a deadlock. For this reason workers take tasks from a
-    # queue and extra tasks are scheduled to bypass this scheduling issue.
-    manager = multiprocessing.Manager()
-    self._managers.append(manager)
-    input_queue = manager.Queue()
-    [input_queue.put(i) for i in self._user_block_shards]
-    output_queue = manager.Queue()
-    map_args = [{
-      "reduce": True,
-      "num_shards": len(self._user_block_shards),
-      "num_train_positives": self.num_train_positives,
-    }]
-    map_args.extend([{} for _ in range(self.num_block_shards * 2)])
 
+  def _reduce(self, result, output_queue):
+    shards_processed = 0
+
+    num_total = self.num_train_positives * (1 + self.num_negatives)
+    shuffle_indicies = np.random.permutation(num_total)
+
+    total_processed = 0
+    users = np.zeros((num_total,), dtype=np.int32)
+    items = np.zeros((num_total,), dtype=np.uint16)
+    labels = np.zeros((num_total,), dtype=np.int8)
+
+    while shards_processed < self.num_block_shards:
+      if result.ready() and not result.successful():
+        raise OSError("Generation failed.")
+
+      if not output_queue.qsize():
+        time.sleep(0.01)
+        continue
+
+      while output_queue.qsize():
+        fpath = output_queue.get()
+
+        with tf.gfile.Open(fpath, "rb") as f:
+          blocks = pickle.load(f)
+
+        user_block = blocks["user_block"]
+        item_block = blocks["item_block"]
+        label_block = np.zeros(user_block.shape, dtype=np.int8)
+        label_block[0::self.num_negatives + 1] = 1
+        block_size = int(user_block.shape[0])
+
+        block_ind = shuffle_indicies[total_processed:total_processed + block_size]
+        users[block_ind] = user_block
+        items[block_ind] = item_block
+        labels[block_ind] = label_block
+        total_processed += block_size
+
+        tf.gfile.Remove(fpath)
+
+        shards_processed += 1
+        if (shards_processed % 32) == 0:
+          print("__", shards_processed)
+
+    return {
+      "users": users,
+      "items": items,
+      "labels": labels,
+    }
+
+
+  def make_train_data(self):
+    pool_size = max([multiprocessing.cpu_count() - 1, 1])
+    output_dir = tempfile.mkdtemp(dir=self._shard_dir)
+    output_queue = multiprocessing.Manager().Queue()
     map_fn = functools.partial(
         _false_negative_map_fn, num_negatives=self.num_negatives,
         num_items=self.num_items, output_dir=output_dir,
-        input_queue=input_queue, output_queue=output_queue)
+        output_queue=output_queue)
 
-    self._negative_generation_tasks.append(
-        pool.map_async(map_fn, map_args))
-
-  def stage_results(self):
-    if not self._negative_generation_tasks:
-      raise ValueError("No tasks are queued.")
-
-    output = self._negative_generation_tasks.pop(0).get(3600)[0]
-    _ = self._managers.pop(0)
-    self._staged_results.append(output)
-
-  def get_train_data(self):
-    if not self._staged_results:
-      self.stage_results()
-
-    return self._staged_results.pop(0)
+    with contextlib.closing(multiprocessing.Pool(pool_size)) as pool:
+      result = pool.map_async(map_fn, self._user_block_shards)
+      return self._reduce(result=result, output_queue=output_queue)
 
 
 def load_data(file_name):

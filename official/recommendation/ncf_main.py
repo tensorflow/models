@@ -185,18 +185,7 @@ def run_ncf(_):
   tf.logging.info("Data preprocessing...")
   ncf_dataset = movielens_dataset.data_preprocessing(
       FLAGS.data_dir, FLAGS.dataset, FLAGS.num_neg)  # type: movielens_dataset.NCFDataSet
-
-  # TODO(robieta): Find out why.
-  # For unknown reasons, multiprocessing is interacting badly with estimator.
-  # defining the worker pool at the start and reusing it seems to prevent
-  # lockups.
-  def init_worker():
-    return
-    # signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-  pool = multiprocessing.Pool(processes=multiprocessing.cpu_count(),
-                              initializer=init_worker)
-  ncf_dataset.start_generation(pool=pool)
+  multiprocessing.set_start_method("spawn")
 
   model_helpers.apply_clean(flags.FLAGS)
 
@@ -234,7 +223,7 @@ def run_ncf(_):
   def get_train_input_fn():
     # Generate random negative instances for training in each epoch
     tf.logging.info("Generating training data.")
-    train_data = ncf_dataset.get_train_data()
+    train_data = ncf_dataset.make_train_data()
     # train_data = movielens_dataset.generate_train_dataset(
     #     ncf_dataset.train_data, ncf_dataset.num_items,
     #     ncf_dataset.num_negatives, pool)
@@ -255,9 +244,6 @@ def run_ncf(_):
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
-
-    ncf_dataset.stage_results()
-    ncf_dataset.start_generation(pool=pool)
 
     buffer.cleanup(_TRAIN_VIEW_NAME + "_users")
     buffer.cleanup(_TRAIN_VIEW_NAME + "_items")
@@ -286,7 +272,6 @@ def run_ncf(_):
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
-  pool.terminate()
 
 
 def define_ncf_flags():
