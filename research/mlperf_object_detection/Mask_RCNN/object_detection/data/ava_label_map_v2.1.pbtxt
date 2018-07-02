@@ -1,0 +1,240 @@
+item {
+  name: "bend/bow (at the waist)"
+  id: 1
+}
+item {
+  name: "crouch/kneel"
+  id: 3
+}
+item {
+  name: "dance"
+  id: 4
+}
+item {
+  name: "fall down"
+  id: 5
+}
+item {
+  name: "get up"
+  id: 6
+}
+item {
+  name: "jump/leap"
+  id: 7
+}
+item {
+  name: "lie/sleep"
+  id: 8
+}
+item {
+  name: "martial art"
+  id: 9
+}
+item {
+  name: "run/jog"
+  id: 10
+}
+item {
+  name: "sit"
+  id: 11
+}
+item {
+  name: "stand"
+  id: 12
+}
+item {
+  name: "swim"
+  id: 13
+}
+item {
+  name: "walk"
+  id: 14
+}
+item {
+  name: "answer phone"
+  id: 15
+}
+item {
+  name: "carry/hold (an object)"
+  id: 17
+}
+item {
+  name: "climb (e.g., a mountain)"
+  id: 20
+}
+item {
+  name: "close (e.g., a door, a box)"
+  id: 22
+}
+item {
+  name: "cut"
+  id: 24
+}
+item {
+  name: "dress/put on clothing"
+  id: 26
+}
+item {
+  name: "drink"
+  id: 27
+}
+item {
+  name: "drive (e.g., a car, a truck)"
+  id: 28
+}
+item {
+  name: "eat"
+  id: 29
+}
+item {
+  name: "enter"
+  id: 30
+}
+item {
+  name: "hit (an object)"
+  id: 34
+}
+item {
+  name: "lift/pick up"
+  id: 36
+}
+item {
+  name: "listen (e.g., to music)"
+  id: 37
+}
+item {
+  name: "open (e.g., a window, a car door)"
+  id: 38
+}
+item {
+  name: "play musical instrument"
+  id: 41
+}
+item {
+  name: "point to (an object)"
+  id: 43
+}
+item {
+  name: "pull (an object)"
+  id: 45
+}
+item {
+  name: "push (an object)"
+  id: 46
+}
+item {
+  name: "put down"
+  id: 47
+}
+item {
+  name: "read"
+  id: 48
+}
+item {
+  name: "ride (e.g., a bike, a car, a horse)"
+  id: 49
+}
+item {
+  name: "sail boat"
+  id: 51
+}
+item {
+  name: "shoot"
+  id: 52
+}
+item {
+  name: "smoke"
+  id: 54
+}
+item {
+  name: "take a photo"
+  id: 56
+}
+item {
+  name: "text on/look at a cellphone"
+  id: 57
+}
+item {
+  name: "throw"
+  id: 58
+}
+item {
+  name: "touch (an object)"
+  id: 59
+}
+item {
+  name: "turn (e.g., a screwdriver)"
+  id: 60
+}
+item {
+  name: "watch (e.g., TV)"
+  id: 61
+}
+item {
+  name: "work on a computer"
+  id: 62
+}
+item {
+  name: "write"
+  id: 63
+}
+item {
+  name: "fight/hit (a person)"
+  id: 64
+}
+item {
+  name: "give/serve (an object) to (a person)"
+  id: 65
+}
+item {
+  name: "grab (a person)"
+  id: 66
+}
+item {
+  name: "hand clap"
+  id: 67
+}
+item {
+  name: "hand shake"
+  id: 68
+}
+item {
+  name: "hand wave"
+  id: 69
+}
+item {
+  name: "hug (a person)"
+  id: 70
+}
+item {
+  name: "kiss (a person)"
+  id: 72
+}
+item {
+  name: "lift (a person)"
+  id: 73
+}
+item {
+  name: "listen to (a person)"
+  id: 74
+}
+item {
+  name: "push (another person)"
+  id: 76
+}
+item {
+  name: "sing to (e.g., self, a person, a group)"
+  id: 77
+}
+item {
+  name: "take (an object) from (a person)"
+  id: 78
+}
+item {
+  name: "talk to (e.g., self, a person, a group)"
+  id: 79
+}
+item {
+  name: "watch (a person)"
+  id: 80
+}

@@ -488,11 +488,12 @@ def resnet_backbone(inputs, training, bottleneck, num_classes,
 def fpn_graph(feature_pyramid, top_down_feature_dimension, data_format):
   """creates the top down feature pyramid from bottom up feature pyramid
   Args:
-    feature_pyramid:
-    top_down_feature_dimension:
-    data_format:
+    feature_pyramid: the bottom up features with 5 different scales
+    top_down_feature_dimension: number of channels/filters for the output
+     top down features
+    data_format: Input format ('channels_last', 'channels_first', or None).
 
-  return:
+  return: top down feature pyramid in 6 different scales
   """
   _, C2, C3, C4, C5 = feature_pyramid[0], feature_pyramid[1], \
                        feature_pyramid[2], feature_pyramid[3], \
@@ -533,6 +534,7 @@ def fpn_graph(feature_pyramid, top_down_feature_dimension, data_format):
                                data_format=data_format)
 
   return [P2, P3, P4, P5, P6]
+
 
 
 class MaskRCNN(object):
