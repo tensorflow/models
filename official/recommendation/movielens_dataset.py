@@ -206,48 +206,6 @@ def construct_train_eval_csv(data_dir, dataset):
 
 
 
-
-
-
-def _reduce_fn(queue, num_shards, n_total, num_negatives, output_dir):
-  processed = 0
-
-  shuffle_indicies = np.random.permutation(n_total)
-  total_processed = 0
-  users = np.zeros((n_total,), dtype=np.int32)
-  items = np.zeros((n_total,), dtype=np.uint16)
-  labels = np.zeros((n_total,), dtype=np.int8)
-  while processed < num_shards:
-    if not queue.qsize():
-      time.sleep(0.01)
-      continue
-
-    fpath = queue.get()
-
-    with open(fpath, "rb") as f:
-      blocks = pickle.load(f)
-
-    user_block = blocks["user_block"]
-    item_block = blocks["item_block"]
-    label_block = np.zeros(user_block.shape, dtype=np.int8)
-    label_block[0::num_negatives] = 1
-    block_size = int(user_block.shape[0])
-
-    block_ind = shuffle_indicies[total_processed:total_processed + block_size]
-    users[block_ind] = user_block
-    items[block_ind] = item_block
-    labels[block_ind] = label_block
-    total_processed += block_size
-
-    processed += 1
-    print("__", processed)
-
-  return {
-    "users": users,
-    "items": items,
-    "labels": labels,
-  }
-
 def _false_negative_map_fn(shard_path, num_negatives, num_items, output_dir, output_queue):
   try:
     with tf.gfile.Open(shard_path, "rb") as f:

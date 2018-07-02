@@ -93,6 +93,7 @@ def evaluate_model(estimator, model_dir, ncf_dataset, pred_input_fn):
 
   # Get predictions
   predictions = estimator.predict(input_fn=pred_input_fn)
+
   all_predicted_scores = [p[movielens.RATING_COLUMN] for p in predictions]
 
   # Calculate HR score
@@ -296,7 +297,8 @@ def define_ncf_flags():
       data_dir="/tmp/movielens-data/",
       train_epochs=2,
       batch_size=256,
-      hooks="ProfilerHook")
+      hooks="ProfilerHook"
+  )
 
   # Add ncf-specific flags
   flags.DEFINE_enum(
