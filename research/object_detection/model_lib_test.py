@@ -72,6 +72,20 @@ def _get_configs_for_model(model_name):
   return configs
 
 
+def _make_initializable_iterator(dataset):
+  """Creates an iterator, and initializes tables.
+
+  Args:
+    dataset: A `tf.data.Dataset` object.
+
+  Returns:
+    A `tf.data.Iterator`.
+  """
+  iterator = dataset.make_initializable_iterator()
+  tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
+  return iterator
+
+
 class ModelLibTest(tf.test.TestCase):
 
   @classmethod
@@ -84,24 +98,24 @@ class ModelLibTest(tf.test.TestCase):
     train_config = configs['train_config']
     with tf.Graph().as_default():
       if mode == 'train':
-        features, labels = inputs.create_train_input_fn(
-            configs['train_config'],
-            configs['train_input_config'],
-            configs['model'])()
+        features, labels = _make_initializable_iterator(
+            inputs.create_train_input_fn(configs['train_config'],
+                                         configs['train_input_config'],
+                                         configs['model'])()).get_next()
         model_mode = tf.estimator.ModeKeys.TRAIN
         batch_size = train_config.batch_size
       elif mode == 'eval':
-        features, labels = inputs.create_eval_input_fn(
-            configs['eval_config'],
-            configs['eval_input_config'],
-            configs['model'])()
+        features, labels = _make_initializable_iterator(
+            inputs.create_eval_input_fn(configs['eval_config'],
+                                        configs['eval_input_config'],
+                                        configs['model'])()).get_next()
         model_mode = tf.estimator.ModeKeys.EVAL
         batch_size = 1
       elif mode == 'eval_on_train':
-        features, labels = inputs.create_eval_input_fn(
-            configs['eval_config'],
-            configs['train_input_config'],
-            configs['model'])()
+        features, labels = _make_initializable_iterator(
+            inputs.create_eval_input_fn(configs['eval_config'],
+                                        configs['train_input_config'],
+                                        configs['model'])()).get_next()
         model_mode = tf.estimator.ModeKeys.EVAL
         batch_size = 1
 
@@ -116,20 +130,21 @@ class ModelLibTest(tf.test.TestCase):
 
       self.assertIsNotNone(estimator_spec.loss)
       self.assertIsNotNone(estimator_spec.predictions)
-      if class_agnostic:
-        self.assertNotIn('detection_classes', estimator_spec.predictions)
-      else:
-        detection_classes = estimator_spec.predictions['detection_classes']
-        self.assertEqual(batch_size, detection_classes.shape.as_list()[0])
-        self.assertEqual(tf.float32, detection_classes.dtype)
-      detection_boxes = estimator_spec.predictions['detection_boxes']
-      detection_scores = estimator_spec.predictions['detection_scores']
-      num_detections = estimator_spec.predictions['num_detections']
-      self.assertEqual(batch_size, detection_boxes.shape.as_list()[0])
-      self.assertEqual(tf.float32, detection_boxes.dtype)
-      self.assertEqual(batch_size, detection_scores.shape.as_list()[0])
-      self.assertEqual(tf.float32, detection_scores.dtype)
-      self.assertEqual(tf.float32, num_detections.dtype)
+      if mode == 'eval' or mode == 'eval_on_train':
+        if class_agnostic:
+          self.assertNotIn('detection_classes', estimator_spec.predictions)
+        else:
+          detection_classes = estimator_spec.predictions['detection_classes']
+          self.assertEqual(batch_size, detection_classes.shape.as_list()[0])
+          self.assertEqual(tf.float32, detection_classes.dtype)
+        detection_boxes = estimator_spec.predictions['detection_boxes']
+        detection_scores = estimator_spec.predictions['detection_scores']
+        num_detections = estimator_spec.predictions['num_detections']
+        self.assertEqual(batch_size, detection_boxes.shape.as_list()[0])
+        self.assertEqual(tf.float32, detection_boxes.dtype)
+        self.assertEqual(batch_size, detection_scores.shape.as_list()[0])
+        self.assertEqual(tf.float32, detection_scores.dtype)
+        self.assertEqual(tf.float32, num_detections.dtype)
       if model_mode == tf.estimator.ModeKeys.TRAIN:
         self.assertIsNotNone(estimator_spec.train_op)
       return estimator_spec
@@ -138,10 +153,10 @@ class ModelLibTest(tf.test.TestCase):
     model_config = configs['model']
 
     with tf.Graph().as_default():
-      features, _ = inputs.create_eval_input_fn(
-          configs['eval_config'],
-          configs['eval_input_config'],
-          configs['model'])()
+      features, _ = _make_initializable_iterator(
+          inputs.create_eval_input_fn(configs['eval_config'],
+                                      configs['eval_input_config'],
+                                      configs['model'])()).get_next()
       detection_model_fn = functools.partial(
           model_builder.build, model_config=model_config, is_training=False)
 

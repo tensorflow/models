@@ -109,7 +109,8 @@ def get_inputs(input_queue,
     image_keys: a list of string keys for the images.
     locations_list: a list of tensors of shape [num_boxes, 4]
       containing the corners of the groundtruth boxes.
-    classes_list: a list of padded one-hot tensors containing target classes.
+    classes_list: a list of padded one-hot (or K-hot) float32 tensors containing
+      target classes.
     masks_list: a list of 3-D float tensors of shape [num_boxes, image_height,
       image_width] containing instance masks for objects if present in the
       input_queue. Else returns None.
@@ -141,6 +142,7 @@ def get_inputs(input_queue,
     if merge_multiple_label_boxes:
       location_gt, classes_gt, _ = util_ops.merge_boxes_with_multiple_labels(
           location_gt, classes_gt, num_classes)
+      classes_gt = tf.cast(classes_gt, tf.float32)
     elif use_multiclass_scores:
       classes_gt = tf.cast(read_data[fields.InputDataFields.multiclass_scores],
                            tf.float32)

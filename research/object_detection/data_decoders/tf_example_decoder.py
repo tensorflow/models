@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tensorflow Example proto decoder for object detection.
 
 A decoder to decode string tensors containing serialized tensorflow.Example
@@ -156,6 +155,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.FixedLenFeature((), tf.int64, default_value=1),
         'image/width':
             tf.FixedLenFeature((), tf.int64, default_value=1),
+        # Image-level labels.
+        'image/class/text':
+            tf.VarLenFeature(tf.string),
+        'image/class/label':
+            tf.VarLenFeature(tf.int64),
         # Object boxes and classes.
         'image/object/bbox/xmin':
             tf.VarLenFeature(tf.float32),
@@ -281,10 +285,18 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       label_handler = BackupHandler(
           LookupTensor('image/object/class/text', table, default_value=''),
           slim_example_decoder.Tensor('image/object/class/label'))
+      image_label_handler = BackupHandler(
+          LookupTensor(
+              fields.TfExampleFields.image_class_text, table, default_value=''),
+          slim_example_decoder.Tensor(fields.TfExampleFields.image_class_label))
     else:
       label_handler = slim_example_decoder.Tensor('image/object/class/label')
+      image_label_handler = slim_example_decoder.Tensor(
+          fields.TfExampleFields.image_class_label)
     self.items_to_handlers[
         fields.InputDataFields.groundtruth_classes] = label_handler
+    self.items_to_handlers[
+        fields.InputDataFields.groundtruth_image_classes] = image_label_handler
 
   def decode(self, tf_example_string_tensor):
     """Decodes serialized tensorflow example and returns a tensor dictionary.
@@ -328,6 +340,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         the keypoints are ordered (y, x).
       fields.InputDataFields.groundtruth_instance_masks - 3D float32 tensor of
         shape [None, None, None] containing instance masks.
+      fields.InputDataFields.groundtruth_image_classes - 1D uint64 of shape
+        [None] containing classes for the boxes.
     """
     serialized_example = tf.reshape(tf_example_string_tensor, shape=[])
     decoder = slim_example_decoder.TFExampleDecoder(self.keys_to_features,

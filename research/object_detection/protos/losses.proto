@@ -43,7 +43,7 @@ message WeightedL2LocalizationLoss {
 
 // SmoothL1 (Huber) location loss.
 // The smooth L1_loss is defined elementwise as .5 x^2 if |x| <= delta and
-// 0.5 x^2 + delta * (|x|-delta) otherwise, where x is the difference between
+// delta * (|x|-0.5*delta) otherwise, where x is the difference between
 // predictions and target.
 message WeightedSmoothL1LocalizationLoss {
   // DEPRECATED, do not use.

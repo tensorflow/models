@@ -18,7 +18,6 @@ import logging
 import os
 import tempfile
 import tensorflow as tf
-from google.protobuf import text_format
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python import pywrap_tensorflow
 from tensorflow.python.client import session
@@ -29,6 +28,7 @@ from tensorflow.python.training import saver as saver_lib
 from object_detection.builders import model_builder
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
+from object_detection.utils import config_util
 
 slim = tf.contrib.slim
 
@@ -243,9 +243,7 @@ def _add_output_tensor_nodes(postprocessed_tensors,
         masks, name=detection_fields.detection_masks)
   for output_key in outputs:
     tf.add_to_collection(output_collection_name, outputs[output_key])
-  if masks is not None:
-    tf.add_to_collection(output_collection_name,
-                         outputs[detection_fields.detection_masks])
+
   return outputs
 
 
@@ -276,7 +274,7 @@ def write_saved_model(saved_model_path,
   Args:
     saved_model_path: Path to write SavedModel.
     frozen_graph_def: tf.GraphDef holding frozen graph.
-    inputs: The input image tensor to use for detection.
+    inputs: The input placeholder tensor.
     outputs: A tensor dictionary containing the outputs of a DetectionModel.
   """
   with tf.Graph().as_default():
@@ -370,7 +368,8 @@ def _export_inference_graph(input_type,
                             additional_output_tensor_names=None,
                             input_shape=None,
                             output_collection_name='inference_op',
-                            graph_hook_fn=None):
+                            graph_hook_fn=None,
+                            write_inference_graph=False):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
   frozen_graph_path = os.path.join(output_directory,
@@ -408,6 +407,14 @@ def _export_inference_graph(input_type,
       model_path=model_path,
       input_saver_def=input_saver_def,
       trained_checkpoint_prefix=checkpoint_to_use)
+  if write_inference_graph:
+    inference_graph_def = tf.get_default_graph().as_graph_def()
+    inference_graph_path = os.path.join(output_directory,
+                                        'inference_graph.pbtxt')
+    for node in inference_graph_def.node:
+      node.device = ''
+    with gfile.GFile(inference_graph_path, 'wb') as f:
+      f.write(str(inference_graph_def))
 
   if additional_output_tensor_names is not None:
     output_node_names = ','.join(outputs.keys()+additional_output_tensor_names)
@@ -434,12 +441,13 @@ def export_inference_graph(input_type,
                            output_directory,
                            input_shape=None,
                            output_collection_name='inference_op',
-                           additional_output_tensor_names=None):
+                           additional_output_tensor_names=None,
+                           write_inference_graph=False):
   """Exports inference graph for the model specified in the pipeline config.
 
   Args:
-    input_type: Type of input for the graph. Can be one of [`image_tensor`,
-      `tf_example`].
+    input_type: Type of input for the graph. Can be one of ['image_tensor',
+      'encoded_image_string_tensor', 'tf_example'].
     pipeline_config: pipeline_pb2.TrainAndEvalPipelineConfig proto.
     trained_checkpoint_prefix: Path to the trained checkpoint file.
     output_directory: Path to write outputs.
@@ -449,17 +457,20 @@ def export_inference_graph(input_type,
       If None, does not add output tensors to a collection.
     additional_output_tensor_names: list of additional output
       tensors to include in the frozen graph.
+    write_inference_graph: If true, writes inference graph to disk.
   """
   detection_model = model_builder.build(pipeline_config.model,
                                         is_training=False)
-  _export_inference_graph(input_type, detection_model,
-                          pipeline_config.eval_config.use_moving_averages,
-                          trained_checkpoint_prefix,
-                          output_directory, additional_output_tensor_names,
-                          input_shape, output_collection_name,
-                          graph_hook_fn=None)
+  _export_inference_graph(
+      input_type,
+      detection_model,
+      pipeline_config.eval_config.use_moving_averages,
+      trained_checkpoint_prefix,
+      output_directory,
+      additional_output_tensor_names,
+      input_shape,
+      output_collection_name,
+      graph_hook_fn=None,
+      write_inference_graph=write_inference_graph)
   pipeline_config.eval_config.use_moving_averages = False
-  config_text = text_format.MessageToString(pipeline_config)
-  with tf.gfile.Open(
-      os.path.join(output_directory, 'pipeline.config'), 'wb') as f:
-    f.write(config_text)
+  config_util.save_pipeline_config(pipeline_config, output_directory)

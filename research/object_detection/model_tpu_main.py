@@ -25,7 +25,6 @@ from __future__ import print_function
 from absl import flags
 import tensorflow as tf
 
-from tensorflow.contrib.tpu.python.tpu import tpu_config
 
 from object_detection import model_hparams
 from object_detection import model_lib
@@ -81,17 +80,17 @@ def main(unused_argv):
   flags.mark_flag_as_required('pipeline_config_path')
 
   tpu_cluster_resolver = (
-      tf.contrib.cluster_resolver.python.training.TPUClusterResolver(
-          tpu_names=[FLAGS.tpu_name],
+      tf.contrib.cluster_resolver.TPUClusterResolver(
+          tpu=[FLAGS.tpu_name],
           zone=FLAGS.tpu_zone,
           project=FLAGS.gcp_project))
   tpu_grpc_url = tpu_cluster_resolver.get_master()
 
-  config = tpu_config.RunConfig(
+  config = tf.contrib.tpu.RunConfig(
       master=tpu_grpc_url,
       evaluation_master=tpu_grpc_url,
       model_dir=FLAGS.model_dir,
-      tpu_config=tpu_config.TPUConfig(
+      tpu_config=tf.contrib.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_shards))
 

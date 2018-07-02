@@ -125,7 +125,8 @@ class TfExampleDecoderTest(tf.test.TestCase):
     results_dict = parser.parse(example)
     self.assertIsNotNone(results_dict)
     np_testing.assert_equal(
-        verified_labels, results_dict[fields.InputDataFields.verified_labels])
+        verified_labels,
+        results_dict[fields.InputDataFields.groundtruth_image_classes])
 
   def testParseString(self):
     string_val = 'abc'

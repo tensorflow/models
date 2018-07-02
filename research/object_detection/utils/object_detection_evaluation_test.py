@@ -131,7 +131,7 @@ class OpenImagesDetectionChallengeEvaluatorTest(tf.test.TestCase):
                 groundtruth_class_labels,
             standard_fields.InputDataFields.groundtruth_group_of:
                 groundtruth_is_group_of_list,
-            standard_fields.InputDataFields.verified_labels:
+            standard_fields.InputDataFields.groundtruth_image_classes:
                 groundtruth_verified_labels,
         })
     image_key = 'img2'

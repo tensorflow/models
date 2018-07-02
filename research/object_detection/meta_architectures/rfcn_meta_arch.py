@@ -76,7 +76,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                second_stage_classification_loss,
                hard_example_miner,
                parallel_iterations=16,
-               add_summaries=True):
+               add_summaries=True,
+               use_matmul_crop_and_resize=False):
     """RFCNMetaArch Constructor.
 
     Args:
@@ -159,14 +160,17 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         in parallel for calls to tf.map_fn.
       add_summaries: boolean (default: True) controlling whether summary ops
         should be added to tensorflow graph.
+      use_matmul_crop_and_resize: Force the use of matrix multiplication based
+        crop and resize instead of standard tf.image.crop_and_resize while
+        computing second stage input feature maps.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals`
       ValueError: If first_stage_anchor_generator is not of type
         grid_anchor_generator.GridAnchorGenerator.
     """
-    # TODO(rathodv): add_summaries is currently unused. Respect that directive
-    # in the future.
+    # TODO(rathodv): add_summaries and crop_and_resize_fn is currently
+    # unused. Respect that directive in the future.
     super(RFCNMetaArch, self).__init__(
         is_training,
         num_classes,

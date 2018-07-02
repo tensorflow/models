@@ -840,7 +840,9 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
     Args:
       image_features: A list of float tensors of shape [batch_size, height_i,
         width_i, channels] containing features for a batch of images. Note that
-        all tensors in the list must have the same number of channels.
+        when not all tensors in the list have the same number of channels, an
+        additional projection layer will be added on top the tensor to generate
+        feature map with number of channels consitent with the majority.
       num_predictions_per_location_list: A list of integers representing the
         number of box predictions to be made per spatial location for each
         feature map. Note that all values must be the same since the weights are
@@ -869,11 +871,17 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
     feature_channels = [
         image_feature.shape[3].value for image_feature in image_features
     ]
-    if len(set(feature_channels)) > 1:
-      raise ValueError('all feature maps must have the same number of '
-                       'channels, found: {}'.format(feature_channels))
+    has_different_feature_channels = len(set(feature_channels)) > 1
+    if has_different_feature_channels:
+      inserted_layer_counter = 0
+      target_channel = max(set(feature_channels), key=feature_channels.count)
+      tf.logging.info('Not all feature maps have the same number of '
+                      'channels, found: {}, addition project layers '
+                      'to bring all feature maps to uniform channels '
+                      'of {}'.format(feature_channels, target_channel))
     box_encodings_list = []
     class_predictions_list = []
+    num_class_slots = self.num_classes + 1
     for feature_index, (image_feature,
                         num_predictions_per_location) in enumerate(
                             zip(image_features,
@@ -881,11 +889,28 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
       # Add a slot for the background class.
       with tf.variable_scope('WeightSharedConvolutionalBoxPredictor',
                              reuse=tf.AUTO_REUSE):
-        num_class_slots = self.num_classes + 1
-        box_encodings_net = image_feature
-        class_predictions_net = image_feature
         with slim.arg_scope(self._conv_hyperparams_fn()) as sc:
           apply_batch_norm = _arg_scope_func_key(slim.batch_norm) in sc
+          # Insert an additional projection layer if necessary.
+          if (has_different_feature_channels and
+              image_feature.shape[3].value != target_channel):
+            image_feature = slim.conv2d(
+                image_feature,
+                target_channel, [1, 1],
+                stride=1,
+                padding='SAME',
+                activation_fn=None,
+                normalizer_fn=(tf.identity if apply_batch_norm else None),
+                scope='ProjectionLayer/conv2d_{}'.format(
+                    inserted_layer_counter))
+            if apply_batch_norm:
+              image_feature = slim.batch_norm(
+                  image_feature,
+                  scope='ProjectionLayer/conv2d_{}/BatchNorm'.format(
+                      inserted_layer_counter))
+            inserted_layer_counter += 1
+          box_encodings_net = image_feature
+          class_predictions_net = image_feature
           for i in range(self._num_layers_before_predictor):
             box_encodings_net = slim.conv2d(
                 box_encodings_net,
