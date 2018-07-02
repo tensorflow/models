@@ -137,7 +137,7 @@ class _ArrayBytesView(object):
     x_view = memoryview(source_array)
 
     if six.PY3:
-      nbytes = x_view.nbytes
+      nbytes = x_view.nbytes  # pylint: disable=no-member
     else:
       nbytes = int(np.product(x_view.shape) * x_view.itemsize)
 
@@ -213,7 +213,7 @@ class _FileBackedArrayBytesView(_ArrayBytesView):
         f.write(chunk)
 
   def to_dataset(self, decode_procs=2, decode_batch_size=16,
-      extra_map_fn=None, unbatch=True):
+                 extra_map_fn=None, unbatch=True):
     """Create a Dataset from the underlying buffer file.
 
     Args:
