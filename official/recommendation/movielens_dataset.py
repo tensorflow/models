@@ -272,7 +272,7 @@ class NCFDataSet(object):
     """
     # TODO(robieta): remove
     # self._train_data = train_data
-    # train_data = train_data[:100000]
+    train_data = train_data[:10000]
 
     self.num_users = num_users
     self.num_items = num_items
@@ -481,6 +481,41 @@ def _format_eval(x):
   return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}
 
 
+
+
+
+
+def _construct_generator(shard_list, num_negatives, num_items):
+  shard_list = [i for i in shard_list]
+  def map_generator():
+    if not shard_list:
+      tf.logging.error("No more shards to map.")
+      raise StopIteration
+    shard_path = shard_list.pop()
+
+    with tf.gfile.Open(shard_path, "rb") as f:
+      user_blocks = pickle.load(f)
+
+    for user, positive_items in user_blocks:
+      positive_set = set(positive_items)
+      n = positive_items.shape[0]
+
+      for i in range(n):
+        yield user, positive_items[i], 1
+        for _ in range(num_negatives):
+          j = np.random.randint(num_items)
+          while j in positive_set:
+            j = np.random.randint(num_items)
+          yield user, j, 0
+
+  return map_generator
+
+
+
+
+
+
+
 def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
                  train_data=None):
   """Input function for model training and evaluation.
@@ -512,30 +547,26 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
 
   def input_fn():  # pylint: disable=missing-docstring
     if training:
-      users = data["users"]
-      items = data["items"]
-      labels = data["labels"]
-
-      # Using different integer types for the various model inputs significantly
-      # reduces memory consumption.
-      user_dataset = buffer.array_to_dataset(
-          source_array=users, decode_procs=4, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_users").prefetch(16)
-      item_dataset = buffer.array_to_dataset(
-          source_array=items, decode_procs=4, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_items").prefetch(16)
-      label_dataset = buffer.array_to_dataset(
-          source_array=labels, decode_procs=4, decode_batch_size=batch_size,
-          unbatch=False, namespace=namespace + "_labels").prefetch(16)
-
-      # zip() must wait for all datasets to produce a batch, so prefetching is
-      # necessary to handle stragglers.
-      dataset = tf.data.Dataset.zip((
-        user_dataset,
-        item_dataset,
-        label_dataset,
-      ))
+      generator = _construct_generator(
+          shard_list=ncf_dataset._user_block_shards,
+          num_negatives=ncf_dataset.num_negatives,
+          num_items=ncf_dataset.num_items)
+      dataset = tf.data.Dataset.from_tensor_slices(list(range(ncf_dataset.num_block_shards)))
+      output_types=(tf.int32, tf.uint16, tf.int8)
+      output_shapes=(tf.TensorShape([]), tf.TensorShape([]), tf.TensorShape([]))
+      dataset = dataset.interleave(lambda _: tf.data.Dataset.from_generator(
+          generator, output_types=output_types,
+          output_shapes=output_shapes), cycle_length=16)
+      dataset = dataset.shuffle(buffer_size=1024**2)
+      dataset = dataset.batch(batch_size)
       dataset = dataset.map(_format_training, num_parallel_calls=16)
+
+      # import sys
+      # with tf.Session().as_default() as sess:
+      #   element = dataset.make_one_shot_iterator().get_next()
+      #   for _ in range(25):
+      #     print(sess.run(element))
+      # sys.exit()
     else:
       dataset = buffer.array_to_dataset(
           source_array=data, decode_procs=8, decode_batch_size=batch_size,
@@ -558,6 +589,13 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
     return dataset
 
   return input_fn
+
+
+
+
+
+
+
 
 
 def main(_):

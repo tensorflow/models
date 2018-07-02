@@ -223,8 +223,8 @@ def run_ncf(_):
   # Training and evaluation cycle
   def get_train_input_fn():
     # Generate random negative instances for training in each epoch
-    tf.logging.info("Generating training data.")
-    train_data = ncf_dataset.make_train_data()
+    # tf.logging.info("Generating training data.")
+    train_data = None  # ncf_dataset.make_train_data()
     # train_data = movielens_dataset.generate_train_dataset(
     #     ncf_dataset.train_data, ncf_dataset.num_items,
     #     ncf_dataset.num_negatives, pool)
