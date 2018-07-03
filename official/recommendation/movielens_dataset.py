@@ -281,7 +281,8 @@ class NCFDataSet(object):
     self.eval_all_items = all_items
     self.all_eval_data = all_eval_data
 
-    self.num_block_shards = 128
+    self.shards_per_core = 16
+    self.num_block_shards = multiprocessing.cpu_count() * self.shards_per_core
     self.num_train_positives = len(train_data)
     self._shard_dir = tempfile.mkdtemp()
     self._user_block_shards = []
@@ -485,31 +486,31 @@ def _format_eval(x):
 
 
 
-def _construct_generator(shard_list, num_negatives, num_items):
-  shard_list = [i for i in shard_list]
-  def map_generator():
-    if not shard_list:
-      tf.logging.error("No more shards to map.")
-      raise StopIteration
-    shard_path = shard_list.pop()
-
+def _negative_generator_fn(shard_path, num_negatives, num_items):
+  try:
     with tf.gfile.Open(shard_path, "rb") as f:
       user_blocks = pickle.load(f)
 
+    results = []
     for user, positive_items in user_blocks:
       positive_set = set(positive_items)
       n = positive_items.shape[0]
 
       for i in range(n):
-        yield user, positive_items[i], 1
+        results.append((user, positive_items[i], 1))
         for _ in range(num_negatives):
           j = np.random.randint(num_items)
           while j in positive_set:
             j = np.random.randint(num_items)
-          yield user, j, 0
+          results.append((user, j, 0))
+    return (
+      np.array([i[0] for i in results], dtype=np.int32),
+      np.array([i[1] for i in results], dtype=np.uint16),
+      np.array([i[2] for i in results], dtype=np.int8),
+    )
 
-  return map_generator
-
+  except KeyboardInterrupt:
+    return
 
 
 
@@ -517,7 +518,8 @@ def _construct_generator(shard_list, num_negatives, num_items):
 
 
 def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
-                 train_data=None):
+                 pool=None):
+  # type: (str, bool, int, NCFDataSet, int, multiprocessing.Pool) -> tf.data.Dataset
   """Input function for model training and evaluation.
 
   The train input consists of 1 positive instance (user and item have
@@ -533,43 +535,61 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
     ncf_dataset: An NCFDataSet object, which contains the information about
       training and test data.
     repeat: An integer, how many times to repeat the dataset.
-    train_data: Data with generated false negatives.
+    pool: multiprocessing pool used for on-the-fly negative generation.
 
   Returns:
     dataset: A tf.data.Dataset object containing examples loaded from the files.
   """
 
-  if training:
-    data = train_data
 
-  else:
-    data = ncf_dataset.all_eval_data
 
   def input_fn():  # pylint: disable=missing-docstring
     if training:
-      generator = _construct_generator(
-          shard_list=ncf_dataset._user_block_shards,
-          num_negatives=ncf_dataset.num_negatives,
-          num_items=ncf_dataset.num_items)
-      dataset = tf.data.Dataset.from_tensor_slices(list(range(ncf_dataset.num_block_shards)))
-      output_types=(tf.int32, tf.uint16, tf.int8)
-      output_shapes=(tf.TensorShape([]), tf.TensorShape([]), tf.TensorShape([]))
-      dataset = dataset.interleave(lambda _: tf.data.Dataset.from_generator(
-          generator, output_types=output_types,
-          output_shapes=output_shapes), cycle_length=16)
+      block_counter = {"count": 0}
+      def _make_dataset(*args, **kwargs):
+        def _make_generator():
+          current_block = block_counter["count"]
+          block_counter["count"] += 1
+          block_shards = ncf_dataset._user_block_shards[current_block::ncf_dataset.shards_per_core]
+          print(block_shards)
+          map_fn = functools.partial(
+              _negative_generator_fn, num_negatives=ncf_dataset.num_negatives,
+              num_items=ncf_dataset.num_items
+          )
+          return pool.imap(map_fn, block_shards)
+
+        return tf.data.Dataset.from_generator(
+            _make_generator,
+            output_shapes=(tf.TensorShape([None]), tf.TensorShape([None]), tf.TensorShape([None]),),
+            output_types=(tf.int32, tf.uint16, tf.int8,)
+        ).apply(tf.contrib.data.unbatch())
+
+      dataset = tf.data.Dataset.range(multiprocessing.cpu_count())
+      interleave = tf.contrib.data.parallel_interleave(
+          map_func=_make_dataset,
+          cycle_length=multiprocessing.cpu_count(),
+          block_length=4096,
+          sloppy=True,
+          buffer_output_elements=4096,
+          prefetch_input_elements=multiprocessing.cpu_count() * 4096,
+      )
+      dataset = dataset.apply(interleave)
+
       dataset = dataset.shuffle(buffer_size=1024**2)
       dataset = dataset.batch(batch_size)
       dataset = dataset.map(_format_training, num_parallel_calls=16)
 
-      # import sys
+
       # with tf.Session().as_default() as sess:
       #   element = dataset.make_one_shot_iterator().get_next()
-      #   for _ in range(25):
+      #   for _ in range(1):
       #     print(sess.run(element))
+      #
+      # import sys
       # sys.exit()
     else:
       dataset = buffer.array_to_dataset(
-          source_array=data, decode_procs=8, decode_batch_size=batch_size,
+          source_array=ncf_dataset.all_eval_data, decode_procs=8, decode_batch_size=batch_size,
           unbatch=False, extra_map_fn=_format_eval, namespace=namespace)
 
     # if training:

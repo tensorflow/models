@@ -186,7 +186,6 @@ def run_ncf(_):
   tf.logging.info("Data preprocessing...")
   ncf_dataset = movielens_dataset.data_preprocessing(
       FLAGS.data_dir, FLAGS.dataset, FLAGS.num_neg)  # type: movielens_dataset.NCFDataSet
-  multiprocessing.set_start_method("spawn")
 
   model_helpers.apply_clean(flags.FLAGS)
 
@@ -220,18 +219,15 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
+  ctx = multiprocessing.get_context("spawn")
+  pool = ctx.Pool(multiprocessing.cpu_count())  # type: multiprocessing.Pool
+
   # Training and evaluation cycle
   def get_train_input_fn():
-    # Generate random negative instances for training in each epoch
-    # tf.logging.info("Generating training data.")
-    train_data = None  # ncf_dataset.make_train_data()
-    # train_data = movielens_dataset.generate_train_dataset(
-    #     ncf_dataset.train_data, ncf_dataset.num_items,
-    #     ncf_dataset.num_negatives, pool)
     return movielens_dataset.get_input_fn(
         _TRAIN_VIEW_NAME, True,
         distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, FLAGS.epochs_between_evals, train_data
+        ncf_dataset, FLAGS.epochs_between_evals, pool
     )
 
   def get_pred_input_fn():
@@ -273,6 +269,7 @@ def run_ncf(_):
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
+  pool.terminate()
 
 
 def define_ncf_flags():
