@@ -21,6 +21,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import heapq
 import math
 import multiprocessing
@@ -219,11 +220,8 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
-  ctx = multiprocessing.get_context("spawn")
-  pool = ctx.Pool(multiprocessing.cpu_count())  # type: multiprocessing.Pool
-
   # Training and evaluation cycle
-  def get_train_input_fn():
+  def get_train_input_fn(pool):
     return movielens_dataset.get_input_fn(
         _TRAIN_VIEW_NAME, True,
         distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
@@ -248,7 +246,9 @@ def run_ncf(_):
     buffer.cleanup(_EVAL_VIEW_NAME)
 
     # Train the model
-    estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks)
+    ctx = multiprocessing.get_context("spawn")
+    with contextlib.closing(ctx.Pool(multiprocessing.cpu_count())) as pool:
+      estimator.train(input_fn=get_train_input_fn(pool), hooks=train_hooks)
 
     # Evaluate the model
     eval_results = evaluate_model(
@@ -269,7 +269,6 @@ def run_ncf(_):
 
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
-  pool.terminate()
 
 
 def define_ncf_flags():

@@ -551,7 +551,6 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
           current_block = block_counter["count"]
           block_counter["count"] += 1
           block_shards = ncf_dataset._user_block_shards[current_block::ncf_dataset.shards_per_core]
-          print(block_shards)
           map_fn = functools.partial(
               _negative_generator_fn, num_negatives=ncf_dataset.num_negatives,
               num_items=ncf_dataset.num_items
@@ -568,14 +567,14 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
       interleave = tf.contrib.data.parallel_interleave(
           map_func=_make_dataset,
           cycle_length=multiprocessing.cpu_count(),
-          block_length=4096,
+          block_length=batch_size * 32,
           sloppy=True,
-          buffer_output_elements=4096,
-          prefetch_input_elements=multiprocessing.cpu_count() * 4096,
+          buffer_output_elements=batch_size * 32,
+          prefetch_input_elements=multiprocessing.cpu_count() * batch_size * 32,
       )
       dataset = dataset.apply(interleave)
 
-      dataset = dataset.shuffle(buffer_size=1024**2)
+      dataset = dataset.shuffle(buffer_size=1024**2 * 10)
       dataset = dataset.batch(batch_size)
       dataset = dataset.map(_format_training, num_parallel_calls=16)
 
