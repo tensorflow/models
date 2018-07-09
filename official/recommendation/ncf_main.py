@@ -36,9 +36,8 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.datasets import movielens
-from official.recommendation import movielens_dataset
 from official.recommendation import neumf_model
-from official.utils.data import buffer
+from official.recommendation.data_server import pipeline
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -55,7 +54,7 @@ _TRAIN_VIEW_NAME = "ncf_training"
 _EVAL_VIEW_NAME = "ncf_eval"
 
 
-def evaluate_model(estimator, model_dir, ncf_dataset, pred_input_fn):
+def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -71,7 +70,6 @@ def evaluate_model(estimator, model_dir, ncf_dataset, pred_input_fn):
 
   Args:
     estimator: The Estimator.
-    model_dir: The model directory of the estimator.
     ncf_dataset: An NCFDataSet object, which contains the information about
       test/eval dataset, such as:
       eval_true_items, which is a list of test items (true items) for HR and
@@ -108,7 +106,7 @@ def evaluate_model(estimator, model_dir, ncf_dataset, pred_input_fn):
     return 0
 
   hits, ndcgs = [], []
-  num_users = len(ncf_dataset.eval_true_items)
+  num_users = ncf_dataset.num_users
   # Reshape the predicted scores and each user takes one row
   predicted_scores_list = np.asarray(
       all_predicted_scores).reshape(num_users, -1)
@@ -181,12 +179,10 @@ def run_ncf(_):
   """Run NCF training and eval loop."""
   if FLAGS.download_if_missing:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
-    movielens_dataset.construct_train_eval_csv(
-        data_dir=FLAGS.data_dir, dataset=FLAGS.dataset)
 
   tf.logging.info("Data preprocessing...")
-  ncf_dataset = movielens_dataset.data_preprocessing(
-      FLAGS.data_dir, FLAGS.dataset, FLAGS.num_neg)  # type: movielens_dataset.NCFDataSet
+  ncf_dataset = pipeline.initialize(
+      dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, num_neg=FLAGS.num_neg)
 
   model_helpers.apply_clean(flags.FLAGS)
 
@@ -221,18 +217,23 @@ def run_ncf(_):
       test_id=FLAGS.benchmark_test_id)
 
   # Training and evaluation cycle
-  def get_train_input_fn(pool):
-    return movielens_dataset.get_input_fn(
-        _TRAIN_VIEW_NAME, True,
-        distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, FLAGS.epochs_between_evals, pool
+  def get_train_input_fn():
+    return pipeline.get_input_fn(
+        training=True,
+        ncf_dataset=ncf_dataset,
+        batch_size=distribution_utils.per_device_batch_size(
+            FLAGS.batch_size, num_gpus),
+        num_epochs=FLAGS.epochs_between_evals
     )
 
   def get_pred_input_fn():
-    return movielens_dataset.get_input_fn(
-        _EVAL_VIEW_NAME, False,
-        distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, 1)
+    return pipeline.get_input_fn(
+        training=False,
+        ncf_dataset=ncf_dataset,
+        batch_size=distribution_utils.per_device_batch_size(
+            FLAGS.batch_size, num_gpus),
+        num_epochs=1
+    )
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
 
@@ -246,13 +247,11 @@ def run_ncf(_):
     buffer.cleanup(_EVAL_VIEW_NAME)
 
     # Train the model
-    ctx = multiprocessing.get_context("spawn")
-    with contextlib.closing(ctx.Pool(multiprocessing.cpu_count())) as pool:
-      estimator.train(input_fn=get_train_input_fn(pool), hooks=train_hooks)
+    estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks)
 
     # Evaluate the model
     eval_results = evaluate_model(
-        estimator, FLAGS.model_dir, ncf_dataset, get_pred_input_fn())
+        estimator, ncf_dataset, get_pred_input_fn())
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)

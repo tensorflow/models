@@ -201,56 +201,6 @@ def construct_train_eval_csv(data_dir, dataset):
   tf.logging.info("Test negatives is {}".format(test_negs_file))
 
 
-
-
-
-
-
-def _false_negative_map_fn(shard_path, num_negatives, num_items, output_dir, output_queue):
-  try:
-    with tf.gfile.Open(shard_path, "rb") as f:
-      user_blocks = pickle.load(f)
-
-    user_item_pairs = []
-    for user, positive_items in user_blocks:
-      positive_set = set(positive_items)
-      n = positive_items.shape[0]
-
-      items = []
-      for i in range(n):
-        items.append(positive_items[i])
-        for _ in range(num_negatives):
-          j = np.random.randint(num_items)
-          while j in positive_set:
-            j = np.random.randint(num_items)
-          items.append(j)
-      user_item_pairs.append((user, items))
-
-    user_item_pairs = [
-      (u * np.ones(len(i), dtype=np.int32), np.array(i, dtype=np.uint16))
-      for u, i in user_item_pairs]
-    user_block = np.concatenate([pair[0] for pair in user_item_pairs])
-    item_block = np.concatenate([pair[1] for pair in user_item_pairs])
-    output = {
-      "user_block": user_block,
-      "item_block": item_block
-    }
-
-    write_path = os.path.join(output_dir, os.path.split(shard_path)[1])
-    with tf.gfile.Open(write_path, "wb") as f:
-      pickle.dump(output, f)
-
-    output_queue.put(write_path)
-
-  except KeyboardInterrupt:
-    # If the main thread receives a keyboard interrupt, it will be passed to the
-    # worker processes. This block allows the workers to exit gracefully without
-    # polluting the "real" stack trace.
-    return
-
-
-
-
 class NCFDataSet(object):
   """A class containing data information for model training and evaluation."""
 
@@ -272,7 +222,7 @@ class NCFDataSet(object):
     """
     # TODO(robieta): remove
     # self._train_data = train_data
-    train_data = train_data[:10000]
+    # train_data = train_data[:10000]
 
     self.num_users = num_users
     self.num_items = num_items
@@ -281,17 +231,13 @@ class NCFDataSet(object):
     self.eval_all_items = all_items
     self.all_eval_data = all_eval_data
 
-    self.shards_per_core = 16
-    self.num_block_shards = multiprocessing.cpu_count() * self.shards_per_core
+    self.num_block_shards = 128
     self.num_train_positives = len(train_data)
     self._shard_dir = tempfile.mkdtemp()
     self._user_block_shards = []
     atexit.register(tf.gfile.DeleteRecursively, dirname=self._shard_dir)
     self._precompute(train_data)
-    self._staged_results = []
 
-    self._negative_generation_tasks = []
-    self._managers = []  # prevent garbage collection.
 
   def _precompute(self, train_data):
     assert self.num_items <= np.iinfo(np.uint16).max
@@ -327,70 +273,6 @@ class NCFDataSet(object):
       with tf.gfile.Open(fpath, "wb") as f:
         pickle.dump(block, f)
       self._user_block_shards.append(fpath)
-
-
-  def _reduce(self, result, output_queue):
-    shards_processed = 0
-
-    num_total = self.num_train_positives * (1 + self.num_negatives)
-    shuffle_indicies = np.random.permutation(num_total)
-
-    total_processed = 0
-    users = np.zeros((num_total,), dtype=np.int32)
-    items = np.zeros((num_total,), dtype=np.uint16)
-    labels = np.zeros((num_total,), dtype=np.int8)
-
-    while shards_processed < self.num_block_shards:
-      if result.ready() and not result.successful():
-        raise OSError("Generation failed.")
-
-      if not output_queue.qsize():
-        time.sleep(0.01)
-        continue
-
-      while output_queue.qsize():
-        fpath = output_queue.get()
-
-        with tf.gfile.Open(fpath, "rb") as f:
-          blocks = pickle.load(f)
-
-        user_block = blocks["user_block"]
-        item_block = blocks["item_block"]
-        label_block = np.zeros(user_block.shape, dtype=np.int8)
-        label_block[0::self.num_negatives + 1] = 1
-        block_size = int(user_block.shape[0])
-
-        block_ind = shuffle_indicies[total_processed:total_processed + block_size]
-        users[block_ind] = user_block
-        items[block_ind] = item_block
-        labels[block_ind] = label_block
-        total_processed += block_size
-
-        tf.gfile.Remove(fpath)
-
-        shards_processed += 1
-        if (shards_processed % 32) == 0:
-          print("__", shards_processed)
-
-    return {
-      "users": users,
-      "items": items,
-      "labels": labels,
-    }
-
-
-  def make_train_data(self):
-    pool_size = max([multiprocessing.cpu_count() - 1, 1])
-    output_dir = tempfile.mkdtemp(dir=self._shard_dir)
-    output_queue = multiprocessing.Manager().Queue()
-    map_fn = functools.partial(
-        _false_negative_map_fn, num_negatives=self.num_negatives,
-        num_items=self.num_items, output_dir=output_dir,
-        output_queue=output_queue)
-
-    with contextlib.closing(multiprocessing.Pool(pool_size)) as pool:
-      result = pool.map_async(map_fn, self._user_block_shards)
-      return self._reduce(result=result, output_queue=output_queue)
 
 
 def load_data(file_name):
@@ -466,13 +348,6 @@ def data_preprocessing(data_dir, dataset, num_negatives):
   return ncf_dataset
 
 
-def _format_training(users, items, labels):
-  # Give tensorflow explicit shape definitions.
-  users = tf.reshape(users, (-1, 1))
-  items = tf.reshape(items, (-1, 1))
-  labels = tf.reshape(labels, (-1, 1))
-  return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}, labels
-
 
 def _format_eval(x):
   # Give tf explicit shape definitions.
@@ -480,10 +355,6 @@ def _format_eval(x):
   items = tf.reshape(x[:, 1], (-1, 1))
 
   return {movielens.USER_COLUMN: users, movielens.ITEM_COLUMN: items}
-
-
-
-
 
 
 def _negative_generator_fn(shard_path, num_negatives, num_items):
@@ -495,31 +366,45 @@ def _negative_generator_fn(shard_path, num_negatives, num_items):
     for user, positive_items in user_blocks:
       positive_set = set(positive_items)
       n = positive_items.shape[0]
+      n_neg = n * num_negatives
 
-      for i in range(n):
-        results.append((user, positive_items[i], 1))
-        for _ in range(num_negatives):
-          j = np.random.randint(num_items)
-          while j in positive_set:
-            j = np.random.randint(num_items)
-          results.append((user, j, 0))
-    return (
-      np.array([i[0] for i in results], dtype=np.int32),
-      np.array([i[1] for i in results], dtype=np.uint16),
-      np.array([i[2] for i in results], dtype=np.int8),
-    )
+      p = 1 - len(positive_set) /  num_items
+      n_attempt = int(n * num_negatives * (1 / p) * 1.1)
+      attempt = []
+      while len(attempt) < n_neg:
+        attempt.extend(
+            set(np.random.randint(low=0, high=num_items, size=(n_attempt,))) -
+            positive_set
+        )
+
+      users = user * np.ones((n + n_neg,), dtype=np.int32)
+      items = np.concatenate([positive_items, np.array(attempt[:n_neg], dtype=np.uint16)])
+      labels = np.array([1 for _ in range(n)] + [0 for _ in range(n_neg)], dtype=np.int8)
+
+      results.append((users, items, labels))
+
+    users_out = np.concatenate([i[0] for i in results])
+
+    # Vectorized shuffling within a worker is much more efficient than using
+    # .shuffle() on a dataset. Although they are mathematically different,
+    # this method is sufficient for practical purposes.
+    shuffle_indicies = np.random.permutation(users_out.shape[0])
+
+    return ({
+      movielens.USER_COLUMN: np.expand_dims(users_out[shuffle_indicies], axis=1),
+      movielens.ITEM_COLUMN: np.expand_dims(np.concatenate([i[1] for i in results])[shuffle_indicies], axis=1)
+    }, np.expand_dims(np.concatenate([i[2] for i in results])[shuffle_indicies], axis=1))
 
   except KeyboardInterrupt:
+    # If the main thread receives a keyboard interrupt, it will be passed to the
+    # worker processes. This block allows the workers to exit gracefully without
+    # polluting the "real" stack trace.
     return
-
-
-
-
 
 
 def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
                  pool=None):
-  # type: (str, bool, int, NCFDataSet, int, multiprocessing.Pool) -> tf.data.Dataset
+  # type: (str, bool, int, NCFDataSet, int, multiprocessing.Pool) -> function
   """Input function for model training and evaluation.
 
   The train input consists of 1 positive instance (user and item have
@@ -546,53 +431,42 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
   def input_fn():  # pylint: disable=missing-docstring
     if training:
       block_counter = {"count": 0}
+      n = int(multiprocessing.cpu_count() * 0.75)
       def _make_dataset(*args, **kwargs):
         def _make_generator():
           current_block = block_counter["count"]
           block_counter["count"] += 1
-          block_shards = ncf_dataset._user_block_shards[current_block::ncf_dataset.shards_per_core]
+          block_shards = ncf_dataset._user_block_shards[current_block::n]
           map_fn = functools.partial(
               _negative_generator_fn, num_negatives=ncf_dataset.num_negatives,
               num_items=ncf_dataset.num_items
           )
-          return pool.imap(map_fn, block_shards)
+          return pool.imap_unordered(map_fn, block_shards, chunksize=4)
+
+        output_shapes = ({movielens.USER_COLUMN: tf.TensorShape([None, 1]), movielens.ITEM_COLUMN: tf.TensorShape([None, 1])}, tf.TensorShape([None, 1]))
+        output_types = ({movielens.USER_COLUMN: tf.int32, movielens.ITEM_COLUMN: tf.uint16}, tf.int8)
 
         return tf.data.Dataset.from_generator(
             _make_generator,
-            output_shapes=(tf.TensorShape([None]), tf.TensorShape([None]), tf.TensorShape([None]),),
-            output_types=(tf.int32, tf.uint16, tf.int8,)
-        ).apply(tf.contrib.data.unbatch())
+            output_shapes=output_shapes,
+            output_types=output_types
+        ).prefetch(4).apply(tf.contrib.data.unbatch()).batch(batch_size)
 
-      dataset = tf.data.Dataset.range(multiprocessing.cpu_count())
+      dataset = tf.data.Dataset.range(n)
       interleave = tf.contrib.data.parallel_interleave(
           map_func=_make_dataset,
           cycle_length=multiprocessing.cpu_count(),
-          block_length=batch_size * 32,
+          block_length=32,
           sloppy=True,
-          buffer_output_elements=batch_size * 32,
-          prefetch_input_elements=multiprocessing.cpu_count() * batch_size * 32,
+          buffer_output_elements=32,
+          prefetch_input_elements=n * 32,
       )
       dataset = dataset.apply(interleave)
 
-      dataset = dataset.shuffle(buffer_size=1024**2 * 10)
-      dataset = dataset.batch(batch_size)
-      dataset = dataset.map(_format_training, num_parallel_calls=16)
-
-
-      # with tf.Session().as_default() as sess:
-      #   element = dataset.make_one_shot_iterator().get_next()
-      #   for _ in range(1):
-      #     print(sess.run(element))
-      #
-      # import sys
-      # sys.exit()
     else:
       dataset = buffer.array_to_dataset(
           source_array=ncf_dataset.all_eval_data, decode_procs=8, decode_batch_size=batch_size,
           unbatch=False, extra_map_fn=_format_eval, namespace=namespace)
-
-    # if training:
-    #   dataset = dataset.shuffle(buffer_size=_SHUFFLE_BUFFER_SIZE)
 
     dataset = dataset.repeat(repeat)
 
@@ -603,7 +477,7 @@ def get_input_fn(namespace, training, batch_size, ncf_dataset, repeat=1,
     # pipeline. However because batches are very small (tens of KB) and are
     # processed very quickly, manually setting a high buffer size yields
     # better performance.
-    dataset = dataset.prefetch(buffer_size=64)
+    dataset = dataset.prefetch(buffer_size=16)
 
     return dataset
 
