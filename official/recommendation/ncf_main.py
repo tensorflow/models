@@ -49,10 +49,6 @@ _TOP_K = 10  # Top-k list for evaluation
 _HR_KEY = "HR"
 _NDCG_KEY = "NDCG"
 
-# Used for intermediate garbage collection.
-_TRAIN_VIEW_NAME = "ncf_training"
-_EVAL_VIEW_NAME = "ncf_eval"
-
 
 def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   """Model evaluation with HR and NDCG metrics.
@@ -240,11 +236,6 @@ def run_ncf(_):
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
-
-    buffer.cleanup(_TRAIN_VIEW_NAME + "_users")
-    buffer.cleanup(_TRAIN_VIEW_NAME + "_items")
-    buffer.cleanup(_TRAIN_VIEW_NAME + "_labels")
-    buffer.cleanup(_EVAL_VIEW_NAME)
 
     # Train the model
     estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks)
