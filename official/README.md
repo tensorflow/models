@@ -14,10 +14,24 @@ If you are on a version of TensorFlow earlier than 1.4, please [update your inst
 ## Requirements
 Please follow the below steps before running models in this repo:
 
-1. Add the top-level ***/models*** folder to the Python path with the command:
+1. Add the top-level ***/models*** folder to the Python path if you prefer to run each model in its own directory, by issuing the following command:
    ```
    export PYTHONPATH="$PYTHONPATH:/path/to/models"
    ```
+   After Python path is added, running an example like:
+   ```
+   cd models/official/minist
+   python mnist.py
+   ```
+
+   Or
+
+   Skip this step if you prefer to run each model in ***/models*** directory. Without adding Python path, running an example like:
+   ```
+   cd models
+   python official/mnist/mnist.py
+   ```
+
 2. Install dependencies:
    ```
    pip3 install --user -r official/requirements.txt
