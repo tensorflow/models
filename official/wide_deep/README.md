@@ -21,7 +21,7 @@ First make sure you've [added the models folder to your Python path](/official/#
 The [Census Income Data Set](https://archive.ics.uci.edu/ml/datasets/Census+Income) that this sample uses for training is hosted by the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/). We have provided a script that downloads and cleans the necessary files.
 
 ```
-python data_download.py
+python census_dataset.py
 ```
 
 This will download the files to `/tmp/census_data`. To change the directory, set the `--data_dir` flag.
@@ -30,12 +30,12 @@ This will download the files to `/tmp/census_data`. To change the directory, set
 You can run the code locally as follows:
 
 ```
-python wide_deep.py
+python census_main.py
 ```
 
 The model is saved to `/tmp/census_model` by default, which can be changed using the `--model_dir` flag.
 
-To run the *wide* or *deep*-only models, set the `--model_type` flag to `wide` or `deep`. Other flags are configurable as well; see `wide_deep.py` for details.
+To run the *wide* or *deep*-only models, set the `--model_type` flag to `wide` or `deep`. Other flags are configurable as well; see `census_main.py` for details.
 
 The final accuracy should be over 83% with any of the three model types.
 
@@ -51,7 +51,7 @@ tensorboard --logdir=/tmp/census_model
 You can export the model into Tensorflow [SavedModel](https://www.tensorflow.org/guide/saved_model) format by using the argument `--export_dir`:
 
 ```
-python wide_deep.py --export_dir /tmp/wide_deep_saved_model
+python census_main.py --export_dir /tmp/wide_deep_saved_model
 ```
 
 After the model finishes training, use [`saved_model_cli`](https://www.tensorflow.org/guide/saved_model#cli_to_inspect_and_execute_savedmodel) to inspect and execute the SavedModel.
