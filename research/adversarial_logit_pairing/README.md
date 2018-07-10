@@ -261,12 +261,12 @@ python eval.py \
 
 Following set of pre-trained checkpoints released with this code:
 
-Model   |    Dataset   |  Accuracy on<br>clean images | Accuracy on<br>`pgdll_16_1_20` | Accuracy on<br>`pgdll_16_2_10`
--------------+--------------+-----------------+-----------------------------+---------------
-[Baseline ResNet-v2-50](http://download.tensorflow.org/models/adversarial_logit_pairing/imagenet64_base_2018_06_26.ckpt.tar.gz) | ImageNet 64x64 | 60.5% | 1.8% | 3.5%
-[ALP-trained ResNet-v2-50](http://download.tensorflow.org/models/adversarial_logit_pairing/imagenet64_alp025_2018_06_26.ckpt.tar.gz) | ImageNet 64x64 | 55.7% | 27.5% | 27.8%
-[Baseline ResNet-v2-50](http://download.tensorflow.org/models/adversarial_logit_pairing/tiny_imagenet_base_2018_06_26.ckpt.tar.gz) | Tiny ImageNet | 69.2% | 0.1% | 0.3%
-[ALP-trained ResNet-v2-50](http://download.tensorflow.org/models/adversarial_logit_pairing/tiny_imagenet_alp05_2018_06_26.ckpt.tar.gz) | Tiny ImageNet | 72.0% | 41.3% | 40.8%
+| Model       |    Dataset   |  Accuracy on<br>clean images | Accuracy on<br>`pgdll_16_1_20` | Accuracy on<br>`pgdll_16_2_10` |
+| ----------- | ------------ | --------------- | --------------------------- | -------------- |
+| [Baseline ResNet-v2-50](http://download.tensorflow.org/models/adversarial_logit_pairing/imagenet64_base_2018_06_26.ckpt.tar.gz) | ImageNet 64x64 | 60.5% | 1.8% | 3.5% |
+| [ALP-trained ResNet-v2-50](http://download.tensorflow.org/models/adversarial_logit_pairing/imagenet64_alp025_2018_06_26.ckpt.tar.gz) | ImageNet 64x64 | 55.7% | 27.5% | 27.8% |
+| [Baseline ResNet-v2-50](http://download.tensorflow.org/models/adversarial_logit_pairing/tiny_imagenet_base_2018_06_26.ckpt.tar.gz) | Tiny ImageNet | 69.2% | 0.1% | 0.3% |
+| [ALP-trained ResNet-v2-50](http://download.tensorflow.org/models/adversarial_logit_pairing/tiny_imagenet_alp05_2018_06_26.ckpt.tar.gz) | Tiny ImageNet | 72.0% | 41.3% | 40.8% |
 
 
 * All provided checkpoints were initially trained with exponential moving
