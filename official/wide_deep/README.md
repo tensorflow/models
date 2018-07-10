@@ -35,7 +35,7 @@ python census_main.py
 
 The model is saved to `/tmp/census_model` by default, which can be changed using the `--model_dir` flag.
 
-To run the *wide* or *deep*-only models, set the `--model_type` flag to `wide` or `deep`. Other flags are configurable as well; see `wide_deep.py` for details.
+To run the *wide* or *deep*-only models, set the `--model_type` flag to `wide` or `deep`. Other flags are configurable as well; see `census_main.py` for details.
 
 The final accuracy should be over 83% with any of the three model types.
 
