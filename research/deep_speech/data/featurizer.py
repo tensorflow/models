@@ -116,4 +116,3 @@ class TextFeaturizer(object):
       self.index_to_token[index] = line
       self.speech_labels += line
       index += 1
-
