@@ -23,10 +23,14 @@ import numpy as np
 
 def compute_spectrogram_feature(samples, sample_rate, stride_ms=10.0,
                                 window_ms=20.0, max_freq=None, eps=1e-14):
-  """Compute the spectrograms for the input samples(waveforms)."""
+  """Compute the spectrograms for the input samples(waveforms).
+
+  More about spectrogram computation, please refer to:
+  https://en.wikipedia.org/wiki/Short-time_Fourier_transform.
+  """
   if max_freq is None:
-    max_freq = sample_rate / 2
-  if max_freq > sample_rate / 2:
+    max_freq = sample_rate // 2
+  if max_freq > sample_rate // 2:
     raise ValueError("max_freq must not be greater than half of sample rate.")
 
   if stride_ms > window_ms:
@@ -112,3 +116,4 @@ class TextFeaturizer(object):
       self.index_to_token[index] = line
       self.speech_labels += line
       index += 1
+

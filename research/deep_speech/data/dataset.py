@@ -62,8 +62,9 @@ class DatasetConfig(object):
       audio_config: AudioConfig object specifying the audio-related configs.
       data_path: a string denoting the full path of a manifest file.
       vocab_file_path: a string specifying the vocabulary file path.
-      sortagrad: a boolean to control whether sorting the audio in the first
-        training epoch.
+      sortagrad: a boolean, if set to true, audio sequences will be fed by
+                increasing length in the first training epoch, which will
+                expedite network convergence.
 
     Raises:
       RuntimeError: file path not exist.
@@ -108,13 +109,8 @@ def _preprocess_audio(audio_file_path, audio_featurizer, normalize):
   return feature
 
 
-def _preprocess_transcript(transcript, token_to_index):
-  """Process transcript as label features."""
-  return featurizer.compute_label_feature(transcript, token_to_index)
-
-
 def _preprocess_data(file_path):
-  """Generate a list of waveform and transcript pair.
+  """Generate a list of tuples (wav_filename, wav_filesize, transcript).
 
   Each dataset file contains three columns: "wav_filename", "wav_filesize",
   and "transcript". This function parses the csv file and stores each example
@@ -126,19 +122,20 @@ def _preprocess_data(file_path):
     file_path: a string specifying the csv file path for a dataset.
 
   Returns:
-    A list of tuples (audio_file_path, file_size, transcript) sorted by file
-    size.
+    A list of tuples (wav_filename, wav_filesize, transcript) sorted by
+    file_size.
   """
   tf.logging.info("Loading data set {}".format(file_path))
   with tf.gfile.Open(file_path, "r") as f:
     lines = f.read().splitlines()
-  # Skip the csv header in lines[0].
+  # Skip the tsv header in lines[0].
   lines = lines[1:]
-  lines = [line.split("\t") for line in lines]
+  # The metadata file is tab separated.
+  lines = [line.split("\t", 2) for line in lines]
   # Sort input data by the length of audio sequence.
   lines.sort(key=lambda item: int(item[1]))
 
-  return [(line[0], line[1], line[2]) for line in lines]
+  return [tuple(line) for line in lines]
 
 
 class DeepSpeechDataset(object):
@@ -162,6 +159,7 @@ class DeepSpeechDataset(object):
 
     self.speech_labels = self.text_featurizer.speech_labels
     self.entries = _preprocess_data(self.config.data_path)
+    # The generated spectrogram will have 161 feature bins.
     self.num_feature_bins = 161
 
 
@@ -188,12 +186,15 @@ def batch_wise_dataset_shuffle(entries, epoch_index, sortagrad, batch_size):
     shuffled_entries = entries
   else:
     # Shuffle entries batch-wise.
-    max_buckets = int(math.ceil(len(entries) / batch_size))
+    max_buckets = int(math.floor(len(entries) / batch_size))
     total_buckets = [i for i in xrange(max_buckets)]
     random.shuffle(total_buckets)
     shuffled_entries = []
     for i in total_buckets:
       shuffled_entries.extend(entries[i * batch_size : (i + 1) * batch_size])
+    # If the last batch doesn't contain enough batch_size examples,
+    # just append it to the shuffled_entries.
+    shuffled_entries.extend(entries[max_buckets * batch_size:])
 
   return shuffled_entries
 
@@ -218,8 +219,7 @@ def input_fn(batch_size, deep_speech_dataset, repeat=1):
 
   def _gen_data():
     """Dataset generator function."""
-    for i in xrange(len(data_entries)):
-      audio_file, transcript = data_entries[i][0], data_entries[i][2]
+    for audio_file, _, transcript in data_entries:
       features = _preprocess_audio(
           audio_file, audio_featurizer, feature_normalize)
       labels = featurizer.compute_label_feature(
@@ -272,3 +272,4 @@ def input_fn(batch_size, deep_speech_dataset, repeat=1):
   # Prefetch to improve speed of input pipeline.
   dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
   return dataset
+

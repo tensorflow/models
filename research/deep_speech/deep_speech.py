@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import os
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
@@ -42,7 +41,7 @@ _WER_KEY = "WER"
 _CER_KEY = "CER"
 
 
-def compute_length_after_conv(args):
+def compute_length_after_conv(max_time_steps, ctc_time_steps, input_length):
   """Computes the time_steps/ctc_input_length after convolution.
 
   Suppose that the original feature contains two parts:
@@ -57,22 +56,21 @@ def compute_length_after_conv(args):
   This length is then fed into ctc loss function to compute loss.
 
   Args:
-    args: the arguments to compute ctc_input_length.
+    max_time_steps: max_time_steps for the batch, after padding.
+    ctc_time_steps: number of timesteps after convolution.
+    input_length: actual length of the original spectrogram, without padding.
 
   Returns:
     the ctc_input_length after convolution layer.
   """
-  max_time_steps, ctc_time_steps, input_length = args
-  ctc_input_length = tf.multiply(
-      tf.to_float(input_length), tf.to_float(ctc_time_steps))
-  ctc_input_length = tf.to_int32(tf.floordiv(
+  ctc_input_length = tf.to_float(tf.multiply(
+      input_length, ctc_time_steps))
+  return tf.to_int32(tf.floordiv(
       ctc_input_length, tf.to_float(max_time_steps)))
-  return ctc_input_length
 
 
-def ctc_loss(args):
+def ctc_loss(label_length, ctc_input_length, labels, logits):
   """Computes the ctc loss for the current batch of predictions."""
-  label_length, ctc_input_length, labels, logits = args
   label_length = tf.to_int32(tf.squeeze(label_length))
   ctc_input_length = tf.to_int32(tf.squeeze(ctc_input_length))
   sparse_labels = tf.to_int32(
@@ -151,7 +149,13 @@ def model_fn(features, labels, mode, params):
   Returns:
     EstimatorSpec parameterized according to the input params and the
     current mode.
+
+  Raises:
+    ValueError: if the estimator is in mode EVAL.
   """
+  if mode == tf.estimator.ModeKeys.EVAL:
+    raise ValueError("Please call evaluate_model to get eval results.")
+
   num_classes = params["num_classes"]
   input_length = features["input_length"]
   label_length = features["label_length"]
@@ -178,10 +182,10 @@ def model_fn(features, labels, mode, params):
   logits = model(features, training=True)
   probs = tf.nn.softmax(logits)
   ctc_input_length = compute_length_after_conv(
-      [tf.shape(features)[1], tf.shape(probs)[1], input_length])
+      tf.shape(features)[1], tf.shape(probs)[1], input_length)
   # Compute CTC loss
   loss = tf.reduce_mean(ctc_loss(
-      [label_length, ctc_input_length, labels, probs]))
+      label_length, ctc_input_length, labels, probs))
 
   optimizer = tf.train.AdamOptimizer(learning_rate=flags_obj.learning_rate)
   global_step = tf.train.get_or_create_global_step()
@@ -406,3 +410,4 @@ if __name__ == "__main__":
   define_deep_speech_flags()
   flags_obj = flags.FLAGS
   absl_app.run(main)
+
