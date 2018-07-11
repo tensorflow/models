@@ -202,7 +202,10 @@ def _load_vocab_file(vocab_file, reserved_tokens=None):
 
 def _native_to_unicode(s):
   """Convert string to unicode (required in Python 2)."""
-  return six.ensure_text(s)
+  try:               # Python 2
+    return s if isinstance(s, unicode) else s.decode("utf-8")
+  except NameError:  # Python 3
+    return s
 
 
 def _unicode_to_native(s):
