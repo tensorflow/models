@@ -29,8 +29,8 @@ def compute_spectrogram_feature(samples, sample_rate, stride_ms=10.0,
   https://en.wikipedia.org/wiki/Short-time_Fourier_transform.
   """
   if max_freq is None:
-    max_freq = sample_rate // 2
-  if max_freq > sample_rate // 2:
+    max_freq = sample_rate / 2
+  if max_freq > sample_rate / 2:
     raise ValueError("max_freq must not be greater than half of sample rate.")
 
   if stride_ms > window_ms:

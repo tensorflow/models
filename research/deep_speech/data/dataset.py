@@ -128,7 +128,7 @@ def _preprocess_data(file_path):
   tf.logging.info("Loading data set {}".format(file_path))
   with tf.gfile.Open(file_path, "r") as f:
     lines = f.read().splitlines()
-  # Skip the tsv header in lines[0].
+  # Skip the csv header in lines[0].
   lines = lines[1:]
   # The metadata file is tab separated.
   lines = [line.split("\t", 2) for line in lines]
