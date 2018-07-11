@@ -149,13 +149,7 @@ def model_fn(features, labels, mode, params):
   Returns:
     EstimatorSpec parameterized according to the input params and the
     current mode.
-
-  Raises:
-    ValueError: if the estimator is in mode EVAL.
   """
-  if mode == tf.estimator.ModeKeys.EVAL:
-    raise ValueError("Please call evaluate_model to get eval results.")
-
   num_classes = params["num_classes"]
   input_length = features["input_length"]
   label_length = features["label_length"]
