@@ -1,6 +1,7 @@
 # List of alphabets (utf-8 encoded). Note that '#' starts a comment line, which
 # will be ignored by the parser.
 # begin of vocabulary
+ 
 a
 b
 c
@@ -28,6 +29,5 @@ x
 y
 z
 '
- 
 -
 # end of vocabulary
