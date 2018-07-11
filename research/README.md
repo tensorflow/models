@@ -22,7 +22,7 @@ request.
     for visual navigation.
 -   [compression](compression): compressing and decompressing images using a
     pre-trained Residual GRU network.
-    [deep_speech](deep_speech): automatic speech recognition.
+-   [deep_speech](deep_speech): automatic speech recognition.
 -   [deeplab](deeplab): deep labeling for semantic image segmentation.
 -   [delf](delf): deep local features for image matching and retrieval.
 -   [differential_privacy](differential_privacy): differential privacy for training
