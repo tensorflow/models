@@ -36,7 +36,9 @@ or
 pip install -r requirements.txt
 ```
 
-### Download and preprocess dataset
+### Run each step individually
+
+#### Download and preprocess dataset
 To download the dataset, issue the following command:
 ```
 python data/download.py
@@ -46,7 +48,7 @@ Arguments:
 
 Use the `--help` or `-h` flag to get a full list of possible arguments.
 
-### Train and evaluate model
+#### Train and evaluate model
 To train and evaluate the model, issue the following command:
 ```
 python deep_speech.py
@@ -59,3 +61,9 @@ Arguments:
 
 There are other arguments about DeepSpeech2 model and training/evaluation process. Use the `--help` or `-h` flag to get a full list of possible arguments with detailed descriptions.
 
+### Run the benchmark
+A shell script [run_deep_speech.sh](run_deep_speech.sh) is provided to run the whole pipeline with default parameters. Issue the following command to run the benchmark:
+```
+sh run_deep_speech.sh
+```
+Note by default, the training dataset in the benchmark include train-clean-100, train-clean-360 and train-other-500, and the evaluation dataset include dev-clean and dev-other.
