@@ -60,7 +60,7 @@ def batch_norm(inputs, training):
 
 def _conv_bn_layer(inputs, padding, filters, kernel_size, strides, layer_id,
                    training):
-  """Defines 2D constitutional + batch normalization layer.
+  """Defines 2D convolutional + batch normalization layer.
 
   Args:
     inputs: input data for convolution layer.
