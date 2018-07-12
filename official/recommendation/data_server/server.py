@@ -81,6 +81,8 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
   def __init__(self, pool, shard_dir, num_neg, num_items):
     super(TrainData, self).__init__()
     self.pool = pool  # type: multiprocessing.Pool
+    self._lock_manager = multiprocessing.Manager()
+
     self.should_stop = False
 
     if not tf.gfile.Exists(shard_dir):
@@ -93,37 +95,88 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
 
     self._map_fn = functools.partial(_process_shard, num_neg=num_neg,
                                      num_items=num_items)
-    self._shard_queue = []
+
+    self._mapper = None
+    self._mapper_exhausted = True
+    self._buffer_arrays = [
+      np.zeros((0,), dtype=np.int32),   # Users
+      np.zeros((0,), dtype=np.uint16),  # Items
+      np.zeros((0,), dtype=np.int8),    # Labels
+    ]
+    self._shuffle_buffer_size = None
+    self._overfill_factor = 2
+    self._buffer_lock = self._lock_manager.Lock()
 
   def Alive(self, request, context):
     return server_command_pb2.Ack(success=True)
 
   def Enqueue(self, request, context):
+    if self._buffer_arrays[0].shape[0] > 0 or not self._mapper_exhausted:
+      raise OSError("Previous epochs have not been consumed.")
+
     num_epochs = request.value
-    self._shard_queue = []
+    shard_queue = []
     for _ in range(num_epochs):
-      self._shard_queue.extend(self.shards)
+      shard_queue.extend(self.shards)
+    self._mapper = self.pool.imap(self._map_fn, shard_queue)
+    self._shuffle_buffer_size = request.shuffle_buffer_size
+    if not self._shuffle_buffer_size:
+      raise ValueError("Shuffle buffer size not specified.")
 
     return server_command_pb2.Ack(success=True)
 
-  def GetBatch(self, request, context):
-    if not self._shard_queue:
-      context.abort(1, "No shards enqueued.")
-    batch_shard = self._shard_queue.pop()
-    batch = self.pool.apply(self._map_fn, args=[batch_shard])
+  def get_subsample_indicies(self, k, n=None, shuffle=True):
+    if shuffle:
+      n = n or self._shuffle_buffer_size
 
-    users, items, labels = batch
-    if request.shuffle:
-      shuffle_ind = np.random.permutation(users.shape[0])
-      users = users[shuffle_ind]
-      items = items[shuffle_ind]
-      labels = labels[shuffle_ind]
+      # TODO (robieta): implement more efficiently
+      return np.random.choice(range(n), k, replace=False)
+    return np.arange(k)
+
+  def GetBatch(self, request, context):
+    max_batch_size = request.max_batch_size
+    shuffle = request.shuffle
+    # subsample_indicies = self.get_subsample_indicies(
+    #     k=max_batch_size, shuffle=shuffle)
+
+    with self._buffer_lock:
+      buffer_size = self._buffer_arrays[0].shape[0]
+      if buffer_size < self._shuffle_buffer_size and not self._mapper_exhausted:
+        secondary_buffer = []
+        new_buffer_size = buffer_size
+        while (new_buffer_size < self._shuffle_buffer_size * self._overfill_factor
+               and not self._mapper_exhausted):
+          try:
+            shard = self._mapper.next()
+            secondary_buffer.append(shard)
+            new_buffer_size += shard[0].shape[0]
+          except StopIteration:
+            self._mapper_exhausted = True
 
     response = server_command_pb2.Batch()
-    response.users = bytes(memoryview(users))
-    response.items = bytes(memoryview(items))
-    response.labels = bytes(memoryview(labels))
+    response.users = bytes(memoryview(np.ones((1,), dtype=np.int32)))
+    response.items = bytes(memoryview(np.ones((1,), dtype=np.uint16)))
+    response.labels = bytes(memoryview(np.ones((1,), dtype=np.int8)))
     return response
+
+    raise NotImplementedError
+    # if not self._shard_queue:
+    #   context.abort(1, "No shards enqueued.")
+    # batch_shard = self._shard_queue.pop()
+    # batch = self.pool.apply(self._map_fn, args=[batch_shard])
+    #
+    # users, items, labels = batch
+    # if request.shuffle:
+    #   shuffle_ind = np.random.permutation(users.shape[0])
+    #   users = users[shuffle_ind]
+    #   items = items[shuffle_ind]
+    #   labels = labels[shuffle_ind]
+    #
+    # response = server_command_pb2.Batch()
+    # response.users = bytes(memoryview(users))
+    # response.items = bytes(memoryview(items))
+    # response.labels = bytes(memoryview(labels))
+    # return response
 
   def ShutdownServer(self, request, context):
     response = server_command_pb2.Ack()

@@ -39,6 +39,7 @@ TEST_POSITIVES = "test_positives"
 
 _CACHE_SUBDIR = "ncf_recommendation_cache"
 _TRAIN_SHARD_SUBDIR = "training_shards"
+_APPROX_PTS_PER_SHARD = 32000
 
 # In both datasets, each user has at least 20 ratings.
 _MIN_NUM_RATINGS = 20
@@ -50,10 +51,11 @@ _NUMBER_NEGATIVES = 1000
 
 class NCFDataset(object):
   def __init__(self, cache_dir, test_data, num_users, num_items,
-               num_train_shards):
+               num_data_readers, shards_per_reader):
     self.cache_dir = cache_dir
     self.train_shard_dir = os.path.join(cache_dir, _TRAIN_SHARD_SUBDIR)
-    self.num_train_shards = num_train_shards
+    self.num_data_readers = num_data_readers
+    self.shards_per_reader = shards_per_reader
     self.test_data = test_data
     true_ind = np.argwhere(test_data[1])[:, 0]
     assert true_ind.shape[0] == num_users
@@ -228,7 +230,12 @@ def generate_train_eval_data(df, num_shards, cache_dir, num_items):
   }, test_labels)
 
 
-def construct_cache(dataset, data_dir, num_shards=512):
+def construct_cache(dataset, data_dir, num_data_readers, num_neg):
+  pts_per_epoch = movielens.NUM_RATINGS[dataset] * (1 + num_neg)
+  num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2) or 1
+  shards_per_reader = int(pts_per_epoch / num_data_readers // _APPROX_PTS_PER_SHARD) or 1
+  num_shards = num_data_readers * shards_per_reader
+
   st = timeit.default_timer()
   cache_dir = os.path.join(data_dir, _CACHE_SUBDIR, dataset)
   if tf.gfile.Exists(cache_dir):
@@ -242,16 +249,18 @@ def construct_cache(dataset, data_dir, num_shards=512):
 
   ncf_dataset = NCFDataset(cache_dir=cache_dir, test_data=test_data,
                            num_items=num_items, num_users=num_users,
-                           num_train_shards=num_shards)
+                           num_data_readers=num_data_readers,
+                           shards_per_reader=shards_per_reader)
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
                   .format(run_time))
   return ncf_dataset
 
 
-def run(dataset, data_dir):
+def run(dataset, data_dir, num_data_readers=None, num_neg=4):
   movielens.download(dataset=dataset, data_dir=data_dir)
-  return construct_cache(dataset=dataset, data_dir=data_dir)
+  return construct_cache(dataset=dataset, data_dir=data_dir,
+                         num_data_readers=num_data_readers, num_neg=num_neg)
 
 
 def main(_):

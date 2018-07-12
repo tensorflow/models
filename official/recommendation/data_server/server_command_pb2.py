@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='official/recommendation/data_server/server_command.proto',
   package='official.recommendation.data_server',
   syntax='proto3',
-  serialized_pb=_b('\n8official/recommendation/data_server/server_command.proto\x12#official.recommendation.data_server\"\x07\n\x05\x43heck\"\x1a\n\tNumEpochs\x12\r\n\x05value\x18\x01 \x01(\x05\"\x1f\n\x0c\x42\x61tchRequest\x12\x0f\n\x07shuffle\x18\x01 \x01(\x08\"5\n\x05\x42\x61tch\x12\r\n\x05users\x18\x01 \x01(\x0c\x12\r\n\x05items\x18\x02 \x01(\x0c\x12\x0e\n\x06labels\x18\x03 \x01(\x0c\"\n\n\x08Shutdown\"\x16\n\x03\x41\x63k\x12\x0f\n\x07success\x18\x01 \x01(\x08\x32\xa5\x03\n\tTrainData\x12]\n\x05\x41live\x12*.official.recommendation.data_server.Check\x1a(.official.recommendation.data_server.Ack\x12\x63\n\x07\x45nqueue\x12..official.recommendation.data_server.NumEpochs\x1a(.official.recommendation.data_server.Ack\x12i\n\x08GetBatch\x12\x31.official.recommendation.data_server.BatchRequest\x1a*.official.recommendation.data_server.Batch\x12i\n\x0eShutdownServer\x12-.official.recommendation.data_server.Shutdown\x1a(.official.recommendation.data_server.Ackb\x06proto3')
+  serialized_pb=_b('\n8official/recommendation/data_server/server_command.proto\x12#official.recommendation.data_server\"\x07\n\x05\x43heck\"7\n\tNumEpochs\x12\r\n\x05value\x18\x01 \x01(\x05\x12\x1b\n\x13shuffle_buffer_size\x18\x02 \x01(\x03\"7\n\x0c\x42\x61tchRequest\x12\x0f\n\x07shuffle\x18\x01 \x01(\x08\x12\x16\n\x0emax_batch_size\x18\x02 \x01(\x05\"5\n\x05\x42\x61tch\x12\r\n\x05users\x18\x01 \x01(\x0c\x12\r\n\x05items\x18\x02 \x01(\x0c\x12\x0e\n\x06labels\x18\x03 \x01(\x0c\"\n\n\x08Shutdown\"\x16\n\x03\x41\x63k\x12\x0f\n\x07success\x18\x01 \x01(\x08\x32\xa5\x03\n\tTrainData\x12]\n\x05\x41live\x12*.official.recommendation.data_server.Check\x1a(.official.recommendation.data_server.Ack\x12\x63\n\x07\x45nqueue\x12..official.recommendation.data_server.NumEpochs\x1a(.official.recommendation.data_server.Ack\x12i\n\x08GetBatch\x12\x31.official.recommendation.data_server.BatchRequest\x1a*.official.recommendation.data_server.Batch\x12i\n\x0eShutdownServer\x12-.official.recommendation.data_server.Shutdown\x1a(.official.recommendation.data_server.Ackb\x06proto3')
 )
 
 
@@ -63,6 +63,13 @@ _NUMEPOCHS = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='shuffle_buffer_size', full_name='official.recommendation.data_server.NumEpochs.shuffle_buffer_size', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -76,7 +83,7 @@ _NUMEPOCHS = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=106,
-  serialized_end=132,
+  serialized_end=161,
 )
 
 
@@ -94,6 +101,13 @@ _BATCHREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_batch_size', full_name='official.recommendation.data_server.BatchRequest.max_batch_size', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -106,8 +120,8 @@ _BATCHREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=134,
-  serialized_end=165,
+  serialized_start=163,
+  serialized_end=218,
 )
 
 
@@ -151,8 +165,8 @@ _BATCH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=167,
-  serialized_end=220,
+  serialized_start=220,
+  serialized_end=273,
 )
 
 
@@ -175,8 +189,8 @@ _SHUTDOWN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=222,
-  serialized_end=232,
+  serialized_start=275,
+  serialized_end=285,
 )
 
 
@@ -206,8 +220,8 @@ _ACK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=234,
-  serialized_end=256,
+  serialized_start=287,
+  serialized_end=309,
 )
 
 DESCRIPTOR.message_types_by_name['Check'] = _CHECK
@@ -268,8 +282,8 @@ _TRAINDATA = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=259,
-  serialized_end=680,
+  serialized_start=312,
+  serialized_end=733,
   methods=[
   _descriptor.MethodDescriptor(
     name='Alive',

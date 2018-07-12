@@ -37,25 +37,29 @@ from official.recommendation.data_server import server_command_pb2_grpc
 
 
 _PORT = 46293
-_CHANNEL = grpc.insecure_channel("localhost:{}".format(_PORT))
-_STUB = server_command_pb2_grpc.TrainDataStub(_CHANNEL)
 _SERVER_PATH = os.path.join(os.path.dirname(__file__), "server.py")
+
+
+def make_stub():
+  channel = grpc.insecure_channel("localhost:{}".format(_PORT))
+  return server_command_pb2_grpc.TrainDataStub(channel)
 
 
 def alive():
   try:
-    response = _STUB.Alive(server_command_pb2.Check())
+    response = make_stub().Alive(server_command_pb2.Check())
     return response.success
   except grpc.RpcError:
     return False
 
 
-def enqueue(num_epochs=1):
-  _STUB.Enqueue(server_command_pb2.NumEpochs(value=num_epochs))
+def enqueue(num_epochs=1, shuffle_buffer_size=1024**2):
+  make_stub().Enqueue(server_command_pb2.NumEpochs(
+      value=num_epochs, shuffle_buffer_size=shuffle_buffer_size))
 
 
 def get_batch(shuffle=True):
-  response = _STUB.GetBatch(server_command_pb2.BatchRequest(shuffle=shuffle))
+  response = make_stub().GetBatch(server_command_pb2.BatchRequest(shuffle=shuffle))
   users = np.frombuffer(response.users, dtype=np.int32)
   items = np.frombuffer(response.items, dtype=np.uint16)
   labels = np.frombuffer(response.labels, dtype=np.int8)
@@ -63,7 +67,7 @@ def get_batch(shuffle=True):
 
 
 def shutdown():
-  _STUB.ShutdownServer(server_command_pb2.Shutdown())
+  make_stub().ShutdownServer(server_command_pb2.Shutdown())
 
 
 def _shutdown_thorough(proc):
@@ -75,8 +79,9 @@ def _shutdown_thorough(proc):
     proc.terminate()
 
 
-def initialize(dataset, data_dir, num_neg):
-  ncf_dataset = prepare.run(dataset=dataset, data_dir=data_dir)
+def initialize(dataset, data_dir, num_neg, num_data_readers=None):
+  ncf_dataset = prepare.run(dataset=dataset, data_dir=data_dir,
+                            num_data_readers=num_data_readers, num_neg=num_neg)
   server_env = os.environ.copy()
   server_env["CUDA_VISIBLE_DEVICES"] = ""
   python = "python3" if six.PY3 else "python2"
@@ -108,11 +113,66 @@ def initialize(dataset, data_dir, num_neg):
 
 def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1):
   # type: (bool, prepare.NCFDataset, int) -> typing.Callable
+  batch_size=16384
   def input_fn():
     if training:
       if not alive():
         raise OSError("No train data GRPC server.")
-      enqueue(num_epochs=num_epochs)
+      enqueue(num_epochs=num_epochs, shuffle_buffer_size=1024**2)
+
+      def make_reader(_):
+        reader_dataset = tf.data.Dataset.range(num_epochs * ncf_dataset.shards_per_reader)
+        def _rpc_fn(_):
+          rpc_op = tf.contrib.rpc.rpc(
+              address="localhost:{}".format(_PORT),
+              method="/official.recommendation.data_server.TrainData/GetBatch",
+              request=server_command_pb2.BatchRequest(shuffle=True, max_batch_size=batch_size).SerializeToString(),
+              protocol="grpc",
+          )
+          def _decode_proto(shard_bytes):
+            message = server_command_pb2.Batch.FromString(shard_bytes)
+            users = np.frombuffer(message.users, dtype=np.int32)
+            items = np.frombuffer(message.items, dtype=np.uint16)
+            labels = np.frombuffer(message.labels, dtype=np.int8)
+            # print(users.shape, items.shape, labels.shape)
+            return users, items, labels
+          decoded_shard = tf.py_func(_decode_proto, inp=[rpc_op], Tout=(np.int32, np.uint16, np.int8))
+          return decoded_shard
+
+        reader_dataset = reader_dataset.map(_rpc_fn, num_parallel_calls=2).apply(tf.contrib.data.unbatch())
+        reader_dataset = reader_dataset.shuffle(1024 ** 2)
+        reader_dataset = reader_dataset.batch(batch_size)
+
+        return reader_dataset
+
+      dataset = tf.data.Dataset.range(ncf_dataset.num_data_readers)
+      interleave = tf.contrib.data.parallel_interleave(
+          make_reader,
+          cycle_length=ncf_dataset.num_data_readers,
+          block_length=4,
+          sloppy=True,
+          prefetch_input_elements=4,
+      )
+      dataset = dataset.apply(interleave).prefetch(32)
+
+
+      with tf.Session().as_default() as sess:
+        shard = dataset.make_one_shot_iterator().get_next()
+        count = 0
+        st = time.time()
+        while True:
+          try:
+            result = sess.run(shard)
+            count += 1
+          except tf.errors.OutOfRangeError:
+            break
+          # print(result)
+          # print(result[0].shape, result[1].shape, result[2].shape)
+          if count % 25 == 0:
+            print(count / (time.time() - st))
+
+      import sys
+      sys.exit()
 
       def train_generator():
         users, items, labels = get_batch(shuffle=True)

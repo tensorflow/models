@@ -9,10 +9,12 @@ message Check {
 
 message NumEpochs {
   int32 value = 1;
+  int64 shuffle_buffer_size = 2;
 }
 
 message BatchRequest {
   bool shuffle = 1;
+  int32 max_batch_size = 2;
 }
 
 message Batch {
