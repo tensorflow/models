@@ -39,15 +39,18 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 ## Table of contents
 
+Setup:
+
+  * <a href='g3doc/installation.md'>Installation</a><br>
+
 Quick Start:
 
   * <a href='object_detection_tutorial.ipynb'>
       Quick Start: Jupyter notebook for off-the-shelf inference</a><br>
   * <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
 
-Setup:
+Customizing a Pipeline:
 
-  * <a href='g3doc/installation.md'>Installation</a><br>
   * <a href='g3doc/configuring_jobs.md'>
       Configuring an object detection pipeline</a><br>
   * <a href='g3doc/preparing_inputs.md'>Preparing inputs</a><br>
@@ -73,7 +76,7 @@ Extras:
   * <a href='g3doc/instance_segmentation.md'>
       Run an instance segmentation model</a><br>
   * <a href='g3doc/challenge_evaluation.md'>
-      Run the evaluation for the Open Images Challenge 2018.</a><br>
+      Run the evaluation for the Open Images Challenge 2018</a><br>
 
 ## Getting Help
 
