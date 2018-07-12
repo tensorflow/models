@@ -33,10 +33,13 @@ from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_n
 from object_detection.models import faster_rcnn_pnas_feature_extractor as frcnn_pnas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
 from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
+from object_detection.models import ssd_resnet_v1_ppn_feature_extractor as ssd_resnet_v1_ppn
 from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
 from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
 from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
+from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMobileNetV1FpnFeatureExtractor
+from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.protos import model_pb2
 
@@ -45,10 +48,17 @@ SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
     'ssd_inception_v2': SSDInceptionV2FeatureExtractor,
     'ssd_inception_v3': SSDInceptionV3FeatureExtractor,
     'ssd_mobilenet_v1': SSDMobileNetV1FeatureExtractor,
+    'ssd_mobilenet_v1_fpn': SSDMobileNetV1FpnFeatureExtractor,
+    'ssd_mobilenet_v1_ppn': SSDMobileNetV1PpnFeatureExtractor,
     'ssd_mobilenet_v2': SSDMobileNetV2FeatureExtractor,
     'ssd_resnet50_v1_fpn': ssd_resnet_v1_fpn.SSDResnet50V1FpnFeatureExtractor,
     'ssd_resnet101_v1_fpn': ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
     'ssd_resnet152_v1_fpn': ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
+    'ssd_resnet50_v1_ppn': ssd_resnet_v1_ppn.SSDResnet50V1PpnFeatureExtractor,
+    'ssd_resnet101_v1_ppn':
+        ssd_resnet_v1_ppn.SSDResnet101V1PpnFeatureExtractor,
+    'ssd_resnet152_v1_ppn':
+        ssd_resnet_v1_ppn.SSDResnet152V1PpnFeatureExtractor,
     'embedded_ssd_mobilenet_v1': EmbeddedSSDMobileNetV1FeatureExtractor,
 }
 
@@ -327,6 +337,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_classification_loss_weight,
         second_stage_localization_loss_weight)
 
+  use_matmul_crop_and_resize = (frcnn_config.use_matmul_crop_and_resize)
+
   common_kwargs = {
       'is_training': is_training,
       'num_classes': num_classes,
@@ -360,7 +372,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       'second_stage_classification_loss_weight':
       second_stage_classification_loss_weight,
       'hard_example_miner': hard_example_miner,
-      'add_summaries': add_summaries}
+      'add_summaries': add_summaries,
+      'use_matmul_crop_and_resize': use_matmul_crop_and_resize
+  }
 
   if isinstance(second_stage_box_predictor, box_predictor.RfcnBoxPredictor):
     return rfcn_meta_arch.RFCNMetaArch(

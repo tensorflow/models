@@ -4,14 +4,14 @@ package object_detection.protos;
 
 import "object_detection/protos/hyperparams.proto";
 
-
 // Configuration proto for box predictor. See core/box_predictor.py for details.
 message BoxPredictor {
   oneof box_predictor_oneof {
     ConvolutionalBoxPredictor convolutional_box_predictor = 1;
     MaskRCNNBoxPredictor mask_rcnn_box_predictor = 2;
     RfcnBoxPredictor rfcn_box_predictor = 3;
-    WeightSharedConvolutionalBoxPredictor weight_shared_convolutional_box_predictor = 4;
+    WeightSharedConvolutionalBoxPredictor
+        weight_shared_convolutional_box_predictor = 4;
   }
 }
 
@@ -82,11 +82,15 @@ message WeightSharedConvolutionalBoxPredictor {
   // https://arxiv.org/abs/1708.02002 for details.
   optional float class_prediction_bias_init = 10 [default = 0.0];
 
-   // Whether to use dropout for class prediction.
+  // Whether to use dropout for class prediction.
   optional bool use_dropout = 11 [default = false];
 
   // Keep probability for dropout
   optional float dropout_keep_probability = 12 [default = 0.8];
+
+  // Whether to share the multi-layer tower between box prediction and class
+  // prediction heads.
+  optional bool share_prediction_tower = 13 [default = false];
 }
 
 message MaskRCNNBoxPredictor {
@@ -94,7 +98,7 @@ message MaskRCNNBoxPredictor {
   optional Hyperparams fc_hyperparams = 1;
 
   // Whether to use dropout op prior to the both box and class predictions.
-  optional bool use_dropout = 2 [default= false];
+  optional bool use_dropout = 2 [default = false];
 
   // Keep probability for dropout. This is only used if use_dropout is true.
   optional float dropout_keep_probability = 3 [default = 0.5];
@@ -141,13 +145,13 @@ message RfcnBoxPredictor {
   optional int32 num_spatial_bins_width = 3 [default = 3];
 
   // Target depth to reduce the input image features to.
-  optional int32 depth = 4 [default=1024];
+  optional int32 depth = 4 [default = 1024];
 
   // Size of the encoding for the boxes.
   optional int32 box_code_size = 5 [default = 4];
 
   // Size to resize the rfcn crops to.
-  optional int32 crop_height = 6 [default= 12];
+  optional int32 crop_height = 6 [default = 12];
 
-  optional int32 crop_width = 7 [default=12];
+  optional int32 crop_width = 7 [default = 12];
 }
