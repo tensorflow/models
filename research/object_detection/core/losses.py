@@ -120,7 +120,7 @@ class WeightedSmoothL1LocalizationLoss(Loss):
   """Smooth L1 localization loss function aka Huber Loss..
 
   The smooth L1_loss is defined elementwise as .5 x^2 if |x| <= delta and
-  0.5 x^2 + delta * (|x|-delta) otherwise, where x is the difference between
+  delta * (|x|- 0.5*delta) otherwise, where x is the difference between
   predictions and target.
 
   See also Equation (3) in the Fast R-CNN paper by Ross Girshick (ICCV 2015)

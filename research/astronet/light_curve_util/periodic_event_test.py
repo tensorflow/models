@@ -25,6 +25,13 @@ from light_curve_util.periodic_event import Event
 
 class EventTest(absltest.TestCase):
 
+  def testStr(self):
+    self.assertEqual(str(Event(1, 2, 3)), "<period=1, duration=2, t0=3>")
+
+  def testRepr(self):
+    self.assertEqual(
+        repr(Event(1, 2, 3)), "Event(<period=1, duration=2, t0=3>)")
+
   def testEquals(self):
     event = Event(period=100, duration=5, t0=2)
 
@@ -72,5 +79,5 @@ class EventTest(absltest.TestCase):
         event.equals(Event(period=100, duration=5, t0=10), t0_durations=2))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   absltest.main()

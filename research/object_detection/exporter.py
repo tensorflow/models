@@ -18,7 +18,6 @@ import logging
 import os
 import tempfile
 import tensorflow as tf
-from google.protobuf import text_format
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python import pywrap_tensorflow
 from tensorflow.python.client import session
@@ -226,34 +225,31 @@ def _add_output_tensor_nodes(postprocessed_tensors,
   """
   if not no_postprocess:
     detection_fields = fields.DetectionResultFields
-    label_id_offset = 1
-    boxes = postprocessed_tensors.get(detection_fields.detection_boxes)
-    scores = postprocessed_tensors.get(detection_fields.detection_scores)
-    classes = postprocessed_tensors.get(
-        detection_fields.detection_classes) + label_id_offset
-    keypoints = postprocessed_tensors.get(detection_fields.detection_keypoints)
-    masks = postprocessed_tensors.get(detection_fields.detection_masks)
-    num_detections = postprocessed_tensors.get(detection_fields.num_detections)
-    outputs = {}
-    outputs[detection_fields.detection_boxes] = tf.identity(
-        boxes, name=detection_fields.detection_boxes)
-    outputs[detection_fields.detection_scores] = tf.identity(
-        scores, name=detection_fields.detection_scores)
-    outputs[detection_fields.detection_classes] = tf.identity(
-        classes, name=detection_fields.detection_classes)
-    outputs[detection_fields.num_detections] = tf.identity(
-        num_detections, name=detection_fields.num_detections)
-    if keypoints is not None:
-      outputs[detection_fields.detection_keypoints] = tf.identity(
-          keypoints, name=detection_fields.detection_keypoints)
-    if masks is not None:
-      outputs[detection_fields.detection_masks] = tf.identity(
-          masks, name=detection_fields.detection_masks)
-    for output_key in outputs:
-      tf.add_to_collection(output_collection_name, outputs[output_key])
-    if masks is not None:
-      tf.add_to_collection(output_collection_name,
-                           outputs[detection_fields.detection_masks])
+  label_id_offset = 1
+  boxes = postprocessed_tensors.get(detection_fields.detection_boxes)
+  scores = postprocessed_tensors.get(detection_fields.detection_scores)
+  classes = postprocessed_tensors.get(
+      detection_fields.detection_classes) + label_id_offset
+  keypoints = postprocessed_tensors.get(detection_fields.detection_keypoints)
+  masks = postprocessed_tensors.get(detection_fields.detection_masks)
+  num_detections = postprocessed_tensors.get(detection_fields.num_detections)
+  outputs = {}
+  outputs[detection_fields.detection_boxes] = tf.identity(
+      boxes, name=detection_fields.detection_boxes)
+  outputs[detection_fields.detection_scores] = tf.identity(
+      scores, name=detection_fields.detection_scores)
+  outputs[detection_fields.detection_classes] = tf.identity(
+      classes, name=detection_fields.detection_classes)
+  outputs[detection_fields.num_detections] = tf.identity(
+      num_detections, name=detection_fields.num_detections)
+  if keypoints is not None:
+    outputs[detection_fields.detection_keypoints] = tf.identity(
+        keypoints, name=detection_fields.detection_keypoints)
+  if masks is not None:
+    outputs[detection_fields.detection_masks] = tf.identity(
+        masks, name=detection_fields.detection_masks)
+  for output_key in outputs:
+    tf.add_to_collection(output_collection_name, outputs[output_key])
   else:
     #Todo: only implemented for ssd
     detection_fields = fields.DetectionResultFields
@@ -292,7 +288,7 @@ def write_saved_model(saved_model_path,
   Args:
     saved_model_path: Path to write SavedModel.
     frozen_graph_def: tf.GraphDef holding frozen graph.
-    inputs: The input image tensor to use for detection.
+    inputs: The input placeholder tensor.
     outputs: A tensor dictionary containing the outputs of a DetectionModel.
   """
   with tf.Graph().as_default():
@@ -409,7 +405,8 @@ def _export_inference_graph(input_type,
                             output_collection_name='inference_op',
                             graph_hook_fn=None,
                             no_preprocess=False,
-                            no_postprocess=False):
+                            no_postprocess=False,
+                            write_inference_graph=False):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
   frozen_graph_path = os.path.join(output_directory,
@@ -450,6 +447,14 @@ def _export_inference_graph(input_type,
       model_path=model_path,
       input_saver_def=input_saver_def,
       trained_checkpoint_prefix=checkpoint_to_use)
+  if write_inference_graph:
+    inference_graph_def = tf.get_default_graph().as_graph_def()
+    inference_graph_path = os.path.join(output_directory,
+                                        'inference_graph.pbtxt')
+    for node in inference_graph_def.node:
+      node.device = ''
+    with gfile.GFile(inference_graph_path, 'wb') as f:
+      f.write(str(inference_graph_def))
 
   if additional_output_tensor_names is not None:
     output_node_names = ','.join(outputs.keys()+additional_output_tensor_names)
@@ -479,12 +484,13 @@ def export_inference_graph(input_type,
                            output_collection_name='inference_op',
                            additional_output_tensor_names=None,
                            no_preprocess=False,
-                           no_postprocess=False):
+                           no_postprocess=False,
+                           write_inference_graph=False):
   """Exports inference graph for the model specified in the pipeline config.
 
   Args:
-    input_type: Type of input for the graph. Can be one of [`image_tensor`,
-      `tf_example`].
+    input_type: Type of input for the graph. Can be one of ['image_tensor',
+      'encoded_image_string_tensor', 'tf_example'].
     pipeline_config: pipeline_pb2.TrainAndEvalPipelineConfig proto.
     trained_checkpoint_prefix: Path to the trained checkpoint file.
     output_directory: Path to write outputs.
@@ -503,6 +509,7 @@ def export_inference_graph(input_type,
       subgraph to final frozen graph file
     no_postprocess: Optional boolean choice which determines whether to export postprocess
       subgraph to final frozen graph file
+    write_inference_graph: If true, writes inference graph to disk.
   """
   detection_model = model_builder.build(pipeline_config.model,
                                         is_training=False)
@@ -520,16 +527,18 @@ def export_inference_graph(input_type,
   if 'graph_rewriter_config' in configs:
     graph_rewriter_fn = graph_rewriter_builder.build(
         configs['graph_rewriter_config'], is_training=False)
-  _export_inference_graph(input_type, data_type, detection_model,
-                          pipeline_config.eval_config.use_moving_averages,
-                          trained_checkpoint_prefix,
-                          output_directory, additional_output_tensor_names,
-                          input_shape, output_collection_name,
-                          graph_hook_fn=graph_rewriter_fn,
-                          no_preprocess=no_preprocess,
-                          no_postprocess=no_postprocess)
+  _export_inference_graph(
+      input_type,
+      data_type,
+      detection_model,
+      pipeline_config.eval_config.use_moving_averages,
+      trained_checkpoint_prefix,
+      output_directory,
+      additional_output_tensor_names,
+      input_shape, output_collection_name,
+      graph_hook_fn=graph_rewriter_fn,
+      no_preprocess=no_preprocess,
+      no_postprocess=no_postprocess,
+      write_inference_graph=write_inference_graph)
   pipeline_config.eval_config.use_moving_averages = False
-  config_text = text_format.MessageToString(pipeline_config)
-  with tf.gfile.Open(
-      os.path.join(output_directory, 'pipeline.config'), 'wb') as f:
-    f.write(config_text)
+  config_util.save_pipeline_config(pipeline_config, output_directory)

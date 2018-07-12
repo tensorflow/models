@@ -565,6 +565,38 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
     self.assertAllEqual(class_predictions_with_background.shape,
                         [4, 640, num_classes_without_background+1])
 
+  def test_get_multi_class_predictions_from_feature_maps_of_different_depth(
+      self):
+
+    num_classes_without_background = 6
+    def graph_fn(image_features1, image_features2, image_features3):
+      conv_box_predictor = box_predictor.WeightSharedConvolutionalBoxPredictor(
+          is_training=False,
+          num_classes=num_classes_without_background,
+          conv_hyperparams_fn=self._build_arg_scope_with_conv_hyperparams(),
+          depth=32,
+          num_layers_before_predictor=1,
+          box_code_size=4)
+      box_predictions = conv_box_predictor.predict(
+          [image_features1, image_features2, image_features3],
+          num_predictions_per_location=[5, 5, 5],
+          scope='BoxPredictor')
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      class_predictions_with_background = tf.concat(
+          box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+          axis=1)
+      return (box_encodings, class_predictions_with_background)
+
+    image_features1 = np.random.rand(4, 8, 8, 64).astype(np.float32)
+    image_features2 = np.random.rand(4, 8, 8, 64).astype(np.float32)
+    image_features3 = np.random.rand(4, 8, 8, 32).astype(np.float32)
+    (box_encodings, class_predictions_with_background) = self.execute(
+        graph_fn, [image_features1, image_features2, image_features3])
+    self.assertAllEqual(box_encodings.shape, [4, 960, 4])
+    self.assertAllEqual(class_predictions_with_background.shape,
+                        [4, 960, num_classes_without_background+1])
+
   def test_predictions_from_multiple_feature_maps_share_weights_not_batchnorm(
       self):
     num_classes_without_background = 6

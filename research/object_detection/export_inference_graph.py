@@ -16,7 +16,7 @@
 r"""Tool to export an object detection model for inference.
 
 Prepares an object detection tensorflow graph for inference using model
-configuration and an optional trained checkpoint. Outputs inference
+configuration and a trained checkpoint. Outputs inference
 graph, associated checkpoint files, a frozen inference graph and a
 SavedModel (https://tensorflow.github.io/serving/serving_basic.html).
 
@@ -59,7 +59,7 @@ python export_inference_graph \
 The expected output would be in the directory
 path/to/exported_model_directory (which is created if it does not exist)
 with contents:
- - graph.pbtxt
+ - inference_graph.pbtxt
  - model.ckpt.data-00000-of-00001
  - model.ckpt.info
  - model.ckpt.meta
@@ -126,6 +126,8 @@ flags.DEFINE_boolean('no_preprocess', False,
                      'Don\'t export post processing to final graph')
 flags.DEFINE_boolean('no_postprocess', False,
                      'Don\'t export post processing to final graph')
+flags.DEFINE_boolean('write_inference_graph', False,
+                     'If true, writes inference graph to disk.')
 tf.app.flags.mark_flag_as_required('pipeline_config_path')
 tf.app.flags.mark_flag_as_required('trained_checkpoint_prefix')
 tf.app.flags.mark_flag_as_required('output_directory')
@@ -148,7 +150,8 @@ def main(_):
                                   FLAGS.trained_checkpoint_prefix,
                                   FLAGS.output_directory, input_shape,
                                   no_preprocess=FLAGS.no_preprocess,
-                                  no_postprocess=FLAGS.no_postprocess)
+                                  no_postprocess=FLAGS.no_postprocess,
+                                  FLAGS.write_inference_graph)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,123 @@
+syntax = "proto2";
+package object_detection.protos;
+
+import "object_detection/protos/anchor_generator.proto";
+import "object_detection/protos/box_coder.proto";
+import "object_detection/protos/box_predictor.proto";
+import "object_detection/protos/hyperparams.proto";
+import "object_detection/protos/image_resizer.proto";
+import "object_detection/protos/matcher.proto";
+import "object_detection/protos/losses.proto";
+import "object_detection/protos/post_processing.proto";
+import "object_detection/protos/region_similarity_calculator.proto";
+
+// Configuration for Single Shot Detection (SSD) models.
+message Ssd {
+
+  // Number of classes to predict.
+  optional int32 num_classes = 1;
+
+  // Image resizer for preprocessing the input image.
+  optional ImageResizer image_resizer = 2;
+
+  // Feature extractor config.
+  optional SsdFeatureExtractor feature_extractor = 3;
+
+  // Box coder to encode the boxes.
+  optional BoxCoder box_coder = 4;
+
+  // Matcher to match groundtruth with anchors.
+  optional Matcher matcher = 5;
+
+  // Region similarity calculator to compute similarity of boxes.
+  optional RegionSimilarityCalculator similarity_calculator = 6;
+
+  // Whether background targets are to be encoded as an all
+  // zeros vector or a one-hot vector (where background is the 0th class).
+  optional bool encode_background_as_zeros = 12 [default=false];
+
+  // classification weight to be associated to negative
+  // anchors (default: 1.0). The weight must be in [0., 1.].
+  optional float negative_class_weight = 13 [default = 1.0];
+
+  // Box predictor to attach to the features.
+  optional BoxPredictor box_predictor = 7;
+
+  // Anchor generator to compute anchors.
+  optional AnchorGenerator anchor_generator = 8;
+
+  // Post processing to apply on the predictions.
+  optional PostProcessing post_processing = 9;
+
+  // Whether to normalize the loss by number of groundtruth boxes that match to
+  // the anchors.
+  optional bool normalize_loss_by_num_matches = 10 [default=true];
+
+  // Whether to normalize the localization loss by the code size of the box
+  // encodings. This is applied along with other normalization factors.
+  optional bool normalize_loc_loss_by_codesize = 14 [default=false];
+
+  // Loss configuration for training.
+  optional Loss loss = 11;
+
+  // Whether to update batch norm parameters during training or not.
+  // When training with a relative small batch size (e.g. 1), it is
+  // desirable to disable batch norm update and use pretrained batch norm
+  // params.
+  //
+  // Note: Some feature extractors are used with canned arg_scopes
+  // (e.g resnet arg scopes).  In these cases training behavior of batch norm
+  // variables may depend on both values of `batch_norm_trainable` and
+  // `is_training`.
+  //
+  // When canned arg_scopes are used with feature extractors `conv_hyperparams`
+  // will apply only to the additional layers that are added and are outside the
+  // canned arg_scope.
+  optional bool freeze_batchnorm = 16 [default = false];
+
+  // Whether to update batch_norm inplace during training. This is required
+  // for batch norm to work correctly on TPUs. When this is false, user must add
+  // a control dependency on tf.GraphKeys.UPDATE_OPS for train/loss op in order
+  // to update the batch norm moving average parameters.
+  optional bool inplace_batchnorm_update = 15 [default = false];
+}
+
+
+message SsdFeatureExtractor {
+  reserved 6;
+
+  // Type of ssd feature extractor.
+  optional string type = 1;
+
+  // The factor to alter the depth of the channels in the feature extractor.
+  optional float depth_multiplier = 2 [default=1.0];
+
+  // Minimum number of the channels in the feature extractor.
+  optional int32 min_depth = 3 [default=16];
+
+  // Hyperparameters that affect the layers of feature extractor added on top
+  // of the base feature extractor.
+  optional Hyperparams conv_hyperparams = 4;
+
+  // Normally, SSD feature extractors are constructed by reusing an existing
+  // base feature extractor (that has its own hyperparams) and adding new layers
+  // on top of it. `conv_hyperparams` above normally applies only to the new
+  // layers while base feature extractor uses its own default hyperparams. If
+  // this value is set to true, the base feature extractor's hyperparams will be
+  // overridden with the `conv_hyperparams`.
+  optional bool override_base_feature_extractor_hyperparams = 9 [default = false];
+
+  // The nearest multiple to zero-pad the input height and width dimensions to.
+  // For example, if pad_to_multiple = 2, input dimensions are zero-padded
+  // until the resulting dimensions are even.
+  optional int32 pad_to_multiple = 5 [default = 1];
+
+  // Whether to use explicit padding when extracting SSD multiresolution
+  // features. This will also apply to the base feature extractor if a MobileNet
+  // architecture is used.
+  optional bool use_explicit_padding = 7 [default=false];
+
+  // Whether to use depthwise separable convolutions for to extract additional
+  // feature maps added by SSD.
+  optional bool use_depthwise = 8 [default=false];
+}

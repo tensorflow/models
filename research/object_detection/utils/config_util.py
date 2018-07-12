@@ -357,6 +357,12 @@ def merge_external_params_with_configs(configs, hparams=None, **kwargs):
       _update_mask_type(configs, value)
     elif key == "eval_with_moving_averages":
       _update_use_moving_averages(configs, value)
+    elif key == "train_shuffle":
+      _update_shuffle(configs["train_input_config"], value)
+    elif key == "eval_shuffle":
+      _update_shuffle(configs["eval_input_config"], value)
+    elif key == "retain_original_images_in_eval":
+      _update_retain_original_images(configs["eval_config"], value)
     elif _is_generic_key(key):
       _update_generic(configs, key, value)
     else:
@@ -654,3 +660,28 @@ def _update_use_moving_averages(configs, use_moving_averages):
       should be loaded during evaluation.
   """
   configs["eval_config"].use_moving_averages = use_moving_averages
+
+
+def _update_shuffle(input_config, shuffle):
+  """Updates input configuration to reflect a new shuffle configuration.
+
+  The input_config object is updated in place, and hence not returned.
+
+  Args:
+    input_config: A input_reader_pb2.InputReader.
+    shuffle: Whether or not to shuffle the input data before reading.
+  """
+  input_config.shuffle = shuffle
+
+
+def _update_retain_original_images(eval_config, retain_original_images):
+  """Updates eval config with option to retain original images.
+
+  The eval_config object is updated in place, and hence not returned.
+
+  Args:
+    eval_config: A eval_pb2.EvalConfig.
+    retain_original_images: Boolean indicating whether to retain original images
+      in eval mode.
+  """
+  eval_config.retain_original_images = retain_original_images
