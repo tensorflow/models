@@ -720,6 +720,60 @@ class WeightSharedConvolutionalBoxPredictorTest(test_case.TestCase):
          'ClassPredictor/biases')])
     self.assertEqual(expected_variable_set, actual_variable_set)
 
+  def test_predictions_share_weights_share_tower_not_batchnorm(
+      self):
+    num_classes_without_background = 6
+    def graph_fn(image_features1, image_features2):
+      conv_box_predictor = box_predictor.WeightSharedConvolutionalBoxPredictor(
+          is_training=False,
+          num_classes=num_classes_without_background,
+          conv_hyperparams_fn=self._build_arg_scope_with_conv_hyperparams(),
+          depth=32,
+          num_layers_before_predictor=2,
+          box_code_size=4,
+          share_prediction_tower=True)
+      box_predictions = conv_box_predictor.predict(
+          [image_features1, image_features2],
+          num_predictions_per_location=[5, 5],
+          scope='BoxPredictor')
+      box_encodings = tf.concat(
+          box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
+      class_predictions_with_background = tf.concat(
+          box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+          axis=1)
+      return (box_encodings, class_predictions_with_background)
+
+    with self.test_session(graph=tf.Graph()):
+      graph_fn(tf.random_uniform([4, 32, 32, 3], dtype=tf.float32),
+               tf.random_uniform([4, 16, 16, 3], dtype=tf.float32))
+      actual_variable_set = set(
+          [var.op.name for var in tf.trainable_variables()])
+    expected_variable_set = set([
+        # Shared prediction tower
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'PredictionTower/conv2d_0/weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'PredictionTower/conv2d_0/BatchNorm/feature_0/beta'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'PredictionTower/conv2d_0/BatchNorm/feature_1/beta'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'PredictionTower/conv2d_1/weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'PredictionTower/conv2d_1/BatchNorm/feature_0/beta'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'PredictionTower/conv2d_1/BatchNorm/feature_1/beta'),
+        # Box prediction head
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictor/weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'BoxPredictor/biases'),
+        # Class prediction head
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictor/weights'),
+        ('BoxPredictor/WeightSharedConvolutionalBoxPredictor/'
+         'ClassPredictor/biases')])
+    self.assertEqual(expected_variable_set, actual_variable_set)
+
   def test_get_predictions_with_feature_maps_of_dynamic_shape(
       self):
     image_features = tf.placeholder(dtype=tf.float32, shape=[4, None, None, 64])
