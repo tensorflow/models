@@ -212,6 +212,7 @@ def generate_dataset(data_dir):
 
 def run_deep_speech(_):
   """Run deep speech training and eval loop."""
+  tf.set_random_seed(flags_obj.seed)
   # Data preprocessing
   tf.logging.info("Data preprocessing...")
   train_speech_dataset = generate_dataset(flags_obj.train_data_dir)
@@ -319,19 +320,23 @@ def define_deep_speech_flags():
   flags_core.set_defaults(
       model_dir="/tmp/deep_speech_model/",
       export_dir="/tmp/deep_speech_saved_model/",
-      train_epochs=200,
+      train_epochs=10,
       batch_size=128,
       hooks="")
 
   # Deep speech flags
+  flags.DEFINE_integer(
+      name="seed", default=1,
+      help=flags_core.help_wrap("The random seed."))
+
   flags.DEFINE_string(
       name="train_data_dir",
-      default="/tmp/librispeech_data/train-clean/LibriSpeech/train-clean.csv",
+      default="/tmp/librispeech_data/test-clean/LibriSpeech/test-clean.csv",
       help=flags_core.help_wrap("The csv file path of train dataset."))
 
   flags.DEFINE_string(
       name="eval_data_dir",
-      default="/tmp/librispeech_data/dev-clean/LibriSpeech/dev-clean.csv",
+      default="/tmp/librispeech_data/test-clean/LibriSpeech/test-clean.csv",
       help=flags_core.help_wrap("The csv file path of evaluation dataset."))
 
   flags.DEFINE_bool(
