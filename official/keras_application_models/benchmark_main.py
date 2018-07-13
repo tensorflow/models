@@ -41,13 +41,14 @@ MODELS = {
     "densenet121": tf.keras.applications.DenseNet121,
     "densenet169": tf.keras.applications.DenseNet169,
     "densenet201": tf.keras.applications.DenseNet201,
-    # TODO (b/80431378)
+    # TODO(b/80431378)
     # "nasnetlarge": tf.keras.applications.NASNetLarge,
     # "nasnetmobile": tf.keras.applications.NASNetMobile,
 }
 
 
-def main(_):
+def run_keras_model_benchmark(_):
+  """Run the benchmark on keras model."""
   # Ensure a valid model name was supplied via command line argument
   if FLAGS.model not in MODELS.keys():
     raise AssertionError("The --model command line argument should "
@@ -60,7 +61,6 @@ def main(_):
 
   # Get dataset
   dataset_name = "ImageNet"
-  num_gpus = flags_core.get_num_gpus(FLAGS)
   if FLAGS.use_synthetic_data:
     tf.logging.info("Using synthetic dataset...")
     dataset_name += "_Synthetic"
@@ -71,10 +71,10 @@ def main(_):
     val_dataset = dataset.generate_synthetic_input_dataset(
         FLAGS.model, val_num_images)
   else:
-    # Use the actual ImageNet dataset (TODO)
     raise ValueError("Only synthetic dataset is supported!")
 
   # If run with multiple GPUs
+  num_gpus = flags_core.get_num_gpus(FLAGS)
   if num_gpus > 0:
     model = tf.keras.utils.multi_gpu_model(model, gpus=num_gpus)
 
@@ -90,7 +90,7 @@ def main(_):
       "train_epochs": FLAGS.train_epochs
   }
 
-  benchmark_logger = logger.config_benchmark_logger()
+  benchmark_logger = logger.get_benchmark_logger()
   benchmark_logger.log_run_info(
       model_name=FLAGS.model,
       dataset_name=dataset_name,
@@ -117,7 +117,6 @@ def main(_):
     eval_results = {
         "accuracy": history.history["val_acc"][epoch],
         "loss": history.history["val_loss"][epoch],
-        "epoch": epoch + 1,
         tf.GraphKeys.GLOBAL_STEP: (epoch + 1) * np.ceil(
             train_num_images/FLAGS.batch_size)
     }
@@ -142,8 +141,8 @@ def define_keras_benchmark_flags():
       train_epochs=2)
 
   flags.DEFINE_enum(
-      name="model", default="resnet50",
-      enum_values=MODELS.keys(), case_sensitive=True,
+      name="model", default=None,
+      enum_values=MODELS.keys(), case_sensitive=False,
       help=flags_core.help_wrap(
           "Model to be benchmarked."))
 
@@ -155,6 +154,10 @@ def define_keras_benchmark_flags():
           "callbacks. For example: `--callbacks ExamplesPerSecondCallback,"
           "LoggingMetricCallback`"))
 
+
+def main(_):
+  with logger.benchmark_context(FLAGS):
+    run_keras_model_benchmark(FLAGS)
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)

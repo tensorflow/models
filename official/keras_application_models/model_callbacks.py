@@ -61,9 +61,6 @@ class ExamplesPerSecondCallback(tf.keras.callbacks.Callback):
     self._train_start_time = time.time()
     self._last_recorded_time = time.time()
 
-  def on_batch_begin(self, batch, logs=None):
-    self._time_start = time.time()
-
   def on_batch_end(self, batch, logs=None):
     """Log the examples_per_sec metric every_n_steps."""
     self._global_step += 1
