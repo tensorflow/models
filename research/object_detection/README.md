@@ -115,6 +115,8 @@ pipeline configuration files indicating TPU compatibility.
 * Support for quantized training.
 * Updated documentation for new binaries, Cloud training, and [Tensorflow Lite](https://www.tensorflow.org/mobile/tflite/).
 
+See also our [expanded announcement blogpost](https://ai.googleblog.com/2018/07/accelerated-training-and-inference-with.html) and accompanying tutorial at the [TensorFlow blog](https://medium.com/@tensorflow/b78971cf1193).
+
 <b>Thanks to contributors</b>: Sara Robinson, Aakanksha Chowdhery, Derek Chow,
 Pengchong Jin, Jonathan Huang, Vivek Rathod, Zhichao Lu, Ronny Votel
 
