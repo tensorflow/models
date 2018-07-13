@@ -47,10 +47,10 @@ import functools
 import os
 import tensorflow as tf
 
-from object_detection import evaluator
 from object_detection.builders import dataset_builder
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
+from object_detection.legacy import evaluator
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
 
@@ -80,6 +80,7 @@ flags.DEFINE_boolean('run_once', False, 'Option to only run a single pass of '
 FLAGS = flags.FLAGS
 
 
+@tf.contrib.framework.deprecated(None, 'Use object_detection/model_main.py.')
 def main(unused_argv):
   assert FLAGS.checkpoint_dir, '`checkpoint_dir` is missing.'
   assert FLAGS.eval_dir, '`eval_dir` is missing.'

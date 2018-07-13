@@ -87,7 +87,8 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes):
         class_prediction_bias_init=conv_box_predictor.
         class_prediction_bias_init,
         use_dropout=conv_box_predictor.use_dropout,
-        dropout_keep_prob=conv_box_predictor.dropout_keep_probability)
+        dropout_keep_prob=conv_box_predictor.dropout_keep_probability,
+        share_prediction_tower=conv_box_predictor.share_prediction_tower)
     return box_predictor_object
 
   if box_predictor_oneof == 'mask_rcnn_box_predictor':

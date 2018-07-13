@@ -802,7 +802,8 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                kernel_size=3,
                class_prediction_bias_init=0.0,
                use_dropout=False,
-               dropout_keep_prob=0.8):
+               dropout_keep_prob=0.8,
+               share_prediction_tower=False):
     """Constructor.
 
     Args:
@@ -822,6 +823,8 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
         conv2d layer before class prediction.
       use_dropout: Whether to apply dropout to class prediction head.
       dropout_keep_prob: Probability of keeping activiations.
+      share_prediction_tower: Whether to share the multi-layer tower between box
+        prediction and class prediction heads.
     """
     super(WeightSharedConvolutionalBoxPredictor, self).__init__(is_training,
                                                                 num_classes)
@@ -833,6 +836,7 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
     self._class_prediction_bias_init = class_prediction_bias_init
     self._use_dropout = use_dropout
     self._dropout_keep_prob = dropout_keep_prob
+    self._share_prediction_tower = share_prediction_tower
 
   def _predict(self, image_features, num_predictions_per_location_list):
     """Computes encoded object locations and corresponding confidences.
@@ -912,6 +916,9 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
           box_encodings_net = image_feature
           class_predictions_net = image_feature
           for i in range(self._num_layers_before_predictor):
+            box_prediction_tower_prefix = (
+                'PredictionTower' if self._share_prediction_tower
+                else 'BoxPredictionTower')
             box_encodings_net = slim.conv2d(
                 box_encodings_net,
                 self._depth,
@@ -920,12 +927,12 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
                 padding='SAME',
                 activation_fn=None,
                 normalizer_fn=(tf.identity if apply_batch_norm else None),
-                scope='BoxPredictionTower/conv2d_{}'.format(i))
+                scope='{}/conv2d_{}'.format(box_prediction_tower_prefix, i))
             if apply_batch_norm:
               box_encodings_net = slim.batch_norm(
                   box_encodings_net,
-                  scope='BoxPredictionTower/conv2d_{}/BatchNorm/feature_{}'.
-                  format(i, feature_index))
+                  scope='{}/conv2d_{}/BatchNorm/feature_{}'.
+                  format(box_prediction_tower_prefix, i, feature_index))
             box_encodings_net = tf.nn.relu6(box_encodings_net)
           box_encodings = slim.conv2d(
               box_encodings_net,
@@ -935,22 +942,25 @@ class WeightSharedConvolutionalBoxPredictor(BoxPredictor):
               normalizer_fn=None,
               scope='BoxPredictor')
 
-          for i in range(self._num_layers_before_predictor):
-            class_predictions_net = slim.conv2d(
-                class_predictions_net,
-                self._depth,
-                [self._kernel_size, self._kernel_size],
-                stride=1,
-                padding='SAME',
-                activation_fn=None,
-                normalizer_fn=(tf.identity if apply_batch_norm else None),
-                scope='ClassPredictionTower/conv2d_{}'.format(i))
-            if apply_batch_norm:
-              class_predictions_net = slim.batch_norm(
+          if self._share_prediction_tower:
+            class_predictions_net = box_encodings_net
+          else:
+            for i in range(self._num_layers_before_predictor):
+              class_predictions_net = slim.conv2d(
                   class_predictions_net,
-                  scope='ClassPredictionTower/conv2d_{}/BatchNorm/feature_{}'
-                  .format(i, feature_index))
-            class_predictions_net = tf.nn.relu6(class_predictions_net)
+                  self._depth,
+                  [self._kernel_size, self._kernel_size],
+                  stride=1,
+                  padding='SAME',
+                  activation_fn=None,
+                  normalizer_fn=(tf.identity if apply_batch_norm else None),
+                  scope='ClassPredictionTower/conv2d_{}'.format(i))
+              if apply_batch_norm:
+                class_predictions_net = slim.batch_norm(
+                    class_predictions_net,
+                    scope='ClassPredictionTower/conv2d_{}/BatchNorm/feature_{}'
+                    .format(i, feature_index))
+              class_predictions_net = tf.nn.relu6(class_predictions_net)
           if self._use_dropout:
             class_predictions_net = slim.dropout(
                 class_predictions_net, keep_prob=self._dropout_keep_prob)

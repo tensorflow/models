@@ -132,6 +132,7 @@ def transform_input_data(tensor_dict,
     merged_boxes, merged_classes, _ = util_ops.merge_boxes_with_multiple_labels(
         tensor_dict[fields.InputDataFields.groundtruth_boxes],
         zero_indexed_groundtruth_classes, num_classes)
+    merged_classes = tf.cast(merged_classes, tf.float32)
     tensor_dict[fields.InputDataFields.groundtruth_boxes] = merged_boxes
     tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
 

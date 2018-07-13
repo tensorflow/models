@@ -137,9 +137,14 @@ class PerImageVRDEvaluation(object):
       result_tp_fp_labels.append(tp_fp_labels)
       result_mapping.append(selector_mapping[sorted_indices])
 
-    result_scores = np.concatenate(result_scores)
-    result_tp_fp_labels = np.concatenate(result_tp_fp_labels)
-    result_mapping = np.concatenate(result_mapping)
+    if result_scores:
+      result_scores = np.concatenate(result_scores)
+      result_tp_fp_labels = np.concatenate(result_tp_fp_labels)
+      result_mapping = np.concatenate(result_mapping)
+    else:
+      result_scores = np.array([], dtype=float)
+      result_tp_fp_labels = np.array([], dtype=bool)
+      result_mapping = np.array([], dtype=int)
 
     sorted_indices = np.argsort(result_scores)
     sorted_indices = sorted_indices[::-1]

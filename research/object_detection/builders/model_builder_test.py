@@ -28,10 +28,13 @@ from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_n
 from object_detection.models import faster_rcnn_pnas_feature_extractor as frcnn_pnas
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
 from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
+from object_detection.models import ssd_resnet_v1_ppn_feature_extractor as ssd_resnet_v1_ppn
 from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
 from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
 from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
 from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
+from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMobileNetV1FpnFeatureExtractor
+from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.protos import model_pb2
 
@@ -50,7 +53,22 @@ SSD_RESNET_V1_FPN_FEAT_MAPS = {
     'ssd_resnet101_v1_fpn':
     ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
     'ssd_resnet152_v1_fpn':
-    ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor
+    ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
+    'ssd_resnet50_v1_ppn':
+    ssd_resnet_v1_ppn.SSDResnet50V1PpnFeatureExtractor,
+    'ssd_resnet101_v1_ppn':
+    ssd_resnet_v1_ppn.SSDResnet101V1PpnFeatureExtractor,
+    'ssd_resnet152_v1_ppn':
+    ssd_resnet_v1_ppn.SSDResnet152V1PpnFeatureExtractor
+}
+
+SSD_RESNET_V1_PPN_FEAT_MAPS = {
+    'ssd_resnet50_v1_ppn':
+    ssd_resnet_v1_ppn.SSDResnet50V1PpnFeatureExtractor,
+    'ssd_resnet101_v1_ppn':
+    ssd_resnet_v1_ppn.SSDResnet101V1PpnFeatureExtractor,
+    'ssd_resnet152_v1_ppn':
+    ssd_resnet_v1_ppn.SSDResnet152V1PpnFeatureExtractor
 }
 
 
@@ -296,6 +314,87 @@ class ModelBuilderTest(tf.test.TestCase):
       self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
       self.assertIsInstance(model._feature_extractor, extractor_class)
 
+  def test_create_ssd_resnet_v1_ppn_model_from_config(self):
+    model_text_proto = """
+      ssd {
+        feature_extractor {
+          type: 'ssd_resnet_v1_50_ppn'
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+        }
+        box_coder {
+          mean_stddev_box_coder {
+          }
+        }
+        matcher {
+          bipartite_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          weight_shared_convolutional_box_predictor {
+            depth: 1024
+            class_prediction_bias_init: -4.6
+            conv_hyperparams {
+              activation: RELU_6,
+              regularizer {
+                l2_regularizer {
+                  weight: 0.0004
+                }
+              }
+              initializer {
+                variance_scaling_initializer {
+                }
+              }
+            }
+            num_layers_before_predictor: 2
+            kernel_size: 1
+          }
+        }
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_l2 {
+            }
+          }
+          classification_weight: 1.0
+          localization_weight: 1.0
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+
+    for extractor_type, extractor_class in SSD_RESNET_V1_PPN_FEAT_MAPS.items():
+      model_proto.ssd.feature_extractor.type = extractor_type
+      model = model_builder.build(model_proto, is_training=True)
+      self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
+      self.assertIsInstance(model._feature_extractor, extractor_class)
+
   def test_create_ssd_mobilenet_v1_model_from_config(self):
     model_text_proto = """
       ssd {
@@ -369,6 +468,160 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
     self.assertIsInstance(model._feature_extractor,
                           SSDMobileNetV1FeatureExtractor)
+    self.assertTrue(model._normalize_loc_loss_by_codesize)
+    self.assertTrue(model._freeze_batchnorm)
+    self.assertTrue(model._inplace_batchnorm_update)
+
+  def test_create_ssd_mobilenet_v1_fpn_model_from_config(self):
+    model_text_proto = """
+      ssd {
+        freeze_batchnorm: true
+        inplace_batchnorm_update: true
+        feature_extractor {
+          type: 'ssd_mobilenet_v1_fpn'
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+        }
+        box_coder {
+          faster_rcnn_box_coder {
+          }
+        }
+        matcher {
+          argmax_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          convolutional_box_predictor {
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        normalize_loc_loss_by_codesize: true
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_smooth_l1 {
+            }
+          }
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = self.create_model(model_proto)
+    self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
+    self.assertIsInstance(model._feature_extractor,
+                          SSDMobileNetV1FpnFeatureExtractor)
+    self.assertTrue(model._normalize_loc_loss_by_codesize)
+    self.assertTrue(model._freeze_batchnorm)
+    self.assertTrue(model._inplace_batchnorm_update)
+
+  def test_create_ssd_mobilenet_v1_ppn_model_from_config(self):
+    model_text_proto = """
+      ssd {
+        freeze_batchnorm: true
+        inplace_batchnorm_update: true
+        feature_extractor {
+          type: 'ssd_mobilenet_v1_ppn'
+          conv_hyperparams {
+            regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+          }
+        }
+        box_coder {
+          faster_rcnn_box_coder {
+          }
+        }
+        matcher {
+          argmax_matcher {
+          }
+        }
+        similarity_calculator {
+          iou_similarity {
+          }
+        }
+        anchor_generator {
+          ssd_anchor_generator {
+            aspect_ratios: 1.0
+          }
+        }
+        image_resizer {
+          fixed_shape_resizer {
+            height: 320
+            width: 320
+          }
+        }
+        box_predictor {
+          convolutional_box_predictor {
+            conv_hyperparams {
+              regularizer {
+                l2_regularizer {
+                }
+              }
+              initializer {
+                truncated_normal_initializer {
+                }
+              }
+            }
+          }
+        }
+        normalize_loc_loss_by_codesize: true
+        loss {
+          classification_loss {
+            weighted_softmax {
+            }
+          }
+          localization_loss {
+            weighted_smooth_l1 {
+            }
+          }
+        }
+      }"""
+    model_proto = model_pb2.DetectionModel()
+    text_format.Merge(model_text_proto, model_proto)
+    model = self.create_model(model_proto)
+    self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
+    self.assertIsInstance(model._feature_extractor,
+                          SSDMobileNetV1PpnFeatureExtractor)
     self.assertTrue(model._normalize_loc_loss_by_codesize)
     self.assertTrue(model._freeze_batchnorm)
     self.assertTrue(model._inplace_batchnorm_update)
