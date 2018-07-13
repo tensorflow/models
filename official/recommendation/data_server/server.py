@@ -21,6 +21,7 @@ import contextlib
 import functools
 import grpc
 from concurrent import futures
+import json
 import multiprocessing
 import os
 import pickle
@@ -77,6 +78,18 @@ def _process_shard(shard_path, num_items, num_neg):
   return users_out, items_out, labels_out
 
 
+def floyd_subsample(batch_size, buffer_size):
+  if batch_size / buffer_size >= 0.25:
+    return np.random.choice(range(buffer_size), size=batch_size, replace=False)
+
+  p = 1 - batch_size / buffer_size
+  sample_size = int(batch_size * (1 / p) * 1.2)
+  indicies = set(np.random.randint(low=0, high=buffer_size, size=(sample_size,)))
+  while len(indicies) < batch_size:
+    indicies = set(np.random.randint(low=0, high=buffer_size, size=(sample_size,)))
+  return np.random.choice(list(indicies), size=batch_size, replace=False)
+
+
 class TrainData(server_command_pb2_grpc.TrainDataServicer):
   def __init__(self, pool, shard_dir, num_neg, num_items):
     super(TrainData, self).__init__()
@@ -119,6 +132,7 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     for _ in range(num_epochs):
       shard_queue.extend(self.shards)
     self._mapper = self.pool.imap(self._map_fn, shard_queue)
+    self._mapper_exhausted = False
     self._shuffle_buffer_size = request.shuffle_buffer_size
     if not self._shuffle_buffer_size:
       raise ValueError("Shuffle buffer size not specified.")
@@ -129,15 +143,15 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     if shuffle:
       n = n or self._shuffle_buffer_size
 
-      # TODO (robieta): implement more efficiently
-      return np.random.choice(range(n), k, replace=False)
+      result = self.pool.apply(floyd_subsample, kwds=dict(batch_size=k, buffer_size=n))
+      return result
     return np.arange(k)
 
   def GetBatch(self, request, context):
     max_batch_size = request.max_batch_size
     shuffle = request.shuffle
-    # subsample_indicies = self.get_subsample_indicies(
-    #     k=max_batch_size, shuffle=shuffle)
+    subsample_indicies = self.get_subsample_indicies(
+        k=max_batch_size, shuffle=shuffle)
 
     with self._buffer_lock:
       buffer_size = self._buffer_arrays[0].shape[0]
@@ -153,30 +167,40 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
           except StopIteration:
             self._mapper_exhausted = True
 
-    response = server_command_pb2.Batch()
-    response.users = bytes(memoryview(np.ones((1,), dtype=np.int32)))
-    response.items = bytes(memoryview(np.ones((1,), dtype=np.uint16)))
-    response.labels = bytes(memoryview(np.ones((1,), dtype=np.int8)))
-    return response
+        if secondary_buffer:
+          self._buffer_arrays = [
+            np.concatenate([self._buffer_arrays[i]] +
+                           [j[i] for j in secondary_buffer], axis=0)
+            for i in range(3)
+          ]
 
-    raise NotImplementedError
-    # if not self._shard_queue:
-    #   context.abort(1, "No shards enqueued.")
-    # batch_shard = self._shard_queue.pop()
-    # batch = self.pool.apply(self._map_fn, args=[batch_shard])
-    #
-    # users, items, labels = batch
-    # if request.shuffle:
-    #   shuffle_ind = np.random.permutation(users.shape[0])
-    #   users = users[shuffle_ind]
-    #   items = items[shuffle_ind]
-    #   labels = labels[shuffle_ind]
-    #
-    # response = server_command_pb2.Batch()
-    # response.users = bytes(memoryview(users))
-    # response.items = bytes(memoryview(items))
-    # response.labels = bytes(memoryview(labels))
-    # return response
+      buffer_size = self._buffer_arrays[0].shape[0]
+      if buffer_size >= self._shuffle_buffer_size:
+        pass  # common case is computed outside of the lock.
+      elif buffer_size > max_batch_size:
+        subsample_indicies = self.get_subsample_indicies(
+            k=max_batch_size, n=buffer_size, shuffle=shuffle)
+      else:
+        subsample_indicies = np.arange(buffer_size)
+
+      batch_size = subsample_indicies.shape[0]
+      output = [
+        self._buffer_arrays[i][subsample_indicies].copy() for i in range(3)
+      ]
+      high_indicies = subsample_indicies[np.argwhere(subsample_indicies >= batch_size)[:, 0]]
+      low_indicies = subsample_indicies[np.argwhere(subsample_indicies < batch_size)[:, 0]]
+      low_index_conjugate = np.arange(batch_size)
+      low_index_conjugate[low_indicies] = -1
+      low_index_conjugate = low_index_conjugate[np.argwhere(low_index_conjugate >= 0)[:, 0]]
+      for i in range(3):
+        self._buffer_arrays[i][high_indicies] = self._buffer_arrays[i][low_index_conjugate]
+        self._buffer_arrays[i] = self._buffer_arrays[i][batch_size:]
+
+    response = server_command_pb2.Batch()
+    response.users = bytes(memoryview(output[0]))
+    response.items = bytes(memoryview(output[1]))
+    response.labels = bytes(memoryview(output[2]))
+    return response
 
   def ShutdownServer(self, request, context):
     response = server_command_pb2.Ack()

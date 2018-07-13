@@ -113,15 +113,15 @@ def initialize(dataset, data_dir, num_neg, num_data_readers=None):
 
 def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1):
   # type: (bool, prepare.NCFDataset, int) -> typing.Callable
-  batch_size=16384
   def input_fn():
     if training:
       if not alive():
         raise OSError("No train data GRPC server.")
-      enqueue(num_epochs=num_epochs, shuffle_buffer_size=1024**2)
+      enqueue(num_epochs=num_epochs, shuffle_buffer_size=10 * 1024 ** 2)
 
       def make_reader(_):
-        reader_dataset = tf.data.Dataset.range(num_epochs * ncf_dataset.shards_per_reader)
+        # reader_dataset = tf.data.Dataset.range(num_epochs * ncf_dataset.shards_per_reader)
+        reader_dataset = tf.contrib.data.Counter()
         def _rpc_fn(_):
           rpc_op = tf.contrib.rpc.rpc(
               address="localhost:{}".format(_PORT),
@@ -134,14 +134,21 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1):
             users = np.frombuffer(message.users, dtype=np.int32)
             items = np.frombuffer(message.items, dtype=np.uint16)
             labels = np.frombuffer(message.labels, dtype=np.int8)
-            # print(users.shape, items.shape, labels.shape)
+            users, items, labels = [np.expand_dims(i, axis=1) for i in [users, items, labels]]
+            if users.shape[0] == 0:
+              raise StopIteration
+            # import json
+            # metadata = json.loads(message.metadata_json.decode("utf-8"))
+            # print(users.shape, items.shape, labels.shape, metadata)
             return users, items, labels
-          decoded_shard = tf.py_func(_decode_proto, inp=[rpc_op], Tout=(np.int32, np.uint16, np.int8))
-          return decoded_shard
 
-        reader_dataset = reader_dataset.map(_rpc_fn, num_parallel_calls=2).apply(tf.contrib.data.unbatch())
-        reader_dataset = reader_dataset.shuffle(1024 ** 2)
-        reader_dataset = reader_dataset.batch(batch_size)
+          decoded_shard = tf.py_func(_decode_proto, inp=[rpc_op], Tout=(np.int32, np.uint16, np.int8))
+          return {
+            movielens.USER_COLUMN: tf.reshape(decoded_shard[0], (-1, 1)),
+            movielens.ITEM_COLUMN: tf.reshape(decoded_shard[1], (-1, 1)),
+          }, tf.reshape(decoded_shard[2], (-1, 1))
+
+        reader_dataset = reader_dataset.map(_rpc_fn, num_parallel_calls=2)
 
         return reader_dataset
 
@@ -153,60 +160,60 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1):
           sloppy=True,
           prefetch_input_elements=4,
       )
-      dataset = dataset.apply(interleave).prefetch(32)
+      dataset = dataset.apply(interleave)  #.prefetch(32)
 
 
-      with tf.Session().as_default() as sess:
-        shard = dataset.make_one_shot_iterator().get_next()
-        count = 0
-        st = time.time()
-        while True:
-          try:
-            result = sess.run(shard)
-            count += 1
-          except tf.errors.OutOfRangeError:
-            break
-          # print(result)
-          # print(result[0].shape, result[1].shape, result[2].shape)
-          if count % 25 == 0:
-            print(count / (time.time() - st))
-
-      import sys
-      sys.exit()
-
-      def train_generator():
-        users, items, labels = get_batch(shuffle=True)
-        users = np.expand_dims(users, axis=1)
-        items = np.expand_dims(items, axis=1)
-        labels = np.expand_dims(labels, axis=1)
-        n = labels.shape[0]
-        n_batches = int(np.ceil(n / batch_size))
-        for i in range(n_batches):
-          yield ({
-            movielens.USER_COLUMN: users[i * batch_size: (i+1) * batch_size, :],
-            movielens.ITEM_COLUMN: items[i * batch_size: (i+1) * batch_size, :],
-          }, labels[i * batch_size: (i+1) * batch_size, :])
-
-      output_types = ({
-        movielens.USER_COLUMN: tf.int32,
-        movielens.ITEM_COLUMN: tf.uint16,
-      }, tf.int8)
-
-      output_shapes = ({
-        movielens.USER_COLUMN: tf.TensorShape([None, 1]),
-        movielens.ITEM_COLUMN: tf.TensorShape([None, 1]),
-      }, tf.TensorShape([None, 1]))
-
-      dataset = tf.data.Dataset.range(num_epochs * ncf_dataset.num_train_shards)
-      interleave = tf.contrib.data.parallel_interleave(
-          lambda _: tf.data.Dataset.from_generator(
-              train_generator, output_types=output_types,
-              output_shapes=output_shapes),
-          cycle_length=multiprocessing.cpu_count(),
-          block_length=10,
-          sloppy=True,
-      )
-      dataset = dataset.apply(interleave)
+      # with tf.Session().as_default() as sess:
+      #   shard = dataset.make_one_shot_iterator().get_next()
+      #   count = 0
+      #   st = time.time()
+      #   while True:
+      #     try:
+      #       result = sess.run(shard)
+      #       count += 1
+      #     except tf.errors.OutOfRangeError:
+      #       break
+      #     # print(result)
+      #     # print(result[0].shape, result[1].shape, result[2].shape)
+      #     if count % 25 == 0:
+      #       print(count / (time.time() - st))
+      #
+      # import sys
+      # sys.exit()
+      #
+      # def train_generator():
+      #   users, items, labels = get_batch(shuffle=True)
+      #   users = np.expand_dims(users, axis=1)
+      #   items = np.expand_dims(items, axis=1)
+      #   labels = np.expand_dims(labels, axis=1)
+      #   n = labels.shape[0]
+      #   n_batches = int(np.ceil(n / batch_size))
+      #   for i in range(n_batches):
+      #     yield ({
+      #       movielens.USER_COLUMN: users[i * batch_size: (i+1) * batch_size, :],
+      #       movielens.ITEM_COLUMN: items[i * batch_size: (i+1) * batch_size, :],
+      #     }, labels[i * batch_size: (i+1) * batch_size, :])
+      #
+      # output_types = ({
+      #   movielens.USER_COLUMN: tf.int32,
+      #   movielens.ITEM_COLUMN: tf.uint16,
+      # }, tf.int8)
+      #
+      # output_shapes = ({
+      #   movielens.USER_COLUMN: tf.TensorShape([None, 1]),
+      #   movielens.ITEM_COLUMN: tf.TensorShape([None, 1]),
+      # }, tf.TensorShape([None, 1]))
+      #
+      # dataset = tf.data.Dataset.range(num_epochs * ncf_dataset.num_train_shards)
+      # interleave = tf.contrib.data.parallel_interleave(
+      #     lambda _: tf.data.Dataset.from_generator(
+      #         train_generator, output_types=output_types,
+      #         output_shapes=output_shapes),
+      #     cycle_length=multiprocessing.cpu_count(),
+      #     block_length=10,
+      #     sloppy=True,
+      # )
+      # dataset = dataset.apply(interleave)
 
     else:
       # Using Dataset.from_generator() rather than
