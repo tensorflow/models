@@ -21,11 +21,11 @@ import contextlib
 import functools
 import grpc
 from concurrent import futures
-import json
 import multiprocessing
 import os
 import pickle
 import signal
+import sys
 import time
 
 from absl import app as absl_app
@@ -101,10 +101,10 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     if not tf.gfile.Exists(shard_dir):
       raise ValueError("shard_dir `{}` does not exist.".format(shard_dir))
     shards = tf.gfile.ListDirectory(shard_dir)
-    invalid_shards = [i for i in shards if not i.endswith(".pickle")]
+    invalid_shards = [i for i in shards if not i.endswith(".pickle") and not tf.gfile.IsDirectory(os.path.join(shard_dir, i))]
     if invalid_shards:
       raise ValueError("Invalid shard(s): {}".format(", ".join(invalid_shards)))
-    self.shards = [os.path.join(shard_dir, i) for i in shards]
+    self.shards = [os.path.join(shard_dir, i) for i in shards if not tf.gfile.IsDirectory(os.path.join(shard_dir, i))]
 
     self._map_fn = functools.partial(_process_shard, num_neg=num_neg,
                                      num_items=num_items)
@@ -175,6 +175,7 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
           ]
 
       buffer_size = self._buffer_arrays[0].shape[0]
+
       if buffer_size >= self._shuffle_buffer_size:
         pass  # common case is computed outside of the lock.
       elif buffer_size > max_batch_size:
@@ -195,6 +196,9 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
       for i in range(3):
         self._buffer_arrays[i][high_indicies] = self._buffer_arrays[i][low_index_conjugate]
         self._buffer_arrays[i] = self._buffer_arrays[i][batch_size:]
+
+    n = output[0].shape[0]
+    print("Serving batch: n = {}".format(n))
 
     response = server_command_pb2.Batch()
     response.users = bytes(memoryview(output[0]))
@@ -234,6 +238,8 @@ def run_server(port, num_workers, shard_dir, num_neg, num_items):
         time.sleep(1)
         if servicer.should_stop:
           break
+        sys.stdout.flush()
+        sys.stderr.flush()
     except KeyboardInterrupt:
       pass
     finally:
@@ -263,8 +269,23 @@ def main(_):
   shard_dir = flags.FLAGS.shard_dir
   num_neg = flags.FLAGS.num_neg
   num_items = flags.FLAGS.num_items
-  run_server(port=port, num_workers=num_workers, shard_dir=shard_dir,
-             num_neg=num_neg, num_items=num_items)
+  log_dir = os.path.join(shard_dir, "logs")
+  tf.gfile.MakeDirs(log_dir)
+
+  # This server is generally run in a subprocess.
+  print("Redirecting stdout and stderr to files in {}".format(log_dir))
+  stdout = open(os.path.join(log_dir, "stdout.log"), "wt")
+  stderr = open(os.path.join(log_dir, "stderr.log"), "wt")
+  try:
+    sys.stdout = stdout
+    sys.stderr = stderr
+    run_server(port=port, num_workers=num_workers, shard_dir=shard_dir,
+               num_neg=num_neg, num_items=num_items)
+  finally:
+    sys.stdout.flush()
+    sys.stderr.flush()
+    stdout.close()
+    stderr.close()
 
 
 if __name__ == "__main__":

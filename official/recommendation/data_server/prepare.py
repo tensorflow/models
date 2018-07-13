@@ -51,7 +51,7 @@ _NUMBER_NEGATIVES = 1000
 
 class NCFDataset(object):
   def __init__(self, cache_dir, test_data, num_users, num_items,
-               num_data_readers, shards_per_reader):
+               num_data_readers, shards_per_reader, train_data=None):
     self.cache_dir = cache_dir
     self.train_shard_dir = os.path.join(cache_dir, _TRAIN_SHARD_SUBDIR)
     self.num_data_readers = num_data_readers
@@ -73,13 +73,18 @@ class NCFDataset(object):
     self.num_users = num_users
     self.num_items = num_items
 
+    # Used for testing the data pipeline. The actual training pipeline uses the
+    # shards found in `self.train_shard_dir `
+    self.train_data = train_data  # type: dict
+
 
 def _filter_index_sort(raw_rating_path):
   df = pd.read_csv(raw_rating_path)
 
   # Get the info of users who have more than 20 ratings on items
   grouped = df.groupby(movielens.USER_COLUMN)
-  df = grouped.filter(lambda x: len(x) >= _MIN_NUM_RATINGS)
+  df = grouped.filter(lambda x: len(x) >= _MIN_NUM_RATINGS)  # type: pd.DataFrame
+
   original_users = df[movielens.USER_COLUMN].unique()
   original_items = df[movielens.ITEM_COLUMN].unique()
 
@@ -148,7 +153,7 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
     assert len(set(block_user)) == 1
 
     block_items = items[boundaries[i]:boundaries[i+1]]
-    train_blocks.append((block_user, block_items[:-1]))
+    train_blocks.append((block_user[:-1], block_items[:-1]))
 
     test_negatives = construct_false_negatives(
         num_items=num_items, positive_set=set(block_items), n=_NUMBER_NEGATIVES)
@@ -160,6 +165,7 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
 
   train_users = np.concatenate([i[0] for i in train_blocks])
   train_items = np.concatenate([i[1] for i in train_blocks])
+
   train_shard_fname = "train_positive_shard_{}.pickle".format(
       str(shard_id).zfill(5))
   train_shard_fpath = os.path.join(
@@ -190,6 +196,7 @@ def generate_train_eval_data(df, num_shards, cache_dir, num_items):
   approximate_partitions = np.linspace(0, num_rows, num_shards + 1).astype("int")
   start_ind, end_ind = 0, 0
   shards = []
+
   for i in range(1, num_shards + 1):
     end_ind = approximate_partitions[i]
     while (end_ind < num_rows and df[movielens.USER_COLUMN][end_ind - 1] ==
@@ -230,10 +237,11 @@ def generate_train_eval_data(df, num_shards, cache_dir, num_items):
   }, test_labels)
 
 
-def construct_cache(dataset, data_dir, num_data_readers, num_neg):
+def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
   pts_per_epoch = movielens.NUM_RATINGS[dataset] * (1 + num_neg)
   num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2) or 1
   shards_per_reader = int(pts_per_epoch / num_data_readers // _APPROX_PTS_PER_SHARD) or 1
+
   num_shards = num_data_readers * shards_per_reader
 
   st = timeit.default_timer()
@@ -244,23 +252,36 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg):
 
   raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
   df, num_users, num_items = _filter_index_sort(raw_rating_path)
+
   test_data = generate_train_eval_data(
       df=df, num_shards=num_shards, cache_dir=cache_dir, num_items=num_items)
+
+  train_data = None
+  if debug:
+    users = df[movielens.USER_COLUMN].values
+    items = df[movielens.ITEM_COLUMN].values
+    train_ind = np.argwhere(np.equal(users[:-1], users[1:]))[:, 0]
+    train_data = {
+      movielens.USER_COLUMN: users[train_ind],
+      movielens.ITEM_COLUMN: items[train_ind],
+    }
 
   ncf_dataset = NCFDataset(cache_dir=cache_dir, test_data=test_data,
                            num_items=num_items, num_users=num_users,
                            num_data_readers=num_data_readers,
-                           shards_per_reader=shards_per_reader)
+                           shards_per_reader=shards_per_reader,
+                           train_data=train_data)
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
                   .format(run_time))
   return ncf_dataset
 
 
-def run(dataset, data_dir, num_data_readers=None, num_neg=4):
+def run(dataset, data_dir, num_data_readers=None, num_neg=4, debug=False):
   movielens.download(dataset=dataset, data_dir=data_dir)
   return construct_cache(dataset=dataset, data_dir=data_dir,
-                         num_data_readers=num_data_readers, num_neg=num_neg)
+                         num_data_readers=num_data_readers, num_neg=num_neg,
+                         debug=debug)
 
 
 def main(_):
