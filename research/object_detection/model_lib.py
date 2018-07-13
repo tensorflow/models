@@ -500,11 +500,13 @@ def create_estimator_and_inputs(run_config,
   eval_config = configs['eval_config']
   eval_input_config = configs['eval_input_config']
 
-  if train_steps is None:
-    train_steps = configs['train_config'].num_steps
+  # update train_steps from config but only when non-zero value is provided
+  if train_steps is None and train_config.num_steps != 0:
+    train_steps = train_config.num_steps
 
-  if eval_steps is None:
-    eval_steps = configs['eval_config'].num_examples
+  # update eval_steps from config but only when non-zero value is provided
+  if eval_steps is None and eval_config.num_examples != 0:
+    eval_steps = eval_config.num_examples
 
   detection_model_fn = functools.partial(
       model_builder.build, model_config=model_config)

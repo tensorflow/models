@@ -77,6 +77,10 @@ Extras:
       Run an instance segmentation model</a><br>
   * <a href='g3doc/challenge_evaluation.md'>
       Run the evaluation for the Open Images Challenge 2018</a><br>
+  * <a href='g3doc/tpu_compatibility.md'>
+      TPU compatible detection pipelines</a><br>
+  *  <a href='g3doc/running_on_mobile_tensorflowlite.md'>
+      Running object detection on mobile devices with TensorFlow Lite</a><br>
 
 ## Getting Help
 
@@ -94,6 +98,28 @@ reporting an issue.
 
 
 ## Release information
+
+### July 13, 2018
+
+There are many new updates in this release, extending the functionality and
+capability of the API:
+
+* Moving from slim-based training to [Estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator)-based
+training.
+* Support for [RetinaNet](https://arxiv.org/abs/1708.02002), and a [MobileNet](https://ai.googleblog.com/2017/06/mobilenets-open-source-models-for.html)
+adaptation of RetinaNet.
+* A novel SSD-based architecture called the [Pooling Pyramid Network](https://arxiv.org/abs/1807.03284) (PPN).
+* Releasing several [TPU](https://cloud.google.com/tpu/)-compatible models.
+These can be found in the `samples/configs/` directory with a comment in the
+pipeline configuration files indicating TPU compatibility.
+* Support for quantized training.
+* Updated documentation for new binaries, Cloud training, and [Tensorflow Lite](https://www.tensorflow.org/mobile/tflite/).
+
+See also our [expanded announcement blogpost](https://ai.googleblog.com/2018/07/accelerated-training-and-inference-with.html) and accompanying tutorial at the [TensorFlow blog](https://medium.com/tensorflow/training-and-serving-a-realtime-mobile-object-detector-in-30-minutes-with-cloud-tpus-b78971cf1193).
+
+<b>Thanks to contributors</b>: Sara Robinson, Aakanksha Chowdhery, Derek Chow,
+Pengchong Jin, Jonathan Huang, Vivek Rathod, Zhichao Lu, Ronny Votel
+
 
 ### June 25, 2018
 
