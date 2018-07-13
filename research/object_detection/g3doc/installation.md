@@ -56,7 +56,7 @@ If that is your case, you're suggested to download and install Protobuf 3.0.0
 ## COCO API installation
 
 Download the
-<a href="https://github.com/cocodataset/cocoapi" target=_blank>cocoapi</a> and
+[cocoapi](https://github.com/cocodataset/cocoapi) and
 copy the pycocotools subfolder to the tensorflow/models/research directory if
 you are interested in using COCO evaluation metrics. The default metrics are
 based on those used in Pascal VOC evaluation. To use the COCO object detection
