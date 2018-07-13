@@ -26,7 +26,6 @@ import tensorflow as tf
 
 from official.keras_application_models import dataset
 from official.keras_application_models import model_callbacks
-from official.resnet import resnet_run_loop
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 
@@ -42,8 +41,9 @@ MODELS = {
     "densenet121": tf.keras.applications.DenseNet121,
     "densenet169": tf.keras.applications.DenseNet169,
     "densenet201": tf.keras.applications.DenseNet201,
-    "nasnetlarge": tf.keras.applications.NASNetLarge,
-    "nasnetmobile": tf.keras.applications.NASNetMobile,
+    # TODO (b/80431378)
+    # "nasnetlarge": tf.keras.applications.NASNetLarge,
+    # "nasnetmobile": tf.keras.applications.NASNetMobile,
 }
 
 
@@ -60,13 +60,12 @@ def main(_):
 
   # Get dataset
   dataset_name = "ImageNet"
+  num_gpus = flags_core.get_num_gpus(FLAGS)
   if FLAGS.use_synthetic_data:
     tf.logging.info("Using synthetic dataset...")
     dataset_name += "_Synthetic"
-    batch_size = resnet_run_loop.per_device_batch_size(
-        FLAGS.batch_size, flags_core.get_num_gpus(FLAGS))
-    train_num_images = batch_size
-    val_num_images = batch_size
+    train_num_images = FLAGS.batch_size
+    val_num_images = FLAGS.batch_size
     train_dataset = dataset.generate_synthetic_input_dataset(
         FLAGS.model, train_num_images)
     val_dataset = dataset.generate_synthetic_input_dataset(
@@ -76,7 +75,6 @@ def main(_):
     raise ValueError("Only synthetic dataset is supported!")
 
   # If run with multiple GPUs
-  num_gpus = flags_core.get_num_gpus(FLAGS)
   if num_gpus > 0:
     model = tf.keras.utils.multi_gpu_model(model, gpus=num_gpus)
 
@@ -104,15 +102,14 @@ def main(_):
       FLAGS.callbacks,
       batch_size=FLAGS.batch_size,
       metric_logger=benchmark_logger)
-
   # Train and evaluate the model
   history = model.fit(
       train_dataset,
       epochs=FLAGS.train_epochs,
       callbacks=callbacks,
       validation_data=val_dataset,
-      steps_per_epoch=int(np.ceil(train_num_images / batch_size)),
-      validation_steps=int(np.ceil(val_num_images / batch_size))
+      steps_per_epoch=int(np.ceil(train_num_images / FLAGS.batch_size)),
+      validation_steps=int(np.ceil(val_num_images / FLAGS.batch_size))
   )
 
   tf.logging.info("Logging the evaluation results...")
@@ -122,7 +119,7 @@ def main(_):
         "loss": history.history["val_loss"][epoch],
         "epoch": epoch + 1,
         tf.GraphKeys.GLOBAL_STEP: (epoch + 1) * np.ceil(
-            train_num_images/batch_size)
+            train_num_images/FLAGS.batch_size)
     }
     benchmark_logger.log_evaluation_result(eval_results)
 
@@ -141,6 +138,7 @@ def define_keras_benchmark_flags():
   flags_core.set_defaults(
       data_format="channels_last",
       use_synthetic_data=True,
+      batch_size=32,
       train_epochs=2)
 
   flags.DEFINE_enum(

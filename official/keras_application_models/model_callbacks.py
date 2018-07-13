@@ -65,11 +65,7 @@ class ExamplesPerSecondCallback(tf.keras.callbacks.Callback):
     self._time_start = time.time()
 
   def on_batch_end(self, batch, logs=None):
-    """Log examples_per_sec.
-
-    Record the elapsed time of each batch, and log the examples_per_sec metrics
-    every_n_steps.
-    """
+    """Log the examples_per_sec metric every_n_steps."""
     self._global_step += 1
     current_time = time.time()
 

@@ -23,6 +23,7 @@ import tensorflow as tf
 _NUM_CHANNELS = 3
 _NUM_CLASSES = 1000
 
+
 def _get_default_image_size(model):
   """Provide default image size for each model."""
   image_size = (224, 224)

@@ -1,6 +1,6 @@
 # Keras Application Models Benchmark
 ## Overview
-This provides a single scaffold to benchmark the nine Keras built-in application [models](https://keras.io/applications/). All the models are for image classification applications, and include:
+This provides a single scaffold to benchmark the Keras built-in application [models](https://keras.io/applications/). All the models are for image classification applications, and include:
 
  - Xception
  - VGG16
@@ -13,7 +13,7 @@ This provides a single scaffold to benchmark the nine Keras built-in application
  - NASNet
 
 ## Dataset
-ImageNet dataset is used for the benchmark. To begin, you will need to download the ImageNet dataset and convert it to TFRecord format. Follow along with the [Inception guide](https://github.com/tensorflow/models/tree/master/research/inception#getting-started) in order to prepare the dataset.
+Synthetic dataset is used for the benchmark.
 
 ## Callbacks
 Two custom callbacks are provided for model benchmarking: ExamplesPerSecondCallback and LoggingMetricCallback. For each callback, `epoch_based` and `batch_based` options are available to set the benchmark level. Check [model_callbacks.py](model_callbacks.py) for more details.
