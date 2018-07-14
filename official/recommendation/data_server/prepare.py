@@ -51,11 +51,10 @@ _NUMBER_NEGATIVES = 1000
 
 class NCFDataset(object):
   def __init__(self, cache_dir, test_data, num_users, num_items,
-               num_data_readers, shards_per_reader, train_data=None):
+               num_data_readers, train_data=None):
     self.cache_dir = cache_dir
     self.train_shard_dir = os.path.join(cache_dir, _TRAIN_SHARD_SUBDIR)
     self.num_data_readers = num_data_readers
-    self.shards_per_reader = shards_per_reader
     self.test_data = test_data
     true_ind = np.argwhere(test_data[1])[:, 0]
     assert true_ind.shape[0] == num_users
@@ -191,17 +190,20 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
   }
 
 
-def generate_train_eval_data(df, num_shards, cache_dir, num_items):
+def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
   num_rows = len(df)
-  approximate_partitions = np.linspace(0, num_rows, num_shards + 1).astype("int")
+  approximate_partitions = np.linspace(0, num_rows, approx_num_shards + 1).astype("int")
   start_ind, end_ind = 0, 0
   shards = []
 
-  for i in range(1, num_shards + 1):
+  for i in range(1, approx_num_shards + 1):
     end_ind = approximate_partitions[i]
     while (end_ind < num_rows and df[movielens.USER_COLUMN][end_ind - 1] ==
            df[movielens.USER_COLUMN][end_ind]):
       end_ind += 1
+
+    if not end_ind > start_ind:
+      continue  # imbalance from prior shard.
 
     df_shard = df[start_ind:end_ind]
 
@@ -212,11 +214,12 @@ def generate_train_eval_data(df, num_shards, cache_dir, num_items):
 
     start_ind = end_ind
   assert end_ind == num_rows
+  approx_num_shards = len(shards)
 
   tf.logging.info("Splitting train and test data and generating {} test "
                   "negatives per user...".format(_NUMBER_NEGATIVES))
   tf.gfile.MakeDirs(os.path.join(cache_dir, _TRAIN_SHARD_SUBDIR))
-  map_args = [(shards[i], i, cache_dir, num_items) for i in range(num_shards)]
+  map_args = [(shards[i], i, cache_dir, num_items) for i in range(approx_num_shards)]
   ctx = multiprocessing.get_context("spawn")
   with contextlib.closing(ctx.Pool(multiprocessing.cpu_count())) as pool:
     test_shards = pool.starmap(_train_eval_map_fn, map_args)
@@ -240,9 +243,7 @@ def generate_train_eval_data(df, num_shards, cache_dir, num_items):
 def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
   pts_per_epoch = movielens.NUM_RATINGS[dataset] * (1 + num_neg)
   num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2) or 1
-  shards_per_reader = int(pts_per_epoch / num_data_readers // _APPROX_PTS_PER_SHARD) or 1
-
-  num_shards = num_data_readers * shards_per_reader
+  approx_num_shards = int(pts_per_epoch // _APPROX_PTS_PER_SHARD) or 1
 
   st = timeit.default_timer()
   cache_dir = os.path.join(data_dir, _CACHE_SUBDIR, dataset)
@@ -254,7 +255,9 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
   df, num_users, num_items = _filter_index_sort(raw_rating_path)
 
   test_data = generate_train_eval_data(
-      df=df, num_shards=num_shards, cache_dir=cache_dir, num_items=num_items)
+      df=df, approx_num_shards=approx_num_shards, cache_dir=cache_dir,
+      num_items=num_items)
+  del approx_num_shards  # value may have changed.
 
   train_data = None
   if debug:
@@ -269,7 +272,6 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
   ncf_dataset = NCFDataset(cache_dir=cache_dir, test_data=test_data,
                            num_items=num_items, num_users=num_users,
                            num_data_readers=num_data_readers,
-                           shards_per_reader=shards_per_reader,
                            train_data=train_data)
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
