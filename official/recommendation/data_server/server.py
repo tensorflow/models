@@ -58,6 +58,7 @@ def _process_shard(shard_path, num_items, num_neg):
     assert len(set(users[boundaries[i]:boundaries[i+1]])) == 1
     positive_set = set(items[boundaries[i]:boundaries[i+1]])
     n_pos = len(positive_set)
+
     # TODO(robieta): include option to prevent eval pts from becoming negatives
     negatives = prepare.construct_false_negatives(
         num_items, positive_set, n_pos * num_neg)
@@ -78,7 +79,7 @@ def _process_shard(shard_path, num_items, num_neg):
   return users_out, items_out, labels_out
 
 
-def floyd_subsample(batch_size, buffer_size):
+def fischer_yates_subsample(batch_size, buffer_size):
   if batch_size / buffer_size >= 0.25:
     return np.random.choice(range(buffer_size), size=batch_size, replace=False)
 
@@ -141,9 +142,9 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
 
   def get_subsample_indicies(self, k, n=None, shuffle=True):
     if shuffle:
-      n = n or self._shuffle_buffer_size
+      n = n or self._shuffle_buffer_size + k - 1
 
-      result = self.pool.apply(floyd_subsample, kwds=dict(batch_size=k, buffer_size=n))
+      result = self.pool.apply(fischer_yates_subsample, kwds=dict(batch_size=k, buffer_size=n))
       return result
     return np.arange(k)
 
@@ -155,7 +156,7 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
 
     with self._buffer_lock:
       buffer_size = self._buffer_arrays[0].shape[0]
-      if buffer_size < self._shuffle_buffer_size and not self._mapper_exhausted:
+      if buffer_size < self._shuffle_buffer_size + max_batch_size - 1 and not self._mapper_exhausted:
         secondary_buffer = []
         new_buffer_size = buffer_size
         while (new_buffer_size < self._shuffle_buffer_size * self._overfill_factor
@@ -176,7 +177,7 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
 
       buffer_size = self._buffer_arrays[0].shape[0]
 
-      if buffer_size >= self._shuffle_buffer_size:
+      if buffer_size >= self._shuffle_buffer_size + max_batch_size - 1:
         pass  # common case is computed outside of the lock.
       elif buffer_size > max_batch_size:
         subsample_indicies = self.get_subsample_indicies(

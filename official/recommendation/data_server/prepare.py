@@ -124,9 +124,8 @@ def construct_false_negatives(num_items, positive_set, n):
   while len(negatives) < n:
     negative_candidates = np.random.randint(
         low=0, high=num_items, size=(n_attempt,))
-    negative_set = set(negative_candidates) - positive_set
     negatives.extend(
-        [i for i in negative_candidates if i in negative_set]
+        [i for i in negative_candidates if i not in positive_set]
     )
 
   return negatives[:n]
