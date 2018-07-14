@@ -122,9 +122,11 @@ def construct_false_negatives(num_items, positive_set, n):
   n_attempt = int(n * (1 / p) * 1.2)  # factor of 1.2 for safety
   negatives = []
   while len(negatives) < n:
+    negative_candidates = np.random.randint(
+        low=0, high=num_items, size=(n_attempt,))
+    negative_set = set(negative_candidates) - positive_set
     negatives.extend(
-        set(np.random.randint(low=0, high=num_items, size=(n_attempt,))) -
-        positive_set
+        [i for i in negative_candidates if i in negative_set]
     )
 
   return negatives[:n]
