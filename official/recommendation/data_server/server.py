@@ -92,7 +92,7 @@ def fischer_yates_subsample(batch_size, buffer_size):
 
 
 class TrainData(server_command_pb2_grpc.TrainDataServicer):
-  def __init__(self, pool, shard_dir, num_neg, num_items):
+  def __init__(self, pool, shard_dir, num_neg, num_items, spillover):
     super(TrainData, self).__init__()
     self.pool = pool  # type: multiprocessing.Pool
     self._lock_manager = multiprocessing.Manager()
@@ -121,11 +121,14 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     self._overfill_factor = 2
     self._buffer_lock = self._lock_manager.Lock()
 
+    self.spillover = spillover
+
   def Alive(self, request, context):
     return server_command_pb2.Ack(success=True)
 
   def Enqueue(self, request, context):
-    if self._buffer_arrays[0].shape[0] > 0 or not self._mapper_exhausted:
+    if ((self._buffer_arrays[0].shape[0] > 0 and not self.spillover)
+        or not self._mapper_exhausted):
       raise OSError("Previous epochs have not been consumed.")
 
     num_epochs = request.value
@@ -156,6 +159,10 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
 
     with self._buffer_lock:
       buffer_size = self._buffer_arrays[0].shape[0]
+      if (self.spillover and self._mapper_exhausted and
+          buffer_size < max_batch_size):
+        return server_command_pb2.Batch(users=b"", items=b"", labels=b"")
+
       if buffer_size < self._shuffle_buffer_size + max_batch_size - 1 and not self._mapper_exhausted:
         secondary_buffer = []
         new_buffer_size = buffer_size
@@ -201,11 +208,11 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     n = output[0].shape[0]
     print("Serving batch: n = {}".format(n))
 
-    response = server_command_pb2.Batch()
-    response.users = bytes(memoryview(output[0]))
-    response.items = bytes(memoryview(output[1]))
-    response.labels = bytes(memoryview(output[2]))
-    return response
+    return server_command_pb2.Batch(
+      users = bytes(memoryview(output[0])),
+      items = bytes(memoryview(output[1])),
+      labels = bytes(memoryview(output[2]))
+    )
 
   def ShutdownServer(self, request, context):
     response = server_command_pb2.Ack()
@@ -222,12 +229,13 @@ def init_worker():
   signal.signal(signal.SIGINT, sigint_handler)
 
 
-def run_server(port, num_workers, shard_dir, num_neg, num_items):
+def run_server(port, num_workers, shard_dir, num_neg, num_items, spillover):
   with contextlib.closing(multiprocessing.Pool(
       processes=num_workers, initializer=init_worker)) as pool:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=num_workers))
     servicer = TrainData(pool=pool, shard_dir=shard_dir,
-                         num_neg=num_neg, num_items=num_items)
+                         num_neg=num_neg, num_items=num_items,
+                         spillover=spillover)
     server_command_pb2_grpc.add_TrainDataServicer_to_server(servicer, server)
 
     absl_logging.info("Starting train data server on port {}".format(port))
@@ -261,6 +269,11 @@ def define_flags():
                             "positive instance.")
   flags.DEFINE_integer(name="num_items", default=None,
                        help="Number of items from which to select negatives.")
+  flags.DEFINE_boolean(
+      name="spillover", default=True,
+      help="If a complete batch cannot be provided, return an empty batch and "
+           "start the next epoch from a non-empty buffer. This guarantees "
+           "fixed batch sizes.")
   flags.mark_flags_as_required(["shard_dir", "num_neg", "num_items"])
 
 
@@ -270,6 +283,7 @@ def main(_):
   shard_dir = flags.FLAGS.shard_dir
   num_neg = flags.FLAGS.num_neg
   num_items = flags.FLAGS.num_items
+  spillover = flags.FLAGS.spillover
   log_dir = os.path.join(shard_dir, "logs")
   tf.gfile.MakeDirs(log_dir)
 
@@ -281,7 +295,7 @@ def main(_):
     sys.stdout = stdout
     sys.stderr = stderr
     run_server(port=port, num_workers=num_workers, shard_dir=shard_dir,
-               num_neg=num_neg, num_items=num_items)
+               num_neg=num_neg, num_items=num_items, spillover=spillover)
   finally:
     sys.stdout.flush()
     sys.stderr.flush()

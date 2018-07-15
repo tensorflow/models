@@ -39,6 +39,8 @@ from official.recommendation.data_server import server_command_pb2_grpc
 _PORT = 46293
 _SERVER_PATH = os.path.join(os.path.dirname(__file__), "server.py")
 
+_SHUFFLE_BUFFER_SIZE = 10 * 1024 ** 2
+
 
 def make_stub():
   channel = grpc.insecure_channel("localhost:{}".format(_PORT))
@@ -95,7 +97,8 @@ def initialize(dataset, data_dir, num_neg, num_data_readers=None, debug=False):
                  "--shard_dir", ncf_dataset.train_shard_dir,
                  "--num_neg", str(num_neg),
                  "--num_items", str(ncf_dataset.num_items),
-                 "--num_workers", str(num_workers)]
+                 "--num_workers", str(num_workers),
+                 "--spillover", "True"]
   proc = subprocess.Popen(args=server_args, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           shell=False, env=server_env)
@@ -121,10 +124,9 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
     if training:
       if not alive():
         raise OSError("No train data GRPC server.")
-      enqueue(num_epochs=num_epochs, shuffle_buffer_size=10 * 1024 ** 2)
+      enqueue(num_epochs=num_epochs, shuffle_buffer_size=_SHUFFLE_BUFFER_SIZE)
 
       def make_reader(_):
-        # reader_dataset = tf.data.Dataset.range(num_epochs * ncf_dataset.shards_per_reader)
         reader_dataset = tf.contrib.data.Counter()
         def _rpc_fn(_):
           rpc_op = tf.contrib.rpc.rpc(
@@ -145,9 +147,9 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
 
           decoded_shard = tf.py_func(_decode_proto, inp=[rpc_op], Tout=(np.int32, np.uint16, np.int8))
           return {
-            movielens.USER_COLUMN: tf.reshape(decoded_shard[0], (-1, 1)),
-            movielens.ITEM_COLUMN: tf.reshape(decoded_shard[1], (-1, 1)),
-          }, tf.reshape(decoded_shard[2], (-1, 1))
+            movielens.USER_COLUMN: tf.reshape(decoded_shard[0], (batch_size, 1)),
+            movielens.ITEM_COLUMN: tf.reshape(decoded_shard[1], (batch_size, 1)),
+          }, tf.reshape(decoded_shard[2], (batch_size, 1))
 
         reader_dataset = reader_dataset.map(
             _rpc_fn,
