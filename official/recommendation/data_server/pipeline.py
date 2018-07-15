@@ -55,17 +55,9 @@ def alive():
     return False
 
 
-def enqueue(num_epochs=1, shuffle_buffer_size=1024**2):
+def enqueue(num_epochs=1, shuffle_buffer_size=_SHUFFLE_BUFFER_SIZE):
   make_stub().Enqueue(server_command_pb2.NumEpochs(
       value=num_epochs, shuffle_buffer_size=shuffle_buffer_size))
-
-
-def get_batch(shuffle=True):
-  response = make_stub().GetBatch(server_command_pb2.BatchRequest(shuffle=shuffle))
-  users = np.frombuffer(response.users, dtype=np.int32)
-  items = np.frombuffer(response.items, dtype=np.uint16)
-  labels = np.frombuffer(response.labels, dtype=np.int8)
-  return users, items, labels
 
 
 def shutdown():
@@ -132,7 +124,9 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
           rpc_op = tf.contrib.rpc.rpc(
               address="localhost:{}".format(_PORT),
               method="/official.recommendation.data_server.TrainData/GetBatch",
-              request=server_command_pb2.BatchRequest(shuffle=shuffle, max_batch_size=batch_size).SerializeToString(),
+              request=server_command_pb2.BatchRequest(
+                  shuffle=shuffle, max_batch_size=batch_size
+              ).SerializeToString(),
               protocol="grpc",
           )
           def _decode_proto(shard_bytes):
@@ -140,7 +134,8 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
             users = np.frombuffer(message.users, dtype=np.int32)
             items = np.frombuffer(message.items, dtype=np.uint16)
             labels = np.frombuffer(message.labels, dtype=np.int8)
-            users, items, labels = [np.expand_dims(i, axis=1) for i in [users, items, labels]]
+            users, items, labels = [np.expand_dims(i, axis=1)
+                                    for i in [users, items, labels]]
             if users.shape[0] == 0:
               raise StopIteration
             return users, items, labels
@@ -148,7 +143,7 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
           decoded_shard = tf.py_func(
               _decode_proto, inp=[rpc_op], Tout=(np.int32, np.uint16, np.int8))
           decoded_users, decoded_items, decoded_labels = [
-            tf.reshape(decoded_shard[i], (batch_size, 1)) for i in range(3)
+              tf.reshape(decoded_shard[i], (batch_size, 1)) for i in range(3)
           ]
 
           return {
@@ -192,9 +187,9 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
         for i in range(n_batches):
           yield {
               movielens.USER_COLUMN:
-                users[i * batch_size: (i+1) * batch_size, :],
+                  users[i * batch_size: (i+1) * batch_size, :],
               movielens.ITEM_COLUMN:
-                items[i * batch_size: (i+1) * batch_size, :],
+                  items[i * batch_size: (i+1) * batch_size, :],
           }
 
       output_types = {movielens.USER_COLUMN: tf.int32,

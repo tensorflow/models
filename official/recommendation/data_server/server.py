@@ -85,10 +85,11 @@ def fischer_yates_subsample(batch_size, buffer_size):
 
   p = 1 - batch_size / buffer_size
   sample_size = int(batch_size * (1 / p) * 1.2)
-  indicies = set(np.random.randint(low=0, high=buffer_size, size=(sample_size,)))
-  while len(indicies) < batch_size:
-    indicies = set(np.random.randint(low=0, high=buffer_size, size=(sample_size,)))
-  return np.random.choice(list(indicies), size=batch_size, replace=False)
+  indices = set(np.random.randint(low=0, high=buffer_size, size=(sample_size,)))
+  while len(indices) < batch_size:
+    indices = set(np.random.randint(low=0, high=buffer_size,
+                                    size=(sample_size,)))
+  return np.random.choice(list(indices), size=batch_size, replace=False)
 
 
 class TrainData(server_command_pb2_grpc.TrainDataServicer):
@@ -102,10 +103,12 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     if not tf.gfile.Exists(shard_dir):
       raise ValueError("shard_dir `{}` does not exist.".format(shard_dir))
     shards = tf.gfile.ListDirectory(shard_dir)
-    invalid_shards = [i for i in shards if not i.endswith(".pickle") and not tf.gfile.IsDirectory(os.path.join(shard_dir, i))]
+    invalid_shards = [i for i in shards if not i.endswith(".pickle")
+                      and not tf.gfile.IsDirectory(os.path.join(shard_dir, i))]
     if invalid_shards:
       raise ValueError("Invalid shard(s): {}".format(", ".join(invalid_shards)))
-    self.shards = [os.path.join(shard_dir, i) for i in shards if not tf.gfile.IsDirectory(os.path.join(shard_dir, i))]
+    self.shards = [os.path.join(shard_dir, i) for i in shards
+                   if not tf.gfile.IsDirectory(os.path.join(shard_dir, i))]
 
     self._map_fn = functools.partial(_process_shard, num_neg=num_neg,
                                      num_items=num_items)
@@ -147,14 +150,15 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     if shuffle:
       n = n or self._shuffle_buffer_size + k - 1
 
-      result = self.pool.apply(fischer_yates_subsample, kwds=dict(batch_size=k, buffer_size=n))
+      result = self.pool.apply(fischer_yates_subsample,
+                               kwds=dict(batch_size=k, buffer_size=n))
       return result
     return np.arange(k)
 
   def GetBatch(self, request, context):
     max_batch_size = request.max_batch_size
     shuffle = request.shuffle
-    subsample_indicies = self.get_subsample_indicies(
+    subsample_indices = self.get_subsample_indicies(
         k=max_batch_size, shuffle=shuffle)
 
     with self._buffer_lock:
@@ -163,11 +167,12 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
           buffer_size < max_batch_size):
         return server_command_pb2.Batch(users=b"", items=b"", labels=b"")
 
-      if buffer_size < self._shuffle_buffer_size + max_batch_size - 1 and not self._mapper_exhausted:
+      if (buffer_size < self._shuffle_buffer_size + max_batch_size - 1
+          and not self._mapper_exhausted):
         secondary_buffer = []
         new_buffer_size = buffer_size
-        while (new_buffer_size < self._shuffle_buffer_size * self._overfill_factor
-               and not self._mapper_exhausted):
+        while (new_buffer_size < self._shuffle_buffer_size *
+               self._overfill_factor and not self._mapper_exhausted):
           try:
             shard = self._mapper.next()
             secondary_buffer.append(shard)
@@ -187,22 +192,26 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
       if buffer_size >= self._shuffle_buffer_size + max_batch_size - 1:
         pass  # common case is computed outside of the lock.
       elif buffer_size > max_batch_size:
-        subsample_indicies = self.get_subsample_indicies(
+        subsample_indices = self.get_subsample_indicies(
             k=max_batch_size, n=buffer_size, shuffle=shuffle)
       else:
-        subsample_indicies = np.arange(buffer_size)
+        subsample_indices = np.arange(buffer_size)
 
-      batch_size = subsample_indicies.shape[0]
+      batch_size = subsample_indices.shape[0]
       output = [
-        self._buffer_arrays[i][subsample_indicies].copy() for i in range(3)
+          self._buffer_arrays[i][subsample_indices].copy() for i in range(3)
       ]
-      high_indicies = subsample_indicies[np.argwhere(subsample_indicies >= batch_size)[:, 0]]
-      low_indicies = subsample_indicies[np.argwhere(subsample_indicies < batch_size)[:, 0]]
+      high_indices = subsample_indices[
+          np.argwhere(subsample_indices >= batch_size)[:, 0]]
+      low_indices = subsample_indices[
+          np.argwhere(subsample_indices < batch_size)[:, 0]]
       low_index_conjugate = np.arange(batch_size)
-      low_index_conjugate[low_indicies] = -1
-      low_index_conjugate = low_index_conjugate[np.argwhere(low_index_conjugate >= 0)[:, 0]]
+      low_index_conjugate[low_indices] = -1
+      low_index_conjugate = low_index_conjugate[
+          np.argwhere(low_index_conjugate >= 0)[:, 0]]
       for i in range(3):
-        self._buffer_arrays[i][high_indicies] = self._buffer_arrays[i][low_index_conjugate]
+        self._buffer_arrays[i][high_indices] = \
+          self._buffer_arrays[i][low_index_conjugate]
         self._buffer_arrays[i] = self._buffer_arrays[i][batch_size:]
 
     n = output[0].shape[0]
@@ -221,7 +230,7 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     return response
 
 
-def sigint_handler(_signal, frame):
+def sigint_handler(signal, frame):
   absl_logging.info("Shutting down worker.")
 
 

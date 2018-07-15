@@ -60,7 +60,7 @@ class NCFDataset(object):
     assert true_ind.shape[0] == num_users
     self.eval_true_items = {
         test_data[0][movielens.USER_COLUMN][i]:
-          test_data[0][movielens.ITEM_COLUMN][i] for i in true_ind
+            test_data[0][movielens.ITEM_COLUMN][i] for i in true_ind
     }
     self.eval_all_items = {}
     stride = _NUMBER_NEGATIVES + 1
@@ -83,7 +83,7 @@ def _filter_index_sort(raw_rating_path):
 
   # Get the info of users who have more than 20 ratings on items
   grouped = df.groupby(movielens.USER_COLUMN)
-  df = grouped.filter(lambda x: len(x) >= _MIN_NUM_RATINGS)  # type: pd.DataFrame
+  df = grouped.filter(lambda x: len(x) >= _MIN_NUM_RATINGS)
 
   original_users = df[movielens.USER_COLUMN].unique()
   original_items = df[movielens.ITEM_COLUMN].unique()
@@ -207,7 +207,8 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
 
 def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
   num_rows = len(df)
-  approximate_partitions = np.linspace(0, num_rows, approx_num_shards + 1).astype("int")
+  approximate_partitions = np.linspace(
+      0, num_rows, approx_num_shards + 1).astype("int")
   start_ind, end_ind = 0, 0
   shards = []
 
@@ -217,7 +218,7 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
            df[movielens.USER_COLUMN][end_ind]):
       end_ind += 1
 
-    if not end_ind > start_ind:
+    if end_ind <= start_ind:
       continue  # imbalance from prior shard.
 
     df_shard = df[start_ind:end_ind]
@@ -236,7 +237,8 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
   tf.logging.info("Splitting train and test data and generating {} test "
                   "negatives per user...".format(_NUMBER_NEGATIVES))
   tf.gfile.MakeDirs(os.path.join(cache_dir, _TRAIN_SHARD_SUBDIR))
-  map_args = [(shards[i], i, cache_dir, num_items) for i in range(approx_num_shards)]
+  map_args = [(shards[i], i, cache_dir, num_items)
+              for i in range(approx_num_shards)]
   ctx = multiprocessing.get_context("spawn")
   with contextlib.closing(ctx.Pool(multiprocessing.cpu_count())) as pool:
     test_shards = pool.starmap(_train_eval_map_fn, map_args)
@@ -252,14 +254,14 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
   test_labels[0::(_NUMBER_NEGATIVES + 1)] = 1
 
   return ({
-    movielens.USER_COLUMN: test_users,
-    movielens.ITEM_COLUMN: test_items,
+      movielens.USER_COLUMN: test_users,
+      movielens.ITEM_COLUMN: test_items,
   }, test_labels)
 
 
 def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
   pts_per_epoch = movielens.NUM_RATINGS[dataset] * (1 + num_neg)
-  num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2) or 1
+  num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2)
   approx_num_shards = int(pts_per_epoch // _APPROX_PTS_PER_SHARD) or 1
 
   st = timeit.default_timer()
