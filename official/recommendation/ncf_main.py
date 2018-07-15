@@ -57,7 +57,7 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
-  among the randomly chosen 100 items that are not interacted by the user.
+  among the randomly chosen 999 items that are not interacted by the user.
   The performance of the ranked list is judged by Hit Ratio (HR) and Normalized
   Discounted Cumulative Gain (NDCG).
 
@@ -71,10 +71,9 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
     estimator: The Estimator.
     ncf_dataset: An NCFDataSet object, which contains the information about
       test/eval dataset, such as:
-      eval_true_items, which is a list of test items (true items) for HR and
-        NDCG calculation. Each item is for one user.
-      eval_all_items, which is a nested list. Each entry is the 101 items
-        (1 ground truth item and 100 negative items) for one user.
+        num_users: How many unique users are in the eval set.
+        test_data: The points which are used for consistent evaluation. These
+          are already included in the pred_input_fn.
     pred_input_fn: The input function for the test data.
 
   Returns:
@@ -102,9 +101,14 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
 
   tf.logging.info("Computing metrics...")
 
+  # NumPy has an np.argparition() method, however log(1000) is so small that
+  # sorting the whole array is simpler and fast enough.
   top_indicies = np.argsort(predicted_scores_by_user, axis=1)[:, -_TOP_K:]
   top_indicies = np.flip(top_indicies, axis=1)
 
+  # Both HR and NDCG vectorized computation takes advantage of the fact that if
+  # the positive example for a user is not in the top k, that index does not
+  # appear. That is to say:   hit_indicies.shape[0] <= num_users
   hit_indicies = np.argwhere(np.equal(top_indicies, 0))
   hr = hit_indicies.shape[0] / ncf_dataset.num_users
   ndcg = np.sum(np.log(2) / np.log(hit_indicies[:, 1] + 2)) / ncf_dataset.num_users
