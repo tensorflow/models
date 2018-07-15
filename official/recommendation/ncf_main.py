@@ -108,10 +108,10 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
 
   # Both HR and NDCG vectorized computation takes advantage of the fact that if
   # the positive example for a user is not in the top k, that index does not
-  # appear. That is to say:   hit_indicies.shape[0] <= num_users
-  hit_indicies = np.argwhere(np.equal(top_indicies, 0))
-  hr = hit_indicies.shape[0] / ncf_dataset.num_users
-  ndcg = np.sum(np.log(2) / np.log(hit_indicies[:, 1] + 2)) / ncf_dataset.num_users
+  # appear. That is to say:   hit_ind.shape[0] <= num_users
+  hit_ind = np.argwhere(np.equal(top_indicies, 0))
+  hr = hit_ind.shape[0] / ncf_dataset.num_users
+  ndcg = np.sum(np.log(2) / np.log(hit_ind[:, 1] + 2)) / ncf_dataset.num_users
 
   global_step = estimator.get_variable_value(tf.GraphKeys.GLOBAL_STEP)
   eval_results = {

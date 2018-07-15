@@ -145,10 +145,15 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
               raise StopIteration
             return users, items, labels
 
-          decoded_shard = tf.py_func(_decode_proto, inp=[rpc_op], Tout=(np.int32, np.uint16, np.int8))
+          decoded_shard = tf.py_func(
+              _decode_proto, inp=[rpc_op], Tout=(np.int32, np.uint16, np.int8))
+          decoded_users, decoded_items, decoded_labels = [
+            tf.reshape(decoded_shard[i], (batch_size, 1)) for i in range(3)
+          ]
+
           return {
-            movielens.USER_COLUMN: tf.reshape(decoded_shard[0], (batch_size, 1)),
-            movielens.ITEM_COLUMN: tf.reshape(decoded_shard[1], (batch_size, 1)),
+              movielens.USER_COLUMN: decoded_users,
+              movielens.ITEM_COLUMN: decoded_items,
           }, tf.reshape(decoded_shard[2], (batch_size, 1))
 
         reader_dataset = reader_dataset.map(
@@ -186,8 +191,10 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
         n_batches = int(np.ceil(n / batch_size))
         for i in range(n_batches):
           yield {
-            movielens.USER_COLUMN: users[i * batch_size: (i+1) * batch_size, :],
-            movielens.ITEM_COLUMN: items[i * batch_size: (i+1) * batch_size, :],
+              movielens.USER_COLUMN:
+                users[i * batch_size: (i+1) * batch_size, :],
+              movielens.ITEM_COLUMN:
+                items[i * batch_size: (i+1) * batch_size, :],
           }
 
       output_types = {movielens.USER_COLUMN: tf.int32,

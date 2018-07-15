@@ -59,8 +59,8 @@ class NCFDataset(object):
     true_ind = np.argwhere(test_data[1])[:, 0]
     assert true_ind.shape[0] == num_users
     self.eval_true_items = {
-      test_data[0][movielens.USER_COLUMN][i]:
-        test_data[0][movielens.ITEM_COLUMN][i] for i in true_ind
+        test_data[0][movielens.USER_COLUMN][i]:
+          test_data[0][movielens.ITEM_COLUMN][i] for i in true_ind
     }
     self.eval_all_items = {}
     stride = _NUMBER_NEGATIVES + 1
@@ -172,8 +172,8 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
         num_items=num_items, positive_set=set(block_items), n=_NUMBER_NEGATIVES,
         replacement=False)
     test_blocks.append((
-      block_user[0] * np.ones((_NUMBER_NEGATIVES + 1,), dtype=np.int32),
-      np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
+        block_user[0] * np.ones((_NUMBER_NEGATIVES + 1,), dtype=np.int32),
+        np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
     ))
     test_positives.append((block_user[0], block_items[-1]))
 
@@ -187,10 +187,10 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
 
   with tf.gfile.Open(train_shard_fpath, "wb") as f:
     pickle.dump({
-      movielens.USER_COLUMN: train_users,
-      movielens.ITEM_COLUMN: train_items,
-      TEST_POSITIVES: test_positives,  # can be excluded from false negative
-                                       # generation.
+        movielens.USER_COLUMN: train_users,
+        movielens.ITEM_COLUMN: train_items,
+        TEST_POSITIVES: test_positives,  # can be excluded from false negative
+                                         # generation.
     }, f)
 
 
@@ -200,8 +200,8 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
   assert test_items.shape[0] % (_NUMBER_NEGATIVES + 1) == 0
 
   return {
-    movielens.USER_COLUMN: test_users,
-    movielens.ITEM_COLUMN: test_items,
+      movielens.USER_COLUMN: test_users,
+      movielens.ITEM_COLUMN: test_items,
   }
 
 
@@ -221,10 +221,12 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
       continue  # imbalance from prior shard.
 
     df_shard = df[start_ind:end_ind]
+    user_shard = df_shard[movielens.USER_COLUMN].values.astype(np.int32)
+    item_shard = df_shard[movielens.ITEM_COLUMN].values.astype(np.uint16)
 
     shards.append({
-      movielens.USER_COLUMN: df_shard[movielens.USER_COLUMN].values.astype(np.int32),
-      movielens.ITEM_COLUMN: df_shard[movielens.ITEM_COLUMN].values.astype(np.uint16),
+        movielens.USER_COLUMN: user_shard,
+        movielens.ITEM_COLUMN: item_shard,
     })
 
     start_ind = end_ind
@@ -280,8 +282,8 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
     items = df[movielens.ITEM_COLUMN].values
     train_ind = np.argwhere(np.equal(users[:-1], users[1:]))[:, 0]
     train_data = {
-      movielens.USER_COLUMN: users[train_ind],
-      movielens.ITEM_COLUMN: items[train_ind],
+        movielens.USER_COLUMN: users[train_ind],
+        movielens.ITEM_COLUMN: items[train_ind],
     }
 
   ncf_dataset = NCFDataset(cache_dir=cache_dir, test_data=test_data,
@@ -314,5 +316,3 @@ if __name__ == "__main__":
       data_dir="/tmp/movielens_test"
   )
   absl_app.run(main)
-
-

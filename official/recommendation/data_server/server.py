@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import contextlib
 import functools
-import grpc
 from concurrent import futures
 import multiprocessing
 import os
@@ -31,6 +30,7 @@ import time
 from absl import app as absl_app
 from absl import logging as absl_logging
 from absl import flags
+import grpc
 import numpy as np
 import  tensorflow as tf
 
@@ -113,9 +113,9 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     self._mapper = None
     self._mapper_exhausted = True
     self._buffer_arrays = [
-      np.zeros((0,), dtype=np.int32),   # Users
-      np.zeros((0,), dtype=np.uint16),  # Items
-      np.zeros((0,), dtype=np.int8),    # Labels
+        np.zeros((0,), dtype=np.int32),   # Users
+        np.zeros((0,), dtype=np.uint16),  # Items
+        np.zeros((0,), dtype=np.int8),    # Labels
     ]
     self._shuffle_buffer_size = None
     self._overfill_factor = 2
@@ -177,9 +177,9 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
 
         if secondary_buffer:
           self._buffer_arrays = [
-            np.concatenate([self._buffer_arrays[i]] +
-                           [j[i] for j in secondary_buffer], axis=0)
-            for i in range(3)
+              np.concatenate([self._buffer_arrays[i]] +
+                             [j[i] for j in secondary_buffer], axis=0)
+              for i in range(3)
           ]
 
       buffer_size = self._buffer_arrays[0].shape[0]
@@ -209,9 +209,9 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     print("Serving batch: n = {}".format(n))
 
     return server_command_pb2.Batch(
-      users = bytes(memoryview(output[0])),
-      items = bytes(memoryview(output[1])),
-      labels = bytes(memoryview(output[2]))
+        users=bytes(memoryview(output[0])),
+        items=bytes(memoryview(output[1])),
+        labels=bytes(memoryview(output[2]))
     )
 
   def ShutdownServer(self, request, context):
