@@ -48,6 +48,7 @@ def make_stub():
 
 
 def alive():
+  # type: () -> bool
   try:
     response = make_stub().Alive(server_command_pb2.Check())
     return response.success
@@ -74,6 +75,7 @@ def _shutdown_thorough(proc):
 
 
 def initialize(dataset, data_dir, num_neg, num_data_readers=None, debug=False):
+  # type: (str, str, int, int, bool) -> prepare.NCFDataset
   ncf_dataset = prepare.run(dataset=dataset, data_dir=data_dir,
                             num_data_readers=num_data_readers, num_neg=num_neg,
                             debug=debug)
@@ -113,6 +115,7 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
     shuffle = training
 
   def input_fn():
+    # type: () -> tf.data.Dataset
     if training:
       if not alive():
         raise OSError("No train data GRPC server.")

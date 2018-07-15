@@ -26,6 +26,7 @@ import pickle
 import signal
 import sys
 import time
+import typing
 
 from absl import app as absl_app
 from absl import logging as absl_logging
@@ -41,6 +42,7 @@ from official.recommendation.data_server import server_command_pb2_grpc
 
 
 def _process_shard(shard_path, num_items, num_neg):
+  # type: (str, int, int) -> (np.ndarray, np.ndarray, np.ndarray)
   with tf.gfile.Open(shard_path, "rb") as f:
     shard = pickle.load(f)
 
@@ -80,6 +82,7 @@ def _process_shard(shard_path, num_items, num_neg):
 
 
 def fischer_yates_subsample(batch_size, buffer_size):
+  # type: (int, int) -> np.ndarray
   if batch_size / buffer_size >= 0.25:
     return np.random.choice(range(buffer_size), size=batch_size, replace=False)
 
@@ -94,6 +97,7 @@ def fischer_yates_subsample(batch_size, buffer_size):
 
 class TrainData(server_command_pb2_grpc.TrainDataServicer):
   def __init__(self, pool, shard_dir, num_neg, num_items, spillover):
+    # type: (multiprocessing.Pool, str, int, int, bool) -> None
     super(TrainData, self).__init__()
     self.pool = pool  # type: multiprocessing.Pool
     self._lock_manager = multiprocessing.Manager()
@@ -147,6 +151,7 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     return server_command_pb2.Ack(success=True)
 
   def get_subsample_indicies(self, k, n=None, shuffle=True):
+    # type: (int, int, bool) -> np.ndarray
     if shuffle:
       n = n or self._shuffle_buffer_size + k - 1
 
@@ -239,6 +244,7 @@ def init_worker():
 
 
 def run_server(port, num_workers, shard_dir, num_neg, num_items, spillover):
+  # type: (int, int, str, int, int, bool) -> None
   with contextlib.closing(multiprocessing.Pool(
       processes=num_workers, initializer=init_worker)) as pool:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=num_workers))

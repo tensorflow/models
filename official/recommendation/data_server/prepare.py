@@ -22,6 +22,7 @@ import multiprocessing
 import os
 import pickle
 import timeit
+import typing
 
 # pylint: disable=wrong-import-order
 from absl import app as absl_app
@@ -52,6 +53,7 @@ _NUMBER_NEGATIVES = 999
 class NCFDataset(object):
   def __init__(self, cache_dir, test_data, num_users, num_items,
                num_data_readers, train_data=None):
+    # type: (str, typing.Tuple[dict, np.ndarray], int, int, int, dict) -> None
     self.cache_dir = cache_dir
     self.train_shard_dir = os.path.join(cache_dir, _TRAIN_SHARD_SUBDIR)
     self.num_data_readers = num_data_readers
@@ -79,6 +81,7 @@ class NCFDataset(object):
 
 
 def _filter_index_sort(raw_rating_path):
+  # type: (str) -> (pd.DataFrame, int, int)
   df = pd.read_csv(raw_rating_path)
 
   # Get the info of users who have more than 20 ratings on items
@@ -116,6 +119,7 @@ def _filter_index_sort(raw_rating_path):
 
 
 def construct_false_negatives(num_items, positive_set, n, replacement=True):
+  # type: (int, typing.Iterable, int, bool) -> list
   if not isinstance(positive_set, set):
     positive_set = set(positive_set)
 
@@ -145,6 +149,7 @@ def construct_false_negatives(num_items, positive_set, n, replacement=True):
 
 
 def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
+  # type: (typing.Dict(np.ndarray), int, str, int) -> typing.Dict(np.ndarray)
   users = shard[movielens.USER_COLUMN]
   items = shard[movielens.ITEM_COLUMN]
   delta = users[1:] - users[:-1]
@@ -206,6 +211,7 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
 
 
 def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
+  # type: (pd.DataFrame, int, str, int) -> (typing.Dict[np.ndarray], np.ndarray)
   num_rows = len(df)
   approximate_partitions = np.linspace(
       0, num_rows, approx_num_shards + 1).astype("int")
@@ -260,6 +266,7 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
 
 
 def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
+  # type: (str, str, int, int, bool) -> NCFDataset
   pts_per_epoch = movielens.NUM_RATINGS[dataset] * (1 + num_neg)
   num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2)
   approx_num_shards = int(pts_per_epoch // _APPROX_PTS_PER_SHARD) or 1

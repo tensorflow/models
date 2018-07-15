@@ -124,6 +124,7 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
 
 
 def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
+  # type: (tf.keras.Model, int, str) -> tf.estimator.Estimator
   """Configure and convert keras model to Estimator.
 
   Args:
