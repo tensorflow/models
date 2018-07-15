@@ -27,6 +27,7 @@ import math
 import multiprocessing
 import os
 import signal
+import typing
 
 # pylint: disable=g-bad-import-order
 import numpy as np
@@ -38,6 +39,7 @@ import tensorflow as tf
 from official.datasets import movielens
 from official.recommendation import neumf_model
 from official.recommendation.data_server import pipeline
+from official.recommendation.data_server import prepare
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -51,6 +53,7 @@ _NDCG_KEY = "NDCG"
 
 
 def evaluate_model(estimator, ncf_dataset, pred_input_fn):
+  # type: (tf.estimator.Estimator, prepare.NCFDataset, typing.Callable) -> dict
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
@@ -86,46 +89,26 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
       and global_step is the global step
   """
 
+  tf.logging.info("Computing predictions for eval set...")
+
   # Get predictions
-  predictions = estimator.predict(input_fn=pred_input_fn)
+  predictions = estimator.predict(input_fn=pred_input_fn,
+                                  yield_single_examples=False)
+  prediction_batches = [p[movielens.RATING_COLUMN] for p in predictions]
 
-  all_predicted_scores = [p[movielens.RATING_COLUMN] for p in predictions]
-
-  # Calculate HR score
-  def _get_hr(ranklist, true_item):
-    return 1 if true_item in ranklist else 0
-
-  # Calculate NDCG score
-  def _get_ndcg(ranklist, true_item):
-    if true_item in ranklist:
-      return math.log(2) / math.log(ranklist.index(true_item) + 2)
-    return 0
-
-  hits, ndcgs = [], []
-  num_users = ncf_dataset.num_users
   # Reshape the predicted scores and each user takes one row
-  predicted_scores_list = np.asarray(
-      all_predicted_scores).reshape(num_users, -1)
+  predicted_scores_by_user = np.concatenate(prediction_batches, axis=0).reshape(
+      ncf_dataset.num_users, -1)
 
-  for i in range(num_users):
-    items = ncf_dataset.eval_all_items[i]
-    predicted_scores = predicted_scores_list[i]
-    # Map item and score for each user
-    map_item_score = {}
-    for j, item in enumerate(items):
-      score = predicted_scores[j]
-      map_item_score[item] = score
+  tf.logging.info("Computing metrics...")
 
-    # Evaluate top rank list with HR and NDCG
-    ranklist = heapq.nlargest(_TOP_K, map_item_score, key=map_item_score.get)
-    true_item = ncf_dataset.eval_true_items[i]
-    hr = _get_hr(ranklist, true_item)
-    ndcg = _get_ndcg(ranklist, true_item)
-    hits.append(hr)
-    ndcgs.append(ndcg)
+  top_indicies = np.argsort(predicted_scores_by_user, axis=1)[:, -_TOP_K:]
+  top_indicies = np.flip(top_indicies, axis=1)
 
-  # Get average HR and NDCG scores
-  hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+  hit_indicies = np.argwhere(np.equal(top_indicies, 0))
+  hr = hit_indicies.shape[0] / ncf_dataset.num_users
+  ndcg = np.sum(np.log(2) / np.log(hit_indicies[:, 1] + 2)) / ncf_dataset.num_users
+
   global_step = estimator.get_variable_value(tf.GraphKeys.GLOBAL_STEP)
   eval_results = {
       _HR_KEY: hr,

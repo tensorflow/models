@@ -45,8 +45,8 @@ _APPROX_PTS_PER_SHARD = 32000
 _MIN_NUM_RATINGS = 20
 
 # The number of negative examples attached with a positive example
-# in training dataset. It is set as 100 in the paper.
-_NUMBER_NEGATIVES = 1000
+# in training dataset.
+_NUMBER_NEGATIVES = 999
 
 
 class NCFDataset(object):
@@ -68,6 +68,7 @@ class NCFDataset(object):
       user = test_data[0][movielens.USER_COLUMN][i * stride]
       items = test_data[0][movielens.ITEM_COLUMN][i * stride: (i + 1) * stride]
       self.eval_all_items[user] = items.tolist()
+      assert len(self.eval_all_items[user]) == len(self.eval_all_items[user])
 
     self.num_users = num_users
     self.num_items = num_items
@@ -114,19 +115,31 @@ def _filter_index_sort(raw_rating_path):
   return df, num_users, num_items
 
 
-def construct_false_negatives(num_items, positive_set, n):
+def construct_false_negatives(num_items, positive_set, n, replacement=True):
   if not isinstance(positive_set, set):
     positive_set = set(positive_set)
 
   p = 1 - len(positive_set) /  num_items
   n_attempt = int(n * (1 / p) * 1.2)  # factor of 1.2 for safety
-  negatives = []
+
+  if replacement:
+    negatives = []
+  else:
+    negatives = set()
+
   while len(negatives) < n:
     negative_candidates = np.random.randint(
         low=0, high=num_items, size=(n_attempt,))
-    negatives.extend(
-        [i for i in negative_candidates if i not in positive_set]
-    )
+    if replacement:
+      negatives.extend(
+          [i for i in negative_candidates if i not in positive_set]
+      )
+    else:
+      negatives |= (set(negative_candidates) - positive_set)
+
+  if not replacement:
+    negatives = list(negatives)
+    np.random.shuffle(negatives)
 
   return negatives[:n]
 
@@ -156,7 +169,8 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
     train_blocks.append((block_user[:-1], block_items[:-1]))
 
     test_negatives = construct_false_negatives(
-        num_items=num_items, positive_set=set(block_items), n=_NUMBER_NEGATIVES)
+        num_items=num_items, positive_set=set(block_items), n=_NUMBER_NEGATIVES,
+        replacement=False)
     test_blocks.append((
       block_user[0] * np.ones((_NUMBER_NEGATIVES + 1,), dtype=np.int32),
       np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
