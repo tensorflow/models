@@ -96,8 +96,9 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   prediction_batches = [p[movielens.RATING_COLUMN] for p in predictions]
 
   # Reshape the predicted scores and each user takes one row
-  predicted_scores_by_user = np.concatenate(prediction_batches, axis=0).reshape(
-      ncf_dataset.num_users, -1)
+  predicted_scores_by_user = np.concatenate(prediction_batches, axis=0)[
+    :ncf_dataset.num_users * (1 + prepare._NUMBER_NEGATIVES)].reshape(
+    ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
 
