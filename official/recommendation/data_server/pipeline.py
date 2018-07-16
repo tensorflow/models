@@ -172,6 +172,10 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
       dataset = dataset.apply(interleave)
 
     else:
+      eval_batch_size = (1 + prepare._NUMBER_NEGATIVES) * 32
+      n = ncf_dataset.test_data[0][movielens.USER_COLUMN].shape[0]
+      assert (n % eval_batch_size) == 0
+
       # Using Dataset.from_generator() rather than
       # Dataset.from_tensor_slices().batch() has two benefits:
       #   1) The test data does not have to be serialized into the TensorFlow
@@ -185,20 +189,19 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
                                axis=1)
         items = np.expand_dims(ncf_dataset.test_data[0][movielens.ITEM_COLUMN],
                                axis=1)
-        n = users.shape[0]
-        n_batches = int(np.ceil(n / batch_size))
+        n_batches = int(n // eval_batch_size)
         for i in range(n_batches):
           yield {
               movielens.USER_COLUMN:
-                  users[i * batch_size: (i+1) * batch_size, :],
+                  users[i * eval_batch_size: (i+1) * eval_batch_size, :],
               movielens.ITEM_COLUMN:
-                  items[i * batch_size: (i+1) * batch_size, :],
+                  items[i * eval_batch_size: (i+1) * eval_batch_size, :],
           }
 
       output_types = {movielens.USER_COLUMN: tf.int32,
                       movielens.ITEM_COLUMN: tf.uint16}
-      output_shapes = {movielens.USER_COLUMN: tf.TensorShape([None, 1]),
-                       movielens.ITEM_COLUMN: tf.TensorShape([None, 1])}
+      output_shapes = {movielens.USER_COLUMN: tf.TensorShape([eval_batch_size, 1]),
+                       movielens.ITEM_COLUMN: tf.TensorShape([eval_batch_size, 1])}
 
       dataset = tf.data.Dataset.from_generator(
           _pred_generator, output_types=output_types,

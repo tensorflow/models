@@ -39,6 +39,131 @@ import tensorflow as tf
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
 
 
+def neumf_model_fn(features, labels, mode, params):
+  users = tf.squeeze(features[movielens.USER_COLUMN])
+  items = tf.cast(tf.squeeze(features[movielens.ITEM_COLUMN]), dtype=tf.int32)
+
+  num_users = params["num_users"]
+  num_items = params["num_items"]
+
+  model_layers = params["model_layers"]
+
+  mf_regularization = params["mf_regularization"]
+  mlp_reg_layers = params["mlp_reg_layers"]
+
+  if model_layers[0] % 2:
+    raise ValueError("The first layer size should be multiple of 2!")
+
+  mf_dim = params["mf_dim"]
+  mlp_dim = model_layers[0]//2
+
+
+  user_mf_embedding_table = tf.get_variable(
+      name="user_mf_embedding_table",
+      shape=(num_users, mf_dim),
+      dtype=tf.float32,
+      initializer=tf.glorot_uniform_initializer())
+
+  item_mf_embedding_table = tf.get_variable(
+      name="item_mf_embedding_table",
+      shape=(num_items, mf_dim),
+      dtype=tf.float32,
+      initializer=tf.glorot_uniform_initializer())
+
+  mf_embedding_user = tf.nn.embedding_lookup(
+      params=user_mf_embedding_table, ids=users, name="mf_embedding_user")
+
+  mf_embedding_item = tf.nn.embedding_lookup(
+      params=item_mf_embedding_table, ids=items, name="mf_embedding_item")
+
+  mf_vector = tf.expand_dims(
+      tf.einsum("ij,ij->i", mf_embedding_user, mf_embedding_item), axis=1)
+
+  user_mlp_embedding_table = tf.get_variable(
+      name="user_mlp_embedding_table",
+      shape=(num_users, mlp_dim),
+      dtype=tf.float32,
+      initializer=tf.glorot_uniform_initializer())
+
+  item_mlp_embedding_table = tf.get_variable(
+      name="item_mlp_embedding_table",
+      shape=(num_items, mlp_dim),
+      dtype=tf.float32,
+      initializer=tf.glorot_uniform_initializer())
+
+  mlp_embedding_user = tf.nn.embedding_lookup(
+      params=user_mlp_embedding_table, ids=users, name="mlp_embedding_user")
+
+  mlp_embedding_item = tf.nn.embedding_lookup(
+      params=item_mlp_embedding_table, ids=items, name="mlp_embedding_item")
+
+  mlp_vector = tf.concat([mlp_embedding_user, mlp_embedding_item], axis=1)
+
+  for layer in xrange(1, len(model_layers)):
+    mlp_vector = tf.layers.Dense(
+        units=model_layers[layer],
+        activation="relu",
+        # TODO(robieta): regularizer
+    )(mlp_vector)
+
+  # Concatenate GMF and MLP parts
+  predict_vector = tf.concat([mf_vector, mlp_vector], axis=1)
+
+  logits = tf.layers.Dense(
+      units=1, kernel_initializer="lecun_uniform"
+  )(predict_vector)
+
+  if mode == tf.estimator.ModeKeys.PREDICT:
+    predictions = {
+      movielens.RATING_COLUMN: tf.sigmoid(logits)
+    }
+    return tf.estimator.EstimatorSpec(
+        mode=tf.estimator.ModeKeys.PREDICT,
+        predictions=predictions
+    )
+
+  elif mode == tf.estimator.ModeKeys.TRAIN:
+    optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
+    losses = tf.nn.sigmoid_cross_entropy_with_logits(
+        labels=tf.cast(tf.squeeze(labels), tf.float32),
+        logits=tf.squeeze(logits)
+    )
+    loss = tf.reduce_mean(losses)
+
+    global_step = tf.train.get_global_step()
+    tvars = tf.trainable_variables()
+    gradients = optimizer.compute_gradients(
+        loss, tvars, colocate_gradients_with_ops=True)
+    minimize_op = optimizer.apply_gradients(
+        gradients, global_step=global_step, name="train")
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    train_op = tf.group(minimize_op, update_ops)
+
+    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+
+  else:
+    raise NotImplementedError
+
+
+
+  # print(mf_embedding_user)
+  # print(mf_embedding_item)
+  # print(mf_vector)
+  #
+  # print()
+  # print(mlp_embedding_user)
+  # print(mlp_embedding_item)
+  # print(mlp_vector)
+  #
+  # print()
+  # print(predict_vector)
+  # print(logits)
+  # print(loss)
+  #
+  # import sys
+  # sys.exit()
+
+
 class NeuMF(tf.keras.models.Model):
   """Neural matrix factorization (NeuMF) model for recommendations."""
 

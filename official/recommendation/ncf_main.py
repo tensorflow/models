@@ -154,6 +154,14 @@ def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
   return estimator
 
 
+def construct_estimator(num_gpus, model_dir, params):
+  distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
+  run_config = tf.estimator.RunConfig(train_distribute=distribution)
+  return tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
+                                model_dir=model_dir, config=run_config,
+                                params=params)
+
+
 def main(_):
   with logger.benchmark_context(FLAGS):
     run_ncf(FLAGS)
@@ -170,16 +178,30 @@ def run_ncf(_):
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  # Create NeuMF model and convert it to Estimator
-  tf.logging.info("Creating Estimator from Keras model...")
-  layers = [int(layer) for layer in FLAGS.layers]
-  mlp_regularization = [float(reg) for reg in FLAGS.mlp_regularization]
-  keras_model = neumf_model.NeuMF(
-      ncf_dataset.num_users, ncf_dataset.num_items, FLAGS.num_factors,
-      layers, FLAGS.batch_size, FLAGS.mf_regularization,
-      mlp_regularization)
+  params = {
+    "learning_rate": FLAGS.learning_rate,
+    "num_users": ncf_dataset.num_users,
+    "num_items": ncf_dataset.num_items,
+    "mf_dim": FLAGS.num_factors,
+    "model_layers": [int(layer) for layer in FLAGS.layers],
+    "mf_regularization": FLAGS.mf_regularization,
+    "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
+  }
+
   num_gpus = flags_core.get_num_gpus(FLAGS)
-  estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
+  estimator = construct_estimator(
+      num_gpus=num_gpus, model_dir=FLAGS.model_dir, params=params)
+
+
+  # tf.logging.info("Creating Estimator from Keras model...")
+  # layers = [int(layer) for layer in FLAGS.layers]
+  # mlp_regularization = [float(reg) for reg in FLAGS.mlp_regularization]
+  # keras_model = neumf_model.NeuMF(
+  #     ncf_dataset.num_users, ncf_dataset.num_items, FLAGS.num_factors,
+  #     layers, FLAGS.batch_size, FLAGS.mf_regularization,
+  #     mlp_regularization)
+  # num_gpus = flags_core.get_num_gpus(FLAGS)
+  # estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
