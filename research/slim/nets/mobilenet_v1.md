@@ -30,22 +30,25 @@ Model  | Million MACs | Million Parameters | Top-1 Accuracy| Top-5 Accuracy |
 [MobileNet_v1_0.25_192](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.25_192.tgz)|34|0.47|47.7|72.3|
 [MobileNet_v1_0.25_160](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.25_160.tgz)|21|0.47|45.5|70.3|
 [MobileNet_v1_0.25_128](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.25_128.tgz)|14|0.47|41.5|66.3|
-[MobileNet_v1_1.0_224_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_224_quant.tgz)|569|4.24|69.7|89.5|
-[MobileNet_v1_1.0_192_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_192_quant.tgz)|418|4.24|69.0|88.9|
-[MobileNet_v1_1.0_160_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_160_quant.tgz)|291|4.24|67.3|87.7|
-[MobileNet_v1_1.0_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_128_quant.tgz)|186|4.24|64.0|85.5|
-[MobileNet_v1_0.75_224_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.75_224_quant.tgz)|317|2.59|67.9|88.1|
-[MobileNet_v1_0.75_192_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.75_192_quant.tgz)|233|2.59|66.2|87.1|
-[MobileNet_v1_0.75_160_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.75_160_quant.tgz)|162|2.59|63.9|85.5|
-[MobileNet_v1_0.75_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.75_128_quant.tgz)|104|2.59|59.8|82.8|
-[MobileNet_v1_0.50_224_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.5_224_quant.tgz)|150|1.34|62.2|84.5|
-[MobileNet_v1_0.50_192_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.5_192_quant.tgz)|110|1.34|60.4|83.2|
-[MobileNet_v1_0.50_160_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.5_160_quant.tgz)|77|1.34|57.7|81.3|
-[MobileNet_v1_0.50_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.5_128_quant.tgz)|49|1.34|54.9|78.9|
-[MobileNet_v1_0.25_224_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.25_224_quant.tgz)|41|0.47|48.2|73.8|
-[MobileNet_v1_0.25_192_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.25_192_quant.tgz)|34|0.47|45.8|71.9|
-[MobileNet_v1_0.25_160_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.25_160_quant.tgz)|21|0.47|43.5|69.1|
-[MobileNet_v1_0.25_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_0.25_128_quant.tgz)|14|0.47|39.9|65.8|
+[MobileNet_v1_1.0_224_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_1.0_224_quant.tgz)|569|4.24|69.3|89.5|
+[MobileNet_v1_1.0_192_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_1.0_192_quant.tgz)|418|4.24|69.2|88.9|
+[MobileNet_v1_1.0_160_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_1.0_160_quant.tgz)|291|4.24|66.6|87.7|
+[MobileNet_v1_1.0_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_1.0_128_quant.tgz)|186|4.24|62.7|85.5|
+[MobileNet_v1_0.75_224_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.75_224_quant.tgz)|317|2.59|67.9|88.1|
+[MobileNet_v1_0.75_192_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.75_192_quant.tgz)|233|2.59|61.1|87.1|
+[MobileNet_v1_0.75_160_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.75_160_quant.tgz)|162|2.59|63.6|85.5|
+[MobileNet_v1_0.75_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.75_128_quant.tgz)|104|2.59|52.7|82.8|
+[MobileNet_v1_0.50_224_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.5_224_quant.tgz)|150|1.34|61.0|84.5|
+[MobileNet_v1_0.50_192_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.5_192_quant.tgz)|110|1.34|69.1|83.2|
+[MobileNet_v1_0.50_160_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.5_160_quant.tgz)|77|1.34|57.6|81.3|
+[MobileNet_v1_0.50_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.5_128_quant.tgz)|49|1.34|54.1|78.9|
+[MobileNet_v1_0.25_224_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.25_224_quant.tgz)|41|0.47|46.4|73.8|
+[MobileNet_v1_0.25_192_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.25_192_quant.tgz)|34|0.47|45.3|71.9|
+[MobileNet_v1_0.25_160_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.25_160_quant.tgz)|21|0.47|41.9|69.1|
+[MobileNet_v1_0.25_128_quant](http://download.tensorflow.org/models/mobilenet_v1_2018_07_12/mobilenet_v1_0.25_128_quant.tgz)|14|0.47|39.7|65.8|
+
+Revisions to models:
+* July 12, 2018: Update to TFLite models that fixes an accuracy issue resolved by making conversion support weights with narrow_range.
 
 The linked model tar files contain the following:
 * Trained model checkpoints
