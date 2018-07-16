@@ -71,8 +71,9 @@ class NeuMF(tf.keras.models.Model):
     item_input = tf.keras.layers.Input(
         shape=(1,), dtype=tf.uint16, name=movielens.ITEM_COLUMN)
 
-    # Initializer for embedding layer
-    embedding_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
+    # Initializer for embedding layers
+    embedding_initializer = "glorot_uniform"
+
     # Embedding layers of GMF and MLP
     mf_embedding_user = tf.keras.layers.Embedding(
         num_users,
