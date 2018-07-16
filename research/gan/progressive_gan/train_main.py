@@ -48,14 +48,18 @@ flags.DEFINE_integer('scale_base', 2, 'Resolution multiplier.')
 
 flags.DEFINE_integer('num_resolutions', 4, 'Number of progressive resolutions.')
 
+flags.DEFINE_list(
+    'batch_size_schedule', [8, 8, 4],
+    'A list of batch sizes for each resolution, if '
+    'len(batch_size_schedule) < num_resolutions, pad the schedule in the '
+    'beginning with the first batch size.')
+
 flags.DEFINE_integer('kernel_size', 3, 'Convolution kernel size.')
 
 flags.DEFINE_integer('colors', 3, 'Number of image channels.')
 
 flags.DEFINE_bool('to_rgb_use_tanh_activation', False,
                   'Whether to apply tanh activation when output rgb.')
-
-flags.DEFINE_integer('batch_size', 8, 'Number of images in each batch.')
 
 flags.DEFINE_integer('stable_stage_num_images', 1000,
                      'Number of images in the stable stage.')
@@ -123,11 +127,10 @@ def _make_config_from_flags():
                for flag in FLAGS.get_key_flags_for_module(sys.argv[0])])
 
 
-def _provide_real_images(**kwargs):
+def _provide_real_images(batch_size, **kwargs):
   """Provides real images."""
   dataset_name = kwargs.get('dataset_name')
   dataset_file_pattern = kwargs.get('dataset_file_pattern')
-  batch_size = kwargs['batch_size']
   colors = kwargs['colors']
   final_height, final_width = train.make_resolution_schedule(
       **kwargs).final_resolutions
@@ -156,12 +159,13 @@ def main(_):
   logging.info('\n'.join(['{}={}'.format(k, v) for k, v in config.iteritems()]))
 
   for stage_id in train.get_stage_ids(**config):
+    batch_size = train.get_batch_size(stage_id, **config)
     tf.reset_default_graph()
     with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
       real_images = None
       with tf.device('/cpu:0'), tf.name_scope('inputs'):
-        real_images = _provide_real_images(**config)
-      model = train.build_model(stage_id, real_images, **config)
+        real_images = _provide_real_images(batch_size, **config)
+      model = train.build_model(stage_id, batch_size, real_images, **config)
       train.add_model_summaries(model, **config)
       train.train(model, **config)
 
