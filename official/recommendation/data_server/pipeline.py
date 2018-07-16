@@ -188,26 +188,35 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
         n = users.shape[0]
         n_batches = int(np.ceil(n / batch_size))
         for i in range(n_batches):
-          batch = {
-              movielens.USER_COLUMN:
-                  users[i * batch_size: (i+1) * batch_size, :],
-              movielens.ITEM_COLUMN:
-                  items[i * batch_size: (i+1) * batch_size, :],
+          batch_users = users[i * batch_size: (i+1) * batch_size, :]
+          batch_items = items[i * batch_size: (i+1) * batch_size, :]
+          num_in_batch = batch_users.shape[0]
+          delta = batch_size - num_in_batch
+          if delta:
+            batch_users = np.pad(batch_users, ((0, delta), (0, 0)), "constant")
+            batch_items = np.pad(batch_items, ((0, delta), (0, 0)), "constant")
+
+          yield {
+              movielens.USER_COLUMN: batch_users,
+              movielens.ITEM_COLUMN: batch_items,
+              "n": num_in_batch,
           }
 
-          # predict function must know to ignore padded values
-          num_in_batch = batch[movielens.USER_COLUMN].shape[0]
-          if num_in_batch < batch_size:
-            batch[movielens.USER_COLUMN] = \
-              np.pad(batch[movielens.USER_COLUMN], ((0, batch_size - num_in_batch), (0, 0)), "constant")
-            batch[movielens.ITEM_COLUMN] = \
-              np.pad(batch[movielens.ITEM_COLUMN], ((0, batch_size - num_in_batch), (0, 0)), "constant")
-          yield batch
+          # # predict function must know to ignore padded values
+          # num_in_batch = batch[movielens.USER_COLUMN].shape[0]
+          # if num_in_batch < batch_size:
+          #   batch[movielens.USER_COLUMN] = \
+          #     np.pad(batch[movielens.USER_COLUMN], ((0, batch_size - num_in_batch), (0, 0)), "constant")
+          #   batch[movielens.ITEM_COLUMN] = \
+          #     np.pad(batch[movielens.ITEM_COLUMN], ((0, batch_size - num_in_batch), (0, 0)), "constant")
+          # yield batch
 
       output_types = {movielens.USER_COLUMN: tf.int32,
-                      movielens.ITEM_COLUMN: tf.uint16}
+                      movielens.ITEM_COLUMN: tf.uint16,
+                      "n": tf.int64}
       output_shapes = {movielens.USER_COLUMN: tf.TensorShape([batch_size, 1]),
-                       movielens.ITEM_COLUMN: tf.TensorShape([batch_size, 1])}
+                       movielens.ITEM_COLUMN: tf.TensorShape([batch_size, 1]),
+                       "n": tf.TensorShape(None)}
 
       dataset = tf.data.Dataset.from_generator(
           _pred_generator, output_types=output_types,

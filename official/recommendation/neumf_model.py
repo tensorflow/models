@@ -33,6 +33,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import typing
+
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
@@ -51,71 +53,17 @@ def neumf_model_fn(features, labels, mode, params):
   mf_regularization = params["mf_regularization"]
   mlp_reg_layers = params["mlp_reg_layers"]
 
-  if model_layers[0] % 2:
-    raise ValueError("The first layer size should be multiple of 2!")
-
   mf_dim = params["mf_dim"]
-  mlp_dim = model_layers[0]//2
 
-
-  user_mf_embedding_table = tf.get_variable(
-      name="user_mf_embedding_table",
-      shape=(num_users, mf_dim),
-      dtype=tf.float32,
-      initializer=tf.glorot_uniform_initializer())
-
-  item_mf_embedding_table = tf.get_variable(
-      name="item_mf_embedding_table",
-      shape=(num_items, mf_dim),
-      dtype=tf.float32,
-      initializer=tf.glorot_uniform_initializer())
-
-  mf_embedding_user = tf.nn.embedding_lookup(
-      params=user_mf_embedding_table, ids=users, name="mf_embedding_user")
-
-  mf_embedding_item = tf.nn.embedding_lookup(
-      params=item_mf_embedding_table, ids=items, name="mf_embedding_item")
-
-  mf_vector = tf.expand_dims(
-      tf.einsum("ij,ij->i", mf_embedding_user, mf_embedding_item), axis=1)
-
-  user_mlp_embedding_table = tf.get_variable(
-      name="user_mlp_embedding_table",
-      shape=(num_users, mlp_dim),
-      dtype=tf.float32,
-      initializer=tf.glorot_uniform_initializer())
-
-  item_mlp_embedding_table = tf.get_variable(
-      name="item_mlp_embedding_table",
-      shape=(num_items, mlp_dim),
-      dtype=tf.float32,
-      initializer=tf.glorot_uniform_initializer())
-
-  mlp_embedding_user = tf.nn.embedding_lookup(
-      params=user_mlp_embedding_table, ids=users, name="mlp_embedding_user")
-
-  mlp_embedding_item = tf.nn.embedding_lookup(
-      params=item_mlp_embedding_table, ids=items, name="mlp_embedding_item")
-
-  mlp_vector = tf.concat([mlp_embedding_user, mlp_embedding_item], axis=1)
-
-  for layer in xrange(1, len(model_layers)):
-    mlp_vector = tf.layers.Dense(
-        units=model_layers[layer],
-        activation="relu",
-        # TODO(robieta): regularizer
-    )(mlp_vector)
-
-  # Concatenate GMF and MLP parts
-  predict_vector = tf.concat([mf_vector, mlp_vector], axis=1)
-
-  logits = tf.layers.Dense(
-      units=1, kernel_initializer="lecun_uniform"
-  )(predict_vector)
+  model = NeuMF(num_users=num_users, num_items=num_items, mf_dim=mf_dim,
+                model_layers=model_layers, mf_regularization=mf_regularization,
+                mlp_reg_layers=mlp_reg_layers, final_activation=None)
+  logits = model([users, items])
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     predictions = {
-      movielens.RATING_COLUMN: tf.sigmoid(logits)
+      movielens.RATING_COLUMN: tf.sigmoid(logits[:features["n"]]),
+      "n": features["n"],  # Tells the caller how to drop padded values.
     }
     return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.PREDICT,
@@ -145,30 +93,12 @@ def neumf_model_fn(features, labels, mode, params):
     raise NotImplementedError
 
 
-
-  # print(mf_embedding_user)
-  # print(mf_embedding_item)
-  # print(mf_vector)
-  #
-  # print()
-  # print(mlp_embedding_user)
-  # print(mlp_embedding_item)
-  # print(mlp_vector)
-  #
-  # print()
-  # print(predict_vector)
-  # print(logits)
-  # print(loss)
-  #
-  # import sys
-  # sys.exit()
-
-
 class NeuMF(tf.keras.models.Model):
   """Neural matrix factorization (NeuMF) model for recommendations."""
 
-  def __init__(self, num_users, num_items, mf_dim, model_layers, batch_size,
-               mf_regularization, mlp_reg_layers):
+  def __init__(self, num_users, num_items, mf_dim, model_layers,
+               mf_regularization, mlp_reg_layers, final_activation="sigmoid"):
+    # type: (int, int, int, list, float, list, typing.Union[str, None]) -> None
     """Initialize NeuMF model.
 
     Args:
@@ -178,7 +108,6 @@ class NeuMF(tf.keras.models.Model):
       model_layers: A list of integers for Multi-Layer Perceptron (MLP) layers.
         Note that the first layer is the concatenation of user and item
         embeddings. So model_layers[0]//2 is the embedding size for MLP.
-      batch_size: An integer for the batch size.
       mf_regularization: A floating number, the regularization factor for MF
         embeddings.
       mlp_reg_layers: A list of floating numbers, the regularization factors for
@@ -253,7 +182,7 @@ class NeuMF(tf.keras.models.Model):
 
     # Final prediction layer
     prediction = tf.keras.layers.Dense(
-        1, activation="sigmoid", kernel_initializer="lecun_uniform",
+        1, activation=final_activation, kernel_initializer="lecun_uniform",
         name=movielens.RATING_COLUMN)(predict_vector)
 
     super(NeuMF, self).__init__(

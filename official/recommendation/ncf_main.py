@@ -96,8 +96,7 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   prediction_batches = [p[movielens.RATING_COLUMN] for p in predictions]
 
   # Reshape the predicted scores and each user takes one row
-  predicted_scores_by_user = np.concatenate(prediction_batches, axis=0)[
-    :ncf_dataset.num_users * (1 + prepare._NUMBER_NEGATIVES)].reshape(
+  predicted_scores_by_user = np.concatenate(prediction_batches, axis=0).reshape(
     ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
@@ -124,37 +123,6 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   return eval_results
 
 
-def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
-  # type: (tf.keras.Model, int, str) -> tf.estimator.Estimator
-  """Configure and convert keras model to Estimator.
-
-  Args:
-    keras_model: A Keras model object.
-    num_gpus: An integer, the number of gpus.
-    model_dir: A string, the directory to save and restore checkpoints.
-
-  Returns:
-    est_model: The converted Estimator.
-  """
-  optimizer = tf.train.AdamOptimizer(
-      learning_rate=FLAGS.learning_rate)
-  keras_model.compile(optimizer=optimizer, loss="binary_crossentropy")
-
-  if num_gpus == 0:
-    distribution = tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
-  elif num_gpus == 1:
-    distribution = tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
-  else:
-    distribution = tf.contrib.distribute.MirroredStrategy(num_gpus=num_gpus)
-
-  run_config = tf.estimator.RunConfig(train_distribute=distribution)
-
-  estimator = tf.keras.estimator.model_to_estimator(
-      keras_model=keras_model, model_dir=model_dir, config=run_config)
-
-  return estimator
-
-
 def construct_estimator(num_gpus, model_dir, params):
   distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
   run_config = tf.estimator.RunConfig(train_distribute=distribution)
@@ -179,30 +147,17 @@ def run_ncf(_):
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  params = {
-    "learning_rate": FLAGS.learning_rate,
-    "num_users": ncf_dataset.num_users,
-    "num_items": ncf_dataset.num_items,
-    "mf_dim": FLAGS.num_factors,
-    "model_layers": [int(layer) for layer in FLAGS.layers],
-    "mf_regularization": FLAGS.mf_regularization,
-    "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
-  }
-
   num_gpus = flags_core.get_num_gpus(FLAGS)
   estimator = construct_estimator(
-      num_gpus=num_gpus, model_dir=FLAGS.model_dir, params=params)
-
-
-  # tf.logging.info("Creating Estimator from Keras model...")
-  # layers = [int(layer) for layer in FLAGS.layers]
-  # mlp_regularization = [float(reg) for reg in FLAGS.mlp_regularization]
-  # keras_model = neumf_model.NeuMF(
-  #     ncf_dataset.num_users, ncf_dataset.num_items, FLAGS.num_factors,
-  #     layers, FLAGS.batch_size, FLAGS.mf_regularization,
-  #     mlp_regularization)
-  # num_gpus = flags_core.get_num_gpus(FLAGS)
-  # estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
+      num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
+        "learning_rate": FLAGS.learning_rate,
+        "num_users": ncf_dataset.num_users,
+        "num_items": ncf_dataset.num_items,
+        "mf_dim": FLAGS.num_factors,
+        "model_layers": [int(layer) for layer in FLAGS.layers],
+        "mf_regularization": FLAGS.mf_regularization,
+        "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
+      })
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
