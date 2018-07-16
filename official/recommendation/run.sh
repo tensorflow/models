@@ -12,16 +12,16 @@ DATA_DIR="${ROOT_DIR}/movielens_data"
 mkdir -p ${DATA_DIR}
 python ../datasets/movielens.py --data_dir ${DATA_DIR} --dataset ${DATASET}
 
-{
-
 TEST_DIR="${ROOT_DIR}/`date '+%Y-%m-%d_%H:%M:%S'`"
 mkdir -p ${TEST_DIR}
+
+{
 
 for i in `seq 0 4`;
 do
   START_TIME=$(date +%s)
   MODEL_DIR="${TEST_DIR}/model_dir_${i}"
-  RUN_LOG="${ROOT_DIR}/run_${i}.log"
+  RUN_LOG="${TEST_DIR}/run_${i}.log"
   echo ""
   echo "Beginning run ${i}"
   python ncf_main.py --model_dir ${MODEL_DIR} --data_dir ${DATA_DIR} \
@@ -40,6 +40,6 @@ do
 
 done
 
-} |& tee "${ROOT_DIR}/summary.log"
+} |& tee "${TEST_DIR}/summary.log"
 
 #rm -r ${ROOT_DIR}
