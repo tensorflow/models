@@ -53,8 +53,8 @@ def pad_tensor(t, length):
 
   Args:
     t: the input tensor, assuming the rank is at least 1.
-    length: a tensor of shape [1]  or an integer, indicating the first dimension
-      of the input tensor t after padding, assuming length <= t.shape[0].
+    length: a scalar tensor or an integer, indicating the first dimension
+      of the input tensor t after padding, assuming length >= t.shape[0].
 
   Returns:
     padded_t: the padded tensor, whose first dimension is length. If the length
@@ -79,7 +79,7 @@ def clip_tensor(t, length):
 
   Args:
     t: the input tensor, assuming the rank is at least 1.
-    length: a tensor of shape [1]  or an integer, indicating the first dimension
+    length: a scalar tensor or an integer, indicating the first dimension
       of the input tensor t after clipping, assuming length <= t.shape[0].
 
   Returns:
@@ -98,7 +98,7 @@ def pad_or_clip_tensor(t, length):
 
   Args:
     t: the input tensor, assuming the rank is at least 1.
-    length: a tensor of shape [1]  or an integer, indicating the first dimension
+    length: a scalar tensor or an integer, indicating the first dimension
       of the input tensor t after processing.
 
   Returns:
