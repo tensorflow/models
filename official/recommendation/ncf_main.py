@@ -97,7 +97,7 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
 
   # Reshape the predicted scores and each user takes one row
   predicted_scores_by_user = np.concatenate(prediction_batches, axis=0).reshape(
-    ncf_dataset.num_users, -1)
+      ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
 
@@ -150,13 +150,13 @@ def run_ncf(_):
   num_gpus = flags_core.get_num_gpus(FLAGS)
   estimator = construct_estimator(
       num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
-        "learning_rate": FLAGS.learning_rate,
-        "num_users": ncf_dataset.num_users,
-        "num_items": ncf_dataset.num_items,
-        "mf_dim": FLAGS.num_factors,
-        "model_layers": [int(layer) for layer in FLAGS.layers],
-        "mf_regularization": FLAGS.mf_regularization,
-        "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
+          "learning_rate": FLAGS.learning_rate,
+          "num_users": ncf_dataset.num_users,
+          "num_items": ncf_dataset.num_items,
+          "mf_dim": FLAGS.num_factors,
+          "model_layers": [int(layer) for layer in FLAGS.layers],
+          "mf_regularization": FLAGS.mf_regularization,
+          "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
       })
 
   # Create hooks that log information about the training and metric values

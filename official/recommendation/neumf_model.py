@@ -42,6 +42,7 @@ from official.datasets import movielens  # pylint: disable=g-bad-import-order
 
 
 def neumf_model_fn(features, labels, mode, params):
+  """Model Function for NeuMF estimator."""
   users = tf.squeeze(features[movielens.USER_COLUMN])
   items = tf.cast(tf.squeeze(features[movielens.ITEM_COLUMN]), dtype=tf.int32)
 
@@ -62,8 +63,7 @@ def neumf_model_fn(features, labels, mode, params):
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     predictions = {
-      movielens.RATING_COLUMN: tf.sigmoid(logits[:features["n"]]),
-      "n": features["n"],  # Tells the caller how to drop padded values.
+        movielens.RATING_COLUMN: tf.sigmoid(logits[:features["n"]]),
     }
     return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.PREDICT,

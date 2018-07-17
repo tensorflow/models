@@ -202,15 +202,6 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
               "n": num_in_batch,
           }
 
-          # # predict function must know to ignore padded values
-          # num_in_batch = batch[movielens.USER_COLUMN].shape[0]
-          # if num_in_batch < batch_size:
-          #   batch[movielens.USER_COLUMN] = \
-          #     np.pad(batch[movielens.USER_COLUMN], ((0, batch_size - num_in_batch), (0, 0)), "constant")
-          #   batch[movielens.ITEM_COLUMN] = \
-          #     np.pad(batch[movielens.ITEM_COLUMN], ((0, batch_size - num_in_batch), (0, 0)), "constant")
-          # yield batch
-
       output_types = {movielens.USER_COLUMN: tf.int32,
                       movielens.ITEM_COLUMN: tf.uint16,
                       "n": tf.int64}
