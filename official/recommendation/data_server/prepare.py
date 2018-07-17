@@ -87,7 +87,7 @@ class NCFDataset(object):
 
     # Ensure that the positive example comes before the negative examples
     # for a user.
-    assert all([i % (_NUMBER_NEGATIVES + 1) for i in true_ind])
+    assert not any([i % (_NUMBER_NEGATIVES + 1) for i in true_ind])
 
     self.eval_true_items = {
         test_data[0][movielens.USER_COLUMN][i]:
@@ -177,7 +177,7 @@ def _filter_index_sort(raw_rating_path):
   return df, num_users, num_items
 
 
-def construct_false_negatives(num_items, positive_set, n, replacement=True):
+def sample_with_exclusion(num_items, positive_set, n, replacement=True):
   # type: (int, typing.Iterable, int, bool) -> list
   """Vectorized negative sampling.
 
@@ -292,7 +292,7 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
     block_items = items[boundaries[i]:boundaries[i+1]]
     train_blocks.append((block_user[:-1], block_items[:-1]))
 
-    test_negatives = construct_false_negatives(
+    test_negatives = sample_with_exclusion(
         num_items=num_items, positive_set=set(block_items), n=_NUMBER_NEGATIVES,
         replacement=False)
     test_blocks.append((

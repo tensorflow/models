@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Run training data GRPC server."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -43,6 +44,22 @@ from official.recommendation.data_server import server_command_pb2_grpc
 
 def _process_shard(shard_path, num_items, num_neg):
   # type: (str, int, int) -> (np.ndarray, np.ndarray, np.ndarray)
+  """Read a shard of training data and return training vectors.
+
+  Args:
+    shard_path: The filepath of the positive instance training shard.
+    num_items: The cardinality of the item set.
+    num_neg: The number of negatives to generate per positive example.
+  """
+
+  # The choice to store the training shards in files rather than in memory
+  # is motivated by the fact that multiprocessing serializes arguments,
+  # transmits them to map workers, and then deserializes them. By storing the
+  # training shards in files, the serialization work only needs to be done once.
+  #
+  # A similar effect could be achieved by simply holding pickled bytes in
+  # memory, however the processing is not I/O bound and is therefore
+  # unnecessary.
   with tf.gfile.Open(shard_path, "rb") as f:
     shard = pickle.load(f)
 
@@ -61,8 +78,7 @@ def _process_shard(shard_path, num_items, num_neg):
     positive_set = set(items[boundaries[i]:boundaries[i+1]])
     n_pos = len(positive_set)
 
-    # TODO(robieta): include option to prevent eval pts from becoming negatives
-    negatives = prepare.construct_false_negatives(
+    negatives = prepare.sample_with_exclusion(
         num_items, positive_set, n_pos * num_neg)
 
     user_blocks.append(users[boundaries[i]] * np.ones(
@@ -83,19 +99,43 @@ def _process_shard(shard_path, num_items, num_neg):
 
 def fischer_yates_subsample(batch_size, buffer_size):
   # type: (int, int) -> np.ndarray
+  """Generate the first k elements of the domain [0, n).
+
+  For ease of notation and to follow binomial coefficient conventions:
+    k = batch_size
+    n = buffer_size
+    0 < k <= n
+
+  This function subsamples a range without replacement using either a dense or
+  sparse algorithm. The cutoff is set to a heuristic value of 0.25; any value of
+  O(0.1) is reasonable.
+
+  Dense subsampling:
+    If k is O(n), one should simply call np.choice() on an array of [0, n).
+    Under the hood NumPy shuffles an array of size n and samples the first k
+    points.
+
+  Sparse subsampling:
+    if k << n, enumerating a vector of size n is unnecessary. Fortunately
+    Fischer-Yates shuffling is well suited for partial shuffling. NumPy does
+    not implement Fischer-Yates for k << n because NumPy does not have a set
+    data structure, though it has been proposed.
+
+    In this case, partial Fischer-Yates is simply a special case of sampling
+    with exclusion where the exclusion set is the empty set.
+  """
+
   if batch_size / buffer_size >= 0.25:
     return np.random.choice(range(buffer_size), size=batch_size, replace=False)
 
-  p = 1 - batch_size / buffer_size
-  sample_size = int(batch_size * (1 / p) * 1.2)
-  indices = set(np.random.randint(low=0, high=buffer_size, size=(sample_size,)))
-  while len(indices) < batch_size:
-    indices = set(np.random.randint(low=0, high=buffer_size,
-                                    size=(sample_size,)))
-  return np.random.choice(list(indices), size=batch_size, replace=False)
+  return np.array(prepare.sample_with_exclusion(
+      num_items=buffer_size, positive_set=set(), n=batch_size,
+      replacement=False))
 
 
 class TrainData(server_command_pb2_grpc.TrainDataServicer):
+  """GRPC servicer which serves training data batches."""
+
   def __init__(self, pool, shard_dir, num_neg, num_items, spillover):
     # type: (multiprocessing.Pool, str, int, int, bool) -> None
     super(TrainData, self).__init__()
@@ -245,6 +285,18 @@ def init_worker():
 
 def run_server(port, num_workers, shard_dir, num_neg, num_items, spillover):
   # type: (int, int, str, int, int, bool) -> None
+  """Bring up GRPC server.
+
+  Args:
+    port: The GRPC port to which requests should be made.
+    num_workers: The number of workers (server threads and pool workers) to use.
+    shard_dir: The filepath of where the training data shards are stored.
+    num_neg: The number of negative examples to generate for each postive.
+    num_items: The cardinality of the item set.
+    spillover: Whether to return a partial final batch (False) or allow it to
+      spill over into the next training cycle (True).
+  """
+
   with contextlib.closing(multiprocessing.Pool(
       processes=num_workers, initializer=init_worker)) as pool:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=num_workers))
@@ -272,6 +324,12 @@ def run_server(port, num_workers, shard_dir, num_neg, num_items, spillover):
 
 
 def define_flags():
+  """Construct flags for the server.
+
+  This function does not use offical.utils.flags, as these flags are not meant
+  to be used by humans. Rather, they should be passed as part of a subprocess
+  call.
+  """
   flags.DEFINE_integer(name="port", default=46293,
                        help="GRPC port for training data server.")
   flags.DEFINE_integer(name="num_workers", default=multiprocessing.cpu_count(),

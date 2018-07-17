@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Construct training data server, and access it through GRPC."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -76,23 +77,54 @@ def _shutdown_thorough(proc):
 
 def initialize(dataset, data_dir, num_neg, num_data_readers=None, debug=False):
   # type: (str, str, int, int, bool) -> prepare.NCFDataset
+  """Load data, create a data server, and return the dataset container object.
+
+  The main role of this function is to create a GRPC server in a subprocess
+  which can serve training data using the tf.contrib.rpc.rpc() op. This pattern
+  allows the server to operate asynchronously and avoids a variety of issues
+  which spring up when attempting to perform significant data preprocessing
+  outside of TensorFlow on the same thread as the training thread. (Such as the
+  GIL.)
+
+  Args:
+    dataset: The name of the dataset to be used for training.
+    data_dir: The directory in which the data should be written.
+    num_neg: The number of false negatives per positive example to be
+      generated during training.
+    num_data_readers: The number of tf.data.Dataset instances to be interleaved
+      during training. If `None`, a sensible value will be chosen.
+    debug: A boolean indicating extra steps should be performed to assist with
+      testing.
+
+  returns:
+    An NCFDataset object describing the processed data.
+  """
   ncf_dataset = prepare.run(dataset=dataset, data_dir=data_dir,
                             num_data_readers=num_data_readers, num_neg=num_neg,
                             debug=debug)
   server_env = os.environ.copy()
+
+  # The data server uses TensorFlow for tf.gfile, but it does not need GPU
+  # resources and by default will try to allocate GPU memory. This would cause
+  # contention with the main training process.
   server_env["CUDA_VISIBLE_DEVICES"] = ""
+
   python = "python3" if six.PY3 else "python2"
 
   # By limiting the number of workers we guarantee that the worker
   # pool underlying the GRPC server doesn't starve other processes.
   num_workers = int(multiprocessing.cpu_count() * 0.75)
 
-  server_args = [python, _SERVER_PATH,
-                 "--shard_dir", ncf_dataset.train_shard_dir,
-                 "--num_neg", str(num_neg),
-                 "--num_items", str(ncf_dataset.num_items),
-                 "--num_workers", str(num_workers),
-                 "--spillover", "True"]
+  server_args = [
+      python, _SERVER_PATH,
+      "--shard_dir", ncf_dataset.train_shard_dir,
+      "--num_neg", str(num_neg),
+      "--num_items", str(ncf_dataset.num_items),
+      "--num_workers", str(num_workers),
+      "--spillover", "True"  # This allows the training input function to
+                             # guarantee batch size and significantly improves
+                             # performance. (~5% increase in examples/sec)
+  ]
   proc = subprocess.Popen(args=server_args, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           shell=False, env=server_env)
@@ -110,12 +142,52 @@ def initialize(dataset, data_dir, num_neg, num_data_readers=None, debug=False):
 
 
 def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
+  """Construct input function for Estimator.
+
+  Overview:
+    Training input_fn:
+
+       ___________________________________
+      | Training Data Server (subprocess) |
+       ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+      ^  ^  ^
+      |  |  |
+    ...........
+    .  GRPC   .
+    ...........
+      |  |  |    ________________
+      |  |  ┗-->| Reader Dataset |   ‾‾|
+      |  |       ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾      |
+      |  |       ________________      |   ____________
+      |  ┗----->| Reader Dataset |     |- | Interleave | -> batches
+      .          ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾      |   ‾‾‾‾‾‾‾‾‾‾‾‾
+      .             ...                |
+                                     __|
+
+    Eval input_fn:
+       ___________________
+      | Generator  Dataset| -> batches
+       ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+
+  Args:
+    training: Boolean of whether the input_fn is for training (True) or
+      eval (False).
+    ncf_dataset: NCFDataset instance. This MUST be the same one created by
+      official.recommendation.data_server.pipeline.initialize().
+    batch_size: The size of batches that the input_fn's Dataset should yield.
+    num_epochs: The number of epochs to include in the dataset. If
+      num_epochs > 1, new false negatives will be generated for each epoch.
+    shuffle: Whether to shuffle the training data. Shuffling is performed
+      by the data server, not the Dataset class.
+
+  Returns:
+    An input_fn which accepts no arguments and returns a tf.data.Dataset.
+  """
   # type: (bool, prepare.NCFDataset, int, int, bool) -> typing.Callable
-  if shuffle is None:
-    shuffle = training
 
   def input_fn():
     # type: () -> tf.data.Dataset
+    """The input function for an NCF Estimator."""
     if training:
       if not alive():
         raise OSError("No train data GRPC server.")
@@ -124,6 +196,7 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
       def make_reader(_):
         reader_dataset = tf.contrib.data.Counter()
         def _rpc_fn(_):
+          """Construct RPC op to request training data."""
           rpc_op = tf.contrib.rpc.rpc(
               address="localhost:{}".format(_PORT),
               method="/official.recommendation.data_server.TrainData/GetBatch",
@@ -132,7 +205,9 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
               ).SerializeToString(),
               protocol="grpc",
           )
+
           def _decode_proto(shard_bytes):
+            """Decode a message into a batch of training data."""
             message = server_command_pb2.Batch.FromString(shard_bytes)
             users = np.frombuffer(message.users, dtype=np.int32)
             items = np.frombuffer(message.items, dtype=np.uint16)
@@ -156,7 +231,11 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
 
         reader_dataset = reader_dataset.map(
             _rpc_fn,
-            num_parallel_calls=1
+            num_parallel_calls=1  # This must be one. If any of the map
+                                  # functions raises a StopIteration then
+                                  # they all stop, so performing this step in
+                                  # parallel can cause the final few batches to
+                                  # be dropped.
         )
 
         return reader_dataset
@@ -181,6 +260,7 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
       #
       # Overall this results in a ~50x increase in throughput.
       def _pred_generator():
+        """Yield slices of the validation data, and pad on the last batch."""
         users = np.expand_dims(ncf_dataset.test_data[0][movielens.USER_COLUMN],
                                axis=1)
         items = np.expand_dims(ncf_dataset.test_data[0][movielens.ITEM_COLUMN],
