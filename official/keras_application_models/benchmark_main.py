@@ -46,6 +46,10 @@ MODELS = {
     # "nasnetmobile": tf.keras.applications.NASNetMobile,
 }
 
+# Number of synthetic images as the same number of images in ImageNet
+_IMAGENET_TRAIN_IMAGES = 1281167
+_IMAGENET_EVAL_IMAGES = 50000
+
 
 def run_keras_model_benchmark(_):
   """Run the benchmark on keras model."""
@@ -53,6 +57,10 @@ def run_keras_model_benchmark(_):
   if FLAGS.model not in MODELS.keys():
     raise AssertionError("The --model command line argument should "
                          "be a key in the `MODELS` dictionary.")
+
+  # Check if eager mode is enabled
+  if FLAGS.eager:
+    tf.enable_eager_execution()
 
   # Load the model
   tf.logging.info("Benchmark on {} model...".format(FLAGS.model))
@@ -64,12 +72,10 @@ def run_keras_model_benchmark(_):
   if FLAGS.use_synthetic_data:
     tf.logging.info("Using synthetic dataset...")
     dataset_name += "_Synthetic"
-    train_num_images = FLAGS.batch_size
-    val_num_images = FLAGS.batch_size
     train_dataset = dataset.generate_synthetic_input_dataset(
-        FLAGS.model, train_num_images)
+        FLAGS.model, FLAGS.num_imgs_train)
     val_dataset = dataset.generate_synthetic_input_dataset(
-        FLAGS.model, val_num_images)
+        FLAGS.model, FLAGS.num_imgs_eval)
   else:
     raise ValueError("Only synthetic dataset is supported!")
 
@@ -108,8 +114,8 @@ def run_keras_model_benchmark(_):
       epochs=FLAGS.train_epochs,
       callbacks=callbacks,
       validation_data=val_dataset,
-      steps_per_epoch=int(np.ceil(train_num_images / FLAGS.batch_size)),
-      validation_steps=int(np.ceil(val_num_images / FLAGS.batch_size))
+      steps_per_epoch=int(np.ceil(FLAGS.num_imgs_train / FLAGS.batch_size)),
+      validation_steps=int(np.ceil(FLAGS.num_imgs_eval / FLAGS.batch_size))
   )
 
   tf.logging.info("Logging the evaluation results...")
@@ -118,7 +124,7 @@ def run_keras_model_benchmark(_):
         "accuracy": history.history["val_acc"][epoch],
         "loss": history.history["val_loss"][epoch],
         tf.GraphKeys.GLOBAL_STEP: (epoch + 1) * np.ceil(
-            train_num_images/FLAGS.batch_size)
+            FLAGS.num_imgs_train/FLAGS.batch_size)
     }
     benchmark_logger.log_evaluation_result(eval_results)
 
@@ -145,6 +151,22 @@ def define_keras_benchmark_flags():
       enum_values=MODELS.keys(), case_sensitive=False,
       help=flags_core.help_wrap(
           "Model to be benchmarked."))
+
+  flags.DEFINE_integer(
+      name="num_imgs_train", default=_IMAGENET_TRAIN_IMAGES,
+      help=flags_core.help_wrap(
+          "The number of images for training. By default, it's the number of "
+          "training images in ImageNet dataset."))
+
+  flags.DEFINE_integer(
+      name="num_imgs_eval", default=_IMAGENET_EVAL_IMAGES,
+      help=flags_core.help_wrap(
+          "The number of images for evaluation. By default, it's the number of "
+          "evaluation images in ImageNet dataset."))
+
+  flags.DEFINE_boolean(
+      name="eager", default=False, help=flags_core.help_wrap(
+          "To enable eager mode."))
 
   flags.DEFINE_list(
       name="callbacks",

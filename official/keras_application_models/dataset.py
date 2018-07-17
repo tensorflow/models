@@ -37,9 +37,10 @@ def _get_default_image_size(model):
 def generate_synthetic_input_dataset(model, num_imgs):
   """Generate synthetic dataset."""
   image_size = _get_default_image_size(model)
-  input_shape = (num_imgs,) + image_size + (_NUM_CHANNELS,)
+  image_shape = (num_imgs,) + image_size + (_NUM_CHANNELS,)
+  label_shape = (num_imgs, _NUM_CLASSES)
 
-  images = tf.zeros(input_shape, dtype=tf.float32)
-  labels = tf.zeros((num_imgs, _NUM_CLASSES), dtype=tf.float32)
+  images = tf.random_uniform(image_shape, maxval=255, dtype=tf.int32)
+  labels = tf.random_uniform(label_shape, maxval=_NUM_CLASSES, dtype=tf.int32)
 
   return tf.data.Dataset.from_tensors((images, labels)).repeat()
