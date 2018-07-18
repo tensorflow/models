@@ -73,9 +73,9 @@ def run_keras_model_benchmark(_):
     tf.logging.info("Using synthetic dataset...")
     dataset_name += "_Synthetic"
     train_dataset = dataset.generate_synthetic_input_dataset(
-        FLAGS.model, FLAGS.num_imgs_train)
+        FLAGS.model, FLAGS.batch_size)
     val_dataset = dataset.generate_synthetic_input_dataset(
-        FLAGS.model, FLAGS.num_imgs_eval)
+        FLAGS.model, FLAGS.batch_size)
   else:
     raise ValueError("Only synthetic dataset is supported!")
 
@@ -85,15 +85,23 @@ def run_keras_model_benchmark(_):
     model = tf.keras.utils.multi_gpu_model(model, gpus=num_gpus)
 
   # Configure the model
+  if FLAGS.eager:
+    # Only TF native optimizers are supported in Eager mode
+    optimizer = tf.train.AdamOptimizer()
+  else:
+    optimizer = "Adam"
+
   model.compile(loss="categorical_crossentropy",
-                optimizer="sgd",
+                optimizer=optimizer,
                 metrics=["accuracy"])
 
   # Create benchmark logger for benchmark logging
   run_params = {
       "batch_size": FLAGS.batch_size,
       "synthetic_data": FLAGS.use_synthetic_data,
-      "train_epochs": FLAGS.train_epochs
+      "train_epochs": FLAGS.train_epochs,
+      "num_train_images": FLAGS.num_imgs_train,
+      "num_eval_images": FLAGS.num_imgs_eval,
   }
 
   benchmark_logger = logger.get_benchmark_logger()

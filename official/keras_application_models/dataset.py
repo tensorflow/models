@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from official.utils.misc import model_helpers
 
 # Default values for dataset.
 _NUM_CHANNELS = 3
@@ -34,13 +35,14 @@ def _get_default_image_size(model):
   return image_size
 
 
-def generate_synthetic_input_dataset(model, num_imgs):
+def generate_synthetic_input_dataset(model, batch_size):
   """Generate synthetic dataset."""
   image_size = _get_default_image_size(model)
-  image_shape = (num_imgs,) + image_size + (_NUM_CHANNELS,)
-  label_shape = (num_imgs, _NUM_CLASSES)
+  image_shape = (batch_size,) + image_size + (_NUM_CHANNELS,)
+  label_shape = (batch_size, _NUM_CLASSES)
 
-  images = tf.random_uniform(image_shape, maxval=255, dtype=tf.int32)
-  labels = tf.random_uniform(label_shape, maxval=_NUM_CLASSES, dtype=tf.int32)
-
-  return tf.data.Dataset.from_tensors((images, labels)).repeat()
+  return model_helpers.generate_synthetic_data(
+        input_shape=tf.TensorShape(image_shape),
+        input_dtype=tf.float32,
+        label_shape=tf.TensorShape(label_shape),
+        label_dtype=tf.float32)
