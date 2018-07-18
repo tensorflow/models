@@ -18,6 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+
+# pylint: disable=g-bad-import-order
 from official.utils.misc import model_helpers
 
 # Default values for dataset.
@@ -42,7 +44,7 @@ def generate_synthetic_input_dataset(model, batch_size):
   label_shape = (batch_size, _NUM_CLASSES)
 
   return model_helpers.generate_synthetic_data(
-        input_shape=tf.TensorShape(image_shape),
-        input_dtype=tf.float32,
-        label_shape=tf.TensorShape(label_shape),
-        label_dtype=tf.float32)
+      input_shape=tf.TensorShape(image_shape),
+      input_dtype=tf.float32,
+      label_shape=tf.TensorShape(label_shape),
+      label_dtype=tf.float32)

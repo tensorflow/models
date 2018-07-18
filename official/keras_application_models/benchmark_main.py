@@ -46,9 +46,8 @@ MODELS = {
     # "nasnetmobile": tf.keras.applications.NASNetMobile,
 }
 
-# Number of synthetic images as the same number of images in ImageNet
-_IMAGENET_TRAIN_IMAGES = 1281167
-_IMAGENET_EVAL_IMAGES = 50000
+# Number images for training and evaluation
+_NUM_IMAGES = 1000
 
 
 def run_keras_model_benchmark(_):
@@ -86,15 +85,8 @@ def run_keras_model_benchmark(_):
   if num_gpus > 1:
     model = tf.keras.utils.multi_gpu_model(model, gpus=num_gpus)
 
-  # Configure the model
-  if FLAGS.eager:
-    # Only TF native optimizers are supported in Eager mode
-    optimizer = tf.train.AdamOptimizer()
-  else:
-    optimizer = "Adam"
-
   model.compile(loss="categorical_crossentropy",
-                optimizer=optimizer,
+                optimizer=tf.train.AdamOptimizer(),
                 metrics=["accuracy"])
 
   # Create benchmark logger for benchmark logging
@@ -163,20 +155,16 @@ def define_keras_benchmark_flags():
           "Model to be benchmarked."))
 
   flags.DEFINE_integer(
-      name="num_imgs_train", default=_IMAGENET_TRAIN_IMAGES,
+      name="num_images", default=_NUM_IMAGES,
       help=flags_core.help_wrap(
-          "The number of images for training. By default, it's the number of "
-          "training images in ImageNet dataset."))
-
-  flags.DEFINE_integer(
-      name="num_imgs_eval", default=_IMAGENET_EVAL_IMAGES,
-      help=flags_core.help_wrap(
-          "The number of images for evaluation. By default, it's the number of "
-          "evaluation images in ImageNet dataset."))
+          "The number of synthetic images for training and evaluation. The "
+          "default value is 1000."))
 
   flags.DEFINE_boolean(
       name="eager", default=False, help=flags_core.help_wrap(
-          "To enable eager mode."))
+          "To enable eager execution. Note that if eager execution is enabled, "
+          "only one GPU is utilized even multiple GPUs are provided and "
+          "multi_gpu_model is used."))
 
   flags.DEFINE_list(
       name="callbacks",
@@ -190,6 +178,7 @@ def define_keras_benchmark_flags():
 def main(_):
   with logger.benchmark_context(FLAGS):
     run_keras_model_benchmark(FLAGS)
+
 
 if __name__ == "__main__":
   tf.logging.set_verbosity(tf.logging.INFO)
