@@ -185,7 +185,8 @@ def run_ncf(_):
         ncf_dataset=ncf_dataset,
         batch_size=distribution_utils.per_device_batch_size(
             FLAGS.batch_size, num_gpus),
-        num_epochs=FLAGS.epochs_between_evals
+        num_epochs=FLAGS.epochs_between_evals,
+        shuffle=True,
     )
 
   def get_pred_input_fn():
