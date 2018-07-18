@@ -27,6 +27,8 @@ It supports the following operations:
 Note: This module operates on numpy boxes and box lists.
 """
 
+from __future__ import print_function
+
 from abc import ABCMeta
 from abc import abstractmethod
 import collections
@@ -839,9 +841,9 @@ class ObjectDetectionEvaluation(object):
       if self.use_weighted_mean_ap:
         all_scores = np.append(all_scores, scores)
         all_tp_fp_labels = np.append(all_tp_fp_labels, tp_fp_labels)
-      print 'Scores and tpfp per class label: {}'.format(class_index)
-      print tp_fp_labels
-      print scores
+      print('Scores and tpfp per class label: {}'.format(class_index))
+      print(tp_fp_labels)
+      print(scores)
       precision, recall = metrics.compute_precision_recall(
           scores, tp_fp_labels, self.num_gt_instances_per_class[class_index])
       self.precisions_per_class.append(precision)
