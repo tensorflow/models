@@ -207,7 +207,7 @@ the second deepest transits).
 
 To train a model to identify exoplanets, you will need to provide TensorFlow
 with training data in
-[TFRecord](https://www.tensorflow.org/guide/datasets) format. The
+[TFRecord](https://www.tensorflow.org/programmers_guide/datasets) format. The
 TFRecord format consists of a set of sharded files containing serialized
 `tf.Example` [protocol buffers](https://developers.google.com/protocol-buffers/).
 
@@ -343,7 +343,7 @@ bazel-bin/astronet/train \
   --model_dir=${MODEL_DIR}
 ```
 
-Optionally, you can also run a [TensorBoard](https://www.tensorflow.org/guide/summaries_and_tensorboard)
+Optionally, you can also run a [TensorBoard](https://www.tensorflow.org/programmers_guide/summaries_and_tensorboard)
 server in a separate process for real-time
 monitoring of training progress and evaluation metrics.
 

@@ -112,11 +112,14 @@ def main(_):
         file_pattern=FLAGS.eval_files,
         input_config=config.inputs,
         mode=tf.estimator.ModeKeys.EVAL)
+    eval_args = {
+        "val": (eval_input_fn, None)  # eval_name: (input_fn, eval_steps)
+    }
 
     for _ in estimator_util.continuous_train_and_eval(
         estimator=estimator,
         train_input_fn=train_input_fn,
-        eval_input_fn=eval_input_fn,
+        eval_args=eval_args,
         train_steps=FLAGS.train_steps):
       # continuous_train_and_eval() yields evaluation metrics after each
       # training epoch. We don't do anything here.
