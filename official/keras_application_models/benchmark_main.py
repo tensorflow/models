@@ -46,9 +46,6 @@ MODELS = {
     # "nasnetmobile": tf.keras.applications.NASNetMobile,
 }
 
-# Number images for training and evaluation
-_NUM_IMAGES = 1000
-
 
 def run_keras_model_benchmark(_):
   """Run the benchmark on keras model."""
@@ -59,6 +56,7 @@ def run_keras_model_benchmark(_):
 
   # Check if eager mode is enabled
   if FLAGS.eager:
+    tf.logging.info("Eager execution is enabled...")
     tf.enable_eager_execution()
 
   # Load the model
@@ -83,6 +81,10 @@ def run_keras_model_benchmark(_):
   # are provided
   num_gpus = flags_core.get_num_gpus(FLAGS)
   if num_gpus > 1:
+    if FLAGS.eager:
+      tf.logging.warning(
+          "{} GPUs are provided, but only one GPU is utilized as "
+          "eager execution is enabled.".format(num_gpus))
     model = tf.keras.utils.multi_gpu_model(model, gpus=num_gpus)
 
   model.compile(loss="categorical_crossentropy",
@@ -155,7 +157,7 @@ def define_keras_benchmark_flags():
           "Model to be benchmarked."))
 
   flags.DEFINE_integer(
-      name="num_images", default=_NUM_IMAGES,
+      name="num_images", default=1000,
       help=flags_core.help_wrap(
           "The number of synthetic images for training and evaluation. The "
           "default value is 1000."))
@@ -163,7 +165,7 @@ def define_keras_benchmark_flags():
   flags.DEFINE_boolean(
       name="eager", default=False, help=flags_core.help_wrap(
           "To enable eager execution. Note that if eager execution is enabled, "
-          "only one GPU is utilized even multiple GPUs are provided and "
+          "only one GPU is utilized even if multiple GPUs are provided and "
           "multi_gpu_model is used."))
 
   flags.DEFINE_list(
