@@ -94,8 +94,8 @@ def run_keras_model_benchmark(_):
       "batch_size": FLAGS.batch_size,
       "synthetic_data": FLAGS.use_synthetic_data,
       "train_epochs": FLAGS.train_epochs,
-      "num_train_images": FLAGS.num_imgs_train,
-      "num_eval_images": FLAGS.num_imgs_eval,
+      "num_train_images": FLAGS.num_images,
+      "num_eval_images": FLAGS.num_images,
   }
 
   benchmark_logger = logger.get_benchmark_logger()
@@ -116,8 +116,8 @@ def run_keras_model_benchmark(_):
       epochs=FLAGS.train_epochs,
       callbacks=callbacks,
       validation_data=val_dataset,
-      steps_per_epoch=int(np.ceil(FLAGS.num_imgs_train / FLAGS.batch_size)),
-      validation_steps=int(np.ceil(FLAGS.num_imgs_eval / FLAGS.batch_size))
+      steps_per_epoch=int(np.ceil(FLAGS.num_images / FLAGS.batch_size)),
+      validation_steps=int(np.ceil(FLAGS.num_images / FLAGS.batch_size))
   )
 
   tf.logging.info("Logging the evaluation results...")
@@ -126,7 +126,7 @@ def run_keras_model_benchmark(_):
         "accuracy": history.history["val_acc"][epoch],
         "loss": history.history["val_loss"][epoch],
         tf.GraphKeys.GLOBAL_STEP: (epoch + 1) * np.ceil(
-            FLAGS.num_imgs_train/FLAGS.batch_size)
+            FLAGS.num_images/FLAGS.batch_size)
     }
     benchmark_logger.log_evaluation_result(eval_results)
 
