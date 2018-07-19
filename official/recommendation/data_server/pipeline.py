@@ -22,6 +22,7 @@ import atexit
 import multiprocessing
 import os
 import signal
+import socket
 import subprocess
 import time
 import typing
@@ -38,13 +39,14 @@ from official.recommendation.data_server import server_command_pb2_grpc
 
 
 _PORT = 46293
+_REMOTE_ADDRESS = "{}:{}".format(socket.gethostbyname(socket.gethostname()), _PORT)
 _SERVER_PATH = os.path.join(os.path.dirname(__file__), "server.py")
 
 _SHUFFLE_BUFFER_SIZE = 60 * 1024 ** 2
 
 
 def make_stub():
-  channel = grpc.insecure_channel("localhost:{}".format(_PORT))
+  channel = grpc.insecure_channel(_REMOTE_ADDRESS)
   return server_command_pb2_grpc.TrainDataStub(channel)
 
 
@@ -185,7 +187,8 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
   """
   # type: (bool, prepare.NCFDataset, int, int, bool) -> typing.Callable
 
-  def input_fn():
+  def input_fn(params):
+    batch_size = params["batch_size"]
     # type: () -> tf.data.Dataset
     """The input function for an NCF Estimator."""
     if training:
@@ -198,7 +201,7 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
         def _rpc_fn(_):
           """Construct RPC op to request training data."""
           rpc_op = tf.contrib.rpc.rpc(
-              address="localhost:{}".format(_PORT),
+              address=_REMOTE_ADDRESS,
               method="/official.recommendation.data_server.TrainData/GetBatch",
               request=server_command_pb2.BatchRequest(
                   shuffle=shuffle, max_batch_size=batch_size

@@ -65,7 +65,12 @@ def neumf_model_fn(features, labels, mode, params):
     predictions = {
         movielens.RATING_COLUMN: tf.sigmoid(logits[:features["n"]]),
     }
-    return tf.estimator.EstimatorSpec(
+
+    # return tf.estimator.EstimatorSpec(
+    #     mode=tf.estimator.ModeKeys.PREDICT,
+    #     predictions=predictions
+    # )
+    return tf.contrib.tpu.TPUEstimatorSpec(
         mode=tf.estimator.ModeKeys.PREDICT,
         predictions=predictions
     )
@@ -87,7 +92,10 @@ def neumf_model_fn(features, labels, mode, params):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
 
-    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    # return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    return tf.contrib.tpu.TPUEstimatorSpec(
+        mode=mode, loss=loss, train_op=train_op,
+    )
 
   else:
     raise NotImplementedError

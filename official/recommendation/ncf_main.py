@@ -123,12 +123,35 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   return eval_results
 
 
-def construct_estimator(num_gpus, model_dir, params):
-  distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
-  run_config = tf.estimator.RunConfig(train_distribute=distribution)
-  return tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
-                                model_dir=model_dir, config=run_config,
-                                params=params)
+def construct_estimator(num_gpus, model_dir, params, batch_size, ncf_dataset):
+  tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+      tpu="taylorrobie-tpu-0",
+  )
+
+  tpu_config = tf.contrib.tpu.TPUConfig(
+      iterations_per_loop=int(20000000 * 5 // batch_size * batch_size),
+      num_shards=8)
+
+  run_config = tf.contrib.tpu.RunConfig(
+      cluster=tpu_cluster_resolver,
+      model_dir=model_dir,
+      session_config=tf.ConfigProto(
+          allow_soft_placement=True, log_device_placement=True),
+      tpu_config=tpu_config)
+
+  return tf.contrib.tpu.TPUEstimator(
+      model_fn=neumf_model.neumf_model_fn,
+      use_tpu=True,
+      train_batch_size=batch_size,
+      eval_batch_size=32768,
+      params=params,
+      config=run_config)
+
+  # distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
+  # run_config = tf.estimator.RunConfig(train_distribute=distribution)
+  # return tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
+  #                               model_dir=model_dir, config=run_config,
+  #                               params=params)
 
 
 def main(_):
@@ -157,7 +180,7 @@ def run_ncf(_):
           "model_layers": [int(layer) for layer in FLAGS.layers],
           "mf_regularization": FLAGS.mf_regularization,
           "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
-      })
+      }, batch_size=flags.FLAGS.batch_size, ncf_dataset=ncf_dataset)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -205,8 +228,11 @@ def run_ncf(_):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
 
+    train_steps = int(20000000 * 5 // batch_size * batch_size)
     # Train the model
-    estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks)
+    estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks, steps=train_steps)
+    import sys
+    sys.exit()
 
     # Evaluate the model
     eval_results = evaluate_model(
