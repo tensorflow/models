@@ -54,7 +54,7 @@ def run_keras_model_benchmark(_):
     raise AssertionError("The --model command line argument should "
                          "be a key in the `MODELS` dictionary.")
 
-  # Check if eager mode is enabled
+  # Check if eager execution is enabled
   if FLAGS.eager:
     tf.logging.info("Eager execution is enabled...")
     tf.enable_eager_execution()
