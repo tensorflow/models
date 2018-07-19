@@ -40,7 +40,7 @@ from official.recommendation.data_server import server_command_pb2_grpc
 _PORT = 46293
 _SERVER_PATH = os.path.join(os.path.dirname(__file__), "server.py")
 
-_SHUFFLE_BUFFER_SIZE = 10 * 1024 ** 2
+_SHUFFLE_BUFFER_SIZE = 60 * 1024 ** 2
 
 
 def make_stub():

@@ -53,7 +53,7 @@ class NCFDataset(object):
   """Container for training and testing data."""
 
   def __init__(self, cache_dir, test_data, num_users, num_items,
-               num_data_readers, train_data=None):
+               num_data_readers, train_data=None, num_train_neg=None):
     # type: (str, typing.Tuple[dict, np.ndarray], int, int, int, dict) -> None
     """Assign values for recommendation dataset.
 
@@ -107,6 +107,7 @@ class NCFDataset(object):
     # Used for testing the data pipeline. The actual training pipeline uses the
     # shards found in `self.train_shard_dir `
     self.train_data = train_data
+    self.num_train_neg = num_train_neg
 
 
 def _filter_index_sort(raw_rating_path):
@@ -173,6 +174,9 @@ def _filter_index_sort(raw_rating_path):
   tf.logging.info("Sorting by user, timestamp...")
   df.sort_values([movielens.USER_COLUMN, movielens.TIMESTAMP_COLUMN],
                  inplace=True)
+
+  df = df.reset_index()  # The dataframe does not reconstruct indicies in the
+                         # sort or filter steps.
 
   return df, num_users, num_items
 
@@ -441,6 +445,7 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
   del approx_num_shards  # value may have changed.
 
   train_data = None
+  num_train_neg = None
   if debug:
     users = df[movielens.USER_COLUMN].values
     items = df[movielens.ITEM_COLUMN].values
@@ -449,11 +454,12 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
         movielens.USER_COLUMN: users[train_ind],
         movielens.ITEM_COLUMN: items[train_ind],
     }
+    num_train_neg = num_neg
 
   ncf_dataset = NCFDataset(cache_dir=cache_dir, test_data=test_data,
                            num_items=num_items, num_users=num_users,
                            num_data_readers=num_data_readers,
-                           train_data=train_data)
+                           train_data=train_data, num_train_neg=num_train_neg)
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
                   .format(run_time))
