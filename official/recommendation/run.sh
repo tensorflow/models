@@ -29,6 +29,7 @@ do
                      --clean \
                      --train_epochs 20 \
                      --batch_size 16384 \
+                     --eval_batch_size 32768 \
                      --learning_rate 0.0005 \
                      --layers 256,256,128,64 --num_factors 64 \
                      --hr_threshold 0.635 \

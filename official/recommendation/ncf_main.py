@@ -167,6 +167,7 @@ def run_ncf(_):
   )
   run_params = {
       "batch_size": FLAGS.batch_size,
+      "eval_batch_size": FLAGS.eval_batch_size or FLAGS.batch_size,
       "number_factors": FLAGS.num_factors,
       "hr_threshold": FLAGS.hr_threshold,
       "train_epochs": FLAGS.train_epochs,
@@ -194,7 +195,7 @@ def run_ncf(_):
         training=False,
         ncf_dataset=ncf_dataset,
         batch_size=distribution_utils.per_device_batch_size(
-            FLAGS.batch_size, num_gpus),
+            FLAGS.eval_batch_size or FLAGS.batch_size, num_gpus),
         num_epochs=1
     )
 
@@ -263,6 +264,13 @@ def define_ncf_flags():
   flags.DEFINE_boolean(
       name="download_if_missing", default=True, help=flags_core.help_wrap(
           "Download data to data_dir if it is not already present."))
+
+  flags.DEFINE_string(
+      name="eval_batch_size", default=None, help=flags_core.help_wrap(
+          "The batch size used for evaluation. This should generally be larger"
+          "than the training batch size as the lack of back propagation during"
+          "evaluation can allow for larger batch sizes to fit in memory. If not"
+          "specified, the training batch size (--batch_size) will be used."))
 
   flags.DEFINE_integer(
       name="num_factors", default=8,
