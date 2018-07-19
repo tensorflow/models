@@ -77,8 +77,8 @@ def run_keras_model_benchmark(_):
     raise ValueError("Only synthetic dataset is supported!")
 
   # If run with multiple GPUs
-  # If eager mode is enabled, only one GPU is utilized even multiple GPUs
-  # are provided
+  # If eager execution is enabled, only one GPU is utilized even if multiple
+  # GPUs are provided.
   num_gpus = flags_core.get_num_gpus(FLAGS)
   if num_gpus > 1:
     if FLAGS.eager:
