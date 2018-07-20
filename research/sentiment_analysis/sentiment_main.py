@@ -5,10 +5,16 @@ different kernel sizes. See `sentiment_model.py`
 for more details about the models.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import argparse
+
+import tensorflow as tf
+
 from data import dataset
 import sentiment_model
-import tensorflow as tf
 
 _DROPOUT_RATE = 0.95
 
@@ -38,14 +44,14 @@ def run_model(dataset_name, emb_dim, voc_size, sen_len,
                 optimizer="rmsprop",
                 metrics=["accuracy"])
 
-  tf.logging.info("loading the data")
+  tf.logging.info("Loading the data")
   x_train, y_train, x_test, y_test = dataset.load(
       dataset_name, voc_size, sen_len)
 
   model.fit(x_train, y_train, batch_size=batch_size,
             validation_split=0.4, epochs=epochs)
   score = model.evaluate(x_test, y_test, batch_size=batch_size)
-  tf.logging.info("score")
+  tf.logging.info("Score: ###")
   tf.logging.info(score)
 
 if __name__ == "__main__":

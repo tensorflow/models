@@ -1,11 +1,15 @@
-"""IMDB Dataset module for sentiment analysis.
-"""
+"""IMDB Dataset module for sentiment analysis."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import numpy as np
+import tensorflow as tf
 
 from data.util import OOV_CHAR
 from data.util import pad_sentence
 from data.util import START_CHAR
-import numpy as np
-import tensorflow as tf
 
 NUM_CLASS = 2
 

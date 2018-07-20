@@ -1,4 +1,4 @@
-"""Model for the sentiment analysis.
+"""Model for sentiment analysis.
 
 The model makes use of concatenation of two CNN layers with
 different kernel sizes.
@@ -31,9 +31,9 @@ class CNN(tf.keras.models.Model):
       tf.keras.models.Model: A Keras model.
     """
 
-    sen = tf.keras.layers.Input(shape=(sentence_length,), dtype=tf.int32)
+    input_layer = tf.keras.layers.Input(shape=(sentence_length,), dtype=tf.int32)
 
-    layer = tf.keras.layers.Embedding(num_words, output_dim=emb_dim)(sen)
+    layer = tf.keras.layers.Embedding(num_words, output_dim=emb_dim)(input_layer)
 
     layer_conv3 = tf.keras.layers.Conv1D(hid_dim, 3, activation="relu")(layer)
     layer_conv3 = tf.keras.layers.GlobalMaxPooling1D()(layer_conv3)
@@ -47,4 +47,4 @@ class CNN(tf.keras.models.Model):
 
     output = tf.keras.layers.Dense(class_dim, activation="softmax")(layer)
 
-    super(CNN, self).__init__(inputs=[input], outputs=output)
+    super(CNN, self).__init__(inputs=[input_layer], outputs=output)

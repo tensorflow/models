@@ -3,6 +3,10 @@
 Currently imdb dataset is available.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import data.imdb as imdb
 
 DATASET_IMDB = "imdb"
@@ -22,7 +26,7 @@ def load(dataset, vocabulary_size, sentence_length):
     ValueError: if the dataset value is not valid.
   Returns:
     A tuple of length 4, for training sentences, labels,
-    evaluation sentences, nd evaluation labels,
+    evaluation sentences, and evaluation labels,
     each being an numpy array.
   """
   if dataset == DATASET_IMDB:
