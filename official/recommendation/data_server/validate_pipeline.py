@@ -67,7 +67,7 @@ def main(_):
 
   dataset = pipeline.get_input_fn(
       training=True, ncf_dataset=ncf_dataset, batch_size=BATCH_SIZE,
-      num_epochs=1, shuffle=True)() # type: tf.data.Dataset
+      num_epochs=1, shuffle=True)({"batch_size": BATCH_SIZE}) # type: tf.data.Dataset
   batch_tensor = dataset.make_one_shot_iterator().get_next()
 
   mislabels = 0
@@ -80,10 +80,15 @@ def main(_):
 
   current_index = 0
   point_index = collections.defaultdict(list)
+  i=-1
   with tf.Session().as_default() as sess:
+
+    # for _ in range(10):
     while True:
+      i+=1
       try:
         batch = sess.run(batch_tensor)
+
       except tf.errors.OutOfRangeError:
         break
 

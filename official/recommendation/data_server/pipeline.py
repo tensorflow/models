@@ -188,16 +188,30 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
   # type: (bool, prepare.NCFDataset, int, int, bool) -> typing.Callable
 
   def input_fn(params):
-    batch_size = params["batch_size"]
-    # type: () -> tf.data.Dataset
+    # type: (dict) -> tf.data.Dataset
     """The input function for an NCF Estimator."""
+
+    batch_size = params["batch_size"]
+
+    feature_map = {
+      movielens.USER_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
+      movielens.ITEM_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
+      "labels": tf.FixedLenFeature([batch_size], dtype=tf.int64),
+    }
+
+    def _deserialize(examples_serialized):
+      features = tf.parse_single_example(examples_serialized, feature_map)
+      return features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN], features["labels"]
+
+
     if training:
       if not alive():
         raise OSError("No train data GRPC server.")
       enqueue(num_epochs=num_epochs, shuffle_buffer_size=_SHUFFLE_BUFFER_SIZE)
+      calls_per_reader = int(np.ceil(ncf_dataset.num_train_pts / batch_size / ncf_dataset.num_data_readers))
 
       def make_reader(_):
-        reader_dataset = tf.contrib.data.Counter()
+        reader_dataset = tf.data.Dataset.range(calls_per_reader)
         def _rpc_fn(_):
           """Construct RPC op to request training data."""
           rpc_op = tf.contrib.rpc.rpc(
@@ -209,20 +223,12 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
               protocol="grpc",
           )
 
-          def _decode_proto(shard_bytes):
-            """Decode a message into a batch of training data."""
-            message = server_command_pb2.Batch.FromString(shard_bytes)
-            users = np.frombuffer(message.users, dtype=np.int32)
-            items = np.frombuffer(message.items, dtype=np.uint16)
-            labels = np.frombuffer(message.labels, dtype=np.int8)
-            users, items, labels = [np.expand_dims(i, axis=1)
-                                    for i in [users, items, labels]]
-            if users.shape[0] == 0:
-              raise StopIteration
-            return users, items, labels
 
-          decoded_shard = tf.py_func(
-              _decode_proto, inp=[rpc_op], Tout=(np.int32, np.uint16, np.int8))
+          return rpc_op
+
+        def _decode(rpc_bytes):
+          decoded_shard = _deserialize(rpc_bytes)
+
           decoded_users, decoded_items, decoded_labels = [
               tf.reshape(decoded_shard[i], (batch_size, 1)) for i in range(3)
           ]
@@ -234,12 +240,8 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
 
         reader_dataset = reader_dataset.map(
             _rpc_fn,
-            num_parallel_calls=1  # This must be one. If any of the map
-                                  # functions raises a StopIteration then
-                                  # they all stop, so performing this step in
-                                  # parallel can cause the final few batches to
-                                  # be dropped.
-        )
+            num_parallel_calls=1
+        ).filter(lambda x: tf.not_equal(x, "")).map(_decode)
 
         return reader_dataset
 

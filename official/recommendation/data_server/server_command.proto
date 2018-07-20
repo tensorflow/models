@@ -3,6 +3,33 @@ syntax = "proto3";
 
 package official.recommendation.data_server;
 
+
+// =============================================================================
+// ==== <Awful terrible hack> ==================================================
+// =============================================================================
+
+message FauxInt64List {
+  repeated int64 value = 1 [packed = true];
+}
+
+message FauxFeature {
+  FauxInt64List int64_list = 3;
+};
+
+message FauxFeatures {
+  // Map from feature name to feature.
+  map<string, FauxFeature> feature = 1;
+};
+
+message FauxExample {
+  FauxFeatures features = 1;
+};
+
+// =============================================================================
+// ==== </Awful terrible hack> =================================================
+// =============================================================================
+
+
 message Check {
 
 }
@@ -34,6 +61,7 @@ message Ack {
 service TrainData {
   rpc Alive(Check) returns (Ack);
   rpc Enqueue(NumEpochs) returns (Ack);
-  rpc GetBatch(BatchRequest) returns (Batch);
+//  rpc GetBatch(BatchRequest) returns (Batch);
+  rpc GetBatch(BatchRequest) returns (FauxExample);
   rpc ShutdownServer(Shutdown) returns (Ack);
 }

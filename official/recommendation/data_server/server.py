@@ -210,7 +210,7 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
       buffer_size = self._buffer_arrays[0].shape[0]
       if (self.spillover and self._mapper_exhausted and
           buffer_size < max_batch_size):
-        return server_command_pb2.Batch(users=b"", items=b"", labels=b"")
+        return tf.train.Example()
 
       if (buffer_size < self._shuffle_buffer_size + max_batch_size - 1
           and not self._mapper_exhausted):
@@ -262,11 +262,18 @@ class TrainData(server_command_pb2_grpc.TrainDataServicer):
     n = output[0].shape[0]
     print("Serving batch: n = {}".format(n))
 
-    return server_command_pb2.Batch(
-        users=bytes(memoryview(output[0])),
-        items=bytes(memoryview(output[1])),
-        labels=bytes(memoryview(output[2]))
-    )
+    # return server_command_pb2.FauxExample(
+    return tf.train.Example(features=tf.train.Features(feature={
+      movielens.USER_COLUMN: tf.train.Feature(int64_list=tf.train.Int64List(value=output[0])),
+      movielens.ITEM_COLUMN: tf.train.Feature(int64_list=tf.train.Int64List(value=output[1])),
+      "labels": tf.train.Feature(int64_list=tf.train.Int64List(value=output[2])),
+    }))
+
+    # return server_command_pb2.Batch(
+    #     users=bytes(memoryview(output[0])),
+    #     items=bytes(memoryview(output[1])),
+    #     labels=bytes(memoryview(output[2]))
+    # )
 
   def ShutdownServer(self, request, context):
     response = server_command_pb2.Ack()

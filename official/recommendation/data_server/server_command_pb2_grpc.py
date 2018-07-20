@@ -27,7 +27,7 @@ class TrainDataStub(object):
     self.GetBatch = channel.unary_unary(
         '/official.recommendation.data_server.TrainData/GetBatch',
         request_serializer=official_dot_recommendation_dot_data__server_dot_server__command__pb2.BatchRequest.SerializeToString,
-        response_deserializer=official_dot_recommendation_dot_data__server_dot_server__command__pb2.Batch.FromString,
+        response_deserializer=official_dot_recommendation_dot_data__server_dot_server__command__pb2.FauxExample.FromString,
         )
     self.ShutdownServer = channel.unary_unary(
         '/official.recommendation.data_server.TrainData/ShutdownServer',
@@ -55,8 +55,8 @@ class TrainDataServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def GetBatch(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
+    """rpc GetBatch(BatchRequest) returns (Batch);
+    """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
@@ -84,7 +84,7 @@ def add_TrainDataServicer_to_server(servicer, server):
       'GetBatch': grpc.unary_unary_rpc_method_handler(
           servicer.GetBatch,
           request_deserializer=official_dot_recommendation_dot_data__server_dot_server__command__pb2.BatchRequest.FromString,
-          response_serializer=official_dot_recommendation_dot_data__server_dot_server__command__pb2.Batch.SerializeToString,
+          response_serializer=official_dot_recommendation_dot_data__server_dot_server__command__pb2.FauxExample.SerializeToString,
       ),
       'ShutdownServer': grpc.unary_unary_rpc_method_handler(
           servicer.ShutdownServer,

@@ -77,6 +77,8 @@ def neumf_model_fn(features, labels, mode, params):
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
+    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+
     losses = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.cast(tf.squeeze(labels), tf.float32),
         logits=tf.squeeze(logits)

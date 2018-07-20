@@ -53,8 +53,8 @@ class NCFDataset(object):
   """Container for training and testing data."""
 
   def __init__(self, cache_dir, test_data, num_users, num_items,
-               num_data_readers, train_data=None, num_train_neg=None):
-    # type: (str, typing.Tuple[dict, np.ndarray], int, int, int, dict) -> None
+               num_data_readers, num_train_pts, train_data=None, num_train_neg=None):
+    # type: (str, typing.Tuple[dict, np.ndarray], int, int, int, int, dict) -> None
     """Assign values for recommendation dataset.
 
     The NCF pipeline makes use of both sharded files (training) and in-memory
@@ -108,6 +108,8 @@ class NCFDataset(object):
     # shards found in `self.train_shard_dir `
     self.train_data = train_data
     self.num_train_neg = num_train_neg
+
+    self.num_train_pts = num_train_pts
 
 
 def _filter_index_sort(raw_rating_path):
@@ -456,9 +458,11 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
     }
     num_train_neg = num_neg
 
+  num_train_pts = (len(df) - num_users) * (1 + num_neg)
   ncf_dataset = NCFDataset(cache_dir=cache_dir, test_data=test_data,
                            num_items=num_items, num_users=num_users,
                            num_data_readers=num_data_readers,
+                           num_train_pts=num_train_pts,
                            train_data=train_data, num_train_neg=num_train_neg)
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
