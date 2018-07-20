@@ -40,10 +40,10 @@ If add_postprocessing_op is true: frozen graph adds a
   TFLite_Detection_PostProcess custom op node has four outputs:
   detection_boxes: a float32 tensor of shape [1, num_boxes, 4] with box
   locations
-  detection_scores: a float32 tensor of shape [1, num_boxes]
-  with class scores
   detection_classes: a float32 tensor of shape [1, num_boxes]
   with class indices
+  detection_scores: a float32 tensor of shape [1, num_boxes]
+  with class scores
   num_boxes: a float32 tensor of size 1 containing the number of detected boxes
 else:
   the graph has two outputs:
