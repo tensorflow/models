@@ -19,8 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-# pylint: disable=g-bad-import-order
-from official.utils.misc import model_helpers
+from official.utils.misc import model_helpers  # pylint: disable=g-bad-import-order
 
 # Default values for dataset.
 _NUM_CHANNELS = 3
