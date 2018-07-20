@@ -51,8 +51,7 @@ def run_model(dataset_name, emb_dim, voc_size, sen_len,
   model.fit(x_train, y_train, batch_size=batch_size,
             validation_split=0.4, epochs=epochs)
   score = model.evaluate(x_test, y_test, batch_size=batch_size)
-  tf.logging.info("Score: ###")
-  tf.logging.info(score)
+  tf.logging.info("Score: {}".format(score))
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
