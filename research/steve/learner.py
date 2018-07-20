@@ -155,9 +155,10 @@ class Learner(object):
         self.resume_from_checkpoint(epoch)
 
     def _log(self):
-        logstring = "(%3.2f sec) h%-8.2f e%-8d s%-8d f%-8d\t" % (time.time() - self._log_time, self.hours, self.epoch, self.update_i + 1, self.total_frames) + ', '.join(["%8f" % x for x in (self.running_total / self.denom).tolist()])
-        print("%s\t%s" % (self.learner_name, logstring))
-        with open(self.log_path, "a") as f: f.write(logstring + "\n")
+        if self.denom > 0:
+            logstring = "(%3.2f sec) h%-8.2f e%-8d s%-8d f%-8d\t" % (time.time() - self._log_time, self.hours, self.epoch, self.update_i + 1, self.total_frames) + ', '.join(["%8f" % x for x in (self.running_total / self.denom).tolist()])
+            print("%s\t%s" % (self.learner_name, logstring))
+            with open(self.log_path, "a") as f: f.write(logstring + "\n")
         self._reset_inspections()
 
     def _reset_inspections(self):
