@@ -129,14 +129,14 @@ def construct_estimator(num_gpus, model_dir, params, batch_size, ncf_dataset):
   )
 
   tpu_config = tf.contrib.tpu.TPUConfig(
-      iterations_per_loop=int(20000000 * 5 // batch_size * batch_size),
+      iterations_per_loop=100,
       num_shards=8)
 
   run_config = tf.contrib.tpu.RunConfig(
       cluster=tpu_cluster_resolver,
       model_dir=model_dir,
       session_config=tf.ConfigProto(
-          allow_soft_placement=True, log_device_placement=True),
+          allow_soft_placement=True, log_device_placement=False),
       tpu_config=tpu_config)
 
   return tf.contrib.tpu.TPUEstimator(

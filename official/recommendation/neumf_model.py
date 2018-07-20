@@ -45,6 +45,7 @@ def neumf_model_fn(features, labels, mode, params):
   """Model Function for NeuMF estimator."""
   users = tf.squeeze(features[movielens.USER_COLUMN])
   items = tf.squeeze(features[movielens.ITEM_COLUMN])
+  labels = tf.cast(labels, tf.float32)
 
   num_users = params["num_users"]
   num_items = params["num_items"]
@@ -81,7 +82,7 @@ def neumf_model_fn(features, labels, mode, params):
 
     losses = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.cast(tf.squeeze(labels), tf.float32),
-        logits=tf.squeeze(logits)
+        logits=tf.cast(tf.squeeze(logits), tf.float32)
     )
     loss = tf.reduce_mean(losses)
 

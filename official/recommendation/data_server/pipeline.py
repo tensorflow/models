@@ -221,6 +221,7 @@ def get_input_fn(training, ncf_dataset, batch_size, num_epochs=1, shuffle=None):
                   shuffle=shuffle, max_batch_size=batch_size
               ).SerializeToString(),
               protocol="grpc",
+              name="dataset_rpc_fetch"
           )
 
 
