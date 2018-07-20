@@ -79,7 +79,12 @@ def _infer_kind(value):
     return "bytes_list"
 
 
-def set_feature(ex, name, value, kind=None, allow_overwrite=False):
+def set_feature(ex,
+                name,
+                value,
+                kind=None,
+                allow_overwrite=False,
+                bytes_encoding="latin-1"):
   """Sets a feature value in a tf.train.Example.
 
   Args:
@@ -89,6 +94,7 @@ def set_feature(ex, name, value, kind=None, allow_overwrite=False):
     kind: Optional: one of 'bytes_list', 'float_list', 'int64_list'. Inferred if
         not specified.
     allow_overwrite: Whether to overwrite the existing value of the feature.
+    bytes_encoding: Codec for encoding strings when kind = 'bytes_list'.
 
   Raises:
     ValueError: If `allow_overwrite` is False and the feature already exists, or
@@ -105,7 +111,7 @@ def set_feature(ex, name, value, kind=None, allow_overwrite=False):
     kind = _infer_kind(value)
 
   if kind == "bytes_list":
-    value = [str(v).encode("latin-1") for v in value]
+    value = [str(v).encode(bytes_encoding) for v in value]
   elif kind == "float_list":
     value = [float(v) for v in value]
   elif kind == "int64_list":
@@ -121,9 +127,13 @@ def set_float_feature(ex, name, value, allow_overwrite=False):
   set_feature(ex, name, value, "float_list", allow_overwrite)
 
 
-def set_bytes_feature(ex, name, value, allow_overwrite=False):
+def set_bytes_feature(ex,
+                      name,
+                      value,
+                      allow_overwrite=False,
+                      bytes_encoding="latin-1"):
   """Sets the value of a bytes feature in a tf.train.Example."""
-  set_feature(ex, name, value, "bytes_list", allow_overwrite)
+  set_feature(ex, name, value, "bytes_list", allow_overwrite, bytes_encoding)
 
 
 def set_int64_feature(ex, name, value, allow_overwrite=False):

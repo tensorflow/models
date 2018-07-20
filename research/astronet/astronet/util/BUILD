@@ -47,6 +47,7 @@ py_library(
     name = "example_util",
     srcs = ["example_util.py"],
     srcs_version = "PY2AND3",
+    visibility = ["//visibility:public"],
 )
 
 py_test(
