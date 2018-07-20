@@ -44,7 +44,7 @@ from official.datasets import movielens  # pylint: disable=g-bad-import-order
 def neumf_model_fn(features, labels, mode, params):
   """Model Function for NeuMF estimator."""
   users = tf.squeeze(features[movielens.USER_COLUMN])
-  items = tf.cast(tf.squeeze(features[movielens.ITEM_COLUMN]), dtype=tf.int32)
+  items = tf.squeeze(features[movielens.ITEM_COLUMN])
 
   num_users = params["num_users"]
   num_items = params["num_items"]
@@ -131,9 +131,9 @@ class NeuMF(tf.keras.models.Model):
 
     # Input variables
     user_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.int32, name=movielens.USER_COLUMN)
+        shape=(1,), dtype=tf.int64, name=movielens.USER_COLUMN)
     item_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.uint16, name=movielens.ITEM_COLUMN)
+        shape=(1,), dtype=tf.int64, name=movielens.ITEM_COLUMN)
 
     # Initializer for embedding layers
     embedding_initializer = "glorot_uniform"

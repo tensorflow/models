@@ -20,7 +20,8 @@ mkdir -p ${TEST_DIR}
 for i in `seq 0 0`;
 do
   START_TIME=$(date +%s)
-  MODEL_DIR="${TEST_DIR}/model_dir_${i}"
+#  MODEL_DIR="${TEST_DIR}/model_dir_${i}"
+  MODEL_DIR="gs://taylorrobie-tpu-test-bucket-2/${START_TIME}_model_dir_${i}"
   RUN_LOG="${TEST_DIR}/run_${i}.log"
   echo ""
   echo "Beginning run ${i}"
