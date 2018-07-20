@@ -228,7 +228,7 @@ def run_ncf(_):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
 
-    train_steps = int(20000000 * 5 // batch_size * batch_size)
+    train_steps = int(20000000 * 5 // FLAGS.batch_size * FLAGS.batch_size)
     # Train the model
     estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks, steps=train_steps)
     import sys
