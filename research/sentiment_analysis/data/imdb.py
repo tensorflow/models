@@ -1,3 +1,6 @@
+"""IMDB Dataset module for sentiment analysis.
+"""
+
 from data.util import OOV_CHAR
 from data.util import pad_sentence
 from data.util import START_CHAR
@@ -26,7 +29,7 @@ def load(vocabulary_size, sentence_length):
       num_words=vocabulary_size,
       skip_top=0,
       maxlen=None,
-      seed=112,
+      seed=113,
       start_char=START_CHAR,
       oov_char=OOV_CHAR,
       index_from=OOV_CHAR+1)

@@ -1,3 +1,8 @@
+"""Dataset module for sentiment analysis.
+
+Currently imdb dataset is available.
+"""
+
 import data.imdb as imdb
 
 DATASET_IMDB = "imdb"
@@ -16,7 +21,8 @@ def load(dataset, vocabulary_size, sentence_length):
   Raises:
     ValueError: if the dataset value is not valid.
   Returns:
-    A tuple of length 4, for training and evaluation data,
+    A tuple of length 4, for training sentences, labels,
+    evaluation sentences, nd evaluation labels,
     each being an numpy array.
   """
   if dataset == DATASET_IMDB:

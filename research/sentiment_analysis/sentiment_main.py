@@ -1,6 +1,14 @@
+"""Main function for the sentiment analysis model.
+
+The model makes use of concatenation of two CNN layers with
+different kernel sizes. See `sentiment_model.py`
+for more details about the models.
+"""
+
 import argparse
 from data import dataset
 import sentiment_model
+import tensorflow as tf
 
 _DROPOUT_RATE = 0.95
 
@@ -30,15 +38,15 @@ def run_model(dataset_name, emb_dim, voc_size, sen_len,
                 optimizer="rmsprop",
                 metrics=["accuracy"])
 
-  print("loading the data")
+  tf.logging.info("loading the data")
   x_train, y_train, x_test, y_test = dataset.load(
       dataset_name, voc_size, sen_len)
 
   model.fit(x_train, y_train, batch_size=batch_size,
             validation_split=0.4, epochs=epochs)
   score = model.evaluate(x_test, y_test, batch_size=batch_size)
-  print("score")
-  print(score)
+  tf.logging.info("score")
+  tf.logging.info(score)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
