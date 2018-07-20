@@ -19,6 +19,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from official.utils.misc import model_helpers  # pylint: disable=g-bad-import-order
+
 # Default values for dataset.
 _NUM_CHANNELS = 3
 _NUM_CLASSES = 1000
@@ -34,12 +36,14 @@ def _get_default_image_size(model):
   return image_size
 
 
-def generate_synthetic_input_dataset(model, num_imgs):
+def generate_synthetic_input_dataset(model, batch_size):
   """Generate synthetic dataset."""
   image_size = _get_default_image_size(model)
-  input_shape = (num_imgs,) + image_size + (_NUM_CHANNELS,)
+  image_shape = (batch_size,) + image_size + (_NUM_CHANNELS,)
+  label_shape = (batch_size, _NUM_CLASSES)
 
-  images = tf.zeros(input_shape, dtype=tf.float32)
-  labels = tf.zeros((num_imgs, _NUM_CLASSES), dtype=tf.float32)
-
-  return tf.data.Dataset.from_tensors((images, labels)).repeat()
+  return model_helpers.generate_synthetic_data(
+      input_shape=tf.TensorShape(image_shape),
+      input_dtype=tf.float32,
+      label_shape=tf.TensorShape(label_shape),
+      label_dtype=tf.float32)
