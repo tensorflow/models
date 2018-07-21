@@ -214,8 +214,9 @@ def main(_):
 
   # This server is generally run in a subprocess.
   print("Redirecting stdout and stderr to files in {}".format(log_dir))
-  stdout = tf.gfile.Open(os.path.join(log_dir, "stdout.log"), "wt")
-  stderr = tf.gfile.Open(os.path.join(log_dir, "stderr.log"), "wt")
+  log_stream = open("/tmp/ncf_data_gen_proc.log", "wt")
+  stdout = log_stream
+  stderr = log_stream
   try:
     absl_logging.get_absl_logger().addHandler(hdlr=logging.StreamHandler(stream=stdout))
     sys.stdout = stdout
@@ -239,8 +240,7 @@ def main(_):
   finally:
     sys.stdout.flush()
     sys.stderr.flush()
-    stdout.close()
-    stderr.close()
+    log_stream.close()
 
 
 def define_flags():
