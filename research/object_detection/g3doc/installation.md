@@ -89,6 +89,7 @@ protoc object_detection/protos/*.proto --python_out=.
 ## Manual protobuf-compiler installation and usage
 Download and install the 3.0 release of protoc, then unzip the file.
 ```bash
+# From tensorflow/models/research/
 wget -O protobuf.zip https://github.com/google/protobuf/releases/download/v3.0.0/protoc-3.0.0-linux-x86_64.zip
 unzip protobuf.zip
 ```
@@ -96,6 +97,7 @@ unzip protobuf.zip
 Run the compilation process again, but use the downloaded version of protoc
 
 ```bash
+# From tensorflow/models/research/
 ./bin/protoc object_detection/protos/*.proto --python_out=.
 ```
 
