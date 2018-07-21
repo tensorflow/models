@@ -2,7 +2,6 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-
 import threading
 import gym
 import multiprocessing
@@ -17,7 +16,6 @@ from tensorflow.python import keras
 from tensorflow.python.keras import layers
 
 tf.enable_eager_execution()
-print("Eager execution: {}".format(tf.executing_eagerly()))
 
 def str2bool(v):
   if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -32,9 +30,8 @@ parser = argparse.ArgumentParser(description='Run A3C algorithm on the game '
                                              'Cartpole.')
 parser.add_argument('--algorithm', default='a3c', type=str,
                     help='Choose between \'a3c\' and \'random\'.')
-parser.add_argument("--train", type=str2bool, default=True,
-                    help='Train our model or to run an existing model and '
-                         'watch it play.')
+parser.add_argument('--train', dest='train', action='store_true',
+                    help='Train our model.')
 parser.add_argument('--lr', default=0.0005,
                     help='Learning rate for the shared optimizer.')
 parser.add_argument('--update-freq', default=20, type=int,
@@ -45,9 +42,7 @@ parser.add_argument('--gamma', default=0.99,
                     help='Discount factor of rewards.')
 parser.add_argument('--save-dir', default='/tmp/', type=str,
                     help='Directory in which you desire to save the model.')
-
 args = parser.parse_args()
-
 
 class ActorCriticModel(keras.Model):
   def __init__(self, state_size, action_size):
@@ -66,22 +61,6 @@ class ActorCriticModel(keras.Model):
     v1 = self.dense2(inputs)
     values = self.values(v1)
     return logits, values
-
-
-def tf_wrap(np_array, dtype=np.float32):
-  """Converts an np array to a tf constant.
-
-  Arguments:
-      np_array: Input array.
-      dtype: The desired data type of the array.
-
-  Returns:
-      A tensor of the np array of type dtype.
-  """
-  if np_array.dtype != dtype:
-    np_array = np_array.astype(dtype)
-  return tf.constant(np_array)
-
 
 def record(episode,
            episode_reward,
@@ -170,7 +149,7 @@ class MasterAgent():
     print(self.state_size, self.action_size)
 
     self.global_model = ActorCriticModel(self.state_size, self.action_size)  # global network
-    self.global_model(tf.constant(np.random.random((1, self.state_size)), dtype=tf.float32))
+    self.global_model(tf.convert_to_tensor(np.random.random((1, self.state_size)), dtype=tf.float32))
 
   def train(self):
     if args.algorithm == 'random':
@@ -180,33 +159,31 @@ class MasterAgent():
 
     res_queue = Queue()
 
-    # We run the algorithm on cpu only!
-    with tf.device('/cpu:0'):
-      workers = [Worker(self.state_size,
-                        self.action_size,
-                        self.global_model,
-                        self.opt, res_queue,
-                        i, save_dir=self.save_dir) for i in range(multiprocessing.cpu_count())]
+    workers = [Worker(self.state_size,
+                      self.action_size,
+                      self.global_model,
+                      self.opt, res_queue,
+                      i, save_dir=self.save_dir) for i in range(multiprocessing.cpu_count())]
 
-      for i, worker in enumerate(workers):
-        print("Starting worker {}".format(i))
-        worker.start()
+    for i, worker in enumerate(workers):
+      print("Starting worker {}".format(i))
+      worker.start()
 
-      moving_average_rewards = []  # record episode reward to plot
-      while True:
-        reward = res_queue.get()
-        if reward is not None:
-          moving_average_rewards.append(reward)
-        else:
-          break
-      [w.join() for w in workers]
+    moving_average_rewards = []  # record episode reward to plot
+    while True:
+      reward = res_queue.get()
+      if reward is not None:
+        moving_average_rewards.append(reward)
+      else:
+        break
+    [w.join() for w in workers]
 
-      plt.plot(moving_average_rewards)
-      plt.ylabel('Moving average ep reward')
-      plt.xlabel('Step')
-      plt.savefig(os.path.join(self.save_dir,
-                               '{} Moving Average.png'.format(self.game_name)))
-      plt.show()
+    plt.plot(moving_average_rewards)
+    plt.ylabel('Moving average ep reward')
+    plt.xlabel('Step')
+    plt.savefig(os.path.join(self.save_dir,
+                             '{} Moving Average.png'.format(self.game_name)))
+    plt.show()
 
   def play(self):
     env = gym.make(self.game_name).unwrapped
@@ -222,7 +199,7 @@ class MasterAgent():
     try:
       while not done:
         env.render(mode='rgb_array')
-        policy, value = model(tf_wrap(state[None, :]))
+        policy, value = model(tf.convert_to_tensor(state[None, :], dtype=tf.float32))
         policy = tf.nn.softmax(policy)
         action = np.argmax(policy)
         state, reward, done, _ = env.step(action)
@@ -295,7 +272,9 @@ class Worker(threading.Thread):
       time_count = 0
       done = False
       while not done:
-        logits, _ = self.local_model(tf_wrap(current_state[None, :]))
+        logits, _ = self.local_model(
+            tf.convert_to_tensor(current_state[None, :],
+                                 dtype=tf.float32))
         probs = tf.nn.softmax(logits)
 
         action = np.random.choice(self.action_size, p=probs.numpy()[0])
@@ -356,7 +335,9 @@ class Worker(threading.Thread):
     if done:
       reward_sum = 0.  # terminal
     else:
-      reward_sum = self.local_model(tf_wrap(new_state[None, :]))[-1].numpy()[0]
+      reward_sum = self.local_model(
+          tf.convert_to_tensor(new_state[None, :],
+                               dtype=tf.float32))[-1].numpy()[0]
 
     # Get discounted rewards
     discounted_rewards = []
@@ -365,9 +346,12 @@ class Worker(threading.Thread):
       discounted_rewards.append(reward_sum)
     discounted_rewards.reverse()
 
-    logits, values = self.local_model(tf_wrap(np.vstack(memory.states)))
+    logits, values = self.local_model(
+        tf.convert_to_tensor(np.vstack(memory.states),
+                             dtype=tf.float32))
     # Get our advantages
-    advantage = tf_wrap(np.array(discounted_rewards)[:, None]) - values
+    advantage = tf.convert_to_tensor(np.array(discounted_rewards)[:, None],
+                            dtype=tf.float32) - values
     # Value loss
     value_loss = advantage ** 2
 
