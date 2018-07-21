@@ -41,7 +41,7 @@ def get_const_center_size_encoded_anchors(anchors):
       boxes
 
   Returns:
-    encoded_anchors: a float32 constant tensor of shape [4, num_anchors]
+    encoded_anchors: a float32 constant tensor of shape [num_anchors, 4]
     containing the anchor boxes.
   """
   anchor_boxlist = box_list.BoxList(anchors)
@@ -83,10 +83,10 @@ def append_postprocessing_op(frozen_graph_def, max_detections,
     TFLite_Detection_PostProcess custom op node has four outputs:
     detection_boxes: a float32 tensor of shape [1, num_boxes, 4] with box
     locations
-    detection_scores: a float32 tensor of shape [1, num_boxes]
-    with class scores
     detection_classes: a float32 tensor of shape [1, num_boxes]
     with class indices
+    detection_scores: a float32 tensor of shape [1, num_boxes]
+    with class scores
     num_boxes: a float32 tensor of size 1 containing the number of detected
     boxes
   """
