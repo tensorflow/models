@@ -8,8 +8,8 @@ echo "Root directory: ${ROOT_DIR}"
 
 mkdir -p ${ROOT_DIR}
 
-DATA_DIR="${ROOT_DIR}/movielens_data"
-mkdir -p ${DATA_DIR}
+# DATA_DIR="${ROOT_DIR}/movielens_data"
+DATA_DIR="gs://taylorrobie-tpu-test-bucket-2/ncf_data_dir"
 python ../datasets/movielens.py --data_dir ${DATA_DIR} --dataset ${DATASET}
 
 TEST_DIR="${ROOT_DIR}/`date '+%Y-%m-%d_%H:%M:%S'`"

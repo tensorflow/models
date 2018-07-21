@@ -214,8 +214,8 @@ def main(_):
 
   # This server is generally run in a subprocess.
   print("Redirecting stdout and stderr to files in {}".format(log_dir))
-  stdout = open(os.path.join(log_dir, "stdout.log"), "wt")
-  stderr = open(os.path.join(log_dir, "stderr.log"), "wt")
+  stdout = tf.gfile.Open(os.path.join(log_dir, "stdout.log"), "wt")
+  stderr = tf.gfile.Open(os.path.join(log_dir, "stderr.log"), "wt")
   try:
     absl_logging.get_absl_logger().addHandler(hdlr=logging.StreamHandler(stream=stdout))
     sys.stdout = stdout

@@ -146,7 +146,7 @@ def construct_estimator(num_gpus, model_dir, params, batch_size, ncf_dataset):
       use_tpu=True,
       train_batch_size=batch_size,
       eval_batch_size=32768,
-      params=params,
+      params={k: v for k, v in params.items() if k != "batch_size"},
       config=run_config)
 
   # distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
