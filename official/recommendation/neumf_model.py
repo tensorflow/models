@@ -45,7 +45,6 @@ def neumf_model_fn(features, labels, mode, params):
   """Model Function for NeuMF estimator."""
   users = tf.squeeze(features[movielens.USER_COLUMN])
   items = tf.squeeze(features[movielens.ITEM_COLUMN])
-  labels = tf.cast(labels, tf.float32)
 
   num_users = params["num_users"]
   num_items = params["num_items"]

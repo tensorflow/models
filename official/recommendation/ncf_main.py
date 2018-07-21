@@ -37,9 +37,10 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.datasets import movielens
+from official.recommendation import data_preprocessing
 from official.recommendation import neumf_model
-from official.recommendation.data_server import pipeline
-from official.recommendation.data_server import prepare
+# from official.recommendation.data_server import pipeline
+# from official.recommendation.data_server import prepare
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -93,6 +94,7 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   # Get predictions
   predictions = estimator.predict(input_fn=pred_input_fn,
                                   yield_single_examples=False)
+
   prediction_batches = [p[movielens.RATING_COLUMN] for p in predictions]
 
   # Reshape the predicted scores and each user takes one row
@@ -164,15 +166,20 @@ def run_ncf(_):
   if FLAGS.download_if_missing:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
-  tf.logging.info("Data preprocessing...")
-  ncf_dataset = pipeline.initialize(
-      dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, num_neg=FLAGS.num_neg)
+  num_gpus = flags_core.get_num_gpus(FLAGS)
+  batch_size=distribution_utils.per_device_batch_size(
+      FLAGS.batch_size, num_gpus)
+  ncf_dataset = data_preprocessing.instantiate_pipeline(
+      dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
+      batch_size=int(batch_size // 8),  # 8 TPU shards
+      num_neg=FLAGS.num_neg,
+      epochs_per_cycle=FLAGS.epochs_between_evals)
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  num_gpus = flags_core.get_num_gpus(FLAGS)
   estimator = construct_estimator(
       num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
+          "batch_size": batch_size,
           "learning_rate": FLAGS.learning_rate,
           "num_users": ncf_dataset.num_users,
           "num_items": ncf_dataset.num_items,
@@ -202,41 +209,23 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
-  # Training and evaluation cycle
-  def get_train_input_fn():
-    return pipeline.get_input_fn(
-        training=True,
-        ncf_dataset=ncf_dataset,
-        batch_size=distribution_utils.per_device_batch_size(
-            FLAGS.batch_size, num_gpus),
-        num_epochs=FLAGS.epochs_between_evals,
-        shuffle=True,
-    )
-
-  def get_pred_input_fn():
-    return pipeline.get_input_fn(
-        training=False,
-        ncf_dataset=ncf_dataset,
-        batch_size=distribution_utils.per_device_batch_size(
-            FLAGS.eval_batch_size or FLAGS.batch_size, num_gpus),
-        num_epochs=1
-    )
+  pred_input_fn = data_preprocessing.make_pred_input_fn(ncf_dataset=ncf_dataset)
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
-
   for cycle_index in range(total_training_cycle):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
 
-    train_steps = int(20000000 * 5 // FLAGS.batch_size * FLAGS.batch_size)
+    train_steps = int(ncf_dataset.num_train_pts // FLAGS.batch_size * FLAGS.batch_size)
     # Train the model
-    estimator.train(input_fn=get_train_input_fn(), hooks=train_hooks, steps=train_steps)
-    import sys
-    sys.exit()
+    train_input_fn, train_record_dir = data_preprocessing.make_train_input_fn(
+        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir)
+    estimator.train(input_fn=train_input_fn, hooks=train_hooks, steps=train_steps)
+    tf.gfile.DeleteRecursively(train_record_dir)
 
     # Evaluate the model
     eval_results = evaluate_model(
-        estimator, ncf_dataset, get_pred_input_fn())
+        estimator, ncf_dataset, pred_input_fn)
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)

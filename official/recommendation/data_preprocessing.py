@@ -13,16 +13,18 @@
 # limitations under the License.
 # ==============================================================================
 """Preprocess dataset and construct any necessary artifacts."""
-raise NotImplementedError
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import atexit
 import contextlib
 import multiprocessing
 import os
 import pickle
+import subprocess
+import time
 import timeit
 import typing
 
@@ -31,15 +33,19 @@ from absl import app as absl_app
 from absl import flags
 import numpy as np
 import pandas as pd
+import six
 import tensorflow as tf
 # pylint: enable=wrong-import-order
 
 from official.datasets import movielens
-from official.utils.flags import core as flags_core
+from official.recommendation import data_async_generation
+from official.recommendation import stat_utils
 
 
+_ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__), "data_async_generation.py")
 _CACHE_SUBDIR = "ncf_recommendation_cache"
 _TRAIN_SHARD_SUBDIR = "training_shards"
+_DYNAMIC_EPOCH_SUBDIR = "dynamic_epochs"
 _APPROX_PTS_PER_SHARD = 32000
 
 # In both datasets, each user has at least 20 ratings.
@@ -54,7 +60,7 @@ class NCFDataset(object):
   """Container for training and testing data."""
 
   def __init__(self, cache_dir, test_data, num_users, num_items,
-               num_data_readers, num_train_pts, train_data=None, num_train_neg=None):
+      num_data_readers, num_train_pts, train_data=None, num_train_neg=None):
     # type: (str, typing.Tuple[dict, np.ndarray], int, int, int, int, dict) -> None
     """Assign values for recommendation dataset.
 
@@ -91,8 +97,8 @@ class NCFDataset(object):
     assert not any([i % (_NUMBER_NEGATIVES + 1) for i in true_ind])
 
     self.eval_true_items = {
-        test_data[0][movielens.USER_COLUMN][i]:
-            test_data[0][movielens.ITEM_COLUMN][i] for i in true_ind
+      test_data[0][movielens.USER_COLUMN][i]:
+        test_data[0][movielens.ITEM_COLUMN][i] for i in true_ind
     }
     self.eval_all_items = {}
     stride = _NUMBER_NEGATIVES + 1
@@ -179,71 +185,9 @@ def _filter_index_sort(raw_rating_path):
                  inplace=True)
 
   df = df.reset_index()  # The dataframe does not reconstruct indicies in the
-                         # sort or filter steps.
+  # sort or filter steps.
 
   return df, num_users, num_items
-
-
-def sample_with_exclusion(num_items, positive_set, n, replacement=True):
-  # type: (int, typing.Iterable, int, bool) -> list
-  """Vectorized negative sampling.
-
-  This function samples from the positive set's conjugate, both with and
-  without replacement.
-
-  Performance:
-    This algorithm generates a vector of candidate values based on the expected
-    number needed such that at least k are not in the positive set, where k
-    is the number of false negatives still needed. An additional factor of
-    safety of 1.2 is used during the generation to minimize the chance of having
-    to perform another generation cycle.
-
-    While this approach generates more values than needed and then discards some
-    of them, vectorized generation is inexpensive and turns out to be much
-    faster than generating points one at a time. (And it defers quite a bit
-    of work to NumPy which has much better multi-core utilization than native
-    Python.)
-
-  Args:
-    num_items: The cardinality of the entire set of items.
-    positive_set: The set of positive items which should not be included as
-      negatives.
-    n: The number of negatives to generate.
-    replacement: Whether to sample with (True) or without (False) replacement.
-
-  Returns:
-    A list of generated negatives.
-  """
-
-  if not isinstance(positive_set, set):
-    positive_set = set(positive_set)
-
-  p = 1 - len(positive_set) /  num_items
-  n_attempt = int(n * (1 / p) * 1.2)  # factor of 1.2 for safety
-
-  # If sampling is performed with replacement, candidates are appended.
-  # Otherwise, they should be added with a set union to remove duplicates.
-  if replacement:
-    negatives = []
-  else:
-    negatives = set()
-
-  while len(negatives) < n:
-    negative_candidates = np.random.randint(
-        low=0, high=num_items, size=(n_attempt,))
-    if replacement:
-      negatives.extend(
-          [i for i in negative_candidates if i not in positive_set]
-      )
-    else:
-      negatives |= (set(negative_candidates) - positive_set)
-
-  if not replacement:
-    negatives = list(negatives)
-    np.random.shuffle(negatives)  # list(set(...)) is not order guaranteed, but
-                                  # in practice tends to be quite ordered.
-
-  return negatives[:n]
 
 
 def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
@@ -299,12 +243,12 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
     block_items = items[boundaries[i]:boundaries[i+1]]
     train_blocks.append((block_user[:-1], block_items[:-1]))
 
-    test_negatives = sample_with_exclusion(
+    test_negatives = stat_utils.sample_with_exclusion(
         num_items=num_items, positive_set=set(block_items), n=_NUMBER_NEGATIVES,
         replacement=False)
     test_blocks.append((
-        block_user[0] * np.ones((_NUMBER_NEGATIVES + 1,), dtype=np.int32),
-        np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
+      block_user[0] * np.ones((_NUMBER_NEGATIVES + 1,), dtype=np.int32),
+      np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
     ))
     test_positives.append((block_user[0], block_items[-1]))
 
@@ -318,8 +262,8 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
 
   with tf.gfile.Open(train_shard_fpath, "wb") as f:
     pickle.dump({
-        movielens.USER_COLUMN: train_users,
-        movielens.ITEM_COLUMN: train_items,
+      movielens.USER_COLUMN: train_users,
+      movielens.ITEM_COLUMN: train_items,
     }, f)
 
   test_users = np.concatenate([i[0] for i in test_blocks])
@@ -328,8 +272,8 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
   assert test_items.shape[0] % (_NUMBER_NEGATIVES + 1) == 0
 
   return {
-      movielens.USER_COLUMN: test_users,
-      movielens.ITEM_COLUMN: test_items,
+    movielens.USER_COLUMN: test_users,
+    movielens.ITEM_COLUMN: test_items,
   }
 
 
@@ -381,8 +325,8 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
     item_shard = df_shard[movielens.ITEM_COLUMN].values.astype(np.uint16)
 
     shards.append({
-        movielens.USER_COLUMN: user_shard,
-        movielens.ITEM_COLUMN: item_shard,
+      movielens.USER_COLUMN: user_shard,
+      movielens.ITEM_COLUMN: item_shard,
     })
 
     start_ind = end_ind
@@ -409,9 +353,9 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
   test_labels[0::(_NUMBER_NEGATIVES + 1)] = 1
 
   return ({
-      movielens.USER_COLUMN: test_users,
-      movielens.ITEM_COLUMN: test_items,
-  }, test_labels)
+            movielens.USER_COLUMN: test_users,
+            movielens.ITEM_COLUMN: test_items,
+          }, test_labels)
 
 
 def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
@@ -454,8 +398,8 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
     items = df[movielens.ITEM_COLUMN].values
     train_ind = np.argwhere(np.equal(users[:-1], users[1:]))[:, 0]
     train_data = {
-        movielens.USER_COLUMN: users[train_ind],
-        movielens.ITEM_COLUMN: items[train_ind],
+      movielens.USER_COLUMN: users[train_ind],
+      movielens.ITEM_COLUMN: items[train_ind],
     }
     num_train_neg = num_neg
 
@@ -471,8 +415,131 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
   return ncf_dataset
 
 
-def run(dataset, data_dir, num_data_readers=None, num_neg=4, debug=False):
+def _shutdown(proc):
+  tf.logging.info("Shutting down train data creation subprocess.")
+  proc.kill()
+  time.sleep(1)
+  proc.terminate()
+
+
+def instantiate_pipeline(dataset, data_dir, batch_size, num_data_readers=None, num_neg=4,
+                         epochs_per_cycle=1, debug=False):
   movielens.download(dataset=dataset, data_dir=data_dir)
-  return construct_cache(dataset=dataset, data_dir=data_dir,
-                         num_data_readers=num_data_readers, num_neg=num_neg,
-                         debug=debug)
+  tf.logging.info("Beginning data preprocessing.")
+  ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
+                                num_data_readers=num_data_readers,
+                                num_neg=num_neg, debug=debug)
+
+  tf.logging.info("Creating training file subprocess.")
+  epoch_root = os.path.join(data_dir, _CACHE_SUBDIR, dataset, _DYNAMIC_EPOCH_SUBDIR)
+
+
+  subproc_env = os.environ.copy()
+
+  # The subprocess uses TensorFlow for tf.gfile, but it does not need GPU
+  # resources and by default will try to allocate GPU memory. This would cause
+  # contention with the main training process.
+  subproc_env["CUDA_VISIBLE_DEVICES"] = ""
+
+  python = "python3" if six.PY3 else "python2"
+
+  # By limiting the number of workers we guarantee that the worker
+  # pool underlying the training generation doesn't starve other processes.
+  num_workers = int(multiprocessing.cpu_count() * 0.75)
+
+  subproc_args = [
+    python, _ASYNC_GEN_PATH,
+    "--shard_dir", ncf_dataset.train_shard_dir,
+    "--output_root", epoch_root,
+    "--num_neg", str(num_neg),
+    "--num_items", str(ncf_dataset.num_items),
+    "--num_readers", str(ncf_dataset.num_data_readers),
+    "--epochs_per_cycle", str(epochs_per_cycle),
+    "--batch_size", str(batch_size),
+    "--num_workers", str(num_workers),
+    "--spillover", "True"  # This allows the training input function to
+                           # guarantee batch size and significantly improves
+                           # performance. (~5% increase in examples/sec)
+  ]
+
+  proc = subprocess.Popen(args=subproc_args, stdin=subprocess.PIPE,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          shell=False, env=subproc_env)
+
+  atexit.register(_shutdown, proc=proc)
+
+  return ncf_dataset
+
+def make_train_input_fn(data_dir, dataset):
+  epoch_root = os.path.join(data_dir, _CACHE_SUBDIR, dataset, _DYNAMIC_EPOCH_SUBDIR)
+  while not tf.gfile.Exists(epoch_root):
+    time.sleep(1)
+
+  train_data_dirs = tf.gfile.ListDirectory(epoch_root)
+  while not train_data_dirs:
+    time.sleep(1)
+    train_data_dirs = tf.gfile.ListDirectory(epoch_root)
+  train_data_dirs.sort()
+  record_dir = os.path.join(epoch_root, train_data_dirs[0])
+
+  while not tf.gfile.Exists(os.path.join(record_dir, data_async_generation.READY_FILE)):
+    tf.logging.info("Waiting for records in {} to be ready".format(record_dir))
+    time.sleep(1)
+
+  def input_fn(params):
+    batch_size = params["batch_size"]
+    feature_map = {
+      movielens.USER_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
+      movielens.ITEM_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
+      "labels": tf.FixedLenFeature([batch_size], dtype=tf.int64),
+    }
+
+    def _deserialize(examples_serialized):
+      features = tf.parse_single_example(examples_serialized, feature_map)
+      return features, features["labels"]
+
+    record_files = tf.data.Dataset.list_files(
+        os.path.join(record_dir, data_async_generation.RECORD_FILE_PREFIX + "*"),
+        shuffle=False)
+
+    interleave = tf.contrib.data.parallel_interleave(
+        tf.data.TFRecordDataset,
+        cycle_length=4,
+        block_length=100000,
+        sloppy=True,
+        prefetch_input_elements=4,
+    )
+    dataset = record_files.apply(interleave).map(_deserialize, num_parallel_calls=4)
+    return dataset.prefetch(32)
+
+  return input_fn, record_dir
+
+
+def make_pred_input_fn(ncf_dataset):
+  # type: (NCFDataset) -> typing.Callable
+  def input_fn(params):
+    batch_size = params["batch_size"]
+    n_pts = ncf_dataset.test_data[1].shape[0]
+    n_pad = batch_size - (n_pts % batch_size)
+    assert not (n_pts + n_pad) % batch_size
+    users = np.concatenate([
+      ncf_dataset.test_data[0][movielens.USER_COLUMN], np.zeros((n_pad,))
+    ]).astype(np.int64).reshape((-1, batch_size))
+
+    items = np.concatenate([
+      ncf_dataset.test_data[0][movielens.ITEM_COLUMN], np.zeros((n_pad,))
+    ]).astype(np.int64).reshape((-1, batch_size))
+
+    n_vector = batch_size * np.ones((users.shape[0], ), dtype=np.int64)
+    if n_pad:
+      n_vector[-1] -= n_pad
+
+    dataset = tf.data.Dataset.from_tensors({
+      movielens.USER_COLUMN: users,
+      movielens.ITEM_COLUMN: items,
+      "n": n_vector,
+    }).apply(tf.contrib.data.unbatch())
+
+    return dataset
+
+  return input_fn
