@@ -17,15 +17,6 @@ from tensorflow.python.keras import layers
 
 tf.enable_eager_execution()
 
-def str2bool(v):
-  if v.lower() in ('yes', 'true', 't', 'y', '1'):
-    return True
-  elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-    return False
-  else:
-    raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
 parser = argparse.ArgumentParser(description='Run A3C algorithm on the game '
                                              'Cartpole.')
 parser.add_argument('--algorithm', default='a3c', type=str,
