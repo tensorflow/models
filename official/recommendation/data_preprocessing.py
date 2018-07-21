@@ -151,7 +151,8 @@ def _filter_index_sort(raw_rating_path):
     of users and items in the processed dataset.
   """
   # type: (str) -> (pd.DataFrame, int, int)
-  df = pd.read_csv(raw_rating_path)
+  with tf.gfile.Open(raw_rating_path) as f:
+    df = pd.read_csv(f)
 
   # Get the info of users who have more than 20 ratings on items
   grouped = df.groupby(movielens.USER_COLUMN)
@@ -488,15 +489,21 @@ def make_train_input_fn(data_dir, dataset):
 
   def input_fn(params):
     batch_size = params["batch_size"]
-    feature_map = {
-      movielens.USER_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
-      movielens.ITEM_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
-      "labels": tf.FixedLenFeature([batch_size], dtype=tf.int64),
-    }
+    # feature_map = {
+    #   movielens.USER_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
+    #   movielens.ITEM_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
+    #   "labels": tf.FixedLenFeature([batch_size], dtype=tf.int64),
+    # }
 
-    def _deserialize(examples_serialized):
-      features = tf.parse_single_example(examples_serialized, feature_map)
-      return features, features["labels"]
+    def _deserialize(features):
+      # features = tf.parse_single_example(examples_serialized, feature_map)
+      users = features[movielens.USER_COLUMN]
+      items = features[movielens.ITEM_COLUMN]
+      labels = features["labels"]
+      return {
+        movielens.USER_COLUMN: tf.reshape(users, [batch_size, 1]),
+        movielens.ITEM_COLUMN: tf.reshape(items, [batch_size, 1]),
+      }, tf.reshape(labels, [batch_size, 1])
 
     record_files = tf.data.Dataset.list_files(
         os.path.join(record_dir, data_async_generation.RECORD_FILE_PREFIX + "*"),
