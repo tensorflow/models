@@ -60,7 +60,9 @@ beneficial personalized action under some metric (the reward).
 Thompson Sampling is a meta-algorithm that chooses an action for the contextual
 bandit in a statistically efficient manner, simultaneously finding the best arm
 while attempting to incur low cost. Informally speaking, we assume the expected
-reward is given by some function ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cmathbf%7BE%7D%5Br_t%20%5Cmid%20X_t%2C%20a_t%5D%20%3D%20f%28X_t%2C%20a_t%29). Unfortunately, function **f** is unknown, as otherwise we could just choose the
+reward is given by some function
+**E**[r<sub>t</sub> | X<sub>t</sub>, a<sub>t</sub>] = f(X<sub>t</sub>, a<sub>t</sub>).
+Unfortunately, function **f** is unknown, as otherwise we could just choose the
 action with highest expected value: ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20a_t%5E*%20%3D%20%5Carg%20%5Cmax_i%20f%28X_t%2C%20a_i%29).
 
 The idea behind Thompson Sampling is based on keeping a posterior distribution
