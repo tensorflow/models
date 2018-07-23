@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 import threading
@@ -23,7 +23,7 @@ parser.add_argument('--algorithm', default='a3c', type=str,
                     help='Choose between \'a3c\' and \'random\'.')
 parser.add_argument('--train', dest='train', action='store_true',
                     help='Train our model.')
-parser.add_argument('--lr', default=0.0005,
+parser.add_argument('--lr', default=0.001,
                     help='Learning rate for the shared optimizer.')
 parser.add_argument('--update-freq', default=20, type=int,
                     help='How often to update the global model.')
@@ -350,12 +350,12 @@ class Worker(threading.Thread):
     actions_one_hot = tf.one_hot(memory.actions, self.action_size, dtype=tf.float32)
 
     policy = tf.nn.softmax(logits)
-    entropy = tf.reduce_sum(policy * tf.log(policy + 1e-10), axis=1)
+    entropy = tf.reduce_sum(policy * tf.log(policy + 1e-20), axis=1)
 
     policy_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=actions_one_hot,
                                                              logits=logits)
     policy_loss *= tf.stop_gradient(advantage)
-    policy_loss += 0.01 * entropy
+    policy_loss -= 0.01 * entropy
     total_loss = tf.reduce_mean((0.5 * value_loss + policy_loss))
     return total_loss
 
