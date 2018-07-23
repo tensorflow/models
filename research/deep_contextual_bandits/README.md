@@ -41,7 +41,7 @@ the process if we use algorithm **A** is as follows:
 
 ```
 At time t = 1, ..., T:
-  1. Observe new context: X_t
+  1. Observe new context: X<sub>t</sub>
   2. Choose action: a_t = A.action(X_t)
   3. Observe reward: r_t
   4. Update internal state of the algorithm: A.update((X_t, a_t, r_t))
