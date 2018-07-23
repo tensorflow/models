@@ -20,8 +20,8 @@ Please, use the following when citing the code or the paper:
 
 ```
 @article{riquelme2018deep, title={Deep Bayesian Bandits Showdown: An Empirical
-Comparison of Bayesian Deep Networks for Thompson Sampling}, author={Riquelme,
-Carlos and Tucker, George and Snoek, Jasper},
+Comparison of Bayesian Deep Networks for Thompson Sampling},
+author={Riquelme, Carlos and Tucker, George and Snoek, Jasper},
 journal={International Conference on Learning Representations, ICLR.}, year={2018}}
 ```
 
