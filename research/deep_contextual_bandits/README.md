@@ -127,10 +127,11 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
 
 4.  **Stochastic Variational Inference**, Bayes by Backpropagation. We implement
     a Bayesian neural network by modeling each individual weight posterior as a
-    univariate Gaussian distribution: ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20w_%7Bij%7D%20%5Csim%20%5Cmathcal%7BN%7D%28%5Cmu_%7Bij%7D%2C%20%5Csigma_%7Bij%7D%5E2%29). Thompson sampling then samples a network at each time step
+    univariate Gaussian distribution: w<sub>ij</sub> &sim; N(&mu;<sub>ij</sub>, &sigma;<sub>ij</sub><sup>2</sup>).
+    Thompson sampling then samples a network at each time step
     by sampling each weight independently. The variational approach consists in
     maximizing a proxy for maximum likelihood of the observed data, the ELBO or
-    variational lower bound, to fit the values of ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cmu_%7Bij%7D%2C%20%5Csigma_%7Bij%7D%5E2)
+    variational lower bound, to fit the values of &mu;<sub>ij</sub>, &sigma;<sub>ij</sub><sup>2</sup>
     for every *i, j*.
 
     See [Weight Uncertainty in Neural
