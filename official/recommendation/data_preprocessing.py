@@ -555,14 +555,13 @@ def make_pred_input_fn(ncf_dataset):
       ncf_dataset.test_data[0][movielens.ITEM_COLUMN], np.zeros((n_pad,))
     ]).astype(np.int64).reshape((-1, batch_size))
 
-    n_vector = batch_size * np.ones((users.shape[0], ), dtype=np.int64)
-    if n_pad:
-      n_vector[-1] -= n_pad
+    mask = np.ones(shape=users.shape, dtype=np.int32)
+    mask[-1, -n_pad:] = 0
 
     dataset = tf.data.Dataset.from_tensors({
       movielens.USER_COLUMN: users,
       movielens.ITEM_COLUMN: items,
-      "n": n_vector,
+      "mask": mask,
     }).apply(tf.contrib.data.unbatch())
 
     return dataset

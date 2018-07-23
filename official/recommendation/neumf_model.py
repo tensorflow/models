@@ -62,8 +62,12 @@ def neumf_model_fn(features, labels, mode, params):
   logits = model([users, items])
 
   if mode == tf.estimator.ModeKeys.PREDICT:
+    # TPUs require static shapes to be returned, which may not divide evenly
+    # with the number of data points. A mask is used to force the padded values
+    # to -1 to clearly distinguish them.
+    mask = tf.cast(features["mask"], tf.float32)
     predictions = {
-        movielens.RATING_COLUMN: tf.sigmoid(logits[:features["n"]]),
+        movielens.RATING_COLUMN: tf.sigmoid(logits) * mask - (1 - mask),
     }
 
     # return tf.estimator.EstimatorSpec(

@@ -98,8 +98,9 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   prediction_batches = [p[movielens.RATING_COLUMN] for p in predictions]
 
   # Reshape the predicted scores and each user takes one row
-  predicted_scores_by_user = np.concatenate(prediction_batches, axis=0).reshape(
-      ncf_dataset.num_users, -1)
+  prediction_with_padding = np.concatenate(prediction_batches, axis=0)
+  predicted_scores_by_user = prediction_with_padding[
+    np.where(prediction_with_padding >= 0)].reshape(ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
 
@@ -125,7 +126,7 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   return eval_results
 
 
-def construct_estimator(num_gpus, model_dir, params, batch_size, ncf_dataset):
+def construct_estimator(num_gpus, model_dir, params, batch_size, eval_batch_size):
   tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
       tpu="taylorrobie-tpu-0",
   )
@@ -141,13 +142,23 @@ def construct_estimator(num_gpus, model_dir, params, batch_size, ncf_dataset):
           allow_soft_placement=True, log_device_placement=False),
       tpu_config=tpu_config)
 
-  return tf.contrib.tpu.TPUEstimator(
+  tpu_params = {k: v for k, v in params.items() if k != "batch_size"}
+
+  train_estimator = tf.contrib.tpu.TPUEstimator(
       model_fn=neumf_model.neumf_model_fn,
       use_tpu=True,
       train_batch_size=batch_size,
-      eval_batch_size=32768,
-      params={k: v for k, v in params.items() if k != "batch_size"},
+      params=tpu_params,
       config=run_config)
+
+  eval_estimator = tf.contrib.tpu.TPUEstimator(
+      model_fn=neumf_model.neumf_model_fn,
+      use_tpu=False,
+      predict_batch_size=eval_batch_size,
+      params=tpu_params,
+      config=run_config)
+
+  return train_estimator, eval_estimator
 
   # distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
   # run_config = tf.estimator.RunConfig(train_distribute=distribution)
@@ -169,6 +180,7 @@ def run_ncf(_):
   num_gpus = flags_core.get_num_gpus(FLAGS)
   batch_size=distribution_utils.per_device_batch_size(
       FLAGS.batch_size, num_gpus)
+  eval_batch_size = FLAGS.eval_batch_size or FLAGS.batch_size
   ncf_dataset = data_preprocessing.instantiate_pipeline(
       dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
       batch_size=batch_size,
@@ -177,7 +189,7 @@ def run_ncf(_):
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  estimator = construct_estimator(
+  train_estimator, eval_estimator = construct_estimator(
       num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
           "batch_size": batch_size,
           "learning_rate": FLAGS.learning_rate,
@@ -187,7 +199,7 @@ def run_ncf(_):
           "model_layers": [int(layer) for layer in FLAGS.layers],
           "mf_regularization": FLAGS.mf_regularization,
           "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
-      }, batch_size=flags.FLAGS.batch_size, ncf_dataset=ncf_dataset)
+      }, batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -197,7 +209,7 @@ def run_ncf(_):
   )
   run_params = {
       "batch_size": FLAGS.batch_size,
-      "eval_batch_size": FLAGS.eval_batch_size or FLAGS.batch_size,
+      "eval_batch_size": eval_batch_size,
       "number_factors": FLAGS.num_factors,
       "hr_threshold": FLAGS.hr_threshold,
       "train_epochs": FLAGS.train_epochs,
@@ -226,12 +238,12 @@ def run_ncf(_):
       tf.logging.warning(
           "Estimated ({}) and reported ({}) number of batches differ by more "
           "than one".format(approx_train_steps, batch_count))
-    estimator.train(input_fn=train_input_fn, hooks=train_hooks, steps=batch_count)
+    train_estimator.train(input_fn=train_input_fn, hooks=train_hooks, steps=batch_count)
     tf.gfile.DeleteRecursively(train_record_dir)
 
     # Evaluate the model
     eval_results = evaluate_model(
-        estimator, ncf_dataset, pred_input_fn)
+        eval_estimator, ncf_dataset, pred_input_fn)
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)
