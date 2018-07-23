@@ -176,7 +176,7 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
         dropout = PosteriorBNNSampling('MyDropout', my_hparams, 'RMSProp')
     ```
 
-7.  **Monte Carlo Methods**.
+7.  **Monte Carlo Methods**. To be added soon.
 
 8.  **Bootstrapped Networks**. This algorithm trains simultaneously and in
     parallel **q** neural networks based on different datasets D<sub>1</sub>, ..., D<sub>q</sub>. The way those datasets are collected is by adding each new collected
