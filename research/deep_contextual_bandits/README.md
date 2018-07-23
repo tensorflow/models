@@ -36,7 +36,7 @@ simple complete example illustrating how to use the library.
 
 Contextual bandits are a rich decision-making framework where an algorithm has
 to choose among a set of *k* actions at every time step *t*, after observing
-a context (or side-information) denoted by *X_t*. The general pseudocode for
+a context (or side-information) denoted by *X<sub>t</sub>*. The general pseudocode for
 the process if we use algorithm **A** is as follows:
 
 ```
@@ -49,7 +49,7 @@ At time t = 1, ..., T:
 
 The goal is to maximize the total sum of rewards: &Sigma;<sub>t</sub> r<sub>t</sub>
 
-For example, each *X_t* could encode the properties of a specific user (and
+For example, each *X<sub>t</sub>* could encode the properties of a specific user (and
 the time or day), and we may have to choose an ad, discount coupon, treatment,
 hyper-parameters, or version of a website to show or provide to the user.
 Hopefully, over time, we will learn how to match each type of user to the most
