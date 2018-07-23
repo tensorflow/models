@@ -27,7 +27,7 @@ parser.add_argument('--lr', default=0.0005,
                     help='Learning rate for the shared optimizer.')
 parser.add_argument('--update-freq', default=20, type=int,
                     help='How often to update the global model.')
-parser.add_argument('--max-eps', default=2000, type=int,
+parser.add_argument('--max-eps', default=1000, type=int,
                     help='Global maximum number of episodes to run.')
 parser.add_argument('--gamma', default=0.99,
                     help='Discount factor of rewards.')
@@ -349,9 +349,14 @@ class Worker(threading.Thread):
     # Calculate our policy loss
     actions_one_hot = tf.one_hot(memory.actions, self.action_size, dtype=tf.float32)
 
-    policy_loss = -tf.nn.softmax_cross_entropy_with_logits_v2(labels=actions_one_hot,
+    policy = tf.nn.softmax(logits)
+    entropy = tf.reduce_sum(policy * tf.log(policy + 1e-10), axis=1)
+
+    policy_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=actions_one_hot,
                                                              logits=logits)
-    total_loss = tf.reduce_mean((value_loss + policy_loss))
+    policy_loss *= tf.stop_gradient(advantage)
+    policy_loss += 0.01 * entropy
+    total_loss = tf.reduce_mean((0.5 * value_loss + policy_loss))
     return total_loss
 
 
