@@ -63,7 +63,8 @@ while attempting to incur low cost. Informally speaking, we assume the expected
 reward is given by some function
 **E**[r<sub>t</sub> | X<sub>t</sub>, a<sub>t</sub>] = f(X<sub>t</sub>, a<sub>t</sub>).
 Unfortunately, function **f** is unknown, as otherwise we could just choose the
-action with highest expected value: ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20a_t%5E*%20%3D%20%5Carg%20%5Cmax_i%20f%28X_t%2C%20a_i%29).
+action with highest expected value:
+a<sub>t</sub><sup>*</sup> = arg max<sub>i</sub> f(X<sub>t</sub>, a<sub>t</sub>).
 
 The idea behind Thompson Sampling is based on keeping a posterior distribution
 ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cpi_t) over functions in some family ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20f%20%5Cin%20F) after observing the first
