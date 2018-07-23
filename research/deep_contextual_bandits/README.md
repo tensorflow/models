@@ -101,7 +101,7 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     action, and ---simultaneously--- it updates a Bayesian linear regression in
     the last layer (i.e., the one that maps the final representation **z** to
     the rewards **r**). Thompson Sampling samples the linear parameters
-    ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cbeta_i) for each action *i*, but keeps the network that computes the
+    &beta;<sub>i</sub> for each action *i*, but keeps the network that computes the
     representation. Then, both parts (network and Bayesian linear regression)
     are updated, possibly at different frequencies. The algorithm is implemented
     in *neural_linear_sampling.py*, and we create an algorithm instance like
@@ -117,7 +117,7 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     explicitly use Thompson Sampling. However, due to stochastic gradient
     descent, there is still some randomness in its output. It is
     straight-forward to add epsilon-greedy exploration to choose random
-    actions with probability ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cepsilon%20%5Cin%20%5B0%2C%201%5D). The algorithm is
+    actions with probability &epsilon; &isin; (0, 1). The algorithm is
     implemented in *neural_bandit_model.py*, and it is used together with
     *PosteriorBNNSampling* (defined in *posterior_bnn_sampling.py*) by calling:
 
