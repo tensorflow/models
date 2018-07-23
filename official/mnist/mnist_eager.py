@@ -83,8 +83,8 @@ def train(model, optimizer, dataset, step_counter, log_interval=None):
 
 def test(model, dataset):
   """Perform an evaluation of `model` on the examples from `dataset`."""
-  avg_loss = tfe.metrics.Mean('loss')
-  accuracy = tfe.metrics.Accuracy('accuracy')
+  avg_loss = tfe.metrics.Mean('loss', dtype=tf.float32)
+  accuracy = tfe.metrics.Accuracy('accuracy', dtype=tf.float32)
 
   for (images, labels) in dataset:
     logits = model(images, training=False)
