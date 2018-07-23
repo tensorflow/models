@@ -21,6 +21,7 @@ from __future__ import print_function
 import atexit
 import contextlib
 import multiprocessing
+import json
 import os
 import pickle
 import subprocess
@@ -46,7 +47,7 @@ _ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__), "data_async_generation
 _CACHE_SUBDIR = "ncf_recommendation_cache"
 _TRAIN_SHARD_SUBDIR = "training_shards"
 _DYNAMIC_EPOCH_SUBDIR = "dynamic_epochs"
-_APPROX_PTS_PER_SHARD = 32000
+_APPROX_PTS_PER_SHARD = 128000
 
 # In both datasets, each user has at least 20 ratings.
 _MIN_NUM_RATINGS = 20
@@ -374,14 +375,15 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
       cause it to store the training data in memory, which is unnecessary for
       training but can be used to test the data pipeline.
   """
-  pts_per_epoch = movielens.NUM_RATINGS[dataset] * (1 + num_neg)
   num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2)
-  approx_num_shards = int(pts_per_epoch // _APPROX_PTS_PER_SHARD) or 1
+  approx_num_shards = int(movielens.NUM_RATINGS[dataset] // _APPROX_PTS_PER_SHARD) or 1
 
   st = timeit.default_timer()
   cache_dir = os.path.join(data_dir, _CACHE_SUBDIR, dataset)
   if tf.gfile.Exists(cache_dir):
+    tf.logging.info("Clearing old cache directory.")
     tf.gfile.DeleteRecursively(cache_dir)
+    tf.logging.info("Old cache directory cleared.")
   tf.gfile.MakeDirs(cache_dir)
 
   raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
@@ -463,6 +465,8 @@ def instantiate_pipeline(dataset, data_dir, batch_size, num_data_readers=None, n
                            # performance. (~5% increase in examples/sec)
   ]
 
+  tf.logging.info("Generation subprocess command: {}".format(" ".join(subproc_args)))
+
   proc = subprocess.Popen(args=subproc_args, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           shell=False, env=subproc_env)
@@ -480,30 +484,44 @@ def make_train_input_fn(data_dir, dataset):
   while not train_data_dirs:
     time.sleep(1)
     train_data_dirs = tf.gfile.ListDirectory(epoch_root)
-  train_data_dirs.sort()
+  train_data_dirs.sort()  # names are zfilled so that
+                          # lexicographic sort == numeric sort
   record_dir = os.path.join(epoch_root, train_data_dirs[0])
 
-  while not tf.gfile.Exists(os.path.join(record_dir, data_async_generation.READY_FILE)):
+  ready_file = os.path.join(record_dir, data_async_generation.READY_FILE)
+  while not tf.gfile.Exists(ready_file):
     tf.logging.info("Waiting for records in {} to be ready".format(record_dir))
     time.sleep(1)
 
+  with tf.gfile.Open(ready_file, "r") as f:
+    epoch_metadata = json.load(f)
+
+  # The data pipeline uses spillover to guarantee static batch sizes. This
+  # means that an extra batch will need to be run every few epochs. TPUs
+  # require that the number of batches to be run is known at the time that
+  # estimator.train() is called, so having the generation pipeline report
+  # number of batches guarantees that this count is correct.
+  batch_count = epoch_metadata["batch_count"]
+
   def input_fn(params):
     batch_size = params["batch_size"]
-    # feature_map = {
-    #   movielens.USER_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
-    #   movielens.ITEM_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
-    #   "labels": tf.FixedLenFeature([batch_size], dtype=tf.int64),
-    # }
 
-    def _deserialize(features):
-      # features = tf.parse_single_example(examples_serialized, feature_map)
-      users = features[movielens.USER_COLUMN]
-      items = features[movielens.ITEM_COLUMN]
-      labels = features["labels"]
-      return {
-        movielens.USER_COLUMN: tf.reshape(users, [batch_size, 1]),
-        movielens.ITEM_COLUMN: tf.reshape(items, [batch_size, 1]),
-      }, tf.reshape(labels, [batch_size, 1])
+    if epoch_metadata["batch_size"] != batch_size:
+      raise ValueError(
+          "Records were constructed with batch size {}, but input_fn was given "
+          "a batch size of {}. This will result in a deserialization error in "
+          "tf.parse_single_example."
+            .format(epoch_metadata["batch_size"], batch_size))
+
+    feature_map = {
+      movielens.USER_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
+      movielens.ITEM_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
+      "labels": tf.FixedLenFeature([batch_size], dtype=tf.int64),
+    }
+
+    def _deserialize(examples_serialized):
+      features = tf.parse_single_example(examples_serialized, feature_map)
+      return features, features["labels"]
 
     record_files = tf.data.Dataset.list_files(
         os.path.join(record_dir, data_async_generation.RECORD_FILE_PREFIX + "*"),
@@ -519,7 +537,7 @@ def make_train_input_fn(data_dir, dataset):
     dataset = record_files.apply(interleave).map(_deserialize, num_parallel_calls=4)
     return dataset.prefetch(32)
 
-  return input_fn, record_dir
+  return input_fn, record_dir, batch_count
 
 
 def make_pred_input_fn(ncf_dataset):

@@ -21,6 +21,7 @@ import contextlib
 import functools
 import logging
 import multiprocessing
+import json
 import os
 import pickle
 import signal
@@ -41,7 +42,7 @@ from official.recommendation import stat_utils
 
 
 _CYCLES_TO_BUFFER = 3
-READY_FILE = "ready"
+READY_FILE = "ready.json"
 RECORD_FILE_PREFIX = "training_records_"
 
 
@@ -185,15 +186,20 @@ def generation_loop(num_workers, shard_dir, output_root, num_readers, num_neg,
 
       record_dir = os.path.join(output_root, get_cycle_folder_name(cycle_number))
       tf.gfile.MakeDirs(record_dir)
+      batch_count = 0
       for i, shard_byte_list in enumerate(record_shards):
         fpath = os.path.join(record_dir, RECORD_FILE_PREFIX + str(i).zfill(5))
         absl_logging.info("Writing {}".format(fpath))
         with tf.python_io.TFRecordWriter(fpath) as writer:
           for example in shard_byte_list:
             writer.write(example)
+            batch_count += 1
 
-      with tf.gfile.Open(os.path.join(record_dir, READY_FILE), "wb") as f:
-        f.write(b"")
+      with tf.gfile.Open(os.path.join(record_dir, READY_FILE), "w") as f:
+        json.dump({
+          "batch_size": batch_size,
+          "batch_count": batch_count,
+        }, f)
 
       absl_logging.info("Cycle {} complete. Total time: {:.1f} seconds"
                         .format(cycle_number, timeit.default_timer() - st))

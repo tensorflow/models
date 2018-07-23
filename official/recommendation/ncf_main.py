@@ -171,7 +171,7 @@ def run_ncf(_):
       FLAGS.batch_size, num_gpus)
   ncf_dataset = data_preprocessing.instantiate_pipeline(
       dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
-      batch_size=int(batch_size // 8),  # 8 TPU shards
+      batch_size=batch_size,
       num_neg=FLAGS.num_neg,
       epochs_per_cycle=FLAGS.epochs_between_evals)
 
@@ -209,6 +209,7 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
+  approx_train_steps = int(ncf_dataset.num_train_pts // FLAGS.batch_size)
   pred_input_fn = data_preprocessing.make_pred_input_fn(ncf_dataset=ncf_dataset)
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
@@ -216,11 +217,16 @@ def run_ncf(_):
     tf.logging.info("Starting a training cycle: {}/{}".format(
         cycle_index + 1, total_training_cycle))
 
-    train_steps = int(ncf_dataset.num_train_pts // FLAGS.batch_size * FLAGS.batch_size)
+
     # Train the model
-    train_input_fn, train_record_dir = data_preprocessing.make_train_input_fn(
+    train_input_fn, train_record_dir, batch_count = data_preprocessing.make_train_input_fn(
         dataset=FLAGS.dataset, data_dir=FLAGS.data_dir)
-    estimator.train(input_fn=train_input_fn, hooks=train_hooks, steps=train_steps)
+
+    if np.abs(approx_train_steps - batch_count) > 1:
+      tf.logging.warning(
+          "Estimated ({}) and reported ({}) number of batches differ by more "
+          "than one".format(approx_train_steps, batch_count))
+    estimator.train(input_fn=train_input_fn, hooks=train_hooks, steps=batch_count)
     tf.gfile.DeleteRecursively(train_record_dir)
 
     # Evaluate the model
