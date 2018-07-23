@@ -179,9 +179,9 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
 7.  **Monte Carlo Methods**.
 
 8.  **Bootstrapped Networks**. This algorithm trains simultaneously and in
-    parallel **q** neural networks based on different datasets ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20D_1%2C%20%5Cdots%2C%20D_q). The way those datasets are collected is by adding each new collected
-    datapoint ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%28X_t%2C%20a_t%2C%20r_t%29) to each dataset *D_i* independently and with
-    probability ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20p%20%5Cin%20%280%2C%201%5D). Therefore, the main hyperparameters of the
+    parallel **q** neural networks based on different datasets D<sub>1</sub>, ..., D<sub>q</sub>. The way those datasets are collected is by adding each new collected
+    datapoint (X<sub>t</sub>, a<sub>t</sub>, r<sub>t</sub>) to each dataset *D<sub>i</sub>* independently and with
+    probability p &isin; (0, 1]. Therefore, the main hyperparameters of the
     algorithm are **(q, p)**. In order to choose an action for a new context,
     one of the **q** networks is first selected with uniform probability (i.e.,
     *1/q*). Then, the best action according to the *selected* network is
