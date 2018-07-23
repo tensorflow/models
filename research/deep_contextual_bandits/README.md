@@ -67,13 +67,15 @@ action with highest expected value:
 a<sub>t</sub><sup>*</sup> = arg max<sub>i</sub> f(X<sub>t</sub>, a<sub>t</sub>).
 
 The idea behind Thompson Sampling is based on keeping a posterior distribution
-&pi;<sub>t</sub> over functions in some family f&isin;F after observing the first
+&pi;<sub>t</sub> over functions in some family f &isin; F after observing the first
 *t-1* datapoints. Then, at time *t*, we sample one potential explanation of
-the underlying process: ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20f_t%20%5Csim%20%5Cpi_t), and act optimally (i.e., greedily)
-*according to f_t*. In other words, we choose ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20a_t%20%3D%20%5Carg%20%5Cmax_i%20f_t%28X_t%2C%20a_i%29). Finally, we update our posterior distribution with the new collected
-datapoint ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%28X_t%2C%20a_t%2C%20r_t%29).
+the underlying process: f<sub>t</sub> &sim; &pi;<sub>t</sub>, and act optimally (i.e., greedily)
+*according to f<sub>t</sub>*. In other words, we choose
+a<sub>t</sub> = arg max<sub>i</sub> f<sub>t</sub>(X<sub>t</sub>, a<sub>i</sub>).
+Finally, we update our posterior distribution with the new collected
+datapoint (X<sub>t</sub>, a<sub>t</sub>, r<sub>t</sub>).
 
-The main issue is that keeping an updated posterior ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cpi_t) (or, even,
+The main issue is that keeping an updated posterior &pi;<sub>t</sub> (or, even,
 sampling from it) is often intractable for highly parameterized models like deep
 neural networks. The algorithms we list in the next section provide tractable
 *approximations* that can be used in combination with Thompson Sampling to solve
