@@ -47,7 +47,7 @@ At time t = 1, ..., T:
   4. Update internal state of the algorithm: A.update((X_t, a_t, r_t))
 ```
 
-The goal is to maximize the total sum of rewards: &Sigma;<sub>t</sub> r<sub>t</sub>
+The goal is to maximize the total sum of rewards: &sum;<sub>t</sub> r<sub>t</sub>
 
 For example, each *X<sub>t</sub>* could encode the properties of a specific user (and
 the time or day), and we may have to choose an ad, discount coupon, treatment,
@@ -67,7 +67,7 @@ action with highest expected value:
 a<sub>t</sub><sup>*</sup> = arg max<sub>i</sub> f(X<sub>t</sub>, a<sub>t</sub>).
 
 The idea behind Thompson Sampling is based on keeping a posterior distribution
-![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cpi_t) over functions in some family ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20f%20%5Cin%20F) after observing the first
+&pi;<sub>t</sub> over functions in some family f&isin;F after observing the first
 *t-1* datapoints. Then, at time *t*, we sample one potential explanation of
 the underlying process: ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20f_t%20%5Csim%20%5Cpi_t), and act optimally (i.e., greedily)
 *according to f_t*. In other words, we choose ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20a_t%20%3D%20%5Carg%20%5Cmax_i%20f_t%28X_t%2C%20a_i%29). Finally, we update our posterior distribution with the new collected
