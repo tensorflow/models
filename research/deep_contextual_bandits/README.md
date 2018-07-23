@@ -202,9 +202,10 @@ The Deep Bayesian Bandits library includes the following algorithms (see the
     consists in randomly perturbing a point estimate trained by Stochastic
     Gradient Descent on the data. The Parameter-Noise algorithm uses a heuristic
     to control the amount of noise &sigma;<sub>t</sub><sup>2</sup> it adds independently to the
-    parameters representing a neural network: &theta;<sub>t</sub><sup>'</sup> where ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cepsilon%20%5Csim%20%5Cmathcal%7BN%7D%280%2C%20%5Csigma_t%5E2%20%5C%20%5Cmathrm%7BId%7D%29).
-    After using ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Cbar%7B%5Ctheta%7D_t) for decision making, the following SGD
-    training steps start again from ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Ctheta_t). The key hyperparameters to set
+    parameters representing a neural network: &theta;<sub>t</sub><sup>'</sup> = &theta;<sub>t</sub> + &epsilon; where
+    &epsilon; &sim; N(0, &sigma;<sub>t</sub><sup>2</sup> Id).
+    After using &theta;<sub>t</sub><sup>'</sup> for decision making, the following SGD
+    training steps start again from &theta;<sub>t</sub>. The key hyperparameters to set
     are those controlling the noise heuristic.
 
     See [Parameter Space Noise for
