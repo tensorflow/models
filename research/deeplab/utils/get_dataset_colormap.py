@@ -21,6 +21,8 @@ defined by the different datasets. Supported colormaps are:
 
 * Cityscapes dataset (https://www.cityscapes-dataset.com).
 
+* Mapillary Vistas (https://research.mapillary.com).
+
 * PASCAL VOC 2012 (http://host.robots.ox.ac.uk/pascal/VOC/).
 """
 
