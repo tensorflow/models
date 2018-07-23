@@ -11,8 +11,6 @@ problems exhibiting a diverse set of properties.
 
 It is a Python library that uses [TensorFlow](https://www.tensorflow.org/).
 
-h<sub>&theta;</sub>(x) = &theta;<sub>o</sub> x + &theta;<sub>1</sub>x
-
 We encourage contributors to add new approximate Bayesian Neural Networks or,
 more generally, contextual bandits algorithms to the library. Also, we would
 like to extend the data sources over time, so we warmly encourage contributions
@@ -49,7 +47,7 @@ At time t = 1, ..., T:
   4. Update internal state of the algorithm: A.update((X_t, a_t, r_t))
 ```
 
-The goal is to maximize the total sum of rewards: ![equation](https://latex.codecogs.com/gif.download?%5Cinline%20%5Csum_t%20r_t)
+The goal is to maximize the total sum of rewards: &Sigma;<sub>t</sub> r<sub>t</sub>
 
 For example, each *X_t* could encode the properties of a specific user (and
 the time or day), and we may have to choose an ad, discount coupon, treatment,
