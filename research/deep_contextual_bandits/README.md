@@ -11,7 +11,7 @@ problems exhibiting a diverse set of properties.
 
 It is a Python library that uses [TensorFlow](https://www.tensorflow.org/).
 
-
+h<sub>&theta;</sub>(x) = &theta;<sub>o</sub> x + &theta;<sub>1</sub>x
 
 We encourage contributors to add new approximate Bayesian Neural Networks or,
 more generally, contextual bandits algorithms to the library. Also, we would
