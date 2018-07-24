@@ -153,7 +153,8 @@ class MasterAgent():
                       self.action_size,
                       self.global_model,
                       self.opt, res_queue,
-                      i, save_dir=self.save_dir) for i in range(multiprocessing.cpu_count())]
+                      i, game_name=self.game_name,
+                      save_dir=self.save_dir) for i in range(multiprocessing.cpu_count())]
 
     for i, worker in enumerate(workers):
       print("Starting worker {}".format(i))
