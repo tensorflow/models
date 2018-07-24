@@ -355,7 +355,6 @@ def _configure_optimizer(learning_rate):
     optimizer = tf.train.GradientDescentOptimizer(learning_rate)
   else:
     raise ValueError('Optimizer [%s] was not recognized' % FLAGS.optimizer)
-
   if FLAGS.variable_update == "horovod":
     import horovod.tensorflow as hvd
     optimizer = hvd.DistributedOptimizer(optimizer)
