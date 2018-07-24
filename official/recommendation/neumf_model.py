@@ -40,6 +40,7 @@ import tensorflow as tf
 from tensorflow.python.keras.utils import tf_utils
 
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
+from official.utils.accelerator import tpu as tpu_utils
 
 
 def neumf_model_fn(features, labels, mode, params):
@@ -57,10 +58,9 @@ def neumf_model_fn(features, labels, mode, params):
 
   mf_dim = params["mf_dim"]
 
-  model = NeuMF(num_users=num_users, num_items=num_items, mf_dim=mf_dim,
+  logits = construct_model(users=users, items=items, num_users=num_users, num_items=num_items, mf_dim=mf_dim,
                 model_layers=model_layers, mf_regularization=mf_regularization,
                 mlp_reg_layers=mlp_reg_layers)
-  logits = model([users, items])
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     # TPUs require static shapes to be returned, which may not divide evenly
@@ -111,114 +111,97 @@ def neumf_model_fn(features, labels, mode, params):
       )
     return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
-
   else:
     raise NotImplementedError
 
 
-class NNEmbedding(tf.keras.layers.Embedding):
-  def call(self, inputs):
-    dtype = tf.keras.backend.dtype(inputs)
-    if dtype != 'int32' and dtype != 'int64':
-      inputs = math_ops.cast(inputs, 'int32')
-    out = tf.nn.embedding_lookup(self.embeddings, inputs)
-    return out
+def construct_model(users, items, num_users, num_items, mf_dim, model_layers,
+             mf_regularization, mlp_reg_layers):
+  # type: (tf.Tensor, tf.Tensor, int, int, int, list, float, list) -> tf.Tensor
+  """Initialize NeuMF model.
 
+  Args:
+    users: Tensor of user ids.
+    items: Tensor of item ids.
+    num_users: An integer, the number of users.
+    num_items: An integer, the number of items.
+    mf_dim: An integer, the embedding size of Matrix Factorization (MF) model.
+    model_layers: A list of integers for Multi-Layer Perceptron (MLP) layers.
+      Note that the first layer is the concatenation of user and item
+      embeddings. So model_layers[0]//2 is the embedding size for MLP.
+    mf_regularization: A floating number, the regularization factor for MF
+      embeddings.
+    mlp_reg_layers: A list of floating numbers, the regularization factors for
+      each layer in MLP.
 
-class NeuMF(tf.keras.models.Model):
-  """Neural matrix factorization (NeuMF) model for recommendations."""
+  Raises:
+    ValueError: if the first model layer is not even.
+  """
+  if model_layers[0] % 2 != 0:
+    raise ValueError("The first layer size should be multiple of 2!")
 
-  def __init__(self, num_users, num_items, mf_dim, model_layers,
-               mf_regularization, mlp_reg_layers):
-    # type: (int, int, int, list, float, list) -> None
-    """Initialize NeuMF model.
+  # Input variables
+  user_input = tf.keras.layers.Input(tensor=users)
+  item_input = tf.keras.layers.Input(tensor=items)
 
-    Args:
-      num_users: An integer, the number of users.
-      num_items: An integer, the number of items.
-      mf_dim: An integer, the embedding size of Matrix Factorization (MF) model.
-      model_layers: A list of integers for Multi-Layer Perceptron (MLP) layers.
-        Note that the first layer is the concatenation of user and item
-        embeddings. So model_layers[0]//2 is the embedding size for MLP.
-      mf_regularization: A floating number, the regularization factor for MF
-        embeddings.
-      mlp_reg_layers: A list of floating numbers, the regularization factors for
-        each layer in MLP.
+  # Initializer for embedding layers
+  embedding_initializer = "glorot_uniform"
 
-    Raises:
-      ValueError: if the first model layer is not even.
-    """
-    if model_layers[0] % 2 != 0:
-      raise ValueError("The first layer size should be multiple of 2!")
+  # Embedding layers of GMF and MLP
+  mf_embedding_user = tf.keras.layers.Embedding(
+      num_users,
+      mf_dim,
+      embeddings_initializer=embedding_initializer,
+      embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+      input_length=1)
+  mf_embedding_item = tf.keras.layers.Embedding(
+      num_items,
+      mf_dim,
+      embeddings_initializer=embedding_initializer,
+      embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
+      input_length=1)
 
-    # Input variables
-    user_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.int64, name=movielens.USER_COLUMN)
-    item_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.int64, name=movielens.ITEM_COLUMN)
+  mlp_embedding_user = tf.keras.layers.Embedding(
+      num_users,
+      model_layers[0]//2,
+      embeddings_initializer=embedding_initializer,
+      embeddings_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[0]),
+      input_length=1)
+  mlp_embedding_item = tf.keras.layers.Embedding(
+      num_items,
+      model_layers[0]//2,
+      embeddings_initializer=embedding_initializer,
+      embeddings_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[0]),
+      input_length=1)
 
-    # Initializer for embedding layers
-    embedding_initializer = "glorot_uniform"
+  # GMF part
+  # Flatten the embedding vector as latent features in GMF
+  mf_user_latent = tf.keras.layers.Flatten()(mf_embedding_user(user_input))
+  mf_item_latent = tf.keras.layers.Flatten()(mf_embedding_item(item_input))
+  # Element-wise multiply
+  mf_vector = tf.keras.layers.multiply([mf_user_latent, mf_item_latent])
 
-    # Embedding = tf.keras.layers.Embedding
-    Embedding = NNEmbedding
+  # MLP part
+  # Flatten the embedding vector as latent features in MLP
+  mlp_user_latent = tf.keras.layers.Flatten()(mlp_embedding_user(user_input))
+  mlp_item_latent = tf.keras.layers.Flatten()(mlp_embedding_item(item_input))
+  # Concatenation of two latent features
+  mlp_vector = tf.keras.layers.concatenate([mlp_user_latent, mlp_item_latent])
 
-    # Embedding layers of GMF and MLP
-    mf_embedding_user = Embedding(
-        num_users,
-        mf_dim,
-        embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
-        input_length=1)
-    mf_embedding_item = Embedding(
-        num_items,
-        mf_dim,
-        embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
-        input_length=1)
+  num_layer = len(model_layers)  # Number of layers in the MLP
+  for layer in xrange(1, num_layer):
+    model_layer = tf.keras.layers.Dense(
+        model_layers[layer],
+        kernel_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[layer]),
+        activation="relu")
+    mlp_vector = model_layer(mlp_vector)
 
-    mlp_embedding_user = Embedding(
-        num_users,
-        model_layers[0]//2,
-        embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[0]),
-        input_length=1)
-    mlp_embedding_item = Embedding(
-        num_items,
-        model_layers[0]//2,
-        embeddings_initializer=embedding_initializer,
-        embeddings_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[0]),
-        input_length=1)
+  # Concatenate GMF and MLP parts
+  predict_vector = tf.keras.layers.concatenate([mf_vector, mlp_vector])
 
-    # GMF part
-    # Flatten the embedding vector as latent features in GMF
-    mf_user_latent = tf.keras.layers.Flatten()(mf_embedding_user(user_input))
-    mf_item_latent = tf.keras.layers.Flatten()(mf_embedding_item(item_input))
-    # Element-wise multiply
-    mf_vector = tf.keras.layers.multiply([mf_user_latent, mf_item_latent])
+  # Final prediction layer
+  logits = tf.keras.layers.Dense(
+      1, activation=None, kernel_initializer="lecun_uniform",
+      name=movielens.RATING_COLUMN)(predict_vector)
 
-    # MLP part
-    # Flatten the embedding vector as latent features in MLP
-    mlp_user_latent = tf.keras.layers.Flatten()(mlp_embedding_user(user_input))
-    mlp_item_latent = tf.keras.layers.Flatten()(mlp_embedding_item(item_input))
-    # Concatenation of two latent features
-    mlp_vector = tf.keras.layers.concatenate([mlp_user_latent, mlp_item_latent])
-
-    num_layer = len(model_layers)  # Number of layers in the MLP
-    for layer in xrange(1, num_layer):
-      model_layer = tf.keras.layers.Dense(
-          model_layers[layer],
-          kernel_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[layer]),
-          activation="relu")
-      mlp_vector = model_layer(mlp_vector)
-
-    # Concatenate GMF and MLP parts
-    predict_vector = tf.keras.layers.concatenate([mf_vector, mlp_vector])
-
-    # Final prediction layer
-    prediction = tf.keras.layers.Dense(
-        1, activation=None, kernel_initializer="lecun_uniform",
-        name=movielens.RATING_COLUMN)(predict_vector)
-
-    super(NeuMF, self).__init__(
-        inputs=[user_input, item_input], outputs=prediction)
+  return logits
