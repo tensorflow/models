@@ -127,44 +127,49 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
 
 
 def construct_estimator(num_gpus, model_dir, params, batch_size, eval_batch_size):
-  tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-      tpu="taylorrobie-tpu-0",
-  )
+  if params["use_tpu"]:
+    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
+        tpu=params["tpu"],
+        zone=params["tpu_zone"],
+        project=params["tpu_gcp_project"],
+    )
 
-  tpu_config = tf.contrib.tpu.TPUConfig(
-      iterations_per_loop=100,
-      num_shards=8)
+    tpu_config = tf.contrib.tpu.TPUConfig(
+        iterations_per_loop=100,
+        num_shards=8)
 
-  run_config = tf.contrib.tpu.RunConfig(
-      cluster=tpu_cluster_resolver,
-      model_dir=model_dir,
-      session_config=tf.ConfigProto(
-          allow_soft_placement=True, log_device_placement=False),
-      tpu_config=tpu_config)
+    run_config = tf.contrib.tpu.RunConfig(
+        cluster=tpu_cluster_resolver,
+        model_dir=model_dir,
+        session_config=tf.ConfigProto(
+            allow_soft_placement=True, log_device_placement=False),
+        tpu_config=tpu_config)
 
-  tpu_params = {k: v for k, v in params.items() if k != "batch_size"}
+    tpu_params = {k: v for k, v in params.items() if k != "batch_size"}
 
-  train_estimator = tf.contrib.tpu.TPUEstimator(
-      model_fn=neumf_model.neumf_model_fn,
-      use_tpu=True,
-      train_batch_size=batch_size,
-      params=tpu_params,
-      config=run_config)
+    train_estimator = tf.contrib.tpu.TPUEstimator(
+        model_fn=neumf_model.neumf_model_fn,
+        use_tpu=True,
+        train_batch_size=batch_size,
+        params=tpu_params,
+        config=run_config)
 
-  eval_estimator = tf.contrib.tpu.TPUEstimator(
-      model_fn=neumf_model.neumf_model_fn,
-      use_tpu=False,
-      predict_batch_size=eval_batch_size,
-      params=tpu_params,
-      config=run_config)
+    eval_estimator = tf.contrib.tpu.TPUEstimator(
+        model_fn=neumf_model.neumf_model_fn,
+        use_tpu=False,
+        train_batch_size=1,
+        predict_batch_size=eval_batch_size,
+        params=tpu_params,
+        config=run_config)
 
-  return train_estimator, eval_estimator
+    return train_estimator, eval_estimator
 
-  # distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
-  # run_config = tf.estimator.RunConfig(train_distribute=distribution)
-  # return tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
-  #                               model_dir=model_dir, config=run_config,
-  #                               params=params)
+  distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
+  run_config = tf.estimator.RunConfig(train_distribute=distribution)
+  estimator = tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
+                                     model_dir=model_dir, config=run_config,
+                                     params=params)
+  return estimator, estimator
 
 
 def main(_):
@@ -179,8 +184,8 @@ def run_ncf(_):
 
   num_gpus = flags_core.get_num_gpus(FLAGS)
   batch_size=distribution_utils.per_device_batch_size(
-      FLAGS.batch_size, num_gpus)
-  eval_batch_size = FLAGS.eval_batch_size or FLAGS.batch_size
+      int(FLAGS.batch_size), num_gpus)
+  eval_batch_size = int(FLAGS.eval_batch_size) or int(FLAGS.batch_size)
   ncf_dataset = data_preprocessing.instantiate_pipeline(
       dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
       batch_size=batch_size,
@@ -199,6 +204,10 @@ def run_ncf(_):
           "model_layers": [int(layer) for layer in FLAGS.layers],
           "mf_regularization": FLAGS.mf_regularization,
           "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
+          "use_tpu": FLAGS.tpu is not None,
+          "tpu": FLAGS.tpu,
+          "tpu_zone": FLAGS.tpu_zone,
+          "tpu_gcp_project": FLAGS.tpu_gcp_project,
       }, batch_size=flags.FLAGS.batch_size, eval_batch_size=eval_batch_size)
 
   # Create hooks that log information about the training and metric values
@@ -275,6 +284,7 @@ def define_ncf_flags():
       dtype=False,
       all_reduce_alg=False
   )
+  flags_core.define_device(tpu=True)
   flags_core.define_benchmark()
 
   flags.adopt_module_key_flags(flags_core)
@@ -284,7 +294,8 @@ def define_ncf_flags():
       data_dir="/tmp/movielens-data/",
       train_epochs=2,
       batch_size=256,
-      hooks="ProfilerHook"
+      hooks="ProfilerHook",
+      tpu=None
   )
 
   # Add ncf-specific flags

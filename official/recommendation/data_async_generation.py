@@ -218,6 +218,9 @@ def main(_):
   log_dir = os.path.join(shard_dir, "logs")
   tf.gfile.MakeDirs(log_dir)
 
+  if tf.gfile.Exists(output_root):
+    tf.gfile.DeleteRecursively(output_root)
+
   # This server is generally run in a subprocess.
   print("Redirecting stdout and stderr to files in {}".format(log_dir))
   log_stream = open("/tmp/ncf_data_gen_proc.log", "wt")

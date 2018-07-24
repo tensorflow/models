@@ -29,8 +29,8 @@ do
                      --dataset ${DATASET} --hooks "" \
                      --clean \
                      --train_epochs 1 \
-                     --batch_size 16384 \
-                     --eval_batch_size 32768 \
+                     --batch_size 2048 \
+                     --eval_batch_size 65536 \
                      --learning_rate 0.0005 \
                      --layers 256,256,128,64 --num_factors 64 \
                      --hr_threshold 0.635 \

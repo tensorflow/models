@@ -37,6 +37,7 @@ import typing
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+from tensorflow.python.keras.utils import tf_utils
 
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
 
@@ -65,23 +66,27 @@ def neumf_model_fn(features, labels, mode, params):
     # TPUs require static shapes to be returned, which may not divide evenly
     # with the number of data points. A mask is used to force the padded values
     # to -1 to clearly distinguish them.
-    mask = tf.cast(features["mask"], tf.float32)
+    mask = tf.expand_dims(tf.cast(features["mask"], tf.float32), axis=1)
+    masked_predictions = tf.multiply(tf.sigmoid(logits), mask) - (1 - mask)
     predictions = {
-        movielens.RATING_COLUMN: tf.sigmoid(logits) * mask - (1 - mask),
+        movielens.RATING_COLUMN: masked_predictions,
     }
 
-    # return tf.estimator.EstimatorSpec(
-    #     mode=tf.estimator.ModeKeys.PREDICT,
-    #     predictions=predictions
-    # )
-    return tf.contrib.tpu.TPUEstimatorSpec(
+    if params["use_tpu"]:
+      return tf.contrib.tpu.TPUEstimatorSpec(
+          mode=tf.estimator.ModeKeys.PREDICT,
+          predictions=predictions
+      )
+    return tf.estimator.EstimatorSpec(
         mode=tf.estimator.ModeKeys.PREDICT,
         predictions=predictions
     )
 
+
   elif mode == tf.estimator.ModeKeys.TRAIN:
     optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
-    optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+    if params["use_tpu"]:
+      optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
     # Softmax with the first column of ones is equivalent to sigmoid.
     logits = tf.concat([tf.ones(logits.shape, dtype=logits.dtype), logits], axis=1)
@@ -100,13 +105,24 @@ def neumf_model_fn(features, labels, mode, params):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
 
-    # return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
-    return tf.contrib.tpu.TPUEstimatorSpec(
-        mode=mode, loss=loss, train_op=train_op,
-    )
+    if params["use_tpu"]:
+      return tf.contrib.tpu.TPUEstimatorSpec(
+          mode=mode, loss=loss, train_op=train_op,
+      )
+    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+
 
   else:
     raise NotImplementedError
+
+
+class NNEmbedding(tf.keras.layers.Embedding):
+  def call(self, inputs):
+    dtype = tf.keras.backend.dtype(inputs)
+    if dtype != 'int32' and dtype != 'int64':
+      inputs = math_ops.cast(inputs, 'int32')
+    out = tf.nn.embedding_lookup(self.embeddings, inputs)
+    return out
 
 
 class NeuMF(tf.keras.models.Model):
@@ -144,27 +160,30 @@ class NeuMF(tf.keras.models.Model):
     # Initializer for embedding layers
     embedding_initializer = "glorot_uniform"
 
+    # Embedding = tf.keras.layers.Embedding
+    Embedding = NNEmbedding
+
     # Embedding layers of GMF and MLP
-    mf_embedding_user = tf.keras.layers.Embedding(
+    mf_embedding_user = Embedding(
         num_users,
         mf_dim,
         embeddings_initializer=embedding_initializer,
         embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
         input_length=1)
-    mf_embedding_item = tf.keras.layers.Embedding(
+    mf_embedding_item = Embedding(
         num_items,
         mf_dim,
         embeddings_initializer=embedding_initializer,
         embeddings_regularizer=tf.keras.regularizers.l2(mf_regularization),
         input_length=1)
 
-    mlp_embedding_user = tf.keras.layers.Embedding(
+    mlp_embedding_user = Embedding(
         num_users,
         model_layers[0]//2,
         embeddings_initializer=embedding_initializer,
         embeddings_regularizer=tf.keras.regularizers.l2(mlp_reg_layers[0]),
         input_length=1)
-    mlp_embedding_item = tf.keras.layers.Embedding(
+    mlp_embedding_item = Embedding(
         num_items,
         model_layers[0]//2,
         embeddings_initializer=embedding_initializer,

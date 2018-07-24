@@ -434,8 +434,8 @@ def instantiate_pipeline(dataset, data_dir, batch_size, num_data_readers=None, n
                                 num_neg=num_neg, debug=debug)
 
   tf.logging.info("Creating training file subprocess.")
-  epoch_root = os.path.join(data_dir, _CACHE_SUBDIR, dataset, _DYNAMIC_EPOCH_SUBDIR)
-
+  epoch_root = os.path.join(data_dir, _CACHE_SUBDIR, dataset,
+                            _DYNAMIC_EPOCH_SUBDIR)
 
   subproc_env = os.environ.copy()
 
