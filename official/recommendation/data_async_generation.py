@@ -105,6 +105,13 @@ def _process_shard(shard_path, num_items, num_neg):
   return users_out, items_out, labels_out
 
 
+def _construct_record(users, items, labels):
+  return tf.train.Example(features=tf.train.Features(feature={
+    movielens.USER_COLUMN: tf.train.Feature(int64_list=tf.train.Int64List(value=users.astype(np.int64))),
+    movielens.ITEM_COLUMN: tf.train.Feature(int64_list=tf.train.Int64List(value=items.astype(np.int64))),
+    "labels": tf.train.Feature(int64_list=tf.train.Int64List(value=labels.astype(np.int64))),
+  })).SerializeToString()
+
 def sigint_handler(signal, frame):
   absl_logging.info("Shutting down worker.")
 
@@ -172,15 +179,12 @@ def generation_loop(num_workers, shard_dir, output_root, num_readers, num_neg,
       if batches[-1][0].shape[0] < batch_size and spillover:
         old_results = batches.pop()
 
-      records = [
-        tf.train.Example(features=tf.train.Features(feature={
-          movielens.USER_COLUMN: tf.train.Feature(int64_list=tf.train.Int64List(value=i[0].astype(np.int64))),
-          movielens.ITEM_COLUMN: tf.train.Feature(int64_list=tf.train.Int64List(value=i[1].astype(np.int64))),
-          "labels": tf.train.Feature(int64_list=tf.train.Int64List(value=i[2].astype(np.int64))),
-        })).SerializeToString() for i in batches
-      ]
+      absl_logging.info("Arrays constructed. Running time: {:.1f} seconds"
+                        .format(timeit.default_timer() - st))
 
-      record_shards = [[] for i in range(num_readers)]
+      records = pool.starmap(_construct_record, batches)
+
+      record_shards = [[] for _ in range(num_readers)]
       for i, record_bytes in enumerate(records):
         record_shards[i % num_readers].append(record_bytes)
 
