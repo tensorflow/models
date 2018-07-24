@@ -19,6 +19,7 @@
 /research/global_objectives/ @mackeya-google
 /research/im2txt/ @cshallue
 /research/inception/ @shlens @vincentvanhoucke
+/research/keypointnet/ @norouzi
 /research/learned_optimizer/ @olganw @nirum
 /research/learning_to_remember_rare_events/ @lukaszkaiser @ofirnachum
 /research/learning_unsupervised_learning/ @lukemetz @nirum
