@@ -46,13 +46,23 @@ flags.DEFINE_boolean(
 )
 flags.DEFINE_boolean('eval_training_data', False,
                      'If training data should be evaluated for this job.')
+flags.DEFINE_integer('num_intra_threads', None,
+                     'Number of threads to use for intra-op parallelism.')
+flags.DEFINE_integer('num_inter_threads', None,
+                     'Number of threads to use for inter-op parallelism.')
 FLAGS = flags.FLAGS
 
 
 def main(unused_argv):
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
-  config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir)
+  sess_config = tf.ConfigProto()
+  if FLAGS.num_intra_threads is not None:
+    sess_config.intra_op_parallelism_threads = FLAGS.num_intra_threads
+  if FLAGS.num_inter_threads is not None:
+    sess_config.inter_op_parallelism_threads = FLAGS.num_inter_threads
+  config = tf.estimator.RunConfig(
+      model_dir=FLAGS.model_dir, session_config=sess_config)
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
