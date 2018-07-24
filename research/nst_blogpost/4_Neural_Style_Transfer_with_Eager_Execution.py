@@ -1,61 +1,8 @@
-
-# coding: utf-8
-
-# # Neural Style Transfer with tf.keras
-# In this tutorial we will learn how to compose images in the style of another image (ever wish you could paint like Picasso or Van Gogh?). This is known as **neural style transfer**. 
-# 
-# This is a technique outlined in [Leon A. Gatys' paper, A Neural Algorithm of Artistic Style](https://arxiv.org/abs/1508.06576), which is a great read, and you should definitely check it out. But, what is neural style transfer?
-# 
-# Neural style transfer is an optimization technique used to take three images, a content image, a style image, and a base input iamge. We’ll then “blend” them together such that the base input image is transfromed to look like the content image, but “painted” in the style of the style image. For example, let’s take an image of the city of Tübingen and this awesome picture by Leonid Afremov: 
-# 
-# ![TODO: content and style images]()
-# 
-# Now how would it look like if Leonard decided to paint the picture of Tübingen in this style? Something like this?
-# 
-# ![TODO: output image]()
-# 
-# Is this magic or just deep learning? Fortunately, this doesn’t involve any witchcraft: style transfer is a fun and interesting technique that showcases the capabilities and internal representations of neural networks. 
-# 
-# The principle of neural style transfer is to define two distance functions, one that describes how different the content of two images are , $L_{content}$ and one that describes the difference between two images in terms of their style, $L_{style}$. Then, given three images, a desired style image, a desired content image, and the input image (e.g. white noise or even starting with the content image), we try to transform the input image to minimize the content distance with the content image and its style distance with the style image. This should allow us to create the image of content image as if it were done with the artististic style corresponding to that of the style image. 
-# 
-# To visualise the image information that is encoded at different layers of the hierarchy we perform gradient descent on our input image to find another image that matches the feature responses of the original image.
-# 
-# In summary, we’ll take a base input image (either initialized to white noise or the content image), a content image that we want to match, and the style image that we want to match. We’ll transform the base input image by minimizing the content and style distances (losses) with backpropagation.
-# 
-# ## Specific concepts that will be covered:
-# In the process, we will build practical experience and develop intuition around the following concepts
-# * **Eager Execution** - use TensorFlow's imperative programming environment that evaluates operations immediately 
-#   * [Learn more about eager execution](https://www.tensorflow.org/programmers_guide/eager)
-#   * [See it in action](https://www.tensorflow.org/get_started/eager)
-# * ** Using [Functional API](https://keras.io/getting-started/functional-api-guide/) to define a model** - we'll build a subset of our model that will give us access to the necessary intermediate activations using the Functional API 
-# * **Leveraging feature maps of a pretrained model** - Learn how to use pretrained models and their feature maps 
-# * **Create custom training loops** - we'll examine how to set up an optimizer to minimize a given loss with respect to input parameters
-# 
-# ### We will follow the general steps to perform style transfer:
-# 1. Visualize data
-# 2. Basic Preprocessing/preparing our data
-# 3. Set up loss functions 
-# 4. Create model
-# 5. Optimize for loss function
-# 
-# **Audience:** This post is geared towards intermediate users who are comfortable with basic machine learning concepts. To get the most out of this post, you should: 
-# * Read [Gatys' paper](https://arxiv.org/abs/1508.06576) - we'll explain along the way, but the paper will provide a more thorough understanding of the task
-# * [Understand reducing loss with gradient descent](https://developers.google.com/machine-learning/crash-course/reducing-loss/gradient-descent)
-# 
-# **Time Estimated**: 30 min
-# 
-
-# In[ ]:
-
-
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import time
 import functools
-
-
-# In[ ]:
 
 
 import google3 
@@ -69,19 +16,10 @@ from google3.third_party.tensorflow.python.keras import layers
 from google3.third_party.tensorflow.python.keras import backend as K
 
 
-# We’ll begin by enabling [eager execution](https://www.tensorflow.org/guide/eager). Eager execution allows us to work through this technique in the clearest and most readable way. 
-
-# In[3]:
-
-
 tf.enable_eager_execution()
 print("Eager execution: {}".format(tf.executing_eagerly()))
 
 
-# In[ ]:
-
-
-# Set up some global values here
 img_shape = (512, 512, 3)
 content_path = '/tmp/nst/dancing.png'
 style_path = '/tmp/nst/picasso.png'
@@ -114,7 +52,8 @@ def imshow(img, title=None):
   plt.imshow(out)
 
 
-# These are input content and style images. We hope to "create" an image with the content of our content image, but with the style of the style image. 
+# These are input content and style images. We hope to "create" an image with
+# the content of our content image, but with the style of the style image.
 
 # In[7]:
 
@@ -132,10 +71,6 @@ imshow(style, 'Style Image')
 plt.show()
 
 
-# # Prepare the data
-# Let's begin by loading and preprocessing our images. We perform the same preprocessing process as are expected according to the VGG training process. VGG networks are trained on image with each channel normalized by `mean = [103.939, 116.779, 123.68]`and with channels BGR.
-
-# In[ ]:
 
 
 def load_and_process_img(path_to_img):
@@ -144,9 +79,6 @@ def load_and_process_img(path_to_img):
   return img
 
 
-# In order toview the outputs of our optimization, we are required to perform the inverse preprocessing step. Furthermore, since our optimized image may take its values anywhere between $- \infty$ and $\infty$, we must clip to maintain our values from within the 0-255 range.   
-
-# In[ ]:
 
 
 def deprocess_img(processed_img):
@@ -168,15 +100,6 @@ def deprocess_img(processed_img):
   return x
 
 
-# ## Define our layers of interest
-# In order to get both the content and style representation of our image, we will look at some intermediate layers within our model. As we go deeper into the model, these intermediate layers represent higher and higher order features. In this case, we are using the network architecture VGG19, a pretrained image classification network. These intermediate layers are necessary to define the representation of content and style from our images. For an input image, we will try to match the corresponding style and content target representations at these intermediate layers. 
-# 
-# 
-# You may be wondering why these intermediate outputs within our image classification network allow us to define style and content losses. At a high level, this phenomenon can be explained by the fact that in order for a network to perform image classification, it must understand the image. This involves taking the raw image as input and building an internal representation through transformations that turn the raw image pixels into a complex understanding of the features present within the image. This entails that in between the raw pixels and the classification, the model has an internalized understanding of the features of the pixels. This is why we extract the intermediate layers to access the model's internal representation set of features of the input image. This is also partly why convolutional neural networks are able to generalize well: they’re able to capture the invariances and defining features within classes (e.g. cats vs dogs) that are agnostic to background noise and other nuisances. 
-# 
-
-# In[ ]:
-
 
 # Content layer where will pull our feature maps
 content_layers = ['block5_conv2'] 
@@ -193,16 +116,6 @@ num_content_layers = len(content_layers)
 num_style_layers = len(style_layers)
 
 
-# # Model 
-# In this case, we load [VGG19](https://keras.io/applications/#vgg19), and feed in our input tensor to the model. This will allow us to extract the feature maps (and subsequently the content and style representations) of the content, style, and generated images.
-# 
-# We use VGG19, as suggested in the paper. In addition, since VGG19 is a relatively simple model (compared with ResNet, Inception, etc) the feature maps actually work better for style transfer. 
-
-# In order to access the intermediate layers corresponding to our style and content feature maps, we get the corresponding outputs and using the Keras [**Functional API**](https://keras.io/getting-started/functional-api-guide/), we define our model with the desired output activations. 
-# 
-# With the Functional API defining a model simply involves defining the input and output: `Model(inputs, outputs)`
-
-# In[ ]:
 
 
 def get_model():
@@ -227,51 +140,13 @@ def get_model():
   return models.Model(vgg.input, model_outputs)
 
 
-# In the above code snippet, we’ll load our pretrained image classification network. Then we grab the layers of interest as we defined earlier. Then we define the a Model by setting the model’s inputs to an image and the outputs to the outputs of the style and content layers. In other words, we created a model that will take an input image and output the content and style intermediate layers! 
 
-# # Creating our loss functions
-# While we won't cover the full mathematical theory behind style transfer, you should read the [paper](https://arxiv.org/abs/1508.06576) for a much more in depth and clear explanation, but let's get started! 
-# 
-
-# # Content Loss
-
-# Our loss definition is actually quite simple. We’ll pass the network both the desired content image and our base input image. This will return the intermediate layer outputs (defined above) from our model. Then we simply take the euclidean distance between the two intermediate representations of the those images. 
-# 
-# More formally, content loss is a function that describes the distance of content from our output image $x$ and our content image, $p$. Let $C_{nn}$ be a pre-trained deep convolutional neural network. In this case we use [VGG19](https://keras.io/applications/#vgg19). Let $X$ be any image, then $C_{nn}(X)$ is the network fed by X. Let $F^l_{ij}(x) \in C_{nn}(x)$ and $P^l_{ij}(p) \in C_{nn}(p)$ describe the respective intermediate feature representation of the network with inputs $x$ and $p$ at layer $l$. Then we describe the content distance (loss) formally as: $$L^l_{content}(p, x) = \sum_{i, j} (F^l_{ij}(x) - P^l_{ij}(p))^2$$
-# 
-# 
-# We perform backpropagation in the usual way such that we minimize this content loss. We thus change the initial image until it generates a similar response in a certain layer (defined in `content_layer`) as the original content image. 
-# 
-# This can be implemented quite simply using keras backend functions. Again it will take as input the feature maps at a layer L in a network fed by X and return the content distance.
-# 
-# 
-
-# ## Computing content loss
-# We will actually add our content losses at each desired layer. This way, each iteration when we feed our input image through the model (which in eager is simply `model(input_image)`!) all the content losses through the model will be properly compute and because we are executing eagerly, all the gradients will be computed. 
-
-# In[ ]:
 
 
 def get_content_loss(base_content, target):
   return tf.reduce_mean(tf.square(base_content - target))
 
 
-# # Style Loss
-
-# Computing style loss is a bit more involved, but follows the same principle, this time feeding our network the base input image and the style image. However, instead of comparing the raw intermediate outputs of the base input image and the style image, we instead compare the Gram matrices of the two outputs. 
-# 
-# Mathematically, we describe the style loss of the base input image, $x$ and the style image, $a$ as the distance between the style representation (the gram matrices) of these images. Style representation of an image is described by the correlation between different filter responses, as given by the Gram matrix $G^l$, where $G^l_{ij}$ is the inner product between the vectorized feature map $i$ and $j$ in layer $l$. We can see that $G^l_{ij}$ generated over the feature map for a given image, represents the correlation between feature maps $i$ and $j$. 
-# 
-# To generate a texture for our generated image, we perform gradient descent from either a white noise image or even the content image to create another image that matches the style representation of the original image. We do so by minimizing the mean squared distance between the  feature correlation map of the style image and the output image. The contribution of each layer to the total style loss is described by 
-# $$E_l = \frac{1}{4N_l^2M_l^2} \sum_{i,j}(G^l_{ij} - A^l_{ij})^2$$
-# where $G^l_{ij}$ and $A^l_{ij}$ are the respective style representation in layer $l$ of $x$ and $a$. $N_l$ describes the number of feature maps, each of size $M_l = height * width$. Thus, the total style loss across each layer is 
-# $$L_{style}(a, x) = \sum_{l \in L} w_l E_l$$
-# where we weight the contribution of each layer's loss by some factor $w_l$. In our case, we weight each layer equally ($w_l =\frac{1}{|L|}$)
-
-# ## Computing style loss
-# Again, we implement our loss as a distance metric . 
-
-# In[ ]:
 
 
 def gram_matrix(input_tensor):
@@ -292,20 +167,7 @@ def get_style_loss(base_style, gram_target):
   return tf.reduce_mean(tf.square(gram_style - gram_target))# / (4. * (channels ** 2) * (width * height) ** 2)
 
 
-# # Apply style transfer to our images
-# 
 
-# ## Run Gradient Descent 
-# If you aren't familiar with gradient descent or need a refresher, you should definitely check out this [awesome resource](https://developers.google.com/machine-learning/crash-course/reducing-loss/gradient-descent)
-# 
-# In this case, we use the [`Adam`](https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Adam) optimizer in order to minimize our loss. We iteratively update our ouput image such that it minimizes our loss: we don't update the weights associated with our network, but instead we train our input image to minimize loss. 
-# 
-
-# We initialize our output image with the same image as our content image. 
-# 
-# 
-
-# In[ ]:
 
 
 def get_feature_representations(model, content_path, style_path):
@@ -337,10 +199,6 @@ def get_feature_representations(model, content_path, style_path):
   return style_features, content_features
 
 
-# ## Computing the loss and gradients
-# Here we [**tf.GradientTape**](https://www.tensorflow.org/programmers_guide/eager#computing_gradients) to compute the gradient. It allows us to take advantage of the automatic differentiation available by tracing operations for computing the gradient later. It records the operations during the forward pass and then is able to compute the gradient of our loss function with respect to our input image. 
-
-# In[ ]:
 
 
 def compute_loss(model, loss_weights, init_image, gram_style_features, content_features):
@@ -393,8 +251,6 @@ def compute_loss(model, loss_weights, init_image, gram_style_features, content_f
   return loss, style_score, content_score
 
 
-# In[ ]:
-
 
 def compute_grads(cfg):
   with tf.GradientTape() as tape: 
@@ -406,7 +262,7 @@ def compute_grads(cfg):
 
 # ## Apply and run the style transfer process
 
-# In[ ]:
+
 
 
 def run_style_transfer(content_path, 
@@ -598,14 +454,3 @@ show_results(best_poc_tubingen,
              '/tmp/nst/tubingen.png',
              '/tmp/nst/Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg')
 
-
-# # Key Takeaways
-# ## What we covered:
-# * We built several different loss functions and used backpropagation to transform our input image in order to minimize these losses
-#   * In order to do this we had to load in an a **pretrained model** and used its learned feature maps to describe the content and style representation of our images.
-#     * Our main loss functions were primarily computing the distance in terms of these different representations
-# * We implemented this with a custom model and **eager execution**
-#   * We built our custom model with the Functional API 
-#   * Eager execution allows us to dynamically work with tensors, using a natural python control flow
-#   * We manipulated tensors directly, which makes debugging and working with tensors easier. 
-# * We iteratively updated our image by applying our optimizers update rules using **tf.gradient**. The optimizer minimized a given loss with respect to our input image. 
