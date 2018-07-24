@@ -22,7 +22,7 @@ from official.utils.flags import core as flags_core  # pylint: disable=g-bad-imp
 
 
 def define_flags():
-  flags_core.define_base(multi_gpu=True, num_gpu=False)
+  flags_core.define_base(num_gpu=False)
   flags_core.define_performance()
   flags_core.define_image()
   flags_core.define_benchmark()
@@ -75,9 +75,8 @@ class BaseTester(unittest.TestCase):
     """Test to ensure boolean flags trigger as expected.
     """
 
-    flags_core.parse_flags([__file__, "--multi_gpu", "--use_synthetic_data"])
+    flags_core.parse_flags([__file__, "--use_synthetic_data"])
 
-    assert flags.FLAGS.multi_gpu
     assert flags.FLAGS.use_synthetic_data
 
   def test_parse_dtype_info(self):

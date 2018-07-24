@@ -19,13 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 
-
+from absl import flags
 import tensorflow as tf
 
 import data_provider
 import networks
 
-flags = tf.flags
 tfgan = tf.contrib.gan
 
 

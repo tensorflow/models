@@ -2316,6 +2316,46 @@ class PreprocessorTest(tf.test.TestCase):
                                               np.random.randn(*in_shape)})
         self.assertAllEqual(out_image_shape, expected_shape)
 
+  def testResizeToRangeWithPadToMaxDimensionReturnsCorrectShapes(self):
+    in_shape_list = [[60, 40, 3], [15, 30, 3], [15, 50, 3]]
+    min_dim = 50
+    max_dim = 100
+    expected_shape_list = [[100, 100, 3], [100, 100, 3], [100, 100, 3]]
+
+    for in_shape, expected_shape in zip(in_shape_list, expected_shape_list):
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      out_image, _ = preprocessor.resize_to_range(
+          in_image,
+          min_dimension=min_dim,
+          max_dimension=max_dim,
+          pad_to_max_dimension=True)
+      self.assertAllEqual(out_image.shape.as_list(), expected_shape)
+      out_image_shape = tf.shape(out_image)
+      with self.test_session() as sess:
+        out_image_shape = sess.run(
+            out_image_shape, feed_dict={in_image: np.random.randn(*in_shape)})
+        self.assertAllEqual(out_image_shape, expected_shape)
+
+  def testResizeToRangeWithPadToMaxDimensionReturnsCorrectTensor(self):
+    in_image_np = np.array([[[0, 1, 2]]], np.float32)
+    ex_image_np = np.array(
+        [[[0, 1, 2], [123.68, 116.779, 103.939]],
+         [[123.68, 116.779, 103.939], [123.68, 116.779, 103.939]]], np.float32)
+    min_dim = 1
+    max_dim = 2
+
+    in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+    out_image, _ = preprocessor.resize_to_range(
+        in_image,
+        min_dimension=min_dim,
+        max_dimension=max_dim,
+        pad_to_max_dimension=True,
+        per_channel_pad_value=(123.68, 116.779, 103.939))
+
+    with self.test_session() as sess:
+      out_image_np = sess.run(out_image, feed_dict={in_image: in_image_np})
+      self.assertAllClose(ex_image_np, out_image_np)
+
   def testResizeToRangeWithMasksPreservesStaticSpatialShape(self):
     """Tests image resizing, checking output sizes."""
     in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
@@ -2336,6 +2376,40 @@ class PreprocessorTest(tf.test.TestCase):
           in_image, in_masks, min_dimension=min_dim, max_dimension=max_dim)
       self.assertAllEqual(out_masks.get_shape().as_list(), expected_mask_shape)
       self.assertAllEqual(out_image.get_shape().as_list(), expected_image_shape)
+
+  def testResizeToRangeWithMasksAndPadToMaxDimension(self):
+    """Tests image resizing, checking output sizes."""
+    in_image_shape_list = [[60, 40, 3], [15, 30, 3]]
+    in_masks_shape_list = [[15, 60, 40], [10, 15, 30]]
+    min_dim = 50
+    max_dim = 100
+    expected_image_shape_list = [[100, 100, 3], [100, 100, 3]]
+    expected_masks_shape_list = [[15, 100, 100], [10, 100, 100]]
+
+    for (in_image_shape,
+         expected_image_shape, in_masks_shape, expected_mask_shape) in zip(
+             in_image_shape_list, expected_image_shape_list,
+             in_masks_shape_list, expected_masks_shape_list):
+      in_image = tf.placeholder(tf.float32, shape=(None, None, 3))
+      in_masks = tf.placeholder(tf.float32, shape=(None, None, None))
+      out_image, out_masks, _ = preprocessor.resize_to_range(
+          in_image,
+          in_masks,
+          min_dimension=min_dim,
+          max_dimension=max_dim,
+          pad_to_max_dimension=True)
+      out_image_shape = tf.shape(out_image)
+      out_masks_shape = tf.shape(out_masks)
+
+      with self.test_session() as sess:
+        out_image_shape, out_masks_shape = sess.run(
+            [out_image_shape, out_masks_shape],
+            feed_dict={
+                in_image: np.random.randn(*in_image_shape),
+                in_masks: np.random.randn(*in_masks_shape)
+            })
+        self.assertAllEqual(out_image_shape, expected_image_shape)
+        self.assertAllEqual(out_masks_shape, expected_mask_shape)
 
   def testResizeToRangeWithMasksAndDynamicSpatialShape(self):
     """Tests image resizing, checking output sizes."""

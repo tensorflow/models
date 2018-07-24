@@ -402,8 +402,9 @@ class SSDMetaArch(model.DetectionModel):
               im_width=image_shape[2]))
       prediction_dict = self._box_predictor.predict(
           feature_maps, self._anchor_generator.num_anchors_per_location())
-      box_encodings = tf.squeeze(
-          tf.concat(prediction_dict['box_encodings'], axis=1), axis=2)
+      box_encodings = tf.concat(prediction_dict['box_encodings'], axis=1)
+      if box_encodings.shape.ndims == 4 and box_encodings.shape[2] == 1:
+        box_encodings = tf.squeeze(box_encodings, axis=2)
       class_predictions_with_background = tf.concat(
           prediction_dict['class_predictions_with_background'], axis=1)
       predictions_dict = {
@@ -479,12 +480,16 @@ class SSDMetaArch(model.DetectionModel):
     with tf.name_scope('Postprocessor'):
       preprocessed_images = prediction_dict['preprocessed_inputs']
       box_encodings = prediction_dict['box_encodings']
+      box_encodings = tf.identity(box_encodings, 'raw_box_encodings')
       class_predictions = prediction_dict['class_predictions_with_background']
       detection_boxes, detection_keypoints = self._batch_decode(box_encodings)
+      detection_boxes = tf.identity(detection_boxes, 'raw_box_locations')
       detection_boxes = tf.expand_dims(detection_boxes, axis=2)
 
       detection_scores_with_background = self._score_conversion_fn(
           class_predictions)
+      detection_scores_with_background = tf.identity(
+          detection_scores_with_background, 'raw_box_scores')
       detection_scores = tf.slice(detection_scores_with_background, [0, 0, 1],
                                   [-1, -1, -1])
       additional_fields = None

@@ -40,10 +40,10 @@ flags.DEFINE_integer('logits_kernel_size', 1,
                      'generates logits.')
 
 # When using 'mobilent_v2', we set atrous_rates = decoder_output_stride = None.
-# When using 'xception_65', we set atrous_rates = [6, 12, 18] (output stride 16)
-# and decoder_output_stride = 4.
-flags.DEFINE_enum('model_variant', 'mobilenet_v2',
-                  ['xception_65', 'mobilenet_v2'], 'DeepLab model variant.')
+# When using 'xception_65' or 'resnet_v1' model variants, we set
+# atrous_rates = [6, 12, 18] (output stride 16) and decoder_output_stride = 4.
+# See core/feature_extractor.py for supported model variants.
+flags.DEFINE_string('model_variant', 'mobilenet_v2', 'DeepLab model variant.')
 
 flags.DEFINE_multi_float('image_pyramid', None,
                          'Input scales for multi-scale feature extraction.')
@@ -57,6 +57,8 @@ flags.DEFINE_boolean('aspp_with_batch_norm', True,
 flags.DEFINE_boolean('aspp_with_separable_conv', True,
                      'Use separable convolution for ASPP or not.')
 
+# Defaults to None. Set multi_grid = [1, 2, 4] when using provided
+# 'resnet_v1_{50,101}_beta' checkpoints.
 flags.DEFINE_multi_integer('multi_grid', None,
                            'Employ a hierarchy of atrous rates for ResNet.')
 
@@ -95,6 +97,7 @@ ORIGINAL_IMAGE = 'original_image'
 # Test set name.
 TEST_SET = 'test'
 
+
 class ModelOptions(
     collections.namedtuple('ModelOptions', [
         'outputs_to_num_classes',
@@ -109,7 +112,8 @@ class ModelOptions(
         'decoder_output_stride',
         'decoder_use_separable_conv',
         'logits_kernel_size',
-        'model_variant'
+        'model_variant',
+        'depth_multiplier',
     ])):
   """Immutable class to hold model options."""
 
@@ -139,4 +143,4 @@ class ModelOptions(
         FLAGS.aspp_with_batch_norm, FLAGS.aspp_with_separable_conv,
         FLAGS.multi_grid, FLAGS.decoder_output_stride,
         FLAGS.decoder_use_separable_conv, FLAGS.logits_kernel_size,
-        FLAGS.model_variant)
+        FLAGS.model_variant, FLAGS.depth_multiplier)

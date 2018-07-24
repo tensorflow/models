@@ -50,15 +50,6 @@ The model will begin training and will automatically evaluate itself on the vali
 
 Note that there are a number of other options you can specify, including `--model_dir` to choose where to store the model and `--resnet_size` to choose the model size (options include ResNet-18 through ResNet-200). See [`resnet.py`](resnet.py) for the full list of options.
 
-### Pre-trained model
-You can download 190 MB pre-trained versions of ResNet-50 achieving 76.3% and 75.3% (respectively) top-1 single-crop accuracy here: [resnetv2_imagenet_checkpoint.tar.gz](http://download.tensorflow.org/models/official/resnetv2_imagenet_checkpoint.tar.gz), [resnetv1_imagenet_checkpoint.tar.gz](http://download.tensorflow.org/models/official/resnetv1_imagenet_checkpoint.tar.gz). Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
-
-Other versions and formats:
-
-* [ResNet-v2-ImageNet Checkpoint](http://download.tensorflow.org/models/official/resnet_v2_imagenet_checkpoint.tar.gz)
-* [ResNet-v2-ImageNet SavedModel](http://download.tensorflow.org/models/official/resnet_v2_imagenet_savedmodel.tar.gz)
-* [ResNet-v1-ImageNet Checkpoint](http://download.tensorflow.org/models/official/resnet_v1_imagenet_checkpoint.tar.gz)
-* [ResNet-v1-ImageNet SavedModel](http://download.tensorflow.org/models/official/resnet_v1_imagenet_savedmodel.tar.gz)
 
 ## Compute Devices
 Training is accomplished using the DistributionStrategies API. (https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/distribute/README.md)
@@ -69,3 +60,18 @@ num_gpus:
 + 0:  Use OneDeviceStrategy and train on CPU.
 + 1:  Use OneDeviceStrategy and train on GPU.
 + 2+: Use MirroredStrategy (data parallelism) to distribute a batch between devices.
+
+### Pre-trained model
+You can download 190 MB pre-trained versions of ResNet-50. Reported accuracies are top-1 single-crop accuracy for the ImageNet validation set. Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
+
+ResNet-50 v2 (Accuracy 76.05%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_savedmodel.tar.gz)
+
+ResNet-50 v2 (fp16, Accuracy 75.56%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_savedmodel.tar.gz)
+
+ResNet-50 v1 (Accuracy 75.91%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_savedmodel.tar.gz)

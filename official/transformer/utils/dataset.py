@@ -51,9 +51,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import os
 
 import tensorflow as tf
+
+from official.utils.misc import model_helpers
 
 # Use the number of training files as the shuffle buffer.
 _FILE_SHUFFLE_BUFFER = 100
@@ -190,7 +193,8 @@ def _batch_examples(dataset, batch_size, max_length):
 
 
 def _read_and_batch_from_files(
-    file_pattern, batch_size, max_length, num_parallel_calls, shuffle, repeat):
+    file_pattern, batch_size, max_length, num_parallel_calls, shuffle, repeat,
+    static_batch=False):
   """Create dataset where each item is a dict of "inputs" and "targets".
 
   Args:
@@ -201,6 +205,17 @@ def _read_and_batch_from_files(
     shuffle: If true, randomizes order of elements.
     repeat: Number of times to repeat the dataset. If None, the dataset is
       repeated forever.
+    static_batch: Whether the batches in the dataset should have static shapes.
+      If True, the input is batched so that every batch has the
+      shape [batch_size // max_length, max_length]. If False, the input is
+      grouped by length, and batched so that batches may have different
+      shapes [N, M], where:
+        N * M <= batch_size
+        M <= max_length
+      In general, this setting should be False. Dynamic shapes allow the inputs
+      to be grouped so that the number of padding tokens is minimized, and helps
+      model training. In cases where the input shape must be static
+      (e.g. running on TPU), this setting should be set to True.
 
   Returns:
     tf.data.Dataset object containing examples loaded from the files.
@@ -225,26 +240,50 @@ def _read_and_batch_from_files(
   # Remove examples where the input or target length exceeds the maximum length,
   dataset = dataset.filter(lambda x, y: _filter_max_length((x, y), max_length))
 
-  # Batch such that each batch has examples of similar length.
-  dataset = _batch_examples(dataset, batch_size, max_length)
+  if static_batch:
+    dataset = dataset.apply(tf.contrib.data.padded_batch_and_drop_remainder(
+        batch_size // max_length, ([max_length], [max_length])))
+  else:
+    # Group and batch such that each batch has examples of similar length.
+    dataset = _batch_examples(dataset, batch_size, max_length)
+
   dataset = dataset.repeat(repeat)
 
   # Prefetch the next element to improve speed of input pipeline.
-  dataset = dataset.prefetch(1)
+  dataset = dataset.prefetch(buffer_size=tf.contrib.data.AUTOTUNE)
   return dataset
+
+
+def _generate_synthetic_data(params):
+  """Create synthetic data based on the parameter batch size."""
+  batch = length = int(math.sqrt(params["batch_size"]))
+  return model_helpers.generate_synthetic_data(
+      input_shape=tf.TensorShape([batch, length]),
+      input_value=1,
+      input_dtype=tf.int32,
+      label_shape=tf.TensorShape([batch, length]),
+      label_value=1,
+      label_dtype=tf.int32,
+  )
 
 
 def train_input_fn(params):
   """Load and return dataset of batched examples for use during training."""
-  file_pattern = os.path.join(getattr(params, "data_dir", ""), "*train*")
+  file_pattern = os.path.join(params["data_dir"] or "", "*train*")
+  if params["use_synthetic_data"]:
+    return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
-      file_pattern, params.batch_size, params.max_length,
-      params.num_parallel_calls, shuffle=True, repeat=params.repeat_dataset)
+      file_pattern, params["batch_size"], params["max_length"],
+      params["num_parallel_calls"], shuffle=True,
+      repeat=params["repeat_dataset"], static_batch=params["static_batch"])
 
 
 def eval_input_fn(params):
   """Load and return dataset of batched examples for use during evaluation."""
-  file_pattern = os.path.join(getattr(params, "data_dir", ""), "*dev*")
+  file_pattern = os.path.join(params["data_dir"] or "", "*dev*")
+  if params["use_synthetic_data"]:
+    return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
-      file_pattern, params.batch_size, params.max_length,
-      params.num_parallel_calls, shuffle=False, repeat=1)
+      file_pattern, params["batch_size"], params["max_length"],
+      params["num_parallel_calls"], shuffle=False, repeat=1,
+      static_batch=params["static_batch"])

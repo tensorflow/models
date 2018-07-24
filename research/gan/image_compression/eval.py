@@ -20,13 +20,14 @@ from __future__ import print_function
 
 
 
+from absl import app
+from absl import flags
 import tensorflow as tf
 
 import data_provider
 import networks
 import summaries
 
-flags = tf.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('master', '', 'Name of the TensorFlow master to use.')
@@ -98,4 +99,4 @@ def main(_, run_eval_loop=True):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run()

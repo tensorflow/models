@@ -1,0 +1,29 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Configuration proto for ArgMaxMatcher. See
+// matchers/argmax_matcher.py for details.
+message ArgMaxMatcher {
+  // Threshold for positive matches.
+  optional float matched_threshold = 1 [default = 0.5];
+
+  // Threshold for negative matches.
+  optional float unmatched_threshold = 2 [default = 0.5];
+
+  // Whether to construct ArgMaxMatcher without thresholds.
+  optional bool ignore_thresholds = 3 [default = false];
+
+  // If True then negative matches are the ones below the unmatched_threshold,
+  // whereas ignored matches are in between the matched and umatched
+  // threshold. If False, then negative matches are in between the matched
+  // and unmatched threshold, and everything lower than unmatched is ignored.
+  optional bool negatives_lower_than_unmatched = 4 [default = true];
+
+  // Whether to ensure each row is matched to at least one column.
+  optional bool force_match_for_each_row = 5 [default = false];
+
+  // Force constructed match objects to use matrix multiplication based gather
+  // instead of standard tf.gather
+  optional bool use_matmul_gather = 6 [default = false];
+}

@@ -32,7 +32,7 @@ class EvalUtilTest(tf.test.TestCase):
             {'id': 1, 'name': 'dog'},
             {'id': 2, 'name': 'cat'}]
 
-  def _make_evaluation_dict(self):
+  def _make_evaluation_dict(self, resized_groundtruth_masks=False):
     input_data_fields = fields.InputDataFields
     detection_fields = fields.DetectionResultFields
 
@@ -46,6 +46,8 @@ class EvalUtilTest(tf.test.TestCase):
     groundtruth_boxes = tf.constant([[0., 0., 1., 1.]])
     groundtruth_classes = tf.constant([1])
     groundtruth_instance_masks = tf.ones(shape=[1, 20, 20], dtype=tf.uint8)
+    if resized_groundtruth_masks:
+      groundtruth_instance_masks = tf.ones(shape=[1, 10, 10], dtype=tf.uint8)
     detections = {
         detection_fields.detection_boxes: detection_boxes,
         detection_fields.detection_scores: detection_scores,
@@ -84,6 +86,26 @@ class EvalUtilTest(tf.test.TestCase):
                           'coco_mask_metrics']
     categories = self._get_categories_list()
     eval_dict = self._make_evaluation_dict()
+    metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
+        evaluation_metrics, categories, eval_dict)
+    _, update_op_boxes = metric_ops['DetectionBoxes_Precision/mAP']
+    _, update_op_masks = metric_ops['DetectionMasks_Precision/mAP']
+
+    with self.test_session() as sess:
+      metrics = {}
+      for key, (value_op, _) in metric_ops.iteritems():
+        metrics[key] = value_op
+      sess.run(update_op_boxes)
+      sess.run(update_op_masks)
+      metrics = sess.run(metrics)
+      self.assertAlmostEqual(1.0, metrics['DetectionBoxes_Precision/mAP'])
+      self.assertAlmostEqual(1.0, metrics['DetectionMasks_Precision/mAP'])
+
+  def test_get_eval_metric_ops_for_coco_detections_and_resized_masks(self):
+    evaluation_metrics = ['coco_detection_metrics',
+                          'coco_mask_metrics']
+    categories = self._get_categories_list()
+    eval_dict = self._make_evaluation_dict(resized_groundtruth_masks=True)
     metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
         evaluation_metrics, categories, eval_dict)
     _, update_op_boxes = metric_ops['DetectionBoxes_Precision/mAP']

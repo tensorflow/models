@@ -20,21 +20,21 @@ from __future__ import print_function
 
 
 
-import tensorflow as tf
+from absl import flags
+from absl.testing import absltest
+from absl.testing import parameterized
 import eval  # pylint:disable=redefined-builtin
 
 
-class EvalTest(tf.test.TestCase):
+class EvalTest(parameterized.TestCase):
 
-  def _test_build_graph_helper(self, eval_real_images):
-    tf.flags.FLAGS.eval_real_images = eval_real_images
+  @parameterized.named_parameters(
+      ('RealData', True),
+      ('GeneratedData', False))
+  def test_build_graph(self, eval_real_images):
+    flags.FLAGS.eval_real_images = eval_real_images
     eval.main(None, run_eval_loop=False)
 
-  def test_build_graph_realdata(self):
-    self._test_build_graph_helper(True)
-
-  def test_build_graph_generateddata(self):
-    self._test_build_graph_helper(False)
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

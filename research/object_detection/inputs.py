@@ -33,8 +33,8 @@ from object_detection.protos import input_reader_pb2
 from object_detection.protos import model_pb2
 from object_detection.protos import train_pb2
 from object_detection.utils import config_util
-from object_detection.utils import dataset_util
 from object_detection.utils import ops as util_ops
+from object_detection.utils import shape_utils
 
 HASH_KEY = 'hash'
 HASH_BINS = 1 << 31
@@ -56,12 +56,15 @@ def transform_input_data(tensor_dict,
   """A single function that is responsible for all input data transformations.
 
   Data transformation functions are applied in the following order.
-  1. data_augmentation_fn (optional): applied on tensor_dict.
-  2. model_preprocess_fn: applied only on image tensor in tensor_dict.
-  3. image_resizer_fn: applied on original image and instance mask tensor in
+  1. If key fields.InputDataFields.image_additional_channels is present in
+     tensor_dict, the additional channels will be merged into
+     fields.InputDataFields.image.
+  2. data_augmentation_fn (optional): applied on tensor_dict.
+  3. model_preprocess_fn: applied only on image tensor in tensor_dict.
+  4. image_resizer_fn: applied on original image and instance mask tensor in
      tensor_dict.
-  4. one_hot_encoding: applied to classes tensor in tensor_dict.
-  5. merge_multiple_boxes (optional): when groundtruth boxes are exactly the
+  5. one_hot_encoding: applied to classes tensor in tensor_dict.
+  6. merge_multiple_boxes (optional): when groundtruth boxes are exactly the
      same they can be merged into a single box with an associated k-hot class
      label.
 
@@ -88,6 +91,14 @@ def transform_input_data(tensor_dict,
     A dictionary keyed by fields.InputDataFields containing the tensors obtained
     after applying all the transformations.
   """
+  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
+    tensor_dict = util_ops.filter_groundtruth_with_nan_box_coordinates(
+        tensor_dict)
+  if fields.InputDataFields.image_additional_channels in tensor_dict:
+    channels = tensor_dict[fields.InputDataFields.image_additional_channels]
+    tensor_dict[fields.InputDataFields.image] = tf.concat(
+        [tensor_dict[fields.InputDataFields.image], channels], axis=2)
+
   if retain_original_image:
     tensor_dict[fields.InputDataFields.original_image] = tf.cast(
         tensor_dict[fields.InputDataFields.image], tf.uint8)
@@ -121,10 +132,108 @@ def transform_input_data(tensor_dict,
     merged_boxes, merged_classes, _ = util_ops.merge_boxes_with_multiple_labels(
         tensor_dict[fields.InputDataFields.groundtruth_boxes],
         zero_indexed_groundtruth_classes, num_classes)
+    merged_classes = tf.cast(merged_classes, tf.float32)
     tensor_dict[fields.InputDataFields.groundtruth_boxes] = merged_boxes
     tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
 
   return tensor_dict
+
+
+def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
+                                    spatial_image_shape=None):
+  """Pads input tensors to static shapes.
+
+  Args:
+    tensor_dict: Tensor dictionary of input data
+    max_num_boxes: Max number of groundtruth boxes needed to compute shapes for
+      padding.
+    num_classes: Number of classes in the dataset needed to compute shapes for
+      padding.
+    spatial_image_shape: A list of two integers of the form [height, width]
+      containing expected spatial shape of the image.
+
+  Returns:
+    A dictionary keyed by fields.InputDataFields containing padding shapes for
+    tensors in the dataset.
+
+  Raises:
+    ValueError: If groundtruth classes is neither rank 1 nor rank 2.
+  """
+
+  if not spatial_image_shape or spatial_image_shape == [-1, -1]:
+    height, width = None, None
+  else:
+    height, width = spatial_image_shape  # pylint: disable=unpacking-non-sequence
+
+  num_additional_channels = 0
+  if fields.InputDataFields.image_additional_channels in tensor_dict:
+    num_additional_channels = tensor_dict[
+        fields.InputDataFields.image_additional_channels].shape[2].value
+  padding_shapes = {
+      # Additional channels are merged before batching.
+      fields.InputDataFields.image: [
+          height, width, 3 + num_additional_channels
+      ],
+      fields.InputDataFields.image_additional_channels: [
+          height, width, num_additional_channels
+      ],
+      fields.InputDataFields.source_id: [],
+      fields.InputDataFields.filename: [],
+      fields.InputDataFields.key: [],
+      fields.InputDataFields.groundtruth_difficult: [max_num_boxes],
+      fields.InputDataFields.groundtruth_boxes: [max_num_boxes, 4],
+      fields.InputDataFields.groundtruth_classes: [max_num_boxes, num_classes],
+      fields.InputDataFields.groundtruth_instance_masks: [
+          max_num_boxes, height, width
+      ],
+      fields.InputDataFields.groundtruth_is_crowd: [max_num_boxes],
+      fields.InputDataFields.groundtruth_group_of: [max_num_boxes],
+      fields.InputDataFields.groundtruth_area: [max_num_boxes],
+      fields.InputDataFields.groundtruth_weights: [max_num_boxes],
+      fields.InputDataFields.num_groundtruth_boxes: [],
+      fields.InputDataFields.groundtruth_label_types: [max_num_boxes],
+      fields.InputDataFields.groundtruth_label_scores: [max_num_boxes],
+      fields.InputDataFields.true_image_shape: [3],
+      fields.InputDataFields.multiclass_scores: [
+          max_num_boxes, num_classes + 1 if num_classes is not None else None
+      ],
+      fields.InputDataFields.groundtruth_image_classes: [num_classes],
+  }
+
+  if fields.InputDataFields.original_image in tensor_dict:
+    padding_shapes[fields.InputDataFields.original_image] = [
+        None, None, 3 + num_additional_channels
+    ]
+  if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
+    tensor_shape = (
+        tensor_dict[fields.InputDataFields.groundtruth_keypoints].shape)
+    padding_shape = [max_num_boxes, tensor_shape[1].value,
+                     tensor_shape[2].value]
+    padding_shapes[fields.InputDataFields.groundtruth_keypoints] = padding_shape
+  if fields.InputDataFields.groundtruth_keypoint_visibilities in tensor_dict:
+    tensor_shape = tensor_dict[fields.InputDataFields.
+                               groundtruth_keypoint_visibilities].shape
+    padding_shape = [max_num_boxes, tensor_shape[1].value]
+    padding_shapes[fields.InputDataFields.
+                   groundtruth_keypoint_visibilities] = padding_shape
+
+  padded_tensor_dict = {}
+  for tensor_name in tensor_dict:
+    expected_shape = padding_shapes[tensor_name]
+    current_shape = shape_utils.combined_static_and_dynamic_shape(
+        tensor_dict[tensor_name])
+    trailing_paddings = [
+        expected_shape_dim - current_shape_dim if expected_shape_dim else 0
+        for expected_shape_dim, current_shape_dim in zip(
+            expected_shape, current_shape)
+    ]
+    paddings = tf.stack([tf.zeros(len(trailing_paddings), dtype=tf.int32),
+                         trailing_paddings],
+                        axis=1)
+    padded_tensor_dict[tensor_name] = tf.pad(
+        tensor_dict[tensor_name], paddings=paddings)
+    padded_tensor_dict[tensor_name].set_shape(expected_shape)
+  return padded_tensor_dict
 
 
 def augment_input_data(tensor_dict, data_augmentation_options):
@@ -223,6 +332,8 @@ def create_train_input_fn(train_config, train_input_config,
       params: Parameter dictionary passed from the estimator.
 
     Returns:
+      A tf.data.Dataset that holds (features, labels) tuple.
+
       features: Dictionary of feature tensors.
         features[fields.InputDataFields.image] is a [batch_size, H, W, C]
           float32 tensor with preprocessed images.
@@ -267,39 +378,47 @@ def create_train_input_fn(train_config, train_input_config,
       raise TypeError('The `model_config` must be a '
                       'model_pb2.DetectionModel.')
 
-    data_augmentation_options = [
-        preprocessor_builder.build(step)
-        for step in train_config.data_augmentation_options
-    ]
-    data_augmentation_fn = functools.partial(
-        augment_input_data, data_augmentation_options=data_augmentation_options)
+    def transform_and_pad_input_data_fn(tensor_dict):
+      """Combines transform and pad operation."""
+      data_augmentation_options = [
+          preprocessor_builder.build(step)
+          for step in train_config.data_augmentation_options
+      ]
+      data_augmentation_fn = functools.partial(
+          augment_input_data,
+          data_augmentation_options=data_augmentation_options)
+      model = model_builder.build(model_config, is_training=True)
+      image_resizer_config = config_util.get_image_resizer_config(model_config)
+      image_resizer_fn = image_resizer_builder.build(image_resizer_config)
+      transform_data_fn = functools.partial(
+          transform_input_data, model_preprocess_fn=model.preprocess,
+          image_resizer_fn=image_resizer_fn,
+          num_classes=config_util.get_number_of_classes(model_config),
+          data_augmentation_fn=data_augmentation_fn,
+          merge_multiple_boxes=train_config.merge_multiple_label_boxes,
+          retain_original_image=train_config.retain_original_images)
 
-    model = model_builder.build(model_config, is_training=True)
-    image_resizer_config = config_util.get_image_resizer_config(model_config)
-    image_resizer_fn = image_resizer_builder.build(image_resizer_config)
+      tensor_dict = pad_input_data_to_static_shapes(
+          tensor_dict=transform_data_fn(tensor_dict),
+          max_num_boxes=train_input_config.max_number_of_boxes,
+          num_classes=config_util.get_number_of_classes(model_config),
+          spatial_image_shape=config_util.get_spatial_image_size(
+              image_resizer_config))
+      return (_get_features_dict(tensor_dict), _get_labels_dict(tensor_dict))
 
-    transform_data_fn = functools.partial(
-        transform_input_data, model_preprocess_fn=model.preprocess,
-        image_resizer_fn=image_resizer_fn,
-        num_classes=config_util.get_number_of_classes(model_config),
-        data_augmentation_fn=data_augmentation_fn,
-        retain_original_image=train_config.retain_original_images)
     dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         train_input_config,
-        transform_input_data_fn=transform_data_fn,
-        batch_size=params['batch_size'] if params else train_config.batch_size,
-        max_num_boxes=train_config.max_number_of_boxes,
-        num_classes=config_util.get_number_of_classes(model_config),
-        spatial_image_shape=config_util.get_spatial_image_size(
-            image_resizer_config))
-    input_dict = dataset_util.make_initializable_iterator(dataset).get_next()
-    return (_get_features_dict(input_dict), _get_labels_dict(input_dict))
+        transform_input_data_fn=transform_and_pad_input_data_fn,
+        batch_size=params['batch_size'] if params else train_config.batch_size)
+    return dataset
 
   return _train_input_fn
 
 
 def create_eval_input_fn(eval_config, eval_input_config, model_config):
   """Creates an eval `input` function for `Estimator`.
+
+  # TODO(ronnyvotel,rathodv): Allow batch sizes of more than 1 for eval.
 
   Args:
     eval_config: An eval_pb2.EvalConfig.
@@ -317,6 +436,8 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
       params: Parameter dictionary passed from the estimator.
 
     Returns:
+      A tf.data.Dataset that holds (features, labels) tuple.
+
       features: Dictionary of feature tensors.
         features[fields.InputDataFields.image] is a [1, H, W, C] float32 tensor
           with preprocessed images.
@@ -358,36 +479,41 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
       raise TypeError('The `model_config` must be a '
                       'model_pb2.DetectionModel.')
 
-    num_classes = config_util.get_number_of_classes(model_config)
-    model = model_builder.build(model_config, is_training=False)
-    image_resizer_config = config_util.get_image_resizer_config(model_config)
-    image_resizer_fn = image_resizer_builder.build(image_resizer_config)
+    def transform_and_pad_input_data_fn(tensor_dict):
+      """Combines transform and pad operation."""
+      num_classes = config_util.get_number_of_classes(model_config)
+      model = model_builder.build(model_config, is_training=False)
+      image_resizer_config = config_util.get_image_resizer_config(model_config)
+      image_resizer_fn = image_resizer_builder.build(image_resizer_config)
 
-    transform_data_fn = functools.partial(
-        transform_input_data, model_preprocess_fn=model.preprocess,
-        image_resizer_fn=image_resizer_fn,
-        num_classes=num_classes,
-        data_augmentation_fn=None,
-        retain_original_image=eval_config.retain_original_images)
+      transform_data_fn = functools.partial(
+          transform_input_data, model_preprocess_fn=model.preprocess,
+          image_resizer_fn=image_resizer_fn,
+          num_classes=num_classes,
+          data_augmentation_fn=None,
+          retain_original_image=eval_config.retain_original_images)
+      tensor_dict = pad_input_data_to_static_shapes(
+          tensor_dict=transform_data_fn(tensor_dict),
+          max_num_boxes=eval_input_config.max_number_of_boxes,
+          num_classes=config_util.get_number_of_classes(model_config),
+          spatial_image_shape=config_util.get_spatial_image_size(
+              image_resizer_config))
+      return (_get_features_dict(tensor_dict), _get_labels_dict(tensor_dict))
     dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
         eval_input_config,
-        transform_input_data_fn=transform_data_fn,
-        batch_size=params.get('batch_size', 1),
-        num_classes=config_util.get_number_of_classes(model_config),
-        spatial_image_shape=config_util.get_spatial_image_size(
-            image_resizer_config))
-    input_dict = dataset_util.make_initializable_iterator(dataset).get_next()
-
-    return (_get_features_dict(input_dict), _get_labels_dict(input_dict))
+        batch_size=1,  # Currently only support batch size of 1 for eval.
+        transform_input_data_fn=transform_and_pad_input_data_fn)
+    return dataset
 
   return _eval_input_fn
 
 
-def create_predict_input_fn(model_config):
+def create_predict_input_fn(model_config, predict_input_config):
   """Creates a predict `input` function for `Estimator`.
 
   Args:
     model_config: A model_pb2.DetectionModel.
+    predict_input_config: An input_reader_pb2.InputReader.
 
   Returns:
     `input_fn` for `Estimator` in PREDICT mode.
@@ -416,7 +542,9 @@ def create_predict_input_fn(model_config):
         num_classes=num_classes,
         data_augmentation_fn=None)
 
-    decoder = tf_example_decoder.TfExampleDecoder(load_instance_masks=False)
+    decoder = tf_example_decoder.TfExampleDecoder(
+        load_instance_masks=False,
+        num_additional_channels=predict_input_config.num_additional_channels)
     input_dict = transform_fn(decoder.decode(example))
     images = tf.to_float(input_dict[fields.InputDataFields.image])
     images = tf.expand_dims(images, axis=0)

@@ -18,6 +18,12 @@
     "type": "TIMESTAMP"
   },
   {
+    "description": "The unique name for a test by the combination of key parameters, eg batch size, num of GPU, etc. It is hardware independent.",
+    "mode": "NULLABLE",
+    "name": "test_id",
+    "type": "STRING"
+  },
+  {
     "description": "The tensorflow version information.",
     "fields": [
       {
@@ -30,6 +36,18 @@
         "description": "Git Hash of the tensorflow",
         "mode": "NULLABLE",
         "name": "git_hash",
+        "type": "STRING"
+      },
+      {
+        "description": "The channel of the tensorflow binary, eg, nightly, RC, final, custom.",
+        "mode": "NULLABLE",
+        "name": "channel",
+        "type": "STRING"
+      },
+      {
+        "description": "Identify anything special about the build, eg CUDA 10, NCCL, MKL, etc.",
+        "mode": "NULLABLE",
+        "name": "build_type",
         "type": "STRING"
       }
     ],
@@ -168,6 +186,12 @@
         "type": "RECORD"
       }
     ]
+  },
+  {
+    "description": "Used to differentiate from AWS, GCE or DGX-1 at a high level",
+    "mode": "NULLABLE",
+    "name": "test_environment",
+    "type": "STRING"
   },
   {
     "description": "The machine configuration of the benchmark run.",

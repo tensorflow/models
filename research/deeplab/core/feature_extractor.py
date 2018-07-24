@@ -17,8 +17,9 @@
 import functools
 import tensorflow as tf
 
+from deeplab.core import resnet_v1_beta
 from deeplab.core import xception
-from nets.mobilenet import mobilenet as mobilenet_lib
+from tensorflow.contrib.slim.nets import resnet_utils
 from nets.mobilenet import mobilenet_v2
 
 
@@ -56,10 +57,12 @@ def _mobilenet_v2(net,
   """
   with tf.variable_scope(
       scope, 'MobilenetV2', [net], reuse=reuse) as scope:
-    return mobilenet_lib.mobilenet_base(
+    return mobilenet_v2.mobilenet_base(
         net,
         conv_defs=mobilenet_v2.V2_DEF,
-        multiplier=depth_multiplier,
+        depth_multiplier=depth_multiplier,
+        min_depth=8 if depth_multiplier == 1.0 else 1,
+        divisible_by=8 if depth_multiplier == 1.0 else 1,
         final_endpoint=final_endpoint or _MOBILENET_V2_FINAL_ENDPOINT,
         output_stride=output_stride,
         scope=scope)
@@ -68,13 +71,25 @@ def _mobilenet_v2(net,
 # A map from network name to network function.
 networks_map = {
     'mobilenet_v2': _mobilenet_v2,
+    'resnet_v1_50': resnet_v1_beta.resnet_v1_50,
+    'resnet_v1_50_beta': resnet_v1_beta.resnet_v1_50_beta,
+    'resnet_v1_101': resnet_v1_beta.resnet_v1_101,
+    'resnet_v1_101_beta': resnet_v1_beta.resnet_v1_101_beta,
+    'xception_41': xception.xception_41,
     'xception_65': xception.xception_65,
+    'xception_71': xception.xception_71,
 }
 
 # A map from network name to network arg scope.
 arg_scopes_map = {
     'mobilenet_v2': mobilenet_v2.training_scope,
+    'resnet_v1_50': resnet_utils.resnet_arg_scope,
+    'resnet_v1_50_beta': resnet_utils.resnet_arg_scope,
+    'resnet_v1_101': resnet_utils.resnet_arg_scope,
+    'resnet_v1_101_beta': resnet_utils.resnet_arg_scope,
+    'xception_41': xception.xception_arg_scope,
     'xception_65': xception.xception_arg_scope,
+    'xception_71': xception.xception_arg_scope,
 }
 
 # Names for end point features.
@@ -83,22 +98,51 @@ DECODER_END_POINTS = 'decoder_end_points'
 # A dictionary from network name to a map of end point features.
 networks_to_feature_maps = {
     'mobilenet_v2': {
-        # The provided checkpoint does not include decoder module.
-        DECODER_END_POINTS: None,
+        DECODER_END_POINTS: ['layer_4/depthwise_output'],
+    },
+    'resnet_v1_50': {
+        DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
+    },
+    'resnet_v1_50_beta': {
+        DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
+    },
+    'resnet_v1_101': {
+        DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
+    },
+    'resnet_v1_101_beta': {
+        DECODER_END_POINTS: ['block1/unit_2/bottleneck_v1/conv3'],
+    },
+    'xception_41': {
+        DECODER_END_POINTS: [
+            'entry_flow/block2/unit_1/xception_module/'
+            'separable_conv2_pointwise',
+        ],
     },
     'xception_65': {
         DECODER_END_POINTS: [
             'entry_flow/block2/unit_1/xception_module/'
             'separable_conv2_pointwise',
         ],
-    }
+    },
+    'xception_71': {
+        DECODER_END_POINTS: [
+            'entry_flow/block2/unit_1/xception_module/'
+            'separable_conv2_pointwise',
+        ],
+    },
 }
 
 # A map from feature extractor name to the network name scope used in the
 # ImageNet pretrained versions of these models.
 name_scope = {
     'mobilenet_v2': 'MobilenetV2',
+    'resnet_v1_50': 'resnet_v1_50',
+    'resnet_v1_50_beta': 'resnet_v1_50',
+    'resnet_v1_101': 'resnet_v1_101',
+    'resnet_v1_101_beta': 'resnet_v1_101',
+    'xception_41': 'xception_41',
     'xception_65': 'xception_65',
+    'xception_71': 'xception_71',
 }
 
 # Mean pixel value.
@@ -118,7 +162,13 @@ def _preprocess_zero_mean_unit_range(inputs):
 
 _PREPROCESS_FN = {
     'mobilenet_v2': _preprocess_zero_mean_unit_range,
+    'resnet_v1_50': _preprocess_subtract_imagenet_mean,
+    'resnet_v1_50_beta': _preprocess_zero_mean_unit_range,
+    'resnet_v1_101': _preprocess_subtract_imagenet_mean,
+    'resnet_v1_101_beta': _preprocess_zero_mean_unit_range,
+    'xception_41': _preprocess_zero_mean_unit_range,
     'xception_65': _preprocess_zero_mean_unit_range,
+    'xception_71': _preprocess_zero_mean_unit_range,
 }
 
 
@@ -140,7 +190,8 @@ def mean_pixel(model_variant=None):
   Returns:
     Mean pixel value.
   """
-  if model_variant is None:
+  if model_variant in ['resnet_v1_50',
+                       'resnet_v1_101'] or model_variant is None:
     return _MEAN_RGB
   else:
     return [127.5, 127.5, 127.5]
@@ -195,7 +246,23 @@ def extract_features(images,
   Raises:
     ValueError: Unrecognized model variant.
   """
-  if 'xception' in model_variant:
+  if 'resnet' in model_variant:
+    arg_scope = arg_scopes_map[model_variant](
+        weight_decay=weight_decay,
+        batch_norm_decay=0.95,
+        batch_norm_epsilon=1e-5,
+        batch_norm_scale=True)
+    features, end_points = get_network(
+        model_variant, preprocess_images, arg_scope)(
+            inputs=images,
+            num_classes=num_classes,
+            is_training=(is_training and fine_tune_batch_norm),
+            global_pool=global_pool,
+            output_stride=output_stride,
+            multi_grid=multi_grid,
+            reuse=reuse,
+            scope=name_scope[model_variant])
+  elif 'xception' in model_variant:
     arg_scope = arg_scopes_map[model_variant](
         weight_decay=weight_decay,
         batch_norm_decay=0.9997,

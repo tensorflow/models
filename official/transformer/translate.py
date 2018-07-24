@@ -21,14 +21,11 @@ from __future__ import print_function
 import os
 
 # pylint: disable=g-bad-import-order
-from six.moves import xrange  # pylint: disable=redefined-builtin
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.transformer.data_download import VOCAB_FILE
-from official.transformer.model import model_params
 from official.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
 
@@ -56,10 +53,10 @@ def _get_sorted_inputs(filename):
   input_lens = [(i, len(line.split())) for i, line in enumerate(inputs)]
   sorted_input_lens = sorted(input_lens, key=lambda x: x[1], reverse=True)
 
-  sorted_inputs = []
-  sorted_keys = {}
+  sorted_inputs = [None] * len(sorted_input_lens)
+  sorted_keys = [0] * len(sorted_input_lens)
   for i, (index, _) in enumerate(sorted_input_lens):
-    sorted_inputs.append(inputs[index])
+    sorted_inputs[i] = inputs[index]
     sorted_keys[index] = i
   return sorted_inputs, sorted_keys
 
@@ -134,8 +131,8 @@ def translate_file(
                        "file.")
     tf.logging.info("Writing to file %s" % output_file)
     with tf.gfile.Open(output_file, "w") as f:
-      for index in xrange(len(sorted_keys)):
-        f.write("%s\n" % translations[sorted_keys[index]])
+      for i in sorted_keys:
+        f.write("%s\n" % translations[i])
 
 
 def translate_text(estimator, subtokenizer, txt):
@@ -163,15 +160,14 @@ def main(unused_argv):
                     "flags --text or --file.")
     return
 
-  subtokenizer = tokenizer.Subtokenizer(
-      os.path.join(FLAGS.data_dir, FLAGS.vocab_file))
+  subtokenizer = tokenizer.Subtokenizer(FLAGS.vocab_file)
 
   # Set up estimator and params
   params = transformer_main.PARAMS_MAP[FLAGS.param_set]
-  params.beam_size = _BEAM_SIZE
-  params.alpha = _ALPHA
-  params.extra_decode_length = _EXTRA_DECODE_LENGTH
-  params.batch_size = _DECODE_BATCH_SIZE
+  params["beam_size"] = _BEAM_SIZE
+  params["alpha"] = _ALPHA
+  params["extra_decode_length"] = _EXTRA_DECODE_LENGTH
+  params["batch_size"] = _DECODE_BATCH_SIZE
   estimator = tf.estimator.Estimator(
       model_fn=transformer_main.model_fn, model_dir=FLAGS.model_dir,
       params=params)
@@ -196,17 +192,7 @@ def main(unused_argv):
 
 def define_translate_flags():
   """Define flags used for translation script."""
-  # Model and vocab file flags
-  flags.DEFINE_string(
-      name="data_dir", short_name="dd", default="/tmp/translate_ende",
-      help=flags_core.help_wrap(
-          "Directory for where the translate_ende_wmt32k dataset is saved."))
-  flags.DEFINE_string(
-      name="vocab_file", short_name="vf", default=VOCAB_FILE,
-      help=flags_core.help_wrap(
-          "Name of vocabulary file containing subtokens for subtokenizing the "
-          "input text or file. This file is expected to be in the directory "
-          "defined by --data_dir."))
+  # Model flags
   flags.DEFINE_string(
       name="model_dir", short_name="md", default="/tmp/transformer_model",
       help=flags_core.help_wrap(
@@ -221,6 +207,13 @@ def define_translate_flags():
           "and various other settings. The big parameter set increases the "
           "default batch size, embedding/hidden size, and filter size. For a "
           "complete list of parameters, please see model/model_params.py."))
+  flags.DEFINE_string(
+      name="vocab_file", short_name="vf", default=None,
+      help=flags_core.help_wrap(
+          "Path to subtoken vocabulary file. If data_download.py was used to "
+          "download and encode the training data, look in the data_dir to find "
+          "the vocab file."))
+  flags.mark_flag_as_required("vocab_file")
 
   flags.DEFINE_string(
       name="text", default=None,

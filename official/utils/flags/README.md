@@ -72,32 +72,6 @@ def _check_pal(provided_pal_flag):
 Validators take the form that returning True (truthy) passes, and all others 
 (False, None, exception) fail.
 
-## Common Flags
-Common flags (i.e. batch_size, model_dir, etc.) are provided by various flag definition functions,
-and channeled through `official.utils.flags.core`. For instance to define common supervised
-learning parameters one could use the following code:
-
-```$xslt
-from absl import app as absl_app
-from absl import flags
-
-from official.utils.flags import core as flags_core
-
-
-def define_flags():
-  flags_core.define_base()
-  flags.adopt_key_flags(flags_core)
-  
-  
-def main(_):
-  flags_obj = flags.FLAGS
-  print(flags_obj)
-  
-  
-if __name__ == "__main__"
-  absl_app.run(main)
-```
-
 ## Testing
 To test using absl, simply declare flags in the setupClass method of TensorFlow's TestCase.
 
@@ -120,33 +94,4 @@ class BaseTester(unittest.TestCase):
     flags_core.parse_flags([__file__, "test_flag", "def"])
     self.AssertEqual(flags.FLAGS.test_flag, "def")
     
-```
-
-## Immutability
-Flag values should not be mutated. Instead, use getter functions to return
-the desired values. An example getter function is `get_loss_scale` function
-below:
-
-```
-# Map string to (TensorFlow dtype, default loss scale)
-DTYPE_MAP = {
-    "fp16": (tf.float16, 128),
-    "fp32": (tf.float32, 1),
-}
-
-
-def get_loss_scale(flags_obj):
-  if flags_obj.loss_scale is not None:
-    return flags_obj.loss_scale
-  return DTYPE_MAP[flags_obj.dtype][1]
-
-
-def main(_):
-  flags_obj = flags.FLAGS()
-
-  # Do not mutate flags_obj
-  # if flags_obj.loss_scale is None:
-  #   flags_obj.loss_scale = DTYPE_MAP[flags_obj.dtype][1] # Don't do this
-  print(get_loss_scale(flags_obj))
-  ...
 ```
