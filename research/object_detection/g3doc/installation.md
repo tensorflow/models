@@ -16,5 +16,6 @@ pip install object_detection
 Check the installation is correct by running tests:
 
 ```bash
-model_builder_test.py
+source activate object_detection
+model_builder_test
 ```

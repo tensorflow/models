@@ -58,5 +58,10 @@ setup(name='object_detection',
       cmdclass={"install": CustomInstallCommand,
                 "develop": CustomDevelopCommand,
                 "egg_info": CustomEggInfoCommand},
-      description='Tensorflow Object Detection Library'
+      description='Tensorflow Object Detection Library',
+      entry_points={
+              'console_scripts': [
+                  'model_builder_test = object_detection.builders.model_builder_test:main',
+              ],
+          }
       )
