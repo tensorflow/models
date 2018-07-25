@@ -48,15 +48,14 @@ pip install --user jupyter
 pip install --user matplotlib
 ```
 
-Note that sometimes "sudo apt-get install protobuf-compiler" will install
+**Note**: sometimes "sudo apt-get install protobuf-compiler" will install
 Protobuf 3+ versions for you and some users have issues when using 3.5.
-If that is your case, you're suggested to download and install Protobuf 3.0.0
-(available [here](https://github.com/google/protobuf/releases/tag/v3.0.0)).
+If that is your case, try the [manual](#Manual-protobuf-compiler-installation-and-usage) installation.
 
 ## COCO API installation
 
 Download the
-<a href="https://github.com/cocodataset/cocoapi" target=_blank>cocoapi</a> and
+[cocoapi](https://github.com/cocodataset/cocoapi) and
 copy the pycocotools subfolder to the tensorflow/models/research directory if
 you are interested in using COCO evaluation metrics. The default metrics are
 based on those used in Pascal VOC evaluation. To use the COCO object detection
@@ -83,6 +82,23 @@ the tensorflow/models/research/ directory:
 ``` bash
 # From tensorflow/models/research/
 protoc object_detection/protos/*.proto --python_out=.
+```
+
+**Note**: If you're getting errors while compiling, you might be using an incompatible protobuf compiler. If that's the case, use the following manual installation
+
+## Manual protobuf-compiler installation and usage
+Download and install the 3.0 release of protoc, then unzip the file.
+```bash
+# From tensorflow/models/research/
+wget -O protobuf.zip https://github.com/google/protobuf/releases/download/v3.0.0/protoc-3.0.0-linux-x86_64.zip
+unzip protobuf.zip
+```
+
+Run the compilation process again, but use the downloaded version of protoc
+
+```bash
+# From tensorflow/models/research/
+./bin/protoc object_detection/protos/*.proto --python_out=.
 ```
 
 ## Add Libraries to PYTHONPATH
