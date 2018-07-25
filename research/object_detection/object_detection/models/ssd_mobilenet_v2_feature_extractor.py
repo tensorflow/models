@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,20 +13,23 @@
 # limitations under the License.
 # ==============================================================================
 
-"""SSDFeatureExtractor for InceptionV2 features."""
+"""SSDFeatureExtractor for MobilenetV2 features."""
+
 import tensorflow as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
+from object_detection.utils import context_manager
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-from nets import inception_v2
+from tensorflow.contrib.slim.nets.mobilenet import mobilenet
+from tensorflow.contrib.slim.nets.mobilenet import mobilenet_v2
 
 slim = tf.contrib.slim
 
 
-class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
-  """SSD Feature Extractor using InceptionV2 features."""
+class SSDMobileNetV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
+  """SSD Feature Extractor using MobilenetV2 features."""
 
   def __init__(self,
                is_training,
@@ -38,7 +41,10 @@ class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                use_explicit_padding=False,
                use_depthwise=False,
                override_base_feature_extractor_hyperparams=False):
-    """InceptionV2 Feature Extractor for SSD Models.
+    """MobileNetV2 Feature Extractor for SSD Models.
+
+    Mobilenet v2 (experimental), designed by sandler@. More details can be found
+    in //knowledge/cerebra/brain/compression/mobilenet/mobilenet_experimental.py
 
     Args:
       is_training: whether the network is in training mode.
@@ -56,20 +62,11 @@ class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       override_base_feature_extractor_hyperparams: Whether to override
         hyperparameters of the base feature extractor with the one from
         `conv_hyperparams_fn`.
-
-    Raises:
-      ValueError: If `override_base_feature_extractor_hyperparams` is False.
     """
-    super(SSDInceptionV2FeatureExtractor, self).__init__(
+    super(SSDMobileNetV2FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise,
         override_base_feature_extractor_hyperparams)
-    if not self._override_base_feature_extractor_hyperparams:
-      raise ValueError('SSD Inception V2 feature extractor always uses'
-                       'scope returned by `conv_hyperparams_fn` for both the '
-                       'base feature extractor and the additional layers '
-                       'added since there is no arg_scope defined for the base '
-                       'feature extractor.')
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -101,26 +98,32 @@ class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         33, preprocessed_inputs)
 
     feature_map_layout = {
-        'from_layer': ['Mixed_4c', 'Mixed_5c', '', '', '', ''],
+        'from_layer': ['layer_15/expansion_output', 'layer_19', '', '', '', ''],
         'layer_depth': [-1, -1, 512, 256, 256, 128],
-        'use_explicit_padding': self._use_explicit_padding,
         'use_depthwise': self._use_depthwise,
+        'use_explicit_padding': self._use_explicit_padding,
     }
 
-    with slim.arg_scope(self._conv_hyperparams_fn()):
-      with tf.variable_scope('InceptionV2',
-                             reuse=self._reuse_weights) as scope:
-        _, image_features = inception_v2.inception_v2_base(
-            ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
-            final_endpoint='Mixed_5c',
-            min_depth=self._min_depth,
-            depth_multiplier=self._depth_multiplier,
-            scope=scope)
-        feature_maps = feature_map_generators.multi_resolution_feature_maps(
-            feature_map_layout=feature_map_layout,
-            depth_multiplier=self._depth_multiplier,
-            min_depth=self._min_depth,
-            insert_1x1_conv=True,
-            image_features=image_features)
+    with tf.variable_scope('MobilenetV2', reuse=self._reuse_weights) as scope:
+      with slim.arg_scope(
+          mobilenet_v2.training_scope(is_training=None, bn_decay=0.9997)), \
+          slim.arg_scope(
+              [mobilenet.depth_multiplier], min_depth=self._min_depth):
+        with (slim.arg_scope(self._conv_hyperparams_fn())
+              if self._override_base_feature_extractor_hyperparams else
+              context_manager.IdentityContextManager()):
+          _, image_features = mobilenet_v2.mobilenet_base(
+              ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
+              final_endpoint='layer_19',
+              depth_multiplier=self._depth_multiplier,
+              use_explicit_padding=self._use_explicit_padding,
+              scope=scope)
+        with slim.arg_scope(self._conv_hyperparams_fn()):
+          feature_maps = feature_map_generators.multi_resolution_feature_maps(
+              feature_map_layout=feature_map_layout,
+              depth_multiplier=self._depth_multiplier,
+              min_depth=self._min_depth,
+              insert_1x1_conv=True,
+              image_features=image_features)
 
     return feature_maps.values()

@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""SSD MobilenetV1 FPN Feature Extractor."""
+"""SSDFeatureExtractor for MobilenetV1 features."""
 
 import tensorflow as tf
 
@@ -22,13 +22,48 @@ from object_detection.models import feature_map_generators
 from object_detection.utils import context_manager
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-from nets import mobilenet_v1
+from tensorflow.contrib.slim.nets import mobilenet_v1
 
 slim = tf.contrib.slim
 
 
-class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
-  """SSD Feature Extractor using MobilenetV1 FPN features."""
+class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
+  """SSD Feature Extractor using MobilenetV1 features."""
+
+  def __init__(self,
+               is_training,
+               depth_multiplier,
+               min_depth,
+               pad_to_multiple,
+               conv_hyperparams_fn,
+               reuse_weights=None,
+               use_explicit_padding=False,
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
+    """MobileNetV1 Feature Extractor for SSD Models.
+
+    Args:
+      is_training: whether the network is in training mode.
+      depth_multiplier: float depth multiplier for feature extractor.
+      min_depth: minimum feature extractor depth.
+      pad_to_multiple: the nearest multiple to zero pad the input height and
+        width dimensions to.
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+        and separable_conv2d ops in the layers that are added on top of the
+        base feature extractor.
+      reuse_weights: Whether to reuse variables. Default is None.
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
+      use_depthwise: Whether to use depthwise convolutions. Default is False.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
+    """
+    super(SSDMobileNetV1FeatureExtractor, self).__init__(
+        is_training, depth_multiplier, min_depth, pad_to_multiple,
+        conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise,
+        override_base_feature_extractor_hyperparams)
 
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
@@ -59,6 +94,14 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     preprocessed_inputs = shape_utils.check_min_image_dim(
         33, preprocessed_inputs)
 
+    feature_map_layout = {
+        'from_layer': ['Conv2d_11_pointwise', 'Conv2d_13_pointwise', '', '',
+                       '', ''],
+        'layer_depth': [-1, -1, 512, 256, 256, 128],
+        'use_explicit_padding': self._use_explicit_padding,
+        'use_depthwise': self._use_depthwise,
+    }
+
     with tf.variable_scope('MobilenetV1',
                            reuse=self._reuse_weights) as scope:
       with slim.arg_scope(
@@ -74,28 +117,12 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
               depth_multiplier=self._depth_multiplier,
               use_explicit_padding=self._use_explicit_padding,
               scope=scope)
-
-      depth_fn = lambda d: max(int(d * self._depth_multiplier), self._min_depth)
       with slim.arg_scope(self._conv_hyperparams_fn()):
-        with tf.variable_scope('fpn', reuse=self._reuse_weights):
-          fpn_features = feature_map_generators.fpn_top_down_feature_maps(
-              [(key, image_features[key])
-               for key in ['Conv2d_5_pointwise', 'Conv2d_11_pointwise',
-                           'Conv2d_13_pointwise']],
-              depth=depth_fn(256))
-          last_feature_map = fpn_features['top_down_Conv2d_13_pointwise']
-          coarse_features = {}
-          for i in range(14, 16):
-            last_feature_map = slim.conv2d(
-                last_feature_map,
-                num_outputs=depth_fn(256),
-                kernel_size=[3, 3],
-                stride=2,
-                padding='SAME',
-                scope='bottom_up_Conv2d_{}'.format(i))
-            coarse_features['bottom_up_Conv2d_{}'.format(i)] = last_feature_map
-    return [fpn_features['top_down_Conv2d_5_pointwise'],
-            fpn_features['top_down_Conv2d_11_pointwise'],
-            fpn_features['top_down_Conv2d_13_pointwise'],
-            coarse_features['bottom_up_Conv2d_14'],
-            coarse_features['bottom_up_Conv2d_15']]
+        feature_maps = feature_map_generators.multi_resolution_feature_maps(
+            feature_map_layout=feature_map_layout,
+            depth_multiplier=self._depth_multiplier,
+            min_depth=self._min_depth,
+            insert_1x1_conv=True,
+            image_features=image_features)
+
+    return feature_maps.values()

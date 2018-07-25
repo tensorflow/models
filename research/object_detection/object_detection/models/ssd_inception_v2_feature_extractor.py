@@ -13,20 +13,20 @@
 # limitations under the License.
 # ==============================================================================
 
-"""SSDFeatureExtractor for InceptionV3 features."""
+"""SSDFeatureExtractor for InceptionV2 features."""
 import tensorflow as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-from nets import inception_v3
+from tensorflow.contrib.slim.nets import inception_v2
 
 slim = tf.contrib.slim
 
 
-class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
-  """SSD Feature Extractor using InceptionV3 features."""
+class SSDInceptionV2FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
+  """SSD Feature Extractor using InceptionV2 features."""
 
   def __init__(self,
                is_training,
@@ -38,7 +38,7 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
                use_explicit_padding=False,
                use_depthwise=False,
                override_base_feature_extractor_hyperparams=False):
-    """InceptionV3 Feature Extractor for SSD Models.
+    """InceptionV2 Feature Extractor for SSD Models.
 
     Args:
       is_training: whether the network is in training mode.
@@ -60,13 +60,12 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
     Raises:
       ValueError: If `override_base_feature_extractor_hyperparams` is False.
     """
-    super(SSDInceptionV3FeatureExtractor, self).__init__(
+    super(SSDInceptionV2FeatureExtractor, self).__init__(
         is_training, depth_multiplier, min_depth, pad_to_multiple,
         conv_hyperparams_fn, reuse_weights, use_explicit_padding, use_depthwise,
         override_base_feature_extractor_hyperparams)
-
     if not self._override_base_feature_extractor_hyperparams:
-      raise ValueError('SSD Inception V3 feature extractor always uses'
+      raise ValueError('SSD Inception V2 feature extractor always uses'
                        'scope returned by `conv_hyperparams_fn` for both the '
                        'base feature extractor and the additional layers '
                        'added since there is no arg_scope defined for the base '
@@ -102,17 +101,18 @@ class SSDInceptionV3FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
         33, preprocessed_inputs)
 
     feature_map_layout = {
-        'from_layer': ['Mixed_5d', 'Mixed_6e', 'Mixed_7c', '', '', ''],
-        'layer_depth': [-1, -1, -1, 512, 256, 128],
+        'from_layer': ['Mixed_4c', 'Mixed_5c', '', '', '', ''],
+        'layer_depth': [-1, -1, 512, 256, 256, 128],
         'use_explicit_padding': self._use_explicit_padding,
         'use_depthwise': self._use_depthwise,
     }
 
     with slim.arg_scope(self._conv_hyperparams_fn()):
-      with tf.variable_scope('InceptionV3', reuse=self._reuse_weights) as scope:
-        _, image_features = inception_v3.inception_v3_base(
+      with tf.variable_scope('InceptionV2',
+                             reuse=self._reuse_weights) as scope:
+        _, image_features = inception_v2.inception_v2_base(
             ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple),
-            final_endpoint='Mixed_7c',
+            final_endpoint='Mixed_5c',
             min_depth=self._min_depth,
             depth_multiplier=self._depth_multiplier,
             scope=scope)

@@ -1,0 +1,20 @@
+# Create with `conda env create -f environment.yml`
+name: object_detection
+
+channels:
+ - conda-forge
+
+dependencies:
+  - python=3.6
+  - python
+  - pillow
+  - matplotlib
+  - cython
+  - protobuf
+  - jupyter
+  - jupyterlab
+  - pip:
+    - pycocotools
+    - tensorflow-gpu
+    # or
+    # - tensorflow
