@@ -32,6 +32,8 @@ request.
 -   [gan](gan): generative adversarial networks.
 -   [im2txt](im2txt): image-to-text neural network for image captioning.
 -   [inception](inception): deep convolutional networks for computer vision.
+-   [keypointnet](keypointnet): discovery of latent 3D keypoints via end-to-end
+    geometric eeasoning [[demo](https://keypointnet.github.io/)].
 -   [learning_to_remember_rare_events](learning_to_remember_rare_events): a
     large-scale life-long memory module for use in deep learning.
 -   [learning_unsupervised_learning](learning_unsupervised_learning): a
