@@ -425,12 +425,14 @@ def _reduced_kernel_size_for_small_input(input_tensor, kernel_size):
   return kernel_size_out
 
 
-def mobilenet_v1_arg_scope(is_training=True,
-                           weight_decay=0.00004,
-                           stddev=0.09,
-                           regularize_depthwise=False,
-                           batch_norm_decay=0.9997,
-                           batch_norm_epsilon=0.001):
+def mobilenet_v1_arg_scope(
+    is_training=True,
+    weight_decay=0.00004,
+    stddev=0.09,
+    regularize_depthwise=False,
+    batch_norm_decay=0.9997,
+    batch_norm_epsilon=0.001,
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
   """Defines the default MobilenetV1 arg scope.
 
   Args:
@@ -442,6 +444,8 @@ def mobilenet_v1_arg_scope(is_training=True,
     batch_norm_decay: Decay for batch norm moving average.
     batch_norm_epsilon: Small float added to variance to avoid dividing by zero
       in batch norm.
+    batch_norm_updates_collections: Collection for the update ops for
+      batch norm.
 
   Returns:
     An `arg_scope` to use for the mobilenet v1 model.
@@ -451,6 +455,7 @@ def mobilenet_v1_arg_scope(is_training=True,
       'scale': True,
       'decay': batch_norm_decay,
       'epsilon': batch_norm_epsilon,
+      'updates_collections': batch_norm_updates_collections,
   }
   if is_training is not None:
     batch_norm_params['is_training'] = is_training
