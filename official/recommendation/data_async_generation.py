@@ -317,14 +317,14 @@ def main(_):
 
   log_file_name = "data_gen_proc_{}.log".format(cache_paths.cache_id)
   log_file = os.path.join(cache_paths.data_dir, log_file_name)
-  if log_file.startswith("gs://"):
+  if log_file.startswith("gs://") and redirect_logs:
     fallback_log_file = os.path.join(tempfile.gettempdir(), log_file_name)
     print("Unable to log to {}. Falling back to {}".format(log_file, fallback_log_file))
     log_file = fallback_log_file
 
   # This server is generally run in a subprocess.
   if redirect_logs:
-    print("Redirecting stdout and stderr to files in {}".format(cache_paths.gen_subproc_log_dir))
+    print("Redirecting stdout and stderr to {}".format(log_file))
     log_stream = open(log_file, "wt")  # Note: not tf.gfile.Open().
     stdout = log_stream
     stderr = log_stream
