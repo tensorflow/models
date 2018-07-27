@@ -21,6 +21,8 @@ defined by the different datasets. Supported colormaps are:
 
 * Cityscapes dataset (https://www.cityscapes-dataset.com).
 
+* Mapillary Vistas (https://research.mapillary.com).
+
 * PASCAL VOC 2012 (http://host.robots.ox.ac.uk/pascal/VOC/).
 """
 
@@ -29,12 +31,14 @@ import numpy as np
 # Dataset names.
 _ADE20K = 'ade20k'
 _CITYSCAPES = 'cityscapes'
+_MAPILLARY_VISTAS = 'mapillary_vistas'
 _PASCAL = 'pascal'
 
 # Max number of entries in the colormap for each dataset.
 _DATASET_MAX_ENTRIES = {
     _ADE20K: 151,
     _CITYSCAPES: 19,
+    _MAPILLARY_VISTAS: 66,
     _PASCAL: 256,
 }
 
@@ -229,6 +233,82 @@ def create_cityscapes_label_colormap():
   ])
 
 
+def create_mapillary_vistas_label_colormap():
+  """Creates a label colormap used in Mapillary Vistas segmentation benchmark.
+
+  Returns:
+    A colormap for visualizing segmentation results.
+  """
+  return np.asarray([
+      [165, 42, 42],
+      [0, 192, 0],
+      [196, 196, 196],
+      [190, 153, 153],
+      [180, 165, 180],
+      [102, 102, 156],
+      [102, 102, 156],
+      [128, 64, 255],
+      [140, 140, 200],
+      [170, 170, 170],
+      [250, 170, 160],
+      [96, 96, 96],
+      [230, 150, 140],
+      [128, 64, 128],
+      [110, 110, 110],
+      [244, 35, 232],
+      [150, 100, 100],
+      [70, 70, 70],
+      [150, 120, 90],
+      [220, 20, 60],
+      [255, 0, 0],
+      [255, 0, 0],
+      [255, 0, 0],
+      [200, 128, 128],
+      [255, 255, 255],
+      [64, 170, 64],
+      [128, 64, 64],
+      [70, 130, 180],
+      [255, 255, 255],
+      [152, 251, 152],
+      [107, 142, 35],
+      [0, 170, 30],
+      [255, 255, 128],
+      [250, 0, 30],
+      [0, 0, 0],
+      [220, 220, 220],
+      [170, 170, 170],
+      [222, 40, 40],
+      [100, 170, 30],
+      [40, 40, 40],
+      [33, 33, 33],
+      [170, 170, 170],
+      [0, 0, 142],
+      [170, 170, 170],
+      [210, 170, 100],
+      [153, 153, 153],
+      [128, 128, 128],
+      [0, 0, 142],
+      [250, 170, 30],
+      [192, 192, 192],
+      [220, 220, 0],
+      [180, 165, 180],
+      [119, 11, 32],
+      [0, 0, 142],
+      [0, 60, 100],
+      [0, 0, 142],
+      [0, 0, 90],
+      [0, 0, 230],
+      [0, 80, 100],
+      [128, 64, 64],
+      [0, 0, 110],
+      [0, 0, 70],
+      [0, 0, 192],
+      [32, 32, 32],
+      [0, 0, 0],
+      [0, 0, 0],
+      ])
+
+
 def create_pascal_label_colormap():
   """Creates a label colormap used in PASCAL VOC segmentation benchmark.
 
@@ -252,6 +332,10 @@ def get_ade20k_name():
 
 def get_cityscapes_name():
   return _CITYSCAPES
+
+
+def get_mapillary_vistas_name():
+  return _MAPILLARY_VISTAS
 
 
 def get_pascal_name():
@@ -287,6 +371,8 @@ def create_label_colormap(dataset=_PASCAL):
     return create_ade20k_label_colormap()
   elif dataset == _CITYSCAPES:
     return create_cityscapes_label_colormap()
+  elif dataset == _MAPILLARY_VISTAS:
+    return create_mapillary_vistas_label_colormap()
   elif dataset == _PASCAL:
     return create_pascal_label_colormap()
   else:

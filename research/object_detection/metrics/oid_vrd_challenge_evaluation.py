@@ -15,8 +15,8 @@
 r"""Runs evaluation using OpenImages groundtruth and predictions.
 
 Example usage:
-  python third_party/tensorflow_models/object_detection/\
-  metrics/oid_vrd_challenge_evaluation.py \
+python \
+models/research/object_detection/metrics/oid_vrd_challenge_evaluation.py \
     --input_annotations_boxes=/path/to/input/annotations-human-bbox.csv \
     --input_annotations_labels=/path/to/input/annotations-label.csv \
     --input_class_labelmap=/path/to/input/class_labelmap.pbtxt \
@@ -39,6 +39,7 @@ import argparse
 import pandas as pd
 from google.protobuf import text_format
 
+from object_detection.metrics import io_utils
 from object_detection.metrics import oid_vrd_challenge_evaluation_utils as utils
 from object_detection.protos import string_int_label_map_pb2
 from object_detection.utils import vrd_evaluation
@@ -109,12 +110,14 @@ def main(parsed_args):
     phrase_evaluator.add_single_detected_image_info(image_id,
                                                     prediction_dictionary)
 
-  relation_metrics = relation_evaluator.evaluate()
-  phrase_metrics = phrase_evaluator.evaluate()
+  relation_metrics = relation_evaluator.evaluate(
+      relationships=_swap_labelmap_dict(relationship_label_map))
+  phrase_metrics = phrase_evaluator.evaluate(
+      relationships=_swap_labelmap_dict(relationship_label_map))
 
   with open(parsed_args.output_metrics, 'w') as fid:
-    utils.write_csv(fid, relation_metrics)
-    utils.write_csv(fid, phrase_metrics)
+    io_utils.write_csv(fid, relation_metrics)
+    io_utils.write_csv(fid, phrase_metrics)
 
 
 if __name__ == '__main__':

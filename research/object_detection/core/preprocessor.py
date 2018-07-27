@@ -2207,10 +2207,10 @@ def resize_to_range(image,
           new_size[:-1],
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
           align_corners=align_corners)
-      new_masks = tf.squeeze(new_masks, 3)
       if pad_to_max_dimension:
         new_masks = tf.image.pad_to_bounding_box(
             new_masks, 0, 0, max_dimension, max_dimension)
+      new_masks = tf.squeeze(new_masks, 3)
       result.append(new_masks)
 
     result.append(new_size)
@@ -3136,7 +3136,7 @@ def preprocess(tensor_dict,
     images = tensor_dict[fields.InputDataFields.image]
     if len(images.get_shape()) != 4:
       raise ValueError('images in tensor_dict should be rank 4')
-    image = tf.squeeze(images, squeeze_dims=[0])
+    image = tf.squeeze(images, axis=0)
     tensor_dict[fields.InputDataFields.image] = image
 
   # Preprocess inputs based on preprocess_options

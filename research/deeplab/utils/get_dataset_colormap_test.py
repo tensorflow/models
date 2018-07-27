@@ -86,6 +86,11 @@ class VisualizationUtilTest(tf.test.TestCase):
         label, get_dataset_colormap.get_ade20k_name())
     self.assertTrue(np.array_equal(colored_label, expected_result))
 
+  def testMapillaryVistasColorMapValue(self):
+    colormap = get_dataset_colormap.create_mapillary_vistas_label_colormap()
+    self.assertTrue(np.array_equal([190, 153, 153], colormap[3, :]))
+    self.assertTrue(np.array_equal([102, 102, 156], colormap[6, :]))
+
 
 if __name__ == '__main__':
   tf.test.main()

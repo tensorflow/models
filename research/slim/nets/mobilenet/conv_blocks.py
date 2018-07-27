@@ -168,6 +168,7 @@ def expanded_conv(input_tensor,
                   kernel_size=(3, 3),
                   residual=True,
                   normalizer_fn=None,
+                  project_activation_fn=tf.identity,
                   split_projection=1,
                   split_expansion=1,
                   expansion_transform=None,
@@ -195,6 +196,7 @@ def expanded_conv(input_tensor,
     residual: whether to include residual connection between input
       and output.
     normalizer_fn: batchnorm or otherwise
+    project_activation_fn: activation function for the project layer
     split_projection: how many ways to split projection operator
       (that is conv expansion->bottleneck)
     split_expansion: how many ways to split expansion op
@@ -291,7 +293,7 @@ def expanded_conv(input_tensor,
         stride=1,
         scope='project',
         normalizer_fn=normalizer_fn,
-        activation_fn=tf.identity)
+        activation_fn=project_activation_fn)
     if endpoints is not None:
       endpoints['projection_output'] = net
     if depthwise_location == 'output':

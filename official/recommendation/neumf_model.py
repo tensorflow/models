@@ -36,7 +36,7 @@ from __future__ import print_function
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-from official.recommendation import constants  # pylint: disable=g-bad-import-order
+from official.datasets import movielens  # pylint: disable=g-bad-import-order
 
 
 class NeuMF(tf.keras.models.Model):
@@ -67,9 +67,9 @@ class NeuMF(tf.keras.models.Model):
 
     # Input variables
     user_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.int32, name=constants.USER)
+        shape=(1,), dtype=tf.int32, name=movielens.USER_COLUMN)
     item_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.int32, name=constants.ITEM)
+        shape=(1,), dtype=tf.int32, name=movielens.ITEM_COLUMN)
 
     # Initializer for embedding layer
     embedding_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
@@ -128,7 +128,7 @@ class NeuMF(tf.keras.models.Model):
     # Final prediction layer
     prediction = tf.keras.layers.Dense(
         1, activation="sigmoid", kernel_initializer="lecun_uniform",
-        name=constants.RATING)(predict_vector)
+        name=movielens.RATING_COLUMN)(predict_vector)
 
     super(NeuMF, self).__init__(
         inputs=[user_input, item_input], outputs=prediction)

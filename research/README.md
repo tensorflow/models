@@ -22,6 +22,8 @@ request.
     for visual navigation.
 -   [compression](compression): compressing and decompressing images using a
     pre-trained Residual GRU network.
+-   [deep_contextual_bandits](deep_contextual_bandits): code for a variety of contextual bandits algorithms using deep neural networks and Thompson sampling.
+-   [deep_speech](deep_speech): automatic speech recognition.
 -   [deeplab](deeplab): deep labeling for semantic image segmentation.
 -   [delf](delf): deep local features for image matching and retrieval.
 -   [differential_privacy](differential_privacy): differential privacy for training
@@ -30,6 +32,8 @@ request.
 -   [gan](gan): generative adversarial networks.
 -   [im2txt](im2txt): image-to-text neural network for image captioning.
 -   [inception](inception): deep convolutional networks for computer vision.
+-   [keypointnet](keypointnet): discovery of latent 3D keypoints via end-to-end
+    geometric eeasoning [[demo](https://keypointnet.github.io/)].
 -   [learning_to_remember_rare_events](learning_to_remember_rare_events): a
     large-scale life-long memory module for use in deep learning.
 -   [learning_unsupervised_learning](learning_unsupervised_learning): a
@@ -59,6 +63,8 @@ request.
 -   [rebar](rebar): low-variance, unbiased gradient estimates for discrete
     latent variable models.
 -   [resnet](resnet): deep and wide residual networks.
+-   [seq2species](seq2species): deep learning solution for read-level taxonomic
+    classification.
 -   [skip_thoughts](skip_thoughts): recurrent neural network sentence-to-vector
     encoder.
 -   [slim](slim): image classification models in TF-Slim.

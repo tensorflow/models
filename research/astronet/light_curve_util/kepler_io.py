@@ -23,6 +23,7 @@ import os.path
 from astropy.io import fits
 import numpy as np
 
+from tensorflow import gfile
 
 LONG_CADENCE_TIME_DELTA_DAYS = 0.02043422  # Approximately 29.4 minutes.
 
@@ -135,7 +136,7 @@ def kepler_filenames(base_dir,
                                            cadence_suffix)
       filename = os.path.join(base_dir, base_name)
       # Not all stars have data for all quarters.
-      if not check_existence or os.path.isfile(filename):
+      if not check_existence or gfile.Exists(filename):
         filenames.append(filename)
 
   return filenames
@@ -160,7 +161,7 @@ def read_kepler_light_curve(filenames,
   all_flux = []
 
   for filename in filenames:
-    with fits.open(open(filename, "rb")) as hdu_list:
+    with fits.open(gfile.Open(filename, "rb")) as hdu_list:
       light_curve = hdu_list[light_curve_extension].data
       time = light_curve.TIME
       flux = light_curve.PDCSAP_FLUX

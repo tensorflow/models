@@ -253,7 +253,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                second_stage_mask_prediction_loss_weight=1.0,
                hard_example_miner=None,
                parallel_iterations=16,
-               add_summaries=True):
+               add_summaries=True,
+               use_matmul_crop_and_resize=False):
     """FasterRCNNMetaArch Constructor.
 
     Args:
@@ -360,6 +361,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
         in parallel for calls to tf.map_fn.
       add_summaries: boolean (default: True) controlling whether summary ops
         should be added to tensorflow graph.
+      use_matmul_crop_and_resize: Force the use of matrix multiplication based
+        crop and resize instead of standard tf.image.crop_and_resize while
+        computing second stage input feature maps.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals` at
@@ -446,6 +450,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     self._second_stage_cls_loss_weight = second_stage_classification_loss_weight
     self._second_stage_mask_loss_weight = (
         second_stage_mask_prediction_loss_weight)
+    self._use_matmul_crop_and_resize = use_matmul_crop_and_resize
     self._hard_example_miner = hard_example_miner
     self._parallel_iterations = parallel_iterations
 
@@ -1429,11 +1434,26 @@ class FasterRCNNMetaArch(model.DetectionModel):
           tf.range(start=0, limit=proposals_shape[0]), 1)
       return tf.reshape(ones_mat * multiplier, [-1])
 
-    cropped_regions = tf.image.crop_and_resize(
-        features_to_crop,
-        self._flatten_first_two_dimensions(proposal_boxes_normalized),
-        get_box_inds(proposal_boxes_normalized),
-        (self._initial_crop_size, self._initial_crop_size))
+    if self._use_matmul_crop_and_resize:
+      def _single_image_crop_and_resize(inputs):
+        single_image_features_to_crop, proposal_boxes_normalized = inputs
+        return ops.matmul_crop_and_resize(
+            tf.expand_dims(single_image_features_to_crop, 0),
+            proposal_boxes_normalized,
+            [self._initial_crop_size, self._initial_crop_size])
+
+      cropped_regions = self._flatten_first_two_dimensions(
+          shape_utils.static_or_dynamic_map_fn(
+              _single_image_crop_and_resize,
+              elems=[features_to_crop, proposal_boxes_normalized],
+              dtype=tf.float32,
+              parallel_iterations=self._parallel_iterations))
+    else:
+      cropped_regions = tf.image.crop_and_resize(
+          features_to_crop,
+          self._flatten_first_two_dimensions(proposal_boxes_normalized),
+          get_box_inds(proposal_boxes_normalized),
+          (self._initial_crop_size, self._initial_crop_size))
     return slim.max_pool2d(
         cropped_regions,
         [self._maxpool_kernel_size, self._maxpool_kernel_size],

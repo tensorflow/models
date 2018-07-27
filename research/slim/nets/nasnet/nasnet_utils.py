@@ -86,8 +86,6 @@ def global_avg_pool(x, data_format=INVALID):
 @tf.contrib.framework.add_arg_scope
 def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   """Reduces the shape of net without information loss due to striding."""
-  assert output_filters % 2 == 0, (
-      'Need even number of filters when using this factorized reduction.')
   assert data_format != INVALID
   if stride == 1:
     net = slim.conv2d(net, output_filters, 1, scope='path_conv')
@@ -117,7 +115,10 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
 
   path2 = tf.nn.avg_pool(
       path2, [1, 1, 1, 1], stride_spec, 'VALID', data_format=data_format)
-  path2 = slim.conv2d(path2, int(output_filters / 2), 1, scope='path2_conv')
+
+  # If odd number of filters, add an additional one to the second path.
+  final_filter_size = int(output_filters / 2) + int(output_filters % 2)
+  path2 = slim.conv2d(path2, final_filter_size, 1, scope='path2_conv')
 
   # Concat and apply BN
   final_path = tf.concat(values=[path1, path2], axis=concat_axis)
@@ -133,8 +134,10 @@ def drop_path(net, keep_prob, is_training=True):
     noise_shape = [batch_size, 1, 1, 1]
     random_tensor = keep_prob
     random_tensor += tf.random_uniform(noise_shape, dtype=tf.float32)
-    binary_tensor = tf.floor(random_tensor)
-    net = tf.div(net, keep_prob) * binary_tensor
+    binary_tensor = tf.cast(tf.floor(random_tensor), net.dtype)
+    keep_prob_inv = tf.cast(1.0 / keep_prob, net.dtype)
+    net = net * keep_prob_inv * binary_tensor
+
   return net
 
 

@@ -66,7 +66,7 @@ class OidVrdChallengeEvaluationUtilsTest(tf.test.TestCase):
                     groundtruth_dictionary)
     self.assertTrue(standard_fields.InputDataFields.groundtruth_classes in
                     groundtruth_dictionary)
-    self.assertTrue(standard_fields.InputDataFields.verified_labels in
+    self.assertTrue(standard_fields.InputDataFields.groundtruth_image_classes in
                     groundtruth_dictionary)
 
     self.assertAllEqual(
@@ -87,8 +87,8 @@ class OidVrdChallengeEvaluationUtilsTest(tf.test.TestCase):
           expected_vrd_data[field], groundtruth_dictionary[
               standard_fields.InputDataFields.groundtruth_boxes][field], 1e-5)
     self.assertAllEqual(
-        np.array([1, 2, 3]),
-        groundtruth_dictionary[standard_fields.InputDataFields.verified_labels])
+        np.array([1, 2, 3]), groundtruth_dictionary[
+            standard_fields.InputDataFields.groundtruth_image_classes])
 
   def testBuildPredictionDictionary(self):
     np_data = pd.DataFrame(

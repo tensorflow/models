@@ -47,7 +47,27 @@ are no published size numbers. We estimate it to be comparable to MobileNetV2 nu
 | [mobilenet_v2_0.35_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_128.tgz) | 20 | 1.66 | 50.8 | 75.0 | 6.9
 | [mobilenet_v2_0.35_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_96.tgz) | 11 | 1.66 | 45.5 | 70.4 | 4.5
 
+# Training
+The numbers above can be reproduced using slim's `train_image_classifier`.
+Below is the set of parameters that achieves 72.0% for full size MobileNetV2, after about 700K when trained on 8 GPU.
+If trained on a single GPU the full convergence is after 5.5M steps. Also note that learning rate and
+num_epochs_per_decay both need to be adjusted depending on how many GPUs are being
+used due to slim's internal averaging.
+
+```bash
+--model_name="mobilenet_v2"
+--learning_rate=0.045 * NUM_GPUS   #slim internally averages clones so we compensate
+--preprocessing_name="inception_v2"
+--label_smoothing=0.1
+--moving_average_decay=0.9999
+--batch_size= 96
+--num_clones = NUM_GPUS # you can use any number here between 1 and 8 depending on your hardware setup.
+--learning_rate_decay_factor=0.98
+--num_epochs_per_decay = 2.5 / NUM_GPUS # train_image_classifier does per clone epochs
+```
+
 # Example
+
 
 See this [ipython notebook](mobilenet_example.ipynb) or open and run the network directly in [Colaboratory](https://colab.research.google.com/github/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet_example.ipynb).
 

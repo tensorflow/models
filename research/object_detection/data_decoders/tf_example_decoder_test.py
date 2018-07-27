@@ -762,6 +762,57 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertTrue(fields.InputDataFields.groundtruth_instance_masks
                     not in tensor_dict)
 
+  def testDecodeImageLabels(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded': self._BytesFeature(encoded_jpeg),
+                'image/format': self._BytesFeature('jpeg'),
+                'image/class/label': self._Int64Feature([1, 2]),
+            })).SerializeToString()
+    example_decoder = tf_example_decoder.TfExampleDecoder()
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+    self.assertTrue(
+        fields.InputDataFields.groundtruth_image_classes in tensor_dict)
+    self.assertAllEqual(
+        tensor_dict[fields.InputDataFields.groundtruth_image_classes],
+        np.array([1, 2]))
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded': self._BytesFeature(encoded_jpeg),
+                'image/format': self._BytesFeature('jpeg'),
+                'image/class/text': self._BytesFeature(['dog', 'cat']),
+            })).SerializeToString()
+    label_map_string = """
+      item {
+        id:3
+        name:'cat'
+      }
+      item {
+        id:1
+        name:'dog'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+    example_decoder = tf_example_decoder.TfExampleDecoder(
+        label_map_proto_file=label_map_path)
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+    with self.test_session() as sess:
+      sess.run(tf.tables_initializer())
+      tensor_dict = sess.run(tensor_dict)
+    self.assertTrue(
+        fields.InputDataFields.groundtruth_image_classes in tensor_dict)
+    self.assertAllEqual(
+        tensor_dict[fields.InputDataFields.groundtruth_image_classes],
+        np.array([1, 3]))
+
 
 if __name__ == '__main__':
   tf.test.main()

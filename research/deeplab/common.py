@@ -17,6 +17,7 @@
 Common flags from train/eval/vis/export_model.py are collected in this script.
 """
 import collections
+import copy
 
 import tensorflow as tf
 
@@ -40,10 +41,10 @@ flags.DEFINE_integer('logits_kernel_size', 1,
                      'generates logits.')
 
 # When using 'mobilent_v2', we set atrous_rates = decoder_output_stride = None.
-# When using 'xception_65', we set atrous_rates = [6, 12, 18] (output stride 16)
-# and decoder_output_stride = 4.
-flags.DEFINE_enum('model_variant', 'mobilenet_v2',
-                  ['xception_65', 'mobilenet_v2'], 'DeepLab model variant.')
+# When using 'xception_65' or 'resnet_v1' model variants, we set
+# atrous_rates = [6, 12, 18] (output stride 16) and decoder_output_stride = 4.
+# See core/feature_extractor.py for supported model variants.
+flags.DEFINE_string('model_variant', 'mobilenet_v2', 'DeepLab model variant.')
 
 flags.DEFINE_multi_float('image_pyramid', None,
                          'Input scales for multi-scale feature extraction.')
@@ -51,12 +52,20 @@ flags.DEFINE_multi_float('image_pyramid', None,
 flags.DEFINE_boolean('add_image_level_feature', True,
                      'Add image level feature.')
 
+flags.DEFINE_multi_integer(
+    'image_pooling_crop_size', None,
+    'Image pooling crop size [height, width] used in the ASPP module. When '
+    'value is None, the model performs image pooling with "crop_size". This'
+    'flag is useful when one likes to use different image pooling sizes.')
+
 flags.DEFINE_boolean('aspp_with_batch_norm', True,
                      'Use batch norm parameters for ASPP or not.')
 
 flags.DEFINE_boolean('aspp_with_separable_conv', True,
                      'Use separable convolution for ASPP or not.')
 
+# Defaults to None. Set multi_grid = [1, 2, 4] when using provided
+# 'resnet_v1_{50,101}_beta' checkpoints.
 flags.DEFINE_multi_integer('multi_grid', None,
                            'Employ a hierarchy of atrous rates for ResNet.')
 
@@ -104,6 +113,7 @@ class ModelOptions(
         'output_stride',
         'merge_method',
         'add_image_level_feature',
+        'image_pooling_crop_size',
         'aspp_with_batch_norm',
         'aspp_with_separable_conv',
         'multi_grid',
@@ -138,7 +148,13 @@ class ModelOptions(
     return super(ModelOptions, cls).__new__(
         cls, outputs_to_num_classes, crop_size, atrous_rates, output_stride,
         FLAGS.merge_method, FLAGS.add_image_level_feature,
-        FLAGS.aspp_with_batch_norm, FLAGS.aspp_with_separable_conv,
-        FLAGS.multi_grid, FLAGS.decoder_output_stride,
-        FLAGS.decoder_use_separable_conv, FLAGS.logits_kernel_size,
-        FLAGS.model_variant, FLAGS.depth_multiplier)
+        FLAGS.image_pooling_crop_size, FLAGS.aspp_with_batch_norm,
+        FLAGS.aspp_with_separable_conv, FLAGS.multi_grid,
+        FLAGS.decoder_output_stride, FLAGS.decoder_use_separable_conv,
+        FLAGS.logits_kernel_size, FLAGS.model_variant, FLAGS.depth_multiplier)
+
+  def __deepcopy__(self, memo):
+    return ModelOptions(copy.deepcopy(self.outputs_to_num_classes),
+                        self.crop_size,
+                        self.atrous_rates,
+                        self.output_stride)

@@ -42,6 +42,27 @@ union based on the object masks instead of object boxes.
 Similar to the weighted pascal voc 2010 detection metric, but computes the
 intersection over union based on the object masks instead of object boxes.
 
+
+## COCO detection metrics
+
+`EvalConfig.metrics_set='coco_detection_metrics'`
+
+The COCO metrics are the official detection metrics used to score the
+[COCO competition](http://cocodataset.org/) and are similar to Pascal VOC
+metrics but have a slightly different implementation and report additional
+statistics such as mAP at IOU thresholds of .5:.95, and precision/recall
+statistics for small, medium, and large objects.
+See the
+[pycocotools](https://github.com/cocodataset/cocoapi/tree/master/PythonAPI)
+repository for more details.
+
+## COCO mask metrics
+
+`EvalConfig.metrics_set='coco_mask_metrics'`
+
+Similar to the COCO detection metrics, but computes the
+intersection over union based on the object masks instead of object boxes.
+
 ## Open Images V2 detection metric
 
 `EvalConfig.metrics_set='open_images_V2_detection_metrics'`

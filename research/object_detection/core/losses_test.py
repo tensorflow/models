@@ -224,7 +224,7 @@ class SigmoidFocalClassificationLossTest(tf.test.TestCase):
 
   def testEasyExamplesProduceSmallLossComparedToSigmoidXEntropy(self):
     prediction_tensor = tf.constant([[[_logit(0.97)],
-                                      [_logit(0.90)],
+                                      [_logit(0.91)],
                                       [_logit(0.73)],
                                       [_logit(0.27)],
                                       [_logit(0.09)],

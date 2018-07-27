@@ -104,17 +104,18 @@ def preprocess_image_and_label(image,
     original_image = tf.identity(processed_image)
 
   # Data augmentation by randomly scaling the inputs.
-  scale = preprocess_utils.get_random_scale(
-      min_scale_factor, max_scale_factor, scale_factor_step_size)
+  if is_training:
+    scale = preprocess_utils.get_random_scale(
+        min_scale_factor, max_scale_factor, scale_factor_step_size)
 
-  # Data augmentation by adjusting gamma, gain, and hue
-  gamma = preprocess_utils.get_random_scale(min_gamma, max_gamma, gamma_step_size)
-  gain = preprocess_utils.get_random_scale(min_gain, max_gain, gain_step_size)
-  hue_delta = preprocess_utils.get_random_scale(min_hue_delta, max_hue_delta, hue_delta_step_size)
+    # Data augmentation by adjusting gamma, gain, and hue
+    gamma = preprocess_utils.get_random_scale(min_gamma, max_gamma, gamma_step_size)
+    gain = preprocess_utils.get_random_scale(min_gain, max_gain, gain_step_size)
+    hue_delta = preprocess_utils.get_random_scale(min_hue_delta, max_hue_delta, hue_delta_step_size)
 
-  processed_image, label = preprocess_utils.randomly_augment_image_and_label(
-      processed_image, label, scale=scale, gamma=gamma, gain=gain, hue_delta=hue_delta)
-  processed_image.set_shape([None, None, 3])
+    processed_image, label = preprocess_utils.randomly_augment_image_and_label(
+        processed_image, label, scale=scale, gamma=gamma, gain=gain, hue_delta=hue_delta)
+    processed_image.set_shape([None, None, 3])
 
   # Pad image and label to have dimensions >= [crop_height, crop_width]
   image_shape = tf.shape(processed_image)
