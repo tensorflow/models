@@ -74,29 +74,17 @@ def _create_input_tensors():
     resized_image_size: Resized image shape tensor [height, width].
   """
   # input_preprocess takes 4-D image tensor as input.
-  input_image = tf.placeholder(tf.uint8, [1, None, None, 3], name=_INPUT_NAME)
+  input_image = tf.placeholder(tf.uint8, [None, None, None, 3], name=_INPUT_NAME)
   original_image_size = tf.shape(input_image)[1:3]
 
-  # Squeeze the dimension in axis=0 since `preprocess_image_and_label` assumes
-  # image to be 3-D.
-  image = tf.squeeze(input_image, axis=0)
-  resized_image, image, _ = input_preprocess.preprocess_image_and_label(
-      image,
-      label=None,
-      crop_height=FLAGS.crop_size[0],
-      crop_width=FLAGS.crop_size[1],
-      min_resize_value=FLAGS.min_resize_value,
-      max_resize_value=FLAGS.max_resize_value,
-      resize_factor=FLAGS.resize_factor,
-      is_training=False,
-      model_variant=FLAGS.model_variant)
-  resized_image_size = tf.shape(resized_image)[:2]
+  resized_image = tf.image.resize_images(
+          tf.cast(input_image, tf.float32),
+          [513, 513], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+          align_corners=True)
 
-  # Expand the dimension in axis=0, since the following operations assume the
-  # image to be 4-D.
-  image = tf.expand_dims(image, 0)
+  resized_image_size = tf.shape(resized_image)[1:3]
 
-  return image, original_image_size, resized_image_size
+  return resized_image, original_image_size, resized_image_size
 
 
 def main(unused_argv):
@@ -130,7 +118,10 @@ def main(unused_argv):
     semantic_predictions = tf.slice(
         predictions[common.OUTPUT_TYPE],
         [0, 0, 0],
-        [1, resized_image_size[0], resized_image_size[1]])
+        [-1, resized_image_size[0], resized_image_size[1]])
+
+    image_size = tf.Print(image_size, [image_size], "image_size")
+
     # Resize back the prediction to the original image size.
     def _resize_label(label, label_size):
       # Expand dimension of label to [1, height, width, 1] for resize operation.
