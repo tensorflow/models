@@ -21,9 +21,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import heapq
 import math
+import multiprocessing
 import os
+import signal
+import typing
 
 # pylint: disable=g-bad-import-order
 import numpy as np
@@ -33,8 +37,9 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.datasets import movielens
-from official.recommendation import movielens_dataset
 from official.recommendation import neumf_model
+from official.recommendation.data_server import pipeline
+from official.recommendation.data_server import prepare
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -47,11 +52,12 @@ _HR_KEY = "HR"
 _NDCG_KEY = "NDCG"
 
 
-def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
+def evaluate_model(estimator, ncf_dataset, pred_input_fn):
+  # type: (tf.estimator.Estimator, prepare.NCFDataset, typing.Callable) -> dict
   """Model evaluation with HR and NDCG metrics.
 
   The evaluation protocol is to rank the test interacted item (truth items)
-  among the randomly chosen 100 items that are not interacted by the user.
+  among the randomly chosen 999 items that are not interacted by the user.
   The performance of the ranked list is judged by Hit Ratio (HR) and Normalized
   Discounted Cumulative Gain (NDCG).
 
@@ -63,14 +69,11 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
 
   Args:
     estimator: The Estimator.
-    batch_size: An integer, the batch size specified by user.
-    num_gpus: An integer, the number of gpus specified by user.
     ncf_dataset: An NCFDataSet object, which contains the information about
       test/eval dataset, such as:
-      eval_true_items, which is a list of test items (true items) for HR and
-        NDCG calculation. Each item is for one user.
-      eval_all_items, which is a nested list. Each entry is the 101 items
-        (1 ground truth item and 100 negative items) for one user.
+        num_users: How many unique users are in the eval set.
+        test_data: The points which are used for consistent evaluation. These
+          are already included in the pred_input_fn.
     pred_input_fn: The input function for the test data.
 
   Returns:
@@ -85,82 +88,47 @@ def evaluate_model(estimator, batch_size, num_gpus, ncf_dataset, pred_input_fn):
       and global_step is the global step
   """
 
+  tf.logging.info("Computing predictions for eval set...")
+
   # Get predictions
-  predictions = estimator.predict(input_fn=pred_input_fn)
-  all_predicted_scores = [p[movielens.RATING_COLUMN] for p in predictions]
+  predictions = estimator.predict(input_fn=pred_input_fn,
+                                  yield_single_examples=False)
+  prediction_batches = [p[movielens.RATING_COLUMN] for p in predictions]
 
-  # Calculate HR score
-  def _get_hr(ranklist, true_item):
-    return 1 if true_item in ranklist else 0
-
-  # Calculate NDCG score
-  def _get_ndcg(ranklist, true_item):
-    if true_item in ranklist:
-      return math.log(2) / math.log(ranklist.index(true_item) + 2)
-    return 0
-
-  hits, ndcgs = [], []
-  num_users = len(ncf_dataset.eval_true_items)
   # Reshape the predicted scores and each user takes one row
-  predicted_scores_list = np.asarray(
-      all_predicted_scores).reshape(num_users, -1)
+  predicted_scores_by_user = np.concatenate(prediction_batches, axis=0).reshape(
+      ncf_dataset.num_users, -1)
 
-  for i in range(num_users):
-    items = ncf_dataset.eval_all_items[i]
-    predicted_scores = predicted_scores_list[i]
-    # Map item and score for each user
-    map_item_score = {}
-    for j, item in enumerate(items):
-      score = predicted_scores[j]
-      map_item_score[item] = score
+  tf.logging.info("Computing metrics...")
 
-    # Evaluate top rank list with HR and NDCG
-    ranklist = heapq.nlargest(_TOP_K, map_item_score, key=map_item_score.get)
-    true_item = ncf_dataset.eval_true_items[i]
-    hr = _get_hr(ranklist, true_item)
-    ndcg = _get_ndcg(ranklist, true_item)
-    hits.append(hr)
-    ndcgs.append(ndcg)
+  # NumPy has an np.argparition() method, however log(1000) is so small that
+  # sorting the whole array is simpler and fast enough.
+  top_indicies = np.argsort(predicted_scores_by_user, axis=1)[:, -_TOP_K:]
+  top_indicies = np.flip(top_indicies, axis=1)
 
-  # Get average HR and NDCG scores
-  hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
+  # Both HR and NDCG vectorized computation takes advantage of the fact that if
+  # the positive example for a user is not in the top k, that index does not
+  # appear. That is to say:   hit_ind.shape[0] <= num_users
+  hit_ind = np.argwhere(np.equal(top_indicies, 0))
+  hr = hit_ind.shape[0] / ncf_dataset.num_users
+  ndcg = np.sum(np.log(2) / np.log(hit_ind[:, 1] + 2)) / ncf_dataset.num_users
+
   global_step = estimator.get_variable_value(tf.GraphKeys.GLOBAL_STEP)
   eval_results = {
       _HR_KEY: hr,
       _NDCG_KEY: ndcg,
       tf.GraphKeys.GLOBAL_STEP: global_step
   }
+
   return eval_results
 
 
-def convert_keras_to_estimator(keras_model, num_gpus, model_dir):
-  """Configure and convert keras model to Estimator.
-
-  Args:
-    keras_model: A Keras model object.
-    num_gpus: An integer, the number of gpus.
-    model_dir: A string, the directory to save and restore checkpoints.
-
-  Returns:
-    est_model: The converted Estimator.
-  """
-  optimizer = tf.train.AdamOptimizer(
-      learning_rate=FLAGS.learning_rate)
-  keras_model.compile(optimizer=optimizer, loss="binary_crossentropy")
-
-  if num_gpus == 0:
-    distribution = tf.contrib.distribute.OneDeviceStrategy("device:CPU:0")
-  elif num_gpus == 1:
-    distribution = tf.contrib.distribute.OneDeviceStrategy("device:GPU:0")
-  else:
-    distribution = tf.contrib.distribute.MirroredStrategy(num_gpus=num_gpus)
-
+def construct_estimator(num_gpus, model_dir, params):
+  distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
   run_config = tf.estimator.RunConfig(train_distribute=distribution)
-
-  estimator = tf.keras.estimator.model_to_estimator(
-      keras_model=keras_model, model_dir=model_dir, config=run_config)
-
-  return estimator
+  return tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
+                                model_dir=model_dir, config=run_config,
+                                params=params)
 
 
 def main(_):
@@ -172,25 +140,24 @@ def run_ncf(_):
   """Run NCF training and eval loop."""
   if FLAGS.download_if_missing:
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
-    movielens_dataset.construct_train_eval_csv(
-        data_dir=FLAGS.data_dir, dataset=FLAGS.dataset)
 
   tf.logging.info("Data preprocessing...")
-  ncf_dataset = movielens_dataset.data_preprocessing(
-      FLAGS.data_dir, FLAGS.dataset, FLAGS.num_neg)
+  ncf_dataset = pipeline.initialize(
+      dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, num_neg=FLAGS.num_neg)
 
   model_helpers.apply_clean(flags.FLAGS)
 
-  # Create NeuMF model and convert it to Estimator
-  tf.logging.info("Creating Estimator from Keras model...")
-  layers = [int(layer) for layer in FLAGS.layers]
-  mlp_regularization = [float(reg) for reg in FLAGS.mlp_regularization]
-  keras_model = neumf_model.NeuMF(
-      ncf_dataset.num_users, ncf_dataset.num_items, FLAGS.num_factors,
-      layers, FLAGS.batch_size, FLAGS.mf_regularization,
-      mlp_regularization)
   num_gpus = flags_core.get_num_gpus(FLAGS)
-  estimator = convert_keras_to_estimator(keras_model, num_gpus, FLAGS.model_dir)
+  estimator = construct_estimator(
+      num_gpus=num_gpus, model_dir=FLAGS.model_dir, params={
+          "learning_rate": FLAGS.learning_rate,
+          "num_users": ncf_dataset.num_users,
+          "num_items": ncf_dataset.num_items,
+          "mf_dim": FLAGS.num_factors,
+          "model_layers": [int(layer) for layer in FLAGS.layers],
+          "mf_regularization": FLAGS.mf_regularization,
+          "mlp_reg_layers": [float(reg) for reg in FLAGS.mlp_regularization],
+      })
 
   # Create hooks that log information about the training and metric values
   train_hooks = hooks_helper.get_train_hooks(
@@ -200,6 +167,7 @@ def run_ncf(_):
   )
   run_params = {
       "batch_size": FLAGS.batch_size,
+      "eval_batch_size": FLAGS.eval_batch_size or FLAGS.batch_size,
       "number_factors": FLAGS.num_factors,
       "hr_threshold": FLAGS.hr_threshold,
       "train_epochs": FLAGS.train_epochs,
@@ -213,16 +181,23 @@ def run_ncf(_):
 
   # Training and evaluation cycle
   def get_train_input_fn():
-    return movielens_dataset.get_input_fn(
-        True,
-        distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, FLAGS.data_dir, FLAGS.dataset, FLAGS.epochs_between_evals)
+    return pipeline.get_input_fn(
+        training=True,
+        ncf_dataset=ncf_dataset,
+        batch_size=distribution_utils.per_device_batch_size(
+            FLAGS.batch_size, num_gpus),
+        num_epochs=FLAGS.epochs_between_evals,
+        shuffle=True,
+    )
 
   def get_pred_input_fn():
-    return movielens_dataset.get_input_fn(
-        False,
-        distribution_utils.per_device_batch_size(FLAGS.batch_size, num_gpus),
-        ncf_dataset, FLAGS.data_dir, FLAGS.dataset, 1)
+    return pipeline.get_input_fn(
+        training=False,
+        ncf_dataset=ncf_dataset,
+        batch_size=distribution_utils.per_device_batch_size(
+            FLAGS.eval_batch_size or FLAGS.batch_size, num_gpus),
+        num_epochs=1
+    )
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
 
@@ -235,7 +210,7 @@ def run_ncf(_):
 
     # Evaluate the model
     eval_results = evaluate_model(
-        estimator, FLAGS.batch_size, num_gpus, ncf_dataset, get_pred_input_fn())
+        estimator, ncf_dataset, get_pred_input_fn())
 
     # Benchmark the evaluation results
     benchmark_logger.log_evaluation_result(eval_results)
@@ -276,7 +251,8 @@ def define_ncf_flags():
       data_dir="/tmp/movielens-data/",
       train_epochs=2,
       batch_size=256,
-      hooks="ProfilerHook")
+      hooks="ProfilerHook"
+  )
 
   # Add ncf-specific flags
   flags.DEFINE_enum(
@@ -288,6 +264,13 @@ def define_ncf_flags():
   flags.DEFINE_boolean(
       name="download_if_missing", default=True, help=flags_core.help_wrap(
           "Download data to data_dir if it is not already present."))
+
+  flags.DEFINE_string(
+      name="eval_batch_size", default=None, help=flags_core.help_wrap(
+          "The batch size used for evaluation. This should generally be larger"
+          "than the training batch size as the lack of back propagation during"
+          "evaluation can allow for larger batch sizes to fit in memory. If not"
+          "specified, the training batch size (--batch_size) will be used."))
 
   flags.DEFINE_integer(
       name="num_factors", default=8,

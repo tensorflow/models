@@ -33,6 +33,12 @@ _TEST_FNAME = os.path.join(
 _NUM_NEG = 4
 
 
+class MockPool(object):
+  @staticmethod
+  def map(func, iterable):
+    return [func(i) for i in iterable]
+
+
 class DatasetTest(tf.test.TestCase):
   def setUp(self):
     # Create temporary CSV file
@@ -97,7 +103,7 @@ class DatasetTest(tf.test.TestCase):
         self.temp_dir, movielens.ML_1M, _NUM_NEG)
 
     train_dataset = movielens_dataset.generate_train_dataset(
-        ncf_dataset.train_data, ncf_dataset.num_items, _NUM_NEG)
+        ncf_dataset.train_data, ncf_dataset.num_items, _NUM_NEG, MockPool())
 
     # Each user has 1 positive instance followed by _NUM_NEG negative instances
     train_data_0 = train_dataset[0]

@@ -1,0 +1,39 @@
+
+syntax = "proto3";
+
+package official.recommendation.data_server;
+
+message Check {
+
+}
+
+message NumEpochs {
+  int32 value = 1;
+  int64 shuffle_buffer_size = 2;
+}
+
+message BatchRequest {
+  bool shuffle = 1;
+  int32 max_batch_size = 2;
+}
+
+message Batch {
+  bytes users = 1;
+  bytes items = 2;
+  bytes labels = 3;
+}
+
+message Shutdown {
+
+}
+
+message Ack {
+  bool success = 1;
+}
+
+service TrainData {
+  rpc Alive(Check) returns (Ack);
+  rpc Enqueue(NumEpochs) returns (Ack);
+  rpc GetBatch(BatchRequest) returns (Batch);
+  rpc ShutdownServer(Shutdown) returns (Ack);
+}

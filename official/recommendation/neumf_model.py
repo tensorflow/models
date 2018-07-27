@@ -33,17 +33,72 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import typing
+
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
 
 
+def neumf_model_fn(features, labels, mode, params):
+  """Model Function for NeuMF estimator."""
+  users = tf.squeeze(features[movielens.USER_COLUMN])
+  items = tf.cast(tf.squeeze(features[movielens.ITEM_COLUMN]), dtype=tf.int32)
+
+  num_users = params["num_users"]
+  num_items = params["num_items"]
+
+  model_layers = params["model_layers"]
+
+  mf_regularization = params["mf_regularization"]
+  mlp_reg_layers = params["mlp_reg_layers"]
+
+  mf_dim = params["mf_dim"]
+
+  model = NeuMF(num_users=num_users, num_items=num_items, mf_dim=mf_dim,
+                model_layers=model_layers, mf_regularization=mf_regularization,
+                mlp_reg_layers=mlp_reg_layers, final_activation=None)
+  logits = model([users, items])
+
+  if mode == tf.estimator.ModeKeys.PREDICT:
+    predictions = {
+        movielens.RATING_COLUMN: tf.sigmoid(logits[:features["n"]]),
+    }
+    return tf.estimator.EstimatorSpec(
+        mode=tf.estimator.ModeKeys.PREDICT,
+        predictions=predictions
+    )
+
+  elif mode == tf.estimator.ModeKeys.TRAIN:
+    optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
+    losses = tf.nn.sigmoid_cross_entropy_with_logits(
+        labels=tf.cast(tf.squeeze(labels), tf.float32),
+        logits=tf.squeeze(logits)
+    )
+    loss = tf.reduce_mean(losses)
+
+    global_step = tf.train.get_global_step()
+    tvars = tf.trainable_variables()
+    gradients = optimizer.compute_gradients(
+        loss, tvars, colocate_gradients_with_ops=True)
+    minimize_op = optimizer.apply_gradients(
+        gradients, global_step=global_step, name="train")
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    train_op = tf.group(minimize_op, update_ops)
+
+    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+
+  else:
+    raise NotImplementedError
+
+
 class NeuMF(tf.keras.models.Model):
   """Neural matrix factorization (NeuMF) model for recommendations."""
 
-  def __init__(self, num_users, num_items, mf_dim, model_layers, batch_size,
-               mf_regularization, mlp_reg_layers):
+  def __init__(self, num_users, num_items, mf_dim, model_layers,
+               mf_regularization, mlp_reg_layers, final_activation="sigmoid"):
+    # type: (int, int, int, list, float, list, typing.Union[str, None]) -> None
     """Initialize NeuMF model.
 
     Args:
@@ -53,7 +108,6 @@ class NeuMF(tf.keras.models.Model):
       model_layers: A list of integers for Multi-Layer Perceptron (MLP) layers.
         Note that the first layer is the concatenation of user and item
         embeddings. So model_layers[0]//2 is the embedding size for MLP.
-      batch_size: An integer for the batch size.
       mf_regularization: A floating number, the regularization factor for MF
         embeddings.
       mlp_reg_layers: A list of floating numbers, the regularization factors for
@@ -69,10 +123,11 @@ class NeuMF(tf.keras.models.Model):
     user_input = tf.keras.layers.Input(
         shape=(1,), dtype=tf.int32, name=movielens.USER_COLUMN)
     item_input = tf.keras.layers.Input(
-        shape=(1,), dtype=tf.int32, name=movielens.ITEM_COLUMN)
+        shape=(1,), dtype=tf.uint16, name=movielens.ITEM_COLUMN)
 
-    # Initializer for embedding layer
-    embedding_initializer = tf.keras.initializers.RandomNormal(stddev=0.01)
+    # Initializer for embedding layers
+    embedding_initializer = "glorot_uniform"
+
     # Embedding layers of GMF and MLP
     mf_embedding_user = tf.keras.layers.Embedding(
         num_users,
@@ -127,7 +182,7 @@ class NeuMF(tf.keras.models.Model):
 
     # Final prediction layer
     prediction = tf.keras.layers.Dense(
-        1, activation="sigmoid", kernel_initializer="lecun_uniform",
+        1, activation=final_activation, kernel_initializer="lecun_uniform",
         name=movielens.RATING_COLUMN)(predict_vector)
 
     super(NeuMF, self).__init__(
