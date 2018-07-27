@@ -401,6 +401,40 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
 
   return ncf_dataset
 
+
+def make_deserialize(params, batch_size, training=False):
+  feature_map = {
+    movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
+    movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
+  }
+  if training:
+    feature_map["labels"] = tf.FixedLenFeature([], dtype=tf.string)
+
+  def _deserialize(examples_serialized):
+    features = tf.parse_single_example(examples_serialized, feature_map)
+    users = tf.reshape(tf.decode_raw(
+        features[movielens.USER_COLUMN], tf.int32), (batch_size,))
+    items = tf.reshape(tf.decode_raw(
+        features[movielens.ITEM_COLUMN], tf.uint16), (batch_size,))
+
+    if params["use_tpu"]:
+      items = tf.cast(items, tf.int32)  # TPU doesn't allow uint16 infeed.
+
+    if not training:
+      return {
+          movielens.USER_COLUMN: users,
+          movielens.ITEM_COLUMN: items,
+      }
+
+    labels = tf.reshape(tf.cast(tf.decode_raw(
+        features["labels"], tf.int8), tf.bool), (batch_size,))
+    return {
+      movielens.USER_COLUMN: users,
+      movielens.ITEM_COLUMN: items,
+    }, labels
+  return _deserialize
+
+
 def make_train_input_fn(ncf_dataset):
   # type: (NCFDataset) -> (typing.Callable, str, int)
   if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
@@ -444,19 +478,6 @@ def make_train_input_fn(ncf_dataset):
           "tf.parse_single_example."
             .format(epoch_metadata["batch_size"], batch_size))
 
-    feature_map = {
-      movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-      movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-      "labels": tf.FixedLenFeature([], dtype=tf.string),
-    }
-
-    def _deserialize(examples_serialized):
-      features = tf.parse_single_example(examples_serialized, feature_map)
-      return {
-        movielens.USER_COLUMN: tf.reshape(tf.decode_raw(features[movielens.USER_COLUMN], tf.int32), (batch_size,)),
-        movielens.ITEM_COLUMN: tf.reshape(tf.decode_raw(features[movielens.ITEM_COLUMN], tf.uint16), (batch_size,))
-      }, tf.reshape(tf.decode_raw(features["labels"], tf.int8), (batch_size,))
-
     record_files = tf.data.Dataset.list_files(
         os.path.join(record_dir, rconst.TRAIN_RECORD_TEMPLATE.format("*")),
         shuffle=False)
@@ -468,6 +489,8 @@ def make_train_input_fn(ncf_dataset):
         sloppy=True,
         prefetch_input_elements=4,
     )
+
+    _deserialize = make_deserialize(params, batch_size, True)
     dataset = record_files.apply(interleave).map(_deserialize, num_parallel_calls=4)
     return dataset.prefetch(32)
 
@@ -486,18 +509,7 @@ def make_pred_input_fn(ncf_dataset):
       time.sleep(1)
     dataset = tf.data.TFRecordDataset(record_file)
 
-    feature_map = {
-      movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-      movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-    }
-
-    def _deserialize(examples_serialized):
-      features = tf.parse_single_example(examples_serialized, feature_map)
-      return {
-          movielens.USER_COLUMN: tf.reshape(tf.decode_raw(features[movielens.USER_COLUMN], tf.int32), (batch_size,)),
-          movielens.ITEM_COLUMN: tf.reshape(tf.decode_raw(features[movielens.ITEM_COLUMN], tf.uint16), (batch_size,))
-      }
-
+    _deserialize = make_deserialize(params, batch_size, False)
     dataset = dataset.map(_deserialize, num_parallel_calls=4)
 
     return dataset.prefetch(16)
