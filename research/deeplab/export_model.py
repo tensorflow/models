@@ -64,11 +64,11 @@ def _create_input_tensors():
   """Creates and prepares input tensors for DeepLab model.
 
   This method creates a 4-D uint8 image tensor 'ImageTensor' with shape
-  [1, None, None, 3]. The actual input tensor name to use during inference is
+  [None, None, None, 3]. The actual input tensor name to use during inference is
   'ImageTensor:0'.
 
   Returns:
-    image: Preprocessed 4-D float32 tensor with shape [1, crop_height,
+    image: Preprocessed 4-D float32 tensor with shape [batch_size, crop_height,
       crop_width, 3].
     original_image_size: Original image shape tensor [height, width].
     resized_image_size: Resized image shape tensor [height, width].
@@ -119,8 +119,6 @@ def main(unused_argv):
         predictions[common.OUTPUT_TYPE],
         [0, 0, 0],
         [-1, resized_image_size[0], resized_image_size[1]])
-
-    image_size = tf.Print(image_size, [image_size], "image_size")
 
     # Resize back the prediction to the original image size.
     def _resize_label(label, label_size):
