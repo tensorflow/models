@@ -100,7 +100,7 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   # Reshape the predicted scores and each user takes one row
   prediction_with_padding = np.concatenate(prediction_batches, axis=0)
   predicted_scores_by_user = prediction_with_padding[
-    :ncf_dataset.num_users * (1 + rconst.NUMBER_EVAL_NEGATIVES)]\
+    :ncf_dataset.num_users * (1 + rconst.NUM_EVAL_NEGATIVES)]\
     .reshape(ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
@@ -127,7 +127,8 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   return eval_results
 
 
-def construct_estimator(num_gpus, model_dir, params, batch_size, eval_batch_size):
+def construct_estimator(num_gpus, model_dir, params, batch_size,
+                        eval_batch_size):
   if params["use_tpu"]:
     tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
         tpu=params["tpu"],
@@ -233,7 +234,8 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
-  approx_train_steps = int(ncf_dataset.num_train_positives * (1 + FLAGS.num_neg) // FLAGS.batch_size)
+  approx_train_steps = int(ncf_dataset.num_train_positives
+                           * (1 + FLAGS.num_neg) // FLAGS.batch_size)
   pred_input_fn = data_preprocessing.make_pred_input_fn(ncf_dataset=ncf_dataset)
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
@@ -243,14 +245,15 @@ def run_ncf(_):
 
 
     # Train the model
-    train_input_fn, train_record_dir, batch_count = data_preprocessing.make_train_input_fn(
-        ncf_dataset=ncf_dataset)
+    train_input_fn, train_record_dir, batch_count = \
+      data_preprocessing.make_train_input_fn(ncf_dataset=ncf_dataset)
 
     if np.abs(approx_train_steps - batch_count) > 1:
       tf.logging.warning(
           "Estimated ({}) and reported ({}) number of batches differ by more "
           "than one".format(approx_train_steps, batch_count))
-    train_estimator.train(input_fn=train_input_fn, hooks=train_hooks, steps=batch_count)
+    train_estimator.train(input_fn=train_input_fn, hooks=train_hooks,
+                          steps=batch_count)
     tf.gfile.DeleteRecursively(train_record_dir)
 
     # Evaluate the model

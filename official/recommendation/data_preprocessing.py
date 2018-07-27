@@ -44,13 +44,15 @@ from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
 
 
-_ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__), "data_async_generation.py")
+_ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__),
+                               "data_async_generation.py")
 
 
 class NCFDataset(object):
   """Container for training and testing data."""
 
-  def __init__(self, num_users, num_items, num_data_readers, cache_paths, num_train_positives):
+  def __init__(self, num_users, num_items, num_data_readers, cache_paths,
+               num_train_positives):
     # type: (int, int, int, rconst.Paths) -> None
     """Assign key values for recommendation dataset.
 
@@ -139,8 +141,12 @@ def _filter_index_sort(raw_rating_path):
   return df, num_users, num_items
 
 
-def _train_eval_map_fn(shard, shard_id, num_items, cache_paths):
-  # type: (typing.Dict(np.ndarray), int, int, rconst.Paths) -> typing.Dict(np.ndarray)
+def _train_eval_map_fn(shard,       # type: typing.Dict(np.ndarray)
+                       shard_id,    # type: int
+                       num_items,   # type: int
+                       cache_paths  # type: rconst.Paths
+                       ):
+  # type: (...) -> typing.Dict(np.ndarray)
   """Split training and testing data and generate testing negatives.
 
   This function is called as part of a multiprocessing map. The principle
@@ -193,32 +199,34 @@ def _train_eval_map_fn(shard, shard_id, num_items, cache_paths):
 
     test_negatives = stat_utils.sample_with_exclusion(
         num_items=num_items, positive_set=set(block_items),
-        n=rconst.NUMBER_EVAL_NEGATIVES, replacement=False)
+        n=rconst.NUM_EVAL_NEGATIVES, replacement=False)
     test_blocks.append((
-      block_user[0] * np.ones((rconst.NUMBER_EVAL_NEGATIVES + 1,), dtype=np.int32),
-      np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
+        block_user[0] * np.ones((rconst.NUM_EVAL_NEGATIVES + 1,),
+                                dtype=np.int32),
+        np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
     ))
     test_positives.append((block_user[0], block_items[-1]))
 
   train_users = np.concatenate([i[0] for i in train_blocks])
   train_items = np.concatenate([i[1] for i in train_blocks])
 
-  train_shard_fpath = cache_paths.train_shard_template.format(str(shard_id).zfill(5))
+  train_shard_fpath = cache_paths.train_shard_template.format(
+      str(shard_id).zfill(5))
 
   with tf.gfile.Open(train_shard_fpath, "wb") as f:
     pickle.dump({
-      movielens.USER_COLUMN: train_users,
-      movielens.ITEM_COLUMN: train_items,
+        movielens.USER_COLUMN: train_users,
+        movielens.ITEM_COLUMN: train_items,
     }, f)
 
   test_users = np.concatenate([i[0] for i in test_blocks])
   test_items = np.concatenate([i[1] for i in test_blocks])
   assert test_users.shape == test_items.shape
-  assert test_items.shape[0] % (rconst.NUMBER_EVAL_NEGATIVES + 1) == 0
+  assert test_items.shape[0] % (rconst.NUM_EVAL_NEGATIVES + 1) == 0
 
   return {
-    movielens.USER_COLUMN: test_users,
-    movielens.ITEM_COLUMN: test_items,
+      movielens.USER_COLUMN: test_users,
+      movielens.ITEM_COLUMN: test_items,
   }
 
 
@@ -268,8 +276,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
     item_shard = df_shard[movielens.ITEM_COLUMN].values.astype(np.uint16)
 
     shards.append({
-      movielens.USER_COLUMN: user_shard,
-      movielens.ITEM_COLUMN: item_shard,
+        movielens.USER_COLUMN: user_shard,
+        movielens.ITEM_COLUMN: item_shard,
     })
 
     start_ind = end_ind
@@ -277,9 +285,10 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
   approx_num_shards = len(shards)
 
   tf.logging.info("Splitting train and test data and generating {} test "
-                  "negatives per user...".format(rconst.NUMBER_EVAL_NEGATIVES))
+                  "negatives per user...".format(rconst.NUM_EVAL_NEGATIVES))
   tf.gfile.MakeDirs(cache_paths.train_shard_subdir)
-  map_args = [(shards[i], i, num_items, cache_paths) for i in range(approx_num_shards)]
+  map_args = [(shards[i], i, num_items, cache_paths)
+              for i in range(approx_num_shards)]
   ctx = multiprocessing.get_context("spawn")
   with contextlib.closing(ctx.Pool(multiprocessing.cpu_count())) as pool:
     test_shards = pool.starmap(_train_eval_map_fn, map_args)
@@ -289,13 +298,13 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
   test_items = np.concatenate([i[movielens.ITEM_COLUMN] for i in test_shards])
 
   assert test_users.shape == test_items.shape
-  assert test_items.shape[0] % (rconst.NUMBER_EVAL_NEGATIVES + 1) == 0
+  assert test_items.shape[0] % (rconst.NUM_EVAL_NEGATIVES + 1) == 0
 
   test_labels = np.zeros(shape=test_users.shape)
-  test_labels[0::(rconst.NUMBER_EVAL_NEGATIVES + 1)] = 1
+  test_labels[0::(rconst.NUM_EVAL_NEGATIVES + 1)] = 1
   eval_data = ({
-                 movielens.USER_COLUMN: test_users,
-                 movielens.ITEM_COLUMN: test_items,
+      movielens.USER_COLUMN: test_users,
+      movielens.ITEM_COLUMN: test_items,
   }, test_labels)
 
   tf.logging.info("Writing test data to file.")
@@ -316,12 +325,14 @@ def construct_cache(dataset, data_dir, num_data_readers):
   """
   cache_paths = rconst.Paths(data_dir=data_dir)
   num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2)
-  approx_num_shards = int(movielens.NUM_RATINGS[dataset] // rconst.APPROX_PTS_PER_TRAIN_SHARD) or 1
+  approx_num_shards = int(movielens.NUM_RATINGS[dataset]
+                          // rconst.APPROX_PTS_PER_TRAIN_SHARD) or 1
 
   st = timeit.default_timer()
   cache_root = os.path.join(data_dir, cache_paths.cache_root)
   if tf.gfile.Exists(cache_root):
-    raise ValueError("{} unexpectedly already exists.".format(cache_paths.cache_root))
+    raise ValueError("{} unexpectedly already exists."
+                     .format(cache_paths.cache_root))
   tf.logging.info("Creating cache directory. This should be deleted on exit.")
   tf.gfile.MakeDirs(cache_paths.cache_root)
   atexit.register(tf.gfile.DeleteRecursively, cache_paths.cache_root)
@@ -335,7 +346,8 @@ def construct_cache(dataset, data_dir, num_data_readers):
 
   ncf_dataset = NCFDataset(num_items=num_items, num_users=num_users,
                            num_data_readers=num_data_readers,
-                           cache_paths=cache_paths, num_train_positives=len(df) - num_users)
+                           cache_paths=cache_paths,
+                           num_train_positives=len(df) - num_users)
 
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
@@ -356,7 +368,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   movielens.download(dataset=dataset, data_dir=data_dir)
   tf.logging.info("Beginning data preprocessing.")
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
-                                num_data_readers=num_data_readers)  # type: NCFDataset
+                                num_data_readers=num_data_readers)
 
   tf.logging.info("Creating training file subprocess.")
 
@@ -374,24 +386,25 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   num_workers = int(multiprocessing.cpu_count() * 0.75)
 
   subproc_args = [
-    python, _ASYNC_GEN_PATH,
-    "--data_dir", data_dir,
-    "--cache_id", str(ncf_dataset.cache_paths.cache_id),
-    "--num_neg", str(num_neg),
-    "--num_train_positives", str(ncf_dataset.num_train_positives),
-    "--num_items", str(ncf_dataset.num_items),
-    "--num_readers", str(ncf_dataset.num_data_readers),
-    "--epochs_per_cycle", str(epochs_per_cycle),
-    "--train_batch_size", str(batch_size),
-    "--eval_batch_size", str(eval_batch_size),
-    "--num_workers", str(num_workers),
-    "--spillover", "True",  # This allows the training input function to
-                            # guarantee batch size and significantly improves
-                            # performance. (~5% increase in examples/sec)
-    "--redirect_logs", "True"
+      python, _ASYNC_GEN_PATH,
+      "--data_dir", data_dir,
+      "--cache_id", str(ncf_dataset.cache_paths.cache_id),
+      "--num_neg", str(num_neg),
+      "--num_train_positives", str(ncf_dataset.num_train_positives),
+      "--num_items", str(ncf_dataset.num_items),
+      "--num_readers", str(ncf_dataset.num_data_readers),
+      "--epochs_per_cycle", str(epochs_per_cycle),
+      "--train_batch_size", str(batch_size),
+      "--eval_batch_size", str(eval_batch_size),
+      "--num_workers", str(num_workers),
+      "--spillover", "True",  # This allows the training input function to
+                              # guarantee batch size and significantly improves
+                              # performance. (~5% increase in examples/sec)
+      "--redirect_logs", "True"
   ]
 
-  tf.logging.info("Generation subprocess command: {}".format(" ".join(subproc_args)))
+  tf.logging.info(
+      "Generation subprocess command: {}".format(" ".join(subproc_args)))
 
   proc = subprocess.Popen(args=subproc_args, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -404,13 +417,13 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
 
 def make_deserialize(params, batch_size, training=False):
   feature_map = {
-    movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
-    movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
+      movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
+      movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
   }
   if training:
     feature_map["labels"] = tf.FixedLenFeature([], dtype=tf.string)
 
-  def _deserialize(examples_serialized):
+  def deserialize(examples_serialized):
     features = tf.parse_single_example(examples_serialized, feature_map)
     users = tf.reshape(tf.decode_raw(
         features[movielens.USER_COLUMN], tf.int32), (batch_size,))
@@ -429,10 +442,10 @@ def make_deserialize(params, batch_size, training=False):
     labels = tf.reshape(tf.cast(tf.decode_raw(
         features["labels"], tf.int8), tf.bool), (batch_size,))
     return {
-      movielens.USER_COLUMN: users,
-      movielens.ITEM_COLUMN: items,
+        movielens.USER_COLUMN: users,
+        movielens.ITEM_COLUMN: items,
     }, labels
-  return _deserialize
+  return deserialize
 
 
 def make_train_input_fn(ncf_dataset):
@@ -476,7 +489,7 @@ def make_train_input_fn(ncf_dataset):
           "Records were constructed with batch size {}, but input_fn was given "
           "a batch size of {}. This will result in a deserialization error in "
           "tf.parse_single_example."
-            .format(epoch_metadata["batch_size"], batch_size))
+          .format(epoch_metadata["batch_size"], batch_size))
 
     record_files = tf.data.Dataset.list_files(
         os.path.join(record_dir, rconst.TRAIN_RECORD_TEMPLATE.format("*")),
@@ -490,8 +503,9 @@ def make_train_input_fn(ncf_dataset):
         prefetch_input_elements=4,
     )
 
-    _deserialize = make_deserialize(params, batch_size, True)
-    dataset = record_files.apply(interleave).map(_deserialize, num_parallel_calls=4)
+    deserialize = make_deserialize(params, batch_size, True)
+    dataset = record_files.apply(interleave)
+    dataset = dataset.map(deserialize, num_parallel_calls=4)
     return dataset.prefetch(32)
 
   return input_fn, record_dir, batch_count
@@ -503,14 +517,16 @@ def make_pred_input_fn(ncf_dataset):
     # Estimator has "eval_batch_size" included in the params, but TPUEstimator
     # populates "batch_size" to the appropriate value.
     batch_size = params.get("eval_batch_size") or params["batch_size"]
-    record_file = ncf_dataset.cache_paths.eval_record_template.format(batch_size)
+    record_file = ncf_dataset.cache_paths.eval_record_template.format(
+        batch_size)
     while not tf.gfile.Exists(record_file):
-      tf.logging.info("Waiting for eval data to be written to {}".format(record_file))
+      tf.logging.info(
+          "Waiting for eval data to be written to {}".format(record_file))
       time.sleep(1)
     dataset = tf.data.TFRecordDataset(record_file)
 
-    _deserialize = make_deserialize(params, batch_size, False)
-    dataset = dataset.map(_deserialize, num_parallel_calls=4)
+    deserialize = make_deserialize(params, batch_size, False)
+    dataset = dataset.map(deserialize, num_parallel_calls=4)
 
     return dataset.prefetch(16)
 

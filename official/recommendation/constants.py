@@ -46,13 +46,14 @@ MIN_NUM_RATINGS = 20
 
 # The number of negative examples attached with a positive example
 # when performing evaluation.
-NUMBER_EVAL_NEGATIVES = 999
+NUM_EVAL_NEGATIVES = 999
 
 # ==============================================================================
 # == Subprocess Data Generation ================================================
 # ==============================================================================
-CYCLES_TO_BUFFER = 2  # The number of train cycles worth of data to "run ahead"
+CYCLES_TO_BUFFER = 3  # The number of train cycles worth of data to "run ahead"
                       # of the main training loop.
+
 READY_FILE = "ready.json"
 TRAIN_RECORD_TEMPLATE = "train_{}.tfrecords"
 

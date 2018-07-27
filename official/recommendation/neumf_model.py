@@ -48,19 +48,7 @@ def neumf_model_fn(features, labels, mode, params):
   users = features[movielens.USER_COLUMN]
   items = tf.cast(features[movielens.ITEM_COLUMN], tf.int32)
 
-  num_users = params["num_users"]
-  num_items = params["num_items"]
-
-  model_layers = params["model_layers"]
-
-  mf_regularization = params["mf_regularization"]
-  mlp_reg_layers = params["mlp_reg_layers"]
-
-  mf_dim = params["mf_dim"]
-
-  logits = construct_model(users=users, items=items, num_users=num_users, num_items=num_items, mf_dim=mf_dim,
-                model_layers=model_layers, mf_regularization=mf_regularization,
-                mlp_reg_layers=mlp_reg_layers)
+  logits = construct_model(users=users, items=items, params=params)
 
   if mode == tf.estimator.ModeKeys.PREDICT:
     predictions = {
@@ -68,15 +56,8 @@ def neumf_model_fn(features, labels, mode, params):
     }
 
     if params["use_tpu"]:
-      return tf.contrib.tpu.TPUEstimatorSpec(
-          mode=tf.estimator.ModeKeys.PREDICT,
-          predictions=predictions
-      )
-    return tf.estimator.EstimatorSpec(
-        mode=tf.estimator.ModeKeys.PREDICT,
-        predictions=predictions
-    )
-
+      return tf.contrib.tpu.TPUEstimatorSpec(mode=mode, predictions=predictions)
+    return tf.estimator.EstimatorSpec(mode=mode,predictions=predictions)
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)
@@ -85,7 +66,8 @@ def neumf_model_fn(features, labels, mode, params):
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
     # Softmax with the first column of ones is equivalent to sigmoid.
-    logits = tf.concat([tf.ones(logits.shape, dtype=logits.dtype), logits], axis=1)
+    logits = tf.concat([tf.ones(logits.shape, dtype=logits.dtype), logits]
+                       , axis=1)
 
     loss = tf.losses.sparse_softmax_cross_entropy(
         labels=labels,
@@ -103,36 +85,36 @@ def neumf_model_fn(features, labels, mode, params):
 
     if params["use_tpu"]:
       return tf.contrib.tpu.TPUEstimatorSpec(
-          mode=mode, loss=loss, train_op=train_op,
-      )
+          mode=mode, loss=loss, train_op=train_op)
     return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
   else:
     raise NotImplementedError
 
 
-def construct_model(users, items, num_users, num_items, mf_dim, model_layers,
-             mf_regularization, mlp_reg_layers):
-  # type: (tf.Tensor, tf.Tensor, int, int, int, list, float, list) -> tf.Tensor
+def construct_model(users, items, params):
+  # type: (tf.Tensor, tf.Tensor, dict) -> tf.Tensor
   """Initialize NeuMF model.
 
   Args:
     users: Tensor of user ids.
     items: Tensor of item ids.
-    num_users: An integer, the number of users.
-    num_items: An integer, the number of items.
-    mf_dim: An integer, the embedding size of Matrix Factorization (MF) model.
-    model_layers: A list of integers for Multi-Layer Perceptron (MLP) layers.
-      Note that the first layer is the concatenation of user and item
-      embeddings. So model_layers[0]//2 is the embedding size for MLP.
-    mf_regularization: A floating number, the regularization factor for MF
-      embeddings.
-    mlp_reg_layers: A list of floating numbers, the regularization factors for
-      each layer in MLP.
+    params: Dict of hyperparameters.
 
   Raises:
     ValueError: if the first model layer is not even.
   """
+
+  num_users = params["num_users"]
+  num_items = params["num_items"]
+
+  model_layers = params["model_layers"]
+
+  mf_regularization = params["mf_regularization"]
+  mlp_reg_layers = params["mlp_reg_layers"]
+
+  mf_dim = params["mf_dim"]
+
   if model_layers[0] % 2 != 0:
     raise ValueError("The first layer size should be multiple of 2!")
 

@@ -17,7 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import atexit
 import contextlib
+import datetime
+import gc
 import functools
 import logging
 import multiprocessing
@@ -41,6 +44,13 @@ from absl import flags
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
+
+
+def log_msg(msg):
+  if flags.FLAGS.redirect_logs:
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    return absl_logging.info("[{}] {}".format(timestamp, msg))
+  return absl_logging.info(msg)
 
 
 def get_cycle_folder_name(i):
@@ -104,16 +114,21 @@ def _process_shard(shard_path, num_items, num_neg):
 
 def _construct_record(users, items, labels=None):
   feature_dict = {
-    movielens.USER_COLUMN: tf.train.Feature(bytes_list=tf.train.BytesList(value=[bytes(memoryview(users))])),
-    movielens.ITEM_COLUMN: tf.train.Feature(bytes_list=tf.train.BytesList(value=[bytes(memoryview(items))])),
+      movielens.USER_COLUMN: tf.train.Feature(
+          bytes_list=tf.train.BytesList(value=[bytes(memoryview(users))])),
+      movielens.ITEM_COLUMN: tf.train.Feature(
+          bytes_list=tf.train.BytesList(value=[bytes(memoryview(items))])),
   }
   if labels is not None:
-    feature_dict["labels"] = tf.train.Feature(bytes_list=tf.train.BytesList(value=[bytes(memoryview(labels))]))
+    feature_dict["labels"] = tf.train.Feature(
+        bytes_list=tf.train.BytesList(value=[bytes(memoryview(labels))]))
 
-  return tf.train.Example(features=tf.train.Features(feature=feature_dict)).SerializeToString()
+  return tf.train.Example(
+      features=tf.train.Features(feature=feature_dict)).SerializeToString()
+
 
 def sigint_handler(signal, frame):
-  absl_logging.info("Shutting down worker.")
+  log_msg.info("Shutting down worker.")
 
 
 def init_worker():
@@ -143,9 +158,9 @@ def _construct_training_records(
       processes=num_workers, initializer=init_worker)) as pool:
     data_generator = pool.imap_unordered(map_fn, map_args)
     data = [
-      np.zeros(shape=(num_pts,), dtype=np.int32) - 1,
-      np.zeros(shape=(num_pts,), dtype=np.uint16),
-      np.zeros(shape=(num_pts,), dtype=np.int8),
+        np.zeros(shape=(num_pts,), dtype=np.int32) - 1,
+        np.zeros(shape=(num_pts,), dtype=np.uint16),
+        np.zeros(shape=(num_pts,), dtype=np.int8),
     ]
 
     # The carryover data is always first.
@@ -165,7 +180,8 @@ def _construct_training_records(
   assert (num_pts - num_carryover) == start_ind
   assert not np.sum(data[0] == -1)
 
-  record_dir = os.path.join(cache_paths.train_epoch_dir, get_cycle_folder_name(train_cycle))
+  record_dir = os.path.join(cache_paths.train_epoch_dir,
+                            get_cycle_folder_name(train_cycle))
   tf.gfile.MakeDirs(record_dir)
 
   batches_per_file = np.ceil(num_pts / train_batch_size / num_readers)
@@ -180,7 +196,8 @@ def _construct_training_records(
     end_ind = (current_batch_id + 1) * train_batch_size
     if end_ind > num_pts:
       if spillover:
-        output_carryover = [data[i][current_batch_id*train_batch_size:num_pts] for i in range(3)]
+        output_carryover = [data[i][current_batch_id*train_batch_size:num_pts]
+                            for i in range(3)]
         break
       else:
         batches_by_file[current_file_id].append(current_batch_id)
@@ -190,7 +207,7 @@ def _construct_training_records(
   batch_count = 0
   for i in range(num_readers):
     fpath = os.path.join(record_dir, rconst.TRAIN_RECORD_TEMPLATE.format(i))
-    absl_logging.info("Writing {}".format(fpath))
+    log_msg.info("Writing {}".format(fpath))
     with tf.python_io.TFRecordWriter(fpath) as writer:
       for j in batches_by_file[i]:
         start_ind = j * train_batch_size
@@ -204,23 +221,27 @@ def _construct_training_records(
         writer.write(batch_bytes)
         batch_count += 1
 
+
   if spillover:
-    assert num_pts == output_carryover[0].shape[0] + batch_count * train_batch_size
+    written_pts = output_carryover[0].shape[0] + batch_count * train_batch_size
+    if num_pts != written_pts:
+      raise ValueError("Error detected: point counts do not match: {} vs. {}"
+                       .format(num_pts, written_pts))
 
   with tf.gfile.Open(os.path.join(record_dir, rconst.READY_FILE), "w") as f:
     json.dump({
-      "batch_size": train_batch_size,
-      "batch_count": batch_count,
+        "batch_size": train_batch_size,
+        "batch_count": batch_count,
     }, f)
 
-  absl_logging.info("Cycle {} complete. Total time: {:.1f} seconds"
-                    .format(train_cycle, timeit.default_timer() - st))
+  log_msg.info("Cycle {} complete. Total time: {:.1f} seconds"
+               .format(train_cycle, timeit.default_timer() - st))
 
   return output_carryover
 
 
 def _construct_eval_record(cache_paths, eval_batch_size):
-  absl_logging.info("Beginning construction of eval TFRecords file.")
+  log_msg.info("Beginning construction of eval TFRecords file.")
   raw_fpath = cache_paths.eval_raw_file
   intermediate_fpath = cache_paths.eval_record_template_temp
   dest_fpath = cache_paths.eval_record_template.format(eval_batch_size)
@@ -239,8 +260,10 @@ def _construct_eval_record(cache_paths, eval_batch_size):
   n_pad = eval_batch_size - (n_pts % eval_batch_size)
   assert not (n_pts + n_pad) % eval_batch_size
 
-  users = np.concatenate([users, np.zeros(shape=(n_pad,), dtype=np.int32)]).reshape((-1, eval_batch_size))
-  items = np.concatenate([items, np.zeros(shape=(n_pad,), dtype=np.uint16)]).reshape((-1, eval_batch_size))
+  users = np.concatenate([users, np.zeros(shape=(n_pad,), dtype=np.int32)])\
+    .reshape((-1, eval_batch_size))
+  items = np.concatenate([items, np.zeros(shape=(n_pad,), dtype=np.uint16)])\
+    .reshape((-1, eval_batch_size))
 
   num_batches = users.shape[0]
   with tf.python_io.TFRecordWriter(intermediate_fpath) as writer:
@@ -252,7 +275,7 @@ def _construct_eval_record(cache_paths, eval_batch_size):
       writer.write(batch_bytes)
   tf.gfile.Copy(intermediate_fpath, dest_fpath)
   tf.gfile.Remove(intermediate_fpath)
-  absl_logging.info("Eval TFRecords file successfully constructed.")
+  log_msg.info("Eval TFRecords file successfully constructed.")
 
 
 def _generation_loop(
@@ -260,11 +283,12 @@ def _generation_loop(
     num_items, spillover, epochs_per_cycle, train_batch_size, eval_batch_size):
   # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int) -> None
 
-  absl_logging.info("Signaling that I am alive.")
+  log_msg.info("Signaling that I am alive.")
   with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
     f.write("Generation subproc has started.")
+  atexit.register(tf.gfile.Remove, filename=cache_paths.subproc_alive)
 
-  absl_logging.info("Entering generation loop.")
+  log_msg.info("Entering generation loop.")
   tf.gfile.MakeDirs(cache_paths.train_epoch_dir)
 
   training_shards = [os.path.join(cache_paths.train_shard_subdir, i) for i in
@@ -274,12 +298,14 @@ def _generation_loop(
   # limit is not respected for this invocation
   train_cycle = 0
   carryover = _construct_training_records(
-      train_cycle=train_cycle, num_workers=multiprocessing.cpu_count(), cache_paths=cache_paths,
-      num_readers=num_readers, num_neg=num_neg, num_train_positives=num_train_positives, num_items=num_items,
+      train_cycle=train_cycle, num_workers=multiprocessing.cpu_count(),
+      cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
+      num_train_positives=num_train_positives, num_items=num_items,
       epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
       training_shards=training_shards, spillover=spillover, carryover=None)
 
-  _construct_eval_record(cache_paths=cache_paths, eval_batch_size=eval_batch_size)
+  _construct_eval_record(cache_paths=cache_paths,
+                         eval_batch_size=eval_batch_size)
 
   wait_count = 0
   start_time = time.time()
@@ -291,26 +317,29 @@ def _generation_loop(
       time.sleep(sleep_time)
 
       if (wait_count % 10) == 0:
-        absl_logging.info("Waited {} times for data to be consumed.".format(wait_count))
+        log_msg.info("Waited {} times for data to be consumed."
+                     .format(wait_count))
 
       if time.time() - start_time > rconst.TIMEOUT_SECONDS:
-        absl_logging.info("Waited more than {} seconds. Concluding that this "
-                          "process is orphaned and exiting gracefully."
-                          .format(rconst.TIMEOUT_SECONDS))
+        log_msg.info("Waited more than {} seconds. Concluding that this "
+                     "process is orphaned and exiting gracefully."
+                     .format(rconst.TIMEOUT_SECONDS))
         sys.exit()
 
       continue
 
     train_cycle += 1
     carryover = _construct_training_records(
-        train_cycle=train_cycle, num_workers=num_workers, cache_paths=cache_paths,
-        num_readers=num_readers, num_neg=num_neg, num_train_positives=num_train_positives, num_items=num_items,
+        train_cycle=train_cycle, num_workers=num_workers,
+        cache_paths=cache_paths, num_readers=num_readers, num_neg=num_neg,
+        num_train_positives=num_train_positives, num_items=num_items,
         epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
-        training_shards=training_shards, spillover=spillover, carryover=carryover)
+        training_shards=training_shards, spillover=spillover,
+        carryover=carryover)
 
     wait_count = 0
     start_time = time.time()
-
+    gc.collect()
 
 
 def main(_):
@@ -323,8 +352,11 @@ def main(_):
   log_file = os.path.join(cache_paths.data_dir, log_file_name)
   if log_file.startswith("gs://") and redirect_logs:
     fallback_log_file = os.path.join(tempfile.gettempdir(), log_file_name)
-    print("Unable to log to {}. Falling back to {}".format(log_file, fallback_log_file))
+    print("Unable to log to {}. Falling back to {}"
+          .format(log_file, fallback_log_file))
     log_file = fallback_log_file
+
+  atexit.register(log_msg, msg="Shutting down generation subprocess.")
 
   # This server is generally run in a subprocess.
   if redirect_logs:
@@ -334,7 +366,8 @@ def main(_):
     stderr = log_stream
   try:
     if redirect_logs:
-      absl_logging.get_absl_logger().addHandler(hdlr=logging.StreamHandler(stream=stdout))
+      absl_logging.get_absl_logger().addHandler(
+          hdlr=logging.StreamHandler(stream=stdout))
       sys.stdout = stdout
       sys.stderr = stderr
       print("Logs redirected.")
@@ -371,36 +404,40 @@ def define_flags():
   flags.DEFINE_integer(name="num_workers", default=multiprocessing.cpu_count(),
                        help="Size of the negative generation worker pool.")
   flags.DEFINE_string(name="data_dir", default=None,
-                      help="The root data_dir. (used to construct cache paths.)")
+                      help="The data root. (used to construct cache paths.)")
   flags.DEFINE_string(name="cache_id", default=None,
                       help="The cache_id generated in the main process.")
   flags.DEFINE_integer(name="num_readers", default=4,
-                      help="Number of reader datasets in training. This sets"
-                           "how the epoch files are sharded.")
+                       help="Number of reader datasets in training. This sets"
+                            "how the epoch files are sharded.")
   flags.DEFINE_integer(name="num_neg", default=None,
                        help="The Number of negative instances to pair with a "
                             "positive instance.")
   flags.DEFINE_integer(name="num_train_positives", default=None,
-                       help="The number of positive examples in the training set.")
+                       help="The number of positive training examples.")
   flags.DEFINE_integer(name="num_items", default=None,
                        help="Number of items from which to select negatives.")
   flags.DEFINE_integer(name="epochs_per_cycle", default=1,
                        help="The number of epochs of training data to produce"
                             "at a time.")
   flags.DEFINE_integer(name="train_batch_size", default=None,
-                       help="The batch size with which training TFRecords will be chunked.")
+                       help="The batch size with which training TFRecords will "
+                            "be chunked.")
   flags.DEFINE_integer(name="eval_batch_size", default=None,
-                       help="The batch size with which evaluation TFRecords will be chunked.")
+                       help="The batch size with which evaluation TFRecords "
+                            "will be chunked.")
   flags.DEFINE_boolean(
       name="spillover", default=True,
       help="If a complete batch cannot be provided, return an empty batch and "
            "start the next epoch from a non-empty buffer. This guarantees "
            "fixed batch sizes.")
   flags.DEFINE_boolean(name="redirect_logs", default=False,
-                       help="Catch logs and write them to a file. (Useful if this is run as a subprocess)")
+                       help="Catch logs and write them to a file. "
+                            "(Useful if this is run as a subprocess)")
 
   flags.mark_flags_as_required(
-      ["data_dir", "cache_id", "num_neg", "num_train_positives", "num_items", "train_batch_size", "eval_batch_size"])
+      ["data_dir", "cache_id", "num_neg", "num_train_positives", "num_items",
+       "train_batch_size", "eval_batch_size"])
 
 
 
