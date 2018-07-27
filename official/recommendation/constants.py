@@ -22,8 +22,9 @@ import time
 class Paths(object):
   def __init__(self, data_dir, cache_id=None):
     self.cache_id = cache_id or int(time.time())
+    self.data_dir = data_dir
     self.cache_root = os.path.join(
-        data_dir, "{}_ncf_recommendation_cache".format(self.cache_id))
+        self.data_dir, "{}_ncf_recommendation_cache".format(self.cache_id))
     self.train_shard_subdir = os.path.join(self.cache_root,
                                            "raw_training_shards")
     self.train_shard_template = os.path.join(self.train_shard_subdir,
@@ -35,8 +36,6 @@ class Paths(object):
                                                   "eval_records.temp")
     self.eval_record_template = os.path.join(
         self.eval_data_subdir, "padded_eval_batch_size_{}.tfrecords")
-    self.gen_subproc_log_dir = os.path.join(self.cache_root,
-                                            "data_generation_logs")
 
 
 APPROX_PTS_PER_TRAIN_SHARD = 128000

@@ -26,6 +26,7 @@ import os
 import pickle
 import signal
 import sys
+import tempfile
 import time
 import timeit
 import traceback
@@ -313,11 +314,13 @@ def main(_):
   cache_paths = rconst.Paths(
       data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
 
-  tf.gfile.MakeDirs(cache_paths.gen_subproc_log_dir)
 
-  # TODO(robieta): preserve logs
-  # log_file = os.path.join(cache_paths.gen_subproc_log_dir, "data_gen_proc.log")
-  log_file = "/tmp/ncf_gen.log"
+  log_file_name = "data_gen_proc_{}.log".format(cache_paths.cache_id)
+  log_file = os.path.join(cache_paths.data_dir, log_file_name)
+  if log_file.startswith("gs://"):
+    fallback_log_file = os.path.join(tempfile.gettempdir(), log_file_name)
+    print("Unable to log to {}. Falling back to {}".format(log_file, fallback_log_file))
+    log_file = fallback_log_file
 
   # This server is generally run in a subprocess.
   if redirect_logs:

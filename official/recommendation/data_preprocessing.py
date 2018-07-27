@@ -496,26 +496,6 @@ def make_pred_input_fn(ncf_dataset):
 
     dataset = dataset.map(_deserialize, num_parallel_calls=4)
 
-    # n_pts = ncf_dataset.test_data[1].shape[0]
-    # n_pad = batch_size - (n_pts % batch_size)
-    # assert not (n_pts + n_pad) % batch_size
-    # users = np.concatenate([
-    #   ncf_dataset.test_data[0][movielens.USER_COLUMN], np.zeros((n_pad,))
-    # ]).astype(np.int64).reshape((-1, batch_size))
-    #
-    # items = np.concatenate([
-    #   ncf_dataset.test_data[0][movielens.ITEM_COLUMN], np.zeros((n_pad,))
-    # ]).astype(np.int64).reshape((-1, batch_size))
-    #
-    # mask = np.ones(shape=users.shape, dtype=np.int32)
-    # mask[-1, -n_pad:] = 0
-    #
-    # dataset = tf.data.Dataset.from_tensors({
-    #   movielens.USER_COLUMN: users,
-    #   movielens.ITEM_COLUMN: items,
-    #   "mask": mask,
-    # }).apply(tf.contrib.data.unbatch())
-
     return dataset.prefetch(16)
 
   return input_fn
