@@ -18,6 +18,8 @@ This module holds onto the Dataframe generated in prepare.py, and checks that
 what comes out of the GRPC data server pipeline matches that Dataframe.
 """
 
+raise NotImplementedError("Temporarily kept for reference.")
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
