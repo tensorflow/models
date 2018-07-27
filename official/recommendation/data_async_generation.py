@@ -260,6 +260,10 @@ def _generation_loop(
     num_items, spillover, epochs_per_cycle, train_batch_size, eval_batch_size):
   # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int) -> None
 
+  absl_logging.info("Signaling that I am alive.")
+  with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
+    f.write("Generation subproc has started.")
+
   absl_logging.info("Entering generation loop.")
   tf.gfile.MakeDirs(cache_paths.train_epoch_dir)
 

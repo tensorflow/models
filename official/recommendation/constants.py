@@ -36,6 +36,7 @@ class Paths(object):
                                                   "eval_records.temp")
     self.eval_record_template = os.path.join(
         self.eval_data_subdir, "padded_eval_batch_size_{}.tfrecords")
+    self.subproc_alive = os.path.join(self.cache_root, "subproc.alive")
 
 
 APPROX_PTS_PER_TRAIN_SHARD = 128000

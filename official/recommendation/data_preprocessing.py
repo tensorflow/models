@@ -403,6 +403,10 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
 
 def make_train_input_fn(ncf_dataset):
   # type: (NCFDataset) -> (typing.Callable, str, int)
+  if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
+    raise ValueError("Generation subprocess did not start correctly. Data will "
+                     "not be available; exiting to avoid waiting forever.")
+
   train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
   while not tf.gfile.Exists(train_epoch_dir):
     time.sleep(1)
