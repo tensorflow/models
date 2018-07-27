@@ -128,7 +128,7 @@ def _construct_record(users, items, labels=None):
 
 
 def sigint_handler(signal, frame):
-  log_msg.info("Shutting down worker.")
+  log_msg("Shutting down worker.")
 
 
 def init_worker():
@@ -207,7 +207,7 @@ def _construct_training_records(
   batch_count = 0
   for i in range(num_readers):
     fpath = os.path.join(record_dir, rconst.TRAIN_RECORD_TEMPLATE.format(i))
-    log_msg.info("Writing {}".format(fpath))
+    log_msg("Writing {}".format(fpath))
     with tf.python_io.TFRecordWriter(fpath) as writer:
       for j in batches_by_file[i]:
         start_ind = j * train_batch_size
@@ -234,14 +234,14 @@ def _construct_training_records(
         "batch_count": batch_count,
     }, f)
 
-  log_msg.info("Cycle {} complete. Total time: {:.1f} seconds"
+  log_msg("Cycle {} complete. Total time: {:.1f} seconds"
                .format(train_cycle, timeit.default_timer() - st))
 
   return output_carryover
 
 
 def _construct_eval_record(cache_paths, eval_batch_size):
-  log_msg.info("Beginning construction of eval TFRecords file.")
+  log_msg("Beginning construction of eval TFRecords file.")
   raw_fpath = cache_paths.eval_raw_file
   intermediate_fpath = cache_paths.eval_record_template_temp
   dest_fpath = cache_paths.eval_record_template.format(eval_batch_size)
@@ -275,7 +275,7 @@ def _construct_eval_record(cache_paths, eval_batch_size):
       writer.write(batch_bytes)
   tf.gfile.Copy(intermediate_fpath, dest_fpath)
   tf.gfile.Remove(intermediate_fpath)
-  log_msg.info("Eval TFRecords file successfully constructed.")
+  log_msg("Eval TFRecords file successfully constructed.")
 
 
 def _generation_loop(
@@ -283,12 +283,12 @@ def _generation_loop(
     num_items, spillover, epochs_per_cycle, train_batch_size, eval_batch_size):
   # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int) -> None
 
-  log_msg.info("Signaling that I am alive.")
+  log_msg("Signaling that I am alive.")
   with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
     f.write("Generation subproc has started.")
   atexit.register(tf.gfile.Remove, filename=cache_paths.subproc_alive)
 
-  log_msg.info("Entering generation loop.")
+  log_msg("Entering generation loop.")
   tf.gfile.MakeDirs(cache_paths.train_epoch_dir)
 
   training_shards = [os.path.join(cache_paths.train_shard_subdir, i) for i in
@@ -317,11 +317,11 @@ def _generation_loop(
       time.sleep(sleep_time)
 
       if (wait_count % 10) == 0:
-        log_msg.info("Waited {} times for data to be consumed."
+        log_msg("Waited {} times for data to be consumed."
                      .format(wait_count))
 
       if time.time() - start_time > rconst.TIMEOUT_SECONDS:
-        log_msg.info("Waited more than {} seconds. Concluding that this "
+        log_msg("Waited more than {} seconds. Concluding that this "
                      "process is orphaned and exiting gracefully."
                      .format(rconst.TIMEOUT_SECONDS))
         sys.exit()
