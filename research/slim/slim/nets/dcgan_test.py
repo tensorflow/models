@@ -21,7 +21,7 @@ from __future__ import print_function
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-from nets import dcgan
+from slim.nets import dcgan
 
 
 class DCGANTest(tf.test.TestCase):

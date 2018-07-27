@@ -61,7 +61,7 @@ setup(name='object_detection',
       description='Tensorflow Object Detection Library',
       entry_points={
               'console_scripts': [
-                  'model_builder_test = object_detection.builders.model_builder_test:main',
+                  'model_builder_test = object_detection.builders.model_builder_test:tf.test.main',
               ],
           }
       )

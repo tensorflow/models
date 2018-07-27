@@ -22,8 +22,8 @@ from object_detection.models import feature_map_generators
 from object_detection.utils import context_manager
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-from tensorflow.contrib.slim.nets.mobilenet import mobilenet
-from tensorflow.contrib.slim.nets.mobilenet import mobilenet_v2
+from slim.nets.mobilenet import mobilenet
+from slim.nets.mobilenet import mobilenet_v2
 
 slim = tf.contrib.slim
 

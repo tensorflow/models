@@ -19,9 +19,9 @@ from __future__ import division
 from __future__ import print_function
 import copy
 import tensorflow as tf
-from nets.mobilenet import conv_blocks as ops
-from nets.mobilenet import mobilenet
-from nets.mobilenet import mobilenet_v2
+from slim.nets.mobilenet import conv_blocks as ops
+from slim.nets.mobilenet import mobilenet
+from slim.nets.mobilenet import mobilenet_v2
 
 
 slim = tf.contrib.slim

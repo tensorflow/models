@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from nets import cyclegan
+from slim.nets import cyclegan
 
 
 # TODO(joelshor): Add a test to check generator endpoints.

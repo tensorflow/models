@@ -24,7 +24,7 @@ from object_detection.models import feature_map_generators
 from object_detection.utils import context_manager
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-from tensorflow.contrib.slim.nets import resnet_v1
+from slim.nets import resnet_v1
 
 slim = tf.contrib.slim
 
