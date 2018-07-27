@@ -38,12 +38,8 @@ from absl import logging as absl_logging
 from absl import flags
 
 from official.datasets import movielens
+from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
-
-
-_CYCLES_TO_BUFFER = 3
-READY_FILE = "ready.json"
-RECORD_FILE_PREFIX = "training_records_"
 
 
 def get_cycle_folder_name(i):
@@ -105,12 +101,15 @@ def _process_shard(shard_path, num_items, num_neg):
   return users_out, items_out, labels_out
 
 
-def _construct_record(users, items, labels):
-  return tf.train.Example(features=tf.train.Features(feature={
-    movielens.USER_COLUMN: tf.train.Feature(int64_list=tf.train.Int64List(value=users.astype(np.int64))),
-    movielens.ITEM_COLUMN: tf.train.Feature(int64_list=tf.train.Int64List(value=items.astype(np.int64))),
-    "labels": tf.train.Feature(int64_list=tf.train.Int64List(value=labels.astype(np.int64))),
-  })).SerializeToString()
+def _construct_record(users, items, labels=None):
+  feature_dict = {
+    movielens.USER_COLUMN: tf.train.Feature(bytes_list=tf.train.BytesList(value=[bytes(memoryview(users))])),
+    movielens.ITEM_COLUMN: tf.train.Feature(bytes_list=tf.train.BytesList(value=[bytes(memoryview(items))])),
+  }
+  if labels is not None:
+    feature_dict["labels"] = tf.train.Feature(bytes_list=tf.train.BytesList(value=[bytes(memoryview(labels))]))
+
+  return tf.train.Example(features=tf.train.Features(feature=feature_dict)).SerializeToString()
 
 def sigint_handler(signal, frame):
   absl_logging.info("Shutting down worker.")
@@ -120,132 +119,230 @@ def init_worker():
   signal.signal(signal.SIGINT, sigint_handler)
 
 
-def generation_loop(num_workers, shard_dir, output_root, num_readers, num_neg,
-                    num_items, spillover, epochs_per_cycle, batch_size):
-  training_shards = [os.path.join(shard_dir, i) for i in tf.gfile.ListDirectory(shard_dir)]
-  training_shards = [i for i in training_shards
-                     if not tf.gfile.IsDirectory(i)]
+def _construct_training_records(
+    train_cycle, num_workers, cache_paths, num_readers, num_neg,
+    num_train_positives, num_items, epochs_per_cycle, train_batch_size,
+    training_shards, spillover, carryover=None):
+
+  st = timeit.default_timer()
+  num_workers = min([num_workers, len(training_shards) * epochs_per_cycle])
+  carryover = carryover or [
+      np.zeros((0,), dtype=np.int32),
+      np.zeros((0,), dtype=np.uint16),
+      np.zeros((0,), dtype=np.int8),
+  ]
+  num_carryover = carryover[0].shape[0]
+  num_pts = num_carryover + num_train_positives * (1 + num_neg)
 
   map_args = [i for i in training_shards * epochs_per_cycle]
   map_fn = functools.partial(_process_shard, num_neg=num_neg,
                              num_items=num_items)
 
-  absl_logging.info("Entering generation loop.")
-  tf.gfile.MakeDirs(output_root)
-
   with contextlib.closing(multiprocessing.Pool(
       processes=num_workers, initializer=init_worker)) as pool:
-    empty = (
-      np.zeros((0,), dtype=np.int32),
-      np.zeros((0,), dtype=np.uint16),
-      np.zeros((0,), dtype=np.int8),
-    )
-    old_results = empty
+    data_generator = pool.imap_unordered(map_fn, map_args)
+    data = [
+      np.zeros(shape=(num_pts,), dtype=np.int32) - 1,
+      np.zeros(shape=(num_pts,), dtype=np.uint16),
+      np.zeros(shape=(num_pts,), dtype=np.int8),
+    ]
 
-    cycle_number = 0
-    while True:
-      cycle_number += 1
-      gen_wait_counter = 0
-      while len(tf.gfile.ListDirectory(output_root)) > _CYCLES_TO_BUFFER:
-        time.sleep(1)
-        gen_wait_counter += 1
-        if gen_wait_counter ** 0.5 == int(gen_wait_counter ** 0.5):
-          absl_logging.info("Waiting for train loop to consume data. Waited {} "
-                            "times.".format(gen_wait_counter))
-
-      absl_logging.info("Beginning cycle {}".format(cycle_number))
-      st = timeit.default_timer()
-
-      residual = old_results[0].shape[0]
-      results = [old_results] + pool.map(map_fn, map_args)
-      result_arrays = [
-        np.concatenate([j[i] for j in results]) for i in range(3)
-      ]
-
-      n = result_arrays[0].shape[0]
-      shuffle_indices = np.random.permutation(n - residual) + residual
+    # The carryover data is always first.
+    for i in range(3):
+      data[i][:num_carryover] = carryover[i]
+    index_destinations = np.random.permutation(
+        num_train_positives * (1 + num_neg)) + num_carryover
+    start_ind = 0
+    for data_segment in data_generator:
+      n_in_segment = data_segment[0].shape[0]
+      dest = index_destinations[start_ind:start_ind + n_in_segment]
+      start_ind += n_in_segment
       for i in range(3):
-        result_arrays[i][residual:] = result_arrays[i][shuffle_indices]
+        data[i][dest] = data_segment[i]
 
-      batches = []
-      for i in range(int(np.ceil(n / batch_size))):
-        batches.append((
-          result_arrays[0][i * batch_size: (i + 1) * batch_size],
-          result_arrays[1][i * batch_size: (i + 1) * batch_size],
-          result_arrays[2][i * batch_size: (i + 1) * batch_size]
-        ))
+  # Check that no points were dropped.
+  assert (num_pts - num_carryover) == start_ind
+  assert not np.sum(data[0] == -1)
 
-      old_results = empty
-      if batches[-1][0].shape[0] < batch_size and spillover:
-        old_results = batches.pop()
+  record_dir = os.path.join(cache_paths.train_epoch_dir, get_cycle_folder_name(train_cycle))
+  tf.gfile.MakeDirs(record_dir)
 
-      absl_logging.info("Arrays constructed. Running time: {:.1f} seconds"
-                        .format(timeit.default_timer() - st))
+  batches_per_file = np.ceil(num_pts / train_batch_size / num_readers)
+  current_file_id = -1
+  current_batch_id = -1
+  batches_by_file = [[] for _ in range(num_readers)]
 
-      records = pool.starmap(_construct_record, batches)
+  while True:
+    current_batch_id += 1
+    if (current_batch_id % batches_per_file) == 0:
+      current_file_id += 1
+    end_ind = (current_batch_id + 1) * train_batch_size
+    if end_ind > num_pts:
+      if spillover:
+        output_carryover = [data[i][current_batch_id*train_batch_size:num_pts] for i in range(3)]
+        break
+      else:
+        batches_by_file[current_file_id].append(current_batch_id)
+        break
+    batches_by_file[current_file_id].append(current_batch_id)
 
-      record_shards = [[] for _ in range(num_readers)]
-      for i, record_bytes in enumerate(records):
-        record_shards[i % num_readers].append(record_bytes)
+  batch_count = 0
+  for i in range(num_readers):
+    fpath = os.path.join(record_dir, rconst.TRAIN_RECORD_TEMPLATE.format(i))
+    absl_logging.info("Writing {}".format(fpath))
+    with tf.python_io.TFRecordWriter(fpath) as writer:
+      for j in batches_by_file[i]:
+        start_ind = j * train_batch_size
+        end_ind = start_ind + train_batch_size
+        batch_bytes = _construct_record(
+            users=data[0][start_ind:end_ind],
+            items=data[1][start_ind:end_ind],
+            labels=data[2][start_ind:end_ind],
+        )
 
-      record_dir = os.path.join(output_root, get_cycle_folder_name(cycle_number))
-      tf.gfile.MakeDirs(record_dir)
-      batch_count = 0
-      for i, shard_byte_list in enumerate(record_shards):
-        fpath = os.path.join(record_dir, RECORD_FILE_PREFIX + str(i).zfill(5))
-        absl_logging.info("Writing {}".format(fpath))
-        with tf.python_io.TFRecordWriter(fpath) as writer:
-          for example in shard_byte_list:
-            writer.write(example)
-            batch_count += 1
+        writer.write(batch_bytes)
+        batch_count += 1
 
-      with tf.gfile.Open(os.path.join(record_dir, READY_FILE), "w") as f:
-        json.dump({
-          "batch_size": batch_size,
-          "batch_count": batch_count,
-        }, f)
+  if spillover:
+    assert num_pts == output_carryover[0].shape[0] + batch_count * train_batch_size
 
-      absl_logging.info("Cycle {} complete. Total time: {:.1f} seconds"
-                        .format(cycle_number, timeit.default_timer() - st))
+  with tf.gfile.Open(os.path.join(record_dir, rconst.READY_FILE), "w") as f:
+    json.dump({
+      "batch_size": train_batch_size,
+      "batch_count": batch_count,
+    }, f)
+
+  absl_logging.info("Cycle {} complete. Total time: {:.1f} seconds"
+                    .format(train_cycle, timeit.default_timer() - st))
+
+  return output_carryover
+
+
+def _construct_eval_record(cache_paths, eval_batch_size):
+  absl_logging.info("Beginning construction of eval TFRecords file.")
+  raw_fpath = cache_paths.eval_raw_file
+  intermediate_fpath = cache_paths.eval_record_template_temp
+  dest_fpath = cache_paths.eval_record_template.format(eval_batch_size)
+  with tf.gfile.Open(raw_fpath, "rb") as f:
+    eval_data = pickle.load(f)
+
+  users = eval_data[0][movielens.USER_COLUMN]
+  items = eval_data[0][movielens.ITEM_COLUMN]
+  assert users.shape == items.shape
+  # eval_data[1] is the labels, but during evaluation they are infered as they
+  # have a set structure. They are included the the data artifact for debug
+  # purposes.
+
+  # This packaging assumes that the caller knows to drop the padded values.
+  n_pts = users.shape[0]
+  n_pad = eval_batch_size - (n_pts % eval_batch_size)
+  assert not (n_pts + n_pad) % eval_batch_size
+
+  users = np.concatenate([users, np.zeros(shape=(n_pad,), dtype=np.int32)]).reshape((-1, eval_batch_size))
+  items = np.concatenate([items, np.zeros(shape=(n_pad,), dtype=np.uint16)]).reshape((-1, eval_batch_size))
+
+  num_batches = users.shape[0]
+  with tf.python_io.TFRecordWriter(intermediate_fpath) as writer:
+    for i in range(num_batches):
+      batch_bytes = _construct_record(
+          users=users[i, :],
+          items=items[i, :]
+      )
+      writer.write(batch_bytes)
+  tf.gfile.Copy(intermediate_fpath, dest_fpath)
+  tf.gfile.Remove(intermediate_fpath)
+  absl_logging.info("Eval TFRecords file successfully constructed.")
+
+
+def _generation_loop(
+    num_workers, cache_paths, num_readers, num_neg, num_train_positives,
+    num_items, spillover, epochs_per_cycle, train_batch_size, eval_batch_size):
+  # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int) -> None
+
+  absl_logging.info("Entering generation loop.")
+  tf.gfile.MakeDirs(cache_paths.train_epoch_dir)
+
+  training_shards = [os.path.join(cache_paths.train_shard_subdir, i) for i in
+                     tf.gfile.ListDirectory(cache_paths.train_shard_subdir)]
+
+  # Training blocks on the creation of the first epoch, so the num_workers
+  # limit is not respected for this invocation
+  train_cycle = 0
+  carryover = _construct_training_records(
+      train_cycle=train_cycle, num_workers=multiprocessing.cpu_count(), cache_paths=cache_paths,
+      num_readers=num_readers, num_neg=num_neg, num_train_positives=num_train_positives, num_items=num_items,
+      epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
+      training_shards=training_shards, spillover=spillover, carryover=None)
+
+  _construct_eval_record(cache_paths=cache_paths, eval_batch_size=eval_batch_size)
+
+  wait_count = 0
+  start_time = time.time()
+  while True:
+    ready_epochs = tf.gfile.ListDirectory(cache_paths.train_epoch_dir)
+    if len(ready_epochs) >= rconst.CYCLES_TO_BUFFER:
+      wait_count += 1
+      sleep_time = max([0, wait_count * 5 - (time.time() - start_time)])
+      time.sleep(sleep_time)
+
+      if (wait_count % 10) == 0:
+        absl_logging.info("Waited {} times for data to be consumed.".format(wait_count))
+
+      if time.time() - start_time > rconst.TIMEOUT_SECONDS:
+        absl_logging.info("Waited more than {} seconds. Concluding that this "
+                          "process is orphaned and exiting gracefully."
+                          .format(rconst.TIMEOUT_SECONDS))
+        sys.exit()
+
+      continue
+
+    train_cycle += 1
+    carryover = _construct_training_records(
+        train_cycle=train_cycle, num_workers=num_workers, cache_paths=cache_paths,
+        num_readers=num_readers, num_neg=num_neg, num_train_positives=num_train_positives, num_items=num_items,
+        epochs_per_cycle=epochs_per_cycle, train_batch_size=train_batch_size,
+        training_shards=training_shards, spillover=spillover, carryover=carryover)
+
+    wait_count = 0
+    start_time = time.time()
+
 
 
 def main(_):
-  num_workers = flags.FLAGS.num_workers
-  shard_dir = flags.FLAGS.shard_dir
-  output_root = flags.FLAGS.output_root
-  num_readers = flags.FLAGS.num_readers
-  num_neg = flags.FLAGS.num_neg
-  num_items = flags.FLAGS.num_items
-  spillover = flags.FLAGS.spillover
-  epochs_per_cycle = flags.FLAGS.epochs_per_cycle
-  batch_size = flags.FLAGS.batch_size
-  log_dir = os.path.join(shard_dir, "logs")
-  tf.gfile.MakeDirs(log_dir)
+  redirect_logs = flags.FLAGS.redirect_logs
+  cache_paths = rconst.Paths(
+      data_dir=flags.FLAGS.data_dir, cache_id=flags.FLAGS.cache_id)
 
-  if tf.gfile.Exists(output_root):
-    tf.gfile.DeleteRecursively(output_root)
+  tf.gfile.MakeDirs(cache_paths.gen_subproc_log_dir)
+
+  # TODO(robieta): preserve logs
+  # log_file = os.path.join(cache_paths.gen_subproc_log_dir, "data_gen_proc.log")
+  log_file = "/tmp/ncf_gen.log"
 
   # This server is generally run in a subprocess.
-  print("Redirecting stdout and stderr to files in {}".format(log_dir))
-  log_stream = open("/tmp/ncf_data_gen_proc.log", "wt")
-  stdout = log_stream
-  stderr = log_stream
+  if redirect_logs:
+    print("Redirecting stdout and stderr to files in {}".format(cache_paths.gen_subproc_log_dir))
+    log_stream = open(log_file, "wt")  # Note: not tf.gfile.Open().
+    stdout = log_stream
+    stderr = log_stream
   try:
-    absl_logging.get_absl_logger().addHandler(hdlr=logging.StreamHandler(stream=stdout))
-    sys.stdout = stdout
-    sys.stderr = stderr
-    print("Logs redirected.")
+    if redirect_logs:
+      absl_logging.get_absl_logger().addHandler(hdlr=logging.StreamHandler(stream=stdout))
+      sys.stdout = stdout
+      sys.stderr = stderr
+      print("Logs redirected.")
     try:
-      generation_loop(
-          num_workers=num_workers,
-          shard_dir=shard_dir,
-          output_root=output_root,
-          num_readers=num_readers,
-          num_neg=num_neg,
-          num_items=num_items,
-          spillover=spillover,
-          epochs_per_cycle=epochs_per_cycle,
-          batch_size=batch_size,
+      _generation_loop(
+          num_workers=flags.FLAGS.num_workers,
+          cache_paths=cache_paths,
+          num_readers=flags.FLAGS.num_readers,
+          num_neg=flags.FLAGS.num_neg,
+          num_train_positives=flags.FLAGS.num_train_positives,
+          num_items=flags.FLAGS.num_items,
+          spillover=flags.FLAGS.spillover,
+          epochs_per_cycle=flags.FLAGS.epochs_per_cycle,
+          train_batch_size=flags.FLAGS.train_batch_size,
+          eval_batch_size=flags.FLAGS.eval_batch_size,
       )
     except:
       traceback.print_exc()
@@ -253,7 +350,8 @@ def main(_):
   finally:
     sys.stdout.flush()
     sys.stderr.flush()
-    log_stream.close()
+    if redirect_logs:
+      log_stream.close()
 
 
 def define_flags():
@@ -265,32 +363,37 @@ def define_flags():
   """
   flags.DEFINE_integer(name="num_workers", default=multiprocessing.cpu_count(),
                        help="Size of the negative generation worker pool.")
-  flags.DEFINE_string(name="shard_dir", default=None,
-                      help="Location of the sharded test positives.")
-  flags.DEFINE_string(name="output_root", default=None,
-                      help="The root directory where training data shards "
-                           "should be written.")
+  flags.DEFINE_string(name="data_dir", default=None,
+                      help="The root data_dir. (used to construct cache paths.)")
+  flags.DEFINE_string(name="cache_id", default=None,
+                      help="The cache_id generated in the main process.")
   flags.DEFINE_integer(name="num_readers", default=4,
                       help="Number of reader datasets in training. This sets"
                            "how the epoch files are sharded.")
   flags.DEFINE_integer(name="num_neg", default=None,
                        help="The Number of negative instances to pair with a "
                             "positive instance.")
+  flags.DEFINE_integer(name="num_train_positives", default=None,
+                       help="The number of positive examples in the training set.")
   flags.DEFINE_integer(name="num_items", default=None,
                        help="Number of items from which to select negatives.")
   flags.DEFINE_integer(name="epochs_per_cycle", default=1,
                        help="The number of epochs of training data to produce"
                             "at a time.")
-  flags.DEFINE_integer(name="batch_size", default=None,
-                       help="The batch size with which TFRecords will be chunked.")
+  flags.DEFINE_integer(name="train_batch_size", default=None,
+                       help="The batch size with which training TFRecords will be chunked.")
+  flags.DEFINE_integer(name="eval_batch_size", default=None,
+                       help="The batch size with which evaluation TFRecords will be chunked.")
   flags.DEFINE_boolean(
       name="spillover", default=True,
       help="If a complete batch cannot be provided, return an empty batch and "
            "start the next epoch from a non-empty buffer. This guarantees "
            "fixed batch sizes.")
+  flags.DEFINE_boolean(name="redirect_logs", default=False,
+                       help="Catch logs and write them to a file. (Useful if this is run as a subprocess)")
 
   flags.mark_flags_as_required(
-      ["shard_dir", "output_root", "num_neg", "num_items", "batch_size"])
+      ["data_dir", "cache_id", "num_neg", "num_train_positives", "num_items", "train_batch_size", "eval_batch_size"])
 
 
 

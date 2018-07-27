@@ -22,6 +22,7 @@ from __future__ import division
 from __future__ import print_function
 
 import contextlib
+import gc
 import heapq
 import math
 import multiprocessing
@@ -37,10 +38,9 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.datasets import movielens
+from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
 from official.recommendation import neumf_model
-# from official.recommendation.data_server import pipeline
-# from official.recommendation.data_server import prepare
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
@@ -100,7 +100,8 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   # Reshape the predicted scores and each user takes one row
   prediction_with_padding = np.concatenate(prediction_batches, axis=0)
   predicted_scores_by_user = prediction_with_padding[
-    np.where(prediction_with_padding >= 0)].reshape(ncf_dataset.num_users, -1)
+    :ncf_dataset.num_users * (1 + rconst.NUMBER_EVAL_NEGATIVES)]\
+    .reshape(ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
 
@@ -166,6 +167,7 @@ def construct_estimator(num_gpus, model_dir, params, batch_size, eval_batch_size
 
   distribution = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
   run_config = tf.estimator.RunConfig(train_distribute=distribution)
+  params["eval_batch_size"] = eval_batch_size
   estimator = tf.estimator.Estimator(model_fn=neumf_model.neumf_model_fn,
                                      model_dir=model_dir, config=run_config,
                                      params=params)
@@ -189,6 +191,7 @@ def run_ncf(_):
   ncf_dataset = data_preprocessing.instantiate_pipeline(
       dataset=FLAGS.dataset, data_dir=FLAGS.data_dir,
       batch_size=batch_size,
+      eval_batch_size=eval_batch_size,
       num_neg=FLAGS.num_neg,
       epochs_per_cycle=FLAGS.epochs_between_evals)
 
@@ -230,7 +233,7 @@ def run_ncf(_):
       run_params=run_params,
       test_id=FLAGS.benchmark_test_id)
 
-  approx_train_steps = int(ncf_dataset.num_train_pts // FLAGS.batch_size)
+  approx_train_steps = int(ncf_dataset.num_train_positives * (1 + FLAGS.num_neg) // FLAGS.batch_size)
   pred_input_fn = data_preprocessing.make_pred_input_fn(ncf_dataset=ncf_dataset)
 
   total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
@@ -241,7 +244,7 @@ def run_ncf(_):
 
     # Train the model
     train_input_fn, train_record_dir, batch_count = data_preprocessing.make_train_input_fn(
-        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir)
+        ncf_dataset=ncf_dataset)
 
     if np.abs(approx_train_steps - batch_count) > 1:
       tf.logging.warning(
@@ -262,6 +265,10 @@ def run_ncf(_):
     tf.logging.info(
         "Iteration {}: HR = {:.4f}, NDCG = {:.4f}".format(
             cycle_index + 1, hr, ndcg))
+
+    # Some of the NumPy vector math can be quite large and likes to stay in
+    # memory for a while.
+    gc.collect()
 
     # If some evaluation threshold is met
     if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):

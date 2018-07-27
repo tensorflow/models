@@ -46,7 +46,7 @@ from official.utils.accelerator import tpu as tpu_utils
 def neumf_model_fn(features, labels, mode, params):
   """Model Function for NeuMF estimator."""
   users = features[movielens.USER_COLUMN]
-  items = features[movielens.ITEM_COLUMN]
+  items = tf.cast(features[movielens.ITEM_COLUMN], tf.int32)
 
   num_users = params["num_users"]
   num_items = params["num_items"]
@@ -63,13 +63,8 @@ def neumf_model_fn(features, labels, mode, params):
                 mlp_reg_layers=mlp_reg_layers)
 
   if mode == tf.estimator.ModeKeys.PREDICT:
-    # TPUs require static shapes to be returned, which may not divide evenly
-    # with the number of data points. A mask is used to force the padded values
-    # to -1 to clearly distinguish them.
-    mask = tf.expand_dims(tf.cast(features["mask"], tf.float32), axis=1)
-    masked_predictions = tf.multiply(tf.sigmoid(logits), mask) - (1 - mask)
     predictions = {
-        movielens.RATING_COLUMN: masked_predictions,
+        movielens.RATING_COLUMN: logits,
     }
 
     if params["use_tpu"]:
@@ -84,6 +79,7 @@ def neumf_model_fn(features, labels, mode, params):
 
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
+    labels = tf.cast(labels, tf.int32)
     optimizer = tf.train.AdamOptimizer(learning_rate=params["learning_rate"])
     if params["use_tpu"]:
       optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)

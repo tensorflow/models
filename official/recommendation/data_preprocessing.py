@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import atexit
 import contextlib
+import gc
 import multiprocessing
 import json
 import os
@@ -39,85 +40,32 @@ import tensorflow as tf
 # pylint: enable=wrong-import-order
 
 from official.datasets import movielens
-from official.recommendation import data_async_generation
+from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
 
 
 _ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__), "data_async_generation.py")
-_CACHE_SUBDIR = "ncf_recommendation_cache"
-_TRAIN_SHARD_SUBDIR = "training_shards"
-_DYNAMIC_EPOCH_SUBDIR = "dynamic_epochs"
-_APPROX_PTS_PER_SHARD = 128000
-
-# In both datasets, each user has at least 20 ratings.
-_MIN_NUM_RATINGS = 20
-
-# The number of negative examples attached with a positive example
-# in training dataset.
-_NUMBER_NEGATIVES = 999
 
 
 class NCFDataset(object):
   """Container for training and testing data."""
 
-  def __init__(self, cache_dir, test_data, num_users, num_items,
-      num_data_readers, num_train_pts, train_data=None, num_train_neg=None):
-    # type: (str, typing.Tuple[dict, np.ndarray], int, int, int, int, dict) -> None
-    """Assign values for recommendation dataset.
-
-    The NCF pipeline makes use of both sharded files (training) and in-memory
-    (testing) storage. This class contains various constants describing the
-    data, as well as information needed to retrieve the training and testing
-    values.
+  def __init__(self, num_users, num_items, num_data_readers, cache_paths, num_train_positives):
+    # type: (int, int, int, rconst.Paths) -> None
+    """Assign key values for recommendation dataset.
 
     Args:
-      cache_dir: The root directory where all artifacts used during training and
-        evaluation are stored.
-      test_data: The NumPy arrays containing the data used for evaluation. This
-        includes the real positive holdout example and the evaluation negatives.
-        The positive example is the first example, followed by all negatives.
-        (This structure is utilized elsewhere.)
       num_users: The number of users in the dataset. (train and test)
       num_items: The number of items (movies) in the dataset. (train and test)
-      num_data_readers: The number of tf.data.Dataset instances to interleave
-        during training.
-      train_data: A dictionary containing the positive training examples. This
-        field should be None during normal operation, but is useful for
-        debugging.
+      num_data_readers: The number of reader Datasets used during training.
+      cache_paths: Object containing locations for various cache files.
     """
-
-    self.cache_dir = cache_dir
-    self.train_shard_dir = os.path.join(cache_dir, _TRAIN_SHARD_SUBDIR)
-    self.num_data_readers = num_data_readers
-    self.test_data = test_data
-    true_ind = np.argwhere(test_data[1])[:, 0]
-    assert true_ind.shape[0] == num_users
-
-    # Ensure that the positive example comes before the negative examples
-    # for a user.
-    assert not any([i % (_NUMBER_NEGATIVES + 1) for i in true_ind])
-
-    self.eval_true_items = {
-      test_data[0][movielens.USER_COLUMN][i]:
-        test_data[0][movielens.ITEM_COLUMN][i] for i in true_ind
-    }
-    self.eval_all_items = {}
-    stride = _NUMBER_NEGATIVES + 1
-    for i in range(num_users):
-      user = test_data[0][movielens.USER_COLUMN][i * stride]
-      items = test_data[0][movielens.ITEM_COLUMN][i * stride: (i + 1) * stride]
-      self.eval_all_items[user] = items.tolist()
-      assert len(self.eval_all_items[user]) == len(self.eval_all_items[user])
 
     self.num_users = num_users
     self.num_items = num_items
-
-    # Used for testing the data pipeline. The actual training pipeline uses the
-    # shards found in `self.train_shard_dir `
-    self.train_data = train_data
-    self.num_train_neg = num_train_neg
-
-    self.num_train_pts = num_train_pts
+    self.num_data_readers = num_data_readers
+    self.cache_paths = cache_paths
+    self.num_train_positives = num_train_positives
 
 
 def _filter_index_sort(raw_rating_path):
@@ -151,13 +99,12 @@ def _filter_index_sort(raw_rating_path):
     A filtered, zero-index remapped, sorted dataframe, as well as the number
     of users and items in the processed dataset.
   """
-  # type: (str) -> (pd.DataFrame, int, int)
   with tf.gfile.Open(raw_rating_path) as f:
     df = pd.read_csv(f)
 
   # Get the info of users who have more than 20 ratings on items
   grouped = df.groupby(movielens.USER_COLUMN)
-  df = grouped.filter(lambda x: len(x) >= _MIN_NUM_RATINGS)
+  df = grouped.filter(lambda x: len(x) >= rconst.MIN_NUM_RATINGS)
 
   original_users = df[movielens.USER_COLUMN].unique()
   original_items = df[movielens.ITEM_COLUMN].unique()
@@ -192,8 +139,8 @@ def _filter_index_sort(raw_rating_path):
   return df, num_users, num_items
 
 
-def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
-  # type: (typing.Dict(np.ndarray), int, str, int) -> typing.Dict(np.ndarray)
+def _train_eval_map_fn(shard, shard_id, num_items, cache_paths):
+  # type: (typing.Dict(np.ndarray), int, int, rconst.Paths) -> typing.Dict(np.ndarray)
   """Split training and testing data and generate testing negatives.
 
   This function is called as part of a multiprocessing map. The principle
@@ -212,7 +159,6 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
     shard: A dict containing the user and item arrays.
     shard_id: The id of the shard provided. This is used to number the training
       shard pickle files.
-    cache_dir: The directory where training shard files should be written.
     num_items: The cardinality of the item set, which determines the set from
       which validation negatives should be drawn.
 
@@ -246,10 +192,10 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
     train_blocks.append((block_user[:-1], block_items[:-1]))
 
     test_negatives = stat_utils.sample_with_exclusion(
-        num_items=num_items, positive_set=set(block_items), n=_NUMBER_NEGATIVES,
-        replacement=False)
+        num_items=num_items, positive_set=set(block_items),
+        n=rconst.NUMBER_EVAL_NEGATIVES, replacement=False)
     test_blocks.append((
-      block_user[0] * np.ones((_NUMBER_NEGATIVES + 1,), dtype=np.int32),
+      block_user[0] * np.ones((rconst.NUMBER_EVAL_NEGATIVES + 1,), dtype=np.int32),
       np.array([block_items[-1]] + test_negatives, dtype=np.uint16)
     ))
     test_positives.append((block_user[0], block_items[-1]))
@@ -257,10 +203,7 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
   train_users = np.concatenate([i[0] for i in train_blocks])
   train_items = np.concatenate([i[1] for i in train_blocks])
 
-  train_shard_fname = "train_positive_shard_{}.pickle".format(
-      str(shard_id).zfill(5))
-  train_shard_fpath = os.path.join(
-      cache_dir, _TRAIN_SHARD_SUBDIR, train_shard_fname)
+  train_shard_fpath = cache_paths.train_shard_template.format(str(shard_id).zfill(5))
 
   with tf.gfile.Open(train_shard_fpath, "wb") as f:
     pickle.dump({
@@ -271,7 +214,7 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
   test_users = np.concatenate([i[0] for i in test_blocks])
   test_items = np.concatenate([i[1] for i in test_blocks])
   assert test_users.shape == test_items.shape
-  assert test_items.shape[0] % (_NUMBER_NEGATIVES + 1) == 0
+  assert test_items.shape[0] % (rconst.NUMBER_EVAL_NEGATIVES + 1) == 0
 
   return {
     movielens.USER_COLUMN: test_users,
@@ -279,8 +222,8 @@ def _train_eval_map_fn(shard, shard_id, cache_dir, num_items):
   }
 
 
-def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
-  # type: (pd.DataFrame, int, str, int) -> (typing.Dict[np.ndarray], np.ndarray)
+def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
+  # type: (pd.DataFrame, int, int, rconst.Paths) -> None
   """Construct training and evaluation datasets.
 
   This function manages dataset construction and validation that the
@@ -299,8 +242,6 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
       shards which is less than `approx_num_shards`. This small degree of
       imbalance does not impact performance; however it does mean that one
       should not expect approx_num_shards to be the ACTUAL number of shards.
-    cache_dir: The root directory for artifacts. Training shards are written
-      to a subdir of cache_dir.
     num_items: The cardinality of the item set.
 
   Returns:
@@ -336,10 +277,9 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
   approx_num_shards = len(shards)
 
   tf.logging.info("Splitting train and test data and generating {} test "
-                  "negatives per user...".format(_NUMBER_NEGATIVES))
-  tf.gfile.MakeDirs(os.path.join(cache_dir, _TRAIN_SHARD_SUBDIR))
-  map_args = [(shards[i], i, cache_dir, num_items)
-              for i in range(approx_num_shards)]
+                  "negatives per user...".format(rconst.NUMBER_EVAL_NEGATIVES))
+  tf.gfile.MakeDirs(cache_paths.train_shard_subdir)
+  map_args = [(shards[i], i, num_items, cache_paths) for i in range(approx_num_shards)]
   ctx = multiprocessing.get_context("spawn")
   with contextlib.closing(ctx.Pool(multiprocessing.cpu_count())) as pool:
     test_shards = pool.starmap(_train_eval_map_fn, map_args)
@@ -349,18 +289,22 @@ def generate_train_eval_data(df, approx_num_shards, cache_dir, num_items):
   test_items = np.concatenate([i[movielens.ITEM_COLUMN] for i in test_shards])
 
   assert test_users.shape == test_items.shape
-  assert test_items.shape[0] % (_NUMBER_NEGATIVES + 1) == 0
+  assert test_items.shape[0] % (rconst.NUMBER_EVAL_NEGATIVES + 1) == 0
 
   test_labels = np.zeros(shape=test_users.shape)
-  test_labels[0::(_NUMBER_NEGATIVES + 1)] = 1
+  test_labels[0::(rconst.NUMBER_EVAL_NEGATIVES + 1)] = 1
+  eval_data = ({
+                 movielens.USER_COLUMN: test_users,
+                 movielens.ITEM_COLUMN: test_items,
+  }, test_labels)
 
-  return ({
-            movielens.USER_COLUMN: test_users,
-            movielens.ITEM_COLUMN: test_items,
-          }, test_labels)
+  tf.logging.info("Writing test data to file.")
+  tf.gfile.MakeDirs(cache_paths.eval_data_subdir)
+  with tf.gfile.Open(cache_paths.eval_raw_file, "wb") as f:
+    pickle.dump(eval_data, f)
 
 
-def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
+def construct_cache(dataset, data_dir, num_data_readers):
   # type: (str, str, int, int, bool) -> NCFDataset
   """Load and digest data CSV into a usable form.
 
@@ -369,52 +313,34 @@ def construct_cache(dataset, data_dir, num_data_readers, num_neg, debug):
     data_dir: The root directory of the dataset.
     num_data_readers: The number of parallel processes which will request
       data during training.
-    num_neg: The number of negative examples per positive example to generate
-      during training.
-    debug: Whether this function is being called in a debug context. This will
-      cause it to store the training data in memory, which is unnecessary for
-      training but can be used to test the data pipeline.
   """
+  cache_paths = rconst.Paths(data_dir=data_dir)
   num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2)
-  approx_num_shards = int(movielens.NUM_RATINGS[dataset] // _APPROX_PTS_PER_SHARD) or 1
+  approx_num_shards = int(movielens.NUM_RATINGS[dataset] // rconst.APPROX_PTS_PER_TRAIN_SHARD) or 1
 
   st = timeit.default_timer()
-  cache_dir = os.path.join(data_dir, _CACHE_SUBDIR, dataset)
-  if tf.gfile.Exists(cache_dir):
-    tf.logging.info("Clearing old cache directory.")
-    tf.gfile.DeleteRecursively(cache_dir)
-    tf.logging.info("Old cache directory cleared.")
-  tf.gfile.MakeDirs(cache_dir)
+  cache_root = os.path.join(data_dir, cache_paths.cache_root)
+  if tf.gfile.Exists(cache_root):
+    raise ValueError("{} unexpectedly already exists.".format(cache_paths.cache_root))
+  tf.logging.info("Creating cache directory. This should be deleted on exit.")
+  tf.gfile.MakeDirs(cache_paths.cache_root)
+  atexit.register(tf.gfile.DeleteRecursively, cache_paths.cache_root)
 
   raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
   df, num_users, num_items = _filter_index_sort(raw_rating_path)
 
-  test_data = generate_train_eval_data(
-      df=df, approx_num_shards=approx_num_shards, cache_dir=cache_dir,
-      num_items=num_items)
+  generate_train_eval_data(df=df, approx_num_shards=approx_num_shards,
+                           num_items=num_items, cache_paths=cache_paths)
   del approx_num_shards  # value may have changed.
 
-  train_data = None
-  num_train_neg = None
-  if debug:
-    users = df[movielens.USER_COLUMN].values
-    items = df[movielens.ITEM_COLUMN].values
-    train_ind = np.argwhere(np.equal(users[:-1], users[1:]))[:, 0]
-    train_data = {
-      movielens.USER_COLUMN: users[train_ind],
-      movielens.ITEM_COLUMN: items[train_ind],
-    }
-    num_train_neg = num_neg
-
-  num_train_pts = (len(df) - num_users) * (1 + num_neg)
-  ncf_dataset = NCFDataset(cache_dir=cache_dir, test_data=test_data,
-                           num_items=num_items, num_users=num_users,
+  ncf_dataset = NCFDataset(num_items=num_items, num_users=num_users,
                            num_data_readers=num_data_readers,
-                           num_train_pts=num_train_pts,
-                           train_data=train_data, num_train_neg=num_train_neg)
+                           cache_paths=cache_paths, num_train_positives=len(df) - num_users)
+
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
                   .format(run_time))
+
   return ncf_dataset
 
 
@@ -425,17 +351,14 @@ def _shutdown(proc):
   proc.terminate()
 
 
-def instantiate_pipeline(dataset, data_dir, batch_size, num_data_readers=None, num_neg=4,
-                         epochs_per_cycle=1, debug=False):
+def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
+                         num_data_readers=None, num_neg=4, epochs_per_cycle=1):
   movielens.download(dataset=dataset, data_dir=data_dir)
   tf.logging.info("Beginning data preprocessing.")
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
-                                num_data_readers=num_data_readers,
-                                num_neg=num_neg, debug=debug)
+                                num_data_readers=num_data_readers)  # type: NCFDataset
 
   tf.logging.info("Creating training file subprocess.")
-  epoch_root = os.path.join(data_dir, _CACHE_SUBDIR, dataset,
-                            _DYNAMIC_EPOCH_SUBDIR)
 
   subproc_env = os.environ.copy()
 
@@ -452,17 +375,20 @@ def instantiate_pipeline(dataset, data_dir, batch_size, num_data_readers=None, n
 
   subproc_args = [
     python, _ASYNC_GEN_PATH,
-    "--shard_dir", ncf_dataset.train_shard_dir,
-    "--output_root", epoch_root,
+    "--data_dir", data_dir,
+    "--cache_id", str(ncf_dataset.cache_paths.cache_id),
     "--num_neg", str(num_neg),
+    "--num_train_positives", str(ncf_dataset.num_train_positives),
     "--num_items", str(ncf_dataset.num_items),
     "--num_readers", str(ncf_dataset.num_data_readers),
     "--epochs_per_cycle", str(epochs_per_cycle),
-    "--batch_size", str(batch_size),
+    "--train_batch_size", str(batch_size),
+    "--eval_batch_size", str(eval_batch_size),
     "--num_workers", str(num_workers),
-    "--spillover", "True"  # This allows the training input function to
-                           # guarantee batch size and significantly improves
-                           # performance. (~5% increase in examples/sec)
+    "--spillover", "True",  # This allows the training input function to
+                            # guarantee batch size and significantly improves
+                            # performance. (~5% increase in examples/sec)
+    "--redirect_logs", "True"
   ]
 
   tf.logging.info("Generation subprocess command: {}".format(" ".join(subproc_args)))
@@ -475,20 +401,21 @@ def instantiate_pipeline(dataset, data_dir, batch_size, num_data_readers=None, n
 
   return ncf_dataset
 
-def make_train_input_fn(data_dir, dataset):
-  epoch_root = os.path.join(data_dir, _CACHE_SUBDIR, dataset, _DYNAMIC_EPOCH_SUBDIR)
-  while not tf.gfile.Exists(epoch_root):
+def make_train_input_fn(ncf_dataset):
+  # type: (NCFDataset) -> (typing.Callable, str, int)
+  train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
+  while not tf.gfile.Exists(train_epoch_dir):
     time.sleep(1)
 
-  train_data_dirs = tf.gfile.ListDirectory(epoch_root)
+  train_data_dirs = tf.gfile.ListDirectory(train_epoch_dir)
   while not train_data_dirs:
     time.sleep(1)
-    train_data_dirs = tf.gfile.ListDirectory(epoch_root)
+    train_data_dirs = tf.gfile.ListDirectory(train_epoch_dir)
   train_data_dirs.sort()  # names are zfilled so that
                           # lexicographic sort == numeric sort
-  record_dir = os.path.join(epoch_root, train_data_dirs[0])
+  record_dir = os.path.join(train_epoch_dir, train_data_dirs[0])
 
-  ready_file = os.path.join(record_dir, data_async_generation.READY_FILE)
+  ready_file = os.path.join(record_dir, rconst.READY_FILE)
   while not tf.gfile.Exists(ready_file):
     tf.logging.info("Waiting for records in {} to be ready".format(record_dir))
     time.sleep(1)
@@ -514,17 +441,20 @@ def make_train_input_fn(data_dir, dataset):
             .format(epoch_metadata["batch_size"], batch_size))
 
     feature_map = {
-      movielens.USER_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
-      movielens.ITEM_COLUMN: tf.FixedLenFeature([batch_size], dtype=tf.int64),
-      "labels": tf.FixedLenFeature([batch_size], dtype=tf.int64),
+      movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
+      movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
+      "labels": tf.FixedLenFeature([], dtype=tf.string),
     }
 
     def _deserialize(examples_serialized):
       features = tf.parse_single_example(examples_serialized, feature_map)
-      return features, features["labels"]
+      return {
+        movielens.USER_COLUMN: tf.reshape(tf.decode_raw(features[movielens.USER_COLUMN], tf.int32), (batch_size,)),
+        movielens.ITEM_COLUMN: tf.reshape(tf.decode_raw(features[movielens.ITEM_COLUMN], tf.uint16), (batch_size,))
+      }, tf.reshape(tf.decode_raw(features["labels"], tf.int8), (batch_size,))
 
     record_files = tf.data.Dataset.list_files(
-        os.path.join(record_dir, data_async_generation.RECORD_FILE_PREFIX + "*"),
+        os.path.join(record_dir, rconst.TRAIN_RECORD_TEMPLATE.format("*")),
         shuffle=False)
 
     interleave = tf.contrib.data.parallel_interleave(
@@ -543,27 +473,49 @@ def make_train_input_fn(data_dir, dataset):
 def make_pred_input_fn(ncf_dataset):
   # type: (NCFDataset) -> typing.Callable
   def input_fn(params):
-    batch_size = params["batch_size"]
-    n_pts = ncf_dataset.test_data[1].shape[0]
-    n_pad = batch_size - (n_pts % batch_size)
-    assert not (n_pts + n_pad) % batch_size
-    users = np.concatenate([
-      ncf_dataset.test_data[0][movielens.USER_COLUMN], np.zeros((n_pad,))
-    ]).astype(np.int64).reshape((-1, batch_size))
+    # Estimator has "eval_batch_size" included in the params, but TPUEstimator
+    # populates "batch_size" to the appropriate value.
+    batch_size = params.get("eval_batch_size") or params["batch_size"]
+    record_file = ncf_dataset.cache_paths.eval_record_template.format(batch_size)
+    while not tf.gfile.Exists(record_file):
+      tf.logging.info("Waiting for eval data to be written to {}".format(record_file))
+      time.sleep(1)
+    dataset = tf.data.TFRecordDataset(record_file)
 
-    items = np.concatenate([
-      ncf_dataset.test_data[0][movielens.ITEM_COLUMN], np.zeros((n_pad,))
-    ]).astype(np.int64).reshape((-1, batch_size))
+    feature_map = {
+      movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
+      movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
+    }
 
-    mask = np.ones(shape=users.shape, dtype=np.int32)
-    mask[-1, -n_pad:] = 0
+    def _deserialize(examples_serialized):
+      features = tf.parse_single_example(examples_serialized, feature_map)
+      return {
+          movielens.USER_COLUMN: tf.reshape(tf.decode_raw(features[movielens.USER_COLUMN], tf.int32), (batch_size,)),
+          movielens.ITEM_COLUMN: tf.reshape(tf.decode_raw(features[movielens.ITEM_COLUMN], tf.uint16), (batch_size,))
+      }
 
-    dataset = tf.data.Dataset.from_tensors({
-      movielens.USER_COLUMN: users,
-      movielens.ITEM_COLUMN: items,
-      "mask": mask,
-    }).apply(tf.contrib.data.unbatch())
+    dataset = dataset.map(_deserialize, num_parallel_calls=4)
 
-    return dataset
+    # n_pts = ncf_dataset.test_data[1].shape[0]
+    # n_pad = batch_size - (n_pts % batch_size)
+    # assert not (n_pts + n_pad) % batch_size
+    # users = np.concatenate([
+    #   ncf_dataset.test_data[0][movielens.USER_COLUMN], np.zeros((n_pad,))
+    # ]).astype(np.int64).reshape((-1, batch_size))
+    #
+    # items = np.concatenate([
+    #   ncf_dataset.test_data[0][movielens.ITEM_COLUMN], np.zeros((n_pad,))
+    # ]).astype(np.int64).reshape((-1, batch_size))
+    #
+    # mask = np.ones(shape=users.shape, dtype=np.int32)
+    # mask[-1, -n_pad:] = 0
+    #
+    # dataset = tf.data.Dataset.from_tensors({
+    #   movielens.USER_COLUMN: users,
+    #   movielens.ITEM_COLUMN: items,
+    #   "mask": mask,
+    # }).apply(tf.contrib.data.unbatch())
+
+    return dataset.prefetch(16)
 
   return input_fn
