@@ -100,8 +100,8 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
   # Reshape the predicted scores and each user takes one row
   prediction_with_padding = np.concatenate(prediction_batches, axis=0)
   predicted_scores_by_user = prediction_with_padding[
-    :ncf_dataset.num_users * (1 + rconst.NUM_EVAL_NEGATIVES)]\
-    .reshape(ncf_dataset.num_users, -1)
+      :ncf_dataset.num_users * (1 + rconst.NUM_EVAL_NEGATIVES)]\
+      .reshape(ncf_dataset.num_users, -1)
 
   tf.logging.info("Computing metrics...")
 
@@ -129,6 +129,19 @@ def evaluate_model(estimator, ncf_dataset, pred_input_fn):
 
 def construct_estimator(num_gpus, model_dir, params, batch_size,
                         eval_batch_size):
+  """Construct either an Estimator or TPUEstimator for NCF.
+
+  Args:
+    num_gpus: The number of gpus (Used to select distribution strategy)
+    model_dir: The model directory for the estimator
+    params: The params dict for the estimator
+    batch_size: The mini-batch size for training.
+    eval_batch_size: The batch size used during evaluation.
+
+  Returns:
+    An Estimator or TPUEstimator.
+  """
+
   if params["use_tpu"]:
     tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
         tpu=params["tpu"],
@@ -186,7 +199,7 @@ def run_ncf(_):
     movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
   num_gpus = flags_core.get_num_gpus(FLAGS)
-  batch_size=distribution_utils.per_device_batch_size(
+  batch_size = distribution_utils.per_device_batch_size(
       int(FLAGS.batch_size), num_gpus)
   eval_batch_size = int(FLAGS.eval_batch_size) or int(FLAGS.batch_size)
   ncf_dataset = data_preprocessing.instantiate_pipeline(

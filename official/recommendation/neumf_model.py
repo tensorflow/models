@@ -57,7 +57,7 @@ def neumf_model_fn(features, labels, mode, params):
 
     if params["use_tpu"]:
       return tf.contrib.tpu.TPUEstimatorSpec(mode=mode, predictions=predictions)
-    return tf.estimator.EstimatorSpec(mode=mode,predictions=predictions)
+    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
   elif mode == tf.estimator.ModeKeys.TRAIN:
     labels = tf.cast(labels, tf.int32)

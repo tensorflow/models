@@ -145,7 +145,7 @@ def _train_eval_map_fn(shard,       # type: typing.Dict(np.ndarray)
                        shard_id,    # type: int
                        num_items,   # type: int
                        cache_paths  # type: rconst.Paths
-                       ):
+                      ):
   # type: (...) -> typing.Dict(np.ndarray)
   """Split training and testing data and generate testing negatives.
 
@@ -365,6 +365,8 @@ def _shutdown(proc):
 
 def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                          num_data_readers=None, num_neg=4, epochs_per_cycle=1):
+  """Preprocess data and start negative generation subprocess."""
+
   movielens.download(dataset=dataset, data_dir=data_dir)
   tf.logging.info("Beginning data preprocessing.")
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
@@ -416,6 +418,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
 
 
 def make_deserialize(params, batch_size, training=False):
+  """Construct deserialize function for training and eval fns."""
   feature_map = {
       movielens.USER_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
       movielens.ITEM_COLUMN: tf.FixedLenFeature([], dtype=tf.string),
@@ -424,6 +427,7 @@ def make_deserialize(params, batch_size, training=False):
     feature_map["labels"] = tf.FixedLenFeature([], dtype=tf.string)
 
   def deserialize(examples_serialized):
+    """Called by Dataset.map() to convert batches of records to tensors."""
     features = tf.parse_single_example(examples_serialized, feature_map)
     users = tf.reshape(tf.decode_raw(
         features[movielens.USER_COLUMN], tf.int32), (batch_size,))
@@ -450,6 +454,8 @@ def make_deserialize(params, batch_size, training=False):
 
 def make_train_input_fn(ncf_dataset):
   # type: (NCFDataset) -> (typing.Callable, str, int)
+  """Construct training input_fn for the current epoch."""
+
   if not tf.gfile.Exists(ncf_dataset.cache_paths.subproc_alive):
     raise ValueError("Generation subprocess did not start correctly. Data will "
                      "not be available; exiting to avoid waiting forever.")
@@ -482,6 +488,7 @@ def make_train_input_fn(ncf_dataset):
   batch_count = epoch_metadata["batch_count"]
 
   def input_fn(params):
+    """Generated input_fn for the given epoch."""
     batch_size = params["batch_size"]
 
     if epoch_metadata["batch_size"] != batch_size:
@@ -513,7 +520,11 @@ def make_train_input_fn(ncf_dataset):
 
 def make_pred_input_fn(ncf_dataset):
   # type: (NCFDataset) -> typing.Callable
+  """Construct input_fn for metric evaluation."""
+
   def input_fn(params):
+    """Input function based on eval batch size."""
+
     # Estimator has "eval_batch_size" included in the params, but TPUEstimator
     # populates "batch_size" to the appropriate value.
     batch_size = params.get("eval_batch_size") or params["batch_size"]

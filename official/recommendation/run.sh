@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-DATASET="ml-20m"
+DATASET="ml-1m"
 
 ROOT_DIR="/tmp/MLPerf_NCF"
 echo "Root directory: ${ROOT_DIR}"

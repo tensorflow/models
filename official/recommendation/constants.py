@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Central location for NCF specific values."""
 
 import os
 import time
+
 
 # ==============================================================================
 # == Main Thread Data Processing ===============================================
 # ==============================================================================
 class Paths(object):
+  """Container for various path information used while training NCF."""
+
   def __init__(self, data_dir, cache_id=None):
     self.cache_id = cache_id or int(time.time())
     self.data_dir = data_dir

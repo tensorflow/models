@@ -235,7 +235,7 @@ def _construct_training_records(
     }, f)
 
   log_msg("Cycle {} complete. Total time: {:.1f} seconds"
-               .format(train_cycle, timeit.default_timer() - st))
+          .format(train_cycle, timeit.default_timer() - st))
 
   return output_carryover
 
@@ -318,12 +318,12 @@ def _generation_loop(
 
       if (wait_count % 10) == 0:
         log_msg("Waited {} times for data to be consumed."
-                     .format(wait_count))
+                .format(wait_count))
 
       if time.time() - start_time > rconst.TIMEOUT_SECONDS:
         log_msg("Waited more than {} seconds. Concluding that this "
-                     "process is orphaned and exiting gracefully."
-                     .format(rconst.TIMEOUT_SECONDS))
+                "process is orphaned and exiting gracefully."
+                .format(rconst.TIMEOUT_SECONDS))
         sys.exit()
 
       continue
