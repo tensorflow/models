@@ -30,6 +30,61 @@ slim = tf.contrib.slim
 class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
   """SSD Feature Extractor using MobilenetV1 FPN features."""
 
+  def __init__(self,
+               is_training,
+               depth_multiplier,
+               min_depth,
+               pad_to_multiple,
+               conv_hyperparams_fn,
+               fpn_min_level=3,
+               fpn_max_level=7,
+               reuse_weights=None,
+               use_explicit_padding=False,
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
+    """SSD FPN feature extractor based on Mobilenet v1 architecture.
+
+    Args:
+      is_training: whether the network is in training mode.
+      depth_multiplier: float depth multiplier for feature extractor.
+      min_depth: minimum feature extractor depth.
+      pad_to_multiple: the nearest multiple to zero pad the input height and
+        width dimensions to.
+      conv_hyperparams_fn: A function to construct tf slim arg_scope for conv2d
+        and separable_conv2d ops in the layers that are added on top of the base
+        feature extractor.
+      fpn_min_level: the highest resolution feature map to use in FPN. The valid
+        values are {2, 3, 4, 5} which map to MobileNet v1 layers
+        {Conv2d_3_pointwise, Conv2d_5_pointwise, Conv2d_11_pointwise,
+        Conv2d_13_pointwise}, respectively.
+      fpn_max_level: the smallest resolution feature map to construct or use in
+        FPN. FPN constructions uses features maps starting from fpn_min_level
+        upto the fpn_max_level. In the case that there are not enough feature
+        maps in the backbone network, additional feature maps are created by
+        applying stride 2 convolutions until we get the desired number of fpn
+        levels.
+      reuse_weights: whether to reuse variables. Default is None.
+      use_explicit_padding: Whether to use explicit padding when extracting
+        features. Default is False.
+      use_depthwise: Whether to use depthwise convolutions. Default is False.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_fn`.
+    """
+    super(SSDMobileNetV1FpnFeatureExtractor, self).__init__(
+        is_training=is_training,
+        depth_multiplier=depth_multiplier,
+        min_depth=min_depth,
+        pad_to_multiple=pad_to_multiple,
+        conv_hyperparams_fn=conv_hyperparams_fn,
+        reuse_weights=reuse_weights,
+        use_explicit_padding=use_explicit_padding,
+        use_depthwise=use_depthwise,
+        override_base_feature_extractor_hyperparams=
+        override_base_feature_extractor_hyperparams)
+    self._fpn_min_level = fpn_min_level
+    self._fpn_max_level = fpn_max_level
+
   def preprocess(self, resized_inputs):
     """SSD preprocessing.
 
@@ -78,24 +133,31 @@ class SSDMobileNetV1FpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
       depth_fn = lambda d: max(int(d * self._depth_multiplier), self._min_depth)
       with slim.arg_scope(self._conv_hyperparams_fn()):
         with tf.variable_scope('fpn', reuse=self._reuse_weights):
+          feature_blocks = [
+              'Conv2d_3_pointwise', 'Conv2d_5_pointwise', 'Conv2d_11_pointwise',
+              'Conv2d_13_pointwise'
+          ]
+          base_fpn_max_level = min(self._fpn_max_level, 5)
+          feature_block_list = []
+          for level in range(self._fpn_min_level, base_fpn_max_level + 1):
+            feature_block_list.append(feature_blocks[level - 2])
           fpn_features = feature_map_generators.fpn_top_down_feature_maps(
-              [(key, image_features[key])
-               for key in ['Conv2d_5_pointwise', 'Conv2d_11_pointwise',
-                           'Conv2d_13_pointwise']],
+              [(key, image_features[key]) for key in feature_block_list],
               depth=depth_fn(256))
-          last_feature_map = fpn_features['top_down_Conv2d_13_pointwise']
-          coarse_features = {}
-          for i in range(14, 16):
+          feature_maps = []
+          for level in range(self._fpn_min_level, base_fpn_max_level + 1):
+            feature_maps.append(fpn_features['top_down_{}'.format(
+                feature_blocks[level - 2])])
+          last_feature_map = fpn_features['top_down_{}'.format(
+              feature_blocks[base_fpn_max_level - 2])]
+          # Construct coarse features
+          for i in range(base_fpn_max_level + 1, self._fpn_max_level + 1):
             last_feature_map = slim.conv2d(
                 last_feature_map,
                 num_outputs=depth_fn(256),
                 kernel_size=[3, 3],
                 stride=2,
                 padding='SAME',
-                scope='bottom_up_Conv2d_{}'.format(i))
-            coarse_features['bottom_up_Conv2d_{}'.format(i)] = last_feature_map
-    return [fpn_features['top_down_Conv2d_5_pointwise'],
-            fpn_features['top_down_Conv2d_11_pointwise'],
-            fpn_features['top_down_Conv2d_13_pointwise'],
-            coarse_features['bottom_up_Conv2d_14'],
-            coarse_features['bottom_up_Conv2d_15']]
+                scope='bottom_up_Conv2d_{}'.format(i - base_fpn_max_level + 13))
+            feature_maps.append(last_feature_map)
+    return feature_maps

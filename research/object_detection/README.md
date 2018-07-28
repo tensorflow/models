@@ -79,8 +79,10 @@ Extras:
       Run the evaluation for the Open Images Challenge 2018</a><br>
   * <a href='g3doc/tpu_compatibility.md'>
       TPU compatible detection pipelines</a><br>
-  *  <a href='g3doc/running_on_mobile_tensorflowlite.md'>
+  * <a href='g3doc/running_on_mobile_tensorflowlite.md'>
       Running object detection on mobile devices with TensorFlow Lite</a><br>
+  * <a href='g3doc/dataset_explorer.md'>
+      Explore your dataset prior to training</a><br>
 
 ## Getting Help
 

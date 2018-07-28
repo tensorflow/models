@@ -47,6 +47,9 @@ def multiclass_non_max_suppression(boxes,
   Please note that this operation is performed on *all* classes, therefore any
   background classes should be removed prior to calling this function.
 
+  Selected boxes are guaranteed to be sorted in decreasing order by score (but
+  the sort is not guaranteed to be stable).
+
   Args:
     boxes: A [k, q, 4] float32 tensor containing k detections. `q` can be either
       number of classes or 1 depending on whether a separate box is predicted
@@ -106,14 +109,8 @@ def multiclass_non_max_suppression(boxes,
                      'must be specified.')
 
   with tf.name_scope(scope, 'MultiClassNonMaxSuppression'):
-    num_boxes = tf.shape(boxes)[0]
     num_scores = tf.shape(scores)[0]
     num_classes = scores.get_shape()[1]
-
-    length_assert = tf.Assert(
-        tf.equal(num_boxes, num_scores),
-        ['Incorrect scores field length: actual vs expected.',
-         num_scores, num_boxes])
 
     selected_boxes_list = []
     per_class_boxes_list = tf.unstack(boxes, axis=1)
@@ -126,9 +123,9 @@ def multiclass_non_max_suppression(boxes,
     for class_idx, boxes_idx in zip(range(num_classes), boxes_ids):
       per_class_boxes = per_class_boxes_list[boxes_idx]
       boxlist_and_class_scores = box_list.BoxList(per_class_boxes)
-      with tf.control_dependencies([length_assert]):
-        class_scores = tf.reshape(
-            tf.slice(scores, [0, class_idx], tf.stack([num_scores, 1])), [-1])
+      class_scores = tf.reshape(
+          tf.slice(scores, [0, class_idx], tf.stack([num_scores, 1])), [-1])
+
       boxlist_and_class_scores.add_field(fields.BoxListFields.scores,
                                          class_scores)
       if masks is not None:
@@ -142,22 +139,17 @@ def multiclass_non_max_suppression(boxes,
       if additional_fields is not None:
         for key, tensor in additional_fields.items():
           boxlist_and_class_scores.add_field(key, tensor)
-      boxlist_filtered = box_list_ops.filter_greater_than(
-          boxlist_and_class_scores, score_thresh)
-      if clip_window is not None:
-        boxlist_filtered = box_list_ops.clip_to_window(
-            boxlist_filtered, clip_window)
-        if change_coordinate_frame:
-          boxlist_filtered = box_list_ops.change_coordinate_frame(
-              boxlist_filtered, clip_window)
+
       max_selection_size = tf.minimum(max_size_per_class,
-                                      boxlist_filtered.num_boxes())
+                                      boxlist_and_class_scores.num_boxes())
       selected_indices = tf.image.non_max_suppression(
-          boxlist_filtered.get(),
-          boxlist_filtered.get_field(fields.BoxListFields.scores),
+          boxlist_and_class_scores.get(),
+          boxlist_and_class_scores.get_field(fields.BoxListFields.scores),
           max_selection_size,
-          iou_threshold=iou_thresh)
-      nms_result = box_list_ops.gather(boxlist_filtered, selected_indices)
+          iou_threshold=iou_thresh,
+          score_threshold=score_thresh)
+      nms_result = box_list_ops.gather(boxlist_and_class_scores,
+                                       selected_indices)
       nms_result.add_field(
           fields.BoxListFields.classes, (tf.zeros_like(
               nms_result.get_field(fields.BoxListFields.scores)) + class_idx))
@@ -165,6 +157,11 @@ def multiclass_non_max_suppression(boxes,
     selected_boxes = box_list_ops.concatenate(selected_boxes_list)
     sorted_boxes = box_list_ops.sort_by_field(selected_boxes,
                                               fields.BoxListFields.scores)
+    if clip_window is not None:
+      sorted_boxes = box_list_ops.clip_to_window(sorted_boxes, clip_window)
+      if change_coordinate_frame:
+        sorted_boxes = box_list_ops.change_coordinate_frame(
+            sorted_boxes, clip_window)
     if max_total_size:
       max_total_size = tf.minimum(max_total_size,
                                   sorted_boxes.num_boxes())

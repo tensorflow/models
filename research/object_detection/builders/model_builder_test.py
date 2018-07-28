@@ -54,12 +54,6 @@ SSD_RESNET_V1_FPN_FEAT_MAPS = {
     ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
     'ssd_resnet152_v1_fpn':
     ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
-    'ssd_resnet50_v1_ppn':
-    ssd_resnet_v1_ppn.SSDResnet50V1PpnFeatureExtractor,
-    'ssd_resnet101_v1_ppn':
-    ssd_resnet_v1_ppn.SSDResnet101V1PpnFeatureExtractor,
-    'ssd_resnet152_v1_ppn':
-    ssd_resnet_v1_ppn.SSDResnet152V1PpnFeatureExtractor
 }
 
 SSD_RESNET_V1_PPN_FEAT_MAPS = {
@@ -235,6 +229,10 @@ class ModelBuilderTest(tf.test.TestCase):
       ssd {
         feature_extractor {
           type: 'ssd_resnet50_v1_fpn'
+          fpn {
+            min_level: 3
+            max_level: 7
+          }
           conv_hyperparams {
             regularizer {
                 l2_regularizer {
@@ -479,6 +477,10 @@ class ModelBuilderTest(tf.test.TestCase):
         inplace_batchnorm_update: true
         feature_extractor {
           type: 'ssd_mobilenet_v1_fpn'
+          fpn {
+            min_level: 3
+            max_level: 7
+          }
           conv_hyperparams {
             regularizer {
                 l2_regularizer {
