@@ -102,7 +102,8 @@ class BaseTest(tf.test.TestCase):
   def test_end_to_end(self):
     ncf_dataset = data_preprocessing.instantiate_pipeline(
         dataset=DATASET, data_dir=self.temp_data_dir,
-        batch_size=BATCH_SIZE, eval_batch_size=BATCH_SIZE, num_data_readers=2, num_neg=NUM_NEG)
+        batch_size=BATCH_SIZE, eval_batch_size=BATCH_SIZE, num_data_readers=2,
+        num_neg=NUM_NEG)
 
     time.sleep(5)  # allow `alive` file to be written
 
@@ -116,8 +117,8 @@ class BaseTest(tf.test.TestCase):
     item_inv_map = {v: k for k, v in ncf_dataset.item_map.items()}
 
     train_examples = {
-      True: set(),
-      False: set(),
+        True: set(),
+        False: set(),
     }
     for features, labels in first_epoch:
       for u, i, l in zip(features[movielens.USER_COLUMN],

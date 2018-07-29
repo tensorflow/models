@@ -17,6 +17,7 @@
 The NeuMF model assembles both MF and MLP models under the NCF framework. Check
 `neumf_model.py` for more details about the models.
 """
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

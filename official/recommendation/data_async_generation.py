@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Asynchronously generate TFRecords files for NCF."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -33,6 +34,7 @@ import tempfile
 import time
 import timeit
 import traceback
+import typing
 
 import numpy as np
 import tensorflow as tf
@@ -47,10 +49,14 @@ from official.recommendation import stat_utils
 
 
 def log_msg(msg):
+  """Include timestamp info when logging messages to a file."""
   if flags.FLAGS.redirect_logs:
     timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    return absl_logging.info("[{}] {}".format(timestamp, msg))
-  return absl_logging.info(msg)
+    absl_logging.info("[{}] {}".format(timestamp, msg))
+  else:
+    absl_logging.info(msg)
+  sys.stdout.flush()
+  sys.stderr.flush()
 
 
 def get_cycle_folder_name(i):
@@ -117,6 +123,7 @@ def _process_shard(shard_path, num_items, num_neg):
 
 
 def _construct_record(users, items, labels=None):
+  """Convert NumPy arrays into a TFRecords entry."""
   feature_dict = {
       movielens.USER_COLUMN: tf.train.Feature(
           bytes_list=tf.train.BytesList(value=[bytes(memoryview(users))])),
@@ -140,9 +147,41 @@ def init_worker():
 
 
 def _construct_training_records(
-    train_cycle, num_workers, cache_paths, num_readers, num_neg,
-    num_train_positives, num_items, epochs_per_cycle, train_batch_size,
-    training_shards, spillover, carryover=None):
+    train_cycle,          # type: int
+    num_workers,          # type: int
+    cache_paths,          # type: rconst.Paths
+    num_readers,          # type: int
+    num_neg,              # type: int
+    num_train_positives,  # type: int
+    num_items,            # type: int
+    epochs_per_cycle,     # type: int
+    train_batch_size,     # type: int
+    training_shards,      # type: typing.List[str]
+    spillover,            # type: bool
+    carryover=None        # type: typing.Union[typing.List[np.ndarray], None]
+    ):
+  """Generate false negatives and write TFRecords files.
+
+  Args:
+    train_cycle: Integer of which cycle the generated data is for.
+    num_workers: Number of multiprocessing workers to use for negative
+      generation.
+    cache_paths: Paths object with information of where to write files.
+    num_readers: The number of reader datasets in the train input_fn.
+    num_neg: The number of false negatives per positive example.
+    num_train_positives: The number of positive examples. This value is used
+      to pre-allocate arrays while the imap is still running. (NumPy does not
+      allow dynamic arrays.)
+    num_items: The cardinality of the item set.
+    epochs_per_cycle: The number of epochs worth of data to construct.
+    train_batch_size: The expected batch size used during training. This is used
+      to properly batch data when writing TFRecords.
+    training_shards: The picked positive examples from which to generate
+      negatives.
+    spillover: If the final batch is incomplete, push it to the next
+      cycle (True) or include a partial batch (False).
+    carryover: The data points to be spilled over to the next cycle.
+  """
 
   st = timeit.default_timer()
   num_workers = min([num_workers, len(training_shards) * epochs_per_cycle])
@@ -160,7 +199,7 @@ def _construct_training_records(
 
   with contextlib.closing(multiprocessing.Pool(
       processes=num_workers, initializer=init_worker)) as pool:
-    data_generator = pool.imap_unordered(map_fn, map_args)
+    data_generator = pool.imap_unordered(map_fn, map_args)  # pylint: disable=no-member
     data = [
         np.zeros(shape=(num_pts,), dtype=np.int32) - 1,
         np.zeros(shape=(num_pts,), dtype=np.uint16),
@@ -192,6 +231,12 @@ def _construct_training_records(
   current_file_id = -1
   current_batch_id = -1
   batches_by_file = [[] for _ in range(num_readers)]
+
+  output_carryover = [
+      np.zeros(shape=(0,), dtype=np.int32),
+      np.zeros(shape=(0,), dtype=np.uint16),
+      np.zeros(shape=(0,), dtype=np.int8),
+  ]
 
   while True:
     current_batch_id += 1
@@ -245,6 +290,8 @@ def _construct_training_records(
 
 
 def _construct_eval_record(cache_paths, eval_batch_size):
+  """Convert Eval data to a single TFRecords file."""
+
   log_msg("Beginning construction of eval TFRecords file.")
   raw_fpath = cache_paths.eval_raw_file
   intermediate_fpath = cache_paths.eval_record_template_temp
@@ -286,6 +333,7 @@ def _generation_loop(
     num_workers, cache_paths, num_readers, num_neg, num_train_positives,
     num_items, spillover, epochs_per_cycle, train_batch_size, eval_batch_size):
   # type: (int, rconst.Paths, int, int, int, int, bool, int, int, int) -> None
+  """Primary run loop for data file generation."""
 
   log_msg("Signaling that I am alive.")
   with tf.gfile.Open(cache_paths.subproc_alive, "w") as f:
@@ -360,8 +408,6 @@ def main(_):
           .format(log_file, fallback_log_file))
     log_file = fallback_log_file
 
-  atexit.register(log_msg, msg="Shutting down generation subprocess.")
-
   # This server is generally run in a subprocess.
   if redirect_logs:
     print("Redirecting stdout and stderr to {}".format(log_file))
@@ -393,10 +439,13 @@ def main(_):
           train_batch_size=flags.FLAGS.train_batch_size,
           eval_batch_size=flags.FLAGS.eval_batch_size,
       )
+    except KeyboardInterrupt:
+      log_msg("KeyboardInterrupt registered.")
     except:
       traceback.print_exc()
       raise
   finally:
+    log_msg("Shutting down generation subprocess.")
     sys.stdout.flush()
     sys.stderr.flush()
     if redirect_logs:

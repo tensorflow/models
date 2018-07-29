@@ -25,6 +25,7 @@ import multiprocessing
 import json
 import os
 import pickle
+import signal
 import subprocess
 import time
 import timeit
@@ -108,7 +109,8 @@ def _filter_index_sort(raw_rating_path):
 
   # Get the info of users who have more than 20 ratings on items
   grouped = df.groupby(movielens.USER_COLUMN)
-  df = grouped.filter(lambda x: len(x) >= rconst.MIN_NUM_RATINGS) # type: pd.DataFrame
+  df = grouped.filter(
+      lambda x: len(x) >= rconst.MIN_NUM_RATINGS) # type: pd.DataFrame
 
   original_users = df[movielens.USER_COLUMN].unique()
   original_items = df[movielens.ITEM_COLUMN].unique()
@@ -293,7 +295,7 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
               for i in range(approx_num_shards)]
   ctx = multiprocessing.get_context("spawn")
   with contextlib.closing(ctx.Pool(multiprocessing.cpu_count())) as pool:
-    test_shards = pool.starmap(_train_eval_map_fn, map_args)
+    test_shards = pool.starmap(_train_eval_map_fn, map_args)  # pylint: disable=no-member
 
   tf.logging.info("Merging test shards...")
   test_users = np.concatenate([i[movielens.USER_COLUMN] for i in test_shards])
@@ -337,7 +339,6 @@ def construct_cache(dataset, data_dir, num_data_readers):
                      .format(cache_paths.cache_root))
   tf.logging.info("Creating cache directory. This should be deleted on exit.")
   tf.gfile.MakeDirs(cache_paths.cache_root)
-  atexit.register(tf.gfile.DeleteRecursively, cache_paths.cache_root)
 
   raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
   df, user_map, item_map = _filter_index_sort(raw_rating_path)
@@ -359,8 +360,16 @@ def construct_cache(dataset, data_dir, num_data_readers):
 
 
 def _shutdown(proc):
+  # type: (subprocess.Popen) -> None
+  """Convenience function to cleanly shut down async generation process."""
+
   tf.logging.info("Shutting down train data creation subprocess.")
-  proc.kill()
+  proc.send_signal(signal.SIGINT)
+  time.sleep(1)
+  if proc.returncode is not None:
+    return  # SIGINT was handled successfully within 1 sec
+
+  # Otherwise another second of grace period and then forcibly kill the process.
   time.sleep(1)
   proc.terminate()
 
@@ -403,7 +412,8 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "--num_workers", str(num_workers),
       "--spillover", "True",  # This allows the training input function to
                               # guarantee batch size and significantly improves
-                              # performance. (~5% increase in examples/sec)
+                              # performance. (~5% increase in examples/sec on
+                              # GPU, and needed for TPU XLA.)
       "--redirect_logs", "True",
       "--seed", str(int(stat_utils.random_int32()))
   ]
@@ -416,6 +426,8 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                           shell=False, env=subproc_env)
 
   atexit.register(_shutdown, proc=proc)
+  atexit.register(tf.gfile.DeleteRecursively,
+                  ncf_dataset.cache_paths.cache_root)
 
   return ncf_dataset
 
