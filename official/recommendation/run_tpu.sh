@@ -19,4 +19,4 @@ if [[ -z ${BUCKET} ]]; then
   exit 1
 fi
 
-
+./run.sh
