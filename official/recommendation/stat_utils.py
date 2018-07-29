@@ -20,6 +20,9 @@ from __future__ import print_function
 
 import numpy as np
 
+def random_int32():
+  return np.random.randint(low=0, high=np.iinfo(np.int32).max, dtype=np.int32)
+
 def sample_with_exclusion(num_items, positive_set, n, replacement=True):
   # type: (int, typing.Iterable, int, bool) -> list
   """Vectorized negative sampling.

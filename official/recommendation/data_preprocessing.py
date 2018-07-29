@@ -51,20 +51,22 @@ _ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__),
 class NCFDataset(object):
   """Container for training and testing data."""
 
-  def __init__(self, num_users, num_items, num_data_readers, cache_paths,
+  def __init__(self, user_map, item_map, num_data_readers, cache_paths,
                num_train_positives):
-    # type: (int, int, int, rconst.Paths) -> None
+    # type: (dict, dict, int, rconst.Paths) -> None
     """Assign key values for recommendation dataset.
 
     Args:
-      num_users: The number of users in the dataset. (train and test)
-      num_items: The number of items (movies) in the dataset. (train and test)
+      user_map: Dict mapping raw user ids to regularized ids.
+      item_map: Dict mapping raw item ids to regularized ids.
       num_data_readers: The number of reader Datasets used during training.
       cache_paths: Object containing locations for various cache files.
     """
 
-    self.num_users = num_users
-    self.num_items = num_items
+    self.user_map = {int(k): int(v) for k, v in user_map.items()}
+    self.item_map = {int(k): int(v) for k, v in item_map.items()}
+    self.num_users = len(user_map)
+    self.num_items = len(item_map)
     self.num_data_readers = num_data_readers
     self.cache_paths = cache_paths
     self.num_train_positives = num_train_positives
@@ -106,7 +108,7 @@ def _filter_index_sort(raw_rating_path):
 
   # Get the info of users who have more than 20 ratings on items
   grouped = df.groupby(movielens.USER_COLUMN)
-  df = grouped.filter(lambda x: len(x) >= rconst.MIN_NUM_RATINGS)
+  df = grouped.filter(lambda x: len(x) >= rconst.MIN_NUM_RATINGS) # type: pd.DataFrame
 
   original_users = df[movielens.USER_COLUMN].unique()
   original_items = df[movielens.ITEM_COLUMN].unique()
@@ -138,7 +140,7 @@ def _filter_index_sort(raw_rating_path):
   df = df.reset_index()  # The dataframe does not reconstruct indicies in the
   # sort or filter steps.
 
-  return df, num_users, num_items
+  return df, user_map, item_map
 
 
 def _train_eval_map_fn(shard,       # type: typing.Dict(np.ndarray)
@@ -338,16 +340,16 @@ def construct_cache(dataset, data_dir, num_data_readers):
   atexit.register(tf.gfile.DeleteRecursively, cache_paths.cache_root)
 
   raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
-  df, num_users, num_items = _filter_index_sort(raw_rating_path)
+  df, user_map, item_map = _filter_index_sort(raw_rating_path)
 
   generate_train_eval_data(df=df, approx_num_shards=approx_num_shards,
-                           num_items=num_items, cache_paths=cache_paths)
+                           num_items=len(item_map), cache_paths=cache_paths)
   del approx_num_shards  # value may have changed.
 
-  ncf_dataset = NCFDataset(num_items=num_items, num_users=num_users,
+  ncf_dataset = NCFDataset(user_map=user_map, item_map=item_map,
                            num_data_readers=num_data_readers,
                            cache_paths=cache_paths,
-                           num_train_positives=len(df) - num_users)
+                           num_train_positives=len(df) - len(user_map))
 
   run_time = timeit.default_timer() - st
   tf.logging.info("Cache construction complete. Time: {:.1f} sec."
@@ -402,7 +404,8 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
       "--spillover", "True",  # This allows the training input function to
                               # guarantee batch size and significantly improves
                               # performance. (~5% increase in examples/sec)
-      "--redirect_logs", "True"
+      "--redirect_logs", "True",
+      "--seed", str(int(stat_utils.random_int32()))
   ]
 
   tf.logging.info(

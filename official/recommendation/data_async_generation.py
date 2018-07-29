@@ -65,6 +65,7 @@ def _process_shard(shard_path, num_items, num_neg):
     shard_path: The filepath of the positive instance training shard.
     num_items: The cardinality of the item set.
     num_neg: The number of negatives to generate per positive example.
+    seed: Random seed to be used when generating negatives.
   """
 
   # The choice to store the training shards in files rather than in memory
@@ -90,7 +91,10 @@ def _process_shard(shard_path, num_items, num_neg):
   label_blocks = []
   for i in range(len(boundaries) - 1):
     assert len(set(users[boundaries[i]:boundaries[i+1]])) == 1
-    positive_set = set(items[boundaries[i]:boundaries[i+1]])
+    positive_items = items[boundaries[i]:boundaries[i+1]]
+    positive_set = set(positive_items)
+    if positive_items.shape[0] != len(positive_set):
+      raise ValueError("Duplicate entries detected.")
     n_pos = len(positive_set)
 
     negatives = stat_utils.sample_with_exclusion(
@@ -372,6 +376,11 @@ def main(_):
       sys.stderr = stderr
       print("Logs redirected.")
     try:
+      log_msg("sys.argv: {}".format(" ".join(sys.argv)))
+
+      if flags.FLAGS.seed is not None:
+        np.random.seed(flags.FLAGS.seed)
+
       _generation_loop(
           num_workers=flags.FLAGS.num_workers,
           cache_paths=cache_paths,
@@ -434,6 +443,9 @@ def define_flags():
   flags.DEFINE_boolean(name="redirect_logs", default=False,
                        help="Catch logs and write them to a file. "
                             "(Useful if this is run as a subprocess)")
+  flags.DEFINE_integer(name="seed", default=None,
+                       help="NumPy random seed to set at startup. If not "
+                            "specified, a seed will not be set.")
 
   flags.mark_flags_as_required(
       ["data_dir", "cache_id", "num_neg", "num_train_positives", "num_items",
