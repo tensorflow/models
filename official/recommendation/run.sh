@@ -8,14 +8,14 @@ ROOT_DIR="${BUCKET:-'/tmp'}/MLPerf_NCF"
 echo "Root directory: ${ROOT_DIR}"
 
 if [[ -z ${BUCKET} ]]; then
-  LOCAL_ROOT=ROOT_DIR
-else:
+  LOCAL_ROOT=${ROOT_DIR}
+else
   LOCAL_ROOT="/tmp/MLPerf_NCF"
   mkdir -p ${LOCAL_ROOT}
   echo "Local root (for files which cannot use GCS): ${LOCAL_ROOT}"
 fi
 
-DATE=${date '+%Y-%m-%d_%H:%M:%S'}
+DATE=$(date '+%Y-%m-%d_%H:%M:%S')
 TEST_DIR="${ROOT_DIR}/${DATE}"
 LOCAL_TEST_DIR="${LOCAL_ROOT}/${DATE}"
 mkdir -p ${LOCAL_TEST_DIR}
