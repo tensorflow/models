@@ -3,26 +3,41 @@ set -e
 
 DATASET="ml-20m"
 
-ROOT_DIR="/tmp/MLPerf_NCF"
+BUCKET=${BUCKET:-""}
+ROOT_DIR="${BUCKET:-'/tmp'}/MLPerf_NCF"
 echo "Root directory: ${ROOT_DIR}"
 
-mkdir -p ${ROOT_DIR}
+if [[ -z ${BUCKET} ]]; then
+  LOCAL_ROOT=ROOT_DIR
+else:
+  LOCAL_ROOT="/tmp/MLPerf_NCF"
+  mkdir -p ${LOCAL_ROOT}
+  echo "Local root (for files which cannot use GCS): ${LOCAL_ROOT}"
+fi
+
+DATE=${date '+%Y-%m-%d_%H:%M:%S'}
+TEST_DIR="${ROOT_DIR}/${DATE}"
+LOCAL_TEST_DIR="${LOCAL_ROOT}/${DATE}"
+mkdir -p ${LOCAL_TEST_DIR}
+
+TPU=${TPU:-""}
+if [[ -z ${TPU} ]]; then
+  DEVICE_FLAG="--num_gpus -1"
+else:
+  DEVICE_FLAG="--tpu ${TPU} --num_gpus 0"
+fi
 
 DATA_DIR="${ROOT_DIR}/movielens_data"
-#DATA_DIR="gs://taylorrobie-tpu-test-bucket-2/ncf_data_dir"
 python ../datasets/movielens.py --data_dir ${DATA_DIR} --dataset ${DATASET}
-
-TEST_DIR="${ROOT_DIR}/`date '+%Y-%m-%d_%H:%M:%S'`"
-mkdir -p ${TEST_DIR}
 
 {
 
-for i in `seq 0 0`;
+for i in `seq 0 4`;
 do
   START_TIME=$(date +%s)
   MODEL_DIR="${TEST_DIR}/model_dir_${i}"
-#  MODEL_DIR="gs://taylorrobie-tpu-test-bucket-2/${START_TIME}_model_dir_${i}"
-  RUN_LOG="${TEST_DIR}/run_${i}.log"
+
+  RUN_LOG="${LOCAL_TEST_DIR}/run_${i}.log"
   echo ""
   echo "Beginning run ${i}"
   echo "  Complete logs are in ${RUN_LOG}"
@@ -32,6 +47,7 @@ do
   python ncf_main.py --model_dir ${MODEL_DIR} \
                      --data_dir ${DATA_DIR} \
                      --dataset ${DATASET} --hooks "" \
+                     ${DEVICE_FLAG} \
                      --clean \
                      --train_epochs 100 \
                      --batch_size 2048 \
@@ -47,4 +63,4 @@ do
 
 done
 
-} |& tee "${TEST_DIR}/summary.log"
+} |& tee "${LOCAL_TEST_DIR}/summary.log"
