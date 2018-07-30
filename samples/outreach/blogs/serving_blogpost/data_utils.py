@@ -120,7 +120,7 @@ class Dataset():
     Loads the raw csv and returns the data within the csv without the header
     """
     with open(self.data_path) as f:
-      data = f.read().rstrip().split('\n')
+      data = f.read().encode('utf-8').rstrip().split('\n')
 
     header = data[0].split(',')
     raw_data = data[1:]
