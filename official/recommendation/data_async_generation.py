@@ -126,13 +126,13 @@ def _construct_record(users, items, labels=None):
   """Convert NumPy arrays into a TFRecords entry."""
   feature_dict = {
       movielens.USER_COLUMN: tf.train.Feature(
-          bytes_list=tf.train.BytesList(value=[bytes(memoryview(users))])),
+          bytes_list=tf.train.BytesList(value=[memoryview(users).tobytes()])),
       movielens.ITEM_COLUMN: tf.train.Feature(
-          bytes_list=tf.train.BytesList(value=[bytes(memoryview(items))])),
+          bytes_list=tf.train.BytesList(value=[memoryview(items).tobytes()])),
   }
   if labels is not None:
     feature_dict["labels"] = tf.train.Feature(
-        bytes_list=tf.train.BytesList(value=[bytes(memoryview(labels))]))
+        bytes_list=tf.train.BytesList(value=[memoryview(labels).tobytes()]))
 
   return tf.train.Example(
       features=tf.train.Features(feature=feature_dict)).SerializeToString()

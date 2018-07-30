@@ -145,11 +145,7 @@ def _filter_index_sort(raw_rating_path):
   return df, user_map, item_map
 
 
-def _train_eval_map_fn(shard,       # type: typing.Dict(np.ndarray)
-                       shard_id,    # type: int
-                       num_items,   # type: int
-                       cache_paths  # type: rconst.Paths
-                      ):
+def _train_eval_map_fn(args):
   # type: (...) -> typing.Dict(np.ndarray)
   """Split training and testing data and generate testing negatives.
 
@@ -175,6 +171,8 @@ def _train_eval_map_fn(shard,       # type: typing.Dict(np.ndarray)
   Returns:
     A dict containing the evaluation data for a given shard.
   """
+
+  shard, shard_id, num_items, cache_paths = args
 
   users = shard[movielens.USER_COLUMN]
   items = shard[movielens.ITEM_COLUMN]
@@ -293,9 +291,10 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
   tf.gfile.MakeDirs(cache_paths.train_shard_subdir)
   map_args = [(shards[i], i, num_items, cache_paths)
               for i in range(approx_num_shards)]
-  ctx = multiprocessing.get_context("spawn")
-  with contextlib.closing(ctx.Pool(multiprocessing.cpu_count())) as pool:
-    test_shards = pool.starmap(_train_eval_map_fn, map_args)  # pylint: disable=no-member
+
+  with contextlib.closing(
+      multiprocessing.Pool(multiprocessing.cpu_count())) as pool:
+    test_shards = pool.map(_train_eval_map_fn, map_args)
 
   tf.logging.info("Merging test shards...")
   test_users = np.concatenate([i[movielens.USER_COLUMN] for i in test_shards])
