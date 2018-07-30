@@ -476,10 +476,12 @@ def make_train_input_fn(ncf_dataset):
 
   train_epoch_dir = ncf_dataset.cache_paths.train_epoch_dir
   while not tf.gfile.Exists(train_epoch_dir):
+    tf.logging.info("Waiting for {} to exist.".format(train_epoch_dir))
     time.sleep(1)
 
   train_data_dirs = tf.gfile.ListDirectory(train_epoch_dir)
   while not train_data_dirs:
+    tf.logging.info("Waiting for data folder to be created.")
     time.sleep(1)
     train_data_dirs = tf.gfile.ListDirectory(train_epoch_dir)
   train_data_dirs.sort()  # names are zfilled so that
