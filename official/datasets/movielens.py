@@ -133,8 +133,12 @@ def _download_and_clean(dataset, data_dir):
       _regularize_20m_dataset(temp_dir)
 
     for fname in tf.gfile.ListDirectory(temp_dir):
-      tf.gfile.Copy(os.path.join(temp_dir, fname),
-                    os.path.join(data_subdir, fname))
+      if not tf.gfile.Exists(os.path.join(data_subdir, fname)):
+        tf.gfile.Copy(os.path.join(temp_dir, fname),
+                      os.path.join(data_subdir, fname))
+      else:
+        tf.logging.info("Skipping copy of {}, as it already exists in the "
+                        "destination folder.".format(fname))
 
   finally:
     tf.gfile.DeleteRecursively(temp_dir)
