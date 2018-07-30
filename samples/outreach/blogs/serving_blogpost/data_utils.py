@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.keras import backend as K
 import functools
 import matplotlib.pyplot as plt
 import urllib.request
@@ -119,8 +120,8 @@ class Dataset():
     """
     Loads the raw csv and returns the data within the csv without the header
     """
-    with open(self.data_path) as f:
-      data = f.read().encode('utf-8').rstrip().split('\n')
+    with open(self.data_path, 'rb') as f:
+      data = f.read().decode(errors='ignore').rstrip().split('\n')
 
     header = data[0].split(',')
     raw_data = data[1:]
@@ -135,7 +136,7 @@ class Dataset():
     header, raw_data = self.get_raw()
     all_data = np.zeros((len(raw_data), len(header) - 1))
     for i, line in enumerate(raw_data):
-      values = [float(x) for x in line.split(',')[1:]]
+      values = [float(x) for x in line.split(',')[1:21]]
       all_data[i, :] = values
 
     if plot:
@@ -180,6 +181,19 @@ class Dataset():
     train_ds = self.get_dataset(self.x_train, shuffle=True)
     val_ds = self.get_dataset(self.x_val)
     test_ds = self.get_dataset(self.x_test)
+
+    val_iter = val_ds.make_one_shot_iterator()
+    val_next_element = val_iter.get_next()
+
+    batch_maes = []
+    for _ in range((self.num_val - self.lookback - self.delay) // self.batch_size):
+      samples, targets = K.get_session().run(val_next_element)
+      preds = np.expand_dims(samples[:, -1, 1], -1)
+      mae = np.mean(np.abs(preds - targets))
+      batch_maes.append(mae)
+    baseline_mae = np.mean(batch_maes)
+    print("\nBase line Mean Absolute Error: {}".format(baseline_mae))
+    input("Press Enter to continue...")
 
     return train_ds, val_ds, test_ds
 

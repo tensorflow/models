@@ -53,20 +53,6 @@ def main(_):
                           args.steps,
                           'train')
   train_ds, val_ds, test_ds = ds.load_jena_data()
-  val_iter = val_ds.make_one_shot_iterator()
-  val_next_element = val_iter.get_next()
-
-  batch_maes = []
-  for _ in range((num_val - lookback - delay) // batch_size):
-    samples, targets = K.get_session().run(val_next_element)
-    preds = np.expand_dims(samples[:, -1, 1], -1)
-    mae = np.mean(np.abs(preds - targets))
-    batch_maes.append(mae)
-  baseline_mae = np.mean(batch_maes)
-  print(baseline_mae)
-  input("Press Enter to continue...")
-
-
 
   print("Building model")
   # Build our model
