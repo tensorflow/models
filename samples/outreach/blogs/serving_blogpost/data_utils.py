@@ -2,11 +2,58 @@ import numpy as np
 import tensorflow as tf
 import functools
 import matplotlib.pyplot as plt
+import urllib.request
+from io import BytesIO
+from zipfile import ZipFile
+import urllib.request
+import os
 
+def get_all_data():
+  directory = './data'
+  if not os.path.exists(directory):
+    os.makedirs(directory)
+
+  base_url = 'https://www.bgc-jena.mpg.de/wetter/mpi_roof_20{:02d}{}.zip'
+
+  merge_2006_2012 = []
+  for i in range(6, 12):
+    merge_2006_2012.append(base_url.format(i, 'a'))
+    merge_2006_2012.append(base_url.format(i, 'b'))
+
+  get_set_of_data(merge_2006_2012, os.path.join(directory, 'merge_2006_2012.csv'))
+
+  merge_2012_2018 = []
+  for i in range(12, 18):
+    merge_2012_2018.append(base_url.format(i, 'a'))
+    merge_2012_2018.append(base_url.format(i, 'b'))
+  # Special case for present data
+  merge_2012_2018.append('https://www.bgc-jena.mpg.de/wetter/mpi_roof.zip')
+
+  get_set_of_data(merge_2012_2018, os.path.join(directory, 'merge_2012_2018.csv'))
+
+
+def get_set_of_data(urls, output_filename):
+  output_file = open(output_filename, 'wb')
+  for i, url in enumerate(urls):
+    print('Downloading: {}'.format(url))
+    get_single_zip_data(url, output_file, i == 0)
+
+  output_file.close()
+
+
+def get_single_zip_data(url, output_file, first=False):
+  url = urllib.request.urlopen(url)
+  with ZipFile(BytesIO(url.read())) as my_zip_file:
+    contained_file = my_zip_file.namelist()[0]
+    for i, line in enumerate(my_zip_file.open(contained_file).readlines()):
+      if i == 0 and not first or '-9999' in str(line):
+        # Skip in the case of a header (and not the first file) or invalid data
+        continue
+      output_file.write(line)
 
 class Dataset():
   def __init__(self,
-               data_path='/tmp/merge_2006_2012.csv',
+               data_path='./data/merge_2006_2012.csv',
                batch_size=128,
                data_points_day=144,
                num_days=10,
@@ -118,7 +165,7 @@ class Dataset():
     print("Number of validation examples {}".format(self.num_val))
     print("Number of testing examples {}".format(self.num_test))
 
-    # Normalization and other shit
+    # Get normalization values
     mean = all_data[:self.num_train].mean(axis=0)
     std = all_data[:self.num_train].std(axis=0)
 
@@ -136,3 +183,5 @@ class Dataset():
 
     return train_ds, val_ds, test_ds
 
+if __name__ == '__main__':
+    get_all_data()
