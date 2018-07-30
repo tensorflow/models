@@ -94,7 +94,7 @@ def main(_):
     tf.compat.as_bytes(args.output_path),
     tf.compat.as_bytes(str(args.model_version)))
 
-  print 'Exporting trained model to', export_path
+  print('Exporting trained model to', export_path)
   sess = K.get_session()
 
   builder = tf.saved_model.builder.SavedModelBuilder(export_path)
