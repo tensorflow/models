@@ -4,7 +4,7 @@ set -e
 DATASET="ml-20m"
 
 BUCKET=${BUCKET:-""}
-ROOT_DIR="${BUCKET:-'/tmp'}/MLPerf_NCF"
+ROOT_DIR="${BUCKET:-/tmp}/MLPerf_NCF"
 echo "Root directory: ${ROOT_DIR}"
 
 if [[ -z ${BUCKET} ]]; then
@@ -23,7 +23,7 @@ mkdir -p ${LOCAL_TEST_DIR}
 TPU=${TPU:-""}
 if [[ -z ${TPU} ]]; then
   DEVICE_FLAG="--num_gpus -1"
-else:
+else
   DEVICE_FLAG="--tpu ${TPU} --num_gpus 0"
 fi
 
