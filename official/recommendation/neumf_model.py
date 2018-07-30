@@ -33,6 +33,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
 import typing
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -181,5 +182,9 @@ def construct_model(users, items, params):
   logits = tf.keras.layers.Dense(
       1, activation=None, kernel_initializer="lecun_uniform",
       name=movielens.RATING_COLUMN)(predict_vector)
+
+  # Print model topology.
+  tf.keras.models.Model([user_input, item_input], logits).summary()
+  sys.stdout.flush()
 
   return logits
