@@ -294,7 +294,7 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
 
   with contextlib.closing(
       multiprocessing.Pool(multiprocessing.cpu_count())) as pool:
-    test_shards = pool.map(_train_eval_map_fn, map_args)
+    test_shards = pool.map(_train_eval_map_fn, map_args)  # pylint: disable=no-member
 
   tf.logging.info("Merging test shards...")
   test_users = np.concatenate([i[movielens.USER_COLUMN] for i in test_shards])
