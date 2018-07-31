@@ -867,7 +867,7 @@ class SSDMetaArch(model.DetectionModel):
         if var_name.startswith(self._extract_features_scope):
           if fine_tune_checkpoint_type == 'classification':
             var_name = (
-                re.split('^' + self._extract_features_scope + '/',
+                re.split('^' + '/',
                          var_name)[-1])
           variables_to_restore[var_name] = variable
 
