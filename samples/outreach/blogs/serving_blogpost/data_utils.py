@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
-import functools
+import multiprocessing
 import matplotlib.pyplot as plt
 import urllib.request
 from io import BytesIO
@@ -52,7 +52,8 @@ def get_single_zip_data(url, output_file, first=False):
         continue
       output_file.write(line)
 
-class Dataset():
+
+class Dataset(object):
   def __init__(self,
                data_path='./data/merge_2006_2012.csv',
                batch_size=128,
@@ -96,21 +97,20 @@ class Dataset():
       samples of size (batch, lookback // steps, num features),
              targets of size (batch,)
     """
+    data = data.astype(np.float32)
     num_x = len(data)
-    idxs = np.arange(self.lookback, num_x - self.delay)
-    dataset = tf.data.Dataset.from_tensor_slices((idxs))
-    cfg = {
-      'data': tf.constant(data, dtype=tf.float32),
-      'lookback': self.lookback,
-      'steps': self.steps,
-      'delay': self.delay,
-    }
-    preproc_fn = functools.partial(self._preprocess_dataset_element, **cfg)
-
+    dataset = tf.data.Dataset.from_tensor_slices(data)
+    dataset = dataset.apply(tf.contrib.data.sliding_window_batch(
+        window_size=self.lookback + self.delay))
     # Map our preprocessing function to every element in our dataset, taking
     # advantage of multithreading
-    dataset = dataset.map(preproc_fn, num_parallel_calls=5)
+    dataset = dataset.map(lambda window: (window[:self.lookback:self.steps],
+                                           tf.expand_dims(window[-1][1], -1)),
+                          num_parallel_calls=multiprocessing.cpu_count())
+
+
     if shuffle:
+      # Shuffle entire dataset
       dataset = dataset.shuffle(num_x)
     # It's necessary to repeat our data for all epochs
     dataset = dataset.repeat().batch(self.batch_size).prefetch(1)
@@ -131,7 +131,7 @@ class Dataset():
     print(len(raw_data))
     return header, raw_data
 
-  def load_jena_data(self, plot=False):
+  def load_jena_data(self):
     """fn to return the train, val, and test tf.data.Datasets """
     header, raw_data = self.get_raw()
     # Ignore the time stamp and grab the 20 features (for 2006-2012 this is all
@@ -142,24 +142,15 @@ class Dataset():
       values = [float(x) for x in line.split(',')[1:21]]
       all_data[i, :] = values
 
-    if plot:
-      temp_data = all_data[:, 1]
-      plt.plot(range(len(temp_data)), temp_data)
-      plt.show()
+    self.all_data = all_data
 
-      plt.plot(range(self.data_points_day * self.num_days),
-               temp_data[:self.data_points_day * self.num_days])
-      plt.title("First 10 days of Temperature Data")
-      plt.xlabel("Time (hours)")
-      plt.ylabel("Temperature (Degrees Celsius)")
-      plt.show()
-
+  def create_train_test(self):
     train_ratio = 0.7
     val_ratio = 0.2
     test_ratio = 0.1
     np.testing.assert_almost_equal((train_ratio + val_ratio + test_ratio), 1.0)
 
-    num_total = len(all_data)
+    num_total = len(self.all_data)
     self.num_train = int(num_total * train_ratio)
     self.num_val = int(num_total * val_ratio)
     self.num_test = num_total - (self.num_train + self.num_val)
@@ -170,22 +161,42 @@ class Dataset():
     print("Number of testing examples {}".format(self.num_test))
 
     # Get normalization values
-    mean = all_data[:self.num_train].mean(axis=0)
-    std = all_data[:self.num_train].std(axis=0)
+    mean = self.all_data[:self.num_train].mean(axis=0)
+    std = self.all_data[:self.num_train].std(axis=0)
 
     # Normalize all the data by the training mean and standard deviation
-    all_data -= mean
-    all_data /= std
+    self.all_data -= mean
+    self.all_data /= std
 
-    self.x_train = all_data[:self.num_train]
-    self.x_val = all_data[self.num_train:self.num_train + self.num_val]
-    self.x_test = all_data[self.num_train + self.num_val:]
+    self.x_train = self.all_data[:self.num_train]
+    self.x_val = self.all_data[self.num_train:self.num_train + self.num_val]
+    self.x_test = self.all_data[self.num_train + self.num_val:]
 
-    train_ds = self.get_dataset(self.x_train, shuffle=True)
-    val_ds = self.get_dataset(self.x_val)
-    test_ds = self.get_dataset(self.x_test)
+    self.train_ds = self.get_dataset(self.x_train, shuffle=True)
+    self.val_ds = self.get_dataset(self.x_val)
+    self.test_ds = self.get_dataset(self.x_test)
 
-    val_iter = val_ds.make_one_shot_iterator()
+    return self.train_ds, self.val_ds, self.test_ds
+
+  def get_jena_datasets(self):
+    """Convenience helper to load data and split into train, val, test"""
+    self.load_jena_data()
+    return self.create_train_test()
+
+  def plot(self):
+    temp_data = self.all_data[:, 1]
+    plt.plot(range(len(temp_data)), temp_data)
+    plt.show()
+
+    plt.plot(range(self.data_points_day * self.num_days),
+             temp_data[:self.data_points_day * self.num_days])
+    plt.title("First 10 days of Temperature Data")
+    plt.xlabel("Time (hours)")
+    plt.ylabel("Temperature (Degrees Celsius)")
+    plt.show()
+
+  def calculate_baseline_acc(self):
+    val_iter = self.val_ds.make_one_shot_iterator()
     val_next_element = val_iter.get_next()
 
     batch_maes = []
@@ -196,9 +207,7 @@ class Dataset():
       batch_maes.append(mae)
     baseline_mae = np.mean(batch_maes)
     print("\nBase line Mean Absolute Error: {}".format(baseline_mae))
-    input("Press Enter to continue...")
 
-    return train_ds, val_ds, test_ds
 
 if __name__ == '__main__':
     get_all_data()

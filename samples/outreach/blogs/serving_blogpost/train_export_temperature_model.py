@@ -54,7 +54,11 @@ def main(_):
                           args.num_days,
                           args.steps,
                           'train')
-  train_ds, val_ds, test_ds = ds.load_jena_data(plot=args.plot)
+  train_ds, val_ds, test_ds = ds.get_jena_datasets()
+  if args.plot:
+    ds.plot()
+
+  ds.calculate_baseline_acc()
 
   print("Building model")
   # Build our model
@@ -70,7 +74,7 @@ def main(_):
   # Train our model
   history = model.fit(train_ds,
                       steps_per_epoch=int(np.ceil(ds.num_train / float(args.batch_size))),
-                      epochs=10,
+                      epochs=1,
                       validation_data=val_ds,
                       validation_steps=int(np.ceil(ds.num_val / float(args.batch_size))),
                       callbacks=[cp])
