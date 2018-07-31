@@ -395,7 +395,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
 
   # By limiting the number of workers we guarantee that the worker
   # pool underlying the training generation doesn't starve other processes.
-  num_workers = int(multiprocessing.cpu_count() * 0.75)
+  num_workers = int(multiprocessing.cpu_count() * 0.75) or 1
 
   subproc_args = popen_helper.INVOCATION + [
       "--data_dir", data_dir,
