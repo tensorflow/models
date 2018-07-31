@@ -38,10 +38,8 @@ import typing
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-from tensorflow.python.keras.utils import tf_utils
 
 from official.datasets import movielens  # pylint: disable=g-bad-import-order
-from official.utils.accelerator import tpu as tpu_utils
 
 
 def neumf_model_fn(features, labels, mode, params):
