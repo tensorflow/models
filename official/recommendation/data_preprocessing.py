@@ -377,7 +377,6 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
                          num_data_readers=None, num_neg=4, epochs_per_cycle=1):
   """Preprocess data and start negative generation subprocess."""
 
-  movielens.download(dataset=dataset, data_dir=data_dir)
   tf.logging.info("Beginning data preprocessing.")
   ncf_dataset = construct_cache(dataset=dataset, data_dir=data_dir,
                                 num_data_readers=num_data_readers)
