@@ -62,6 +62,30 @@ class MockBoxPredictor(box_predictor.BoxPredictor):
             class_predictions_with_background}
 
 
+class MockKerasBoxPredictor(box_predictor.KerasBoxPredictor):
+  """Simple box predictor that ignores inputs and outputs all zeros."""
+
+  def __init__(self, is_training, num_classes):
+    super(MockKerasBoxPredictor, self).__init__(
+        is_training, num_classes, False, False)
+
+  def _predict(self, image_features, **kwargs):
+    image_feature = image_features[0]
+    combined_feature_shape = shape_utils.combined_static_and_dynamic_shape(
+        image_feature)
+    batch_size = combined_feature_shape[0]
+    num_anchors = (combined_feature_shape[1] * combined_feature_shape[2])
+    code_size = 4
+    zero = tf.reduce_sum(0 * image_feature)
+    box_encodings = zero + tf.zeros(
+        (batch_size, num_anchors, 1, code_size), dtype=tf.float32)
+    class_predictions_with_background = zero + tf.zeros(
+        (batch_size, num_anchors, self.num_classes + 1), dtype=tf.float32)
+    return {box_predictor.BOX_ENCODINGS: box_encodings,
+            box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND:
+                class_predictions_with_background}
+
+
 class MockAnchorGenerator(anchor_generator.AnchorGenerator):
   """Mock anchor generator."""
 

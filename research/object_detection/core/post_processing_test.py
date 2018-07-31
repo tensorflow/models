@@ -22,24 +22,6 @@ from object_detection.core import standard_fields as fields
 
 class MulticlassNonMaxSuppressionTest(tf.test.TestCase):
 
-  def test_with_invalid_scores_size(self):
-    boxes = tf.constant([[[0, 0, 1, 1]],
-                         [[0, 0.1, 1, 1.1]],
-                         [[0, -0.1, 1, 0.9]],
-                         [[0, 10, 1, 11]],
-                         [[0, 10.1, 1, 11.1]],
-                         [[0, 100, 1, 101]]], tf.float32)
-    scores = tf.constant([[.9], [.75], [.6], [.95], [.5]])
-    iou_thresh = .5
-    score_thresh = 0.6
-    max_output_size = 3
-    nms = post_processing.multiclass_non_max_suppression(
-        boxes, scores, score_thresh, iou_thresh, max_output_size)
-    with self.test_session() as sess:
-      with self.assertRaisesWithPredicateMatch(
-          tf.errors.InvalidArgumentError, 'Incorrect scores field length'):
-        sess.run(nms.get())
-
   def test_multiclass_nms_select_with_shared_boxes(self):
     boxes = tf.constant([[[0, 0, 1, 1]],
                          [[0, 0.1, 1, 1.1]],

@@ -93,6 +93,8 @@ message WeightSharedConvolutionalBoxPredictor {
   optional bool share_prediction_tower = 13 [default = false];
 }
 
+// TODO(alirezafathi): Refactor the proto file to be able to configure mask rcnn
+// head easily.
 message MaskRCNNBoxPredictor {
   // Hyperparameters for fully connected ops used in the box predictor.
   optional Hyperparams fc_hyperparams = 1;

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Faster R-CNN meta-architecture definition.
 
 General tensorflow implementation of Faster R-CNN detection models.
@@ -98,7 +97,6 @@ from functools import partial
 import tensorflow as tf
 
 from object_detection.anchor_generators import grid_anchor_generator
-from object_detection.core import balanced_positive_negative_sampler as sampler
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import box_predictor
@@ -107,6 +105,7 @@ from object_detection.core import model
 from object_detection.core import post_processing
 from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner
+from object_detection.predictors import convolutional_box_predictor
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 
@@ -228,12 +227,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
                feature_extractor,
                number_of_stages,
                first_stage_anchor_generator,
+               first_stage_target_assigner,
                first_stage_atrous_rate,
                first_stage_box_predictor_arg_scope_fn,
                first_stage_box_predictor_kernel_size,
                first_stage_box_predictor_depth,
                first_stage_minibatch_size,
-               first_stage_positive_balance_fraction,
+               first_stage_sampler,
                first_stage_nms_score_threshold,
                first_stage_nms_iou_threshold,
                first_stage_max_proposals,
@@ -242,9 +242,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
                initial_crop_size,
                maxpool_kernel_size,
                maxpool_stride,
+               second_stage_target_assigner,
                second_stage_mask_rcnn_box_predictor,
                second_stage_batch_size,
-               second_stage_balance_fraction,
+               second_stage_sampler,
                second_stage_non_max_suppression_fn,
                second_stage_score_conversion_fn,
                second_stage_localization_loss_weight,
@@ -254,7 +255,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                hard_example_miner=None,
                parallel_iterations=16,
                add_summaries=True,
-               use_matmul_crop_and_resize=False):
+               use_matmul_crop_and_resize=False,
+               clip_anchors_to_image=False):
     """FasterRCNNMetaArch Constructor.
 
     Args:
@@ -285,6 +287,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
       first_stage_anchor_generator: An anchor_generator.AnchorGenerator object
         (note that currently we only support
         grid_anchor_generator.GridAnchorGenerator objects)
+      first_stage_target_assigner: Target assigner to use for first stage of
+        Faster R-CNN (RPN).
       first_stage_atrous_rate: A single integer indicating the atrous rate for
         the single convolution op which is applied to the `rpn_features_to_crop`
         tensor to obtain a tensor to be used for box prediction. Some feature
@@ -304,8 +308,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         "batch size" refers to the number of anchors selected as contributing
         to the loss function for any given image within the image batch and is
         only called "batch_size" due to terminology from the Faster R-CNN paper.
-      first_stage_positive_balance_fraction: Fraction of positive examples
-        per image for the RPN. The recommended value for Faster RCNN is 0.5.
+      first_stage_sampler: Sampler to use for first stage loss (RPN loss).
       first_stage_nms_score_threshold: Score threshold for non max suppression
         for the Region Proposal Network (RPN).  This value is expected to be in
         [0, 1] as it is applied directly after a softmax transformation.  The
@@ -325,6 +328,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
         max pool op on the cropped feature map during ROI pooling.
       maxpool_stride: A single integer indicating the stride of the max pool
         op on the cropped feature map during ROI pooling.
+      second_stage_target_assigner: Target assigner to use for second stage of
+        Faster R-CNN. If the model is configured with multiple prediction heads,
+        this target assigner is used to generate targets for all heads (with the
+        correct `unmatched_class_label`).
       second_stage_mask_rcnn_box_predictor: Mask R-CNN box predictor to use for
         the second stage.
       second_stage_batch_size: The batch size used for computing the
@@ -332,9 +339,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         "batch size" refers to the number of proposals selected as contributing
         to the loss function for any given image within the image batch and is
         only called "batch_size" due to terminology from the Faster R-CNN paper.
-      second_stage_balance_fraction: Fraction of positive examples to use
-        per image for the box classifier. The recommended value for Faster RCNN
-        is 0.25.
+      second_stage_sampler:  Sampler to use for second stage loss (box
+        classifier loss).
       second_stage_non_max_suppression_fn: batch_multiclass_non_max_suppression
         callable that takes `boxes`, `scores`, optional `clip_window` and
         optional (kwarg) `mask` inputs (with all other inputs already set)
@@ -364,6 +370,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
       use_matmul_crop_and_resize: Force the use of matrix multiplication based
         crop and resize instead of standard tf.image.crop_and_resize while
         computing second stage input feature maps.
+      clip_anchors_to_image: Normally, anchors generated for a given image size
+      are pruned during training if they lie outside the image window. This
+      option clips the anchors to be within the image instead of pruning.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals` at
@@ -388,13 +397,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
     self._feature_extractor = feature_extractor
     self._number_of_stages = number_of_stages
 
-    # The first class is reserved as background.
-    unmatched_cls_target = tf.constant(
-        [1] + self._num_classes * [0], dtype=tf.float32)
-    self._proposal_target_assigner = target_assigner.create_target_assigner(
-        'FasterRCNN', 'proposal')
-    self._detector_target_assigner = target_assigner.create_target_assigner(
-        'FasterRCNN', 'detection', unmatched_cls_target=unmatched_cls_target)
+    self._proposal_target_assigner = first_stage_target_assigner
+    self._detector_target_assigner = second_stage_target_assigner
     # Both proposal and detector target assigners use the same box coder
     self._box_coder = self._proposal_target_assigner.box_coder
 
@@ -407,14 +411,19 @@ class FasterRCNNMetaArch(model.DetectionModel):
         first_stage_box_predictor_kernel_size)
     self._first_stage_box_predictor_depth = first_stage_box_predictor_depth
     self._first_stage_minibatch_size = first_stage_minibatch_size
-    self._first_stage_sampler = sampler.BalancedPositiveNegativeSampler(
-        positive_fraction=first_stage_positive_balance_fraction)
-    self._first_stage_box_predictor = box_predictor.ConvolutionalBoxPredictor(
-        self._is_training, num_classes=1,
-        conv_hyperparams_fn=self._first_stage_box_predictor_arg_scope_fn,
-        min_depth=0, max_depth=0, num_layers_before_predictor=0,
-        use_dropout=False, dropout_keep_prob=1.0, kernel_size=1,
-        box_code_size=self._box_coder.code_size)
+    self._first_stage_sampler = first_stage_sampler
+    self._first_stage_box_predictor = (
+        convolutional_box_predictor.ConvolutionalBoxPredictor(
+            self._is_training,
+            num_classes=1,
+            conv_hyperparams_fn=self._first_stage_box_predictor_arg_scope_fn,
+            min_depth=0,
+            max_depth=0,
+            num_layers_before_predictor=0,
+            use_dropout=False,
+            dropout_keep_prob=1.0,
+            kernel_size=1,
+            box_code_size=self._box_coder.code_size))
 
     self._first_stage_nms_score_threshold = first_stage_nms_score_threshold
     self._first_stage_nms_iou_threshold = first_stage_nms_iou_threshold
@@ -435,8 +444,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     self._mask_rcnn_box_predictor = second_stage_mask_rcnn_box_predictor
 
     self._second_stage_batch_size = second_stage_batch_size
-    self._second_stage_sampler = sampler.BalancedPositiveNegativeSampler(
-        positive_fraction=second_stage_balance_fraction)
+    self._second_stage_sampler = second_stage_sampler
 
     self._second_stage_nms_fn = second_stage_non_max_suppression_fn
     self._second_stage_score_conversion_fn = second_stage_score_conversion_fn
@@ -453,6 +461,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
     self._use_matmul_crop_and_resize = use_matmul_crop_and_resize
     self._hard_example_miner = hard_example_miner
     self._parallel_iterations = parallel_iterations
+
+    self.clip_anchors_to_image = clip_anchors_to_image
 
     if self._number_of_stages <= 0 or self._number_of_stages > 3:
       raise ValueError('Number of stages should be a value in {1, 2, 3}.')
@@ -639,10 +649,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
     # the image window at training time and clipping at inference time.
     clip_window = tf.to_float(tf.stack([0, 0, image_shape[1], image_shape[2]]))
     if self._is_training:
-      (rpn_box_encodings, rpn_objectness_predictions_with_background,
-       anchors_boxlist) = self._remove_invalid_anchors_and_predictions(
-           rpn_box_encodings, rpn_objectness_predictions_with_background,
-           anchors_boxlist, clip_window)
+      if self.clip_anchors_to_image:
+        anchors_boxlist = box_list_ops.clip_to_window(
+            anchors_boxlist, clip_window, filter_nonoverlapping=False)
+      else:
+        (rpn_box_encodings, rpn_objectness_predictions_with_background,
+         anchors_boxlist) = self._remove_invalid_anchors_and_predictions(
+             rpn_box_encodings, rpn_objectness_predictions_with_background,
+             anchors_boxlist, clip_window)
     else:
       anchors_boxlist = box_list_ops.clip_to_window(
           anchors_boxlist, clip_window)
@@ -761,11 +775,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
             flattened_proposal_feature_maps,
             scope=self.second_stage_feature_extractor_scope))
 
-    box_predictions = self._mask_rcnn_box_predictor.predict(
-        [box_classifier_features],
-        num_predictions_per_location=[1],
-        scope=self.second_stage_box_predictor_scope,
-        predict_boxes_and_classes=True)
+    if self._mask_rcnn_box_predictor.is_keras_model:
+      box_predictions = self._mask_rcnn_box_predictor(
+          [box_classifier_features],
+          prediction_stage=2)
+    else:
+      box_predictions = self._mask_rcnn_box_predictor.predict(
+          [box_classifier_features],
+          num_predictions_per_location=[1],
+          scope=self.second_stage_box_predictor_scope,
+          prediction_stage=2)
 
     refined_box_encodings = tf.squeeze(
         box_predictions[box_predictor.BOX_ENCODINGS],
@@ -834,12 +853,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
     if self._is_training:
       curr_box_classifier_features = prediction_dict['box_classifier_features']
       detection_classes = prediction_dict['class_predictions_with_background']
-      mask_predictions = self._mask_rcnn_box_predictor.predict(
-          [curr_box_classifier_features],
-          num_predictions_per_location=[1],
-          scope=self.second_stage_box_predictor_scope,
-          predict_boxes_and_classes=False,
-          predict_auxiliary_outputs=True)
+      if self._mask_rcnn_box_predictor.is_keras_model:
+        mask_predictions = self._mask_rcnn_box_predictor(
+            [curr_box_classifier_features],
+            prediction_stage=3)
+      else:
+        mask_predictions = self._mask_rcnn_box_predictor.predict(
+            [curr_box_classifier_features],
+            num_predictions_per_location=[1],
+            scope=self.second_stage_box_predictor_scope,
+            prediction_stage=3)
       prediction_dict['mask_predictions'] = tf.squeeze(mask_predictions[
           box_predictor.MASK_PREDICTIONS], axis=1)
     else:
@@ -865,12 +888,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
               flattened_detected_feature_maps,
               scope=self.second_stage_feature_extractor_scope))
 
-      mask_predictions = self._mask_rcnn_box_predictor.predict(
-          [curr_box_classifier_features],
-          num_predictions_per_location=[1],
-          scope=self.second_stage_box_predictor_scope,
-          predict_boxes_and_classes=False,
-          predict_auxiliary_outputs=True)
+      if self._mask_rcnn_box_predictor.is_keras_model:
+        mask_predictions = self._mask_rcnn_box_predictor(
+            [curr_box_classifier_features],
+            prediction_stage=3)
+      else:
+        mask_predictions = self._mask_rcnn_box_predictor.predict(
+            [curr_box_classifier_features],
+            num_predictions_per_location=[1],
+            scope=self.second_stage_box_predictor_scope,
+            prediction_stage=3)
 
       detection_masks = tf.squeeze(mask_predictions[
           box_predictor.MASK_PREDICTIONS], axis=1)
@@ -976,10 +1003,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
     if len(num_anchors_per_location) != 1:
       raise RuntimeError('anchor_generator is expected to generate anchors '
                          'corresponding to a single feature map.')
-    box_predictions = self._first_stage_box_predictor.predict(
-        [rpn_box_predictor_features],
-        num_anchors_per_location,
-        scope=self.first_stage_box_predictor_scope)
+    if self._first_stage_box_predictor.is_keras_model:
+      box_predictions = self._first_stage_box_predictor(
+          [rpn_box_predictor_features])
+    else:
+      box_predictions = self._first_stage_box_predictor.predict(
+          [rpn_box_predictor_features],
+          num_anchors_per_location,
+          scope=self.first_stage_box_predictor_scope)
 
     box_encodings = tf.concat(
         box_predictions[box_predictor.BOX_ENCODINGS], axis=1)
@@ -1393,8 +1424,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
       a BoxList contained sampled proposals.
     """
     (cls_targets, cls_weights, _, _, _) = self._detector_target_assigner.assign(
-        proposal_boxlist, groundtruth_boxlist,
-        groundtruth_classes_with_background)
+        proposal_boxlist,
+        groundtruth_boxlist,
+        groundtruth_classes_with_background,
+        unmatched_class_label=tf.constant(
+            [1] + self._num_classes * [0], dtype=tf.float32))
     # Selects all boxes as candidates if none of them is selected according
     # to cls_weights. This could happen as boxes within certain IOU ranges
     # are ignored. If triggered, the selected boxes will still be ignored
@@ -1672,7 +1706,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
        batch_reg_weights, _) = target_assigner.batch_assign_targets(
            self._proposal_target_assigner, box_list.BoxList(anchors),
            groundtruth_boxlists,
-           len(groundtruth_boxlists) * [None], groundtruth_weights_list)
+           len(groundtruth_boxlists) * [None],
+           gt_weights_batch=groundtruth_weights_list)
       batch_cls_targets = tf.squeeze(batch_cls_targets, axis=2)
 
       def _minibatch_subsample_fn(inputs):
@@ -1792,9 +1827,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
       (batch_cls_targets_with_background, batch_cls_weights, batch_reg_targets,
        batch_reg_weights, _) = target_assigner.batch_assign_targets(
-           self._detector_target_assigner, proposal_boxlists,
-           groundtruth_boxlists, groundtruth_classes_with_background_list,
-           groundtruth_weights_list)
+           self._detector_target_assigner,
+           proposal_boxlists,
+           groundtruth_boxlists,
+           groundtruth_classes_with_background_list,
+           unmatched_class_label=tf.constant(
+               [1] + self._num_classes * [0], dtype=tf.float32),
+           gt_weights_batch=groundtruth_weights_list)
 
       class_predictions_with_background = tf.reshape(
           class_predictions_with_background,
@@ -1866,18 +1905,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
           raise ValueError('Groundtruth instance masks not provided. '
                            'Please configure input reader.')
 
-        # Create a new target assigner that matches the proposals to groundtruth
-        # and returns the mask targets.
-        # TODO(rathodv): Move `unmatched_cls_target` from constructor to assign
-        # function. This will enable reuse of a single target assigner for both
-        # class targets and mask targets.
-        mask_target_assigner = target_assigner.create_target_assigner(
-            'FasterRCNN', 'detection',
-            unmatched_cls_target=tf.zeros(image_shape[1:3], dtype=tf.float32))
-        (batch_mask_targets, _, _,
-         batch_mask_target_weights, _) = target_assigner.batch_assign_targets(
-             mask_target_assigner, proposal_boxlists, groundtruth_boxlists,
-             groundtruth_masks_list, groundtruth_weights_list)
+        unmatched_mask_label = tf.zeros(image_shape[1:3], dtype=tf.float32)
+        (batch_mask_targets, _, _, batch_mask_target_weights,
+         _) = target_assigner.batch_assign_targets(
+             self._detector_target_assigner, proposal_boxlists,
+             groundtruth_boxlists, groundtruth_masks_list, unmatched_mask_label,
+             groundtruth_weights_list)
 
         # Pad the prediction_masks with to add zeros for background class to be
         # consistent with class predictions.

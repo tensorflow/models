@@ -48,6 +48,7 @@ pip install --user jupyter
 pip install --user matplotlib
 ```
 
+<!-- common_typos_disable -->
 **Note**: sometimes "sudo apt-get install protobuf-compiler" will install
 Protobuf 3+ versions for you and some users have issues when using 3.5.
 If that is your case, try the [manual](#Manual-protobuf-compiler-installation-and-usage) installation.
@@ -88,6 +89,7 @@ protoc object_detection/protos/*.proto --python_out=.
 
 ## Manual protobuf-compiler installation and usage
 Download and install the 3.0 release of protoc, then unzip the file.
+
 ```bash
 # From tensorflow/models/research/
 wget -O protobuf.zip https://github.com/google/protobuf/releases/download/v3.0.0/protoc-3.0.0-linux-x86_64.zip

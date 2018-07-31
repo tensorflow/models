@@ -657,6 +657,42 @@ class PadInputDataToStaticShapesFnTest(tf.test.TestCase):
         padded_tensor_dict[fields.InputDataFields.groundtruth_classes]
         .shape.as_list(), [3, 3])
 
+  def test_clip_boxes_and_classes(self):
+    input_tensor_dict = {
+        fields.InputDataFields.groundtruth_boxes:
+            tf.placeholder(tf.float32, [None, 4]),
+        fields.InputDataFields.groundtruth_classes:
+            tf.placeholder(tf.int32, [None, 3]),
+    }
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=3,
+        spatial_image_shape=[5, 6])
+
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_boxes]
+        .shape.as_list(), [3, 4])
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_classes]
+        .shape.as_list(), [3, 3])
+
+    with self.test_session() as sess:
+      out_tensor_dict = sess.run(
+          padded_tensor_dict,
+          feed_dict={
+              input_tensor_dict[fields.InputDataFields.groundtruth_boxes]:
+                  np.random.rand(5, 4),
+              input_tensor_dict[fields.InputDataFields.groundtruth_classes]:
+                  np.random.rand(2, 3),
+          })
+
+    self.assertAllEqual(
+        out_tensor_dict[fields.InputDataFields.groundtruth_boxes].shape, [3, 4])
+    self.assertAllEqual(
+        out_tensor_dict[fields.InputDataFields.groundtruth_classes].shape,
+        [3, 3])
+
   def test_do_not_pad_dynamic_images(self):
     input_tensor_dict = {
         fields.InputDataFields.image:

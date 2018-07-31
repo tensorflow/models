@@ -22,6 +22,95 @@ from object_detection.utils import context_manager
 slim = tf.contrib.slim
 
 
+class KerasLayerHyperparams(object):
+  """
+  A hyperparameter configuration object for Keras layers used in
+  Object Detection models.
+  """
+
+  def __init__(self, hyperparams_config):
+    """Builds keras hyperparameter config for layers based on the proto config.
+
+    It automatically converts from Slim layer hyperparameter configs to
+    Keras layer hyperparameters. Namely, it:
+    - Builds Keras initializers/regularizers instead of Slim ones
+    - sets weights_regularizer/initializer to kernel_regularizer/initializer
+    - converts batchnorm decay to momentum
+    - converts Slim l2 regularizer weights to the equivalent Keras l2 weights
+
+    Contains a hyperparameter configuration for ops that specifies kernel
+    initializer, kernel regularizer, activation. Also contains parameters for
+    batch norm operators based on the configuration.
+
+    Note that if the batch_norm parameters are not specified in the config
+    (i.e. left to default) then batch norm is excluded from the config.
+
+    Args:
+      hyperparams_config: hyperparams.proto object containing
+        hyperparameters.
+
+    Raises:
+      ValueError: if hyperparams_config is not of type hyperparams.Hyperparams.
+    """
+    if not isinstance(hyperparams_config,
+                      hyperparams_pb2.Hyperparams):
+      raise ValueError('hyperparams_config not of type '
+                       'hyperparams_pb.Hyperparams.')
+
+    self._batch_norm_params = None
+    if hyperparams_config.HasField('batch_norm'):
+      self._batch_norm_params = _build_keras_batch_norm_params(
+          hyperparams_config.batch_norm)
+
+    self._op_params = {
+        'kernel_regularizer': _build_keras_regularizer(
+            hyperparams_config.regularizer),
+        'kernel_initializer': _build_initializer(
+            hyperparams_config.initializer, build_for_keras=True),
+        'activation': _build_activation_fn(hyperparams_config.activation)
+    }
+
+  def use_batch_norm(self):
+    return self._batch_norm_params is not None
+
+  def batch_norm_params(self, **overrides):
+    """Returns a dict containing batchnorm layer construction hyperparameters.
+
+    Optionally overrides values in the batchnorm hyperparam dict. Overrides
+    only apply to individual calls of this method, and do not affect
+    future calls.
+
+    Args:
+      **overrides: keyword arguments to override in the hyperparams dictionary
+
+    Returns: dict containing the layer construction keyword arguments, with
+      values overridden by the `overrides` keyword arguments.
+    """
+    if self._batch_norm_params is None:
+      new_batch_norm_params = dict()
+    else:
+      new_batch_norm_params = self._batch_norm_params.copy()
+    new_batch_norm_params.update(overrides)
+    return new_batch_norm_params
+
+  def params(self, **overrides):
+    """Returns a dict containing the layer construction hyperparameters to use.
+
+    Optionally overrides values in the returned dict. Overrides
+    only apply to individual calls of this method, and do not affect
+    future calls.
+
+    Args:
+      **overrides: keyword arguments to override in the hyperparams dictionary.
+
+    Returns: dict containing the layer construction keyword arguments, with
+      values overridden by the `overrides` keyword arguments.
+    """
+    new_params = self._op_params.copy()
+    new_params.update(**overrides)
+    return new_params
+
+
 def build(hyperparams_config, is_training):
   """Builds tf-slim arg_scope for convolution ops based on the config.
 
@@ -72,7 +161,7 @@ def build(hyperparams_config, is_training):
           context_manager.IdentityContextManager()):
       with slim.arg_scope(
           affected_ops,
-          weights_regularizer=_build_regularizer(
+          weights_regularizer=_build_slim_regularizer(
               hyperparams_config.regularizer),
           weights_initializer=_build_initializer(
               hyperparams_config.initializer),
@@ -104,7 +193,7 @@ def _build_activation_fn(activation_fn):
   raise ValueError('Unknown activation function: {}'.format(activation_fn))
 
 
-def _build_regularizer(regularizer):
+def _build_slim_regularizer(regularizer):
   """Builds a tf-slim regularizer from config.
 
   Args:
@@ -124,11 +213,36 @@ def _build_regularizer(regularizer):
   raise ValueError('Unknown regularizer function: {}'.format(regularizer_oneof))
 
 
-def _build_initializer(initializer):
+def _build_keras_regularizer(regularizer):
+  """Builds a keras regularizer from config.
+
+  Args:
+    regularizer: hyperparams_pb2.Hyperparams.regularizer proto.
+
+  Returns:
+    Keras regularizer.
+
+  Raises:
+    ValueError: On unknown regularizer.
+  """
+  regularizer_oneof = regularizer.WhichOneof('regularizer_oneof')
+  if  regularizer_oneof == 'l1_regularizer':
+    return tf.keras.regularizers.l1(float(regularizer.l1_regularizer.weight))
+  if regularizer_oneof == 'l2_regularizer':
+    # The Keras L2 regularizer weight differs from the Slim L2 regularizer
+    # weight by a factor of 2
+    return tf.keras.regularizers.l2(
+        float(regularizer.l2_regularizer.weight * 0.5))
+  raise ValueError('Unknown regularizer function: {}'.format(regularizer_oneof))
+
+
+def _build_initializer(initializer, build_for_keras=False):
   """Build a tf initializer from config.
 
   Args:
     initializer: hyperparams_pb2.Hyperparams.regularizer proto.
+    build_for_keras: Whether the initializers should be built for Keras
+      operators. If false builds for Slim.
 
   Returns:
     tf initializer.
@@ -151,10 +265,42 @@ def _build_initializer(initializer):
     mode = enum_descriptor.values_by_number[initializer.
                                             variance_scaling_initializer.
                                             mode].name
-    return slim.variance_scaling_initializer(
-        factor=initializer.variance_scaling_initializer.factor,
-        mode=mode,
-        uniform=initializer.variance_scaling_initializer.uniform)
+    if build_for_keras:
+      if initializer.variance_scaling_initializer.uniform:
+        return tf.variance_scaling_initializer(
+            scale=initializer.variance_scaling_initializer.factor,
+            mode=mode.lower(),
+            distribution='uniform')
+      else:
+        # In TF 1.9 release and earlier, the truncated_normal distribution was
+        # not supported correctly. So, in these earlier versions of tensorflow,
+        # the ValueError will be raised, and we manually truncate the
+        # distribution scale.
+        #
+        # It is insufficient to just set distribution to `normal` from the
+        # start, because the `normal` distribution in newer Tensorflow versions
+        # creates a truncated distribution, whereas it created untruncated
+        # distributions in older versions.
+        try:
+          return tf.variance_scaling_initializer(
+              scale=initializer.variance_scaling_initializer.factor,
+              mode=mode.lower(),
+              distribution='truncated_normal')
+        except ValueError:
+          truncate_constant = 0.87962566103423978
+          truncated_scale = initializer.variance_scaling_initializer.factor / (
+              truncate_constant * truncate_constant
+          )
+          return tf.variance_scaling_initializer(
+              scale=truncated_scale,
+              mode=mode.lower(),
+              distribution='normal')
+
+    else:
+      return slim.variance_scaling_initializer(
+          factor=initializer.variance_scaling_initializer.factor,
+          mode=mode,
+          uniform=initializer.variance_scaling_initializer.uniform)
   raise ValueError('Unknown initializer function: {}'.format(
       initializer_oneof))
 
@@ -178,5 +324,27 @@ def _build_batch_norm_params(batch_norm, is_training):
       # once we refactor Faster RCNN models to set is_training through an outer
       # arg_scope in the meta architecture.
       'is_training': is_training and batch_norm.train,
+  }
+  return batch_norm_params
+
+
+def _build_keras_batch_norm_params(batch_norm):
+  """Build a dictionary of Keras BatchNormalization params from config.
+
+  Args:
+    batch_norm: hyperparams_pb2.ConvHyperparams.batch_norm proto.
+
+  Returns:
+    A dictionary containing Keras BatchNormalization parameters.
+  """
+  # Note: Although decay is defined to be 1 - momentum in batch_norm,
+  # decay in the slim batch_norm layers was erroneously defined and is
+  # actually the same as momentum in the Keras batch_norm layers.
+  # For context, see: github.com/keras-team/keras/issues/6839
+  batch_norm_params = {
+      'momentum': batch_norm.decay,
+      'center': batch_norm.center,
+      'scale': batch_norm.scale,
+      'epsilon': batch_norm.epsilon,
   }
   return batch_norm_params

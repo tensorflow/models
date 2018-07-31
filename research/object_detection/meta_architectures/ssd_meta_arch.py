@@ -35,7 +35,7 @@ slim = tf.contrib.slim
 
 
 class SSDFeatureExtractor(object):
-  """SSD Feature Extractor definition."""
+  """SSD Slim Feature Extractor definition."""
 
   def __init__(self,
                is_training,
@@ -77,6 +77,10 @@ class SSDFeatureExtractor(object):
     self._override_base_feature_extractor_hyperparams = (
         override_base_feature_extractor_hyperparams)
 
+  @property
+  def is_keras_model(self):
+    return False
+
   @abstractmethod
   def preprocess(self, resized_inputs):
     """Preprocesses images for feature extraction (minus image resizing).
@@ -111,6 +115,105 @@ class SSDFeatureExtractor(object):
         [batch, height_i, width_i, depth_i]
     """
     raise NotImplementedError
+
+
+class SSDKerasFeatureExtractor(tf.keras.Model):
+  """SSD Feature Extractor definition."""
+
+  def __init__(self,
+               is_training,
+               depth_multiplier,
+               min_depth,
+               pad_to_multiple,
+               conv_hyperparams_config,
+               freeze_batchnorm,
+               inplace_batchnorm_update,
+               use_explicit_padding=False,
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False):
+    """Constructor.
+
+    Args:
+      is_training: whether the network is in training mode.
+      depth_multiplier: float depth multiplier for feature extractor.
+      min_depth: minimum feature extractor depth.
+      pad_to_multiple: the nearest multiple to zero pad the input height and
+        width dimensions to.
+      conv_hyperparams_config: A hyperparams.proto object containing
+        convolution hyperparameters for the layers added on top of the
+        base feature extractor.
+      freeze_batchnorm: Whether to freeze batch norm parameters during
+        training or not. When training with a small batch size (e.g. 1), it is
+        desirable to freeze batch norm update and use pretrained batch norm
+        params.
+      inplace_batchnorm_update: Whether to update batch norm moving average
+        values inplace. When this is false train op must add a control
+        dependency on tf.graphkeys.UPDATE_OPS collection in order to update
+        batch norm statistics.
+      use_explicit_padding: Whether to use explicit padding when extracting
+        features. Default is False.
+      use_depthwise: Whether to use depthwise convolutions. Default is False.
+      override_base_feature_extractor_hyperparams: Whether to override
+        hyperparameters of the base feature extractor with the one from
+        `conv_hyperparams_config`.
+    """
+    super(SSDKerasFeatureExtractor, self).__init__()
+
+    self._is_training = is_training
+    self._depth_multiplier = depth_multiplier
+    self._min_depth = min_depth
+    self._pad_to_multiple = pad_to_multiple
+    self._conv_hyperparams_config = conv_hyperparams_config
+    self._freeze_batchnorm = freeze_batchnorm
+    self._inplace_batchnorm_update = inplace_batchnorm_update
+    self._use_explicit_padding = use_explicit_padding
+    self._use_depthwise = use_depthwise
+    self._override_base_feature_extractor_hyperparams = (
+        override_base_feature_extractor_hyperparams)
+
+  @property
+  def is_keras_model(self):
+    return True
+
+  @abstractmethod
+  def preprocess(self, resized_inputs):
+    """Preprocesses images for feature extraction (minus image resizing).
+
+    Args:
+      resized_inputs: a [batch, height, width, channels] float tensor
+        representing a batch of images.
+
+    Returns:
+      preprocessed_inputs: a [batch, height, width, channels] float tensor
+        representing a batch of images.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
+    """
+    raise NotImplementedError
+
+  @abstractmethod
+  def _extract_features(self, preprocessed_inputs):
+    """Extracts features from preprocessed inputs.
+
+    This function is responsible for extracting feature maps from preprocessed
+    images.
+
+    Args:
+      preprocessed_inputs: a [batch, height, width, channels] float tensor
+        representing a batch of images.
+
+    Returns:
+      feature_maps: a list of tensors where the ith tensor has shape
+        [batch, height_i, width_i, depth_i]
+    """
+    raise NotImplementedError
+
+  # This overrides the keras.Model `call` method with the _extract_features
+  # method.
+  def call(self, inputs, **kwargs):
+    return self._extract_features(inputs)
 
 
 class SSDMetaArch(model.DetectionModel):
@@ -211,10 +314,6 @@ class SSDMetaArch(model.DetectionModel):
     self._freeze_batchnorm = freeze_batchnorm
     self._inplace_batchnorm_update = inplace_batchnorm_update
 
-    # Needed for fine-tuning from classification checkpoints whose
-    # variables do not have the feature extractor scope.
-    self._extract_features_scope = 'FeatureExtractor'
-
     self._anchor_generator = anchor_generator
     self._box_predictor = box_predictor
 
@@ -224,21 +323,30 @@ class SSDMetaArch(model.DetectionModel):
     self._region_similarity_calculator = region_similarity_calculator
     self._add_background_class = add_background_class
 
+    # Needed for fine-tuning from classification checkpoints whose
+    # variables do not have the feature extractor scope.
+    if self._feature_extractor.is_keras_model:
+      # Keras feature extractors will have a name they implicitly use to scope.
+      # So, all contained variables are prefixed by this name.
+      # To load from classification checkpoints, need to filter out this name.
+      self._extract_features_scope = feature_extractor.name
+    else:
+      # Slim feature extractors get an explicit naming scope
+      self._extract_features_scope = 'FeatureExtractor'
+
     # TODO(jonathanhuang): handle agnostic mode
     # weights
-    unmatched_cls_target = None
-    unmatched_cls_target = tf.constant([1] + self.num_classes * [0],
-                                       tf.float32)
+    self._unmatched_class_label = tf.constant([1] + self.num_classes * [0],
+                                              tf.float32)
     if encode_background_as_zeros:
-      unmatched_cls_target = tf.constant((self.num_classes + 1) * [0],
-                                         tf.float32)
+      self._unmatched_class_label = tf.constant((self.num_classes + 1) * [0],
+                                                tf.float32)
 
     self._target_assigner = target_assigner.TargetAssigner(
         self._region_similarity_calculator,
         self._matcher,
         self._box_coder,
-        negative_class_weight=negative_class_weight,
-        unmatched_cls_target=unmatched_cls_target)
+        negative_class_weight=negative_class_weight)
 
     self._classification_loss = classification_loss
     self._localization_loss = localization_loss
@@ -383,41 +491,53 @@ class SSDMetaArch(model.DetectionModel):
     """
     batchnorm_updates_collections = (None if self._inplace_batchnorm_update
                                      else tf.GraphKeys.UPDATE_OPS)
-    with slim.arg_scope([slim.batch_norm],
-                        is_training=(self._is_training and
-                                     not self._freeze_batchnorm),
-                        updates_collections=batchnorm_updates_collections):
-      with tf.variable_scope(None, self._extract_features_scope,
-                             [preprocessed_inputs]):
-        feature_maps = self._feature_extractor.extract_features(
-            preprocessed_inputs)
-      feature_map_spatial_dims = self._get_feature_map_spatial_dims(
-          feature_maps)
-      image_shape = shape_utils.combined_static_and_dynamic_shape(
-          preprocessed_inputs)
-      self._anchors = box_list_ops.concatenate(
-          self._anchor_generator.generate(
-              feature_map_spatial_dims,
-              im_height=image_shape[1],
-              im_width=image_shape[2]))
-      prediction_dict = self._box_predictor.predict(
-          feature_maps, self._anchor_generator.num_anchors_per_location())
-      box_encodings = tf.concat(prediction_dict['box_encodings'], axis=1)
-      if box_encodings.shape.ndims == 4 and box_encodings.shape[2] == 1:
-        box_encodings = tf.squeeze(box_encodings, axis=2)
-      class_predictions_with_background = tf.concat(
-          prediction_dict['class_predictions_with_background'], axis=1)
-      predictions_dict = {
-          'preprocessed_inputs': preprocessed_inputs,
-          'box_encodings': box_encodings,
-          'class_predictions_with_background':
-          class_predictions_with_background,
-          'feature_maps': feature_maps,
-          'anchors': self._anchors.get()
-      }
-      self._batched_prediction_tensor_names = [x for x in predictions_dict
-                                               if x != 'anchors']
-      return predictions_dict
+    if self._feature_extractor.is_keras_model:
+      feature_maps = self._feature_extractor(preprocessed_inputs)
+    else:
+      with slim.arg_scope([slim.batch_norm],
+                          is_training=(self._is_training and
+                                       not self._freeze_batchnorm),
+                          updates_collections=batchnorm_updates_collections):
+        with tf.variable_scope(None, self._extract_features_scope,
+                               [preprocessed_inputs]):
+          feature_maps = self._feature_extractor.extract_features(
+              preprocessed_inputs)
+
+    feature_map_spatial_dims = self._get_feature_map_spatial_dims(
+        feature_maps)
+    image_shape = shape_utils.combined_static_and_dynamic_shape(
+        preprocessed_inputs)
+    self._anchors = box_list_ops.concatenate(
+        self._anchor_generator.generate(
+            feature_map_spatial_dims,
+            im_height=image_shape[1],
+            im_width=image_shape[2]))
+    if self._box_predictor.is_keras_model:
+      prediction_dict = self._box_predictor(feature_maps)
+    else:
+      with slim.arg_scope([slim.batch_norm],
+                          is_training=(self._is_training and
+                                       not self._freeze_batchnorm),
+                          updates_collections=batchnorm_updates_collections):
+        prediction_dict = self._box_predictor.predict(
+            feature_maps, self._anchor_generator.num_anchors_per_location())
+
+    box_encodings = tf.concat(prediction_dict['box_encodings'], axis=1)
+    if box_encodings.shape.ndims == 4 and box_encodings.shape[2] == 1:
+      box_encodings = tf.squeeze(box_encodings, axis=2)
+    class_predictions_with_background = tf.concat(
+        prediction_dict['class_predictions_with_background'], axis=1)
+    predictions_dict = {
+        'preprocessed_inputs': preprocessed_inputs,
+        'box_encodings': box_encodings,
+        'class_predictions_with_background':
+        class_predictions_with_background,
+        'feature_maps': feature_maps,
+        'anchors': self._anchors.get()
+    }
+    self._batched_prediction_tensor_names = [x for x in predictions_dict
+                                             if x != 'anchors']
+    return predictions_dict
 
   def _get_feature_map_spatial_dims(self, feature_maps):
     """Return list of spatial dimensions for each feature map in a list.
@@ -710,7 +830,8 @@ class SSDMetaArch(model.DetectionModel):
         boxlist.add_field(fields.BoxListFields.keypoints, keypoints)
     return target_assigner.batch_assign_targets(
         self._target_assigner, self.anchors, groundtruth_boxlists,
-        groundtruth_classes_with_background_list, groundtruth_weights_list)
+        groundtruth_classes_with_background_list, self._unmatched_class_label,
+        groundtruth_weights_list)
 
   def _summarize_target_assignment(self, groundtruth_boxes_list, match_list):
     """Creates tensorflow summaries for the input boxes and anchors.
@@ -872,3 +993,4 @@ class SSDMetaArch(model.DetectionModel):
           variables_to_restore[var_name] = variable
 
     return variables_to_restore
+
