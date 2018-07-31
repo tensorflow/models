@@ -327,7 +327,8 @@ def construct_cache(dataset, data_dir, num_data_readers):
       data during training.
   """
   cache_paths = rconst.Paths(data_dir=data_dir)
-  num_data_readers = num_data_readers or int(multiprocessing.cpu_count() / 2)
+  num_data_readers = (num_data_readers or int(multiprocessing.cpu_count() / 2)
+                      or 1)
   approx_num_shards = int(movielens.NUM_RATINGS[dataset]
                           // rconst.APPROX_PTS_PER_TRAIN_SHARD) or 1
 
