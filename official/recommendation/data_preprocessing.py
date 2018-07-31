@@ -43,10 +43,7 @@ import tensorflow as tf
 from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import stat_utils
-
-
-_ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__),
-                               "data_async_generation.py")
+from official.recommendation import popen_helper
 
 
 class NCFDataset(object):
@@ -391,14 +388,11 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   # contention with the main training process.
   subproc_env["CUDA_VISIBLE_DEVICES"] = ""
 
-  python = "python3" if six.PY3 else "python2"
-
   # By limiting the number of workers we guarantee that the worker
   # pool underlying the training generation doesn't starve other processes.
   num_workers = int(multiprocessing.cpu_count() * 0.75)
 
-  subproc_args = [
-      python, _ASYNC_GEN_PATH,
+  subproc_args = popen_helper.INVOCATION + [
       "--data_dir", data_dir,
       "--cache_id", str(ncf_dataset.cache_paths.cache_id),
       "--num_neg", str(num_neg),
