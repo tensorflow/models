@@ -15,7 +15,6 @@
 """Helper file for running the async data generation process in OSS."""
 
 import os
-import six
 import sys
 
 
