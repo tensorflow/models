@@ -35,7 +35,7 @@ tf.app.flags.DEFINE_integer('num_tests',
                             'client will automatically test with the entire '
                             'test set.')
 tf.app.flags.DEFINE_string('server', '', 'PredictionService host:port')
-tf.app.flags.DEFINE_string('data_path', '/tmp/merge_2006_2012.csv',
+tf.app.flags.DEFINE_string('data_path', './data/merge_2006_2012.csv',
                            'Path to the data csv file')
 tf.app.flags.DEFINE_integer('data_points_day',
                             144,

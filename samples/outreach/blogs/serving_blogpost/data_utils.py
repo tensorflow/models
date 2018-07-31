@@ -134,7 +134,10 @@ class Dataset():
   def load_jena_data(self, plot=False):
     """fn to return the train, val, and test tf.data.Datasets """
     header, raw_data = self.get_raw()
-    all_data = np.zeros((len(raw_data), len(header) - 1))
+    # Ignore the time stamp and grab the 20 features (for 2006-2012 this is all
+    # the available features, but post 2012, there is an extra feature. We'll
+    # limit the data to the first 20 features for simplicity and for comparison.
+    all_data = np.zeros((len(raw_data), 20))
     for i, line in enumerate(raw_data):
       values = [float(x) for x in line.split(',')[1:21]]
       all_data[i, :] = values

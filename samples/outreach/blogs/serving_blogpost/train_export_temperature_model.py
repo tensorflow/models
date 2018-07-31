@@ -39,6 +39,8 @@ parser.add_argument("--steps",
                     help="Sample from datastream at this number of steps. "
                          "Default: sample rate = 1/10min = 6 steps to sample at 1/hr",
                     default=6)
+parser.add_argument('--plot', action='store_true',
+                    help='Plots graphs if specified.')
 args = parser.parse_args()
 
 
@@ -52,7 +54,7 @@ def main(_):
                           args.num_days,
                           args.steps,
                           'train')
-  train_ds, val_ds, test_ds = ds.load_jena_data()
+  train_ds, val_ds, test_ds = ds.load_jena_data(plot=args.plot)
 
   print("Building model")
   # Build our model
