@@ -16,9 +16,13 @@
 
 import os
 import six
+import sys
 
 
-_PYTHON = "python3" if six.PY3 else "python2"
+_PYTHON = sys.executable
+if not _PYTHON:
+  raise RuntimeError("Could not find path to Python interpreter in order to "
+                     "spawn subprocesses.")
 
 _ASYNC_GEN_PATH = os.path.join(os.path.dirname(__file__),
                                "data_async_generation.py")
