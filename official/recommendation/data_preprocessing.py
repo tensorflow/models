@@ -71,7 +71,7 @@ class NCFDataset(object):
 
 
 def _filter_index_sort(raw_rating_path):
-  # type: (str) -> (pd.DataFrame, int, int)
+  # type: (str) -> (pd.DataFrame, dict, dict)
   """Read in data CSV, and output structured data.
 
   This function reads in the raw CSV of positive items, and performs three
@@ -98,8 +98,9 @@ def _filter_index_sort(raw_rating_path):
     raw_rating_path: The path to the CSV which contains the raw dataset.
 
   Returns:
-    A filtered, zero-index remapped, sorted dataframe, as well as the number
-    of users and items in the processed dataset.
+    A filtered, zero-index remapped, sorted dataframe, a dict mapping raw user
+    IDs to regularized user IDs, and a dict mapping raw item IDs to regularized
+    item IDs.
   """
   with tf.gfile.Open(raw_rating_path) as f:
     df = pd.read_csv(f)
@@ -164,6 +165,8 @@ def _train_eval_map_fn(args):
       shard pickle files.
     num_items: The cardinality of the item set, which determines the set from
       which validation negatives should be drawn.
+    cache_paths: rconst.Paths object containing locations for various cache
+      files.
 
   Returns:
     A dict containing the evaluation data for a given shard.
@@ -250,6 +253,8 @@ def generate_train_eval_data(df, approx_num_shards, num_items, cache_paths):
       imbalance does not impact performance; however it does mean that one
       should not expect approx_num_shards to be the ACTUAL number of shards.
     num_items: The cardinality of the item set.
+    cache_paths: rconst.Paths object containing locations for various cache
+      files.
 
   Returns:
     A tuple containing the validation data.
