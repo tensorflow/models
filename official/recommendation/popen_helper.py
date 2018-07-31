@@ -14,7 +14,9 @@
 # ==============================================================================
 """Helper file for running the async data generation process in OSS."""
 
+import os
 import six
+
 
 _PYTHON = "python3" if six.PY3 else "python2"
 
