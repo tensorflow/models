@@ -32,12 +32,17 @@ lint() {
   local exit_code=0
 
   RC_FILE="utils/testing/pylint.rcfile"
+  PROTO_SKIP="DO\sNOT\sEDIT!"
 
   echo "===========Running lint test============"
   for file in `find . -name '*.py' ! -name '*test.py' -print`
   do
-    echo "Linting ${file}"
-    pylint --rcfile="${RC_FILE}" "${file}" || exit_code=$?
+    if grep ${PROTO_SKIP} ${file}; then
+      echo "Linting ${file} (Skipped: Machine generated file)"
+    else
+      echo "Linting ${file}"
+      pylint --rcfile="${RC_FILE}" "${file}" || exit_code=$?
+    fi
   done
 
   # More lenient for test files.

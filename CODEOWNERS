@@ -10,6 +10,7 @@
 /research/brain_coder/ @danabo
 /research/cognitive_mapping_and_planning/ @s-gupta
 /research/compression/ @nmjohn
+/research/deep_contextual_bandits/ @rikel
 /research/deeplab/ @aquariusjay @yknzhu @gpapan
 /research/delf/ @andrefaraujo
 /research/differential_privacy/ @ilyamironov @ananthr
@@ -19,6 +20,7 @@
 /research/global_objectives/ @mackeya-google
 /research/im2txt/ @cshallue
 /research/inception/ @shlens @vincentvanhoucke
+/research/keypointnet/ @mnorouzi
 /research/learned_optimizer/ @olganw @nirum
 /research/learning_to_remember_rare_events/ @lukaszkaiser @ofirnachum
 /research/learning_unsupervised_learning/ @lukemetz @nirum

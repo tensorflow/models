@@ -1,30 +1,36 @@
+"""Dataset module for sentiment analysis.
+
+Currently imdb dataset is available.
+"""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import data.imdb as imdb
 
 DATASET_IMDB = "imdb"
 
 
-def construct_input_fns(dataset, batch_size, vocabulary_size,
-                        sentence_length, repeat=1):
-  """Returns training and evaluation input functions.
+def load(dataset, vocabulary_size, sentence_length):
+  """Returns training and evaluation input.
 
   Args:
     dataset: Dataset to be trained and evaluated.
       Currently only imdb is supported.
-    batch_size: Number of data in each batch.
     vocabulary_size: The number of the most frequent tokens
       to be used from the corpus.
     sentence_length: The number of words in each sentence.
       Longer sentences get cut, shorter ones padded.
-    repeat: The number of epoch.
   Raises:
     ValueError: if the dataset value is not valid.
   Returns:
-    A tuple of training and evaluation input function.
+    A tuple of length 4, for training sentences, labels,
+    evaluation sentences, and evaluation labels,
+    each being an numpy array.
   """
   if dataset == DATASET_IMDB:
-    train_input_fn, eval_input_fn = imdb.construct_input_fns(
-        vocabulary_size, sentence_length, batch_size, repeat=repeat)
-    return train_input_fn, eval_input_fn
+    return imdb.load(vocabulary_size, sentence_length)
   else:
     raise ValueError("unsupported dataset: " + dataset)
 
@@ -38,7 +44,7 @@ def get_num_class(dataset):
   Raises:
     ValueError: if the dataset value is not valid.
   Returns:
-    str: The dataset name.
+    int: The number of label classes.
   """
   if dataset == DATASET_IMDB:
     return imdb.NUM_CLASS
