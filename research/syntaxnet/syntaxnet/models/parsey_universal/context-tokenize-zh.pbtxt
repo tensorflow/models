@@ -1,0 +1,64 @@
+Parameter {
+  name: "brain_tokenizer_zh_embedding_dims"
+  value: "32;32"
+}
+Parameter {
+  name: "brain_tokenizer_zh_embedding_names"
+  value: "chars;words"
+}
+Parameter {
+  name: "brain_tokenizer_zh_features"
+  value: "input.char "
+         "input(1).char "
+         "input(2).char "
+         "input(3).char "
+         "input(-1).char "
+         "input(-2).char "
+         "input(-3).char "
+         "stack.char "
+         "stack.offset(1).char "
+         "stack.offset(-1).char "
+         "stack(1).char "
+         "stack(1).offset(1).char "
+         "stack(1).offset(-1).char "
+         "stack(2).char; "
+         "last-word(1,min-freq=2) "
+         "last-word(2,min-freq=2) "
+         "last-word(3,min-freq=2)"
+}
+Parameter {
+  name: "brain_tokenizer_zh_transition_system"
+  value: "binary-segment-transitions"
+}
+input {
+  name: "word-map"
+  Part {
+    file_pattern: "last-word-map"
+  }
+}
+input {
+  name: "char-map"
+  Part {
+    file_pattern: "char-map"
+  }
+}
+input {
+  name: "label-map"
+  Part {
+    file_pattern: "label-map"
+  }
+}
+input {
+  name: 'stdin-untoken'
+  record_format: 'untokenized-text'
+  Part {
+    file_pattern: '-'
+  }
+}
+input {
+  name: 'stdout-conll'
+  record_format: 'conll-sentence'
+  Part {
+    file_pattern: '-'
+  }
+}
