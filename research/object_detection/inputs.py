@@ -529,7 +529,7 @@ def create_predict_input_fn(model_config, predict_input_config):
       `ServingInputReceiver`.
     """
     del params
-    example = tf.placeholder(dtype=tf.string, shape=[], name='input_feature')
+    example = tf.placeholder(dtype=tf.string, shape=[], name='tf_example')
 
     num_classes = config_util.get_number_of_classes(model_config)
     model = model_builder.build(model_config, is_training=False)

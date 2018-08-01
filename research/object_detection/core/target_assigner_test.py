@@ -37,10 +37,11 @@ class TargetAssignerTest(test_case.TestCase):
                                              unmatched_threshold=0.5)
       box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
       target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder, unmatched_cls_target=None)
+          similarity_calc, matcher, box_coder)
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
-      result = target_assigner.assign(anchors_boxlist, groundtruth_boxlist)
+      result = target_assigner.assign(
+          anchors_boxlist, groundtruth_boxlist, unmatched_class_label=None)
       (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
@@ -81,10 +82,11 @@ class TargetAssignerTest(test_case.TestCase):
                                              unmatched_threshold=0.3)
       box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
       target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder, unmatched_cls_target=None)
+          similarity_calc, matcher, box_coder)
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
-      result = target_assigner.assign(anchors_boxlist, groundtruth_boxlist)
+      result = target_assigner.assign(
+          anchors_boxlist, groundtruth_boxlist, unmatched_class_label=None)
       (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
@@ -120,12 +122,13 @@ class TargetAssignerTest(test_case.TestCase):
       box_coder = keypoint_box_coder.KeypointBoxCoder(
           num_keypoints=6, scale_factors=[10.0, 10.0, 5.0, 5.0])
       target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder, unmatched_cls_target=None)
+          similarity_calc, matcher, box_coder)
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
       groundtruth_boxlist.add_field(fields.BoxListFields.keypoints,
                                     groundtruth_keypoints)
-      result = target_assigner.assign(anchors_boxlist, groundtruth_boxlist)
+      result = target_assigner.assign(
+          anchors_boxlist, groundtruth_boxlist, unmatched_class_label=None)
       (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
@@ -174,12 +177,13 @@ class TargetAssignerTest(test_case.TestCase):
       box_coder = keypoint_box_coder.KeypointBoxCoder(
           num_keypoints=6, scale_factors=[10.0, 10.0, 5.0, 5.0])
       target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder, unmatched_cls_target=None)
+          similarity_calc, matcher, box_coder)
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
       groundtruth_boxlist.add_field(fields.BoxListFields.keypoints,
                                     groundtruth_keypoints)
-      result = target_assigner.assign(anchors_boxlist, groundtruth_boxlist)
+      result = target_assigner.assign(
+          anchors_boxlist, groundtruth_boxlist, unmatched_class_label=None)
       (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
@@ -221,15 +225,17 @@ class TargetAssignerTest(test_case.TestCase):
       matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
                                              unmatched_threshold=0.5)
       box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
-      unmatched_cls_target = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
+      unmatched_class_label = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
       target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder,
-          unmatched_cls_target=unmatched_cls_target)
+          similarity_calc, matcher, box_coder)
 
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
-      result = target_assigner.assign(anchors_boxlist, groundtruth_boxlist,
-                                      groundtruth_labels)
+      result = target_assigner.assign(
+          anchors_boxlist,
+          groundtruth_boxlist,
+          groundtruth_labels,
+          unmatched_class_label=unmatched_class_label)
       (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
@@ -275,16 +281,18 @@ class TargetAssignerTest(test_case.TestCase):
       matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
                                              unmatched_threshold=0.5)
       box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
-      unmatched_cls_target = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
+      unmatched_class_label = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
       target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder,
-          unmatched_cls_target=unmatched_cls_target)
+          similarity_calc, matcher, box_coder)
 
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
-      result = target_assigner.assign(anchors_boxlist, groundtruth_boxlist,
-                                      groundtruth_labels,
-                                      groundtruth_weights)
+      result = target_assigner.assign(
+          anchors_boxlist,
+          groundtruth_boxlist,
+          groundtruth_labels,
+          unmatched_class_label=unmatched_class_label,
+          groundtruth_weights=groundtruth_weights)
       (_, cls_weights, _, reg_weights, _) = result
       return (cls_weights, reg_weights)
 
@@ -318,15 +326,17 @@ class TargetAssignerTest(test_case.TestCase):
                                              unmatched_threshold=0.5)
       box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
 
-      unmatched_cls_target = tf.constant([[0, 0], [0, 0]], tf.float32)
+      unmatched_class_label = tf.constant([[0, 0], [0, 0]], tf.float32)
       target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder,
-          unmatched_cls_target=unmatched_cls_target)
+          similarity_calc, matcher, box_coder)
 
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
-      result = target_assigner.assign(anchors_boxlist, groundtruth_boxlist,
-                                      groundtruth_labels)
+      result = target_assigner.assign(
+          anchors_boxlist,
+          groundtruth_boxlist,
+          groundtruth_labels,
+          unmatched_class_label=unmatched_class_label)
       (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
@@ -371,14 +381,16 @@ class TargetAssignerTest(test_case.TestCase):
       matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
                                              unmatched_threshold=0.5)
       box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
-      unmatched_cls_target = tf.constant([0, 0, 0], tf.float32)
+      unmatched_class_label = tf.constant([0, 0, 0], tf.float32)
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
       target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder,
-          unmatched_cls_target=unmatched_cls_target)
-      result = target_assigner.assign(anchors_boxlist, groundtruth_boxlist,
-                                      groundtruth_labels)
+          similarity_calc, matcher, box_coder)
+      result = target_assigner.assign(
+          anchors_boxlist,
+          groundtruth_boxlist,
+          groundtruth_labels,
+          unmatched_class_label=unmatched_class_label)
       (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
@@ -415,10 +427,9 @@ class TargetAssignerTest(test_case.TestCase):
     similarity_calc = region_similarity_calculator.NegSqDistSimilarity()
     matcher = bipartite_matcher.GreedyBipartiteMatcher()
     box_coder = mean_stddev_box_coder.MeanStddevBoxCoder()
-    unmatched_cls_target = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
+    unmatched_class_label = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
     target_assigner = targetassigner.TargetAssigner(
-        similarity_calc, matcher, box_coder,
-        unmatched_cls_target=unmatched_cls_target)
+        similarity_calc, matcher, box_coder)
 
     prior_means = tf.constant([[0.0, 0.0, 0.5, 0.5],
                                [0.5, 0.5, 1.0, 0.8],
@@ -436,17 +447,20 @@ class TargetAssignerTest(test_case.TestCase):
                                       [0, 0, 0, 0, 0, 1, 0],
                                       [0, 0, 0, 1, 0, 0, 0]], tf.float32)
     with self.assertRaisesRegexp(ValueError, 'Unequal shapes'):
-      target_assigner.assign(priors, boxes, groundtruth_labels,
-                             num_valid_rows=3)
+      target_assigner.assign(
+          priors,
+          boxes,
+          groundtruth_labels,
+          unmatched_class_label=unmatched_class_label,
+          num_valid_rows=3)
 
   def test_raises_error_on_invalid_groundtruth_labels(self):
     similarity_calc = region_similarity_calculator.NegSqDistSimilarity()
     matcher = bipartite_matcher.GreedyBipartiteMatcher()
     box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=1.0)
-    unmatched_cls_target = tf.constant([[0, 0], [0, 0], [0, 0]], tf.float32)
+    unmatched_class_label = tf.constant([[0, 0], [0, 0], [0, 0]], tf.float32)
     target_assigner = targetassigner.TargetAssigner(
-        similarity_calc, matcher, box_coder,
-        unmatched_cls_target=unmatched_cls_target)
+        similarity_calc, matcher, box_coder)
 
     prior_means = tf.constant([[0.0, 0.0, 0.5, 0.5]])
     priors = box_list.BoxList(prior_means)
@@ -458,41 +472,22 @@ class TargetAssignerTest(test_case.TestCase):
     groundtruth_labels = tf.constant([[[0, 1], [1, 0]]], tf.float32)
 
     with self.assertRaises(ValueError):
-      target_assigner.assign(priors, boxes, groundtruth_labels,
-                             num_valid_rows=3)
+      target_assigner.assign(
+          priors,
+          boxes,
+          groundtruth_labels,
+          unmatched_class_label=unmatched_class_label,
+          num_valid_rows=3)
 
 
 class BatchTargetAssignerTest(test_case.TestCase):
 
-  def _get_agnostic_target_assigner(self):
+  def _get_target_assigner(self):
     similarity_calc = region_similarity_calculator.IouSimilarity()
     matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
                                            unmatched_threshold=0.5)
     box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
-    return targetassigner.TargetAssigner(
-        similarity_calc, matcher, box_coder,
-        unmatched_cls_target=None)
-
-  def _get_multi_class_target_assigner(self, num_classes):
-    similarity_calc = region_similarity_calculator.IouSimilarity()
-    matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
-                                           unmatched_threshold=0.5)
-    box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
-    unmatched_cls_target = tf.constant([1] + num_classes * [0], tf.float32)
-    return targetassigner.TargetAssigner(
-        similarity_calc, matcher, box_coder,
-        unmatched_cls_target=unmatched_cls_target)
-
-  def _get_multi_dimensional_target_assigner(self, target_dimensions):
-    similarity_calc = region_similarity_calculator.IouSimilarity()
-    matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
-                                           unmatched_threshold=0.5)
-    box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
-    unmatched_cls_target = tf.constant(np.zeros(target_dimensions),
-                                       tf.float32)
-    return targetassigner.TargetAssigner(
-        similarity_calc, matcher, box_coder,
-        unmatched_cls_target=unmatched_cls_target)
+    return targetassigner.TargetAssigner(similarity_calc, matcher, box_coder)
 
   def test_batch_assign_targets(self):
 
@@ -502,7 +497,7 @@ class BatchTargetAssignerTest(test_case.TestCase):
       gt_box_batch = [box_list1, box_list2]
       gt_class_targets = [None, None]
       anchors_boxlist = box_list.BoxList(anchor_means)
-      agnostic_target_assigner = self._get_agnostic_target_assigner()
+      agnostic_target_assigner = self._get_target_assigner()
       (cls_targets, cls_weights, reg_targets, reg_weights,
        _) = targetassigner.batch_assign_targets(
            agnostic_target_assigner, anchors_boxlist, gt_box_batch,
@@ -550,12 +545,13 @@ class BatchTargetAssignerTest(test_case.TestCase):
       gt_box_batch = [box_list1, box_list2]
       gt_class_targets = [class_targets1, class_targets2]
       anchors_boxlist = box_list.BoxList(anchor_means)
-      multiclass_target_assigner = self._get_multi_class_target_assigner(
-          num_classes=3)
+      multiclass_target_assigner = self._get_target_assigner()
+      num_classes = 3
+      unmatched_class_label = tf.constant([1] + num_classes * [0], tf.float32)
       (cls_targets, cls_weights, reg_targets, reg_weights,
        _) = targetassigner.batch_assign_targets(
            multiclass_target_assigner, anchors_boxlist, gt_box_batch,
-           gt_class_targets)
+           gt_class_targets, unmatched_class_label)
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
     groundtruth_boxlist1 = np.array([[0., 0., 0.2, 0.2]], dtype=np.float32)
@@ -613,12 +609,13 @@ class BatchTargetAssignerTest(test_case.TestCase):
       gt_class_targets = [class_targets1, class_targets2]
       gt_weights = [groundtruth_weights1, groundtruth_weights2]
       anchors_boxlist = box_list.BoxList(anchor_means)
-      multiclass_target_assigner = self._get_multi_class_target_assigner(
-          num_classes=3)
+      multiclass_target_assigner = self._get_target_assigner()
+      num_classes = 3
+      unmatched_class_label = tf.constant([1] + num_classes * [0], tf.float32)
       (cls_targets, cls_weights, reg_targets, reg_weights,
        _) = targetassigner.batch_assign_targets(
            multiclass_target_assigner, anchors_boxlist, gt_box_batch,
-           gt_class_targets, gt_weights)
+           gt_class_targets, unmatched_class_label, gt_weights)
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
     groundtruth_boxlist1 = np.array([[0., 0., 0.2, 0.2],
@@ -680,12 +677,14 @@ class BatchTargetAssignerTest(test_case.TestCase):
       gt_box_batch = [box_list1, box_list2]
       gt_class_targets = [class_targets1, class_targets2]
       anchors_boxlist = box_list.BoxList(anchor_means)
-      multiclass_target_assigner = self._get_multi_dimensional_target_assigner(
-          target_dimensions=(2, 3))
+      multiclass_target_assigner = self._get_target_assigner()
+      target_dimensions = (2, 3)
+      unmatched_class_label = tf.constant(np.zeros(target_dimensions),
+                                          tf.float32)
       (cls_targets, cls_weights, reg_targets, reg_weights,
        _) = targetassigner.batch_assign_targets(
            multiclass_target_assigner, anchors_boxlist, gt_box_batch,
-           gt_class_targets)
+           gt_class_targets, unmatched_class_label)
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
     groundtruth_boxlist1 = np.array([[0., 0., 0.2, 0.2]], dtype=np.float32)
@@ -754,13 +753,13 @@ class BatchTargetAssignerTest(test_case.TestCase):
       gt_class_targets_batch = [gt_class_targets]
       anchors_boxlist = box_list.BoxList(anchor_means)
 
-      multiclass_target_assigner = self._get_multi_class_target_assigner(
-          num_classes=3)
-
+      multiclass_target_assigner = self._get_target_assigner()
+      num_classes = 3
+      unmatched_class_label = tf.constant([1] + num_classes * [0], tf.float32)
       (cls_targets, cls_weights, reg_targets, reg_weights,
        _) = targetassigner.batch_assign_targets(
            multiclass_target_assigner, anchors_boxlist,
-           gt_box_batch, gt_class_targets_batch)
+           gt_box_batch, gt_class_targets_batch, unmatched_class_label)
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
     groundtruth_box_corners = np.zeros((0, 4), dtype=np.float32)

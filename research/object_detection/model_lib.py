@@ -202,6 +202,10 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
     params = params or {}
     total_loss, train_op, detections, export_outputs = None, None, None, None
     is_training = mode == tf.estimator.ModeKeys.TRAIN
+
+    # Make sure to set the Keras learning phase. True during training,
+    # False for inference.
+    tf.keras.backend.set_learning_phase(is_training)
     detection_model = detection_model_fn(is_training=is_training,
                                          add_summaries=(not use_tpu))
     scaffold_fn = None
@@ -279,7 +283,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
     if mode in (tf.estimator.ModeKeys.TRAIN, tf.estimator.ModeKeys.EVAL):
       losses_dict = detection_model.loss(
           prediction_dict, features[fields.InputDataFields.true_image_shape])
-      losses = [loss_tensor for loss_tensor in losses_dict.itervalues()]
+      losses = [loss_tensor for loss_tensor in losses_dict.values()]
       if train_config.add_regularization_loss:
         regularization_losses = tf.get_collection(
             tf.GraphKeys.REGULARIZATION_LOSSES)

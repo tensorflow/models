@@ -71,22 +71,38 @@ def _get_dict_from_proto(config):
 # function that should be used. The PreprocessingStep proto should be parsable
 # with _get_dict_from_proto.
 PREPROCESSING_FUNCTION_MAP = {
-    'normalize_image': preprocessor.normalize_image,
-    'random_pixel_value_scale': preprocessor.random_pixel_value_scale,
-    'random_image_scale': preprocessor.random_image_scale,
-    'random_rgb_to_gray': preprocessor.random_rgb_to_gray,
-    'random_adjust_brightness': preprocessor.random_adjust_brightness,
-    'random_adjust_contrast': preprocessor.random_adjust_contrast,
-    'random_adjust_hue': preprocessor.random_adjust_hue,
-    'random_adjust_saturation': preprocessor.random_adjust_saturation,
-    'random_distort_color': preprocessor.random_distort_color,
-    'random_jitter_boxes': preprocessor.random_jitter_boxes,
-    'random_crop_to_aspect_ratio': preprocessor.random_crop_to_aspect_ratio,
-    'random_black_patches': preprocessor.random_black_patches,
-    'rgb_to_gray': preprocessor.rgb_to_gray,
+    'normalize_image':
+        preprocessor.normalize_image,
+    'random_pixel_value_scale':
+        preprocessor.random_pixel_value_scale,
+    'random_image_scale':
+        preprocessor.random_image_scale,
+    'random_rgb_to_gray':
+        preprocessor.random_rgb_to_gray,
+    'random_adjust_brightness':
+        preprocessor.random_adjust_brightness,
+    'random_adjust_contrast':
+        preprocessor.random_adjust_contrast,
+    'random_adjust_hue':
+        preprocessor.random_adjust_hue,
+    'random_adjust_saturation':
+        preprocessor.random_adjust_saturation,
+    'random_distort_color':
+        preprocessor.random_distort_color,
+    'random_jitter_boxes':
+        preprocessor.random_jitter_boxes,
+    'random_crop_to_aspect_ratio':
+        preprocessor.random_crop_to_aspect_ratio,
+    'random_black_patches':
+        preprocessor.random_black_patches,
+    'rgb_to_gray':
+        preprocessor.rgb_to_gray,
     'scale_boxes_to_pixel_coordinates': (
         preprocessor.scale_boxes_to_pixel_coordinates),
-    'subtract_channel_mean': preprocessor.subtract_channel_mean,
+    'subtract_channel_mean':
+        preprocessor.subtract_channel_mean,
+    'convert_class_logits_to_softmax':
+        preprocessor.convert_class_logits_to_softmax,
 }
 
 

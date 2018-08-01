@@ -20,8 +20,6 @@ import six
 
 import tensorflow as tf
 
-from object_detection.core import box_list
-from object_detection.core import box_list_ops
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
 from object_detection.utils import static_shape
@@ -60,13 +58,20 @@ def normalized_to_image_coordinates(normalized_boxes, image_shape,
     parallel_iterations: parallelism for the map_fn op.
 
   Returns:
-    absolute_boxes: a float32 tensor of shape [None, num_boxes, 4] containg the
-      boxes in image coordinates.
+    absolute_boxes: a float32 tensor of shape [None, num_boxes, 4] containing
+      the boxes in image coordinates.
   """
+  x_scale = tf.cast(image_shape[2], tf.float32)
+  y_scale = tf.cast(image_shape[1], tf.float32)
   def _to_absolute_coordinates(normalized_boxes):
-    return box_list_ops.to_absolute_coordinates(
-        box_list.BoxList(normalized_boxes),
-        image_shape[1], image_shape[2], check_range=False).get()
+    y_min, x_min, y_max, x_max = tf.split(
+        value=normalized_boxes, num_or_size_splits=4, axis=1)
+    y_min = y_scale * y_min
+    y_max = y_scale * y_max
+    x_min = x_scale * x_min
+    x_max = x_scale * x_max
+    scaled_boxes = tf.concat([y_min, x_min, y_max, x_max], 1)
+    return scaled_boxes
 
   absolute_boxes = shape_utils.static_or_dynamic_map_fn(
       _to_absolute_coordinates,
@@ -538,13 +543,59 @@ def normalize_to_target(inputs,
     return tf.reshape(target_norm, mult_shape) * tf.truediv(inputs, lengths)
 
 
+def batch_position_sensitive_crop_regions(images,
+                                          boxes,
+                                          crop_size,
+                                          num_spatial_bins,
+                                          global_pool,
+                                          parallel_iterations=64):
+  """Position sensitive crop with batches of images and boxes.
+
+  This op is exactly like `position_sensitive_crop_regions` below but operates
+  on batches of images and boxes. See `position_sensitive_crop_regions` function
+  below for the operation applied per batch element.
+
+  Args:
+    images: A `Tensor`. Must be one of the following types: `uint8`, `int8`,
+      `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
+      A 4-D tensor of shape `[batch, image_height, image_width, depth]`.
+      Both `image_height` and `image_width` need to be positive.
+    boxes: A `Tensor` of type `float32`.
+      A 3-D tensor of shape `[batch, num_boxes, 4]`. Each box is specified in
+      normalized coordinates `[y1, x1, y2, x2]`. A normalized coordinate value
+      of `y` is mapped to the image coordinate at `y * (image_height - 1)`, so
+      as the `[0, 1]` interval of normalized image height is mapped to
+      `[0, image_height - 1] in image height coordinates. We do allow y1 > y2,
+      in which case the sampled crop is an up-down flipped version of the
+      original image. The width dimension is treated similarly.
+    crop_size: See `position_sensitive_crop_regions` below.
+    num_spatial_bins: See `position_sensitive_crop_regions` below.
+    global_pool: See `position_sensitive_crop_regions` below.
+    parallel_iterations: Number of batch items to process in parallel.
+
+  Returns:
+  """
+  def _position_sensitive_crop_fn(inputs):
+    images, boxes = inputs
+    return position_sensitive_crop_regions(
+        images,
+        boxes,
+        crop_size=crop_size,
+        num_spatial_bins=num_spatial_bins,
+        global_pool=global_pool)
+
+  return shape_utils.static_or_dynamic_map_fn(
+      _position_sensitive_crop_fn,
+      elems=[images, boxes],
+      dtype=tf.float32,
+      parallel_iterations=parallel_iterations)
+
+
 def position_sensitive_crop_regions(image,
                                     boxes,
-                                    box_ind,
                                     crop_size,
                                     num_spatial_bins,
-                                    global_pool,
-                                    extrapolation_value=None):
+                                    global_pool):
   """Position-sensitive crop and pool rectangular regions from a feature grid.
 
   The output crops are split into `spatial_bins_y` vertical bins
@@ -565,23 +616,16 @@ def position_sensitive_crop_regions(image,
   Args:
     image: A `Tensor`. Must be one of the following types: `uint8`, `int8`,
       `int16`, `int32`, `int64`, `half`, `float32`, `float64`.
-      A 4-D tensor of shape `[batch, image_height, image_width, depth]`.
+      A 3-D tensor of shape `[image_height, image_width, depth]`.
       Both `image_height` and `image_width` need to be positive.
     boxes: A `Tensor` of type `float32`.
-      A 2-D tensor of shape `[num_boxes, 4]`. The `i`-th row of the tensor
-      specifies the coordinates of a box in the `box_ind[i]` image and is
-      specified in normalized coordinates `[y1, x1, y2, x2]`. A normalized
-      coordinate value of `y` is mapped to the image coordinate at
-      `y * (image_height - 1)`, so as the `[0, 1]` interval of normalized image
-      height is mapped to `[0, image_height - 1] in image height coordinates.
-      We do allow y1 > y2, in which case the sampled crop is an up-down flipped
-      version of the original image. The width dimension is treated similarly.
-      Normalized coordinates outside the `[0, 1]` range are allowed, in which
-      case we use `extrapolation_value` to extrapolate the input image values.
-    box_ind:  A `Tensor` of type `int32`.
-      A 1-D tensor of shape `[num_boxes]` with int32 values in `[0, batch)`.
-      The value of `box_ind[i]` specifies the image that the `i`-th box refers
-      to.
+      A 2-D tensor of shape `[num_boxes, 4]`. Each box is specified in
+      normalized coordinates `[y1, x1, y2, x2]`. A normalized coordinate value
+      of `y` is mapped to the image coordinate at `y * (image_height - 1)`, so
+      as the `[0, 1]` interval of normalized image height is mapped to
+      `[0, image_height - 1] in image height coordinates. We do allow y1 > y2,
+      in which case the sampled crop is an up-down flipped version of the
+      original image. The width dimension is treated similarly.
     crop_size: A list of two integers `[crop_height, crop_width]`. All
       cropped image patches are resized to this size. The aspect ratio of the
       image content is not preserved. Both `crop_height` and `crop_width` need
@@ -601,8 +645,7 @@ def position_sensitive_crop_regions(image,
       Note that using global_pool=True is equivalent to but more efficient than
         running the function with global_pool=False and then performing global
         average pooling.
-    extrapolation_value: An optional `float`. Defaults to `0`.
-      Value used for extrapolation, when applicable.
+
   Returns:
     position_sensitive_features: A 4-D tensor of shape
       `[num_boxes, K, K, crop_channels]`,
@@ -649,12 +692,17 @@ def position_sensitive_crop_regions(image,
                         ]
       position_sensitive_boxes.append(tf.stack(box_coordinates, axis=1))
 
-  image_splits = tf.split(value=image, num_or_size_splits=total_bins, axis=3)
+  image_splits = tf.split(value=image, num_or_size_splits=total_bins, axis=2)
 
   image_crops = []
   for (split, box) in zip(image_splits, position_sensitive_boxes):
-    crop = tf.image.crop_and_resize(split, box, box_ind, bin_crop_size,
-                                    extrapolation_value=extrapolation_value)
+    if split.shape.is_fully_defined() and box.shape.is_fully_defined():
+      crop = matmul_crop_and_resize(
+          tf.expand_dims(split, 0), box, bin_crop_size)
+    else:
+      crop = tf.image.crop_and_resize(
+          tf.expand_dims(split, 0), box,
+          tf.zeros(tf.shape(boxes)[0], dtype=tf.int32), bin_crop_size)
     image_crops.append(crop)
 
   if global_pool:
@@ -957,3 +1005,68 @@ def matmul_crop_and_resize(image, boxes, crop_size, scope=None):
               tf.matmul(kernel_h, tf.tile(channel, [num_crops, 1, 1])),
               kernel_w, transpose_b=True))
     return tf.stack(result_channels, axis=3)
+
+
+def expected_classification_loss_under_sampling(batch_cls_targets, cls_losses,
+                                                negative_to_positive_ratio,
+                                                minimum_negative_sampling):
+  """Computes classification loss by background/foreground weighting.
+
+  The weighting is such that the effective background/foreground weight ratio
+  is the negative_to_positive_ratio. if p_i is the foreground probability of
+  anchor a_i, L(a_i) is the anchors loss, N is the number of anchors, and M is
+  the sum of foreground probabilities across anchors, then the total loss L is
+  calculated as:
+
+  beta = K*M/(N-M)
+  L = sum_{i=1}^N [p_i + beta * (1 - p_i)] * (L(a_i))
+
+  Args:
+    batch_cls_targets: A tensor with shape [batch_size, num_anchors,
+        num_classes + 1], where 0'th index is the background class, containing
+        the class distrubution for the target assigned to a given anchor.
+    cls_losses: Float tensor of shape [batch_size, num_anchors]
+        representing anchorwise classification losses.
+    negative_to_positive_ratio: The desired background/foreground weight ratio.
+    minimum_negative_sampling: Minimum number of effective negative samples.
+      Used only when there are no positive examples.
+
+  Returns:
+    The classification loss.
+  """
+
+  num_anchors = tf.cast(tf.shape(batch_cls_targets)[1], tf.float32)
+
+  # find the p_i
+  foreground_probabilities = (
+      foreground_probabilities_from_targets(batch_cls_targets))
+  foreground_sum = tf.reduce_sum(foreground_probabilities, axis=-1)
+
+  k = negative_to_positive_ratio
+
+  # compute beta
+  denominators = (num_anchors - foreground_sum)
+  beta = tf.where(
+      tf.equal(denominators, 0), tf.zeros_like(foreground_sum),
+      k * foreground_sum / denominators)
+
+  # where the foreground sum is zero, use a minimum negative weight.
+  min_negative_weight = 1.0 * minimum_negative_sampling / num_anchors
+  beta = tf.where(
+      tf.equal(beta, 0), min_negative_weight * tf.ones_like(beta), beta)
+  beta = tf.reshape(beta, [-1, 1])
+
+  cls_loss_weights = foreground_probabilities + (
+      1 - foreground_probabilities) * beta
+
+  weighted_losses = cls_loss_weights * cls_losses
+
+  cls_losses = tf.reduce_sum(weighted_losses, axis=-1)
+
+  return cls_losses
+
+
+def foreground_probabilities_from_targets(batch_cls_targets):
+  foreground_probabilities = 1 - batch_cls_targets[:, :, 0]
+
+  return foreground_probabilities
