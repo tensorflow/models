@@ -152,16 +152,14 @@ def construct_model(users, items, params):
       input_length=1)
 
   # GMF part
-  # Flatten the embedding vector as latent features in GMF
-  mf_user_latent = tf.keras.layers.Flatten()(mf_embedding_user(user_input))
-  mf_item_latent = tf.keras.layers.Flatten()(mf_embedding_item(item_input))
+  mf_user_latent = mf_embedding_user(user_input)
+  mf_item_latent = mf_embedding_item(item_input)
   # Element-wise multiply
   mf_vector = tf.keras.layers.multiply([mf_user_latent, mf_item_latent])
 
   # MLP part
-  # Flatten the embedding vector as latent features in MLP
-  mlp_user_latent = tf.keras.layers.Flatten()(mlp_embedding_user(user_input))
-  mlp_item_latent = tf.keras.layers.Flatten()(mlp_embedding_item(item_input))
+  mlp_user_latent = mlp_embedding_user(user_input)
+  mlp_item_latent = mlp_embedding_item(item_input)
   # Concatenation of two latent features
   mlp_vector = tf.keras.layers.concatenate([mlp_user_latent, mlp_item_latent])
 
