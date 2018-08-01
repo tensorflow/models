@@ -71,6 +71,7 @@ class Dataset(object):
     # We will target one day in the future (24 hours)
     self.delay = data_points_day
     self.batch_size = batch_size
+    self.mode = mode
     if mode == 'inference':
       print('Setting batch size to 1 in inference mode')
       self.batch_size = 1
@@ -160,13 +161,14 @@ class Dataset(object):
     print("Number of validation examples {}".format(self.num_val))
     print("Number of testing examples {}".format(self.num_test))
 
-    # Get normalization values
-    mean = self.all_data[:self.num_train].mean(axis=0)
-    std = self.all_data[:self.num_train].std(axis=0)
+    if self.mode == 'train':
+      # Get normalization values
+      mean = self.all_data[:self.num_train].mean(axis=0)
+      std = self.all_data[:self.num_train].std(axis=0)
 
-    # Normalize all the data by the training mean and standard deviation
-    self.all_data -= mean
-    self.all_data /= std
+      # Normalize all the data by the training mean and standard deviation
+      self.all_data -= mean
+      self.all_data /= std
 
     self.x_train = self.all_data[:self.num_train]
     self.x_val = self.all_data[self.num_train:self.num_train + self.num_val]
