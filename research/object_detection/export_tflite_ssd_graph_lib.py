@@ -258,6 +258,7 @@ def export_tflite_graph(pipeline_config, trained_checkpoint_prefix, output_dir,
       restore_op_name='save/restore_all',
       filename_tensor_name='save/Const:0',
       clear_devices=True,
+      output_graph='',
       initializer_nodes='')
 
   # Add new operation to do post processing in a custom op (TF Lite only)

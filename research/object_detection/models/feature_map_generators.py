@@ -221,8 +221,8 @@ def fpn_top_down_feature_maps(image_features, depth, scope=None):
             depth, [3, 3],
             scope='smoothing_%d' % (level + 1)))
         output_feature_map_keys.append('top_down_%s' % image_features[level][0])
-      return collections.OrderedDict(
-          reversed(zip(output_feature_map_keys, output_feature_maps_list)))
+      return collections.OrderedDict(reversed(
+          list(zip(output_feature_map_keys, output_feature_maps_list))))
 
 
 def pooling_pyramid_feature_maps(base_feature_map_depth, num_layers,
@@ -288,4 +288,3 @@ def pooling_pyramid_feature_maps(base_feature_map_depth, num_layers,
       feature_maps.append(feature_map)
   return collections.OrderedDict(
       [(x, y) for (x, y) in zip(feature_map_keys, feature_maps)])
-

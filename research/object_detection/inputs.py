@@ -219,20 +219,8 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
 
   padded_tensor_dict = {}
   for tensor_name in tensor_dict:
-    expected_shape = padding_shapes[tensor_name]
-    current_shape = shape_utils.combined_static_and_dynamic_shape(
-        tensor_dict[tensor_name])
-    trailing_paddings = [
-        expected_shape_dim - current_shape_dim if expected_shape_dim else 0
-        for expected_shape_dim, current_shape_dim in zip(
-            expected_shape, current_shape)
-    ]
-    paddings = tf.stack([tf.zeros(len(trailing_paddings), dtype=tf.int32),
-                         trailing_paddings],
-                        axis=1)
-    padded_tensor_dict[tensor_name] = tf.pad(
-        tensor_dict[tensor_name], paddings=paddings)
-    padded_tensor_dict[tensor_name].set_shape(expected_shape)
+    padded_tensor_dict[tensor_name] = shape_utils.pad_or_clip_nd(
+        tensor_dict[tensor_name], padding_shapes[tensor_name])
   return padded_tensor_dict
 
 
@@ -529,7 +517,7 @@ def create_predict_input_fn(model_config, predict_input_config):
       `ServingInputReceiver`.
     """
     del params
-    example = tf.placeholder(dtype=tf.string, shape=[], name='input_feature')
+    example = tf.placeholder(dtype=tf.string, shape=[], name='tf_example')
 
     num_classes = config_util.get_number_of_classes(model_config)
     model = model_builder.build(model_config, is_training=False)
