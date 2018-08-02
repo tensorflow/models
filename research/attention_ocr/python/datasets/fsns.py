@@ -22,7 +22,7 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 import logging
 
-DEFAULT_DATASET_DIR = os.path.join(os.path.dirname(__file__), 'data','testdata\\fsns')
+DEFAULT_DATASET_DIR = os.path.join(os.path.dirname(__file__), 'testdata','fsns')
 
 # The dataset configuration, should be used only as a default value.
 DEFAULT_CONFIG = {
