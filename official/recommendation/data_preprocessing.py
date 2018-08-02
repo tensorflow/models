@@ -419,9 +419,7 @@ def instantiate_pipeline(dataset, data_dir, batch_size, eval_batch_size,
   tf.logging.info(
       "Generation subprocess command: {}".format(" ".join(subproc_args)))
 
-  proc = subprocess.Popen(args=subproc_args, stdin=subprocess.PIPE,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          shell=False, env=subproc_env)
+  proc = subprocess.Popen(args=subproc_args, shell=False, env=subproc_env)
 
   atexit.register(_shutdown, proc=proc)
   atexit.register(tf.gfile.DeleteRecursively,
