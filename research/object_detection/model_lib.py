@@ -392,7 +392,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       if img_summary is not None:
         eval_metric_ops['Detections_Left_Groundtruth_Right'] = (
             img_summary, tf.no_op())
-      eval_metric_ops = {str(k): v for k, v in eval_metric_ops.iteritems()}
+      eval_metric_ops = {str(k): v for k, v in eval_metric_ops.items()}
 
       if eval_config.use_moving_averages:
         variable_averages = tf.train.ExponentialMovingAverage(0.0)
