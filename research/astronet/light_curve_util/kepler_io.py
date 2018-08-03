@@ -142,15 +142,12 @@ def kepler_filenames(base_dir,
   return filenames
 
 
-def read_kepler_light_curve(filenames,
-                            light_curve_extension="LIGHTCURVE",
-                            invert=False):
+def read_kepler_light_curve(filenames, light_curve_extension="LIGHTCURVE"):
   """Reads time and flux measurements for a Kepler target star.
 
   Args:
     filenames: A list of .fits files containing time and flux measurements.
     light_curve_extension: Name of the HDU 1 extension containing light curves.
-    invert: Whether to invert the flux measurements by multiplying by -1.
 
   Returns:
     all_time: A list of numpy arrays; the time values of the light curve.
@@ -170,9 +167,6 @@ def read_kepler_light_curve(filenames,
     valid_indices = np.where(np.isfinite(flux))
     time = time[valid_indices]
     flux = flux[valid_indices]
-
-    if invert:
-      flux *= -1
 
     if time.size:
       all_time.append(time)
