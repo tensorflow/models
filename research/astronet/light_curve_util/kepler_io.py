@@ -73,6 +73,14 @@ SHORT_CADENCE_QUARTER_PREFIXES = {
     17: ["2013121191144", "2013131215648"]
 }
 
+# Quarter order for different scrambling procedures.
+# Page 9: https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20170009549.pdf.
+SIMULATED_DATA_SCRAMBLE_ORDERS = {
+    "SCR1": [13, 14, 15, 16, 9, 10, 11, 12, 5, 6, 7, 8, 1, 2, 3, 4, 17],
+    "SCR2": [1, 2, 3, 4, 13, 14, 15, 16, 9, 10, 11, 12, 5, 6, 7, 8, 17],
+    "SCR3": [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 17],
+}
+
 
 def kepler_filenames(base_dir,
                      kep_id,
@@ -142,12 +150,51 @@ def kepler_filenames(base_dir,
   return filenames
 
 
-def read_kepler_light_curve(filenames, light_curve_extension="LIGHTCURVE"):
+def scramble_light_curve(all_flux, all_time, all_quarters, scramble_type):
+  """Scrambles a light curve according to a given scrambling procedure.
+
+  Args:
+    all_flux: List holding lists of flux values (each interior list holds a
+      quarter of flux data).
+    all_time: List holding lists of time values (each interior list holds a
+      quarter of time data).
+    all_quarters: List of integers specifying which quarters were present in
+      the light curve (max is 18: Q0...Q17).
+    scramble_type: String specifying the scramble order, one of {'SCR1', 'SCR2',
+      'SCR3'}.
+
+  Returns:
+    scr_flux: scrambled flux values, the same list of lists in another order
+    scr_time: time values, re-partitioned to match sizes of the scr_flux lists
+  """
+  order = SIMULATED_DATA_SCRAMBLE_ORDERS[scramble_type]
+  scr_flux = []
+  for quarter in order:
+    # Ignore missing quarters in the scramble order.
+    if quarter in all_quarters:
+      scr_flux.append(all_flux[all_quarters.index(quarter)])
+
+  # Reapportion time lists to match sizes of respective flux lists.
+  concat_time = np.concatenate(all_time)
+  scr_time = []
+  for flux in scr_flux:
+    same_len_time_list = list(concat_time[:len(flux)])
+    scr_time.append(same_len_time_list)
+    concat_time = concat_time[len(flux):]
+
+  return scr_flux, scr_time
+
+
+def read_kepler_light_curve(filenames,
+                            light_curve_extension="LIGHTCURVE",
+                            scramble_type=None):
   """Reads time and flux measurements for a Kepler target star.
 
   Args:
     filenames: A list of .fits files containing time and flux measurements.
     light_curve_extension: Name of the HDU 1 extension containing light curves.
+    scramble_type: What scrambling procedure to use: 'SCR1', 'SCR2', or 'SCR3'
+      (pg 9: https://exoplanetarchive.ipac.caltech.edu/docs/KSCI-19114-002.pdf).
 
   Returns:
     all_time: A list of numpy arrays; the time values of the light curve.
@@ -156,6 +203,7 @@ def read_kepler_light_curve(filenames, light_curve_extension="LIGHTCURVE"):
   """
   all_time = []
   all_flux = []
+  all_quarters = []
 
   for filename in filenames:
     with fits.open(gfile.Open(filename, "rb")) as hdu_list:
@@ -163,13 +211,21 @@ def read_kepler_light_curve(filenames, light_curve_extension="LIGHTCURVE"):
       time = light_curve.TIME
       flux = light_curve.PDCSAP_FLUX
 
-    # Remove NaN flux values.
-    valid_indices = np.where(np.isfinite(flux))
-    time = time[valid_indices]
-    flux = flux[valid_indices]
+      # Index into primary HDU header and get quarter.
+      all_quarters.append(hdu_list[0].header["QUARTER"])
 
     if time.size:
       all_time.append(time)
       all_flux.append(flux)
+
+  if scramble_type:
+    all_flux, all_time = scramble_light_curve(all_flux, all_time, all_quarters,
+                                              scramble_type)
+
+  # Remove NaN flux values after potential scrambling.
+  for i, (flux, time) in enumerate(zip(all_flux, all_time)):
+    valid_indices = np.where(np.isfinite(flux))
+    all_time[i] = time[valid_indices]
+    all_flux[i] = flux[valid_indices]
 
   return all_time, all_flux

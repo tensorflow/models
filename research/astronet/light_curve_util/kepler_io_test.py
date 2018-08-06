@@ -34,6 +34,23 @@ class KeplerIoTest(absltest.TestCase):
   def setUp(self):
     self.data_dir = os.path.join(FLAGS.test_srcdir, _DATA_DIR)
 
+  def testScrambleLightCurve(self):
+    nan = float("nan")
+    all_flux = [[11, 12], [21], [nan, nan, 33], [41, 42]]
+    all_time = [[101, 102], [201], [301, 302, 303], [401, 402]]
+    all_quarters = [3, 4, 7, 14]
+    scramble_type = "SCR1"  # New quarters order will be [14,7,3,4].
+
+    scr_flux, scr_time = kepler_io.scramble_light_curve(
+        all_flux, all_time, all_quarters, scramble_type)
+
+    # NaNs are not removed in this function.
+    gold_flux = [[41, 42], [nan, nan, 33], [11, 12], [21]]
+    gold_time = [[101, 102], [201, 301, 302], [303, 401], [402]]
+
+    self.assertEqual(gold_flux, scr_flux)
+    self.assertEqual(gold_time, scr_time)
+
   def testKeplerFilenames(self):
     # All quarters.
     filenames = kepler_io.kepler_filenames(
