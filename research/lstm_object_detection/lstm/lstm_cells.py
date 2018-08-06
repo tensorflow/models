@@ -26,7 +26,9 @@ _batch_norm = tf.contrib.layers.batch_norm
 class BottleneckConvLSTMCell(tf.contrib.rnn.RNNCell):
   """Basic LSTM recurrent network cell using separable convolutions.
 
-  The implementation is based on: http://arxiv.org/abs/1409.2329.
+  The implementation is based on:
+  Mobile Video Object Detection with Temporally-Aware Feature Maps
+  https://arxiv.org/abs/1711.06368.
 
   We add forget_bias (default: 1) to the biases of the forget gate in order to
   reduce the scale of forgetting in the beginning of the training.
