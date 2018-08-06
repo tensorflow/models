@@ -593,7 +593,7 @@ def _update_train_steps(configs, train_steps):
 
 def _update_eval_steps(configs, eval_steps):
   """Updates `configs` to reflect new number of eval steps per evaluation."""
-  configs["eval_config"].num_examples = int(eval_steps)
+  configs["eval_config"].max_evals = int(eval_steps)
 
 
 def _update_input_path(input_config, input_path):
