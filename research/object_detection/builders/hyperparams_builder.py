@@ -16,6 +16,7 @@
 """Builder function to construct tf-slim arg_scope for convolution, fc ops."""
 import tensorflow as tf
 
+from object_detection.core import freezable_batch_norm
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import context_manager
 
@@ -92,6 +93,38 @@ class KerasLayerHyperparams(object):
       new_batch_norm_params = self._batch_norm_params.copy()
     new_batch_norm_params.update(overrides)
     return new_batch_norm_params
+
+  def build_batch_norm(self, training=None, **overrides):
+    """Returns a Batch Normalization layer with the appropriate hyperparams.
+
+    If the hyperparams are configured to not use batch normalization,
+    this will return a Keras Lambda layer that only applies tf.Identity,
+    without doing any normalization.
+
+    Optionally overrides values in the batch_norm hyperparam dict. Overrides
+    only apply to individual calls of this method, and do not affect
+    future calls.
+
+    Args:
+      training: if True, the normalization layer will normalize using the batch
+       statistics. If False, the normalization layer will be frozen and will
+       act as if it is being used for inference. If None, the layer
+       will look up the Keras learning phase at `call` time to decide what to
+       do.
+      **overrides: batch normalization construction args to override from the
+        batch_norm hyperparams dictionary.
+
+    Returns: Either a FreezableBatchNorm layer (if use_batch_norm() is True),
+      or a Keras Lambda layer that applies the identity (if use_batch_norm()
+      is False)
+    """
+    if self.use_batch_norm():
+      return freezable_batch_norm.FreezableBatchNorm(
+          training=training,
+          **self.batch_norm_params(**overrides)
+      )
+    else:
+      return tf.keras.layers.Lambda(tf.identity)
 
   def params(self, **overrides):
     """Returns a dict containing the layer construction hyperparameters to use.

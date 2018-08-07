@@ -32,6 +32,18 @@ from object_detection.utils import visualization_utils as vis_utils
 
 slim = tf.contrib.slim
 
+# A dictionary of metric names to classes that implement the metric. The classes
+# in the dictionary must implement
+# utils.object_detection_evaluation.DetectionEvaluator interface.
+EVAL_METRICS_CLASS_DICT = {
+    'coco_detection_metrics':
+        coco_evaluation.CocoDetectionEvaluator,
+    'coco_mask_metrics':
+        coco_evaluation.CocoMaskEvaluator,
+}
+
+EVAL_DEFAULT_METRIC = 'coco_detection_metrics'
+
 
 def write_metrics(metrics, global_step, summary_dir):
   """Write metrics to a summary directory.
@@ -582,70 +594,90 @@ def result_dict_for_single_example(image,
   return output_dict
 
 
-def get_eval_metric_ops_for_evaluators(evaluation_metrics,
-                                       categories,
-                                       eval_dict,
-                                       include_metrics_per_category=False):
-  """Returns a dictionary of eval metric ops to use with `tf.EstimatorSpec`.
+def get_evaluators(eval_config, categories, evaluator_options=None):
+  """Returns the evaluator class according to eval_config, valid for categories.
 
   Args:
-    evaluation_metrics: List of evaluation metric names. Current options are
-      'coco_detection_metrics' and 'coco_mask_metrics'.
+    eval_config: An `eval_pb2.EvalConfig`.
+    categories: A list of dicts, each of which has the following keys -
+        'id': (required) an integer id uniquely identifying this category.
+        'name': (required) string representing category name e.g., 'cat', 'dog'.
+    evaluator_options: A dictionary of metric names (see
+      EVAL_METRICS_CLASS_DICT) to `DetectionEvaluator` initialization
+      keyword arguments. For example:
+      evalator_options = {
+        'coco_detection_metrics': {'include_metrics_per_category': True}
+      }
+
+  Returns:
+    An list of instances of DetectionEvaluator.
+
+  Raises:
+    ValueError: if metric is not in the metric class dictionary.
+  """
+  evaluator_options = evaluator_options or {}
+  eval_metric_fn_keys = eval_config.metrics_set
+  if not eval_metric_fn_keys:
+    eval_metric_fn_keys = [EVAL_DEFAULT_METRIC]
+  evaluators_list = []
+  for eval_metric_fn_key in eval_metric_fn_keys:
+    if eval_metric_fn_key not in EVAL_METRICS_CLASS_DICT:
+      raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
+    kwargs_dict = (evaluator_options[eval_metric_fn_key] if eval_metric_fn_key
+                   in evaluator_options else {})
+    evaluators_list.append(EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](
+        categories,
+        **kwargs_dict))
+  return evaluators_list
+
+
+def get_eval_metric_ops_for_evaluators(eval_config,
+                                       categories,
+                                       eval_dict):
+  """Returns eval metrics ops to use with `tf.estimator.EstimatorSpec`.
+
+  Args:
+    eval_config: An `eval_pb2.EvalConfig`.
     categories: A list of dicts, each of which has the following keys -
         'id': (required) an integer id uniquely identifying this category.
         'name': (required) string representing category name e.g., 'cat', 'dog'.
     eval_dict: An evaluation dictionary, returned from
       result_dict_for_single_example().
-    include_metrics_per_category: If True, additionally include per-category
-      metrics.
 
   Returns:
     A dictionary of metric names to tuple of value_op and update_op that can be
     used as eval metric ops in tf.EstimatorSpec.
-
-  Raises:
-    ValueError: If any of the metrics in `evaluation_metric` is not
-    'coco_detection_metrics' or 'coco_mask_metrics'.
   """
-  evaluation_metrics = list(set(evaluation_metrics))
-
-  input_data_fields = fields.InputDataFields
-  detection_fields = fields.DetectionResultFields
   eval_metric_ops = {}
-  for metric in evaluation_metrics:
-    if metric == 'coco_detection_metrics':
-      coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
-          categories, include_metrics_per_category=include_metrics_per_category)
-      eval_metric_ops.update(
-          coco_evaluator.get_estimator_eval_metric_ops(
-              image_id=eval_dict[input_data_fields.key],
-              groundtruth_boxes=eval_dict[input_data_fields.groundtruth_boxes],
-              groundtruth_classes=eval_dict[
-                  input_data_fields.groundtruth_classes],
-              detection_boxes=eval_dict[detection_fields.detection_boxes],
-              detection_scores=eval_dict[detection_fields.detection_scores],
-              detection_classes=eval_dict[detection_fields.detection_classes],
-              groundtruth_is_crowd=eval_dict.get(
-                  input_data_fields.groundtruth_is_crowd)))
-    elif metric == 'coco_mask_metrics':
-      coco_mask_evaluator = coco_evaluation.CocoMaskEvaluator(
-          categories, include_metrics_per_category=include_metrics_per_category)
-      eval_metric_ops.update(
-          coco_mask_evaluator.get_estimator_eval_metric_ops(
-              image_id=eval_dict[input_data_fields.key],
-              groundtruth_boxes=eval_dict[input_data_fields.groundtruth_boxes],
-              groundtruth_classes=eval_dict[
-                  input_data_fields.groundtruth_classes],
-              groundtruth_instance_masks=eval_dict[
-                  input_data_fields.groundtruth_instance_masks],
-              detection_scores=eval_dict[detection_fields.detection_scores],
-              detection_classes=eval_dict[detection_fields.detection_classes],
-              detection_masks=eval_dict[detection_fields.detection_masks],
-              groundtruth_is_crowd=eval_dict.get(
-                  input_data_fields.groundtruth_is_crowd),))
-    else:
-      raise ValueError('The only evaluation metrics supported are '
-                       '"coco_detection_metrics" and "coco_mask_metrics". '
-                       'Found {} in the evaluation metrics'.format(metric))
-
+  evaluator_options = evaluator_options_from_eval_config(eval_config)
+  evaluators_list = get_evaluators(eval_config, categories, evaluator_options)
+  for evaluator in evaluators_list:
+    eval_metric_ops.update(evaluator.get_estimator_eval_metric_ops(
+        eval_dict))
   return eval_metric_ops
+
+
+def evaluator_options_from_eval_config(eval_config):
+  """Produces a dictionary of evaluation options for each eval metric.
+
+  Args:
+    eval_config: An `eval_pb2.EvalConfig`.
+
+  Returns:
+    evaluator_options: A dictionary of metric names (see
+      EVAL_METRICS_CLASS_DICT) to `DetectionEvaluator` initialization
+      keyword arguments. For example:
+      evalator_options = {
+        'coco_detection_metrics': {'include_metrics_per_category': True}
+      }
+  """
+  eval_metric_fn_keys = eval_config.metrics_set
+  evaluator_options = {}
+  for eval_metric_fn_key in eval_metric_fn_keys:
+    if eval_metric_fn_key in ('coco_detection_metrics', 'coco_mask_metrics'):
+      evaluator_options[eval_metric_fn_key] = {
+          'include_metrics_per_category': (
+              eval_config.include_metrics_per_category)
+      }
+  return evaluator_options
+

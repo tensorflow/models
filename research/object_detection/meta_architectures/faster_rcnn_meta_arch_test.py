@@ -230,9 +230,14 @@ class FasterRCNNMetaArchTest(
           tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
           tf.constant([[1, 0], [1, 0]], dtype=tf.float32)
       ]
+      groundtruth_weights_list = [
+          tf.constant([1, 1], dtype=tf.float32),
+          tf.constant([1, 1], dtype=tf.float32)]
       _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-      model.provide_groundtruth(groundtruth_boxes_list,
-                                groundtruth_classes_list)
+      model.provide_groundtruth(
+          groundtruth_boxes_list,
+          groundtruth_classes_list,
+          groundtruth_weights_list=groundtruth_weights_list)
 
       result_tensor_dict = model.predict(preprocessed_inputs, true_image_shapes)
       mask_shape_1 = 1 if masks_are_class_agnostic else model._num_classes

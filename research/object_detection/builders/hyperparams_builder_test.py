@@ -21,6 +21,7 @@ import tensorflow as tf
 from google.protobuf import text_format
 
 from object_detection.builders import hyperparams_builder
+from object_detection.core import freezable_batch_norm
 from object_detection.protos import hyperparams_pb2
 
 slim = tf.contrib.slim
@@ -282,6 +283,10 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     self.assertFalse(batch_norm_params['center'])
     self.assertTrue(batch_norm_params['scale'])
 
+    batch_norm_layer = keras_config.build_batch_norm()
+    self.assertTrue(isinstance(batch_norm_layer,
+                               freezable_batch_norm.FreezableBatchNorm))
+
   def test_return_non_default_batch_norm_params_keras_override(
       self):
     conv_hyperparams_text_proto = """
@@ -412,6 +417,11 @@ class HyperparamsBuilderTest(tf.test.TestCase):
         conv_hyperparams_proto)
     self.assertFalse(keras_config.use_batch_norm())
     self.assertEqual(keras_config.batch_norm_params(), {})
+
+    # The batch norm builder should build an identity Lambda layer
+    identity_layer = keras_config.build_batch_norm()
+    self.assertTrue(isinstance(identity_layer,
+                               tf.keras.layers.Lambda))
 
   def test_use_none_activation(self):
     conv_hyperparams_text_proto = """

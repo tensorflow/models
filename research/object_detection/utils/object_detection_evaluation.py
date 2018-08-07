@@ -91,6 +91,23 @@ class DetectionEvaluator(object):
     """
     pass
 
+  def get_estimator_eval_metric_ops(self, eval_dict):
+    """Returns dict of metrics to use with `tf.estimator.EstimatorSpec`.
+
+    Note that this must only be implemented if performing evaluation with a
+    `tf.estimator.Estimator`.
+
+    Args:
+      eval_dict: A dictionary that holds tensors for evaluating an object
+        detection model, returned from
+        eval_util.result_dict_for_single_example().
+
+    Returns:
+      A dictionary of metric names to tuple of value_op and update_op that can
+      be used as eval metric ops in `tf.estimator.EstimatorSpec`.
+    """
+    pass
+
   @abstractmethod
   def evaluate(self):
     """Evaluates detections and returns a dictionary of metrics."""
