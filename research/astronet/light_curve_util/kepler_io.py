@@ -150,14 +150,14 @@ def kepler_filenames(base_dir,
   return filenames
 
 
-def scramble_light_curve(all_flux, all_time, all_quarters, scramble_type):
+def scramble_light_curve(all_time, all_flux, all_quarters, scramble_type):
   """Scrambles a light curve according to a given scrambling procedure.
 
   Args:
-    all_flux: List holding lists of flux values (each interior list holds a
-      quarter of flux data).
     all_time: List holding lists of time values (each interior list holds a
       quarter of time data).
+    all_flux: List holding lists of flux values (each interior list holds a
+      quarter of flux data).
     all_quarters: List of integers specifying which quarters were present in
       the light curve (max is 18: Q0...Q17).
     scramble_type: String specifying the scramble order, one of {'SCR1', 'SCR2',
@@ -178,11 +178,10 @@ def scramble_light_curve(all_flux, all_time, all_quarters, scramble_type):
   concat_time = np.concatenate(all_time)
   scr_time = []
   for flux in scr_flux:
-    same_len_time_list = list(concat_time[:len(flux)])
-    scr_time.append(same_len_time_list)
-    concat_time = concat_time[len(flux):]
+    time, concat_time = np.split(concat_time, [len(flux)])
+    scr_time.append(time)
 
-  return scr_flux, scr_time
+  return scr_time, scr_flux
 
 
 def read_kepler_light_curve(filenames,
@@ -212,20 +211,20 @@ def read_kepler_light_curve(filenames,
       flux = light_curve.PDCSAP_FLUX
 
       # Index into primary HDU header and get quarter.
-      all_quarters.append(hdu_list[0].header["QUARTER"])
+      quarter = hdu_list[0].header["QUARTER"]
 
-    if time.size:
-      all_time.append(time)
-      all_flux.append(flux)
+      # Remove NaN flux values.
+      valid_indices = np.where(np.isfinite(flux))
+      time = time[valid_indices]
+      flux = flux[valid_indices]
+
+      if time.size:
+        all_time.append(time)
+        all_flux.append(flux)
+        all_quarters.append(quarter)
 
   if scramble_type:
-    all_flux, all_time = scramble_light_curve(all_flux, all_time, all_quarters,
+    all_time, all_flux = scramble_light_curve(all_time, all_flux, all_quarters,
                                               scramble_type)
-
-  # Remove NaN flux values after potential scrambling.
-  for i, (flux, time) in enumerate(zip(all_flux, all_time)):
-    valid_indices = np.where(np.isfinite(flux))
-    all_time[i] = time[valid_indices]
-    all_flux[i] = flux[valid_indices]
 
   return all_time, all_flux
