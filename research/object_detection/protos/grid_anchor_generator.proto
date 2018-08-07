@@ -23,6 +23,7 @@ message GridAnchorGenerator {
   // Anchor width offset in pixels.
   optional int32 width_offset = 6 [default = 0];
 
+
   // At any given location, len(scales) * len(aspect_ratios) anchors are
   // generated with all possible combinations of scales and aspect ratios.
 
@@ -31,4 +32,8 @@ message GridAnchorGenerator {
 
   // List of aspect ratios for the anchors.
   repeated float aspect_ratios = 8;
+
+  // Anchor width offset in pixels.
+  optional int32 octaves = 9 [default = 1];
+  
 }

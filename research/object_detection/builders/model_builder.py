@@ -345,9 +345,13 @@ def _build_faster_rcnn_feature_extractor(
         feature_type))
   feature_extractor_class = FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP[
       feature_type]
+
+  if feature_extractor_config.feature_count > 1 or feature_extractor_config.use_fpn:
+    return feature_extractor_class(is_training, first_stage_features_stride,
+      batch_norm_trainable, reuse_weights, 0.0, feature_extractor_config.use_fpn, feature_extractor_config.feature_count)
+
   return feature_extractor_class(
-      is_training, first_stage_features_stride,
-      batch_norm_trainable, reuse_weights)
+      is_training, first_stage_features_stride, batch_norm_trainable, reuse_weights)
 
 
 def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):

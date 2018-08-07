@@ -41,9 +41,16 @@ Example usage:
         --input_config_path=train_input_config.pbtxt
 """
 
+
 import functools
 import json
 import os
+import sys
+
+sys.path.append("C:\\Work\\Repos\\models\\research")
+sys.path.append("C:\\Work\\Repos\\models\\research\\slim")
+
+
 import tensorflow as tf
 
 from object_detection.builders import dataset_builder
@@ -84,9 +91,12 @@ flags.DEFINE_string('gpuid', '0',
                     'Which GPU device to use. Separated by commas. Default is 0.')
 FLAGS = flags.FLAGS
 
+def start_inline():
 
 @tf.contrib.framework.deprecated(None, 'Use object_detection/model_main.py.')
 def main(_):
+  start_inline()
+  
   assert FLAGS.train_dir, '`train_dir` is missing.'
   if FLAGS.task == 0: tf.gfile.MakeDirs(FLAGS.train_dir)
   if FLAGS.pipeline_config_path:

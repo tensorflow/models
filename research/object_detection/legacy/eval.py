@@ -45,6 +45,10 @@ Example usage:
 import functools
 import os
 import tensorflow as tf
+import sys
+
+sys.path.append("C:\\Work\\Repos\\models\\research")
+sys.path.append("C:\\Work\\Repos\\models\\research\\slim")
 
 from object_detection.builders import dataset_builder
 from object_detection.builders import graph_rewriter_builder

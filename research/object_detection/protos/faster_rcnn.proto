@@ -183,4 +183,9 @@ message FasterRcnnFeatureExtractor {
   // When training with a relative large batch size (e.g. 8), it could be
   // desirable to enable batch norm update.
   optional bool batch_norm_trainable = 3 [default=false];
+
+  optional bool use_fpn = 4 [default=false];
+
+  optional int32 feature_count = 5 [default=1];
+  
 }

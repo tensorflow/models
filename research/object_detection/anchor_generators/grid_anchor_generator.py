@@ -35,7 +35,8 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
                aspect_ratios=(0.5, 1.0, 2.0),
                base_anchor_size=None,
                anchor_stride=None,
-               anchor_offset=None):
+               anchor_offset=None,
+               octaves=1):
     """Constructs a GridAnchorGenerator.
 
     Args:
@@ -69,6 +70,7 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
     self._base_anchor_size = base_anchor_size
     self._anchor_stride = anchor_stride
     self._anchor_offset = anchor_offset
+    self._octaves = octaves
 
   def name_scope(self):
     return 'GridAnchorGenerator'
@@ -80,7 +82,46 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
       a list of integers, one for each expected feature map to be passed to
       the `generate` function.
     """
-    return [len(self._scales) * len(self._aspect_ratios)]
+    return self._octaves * [len(self._scales) * len(self._aspect_ratios)]
+    #return 4* [len(self._scales) * len(self._aspect_ratios)]
+
+
+  #def _generate(self, feature_map_shape_list):
+  #  """Generates a collection of bounding boxes to be used as anchors.
+
+  #  Args:
+  #    feature_map_shape_list: list of pairs of convnet layer resolutions in the
+  #      format [(height_0, width_0)].  For example, setting
+  #      feature_map_shape_list=[(8, 8)] asks for anchors that correspond
+  #      to an 8x8 layer.  For this anchor generator, only lists of length 1 are
+  #      allowed.
+
+  #  Returns:
+  #    boxes: a BoxList holding a collection of N anchor boxes
+  #  Raises:
+  #    ValueError: if feature_map_shape_list, box_specs_list do not have the same
+  #      length.
+  #    ValueError: if feature_map_shape_list does not consist of pairs of
+  #      integers
+  #  """
+  #  if not (isinstance(feature_map_shape_list, list)
+  #          and len(feature_map_shape_list) == 1):
+  #    raise ValueError('feature_map_shape_list must be a list of length 1.')
+  #  if not all([isinstance(list_item, tuple) and len(list_item) == 2
+  #              for list_item in feature_map_shape_list]):
+  #    raise ValueError('feature_map_shape_list must be a list of pairs.')
+  #  grid_height, grid_width = feature_map_shape_list[0]
+  #  scales_grid, aspect_ratios_grid = ops.meshgrid(self._scales,
+  #                                                 self._aspect_ratios)
+  #  scales_grid = tf.reshape(scales_grid, [-1])
+  #  aspect_ratios_grid = tf.reshape(aspect_ratios_grid, [-1])
+  #  return tile_anchors(grid_height,
+  #                      grid_width,
+  #                      scales_grid,
+  #                      aspect_ratios_grid,
+  #                      self._base_anchor_size,
+  #                      self._anchor_stride,
+  #                      self._anchor_offset)
 
   def _generate(self, feature_map_shape_list):
     """Generates a collection of bounding boxes to be used as anchors.
@@ -102,13 +143,14 @@ class GridAnchorGenerator(anchor_generator.AnchorGenerator):
       ValueError: if feature_map_shape_list does not consist of pairs of
         integers
     """
-    if not (isinstance(feature_map_shape_list, list)
-            and len(feature_map_shape_list) == 1):
-      raise ValueError('feature_map_shape_list must be a list of length 1.')
+    #if not (isinstance(feature_map_shape_list, list)
+    #        and len(feature_map_shape_list) == 1):
+    #  raise ValueError('feature_map_shape_list must be a list of length 1.')
     if not all([isinstance(list_item, tuple) and len(list_item) == 2
                 for list_item in feature_map_shape_list]):
       raise ValueError('feature_map_shape_list must be a list of pairs.')
-    grid_height, grid_width = feature_map_shape_list[0]
+
+    
     scales_grid, aspect_ratios_grid = ops.meshgrid(self._scales,
                                                    self._aspect_ratios)
     scales_grid = tf.reshape(scales_grid, [-1])
@@ -135,7 +177,8 @@ def tile_anchors(grid_height,
                  aspect_ratios,
                  base_anchor_size,
                  anchor_stride,
-                 anchor_offset):
+                 anchor_offset, 
+                 as_list = True):
   """Create a tiled set of anchors strided along a grid in image space.
 
   This op creates a set of anchor boxes by placing a "basis" collection of
@@ -188,7 +231,10 @@ def tile_anchors(grid_height,
   bbox_centers = tf.reshape(bbox_centers, [-1, 2])
   bbox_sizes = tf.reshape(bbox_sizes, [-1, 2])
   bbox_corners = _center_size_bbox_to_corners_bbox(bbox_centers, bbox_sizes)
-  return box_list.BoxList(bbox_corners)
+  if as_list: 
+    return box_list.BoxList(bbox_corners)
+  return bbox_corners
+
 
 
 def _center_size_bbox_to_corners_bbox(centers, sizes):

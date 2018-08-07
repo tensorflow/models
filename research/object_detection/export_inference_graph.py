@@ -14,12 +14,10 @@
 # ==============================================================================
 
 r"""Tool to export an object detection model for inference.
-
 Prepares an object detection tensorflow graph for inference using model
 configuration and a trained checkpoint. Outputs inference
 graph, associated checkpoint files, a frozen inference graph and a
 SavedModel (https://tensorflow.github.io/serving/serving_basic.html).
-
 The inference graph contains one of three input nodes depending on the user
 specified option.
   * `image_tensor`: Accepts a uint8 4-D tensor of shape [None, None, None, 3]
@@ -29,7 +27,6 @@ specified option.
   * `tf_example`: Accepts a 1-D string tensor of shape [None] containing
     serialized TFExample protos. Image resolutions are expected to be the same
     if more than 1 image is provided.
-
 and the following output nodes returned by the model.postprocess(..):
   * `num_detections`: Outputs float32 tensors of the form [batch]
       that specifies the number of valid boxes per image in the batch.
@@ -43,11 +40,9 @@ and the following output nodes returned by the model.postprocess(..):
       [batch, num_boxes, mask_height, mask_width] containing predicted instance
       masks for each box if its present in the dictionary of postprocessed
       tensors returned by the model.
-
 Notes:
  * This tool uses `use_moving_averages` from eval_config to decide which
    weights to freeze.
-
 Example Usage:
 --------------
 python export_inference_graph \
@@ -55,7 +50,6 @@ python export_inference_graph \
     --pipeline_config_path path/to/ssd_inception_v2.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
     --output_directory path/to/exported_model_directory
-
 The expected output would be in the directory
 path/to/exported_model_directory (which is created if it does not exist)
 with contents:

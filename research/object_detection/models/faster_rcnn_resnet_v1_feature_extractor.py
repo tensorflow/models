@@ -29,6 +29,9 @@ import tensorflow as tf
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from nets import resnet_utils
 from nets import resnet_v1
+import object_detection.core.lstm2d as lstm2d
+
+from object_detection.utils import ops
 
 slim = tf.contrib.slim
 
@@ -44,7 +47,9 @@ class FasterRCNNResnetV1FeatureExtractor(
                first_stage_features_stride,
                batch_norm_trainable=False,
                reuse_weights=None,
-               weight_decay=0.0):
+               weight_decay=0.0,
+               use_fpn=False,
+               feature_count=1):
     """Constructor.
 
     Args:
@@ -63,6 +68,8 @@ class FasterRCNNResnetV1FeatureExtractor(
       raise ValueError('`first_stage_features_stride` must be 8 or 16.')
     self._architecture = architecture
     self._resnet_model = resnet_model
+    self._use_fpn = use_fpn
+    self._feature_count = feature_count
     super(FasterRCNNResnetV1FeatureExtractor, self).__init__(
         is_training, first_stage_features_stride, batch_norm_trainable,
         reuse_weights, weight_decay)
@@ -140,6 +147,10 @@ class FasterRCNNResnetV1FeatureExtractor(
     handle = scope + '/%s/block3' % self._architecture
     return activations[handle], activations
 
+    
+    return feature_activations
+
+
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.
 
@@ -153,7 +164,7 @@ class FasterRCNNResnetV1FeatureExtractor(
       proposal_classifier_features: A 4-D float tensor with shape
         [batch_size * self.max_num_proposals, height, width, depth]
         representing box classifier features for each proposal.
-    """
+    """    
     with tf.variable_scope(self._architecture, reuse=self._reuse_weights):
       with slim.arg_scope(
           resnet_utils.resnet_arg_scope(
@@ -162,15 +173,26 @@ class FasterRCNNResnetV1FeatureExtractor(
               weight_decay=self._weight_decay)):
         with slim.arg_scope([slim.batch_norm],
                             is_training=self._train_batch_norm):
-          blocks = [
-              resnet_utils.Block('block4', resnet_v1.bottleneck, [{
-                  'depth': 2048,
-                  'depth_bottleneck': 512,
-                  'stride': 1
-              }] * 3)
-          ]
+          depth = proposal_feature_maps.shape[3].value
+          if depth != 1024:          
+            blocks = [
+                 resnet_utils.Block('block4a', resnet_v1.bottleneck, [{
+                     'depth': 2048,
+                     'depth_bottleneck': 512,
+                     'stride': 1
+                 }] * 3)
+             ]
+          else: 
+            blocks = [
+                resnet_utils.Block('block4', resnet_v1.bottleneck, [{
+                    'depth': 2048,
+                    'depth_bottleneck': 512,
+                    'stride': 1
+                }] * 3)
+            ]
           proposal_classifier_features = resnet_utils.stack_blocks_dense(
               proposal_feature_maps, blocks)
+          
     return proposal_classifier_features
 
 
@@ -182,7 +204,10 @@ class FasterRCNNResnet50FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
                first_stage_features_stride,
                batch_norm_trainable=False,
                reuse_weights=None,
-               weight_decay=0.0):
+               weight_decay=0.0,
+               use_fpn = False, 
+               feature_count = 1
+               ):
     """Constructor.
 
     Args:
@@ -199,7 +224,7 @@ class FasterRCNNResnet50FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
     super(FasterRCNNResnet50FeatureExtractor, self).__init__(
         'resnet_v1_50', resnet_v1.resnet_v1_50, is_training,
         first_stage_features_stride, batch_norm_trainable,
-        reuse_weights, weight_decay)
+        reuse_weights, weight_decay, use_fpn, feature_count)
 
 
 class FasterRCNNResnet101FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
@@ -210,7 +235,9 @@ class FasterRCNNResnet101FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
                first_stage_features_stride,
                batch_norm_trainable=False,
                reuse_weights=None,
-               weight_decay=0.0):
+               weight_decay=0.0,
+               use_fpn = False, 
+               feature_count = 1):
     """Constructor.
 
     Args:
@@ -227,7 +254,7 @@ class FasterRCNNResnet101FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
     super(FasterRCNNResnet101FeatureExtractor, self).__init__(
         'resnet_v1_101', resnet_v1.resnet_v1_101, is_training,
         first_stage_features_stride, batch_norm_trainable,
-        reuse_weights, weight_decay)
+        reuse_weights, weight_decay, use_fpn, feature_count)
 
 
 class FasterRCNNResnet152FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
@@ -238,7 +265,9 @@ class FasterRCNNResnet152FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
                first_stage_features_stride,
                batch_norm_trainable=False,
                reuse_weights=None,
-               weight_decay=0.0):
+               weight_decay=0.0,
+               use_fpn = False, 
+               feature_count = 1):
     """Constructor.
 
     Args:
@@ -255,4 +284,4 @@ class FasterRCNNResnet152FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
     super(FasterRCNNResnet152FeatureExtractor, self).__init__(
         'resnet_v1_152', resnet_v1.resnet_v1_152, is_training,
         first_stage_features_stride, batch_norm_trainable,
-        reuse_weights, weight_decay)
+        reuse_weights, weight_decay,use_fpn, feature_count)

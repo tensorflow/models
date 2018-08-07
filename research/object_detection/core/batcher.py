@@ -108,6 +108,7 @@ class BatchQueue(object):
     Returns:
       A list of tensor_dicts of the requested batch_size.
     """
+    print("dequeue-------------")
     batched_tensors = self._queue.dequeue()
     # Separate input tensors from tensors containing their runtime shapes.
     tensors = {}

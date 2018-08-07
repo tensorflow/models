@@ -51,7 +51,9 @@ def build(anchor_generator_config):
         anchor_stride=[grid_anchor_generator_config.height_stride,
                        grid_anchor_generator_config.width_stride],
         anchor_offset=[grid_anchor_generator_config.height_offset,
-                       grid_anchor_generator_config.width_offset])
+                       grid_anchor_generator_config.width_offset],
+        octaves = grid_anchor_generator_config.octaves
+        )
   elif anchor_generator_config.WhichOneof(
       'anchor_generator_oneof') == 'ssd_anchor_generator':
     ssd_anchor_generator_config = anchor_generator_config.ssd_anchor_generator
