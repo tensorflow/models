@@ -26,6 +26,7 @@ from google3.third_party.tensorflow_models.object_detection.builders import matc
 from google3.third_party.tensorflow_models.object_detection.builders import model_builder
 from google3.third_party.tensorflow_models.object_detection.builders import post_processing_builder
 from google3.third_party.tensorflow_models.object_detection.builders import region_similarity_calculator_builder as sim_calc
+from google3.third_party.tensorflow_models.object_detection.core import target_assigner
 
 model_builder.SSD_FEATURE_EXTRACTOR_CLASS_MAP.update({
     'lstm_mobilenet_v1': LSTMMobileNetV1FeatureExtractor,
@@ -140,12 +141,29 @@ def _build_lstm_model(ssd_config, lstm_config, is_training):
   if unroll_length is None:
     raise ValueError('No unroll length found in the config file')
 
+  target_assigner_instance = target_assigner.TargetAssigner(
+      region_similarity_calculator,
+      matcher,
+      box_coder,
+      negative_class_weight=negative_class_weight)
+
   lstm_model = lstm_meta_arch.LSTMMetaArch(
-      is_training, anchor_generator, ssd_box_predictor, box_coder,
-      feature_extractor, matcher, region_similarity_calculator,
-      encode_background_as_zeros, negative_class_weight, image_resizer_fn,
-      non_max_suppression_fn, score_conversion_fn, classification_loss,
-      localization_loss, classification_weight, localization_weight,
-      normalize_loss_by_num_matches, miner, unroll_length)
+      is_training=is_training,
+      anchor_generator=anchor_generator,
+      box_predictor=ssd_box_predictor,
+      box_coder=box_coder,
+      feature_extractor=feature_extractor,
+      encode_background_as_zeros=encode_background_as_zeros,
+      image_resizer_fn=image_resizer_fn,
+      non_max_suppression_fn=non_max_suppression_fn,
+      score_conversion_fn=score_conversion_fn,
+      classification_loss=classification_loss,
+      localization_loss=localization_loss,
+      classification_loss_weight=classification_weight,
+      localization_loss_weight=localization_weight,
+      normalize_loss_by_num_matches=normalize_loss_by_num_matches,
+      hard_example_miner=miner,
+      unroll_length=unroll_length,
+      target_assigner_instance=target_assigner_instance)
 
   return lstm_model

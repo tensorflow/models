@@ -41,10 +41,7 @@ class LSTMMetaArch(ssd_meta_arch.SSDMetaArch):
                box_predictor,
                box_coder,
                feature_extractor,
-               matcher,
-               region_similarity_calculator,
                encode_background_as_zeros,
-               negative_class_weight,
                image_resizer_fn,
                non_max_suppression_fn,
                score_conversion_fn,
@@ -55,14 +52,26 @@ class LSTMMetaArch(ssd_meta_arch.SSDMetaArch):
                normalize_loss_by_num_matches,
                hard_example_miner,
                unroll_length,
+               target_assigner_instance,
                add_summaries=True):
     super(LSTMMetaArch, self).__init__(
-        is_training, anchor_generator, box_predictor, box_coder,
-        feature_extractor, matcher, region_similarity_calculator,
-        encode_background_as_zeros, negative_class_weight, image_resizer_fn,
-        non_max_suppression_fn, score_conversion_fn, classification_loss,
-        localization_loss, classification_loss_weight, localization_loss_weight,
-        normalize_loss_by_num_matches, hard_example_miner, add_summaries)
+        is_training=is_training,
+        anchor_generator=anchor_generator,
+        box_predictor=box_predictor,
+        box_coder=box_coder,
+        feature_extractor=feature_extractor,
+        encode_background_as_zeros=encode_background_as_zeros,
+        image_resizer_fn=image_resizer_fn,
+        non_max_suppression_fn=non_max_suppression_fn,
+        score_conversion_fn=score_conversion_fn,
+        classification_loss=classification_loss,
+        localization_loss=localization_loss,
+        classification_loss_weight=classification_loss_weight,
+        localization_loss_weight=localization_loss_weight,
+        normalize_loss_by_num_matches=normalize_loss_by_num_matches,
+        hard_example_miner=hard_example_miner,
+        target_assigner_instance=target_assigner_instance,
+        add_summaries=add_summaries)
     self._unroll_length = unroll_length
 
   @property
