@@ -58,7 +58,7 @@ class MultiscaleGridAnchorGenerator(anchor_generator.AnchorGenerator):
     self._normalize_coordinates = normalize_coordinates
 
     scales = [2**(float(scale) / scales_per_octave)
-              for scale in xrange(scales_per_octave)]
+              for scale in range(scales_per_octave)]
     aspects = list(aspect_ratios)
 
     for level in range(min_level, max_level + 1):
