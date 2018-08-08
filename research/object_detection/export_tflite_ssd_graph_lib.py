@@ -21,6 +21,7 @@ import tempfile
 import numpy as np
 import tensorflow as tf
 from tensorflow.core.framework import attr_value_pb2
+from tensorflow.core.framework import types_pb2
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.tools.graph_transforms import TransformGraph
 from object_detection import exporter
@@ -94,6 +95,12 @@ def append_postprocessing_op(frozen_graph_def, max_detections,
   new_output.op = 'TFLite_Detection_PostProcess'
   new_output.name = 'TFLite_Detection_PostProcess'
   new_output.attr['_output_quantized'].CopyFrom(
+      attr_value_pb2.AttrValue(b=True))
+  new_output.attr['_output_types'].list.type.extend([
+      types_pb2.DT_FLOAT, types_pb2.DT_FLOAT, types_pb2.DT_FLOAT,
+      types_pb2.DT_FLOAT
+  ])
+  new_output.attr['_support_output_type_float_in_quantized_op'].CopyFrom(
       attr_value_pb2.AttrValue(b=True))
   new_output.attr['max_detections'].CopyFrom(
       attr_value_pb2.AttrValue(i=max_detections))

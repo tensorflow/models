@@ -6,7 +6,7 @@ import "object_detection/protos/optimizer.proto";
 import "object_detection/protos/preprocessor.proto";
 
 // Message for configuring DetectionModel training jobs (train.py).
-// Next id: 25
+// Next id: 26
 message TrainConfig {
   // Effective batch size to use for training.
   // For TPU (or sync SGD jobs), the batch size per core (or GPU) is going to be
@@ -61,7 +61,13 @@ message TrainConfig {
   // amount.
   optional float bias_grad_multiplier = 11 [default=0];
 
-  // Variables that should not be updated during training.
+  // Variables that should be updated during training. Note that variables which
+  // also match the patterns in freeze_variables will be excluded.
+  repeated string update_trainable_variables = 25;
+
+  // Variables that should not be updated during training. If
+  // update_trainable_variables is not empty, only eliminates the included
+  // variables according to freeze_variables patterns.
   repeated string freeze_variables = 12;
 
   // Number of replicas to aggregate before making parameter updates.

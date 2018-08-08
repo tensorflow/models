@@ -18,11 +18,9 @@ import numpy as np
 import tensorflow as tf
 
 from google.protobuf import text_format
+from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
 from object_detection.predictors import mask_rcnn_box_predictor as box_predictor
-from object_detection.predictors.mask_rcnn_heads import box_head
-from object_detection.predictors.mask_rcnn_heads import class_head
-from object_detection.predictors.mask_rcnn_heads import mask_head
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import test_case
 
@@ -47,45 +45,9 @@ class MaskRCNNBoxPredictorTest(test_case.TestCase):
     hyperparams.op = op_type
     return hyperparams_builder.build(hyperparams, is_training=True)
 
-  def _box_predictor_builder(self,
-                             is_training,
-                             num_classes,
-                             fc_hyperparams_fn,
-                             use_dropout,
-                             dropout_keep_prob,
-                             box_code_size,
-                             share_box_across_classes=False,
-                             conv_hyperparams_fn=None,
-                             predict_instance_masks=False):
-    box_prediction_head = box_head.BoxHead(
-        is_training=is_training,
-        num_classes=num_classes,
-        fc_hyperparams_fn=fc_hyperparams_fn,
-        use_dropout=use_dropout,
-        dropout_keep_prob=dropout_keep_prob,
-        box_code_size=box_code_size,
-        share_box_across_classes=share_box_across_classes)
-    class_prediction_head = class_head.ClassHead(
-        is_training=is_training,
-        num_classes=num_classes,
-        fc_hyperparams_fn=fc_hyperparams_fn,
-        use_dropout=use_dropout,
-        dropout_keep_prob=dropout_keep_prob)
-    third_stage_heads = {}
-    if predict_instance_masks:
-      third_stage_heads[box_predictor.MASK_PREDICTIONS] = mask_head.MaskHead(
-          num_classes=num_classes,
-          conv_hyperparams_fn=conv_hyperparams_fn)
-    return box_predictor.MaskRCNNBoxPredictor(
-        is_training=is_training,
-        num_classes=num_classes,
-        box_prediction_head=box_prediction_head,
-        class_prediction_head=class_prediction_head,
-        third_stage_heads=third_stage_heads)
-
   def test_get_boxes_with_five_classes(self):
     def graph_fn(image_features):
-      mask_box_predictor = self._box_predictor_builder(
+      mask_box_predictor = box_predictor_builder.build_mask_rcnn_box_predictor(
           is_training=False,
           num_classes=5,
           fc_hyperparams_fn=self._build_arg_scope_with_hyperparams(),
@@ -109,7 +71,7 @@ class MaskRCNNBoxPredictorTest(test_case.TestCase):
 
   def test_get_boxes_with_five_classes_share_box_across_classes(self):
     def graph_fn(image_features):
-      mask_box_predictor = self._box_predictor_builder(
+      mask_box_predictor = box_predictor_builder.build_mask_rcnn_box_predictor(
           is_training=False,
           num_classes=5,
           fc_hyperparams_fn=self._build_arg_scope_with_hyperparams(),
@@ -134,7 +96,7 @@ class MaskRCNNBoxPredictorTest(test_case.TestCase):
 
   def test_value_error_on_predict_instance_masks_with_no_conv_hyperparms(self):
     with self.assertRaises(ValueError):
-      self._box_predictor_builder(
+      box_predictor_builder.build_mask_rcnn_box_predictor(
           is_training=False,
           num_classes=5,
           fc_hyperparams_fn=self._build_arg_scope_with_hyperparams(),
@@ -145,7 +107,7 @@ class MaskRCNNBoxPredictorTest(test_case.TestCase):
 
   def test_get_instance_masks(self):
     def graph_fn(image_features):
-      mask_box_predictor = self._box_predictor_builder(
+      mask_box_predictor = box_predictor_builder.build_mask_rcnn_box_predictor(
           is_training=False,
           num_classes=5,
           fc_hyperparams_fn=self._build_arg_scope_with_hyperparams(),
@@ -167,7 +129,7 @@ class MaskRCNNBoxPredictorTest(test_case.TestCase):
 
   def test_do_not_return_instance_masks_without_request(self):
     image_features = tf.random_uniform([2, 7, 7, 3], dtype=tf.float32)
-    mask_box_predictor = self._box_predictor_builder(
+    mask_box_predictor = box_predictor_builder.build_mask_rcnn_box_predictor(
         is_training=False,
         num_classes=5,
         fc_hyperparams_fn=self._build_arg_scope_with_hyperparams(),

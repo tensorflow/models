@@ -511,10 +511,14 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
       groundtruth_classes_list = [
           tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
           tf.constant([[1, 0], [1, 0]], dtype=tf.float32)]
-
+      groundtruth_weights_list = [
+          tf.constant([1, 1], dtype=tf.float32),
+          tf.constant([1, 1], dtype=tf.float32)]
       _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-      model.provide_groundtruth(groundtruth_boxes_list,
-                                groundtruth_classes_list)
+      model.provide_groundtruth(
+          groundtruth_boxes_list,
+          groundtruth_classes_list,
+          groundtruth_weights_list=groundtruth_weights_list)
 
       result_tensor_dict = model.predict(preprocessed_inputs, true_image_shapes)
       expected_shapes = {
@@ -663,10 +667,15 @@ class FasterRCNNMetaArchTestBase(tf.test.TestCase):
         tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32)]
     groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
                                 tf.constant([[1, 0], [1, 0]], dtype=tf.float32)]
-
+    groundtruth_weights_list = [
+        tf.constant([1, 1], dtype=tf.float32),
+        tf.constant([1, 1], dtype=tf.float32)
+    ]
     _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(groundtruth_boxes_list,
-                              groundtruth_classes_list)
+    model.provide_groundtruth(
+        groundtruth_boxes_list,
+        groundtruth_classes_list,
+        groundtruth_weights_list=groundtruth_weights_list)
     proposals = model.postprocess({
         'rpn_box_encodings': rpn_box_encodings,
         'rpn_objectness_predictions_with_background':

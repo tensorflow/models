@@ -21,6 +21,7 @@ import os
 import numpy as np
 import six
 import tensorflow as tf
+from tensorflow.core.framework import types_pb2
 from object_detection import export_tflite_ssd_graph_lib
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
@@ -28,6 +29,7 @@ from object_detection.core import model
 from object_detection.protos import graph_rewriter_pb2
 from object_detection.protos import pipeline_pb2
 from object_detection.protos import post_processing_pb2
+
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
@@ -122,7 +124,7 @@ class ExportTfliteGraphTest(tf.test.TestCase):
     return box_encodings_np, class_predictions_np
 
   def _export_graph(self, pipeline_config, num_channels=3):
-    """Exports a tflite graph and an anchor file."""
+    """Exports a tflite graph."""
     output_dir = self.get_temp_dir()
     trained_checkpoint_prefix = os.path.join(output_dir, 'model.ckpt')
     tflite_graph_file = os.path.join(output_dir, 'tflite_graph.pb')
@@ -143,6 +145,34 @@ class ExportTfliteGraphTest(tf.test.TestCase):
             trained_checkpoint_prefix=trained_checkpoint_prefix,
             output_dir=output_dir,
             add_postprocessing_op=False,
+            max_detections=10,
+            max_classes_per_detection=1)
+    return tflite_graph_file
+
+  def _export_graph_with_postprocessing_op(self,
+                                           pipeline_config,
+                                           num_channels=3):
+    """Exports a tflite graph with custom postprocessing op."""
+    output_dir = self.get_temp_dir()
+    trained_checkpoint_prefix = os.path.join(output_dir, 'model.ckpt')
+    tflite_graph_file = os.path.join(output_dir, 'tflite_graph.pb')
+
+    quantize = pipeline_config.HasField('graph_rewriter')
+    self._save_checkpoint_from_mock_model(
+        trained_checkpoint_prefix,
+        use_moving_averages=pipeline_config.eval_config.use_moving_averages,
+        quantize=quantize,
+        num_channels=num_channels)
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+
+      with tf.Graph().as_default():
+        export_tflite_ssd_graph_lib.export_tflite_graph(
+            pipeline_config=pipeline_config,
+            trained_checkpoint_prefix=trained_checkpoint_prefix,
+            output_dir=output_dir,
+            add_postprocessing_op=True,
             max_detections=10,
             max_classes_per_detection=1)
     return tflite_graph_file
@@ -266,6 +296,44 @@ class ExportTfliteGraphTest(tf.test.TestCase):
                         [[[0.0, 0.0, 0.5, 0.5], [0.5, 0.5, 0.8, 0.8]]])
     self.assertAllClose(class_predictions_np,
                         [[[0.668188, 0.645656], [0.710949, 0.5]]])
+
+  def test_export_tflite_graph_with_postprocessing_op(self):
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.eval_config.use_moving_averages = False
+    pipeline_config.model.ssd.post_processing.score_converter = (
+        post_processing_pb2.PostProcessing.SIGMOID)
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.height = 10
+    pipeline_config.model.ssd.image_resizer.fixed_shape_resizer.width = 10
+    pipeline_config.model.ssd.num_classes = 2
+    pipeline_config.model.ssd.box_coder.faster_rcnn_box_coder.y_scale = 10.0
+    pipeline_config.model.ssd.box_coder.faster_rcnn_box_coder.x_scale = 10.0
+    pipeline_config.model.ssd.box_coder.faster_rcnn_box_coder.height_scale = 5.0
+    pipeline_config.model.ssd.box_coder.faster_rcnn_box_coder.width_scale = 5.0
+    tflite_graph_file = self._export_graph_with_postprocessing_op(
+        pipeline_config)
+    self.assertTrue(os.path.exists(tflite_graph_file))
+    graph = tf.Graph()
+    with graph.as_default():
+      graph_def = tf.GraphDef()
+      with tf.gfile.Open(tflite_graph_file) as f:
+        graph_def.ParseFromString(f.read())
+      all_op_names = [node.name for node in graph_def.node]
+      self.assertTrue('TFLite_Detection_PostProcess' in all_op_names)
+      for node in graph_def.node:
+        if node.name == 'TFLite_Detection_PostProcess':
+          self.assertTrue(node.attr['_output_quantized'].b is True)
+          self.assertTrue(
+              node.attr['_support_output_type_float_in_quantized_op'].b is True)
+          self.assertTrue(node.attr['y_scale'].f == 10.0)
+          self.assertTrue(node.attr['x_scale'].f == 10.0)
+          self.assertTrue(node.attr['h_scale'].f == 5.0)
+          self.assertTrue(node.attr['w_scale'].f == 5.0)
+          self.assertTrue(node.attr['num_classes'].i == 2)
+          self.assertTrue(
+              all([
+                  t == types_pb2.DT_FLOAT
+                  for t in node.attr['_output_types'].list.type
+              ]))
 
 
 if __name__ == '__main__':

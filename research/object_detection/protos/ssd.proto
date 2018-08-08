@@ -12,6 +12,7 @@ import "object_detection/protos/post_processing.proto";
 import "object_detection/protos/region_similarity_calculator.proto";
 
 // Configuration for Single Shot Detection (SSD) models.
+// Next id: 21
 message Ssd {
 
   // Number of classes to predict.
@@ -80,6 +81,22 @@ message Ssd {
   // a control dependency on tf.GraphKeys.UPDATE_OPS for train/loss op in order
   // to update the batch norm moving average parameters.
   optional bool inplace_batchnorm_update = 15 [default = false];
+
+  // Whether to weight the regression loss by the score of the ground truth box
+  // the anchor matches to.
+  optional bool weight_regression_loss_by_score = 17 [default=false];
+
+  // Whether to compute expected loss with respect to balanced positive/negative
+  // sampling scheme. If false, use explicit sampling.
+  optional bool use_expected_classification_loss_under_sampling = 18 [default=false];
+
+  // Minimum number of effective negative samples.
+  // Only applies if use_expected_classification_loss_under_sampling is true.
+  optional float minimum_negative_sampling = 19 [default=0];
+
+  // Desired number of effective negative samples per positive sample.
+  // Only applies if use_expected_classification_loss_under_sampling is true.
+  optional float desired_negative_sampling_ratio = 20 [default=3];
 }
 
 
@@ -147,3 +164,4 @@ message FeaturePyramidNetworks {
   // maximum level in feature pyramid
   optional int32 max_level = 2 [default = 7];
 }
+

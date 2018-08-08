@@ -26,7 +26,9 @@ from object_detection.core import box_list
 from object_detection.core import losses
 from object_detection.core import post_processing
 from object_detection.core import region_similarity_calculator as sim_calc
+from object_detection.core import target_assigner
 from object_detection.meta_architectures import ssd_meta_arch
+from object_detection.utils import ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 
@@ -117,6 +119,10 @@ class SsdMetaArchTest(test_case.TestCase, parameterized.TestCase):
                     normalize_loc_loss_by_codesize=False,
                     add_background_class=True,
                     random_example_sampling=False,
+                    weight_regression_loss_by_score=False,
+                    use_expected_classification_loss_under_sampling=False,
+                    minimum_negative_sampling=1,
+                    desired_negative_sampling_ratio=3,
                     use_keras=False):
     is_training = False
     num_classes = 1
@@ -163,6 +169,20 @@ class SsdMetaArchTest(test_case.TestCase, parameterized.TestCase):
       random_example_sampler = sampler.BalancedPositiveNegativeSampler(
           positive_fraction=0.5)
 
+    target_assigner_instance = target_assigner.TargetAssigner(
+        region_similarity_calculator,
+        mock_matcher,
+        mock_box_coder,
+        negative_class_weight=negative_class_weight,
+        weight_regression_loss_by_score=weight_regression_loss_by_score)
+
+    expected_classification_loss_under_sampling = None
+    if use_expected_classification_loss_under_sampling:
+      expected_classification_loss_under_sampling = functools.partial(
+          ops.expected_classification_loss_under_sampling,
+          minimum_negative_sampling=minimum_negative_sampling,
+          desired_negative_sampling_ratio=desired_negative_sampling_ratio)
+
     code_size = 4
     model = ssd_meta_arch.SSDMetaArch(
         is_training,
@@ -183,12 +203,15 @@ class SsdMetaArchTest(test_case.TestCase, parameterized.TestCase):
         localization_loss_weight,
         normalize_loss_by_num_matches,
         hard_example_miner,
+        target_assigner_instance=target_assigner_instance,
         add_summaries=False,
         normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
         freeze_batchnorm=False,
         inplace_batchnorm_update=False,
         add_background_class=add_background_class,
-        random_example_sampler=random_example_sampler)
+        random_example_sampler=random_example_sampler,
+        expected_classification_loss_under_sampling=
+        expected_classification_loss_under_sampling)
     return model, num_classes, mock_anchor_generator.num_anchors(), code_size
 
   def test_preprocess_preserves_shapes_with_dynamic_input_image(
@@ -470,6 +493,94 @@ class SsdMetaArchTest(test_case.TestCase, parameterized.TestCase):
     groundtruth_classes1 = np.array([[0, 1]], dtype=np.float32)
     groundtruth_classes2 = np.array([[0, 1]], dtype=np.float32)
     expected_localization_loss = 0.0
+    expected_classification_loss = (
+        batch_size * num_anchors * (num_classes + 1) * np.log(2.0))
+    (localization_loss, classification_loss) = self.execute(
+        graph_fn, [
+            preprocessed_input, groundtruth_boxes1, groundtruth_boxes2,
+            groundtruth_classes1, groundtruth_classes2
+        ])
+
+    self.assertAllClose(localization_loss, expected_localization_loss)
+    self.assertAllClose(classification_loss, expected_classification_loss)
+
+  def test_loss_with_expected_classification_loss(self, use_keras):
+
+    with tf.Graph().as_default():
+      _, num_classes, num_anchors, _ = self._create_model(use_keras=use_keras)
+
+    def graph_fn(preprocessed_tensor, groundtruth_boxes1, groundtruth_boxes2,
+                 groundtruth_classes1, groundtruth_classes2):
+      groundtruth_boxes_list = [groundtruth_boxes1, groundtruth_boxes2]
+      groundtruth_classes_list = [groundtruth_classes1, groundtruth_classes2]
+      model, _, _, _ = self._create_model(
+          apply_hard_mining=False,
+          add_background_class=True,
+          use_expected_classification_loss_under_sampling=True,
+          minimum_negative_sampling=1,
+          desired_negative_sampling_ratio=desired_negative_sampling_ratio)
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list)
+      prediction_dict = model.predict(
+          preprocessed_tensor, true_image_shapes=None)
+      loss_dict = model.loss(prediction_dict, true_image_shapes=None)
+      return (loss_dict['Loss/localization_loss'],
+              loss_dict['Loss/classification_loss'])
+
+    batch_size = 2
+    desired_negative_sampling_ratio = 4
+    preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
+    groundtruth_boxes1 = np.array([[0, 0, .5, .5]], dtype=np.float32)
+    groundtruth_boxes2 = np.array([[0, 0, .5, .5]], dtype=np.float32)
+    groundtruth_classes1 = np.array([[1]], dtype=np.float32)
+    groundtruth_classes2 = np.array([[1]], dtype=np.float32)
+    expected_localization_loss = 0.0
+
+    expected_classification_loss = (
+        batch_size * (desired_negative_sampling_ratio * num_anchors +
+                      num_classes * num_anchors) * np.log(2.0))
+    (localization_loss, classification_loss) = self.execute(
+        graph_fn, [
+            preprocessed_input, groundtruth_boxes1, groundtruth_boxes2,
+            groundtruth_classes1, groundtruth_classes2
+        ])
+
+    self.assertAllClose(localization_loss, expected_localization_loss)
+    self.assertAllClose(classification_loss, expected_classification_loss)
+
+  def test_loss_results_are_correct_with_weight_regression_loss_by_score(
+      self, use_keras):
+
+    with tf.Graph().as_default():
+      _, num_classes, num_anchors, _ = self._create_model(
+          use_keras=use_keras,
+          add_background_class=False,
+          weight_regression_loss_by_score=True)
+
+    def graph_fn(preprocessed_tensor, groundtruth_boxes1, groundtruth_boxes2,
+                 groundtruth_classes1, groundtruth_classes2):
+      groundtruth_boxes_list = [groundtruth_boxes1, groundtruth_boxes2]
+      groundtruth_classes_list = [groundtruth_classes1, groundtruth_classes2]
+      model, _, _, _ = self._create_model(
+          use_keras=use_keras,
+          apply_hard_mining=False,
+          add_background_class=False,
+          weight_regression_loss_by_score=True)
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list)
+      prediction_dict = model.predict(
+          preprocessed_tensor, true_image_shapes=None)
+      loss_dict = model.loss(prediction_dict, true_image_shapes=None)
+      return (loss_dict['Loss/localization_loss'],
+              loss_dict['Loss/classification_loss'])
+
+    batch_size = 2
+    preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
+    groundtruth_boxes1 = np.array([[0, 0, 1, 1]], dtype=np.float32)
+    groundtruth_boxes2 = np.array([[0, 0, 1, 1]], dtype=np.float32)
+    groundtruth_classes1 = np.array([[0, 1]], dtype=np.float32)
+    groundtruth_classes2 = np.array([[1, 0]], dtype=np.float32)
+    expected_localization_loss = 0.25
     expected_classification_loss = (
         batch_size * num_anchors * (num_classes + 1) * np.log(2.0))
     (localization_loss, classification_loss) = self.execute(

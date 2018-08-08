@@ -234,6 +234,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       gt_keypoints_list = None
       if fields.InputDataFields.groundtruth_keypoints in labels:
         gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
+      gt_weights_list = None
+      if fields.InputDataFields.groundtruth_weights in labels:
+        gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
       if fields.InputDataFields.groundtruth_is_crowd in labels:
         gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
       detection_model.provide_groundtruth(
@@ -241,8 +244,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           groundtruth_classes_list=gt_classes_list,
           groundtruth_masks_list=gt_masks_list,
           groundtruth_keypoints_list=gt_keypoints_list,
-          groundtruth_weights_list=labels[
-              fields.InputDataFields.groundtruth_weights],
+          groundtruth_weights_list=gt_weights_list,
           groundtruth_is_crowd_list=gt_is_crowd_list)
 
     preprocessed_images = features[fields.InputDataFields.image]
@@ -313,10 +315,16 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
 
       # Optionally freeze some layers by setting their gradients to be zero.
       trainable_variables = None
-      if train_config.freeze_variables:
-        trainable_variables = tf.contrib.framework.filter_variables(
-            tf.trainable_variables(),
-            exclude_patterns=train_config.freeze_variables)
+      include_variables = (
+          train_config.update_trainable_variables
+          if train_config.update_trainable_variables else None)
+      exclude_variables = (
+          train_config.freeze_variables
+          if train_config.freeze_variables else None)
+      trainable_variables = tf.contrib.framework.filter_variables(
+          tf.trainable_variables(),
+          include_patterns=include_variables,
+          exclude_patterns=exclude_variables)
 
       clip_gradients_value = None
       if train_config.gradient_clipping_by_norm > 0:
@@ -377,14 +385,10 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
                                        detection_and_groundtruth)
 
       # Eval metrics on a single example.
-      eval_metrics = eval_config.metrics_set
-      if not eval_metrics:
-        eval_metrics = ['coco_detection_metrics']
       eval_metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-          eval_metrics,
+          eval_config,
           category_index.values(),
-          eval_dict,
-          include_metrics_per_category=eval_config.include_metrics_per_category)
+          eval_dict)
       for loss_key, loss_tensor in iter(losses_dict.items()):
         eval_metric_ops[loss_key] = tf.metrics.mean(loss_tensor)
       for var in optimizer_summary_vars:

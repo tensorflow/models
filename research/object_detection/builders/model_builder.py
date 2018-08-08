@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """A function to build a DetectionModel from configuration."""
+import functools
 from object_detection.builders import anchor_generator_builder
 from object_detection.builders import box_coder_builder
 from object_detection.builders import box_predictor_builder
@@ -44,6 +45,8 @@ from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMo
 from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
 from object_detection.predictors import rfcn_box_predictor
 from object_detection.protos import model_pb2
+from object_detection.utils import ops
+
 
 # A map of names to SSD feature extractors.
 SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -220,6 +223,22 @@ def _build_ssd_model(ssd_config, is_training, add_summaries,
    random_example_sampler) = losses_builder.build(ssd_config.loss)
   normalize_loss_by_num_matches = ssd_config.normalize_loss_by_num_matches
   normalize_loc_loss_by_codesize = ssd_config.normalize_loc_loss_by_codesize
+  weight_regression_loss_by_score = (ssd_config.weight_regression_loss_by_score)
+
+  target_assigner_instance = target_assigner.TargetAssigner(
+      region_similarity_calculator,
+      matcher,
+      box_coder,
+      negative_class_weight=negative_class_weight,
+      weight_regression_loss_by_score=weight_regression_loss_by_score)
+
+  expected_classification_loss_under_sampling = None
+  if ssd_config.use_expected_classification_loss_under_sampling:
+    expected_classification_loss_under_sampling = functools.partial(
+        ops.expected_classification_loss_under_sampling,
+        minimum_negative_sampling=ssd_config.minimum_negative_sampling,
+        desired_negative_sampling_ratio=ssd_config.
+        desired_negative_sampling_ratio)
 
   return ssd_meta_arch.SSDMetaArch(
       is_training,
@@ -240,12 +259,15 @@ def _build_ssd_model(ssd_config, is_training, add_summaries,
       localization_weight,
       normalize_loss_by_num_matches,
       hard_example_miner,
+      target_assigner_instance=target_assigner_instance,
       add_summaries=add_summaries,
       normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
       freeze_batchnorm=ssd_config.freeze_batchnorm,
       inplace_batchnorm_update=ssd_config.inplace_batchnorm_update,
       add_background_class=add_background_class,
-      random_example_sampler=random_example_sampler)
+      random_example_sampler=random_example_sampler,
+      expected_classification_loss_under_sampling=
+      expected_classification_loss_under_sampling)
 
 
 def _build_faster_rcnn_feature_extractor(

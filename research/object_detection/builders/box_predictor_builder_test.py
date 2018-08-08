@@ -111,16 +111,17 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         box_predictor_config=box_predictor_proto,
         is_training=False,
         num_classes=10)
+    class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._min_depth, 2)
     self.assertEqual(box_predictor._max_depth, 16)
     self.assertEqual(box_predictor._num_layers_before_predictor, 2)
-    self.assertFalse(box_predictor._use_dropout)
-    self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.4)
-    self.assertTrue(box_predictor._apply_sigmoid_to_scores)
-    self.assertAlmostEqual(box_predictor._class_prediction_bias_init, 4.0)
+    self.assertFalse(class_head._use_dropout)
+    self.assertAlmostEqual(class_head._dropout_keep_prob, 0.4)
+    self.assertTrue(class_head._apply_sigmoid_to_scores)
+    self.assertAlmostEqual(class_head._class_prediction_bias_init, 4.0)
     self.assertEqual(box_predictor.num_classes, 10)
     self.assertFalse(box_predictor._is_training)
-    self.assertTrue(box_predictor._use_depthwise)
+    self.assertTrue(class_head._use_depthwise)
 
   def test_construct_default_conv_box_predictor(self):
     box_predictor_text_proto = """
@@ -143,15 +144,16 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         box_predictor_config=box_predictor_proto,
         is_training=True,
         num_classes=90)
+    class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._min_depth, 0)
     self.assertEqual(box_predictor._max_depth, 0)
     self.assertEqual(box_predictor._num_layers_before_predictor, 0)
-    self.assertTrue(box_predictor._use_dropout)
-    self.assertAlmostEqual(box_predictor._dropout_keep_prob, 0.8)
-    self.assertFalse(box_predictor._apply_sigmoid_to_scores)
+    self.assertTrue(class_head._use_dropout)
+    self.assertAlmostEqual(class_head._dropout_keep_prob, 0.8)
+    self.assertFalse(class_head._apply_sigmoid_to_scores)
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
-    self.assertFalse(box_predictor._use_depthwise)
+    self.assertFalse(class_head._use_depthwise)
 
 
 class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
@@ -235,12 +237,13 @@ class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
         box_predictor_config=box_predictor_proto,
         is_training=False,
         num_classes=10)
+    class_head = box_predictor._class_prediction_head
     self.assertEqual(box_predictor._depth, 2)
     self.assertEqual(box_predictor._num_layers_before_predictor, 2)
-    self.assertAlmostEqual(box_predictor._class_prediction_bias_init, 4.0)
+    self.assertEqual(box_predictor._apply_batch_norm, False)
+    self.assertAlmostEqual(class_head._class_prediction_bias_init, 4.0)
     self.assertEqual(box_predictor.num_classes, 10)
     self.assertFalse(box_predictor._is_training)
-    self.assertEqual(box_predictor._apply_batch_norm, False)
 
   def test_construct_default_conv_box_predictor(self):
     box_predictor_text_proto = """

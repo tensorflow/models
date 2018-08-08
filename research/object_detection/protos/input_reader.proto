@@ -79,10 +79,9 @@ message InputReader {
   // Number of groundtruth keypoints per object.
   optional uint32 num_keypoints = 16 [default = 0];
 
-  // Maximum number of boxes to pad to during training.
-  // Set this to at least the maximum amount of boxes in the input data.
-  // Otherwise, it may cause "Data loss: Attempted to pad to a smaller size
-  // than the input element" errors.
+  // Maximum number of boxes to pad to during training / evaluation.
+  // Set this to at least the maximum amount of boxes in the input data,
+  // otherwise some groundtruth boxes may be clipped.
   optional int32 max_number_of_boxes = 21 [default=100];
 
   // Whether to load groundtruth instance masks.
