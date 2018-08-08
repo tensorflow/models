@@ -1008,15 +1008,15 @@ def matmul_crop_and_resize(image, boxes, crop_size, scope=None):
 
 
 def expected_classification_loss_under_sampling(batch_cls_targets, cls_losses,
-                                                negative_to_positive_ratio,
+                                                desired_negative_sampling_ratio,
                                                 minimum_negative_sampling):
   """Computes classification loss by background/foreground weighting.
 
   The weighting is such that the effective background/foreground weight ratio
-  is the negative_to_positive_ratio. if p_i is the foreground probability of
-  anchor a_i, L(a_i) is the anchors loss, N is the number of anchors, and M is
-  the sum of foreground probabilities across anchors, then the total loss L is
-  calculated as:
+  is the desired_negative_sampling_ratio. if p_i is the foreground probability
+  of anchor a_i, L(a_i) is the anchors loss, N is the number of anchors, and M
+  is the sum of foreground probabilities across anchors, then the total loss L
+  is calculated as:
 
   beta = K*M/(N-M)
   L = sum_{i=1}^N [p_i + beta * (1 - p_i)] * (L(a_i))
@@ -1027,14 +1027,14 @@ def expected_classification_loss_under_sampling(batch_cls_targets, cls_losses,
         the class distrubution for the target assigned to a given anchor.
     cls_losses: Float tensor of shape [batch_size, num_anchors]
         representing anchorwise classification losses.
-    negative_to_positive_ratio: The desired background/foreground weight ratio.
+    desired_negative_sampling_ratio: The desired background/foreground weight
+      ratio.
     minimum_negative_sampling: Minimum number of effective negative samples.
       Used only when there are no positive examples.
 
   Returns:
     The classification loss.
   """
-
   num_anchors = tf.cast(tf.shape(batch_cls_targets)[1], tf.float32)
 
   # find the p_i
@@ -1042,7 +1042,7 @@ def expected_classification_loss_under_sampling(batch_cls_targets, cls_losses,
       foreground_probabilities_from_targets(batch_cls_targets))
   foreground_sum = tf.reduce_sum(foreground_probabilities, axis=-1)
 
-  k = negative_to_positive_ratio
+  k = desired_negative_sampling_ratio
 
   # compute beta
   denominators = (num_anchors - foreground_sum)
@@ -1053,7 +1053,8 @@ def expected_classification_loss_under_sampling(batch_cls_targets, cls_losses,
   # where the foreground sum is zero, use a minimum negative weight.
   min_negative_weight = 1.0 * minimum_negative_sampling / num_anchors
   beta = tf.where(
-      tf.equal(beta, 0), min_negative_weight * tf.ones_like(beta), beta)
+      tf.equal(foreground_sum, 0), min_negative_weight * tf.ones_like(beta),
+      beta)
   beta = tf.reshape(beta, [-1, 1])
 
   cls_loss_weights = foreground_probabilities + (

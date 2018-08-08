@@ -178,6 +178,31 @@ class ModelLibTest(tf.test.TestCase):
     configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
     self._assert_model_fn_for_train_eval(configs, 'train')
 
+  def test_model_fn_in_train_mode_freeze_all_variables(self):
+    """Tests model_fn TRAIN mode with all variables frozen."""
+    configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
+    configs['train_config'].freeze_variables.append('.*')
+    with self.assertRaisesRegexp(ValueError, 'No variables to optimize'):
+      self._assert_model_fn_for_train_eval(configs, 'train')
+
+  def test_model_fn_in_train_mode_freeze_all_included_variables(self):
+    """Tests model_fn TRAIN mode with all included variables frozen."""
+    configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
+    train_config = configs['train_config']
+    train_config.update_trainable_variables.append('FeatureExtractor')
+    train_config.freeze_variables.append('.*')
+    with self.assertRaisesRegexp(ValueError, 'No variables to optimize'):
+      self._assert_model_fn_for_train_eval(configs, 'train')
+
+  def test_model_fn_in_train_mode_freeze_box_predictor(self):
+    """Tests model_fn TRAIN mode with FeatureExtractor variables frozen."""
+    configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)
+    train_config = configs['train_config']
+    train_config.update_trainable_variables.append('FeatureExtractor')
+    train_config.update_trainable_variables.append('BoxPredictor')
+    train_config.freeze_variables.append('FeatureExtractor')
+    self._assert_model_fn_for_train_eval(configs, 'train')
+
   def test_model_fn_in_eval_mode(self):
     """Tests the model function in EVAL mode."""
     configs = _get_configs_for_model(MODEL_NAME_FOR_TEST)

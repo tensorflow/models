@@ -126,15 +126,18 @@ class MaskRCNNBoxPredictor(box_predictor.BoxPredictor):
 
     if prediction_stage == 2:
       predictions_dict[BOX_ENCODINGS] = self._box_prediction_head.predict(
-          roi_pooled_features=image_feature)
+          features=image_feature,
+          num_predictions_per_location=num_predictions_per_location[0])
       predictions_dict[CLASS_PREDICTIONS_WITH_BACKGROUND] = (
-          self._class_prediction_head.predict(roi_pooled_features=image_feature)
-      )
+          self._class_prediction_head.predict(
+              features=image_feature,
+              num_predictions_per_location=num_predictions_per_location[0]))
     elif prediction_stage == 3:
       for prediction_head in self.get_third_stage_prediction_heads():
         head_object = self._third_stage_heads[prediction_head]
         predictions_dict[prediction_head] = head_object.predict(
-            roi_pooled_features=image_feature)
+            features=image_feature,
+            num_predictions_per_location=num_predictions_per_location[0])
     else:
       raise ValueError('prediction_stage should be either 2 or 3.')
 

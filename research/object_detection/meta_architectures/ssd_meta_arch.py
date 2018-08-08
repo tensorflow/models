@@ -243,7 +243,9 @@ class SSDMetaArch(model.DetectionModel):
                freeze_batchnorm=False,
                inplace_batchnorm_update=False,
                add_background_class=True,
-               random_example_sampler=None):
+               random_example_sampler=None,
+               expected_classification_loss_under_sampling=None,
+               target_assigner_instance=None):
     """SSDMetaArch Constructor.
 
     TODO(rathodv,jonathanhuang): group NMS parameters + score converter into
@@ -308,6 +310,9 @@ class SSDMetaArch(model.DetectionModel):
         example miner can both be applied to the model. In that case, random
         sampler will take effect first and hard example miner can only process
         the random sampled examples.
+      expected_classification_loss_under_sampling: If not None, use
+        to calcualte classification loss by background/foreground weighting.
+      target_assigner_instance: target_assigner.TargetAssigner instance to use.
     """
     super(SSDMetaArch, self).__init__(num_classes=box_predictor.num_classes)
     self._is_training = is_training
@@ -342,11 +347,14 @@ class SSDMetaArch(model.DetectionModel):
       self._unmatched_class_label = tf.constant((self.num_classes + 1) * [0],
                                                 tf.float32)
 
-    self._target_assigner = target_assigner.TargetAssigner(
-        self._region_similarity_calculator,
-        self._matcher,
-        self._box_coder,
-        negative_class_weight=negative_class_weight)
+    if target_assigner_instance:
+      self._target_assigner = target_assigner_instance
+    else:
+      self._target_assigner = target_assigner.TargetAssigner(
+          self._region_similarity_calculator,
+          self._matcher,
+          self._box_coder,
+          negative_class_weight=negative_class_weight)
 
     self._classification_loss = classification_loss
     self._localization_loss = localization_loss
@@ -365,6 +373,8 @@ class SSDMetaArch(model.DetectionModel):
     self._anchors = None
     self._add_summaries = add_summaries
     self._batched_prediction_tensor_names = []
+    self._expected_classification_loss_under_sampling = (
+        expected_classification_loss_under_sampling)
 
   @property
   def anchors(self):
@@ -696,19 +706,34 @@ class SSDMetaArch(model.DetectionModel):
           batch_reg_targets,
           ignore_nan_targets=True,
           weights=batch_reg_weights)
-      cls_losses = ops.reduce_sum_trailing_dimensions(
-          self._classification_loss(
-              prediction_dict['class_predictions_with_background'],
-              batch_cls_targets,
-              weights=batch_cls_weights),
-          ndims=2)
 
-      if self._hard_example_miner:
+      cls_losses = self._classification_loss(
+          prediction_dict['class_predictions_with_background'],
+          batch_cls_targets,
+          weights=batch_cls_weights)
+
+      if self._expected_classification_loss_under_sampling:
+        if cls_losses.get_shape().ndims == 3:
+          batch_size, num_anchors, num_classes = cls_losses.get_shape()
+          cls_losses = tf.reshape(cls_losses, [batch_size, -1])
+          batch_cls_targets = tf.reshape(
+              batch_cls_targets, [batch_size, num_anchors * num_classes, -1])
+          batch_cls_targets = tf.concat(
+              [1 - batch_cls_targets, batch_cls_targets], axis=-1)
+
+        cls_losses = self._expected_classification_loss_under_sampling(
+            batch_cls_targets, cls_losses)
+
+        classification_loss = tf.reduce_sum(cls_losses)
+        localization_loss = tf.reduce_sum(location_losses)
+      elif self._hard_example_miner:
+        cls_losses = ops.reduce_sum_trailing_dimensions(cls_losses, ndims=2)
         (localization_loss, classification_loss) = self._apply_hard_mining(
             location_losses, cls_losses, prediction_dict, match_list)
         if self._add_summaries:
           self._hard_example_miner.summarize()
       else:
+        cls_losses = ops.reduce_sum_trailing_dimensions(cls_losses, ndims=2)
         if self._add_summaries:
           class_ids = tf.argmax(batch_cls_targets, axis=2)
           flattened_class_ids = tf.reshape(class_ids, [-1])
@@ -993,4 +1018,3 @@ class SSDMetaArch(model.DetectionModel):
           variables_to_restore[var_name] = variable
 
     return variables_to_restore
-

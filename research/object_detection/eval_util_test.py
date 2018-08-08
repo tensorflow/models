@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from object_detection import eval_util
 from object_detection.core import standard_fields as fields
+from object_detection.protos import eval_pb2
 
 
 class EvalUtilTest(tf.test.TestCase):
@@ -64,11 +65,12 @@ class EvalUtilTest(tf.test.TestCase):
                                                     groundtruth)
 
   def test_get_eval_metric_ops_for_coco_detections(self):
-    evaluation_metrics = ['coco_detection_metrics']
+    eval_config = eval_pb2.EvalConfig()
+    eval_config.metrics_set.extend(['coco_detection_metrics'])
     categories = self._get_categories_list()
     eval_dict = self._make_evaluation_dict()
     metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-        evaluation_metrics, categories, eval_dict)
+        eval_config, categories, eval_dict)
     _, update_op = metric_ops['DetectionBoxes_Precision/mAP']
 
     with self.test_session() as sess:
@@ -82,12 +84,13 @@ class EvalUtilTest(tf.test.TestCase):
       self.assertNotIn('DetectionMasks_Precision/mAP', metrics)
 
   def test_get_eval_metric_ops_for_coco_detections_and_masks(self):
-    evaluation_metrics = ['coco_detection_metrics',
-                          'coco_mask_metrics']
+    eval_config = eval_pb2.EvalConfig()
+    eval_config.metrics_set.extend(
+        ['coco_detection_metrics', 'coco_mask_metrics'])
     categories = self._get_categories_list()
     eval_dict = self._make_evaluation_dict()
     metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-        evaluation_metrics, categories, eval_dict)
+        eval_config, categories, eval_dict)
     _, update_op_boxes = metric_ops['DetectionBoxes_Precision/mAP']
     _, update_op_masks = metric_ops['DetectionMasks_Precision/mAP']
 
@@ -102,12 +105,13 @@ class EvalUtilTest(tf.test.TestCase):
       self.assertAlmostEqual(1.0, metrics['DetectionMasks_Precision/mAP'])
 
   def test_get_eval_metric_ops_for_coco_detections_and_resized_masks(self):
-    evaluation_metrics = ['coco_detection_metrics',
-                          'coco_mask_metrics']
+    eval_config = eval_pb2.EvalConfig()
+    eval_config.metrics_set.extend(
+        ['coco_detection_metrics', 'coco_mask_metrics'])
     categories = self._get_categories_list()
     eval_dict = self._make_evaluation_dict(resized_groundtruth_masks=True)
     metric_ops = eval_util.get_eval_metric_ops_for_evaluators(
-        evaluation_metrics, categories, eval_dict)
+        eval_config, categories, eval_dict)
     _, update_op_boxes = metric_ops['DetectionBoxes_Precision/mAP']
     _, update_op_masks = metric_ops['DetectionMasks_Precision/mAP']
 
@@ -122,13 +126,53 @@ class EvalUtilTest(tf.test.TestCase):
       self.assertAlmostEqual(1.0, metrics['DetectionMasks_Precision/mAP'])
 
   def test_get_eval_metric_ops_raises_error_with_unsupported_metric(self):
-    evaluation_metrics = ['unsupported_metrics']
+    eval_config = eval_pb2.EvalConfig()
+    eval_config.metrics_set.extend(['unsupported_metric'])
     categories = self._get_categories_list()
     eval_dict = self._make_evaluation_dict()
     with self.assertRaises(ValueError):
       eval_util.get_eval_metric_ops_for_evaluators(
-          evaluation_metrics, categories, eval_dict)
+          eval_config, categories, eval_dict)
 
+  def test_get_eval_metric_ops_for_evaluators(self):
+    eval_config = eval_pb2.EvalConfig()
+    eval_config.metrics_set.extend(
+        ['coco_detection_metrics', 'coco_mask_metrics'])
+    eval_config.include_metrics_per_category = True
+
+    evaluator_options = eval_util.evaluator_options_from_eval_config(
+        eval_config)
+    self.assertTrue(evaluator_options['coco_detection_metrics'][
+        'include_metrics_per_category'])
+    self.assertTrue(evaluator_options['coco_mask_metrics'][
+        'include_metrics_per_category'])
+
+  def test_get_evaluator_with_evaluator_options(self):
+    eval_config = eval_pb2.EvalConfig()
+    eval_config.metrics_set.extend(['coco_detection_metrics'])
+    eval_config.include_metrics_per_category = True
+    categories = self._get_categories_list()
+
+    evaluator_options = eval_util.evaluator_options_from_eval_config(
+        eval_config)
+    evaluator = eval_util.get_evaluators(
+        eval_config, categories, evaluator_options)
+
+    self.assertTrue(evaluator[0]._include_metrics_per_category)
+
+  def test_get_evaluator_with_no_evaluator_options(self):
+    eval_config = eval_pb2.EvalConfig()
+    eval_config.metrics_set.extend(['coco_detection_metrics'])
+    eval_config.include_metrics_per_category = True
+    categories = self._get_categories_list()
+
+    evaluator = eval_util.get_evaluators(
+        eval_config, categories, evaluator_options=None)
+
+    # Even though we are setting eval_config.include_metrics_per_category = True
+    # this option is never passed into the DetectionEvaluator constructor (via
+    # `evaluator_options`).
+    self.assertFalse(evaluator[0]._include_metrics_per_category)
 
 if __name__ == '__main__':
   tf.test.main()

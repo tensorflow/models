@@ -48,8 +48,12 @@ from object_detection.utils import shape_utils
 class TargetAssigner(object):
   """Target assigner to compute classification and regression targets."""
 
-  def __init__(self, similarity_calc, matcher, box_coder,
-               negative_class_weight=1.0):
+  def __init__(self,
+               similarity_calc,
+               matcher,
+               box_coder,
+               negative_class_weight=1.0,
+               weight_regression_loss_by_score=False):
     """Construct Object Detection Target Assigner.
 
     Args:
@@ -60,6 +64,8 @@ class TargetAssigner(object):
         groundtruth boxes with respect to anchors.
       negative_class_weight: classification weight to be associated to negative
         anchors (default: 1.0). The weight must be in [0., 1.].
+      weight_regression_loss_by_score: Whether to weight the regression loss by
+        ground truth box score.
 
     Raises:
       ValueError: if similarity_calc is not a RegionSimilarityCalculator or
@@ -75,14 +81,20 @@ class TargetAssigner(object):
     self._matcher = matcher
     self._box_coder = box_coder
     self._negative_class_weight = negative_class_weight
+    self._weight_regression_loss_by_score = weight_regression_loss_by_score
 
   @property
   def box_coder(self):
     return self._box_coder
 
   # TODO(rathodv): move labels, scores, and weights to groundtruth_boxes fields.
-  def assign(self, anchors, groundtruth_boxes, groundtruth_labels=None,
-             unmatched_class_label=None, groundtruth_weights=None, **params):
+  def assign(self,
+             anchors,
+             groundtruth_boxes,
+             groundtruth_labels=None,
+             unmatched_class_label=None,
+             groundtruth_weights=None,
+             **params):
     """Assign classification and regression targets to each anchor.
 
     For a given set of anchors and groundtruth detections, match anchors
@@ -172,7 +184,13 @@ class TargetAssigner(object):
       cls_targets = self._create_classification_targets(groundtruth_labels,
                                                         unmatched_class_label,
                                                         match)
-      reg_weights = self._create_regression_weights(match, groundtruth_weights)
+      if self._weight_regression_loss_by_score:
+        reg_weights = self._create_regression_weights(
+            match, groundtruth_weights * scores)
+      else:
+        reg_weights = self._create_regression_weights(match,
+                                                      groundtruth_weights)
+
       cls_weights = self._create_classification_weights(match,
                                                         groundtruth_weights)
 
@@ -458,9 +476,9 @@ def batch_assign_targets(target_assigner,
     gt_weights_batch = [None] * len(gt_class_targets_batch)
   for anchors, gt_boxes, gt_class_targets, gt_weights in zip(
       anchors_batch, gt_box_batch, gt_class_targets_batch, gt_weights_batch):
-    (cls_targets, cls_weights, reg_targets, reg_weights,
-     match) = target_assigner.assign(anchors, gt_boxes, gt_class_targets,
-                                     unmatched_class_label, gt_weights)
+    (cls_targets, cls_weights,
+     reg_targets, reg_weights, match) = target_assigner.assign(
+         anchors, gt_boxes, gt_class_targets, unmatched_class_label, gt_weights)
     cls_targets_list.append(cls_targets)
     cls_weights_list.append(cls_weights)
     reg_targets_list.append(reg_targets)

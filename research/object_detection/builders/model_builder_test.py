@@ -144,6 +144,9 @@ class ModelBuilderTest(tf.test.TestCase):
             }
           }
         }
+        use_expected_classification_loss_under_sampling: true
+        minimum_negative_sampling: 10
+        desired_negative_sampling_ratio: 2
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
@@ -151,6 +154,12 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
     self.assertIsInstance(model._feature_extractor,
                           SSDInceptionV2FeatureExtractor)
+    self.assertIsNotNone(model._expected_classification_loss_under_sampling)
+    self.assertEqual(
+        model._expected_classification_loss_under_sampling.keywords, {
+            'minimum_negative_sampling': 10,
+            'desired_negative_sampling_ratio': 2
+        })
 
   def test_create_ssd_inception_v3_model_from_config(self):
     model_text_proto = """
@@ -692,6 +701,7 @@ class ModelBuilderTest(tf.test.TestCase):
             }
           }
         }
+        weight_regression_loss_by_score: true
       }"""
     model_proto = model_pb2.DetectionModel()
     text_format.Merge(model_text_proto, model_proto)
@@ -700,6 +710,7 @@ class ModelBuilderTest(tf.test.TestCase):
     self.assertIsInstance(model._feature_extractor,
                           SSDMobileNetV2FeatureExtractor)
     self.assertTrue(model._normalize_loc_loss_by_codesize)
+    self.assertTrue(model._target_assigner._weight_regression_loss_by_score)
 
   def test_create_embedded_ssd_mobilenet_v1_model_from_config(self):
     model_text_proto = """

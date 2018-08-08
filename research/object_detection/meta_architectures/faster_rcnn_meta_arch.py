@@ -97,6 +97,7 @@ from functools import partial
 import tensorflow as tf
 
 from object_detection.anchor_generators import grid_anchor_generator
+from object_detection.builders import box_predictor_builder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import box_predictor
@@ -105,7 +106,6 @@ from object_detection.core import model
 from object_detection.core import post_processing
 from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner
-from object_detection.predictors import convolutional_box_predictor
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 
@@ -413,17 +413,17 @@ class FasterRCNNMetaArch(model.DetectionModel):
     self._first_stage_minibatch_size = first_stage_minibatch_size
     self._first_stage_sampler = first_stage_sampler
     self._first_stage_box_predictor = (
-        convolutional_box_predictor.ConvolutionalBoxPredictor(
-            self._is_training,
+        box_predictor_builder.build_convolutional_box_predictor(
+            is_training=self._is_training,
             num_classes=1,
             conv_hyperparams_fn=self._first_stage_box_predictor_arg_scope_fn,
-            min_depth=0,
-            max_depth=0,
-            num_layers_before_predictor=0,
             use_dropout=False,
             dropout_keep_prob=1.0,
+            box_code_size=self._box_coder.code_size,
             kernel_size=1,
-            box_code_size=self._box_coder.code_size))
+            num_layers_before_predictor=0,
+            min_depth=0,
+            max_depth=0))
 
     self._first_stage_nms_score_threshold = first_stage_nms_score_threshold
     self._first_stage_nms_iou_threshold = first_stage_nms_iou_threshold
@@ -1236,11 +1236,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
       proposal_boxes = tf.stop_gradient(proposal_boxes)
       if not self._hard_example_miner:
         (groundtruth_boxlists, groundtruth_classes_with_background_list, _,
-         _) = self._format_groundtruth_data(true_image_shapes)
+         groundtruth_weights_list
+        ) = self._format_groundtruth_data(true_image_shapes)
         (proposal_boxes, proposal_scores,
-         num_proposals) = self._unpad_proposals_and_sample_box_classifier_batch(
+         num_proposals) = self._sample_box_classifier_batch(
              proposal_boxes, proposal_scores, num_proposals,
-             groundtruth_boxlists, groundtruth_classes_with_background_list)
+             groundtruth_boxlists, groundtruth_classes_with_background_list,
+             groundtruth_weights_list)
     # normalize proposal boxes
     def normalize_boxes(args):
       proposal_boxes_per_image = args[0]
@@ -1253,14 +1255,15 @@ class FasterRCNNMetaArch(model.DetectionModel):
         normalize_boxes, elems=[proposal_boxes, image_shapes], dtype=tf.float32)
     return normalized_proposal_boxes, proposal_scores, num_proposals
 
-  def _unpad_proposals_and_sample_box_classifier_batch(
+  def _sample_box_classifier_batch(
       self,
       proposal_boxes,
       proposal_scores,
       num_proposals,
       groundtruth_boxlists,
-      groundtruth_classes_with_background_list):
-    """Unpads proposals and samples a minibatch for second stage.
+      groundtruth_classes_with_background_list,
+      groundtruth_weights_list):
+    """Samples a minibatch for second stage.
 
     Args:
       proposal_boxes: A float tensor with shape
@@ -1278,6 +1281,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
       groundtruth_classes_with_background_list: A list of 2-D one-hot
         (or k-hot) tensors of shape [num_boxes, num_classes+1] containing the
         class targets with the 0th index assumed to map to the background class.
+      groundtruth_weights_list: A list of 1-D tensors of shape [num_boxes]
+        indicating the weight associated with the groundtruth boxes.
 
     Returns:
       proposal_boxes: A float tensor with shape
@@ -1298,31 +1303,23 @@ class FasterRCNNMetaArch(model.DetectionModel):
          single_image_proposal_scores,
          single_image_num_proposals,
          single_image_groundtruth_boxlist,
-         single_image_groundtruth_classes_with_background) in zip(
+         single_image_groundtruth_classes_with_background,
+         single_image_groundtruth_weights) in zip(
              tf.unstack(proposal_boxes),
              tf.unstack(proposal_scores),
              tf.unstack(num_proposals),
              groundtruth_boxlists,
-             groundtruth_classes_with_background_list):
-      static_shape = single_image_proposal_boxes.get_shape()
-      sliced_static_shape = tf.TensorShape([tf.Dimension(None),
-                                            static_shape.dims[-1]])
-      single_image_proposal_boxes = tf.slice(
-          single_image_proposal_boxes,
-          [0, 0],
-          [single_image_num_proposals, -1])
-      single_image_proposal_boxes.set_shape(sliced_static_shape)
-
-      single_image_proposal_scores = tf.slice(single_image_proposal_scores,
-                                              [0],
-                                              [single_image_num_proposals])
+             groundtruth_classes_with_background_list,
+             groundtruth_weights_list):
       single_image_boxlist = box_list.BoxList(single_image_proposal_boxes)
       single_image_boxlist.add_field(fields.BoxListFields.scores,
                                      single_image_proposal_scores)
-      sampled_boxlist = self._sample_box_classifier_minibatch(
+      sampled_boxlist = self._sample_box_classifier_minibatch_single_image(
           single_image_boxlist,
+          single_image_num_proposals,
           single_image_groundtruth_boxlist,
-          single_image_groundtruth_classes_with_background)
+          single_image_groundtruth_classes_with_background,
+          single_image_groundtruth_weights)
       sampled_padded_boxlist = box_list_ops.pad_or_clip_box_list(
           sampled_boxlist,
           num_boxes=self._second_stage_batch_size)
@@ -1394,18 +1391,23 @@ class FasterRCNNMetaArch(model.DetectionModel):
         resized_masks_list.append(resized_mask)
 
       groundtruth_masks_list = resized_masks_list
-    groundtruth_weights_list = None
     if self.groundtruth_has_field(fields.BoxListFields.weights):
       groundtruth_weights_list = self.groundtruth_lists(
           fields.BoxListFields.weights)
+    else:
+      # Set weights for all batch elements equally to 1.0
+      groundtruth_weights_list = []
+      for groundtruth_classes in groundtruth_classes_with_background_list:
+        num_gt = tf.shape(groundtruth_classes)[0]
+        groundtruth_weights = tf.ones(num_gt)
+        groundtruth_weights_list.append(groundtruth_weights)
 
     return (groundtruth_boxlists, groundtruth_classes_with_background_list,
             groundtruth_masks_list, groundtruth_weights_list)
 
-  def _sample_box_classifier_minibatch(self,
-                                       proposal_boxlist,
-                                       groundtruth_boxlist,
-                                       groundtruth_classes_with_background):
+  def _sample_box_classifier_minibatch_single_image(
+      self, proposal_boxlist, num_valid_proposals, groundtruth_boxlist,
+      groundtruth_classes_with_background, groundtruth_weights):
     """Samples a mini-batch of proposals to be sent to the box classifier.
 
     Helper function for self._postprocess_rpn.
@@ -1413,12 +1415,14 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Args:
       proposal_boxlist: A BoxList containing K proposal boxes in absolute
         coordinates.
+      num_valid_proposals: Number of valid proposals in the proposal boxlist.
       groundtruth_boxlist: A Boxlist containing N groundtruth object boxes in
         absolute coordinates.
       groundtruth_classes_with_background: A tensor with shape
         `[N, self.num_classes + 1]` representing groundtruth classes. The
         classes are assumed to be k-hot encoded, and include background as the
         zero-th class.
+      groundtruth_weights: Weights attached to the groundtruth_boxes.
 
     Returns:
       a BoxList contained sampled proposals.
@@ -1428,15 +1432,19 @@ class FasterRCNNMetaArch(model.DetectionModel):
         groundtruth_boxlist,
         groundtruth_classes_with_background,
         unmatched_class_label=tf.constant(
-            [1] + self._num_classes * [0], dtype=tf.float32))
+            [1] + self._num_classes * [0], dtype=tf.float32),
+        groundtruth_weights=groundtruth_weights)
     # Selects all boxes as candidates if none of them is selected according
     # to cls_weights. This could happen as boxes within certain IOU ranges
     # are ignored. If triggered, the selected boxes will still be ignored
     # during loss computation.
-    cls_weights += tf.to_float(tf.equal(tf.reduce_sum(cls_weights), 0))
     positive_indicator = tf.greater(tf.argmax(cls_targets, axis=1), 0)
+    valid_indicator = tf.logical_and(
+        tf.range(proposal_boxlist.num_boxes()) < num_valid_proposals,
+        cls_weights > 0
+    )
     sampled_indices = self._second_stage_sampler.subsample(
-        tf.cast(cls_weights, tf.bool),
+        valid_indicator,
         self._second_stage_batch_size,
         positive_indicator)
     return box_list_ops.boolean_mask(proposal_boxlist, sampled_indices)
@@ -1704,9 +1712,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
     with tf.name_scope('RPNLoss'):
       (batch_cls_targets, batch_cls_weights, batch_reg_targets,
        batch_reg_weights, _) = target_assigner.batch_assign_targets(
-           self._proposal_target_assigner, box_list.BoxList(anchors),
-           groundtruth_boxlists,
-           len(groundtruth_boxlists) * [None],
+           target_assigner=self._proposal_target_assigner,
+           anchors_batch=box_list.BoxList(anchors),
+           gt_box_batch=groundtruth_boxlists,
+           gt_class_targets_batch=(len(groundtruth_boxlists) * [None]),
            gt_weights_batch=groundtruth_weights_list)
       batch_cls_targets = tf.squeeze(batch_cls_targets, axis=2)
 
@@ -1827,10 +1836,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
       (batch_cls_targets_with_background, batch_cls_weights, batch_reg_targets,
        batch_reg_weights, _) = target_assigner.batch_assign_targets(
-           self._detector_target_assigner,
-           proposal_boxlists,
-           groundtruth_boxlists,
-           groundtruth_classes_with_background_list,
+           target_assigner=self._detector_target_assigner,
+           anchors_batch=proposal_boxlists,
+           gt_box_batch=groundtruth_boxlists,
+           gt_class_targets_batch=groundtruth_classes_with_background_list,
            unmatched_class_label=tf.constant(
                [1] + self._num_classes * [0], dtype=tf.float32),
            gt_weights_batch=groundtruth_weights_list)
@@ -1908,9 +1917,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
         unmatched_mask_label = tf.zeros(image_shape[1:3], dtype=tf.float32)
         (batch_mask_targets, _, _, batch_mask_target_weights,
          _) = target_assigner.batch_assign_targets(
-             self._detector_target_assigner, proposal_boxlists,
-             groundtruth_boxlists, groundtruth_masks_list, unmatched_mask_label,
-             groundtruth_weights_list)
+             target_assigner=self._detector_target_assigner,
+             anchors_batch=proposal_boxlists,
+             gt_box_batch=groundtruth_boxlists,
+             gt_class_targets_batch=groundtruth_masks_list,
+             unmatched_class_label=unmatched_mask_label,
+             gt_weights_batch=groundtruth_weights_list)
 
         # Pad the prediction_masks with to add zeros for background class to be
         # consistent with class predictions.

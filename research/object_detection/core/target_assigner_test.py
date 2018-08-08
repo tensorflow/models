@@ -318,6 +318,50 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
 
+  def test_assign_multiclass_with_weight_regression_loss_by_score(self):
+
+    def graph_fn(anchor_means, groundtruth_box_corners, groundtruth_labels):
+      similarity_calc = region_similarity_calculator.IouSimilarity()
+      matcher = argmax_matcher.ArgMaxMatcher(
+          matched_threshold=0.5, unmatched_threshold=0.5)
+      box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
+      unmatched_class_label = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
+      target_assigner = targetassigner.TargetAssigner(
+          similarity_calc,
+          matcher,
+          box_coder,
+          weight_regression_loss_by_score=True)
+
+      anchors_boxlist = box_list.BoxList(anchor_means)
+      groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
+      result = target_assigner.assign(
+          anchors_boxlist,
+          groundtruth_boxlist,
+          groundtruth_labels,
+          unmatched_class_label=unmatched_class_label)
+      (_, cls_weights, _, reg_weights, _) = result
+      return (cls_weights, reg_weights)
+
+    anchor_means = np.array(
+        [[0.0, 0.0, 0.5, 0.5], [0.5, 0.5, 1.0, 0.8], [0, 0.5, .5, 1.0],
+         [.75, 0, 1.0, .25]],
+        dtype=np.float32)
+    groundtruth_box_corners = np.array(
+        [[0.0, 0.0, 0.5, 0.5], [0.5, 0.5, 0.9, 0.9], [.75, 0, .95, .27]],
+        dtype=np.float32)
+    groundtruth_labels = np.array(
+        [[.9, .1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 1, 0],
+         [.5, 0, 0, .5, 0, 0, 0]],
+        dtype=np.float32)
+
+    exp_cls_weights = [1, 1, 1, 1]  # background class gets weight of 1.
+    exp_reg_weights = [.1, 1, 0., .5]  # background class gets weight of 0.
+
+    (cls_weights_out, reg_weights_out) = self.execute(
+        graph_fn, [anchor_means, groundtruth_box_corners, groundtruth_labels])
+    self.assertAllClose(cls_weights_out, exp_cls_weights)
+    self.assertAllClose(reg_weights_out, exp_reg_weights)
+
   def test_assign_multidimensional_class_targets(self):
 
     def graph_fn(anchor_means, groundtruth_box_corners, groundtruth_labels):

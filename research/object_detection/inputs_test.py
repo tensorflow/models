@@ -663,6 +663,8 @@ class PadInputDataToStaticShapesFnTest(tf.test.TestCase):
             tf.placeholder(tf.float32, [None, 4]),
         fields.InputDataFields.groundtruth_classes:
             tf.placeholder(tf.int32, [None, 3]),
+        fields.InputDataFields.num_groundtruth_boxes:
+            tf.placeholder(tf.int32, [])
     }
     padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
         tensor_dict=input_tensor_dict,
@@ -685,6 +687,8 @@ class PadInputDataToStaticShapesFnTest(tf.test.TestCase):
                   np.random.rand(5, 4),
               input_tensor_dict[fields.InputDataFields.groundtruth_classes]:
                   np.random.rand(2, 3),
+              input_tensor_dict[fields.InputDataFields.num_groundtruth_boxes]:
+                  5,
           })
 
     self.assertAllEqual(
@@ -692,6 +696,9 @@ class PadInputDataToStaticShapesFnTest(tf.test.TestCase):
     self.assertAllEqual(
         out_tensor_dict[fields.InputDataFields.groundtruth_classes].shape,
         [3, 3])
+    self.assertEqual(
+        out_tensor_dict[fields.InputDataFields.num_groundtruth_boxes],
+        3)
 
   def test_do_not_pad_dynamic_images(self):
     input_tensor_dict = {
