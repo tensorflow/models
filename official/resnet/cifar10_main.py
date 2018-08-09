@@ -221,7 +221,8 @@ def cifar10_model_fn(features, labels, mode, params):
       resnet_version=params['resnet_version'],
       loss_scale=params['loss_scale'],
       loss_filter_fn=loss_filter_fn,
-      dtype=params['dtype']
+      dtype=params['dtype'],
+      fine_tune=params['fine_tune']
   )
 
 
