@@ -356,7 +356,7 @@ def resnet_main(
 
   if flags_obj.use_keras_model:
     # Move this to imagenet_main
-    model = tf.keras.applications.ResNet50(classes=1001)
+    model = tf.keras.applications.ResNet50(classes=1001, weights=None)
     classifier = tf.keras.estimator.model_to_estimator(
         keras_model=model, config=run_config, model_dir=flags_obj.model_dir)
   else:
