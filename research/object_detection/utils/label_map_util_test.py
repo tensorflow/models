@@ -95,6 +95,54 @@ class LabelMapUtilTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       label_map_util.load_labelmap(label_map_path)
 
+  def test_load_label_map_with_background(self):
+    label_map_string = """
+      item {
+        id:0
+        name:'background'
+      }
+      item {
+        id:2
+        name:'cat'
+      }
+      item {
+        id:1
+        name:'dog'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+
+    label_map_dict = label_map_util.get_label_map_dict(label_map_path)
+    self.assertEqual(label_map_dict['background'], 0)
+    self.assertEqual(label_map_dict['dog'], 1)
+    self.assertEqual(label_map_dict['cat'], 2)
+
+  def test_get_label_map_dict_with_fill_in_gaps_and_background(self):
+    label_map_string = """
+      item {
+        id:3
+        name:'cat'
+      }
+      item {
+        id:1
+        name:'dog'
+      }
+    """
+    label_map_path = os.path.join(self.get_temp_dir(), 'label_map.pbtxt')
+    with tf.gfile.Open(label_map_path, 'wb') as f:
+      f.write(label_map_string)
+
+    label_map_dict = label_map_util.get_label_map_dict(
+        label_map_path, fill_in_gaps_and_background=True)
+
+    self.assertEqual(label_map_dict['background'], 0)
+    self.assertEqual(label_map_dict['dog'], 1)
+    self.assertEqual(label_map_dict['class_2'], 2)
+    self.assertEqual(label_map_dict['cat'], 3)
+    self.assertEqual(len(label_map_dict), max(label_map_dict.values()) + 1)
+
   def test_keep_categories_with_unique_id(self):
     label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
     label_map_string = """

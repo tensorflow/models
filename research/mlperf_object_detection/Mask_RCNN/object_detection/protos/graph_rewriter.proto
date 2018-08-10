@@ -1,0 +1,23 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Message to configure graph rewriter for the tf graph.
+message GraphRewriter {
+  optional Quantization quantization = 1;
+}
+
+// Message for quantization options. See
+// tensorflow/contrib/quantize/python/quantize.py for details.
+message Quantization {
+  // Number of steps to delay before quantization takes effect during training.
+  optional int32 delay = 1 [default = 500000];
+
+  // Number of bits to use for quantizing weights.
+  // Only 8 bit is supported for now.
+  optional int32 weight_bits = 2 [default = 8];
+
+  // Number of bits to use for quantizing activations.
+  // Only 8 bit is supported for now.
+  optional int32 activation_bits = 3 [default = 8];
+}

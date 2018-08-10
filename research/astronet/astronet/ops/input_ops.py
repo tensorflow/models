@@ -37,9 +37,9 @@ def prepare_feed_dict(model, features, labels=None, is_training=None):
     feed_dict: A dictionary of input Tensor to numpy array.
   """
   feed_dict = {}
-  for feature, tensor in model.time_series_features.iteritems():
+  for feature, tensor in model.time_series_features.items():
     feed_dict[tensor] = features["time_series_features"][feature]
-  for feature, tensor in model.aux_features.iteritems():
+  for feature, tensor in model.aux_features.items():
     feed_dict[tensor] = features["aux_features"][feature]
 
   if labels is not None:
@@ -65,7 +65,7 @@ def build_feature_placeholders(config):
   """
   batch_size = None  # Batch size will be dynamically specified.
   features = {"time_series_features": {}, "aux_features": {}}
-  for feature_name, feature_spec in config.iteritems():
+  for feature_name, feature_spec in config.items():
     placeholder = tf.placeholder(
         dtype=tf.float32,
         shape=[batch_size, feature_spec.length],

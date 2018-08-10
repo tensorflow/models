@@ -71,7 +71,7 @@ def main(_):
     return
 
   contents = ''
-  with tf.gfile.FastGFile(FLAGS.input_codes, 'r') as code_file:
+  with tf.gfile.FastGFile(FLAGS.input_codes, 'rb') as code_file:
     contents = code_file.read()
     loaded_codes = np.load(io.BytesIO(contents))
     assert ['codes', 'shape'] not in loaded_codes.files

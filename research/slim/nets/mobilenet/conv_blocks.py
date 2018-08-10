@@ -13,8 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 """Convolution blocks for mobilenet."""
+import contextlib
 import functools
-import contextlib2
 
 import tensorflow as tf
 
@@ -75,6 +75,19 @@ def _split_divisible(num, num_ways, divisible_by=8):
   return result
 
 
+@contextlib.contextmanager
+def _v1_compatible_scope_naming(scope):
+  if scope is None:  # Create uniqified separable blocks.
+    with tf.variable_scope(None, default_name='separable') as s, \
+         tf.name_scope(s.original_name_scope):
+      yield ''
+  else:
+    # We use scope_depthwise, scope_pointwise for compatibility with V1 ckpts.
+    # which provide numbered scopes.
+    scope += '_'
+    yield scope
+
+
 @slim.add_arg_scope
 def split_separable_conv2d(input_tensor,
                            num_outputs,
@@ -110,15 +123,7 @@ def split_separable_conv2d(input_tensor,
     output tesnor
   """
 
-  with contextlib2.ExitStack() as stack:
-    if scope is None:  # Create uniqified separable blocks.
-      s = stack.enter_context(tf.variable_scope(None, default_name='separable'))
-      stack.enter_context(tf.name_scope(s.original_name_scope))
-      scope = ''
-    else:
-      # We use scope_depthwise, scope_pointwise for compatibility with V1 ckpts.
-      scope += '_'
-
+  with _v1_compatible_scope_naming(scope) as scope:
     dw_scope = scope + 'depthwise'
     endpoints = endpoints if endpoints is not None else {}
     kernel_size = [3, 3]
@@ -163,6 +168,7 @@ def expanded_conv(input_tensor,
                   kernel_size=(3, 3),
                   residual=True,
                   normalizer_fn=None,
+                  project_activation_fn=tf.identity,
                   split_projection=1,
                   split_expansion=1,
                   expansion_transform=None,
@@ -170,6 +176,7 @@ def expanded_conv(input_tensor,
                   depthwise_channel_multiplier=1,
                   endpoints=None,
                   use_explicit_padding=False,
+                  padding='SAME',
                   scope=None):
   """Depthwise Convolution Block with expansion.
 
@@ -189,6 +196,7 @@ def expanded_conv(input_tensor,
     residual: whether to include residual connection between input
       and output.
     normalizer_fn: batchnorm or otherwise
+    project_activation_fn: activation function for the project layer
     split_projection: how many ways to split projection operator
       (that is conv expansion->bottleneck)
     split_expansion: how many ways to split expansion op
@@ -209,6 +217,7 @@ def expanded_conv(input_tensor,
     use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
       inputs so that the output dimensions are the same as if 'SAME' padding
       were used.
+    padding: Padding type to use if `use_explicit_padding` is not set.
     scope: optional scope.
 
   Returns:
@@ -223,8 +232,10 @@ def expanded_conv(input_tensor,
     if  depthwise_location not in [None, 'input', 'output', 'expansion']:
       raise TypeError('%r is unknown value for depthwise_location' %
                       depthwise_location)
-    padding = 'SAME'
     if use_explicit_padding:
+      if padding != 'SAME':
+        raise TypeError('`use_explicit_padding` should only be used with '
+                        '"SAME" padding.')
       padding = 'VALID'
     depthwise_func = functools.partial(
         slim.separable_conv2d,
@@ -282,7 +293,7 @@ def expanded_conv(input_tensor,
         stride=1,
         scope='project',
         normalizer_fn=normalizer_fn,
-        activation_fn=tf.identity)
+        activation_fn=project_activation_fn)
     if endpoints is not None:
       endpoints['projection_output'] = net
     if depthwise_location == 'output':

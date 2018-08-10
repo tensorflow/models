@@ -240,7 +240,7 @@ def inference(images):
   # local3
   with tf.variable_scope('local3') as scope:
     # Move everything into depth so we can perform a single matrix multiply.
-    reshape = tf.reshape(pool2, [images.get_shape()[0], -1])
+    reshape = tf.reshape(pool2, [images.get_shape().as_list()[0], -1])
     dim = reshape.get_shape()[1].value
     weights = _variable_with_weight_decay('weights', shape=[dim, 384],
                                           stddev=0.04, wd=0.004)
@@ -370,12 +370,10 @@ def train(total_loss, global_step):
   # Track the moving averages of all trainable variables.
   variable_averages = tf.train.ExponentialMovingAverage(
       MOVING_AVERAGE_DECAY, global_step)
-  variables_averages_op = variable_averages.apply(tf.trainable_variables())
+  with tf.control_dependencies([apply_gradient_op]):
+    variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
-  with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
-    train_op = tf.no_op(name='train')
-
-  return train_op
+  return variables_averages_op
 
 
 def maybe_download_and_extract():

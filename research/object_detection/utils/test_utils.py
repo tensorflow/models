@@ -62,6 +62,30 @@ class MockBoxPredictor(box_predictor.BoxPredictor):
             class_predictions_with_background}
 
 
+class MockKerasBoxPredictor(box_predictor.KerasBoxPredictor):
+  """Simple box predictor that ignores inputs and outputs all zeros."""
+
+  def __init__(self, is_training, num_classes):
+    super(MockKerasBoxPredictor, self).__init__(
+        is_training, num_classes, False, False)
+
+  def _predict(self, image_features, **kwargs):
+    image_feature = image_features[0]
+    combined_feature_shape = shape_utils.combined_static_and_dynamic_shape(
+        image_feature)
+    batch_size = combined_feature_shape[0]
+    num_anchors = (combined_feature_shape[1] * combined_feature_shape[2])
+    code_size = 4
+    zero = tf.reduce_sum(0 * image_feature)
+    box_encodings = zero + tf.zeros(
+        (batch_size, num_anchors, 1, code_size), dtype=tf.float32)
+    class_predictions_with_background = zero + tf.zeros(
+        (batch_size, num_anchors, self.num_classes + 1), dtype=tf.float32)
+    return {box_predictor.BOX_ENCODINGS: box_encodings,
+            box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND:
+                class_predictions_with_background}
+
+
 class MockAnchorGenerator(anchor_generator.AnchorGenerator):
   """Mock anchor generator."""
 
@@ -138,3 +162,36 @@ def create_random_boxes(num_boxes, max_height, max_width):
   boxes[:, 3] = np.maximum(x_1, x_2)
 
   return boxes.astype(np.float32)
+
+
+def first_rows_close_as_set(a, b, k=None, rtol=1e-6, atol=1e-6):
+  """Checks if first K entries of two lists are close, up to permutation.
+
+  Inputs to this assert are lists of items which can be compared via
+  numpy.allclose(...) and can be sorted.
+
+  Args:
+    a: list of items which can be compared via numpy.allclose(...) and are
+      sortable.
+    b: list of items which can be compared via numpy.allclose(...) and are
+      sortable.
+    k: a non-negative integer.  If not provided, k is set to be len(a).
+    rtol: relative tolerance.
+    atol: absolute tolerance.
+
+  Returns:
+    boolean, True if input lists a and b have the same length and
+    the first k entries of the inputs satisfy numpy.allclose() after
+    sorting entries.
+  """
+  if not isinstance(a, list) or not isinstance(b, list) or len(a) != len(b):
+    return False
+  if not k:
+    k = len(a)
+  k = min(k, len(a))
+  a_sorted = sorted(a[:k])
+  b_sorted = sorted(b[:k])
+  return all([
+      np.allclose(entry_a, entry_b, rtol, atol)
+      for (entry_a, entry_b) in zip(a_sorted, b_sorted)
+  ])

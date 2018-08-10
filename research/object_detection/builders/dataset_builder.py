@@ -24,91 +24,76 @@ that wraps the build function.
 import functools
 import tensorflow as tf
 
-from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.protos import input_reader_pb2
-from object_detection.utils import dataset_util
 
 
-def _get_padding_shapes(dataset, max_num_boxes, num_classes,
-                        spatial_image_shape):
-  """Returns shapes to pad dataset tensors to before batching.
+def make_initializable_iterator(dataset):
+  """Creates an iterator, and initializes tables.
+
+  This is useful in cases where make_one_shot_iterator wouldn't work because
+  the graph contains a hash table that needs to be initialized.
 
   Args:
-    dataset: tf.data.Dataset object.
-    max_num_boxes: Max number of groundtruth boxes needed to computes shapes for
-      padding.
-    num_classes: Number of classes in the dataset needed to compute shapes for
-      padding.
-    spatial_image_shape: A list of two integers of the form [height, width]
-      containing expected spatial shape of the imaage.
+    dataset: A `tf.data.Dataset` object.
 
   Returns:
-    A dictionary keyed by fields.InputDataFields containing padding shapes for
-    tensors in the dataset.
+    A `tf.data.Iterator`.
   """
-  height, width = spatial_image_shape
-  padding_shapes = {
-      fields.InputDataFields.image: [height, width, 3],
-      fields.InputDataFields.source_id: [],
-      fields.InputDataFields.filename: [],
-      fields.InputDataFields.key: [],
-      fields.InputDataFields.groundtruth_difficult: [max_num_boxes],
-      fields.InputDataFields.groundtruth_boxes: [max_num_boxes, 4],
-      fields.InputDataFields.groundtruth_classes: [
-          max_num_boxes, num_classes
-      ],
-      fields.InputDataFields.groundtruth_instance_masks: [max_num_boxes, height,
-                                                          width],
-      fields.InputDataFields.groundtruth_is_crowd: [max_num_boxes],
-      fields.InputDataFields.groundtruth_group_of: [max_num_boxes],
-      fields.InputDataFields.groundtruth_area: [max_num_boxes],
-      fields.InputDataFields.groundtruth_weights: [max_num_boxes],
-      fields.InputDataFields.num_groundtruth_boxes: [],
-      fields.InputDataFields.groundtruth_label_types: [max_num_boxes],
-      fields.InputDataFields.groundtruth_label_scores: [max_num_boxes],
-      fields.InputDataFields.true_image_shape: [3]
-  }
-  if fields.InputDataFields.groundtruth_keypoints in dataset.output_shapes:
-    tensor_shape = dataset.output_shapes[fields.InputDataFields.
-                                         groundtruth_keypoints]
-    padding_shape = [max_num_boxes, tensor_shape[1].value,
-                     tensor_shape[2].value]
-    padding_shapes[fields.InputDataFields.groundtruth_keypoints] = padding_shape
-  if (fields.InputDataFields.groundtruth_keypoint_visibilities
-      in dataset.output_shapes):
-    tensor_shape = dataset.output_shapes[fields.InputDataFields.
-                                         groundtruth_keypoint_visibilities]
-    padding_shape = [max_num_boxes, tensor_shape[1].value]
-    padding_shapes[fields.InputDataFields.
-                   groundtruth_keypoint_visibilities] = padding_shape
-  return {tensor_key: padding_shapes[tensor_key]
-          for tensor_key, _ in dataset.output_shapes.items()}
+  iterator = dataset.make_initializable_iterator()
+  tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
+  return iterator
 
 
-def build(input_reader_config, transform_input_data_fn=None,
-          batch_size=1, max_num_boxes=None, num_classes=None,
-          spatial_image_shape=None):
+def read_dataset(file_read_func, input_files, config):
+  """Reads a dataset, and handles repetition and shuffling.
+
+  Args:
+    file_read_func: Function to use in tf.contrib.data.parallel_interleave, to
+      read every individual file into a tf.data.Dataset.
+    input_files: A list of file paths to read.
+    config: A input_reader_builder.InputReader object.
+
+  Returns:
+    A tf.data.Dataset of (undecoded) tf-records based on config.
+  """
+  # Shard, shuffle, and read files.
+  filenames = tf.gfile.Glob(input_files)
+  num_readers = config.num_readers
+  if num_readers > len(filenames):
+    num_readers = len(filenames)
+    tf.logging.warning('num_readers has been reduced to %d to match input file '
+                       'shards.' % num_readers)
+  filename_dataset = tf.data.Dataset.from_tensor_slices(filenames)
+  if config.shuffle:
+    filename_dataset = filename_dataset.shuffle(
+        config.filenames_shuffle_buffer_size)
+  elif num_readers > 1:
+    tf.logging.warning('`shuffle` is false, but the input data stream is '
+                       'still slightly shuffled since `num_readers` > 1.')
+  filename_dataset = filename_dataset.repeat(config.num_epochs or None)
+  records_dataset = filename_dataset.apply(
+      tf.contrib.data.parallel_interleave(
+          file_read_func,
+          cycle_length=num_readers,
+          block_length=config.read_block_length,
+          sloppy=config.shuffle))
+  if config.shuffle:
+    records_dataset = records_dataset.shuffle(config.shuffle_buffer_size)
+  return records_dataset
+
+
+def build(input_reader_config, batch_size=None, transform_input_data_fn=None):
   """Builds a tf.data.Dataset.
 
   Builds a tf.data.Dataset by applying the `transform_input_data_fn` on all
-  records. Optionally, if `batch_size` > 1 and `max_num_boxes`, `num_classes`
-  and `spatial_image_shape` are not None, returns a padded batched
-  tf.data.Dataset.
+  records. Applies a padded batch to the resulting dataset.
 
   Args:
     input_reader_config: A input_reader_pb2.InputReader object.
-    transform_input_data_fn: Function to apply to all records, or None if
-      no extra decoding is required.
-    batch_size: Batch size. If not None, returns a padded batch dataset.
-    max_num_boxes: Max number of groundtruth boxes needed to computes shapes for
-      padding. This is only used if batch_size is greater than 1.
-    num_classes: Number of classes in the dataset needed to compute shapes for
-      padding. This is only used if batch_size is greater than 1.
-    spatial_image_shape: a list of two integers of the form [height, width]
-      containing expected spatial shape of the image after applying
-      transform_input_data_fn. This is needed to compute shapes for padding and
-      only used if batch_size is greater than 1.
+    batch_size: Batch size. If batch size is None, no batching is performed.
+    transform_input_data_fn: Function to apply transformation to all records,
+      or None if no extra decoding is required.
 
   Returns:
     A tf.data.Dataset based on the input_reader_config.
@@ -116,8 +101,6 @@ def build(input_reader_config, transform_input_data_fn=None,
   Raises:
     ValueError: On invalid input reader proto.
     ValueError: If no input paths are specified.
-    ValueError: If batch_size > 1 and any of (max_num_boxes, num_classes,
-      spatial_image_shape) is None.
   """
   if not isinstance(input_reader_config, input_reader_pb2.InputReader):
     raise ValueError('input_reader_config not of type '
@@ -135,31 +118,33 @@ def build(input_reader_config, transform_input_data_fn=None,
     decoder = tf_example_decoder.TfExampleDecoder(
         load_instance_masks=input_reader_config.load_instance_masks,
         instance_mask_type=input_reader_config.mask_type,
-        label_map_proto_file=label_map_proto_file)
+        label_map_proto_file=label_map_proto_file,
+        use_display_name=input_reader_config.use_display_name,
+        num_additional_channels=input_reader_config.num_additional_channels)
 
     def process_fn(value):
-      processed = decoder.decode(value)
+      """Sets up tf graph that decodes, transforms and pads input data."""
+      processed_tensors = decoder.decode(value)
       if transform_input_data_fn is not None:
-        return transform_input_data_fn(processed)
-      return processed
+        processed_tensors = transform_input_data_fn(processed_tensors)
+      return processed_tensors
 
-    dataset = dataset_util.read_dataset(
+    dataset = read_dataset(
         functools.partial(tf.data.TFRecordDataset, buffer_size=8 * 1000 * 1000),
-        process_fn, config.input_path[:], input_reader_config)
-
-    if batch_size > 1:
-      if num_classes is None:
-        raise ValueError('`num_classes` must be set when batch_size > 1.')
-      if max_num_boxes is None:
-        raise ValueError('`max_num_boxes` must be set when batch_size > 1.')
-      if spatial_image_shape is None:
-        raise ValueError('`spatial_image_shape` must be set when batch_size > '
-                         '1 .')
-      padding_shapes = _get_padding_shapes(dataset, max_num_boxes, num_classes,
-                                           spatial_image_shape)
+        config.input_path[:], input_reader_config)
+    # TODO(rathodv): make batch size a required argument once the old binaries
+    # are deleted.
+    if batch_size:
+      num_parallel_calls = batch_size * input_reader_config.num_parallel_batches
+    else:
+      num_parallel_calls = input_reader_config.num_parallel_map_calls
+    dataset = dataset.map(
+        process_fn,
+        num_parallel_calls=num_parallel_calls)
+    if batch_size:
       dataset = dataset.apply(
-          tf.contrib.data.padded_batch_and_drop_remainder(batch_size,
-                                                          padding_shapes))
+          tf.contrib.data.batch_and_drop_remainder(batch_size))
+    dataset = dataset.prefetch(input_reader_config.num_prefetch_batches)
     return dataset
 
   raise ValueError('Unsupported input_reader_config.')

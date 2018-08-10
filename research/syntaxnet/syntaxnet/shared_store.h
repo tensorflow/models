@@ -39,7 +39,7 @@ class SharedStore {
   static const T *Get(const string &name,
                       Args &&...args);  // NOLINT(build/c++11)
 
-  // Like Get(), but creates the object with "closure->Run()". If the closure
+  // Like Get(), but creates the object with "(*closure)()". If the closure
   // returns null, we store a null in the SharedStore, but note that Release()
   // cannot be used to remove it. This is because Release() finds the object
   // by associative lookup, and there may be more than one null value, so we

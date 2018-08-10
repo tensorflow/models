@@ -31,6 +31,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 import collections
 import logging
+import unicodedata
 import numpy as np
 
 from object_detection.core import standard_fields
@@ -90,6 +91,23 @@ class DetectionEvaluator(object):
     """
     pass
 
+  def get_estimator_eval_metric_ops(self, eval_dict):
+    """Returns dict of metrics to use with `tf.estimator.EstimatorSpec`.
+
+    Note that this must only be implemented if performing evaluation with a
+    `tf.estimator.Estimator`.
+
+    Args:
+      eval_dict: A dictionary that holds tensors for evaluating an object
+        detection model, returned from
+        eval_util.result_dict_for_single_example().
+
+    Returns:
+      A dictionary of metric names to tuple of value_op and update_op that can
+      be used as eval metric ops in `tf.estimator.EstimatorSpec`.
+    """
+    pass
+
   @abstractmethod
   def evaluate(self):
     """Evaluates detections and returns a dictionary of metrics."""
@@ -110,7 +128,8 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
                evaluate_corlocs=False,
                metric_prefix=None,
                use_weighted_mean_ap=False,
-               evaluate_masks=False):
+               evaluate_masks=False,
+               group_of_weight=0.0):
     """Constructor.
 
     Args:
@@ -128,6 +147,12 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         of all classes.
       evaluate_masks: If False, evaluation will be performed based on boxes.
         If True, mask evaluation will be performed instead.
+      group_of_weight: Weight of group-of boxes.If set to 0, detections of the
+        correct class within a group-of box are ignored. If weight is > 0, then
+        if at least one detection falls within a group-of box with
+        matching_iou_threshold, weight group_of_weight is added to true
+        positives. Consequently, if no detection falls within a group-of box,
+        weight group_of_weight is added to false negatives.
 
     Raises:
       ValueError: If the category ids are not 1-indexed.
@@ -140,11 +165,13 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     self._use_weighted_mean_ap = use_weighted_mean_ap
     self._label_id_offset = 1
     self._evaluate_masks = evaluate_masks
+    self._group_of_weight = group_of_weight
     self._evaluation = ObjectDetectionEvaluation(
         num_groundtruth_classes=self._num_classes,
         matching_iou_threshold=self._matching_iou_threshold,
         use_weighted_mean_ap=self._use_weighted_mean_ap,
-        label_id_offset=self._label_id_offset)
+        label_id_offset=self._label_id_offset,
+        group_of_weight=self._group_of_weight)
     self._image_ids = set([])
     self._evaluate_corlocs = evaluate_corlocs
     self._metric_prefix = (metric_prefix + '_') if metric_prefix else ''
@@ -275,18 +302,23 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     category_index = label_map_util.create_category_index(self._categories)
     for idx in range(per_class_ap.size):
       if idx + self._label_id_offset in category_index:
+        category_name = category_index[idx + self._label_id_offset]['name']
+        try:
+          category_name = unicode(category_name, 'utf-8')
+        except TypeError:
+          pass
+        category_name = unicodedata.normalize(
+            'NFKD', category_name).encode('ascii', 'ignore')
         display_name = (
             self._metric_prefix + 'PerformanceByCategory/AP@{}IOU/{}'.format(
-                self._matching_iou_threshold,
-                category_index[idx + self._label_id_offset]['name']))
+                self._matching_iou_threshold, category_name))
         pascal_metrics[display_name] = per_class_ap[idx]
 
         # Optionally add CorLoc metrics.classes
         if self._evaluate_corlocs:
           display_name = (
               self._metric_prefix + 'PerformanceByCategory/CorLoc@{}IOU/{}'
-              .format(self._matching_iou_threshold,
-                      category_index[idx + self._label_id_offset]['name']))
+              .format(self._matching_iou_threshold, category_name))
           pascal_metrics[display_name] = per_class_corloc[idx]
 
     return pascal_metrics
@@ -383,7 +415,9 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
   def __init__(self,
                categories,
                matching_iou_threshold=0.5,
-               evaluate_corlocs=False):
+               evaluate_corlocs=False,
+               metric_prefix='OpenImagesV2',
+               group_of_weight=0.0):
     """Constructor.
 
     Args:
@@ -393,12 +427,21 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
       matching_iou_threshold: IOU threshold to use for matching groundtruth
         boxes to detection boxes.
       evaluate_corlocs: if True, additionally evaluates and returns CorLoc.
+      metric_prefix: Prefix name of the metric.
+      group_of_weight: Weight of the group-of bounding box. If set to 0 (default
+        for Open Images V2 detection protocol), detections of the correct class
+        within a group-of box are ignored. If weight is > 0, then if at least
+        one detection falls within a group-of box with matching_iou_threshold,
+        weight group_of_weight is added to true positives. Consequently, if no
+        detection falls within a group-of box, weight group_of_weight is added
+        to false negatives.
     """
     super(OpenImagesDetectionEvaluator, self).__init__(
         categories,
         matching_iou_threshold,
         evaluate_corlocs,
-        metric_prefix='OpenImagesV2')
+        metric_prefix=metric_prefix,
+        group_of_weight=group_of_weight)
 
   def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
     """Adds groundtruth for a single image to be used for evaluation.
@@ -449,6 +492,130 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
     self._image_ids.update([image_id])
 
 
+class OpenImagesDetectionChallengeEvaluator(OpenImagesDetectionEvaluator):
+  """A class implements Open Images Challenge Detection metrics.
+
+    Open Images Challenge Detection metric has two major changes in comparison
+    with Open Images V2 detection metric:
+    - a custom weight might be specified for detecting an object contained in
+    a group-of box.
+    - verified image-level labels should be explicitelly provided for
+    evaluation: in case in image has neither positive nor negative image level
+    label of class c, all detections of this class on this image will be
+    ignored.
+  """
+
+  def __init__(self,
+               categories,
+               matching_iou_threshold=0.5,
+               evaluate_corlocs=False,
+               group_of_weight=1.0):
+    """Constructor.
+
+    Args:
+      categories: A list of dicts, each of which has the following keys -
+        'id': (required) an integer id uniquely identifying this category.
+        'name': (required) string representing category name e.g., 'cat', 'dog'.
+      matching_iou_threshold: IOU threshold to use for matching groundtruth
+        boxes to detection boxes.
+      evaluate_corlocs: if True, additionally evaluates and returns CorLoc.
+      group_of_weight: weight of a group-of box. If set to 0, detections of the
+        correct class within a group-of box are ignored. If weight is > 0
+        (default for Open Images Detection Challenge 2018), then if at least one
+        detection falls within a group-of box with matching_iou_threshold,
+        weight group_of_weight is added to true positives. Consequently, if no
+        detection falls within a group-of box, weight group_of_weight is added
+        to false negatives.
+    """
+    super(OpenImagesDetectionChallengeEvaluator, self).__init__(
+        categories,
+        matching_iou_threshold,
+        evaluate_corlocs,
+        metric_prefix='OpenImagesChallenge2018',
+        group_of_weight=group_of_weight)
+
+    self._evaluatable_labels = {}
+
+  def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
+    """Adds groundtruth for a single image to be used for evaluation.
+
+    Args:
+      image_id: A unique string/integer identifier for the image.
+      groundtruth_dict: A dictionary containing -
+        standard_fields.InputDataFields.groundtruth_boxes: float32 numpy array
+          of shape [num_boxes, 4] containing `num_boxes` groundtruth boxes of
+          the format [ymin, xmin, ymax, xmax] in absolute image coordinates.
+        standard_fields.InputDataFields.groundtruth_classes: integer numpy array
+          of shape [num_boxes] containing 1-indexed groundtruth classes for the
+          boxes.
+        standard_fields.InputDataFields.groundtruth_image_classes: integer 1D
+          numpy array containing all classes for which labels are verified.
+        standard_fields.InputDataFields.groundtruth_group_of: Optional length
+          M numpy boolean array denoting whether a groundtruth box contains a
+          group of instances.
+
+    Raises:
+      ValueError: On adding groundtruth for an image more than once.
+    """
+    super(OpenImagesDetectionChallengeEvaluator,
+          self).add_single_ground_truth_image_info(image_id, groundtruth_dict)
+    groundtruth_classes = (
+        groundtruth_dict[standard_fields.InputDataFields.groundtruth_classes] -
+        self._label_id_offset)
+    self._evaluatable_labels[image_id] = np.unique(
+        np.concatenate(((groundtruth_dict.get(
+            standard_fields.InputDataFields.groundtruth_image_classes,
+            np.array([], dtype=int)) - self._label_id_offset),
+                        groundtruth_classes)))
+
+  def add_single_detected_image_info(self, image_id, detections_dict):
+    """Adds detections for a single image to be used for evaluation.
+
+    Args:
+      image_id: A unique string/integer identifier for the image.
+      detections_dict: A dictionary containing -
+        standard_fields.DetectionResultFields.detection_boxes: float32 numpy
+          array of shape [num_boxes, 4] containing `num_boxes` detection boxes
+          of the format [ymin, xmin, ymax, xmax] in absolute image coordinates.
+        standard_fields.DetectionResultFields.detection_scores: float32 numpy
+          array of shape [num_boxes] containing detection scores for the boxes.
+        standard_fields.DetectionResultFields.detection_classes: integer numpy
+          array of shape [num_boxes] containing 1-indexed detection classes for
+          the boxes.
+
+    Raises:
+      ValueError: If detection masks are not in detections dictionary.
+    """
+    if image_id not in self._image_ids:
+      # Since for the correct work of evaluator it is assumed that groundtruth
+      # is inserted first we make sure to break the code if is it not the case.
+      self._image_ids.update([image_id])
+      self._evaluatable_labels[image_id] = np.array([])
+
+    detection_classes = (
+        detections_dict[standard_fields.DetectionResultFields.detection_classes]
+        - self._label_id_offset)
+    allowed_classes = np.where(
+        np.isin(detection_classes, self._evaluatable_labels[image_id]))
+    detection_classes = detection_classes[allowed_classes]
+    detected_boxes = detections_dict[
+        standard_fields.DetectionResultFields.detection_boxes][allowed_classes]
+    detected_scores = detections_dict[
+        standard_fields.DetectionResultFields.detection_scores][allowed_classes]
+
+    self._evaluation.add_single_detected_image_info(
+        image_key=image_id,
+        detected_boxes=detected_boxes,
+        detected_scores=detected_scores,
+        detected_class_labels=detection_classes)
+
+  def clear(self):
+    """Clears stored data."""
+
+    super(OpenImagesDetectionChallengeEvaluator, self).clear()
+    self._evaluatable_labels.clear()
+
+
 ObjectDetectionEvalMetrics = collections.namedtuple(
     'ObjectDetectionEvalMetrics', [
         'average_precisions', 'mean_ap', 'precisions', 'recalls', 'corlocs',
@@ -465,7 +632,8 @@ class ObjectDetectionEvaluation(object):
                nms_iou_threshold=1.0,
                nms_max_output_boxes=10000,
                use_weighted_mean_ap=False,
-               label_id_offset=0):
+               label_id_offset=0,
+               group_of_weight=0.0):
     if num_groundtruth_classes < 1:
       raise ValueError('Need at least 1 groundtruth class for evaluation.')
 
@@ -473,7 +641,9 @@ class ObjectDetectionEvaluation(object):
         num_groundtruth_classes=num_groundtruth_classes,
         matching_iou_threshold=matching_iou_threshold,
         nms_iou_threshold=nms_iou_threshold,
-        nms_max_output_boxes=nms_max_output_boxes)
+        nms_max_output_boxes=nms_max_output_boxes,
+        group_of_weight=group_of_weight)
+    self.group_of_weight = group_of_weight
     self.num_class = num_groundtruth_classes
     self.use_weighted_mean_ap = use_weighted_mean_ap
     self.label_id_offset = label_id_offset
@@ -483,7 +653,7 @@ class ObjectDetectionEvaluation(object):
     self.groundtruth_masks = {}
     self.groundtruth_is_difficult_list = {}
     self.groundtruth_is_group_of_list = {}
-    self.num_gt_instances_per_class = np.zeros(self.num_class, dtype=int)
+    self.num_gt_instances_per_class = np.zeros(self.num_class, dtype=float)
     self.num_gt_imgs_per_class = np.zeros(self.num_class, dtype=int)
 
     self._initialize_detections()
@@ -650,7 +820,10 @@ class ObjectDetectionEvaluation(object):
       num_gt_instances = np.sum(groundtruth_class_labels[
           ~groundtruth_is_difficult_list
           & ~groundtruth_is_group_of_list] == class_index)
-      self.num_gt_instances_per_class[class_index] += num_gt_instances
+      num_groupof_gt_instances = self.group_of_weight * np.sum(
+          groundtruth_class_labels[groundtruth_is_group_of_list] == class_index)
+      self.num_gt_instances_per_class[
+          class_index] += num_gt_instances + num_groupof_gt_instances
       if np.any(groundtruth_class_labels == class_index):
         self.num_gt_imgs_per_class[class_index] += 1
 
@@ -677,19 +850,21 @@ class ObjectDetectionEvaluation(object):
     if self.use_weighted_mean_ap:
       all_scores = np.array([], dtype=float)
       all_tp_fp_labels = np.array([], dtype=bool)
-
     for class_index in range(self.num_class):
       if self.num_gt_instances_per_class[class_index] == 0:
         continue
       if not self.scores_per_class[class_index]:
         scores = np.array([], dtype=float)
-        tp_fp_labels = np.array([], dtype=bool)
+        tp_fp_labels = np.array([], dtype=float)
       else:
         scores = np.concatenate(self.scores_per_class[class_index])
         tp_fp_labels = np.concatenate(self.tp_fp_labels_per_class[class_index])
       if self.use_weighted_mean_ap:
         all_scores = np.append(all_scores, scores)
         all_tp_fp_labels = np.append(all_tp_fp_labels, tp_fp_labels)
+      logging.info('Scores and tpfp per class label: %d', class_index)
+      logging.info(tp_fp_labels)
+      logging.info(scores)
       precision, recall = metrics.compute_precision_recall(
           scores, tp_fp_labels, self.num_gt_instances_per_class[class_index])
       self.precisions_per_class.append(precision)

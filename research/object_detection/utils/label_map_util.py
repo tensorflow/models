@@ -32,8 +32,11 @@ def _validate_label_map(label_map):
     ValueError: if label map is invalid.
   """
   for item in label_map.item:
-    if item.id < 1:
-      raise ValueError('Label map ids should be >= 1.')
+    if item.id < 0:
+      raise ValueError('Label map ids should be >= 0.')
+    if (item.id == 0 and item.name != 'background' and
+        item.display_name != 'background'):
+      raise ValueError('Label map id 0 is reserved for the background label')
 
 
 def create_category_index(categories):
@@ -136,15 +139,26 @@ def load_labelmap(path):
   return label_map
 
 
-def get_label_map_dict(label_map_path, use_display_name=False):
+def get_label_map_dict(label_map_path,
+                       use_display_name=False,
+                       fill_in_gaps_and_background=False):
   """Reads a label map and returns a dictionary of label names to id.
 
   Args:
-    label_map_path: path to label_map.
+    label_map_path: path to StringIntLabelMap proto text file.
     use_display_name: whether to use the label map items' display names as keys.
+    fill_in_gaps_and_background: whether to fill in gaps and background with
+    respect to the id field in the proto. The id: 0 is reserved for the
+    'background' class and will be added if it is missing. All other missing
+    ids in range(1, max(id)) will be added with a dummy class name
+    ("class_<id>") if they are missing.
 
   Returns:
     A dictionary mapping label names to id.
+
+  Raises:
+    ValueError: if fill_in_gaps_and_background and label_map has non-integer or
+    negative values.
   """
   label_map = load_labelmap(label_map_path)
   label_map_dict = {}
@@ -153,6 +167,24 @@ def get_label_map_dict(label_map_path, use_display_name=False):
       label_map_dict[item.display_name] = item.id
     else:
       label_map_dict[item.name] = item.id
+
+  if fill_in_gaps_and_background:
+    values = set(label_map_dict.values())
+
+    if 0 not in values:
+      label_map_dict['background'] = 0
+    if not all(isinstance(value, int) for value in values):
+      raise ValueError('The values in label map must be integers in order to'
+                       'fill_in_gaps_and_background.')
+    if not all(value >= 0 for value in values):
+      raise ValueError('The values in the label map must be positive.')
+
+    if len(values) != max(values) + 1:
+      # there are gaps in the labels, fill in gaps.
+      for value in range(1, max(values)):
+        if value not in values:
+          label_map_dict['class_' + str(value)] = value
+
   return label_map_dict
 
 

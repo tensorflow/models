@@ -44,7 +44,6 @@ import struct
 import sys
 
 import tensorflow as tf
-
 from six.moves import xrange
 
 flags = tf.app.flags
@@ -133,7 +132,6 @@ def make_shard_files(coocs, nshards, vocab_sz):
 
   return (shard_files, row_sums)
 
-
 def main(_):
   with open(FLAGS.vocab, 'r') as lines:
     orig_vocab_sz = sum(1 for _ in lines)
@@ -195,7 +193,6 @@ def main(_):
       fh.write('%0.1f\n' % cnt)
 
   print('done!')
-
 
 if __name__ == '__main__':
   tf.app.run()

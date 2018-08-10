@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Common functions for repeatedly evaluating a checkpoint."""
+"""Common utility functions for evaluation."""
+import collections
 import logging
 import os
 import time
@@ -24,11 +25,24 @@ from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import standard_fields as fields
+from object_detection.metrics import coco_evaluation
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
 from object_detection.utils import visualization_utils as vis_utils
 
 slim = tf.contrib.slim
+
+# A dictionary of metric names to classes that implement the metric. The classes
+# in the dictionary must implement
+# utils.object_detection_evaluation.DetectionEvaluator interface.
+EVAL_METRICS_CLASS_DICT = {
+    'coco_detection_metrics':
+        coco_evaluation.CocoDetectionEvaluator,
+    'coco_mask_metrics':
+        coco_evaluation.CocoMaskEvaluator,
+}
+
+EVAL_DEFAULT_METRIC = 'coco_detection_metrics'
 
 
 def write_metrics(metrics, global_step, summary_dir):
@@ -77,7 +91,7 @@ def visualize_detection_results(result_dict,
       data corresponding to each image being evaluated.  The following keys
       are required:
         'original_image': a numpy array representing the image with shape
-          [1, height, width, 3]
+          [1, height, width, 3] or [1, height, width, 1]
         'detection_boxes': a numpy array of shape [N, 4]
         'detection_scores': a numpy array of shape [N]
         'detection_classes': a numpy array of shape [N]
@@ -131,6 +145,8 @@ def visualize_detection_results(result_dict,
   category_index = label_map_util.create_category_index(categories)
 
   image = np.squeeze(result_dict[input_fields.original_image], axis=0)
+  if image.shape[2] == 1:  # If one channel image, repeat in RGB.
+    image = np.tile(image, [1, 1, 3])
   detection_boxes = result_dict[detection_fields.detection_boxes]
   detection_scores = result_dict[detection_fields.detection_scores]
   detection_classes = np.int32((result_dict[
@@ -201,8 +217,9 @@ def _run_checkpoint_once(tensor_dict,
                          num_batches=1,
                          master='',
                          save_graph=False,
-                         save_graph_dir=''):
-  """Evaluates metrics defined in evaluators.
+                         save_graph_dir='',
+                         losses_dict=None):
+  """Evaluates metrics defined in evaluators and returns summaries.
 
   This function loads the latest checkpoint in checkpoint_dirs and evaluates
   all metrics defined in evaluators. The metrics are processed in batch by the
@@ -240,6 +257,7 @@ def _run_checkpoint_once(tensor_dict,
     save_graph: whether or not the Tensorflow graph is stored as a pbtxt file.
     save_graph_dir: where to store the Tensorflow graph on disk. If save_graph
       is True this must be non-empty.
+    losses_dict: optional dictionary of scalar detection losses.
 
   Returns:
     global_step: the count of global steps.
@@ -269,6 +287,7 @@ def _run_checkpoint_once(tensor_dict,
     tf.train.write_graph(sess.graph_def, save_graph_dir, 'eval.pbtxt')
 
   counters = {'skipped': 0, 'success': 0}
+  aggregate_result_losses_dict = collections.defaultdict(list)
   with tf.contrib.slim.queues.QueueRunners(sess):
     try:
       for batch in range(int(num_batches)):
@@ -276,16 +295,22 @@ def _run_checkpoint_once(tensor_dict,
           logging.info('Running eval ops batch %d/%d', batch + 1, num_batches)
         if not batch_processor:
           try:
-            result_dict = sess.run(tensor_dict)
+            if not losses_dict:
+              losses_dict = {}
+            result_dict, result_losses_dict = sess.run([tensor_dict,
+                                                        losses_dict])
             counters['success'] += 1
           except tf.errors.InvalidArgumentError:
             logging.info('Skipping image')
             counters['skipped'] += 1
             result_dict = {}
         else:
-          result_dict = batch_processor(tensor_dict, sess, batch, counters)
+          result_dict, result_losses_dict = batch_processor(
+              tensor_dict, sess, batch, counters, losses_dict=losses_dict)
         if not result_dict:
           continue
+        for key, value in iter(result_losses_dict.items()):
+          aggregate_result_losses_dict[key].append(value)
         for evaluator in evaluators:
           # TODO(b/65130867): Use image_id tensor once we fix the input data
           # decoders to return correct image_id.
@@ -310,6 +335,9 @@ def _run_checkpoint_once(tensor_dict,
           raise ValueError('Metric names between evaluators must not collide.')
         all_evaluator_metrics.update(metrics)
       global_step = tf.train.global_step(sess, tf.train.get_global_step())
+
+      for key, value in iter(aggregate_result_losses_dict.items()):
+        all_evaluator_metrics['Losses/' + key] = np.mean(value)
   sess.close()
   return (global_step, all_evaluator_metrics)
 
@@ -327,7 +355,8 @@ def repeated_checkpoint_run(tensor_dict,
                             max_number_of_evaluations=None,
                             master='',
                             save_graph=False,
-                            save_graph_dir=''):
+                            save_graph_dir='',
+                            losses_dict=None):
   """Periodically evaluates desired tensors using checkpoint_dirs or restore_fn.
 
   This function repeatedly loads a checkpoint and evaluates a desired
@@ -367,6 +396,7 @@ def repeated_checkpoint_run(tensor_dict,
     save_graph: whether or not the Tensorflow graph is saved as a pbtxt file.
     save_graph_dir: where to save on disk the Tensorflow graph. If store_graph
       is True this must be non-empty.
+    losses_dict: optional dictionary of scalar detection losses.
 
   Returns:
     metrics: A dictionary containing metric names and values in the latest
@@ -404,7 +434,8 @@ def repeated_checkpoint_run(tensor_dict,
                                                   variables_to_restore,
                                                   restore_fn, num_batches,
                                                   master, save_graph,
-                                                  save_graph_dir)
+                                                  save_graph_dir,
+                                                  losses_dict=losses_dict)
       write_metrics(metrics, global_step, summary_dir)
     number_of_evaluations += 1
 
@@ -432,7 +463,7 @@ def result_dict_for_single_example(image,
   have label 1.
 
   Args:
-    image: A single 4D image tensor of shape [1, H, W, C].
+    image: A single 4D uint8 image tensor of shape [1, H, W, C].
     key: A single string tensor identifying the image.
     detections: A dictionary of detections, returned from
       DetectionModel.postprocess().
@@ -479,7 +510,7 @@ def result_dict_for_single_example(image,
   """
   label_id_offset = 1  # Applying label id offset (b/63711816)
 
-  input_data_fields = fields.InputDataFields()
+  input_data_fields = fields.InputDataFields
   output_dict = {
       input_data_fields.original_image: image,
       input_data_fields.key: key,
@@ -488,10 +519,6 @@ def result_dict_for_single_example(image,
   detection_fields = fields.DetectionResultFields
   detection_boxes = detections[detection_fields.detection_boxes][0]
   image_shape = tf.shape(image)
-  if scale_to_absolute:
-    absolute_detection_boxlist = box_list_ops.to_absolute_coordinates(
-        box_list.BoxList(detection_boxes), image_shape[1], image_shape[2])
-    detection_boxes = absolute_detection_boxlist.get()
   detection_scores = detections[detection_fields.detection_scores][0]
 
   if class_agnostic:
@@ -508,7 +535,14 @@ def result_dict_for_single_example(image,
       detection_classes, begin=[0], size=[num_detections])
   detection_scores = tf.slice(
       detection_scores, begin=[0], size=[num_detections])
-  output_dict[detection_fields.detection_boxes] = detection_boxes
+
+  if scale_to_absolute:
+    absolute_detection_boxlist = box_list_ops.to_absolute_coordinates(
+        box_list.BoxList(detection_boxes), image_shape[1], image_shape[2])
+    output_dict[detection_fields.detection_boxes] = (
+        absolute_detection_boxlist.get())
+  else:
+    output_dict[detection_fields.detection_boxes] = detection_boxes
   output_dict[detection_fields.detection_classes] = detection_classes
   output_dict[detection_fields.detection_scores] = detection_scores
 
@@ -534,8 +568,16 @@ def result_dict_for_single_example(image,
 
   if groundtruth:
     if input_data_fields.groundtruth_instance_masks in groundtruth:
+      masks = groundtruth[input_data_fields.groundtruth_instance_masks]
+      masks = tf.expand_dims(masks, 3)
+      masks = tf.image.resize_images(
+          masks,
+          image_shape[1:3],
+          method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+          align_corners=True)
+      masks = tf.squeeze(masks, 3)
       groundtruth[input_data_fields.groundtruth_instance_masks] = tf.cast(
-          groundtruth[input_data_fields.groundtruth_instance_masks], tf.uint8)
+          masks, tf.uint8)
     output_dict.update(groundtruth)
     if scale_to_absolute:
       groundtruth_boxes = groundtruth[input_data_fields.groundtruth_boxes]
@@ -550,3 +592,92 @@ def result_dict_for_single_example(image,
       output_dict[input_data_fields.groundtruth_classes] = groundtruth_classes
 
   return output_dict
+
+
+def get_evaluators(eval_config, categories, evaluator_options=None):
+  """Returns the evaluator class according to eval_config, valid for categories.
+
+  Args:
+    eval_config: An `eval_pb2.EvalConfig`.
+    categories: A list of dicts, each of which has the following keys -
+        'id': (required) an integer id uniquely identifying this category.
+        'name': (required) string representing category name e.g., 'cat', 'dog'.
+    evaluator_options: A dictionary of metric names (see
+      EVAL_METRICS_CLASS_DICT) to `DetectionEvaluator` initialization
+      keyword arguments. For example:
+      evalator_options = {
+        'coco_detection_metrics': {'include_metrics_per_category': True}
+      }
+
+  Returns:
+    An list of instances of DetectionEvaluator.
+
+  Raises:
+    ValueError: if metric is not in the metric class dictionary.
+  """
+  evaluator_options = evaluator_options or {}
+  eval_metric_fn_keys = eval_config.metrics_set
+  if not eval_metric_fn_keys:
+    eval_metric_fn_keys = [EVAL_DEFAULT_METRIC]
+  evaluators_list = []
+  for eval_metric_fn_key in eval_metric_fn_keys:
+    if eval_metric_fn_key not in EVAL_METRICS_CLASS_DICT:
+      raise ValueError('Metric not found: {}'.format(eval_metric_fn_key))
+    kwargs_dict = (evaluator_options[eval_metric_fn_key] if eval_metric_fn_key
+                   in evaluator_options else {})
+    evaluators_list.append(EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](
+        categories,
+        **kwargs_dict))
+  return evaluators_list
+
+
+def get_eval_metric_ops_for_evaluators(eval_config,
+                                       categories,
+                                       eval_dict):
+  """Returns eval metrics ops to use with `tf.estimator.EstimatorSpec`.
+
+  Args:
+    eval_config: An `eval_pb2.EvalConfig`.
+    categories: A list of dicts, each of which has the following keys -
+        'id': (required) an integer id uniquely identifying this category.
+        'name': (required) string representing category name e.g., 'cat', 'dog'.
+    eval_dict: An evaluation dictionary, returned from
+      result_dict_for_single_example().
+
+  Returns:
+    A dictionary of metric names to tuple of value_op and update_op that can be
+    used as eval metric ops in tf.EstimatorSpec.
+  """
+  eval_metric_ops = {}
+  evaluator_options = evaluator_options_from_eval_config(eval_config)
+  evaluators_list = get_evaluators(eval_config, categories, evaluator_options)
+  for evaluator in evaluators_list:
+    eval_metric_ops.update(evaluator.get_estimator_eval_metric_ops(
+        eval_dict))
+  return eval_metric_ops
+
+
+def evaluator_options_from_eval_config(eval_config):
+  """Produces a dictionary of evaluation options for each eval metric.
+
+  Args:
+    eval_config: An `eval_pb2.EvalConfig`.
+
+  Returns:
+    evaluator_options: A dictionary of metric names (see
+      EVAL_METRICS_CLASS_DICT) to `DetectionEvaluator` initialization
+      keyword arguments. For example:
+      evalator_options = {
+        'coco_detection_metrics': {'include_metrics_per_category': True}
+      }
+  """
+  eval_metric_fn_keys = eval_config.metrics_set
+  evaluator_options = {}
+  for eval_metric_fn_key in eval_metric_fn_keys:
+    if eval_metric_fn_key in ('coco_detection_metrics', 'coco_mask_metrics'):
+      evaluator_options[eval_metric_fn_key] = {
+          'include_metrics_per_category': (
+              eval_config.include_metrics_per_category)
+      }
+  return evaluator_options
+

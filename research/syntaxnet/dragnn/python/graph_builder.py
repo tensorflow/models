@@ -28,7 +28,7 @@ from syntaxnet.util import check
 
 try:
   tf.NotDifferentiable('ExtractFixedFeatures')
-except KeyError as e:
+except KeyError, e:
   logging.info(str(e))
 
 
@@ -179,6 +179,8 @@ class MasterBuilder(object):
     optimizer: handle to the tf.train Optimizer object used to train this model.
     master_vars: dictionary of globally shared tf.Variable objects (e.g.
       the global training step and learning rate.)
+    read_from_avg: Whether to use averaged params instead of normal params.
+    build_runtime_graph: Whether to build a graph for use by the runtime.
   """
 
   def __init__(self, master_spec, hyperparam_config=None, pool_scope='shared'):
@@ -197,14 +199,15 @@ class MasterBuilder(object):
       ValueError: if a component is not found in the registry.
     """
     self.spec = master_spec
-    self.hyperparams = (spec_pb2.GridPoint()
-                        if hyperparam_config is None else hyperparam_config)
+    self.hyperparams = (
+        spec_pb2.GridPoint()
+        if hyperparam_config is None else hyperparam_config)
     _validate_grid_point(self.hyperparams)
     self.pool_scope = pool_scope
 
     # Set the graph-level random seed before creating the Components so the ops
     # they create will use this seed.
-    tf.set_random_seed(hyperparam_config.seed)
+    tf.set_random_seed(self.hyperparams.seed)
 
     # Construct all utility class and variables for each Component.
     self.components = []
@@ -219,18 +222,36 @@ class MasterBuilder(object):
       self.lookup_component[comp.name] = comp
       self.components.append(comp)
 
-    # Add global step variable.
     self.master_vars = {}
     with tf.variable_scope('master', reuse=False):
+      # Add global step variable.
       self.master_vars['step'] = tf.get_variable(
           'step', [], initializer=tf.zeros_initializer(), dtype=tf.int32)
-      self.master_vars['learning_rate'] = _create_learning_rate(
-          self.hyperparams, self.master_vars['step'])
+
+      # Add learning rate. If the learning rate is optimized externally, then
+      # just create an assign op.
+      if self.hyperparams.pbt_optimize_learning_rate:
+        self.master_vars['learning_rate'] = tf.get_variable(
+            'learning_rate',
+            initializer=tf.constant(
+                self.hyperparams.learning_rate, dtype=tf.float32))
+        lr_assign_input = tf.placeholder(tf.float32, [],
+                                         'pbt/assign/learning_rate/Value')
+        tf.assign(
+            self.master_vars['learning_rate'],
+            value=lr_assign_input,
+            name='pbt/assign/learning_rate')
+      else:
+        self.master_vars['learning_rate'] = _create_learning_rate(
+            self.hyperparams, self.master_vars['step'])
 
     # Construct optimizer.
     self.optimizer = _create_optimizer(self.hyperparams,
                                        self.master_vars['learning_rate'],
                                        self.master_vars['step'])
+
+    self.read_from_avg = False
+    self.build_runtime_graph = False
 
   @property
   def component_names(self):
@@ -366,14 +387,20 @@ class MasterBuilder(object):
       max_index = len(self.components)
     else:
       if not 0 < max_index <= len(self.components):
-        raise IndexError('Invalid max_index {} for components {}; handle {}'.
-                         format(max_index, self.component_names, handle.name))
+        raise IndexError(
+            'Invalid max_index {} for components {}; handle {}'.format(
+                max_index, self.component_names, handle.name))
 
     # By default, we train every component supervised.
     if not component_weights:
       component_weights = [1] * max_index
     if not unroll_using_oracle:
       unroll_using_oracle = [True] * max_index
+
+    if not max_index <= len(unroll_using_oracle):
+      raise IndexError(('Invalid max_index {} for unroll_using_oracle {}; '
+                        'handle {}').format(max_index, unroll_using_oracle,
+                                            handle.name))
 
     component_weights = component_weights[:max_index]
     total_weight = (float)(sum(component_weights))
@@ -408,10 +435,10 @@ class MasterBuilder(object):
         args = (master_state, network_states)
         if unroll_using_oracle[component_index]:
 
-          handle, component_cost, component_correct, component_total = (tf.cond(
-              comp.training_beam_size > 1,
-              lambda: comp.build_structured_training(*args),
-              lambda: comp.build_greedy_training(*args)))
+          handle, component_cost, component_correct, component_total = (
+              tf.cond(comp.training_beam_size > 1,
+                      lambda: comp.build_structured_training(*args),
+                      lambda: comp.build_greedy_training(*args)))
 
         else:
           handle = comp.build_greedy_inference(*args, during_training=True)
@@ -445,6 +472,7 @@ class MasterBuilder(object):
     # 1. compute the gradients,
     # 2. add an optimizer to update the parameters using the gradients,
     # 3. make the ComputeSession handle depend on the optimizer.
+    gradient_norm = tf.constant(0.)
     if compute_gradients:
       logging.info('Creating train op with %d variables:\n\t%s',
                    len(params_to_train),
@@ -452,8 +480,11 @@ class MasterBuilder(object):
 
       grads_and_vars = self.optimizer.compute_gradients(
           cost, var_list=params_to_train)
-      clipped_gradients = [(self._clip_gradients(g), v)
-                           for g, v in grads_and_vars]
+      clipped_gradients = [
+          (self._clip_gradients(g), v) for g, v in grads_and_vars
+      ]
+      gradient_norm = tf.global_norm(list(zip(*clipped_gradients))[0])
+
       minimize_op = self.optimizer.apply_gradients(
           clipped_gradients, global_step=self.master_vars['step'])
 
@@ -474,6 +505,7 @@ class MasterBuilder(object):
     # Returns named access to common outputs.
     outputs = {
         'cost': cost,
+        'gradient_norm': gradient_norm,
         'batch': effective_batch,
         'metrics': metrics,
     }
@@ -520,7 +552,10 @@ class MasterBuilder(object):
     with tf.control_dependencies(control_ops):
       return tf.no_op(name='post_restore_hook_master')
 
-  def build_inference(self, handle, use_moving_average=False):
+  def build_inference(self,
+                      handle,
+                      use_moving_average=False,
+                      build_runtime_graph=False):
     """Builds an inference pipeline.
 
     This always uses the whole pipeline.
@@ -530,25 +565,30 @@ class MasterBuilder(object):
       use_moving_average: Whether or not to read from the moving
         average variables instead of the true parameters. Note: it is not
         possible to make gradient updates when this is True.
+      build_runtime_graph: Whether to build a graph for use by the runtime.
 
     Returns:
       handle: Handle after annotation.
     """
     self.read_from_avg = use_moving_average
+    self.build_runtime_graph = build_runtime_graph
     network_states = {}
 
     for comp in self.components:
       network_states[comp.name] = component.NetworkState()
       handle = dragnn_ops.init_component_data(
           handle, beam_size=comp.inference_beam_size, component=comp.name)
-      master_state = component.MasterState(handle,
-                                           dragnn_ops.batch_size(
-                                               handle, component=comp.name))
+      if build_runtime_graph:
+        batch_size = 1  # runtime uses singleton batches
+      else:
+        batch_size = dragnn_ops.batch_size(handle, component=comp.name)
+      master_state = component.MasterState(handle, batch_size)
       with tf.control_dependencies([handle]):
         handle = comp.build_greedy_inference(master_state, network_states)
       handle = dragnn_ops.write_annotations(handle, component=comp.name)
 
     self.read_from_avg = False
+    self.build_runtime_graph = False
     return handle
 
   def add_training_from_config(self,
@@ -625,7 +665,10 @@ class MasterBuilder(object):
       return self._outputs_with_release(handle, {'input_batch': input_batch},
                                         outputs)
 
-  def add_annotation(self, name_scope='annotation', enable_tracing=False):
+  def add_annotation(self,
+                     name_scope='annotation',
+                     enable_tracing=False,
+                     build_runtime_graph=False):
     """Adds an annotation pipeline to the graph.
 
     This will create the following additional named targets by default, for use
@@ -640,13 +683,17 @@ class MasterBuilder(object):
       enable_tracing: Enabling this will result in two things:
           1. Tracing will be enabled during inference.
           2. A 'traces' node will be added to the outputs.
+      build_runtime_graph: Whether to build a graph for use by the runtime.
 
     Returns:
       A dictionary of input and output nodes.
     """
     with tf.name_scope(name_scope):
       handle, input_batch = self._get_session_with_reader(enable_tracing)
-      handle = self.build_inference(handle, use_moving_average=True)
+      handle = self.build_inference(
+          handle,
+          use_moving_average=True,
+          build_runtime_graph=build_runtime_graph)
 
       annotations = dragnn_ops.emit_annotations(
           handle, component=self.spec.component[-1].name)
@@ -666,7 +713,7 @@ class MasterBuilder(object):
 
   def add_saver(self):
     """Adds a Saver for all variables in the graph."""
-    logging.info('Saving variables:\n\t%s',
+    logging.info('Generating op to save variables:\n\t%s',
                  '\n\t'.join([x.name for x in tf.global_variables()]))
     self.saver = tf.train.Saver(
         var_list=[x for x in tf.global_variables()],

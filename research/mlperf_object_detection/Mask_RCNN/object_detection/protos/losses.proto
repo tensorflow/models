@@ -1,0 +1,164 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Message for configuring the localization loss, classification loss and hard
+// example miner used for training object detection models. See core/losses.py
+// for details
+message Loss {
+  // Localization loss to use.
+  optional LocalizationLoss localization_loss = 1;
+
+  // Classification loss to use.
+  optional ClassificationLoss classification_loss = 2;
+
+  // If not left to default, applies hard example mining.
+  optional HardExampleMiner hard_example_miner = 3;
+
+  // Classification loss weight.
+  optional float classification_weight = 4 [default=1.0];
+
+  // Localization loss weight.
+  optional float localization_weight = 5 [default=1.0];
+
+  // If not left to default, applies random example sampling.
+  optional RandomExampleSampler random_example_sampler = 6;
+}
+
+// Configuration for bounding box localization loss function.
+message LocalizationLoss {
+  oneof localization_loss {
+    WeightedL2LocalizationLoss weighted_l2 = 1;
+    WeightedSmoothL1LocalizationLoss weighted_smooth_l1 = 2;
+    WeightedIOULocalizationLoss weighted_iou = 3;
+  }
+}
+
+// L2 location loss: 0.5 * ||weight * (a - b)|| ^ 2
+message WeightedL2LocalizationLoss {
+  // DEPRECATED, do not use.
+  // Output loss per anchor.
+  optional bool anchorwise_output = 1 [default=false];
+}
+
+// SmoothL1 (Huber) location loss.
+// The smooth L1_loss is defined elementwise as .5 x^2 if |x| <= delta and
+// 0.5 x^2 + delta * (|x|-delta) otherwise, where x is the difference between
+// predictions and target.
+message WeightedSmoothL1LocalizationLoss {
+  // DEPRECATED, do not use.
+  // Output loss per anchor.
+  optional bool anchorwise_output = 1 [default=false];
+
+  // Delta value for huber loss.
+  optional float delta = 2 [default=1.0];
+}
+
+// Intersection over union location loss: 1 - IOU
+message WeightedIOULocalizationLoss {
+}
+
+// Configuration for class prediction loss function.
+message ClassificationLoss {
+  oneof classification_loss {
+    WeightedSigmoidClassificationLoss weighted_sigmoid = 1;
+    WeightedSoftmaxClassificationLoss weighted_softmax = 2;
+    WeightedSoftmaxClassificationAgainstLogitsLoss weighted_logits_softmax = 5;
+    BootstrappedSigmoidClassificationLoss bootstrapped_sigmoid = 3;
+    SigmoidFocalClassificationLoss weighted_sigmoid_focal = 4;
+  }
+}
+
+// Classification loss using a sigmoid function over class predictions.
+message WeightedSigmoidClassificationLoss {
+  // DEPRECATED, do not use.
+  // Output loss per anchor.
+  optional bool anchorwise_output = 1 [default=false];
+}
+
+// Sigmoid Focal cross entropy loss as described in
+// https://arxiv.org/abs/1708.02002
+message SigmoidFocalClassificationLoss {
+  // DEPRECATED, do not use.
+  optional bool anchorwise_output = 1 [default = false];
+  // modulating factor for the loss.
+  optional float gamma = 2 [default = 2.0];
+  // alpha weighting factor for the loss.
+  optional float alpha = 3;
+}
+
+// Classification loss using a softmax function over class predictions.
+message WeightedSoftmaxClassificationLoss {
+  // DEPRECATED, do not use.
+  // Output loss per anchor.
+  optional bool anchorwise_output = 1 [default=false];
+  // Scale logit (input) value before calculating softmax classification loss.
+  // Typically used for softmax distillation.
+  optional float logit_scale = 2 [default = 1.0];
+}
+
+// Classification loss using a softmax function over class predictions and
+// a softmax function over the groundtruth labels (assumed to be logits).
+message WeightedSoftmaxClassificationAgainstLogitsLoss {
+  // DEPRECATED, do not use.
+  optional bool anchorwise_output = 1 [default = false];
+  // Scale and softmax groundtruth logits before calculating softmax
+  // classification loss. Typically used for softmax distillation with teacher
+  // annotations stored as logits.
+  optional float logit_scale = 2 [default = 1.0];
+}
+
+// Classification loss using a sigmoid function over the class prediction with
+// the highest prediction score.
+message BootstrappedSigmoidClassificationLoss {
+  // Interpolation weight between 0 and 1.
+  optional float alpha = 1;
+
+  // Whether hard boot strapping should be used or not. If true, will only use
+  // one class favored by model. Othewise, will use all predicted class
+  // probabilities.
+  optional bool hard_bootstrap = 2 [default=false];
+
+  // DEPRECATED, do not use.
+  // Output loss per anchor.
+  optional bool anchorwise_output = 3 [default=false];
+}
+
+// Configuration for hard example miner.
+message HardExampleMiner {
+  // Maximum number of hard examples to be selected per image (prior to
+  // enforcing max negative to positive ratio constraint).  If set to 0,
+  // all examples obtained after NMS are considered.
+  optional int32 num_hard_examples = 1 [default=64];
+
+  // Minimum intersection over union for an example to be discarded during NMS.
+  optional float iou_threshold = 2 [default=0.7];
+
+  // Whether to use classification losses ('cls', default), localization losses
+  // ('loc') or both losses ('both'). In the case of 'both', cls_loss_weight and
+  // loc_loss_weight are used to compute weighted sum of the two losses.
+  enum LossType {
+    BOTH = 0;
+    CLASSIFICATION = 1;
+    LOCALIZATION = 2;
+  }
+  optional LossType loss_type = 3 [default=BOTH];
+
+  // Maximum number of negatives to retain for each positive anchor. If
+  // num_negatives_per_positive is 0 no prespecified negative:positive ratio is
+  // enforced.
+  optional int32 max_negatives_per_positive = 4 [default=0];
+
+  // Minimum number of negative anchors to sample for a given image. Setting
+  // this to a positive number samples negatives in an image without any
+  // positive anchors and thus not bias the model towards having at least one
+  // detection per image.
+  optional int32 min_negatives_per_image = 5 [default=0];
+}
+
+// Configuration for random example sampler.
+message RandomExampleSampler {
+  // The desired fraction of positive samples in batch when applying random
+  // example sampling.
+  optional float positive_sample_fraction = 1 [default = 0.01];
+}

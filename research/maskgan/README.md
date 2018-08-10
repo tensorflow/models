@@ -5,7 +5,7 @@ ______*](https://arxiv.org/abs/1801.07736) published at ICLR 2018.
 
 ## Requirements
 
-*   TensorFlow >= v1.3
+*   TensorFlow >= v1.5
 
 ## Instructions
 
@@ -14,10 +14,10 @@ tested. Pretraining may not work correctly.
 
 For training on PTB:
 
-1. (Optional) Pretrain a LM on PTB and store the checkpoint in `/tmp/pretrain-lm/`.
+1. Pretrain a LM on PTB and store the checkpoint in `/tmp/pretrain-lm/`.
 Instructions WIP.
 
-2. (Optional) Run MaskGAN in MLE pretraining mode. If step 1 was not run, set
+2. Run MaskGAN in MLE pretraining mode. If step 1 was not run, set
 `language_model_ckpt_dir` to empty.
 
 ```bash

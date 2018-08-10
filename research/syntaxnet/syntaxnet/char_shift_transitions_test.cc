@@ -76,7 +76,7 @@ class CharShiftTransitionTest : public ::testing::Test {
   }
 
   void PrepareCharTransition(bool left_to_right) {
-    context_.SetParameter("left-to-right", left_to_right ? "true" : "false");
+    context_.SetParameter("left_to_right", left_to_right ? "true" : "false");
     transition_system_.reset(ParserTransitionSystem::Create("char-shift-only"));
     transition_system_->Setup(&context_);
 
@@ -88,7 +88,7 @@ class CharShiftTransitionTest : public ::testing::Test {
   }
 
   void PrepareShiftTransition(bool left_to_right) {
-    context_.SetParameter("left-to-right", left_to_right ? "true" : "false");
+    context_.SetParameter("left_to_right", left_to_right ? "true" : "false");
     transition_system_.reset(ParserTransitionSystem::Create("shift-only"));
     transition_system_->Setup(&context_);
     state_.reset(new ParserState(

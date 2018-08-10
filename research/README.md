@@ -5,10 +5,6 @@ This folder contains machine learning models implemented by researchers in
 respective authors. To propose a model for inclusion, please submit a pull
 request.
 
-Currently, the models are compatible with TensorFlow 1.0 or later. If you are
-running TensorFlow 0.12 or earlier, please [upgrade your
-installation](https://www.tensorflow.org/install).
-
 ## Models
 
 -   [adversarial_crypto](adversarial_crypto): protecting communications with
@@ -26,19 +22,28 @@ installation](https://www.tensorflow.org/install).
     for visual navigation.
 -   [compression](compression): compressing and decompressing images using a
     pre-trained Residual GRU network.
--   [deeplab](deeplab): deep labelling for semantic image segmentation.
+-   [deep_contextual_bandits](deep_contextual_bandits): code for a variety of contextual bandits algorithms using deep neural networks and Thompson sampling.
+-   [deep_speech](deep_speech): automatic speech recognition.
+-   [deeplab](deeplab): deep labeling for semantic image segmentation.
 -   [delf](delf): deep local features for image matching and retrieval.
--   [differential_privacy](differential_privacy): privacy-preserving student
-    models from multiple teachers.
+-   [differential_privacy](differential_privacy): differential privacy for training
+    data.
 -   [domain_adaptation](domain_adaptation): domain separation networks.
 -   [gan](gan): generative adversarial networks.
 -   [im2txt](im2txt): image-to-text neural network for image captioning.
 -   [inception](inception): deep convolutional networks for computer vision.
+-   [keypointnet](keypointnet): discovery of latent 3D keypoints via end-to-end
+    geometric eeasoning [[demo](https://keypointnet.github.io/)].
 -   [learning_to_remember_rare_events](learning_to_remember_rare_events): a
     large-scale life-long memory module for use in deep learning.
+-   [learning_unsupervised_learning](learning_unsupervised_learning): a
+    meta-learned unsupervised learning update rule.
+-   [lexnet_nc](lexnet_nc): a distributed model for noun compound relationship
+    classification.
 -   [lfads](lfads): sequential variational autoencoder for analyzing
     neuroscience data.
 -   [lm_1b](lm_1b): language modeling on the one billion word benchmark.
+-   [lm_commonsense](lm_commonsense): commonsense reasoning using language models.
 -   [maskgan](maskgan): text generation with GANs.
 -   [namignizer](namignizer): recognize and generate names.
 -   [neural_gpu](neural_gpu): highly parallel neural computer.
@@ -51,12 +56,15 @@ installation](https://www.tensorflow.org/install).
 -   [pcl_rl](pcl_rl): code for several reinforcement learning algorithms,
     including Path Consistency Learning.
 -   [ptn](ptn): perspective transformer nets for 3D object reconstruction.
+-   [marco](marco): automating the evaluation of crystallization experiments.
 -   [qa_kg](qa_kg): module networks for question answering on knowledge graphs.
 -   [real_nvp](real_nvp): density estimation using real-valued non-volume
     preserving (real NVP) transformations.
 -   [rebar](rebar): low-variance, unbiased gradient estimates for discrete
     latent variable models.
 -   [resnet](resnet): deep and wide residual networks.
+-   [seq2species](seq2species): deep learning solution for read-level taxonomic
+    classification.
 -   [skip_thoughts](skip_thoughts): recurrent neural network sentence-to-vector
     encoder.
 -   [slim](slim): image classification models in TF-Slim.
@@ -69,5 +77,7 @@ installation](https://www.tensorflow.org/install).
     summarization.
 -   [transformer](transformer): spatial transformer network, which allows the
     spatial manipulation of data within the network.
+-   [vid2depth](vid2depth): learning depth and ego-motion unsupervised from
+    raw monocular video.
 -   [video_prediction](video_prediction): predicting future video frames with
     neural advection.

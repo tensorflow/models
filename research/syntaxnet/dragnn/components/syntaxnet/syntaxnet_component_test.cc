@@ -40,6 +40,7 @@ namespace dragnn {
 namespace {
 
 const char kSentence0[] = R"(
+text: "Sentence 0."
 token {
   word: "Sentence" start: 0 end: 7 tag: "NN" category: "NOUN" label: "ROOT"
   break_level: NO_BREAK
@@ -55,6 +56,7 @@ token {
 )";
 
 const char kSentence1[] = R"(
+text: "Sentence 1."
 token {
   word: "Sentence" start: 0 end: 7 tag: "NN" category: "NOUN" label: "ROOT"
   break_level: NO_BREAK
@@ -70,6 +72,7 @@ token {
 )";
 
 const char kLongSentence[] = R"(
+text: "Sentence 123."
 token {
   word: "Sentence" start: 0 end: 7 tag: "NN" category: "NOUN" label: "ROOT"
   break_level: NO_BREAK
@@ -1308,6 +1311,31 @@ TEST_F(SyntaxNetComponentTest, BulkEmbedFixedFeaturesIsNotSupported) {
   EXPECT_TRUE(test_parser->IsReady());
   EXPECT_DEATH(test_parser->BulkEmbedFixedFeatures(0, 0, 0, {nullptr}, nullptr),
                "Method not supported");
+}
+
+TEST_F(SyntaxNetComponentTest, GetStepLookupFunction) {
+  Sentence sentence_0;
+  TextFormat::ParseFromString(kSentence0, &sentence_0);
+  string sentence_0_str;
+  sentence_0.SerializeToString(&sentence_0_str);
+
+  constexpr int kBeamSize = 1;
+  auto test_parser = CreateParserWithBeamSize(kBeamSize, {}, {sentence_0_str});
+  ASSERT_TRUE(test_parser->IsReady());
+
+  const auto reverse_token_lookup =
+      test_parser->GetStepLookupFunction("reverse-token");
+  const int kNumTokens = sentence_0.token_size();
+  for (int i = 0; i < kNumTokens; ++i) {
+    EXPECT_EQ(i, reverse_token_lookup(0, 0, kNumTokens - i - 1));
+  }
+
+  const auto reverse_char_lookup =
+      test_parser->GetStepLookupFunction("reverse-char");
+  const int kNumChars = sentence_0.text().size();  // assumes ASCII
+  for (int i = 0; i < kNumChars; ++i) {
+    EXPECT_EQ(i, reverse_char_lookup(0, 0, kNumChars - i - 1));
+  }
 }
 
 }  // namespace dragnn

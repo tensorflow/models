@@ -18,8 +18,9 @@ Please proceed according to which dataset you would like to train/evaluate on:
 ### Setup
 
 You simply need to have the latest version of TensorFlow installed.
+First make sure you've [added the models folder to your Python path](/official/#running-the-models); otherwise you may encounter an error like `ImportError: No module named official.resnet`.
 
-First download and extract the CIFAR-10 data from Alex's website, specifying the location with the `--data_dir` flag. Run the following:
+Then download and extract the CIFAR-10 data from Alex's website, specifying the location with the `--data_dir` flag. Run the following:
 
 ```
 python cifar10_download_and_extract.py
@@ -49,5 +50,28 @@ The model will begin training and will automatically evaluate itself on the vali
 
 Note that there are a number of other options you can specify, including `--model_dir` to choose where to store the model and `--resnet_size` to choose the model size (options include ResNet-18 through ResNet-200). See [`resnet.py`](resnet.py) for the full list of options.
 
+
+## Compute Devices
+Training is accomplished using the DistributionStrategies API. (https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/distribute/README.md)
+
+The appropriate distribution strategy is chosen based on the `--num_gpus` flag. By default this flag is one if TensorFlow is compiled with CUDA, and zero otherwise.
+
+num_gpus:
++ 0:  Use OneDeviceStrategy and train on CPU.
++ 1:  Use OneDeviceStrategy and train on GPU.
++ 2+: Use MirroredStrategy (data parallelism) to distribute a batch between devices.
+
 ### Pre-trained model
-You can download a 190 MB pre-trained version of ResNet-50 achieving 75.3% top-1 single-crop accuracy here: [resnet50_2017_11_30.tar.gz](http://download.tensorflow.org/models/official/resnet50_2017_11_30.tar.gz). Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
+You can download 190 MB pre-trained versions of ResNet-50. Reported accuracies are top-1 single-crop accuracy for the ImageNet validation set. Simply download and uncompress the file, and point the model to the extracted directory using the `--model_dir` flag.
+
+ResNet-50 v2 (Accuracy 76.05%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_imagenet_savedmodel.tar.gz)
+
+ResNet-50 v2 (fp16, Accuracy 75.56%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v2_fp16_imagenet_savedmodel.tar.gz)
+
+ResNet-50 v1 (Accuracy 75.91%):
+* [Checkpoint](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_checkpoint.tar.gz)
+* [SavedModel](http://download.tensorflow.org/models/official/20180601_resnet_v1_imagenet_savedmodel.tar.gz)

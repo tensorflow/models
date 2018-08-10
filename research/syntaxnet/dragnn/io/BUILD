@@ -8,7 +8,7 @@ cc_library(
         ":syntaxnet_sentence",
         "//dragnn/core/interfaces:input_batch",
         "//syntaxnet:base",
-        "//syntaxnet:sentence_proto",
+        "//syntaxnet:sentence_proto_cc",
     ],
 )
 
@@ -16,7 +16,7 @@ cc_library(
     name = "syntaxnet_sentence",
     hdrs = ["syntaxnet_sentence.h"],
     deps = [
-        "//syntaxnet:sentence_proto",
+        "//syntaxnet:sentence_proto_cc",
         "//syntaxnet:workspace",
     ],
 )
@@ -27,7 +27,7 @@ cc_test(
     deps = [
         ":sentence_input_batch",
         "//dragnn/core/test:generic",
-        "//syntaxnet:sentence_proto",
+        "//syntaxnet:sentence_proto_cc",
         "//syntaxnet:test_main",
         "@org_tensorflow//tensorflow/core:test",
     ],

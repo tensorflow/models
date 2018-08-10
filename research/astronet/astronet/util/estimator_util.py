@@ -69,15 +69,7 @@ def create_input_fn(file_pattern,
         repeat=repeat,
         use_tpu=use_tpu)
 
-    # We must use an initializable iterator, rather than a one-shot iterator,
-    # because the input pipeline contains a stateful table that requires
-    # initialization. We add the initializer to the TABLE_INITIALIZERS
-    # collection to ensure it is run during initialization.
-    iterator = dataset.make_initializable_iterator()
-    tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
-
-    inputs = iterator.get_next()
-    return inputs, inputs.pop("labels", None)
+    return dataset
 
   return input_fn
 
@@ -102,6 +94,14 @@ def create_model_fn(model_class, hparams, use_tpu=False):
     # For TPUEstimator, params contains the batch size per TPU core.
     if "batch_size" in params:
       hparams.batch_size = params["batch_size"]
+
+    # Allow labels to be passed in the features dictionary.
+    if "labels" in features:
+      if labels is not None and labels is not features["labels"]:
+        raise ValueError(
+            "Conflicting labels: features['labels'] = %s, labels = %s" %
+            (features["labels"], labels))
+      labels = features.pop("labels")
 
     model = model_class(features, labels, hparams, mode)
     model.build()
