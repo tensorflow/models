@@ -306,6 +306,17 @@ def imagenet_model_fn(features, labels, mode, params):
       dtype=params['dtype']
   )
 
+def keras_model_fn():
+  # TODO(anjalisridhar): Should I be using params['batch_size']?
+  learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
+      batch_size=flags.FLAGS.batch_size, batch_denom=256,
+      num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
+      decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
+
+  return resnet_run_loop.keras_model_fn(
+      learning_rate_fn=learning_rate_fn,
+      momentum=0.9
+  )
 
 def define_imagenet_flags():
   resnet_run_loop.define_resnet_flags(
@@ -323,8 +334,13 @@ def run_imagenet(flags_obj):
   input_function = (flags_obj.use_synthetic_data and get_synth_input_fn()
                     or input_fn)
 
+  if flags_obj.use_keras_model:
+    model_fn = keras_model_fn()
+  else:
+    model_fn = imagenet_model_fn
+
   resnet_run_loop.resnet_main(
-      flags_obj, imagenet_model_fn, input_function, DATASET_NAME,
+      flags_obj, model_fn, input_function, DATASET_NAME,
       shape=[_DEFAULT_IMAGE_SIZE, _DEFAULT_IMAGE_SIZE, _NUM_CHANNELS])
 
 

@@ -326,6 +326,8 @@ def keras_resnet_model_fn(learning_rate=None, momentun=None):
   model.compile(optimizer=optimizer, loss='spare_categorical_crossentropy',
                 metrics='accuracy')
 
+  return model
+
 
 def resnet_main(
     flags_obj, model_function, input_function, dataset_name, shape=None):
@@ -367,7 +369,7 @@ def resnet_main(
 
   if flags_obj.use_keras_model:
     classifier = tf.keras.estimator.model_to_estimator(
-        keras_model=model, config=run_config, model_dir=flags_obj.model_dir)
+        keras_model=model_function, config=run_config, model_dir=flags_obj.model_dir)
   else:
     classifier = tf.estimator.Estimator(
         model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
