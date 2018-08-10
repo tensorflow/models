@@ -422,8 +422,12 @@ def resnet_main(
     tf.logging.info('Starting a training cycle: %d/%d',
                     cycle_index, total_training_cycle)
 
-    classifier.train(input_fn=input_fn_train, hooks=train_hooks,
-                     max_steps=flags_obj.max_train_steps)
+    if flags_obj.use_keras_model:
+      classifier.train(input_fn=input_fn_train,
+                       max_steps=flags_obj.max_train_steps)
+    else:
+      classifier.train(input_fn=input_fn_train, hooks=train_hooks,
+                       max_steps=flags_obj.max_train_steps)
 
     tf.logging.info('Starting to evaluate.')
 
