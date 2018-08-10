@@ -323,7 +323,7 @@ def keras_model_fn(learning_rate=None, momentum=None):
   )
 
   model = tf.keras.applications.ResNet50(classes=1001, weights=None)
-  model.compile(optimizer=optimizer, loss='spare_categorical_crossentropy',
+  model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy',
                 metrics='accuracy')
 
   return model
