@@ -315,7 +315,7 @@ def resnet_model_fn(features, labels, mode, model_class,
       train_op=train_op,
       eval_metric_ops=metrics)
 
-def keras_resnet_model_fn(learning_rate=None, momentun=None):
+def keras_model_fn(learning_rate=None, momentun=None):
   # Move this to imagenet_main
   optimizer = tf.train.MomentumOptimizer(
       learning_rate=learning_rate,
