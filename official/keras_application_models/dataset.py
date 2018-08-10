@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-
 from official.utils.misc import model_helpers  # pylint: disable=g-bad-import-order
 
 # Default values for dataset.
@@ -29,7 +28,7 @@ _NUM_CLASSES = 1000
 def _get_default_image_size(model):
   """Provide default image size for each model."""
   image_size = (224, 224)
-  if model in ["inception", "xception", "inceptionresnet"]:
+  if model in ["inceptionv3", "xception", "inceptionresnetv2"]:
     image_size = (299, 299)
   elif model in ["nasnetlarge"]:
     image_size = (331, 331)
@@ -42,8 +41,8 @@ def generate_synthetic_input_dataset(model, batch_size):
   image_shape = (batch_size,) + image_size + (_NUM_CHANNELS,)
   label_shape = (batch_size, _NUM_CLASSES)
 
-  return model_helpers.generate_synthetic_data(
+  dataset = model_helpers.generate_synthetic_data(
       input_shape=tf.TensorShape(image_shape),
-      input_dtype=tf.float32,
       label_shape=tf.TensorShape(label_shape),
-      label_dtype=tf.float32)
+  )
+  return dataset
