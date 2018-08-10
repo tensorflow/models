@@ -21,7 +21,7 @@ class VariationalAutoencoder(object):
         self.reconstruction = tf.add(tf.matmul(self.z, self.weights['w2']), self.weights['b2'])
 
         # cost
-        reconstr_loss = 0.5 * tf.reduce_sum(tf.pow(tf.subtract(self.reconstruction, self.x), 2.0))
+        reconstr_loss = 0.5 * tf.reduce_sum(tf.pow(tf.subtract(self.reconstruction, self.x), 2.0), 1)
         latent_loss = -0.5 * tf.reduce_sum(1 + self.z_log_sigma_sq
                                            - tf.square(self.z_mean)
                                            - tf.exp(self.z_log_sigma_sq), 1)
