@@ -307,14 +307,8 @@ def imagenet_model_fn(features, labels, mode, params):
   )
 
 def keras_model_fn():
-  # TODO(anjalisridhar): Should I be using params['batch_size']?
-  learning_rate_fn = resnet_run_loop.learning_rate_with_decay(
-      batch_size=flags.FLAGS.batch_size, batch_denom=256,
-      num_images=_NUM_IMAGES['train'], boundary_epochs=[30, 60, 80, 90],
-      decay_rates=[1, 0.1, 0.01, 0.001, 1e-4])
-
   return resnet_run_loop.keras_model_fn(
-      learning_rate_fn=learning_rate_fn,
+      learning_rate=0.001,
       momentum=0.9
   )
 
