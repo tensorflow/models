@@ -315,6 +315,17 @@ def resnet_model_fn(features, labels, mode, model_class,
       train_op=train_op,
       eval_metric_ops=metrics)
 
+def keras_resnet_model_fn(learning_rate=None, momentun=None):
+  # Move this to imagenet_main
+  optimizer = tf.train.MomentumOptimizer(
+      learning_rate=learning_rate,
+      momentum=momentun
+  )
+
+  model = tf.keras.applications.ResNet50(classes=1001, weights=None)
+  model.compile(optimizer=optimizer, loss='spare_categorical_crossentropy',
+                metrics='accuracy')
+
 
 def resnet_main(
     flags_obj, model_function, input_function, dataset_name, shape=None):
@@ -355,8 +366,6 @@ def resnet_main(
       train_distribute=distribution_strategy, session_config=session_config)
 
   if flags_obj.use_keras_model:
-    # Move this to imagenet_main
-    model = tf.keras.applications.ResNet50(classes=1001, weights=None)
     classifier = tf.keras.estimator.model_to_estimator(
         keras_model=model, config=run_config, model_dir=flags_obj.model_dir)
   else:
