@@ -120,11 +120,11 @@ def _convert_dataset(split_name, filenames, filename_to_class_id, dataset_dir):
         for filename in filenames:
           # Read the filename:
           image_data = tf.gfile.FastGFile(
-              os.path.join(png_directory, filename), 'r').read()
+              os.path.join(png_directory, filename), 'rb').read()
           height, width = image_reader.read_image_dims(sess, image_data)
 
           class_id = filename_to_class_id[filename]
-          example = dataset_utils.image_to_tfexample(image_data, 'png', height,
+          example = dataset_utils.image_to_tfexample(image_data, b'png', height,
                                                      width, class_id)
           tfrecord_writer.write(example.SerializeToString())
 

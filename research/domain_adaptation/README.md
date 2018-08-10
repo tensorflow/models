@@ -38,7 +38,7 @@ data directory:
 $ export DSN_DATA_DIR=/your/dir
 ```
 
-Add models and models/slim to your `$PYTHONPATH` (assumes $PWD is /models):
+Add models/research and models/research/slim to your `$PYTHONPATH` (assumes $PWD is /models/research):
 
 ```
 $ export PYTHONPATH=$PYTHONPATH:$PWD:$PWD/slim
@@ -59,7 +59,7 @@ $ bazel run domain_adaptation/datasets:download_and_convert_mnist_m -- --dataset
 
 
 
-# Running PixelDA from MNIST to MNIST-M
+## Running PixelDA from MNIST to MNIST-M
 You can run PixelDA as follows (using Tensorboard to examine the results):
 
 ```
@@ -89,6 +89,12 @@ The discriminator component takes the generated images and the target images
 and attempts to discriminate between them.
 
 ## Running DSN code for adapting MNIST to MNIST-M
+First, compile gradient reversal ops.
+```
+$ TF_CFLAGS=( $(python -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_compile_flags()))') )
+$ TF_LFLAGS=( $(python -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_link_flags()))') )
+$ g++ -std=c++11 -shared grl_ops.cc grl_op_kernels.cc -o _grl_ops.so -fPIC ${TF_CFLAGS[@]} ${TF_LFLAGS[@]} -O2 -D_GLIBCXX_USE_CXX11_ABI=0
+```
 
 Then you need to build the binaries with Bazel:
 
