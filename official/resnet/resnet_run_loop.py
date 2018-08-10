@@ -317,9 +317,8 @@ def resnet_model_fn(features, labels, mode, model_class,
 
 def keras_model_fn(learning_rate=None, momentum=None):
   # Move this to imagenet_main
-  optimizer = tf.train.MomentumOptimizer(
-      learning_rate=learning_rate,
-      momentum=momentum
+  optimizer = tf.train.GradientDescentOptimizer(
+      learning_rate=learning_rate
   )
 
   model = tf.keras.applications.ResNet50(classes=1001, weights=None)
