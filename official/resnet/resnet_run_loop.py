@@ -354,16 +354,23 @@ def resnet_main(
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy, session_config=session_config)
 
-  classifier = tf.estimator.Estimator(
-      model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
-      params={
-          'resnet_size': int(flags_obj.resnet_size),
-          'data_format': flags_obj.data_format,
-          'batch_size': flags_obj.batch_size,
-          'resnet_version': int(flags_obj.resnet_version),
-          'loss_scale': flags_core.get_loss_scale(flags_obj),
-          'dtype': flags_core.get_tf_dtype(flags_obj)
-      })
+  if flags_obj.use_keras_model:
+    # Move this to imagenet_main
+    model = tf.keras.application.ResNet50(classes=1001)
+    classifier = tf.keras.estimator.model_to_estimator(
+        keras_model=model, config=run_config, model_dir=flags_obj.model_dir)
+
+  else:
+    classifier = tf.estimator.Estimator(
+        model_fn=model_function, model_dir=flags_obj.model_dir, config=run_config,
+        params={
+            'resnet_size': int(flags_obj.resnet_size),
+            'data_format': flags_obj.data_format,
+            'batch_size': flags_obj.batch_size,
+            'resnet_version': int(flags_obj.resnet_version),
+            'loss_scale': flags_core.get_loss_scale(flags_obj),
+            'dtype': flags_core.get_tf_dtype(flags_obj)
+        })
 
   run_params = {
       'batch_size': flags_obj.batch_size,
