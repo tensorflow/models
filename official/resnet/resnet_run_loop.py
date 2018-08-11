@@ -317,9 +317,7 @@ def resnet_model_fn(features, labels, mode, model_class,
 
 def keras_model_fn(learning_rate=None, momentum=None):
   # Move this to imagenet_main
-  optimizer = tf.train.GradientDescentOptimizer(
-      learning_rate=learning_rate
-  )
+  optimizer = tf.train.RMSPropOptimizer(learning_rate=0.0001, decay=1e-6)
 
   model = tf.keras.applications.ResNet50(classes=1001, weights=None)
   model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy',
