@@ -177,7 +177,8 @@ class PTBModel(object):
   def _build_rnn_graph_cudnn(self, inputs, config, is_training):
     """Build the inference graph using CUDNN cell."""
     inputs = tf.transpose(inputs, [1, 0, 2])
-    self._cell = tf.contrib.cudnn_rnn.CudnnLSTM(
+    from tensorflow.contrib.cudnn_rnn.python.ops import cudnn_rnn_ops
+    self._cell = cudnn_rnn_ops.CudnnLSTM(
         num_layers=config.num_layers,
         num_units=config.hidden_size,
         input_size=config.hidden_size,
@@ -270,13 +271,14 @@ class PTBModel(object):
       self._lr_update = tf.get_collection_ref("lr_update")[0]
       rnn_params = tf.get_collection_ref("rnn_params")
       if self._cell and rnn_params:
-        params_saveable = tf.contrib.cudnn_rnn.RNNParamsSaveable(
-            self._cell,
-            self._cell.params_to_canonical,
-            self._cell.canonical_to_params,
+        params_saveable = tf.contrib.cudnn_rnn.CudnnLSTMSaveable(
             rnn_params,
-            base_variable_scope="Model/RNN")
-        tf.add_to_collection(tf.GraphKeys.SAVEABLE_OBJECTS, params_saveable)
+            self._cell.num_layers,
+            self._cell.num_units,
+            self._cell.input_size,
+            self._cell.input_mode,
+            self._cell.direction,
+            scope="Model/RNN")
     self._cost = tf.get_collection_ref(util.with_prefix(self._name, "cost"))[0]
     num_replicas = FLAGS.num_gpus if self._name == "Train" else 1
     self._initial_state = util.import_state_tuples(
