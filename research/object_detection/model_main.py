@@ -31,7 +31,7 @@ flags.DEFINE_string(
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                     'file.')
 flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
-flags.DEFINE_integer('num_eval_steps', None, 'Number of train steps.')
+flags.DEFINE_integer('num_eval_steps', None, 'Number of eval steps.')
 flags.DEFINE_string(
     'hparams_overrides', None, 'Hyperparameter overrides, '
     'represented as a string containing comma-separated '
