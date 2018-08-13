@@ -285,10 +285,11 @@ def resnet_model_fn(features, labels, mode, model_class,
 
     def _dense_grad_filter(gvs):
       '''
-      only apply gradient updates to the final layer. This funiton is used for fine tuning
-       Args:
+      only apply gradient updates to the final layer. This function is used for
+      fine tuning
+      Args:
       gvs : list of tuples with gradients and variable info
-       Returns: 
+      Returns:
       filtered gradients so that only the dense layer remains
       '''
       return [(g, v) for g, v in gvs if 'dense' in v.name]
@@ -299,8 +300,8 @@ def resnet_model_fn(features, labels, mode, model_class,
       # loss_scale to make these tensor values loss_scale times bigger.
       scaled_grad_vars = optimizer.compute_gradients(loss * loss_scale)
 
-      if fine_tune: 
-        scaled_grad_vars = _dense_grad_filter(grad_vars)
+      if fine_tune:
+        scaled_grad_vars = _dense_grad_filter(scaled_grad_vars)
 
       # Once the gradient computation is complete we can scale the gradients
       # back to the correct scale before passing them to the optimizer.
@@ -372,10 +373,11 @@ def resnet_main(
   run_config = tf.estimator.RunConfig(
       train_distribute=distribution_strategy, session_config=session_config)
 
-  # initialize our model with all but the dense layer from pretrained resnet 
+  # initialize our model with all but the dense layer from pretrained resnet
   if flags_obj.pretrained_model_checkpoint_path is not None:
-    warm_start_settings = tf.estimator.WarmStartSettings(flags_obj.pretrained_model_checkpoint_path,
-                                   vars_to_warm_start='^(?!.*dense)')
+    warm_start_settings = tf.estimator.WarmStartSettings(
+        flags_obj.pretrained_model_checkpoint_path,
+        vars_to_warm_start='^(?!.*dense)')
   else:
     warm_start_settings = None
 
@@ -479,7 +481,8 @@ def define_resnet_flags(resnet_size_choices=None):
   flags.DEFINE_string(
       name='pretrained_model_checkpoint_path', short_name='pmcp', default=None,
       help=flags_core.help_wrap(
-          'If not None initialize all the network except the final layer with these values'))
+          'If not None initialize all the network except the final layer with '
+          'these values'))
 
   choice_kwargs = dict(
       name='resnet_size', short_name='rs', default='50',
