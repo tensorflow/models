@@ -289,7 +289,7 @@ def _build_detection_graph(input_type, detection_model, input_shape,
       key_placeholder = tf.placeholder(dtype=tf.string, shape=(None,))
     else:
       raise ValueError('Unknown instance key type: {}'.format(instance_key_type))
-    placeholder_tensors["key"] = key_placeholder
+    placeholder_tensor["key"] = key_placeholder
     outputs["key"] = tf.identity(key_placeholder, name="key")
 
   # Add global step to the graph.
@@ -297,7 +297,7 @@ def _build_detection_graph(input_type, detection_model, input_shape,
 
   if graph_hook_fn: graph_hook_fn()
 
-  return outputs, placeholder_tensors
+  return outputs, placeholder_tensor
 
 
 def _export_inference_graph(input_type,
@@ -318,7 +318,7 @@ def _export_inference_graph(input_type,
   saved_model_path = os.path.join(output_directory, 'saved_model')
   model_path = os.path.join(output_directory, 'model.ckpt')
 
-  outputs, placeholder_tensors = _build_detection_graph(
+  outputs, placeholder_tensor = _build_detection_graph(
       input_type=input_type,
       detection_model=detection_model,
       input_shape=input_shape,
@@ -376,7 +376,7 @@ def _export_inference_graph(input_type,
       initializer_nodes='')
 
   write_saved_model(saved_model_path, frozen_graph_def,
-                    placeholder_tensors, outputs)
+                    placeholder_tensor, outputs)
 
 
 def export_inference_graph(input_type,
