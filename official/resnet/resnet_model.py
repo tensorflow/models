@@ -248,7 +248,7 @@ def _bottleneck_block_v1(inputs, filters, training, projection_shortcut,
 
 def _bottleneck_block_v2(inputs, filters, training, projection_shortcut,
                          strides, data_format):
-  """A single block for ResNet v2, without a bottleneck.
+  """A single block for ResNet v2, with a bottleneck.
 
   Similar to _building_block_v2(), except using the "bottleneck" blocks
   described in:
