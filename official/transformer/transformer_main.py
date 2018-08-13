@@ -111,9 +111,10 @@ def model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.EVAL:
       if params["use_tpu"]:
         # host call functions should only have tensors as arguments.
-        # functools.partial() pre-populates params so that metric_fn is
+        # This lambda pre-populates params so that metric_fn is
         # TPUEstimator compliant.
-        metric_fn = functools.partial(metrics.get_eval_metrics, params=params)
+        metric_fn = lambda logits, labels : (
+            metrics.get_eval_metrics(logits, labels, params=params))
         eval_metrics = (metric_fn, [logits, labels])
         return tf.contrib.tpu.TPUEstimatorSpec(
             mode=mode, loss=loss, predictions={"predictions": logits},
